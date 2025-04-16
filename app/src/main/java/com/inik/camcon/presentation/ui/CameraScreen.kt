@@ -15,7 +15,8 @@ fun CameraScreen(
     viewModel: CameraViewModel = hiltViewModel()
 ) {
     // StateFlow를 collectAsState()로 구독
-    val cameraFeedState = viewModel.cameraFeed.collectAsState()
+    val cameraFeedState = viewModel.cameraFeed.collectAsState(initial = emptyList())
+
 
     Scaffold(
         topBar = {
