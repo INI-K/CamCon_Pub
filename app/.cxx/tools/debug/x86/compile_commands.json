@@ -1,7 +1,7 @@
 [
 {
-  "directory": "/Users/meo/CamCon/app/.cxx/Debug/663v2k14/x86",
-  "command": "/Users/meo/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ --target=i686-none-linux-android29 --sysroot=/Users/meo/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -Dnative_lib_EXPORTS -I/Users/meo/CamCon/app/src/main/cpp/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fno-limit-debug-info  -fPIC -o CMakeFiles/native-lib.dir/native-lib.cpp.o -c /Users/meo/CamCon/app/src/main/cpp/native-lib.cpp",
-  "file": "/Users/meo/CamCon/app/src/main/cpp/native-lib.cpp"
+  "directory": "/Users/meo/CamConT/app/.cxx/Debug/663v2k14/x86",
+  "command": "/Users/meo/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ --target=i686-none-linux-android29 --sysroot=/Users/meo/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -Dnative_lib_EXPORTS -I/Users/meo/CamConT/app/src/main/cpp/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fno-limit-debug-info  -fPIC -o CMakeFiles/native-lib.dir/native-lib.cpp.o -c /Users/meo/CamConT/app/src/main/cpp/native-lib.cpp",
+  "file": "/Users/meo/CamConT/app/src/main/cpp/native-lib.cpp"
 }
 ]

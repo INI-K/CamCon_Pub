@@ -1,4 +1,4 @@
-# Install script for directory: /Users/meo/CamCon/app/src/main/cpp
+# Install script for directory: /Users/meo/CamConT/app/src/main/cpp
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -50,5 +50,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/Users/meo/CamCon/app/.cxx/Debug/663v2k14/x86/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/Users/meo/CamConT/app/.cxx/Debug/663v2k14/x86/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
