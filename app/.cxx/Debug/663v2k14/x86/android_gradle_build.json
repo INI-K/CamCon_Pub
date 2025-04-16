@@ -1,19 +1,19 @@
 {
   "buildFiles": [
-    "/Users/meo/CamCon/app/src/main/cpp/CMakeLists.txt"
+    "/Users/meo/CamConT/app/src/main/cpp/CMakeLists.txt"
   ],
   "cleanCommandsComponents": [
     [
       "/Users/meo/Library/Android/sdk/cmake/3.22.1/bin/ninja",
       "-C",
-      "/Users/meo/CamCon/app/.cxx/Debug/663v2k14/x86",
+      "/Users/meo/CamConT/app/.cxx/Debug/663v2k14/x86",
       "clean"
     ]
   ],
   "buildTargetsCommandComponents": [
     "/Users/meo/Library/Android/sdk/cmake/3.22.1/bin/ninja",
     "-C",
-    "/Users/meo/CamCon/app/.cxx/Debug/663v2k14/x86",
+    "/Users/meo/CamConT/app/.cxx/Debug/663v2k14/x86",
     "{LIST_OF_TARGETS_TO_BUILD}"
   ],
   "libraries": {
@@ -21,14 +21,14 @@
       "toolchain": "toolchain",
       "abi": "x86",
       "artifactName": "native-lib",
-      "output": "/Users/meo/CamCon/app/build/intermediates/cxx/Debug/663v2k14/obj/x86/libnative-lib.so",
+      "output": "/Users/meo/CamConT/app/build/intermediates/cxx/Debug/663v2k14/obj/x86/libnative-lib.so",
       "runtimeFiles": [
-        "/Users/meo/CamCon/app/src/main/jniLibs/x86/libgphoto2_port.so",
-        "/Users/meo/CamCon/app/src/main/jniLibs/x86/libgphoto2.so",
-        "/Users/meo/CamCon/app/src/main/jniLibs/x86/libltdl.so",
-        "/Users/meo/CamCon/app/src/main/jniLibs/x86/libusb.so",
-        "/Users/meo/CamCon/app/src/main/jniLibs/x86/libgphoto2_port_iolib_usb1.so",
-        "/Users/meo/CamCon/app/src/main/jniLibs/x86/libgphoto2_port_iolib_disk.so"
+        "/Users/meo/CamConT/app/src/main/jniLibs/x86/libgphoto2_port.so",
+        "/Users/meo/CamConT/app/src/main/jniLibs/x86/libgphoto2.so",
+        "/Users/meo/CamConT/app/src/main/jniLibs/x86/libltdl.so",
+        "/Users/meo/CamConT/app/src/main/jniLibs/x86/libusb.so",
+        "/Users/meo/CamConT/app/src/main/jniLibs/x86/libgphoto2_port_iolib_usb1.so",
+        "/Users/meo/CamConT/app/src/main/jniLibs/x86/libgphoto2_port_iolib_disk.so"
       ]
     }
   },

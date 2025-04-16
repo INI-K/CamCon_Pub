@@ -42,7 +42,7 @@ rule CUSTOM_COMMAND
 # Rule for re-running cmake.
 
 rule RERUN_CMAKE
-  command = /Users/meo/Library/Android/sdk/cmake/3.22.1/bin/cmake --regenerate-during-build -S/Users/meo/CamCon/app/src/main/cpp -B/Users/meo/CamCon/app/.cxx/Debug/663v2k14/x86
+  command = /Users/meo/Library/Android/sdk/cmake/3.22.1/bin/cmake --regenerate-during-build -S/Users/meo/CamConT/app/src/main/cpp -B/Users/meo/CamConT/app/.cxx/Debug/663v2k14/x86
   description = Re-running CMake...
   generator = 1
 

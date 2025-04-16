@@ -1,0 +1,3 @@
+/Users/meo/CamConT/app/.cxx/RelWithDebInfo/6j4cz45t/arm64-v8a/CMakeFiles/native-lib.dir
+/Users/meo/CamConT/app/.cxx/RelWithDebInfo/6j4cz45t/arm64-v8a/CMakeFiles/edit_cache.dir
+/Users/meo/CamConT/app/.cxx/RelWithDebInfo/6j4cz45t/arm64-v8a/CMakeFiles/rebuild_cache.dir
