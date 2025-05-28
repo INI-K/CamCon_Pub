@@ -8,6 +8,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -151,7 +153,7 @@ fun CameraControlScreen(
                 }
                 
                 // Camera Settings Overlay
-                if (uiState.cameraSettings != null) {
+                uiState.cameraSettings?.let { settings ->
                     Row(
                         modifier = Modifier
                             .align(Alignment.TopCenter)
@@ -162,11 +164,11 @@ fun CameraControlScreen(
                             )
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
-                        CameraSettingChip("ISO ${uiState.cameraSettings.iso}")
+                        CameraSettingChip("ISO ${settings.iso}")
                         Spacer(modifier = Modifier.width(8.dp))
-                        CameraSettingChip(uiState.cameraSettings.shutterSpeed)
+                        CameraSettingChip(settings.shutterSpeed)
                         Spacer(modifier = Modifier.width(8.dp))
-                        CameraSettingChip("f/${uiState.cameraSettings.aperture}")
+                        CameraSettingChip("f/${settings.aperture}")
                     }
                 }
             }
