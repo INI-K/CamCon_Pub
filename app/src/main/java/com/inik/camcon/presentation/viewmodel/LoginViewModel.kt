@@ -40,7 +40,7 @@ class LoginViewModel @Inject constructor(
                     onFailure = { error ->
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
-                            error = error.message
+                            error = "로그인 실패: ${error.message ?: "알 수 없는 오류가 발생했습니다"}"
                         )
                     }
                 )
