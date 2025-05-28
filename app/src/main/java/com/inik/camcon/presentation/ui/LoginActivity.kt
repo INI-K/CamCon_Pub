@@ -2,6 +2,7 @@ package com.inik.camcon.presentation.ui
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -35,14 +37,19 @@ class LoginActivity : ComponentActivity() {
     private val googleSignInLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
+        Log.d("LoginActivity", "Google Sign-In result received with code: ${result.resultCode}")
         val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
         try {
             val account = task.getResult(ApiException::class.java)
+            Log.d("LoginActivity", "Google account received: ${account?.email}")
             account?.idToken?.let { idToken ->
+                Log.d("LoginActivity", "ID Token received, length: ${idToken.length}")
                 loginViewModel?.signInWithGoogle(idToken)
+            } ?: run {
+                Log.e("LoginActivity", "ID Token is null")
             }
         } catch (e: ApiException) {
-            // 구글 로그인 실패 처리는 ViewModel에서 담당
+            Log.e("LoginActivity", "Google Sign-In failed with code: ${e.statusCode}", e)
         }
     }
 
@@ -50,6 +57,8 @@ class LoginActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.d("LoginActivity", "onCreate called")
+
         setContent {
             CamConTheme {
                 val viewModel: LoginViewModel = hiltViewModel()
@@ -59,6 +68,7 @@ class LoginActivity : ComponentActivity() {
 
                 LaunchedEffect(uiState.isLoggedIn) {
                     if (uiState.isLoggedIn) {
+                        Log.d("LoginActivity", "User logged in, navigating to MainActivity")
                         startActivity(Intent(this@LoginActivity, MainActivity::class.java))
                         finish()
                     }
@@ -66,7 +76,10 @@ class LoginActivity : ComponentActivity() {
 
                 LoginScreen(
                     uiState = uiState,
-                    onGoogleSignIn = { signInWithGoogle() },
+                    onGoogleSignIn = {
+                        Log.d("LoginActivity", "Google Sign-In button clicked")
+                        signInWithGoogle()
+                    },
                     onDismissError = { viewModel.clearError() }
                 )
             }
@@ -74,14 +87,20 @@ class LoginActivity : ComponentActivity() {
     }
 
     private fun signInWithGoogle() {
-        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(getString(R.string.default_web_client_id))
-            .requestEmail()
-            .build()
+        Log.d("LoginActivity", "signInWithGoogle() called")
+        try {
+            val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(getString(R.string.default_web_client_id))
+                .requestEmail()
+                .build()
 
-        val googleSignInClient = GoogleSignIn.getClient(this, gso)
-        val signInIntent = googleSignInClient.signInIntent
-        googleSignInLauncher.launch(signInIntent)
+            val googleSignInClient = GoogleSignIn.getClient(this, gso)
+            val signInIntent = googleSignInClient.signInIntent
+            Log.d("LoginActivity", "Launching Google Sign-In intent")
+            googleSignInLauncher.launch(signInIntent)
+        } catch (e: Exception) {
+            Log.e("LoginActivity", "Error creating Google Sign-In intent", e)
+        }
     }
 }
 
@@ -125,14 +144,14 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Text(
-                    text = "CamCon",
+                    text = stringResource(R.string.app_name),
                     fontSize = 40.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colors.primary
                 )
 
                 Text(
-                    text = "Professional Camera Controller",
+                    text = stringResource(R.string.app_description),
                     fontSize = 16.sp,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                 )
@@ -140,7 +159,7 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(48.dp))
 
                 Text(
-                    text = "libgphoto2 기반 전문 카메라 제어 앱",
+                    text = stringResource(R.string.welcome_message),
                     fontSize = 14.sp,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f),
                     textAlign = TextAlign.Center
@@ -182,7 +201,7 @@ fun LoginScreen(
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = "Google로 시작하기",
+                                text = stringResource(R.string.login_with_google),
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Medium
                             )
@@ -193,7 +212,7 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "로그인하면 서비스 이용약관 및 개인정보 처리방침에\n동의하는 것으로 간주됩니다.",
+                    text = stringResource(R.string.terms_agreement),
                     fontSize = 12.sp,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.5f),
                     textAlign = TextAlign.Center,
@@ -207,7 +226,7 @@ fun LoginScreen(
                     modifier = Modifier.align(Alignment.BottomCenter),
                     action = {
                         TextButton(onClick = onDismissError) {
-                            Text("닫기")
+                            Text(stringResource(R.string.close))
                         }
                     }
                 ) {

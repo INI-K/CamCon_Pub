@@ -1,0 +1,178 @@
+<resources>
+    <!-- 앱 정보 -->
+    <string name="app_name">CamCon</string>
+    <string name="app_description">안드로이드용 전문 카메라 제어</string>
+
+    <!-- Google Sign-In -->
+    <string name="default_web_client_id">527188051661-b9cru75i7min570psfn47fmd04hh2qn6.apps.googleusercontent.com</string>
+
+    <!-- 공통 -->
+    <string name="ok">확인</string>
+    <string name="cancel">취소</string>
+    <string name="retry">재시도</string>
+    <string name="close">닫기</string>
+    <string name="settings">설정</string>
+    <string name="save">저장</string>
+    <string name="delete">삭제</string>
+    <string name="share">공유</string>
+    <string name="back">뒤로</string>
+    <string name="next">다음</string>
+    <string name="done">완료</string>
+    <string name="loading">로딩중...</string>
+    <string name="error">오류</string>
+    <string name="success">성공</string>
+
+    <!-- 인증 -->
+    <string name="login">로그인</string>
+    <string name="logout">로그아웃</string>
+    <string name="login_with_google">Google로 로그인</string>
+    <string name="welcome">캠컨트에 오신것을 환영합니다</string>
+    <string name="welcome_message">손끝에서 느끼는 전문 카메라 제어</string>
+    <string name="login_required">계속하려면 로그인하세요</string>
+    <string name="login_success">로그인 성공</string>
+    <string name="login_failed">로그인 실패</string>
+    <string name="logout_success">로그아웃 성공</string>
+    <string name="terms_agreement">로그인하면 서비스 이용약관 및 개인정보 처리방침에 동의하는 것으로 간주됩니다.</string>
+
+    <!-- 카메라 연결 -->
+    <string name="camera_connected">연결됨</string>
+    <string name="camera_disconnected">연결 해제됨</string>
+    <string name="camera_not_connected">카메라가 연결되지 않음</string>
+    <string name="connect_camera_usb">USB OTG로 카메라를 연결하세요</string>
+    <string name="retry_connection">연결 재시도</string>
+    <string name="camera_connection_failed">카메라 연결 실패</string>
+    <string name="camera_connection_success">카메라 연결 성공</string>
+    <string name="detecting_camera">카메라 감지중...</string>
+    <string name="camera_detected">카메라 감지됨: %s</string>
+    <string name="no_camera_detected">카메라가 감지되지 않음</string>
+
+    <!-- 카메라 제어 -->
+    <string name="capture">촬영</string>
+    <string name="capture_photo">사진 촬영</string>
+    <string name="start_live_view">라이브뷰 시작</string>
+    <string name="stop_live_view">라이브뷰 중지</string>
+    <string name="live_view_active">라이브뷰 활성</string>
+    <string name="focus">포커스</string>
+    <string name="auto_focus">자동 포커스</string>
+    <string name="manual_focus">수동 포커스</string>
+    <string name="gallery">갤러리</string>
+    <string name="photo_library">사진 라이브러리</string>
+
+    <!-- 촬영 모드 -->
+    <string name="shooting_mode">촬영 모드</string>
+    <string name="single_shot">단일</string>
+    <string name="burst_mode">연속</string>
+    <string name="timelapse">타임랩스</string>
+    <string name="bulb_mode">벌브</string>
+    <string name="hdr_bracket">HDR</string>
+
+    <!-- 카메라 설정 -->
+    <string name="camera_settings">카메라 설정</string>
+    <string name="iso">ISO</string>
+    <string name="shutter_speed">셔터 속도</string>
+    <string name="aperture">조리개</string>
+    <string name="white_balance">화이트 밸런스</string>
+    <string name="exposure_compensation">노출 보정</string>
+    <string name="focus_mode">포커스 모드</string>
+    <string name="metering_mode">측광 모드</string>
+    <string name="flash_mode">플래시 모드</string>
+    <string name="image_quality">이미지 품질</string>
+    <string name="file_format">파일 형식</string>
+
+    <!-- 타임랩스 -->
+    <string name="timelapse_settings">타임랩스 설정</string>
+    <string name="interval_seconds">간격 (초)</string>
+    <string name="total_shots">총 촬영 수</string>
+    <string name="estimated_duration">예상 시간</string>
+    <string name="start_timelapse">타임랩스 시작</string>
+    <string name="stop_timelapse">타임랩스 중지</string>
+    <string name="timelapse_in_progress">타임랩스 진행중</string>
+    <string name="timelapse_completed">타임랩스 완료</string>
+    <string name="shots_remaining">남은 촬영: %d</string>
+
+    <!-- 사진 관리 -->
+    <string name="recent_captures">최근 촬영</string>
+    <string name="captured_photos">촬영된 사진</string>
+    <string name="photo_saved">사진 저장됨</string>
+    <string name="photo_save_failed">사진 저장 실패</string>
+    <string name="delete_photo">사진 삭제</string>
+    <string name="delete_photo_confirm">이 사진을 삭제하시겠습니까?</string>
+    <string name="photo_deleted">사진 삭제됨</string>
+    <string name="share_photo">사진 공유</string>
+    <string name="edit_photo">사진 편집</string>
+    <string name="photo_details">사진 정보</string>
+
+    <!-- 서버/클라우드 -->
+    <string name="server_photos">서버 사진</string>
+    <string name="upload_to_cloud">클라우드 업로드</string>
+    <string name="download_from_cloud">클라우드 다운로드</string>
+    <string name="sync_photos">사진 동기화</string>
+    <string name="uploading">업로드중...</string>
+    <string name="downloading">다운로드중...</string>
+    <string name="upload_success">업로드 성공</string>
+    <string name="upload_failed">업로드 실패</string>
+    <string name="download_success">다운로드 성공</string>
+    <string name="download_failed">다운로드 실패</string>
+
+    <!-- 설정 -->
+    <string name="app_settings">앱 설정</string>
+    <string name="language">언어</string>
+    <string name="theme">테마</string>
+    <string name="auto_save">자동 저장</string>
+    <string name="save_location">저장 위치</string>
+    <string name="camera_timeout">카메라 타임아웃</string>
+    <string name="preview_quality">미리보기 품질</string>
+    <string name="sound_enabled">소리 활성화</string>
+    <string name="vibration_enabled">진동 활성화</string>
+    <string name="about">정보</string>
+    <string name="version">버전</string>
+    <string name="privacy_policy">개인정보 정책</string>
+    <string name="terms_of_service">이용약관</string>
+
+    <!-- 오류 메시지 -->
+    <string name="error_camera_init">카메라 초기화 실패</string>
+    <string name="error_camera_capture">사진 촬영 실패</string>
+    <string name="error_live_view">라이브뷰 시작 실패</string>
+    <string name="error_camera_settings">카메라 설정 로드 실패</string>
+    <string name="error_network">네트워크 오류</string>
+    <string name="error_storage">저장소 오류</string>
+    <string name="error_permission">권한이 거부됨</string>
+    <string name="error_unknown">알 수 없는 오류가 발생함</string>
+    <string name="error_usb_not_supported">USB OTG가 지원되지 않음</string>
+    <string name="error_camera_busy">카메라가 사용중임</string>
+
+    <!-- 권한 -->
+    <string name="permission_camera">카메라 권한이 필요합니다</string>
+    <string name="permission_storage">저장소 권한이 필요합니다</string>
+    <string name="permission_internet">인터넷 권한이 필요합니다</string>
+    <string name="grant_permission">권한 허용</string>
+
+    <!-- 네비게이션 -->
+    <string name="camera_control">카메라 제어</string>
+    <string name="photo_preview">사진 미리보기</string>
+    <string name="splash_screen">스플래시 화면</string>
+    <string name="main_screen">메인 화면</string>
+
+    <!-- 상태 -->
+    <string name="ready">준비</string>
+    <string name="busy">사용중</string>
+    <string name="capturing">촬영중...</string>
+    <string name="processing">처리중...</string>
+    <string name="connecting">연결중...</string>
+    <string name="initialized">초기화됨</string>
+
+    <!-- 파일 크기/품질 -->
+    <string name="high_quality">고품질</string>
+    <string name="medium_quality">중품질</string>
+    <string name="low_quality">저품질</string>
+    <string name="raw_format">RAW</string>
+    <string name="jpeg_format">JPEG</string>
+
+    <!-- 시간/날짜 -->
+    <string name="today">오늘</string>
+    <string name="yesterday">어제</string>
+    <string name="this_week">이번 주</string>
+    <string name="minutes_ago">%d분 전</string>
+    <string name="hours_ago">%d시간 전</string>
+    <string name="days_ago">%d일 전</string>
+</resources>

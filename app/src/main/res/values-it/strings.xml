@@ -1,0 +1,178 @@
+<resources>
+    <!-- Informazioni App -->
+    <string name="app_name">CamConT</string>
+    <string name="app_description">Controllo Professionale della Fotocamera per Android</string>
+
+    <!-- Accesso Google -->
+    <string name="default_web_client_id">YOUR_WEB_CLIENT_ID_HERE</string>
+
+    <!-- Comune -->
+    <string name="ok">OK</string>
+    <string name="cancel">Annulla</string>
+    <string name="retry">Riprova</string>
+    <string name="close">Chiudi</string>
+    <string name="settings">Impostazioni</string>
+    <string name="save">Salva</string>
+    <string name="delete">Elimina</string>
+    <string name="share">Condividi</string>
+    <string name="back">Indietro</string>
+    <string name="next">Avanti</string>
+    <string name="done">Fatto</string>
+    <string name="loading">Caricamento...</string>
+    <string name="error">Errore</string>
+    <string name="success">Successo</string>
+
+    <!-- Autenticazione -->
+    <string name="login">Accedi</string>
+    <string name="logout">Esci</string>
+    <string name="login_with_google">Accedi con Google</string>
+    <string name="welcome">Benvenuto in CamConT</string>
+    <string name="welcome_message">Controllo professionale della fotocamera a portata di mano</string>
+    <string name="login_required">Effettua l\'accesso per continuare</string>
+    <string name="login_success">Accesso riuscito</string>
+    <string name="login_failed">Accesso fallito</string>
+    <string name="logout_success">Uscita riuscita</string>
+    <string name="terms_agreement">Effettuando l\'accesso, accetti i nostri Termini di Servizio e la Politica Privacy.</string>
+
+    <!-- Connessione Fotocamera -->
+    <string name="camera_connected">Connessa</string>
+    <string name="camera_disconnected">Disconnessa</string>
+    <string name="camera_not_connected">Fotocamera Non Connessa</string>
+    <string name="connect_camera_usb">Collega la fotocamera tramite USB OTG</string>
+    <string name="retry_connection">Riprova Connessione</string>
+    <string name="camera_connection_failed">Connessione fotocamera fallita</string>
+    <string name="camera_connection_success">Fotocamera connessa con successo</string>
+    <string name="detecting_camera">Rilevamento fotocamera...</string>
+    <string name="camera_detected">Fotocamera rilevata: %s</string>
+    <string name="no_camera_detected">Nessuna fotocamera rilevata</string>
+
+    <!-- Controlli Fotocamera -->
+    <string name="capture">Scatta</string>
+    <string name="capture_photo">Scatta Foto</string>
+    <string name="start_live_view">Avvia Live View</string>
+    <string name="stop_live_view">Ferma Live View</string>
+    <string name="live_view_active">Live View Attiva</string>
+    <string name="focus">Fuoco</string>
+    <string name="auto_focus">Messa a Fuoco Automatica</string>
+    <string name="manual_focus">Messa a Fuoco Manuale</string>
+    <string name="gallery">Galleria</string>
+    <string name="photo_library">Libreria Foto</string>
+
+    <!-- Modalità di Scatto -->
+    <string name="shooting_mode">Modalità di Scatto</string>
+    <string name="single_shot">Singolo</string>
+    <string name="burst_mode">Raffica</string>
+    <string name="timelapse">Timelapse</string>
+    <string name="bulb_mode">Posa B</string>
+    <string name="hdr_bracket">HDR</string>
+
+    <!-- Impostazioni Fotocamera -->
+    <string name="camera_settings">Impostazioni Fotocamera</string>
+    <string name="iso">ISO</string>
+    <string name="shutter_speed">Velocità Otturatore</string>
+    <string name="aperture">Apertura</string>
+    <string name="white_balance">Bilanciamento del Bianco</string>
+    <string name="exposure_compensation">Compensazione Esposizione</string>
+    <string name="focus_mode">Modalità Fuoco</string>
+    <string name="metering_mode">Modalità Misurazione</string>
+    <string name="flash_mode">Modalità Flash</string>
+    <string name="image_quality">Qualità Immagine</string>
+    <string name="file_format">Formato File</string>
+
+    <!-- Timelapse -->
+    <string name="timelapse_settings">Impostazioni Timelapse</string>
+    <string name="interval_seconds">Intervallo (secondi)</string>
+    <string name="total_shots">Scatti Totali</string>
+    <string name="estimated_duration">Durata Stimata</string>
+    <string name="start_timelapse">Avvia Timelapse</string>
+    <string name="stop_timelapse">Ferma Timelapse</string>
+    <string name="timelapse_in_progress">Timelapse in Corso</string>
+    <string name="timelapse_completed">Timelapse Completato</string>
+    <string name="shots_remaining">Scatti Rimanenti: %d</string>
+
+    <!-- Gestione Foto -->
+    <string name="recent_captures">Scatti Recenti</string>
+    <string name="captured_photos">Foto Scattate</string>
+    <string name="photo_saved">Foto salvata</string>
+    <string name="photo_save_failed">Salvataggio foto fallito</string>
+    <string name="delete_photo">Elimina Foto</string>
+    <string name="delete_photo_confirm">Sei sicuro di voler eliminare questa foto?</string>
+    <string name="photo_deleted">Foto eliminata</string>
+    <string name="share_photo">Condividi Foto</string>
+    <string name="edit_photo">Modifica Foto</string>
+    <string name="photo_details">Dettagli Foto</string>
+
+    <!-- Server/Cloud -->
+    <string name="server_photos">Foto Server</string>
+    <string name="upload_to_cloud">Carica su Cloud</string>
+    <string name="download_from_cloud">Scarica da Cloud</string>
+    <string name="sync_photos">Sincronizza Foto</string>
+    <string name="uploading">Caricamento...</string>
+    <string name="downloading">Scaricamento...</string>
+    <string name="upload_success">Caricamento riuscito</string>
+    <string name="upload_failed">Caricamento fallito</string>
+    <string name="download_success">Scaricamento riuscito</string>
+    <string name="download_failed">Scaricamento fallito</string>
+
+    <!-- Impostazioni -->
+    <string name="app_settings">Impostazioni App</string>
+    <string name="language">Lingua</string>
+    <string name="theme">Tema</string>
+    <string name="auto_save">Salvataggio Automatico</string>
+    <string name="save_location">Posizione Salvataggio</string>
+    <string name="camera_timeout">Timeout Fotocamera</string>
+    <string name="preview_quality">Qualità Anteprima</string>
+    <string name="sound_enabled">Suono Abilitato</string>
+    <string name="vibration_enabled">Vibrazione Abilitata</string>
+    <string name="about">Info</string>
+    <string name="version">Versione</string>
+    <string name="privacy_policy">Politica Privacy</string>
+    <string name="terms_of_service">Termini di Servizio</string>
+
+    <!-- Messaggi di Errore -->
+    <string name="error_camera_init">Inizializzazione fotocamera fallita</string>
+    <string name="error_camera_capture">Scatto foto fallito</string>
+    <string name="error_live_view">Avvio live view fallito</string>
+    <string name="error_camera_settings">Caricamento impostazioni fotocamera fallito</string>
+    <string name="error_network">Errore di rete</string>
+    <string name="error_storage">Errore di archiviazione</string>
+    <string name="error_permission">Permesso negato</string>
+    <string name="error_unknown">Si è verificato un errore sconosciuto</string>
+    <string name="error_usb_not_supported">USB OTG non supportato</string>
+    <string name="error_camera_busy">Fotocamera occupata</string>
+
+    <!-- Permessi -->
+    <string name="permission_camera">È richiesto il permesso della fotocamera</string>
+    <string name="permission_storage">È richiesto il permesso di archiviazione</string>
+    <string name="permission_internet">È richiesto il permesso internet</string>
+    <string name="grant_permission">Concedi Permesso</string>
+
+    <!-- Navigazione -->
+    <string name="camera_control">Controllo Fotocamera</string>
+    <string name="photo_preview">Anteprima Foto</string>
+    <string name="splash_screen">Schermata di Avvio</string>
+    <string name="main_screen">Schermata Principale</string>
+
+    <!-- Stato -->
+    <string name="ready">Pronto</string>
+    <string name="busy">Occupato</string>
+    <string name="capturing">Scattando...</string>
+    <string name="processing">Elaborazione...</string>
+    <string name="connecting">Connessione...</string>
+    <string name="initialized">Inizializzato</string>
+
+    <!-- Dimensione/Qualità File -->
+    <string name="high_quality">Alta Qualità</string>
+    <string name="medium_quality">Media Qualità</string>
+    <string name="low_quality">Bassa Qualità</string>
+    <string name="raw_format">RAW</string>
+    <string name="jpeg_format">JPEG</string>
+
+    <!-- Tempo/Data -->
+    <string name="today">Oggi</string>
+    <string name="yesterday">Ieri</string>
+    <string name="this_week">Questa Settimana</string>
+    <string name="minutes_ago">%d minuti fa</string>
+    <string name="hours_ago">%d ore fa</string>
+    <string name="days_ago">%d giorni fa</string>
+</resources>
