@@ -1,3 +1,13 @@
 # ninja log v5
 0	619	1744788733512394113	CMakeFiles/native-lib.dir/native-lib.cpp.o	42963fd3fe480029
 621	657	1744788733552254564	/Users/meo/CamConT/app/build/intermediates/cxx/Debug/663v2k14/obj/arm64-v8a/libnative-lib.so	66a8025cd21e630c
+3	814	1748428925007755543	CMakeFiles/native-lib.dir/native-lib.cpp.o	42963fd3fe480029
+815	1844	1748428926041235189	/Users/meo/CamConT/app/build/intermediates/cxx/Debug/663v2k14/obj/arm64-v8a/libnative-lib.so	66a8025cd21e630c
+0	5	0	clean	937d7af4873b4f14
+2	761	1748429554179812707	CMakeFiles/native-lib.dir/native-lib.cpp.o	42963fd3fe480029
+761	973	1748429554391599744	/Users/meo/CamConT/app/build/intermediates/cxx/Debug/663v2k14/obj/arm64-v8a/libnative-lib.so	66a8025cd21e630c
+0	7	0	clean	937d7af4873b4f14
+4	1839	1748429853142448320	CMakeFiles/native-lib.dir/native-lib.cpp.o	42963fd3fe480029
+1840	2104	1748429853423567811	/Users/meo/CamConT/app/build/intermediates/cxx/Debug/663v2k14/obj/arm64-v8a/libnative-lib.so	66a8025cd21e630c
+5	1397	1748429853504971310	CMakeFiles/native-lib.dir/native-lib.cpp.o	42963fd3fe480029
+1398	1466	1748429853574266807	/Users/meo/CamConT/app/build/intermediates/cxx/Debug/663v2k14/obj/arm64-v8a/libnative-lib.so	66a8025cd21e630c

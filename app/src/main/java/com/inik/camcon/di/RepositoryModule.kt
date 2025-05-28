@@ -1,5 +1,7 @@
 package com.inik.camcon.di
 
+import com.inik.camcon.data.datasource.remote.AuthRemoteDataSource
+import com.inik.camcon.data.datasource.remote.AuthRemoteDataSourceImpl
 import com.inik.camcon.data.repository.AuthRepositoryImpl
 import com.inik.camcon.data.repository.CameraRepositoryImpl
 import com.inik.camcon.domain.repository.AuthRepository
@@ -25,4 +27,10 @@ abstract class RepositoryModule {
     abstract fun bindAuthRepository(
         authRepositoryImpl: AuthRepositoryImpl
     ): AuthRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAuthRemoteDataSource(
+        authRemoteDataSourceImpl: AuthRemoteDataSourceImpl
+    ): AuthRemoteDataSource
 }

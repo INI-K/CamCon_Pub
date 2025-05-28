@@ -6,6 +6,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -17,6 +19,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.ui.screens.PhotoPreviewScreen
+import com.inik.camcon.presentation.ui.screens.CameraControlScreen
+import com.inik.camcon.presentation.ui.screens.ServerPhotosScreen
 import dagger.hilt.android.AndroidEntryPoint
 
 sealed class BottomNavItem(val route: String, val title: String, val icon: ImageVector) {

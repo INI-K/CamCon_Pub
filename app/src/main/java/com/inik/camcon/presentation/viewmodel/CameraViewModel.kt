@@ -73,7 +73,7 @@ class CameraViewModel @Inject constructor(
                 _uiState.update { it.copy(cameraSettings = settings) }
             }
             .onFailure { error ->
-                _uiState.update { it.copy(error = error.message) }
+                _uiState.update { it.copy(error = "카메라 설정 로드 실패: ${error.message ?: "알 수 없는 오류"}") }
             }
     }
 
@@ -81,7 +81,7 @@ class CameraViewModel @Inject constructor(
         viewModelScope.launch {
             cameraRepository.connectCamera(cameraId)
                 .onFailure { error ->
-                    _uiState.update { it.copy(error = error.message) }
+                    _uiState.update { it.copy(error = "카메라 연결 실패: ${error.message ?: "알 수 없는 오류"}") }
                 }
         }
     }
@@ -95,7 +95,7 @@ class CameraViewModel @Inject constructor(
                     // Photo will be added to the list via observeCapturedPhotos
                 }
                 .onFailure { error ->
-                    _uiState.update { it.copy(error = error.message) }
+                    _uiState.update { it.copy(error = "사진 촬영 실패: ${error.message ?: "알 수 없는 오류"}") }
                 }
 
             _uiState.update { it.copy(isCapturing = false) }
@@ -117,7 +117,7 @@ class CameraViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLiveViewActive = false,
-                            error = error.message
+                            error = "라이브 뷰 시작 실패: ${error.message ?: "알 수 없는 오류"}"
                         )
                     }
                 }
@@ -159,7 +159,7 @@ class CameraViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isCapturing = false,
-                            error = error.message
+                            error = "타임랩스 시작 실패: ${error.message ?: "알 수 없는 오류"}"
                         )
                     }
                 }
@@ -184,7 +184,7 @@ class CameraViewModel @Inject constructor(
                     loadCameraSettings()
                 }
                 .onFailure { error ->
-                    _uiState.update { it.copy(error = error.message) }
+                    _uiState.update { it.copy(error = "카메라 설정 업데이트 실패: ${error.message ?: "알 수 없는 오류"}") }
                 }
         }
     }

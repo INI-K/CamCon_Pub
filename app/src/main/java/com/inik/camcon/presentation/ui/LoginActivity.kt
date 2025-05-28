@@ -42,7 +42,7 @@ class LoginActivity : ComponentActivity() {
                 loginViewModel?.signInWithGoogle(idToken)
             }
         } catch (e: ApiException) {
-            // Handle error
+            // 구글 로그인 실패 처리는 ViewModel에서 담당
         }
     }
 
