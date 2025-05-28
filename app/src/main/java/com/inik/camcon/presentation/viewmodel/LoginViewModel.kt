@@ -1,5 +1,6 @@
 package com.inik.camcon.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.domain.model.User
@@ -26,24 +27,36 @@ class LoginViewModel @Inject constructor(
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
     fun signInWithGoogle(idToken: String) {
+        Log.d("LoginViewModel", "signInWithGoogle called with idToken: ${idToken.take(10)}...")
+
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
-            signInWithGoogleUseCase(idToken)
-                .fold(
-                    onSuccess = { user ->
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            isLoggedIn = true
-                        )
-                    },
-                    onFailure = { error ->
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            error = "로그인 실패: ${error.message ?: "알 수 없는 오류가 발생했습니다"}"
-                        )
-                    }
+            try {
+                signInWithGoogleUseCase(idToken)
+                    .fold(
+                        onSuccess = { user ->
+                            Log.d("LoginViewModel", "Sign in successful for user: ${user.email}")
+                            _uiState.value = _uiState.value.copy(
+                                isLoading = false,
+                                isLoggedIn = true
+                            )
+                        },
+                        onFailure = { error ->
+                            Log.e("LoginViewModel", "Sign in failed", error)
+                            _uiState.value = _uiState.value.copy(
+                                isLoading = false,
+                                error = "로그인 실패: ${error.message ?: "알 수 없는 오류가 발생했습니다"}"
+                            )
+                        }
+                    )
+            } catch (e: Exception) {
+                Log.e("LoginViewModel", "Unexpected error during sign in", e)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = "예상치 못한 오류: ${e.message ?: "알 수 없는 오류가 발생했습니다"}"
                 )
+            }
         }
     }
 

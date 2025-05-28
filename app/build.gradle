@@ -20,6 +20,9 @@ android {
             abiFilters "arm64-v8a"
         }
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        // 지원하는 언어 설정
+        resConfigs "en", "ko", "it", "fr", "de", "ja"
     }
 
     buildTypes {
