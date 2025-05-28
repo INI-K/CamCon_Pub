@@ -84,4 +84,21 @@ dependencies {
     implementation "androidx.activity:activity-compose:1.10.1"
     implementation("androidx.activity:activity-ktx:1.10.1")
 
+    // Navigation Compose
+    implementation "androidx.navigation:navigation-compose:2.7.7"
+
+    // 소셜 로그인
+    implementation "com.kakao.sdk:v2-user:2.20.1" // 카카오 로그인
+    implementation 'com.google.android.gms:play-services-auth:21.0.0' // 구글 로그인
+    implementation 'com.navercorp.nid:oauth:5.9.0' // 네이버 로그인
+
+    // DataStore for preferences
+    implementation "androidx.datastore:datastore-preferences:1.0.0"
+
+    // Accompanist for system UI
+    implementation "com.google.accompanist:accompanist-systemuicontroller:0.32.0"
+
+    // Image loading
+    implementation "io.coil-kt:coil-compose:2.5.0"
+
 }
