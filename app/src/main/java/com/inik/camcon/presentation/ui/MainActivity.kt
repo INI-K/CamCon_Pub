@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -18,16 +19,22 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.PhotoPreviewScreen
 import com.inik.camcon.presentation.ui.screens.CameraControlScreen
 import com.inik.camcon.presentation.ui.screens.ServerPhotosScreen
 import dagger.hilt.android.AndroidEntryPoint
 
-sealed class BottomNavItem(val route: String, val title: String, val icon: ImageVector) {
-    object PhotoPreview : BottomNavItem("photo_preview", "미리보기", Icons.Default.Photo)
-    object CameraControl : BottomNavItem("camera_control", "카메라", Icons.Default.CameraAlt)
-    object ServerPhotos : BottomNavItem("server_photos", "서버 사진", Icons.Default.CloudDownload)
+sealed class BottomNavItem(val route: String, val titleRes: Int, val icon: ImageVector) {
+    object PhotoPreview :
+        BottomNavItem("photo_preview", R.string.photo_preview, Icons.Default.Photo)
+
+    object CameraControl :
+        BottomNavItem("camera_control", R.string.camera_control, Icons.Default.CameraAlt)
+
+    object ServerPhotos :
+        BottomNavItem("server_photos", R.string.server_photos, Icons.Default.CloudDownload)
 }
 
 @AndroidEntryPoint
@@ -58,10 +65,13 @@ fun MainScreen(onSettingsClick: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("CamCon") },
+                title = { Text(stringResource(R.string.app_name)) },
                 actions = {
                     IconButton(onClick = onSettingsClick) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                        Icon(
+                            Icons.Default.Settings,
+                            contentDescription = stringResource(R.string.settings)
+                        )
                     }
                 },
                 backgroundColor = MaterialTheme.colors.primary,
@@ -78,8 +88,13 @@ fun MainScreen(onSettingsClick: () -> Unit) {
                 
                 items.forEach { screen ->
                     BottomNavigationItem(
-                        icon = { Icon(screen.icon, contentDescription = screen.title) },
-                        label = { Text(screen.title) },
+                        icon = {
+                            Icon(
+                                screen.icon,
+                                contentDescription = stringResource(screen.titleRes)
+                            )
+                        },
+                        label = { Text(stringResource(screen.titleRes)) },
                         selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
                         onClick = {
                             navController.navigate(screen.route) {

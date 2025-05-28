@@ -1,0 +1,178 @@
+<resources>
+    <!-- アプリ情報 -->
+    <string name="app_name">CamConT</string>
+    <string name="app_description">Android用プロフェッショナルカメラコントロール</string>
+
+    <!-- Google Sign-In -->
+    <string name="default_web_client_id">YOUR_WEB_CLIENT_ID_HERE</string>
+
+    <!-- 共通 -->
+    <string name="ok">OK</string>
+    <string name="cancel">キャンセル</string>
+    <string name="retry">再試行</string>
+    <string name="close">閉じる</string>
+    <string name="settings">設定</string>
+    <string name="save">保存</string>
+    <string name="delete">削除</string>
+    <string name="share">共有</string>
+    <string name="back">戻る</string>
+    <string name="next">次へ</string>
+    <string name="done">完了</string>
+    <string name="loading">読み込み中...</string>
+    <string name="error">エラー</string>
+    <string name="success">成功</string>
+
+    <!-- 認証 -->
+    <string name="login">ログイン</string>
+    <string name="logout">ログアウト</string>
+    <string name="login_with_google">Googleでログイン</string>
+    <string name="welcome">CamConTへようこそ</string>
+    <string name="welcome_message">プロフェッショナルなカメラコントロールを手のひらに</string>
+    <string name="login_required">続行するにはログインしてください</string>
+    <string name="login_success">ログイン成功</string>
+    <string name="login_failed">ログイン失敗</string>
+    <string name="logout_success">ログアウト成功</string>
+    <string name="terms_agreement">ログインすることで、利用規約およびプライバシーポリシーに同意したものとみなされます。</string>
+
+    <!-- カメラ接続 -->
+    <string name="camera_connected">接続済み</string>
+    <string name="camera_disconnected">切断済み</string>
+    <string name="camera_not_connected">カメラが接続されていません</string>
+    <string name="connect_camera_usb">USB OTGでカメラを接続してください</string>
+    <string name="retry_connection">接続を再試行</string>
+    <string name="camera_connection_failed">カメラ接続に失敗しました</string>
+    <string name="camera_connection_success">カメラが正常に接続されました</string>
+    <string name="detecting_camera">カメラを検出中...</string>
+    <string name="camera_detected">カメラを検出しました: %s</string>
+    <string name="no_camera_detected">カメラが検出されませんでした</string>
+
+    <!-- カメラコントロール -->
+    <string name="capture">撮影</string>
+    <string name="capture_photo">写真撮影</string>
+    <string name="start_live_view">ライブビュー開始</string>
+    <string name="stop_live_view">ライブビュー停止</string>
+    <string name="live_view_active">ライブビューアクティブ</string>
+    <string name="focus">フォーカス</string>
+    <string name="auto_focus">オートフォーカス</string>
+    <string name="manual_focus">マニュアルフォーカス</string>
+    <string name="gallery">ギャラリー</string>
+    <string name="photo_library">フォトライブラリ</string>
+
+    <!-- 撮影モード -->
+    <string name="shooting_mode">撮影モード</string>
+    <string name="single_shot">単写</string>
+    <string name="burst_mode">連写</string>
+    <string name="timelapse">タイムラプス</string>
+    <string name="bulb_mode">バルブ</string>
+    <string name="hdr_bracket">HDR</string>
+
+    <!-- カメラ設定 -->
+    <string name="camera_settings">カメラ設定</string>
+    <string name="iso">ISO</string>
+    <string name="shutter_speed">シャッタースピード</string>
+    <string name="aperture">絞り</string>
+    <string name="white_balance">ホワイトバランス</string>
+    <string name="exposure_compensation">露出補正</string>
+    <string name="focus_mode">フォーカスモード</string>
+    <string name="metering_mode">測光モード</string>
+    <string name="flash_mode">フラッシュモード</string>
+    <string name="image_quality">画質</string>
+    <string name="file_format">ファイル形式</string>
+
+    <!-- タイムラプス -->
+    <string name="timelapse_settings">タイムラプス設定</string>
+    <string name="interval_seconds">間隔（秒）</string>
+    <string name="total_shots">総撮影数</string>
+    <string name="estimated_duration">推定時間</string>
+    <string name="start_timelapse">タイムラプス開始</string>
+    <string name="stop_timelapse">タイムラプス停止</string>
+    <string name="timelapse_in_progress">タイムラプス実行中</string>
+    <string name="timelapse_completed">タイムラプス完了</string>
+    <string name="shots_remaining">残り撮影数: %d</string>
+
+    <!-- 写真管理 -->
+    <string name="recent_captures">最近の撮影</string>
+    <string name="captured_photos">撮影された写真</string>
+    <string name="photo_saved">写真を保存しました</string>
+    <string name="photo_save_failed">写真の保存に失敗しました</string>
+    <string name="delete_photo">写真を削除</string>
+    <string name="delete_photo_confirm">この写真を削除してもよろしいですか？</string>
+    <string name="photo_deleted">写真を削除しました</string>
+    <string name="share_photo">写真を共有</string>
+    <string name="edit_photo">写真を編集</string>
+    <string name="photo_details">写真の詳細</string>
+
+    <!-- サーバー/クラウド -->
+    <string name="server_photos">サーバー写真</string>
+    <string name="upload_to_cloud">クラウドにアップロード</string>
+    <string name="download_from_cloud">クラウドからダウンロード</string>
+    <string name="sync_photos">写真を同期</string>
+    <string name="uploading">アップロード中...</string>
+    <string name="downloading">ダウンロード中...</string>
+    <string name="upload_success">アップロード成功</string>
+    <string name="upload_failed">アップロード失敗</string>
+    <string name="download_success">ダウンロード成功</string>
+    <string name="download_failed">ダウンロード失敗</string>
+
+    <!-- 設定 -->
+    <string name="app_settings">アプリ設定</string>
+    <string name="language">言語</string>
+    <string name="theme">テーマ</string>
+    <string name="auto_save">自動保存</string>
+    <string name="save_location">保存場所</string>
+    <string name="camera_timeout">カメラタイムアウト</string>
+    <string name="preview_quality">プレビュー品質</string>
+    <string name="sound_enabled">音声有効</string>
+    <string name="vibration_enabled">振動有効</string>
+    <string name="about">アプリについて</string>
+    <string name="version">バージョン</string>
+    <string name="privacy_policy">プライバシーポリシー</string>
+    <string name="terms_of_service">利用規約</string>
+
+    <!-- エラーメッセージ -->
+    <string name="error_camera_init">カメラの初期化に失敗しました</string>
+    <string name="error_camera_capture">写真撮影に失敗しました</string>
+    <string name="error_live_view">ライブビューの開始に失敗しました</string>
+    <string name="error_camera_settings">カメラ設定の読み込みに失敗しました</string>
+    <string name="error_network">ネットワークエラー</string>
+    <string name="error_storage">ストレージエラー</string>
+    <string name="error_permission">権限が拒否されました</string>
+    <string name="error_unknown">不明なエラーが発生しました</string>
+    <string name="error_usb_not_supported">USB OTGがサポートされていません</string>
+    <string name="error_camera_busy">カメラがビジー状態です</string>
+
+    <!-- 権限 -->
+    <string name="permission_camera">カメラ権限が必要です</string>
+    <string name="permission_storage">ストレージ権限が必要です</string>
+    <string name="permission_internet">インターネット権限が必要です</string>
+    <string name="grant_permission">権限を許可</string>
+
+    <!-- ナビゲーション -->
+    <string name="camera_control">カメラコントロール</string>
+    <string name="photo_preview">写真プレビュー</string>
+    <string name="splash_screen">スプラッシュ画面</string>
+    <string name="main_screen">メイン画面</string>
+
+    <!-- ステータス -->
+    <string name="ready">準備完了</string>
+    <string name="busy">使用中</string>
+    <string name="capturing">撮影中...</string>
+    <string name="processing">処理中...</string>
+    <string name="connecting">接続中...</string>
+    <string name="initialized">初期化済み</string>
+
+    <!-- ファイルサイズ/品質 -->
+    <string name="high_quality">高品質</string>
+    <string name="medium_quality">中品質</string>
+    <string name="low_quality">低品質</string>
+    <string name="raw_format">RAW</string>
+    <string name="jpeg_format">JPEG</string>
+
+    <!-- 時間/日付 -->
+    <string name="today">今日</string>
+    <string name="yesterday">昨日</string>
+    <string name="this_week">今週</string>
+    <string name="minutes_ago">%d分前</string>
+    <string name="hours_ago">%d時間前</string>
+    <string name="days_ago">%d日前</string>
+</resources>
