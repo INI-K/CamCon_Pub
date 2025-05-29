@@ -2,6 +2,9 @@ package com.inik.camcon.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.inik.camcon.data.datasource.camera.CameraDatabaseManager
+import com.inik.camcon.data.datasource.camera.SupportedCamera
+import com.inik.camcon.data.datasource.usb.UsbCameraManager
 import com.inik.camcon.domain.model.*
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.usecase.GetCameraFeedUseCase
@@ -20,14 +23,20 @@ data class CameraUiState(
     val liveViewFrame: LiveViewFrame? = null,
     val isLiveViewActive: Boolean = false,
     val shootingMode: ShootingMode = ShootingMode.SINGLE,
-    val error: String? = null
+    val error: String? = null,
+    val usbDeviceCount: Int = 0,
+    val hasUsbPermission: Boolean = false,
+    val supportedCamera: SupportedCamera? = null,
+    val supportedFeatures: List<String> = emptyList()
 )
 
 @HiltViewModel
 class CameraViewModel @Inject constructor(
     private val cameraRepository: CameraRepository,
     private val getCameraFeedUseCase: GetCameraFeedUseCase,
-    private val startTimelapseUseCase: StartTimelapseUseCase
+    private val startTimelapseUseCase: StartTimelapseUseCase,
+    private val usbCameraManager: UsbCameraManager,
+    private val cameraDatabaseManager: CameraDatabaseManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CameraUiState())
@@ -46,6 +55,20 @@ class CameraViewModel @Inject constructor(
     init {
         observeCameraConnection()
         observeCapturedPhotos()
+        observeUsbDevices()
+        initializeCameraDatabase()
+    }
+
+    private fun initializeCameraDatabase() {
+        viewModelScope.launch {
+            try {
+                cameraDatabaseManager.initializeDatabase()
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(error = "카메라 데이터베이스 로드 실패: ${e.message}")
+                }
+            }
+        }
     }
 
     private fun observeCameraConnection() {
@@ -54,6 +77,7 @@ class CameraViewModel @Inject constructor(
                 _uiState.update { it.copy(isConnected = isConnected) }
                 if (isConnected) {
                     loadCameraSettings()
+                    checkCameraSupport()
                 }
             }
         }
@@ -67,6 +91,31 @@ class CameraViewModel @Inject constructor(
         }
     }
 
+    private fun observeUsbDevices() {
+        viewModelScope.launch {
+            usbCameraManager.connectedDevices.collect { devices ->
+                _uiState.update {
+                    it.copy(
+                        usbDeviceCount = devices.size,
+                        error = if (devices.isEmpty()) "USB 카메라가 감지되지 않음" else null
+                    )
+                }
+            }
+        }
+
+        viewModelScope.launch {
+            usbCameraManager.hasUsbPermission.collect { hasPermission ->
+                _uiState.update {
+                    it.copy(
+                        hasUsbPermission = hasPermission,
+                        error = if (!hasPermission && _uiState.value.usbDeviceCount > 0)
+                            "USB 권한이 필요합니다" else _uiState.value.error
+                    )
+                }
+            }
+        }
+    }
+
     private suspend fun loadCameraSettings() {
         cameraRepository.getCameraSettings()
             .onSuccess { settings ->
@@ -75,6 +124,41 @@ class CameraViewModel @Inject constructor(
             .onFailure { error ->
                 _uiState.update { it.copy(error = "카메라 설정 로드 실패: ${error.message ?: "알 수 없는 오류"}") }
             }
+    }
+
+    private suspend fun checkCameraSupport() {
+        val currentCamera = _uiState.value.currentCamera
+        if (currentCamera != null) {
+            val supportedCamera = cameraDatabaseManager.findSupportedCamera(
+                vendor = extractVendor(currentCamera.name),
+                model = extractModel(currentCamera.name)
+            )
+
+            val features = supportedCamera?.features ?: emptyList()
+
+            _uiState.update {
+                it.copy(
+                    supportedCamera = supportedCamera,
+                    supportedFeatures = features
+                )
+            }
+        }
+    }
+
+    private fun extractVendor(cameraName: String): String {
+        return when {
+            cameraName.contains("Canon", ignoreCase = true) -> "Canon"
+            cameraName.contains("Nikon", ignoreCase = true) -> "Nikon"
+            cameraName.contains("Sony", ignoreCase = true) -> "Sony"
+            cameraName.contains("Fuji", ignoreCase = true) -> "Fujifilm"
+            cameraName.contains("Panasonic", ignoreCase = true) -> "Panasonic"
+            else -> "Unknown"
+        }
+    }
+
+    private fun extractModel(cameraName: String): String {
+        val vendor = extractVendor(cameraName)
+        return cameraName.substringAfter(vendor).trim()
     }
 
     fun connectCamera(cameraId: String) {

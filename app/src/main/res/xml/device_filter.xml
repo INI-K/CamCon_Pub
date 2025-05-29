@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 주요 DSLR/미러리스 제조사 -->
+    <usb-device vendor-id="1193" />  <!-- Canon -->
+    <usb-device vendor-id="1200" />  <!-- Nikon -->
+    <usb-device vendor-id="1356" />  <!-- Sony -->
+    <usb-device vendor-id="1258" />  <!-- Fujifilm -->
+    <usb-device vendor-id="1242" />  <!-- Panasonic -->
+    <usb-device vendor-id="1987" />  <!-- Olympus/OM System -->
+    <usb-device vendor-id="2563" />  <!-- Pentax/Ricoh -->
+    <usb-device vendor-id="1137" />  <!-- Leica -->
+    <usb-device vendor-id="1371" />  <!-- Sigma -->
+    <usb-device vendor-id="1815" />  <!-- Hasselblad -->
+    <usb-device vendor-id="1364" />  <!-- Phase One -->
+    <usb-device vendor-id="1204" />  <!-- Samsung -->
+
+    <!-- 액션카메라/드론 제조사 -->
+    <usb-device vendor-id="10096" /> <!-- Insta360 -->
+    <usb-device vendor-id="8775" />  <!-- DJI -->
+    <usb-device vendor-id="10097" /> <!-- GoPro -->
+    <usb-device vendor-id="10041" /> <!-- Garmin -->
+    <usb-device vendor-id="11070" /> <!-- YI Technology -->
+    <usb-device vendor-id="9842" />  <!-- SJCAM -->
+    <usb-device vendor-id="10288" /> <!-- AKASO -->
+
+    <!-- 시네마/프로 카메라 제조사 -->
+    <usb-device vendor-id="7052" />  <!-- Blackmagic Design -->
+    <usb-device vendor-id="6484" />  <!-- RED Digital Cinema -->
+    <usb-device vendor-id="8256" />  <!-- ARRI -->
+    <usb-device vendor-id="15757" /> <!-- Z CAM -->
+    <usb-device vendor-id="11780" /> <!-- Kinefinity -->
+    <usb-device vendor-id="5888" />  <!-- Atomos -->
+
+    <!-- 기타 카메라 제조사 -->
+    <usb-device vendor-id="1034" />  <!-- Kodak -->
+    <usb-device vendor-id="1008" />  <!-- HP -->
+    <usb-device vendor-id="1452" />  <!-- Apple -->
+    <usb-device vendor-id="4100" />  <!-- LG Electronics -->
+    <usb-device vendor-id="6017" />  <!-- Xiaomi -->
+    <usb-device vendor-id="6112" />  <!-- Google -->
+    <usb-device vendor-id="2996" />  <!-- HTC -->
+    <usb-device vendor-id="4098" />  <!-- Motorola -->
+    <usb-device vendor-id="4817" />  <!-- Huawei -->
+    <usb-device vendor-id="1133" />  <!-- Logitech -->
+    <usb-device vendor-id="1921" />  <!-- SanDisk -->
+
+    <!-- 전문 방송/스튜디오 장비 -->
+    <usb-device vendor-id="8320" />  <!-- Hauppauge -->
+    <usb-device vendor-id="8964" />  <!-- Pinnacle Systems -->
+    <usb-device vendor-id="3276" />  <!-- TerraTec Electronic -->
+    <usb-device vendor-id="1007" />  <!-- G-Technology -->
+    <usb-device vendor-id="1439" />  <!-- LaCie -->
+    <usb-device vendor-id="4184" />  <!-- Western Digital -->
+
+    <!-- 일반적인 PTP 카메라 클래스 지원 -->
+    <usb-device
+        class="6"
+        subclass="1"
+        protocol="1" />   <!-- Still Image Capture Device -->
+
+    <!-- Mass Storage 클래스 (일부 카메라가 사용) -->
+    <usb-device
+        class="8"
+        subclass="6"
+        protocol="80" />  <!-- Mass Storage Device -->
+
+    <!-- Vendor Specific 클래스 (많은 카메라가 사용) -->
+    <usb-device
+        class="255"
+        subclass="255"
+        protocol="255" />
+</resources>

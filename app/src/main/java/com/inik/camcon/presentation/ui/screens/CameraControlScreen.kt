@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -27,7 +28,15 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
+import androidx.activity.ComponentActivity
+import androidx.core.app.ActivityCompat
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
+import android.app.Activity
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.composed
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -44,7 +53,18 @@ fun CameraControlScreen(
     
     var showTimelapseDialog by remember { mutableStateOf(false) }
     var showSettingsSheet by remember { mutableStateOf(false) }
-    
+    var isFullscreen by rememberSaveable { mutableStateOf(false) }
+
+    // 전체화면 모드일 때는 가로화면으로 강제 전환
+    val context = LocalContext.current
+    LaunchedEffect(isFullscreen) {
+        if (isFullscreen) {
+            (context as? Activity)?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        } else {
+            (context as? Activity)?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        }
+    }
+
     ModalBottomSheetLayout(
         sheetState = bottomSheetState,
         sheetShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
@@ -60,23 +80,24 @@ fun CameraControlScreen(
             )
         }
     ) {
-        if (isLandscape) {
-            LandscapeCameraLayout(
+        if (isFullscreen) {
+            // 전체화면 모드
+            FullscreenCameraView(
                 uiState = uiState,
                 cameraFeed = cameraFeed,
                 viewModel = viewModel,
-                scope = scope,
-                bottomSheetState = bottomSheetState,
-                onShowTimelapseDialog = { showTimelapseDialog = true }
+                onExitFullscreen = { isFullscreen = false }
             )
         } else {
+            // 일반 모드 (세로 고정)
             PortraitCameraLayout(
                 uiState = uiState,
                 cameraFeed = cameraFeed,
                 viewModel = viewModel,
                 scope = scope,
                 bottomSheetState = bottomSheetState,
-                onShowTimelapseDialog = { showTimelapseDialog = true }
+                onShowTimelapseDialog = { showTimelapseDialog = true },
+                onEnterFullscreen = { isFullscreen = true }
             )
         }
     }
@@ -201,7 +222,8 @@ fun PortraitCameraLayout(
     viewModel: CameraViewModel,
     scope: kotlinx.coroutines.CoroutineScope,
     bottomSheetState: ModalBottomSheetState,
-    onShowTimelapseDialog: () -> Unit
+    onShowTimelapseDialog: () -> Unit,
+    onEnterFullscreen: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -220,7 +242,17 @@ fun PortraitCameraLayout(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .background(Color.Black),
+                .background(Color.Black)
+                .clickable {
+                    if (uiState.isLiveViewActive) {
+                        onEnterFullscreen()
+                    }
+                }
+                .doubleClickHandler {
+                    if (uiState.isLiveViewActive) {
+                        onEnterFullscreen()
+                    }
+                },
             contentAlignment = Alignment.Center
         ) {
             CameraPreviewArea(
@@ -276,6 +308,29 @@ fun PortraitCameraLayout(
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+fun FullscreenCameraView(
+    uiState: com.inik.camcon.presentation.viewmodel.CameraUiState,
+    cameraFeed: List<com.inik.camcon.domain.model.Camera>,
+    viewModel: CameraViewModel,
+    onExitFullscreen: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .clickable { onExitFullscreen() }
+            .doubleClickHandler { onExitFullscreen() }
+    ) {
+        CameraPreviewArea(
+            uiState = uiState,
+            cameraFeed = cameraFeed,
+            viewModel = viewModel
+        )
     }
 }
 
@@ -381,12 +436,108 @@ fun CameraPreviewArea(
                 fontSize = 14.sp,
                 textAlign = TextAlign.Center
             )
+
+            // 디버그 정보 표시
+            Spacer(modifier = Modifier.height(16.dp))
+            Card(
+                backgroundColor = Color.DarkGray.copy(alpha = 0.8f),
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp)
+                ) {
+                    Text(
+                        "연결 상태 확인:",
+                        color = Color.Yellow,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        "• 카메라 연결됨: ${uiState.isConnected}",
+                        color = Color.White,
+                        fontSize = 12.sp
+                    )
+                    Text(
+                        "• 감지된 카메라 수: ${cameraFeed.size}",
+                        color = Color.White,
+                        fontSize = 12.sp
+                    )
+                    Text(
+                        "• USB 디바이스 수: ${uiState.usbDeviceCount}",
+                        color = Color.White,
+                        fontSize = 12.sp
+                    )
+                    Text(
+                        "• USB 권한: ${if (uiState.hasUsbPermission) "승인됨" else "대기중"}",
+                        color = if (uiState.hasUsbPermission) Color.Green else Color.Yellow,
+                        fontSize = 12.sp
+                    )
+                    if (cameraFeed.isNotEmpty()) {
+                        Text(
+                            "• 카메라 이름: ${cameraFeed.first().name}",
+                            color = Color.White,
+                            fontSize = 12.sp
+                        )
+                    }
+
+                    // 지원 기능 표시
+                    if (uiState.supportedFeatures.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "• 지원 기능:",
+                            color = Color.Cyan,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            uiState.supportedFeatures.joinToString(", "),
+                            color = Color.Green,
+                            fontSize = 11.sp
+                        )
+                    }
+
+                    // libgphoto2 지원 여부
+                    uiState.supportedCamera?.let { camera ->
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "✓ libgphoto2 지원됨 (${camera.driver})",
+                            color = Color.Green,
+                            fontSize = 11.sp
+                        )
+                    } ?: run {
+                        if (cameraFeed.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                "⚠ libgphoto2 지원 확인 중...",
+                                color = Color.Yellow,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+
+                    // 에러 메시지 표시
+                    uiState.error?.let { error ->
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "• 에러: $error",
+                            color = Color.Red,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = {
                     // Try to reconnect or show camera list
                     cameraFeed.firstOrNull()?.let { camera ->
                         viewModel.connectCamera(camera.id)
+                    } ?: run {
+                        // 카메라가 없으면 강제로 연결 시도
+                        viewModel.connectCamera("auto")
                     }
                 },
                 colors = ButtonDefaults.buttonColors(
@@ -784,4 +935,23 @@ fun TimelapseSettingsDialog(
             }
         }
     )
+}
+
+@Composable
+fun Modifier.doubleClickHandler(onDoubleTap: () -> Unit): Modifier = composed {
+    val doubleTap = remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    clickable {
+        coroutineScope.launch {
+            if (doubleTap.value) {
+                doubleTap.value = false
+                onDoubleTap()
+            } else {
+                doubleTap.value = true
+                kotlinx.coroutines.delay(300)
+                doubleTap.value = false
+            }
+        }
+    }
 }
