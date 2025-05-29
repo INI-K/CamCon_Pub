@@ -27,7 +27,9 @@ data class CameraUiState(
     val usbDeviceCount: Int = 0,
     val hasUsbPermission: Boolean = false,
     val supportedCamera: SupportedCamera? = null,
-    val supportedFeatures: List<String> = emptyList()
+    val supportedFeatures: List<String> = emptyList(),
+    val cameraCapabilities: CameraCapabilities? = null,
+    val isNativeCameraConnected: Boolean = false
 )
 
 @HiltViewModel
@@ -56,6 +58,7 @@ class CameraViewModel @Inject constructor(
         observeCameraConnection()
         observeCapturedPhotos()
         observeUsbDevices()
+        observeCameraCapabilities()
         initializeCameraDatabase()
     }
 
@@ -74,7 +77,12 @@ class CameraViewModel @Inject constructor(
     private fun observeCameraConnection() {
         viewModelScope.launch {
             cameraRepository.isCameraConnected().collect { isConnected ->
-                _uiState.update { it.copy(isConnected = isConnected) }
+                _uiState.update {
+                    it.copy(
+                        isConnected = isConnected,
+                        error = if (isConnected) null else it.error // 연결되면 에러 메시지 제거
+                    )
+                }
                 if (isConnected) {
                     loadCameraSettings()
                     checkCameraSupport()
@@ -111,6 +119,35 @@ class CameraViewModel @Inject constructor(
                         error = if (!hasPermission && _uiState.value.usbDeviceCount > 0)
                             "USB 권한이 필요합니다" else _uiState.value.error
                     )
+                }
+            }
+        }
+    }
+
+    private fun observeCameraCapabilities() {
+        viewModelScope.launch {
+            usbCameraManager.cameraCapabilities.collect { capabilities ->
+                _uiState.update {
+                    it.copy(
+                        cameraCapabilities = capabilities,
+                        error = if (capabilities == null) "카메라 기능 정보를 가져올 수 없음" else null
+                    )
+                }
+            }
+        }
+
+        viewModelScope.launch {
+            usbCameraManager.isNativeCameraConnected.collect { isConnected ->
+                _uiState.update {
+                    it.copy(
+                        isNativeCameraConnected = isConnected,
+                        isConnected = isConnected // 네이티브 연결 상태를 기본 연결 상태로도 반영
+                    )
+                }
+
+                if (isConnected) {
+                    loadCameraSettings()
+                    checkCameraSupport()
                 }
             }
         }
@@ -167,6 +204,55 @@ class CameraViewModel @Inject constructor(
                 .onFailure { error ->
                     _uiState.update { it.copy(error = "카메라 연결 실패: ${error.message ?: "알 수 없는 오류"}") }
                 }
+        }
+    }
+
+    fun refreshUsbDevices() {
+        viewModelScope.launch {
+            try {
+                // USB 디바이스 목록 새로고침
+                val devices = usbCameraManager.getCameraDevices()
+                _uiState.update {
+                    it.copy(
+                        usbDeviceCount = devices.size,
+                        error = if (devices.isEmpty()) "USB 카메라가 감지되지 않음" else null
+                    )
+                }
+
+                // 디바이스가 발견되면 권한 요청
+                devices.firstOrNull()?.let { device ->
+                    if (!usbCameraManager.hasUsbPermission.value) {
+                        usbCameraManager.requestPermission(device)
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(error = "USB 디바이스 확인 실패: ${e.message}")
+                }
+            }
+        }
+    }
+
+    fun requestUsbPermission() {
+        viewModelScope.launch {
+            try {
+                val devices = usbCameraManager.getCameraDevices()
+                if (devices.isNotEmpty()) {
+                    val device = devices.first()
+                    usbCameraManager.requestPermission(device)
+                    _uiState.update {
+                        it.copy(error = "USB 권한을 요청했습니다. 대화상자에서 승인해주세요.")
+                    }
+                } else {
+                    _uiState.update {
+                        it.copy(error = "USB 카메라가 감지되지 않았습니다")
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(error = "USB 권한 요청 실패: ${e.message}")
+                }
+            }
         }
     }
 
@@ -273,7 +359,41 @@ class CameraViewModel @Inject constructor(
         }
     }
 
+    fun performAutoFocus() {
+        viewModelScope.launch {
+            cameraRepository.autoFocus()
+                .onFailure { error ->
+                    _uiState.update { it.copy(error = "자동초점 실패: ${error.message ?: "알 수 없는 오류"}") }
+                }
+        }
+    }
+
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    fun refreshCameraCapabilities() {
+        usbCameraManager.refreshCameraCapabilities()
+    }
+
+    fun disconnectCamera() {
+        viewModelScope.launch {
+            try {
+                usbCameraManager.disconnectCamera()
+                _uiState.update {
+                    it.copy(
+                        isConnected = false,
+                        isNativeCameraConnected = false,
+                        cameraCapabilities = null,
+                        currentCamera = null,
+                        error = null
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(error = "카메라 연결 해제 실패: ${e.message}")
+                }
+            }
+        }
     }
 }

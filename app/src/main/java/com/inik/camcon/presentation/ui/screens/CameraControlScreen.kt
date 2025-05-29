@@ -1,5 +1,9 @@
 package com.inik.camcon.presentation.ui.screens
 
+import android.app.Activity
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
+import androidx.activity.ComponentActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -11,8 +15,10 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -24,19 +30,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.ActivityCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
-import androidx.activity.ComponentActivity
-import androidx.core.app.ActivityCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import android.content.pm.ActivityInfo
-import android.content.res.Configuration
-import android.app.Activity
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.composed
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -353,37 +353,62 @@ fun TopControlsBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Camera Connection Status
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .background(
-                        if (uiState.isConnected)
-                            Color.Green.copy(alpha = 0.2f)
-                        else
-                            Color.Red.copy(alpha = 0.2f),
-                        RoundedCornerShape(12.dp)
-                    )
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
+            Column(
+                modifier = Modifier.weight(1f)
             ) {
-                Box(
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
                         .background(
-                            if (uiState.isConnected) Color.Green else Color.Red
+                            if (uiState.isConnected)
+                                Color.Green.copy(alpha = 0.2f)
+                            else
+                                Color.Red.copy(alpha = 0.2f),
+                            RoundedCornerShape(12.dp)
                         )
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = if (uiState.isConnected) {
-                        cameraFeed.firstOrNull()?.name ?: stringResource(R.string.camera_connected)
-                    } else {
-                        stringResource(R.string.camera_disconnected)
-                    },
-                    color = Color.White,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
-                )
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (uiState.isConnected) Color.Green else Color.Red
+                            )
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (uiState.isConnected) {
+                            uiState.cameraCapabilities?.model
+                                ?: cameraFeed.firstOrNull()?.name
+                                ?: stringResource(R.string.camera_connected)
+                        } else {
+                            stringResource(R.string.camera_disconnected)
+                        },
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                // 카메라 기능 간략 표시
+                uiState.cameraCapabilities?.let { capabilities ->
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(start = 12.dp)
+                    ) {
+                        if (capabilities.canLiveView) {
+                            FeatureBadge("라이브뷰", Color.Blue)
+                        }
+                        if (capabilities.supportsTimelapse) {
+                            FeatureBadge("타임랩스", Color(0xFF9C27B0))
+                        }
+                        if (capabilities.supportsBurstMode) {
+                            FeatureBadge("버스트", Color(0xFFFF9800))
+                        }
+                    }
+                }
             }
 
             // Settings Button
@@ -406,10 +431,58 @@ fun CameraPreviewArea(
 ) {
     if (uiState.isLiveViewActive && uiState.liveViewFrame != null) {
         // Display live view frame
-        uiState.liveViewFrame?.let { frame ->
-            // Convert byte array to Bitmap and display
-            // This is a placeholder - actual implementation would convert the frame data
-            Text(stringResource(R.string.live_view_active), color = Color.White)
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            uiState.liveViewFrame?.let { frame ->
+                // Convert byte array to Bitmap and display
+                val bitmap = remember(frame) {
+                    try {
+                        android.graphics.BitmapFactory.decodeByteArray(
+                            frame.data,
+                            0,
+                            frame.data.size
+                        )
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+
+                bitmap?.let {
+                    Image(
+                        bitmap = it.asImageBitmap(),
+                        contentDescription = "Live View",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit
+                    )
+                } ?: run {
+                    Text(
+                        "라이브뷰 프레임 디코딩 실패",
+                        color = Color.Red
+                    )
+                }
+            }
+
+            // 라이브뷰 중지 버튼 오버레이
+            Button(
+                onClick = { viewModel.stopLiveView() },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = Color.Red.copy(alpha = 0.8f)
+                )
+            ) {
+                Icon(
+                    Icons.Default.Stop,
+                    contentDescription = "Stop Live View",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("라이브뷰 중지", color = Color.White)
+            }
         }
     } else if (!uiState.isConnected) {
         // Camera not connected state
@@ -482,6 +555,37 @@ fun CameraPreviewArea(
                         )
                     }
 
+                    // USB 디바이스가 감지되지 않으면 추가 정보 표시
+                    if (uiState.usbDeviceCount == 0) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "USB 확인사항:",
+                            color = Color.Red,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            "1. USB 케이블 연결 확인",
+                            color = Color.Gray,
+                            fontSize = 11.sp
+                        )
+                        Text(
+                            "2. 카메라 전원 확인",
+                            color = Color.Gray,
+                            fontSize = 11.sp
+                        )
+                        Text(
+                            "3. USB 모드 PTP/MTP 설정",
+                            color = Color.Gray,
+                            fontSize = 11.sp
+                        )
+                        Text(
+                            "4. Android 개발자 옵션에서 USB 디버깅 활성화",
+                            color = Color.Gray,
+                            fontSize = 11.sp
+                        )
+                    }
+
                     // 지원 기능 표시
                     if (uiState.supportedFeatures.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(4.dp))
@@ -496,6 +600,107 @@ fun CameraPreviewArea(
                             color = Color.Green,
                             fontSize = 11.sp
                         )
+                    }
+
+                    // 카메라 기능 정보 표시
+                    uiState.cameraCapabilities?.let { capabilities ->
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            "카메라 기능 정보:",
+                            color = Color.Green,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        // 기본 촬영 기능
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                CapabilityItem("사진 촬영", capabilities.canCapturePhoto)
+                                CapabilityItem("동영상 촬영", capabilities.canCaptureVideo)
+                                CapabilityItem("라이브뷰", capabilities.canLiveView)
+                                CapabilityItem("원격 촬영", capabilities.canTriggerCapture)
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                CapabilityItem("버스트 모드", capabilities.supportsBurstMode)
+                                CapabilityItem("타임랩스", capabilities.supportsTimelapse)
+                                CapabilityItem("브라켓팅", capabilities.supportsBracketing)
+                                CapabilityItem("벌브 모드", capabilities.supportsBulbMode)
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        // 초점 기능
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                CapabilityItem("자동 초점", capabilities.supportsAutofocus)
+                                CapabilityItem("수동 초점", capabilities.supportsManualFocus)
+                                CapabilityItem("초점 포인트", capabilities.supportsFocusPoint)
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                CapabilityItem("파일 다운로드", capabilities.canDownloadFiles)
+                                CapabilityItem("파일 삭제", capabilities.canDeleteFiles)
+                                CapabilityItem("파일 미리보기", capabilities.canPreviewFiles)
+                            }
+                        }
+
+                        // 설정 가능한 옵션들
+                        if (capabilities.availableIsoSettings.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                "ISO 옵션: ${
+                                    capabilities.availableIsoSettings.take(5).joinToString(", ")
+                                }${if (capabilities.availableIsoSettings.size > 5) "..." else ""}",
+                                color = Color.Cyan,
+                                fontSize = 10.sp
+                            )
+                        }
+
+                        if (capabilities.availableShutterSpeeds.isNotEmpty()) {
+                            Text(
+                                "셔터 속도: ${
+                                    capabilities.availableShutterSpeeds.take(5).joinToString(", ")
+                                }${if (capabilities.availableShutterSpeeds.size > 5) "..." else ""}",
+                                color = Color.Cyan,
+                                fontSize = 10.sp
+                            )
+                        }
+
+                        if (capabilities.availableApertures.isNotEmpty()) {
+                            Text(
+                                "조리개: ${
+                                    capabilities.availableApertures.take(5).joinToString(", ")
+                                }${if (capabilities.availableApertures.size > 5) "..." else ""}",
+                                color = Color.Cyan,
+                                fontSize = 10.sp
+                            )
+                        }
+
+                        // 새로고침 버튼
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = { viewModel.refreshCameraCapabilities() },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                backgroundColor = Color.Blue.copy(alpha = 0.7f)
+                            )
+                        ) {
+                            Icon(
+                                Icons.Default.Refresh,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("기능 정보 새로고침", color = Color.White, fontSize = 12.sp)
+                        }
                     }
 
                     // libgphoto2 지원 여부
@@ -545,6 +750,71 @@ fun CameraPreviewArea(
                 )
             ) {
                 Text(stringResource(R.string.retry_connection))
+            }
+
+            // USB 새로고침 버튼 추가
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = {
+                    viewModel.refreshUsbDevices()
+                },
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = MaterialTheme.colors.secondary
+                )
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Refresh,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("USB 새로고침")
+                }
+            }
+
+            // 카메라 연결 해제 버튼 추가
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = {
+                    viewModel.disconnectCamera()
+                },
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = Color.Red.copy(alpha = 0.7f)
+                )
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.LinkOff,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("PC 모드 완전 종료", color = Color.White, fontSize = 12.sp)
+                }
+            }
+
+            // USB 디바이스가 있지만 권한이 없는 경우 권한 요청 버튼
+            if (uiState.usbDeviceCount > 0 && !uiState.hasUsbPermission) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = {
+                        viewModel.requestUsbPermission()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        backgroundColor = Color(0xFFFF6B35) // 주황색
+                    )
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Security,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("USB 권한 요청", color = Color.White)
+                    }
+                }
             }
         }
     } else {
@@ -709,7 +979,9 @@ fun CaptureControlsContent(
 
     // Focus Button
     IconButton(
-        onClick = { /* Auto focus */ },
+        onClick = {
+            viewModel.performAutoFocus()
+        },
         enabled = uiState.isConnected,
         modifier = Modifier.size(48.dp)
     ) {
@@ -955,3 +1227,45 @@ fun Modifier.doubleClickHandler(onDoubleTap: () -> Unit): Modifier = composed {
         }
     }
 }
+
+@Composable
+fun FeatureBadge(text: String, color: Color) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(color.copy(alpha = 0.2f))
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Text(
+            text = text,
+            color = color,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+fun CapabilityItem(
+    name: String,
+    isSupported: Boolean
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(vertical = 1.dp)
+    ) {
+        Icon(
+            if (isSupported) Icons.Default.CheckCircle else Icons.Default.Cancel,
+            contentDescription = null,
+            tint = if (isSupported) Color.Green else Color.Red,
+            modifier = Modifier.size(12.dp)
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            name,
+            color = if (isSupported) Color.White else Color.Gray,
+            fontSize = 10.sp
+        )
+    }
+}
+

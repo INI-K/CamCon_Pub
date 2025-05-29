@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+// import androidx.activity.viewModels // AuthViewModel을 직접 사용하지 않으므로 제거
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -20,19 +21,35 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.firebase.auth.FirebaseAuth
 import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
+// import com.inik.camcon.presentation.viewmodel.AuthViewModel // AuthViewModel을 직접 사용하지 않으므로 제거
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class SplashActivity : ComponentActivity() {
+    
+    @Inject
+    lateinit var firebaseAuth: FirebaseAuth
+
+    // private val authViewModel: AuthViewModel by viewModels() // AuthViewModel을 직접 사용하지 않으므로 제거
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             CamConTheme {
                 SplashScreen {
-                    startActivity(Intent(this, LoginActivity::class.java))
+                    // 자동 로그인 확인
+                    if (firebaseAuth.currentUser != null) {
+                        // 이미 로그인된 사용자는 MainActivity로 이동
+                        startActivity(Intent(this, MainActivity::class.java))
+                    } else {
+                        // 로그인되지 않은 사용자는 LoginActivity로 이동
+                        startActivity(Intent(this, LoginActivity::class.java))
+                    }
                     finish()
                 }
             }
@@ -41,7 +58,7 @@ class SplashActivity : ComponentActivity() {
 }
 
 @Composable
-fun SplashScreen(navigateToLogin: () -> Unit) {
+fun SplashScreen(navigateToNext: () -> Unit) { // navigateToLogin에서 navigateToNext로 변경
     var startAnimation by remember { mutableStateOf(false) }
     val alphaAnim = animateFloatAsState(
         targetValue = if (startAnimation) 1f else 0f,
@@ -50,8 +67,8 @@ fun SplashScreen(navigateToLogin: () -> Unit) {
 
     LaunchedEffect(key1 = true) {
         startAnimation = true
-        delay(2000)
-        navigateToLogin()
+        delay(1500) // 딜레이 약간 줄임
+        navigateToNext() // 콜백 실행
     }
 
     Box(

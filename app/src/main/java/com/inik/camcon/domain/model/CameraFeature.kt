@@ -74,3 +74,41 @@ data class CapturedPhoto(
     val width: Int,
     val height: Int
 )
+
+// 카메라 기능 정보
+data class CameraCapabilities(
+    val model: String,
+
+    // 기본 촬영 기능
+    val canCapturePhoto: Boolean,
+    val canCaptureVideo: Boolean,
+    val canLiveView: Boolean,
+    val canTriggerCapture: Boolean,
+
+    // 고급 촬영 기능
+    val supportsBurstMode: Boolean,
+    val supportsTimelapse: Boolean,
+    val supportsBracketing: Boolean,
+    val supportsBulbMode: Boolean,
+
+    // 초점 기능
+    val supportsAutofocus: Boolean,
+    val supportsManualFocus: Boolean,
+    val supportsFocusPoint: Boolean,
+
+    // 파일 관리
+    val canDownloadFiles: Boolean,
+    val canDeleteFiles: Boolean,
+    val canPreviewFiles: Boolean,
+
+    // 설정 가능한 옵션들
+    val availableIsoSettings: List<String>,
+    val availableShutterSpeeds: List<String>,
+    val availableApertures: List<String>,
+    val availableWhiteBalanceSettings: List<String>,
+
+    // 기타
+    val supportsRemoteControl: Boolean,
+    val supportsConfigChange: Boolean,
+    val batteryLevel: Int? = null
+)
