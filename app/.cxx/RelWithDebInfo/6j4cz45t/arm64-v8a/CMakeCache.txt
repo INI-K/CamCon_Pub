@@ -230,8 +230,8 @@ CMAKE_SYSTEM_NAME:UNINITIALIZED=Android
 //No help, variable specified on the command line.
 CMAKE_SYSTEM_VERSION:UNINITIALIZED=29
 
-//The CMake toolchain file
-CMAKE_TOOLCHAIN_FILE:FILEPATH=/Users/meo/Library/Android/sdk/ndk/27.0.12077973/build/cmake/android.toolchain.cmake
+//No help, variable specified on the command line.
+CMAKE_TOOLCHAIN_FILE:UNINITIALIZED=/Users/meo/Library/Android/sdk/ndk/27.0.12077973/build/cmake/android.toolchain.cmake
 
 //If this value is on, makefiles will be generated without the
 // .SILENT directive, and all commands will be echoed to the console
@@ -246,7 +246,7 @@ android-lib:FILEPATH=/Users/meo/Library/Android/sdk/ndk/27.0.12077973/toolchains
 log-lib:FILEPATH=/Users/meo/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/29/liblog.so
 
 //Dependencies for the target
-native-lib_LIB_DEPENDS:STATIC=general;gphoto2_port;general;gphoto2;general;ltdl;general;usb;general;gphoto2_port_iolib_usb1;general;gphoto2_port_iolib_disk;general;/Users/meo/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/29/liblog.so;general;/Users/meo/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/29/libandroid.so;
+native-lib_LIB_DEPENDS:STATIC=general;gphoto2;general;gphoto2_port;general;ltdl;general;usb;general;/Users/meo/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/29/liblog.so;general;/Users/meo/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/29/libandroid.so;general;xml2;
 
 //Value Computed by CMake
 phototest2_BINARY_DIR:STATIC=/Users/meo/CamConT/app/.cxx/RelWithDebInfo/6j4cz45t/arm64-v8a

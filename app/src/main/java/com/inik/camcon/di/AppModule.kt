@@ -18,7 +18,8 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideNativeCameraDataSource() = NativeCameraDataSource()
+    fun provideNativeCameraDataSource(@ApplicationContext context: Context) =
+        NativeCameraDataSource(context)
 
     @Provides
     @Singleton

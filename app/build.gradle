@@ -59,6 +59,12 @@ android {
                 "-opt-in=androidx.compose.material.ExperimentalMaterialApi"
         ]
     }
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+            keepDebugSymbols += ['**/*.so']
+        }
+    }
 }
 
 dependencies {

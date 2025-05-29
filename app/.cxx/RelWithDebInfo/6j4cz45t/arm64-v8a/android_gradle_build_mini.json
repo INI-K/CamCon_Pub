@@ -22,12 +22,11 @@
       "abi": "arm64-v8a",
       "output": "/Users/meo/CamConT/app/build/intermediates/cxx/RelWithDebInfo/6j4cz45t/obj/arm64-v8a/libnative-lib.so",
       "runtimeFiles": [
-        "/Users/meo/CamConT/app/src/main/jniLibs/arm64-v8a/libgphoto2_port.so",
         "/Users/meo/CamConT/app/src/main/jniLibs/arm64-v8a/libgphoto2.so",
+        "/Users/meo/CamConT/app/src/main/jniLibs/arm64-v8a/libgphoto2_port.so",
         "/Users/meo/CamConT/app/src/main/jniLibs/arm64-v8a/libltdl.so",
         "/Users/meo/CamConT/app/src/main/jniLibs/arm64-v8a/libusb.so",
-        "/Users/meo/CamConT/app/src/main/jniLibs/arm64-v8a/libgphoto2_port_iolib_usb1.so",
-        "/Users/meo/CamConT/app/src/main/jniLibs/arm64-v8a/libgphoto2_port_iolib_disk.so"
+        "/Users/meo/CamConT/app/src/main/jniLibs/arm64-v8a/libxml2.so"
       ]
     }
   }
