@@ -29,6 +29,8 @@ import com.inik.camcon.presentation.ui.screens.PhotoPreviewScreen
 import com.inik.camcon.presentation.ui.screens.CameraControlScreen
 import com.inik.camcon.presentation.ui.screens.ServerPhotosScreen
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.StateFlow
+import org.json.JSONObject
 import javax.inject.Inject
 
 sealed class BottomNavItem(val route: String, val titleRes: Int, val icon: ImageVector) {
@@ -40,6 +42,79 @@ sealed class BottomNavItem(val route: String, val titleRes: Int, val icon: Image
 
     object ServerPhotos :
         BottomNavItem("server_photos", R.string.server_photos, Icons.Default.CloudDownload)
+}
+
+@Composable
+fun MainScreen(onSettingsClick: () -> Unit) {
+    val navController = rememberNavController()
+    val items = listOf(
+        BottomNavItem.PhotoPreview,
+        BottomNavItem.CameraControl,
+        BottomNavItem.ServerPhotos
+    )
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.app_name)) },
+                actions = {
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(
+                            Icons.Default.Settings,
+                            contentDescription = stringResource(R.string.settings)
+                        )
+                    }
+                },
+                backgroundColor = MaterialTheme.colors.primary,
+                contentColor = MaterialTheme.colors.onPrimary
+            )
+        },
+        bottomBar = {
+            BottomNavigation(
+                backgroundColor = MaterialTheme.colors.surface,
+                contentColor = MaterialTheme.colors.onSurface
+            ) {
+                val navBackStackEntry by navController.currentBackStackEntryAsState()
+                val currentDestination = navBackStackEntry?.destination
+
+                items.forEach { screen ->
+                    BottomNavigationItem(
+                        icon = {
+                            Icon(
+                                screen.icon,
+                                contentDescription = stringResource(screen.titleRes)
+                            )
+                        },
+                        label = { Text(stringResource(screen.titleRes)) },
+                        selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                        onClick = {
+                            navController.navigate(screen.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        selectedContentColor = MaterialTheme.colors.primary,
+                        unselectedContentColor = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+            }
+        }
+    ) { innerPadding ->
+        NavHost(
+            navController,
+            startDestination = BottomNavItem.CameraControl.route,
+            Modifier.padding(innerPadding)
+        ) {
+            composable(BottomNavItem.PhotoPreview.route) { PhotoPreviewScreen() }
+            composable(BottomNavItem.CameraControl.route) { 
+    CameraControlScreen() 
+}
+            composable(BottomNavItem.ServerPhotos.route) { ServerPhotosScreen() }
+        }
+    }
 }
 
 @AndroidEntryPoint
@@ -80,82 +155,65 @@ class MainActivity : ComponentActivity() {
             UsbManager.ACTION_USB_DEVICE_ATTACHED -> {
                 val device: UsbDevice? = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
                 device?.let {
-                    Log.d(TAG, "USB camera device attached: ${it.deviceName}")
-                    // USB 권한 요청
+                    Log.d(TAG, "USB 카메라 디바이스가 연결됨: ${it.deviceName}")
+                    Log.d(
+                        TAG,
+                        "제조사ID: 0x${it.vendorId.toString(16)}, 제품ID: 0x${it.productId.toString(16)}"
+                    )
+
+                    // 즉시 권한 요청
+                    if (!isUsbCameraDevice(it)) {
+                        Log.d(TAG, "카메라 디바이스가 아님")
+                        return
+                    }
+
+                    Log.d(TAG, "카메라 디바이스 확인됨, 권한 요청")
                     usbCameraManager.requestPermission(it)
+                }
+            }
+            UsbManager.ACTION_USB_DEVICE_DETACHED -> {
+                val device: UsbDevice? = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+                device?.let {
+                    Log.d(TAG, "USB 디바이스가 분리됨: ${it.deviceName}")
                 }
             }
         }
     }
-}
 
-@Composable
-fun MainScreen(onSettingsClick: () -> Unit) {
-    val navController = rememberNavController()
-    val items = listOf(
-        BottomNavItem.PhotoPreview,
-        BottomNavItem.CameraControl,
-        BottomNavItem.ServerPhotos
-    )
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.app_name)) },
-                actions = {
-                    IconButton(onClick = onSettingsClick) {
-                        Icon(
-                            Icons.Default.Settings,
-                            contentDescription = stringResource(R.string.settings)
-                        )
-                    }
-                },
-                backgroundColor = MaterialTheme.colors.primary,
-                contentColor = MaterialTheme.colors.onPrimary
-            )
-        },
-        bottomBar = {
-            BottomNavigation(
-                backgroundColor = MaterialTheme.colors.surface,
-                contentColor = MaterialTheme.colors.onSurface
-            ) {
-                val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentDestination = navBackStackEntry?.destination
-                
-                items.forEach { screen ->
-                    BottomNavigationItem(
-                        icon = {
-                            Icon(
-                                screen.icon,
-                                contentDescription = stringResource(screen.titleRes)
-                            )
-                        },
-                        label = { Text(stringResource(screen.titleRes)) },
-                        selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
-                        onClick = {
-                            navController.navigate(screen.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
-                        selectedContentColor = MaterialTheme.colors.primary,
-                        unselectedContentColor = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-                    )
-                }
+    private fun isUsbCameraDevice(device: UsbDevice): Boolean {
+        // PTP 클래스 확인
+        for (i in 0 until device.interfaceCount) {
+            val usbInterface = device.getInterface(i)
+            if (usbInterface.interfaceClass == 6) { // Still Image Capture Device
+                return true
             }
         }
-    ) { innerPadding ->
-        NavHost(
-            navController,
-            startDestination = BottomNavItem.CameraControl.route,
-            Modifier.padding(innerPadding)
-        ) {
-            composable(BottomNavItem.PhotoPreview.route) { PhotoPreviewScreen() }
-            composable(BottomNavItem.CameraControl.route) { CameraControlScreen() }
-            composable(BottomNavItem.ServerPhotos.route) { ServerPhotosScreen() }
+
+        // 알려진 카메라 제조사 확인
+        val knownCameraVendors =
+            listOf(0x04A9, 0x04B0, 0x054C, 0x04CB) // Canon, Nikon, Sony, Fujifilm
+        return device.vendorId in knownCameraVendors
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // 앱이 다시 활성화될 때 USB 디바이스 확인
+        checkUsbDevicesOnResume()
+    }
+
+    private fun checkUsbDevicesOnResume() {
+        try {
+            val devices = usbCameraManager.getCameraDevices()
+            Log.d(TAG, "앱 재개 시 USB 디바이스 확인: ${devices.size}개")
+
+            devices.forEach { device ->
+                if (!usbCameraManager.hasUsbPermission.value) {
+                    Log.d(TAG, "권한이 없는 디바이스 발견, 권한 요청: ${device.deviceName}")
+                    usbCameraManager.requestPermission(device)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "USB 디바이스 확인 중 오류", e)
         }
     }
 }
