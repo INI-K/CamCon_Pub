@@ -9,3 +9,5 @@
 2	717	1748509843389874886	CMakeFiles/native-lib.dir/camera_diagnostics.cpp.o	859ab6e48c2c4df3
 2	814	1748509843490634038	CMakeFiles/native-lib.dir/native-lib.cpp.o	42963fd3fe480029
 814	923	1748509843600977597	/Users/meo/CamConT/app/build/intermediates/cxx/Debug/663v2k14/obj/arm64-v8a/libnative-lib.so	8fa8a5cb1d9722b
+2	941	1748511027346346294	CMakeFiles/native-lib.dir/native-lib.cpp.o	42963fd3fe480029
+941	1050	1748511027462382992	/Users/meo/CamConT/app/build/intermediates/cxx/Debug/663v2k14/obj/arm64-v8a/libnative-lib.so	8fa8a5cb1d9722b
