@@ -1,7 +1,10 @@
 package com.inik.camcon.presentation.ui
 
 import android.content.Intent
+import android.hardware.usb.UsbDevice
+import android.hardware.usb.UsbManager
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -20,11 +23,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.inik.camcon.R
+import com.inik.camcon.data.datasource.usb.UsbCameraManager
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.PhotoPreviewScreen
 import com.inik.camcon.presentation.ui.screens.CameraControlScreen
 import com.inik.camcon.presentation.ui.screens.ServerPhotosScreen
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 sealed class BottomNavItem(val route: String, val titleRes: Int, val icon: ImageVector) {
     object PhotoPreview :
@@ -39,8 +44,20 @@ sealed class BottomNavItem(val route: String, val titleRes: Int, val icon: Image
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var usbCameraManager: UsbCameraManager
+
+    companion object {
+        private const val TAG = "MainActivity"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // USB 디바이스 연결 Intent 처리
+        handleUsbIntent(intent)
+
         setContent {
             CamConTheme {
                 MainScreen(
@@ -48,6 +65,25 @@ class MainActivity : ComponentActivity() {
                         startActivity(Intent(this, SettingsActivity::class.java))
                     }
                 )
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleUsbIntent(intent)
+    }
+
+    private fun handleUsbIntent(intent: Intent) {
+        when (intent.action) {
+            UsbManager.ACTION_USB_DEVICE_ATTACHED -> {
+                val device: UsbDevice? = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+                device?.let {
+                    Log.d(TAG, "USB camera device attached: ${it.deviceName}")
+                    // USB 권한 요청
+                    usbCameraManager.requestPermission(it)
+                }
             }
         }
     }
