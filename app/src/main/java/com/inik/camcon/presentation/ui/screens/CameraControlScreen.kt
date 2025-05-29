@@ -65,6 +65,7 @@ import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -91,6 +92,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.inik.camcon.R
+import com.inik.camcon.data.datasource.camera.SupportedCamera
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import kotlinx.coroutines.launch
@@ -125,11 +127,6 @@ fun CameraControlScreen(
     var showTimelapseDialog by remember { mutableStateOf(false) }
     var showSettingsSheet by remember { mutableStateOf(false) }
     var isFullscreen by rememberSaveable { mutableStateOf(false) }
-
-    // Log UI state changes
-    LaunchedEffect(uiState.isLiveViewActive) {
-        Log.d("CameraControl", "라이브뷰 상태 변경: ${uiState.isLiveViewActive}")
-    }
 
     // Log UI state changes
     LaunchedEffect(uiState.isLiveViewActive) {
@@ -432,8 +429,10 @@ fun FullscreenCameraView(
     onExitFullscreen: () -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var showTimelapseDialog by remember { mutableStateOf(false) }
+
     // Fullscreen 모드에서 시스템 UI 숨기기
-    // SideEffect를 사용하여 Composable이 화면에 표시될 때마다 실행되도록 함
     SideEffect {
         (context as? Activity)?.let { activity ->
             Log.d("FullscreenCameraView", "화면 방향 LANDSCAPE로 설정 및 시스템 UI 숨김")
@@ -458,6 +457,7 @@ fun FullscreenCameraView(
             }
         }
     }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -472,35 +472,35 @@ fun FullscreenCameraView(
                 }
             )
     ) {
-        CameraPreviewArea(
+        // 메인 라이브뷰 영역
+        FullscreenLiveViewArea(
             uiState = uiState,
             cameraFeed = cameraFeed,
             viewModel = viewModel
         )
 
-        // 전체화면 종료 버튼 오버레이 (상단 우측)
-        IconButton(
-            onClick = {
-                Log.d("CameraControl", "Exit fullscreen button clicked")
-                onExitFullscreen()
-            },
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(16.dp)
-                .background(
-                    Color.Black.copy(alpha = 0.6f),
-                    CircleShape
-                )
-        ) {
-            Icon(
-                Icons.Default.Close,
-                contentDescription = "전체화면 종료",
-                tint = Color.White,
-                modifier = Modifier.size(24.dp)
+        // 상단 카메라 설정 오버레이 (좌측)
+        uiState.cameraSettings?.let { settings ->
+            CameraSettingsOverlay(
+                settings = settings,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(16.dp)
             )
         }
 
-        // 하단 안내 텍스트
+        // 우측 세로 컨트롤 패널
+        FullscreenControlPanel(
+            uiState = uiState,
+            viewModel = viewModel,
+            onShowTimelapseDialog = { showTimelapseDialog = true },
+            onExitFullscreen = onExitFullscreen,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(16.dp)
+        )
+
+        // 하단 가이드 텍스트
         Text(
             "더블클릭으로 종료",
             color = Color.White.copy(alpha = 0.7f),
@@ -514,6 +514,283 @@ fun FullscreenCameraView(
                 .padding(horizontal = 12.dp, vertical = 6.dp),
             fontSize = 14.sp
         )
+
+        // 전역 로딩 상태
+        if (uiState.isCapturing) {
+            FullscreenLoadingOverlay("촬영 중...")
+        }
+    }
+
+    // 타임랩스 설정 다이얼로그
+    if (showTimelapseDialog) {
+        TimelapseSettingsDialog(
+            onConfirm = { interval, shots ->
+                viewModel.startTimelapse(interval, shots)
+                showTimelapseDialog = false
+            },
+            onDismiss = { showTimelapseDialog = false }
+        )
+    }
+}
+
+@Composable
+fun FullscreenLiveViewArea(
+    uiState: com.inik.camcon.presentation.viewmodel.CameraUiState,
+    cameraFeed: List<com.inik.camcon.domain.model.Camera>,
+    viewModel: CameraViewModel
+) {
+    if (uiState.isLiveViewActive && uiState.liveViewFrame != null) {
+        // 라이브뷰 프레임 표시
+        uiState.liveViewFrame?.let { frame ->
+            val bitmap = remember(frame) {
+                try {
+                    android.graphics.BitmapFactory.decodeByteArray(
+                        frame.data,
+                        0,
+                        frame.data.size
+                    )
+                } catch (e: Exception) {
+                    Log.e("FullscreenLiveView", "프레임 디코딩 실패", e)
+                    null
+                }
+            }
+
+            bitmap?.let {
+                Image(
+                    bitmap = it.asImageBitmap(),
+                    contentDescription = "Live View",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
+            } ?: run {
+                // 프레임 디코딩 실패 시
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "라이브뷰 프레임 로딩 중...",
+                        color = Color.White,
+                        fontSize = 16.sp
+                    )
+                }
+            }
+        }
+    } else {
+        // 라이브뷰 비활성 상태
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (!uiState.isConnected) {
+                    Icon(
+                        Icons.Default.UsbOff,
+                        contentDescription = null,
+                        tint = Color.Gray,
+                        modifier = Modifier.size(64.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "카메라 연결 안됨",
+                        color = Color.White,
+                        fontSize = 18.sp
+                    )
+                } else {
+                    Icon(
+                        Icons.Default.VideocamOff,
+                        contentDescription = null,
+                        tint = Color.Gray,
+                        modifier = Modifier.size(64.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "라이브뷰 비활성",
+                        color = Color.White,
+                        fontSize = 18.sp
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { viewModel.startLiveView() },
+                        colors = ButtonDefaults.buttonColors(
+                            backgroundColor = MaterialTheme.colors.primary
+                        )
+                    ) {
+                        Text("라이브뷰 시작")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun FullscreenControlPanel(
+    uiState: com.inik.camcon.presentation.viewmodel.CameraUiState,
+    viewModel: CameraViewModel,
+    onShowTimelapseDialog: () -> Unit,
+    onExitFullscreen: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        color = Color.Black.copy(alpha = 0.7f),
+        shape = RoundedCornerShape(16.dp),
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // 종료 버튼
+            IconButton(
+                onClick = onExitFullscreen,
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(Color.Red.copy(alpha = 0.3f), CircleShape)
+            ) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = "전체화면 종료",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            // 촬영 모드 선택 (세로)
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                ShootingMode.values().forEach { mode ->
+                    ShootingModeChip(
+                        mode = mode,
+                        isSelected = uiState.shootingMode == mode,
+                        isEnabled = uiState.isConnected,
+                        onClick = { viewModel.setShootingMode(mode) }
+                    )
+                }
+            }
+
+            // 메인 촬영 버튼
+            Box(
+                modifier = Modifier
+                    .size(72.dp)
+                    .clip(CircleShape)
+                    .border(
+                        3.dp,
+                        if (uiState.isConnected) Color.White else Color.Gray,
+                        CircleShape
+                    )
+                    .clickable(
+                        enabled = uiState.isConnected && !uiState.isCapturing
+                    ) {
+                        when (uiState.shootingMode) {
+                            ShootingMode.TIMELAPSE -> onShowTimelapseDialog()
+                            else -> viewModel.capturePhoto()
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                if (uiState.isCapturing) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        modifier = Modifier.size(56.dp)
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (uiState.isConnected) Color.White else Color.Gray
+                            )
+                    )
+                }
+            }
+
+            // 포커스 버튼
+            IconButton(
+                onClick = { viewModel.performAutoFocus() },
+                enabled = uiState.isConnected,
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(
+                        Color.Blue.copy(alpha = 0.3f),
+                        CircleShape
+                    )
+            ) {
+                Icon(
+                    Icons.Default.CenterFocusStrong,
+                    contentDescription = "포커스",
+                    tint = if (uiState.isConnected) Color.White else Color.Gray,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            // 라이브뷰 제어 버튼
+            if (uiState.isConnected) {
+                IconButton(
+                    onClick = {
+                        if (uiState.isLiveViewActive) {
+                            viewModel.stopLiveView()
+                        } else {
+                            viewModel.startLiveView()
+                        }
+                    },
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(
+                            MaterialTheme.colors.primary.copy(alpha = 0.3f),
+                            CircleShape
+                        )
+                ) {
+                    Icon(
+                        if (uiState.isLiveViewActive) Icons.Default.Stop else Icons.Default.Videocam,
+                        contentDescription = if (uiState.isLiveViewActive) "라이브뷰 중지" else "라이브뷰 시작",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun FullscreenLoadingOverlay(
+    message: String,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.6f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            color = Color.DarkGray.copy(alpha = 0.9f),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CircularProgressIndicator(
+                    color = Color.White,
+                    modifier = Modifier.size(48.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    message,
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
     }
 }
 
@@ -612,433 +889,560 @@ fun CameraPreviewArea(
     cameraFeed: List<com.inik.camcon.domain.model.Camera>,
     viewModel: CameraViewModel
 ) {
-    if (uiState.isLiveViewActive && uiState.liveViewFrame != null) {
-        // Display live view frame
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            uiState.liveViewFrame?.let { frame ->
-                // Convert byte array to Bitmap and display
-                val bitmap = remember(frame) {
-                    try {
-                        android.graphics.BitmapFactory.decodeByteArray(
-                            frame.data,
-                            0,
-                            frame.data.size
-                        )
-                    } catch (e: Exception) {
-                        null
-                    }
-                }
-
-                bitmap?.let {
-                    Image(
-                        bitmap = it.asImageBitmap(),
-                        contentDescription = "Live View",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit
-                    )
-                } ?: run {
-                    Text(
-                        "라이브뷰 프레임 디코딩 실패",
-                        color = Color.Red
-                    )
-                }
-            }
-
-            // 라이브뷰 중지 버튼 오버레이
-            Button(
-                onClick = {
-                    Log.d("CameraControl", "Stop live view button clicked")
-                    viewModel.stopLiveView()
-                },
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    backgroundColor = Color.Red.copy(alpha = 0.8f)
-                )
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (uiState.isLiveViewActive && uiState.liveViewFrame != null) {
+            // Display live view frame
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    Icons.Default.Stop,
-                    contentDescription = "Stop Live View",
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("라이브뷰 중지", color = Color.White)
-            }
-        }
-    } else if (!uiState.isConnected) {
-        // Camera not connected state
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                Icons.Default.UsbOff,
-                contentDescription = null,
-                tint = Color.Gray,
-                modifier = Modifier.size(64.dp)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                stringResource(R.string.camera_not_connected),
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Medium
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                stringResource(R.string.connect_camera_usb),
-                color = Color.Gray,
-                fontSize = 14.sp,
-                textAlign = TextAlign.Center
-            )
-
-            // 디버그 정보 표시
-            Spacer(modifier = Modifier.height(16.dp))
-            Card(
-                backgroundColor = Color.DarkGray.copy(alpha = 0.8f),
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(12.dp)
-                ) {
-                    Text(
-                        "연결 상태 확인:",
-                        color = Color.Yellow,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        "• 카메라 연결됨: ${uiState.isConnected}",
-                        color = Color.White,
-                        fontSize = 12.sp
-                    )
-                    Text(
-                        "• 감지된 카메라 수: ${cameraFeed.size}",
-                        color = Color.White,
-                        fontSize = 12.sp
-                    )
-                    Text(
-                        "• USB 디바이스 수: ${uiState.usbDeviceCount}",
-                        color = Color.White,
-                        fontSize = 12.sp
-                    )
-                    Text(
-                        "• USB 권한: ${if (uiState.hasUsbPermission) "승인됨" else "대기중"}",
-                        color = if (uiState.hasUsbPermission) Color.Green else Color.Yellow,
-                        fontSize = 12.sp
-                    )
-                    if (cameraFeed.isNotEmpty()) {
-                        Text(
-                            "• 카메라 이름: ${cameraFeed.first().name}",
-                            color = Color.White,
-                            fontSize = 12.sp
-                        )
-                    }
-
-                    // USB 디바이스가 감지되지 않으면 추가 정보 표시
-                    if (uiState.usbDeviceCount == 0) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            "USB 확인사항:",
-                            color = Color.Red,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "1. USB 케이블 연결 확인",
-                            color = Color.Gray,
-                            fontSize = 11.sp
-                        )
-                        Text(
-                            "2. 카메라 전원 확인",
-                            color = Color.Gray,
-                            fontSize = 11.sp
-                        )
-                        Text(
-                            "3. USB 모드 PTP/MTP 설정",
-                            color = Color.Gray,
-                            fontSize = 11.sp
-                        )
-                        Text(
-                            "4. Android 개발자 옵션에서 USB 디버깅 활성화",
-                            color = Color.Gray,
-                            fontSize = 11.sp
-                        )
-                    }
-
-                    // 지원 기능 표시
-                    if (uiState.supportedFeatures.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            "• 지원 기능:",
-                            color = Color.Cyan,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            uiState.supportedFeatures.joinToString(", "),
-                            color = Color.Green,
-                            fontSize = 11.sp
-                        )
-                    }
-
-                    // 카메라 기능 정보 표시
-                    uiState.cameraCapabilities?.let { capabilities ->
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            "카메라 기능 정보:",
-                            color = Color.Green,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        // 기본 촬영 기능
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                CapabilityItem("사진 촬영", capabilities.canCapturePhoto)
-                                CapabilityItem("동영상 촬영", capabilities.canCaptureVideo)
-                                CapabilityItem("라이브뷰", capabilities.canLiveView)
-                                CapabilityItem("원격 촬영", capabilities.canTriggerCapture)
-                            }
-                            Column(modifier = Modifier.weight(1f)) {
-                                CapabilityItem("버스트 모드", capabilities.supportsBurstMode)
-                                CapabilityItem("타임랩스", capabilities.supportsTimelapse)
-                                CapabilityItem("브라켓팅", capabilities.supportsBracketing)
-                                CapabilityItem("벌브 모드", capabilities.supportsBulbMode)
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        // 초점 기능
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                CapabilityItem("자동 초점", capabilities.supportsAutofocus)
-                                CapabilityItem("수동 초점", capabilities.supportsManualFocus)
-                                CapabilityItem("초점 포인트", capabilities.supportsFocusPoint)
-                            }
-                            Column(modifier = Modifier.weight(1f)) {
-                                CapabilityItem("파일 다운로드", capabilities.canDownloadFiles)
-                                CapabilityItem("파일 삭제", capabilities.canDeleteFiles)
-                                CapabilityItem("파일 미리보기", capabilities.canPreviewFiles)
-                            }
-                        }
-
-                        // 설정 가능한 옵션들
-                        if (capabilities.availableIsoSettings.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                "ISO 옵션: ${
-                                    capabilities.availableIsoSettings.take(5).joinToString(", ")
-                                }${if (capabilities.availableIsoSettings.size > 5) "..." else ""}",
-                                color = Color.Cyan,
-                                fontSize = 10.sp
+                uiState.liveViewFrame?.let { frame ->
+                    // Convert byte array to Bitmap and display
+                    val bitmap = remember(frame) {
+                        try {
+                            android.graphics.BitmapFactory.decodeByteArray(
+                                frame.data,
+                                0,
+                                frame.data.size
                             )
-                        }
-
-                        if (capabilities.availableShutterSpeeds.isNotEmpty()) {
-                            Text(
-                                "셔터 속도: ${
-                                    capabilities.availableShutterSpeeds.take(5).joinToString(", ")
-                                }${if (capabilities.availableShutterSpeeds.size > 5) "..." else ""}",
-                                color = Color.Cyan,
-                                fontSize = 10.sp
-                            )
-                        }
-
-                        if (capabilities.availableApertures.isNotEmpty()) {
-                            Text(
-                                "조리개: ${
-                                    capabilities.availableApertures.take(5).joinToString(", ")
-                                }${if (capabilities.availableApertures.size > 5) "..." else ""}",
-                                color = Color.Cyan,
-                                fontSize = 10.sp
-                            )
-                        }
-
-                        // 새로고침 버튼
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(
-                            onClick = { viewModel.refreshCameraCapabilities() },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                backgroundColor = Color.Blue.copy(alpha = 0.7f)
-                            )
-                        ) {
-                            Icon(
-                                Icons.Default.Refresh,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = Color.White
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("기능 정보 새로고침", color = Color.White, fontSize = 12.sp)
+                        } catch (e: Exception) {
+                            Log.e("CameraPreview", "프레임 디코딩 실패", e)
+                            null
                         }
                     }
 
-                    // libgphoto2 지원 여부
-                    uiState.supportedCamera?.let { camera ->
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            "✓ libgphoto2 지원됨 (${camera.driver})",
-                            color = Color.Green,
-                            fontSize = 11.sp
+                    bitmap?.let {
+                        Image(
+                            bitmap = it.asImageBitmap(),
+                            contentDescription = "Live View",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit
                         )
                     } ?: run {
-                        if (cameraFeed.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                "⚠ libgphoto2 지원 확인 중...",
-                                color = Color.Yellow,
-                                fontSize = 11.sp
-                            )
-                        }
-                    }
-
-                    // 에러 메시지 표시
-                    uiState.error?.let { error ->
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            "• 에러: $error",
-                            color = Color.Red,
-                            fontSize = 12.sp
-                        )
+                        LoadingIndicator("라이브뷰 프레임 로딩 중...")
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(
-                onClick = {
-                    // Try to reconnect or show camera list
-                    cameraFeed.firstOrNull()?.let { camera ->
-                        viewModel.connectCamera(camera.id)
-                    } ?: run {
-                        // 카메라가 없으면 강제로 연결 시도
-                        viewModel.connectCamera("auto")
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(
-                    backgroundColor = MaterialTheme.colors.primary
-                )
-            ) {
-                Text(stringResource(R.string.retry_connection))
-            }
-
-            // USB 새로고침 버튼 추가
-            Spacer(modifier = Modifier.height(8.dp))
-            Button(
-                onClick = {
-                    viewModel.refreshUsbDevices()
-                },
-                colors = ButtonDefaults.buttonColors(
-                    backgroundColor = MaterialTheme.colors.secondary
-                )
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.Refresh,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("USB 새로고침")
-                }
-            }
-
-            // 카메라 연결 해제 버튼 추가
-            Spacer(modifier = Modifier.height(8.dp))
-            Button(
-                onClick = {
-                    viewModel.disconnectCamera()
-                },
-                colors = ButtonDefaults.buttonColors(
-                    backgroundColor = Color.Red.copy(alpha = 0.7f)
-                )
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.LinkOff,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("PC 모드 완전 종료", color = Color.White, fontSize = 12.sp)
-                }
-            }
-
-            // USB 디바이스가 있지만 권한이 없는 경우 권한 요청 버튼
-            if (uiState.usbDeviceCount > 0 && !uiState.hasUsbPermission) {
-                Spacer(modifier = Modifier.height(8.dp))
+                // 라이브뷰 중지 버튼 오버레이
                 Button(
                     onClick = {
-                        viewModel.requestUsbPermission()
+                        Log.d("CameraControl", "Stop live view button clicked")
+                        viewModel.stopLiveView()
                     },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(16.dp),
                     colors = ButtonDefaults.buttonColors(
-                        backgroundColor = Color(0xFFFF6B35) // 주황색
+                        backgroundColor = Color.Red.copy(alpha = 0.8f)
                     )
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Security,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("USB 권한 요청", color = Color.White)
-                    }
+                    Icon(
+                        Icons.Default.Stop,
+                        contentDescription = "Stop Live View",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("라이브뷰 중지", color = Color.White)
+                }
+            }
+        } else if (!uiState.isConnected) {
+            CameraDisconnectedState(
+                uiState = uiState,
+                cameraFeed = cameraFeed,
+                viewModel = viewModel
+            )
+        } else {
+            CameraConnectedState(
+                uiState = uiState,
+                viewModel = viewModel
+            )
+        }
+
+        // 전역 로딩 오버레이
+        if (uiState.isCapturing) {
+            LoadingOverlay("촬영 중...")
+        }
+    }
+}
+
+@Composable
+fun CameraDisconnectedState(
+    uiState: com.inik.camcon.presentation.viewmodel.CameraUiState,
+    cameraFeed: List<com.inik.camcon.domain.model.Camera>,
+    viewModel: CameraViewModel
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            Icons.Default.UsbOff,
+            contentDescription = null,
+            tint = Color.Gray,
+            modifier = Modifier.size(64.dp)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            stringResource(R.string.camera_not_connected),
+            color = Color.White,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Medium
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            stringResource(R.string.connect_camera_usb),
+            color = Color.Gray,
+            fontSize = 14.sp,
+            textAlign = TextAlign.Center
+        )
+
+        // 디버그 정보 표시
+        Spacer(modifier = Modifier.height(16.dp))
+        CameraDebugInfo(
+            uiState = uiState,
+            cameraFeed = cameraFeed
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+        CameraConnectionButtons(
+            uiState = uiState,
+            cameraFeed = cameraFeed,
+            viewModel = viewModel
+        )
+    }
+}
+
+@Composable
+fun CameraConnectedState(
+    uiState: com.inik.camcon.presentation.viewmodel.CameraUiState,
+    viewModel: CameraViewModel
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            if (uiState.isLiveViewActive) Icons.Default.VideocamOff
+            else Icons.Default.Videocam,
+            contentDescription = null,
+            tint = Color.Gray,
+            modifier = Modifier.size(64.dp)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = {
+                if (uiState.isLiveViewActive) {
+                    viewModel.stopLiveView()
+                } else {
+                    viewModel.startLiveView()
+                }
+            },
+            enabled = uiState.isConnected,
+            colors = ButtonDefaults.buttonColors(
+                backgroundColor = if (uiState.isConnected)
+                    MaterialTheme.colors.primary
+                else
+                    Color.Gray.copy(alpha = 0.5f),
+                disabledBackgroundColor = Color.Gray.copy(alpha = 0.5f)
+            )
+        ) {
+            Text(
+                if (uiState.isLiveViewActive)
+                    stringResource(R.string.stop_live_view)
+                else
+                    stringResource(R.string.start_live_view)
+            )
+        }
+    }
+}
+
+@Composable
+fun CameraDebugInfo(
+    uiState: com.inik.camcon.presentation.viewmodel.CameraUiState,
+    cameraFeed: List<com.inik.camcon.domain.model.Camera>
+) {
+    Card(
+        backgroundColor = Color.DarkGray.copy(alpha = 0.8f),
+        modifier = Modifier.padding(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp)
+        ) {
+            Text(
+                "연결 상태 확인:",
+                color = Color.Yellow,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            DebugInfoRow("카메라 연결됨", "${uiState.isConnected}")
+            DebugInfoRow("감지된 카메라 수", "${cameraFeed.size}")
+            DebugInfoRow("USB 디바이스 수", "${uiState.usbDeviceCount}")
+            DebugInfoRow(
+                "USB 권한",
+                if (uiState.hasUsbPermission) "승인됨" else "대기중",
+                if (uiState.hasUsbPermission) Color.Green else Color.Yellow
+            )
+
+            if (cameraFeed.isNotEmpty()) {
+                DebugInfoRow("카메라 이름", cameraFeed.first().name)
+            }
+
+            // USB 디바이스가 감지되지 않으면 추가 정보 표시
+            if (uiState.usbDeviceCount == 0) {
+                USBTroubleshootingInfo()
+            }
+
+            // 지원 기능 표시
+            if (uiState.supportedFeatures.isNotEmpty()) {
+                SupportedFeaturesInfo(uiState.supportedFeatures)
+            }
+
+            // 카메라 기능 정보 표시
+            uiState.cameraCapabilities?.let { capabilities ->
+                CameraCapabilitiesInfo(capabilities, uiState)
+            }
+
+            // libgphoto2 지원 여부
+            LibGphoto2SupportInfo(uiState, cameraFeed)
+
+            // 에러 메시지 표시
+            uiState.error?.let { error ->
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "• 에러: $error",
+                    color = Color.Red,
+                    fontSize = 12.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun CameraConnectionButtons(
+    uiState: com.inik.camcon.presentation.viewmodel.CameraUiState,
+    cameraFeed: List<com.inik.camcon.domain.model.Camera>,
+    viewModel: CameraViewModel
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Button(
+            onClick = {
+                // Try to reconnect or show camera list
+                cameraFeed.firstOrNull()?.let { camera ->
+                    viewModel.connectCamera(camera.id)
+                } ?: run {
+                    // 카메라가 없으면 강제로 연결 시도
+                    viewModel.connectCamera("auto")
+                }
+            },
+            colors = ButtonDefaults.buttonColors(
+                backgroundColor = MaterialTheme.colors.primary
+            )
+        ) {
+            Text(stringResource(R.string.retry_connection))
+        }
+
+        // USB 새로고침 버튼
+        Button(
+            onClick = { viewModel.refreshUsbDevices() },
+            colors = ButtonDefaults.buttonColors(
+                backgroundColor = MaterialTheme.colors.secondary
+            )
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.Refresh,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("USB 새로고침")
+            }
+        }
+
+        // 카메라 연결 해제 버튼
+        Button(
+            onClick = { viewModel.disconnectCamera() },
+            colors = ButtonDefaults.buttonColors(
+                backgroundColor = Color.Red.copy(alpha = 0.7f)
+            )
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.LinkOff,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("PC 모드 완전 종료", color = Color.White, fontSize = 12.sp)
+            }
+        }
+
+        // USB 권한 요청 버튼
+        if (uiState.usbDeviceCount > 0 && !uiState.hasUsbPermission) {
+            Button(
+                onClick = { viewModel.requestUsbPermission() },
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = Color(0xFFFF6B35)
+                )
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Security,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("USB 권한 요청", color = Color.White)
                 }
             }
         }
-    } else {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
+    }
+}
+
+@Composable
+fun LoadingIndicator(
+    message: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        CircularProgressIndicator(
+            color = Color.White,
+            modifier = Modifier.size(48.dp)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            message,
+            color = Color.White,
+            fontSize = 16.sp
+        )
+    }
+}
+
+@Composable
+fun LoadingOverlay(
+    message: String,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.6f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            color = Color.DarkGray.copy(alpha = 0.9f),
+            shape = RoundedCornerShape(16.dp)
         ) {
-            Icon(
-                if (uiState.isLiveViewActive) Icons.Default.VideocamOff
-                else Icons.Default.Videocam,
-                contentDescription = null,
-                tint = Color.Gray,
-                modifier = Modifier.size(64.dp)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(
-                onClick = {
-                    if (uiState.isLiveViewActive) {
-                        viewModel.stopLiveView()
-                    } else {
-                        viewModel.startLiveView()
-                    }
-                },
-                enabled = uiState.isConnected,
-                colors = ButtonDefaults.buttonColors(
-                    backgroundColor = if (uiState.isConnected)
-                        MaterialTheme.colors.primary
-                    else
-                        Color.Gray.copy(alpha = 0.5f),
-                    disabledBackgroundColor = Color.Gray.copy(alpha = 0.5f)
-                )
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                CircularProgressIndicator(
+                    color = Color.White,
+                    modifier = Modifier.size(48.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    if (uiState.isLiveViewActive)
-                        stringResource(R.string.stop_live_view)
-                    else
-                        stringResource(R.string.start_live_view)
+                    message,
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
                 )
             }
+        }
+    }
+}
+
+// Helper Composables for Debug Info
+@Composable
+fun DebugInfoRow(
+    label: String,
+    value: String,
+    valueColor: Color = Color.White
+) {
+    Text(
+        "• $label: $value",
+        color = valueColor,
+        fontSize = 12.sp
+    )
+}
+
+@Composable
+fun USBTroubleshootingInfo() {
+    Spacer(modifier = Modifier.height(4.dp))
+    Text(
+        "USB 확인사항:",
+        color = Color.Red,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Bold
+    )
+    val troubleshootingItems = listOf(
+        "USB 케이블 연결 확인",
+        "카메라 전원 확인",
+        "USB 모드 PTP/MTP 설정",
+        "Android 개발자 옵션에서 USB 디버깅 활성화"
+    )
+    troubleshootingItems.forEach { item ->
+        Text(
+            "$item",
+            color = Color.Gray,
+            fontSize = 11.sp
+        )
+    }
+}
+
+@Composable
+fun SupportedFeaturesInfo(features: List<String>) {
+    Spacer(modifier = Modifier.height(4.dp))
+    Text(
+        "• 지원 기능:",
+        color = Color.Cyan,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Bold
+    )
+    Text(
+        features.joinToString(", "),
+        color = Color.Green,
+        fontSize = 11.sp
+    )
+}
+
+@Composable
+fun CameraCapabilitiesInfo(
+    capabilities: com.inik.camcon.domain.model.CameraCapabilities,
+    uiState: com.inik.camcon.presentation.viewmodel.CameraUiState
+) {
+    Spacer(modifier = Modifier.height(8.dp))
+    Text(
+        "카메라 기능 정보:",
+        color = Color.Green,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.Bold
+    )
+    Spacer(modifier = Modifier.height(4.dp))
+
+    // 기본 촬영 기능
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            CapabilityItem("사진 촬영", capabilities.canCapturePhoto)
+            CapabilityItem("동영상 촬영", capabilities.canCaptureVideo)
+            CapabilityItem("라이브뷰", capabilities.canLiveView)
+            CapabilityItem("원격 촬영", capabilities.canTriggerCapture)
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            CapabilityItem("버스트 모드", capabilities.supportsBurstMode)
+            CapabilityItem("타임랩스", capabilities.supportsTimelapse)
+            CapabilityItem("브라켓팅", capabilities.supportsBracketing)
+            CapabilityItem("벌브 모드", capabilities.supportsBulbMode)
+        }
+    }
+
+    Spacer(modifier = Modifier.height(4.dp))
+
+    // 초점 기능
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            CapabilityItem("자동 초점", capabilities.supportsAutofocus)
+            CapabilityItem("수동 초점", capabilities.supportsManualFocus)
+            CapabilityItem("초점 포인트", capabilities.supportsFocusPoint)
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            CapabilityItem("파일 다운로드", capabilities.canDownloadFiles)
+            CapabilityItem("파일 삭제", capabilities.canDeleteFiles)
+            CapabilityItem("파일 미리보기", capabilities.canPreviewFiles)
+        }
+    }
+
+    // 설정 가능한 옵션들
+    if (capabilities.availableIsoSettings.isNotEmpty()) {
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            "ISO 옵션: ${
+                capabilities.availableIsoSettings.take(5).joinToString(", ")
+            }${if (capabilities.availableIsoSettings.size > 5) "..." else ""}",
+            color = Color.Cyan,
+            fontSize = 10.sp
+        )
+    }
+
+    if (capabilities.availableShutterSpeeds.isNotEmpty()) {
+        Text(
+            "셔터 속도: ${
+                capabilities.availableShutterSpeeds.take(5).joinToString(", ")
+            }${if (capabilities.availableShutterSpeeds.size > 5) "..." else ""}",
+            color = Color.Cyan,
+            fontSize = 10.sp
+        )
+    }
+
+    if (capabilities.availableApertures.isNotEmpty()) {
+        Text(
+            "조리개: ${
+                capabilities.availableApertures.take(5).joinToString(", ")
+            }${if (capabilities.availableApertures.size > 5) "..." else ""}",
+            color = Color.Cyan,
+            fontSize = 10.sp
+        )
+    }
+
+    // 새로고침 버튼
+    Spacer(modifier = Modifier.height(8.dp))
+    Button(
+        onClick = { },
+        modifier = Modifier.fillMaxWidth(),
+        colors = ButtonDefaults.buttonColors(
+            backgroundColor = Color.Blue.copy(alpha = 0.7f)
+        )
+    ) {
+        Icon(
+            Icons.Default.Refresh,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = Color.White
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text("기능 정보 새로고침", color = Color.White, fontSize = 12.sp)
+    }
+}
+
+@Composable
+fun LibGphoto2SupportInfo(
+    uiState: com.inik.camcon.presentation.viewmodel.CameraUiState,
+    cameraFeed: List<com.inik.camcon.domain.model.Camera>
+) {
+    uiState.supportedCamera?.let { camera ->
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            "✓ libgphoto2 지원됨 (${camera.driver})",
+            color = Color.Green,
+            fontSize = 11.sp
+        )
+    } ?: run {
+        if (cameraFeed.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                "⚠ libgphoto2 지원 확인 중...",
+                color = Color.Yellow,
+                fontSize = 11.sp
+            )
         }
     }
 }
@@ -1444,7 +1848,6 @@ fun CapabilityItem(
 fun CameraControlScreenPreview() {
     MaterialTheme {
         Surface {
-            // Mock data for preview
             val mockUiState = com.inik.camcon.presentation.viewmodel.CameraUiState(
                 isConnected = true,
                 isLiveViewActive = false,
@@ -1504,10 +1907,7 @@ fun CameraControlScreenPreview() {
                 supportedCamera = null
             )
 
-            // Create mock ViewModel (would need to create a proper mock)
-            Box(modifier = Modifier.fillMaxSize()) {
-                PortraitCameraLayoutPreview(mockUiState)
-            }
+            PortraitCameraLayoutPreview(mockUiState)
         }
     }
 }
@@ -1597,7 +1997,7 @@ fun CameraDisconnectedPreview() {
                 usbDeviceCount = 0,
                 hasUsbPermission = false,
                 supportedFeatures = emptyList(),
-                error = null,
+                error = "USB 디바이스가 감지되지 않음",
                 liveViewFrame = null,
                 supportedCamera = null
             )
@@ -1610,6 +2010,297 @@ fun CameraDisconnectedPreview() {
             ) {
                 CameraPreviewAreaPreview(mockUiState, emptyList())
             }
+        }
+    }
+}
+
+@Preview(name = "Loading State", showBackground = true)
+@Composable
+fun LoadingStatePreview() {
+    MaterialTheme {
+        Surface {
+            val mockUiState = com.inik.camcon.presentation.viewmodel.CameraUiState(
+                isConnected = true,
+                isLiveViewActive = true,
+                isCapturing = true,
+                shootingMode = ShootingMode.BURST,
+                cameraSettings = com.inik.camcon.domain.model.CameraSettings(
+                    iso = "800",
+                    shutterSpeed = "1/125",
+                    aperture = "2.8",
+                    whiteBalance = "Auto",
+                    focusMode = "AF-C",
+                    exposureCompensation = "+0.3"
+                ),
+                cameraCapabilities = null,
+                capturedPhotos = emptyList(),
+                usbDeviceCount = 1,
+                hasUsbPermission = true,
+                supportedFeatures = listOf("라이브뷰", "버스트 촬영"),
+                error = null,
+                liveViewFrame = null,
+                supportedCamera = null
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+            ) {
+                // Mock live view background
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.DarkGray),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("라이브뷰 배경", color = Color.Gray)
+                }
+
+                // Loading overlay
+                LoadingOverlay("버스트 촬영 중...")
+            }
+        }
+    }
+}
+
+@Preview(name = "Fullscreen Controls", showBackground = true, widthDp = 800, heightDp = 400)
+@Composable
+fun FullscreenControlPanelPreview() {
+    MaterialTheme {
+        Surface(color = Color.Black) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                // Mock background
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.DarkGray),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("라이브뷰 배경", color = Color.White, fontSize = 24.sp)
+                }
+
+                // Control panel
+                FullscreenControlPanelPreview()
+            }
+        }
+    }
+}
+
+@Preview(name = "Camera Settings Overlay", showBackground = true)
+@Composable
+fun CameraSettingsOverlayPreview() {
+    MaterialTheme {
+        Surface(color = Color.Black) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                CameraSettingsOverlay(
+                    settings = com.inik.camcon.domain.model.CameraSettings(
+                        iso = "1600",
+                        shutterSpeed = "1/250",
+                        aperture = "4.0",
+                        whiteBalance = "Daylight",
+                        focusMode = "AF-S",
+                        exposureCompensation = "-0.7"
+                    ),
+                    modifier = Modifier.align(Alignment.TopStart)
+                )
+            }
+        }
+    }
+}
+
+@Preview(name = "Debug Info Card", showBackground = true)
+@Composable
+fun CameraDebugInfoPreview() {
+    MaterialTheme {
+        Surface {
+            val mockUiState = com.inik.camcon.presentation.viewmodel.CameraUiState(
+                isConnected = false,
+                isLiveViewActive = false,
+                isCapturing = false,
+                shootingMode = ShootingMode.SINGLE,
+                cameraSettings = null,
+                cameraCapabilities = com.inik.camcon.domain.model.CameraCapabilities(
+                    model = "Nikon D850",
+                    canCapturePhoto = true,
+                    canCaptureVideo = false,
+                    canLiveView = true,
+                    canTriggerCapture = true,
+                    supportsAutofocus = true,
+                    supportsManualFocus = true,
+                    supportsFocusPoint = false,
+                    supportsBurstMode = true,
+                    supportsTimelapse = false,
+                    supportsBracketing = true,
+                    supportsBulbMode = true,
+                    canDownloadFiles = true,
+                    canDeleteFiles = false,
+                    canPreviewFiles = true,
+                    availableIsoSettings = listOf(
+                        "64",
+                        "100",
+                        "200",
+                        "400",
+                        "800",
+                        "1600",
+                        "3200",
+                        "6400"
+                    ),
+                    availableShutterSpeeds = listOf(
+                        "1/2000",
+                        "1/1000",
+                        "1/500",
+                        "1/250",
+                        "1/125",
+                        "1/60"
+                    ),
+                    availableApertures = listOf("2.8", "4.0", "5.6", "8.0", "11", "16"),
+                    availableWhiteBalanceSettings = listOf(
+                        "Auto",
+                        "Daylight",
+                        "Shade",
+                        "Cloudy",
+                        "Tungsten"
+                    ),
+                    supportsRemoteControl = true,
+                    supportsConfigChange = true,
+                    batteryLevel = 42
+                ),
+                capturedPhotos = emptyList(),
+                usbDeviceCount = 1,
+                hasUsbPermission = false,
+                supportedFeatures = listOf("사진촬영", "라이브뷰"),
+                error = "USB 권한 없음",
+                liveViewFrame = null,
+                supportedCamera = SupportedCamera(
+                    vendor = "Nikon",
+                    model = "D850",
+                    driver = "ptp2",
+                    features = listOf("사진촬영", "라이브뷰")
+                )
+            )
+
+            val mockCameraFeed = listOf(
+                com.inik.camcon.domain.model.Camera(
+                    id = "nikon_d850",
+                    name = "Nikon D850",
+                    isActive = false
+                )
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+                    .padding(16.dp)
+            ) {
+                CameraDebugInfo(
+                    uiState = mockUiState,
+                    cameraFeed = mockCameraFeed
+                )
+            }
+        }
+    }
+}
+
+@Preview(name = "Connection Buttons", showBackground = true)
+@Composable
+fun CameraConnectionButtonsPreview() {
+    MaterialTheme {
+        Surface {
+            val mockUiState = com.inik.camcon.presentation.viewmodel.CameraUiState(
+                isConnected = false,
+                isLiveViewActive = false,
+                isCapturing = false,
+                shootingMode = ShootingMode.SINGLE,
+                cameraSettings = null,
+                cameraCapabilities = null,
+                capturedPhotos = emptyList(),
+                usbDeviceCount = 1,
+                hasUsbPermission = false,
+                supportedFeatures = emptyList(),
+                error = null,
+                liveViewFrame = null,
+                supportedCamera = null
+            )
+
+            val mockCameraFeed = listOf(
+                com.inik.camcon.domain.model.Camera(
+                    id = "canon_r5",
+                    name = "Canon EOS R5",
+                    isActive = false
+                )
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                CameraConnectionButtons(
+                    uiState = mockUiState,
+                    cameraFeed = mockCameraFeed,
+                    viewModel = hiltViewModel()
+                )
+            }
+        }
+    }
+}
+
+@Preview(name = "Shooting Mode Chips", showBackground = true)
+@Composable
+fun ShootingModeChipsPreview() {
+    MaterialTheme {
+        Surface {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("Enabled State:", fontWeight = FontWeight.Bold)
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(ShootingMode.values()) { mode ->
+                        ShootingModeChip(
+                            mode = mode,
+                            isSelected = mode == ShootingMode.BURST,
+                            isEnabled = true,
+                            onClick = { }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text("Disabled State:", fontWeight = FontWeight.Bold)
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(ShootingMode.values()) { mode ->
+                        ShootingModeChip(
+                            mode = mode,
+                            isSelected = mode == ShootingMode.SINGLE,
+                            isEnabled = false,
+                            onClick = { }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Preview(name = "Timelapse Dialog", showBackground = true)
+@Composable
+fun TimelapseSettingsDialogPreview() {
+    MaterialTheme {
+        Surface {
+            TimelapseSettingsDialog(
+                onConfirm = { _, _ -> },
+                onDismiss = { }
+            )
         }
     }
 }
