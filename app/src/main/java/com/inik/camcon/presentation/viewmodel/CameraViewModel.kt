@@ -490,6 +490,7 @@ class CameraViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLiveViewActive = false,
+                            liveViewFrame = null,
                             isLiveViewLoading = false,
                             error = "라이브뷰 시작 실패: ${e.message}"
                         )
@@ -515,6 +516,8 @@ class CameraViewModel @Inject constructor(
                         )
                     }
                 }
+                Log.d("CameraViewModel", "라이브뷰 중지 성공. PC 모드 종료를 위해 disconnectCamera 호출.")
+                disconnectCamera()
             } catch (e: Exception) {
                 Log.e("CameraViewModel", "라이브뷰 중지 중 예외 발생", e)
                 withContext(Dispatchers.Main) {
@@ -527,6 +530,8 @@ class CameraViewModel @Inject constructor(
                         )
                     }
                 }
+                Log.w("CameraViewModel", "라이브뷰 중지 실패했으나, 카메라 연결 해제 시도")
+                disconnectCamera()
             }
         }
     }
@@ -672,7 +677,7 @@ class CameraViewModel @Inject constructor(
     }
 
     fun disconnectCamera() {
-        // 모든 진행 중인 작업 취소
+        Log.d("CameraViewModel", "disconnectCamera 호출됨. PC 모드 종료 시도.")
         liveViewJob?.cancel()
         timelapseJob?.cancel()
         initializationJob?.cancel()
@@ -696,6 +701,7 @@ class CameraViewModel @Inject constructor(
                         )
                     }
                 }
+                Log.i("CameraViewModel", "카메라 연결 해제 성공 (UseCase). PC 모드 종료됨.")
             } catch (e: Exception) {
                 Log.e("CameraViewModel", "카메라 연결 해제 실패", e)
                 withContext(Dispatchers.Main) {
