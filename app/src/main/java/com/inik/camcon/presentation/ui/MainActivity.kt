@@ -7,15 +7,26 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.*
-import androidx.compose.material.*
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.BottomNavigation
+import androidx.compose.material.BottomNavigationItem
+import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Scaffold
+import androidx.compose.material.Text
+import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.Photo
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -25,12 +36,13 @@ import androidx.navigation.compose.rememberNavController
 import com.inik.camcon.R
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
 import com.inik.camcon.presentation.theme.CamConTheme
-import com.inik.camcon.presentation.ui.screens.PhotoPreviewScreen
 import com.inik.camcon.presentation.ui.screens.CameraControlScreen
+import com.inik.camcon.presentation.ui.screens.PhotoPreviewScreen
 import com.inik.camcon.presentation.ui.screens.ServerPhotosScreen
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.StateFlow
-import org.json.JSONObject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 sealed class BottomNavItem(val route: String, val titleRes: Int, val icon: ImageVector) {
@@ -130,8 +142,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // USB 디바이스 연결 Intent 처리
-        handleUsbIntent(intent)
+        // USB 디바이스 연결 Intent 처리를 비동기로 수행
+        lifecycleScope.launch(Dispatchers.IO) {
+            handleUsbIntent(intent)
+        }
 
         setContent {
             CamConTheme {
@@ -147,10 +161,13 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        handleUsbIntent(intent)
+        // USB Intent 처리를 비동기로 수행
+        lifecycleScope.launch(Dispatchers.IO) {
+            handleUsbIntent(intent)
+        }
     }
 
-    private fun handleUsbIntent(intent: Intent) {
+    private suspend fun handleUsbIntent(intent: Intent) = withContext(Dispatchers.IO) {
         when (intent.action) {
             UsbManager.ACTION_USB_DEVICE_ATTACHED -> {
                 val device: UsbDevice? = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
@@ -164,11 +181,13 @@ class MainActivity : ComponentActivity() {
                     // 즉시 권한 요청
                     if (!isUsbCameraDevice(it)) {
                         Log.d(TAG, "카메라 디바이스가 아님")
-                        return
+                        return@withContext
                     }
 
                     Log.d(TAG, "카메라 디바이스 확인됨, 권한 요청")
-                    usbCameraManager.requestPermission(it)
+                    withContext(Dispatchers.Main) {
+                        usbCameraManager.requestPermission(it)
+                    }
                 }
             }
             UsbManager.ACTION_USB_DEVICE_DETACHED -> {
@@ -197,11 +216,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        // 앱이 다시 활성화될 때 USB 디바이스 확인
-        checkUsbDevicesOnResume()
+        // 앱이 다시 활성화될 때 USB 디바이스 확인을 비동기로 수행
+        lifecycleScope.launch(Dispatchers.IO) {
+            checkUsbDevicesOnResume()
+        }
     }
 
-    private fun checkUsbDevicesOnResume() {
+    private suspend fun checkUsbDevicesOnResume() = withContext(Dispatchers.IO) {
         try {
             val devices = usbCameraManager.getCameraDevices()
             Log.d(TAG, "앱 재개 시 USB 디바이스 확인: ${devices.size}개")
@@ -209,11 +230,23 @@ class MainActivity : ComponentActivity() {
             devices.forEach { device ->
                 if (!usbCameraManager.hasUsbPermission.value) {
                     Log.d(TAG, "권한이 없는 디바이스 발견, 권한 요청: ${device.deviceName}")
-                    usbCameraManager.requestPermission(device)
+                    withContext(Dispatchers.Main) {
+                        usbCameraManager.requestPermission(device)
+                    }
                 }
             }
         } catch (e: Exception) {
             Log.e(TAG, "USB 디바이스 확인 중 오류", e)
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Activity가 종료될 때 USB 매니저 정리
+        try {
+            usbCameraManager.cleanup()
+        } catch (e: Exception) {
+            Log.w(TAG, "USB 매니저 정리 중 오류", e)
         }
     }
 }
