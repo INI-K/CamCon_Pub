@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.ui.unit.sp
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
 
@@ -168,19 +169,57 @@ fun PhotoThumbnail(
         elevation = 2.dp
     ) {
         Box {
-            // TODO: 실제 카메라에서 썸네일 가져오기
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.LightGray),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.PhotoLibrary,
-                    contentDescription = null,
-                    tint = Color.Gray,
-                    modifier = Modifier.size(32.dp)
-                )
+            // 썸네일이 있으면 실제 이미지 표시, 없으면 플레이스홀더
+            if (photo.thumbnailPath != null) {
+                // TODO: 실제 이미지 로딩을 위해 Coil 라이브러리 추가 필요
+                // 현재는 썸네일 정보가 있다는 것을 시각적으로 표시
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFF4CAF50)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            Icons.Default.PhotoLibrary,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Text(
+                            text = "썸네일",
+                            style = MaterialTheme.typography.caption,
+                            color = Color.White,
+                            fontSize = 10.sp
+                        )
+                    }
+                }
+            } else {
+                // 썸네일이 없을 때 기본 플레이스홀더
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.LightGray),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            Icons.Default.PhotoLibrary,
+                            contentDescription = null,
+                            tint = Color.Gray,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Text(
+                            text = "이미지",
+                            style = MaterialTheme.typography.caption,
+                            color = Color.Gray
+                        )
+                    }
+                }
             }
 
             // 파일 이름 표시
@@ -213,7 +252,7 @@ fun PhotoDetailDialog(
         title = { Text(photo.name) },
         text = {
             Column {
-                // TODO: 실제 카메라에서 이미지 가져오기
+                // 사진 미리보기
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -221,12 +260,21 @@ fun PhotoDetailDialog(
                         .background(Color.LightGray),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        Icons.Default.PhotoLibrary,
-                        contentDescription = null,
-                        tint = Color.Gray,
-                        modifier = Modifier.size(64.dp)
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            Icons.Default.PhotoLibrary,
+                            contentDescription = null,
+                            tint = Color.Gray,
+                            modifier = Modifier.size(64.dp)
+                        )
+                        Text(
+                            text = "미리보기",
+                            style = MaterialTheme.typography.caption,
+                            color = Color.Gray
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
