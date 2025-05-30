@@ -19,6 +19,7 @@ import com.inik.camcon.domain.usecase.camera.CheckCameraSupportUseCase
 import com.inik.camcon.domain.usecase.camera.ConnectCameraUseCase
 import com.inik.camcon.domain.usecase.camera.DisconnectCameraUseCase
 import com.inik.camcon.domain.usecase.camera.GetCameraCapabilitiesUseCase
+import com.inik.camcon.domain.usecase.camera.GetCameraPhotosUseCase
 import com.inik.camcon.domain.usecase.camera.GetCameraSettingsUseCase
 import com.inik.camcon.domain.usecase.camera.PerformAutoFocusUseCase
 import com.inik.camcon.domain.usecase.camera.StartLiveViewUseCase
@@ -79,6 +80,7 @@ class CameraViewModel @Inject constructor(
     private val getCameraSettingsUseCase: GetCameraSettingsUseCase,
     private val updateCameraSettingUseCase: UpdateCameraSettingUseCase,
     private val getCameraCapabilitiesUseCase: GetCameraCapabilitiesUseCase,
+    private val getCameraPhotosUseCase: GetCameraPhotosUseCase,
     private val checkCameraSupportUseCase: CheckCameraSupportUseCase,
     private val refreshUsbDevicesUseCase: RefreshUsbDevicesUseCase,
     private val requestUsbPermissionUseCase: RequestUsbPermissionUseCase,
@@ -404,15 +406,21 @@ class CameraViewModel @Inject constructor(
     fun capturePhoto() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                Log.d("CameraViewModel", "=== 사진 촬영 요청 시작 ===")
+                Log.d("CameraViewModel", "현재 UI 상태: isConnected=${_uiState.value.isConnected}")
+                Log.d("CameraViewModel", "현재 UI 상태: isCapturing=${_uiState.value.isCapturing}")
+                Log.d("CameraViewModel", "촬영 모드: ${_uiState.value.shootingMode}")
+
                 _uiState.update { it.copy(isCapturing = true, error = null) }
 
                 capturePhotoUseCase(_uiState.value.shootingMode)
                     .onSuccess { photo ->
                         // Photo will be added to the list via observeCapturedPhotos
-                        Log.d("CameraViewModel", "사진 촬영 성공: ${photo.filePath}")
+                        Log.d("CameraViewModel", "✓ 사진 촬영 성공: ${photo.filePath}")
+                        Log.d("CameraViewModel", "파일 크기: ${photo.size} bytes")
                     }
                     .onFailure { error ->
-                        Log.e("CameraViewModel", "사진 촬영 실패", error)
+                        Log.e("CameraViewModel", "❌ 사진 촬영 실패", error)
                         withContext(Dispatchers.Main) {
                             _uiState.update {
                                 it.copy(error = "사진 촬영 실패: ${error.message ?: "알 수 없는 오류"}")
@@ -423,8 +431,9 @@ class CameraViewModel @Inject constructor(
                 withContext(Dispatchers.Main) {
                     _uiState.update { it.copy(isCapturing = false) }
                 }
+                Log.d("CameraViewModel", "=== 사진 촬영 요청 완료 ===")
             } catch (e: Exception) {
-                Log.e("CameraViewModel", "사진 촬영 중 예외 발생", e)
+                Log.e("CameraViewModel", "❌ 사진 촬영 중 예외 발생", e)
                 withContext(Dispatchers.Main) {
                     _uiState.update {
                         it.copy(

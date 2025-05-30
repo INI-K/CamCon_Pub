@@ -4,10 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.repository.CameraRepository
+import com.inik.camcon.domain.usecase.camera.GetCameraPhotosUseCase
+import com.inik.camcon.domain.usecase.camera.PhotoCaptureEventManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -20,7 +24,9 @@ data class PhotoPreviewUiState(
 
 @HiltViewModel
 class PhotoPreviewViewModel @Inject constructor(
-    private val cameraRepository: CameraRepository
+    private val cameraRepository: CameraRepository,
+    private val getCameraPhotosUseCase: GetCameraPhotosUseCase,
+    private val photoCaptureEventManager: PhotoCaptureEventManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PhotoPreviewUiState())
@@ -28,6 +34,16 @@ class PhotoPreviewViewModel @Inject constructor(
 
     init {
         loadCameraPhotos()
+        observePhotoCaptureEvents()
+    }
+
+    private fun observePhotoCaptureEvents() {
+        photoCaptureEventManager.photoCaptureEvent
+            .onEach {
+                // 사진이 촬영되면 목록을 자동으로 새로고침
+                loadCameraPhotos()
+            }
+            .launchIn(viewModelScope)
     }
 
     fun loadCameraPhotos() {
@@ -35,13 +51,19 @@ class PhotoPreviewViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             
             try {
-                // TODO: 실제 카메라에서 사진 목록 가져오기
-                // 임시로 빈 리스트 반환
-                val photos = emptyList<CameraPhoto>()
-                _uiState.value = _uiState.value.copy(
-                    photos = photos,
-                    isLoading = false
-                )
+                getCameraPhotosUseCase()
+                    .onSuccess { photos ->
+                        _uiState.value = _uiState.value.copy(
+                            photos = photos,
+                            isLoading = false
+                        )
+                    }
+                    .onFailure { error ->
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            error = error.message
+                        )
+                    }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,

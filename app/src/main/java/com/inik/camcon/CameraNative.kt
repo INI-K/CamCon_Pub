@@ -54,4 +54,21 @@ object CameraNative {
     external fun startLiveView(callback: LiveViewCallback)
     external fun stopLiveView()
     external fun autoFocus(): Int
+
+    // --- 외부 셔터 버튼 관련 ---
+    external fun enableExternalShutterButton(): Int
+    external fun disableExternalShutterButton(): Int
+    external fun isExternalShutterButtonEnabled(): Boolean
+    external fun setShutterButtonListener(callback: ExternalShutterButtonListener)
+
+    // --- 파일 관리 관련 ---
+    external fun getCameraFileList(): String
+    external fun getCameraThumbnail(photoPath: String): ByteArray?
+}
+
+// 외부 셔터 버튼 이벤트 리스너
+interface ExternalShutterButtonListener {
+    fun onExternalShutterPressed()
+    fun onExternalShutterReleased()
+    fun onExternalShutterHalfPressed()
 }
