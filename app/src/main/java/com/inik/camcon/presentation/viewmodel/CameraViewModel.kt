@@ -1,17 +1,32 @@
 package com.inik.camcon.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.data.datasource.camera.CameraDatabaseManager
 import com.inik.camcon.data.datasource.camera.SupportedCamera
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
-import com.inik.camcon.domain.model.*
+import com.inik.camcon.domain.model.Camera
+import com.inik.camcon.domain.model.CameraCapabilities
+import com.inik.camcon.domain.model.CameraSettings
+import com.inik.camcon.domain.model.CapturedPhoto
+import com.inik.camcon.domain.model.LiveViewFrame
+import com.inik.camcon.domain.model.ShootingMode
+import com.inik.camcon.domain.model.TimelapseSettings
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.usecase.GetCameraFeedUseCase
 import com.inik.camcon.domain.usecase.camera.StartTimelapseUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 data class CameraUiState(
@@ -29,7 +44,8 @@ data class CameraUiState(
     val supportedCamera: SupportedCamera? = null,
     val supportedFeatures: List<String> = emptyList(),
     val cameraCapabilities: CameraCapabilities? = null,
-    val isNativeCameraConnected: Boolean = false
+    val isNativeCameraConnected: Boolean = false,
+    val isLoading: Boolean = false
 )
 
 @HiltViewModel
@@ -200,10 +216,27 @@ class CameraViewModel @Inject constructor(
 
     fun connectCamera(cameraId: String) {
         viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+
             cameraRepository.connectCamera(cameraId)
-                .onFailure { error ->
-                    _uiState.update { it.copy(error = "카메라 연결 실패: ${error.message ?: "알 수 없는 오류"}") }
+                .onSuccess {
+                    Log.d("CameraViewModel", "카메라 연결 성공")
+                    _uiState.update { it.copy(isConnected = true) }
+
+                    // 카메라 capabilities 가져오기
+                    loadCameraCapabilities()
                 }
+                .onFailure { error ->
+                    Log.e("CameraViewModel", "카메라 연결 실패", error)
+                    _uiState.update {
+                        it.copy(
+                            isConnected = false,
+                            error = error.message
+                        )
+                    }
+                }
+
+            _uiState.update { it.copy(isLoading = false) }
         }
     }
 
@@ -280,19 +313,37 @@ class CameraViewModel @Inject constructor(
         if (_uiState.value.isLiveViewActive) return
 
         liveViewJob = viewModelScope.launch {
-            _uiState.update { it.copy(isLiveViewActive = true) }
+            // 라이브뷰 지원 여부 확인
+            val capabilities = _uiState.value.cameraCapabilities
+            if (capabilities != null && !capabilities.canLiveView) {
+                _uiState.update {
+                    it.copy(error = "이 카메라는 라이브뷰를 지원하지 않습니다.")
+                }
+                return@launch
+            }
+
+            Log.d("CameraViewModel", "라이브뷰 시작 시도")
+            _uiState.update { it.copy(isLoading = true) }
 
             cameraRepository.startLiveView()
                 .catch { error ->
+                    Log.e("CameraViewModel", "라이브뷰 오류", error)
                     _uiState.update {
                         it.copy(
                             isLiveViewActive = false,
-                            error = "라이브 뷰 시작 실패: ${error.message ?: "알 수 없는 오류"}"
+                            isLoading = false,
+                            error = error.message
                         )
                     }
                 }
                 .collect { frame ->
-                    _uiState.update { it.copy(liveViewFrame = frame) }
+                    _uiState.update {
+                        it.copy(
+                            isLiveViewActive = true,
+                            liveViewFrame = frame,
+                            isLoading = false
+                        )
+                    }
                 }
         }
     }
@@ -301,13 +352,15 @@ class CameraViewModel @Inject constructor(
         liveViewJob?.cancel()
         liveViewJob = null
 
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             cameraRepository.stopLiveView()
-            _uiState.update {
-                it.copy(
-                    isLiveViewActive = false,
-                    liveViewFrame = null
-                )
+            withContext(Dispatchers.Main) {
+                _uiState.update {
+                    it.copy(
+                        isLiveViewActive = false,
+                        liveViewFrame = null
+                    )
+                }
             }
         }
     }
@@ -394,6 +447,20 @@ class CameraViewModel @Inject constructor(
                     it.copy(error = "카메라 연결 해제 실패: ${e.message}")
                 }
             }
+        }
+    }
+
+    private fun loadCameraCapabilities() {
+        viewModelScope.launch {
+            cameraRepository.getCameraCapabilities()
+                .onSuccess { capabilities ->
+                    _uiState.update {
+                        it.copy(cameraCapabilities = capabilities)
+                    }
+                }
+                .onFailure { error ->
+                    Log.e("CameraViewModel", "Failed to load camera capabilities", error)
+                }
         }
     }
 }

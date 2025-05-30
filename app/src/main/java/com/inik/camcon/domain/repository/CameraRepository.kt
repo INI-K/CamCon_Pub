@@ -1,6 +1,13 @@
 package com.inik.camcon.domain.repository
 
-import com.inik.camcon.domain.model.*
+import com.inik.camcon.domain.model.BracketingSettings
+import com.inik.camcon.domain.model.Camera
+import com.inik.camcon.domain.model.CameraCapabilities
+import com.inik.camcon.domain.model.CameraSettings
+import com.inik.camcon.domain.model.CapturedPhoto
+import com.inik.camcon.domain.model.LiveViewFrame
+import com.inik.camcon.domain.model.ShootingMode
+import com.inik.camcon.domain.model.TimelapseSettings
 import kotlinx.coroutines.flow.Flow
 
 interface CameraRepository {
@@ -13,6 +20,7 @@ interface CameraRepository {
     // 카메라 정보
     suspend fun getCameraInfo(): Result<String>
     suspend fun getCameraSettings(): Result<CameraSettings>
+    suspend fun getCameraCapabilities(): Result<CameraCapabilities?>
     suspend fun updateCameraSetting(key: String, value: String): Result<Boolean>
 
     // 촬영 관련
