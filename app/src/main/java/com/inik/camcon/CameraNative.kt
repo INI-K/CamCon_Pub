@@ -29,7 +29,7 @@ object CameraNative {
     external fun listenCameraEvents(callback: CameraCaptureListener)
     external fun initCameraWithFd(fd: Int, nativeLibDir: String): Int
     external fun capturePhoto(): Int
-    external fun capturePhotoAsync(callback: CameraCaptureListener)
+    external fun capturePhotoAsync(callback: CameraCaptureListener, saveDir: String)
     external fun getCameraSummary(): String
     external fun closeCamera()
     external fun detectCamera(): String
