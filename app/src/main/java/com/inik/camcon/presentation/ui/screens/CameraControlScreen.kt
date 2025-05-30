@@ -93,7 +93,10 @@ import com.inik.camcon.R
 import com.inik.camcon.data.datasource.camera.SupportedCamera
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterialApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -659,26 +662,60 @@ fun FullscreenLiveViewArea(
     if (uiState.isLiveViewActive && uiState.liveViewFrame != null) {
         // 라이브뷰 프레임 표시
         uiState.liveViewFrame?.let { frame ->
-            val bitmap = remember(frame) {
-                try {
-                    android.graphics.BitmapFactory.decodeByteArray(
-                        frame.data,
-                        0,
-                        frame.data.size
-                    )
-                } catch (e: Exception) {
-                    Log.e("FullscreenLiveView", "프레임 디코딩 실패", e)
-                    null
+            var bitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+
+            // DisposableEffect를 사용하여 프레임 변경 시 메모리 정리
+            DisposableEffect(frame) {
+                val job = CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        val decodedBitmap = android.graphics.BitmapFactory.decodeByteArray(
+                            frame.data,
+                            0,
+                            frame.data.size
+                        )
+
+                        withContext(Dispatchers.Main) {
+                            // 기존 비트맵 정리
+                            bitmap?.takeIf { !it.isRecycled }?.recycle()
+                            bitmap = decodedBitmap
+                        }
+                    } catch (e: Exception) {
+                        Log.e("FullscreenLiveView", "프레임 디코딩 실패", e)
+                        withContext(Dispatchers.Main) {
+                            bitmap?.takeIf { !it.isRecycled }?.recycle()
+                            bitmap = null
+                        }
+                    }
+                }
+
+                onDispose {
+                    job.cancel()
+                    bitmap?.takeIf { !it.isRecycled }?.recycle()
+                    bitmap = null
                 }
             }
 
-            bitmap?.let {
-                Image(
-                    bitmap = it.asImageBitmap(),
-                    contentDescription = "Live View",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit
-                )
+            bitmap?.let { bmp ->
+                if (!bmp.isRecycled) {
+                    Image(
+                        bitmap = bmp.asImageBitmap(),
+                        contentDescription = "Live View",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit
+                    )
+                } else {
+                    // 비트맵이 재활용된 경우
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "라이브뷰 프레임 처리 중...",
+                            color = Color.White,
+                            fontSize = 16.sp
+                        )
+                    }
+                }
             } ?: run {
                 // 프레임 디코딩 실패 시
                 Box(
@@ -1029,27 +1066,50 @@ fun CameraPreviewArea(
                 contentAlignment = Alignment.Center
             ) {
                 uiState.liveViewFrame?.let { frame ->
-                    // Convert byte array to Bitmap and display
-                    val bitmap = remember(frame) {
-                        try {
-                            android.graphics.BitmapFactory.decodeByteArray(
-                                frame.data,
-                                0,
-                                frame.data.size
-                            )
-                        } catch (e: Exception) {
-                            Log.e("CameraPreview", "프레임 디코딩 실패", e)
-                            null
+                    var bitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+
+                    // DisposableEffect를 사용하여 프레임 변경 시 메모리 정리
+                    DisposableEffect(frame) {
+                        val job = CoroutineScope(Dispatchers.IO).launch {
+                            try {
+                                val decodedBitmap = android.graphics.BitmapFactory.decodeByteArray(
+                                    frame.data,
+                                    0,
+                                    frame.data.size
+                                )
+
+                                withContext(Dispatchers.Main) {
+                                    // 기존 비트맵 정리
+                                    bitmap?.takeIf { !it.isRecycled }?.recycle()
+                                    bitmap = decodedBitmap
+                                }
+                            } catch (e: Exception) {
+                                Log.e("CameraPreview", "프레임 디코딩 실패", e)
+                                withContext(Dispatchers.Main) {
+                                    bitmap?.takeIf { !it.isRecycled }?.recycle()
+                                    bitmap = null
+                                }
+                            }
+                        }
+
+                        onDispose {
+                            job.cancel()
+                            bitmap?.takeIf { !it.isRecycled }?.recycle()
+                            bitmap = null
                         }
                     }
 
-                    bitmap?.let {
-                        Image(
-                            bitmap = it.asImageBitmap(),
-                            contentDescription = "Live View",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Fit
-                        )
+                    bitmap?.let { bmp ->
+                        if (!bmp.isRecycled) {
+                            Image(
+                                bitmap = bmp.asImageBitmap(),
+                                contentDescription = "Live View",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Fit
+                            )
+                        } else {
+                            LoadingIndicator("라이브뷰 프레임 처리 중...")
+                        }
                     } ?: run {
                         LoadingIndicator("라이브뷰 프레임 로딩 중...")
                     }
@@ -1094,6 +1154,11 @@ fun CameraPreviewArea(
         // 전역 로딩 오버레이
         if (uiState.isCapturing) {
             LoadingOverlay("촬영 중...")
+        }
+
+        // 라이브뷰 로딩 오버레이
+        if (uiState.isLiveViewLoading) {
+            LoadingOverlay("라이브뷰 시작 중...")
         }
     }
 }
@@ -1731,15 +1796,25 @@ fun CaptureControlsContent(
         onClick = {
             viewModel.performAutoFocus()
         },
-        enabled = uiState.isConnected,
+        enabled = uiState.isConnected && !uiState.isFocusing, // 포커싱 중에는 비활성화
         modifier = Modifier.size(48.dp)
     ) {
-        Icon(
-            Icons.Default.CenterFocusStrong,
-            contentDescription = stringResource(R.string.focus),
-            tint = if (uiState.isConnected) Color.White else Color.Gray,
-            modifier = Modifier.size(32.dp)
-        )
+        if (uiState.isFocusing) {
+            // 포커싱 중일 때 로딩 인디케이터 표시
+            CircularProgressIndicator(
+                color = Color.White,
+                modifier = Modifier.size(24.dp),
+                strokeWidth = 2.dp
+            )
+        } else {
+            // 평소에는 아이콘 표시
+            Icon(
+                Icons.Default.CenterFocusStrong,
+                contentDescription = stringResource(R.string.focus),
+                tint = if (uiState.isConnected) Color.White else Color.Gray,
+                modifier = Modifier.size(32.dp)
+            )
+        }
     }
 }
 
@@ -1845,10 +1920,10 @@ fun PhotoThumbnail(
     var bitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
     var isLoading by remember { mutableStateOf(true) }
 
-    // 비동기로 이미지 로드
-    LaunchedEffect(photo.filePath) {
-        isLoading = true
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    // DisposableEffect를 사용하여 비트맵 메모리 정리
+    DisposableEffect(photo.filePath) {
+        val job = CoroutineScope(Dispatchers.IO).launch {
+            isLoading = true
             try {
                 // IO 스레드에서 이미지 디코딩
                 val options = android.graphics.BitmapFactory.Options().apply {
@@ -1862,15 +1937,34 @@ fun PhotoThumbnail(
                     calculateInSampleSize(options, size.value.toInt(), size.value.toInt())
                 options.inJustDecodeBounds = false
 
+                // 메모리 효율성을 위한 추가 옵션
+                options.inPreferredConfig = android.graphics.Bitmap.Config.RGB_565
+                options.inDither = false
+                options.inPurgeable = true
+
                 val loadedBitmap =
                     android.graphics.BitmapFactory.decodeFile(photo.filePath, options)
-                bitmap = loadedBitmap
+
+                withContext(Dispatchers.Main) {
+                    // 기존 비트맵이 있다면 해제
+                    bitmap?.takeIf { !it.isRecycled }?.recycle()
+                    bitmap = loadedBitmap
+                    isLoading = false
+                }
             } catch (e: Exception) {
                 Log.e("PhotoThumbnail", "이미지 로드 실패: ${photo.filePath}", e)
-                bitmap = null
-            } finally {
-                isLoading = false
+                withContext(Dispatchers.Main) {
+                    bitmap = null
+                    isLoading = false
+                }
             }
+        }
+
+        onDispose {
+            // Composable이 해제될 때 비트맵 메모리 해제
+            job.cancel()
+            bitmap?.takeIf { !it.isRecycled }?.recycle()
+            bitmap = null
         }
     }
 
@@ -1898,7 +1992,7 @@ fun PhotoThumbnail(
                     )
                 }
 
-                bitmap != null -> {
+                bitmap != null && !bitmap!!.isRecycled -> {
                     // 이미지 표시
                     Image(
                         bitmap = bitmap!!.asImageBitmap(),
