@@ -40,12 +40,7 @@ interface CameraRepository {
     suspend fun manualFocus(x: Float, y: Float): Result<Boolean>
     suspend fun setFocusPoint(x: Float, y: Float): Result<Boolean>
 
-    // 외부 셔터 버튼 제어
-    suspend fun enableExternalShutterButton(): Result<Boolean>
-    suspend fun disableExternalShutterButton(): Result<Boolean>
-    suspend fun isExternalShutterButtonEnabled(): Boolean
-
-    // 파일 관리
+    // 사진 관리
     fun getCapturedPhotos(): Flow<List<CapturedPhoto>>
     suspend fun getCameraPhotos(): Result<List<com.inik.camcon.domain.model.CameraPhoto>>
     suspend fun deletePhoto(photoId: String): Result<Boolean>
