@@ -3,7 +3,6 @@ package com.inik.camcon
 import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
 import com.inik.camcon.data.datasource.nativesource.LiveViewCallback
 
-
 object CameraNative {
     init {
         // 필수 라이브러리 먼저 로드
@@ -55,20 +54,7 @@ object CameraNative {
     external fun stopLiveView()
     external fun autoFocus(): Int
 
-    // --- 외부 셔터 버튼 관련 ---
-    external fun enableExternalShutterButton(): Int
-    external fun disableExternalShutterButton(): Int
-    external fun isExternalShutterButtonEnabled(): Boolean
-    external fun setShutterButtonListener(callback: ExternalShutterButtonListener)
-
     // --- 파일 관리 관련 ---
     external fun getCameraFileList(): String
     external fun getCameraThumbnail(photoPath: String): ByteArray?
-}
-
-// 외부 셔터 버튼 이벤트 리스너
-interface ExternalShutterButtonListener {
-    fun onExternalShutterPressed()
-    fun onExternalShutterReleased()
-    fun onExternalShutterHalfPressed()
 }
