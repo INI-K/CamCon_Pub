@@ -43,6 +43,12 @@ interface CameraRepository {
     // 사진 관리
     fun getCapturedPhotos(): Flow<List<CapturedPhoto>>
     suspend fun getCameraPhotos(): Result<List<com.inik.camcon.domain.model.CameraPhoto>>
+    suspend fun getCameraPhotosPaged(
+        page: Int,
+        pageSize: Int = 20
+    ): Result<com.inik.camcon.domain.model.PaginatedCameraPhotos>
+
+    suspend fun getCameraThumbnail(photoPath: String): Result<ByteArray>
     suspend fun deletePhoto(photoId: String): Result<Boolean>
     suspend fun downloadPhotoFromCamera(photoId: String): Result<CapturedPhoto>
 }

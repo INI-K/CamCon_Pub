@@ -56,5 +56,9 @@ object CameraNative {
 
     // --- 파일 관리 관련 ---
     external fun getCameraFileList(): String
+    external fun getCameraFileListPaged(page: Int, pageSize: Int): String  // 페이징 지원
+    external fun invalidateFileCache()  // 캐시 무효화
     external fun getCameraThumbnail(photoPath: String): ByteArray?
+    external fun downloadCameraPhoto(photoPath: String): ByteArray?
+    external fun deleteCameraPhoto(photoPath: String): Boolean
 }
