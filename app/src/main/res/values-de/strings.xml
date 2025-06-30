@@ -1,6 +1,6 @@
 <resources>
     <!-- App-Informationen -->
-    <string name="app_name">CamConT</string>
+    <string name="app_name">CamCon</string>
     <string name="app_description">Professionelle Kamera-Steuerung für Android</string>
 
     <!-- Google Sign-In -->
@@ -26,7 +26,7 @@
     <string name="login">Anmelden</string>
     <string name="logout">Abmelden</string>
     <string name="login_with_google">Mit Google anmelden</string>
-    <string name="welcome">Willkommen bei CamConT</string>
+    <string name="welcome">Willkommen bei CamCon</string>
     <string name="welcome_message">Professionelle Kamera-Steuerung griffbereit</string>
     <string name="login_required">Bitte melden Sie sich an, um fortzufahren</string>
     <string name="login_success">Anmeldung erfolgreich</string>
