@@ -67,6 +67,13 @@ android {
     }
 }
 
+// KSP configuration for better performance
+ksp {
+    arg("dagger.hilt.shareTestComponents", "true")
+    arg("dagger.fastInit", "enabled")
+    arg("dagger.formatGeneratedSource", "disabled")
+}
+
 dependencies {
 
     implementation libs.androidx.core.ktx
