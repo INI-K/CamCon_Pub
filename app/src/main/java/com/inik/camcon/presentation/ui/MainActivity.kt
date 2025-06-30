@@ -121,9 +121,9 @@ fun MainScreen(onSettingsClick: () -> Unit) {
             Modifier.padding(innerPadding)
         ) {
             composable(BottomNavItem.PhotoPreview.route) { PhotoPreviewScreen() }
-            composable(BottomNavItem.CameraControl.route) { 
-    CameraControlScreen() 
-}
+            composable(BottomNavItem.CameraControl.route) {
+                CameraControlScreen()
+            }
             composable(BottomNavItem.ServerPhotos.route) { ServerPhotosScreen() }
         }
     }
@@ -216,27 +216,51 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        // 앱이 다시 활성화될 때 USB 디바이스 확인을 비동기로 수행
+        // 앱이 다시 활성화될 때 USB 상태만 확인 (디바이스 재검색은 하지 않음)
         lifecycleScope.launch(Dispatchers.IO) {
-            checkUsbDevicesOnResume()
+            checkUsbPermissionStatus()
         }
     }
 
-    private suspend fun checkUsbDevicesOnResume() = withContext(Dispatchers.IO) {
+    private suspend fun checkUsbPermissionStatus() = withContext(Dispatchers.IO) {
         try {
-            val devices = usbCameraManager.getCameraDevices()
-            Log.d(TAG, "앱 재개 시 USB 디바이스 확인: ${devices.size}개")
+            // 이미 연결된 디바이스가 있는지 확인 (새로 검색하지 않음)
+            val currentDevice = usbCameraManager.getCurrentDevice()
 
-            devices.forEach { device ->
+            if (currentDevice != null) {
+                Log.d(TAG, "앱 재개 시 기존 연결된 디바이스 확인: ${currentDevice.deviceName}")
+
+                // 권한 상태만 확인
                 if (!usbCameraManager.hasUsbPermission.value) {
-                    Log.d(TAG, "권한이 없는 디바이스 발견, 권한 요청: ${device.deviceName}")
+                    Log.d(TAG, "기존 디바이스의 권한이 없음, 권한 요청: ${currentDevice.deviceName}")
                     withContext(Dispatchers.Main) {
-                        usbCameraManager.requestPermission(device)
+                        usbCameraManager.requestPermission(currentDevice)
                     }
+                } else {
+                    Log.d(TAG, "기존 디바이스에 권한이 있음: ${currentDevice.deviceName}")
+                }
+            } else {
+                // 연결된 디바이스가 없으면 StateFlow를 통해 확인
+                // 캐시된 목록이 있을 것이므로 빠르게 처리됨
+                val devices = usbCameraManager.getCameraDevices()
+                if (devices.isNotEmpty()) {
+                    Log.d(TAG, "앱 재개 시 캐시된 디바이스 목록 확인: ${devices.size}개")
+
+                    val device = devices.first()
+                    if (!usbCameraManager.hasUsbPermission.value) {
+                        Log.d(TAG, "권한이 없는 디바이스 발견, 권한 요청: ${device.deviceName}")
+                        withContext(Dispatchers.Main) {
+                            usbCameraManager.requestPermission(device)
+                        }
+                    }else{
+                        Log.d(TAG, "카메라 디바이스 연결됨")
+                    }
+                } else {
+                    Log.d(TAG, "앱 재개 시 USB 카메라 디바이스 없음")
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "USB 디바이스 확인 중 오류", e)
+            Log.e(TAG, "USB 권한 상태 확인 중 오류", e)
         }
     }
 

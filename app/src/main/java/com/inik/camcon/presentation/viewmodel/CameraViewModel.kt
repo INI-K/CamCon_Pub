@@ -213,6 +213,8 @@ class CameraViewModel @Inject constructor(
 
         usbCameraManager.isNativeCameraConnected
             .onEach { isConnected ->
+                Log.d("CameraViewModel", "네이티브 카메라 연결 상태 변경: $isConnected")
+
                 _uiState.update {
                     it.copy(
                         isNativeCameraConnected = isConnected,
@@ -221,11 +223,60 @@ class CameraViewModel @Inject constructor(
                 }
 
                 if (isConnected) {
-                    loadCameraSettingsAsync()
-                    checkCameraSupportAsync()
+                    // 네이티브 카메라가 연결되면 자동으로 CameraRepository의 connectCamera 호출
+                    Log.d("CameraViewModel", "네이티브 카메라 연결됨 - 자동으로 카메라 연결 시작")
+                    autoConnectCamera()
+                } else {
+                    Log.d("CameraViewModel", "네이티브 카메라 연결 해제됨")
                 }
             }
             .launchIn(viewModelScope)
+    }
+
+    /**
+     * 네이티브 카메라가 연결되었을 때 자동으로 CameraRepository에 연결
+     */
+    private fun autoConnectCamera() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                Log.d("CameraViewModel", "자동 카메라 연결 시작")
+
+                // USB로 연결된 카메라를 자동으로 연결
+                connectCameraUseCase("auto")
+                    .onSuccess {
+                        Log.d("CameraViewModel", "자동 카메라 연결 성공 - 이벤트 리스너 활성화됨")
+                        withContext(Dispatchers.Main) {
+                            _uiState.update {
+                                it.copy(
+                                    isConnected = true,
+                                    error = null
+                                )
+                            }
+                        }
+
+                        // 카메라 capabilities 가져오기
+                        loadCameraCapabilitiesAsync()
+                        // 카메라 설정과 지원 확인도 수행
+                        loadCameraSettingsAsync()
+                        checkCameraSupportAsync()
+                    }
+                    .onFailure { error ->
+                        Log.e("CameraViewModel", "자동 카메라 연결 실패", error)
+                        withContext(Dispatchers.Main) {
+                            _uiState.update {
+                                it.copy(error = "자동 카메라 연결 실패: ${error.message}")
+                            }
+                        }
+                    }
+            } catch (e: Exception) {
+                Log.e("CameraViewModel", "자동 카메라 연결 중 예외 발생", e)
+                withContext(Dispatchers.Main) {
+                    _uiState.update {
+                        it.copy(error = "자동 카메라 연결 실패: ${e.message}")
+                    }
+                }
+            }
+        }
     }
 
     private fun loadCameraSettingsAsync() {
@@ -309,6 +360,9 @@ class CameraViewModel @Inject constructor(
 
                         // 카메라 capabilities 가져오기
                         loadCameraCapabilitiesAsync()
+                        // 카메라 설정과 지원 확인도 수행
+                        loadCameraSettingsAsync()
+                        checkCameraSupportAsync()
                     }
                     .onFailure { error ->
                         Log.e("CameraViewModel", "카메라 연결 실패", error)
