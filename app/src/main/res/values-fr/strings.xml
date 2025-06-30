@@ -1,6 +1,6 @@
 <resources>
     <!-- Informations App -->
-    <string name="app_name">CamConT</string>
+    <string name="app_name">CamCon</string>
     <string name="app_description">Contrôle Professionnel d\'Appareil Photo pour Android</string>
 
     <!-- Google Sign-In -->
@@ -26,7 +26,7 @@
     <string name="login">Se connecter</string>
     <string name="logout">Se déconnecter</string>
     <string name="login_with_google">Se connecter avec Google</string>
-    <string name="welcome">Bienvenue dans CamConT</string>
+    <string name="welcome">Bienvenue dans CamCon</string>
     <string name="welcome_message">Contrôle professionnel d\'appareil photo à portée de main</string>
     <string name="login_required">Veuillez vous connecter pour continuer</string>
     <string name="login_success">Connexion réussie</string>
