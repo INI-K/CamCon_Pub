@@ -2,7 +2,6 @@ package com.inik.camcon.di
 
 import android.content.Context
 import com.google.firebase.auth.FirebaseAuth
-import com.inik.camcon.data.datasource.camera.CameraDatabaseManager
 import com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
 import dagger.Module
@@ -29,8 +28,8 @@ object AppModule {
     @Singleton
     fun provideUsbCameraManager(@ApplicationContext context: Context) = UsbCameraManager(context)
 
-    @Provides
-    @Singleton
-    fun provideCameraDatabaseManager(@ApplicationContext context: Context) =
-        CameraDatabaseManager(context)
+//    @Provides
+//    @Singleton
+//    fun provideCameraDatabaseManager(@ApplicationContext context: Context) =
+//        CameraDatabaseManager(context)
 }

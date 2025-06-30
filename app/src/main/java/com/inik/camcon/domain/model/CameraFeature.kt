@@ -72,7 +72,9 @@ data class CapturedPhoto(
     val settings: CameraSettings?,
     val size: Long,
     val width: Int,
-    val height: Int
+    val height: Int,
+    val isDownloading: Boolean = false, // 다운로드 진행 중 여부
+    val downloadCompleteTime: Long? = null // 다운로드 완료 시간
 )
 
 // 카메라 기능 정보
