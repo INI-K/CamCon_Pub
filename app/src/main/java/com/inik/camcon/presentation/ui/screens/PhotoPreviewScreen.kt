@@ -1,486 +1,343 @@
 package com.inik.camcon.presentation.ui.screens
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.AlertDialog
-import androidx.compose.material.Card
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Snackbar
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
 import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BrokenImage
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.inik.camcon.R
-import com.inik.camcon.domain.model.CameraPhoto
+import com.inik.camcon.presentation.ui.screens.components.EmptyPhotoState
+import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
+import com.inik.camcon.presentation.ui.screens.components.PhotoThumbnail
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
-import java.io.File
 
+/**
+ * 카메라에서 촬영한 사진들을 미리보기로 보여주는 메인 화면
+ */
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun PhotoPreviewScreen(
     viewModel: PhotoPreviewViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    Column(
-        modifier = Modifier.fillMaxSize()
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = uiState.isLoading,
+        onRefresh = { viewModel.loadCameraPhotos() }
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pullRefresh(pullRefreshState)
     ) {
-        // 헤더
-        TopAppBar(
-            title = {
-                Text(
-                    text = stringResource(R.string.recent_captures),
-                    color = MaterialTheme.colors.onPrimary
-                )
-            },
-            backgroundColor = MaterialTheme.colors.primary,
-            elevation = 4.dp,
-            actions = {
-                if (uiState.photos.isNotEmpty()) {
-                    TextButton(
-                        onClick = { viewModel.loadCameraPhotos() }
-                    ) {
-                        Text(
-                            text = "새로고침",
-                            color = MaterialTheme.colors.onPrimary
-                        )
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // 상단 앱바
+            TopAppBar(
+                title = {
+                    PhotoPreviewTitle(
+                        photoCount = uiState.photos.size,
+                        currentPage = uiState.currentPage,
+                        totalPages = uiState.totalPages
+                    )
+                },
+                backgroundColor = MaterialTheme.colors.primary,
+                elevation = 4.dp,
+                actions = {
+                    if (uiState.photos.isNotEmpty()) {
+                        IconButton(
+                            onClick = { viewModel.loadCameraPhotos() }
+                        ) {
+                            Icon(
+                                Icons.Default.Refresh,
+                                contentDescription = "새로고침",
+                                tint = MaterialTheme.colors.onPrimary
+                            )
+                        }
                     }
                 }
-            }
-        )
+            )
 
-        when {
-            uiState.isLoading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        CircularProgressIndicator(
-                            color = MaterialTheme.colors.primary
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = stringResource(R.string.loading),
-                            style = MaterialTheme.typography.body2,
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-                        )
-                    }
+            // 메인 콘텐츠
+            when {
+                uiState.isLoading && uiState.photos.isEmpty() -> {
+                    LoadingIndicator()
                 }
-            }
 
-            uiState.photos.isEmpty() -> {
-                EmptyPhotoState()
-            }
+                uiState.photos.isEmpty() -> {
+                    EmptyPhotoState()
+                }
 
-            else -> {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
-                    contentPadding = PaddingValues(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(uiState.photos) { photo ->
-                        PhotoThumbnail(
-                            photo = photo,
-                            onClick = { viewModel.selectPhoto(photo) }
-                        )
-                    }
+                else -> {
+                    PhotoGrid(
+                        uiState = uiState,
+                        viewModel = viewModel
+                    )
                 }
             }
         }
+
+        // Pull to refresh 인디케이터
+        PullRefreshIndicator(
+            refreshing = uiState.isLoading,
+            state = pullRefreshState,
+            modifier = Modifier.align(Alignment.TopCenter),
+            backgroundColor = MaterialTheme.colors.surface,
+            contentColor = MaterialTheme.colors.primary
+        )
     }
 
-    // 선택된 사진 상세 보기
+    // 전체화면 사진 뷰어
     uiState.selectedPhoto?.let { photo ->
-        PhotoDetailDialog(
+        FullScreenPhotoViewer(
             photo = photo,
+            photos = uiState.photos,
             onDismiss = { viewModel.selectPhoto(null) },
+            onPhotoChanged = { newPhoto -> viewModel.selectPhoto(newPhoto) },
+            thumbnailData = viewModel.getThumbnail(photo.path),
             onDownload = { viewModel.downloadPhoto(photo) }
         )
     }
 
-    // 에러 표시
+    // 에러 메시지
     uiState.error?.let { error ->
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.BottomCenter
-        ) {
-            Snackbar(
-                modifier = Modifier.padding(16.dp),
-                backgroundColor = MaterialTheme.colors.error
-            ) {
-                Text(
-                    text = error,
-                    color = MaterialTheme.colors.onError
-                )
+        ErrorSnackbar(
+            error = error,
+            onRetry = {
+                viewModel.clearError()
+                viewModel.loadCameraPhotos()
             }
+        )
+    }
+}
+
+/**
+ * 상단 앱바 제목 컴포넌트
+ */
+@Composable
+private fun PhotoPreviewTitle(
+    photoCount: Int,
+    currentPage: Int,
+    totalPages: Int
+) {
+    Column {
+        Text(
+            text = stringResource(R.string.recent_captures),
+            color = MaterialTheme.colors.onPrimary,
+            style = MaterialTheme.typography.h6
+        )
+        if (photoCount > 0) {
+            Text(
+                text = "${photoCount}장의 사진" +
+                        if (totalPages > 0) " (페이지 ${currentPage + 1}/${totalPages})" else "",
+                color = MaterialTheme.colors.onPrimary.copy(alpha = 0.7f),
+                style = MaterialTheme.typography.caption
+            )
         }
     }
 }
 
+/**
+ * 로딩 인디케이터
+ */
 @Composable
-fun EmptyPhotoState() {
+private fun LoadingIndicator() {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(32.dp)
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(
-                imageVector = Icons.Default.CameraAlt,
-                contentDescription = null,
-                modifier = Modifier.size(80.dp),
-                tint = MaterialTheme.colors.onSurface.copy(alpha = 0.3f)
+            CircularProgressIndicator(
+                color = MaterialTheme.colors.primary,
+                modifier = Modifier.size(48.dp)
             )
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "카메라에 저장된 사진이 없습니다",
-                style = MaterialTheme.typography.h6,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "USB로 카메라를 연결해 주세요",
+                text = "카메라에서 사진을 불러오는 중...",
                 style = MaterialTheme.typography.body2,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.5f),
-                textAlign = TextAlign.Center,
-                lineHeight = 20.sp
+                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
             )
         }
     }
 }
 
+/**
+ * 사진 그리드 컴포넌트
+ */
 @Composable
-fun PhotoThumbnail(
-    photo: CameraPhoto,
-    onClick: () -> Unit
+private fun PhotoGrid(
+    uiState: com.inik.camcon.presentation.viewmodel.PhotoPreviewUiState,
+    viewModel: PhotoPreviewViewModel
 ) {
-    Card(
-        modifier = Modifier
-            .aspectRatio(1f)
-            .clip(RoundedCornerShape(8.dp))
-            .clickable { onClick() },
-        elevation = 4.dp,
-        backgroundColor = MaterialTheme.colors.surface
+    val lazyGridState = rememberLazyGridState()
+
+    // 무한 스크롤 구현
+    LaunchedEffect(lazyGridState) {
+        snapshotFlow { lazyGridState.layoutInfo.visibleItemsInfo }
+            .collect { visibleItems ->
+                val lastVisibleItemIndex = visibleItems.lastOrNull()?.index ?: -1
+                val totalItemsCount = uiState.photos.size
+
+                // 마지막에서 5개 아이템 전에 도달하면 다음 페이지 로드
+                if (lastVisibleItemIndex >= totalItemsCount - 5 &&
+                    uiState.hasNextPage &&
+                    !uiState.isLoadingMore
+                ) {
+                    viewModel.loadNextPage()
+                }
+            }
+    }
+
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(3),
+        state = lazyGridState,
+        contentPadding = PaddingValues(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier.fillMaxSize()
     ) {
-        Box {
-            // 실제 이미지 로딩
-            if (!photo.thumbnailPath.isNullOrEmpty() && File(photo.thumbnailPath).exists()) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(photo.thumbnailPath)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = photo.name,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else if (!photo.path.isNullOrEmpty() && File(photo.path).exists()) {
-                // 썸네일이 없으면 원본 이미지 사용
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(photo.path)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = photo.name,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                // 파일이 없을 때 기본 플레이스홀더
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colors.surface),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            Icons.Default.PhotoLibrary,
-                            contentDescription = null,
-                            tint = MaterialTheme.colors.onSurface.copy(alpha = 0.4f),
-                            modifier = Modifier.size(32.dp)
-                        )
-                        Text(
-                            text = "이미지",
-                            style = MaterialTheme.typography.caption,
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.4f),
-                            fontSize = 10.sp
-                        )
-                    }
-                }
-            }
+        items(uiState.photos) { photo ->
+            PhotoThumbnail(
+                photo = photo,
+                onClick = { viewModel.selectPhoto(photo) },
+                thumbnailData = viewModel.getThumbnail(photo.path)
+            )
+        }
 
-            // 파일 이름 오버레이
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = photo.name,
-                    color = Color.White,
-                    style = MaterialTheme.typography.caption,
-                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+        // 더 로딩 중일 때 로딩 인디케이터 표시
+        if (uiState.isLoadingMore) {
+            item(span = { GridItemSpan(3) }) {
+                LoadMoreIndicator()
+            }
+        }
+
+        // 마지막 페이지일 때 완료 메시지
+        if (!uiState.hasNextPage && uiState.photos.isNotEmpty() && !uiState.isLoadingMore) {
+            item(span = { GridItemSpan(3) }) {
+                EndOfListMessage(photoCount = uiState.photos.size)
             }
         }
     }
 }
 
+/**
+ * 더 많은 사진을 로딩 중일 때 표시되는 인디케이터
+ */
 @Composable
-fun PhotoDetailDialog(
-    photo: CameraPhoto,
-    onDismiss: () -> Unit,
-    onDownload: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = photo.name,
-                style = MaterialTheme.typography.h6,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        },
-        text = {
-            Column {
-                // 사진 미리보기
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp),
-                    elevation = 4.dp,
-                    backgroundColor = MaterialTheme.colors.surface
-                ) {
-                    if (!photo.path.isNullOrEmpty() && File(photo.path).exists()) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(photo.path)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = photo.name,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Fit
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Icon(
-                                    Icons.Default.BrokenImage,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colors.onSurface.copy(alpha = 0.4f),
-                                    modifier = Modifier.size(48.dp)
-                                )
-                                Text(
-                                    text = "이미지 로딩 오류",
-                                    style = MaterialTheme.typography.caption,
-                                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.4f)
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // 파일 정보
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    InfoRow(
-                        label = "경로",
-                        value = photo.path ?: "알 수 없음"
-                    )
-                    InfoRow(
-                        label = "크기",
-                        value = formatFileSize(photo.size)
-                    )
-                    if (photo.width > 0 && photo.height > 0) {
-                        InfoRow(
-                            label = "해상도",
-                            value = "${photo.width} x ${photo.height}"
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDownload) {
-                Text("다운로드")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("닫기")
-            }
-        }
-    )
-}
-
-@Composable
-private fun InfoRow(
-    label: String,
-    value: String
-) {
-    Column(
+private fun LoadMoreIndicator() {
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp)
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            CircularProgressIndicator(
+                color = MaterialTheme.colors.primary,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "더 많은 사진 불러오는 중...",
+                style = MaterialTheme.typography.caption,
+                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+            )
+        }
+    }
+}
+
+/**
+ * 리스트 끝에 도달했을 때 표시되는 메시지
+ */
+@Composable
+private fun EndOfListMessage(photoCount: Int) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "$label: $value",
+            text = "모든 사진을 불러왔습니다 (총 ${photoCount}개)",
             style = MaterialTheme.typography.caption,
-            color = MaterialTheme.colors.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            color = MaterialTheme.colors.onSurface.copy(alpha = 0.5f),
+            textAlign = TextAlign.Center
         )
     }
 }
 
-private fun formatFileSize(size: Long): String {
-    return when {
-        size < 1024 -> "$size B"
-        size < 1024 * 1024 -> "${size / 1024} KB"
-        size < 1024 * 1024 * 1024 -> "${size / (1024 * 1024)} MB"
-        else -> "${size / (1024 * 1024 * 1024)} GB"
-    }
-}
-
-// Preview composables
-@Preview(showBackground = true)
+/**
+ * 에러 상황에서 표시되는 스낵바
+ */
 @Composable
-fun EmptyPhotoStatePreview() {
-    MaterialTheme {
-        EmptyPhotoState()
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PhotoThumbnailPreview() {
-    MaterialTheme {
-        val samplePhoto = CameraPhoto(
-            name = "IMG_001.jpg",
-            path = "/storage/camera/IMG_001.jpg",
-            size = 2048576, // 2MB
-            date = System.currentTimeMillis(),
-            width = 1920,
-            height = 1080,
-            thumbnailPath = null
-        )
-        PhotoThumbnail(
-            photo = samplePhoto,
-            onClick = { }
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PhotoDetailDialogPreview() {
-    MaterialTheme {
-        val samplePhoto = CameraPhoto(
-            name = "IMG_001.jpg",
-            path = "/storage/camera/IMG_001.jpg",
-            size = 2048576, // 2MB
-            date = System.currentTimeMillis(),
-            width = 1920,
-            height = 1080,
-            thumbnailPath = null
-        )
-        PhotoDetailDialog(
-            photo = samplePhoto,
-            onDismiss = { },
-            onDownload = { }
-        )
-    }
-}
-
-@Preview(showBackground = true, widthDp = 360, heightDp = 640)
-@Composable
-fun PhotoPreviewScreenWithPhotosPreview() {
-    MaterialTheme {
-        // 샘플 사진들이 있는 상태의 화면
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(3),
-            contentPadding = PaddingValues(8.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            items((1..9).map { index ->
-                CameraPhoto(
-                    name = "IMG_${String.format("%03d", index)}.jpg",
-                    path = "/storage/camera/IMG_${String.format("%03d", index)}.jpg",
-                    size = (1024 * 1024 * (1..5).random()).toLong(),
-                    date = System.currentTimeMillis() - (index * 3600000), // 각각 1시간씩 차이
-                    width = 1920,
-                    height = 1080,
-                    thumbnailPath = null
-                )
-            }) { photo ->
-                PhotoThumbnail(
-                    photo = photo,
-                    onClick = { }
-                )
+private fun ErrorSnackbar(
+    error: String,
+    onRetry: () -> Unit
+) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        Snackbar(
+            modifier = Modifier.padding(16.dp),
+            backgroundColor = MaterialTheme.colors.error,
+            action = {
+                TextButton(onClick = onRetry) {
+                    Text(
+                        text = "재시도",
+                        color = MaterialTheme.colors.onError
+                    )
+                }
             }
+        ) {
+            Text(
+                text = error,
+                color = MaterialTheme.colors.onError
+            )
         }
     }
 }

@@ -12,6 +12,7 @@ import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.CameraSettings
 import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.domain.model.LiveViewFrame
+import com.inik.camcon.domain.model.PaginatedCameraPhotos
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.domain.model.TimelapseSettings
 import com.inik.camcon.domain.repository.CameraRepository
@@ -465,7 +466,29 @@ class CameraRepositoryImpl @Inject constructor(
                 Log.d("카메라레포지토리", "카메라 사진 목록 가져오기 시작")
 
                 // 네이티브 데이터소스를 통해 카메라의 사진 목록 가져오기
+                // (내부에서 이벤트 리스너를 일시 중지함)
                 val nativePhotos = nativeDataSource.getCameraPhotos()
+
+                // 이벤트 리스너가 중지되었을 가능성이 있으므로 안전하게 재시작
+                if (_isConnected.value) {
+                    Log.d("카메라레포지토리", "사진 목록 가져오기 후 이벤트 리스너 상태 확인 및 재시작")
+
+                    // 충분한 대기 시간 후 재시작 (JNI 스레드 정리 대기)
+                    kotlinx.coroutines.delay(500)
+
+                    // 기존 리스너가 완전히 정리되었는지 확인
+                    if (!isEventListenerRunning) {
+                        try {
+                            Log.d("카메라레포지토리", "이벤트 리스너 재시작 시도")
+                            startCameraEventListener()
+                        } catch (e: Exception) {
+                            Log.w("카메라레포지토리", "이벤트 리스너 재시작 실패, 나중에 다시 시도", e)
+                            // 실패해도 사진 목록 반환에는 영향 없음
+                        }
+                    } else {
+                        Log.d("카메라레포지토리", "이벤트 리스너가 이미 실행 중")
+                    }
+                }
 
                 // 사진 정보를 CameraPhoto 모델로 변환
                 val cameraPhotos = nativePhotos.map { nativePhoto ->
@@ -484,6 +507,92 @@ class CameraRepositoryImpl @Inject constructor(
                 Result.success(cameraPhotos)
             } catch (e: Exception) {
                 Log.e("카메라레포지토리", "카메라 사진 목록 가져오기 실패", e)
+                Result.failure(e)
+            }
+        }
+    }
+
+    override suspend fun getCameraPhotosPaged(
+        page: Int,
+        pageSize: Int
+    ): Result<PaginatedCameraPhotos> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("카메라레포지토리", "페이징 카메라 사진 목록 가져오기 시작 (페이지: $page, 크기: $pageSize)")
+
+                // 네이티브 데이터소스를 통해 페이징된 카메라 사진 목록 가져오기
+                val paginatedNativePhotos = nativeDataSource.getCameraPhotosPaged(page, pageSize)
+
+                // 이벤트 리스너 재시작 처리
+                if (_isConnected.value) {
+                    Log.d("카메라레포지토리", "페이징 사진 목록 가져오기 후 이벤트 리스너 상태 확인")
+
+                    kotlinx.coroutines.delay(500)
+
+                    if (!isEventListenerRunning) {
+                        try {
+                            Log.d("카메라레포지토리", "이벤트 리스너 재시작 시도")
+                            startCameraEventListener()
+                        } catch (e: Exception) {
+                            Log.w("카메라레포지토리", "이벤트 리스너 재시작 실패", e)
+                        }
+                    } else {
+                        Log.d("카메라레포지토리", "이벤트 리스너가 이미 실행 중")
+                    }
+                }
+
+                // 사진 정보를 도메인 모델로 변환
+                val cameraPhotos = paginatedNativePhotos.photos.map { nativePhoto ->
+                    CameraPhoto(
+                        path = nativePhoto.path,
+                        name = nativePhoto.name,
+                        size = nativePhoto.size,
+                        date = nativePhoto.date,
+                        width = nativePhoto.width,
+                        height = nativePhoto.height,
+                        thumbnailPath = nativePhoto.thumbnailPath
+                    )
+                }
+
+                val domainPaginatedPhotos = PaginatedCameraPhotos(
+                    photos = cameraPhotos,
+                    currentPage = paginatedNativePhotos.currentPage,
+                    pageSize = paginatedNativePhotos.pageSize,
+                    totalItems = paginatedNativePhotos.totalItems,
+                    totalPages = paginatedNativePhotos.totalPages,
+                    hasNext = paginatedNativePhotos.hasNext
+                )
+
+                Log.d(
+                    "카메라레포지토리",
+                    "페이징 카메라 사진 목록 가져오기 완료: ${cameraPhotos.size}개 (페이지 ${paginatedNativePhotos.currentPage}/${paginatedNativePhotos.totalPages})"
+                )
+                Result.success(domainPaginatedPhotos)
+
+            } catch (e: Exception) {
+                Log.e("카메라레포지토리", "페이징 카메라 사진 목록 가져오기 실패", e)
+                Result.failure(e)
+            }
+        }
+    }
+
+    override suspend fun getCameraThumbnail(photoPath: String): Result<ByteArray> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("카메라레포지토리", "썸네일 가져오기 시작: $photoPath")
+
+                val thumbnailData = nativeDataSource.getCameraThumbnailOptimized(photoPath)
+
+                if (thumbnailData != null) {
+                    Log.d("카메라레포지토리", "썸네일 가져오기 성공: ${thumbnailData.size} bytes")
+                    Result.success(thumbnailData)
+                } else {
+                    Log.w("카메라레포지토리", "썸네일 가져오기 실패: $photoPath")
+                    Result.failure(Exception("썸네일을 가져올 수 없습니다"))
+                }
+
+            } catch (e: Exception) {
+                Log.e("카메라레포지토리", "썸네일 가져오기 중 예외", e)
                 Result.failure(e)
             }
         }
