@@ -1,29 +1,33 @@
 package com.inik.camcon.presentation.ui.screens.components
 
 import android.util.Log
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.calculatePan
-import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 import com.inik.camcon.domain.model.CameraPhoto
-import kotlinx.coroutines.launch
+import kotlin.math.max
+import kotlin.math.min
 
 /**
  * 사진 뷰어의 메인 이미지 콘텐츠
- * 제스처 처리 및 이미지 슬라이드 관리
+ * 갤러리 앱처럼 스와이프, 더블탭 줌, 핀치 줌 지원
  */
 @Composable
 fun PhotoViewerContent(
@@ -40,162 +44,148 @@ fun PhotoViewerContent(
     onAnimateOffset: (Float, Float) -> Unit,
     onPhotoChanged: (CameraPhoto) -> Unit
 ) {
-    val coroutineScope = rememberCoroutineScope()
-    val context = LocalContext.current
-    val screenWidth = context.resources.displayMetrics.widthPixels.toFloat()
+    val configuration = LocalConfiguration.current
+    val density = LocalDensity.current
+    val screenWidth = with(density) { configuration.screenWidthDp.dp.toPx() }
+    val screenHeight = with(density) { configuration.screenHeightDp.dp.toPx() }
 
+    // 페이저 상태 관리
+    val pagerState = rememberPagerState(
+        initialPage = currentPhotoIndex,
+        pageCount = { photos.size }
+    )
+
+    // 확대/축소 상태 관리
+    var imageScale by remember { mutableStateOf(1f) }
+    var imageOffsetX by remember { mutableStateOf(0f) }
+    var imageOffsetY by remember { mutableStateOf(0f) }
     var lastTapTime by remember { mutableStateOf(0L) }
 
-    Log.d("PhotoViewer", "PhotoViewerContent - scale: $scale, offset: ($offsetX, $offsetY)")
+    // 사진이 변경될 때 줌 상태 초기화
+    LaunchedEffect(photo.path) {
+        imageScale = 1f
+        imageOffsetX = 0f
+        imageOffsetY = 0f
+        onScaleChange(1f)
+        onOffsetChange(0f, 0f)
+    }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
-                awaitEachGesture {
-                    val down = awaitFirstDown()
-                    val downTime = System.currentTimeMillis()
+    // 페이저 상태 변경 감지
+    LaunchedEffect(pagerState.currentPage) {
+        if (pagerState.currentPage != currentPhotoIndex && pagerState.currentPage < photos.size) {
+            onPhotoChanged(photos[pagerState.currentPage])
+        }
+    }
 
-                    Log.d("PhotoViewer", "포인터 다운: ${down.position}")
+    // 외부에서 사진이 변경될 때 페이저 동기화
+    LaunchedEffect(currentPhotoIndex) {
+        if (pagerState.currentPage != currentPhotoIndex) {
+            pagerState.animateScrollToPage(currentPhotoIndex)
+        }
+    }
 
-                    do {
-                        val event = awaitPointerEvent()
-                        val canceled = event.changes.any { it.isConsumed }
+    HorizontalPager(
+        state = pagerState,
+        modifier = Modifier.fillMaxSize()
+    ) { pageIndex ->
+        val pagePhoto = photos[pageIndex]
+        val isCurrentPage = pageIndex == pagerState.currentPage
 
-                        if (!canceled) {
-                            val zoomChange = event.calculateZoom()
-                            val panChange = event.calculatePan()
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    // 더블탭 줌 제스처
+                    detectTapGestures(
+                        onDoubleTap = { tapOffset ->
+                            val currentTime = System.currentTimeMillis()
+                            if (currentTime - lastTapTime > 300) { // 중복 방지
+                                lastTapTime = currentTime
+                                Log.d("PhotoViewer", "더블탭 감지! 현재 스케일: $imageScale")
 
-                            Log.d(
-                                "PhotoViewer",
-                                "제스처 - 줌: $zoomChange, 팬: $panChange, 포인터수: ${event.changes.size}"
-                            )
+                                if (imageScale > 1.5f) {
+                                    // 축소
+                                    imageScale = 1f
+                                    imageOffsetX = 0f
+                                    imageOffsetY = 0f
+                                    onAnimateScale(1f)
+                                    onAnimateOffset(0f, 0f)
+                                } else {
+                                    // 확대 (탭한 지점을 중심으로)
+                                    val newScale = 2.5f
+                                    imageScale = newScale
 
-                            when {
-                                // 핀치 줌
-                                event.changes.size > 1 && zoomChange != 1f -> {
-                                    Log.d("PhotoViewer", "핀치 줌!")
-                                    val newScale = (scale * zoomChange).coerceIn(1f, 3f)
-                                    onScaleChange(newScale)
+                                    // 탭한 지점을 화면 중앙으로 이동
+                                    val centerX = screenWidth / 2f
+                                    val centerY = screenHeight / 2f
+                                    imageOffsetX =
+                                        (centerX - tapOffset.x) * (newScale - 1f) / newScale
+                                    imageOffsetY =
+                                        (centerY - tapOffset.y) * (newScale - 1f) / newScale
 
-                                    if (newScale > 1f) {
-                                        onOffsetChange(offsetX + panChange.x, offsetY + panChange.y)
-                                    } else {
-                                        onOffsetChange(0f, 0f)
-                                    }
-                                    event.changes.forEach { it.consume() }
-                                }
-
-                                // 확대된 상태에서 팬
-                                scale > 1.1f -> {
-                                    Log.d("PhotoViewer", "확대 상태 팬")
-                                    onOffsetChange(offsetX + panChange.x, offsetY + panChange.y)
-                                    event.changes.forEach { it.consume() }
-                                }
-
-                                // 기본 상태에서 스와이프
-                                else -> {
-                                    if (kotlin.math.abs(panChange.x) > kotlin.math.abs(panChange.y)) {
-                                        Log.d("PhotoViewer", "스와이프: ${panChange.x}")
-                                        onOffsetChange(offsetX + panChange.x, 0f)
-                                        event.changes.forEach { it.consume() }
-                                    }
+                                    onAnimateScale(newScale)
+                                    onAnimateOffset(imageOffsetX, imageOffsetY)
                                 }
                             }
                         }
-                    } while (event.changes.any { it.pressed })
+                    )
+                }
+                .pointerInput(Unit) {
+                    // 핀치 줌 제스처
+                    detectTransformGestures { _, pan, zoom, _ ->
+                        val newScale = max(1f, min(imageScale * zoom, 4f))
 
-                    // 제스처 종료 처리
-                    val upTime = System.currentTimeMillis()
-                    val duration = upTime - downTime
+                        if (newScale > 1f) {
+                            imageScale = newScale
 
-                    Log.d("PhotoViewer", "제스처 종료 - 시간: ${duration}ms, 최종 오프셋: $offsetX")
+                            // 확대된 상태에서 팬 제한
+                            val maxOffsetX = (screenWidth * (newScale - 1f)) / 2f
+                            val maxOffsetY = (screenHeight * (newScale - 1f)) / 2f
 
-                    // 더블탭 체크
-                    if (duration < 200 && kotlin.math.abs(offsetX) < 50) {
-                        if (upTime - lastTapTime < 500) {
-                            Log.d("PhotoViewer", "더블탭 감지! 현재 스케일: $scale")
-                            if (scale > 1.1f) {
-                                Log.d("PhotoViewer", "축소")
-                                onAnimateScale(1f)
-                                onAnimateOffset(0f, 0f)
-                            } else {
-                                Log.d("PhotoViewer", "확대")
-                                onAnimateScale(2f)
-                                val centerX =
-                                    context.resources.displayMetrics.widthPixels.toFloat() / 2f
-                                val centerY =
-                                    context.resources.displayMetrics.heightPixels.toFloat() / 2f
-                                val newOffsetX = (centerX - down.position.x) * 1f
-                                val newOffsetY = (centerY - down.position.y) * 1f
-                                onAnimateOffset(newOffsetX, newOffsetY)
-                            }
-                            lastTapTime = 0L
+                            imageOffsetX = (imageOffsetX + pan.x).coerceIn(-maxOffsetX, maxOffsetX)
+                            imageOffsetY = (imageOffsetY + pan.y).coerceIn(-maxOffsetY, maxOffsetY)
+
+                            onScaleChange(newScale)
+                            onOffsetChange(imageOffsetX, imageOffsetY)
                         } else {
-                            lastTapTime = upTime
-                        }
-                    }
-                    // 스와이프 체크
-                    else if (scale <= 1.1f) {
-                        val threshold = screenWidth * 0.15f
-                        Log.d("PhotoViewer", "스와이프 체크 - 오프셋: $offsetX, 임계값: $threshold")
-
-                        if (kotlin.math.abs(offsetX) > threshold) {
-                            Log.d("PhotoViewer", "사진 전환!")
-                            when {
-                                offsetX > 0 && currentPhotoIndex > 0 -> {
-                                    Log.d("PhotoViewer", "이전 사진")
-                                    onPhotoChanged(photos[currentPhotoIndex - 1])
-                                }
-
-                                offsetX < 0 && currentPhotoIndex < photos.size - 1 -> {
-                                    Log.d("PhotoViewer", "다음 사진")
-                                    onPhotoChanged(photos[currentPhotoIndex + 1])
-                                }
-
-                                else -> {
-                                    Log.d("PhotoViewer", "복원")
-                                    coroutineScope.launch { onAnimateOffset(0f, 0f) }
-                                }
-                            }
-                        } else {
-                            Log.d("PhotoViewer", "복원")
-                            coroutineScope.launch { onAnimateOffset(0f, 0f) }
+                            // 기본 크기로 복귀
+                            imageScale = 1f
+                            imageOffsetX = 0f
+                            imageOffsetY = 0f
+                            onScaleChange(1f)
+                            onOffsetChange(0f, 0f)
                         }
                     }
                 }
-            },
-        contentAlignment = Alignment.Center
-    ) {
-        // 이전 이미지
-        if (currentPhotoIndex > 0 && scale <= 1f) {
-            PhotoSlide(
-                photo = photos[currentPhotoIndex - 1],
-                modifier = Modifier.graphicsLayer(
-                    translationX = offsetX - screenWidth
-                )
-            )
-        }
+                .pointerInput(Unit) {
+                    // 확대된 상태에서 드래그 제스처
+                    detectDragGestures { _, dragAmount ->
+                        if (imageScale > 1f) {
+                            val maxOffsetX = (screenWidth * (imageScale - 1f)) / 2f
+                            val maxOffsetY = (screenHeight * (imageScale - 1f)) / 2f
 
-        // 현재 이미지
-        PhotoSlide(
-            photo = photo,
-            thumbnailData = thumbnailData,
-            modifier = Modifier.graphicsLayer(
-                scaleX = scale,
-                scaleY = scale,
-                translationX = offsetX,
-                translationY = offsetY
-            )
-        )
+                            imageOffsetX =
+                                (imageOffsetX + dragAmount.x).coerceIn(-maxOffsetX, maxOffsetX)
+                            imageOffsetY =
+                                (imageOffsetY + dragAmount.y).coerceIn(-maxOffsetY, maxOffsetY)
 
-        // 다음 이미지
-        if (currentPhotoIndex < photos.size - 1 && scale <= 1f) {
+                            onOffsetChange(imageOffsetX, imageOffsetY)
+                        }
+                    }
+                },
+            contentAlignment = Alignment.Center
+        ) {
             PhotoSlide(
-                photo = photos[currentPhotoIndex + 1],
-                modifier = Modifier.graphicsLayer(
-                    translationX = offsetX + screenWidth
-                )
+                photo = pagePhoto,
+                thumbnailData = if (pagePhoto.path == photo.path) thumbnailData else null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(
+                        scaleX = if (isCurrentPage) imageScale else 1f,
+                        scaleY = if (isCurrentPage) imageScale else 1f,
+                        translationX = if (isCurrentPage) imageOffsetX else 0f,
+                        translationY = if (isCurrentPage) imageOffsetY else 0f
+                    )
             )
         }
     }
