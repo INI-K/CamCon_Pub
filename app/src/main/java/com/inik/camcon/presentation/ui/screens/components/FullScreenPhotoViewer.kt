@@ -24,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -33,7 +34,7 @@ import kotlinx.coroutines.launch
 
 /**
  * 전체화면으로 사진을 볼 수 있는 뷰어 컴포넌트
- * 갤러리 앱처럼 동작: 더블탭 줌, 핀치 줌, 스와이프 전환
+ * 갤러리 앱처럼 동작: 더블탭 줌, 핀치 줌, 스와이프 전환, 가로/세로 화면 대응
  */
 @Composable
 fun FullScreenPhotoViewer(
@@ -55,11 +56,22 @@ fun FullScreenPhotoViewer(
 
     val currentPhotoIndex = photos.indexOfFirst { it.path == photo.path }
     val coroutineScope = rememberCoroutineScope()
+    val configuration = LocalConfiguration.current
 
     Log.d("FullScreenViewer", "=== FullScreenPhotoViewer 렌더링 ===")
     Log.d("FullScreenViewer", "사진: ${photo.name}, 인덱스: $currentPhotoIndex")
-    Log.d("FullScreenViewer", "상태: scale=$scale, offset=($offsetX, $offsetY)")
-    Log.d("FullScreenViewer", "애니메이션: scale=${scaleAnimatable.value}, offset=(${offsetXAnimatable.value}, ${offsetYAnimatable.value})")
+    Log.d("FullScreenViewer", "화면 방향: ${configuration.orientation}")
+
+    // 화면 회전 시 상태 초기화
+    LaunchedEffect(configuration.orientation) {
+        Log.d("FullScreenViewer", "🔄 화면 회전 감지 - 상태 초기화")
+        scale = 1f
+        offsetX = 0f
+        offsetY = 0f
+        scaleAnimatable.snapTo(1f)
+        offsetXAnimatable.snapTo(0f)
+        offsetYAnimatable.snapTo(0f)
+    }
 
     // 새 사진으로 변경될 때 변환 상태 초기화
     LaunchedEffect(photo.path) {
