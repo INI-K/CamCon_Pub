@@ -1,5 +1,10 @@
-package com.inik.camcon.presentation.ui.screens
-
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.net.wifi.WifiManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
 import androidx.compose.material.Card
 import androidx.compose.material.CircularProgressIndicator
@@ -24,6 +30,7 @@ import androidx.compose.material.Scaffold
 import androidx.compose.material.SnackbarHost
 import androidx.compose.material.SnackbarHostState
 import androidx.compose.material.Text
+import androidx.compose.material.TextButton
 import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -35,12 +42,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.inik.camcon.data.datasource.ptpip.PtpipCamera
 import com.inik.camcon.data.datasource.ptpip.PtpipCameraInfo
@@ -57,7 +68,30 @@ fun PtpipConnectionScreen(
     onBackClick: () -> Unit,
     ptpipViewModel: PtpipViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // 위치 권한 상태
+    var hasLocationPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    var showPermissionDialog by remember { mutableStateOf(false) }
+
+    // 권한 요청 launcher
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasLocationPermission = isGranted
+        if (!isGranted) {
+            showPermissionDialog = true
+        }
+    }
 
     // 상태 수집
     val connectionState by ptpipViewModel.connectionState.collectAsState()
@@ -75,6 +109,22 @@ fun PtpipConnectionScreen(
             snackbarHostState.showSnackbar(it)
             ptpipViewModel.clearError()
         }
+    }
+
+    // 권한 다이얼로그
+    if (showPermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { showPermissionDialog = false },
+            title = { Text("위치 권한 필요") },
+            text = {
+                Text("Wi-Fi 네트워크 이름을 표시하려면 위치 권한이 필요합니다.\n설정에서 직접 권한을 허용해주세요.")
+            },
+            confirmButton = {
+                TextButton(onClick = { showPermissionDialog = false }) {
+                    Text("확인")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -124,7 +174,13 @@ fun PtpipConnectionScreen(
 
             // Wi-Fi 기능 정보 카드
             WifiCapabilitiesCard(
-                wifiCapabilities = ptpipViewModel.getWifiCapabilities()
+                wifiCapabilities = ptpipViewModel.getWifiCapabilities(),
+                hasLocationPermission = hasLocationPermission,
+                onRequestPermission = {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                    }
+                }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -204,8 +260,17 @@ private fun WifiStatusCard(
 
 @Composable
 private fun WifiCapabilitiesCard(
-    wifiCapabilities: WifiCapabilities
+    wifiCapabilities: WifiCapabilities,
+    hasLocationPermission: Boolean,
+    onRequestPermission: () -> Unit
 ) {
+    val context = LocalContext.current
+    val wifiManager = remember {
+        context.getSystemService(Context.WIFI_SERVICE) as WifiManager
+    }
+    val supported = remember {
+        wifiManager.isStaConcurrencyForLocalOnlyConnectionsSupported
+    }
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = 4.dp
@@ -225,8 +290,31 @@ private fun WifiCapabilitiesCard(
             // 네트워크 정보
             if (wifiCapabilities.isConnected) {
                 wifiCapabilities.networkName?.let { name ->
-                    InfoRow(label = "연결된 네트워크", value = name)
+                    if (hasLocationPermission) {
+                        InfoRow(label = "연결된 네트워크", value = name)
+                    } else {
+                        InfoRow(
+                            label = "연결된 네트워크",
+                            value = "권한 필요",
+                            valueColor = Color.Red
+                        )
+                    }
+                } ?: run {
+                    if (hasLocationPermission) {
+                        InfoRow(
+                            label = "연결된 네트워크",
+                            value = "이름 없음",
+                            valueColor = Color.Gray
+                        )
+                    } else {
+                        InfoRow(
+                            label = "연결된 네트워크",
+                            value = "권한 필요",
+                            valueColor = Color.Red
+                        )
+                    }
                 }
+
                 wifiCapabilities.linkSpeed?.let { speed ->
                     InfoRow(label = "링크 속도", value = "${speed}Mbps")
                 }
@@ -238,8 +326,8 @@ private fun WifiCapabilitiesCard(
             // STA 동시 연결 지원 여부 (핵심 정보)
             InfoRow(
                 label = "STA 동시 연결 지원",
-                value = if (wifiCapabilities.isStaConcurrencySupported) "✅ 지원됨" else "❌ 지원되지 않음",
-                valueColor = if (wifiCapabilities.isStaConcurrencySupported) Color.Green else Color.Red
+                value = if (supported) "✅ 지원됨" else "❌ 지원되지 않음",
+                valueColor = if (supported) Color.Green else Color.Red
             )
 
             // 안드로이드 버전 정보
@@ -247,6 +335,26 @@ private fun WifiCapabilitiesCard(
                 label = "Android 버전",
                 value = "API ${android.os.Build.VERSION.SDK_INT} (${android.os.Build.VERSION.RELEASE})"
             )
+
+            // 권한 관련 안내
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !hasLocationPermission) {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "💡 Wi-Fi 네트워크 이름을 확인하려면 위치 권한이 필요합니다.",
+                    style = MaterialTheme.typography.caption,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = onRequestPermission,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("위치 권한 허용")
+                }
+            }
 
             if (!wifiCapabilities.isStaConcurrencySupported && android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) {
                 Spacer(modifier = Modifier.height(4.dp))
