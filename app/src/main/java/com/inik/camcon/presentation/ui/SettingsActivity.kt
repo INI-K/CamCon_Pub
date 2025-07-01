@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Divider
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
@@ -23,15 +25,20 @@ import androidx.compose.material.Text
 import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.NetworkWifi
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Update
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,7 +47,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.viewmodel.PtpipViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -58,7 +67,18 @@ class SettingsActivity : ComponentActivity() {
 }
 
 @Composable
-fun SettingsScreen(onBackClick: () -> Unit) {
+fun SettingsScreen(
+    onBackClick: () -> Unit,
+    ptpipViewModel: PtpipViewModel = hiltViewModel()
+) {
+    // PTPIP 설정 상태
+    val isPtpipEnabled by ptpipViewModel.isPtpipEnabled.collectAsState(initial = false)
+    val isWifiStaModeEnabled by ptpipViewModel.isWifiStaModeEnabled.collectAsState(initial = true)
+    val isAutoDiscoveryEnabled by ptpipViewModel.isAutoDiscoveryEnabled.collectAsState(initial = true)
+    val isAutoConnectEnabled by ptpipViewModel.isAutoConnectEnabled.collectAsState(initial = false)
+    val lastConnectedName by ptpipViewModel.lastConnectedName.collectAsState(initial = null)
+    val connectionState by ptpipViewModel.connectionState.collectAsState()
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -77,7 +97,62 @@ fun SettingsScreen(onBackClick: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
         ) {
+            // PTPIP Wi-Fi 카메라 설정 섹션
+            SettingsSection(title = "📷 Wi-Fi 카메라 연결 (PTPIP)") {
+                SettingsItemWithSwitch(
+                    icon = Icons.Default.Wifi,
+                    title = "Wi-Fi 카메라 연결",
+                    subtitle = if (isPtpipEnabled) {
+                        if (lastConnectedName != null) {
+                            "활성화됨 - 마지막 연결: $lastConnectedName"
+                        } else {
+                            "활성화됨 - 연결된 카메라 없음"
+                        }
+                    } else {
+                        "Wi-Fi를 통한 카메라 원격 제어"
+                    },
+                    checked = isPtpipEnabled,
+                    onCheckedChange = { ptpipViewModel.setPtpipEnabled(it) }
+                )
+
+                if (isPtpipEnabled) {
+                    SettingsItemWithSwitch(
+                        icon = Icons.Default.NetworkWifi,
+                        title = "Wi-Fi STA 모드",
+                        subtitle = "기존 Wi-Fi 네트워크를 통한 연결",
+                        checked = isWifiStaModeEnabled,
+                        onCheckedChange = { ptpipViewModel.setWifiStaModeEnabled(it) }
+                    )
+
+                    SettingsItemWithSwitch(
+                        icon = Icons.Default.Settings,
+                        title = "자동 카메라 검색",
+                        subtitle = "네트워크에서 PTPIP 카메라 자동 찾기",
+                        checked = isAutoDiscoveryEnabled,
+                        onCheckedChange = { ptpipViewModel.setAutoDiscoveryEnabled(it) }
+                    )
+
+                    SettingsItemWithSwitch(
+                        icon = Icons.Default.CameraAlt,
+                        title = "자동 연결",
+                        subtitle = "마지막 연결된 카메라에 자동 연결",
+                        checked = isAutoConnectEnabled,
+                        onCheckedChange = { ptpipViewModel.setAutoConnectEnabled(it) }
+                    )
+
+                    SettingsItem(
+                        icon = Icons.Default.Info,
+                        title = "PTPIP 연결 상태",
+                        subtitle = ptpipViewModel.getConnectionStatusText(),
+                        onClick = { /* TODO: 연결 상태 상세 정보 */ }
+                    )
+                }
+            }
+
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
+
             // User Info Section
             SettingsSection(title = "사용자 정보") {
                 SettingsItem(
