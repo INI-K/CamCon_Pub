@@ -1,10 +1,10 @@
 package com.inik.camcon.presentation.ui
 
+import PtpipConnectionScreen
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import com.inik.camcon.presentation.theme.CamConTheme
-import com.inik.camcon.presentation.ui.screens.PtpipConnectionScreen
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
