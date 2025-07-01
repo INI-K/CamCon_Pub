@@ -147,7 +147,7 @@ fun PtpipConnectionScreen(
                                 color = MaterialTheme.colors.onPrimary
                             )
                         } else {
-                            Icon(Icons.Default.Refresh, contentDescription = "새로고침")
+                            Icon(Icons.Filled.Refresh, contentDescription = "새로고침")
                         }
                     }
                 },
@@ -227,7 +227,7 @@ private fun WifiStatusCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = if (isWifiConnected) Icons.Default.Wifi else Icons.Default.WifiOff,
+                imageVector = if (isWifiConnected) Icons.Filled.Wifi else Icons.Filled.WifiOff,
                 contentDescription = null,
                 tint = if (isWifiConnected) Color.Green else Color.Red,
                 modifier = Modifier.size(32.dp)
@@ -413,7 +413,7 @@ private fun ConnectionStatusCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.Default.CameraAlt,
+                    imageVector = Icons.Filled.CameraAlt,
                     contentDescription = null,
                     tint = when (connectionState) {
                         PtpipConnectionState.CONNECTED -> Color.Green
@@ -535,7 +535,7 @@ private fun CameraListSection(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Icon(
-                            imageVector = Icons.Default.CameraAlt,
+                            imageVector = Icons.Filled.CameraAlt,
                             contentDescription = null,
                             modifier = Modifier.size(48.dp),
                             tint = MaterialTheme.colors.onSurface.copy(alpha = 0.5f)
@@ -563,7 +563,6 @@ private fun CameraListSection(
                             camera = camera,
                             isSelected = camera == selectedCamera,
                             isConnecting = isConnecting,
-                            onSelect = { onCameraSelect(camera) },
                             onConnect = { onCameraConnect(camera) }
                         )
                     }
@@ -578,7 +577,6 @@ private fun CameraItem(
     camera: PtpipCamera,
     isSelected: Boolean,
     isConnecting: Boolean,
-    onSelect: () -> Unit,
     onConnect: () -> Unit
 ) {
     Card(
@@ -596,7 +594,7 @@ private fun CameraItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.Default.CameraAlt,
+                imageVector = Icons.Filled.CameraAlt,
                 contentDescription = null,
                 tint = if (camera.isOnline) Color.Green else Color.Gray,
                 modifier = Modifier.size(24.dp)
