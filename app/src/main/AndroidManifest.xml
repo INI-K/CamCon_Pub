@@ -7,6 +7,7 @@
     <!-- Wi-Fi 권한 추가 (PTPIP용) -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <!-- USB 권한 추가 -->
     <uses-permission android:name="android.permission.USB_PERMISSION" />
@@ -71,6 +72,11 @@
             android:name=".presentation.ui.SettingsActivity"
             android:exported="false"
             android:screenOrientation="fullSensor" />
+        <activity
+            android:name=".presentation.ui.PtpipConnectionActivity"
+            android:exported="false"
+            android:screenOrientation="fullSensor"
+            android:label="Wi-Fi 카메라 연결" />
     </application>
 
 </manifest>

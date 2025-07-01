@@ -1,5 +1,6 @@
 package com.inik.camcon.presentation.ui
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -26,6 +27,7 @@ import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Logout
@@ -46,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.inik.camcon.presentation.theme.CamConTheme
@@ -71,6 +74,8 @@ fun SettingsScreen(
     onBackClick: () -> Unit,
     ptpipViewModel: PtpipViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
+    
     // PTPIP 설정 상태
     val isPtpipEnabled by ptpipViewModel.isPtpipEnabled.collectAsState(initial = false)
     val isWifiStaModeEnabled by ptpipViewModel.isWifiStaModeEnabled.collectAsState(initial = true)
@@ -116,7 +121,7 @@ fun SettingsScreen(
                     checked = isPtpipEnabled,
                     onCheckedChange = { ptpipViewModel.setPtpipEnabled(it) }
                 )
-
+                
                 if (isPtpipEnabled) {
                     SettingsItemWithSwitch(
                         icon = Icons.Default.NetworkWifi,
@@ -125,7 +130,7 @@ fun SettingsScreen(
                         checked = isWifiStaModeEnabled,
                         onCheckedChange = { ptpipViewModel.setWifiStaModeEnabled(it) }
                     )
-
+                    
                     SettingsItemWithSwitch(
                         icon = Icons.Default.Settings,
                         title = "자동 카메라 검색",
@@ -133,7 +138,7 @@ fun SettingsScreen(
                         checked = isAutoDiscoveryEnabled,
                         onCheckedChange = { ptpipViewModel.setAutoDiscoveryEnabled(it) }
                     )
-
+                    
                     SettingsItemWithSwitch(
                         icon = Icons.Default.CameraAlt,
                         title = "자동 연결",
@@ -141,12 +146,16 @@ fun SettingsScreen(
                         checked = isAutoConnectEnabled,
                         onCheckedChange = { ptpipViewModel.setAutoConnectEnabled(it) }
                     )
-
-                    SettingsItem(
+                    
+                    SettingsItemWithNavigation(
                         icon = Icons.Default.Info,
-                        title = "PTPIP 연결 상태",
-                        subtitle = ptpipViewModel.getConnectionStatusText(),
-                        onClick = { /* TODO: 연결 상태 상세 정보 */ }
+                        title = "카메라 연결 관리",
+                        subtitle = "${ptpipViewModel.getConnectionStatusText()} - 탭하여 자세히 보기",
+                        onClick = {
+                            // PtpipConnectionActivity 시작
+                            val intent = Intent(context, PtpipConnectionActivity::class.java)
+                            context.startActivity(intent)
+                        }
                     )
                 }
             }
@@ -319,6 +328,47 @@ fun SettingsItemWithSwitch(
             colors = SwitchDefaults.colors(
                 checkedThumbColor = MaterialTheme.colors.primary
             )
+        )
+    }
+}
+
+@Composable
+fun SettingsItemWithNavigation(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.body1
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.caption,
+                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+            )
+        }
+        Icon(
+            imageVector = Icons.Default.ChevronRight,
+            contentDescription = "더보기",
+            tint = MaterialTheme.colors.onSurface.copy(alpha = 0.4f),
+            modifier = Modifier.size(20.dp)
         )
     }
 }
