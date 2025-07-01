@@ -4,6 +4,10 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Wi-Fi 권한 추가 (PTPIP용) -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <!-- USB 권한 추가 -->
     <uses-permission android:name="android.permission.USB_PERMISSION" />
     <uses-permission
@@ -20,6 +24,11 @@
     <uses-feature
         android:name="android.hardware.usb.host"
         android:required="true" />
+
+    <!-- Wi-Fi 기능 지원 선언 (PTPIP용) -->
+    <uses-feature
+        android:name="android.hardware.wifi"
+        android:required="false" />
 
     <application
         android:name=".CamCon"
