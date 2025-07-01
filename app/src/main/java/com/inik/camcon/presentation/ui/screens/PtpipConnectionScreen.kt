@@ -223,7 +223,8 @@ fun PtpipConnectionScreen(
                 onCameraSelect = { ptpipViewModel.selectCamera(it) },
                 onCameraConnect = { ptpipViewModel.connectToCamera(it) },
                 onDiscoverCameras = { ptpipViewModel.discoverCameras() },
-                isPtpipEnabled = isPtpipEnabled
+                isPtpipEnabled = isPtpipEnabled,
+                isWifiConnected = ptpipViewModel.isWifiConnected()
             )
         }
     }
@@ -241,61 +242,121 @@ private fun WifiStatusCard(
         modifier = Modifier.fillMaxWidth(),
         elevation = 4.dp
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(16.dp)
         ) {
-            Icon(
-                imageVector = if (isWifiConnected) Icons.Filled.Wifi else Icons.Filled.WifiOff,
-                contentDescription = null,
-                tint = if (isWifiConnected) Color.Green else Color.Red,
-                modifier = Modifier.size(32.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = if (isWifiConnected) "Wi-Fi 연결됨" else "Wi-Fi 연결 안됨",
-                    style = MaterialTheme.typography.h6,
-                    fontWeight = FontWeight.Bold
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = if (isWifiConnected) Icons.Filled.Wifi else Icons.Filled.WifiOff,
+                    contentDescription = null,
+                    tint = if (isWifiConnected) Color.Green else Color.Red,
+                    modifier = Modifier.size(32.dp)
                 )
-                Text(
-                    text = if (isPtpipEnabled) {
-                        if (isWifiConnected) {
-                            "PTPIP 기능 활성화됨"
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (isWifiConnected) "Wi-Fi 연결됨" else "Wi-Fi 연결 안됨",
+                        style = MaterialTheme.typography.h6,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = if (isPtpipEnabled) {
+                            if (isWifiConnected) {
+                                "PTPIP 기능 활성화됨"
+                            } else {
+                                "카메라 AP에 연결하세요"
+                            }
                         } else {
-                            "Wi-Fi를 연결하세요"
+                            "PTPIP 기능을 활성화하세요"
+                        },
+                        style = MaterialTheme.typography.body2,
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                    )
+                }
+
+                // 버튼 표시 우선순위: PTPIP 활성화 > Wi-Fi 설정
+                if (!isPtpipEnabled) {
+                    Button(onClick = onEnablePtpip) {
+                        Text("활성화")
+                    }
+                } else if (!isWifiConnected) {
+                    OutlinedButton(
+                        onClick = {
+                            val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                try {
+                                    Intent(Settings.Panel.ACTION_WIFI)
+                                } catch (e: Exception) {
+                                    Intent(Settings.ACTION_WIFI_SETTINGS)
+                                }
+                            } else {
+                                Intent(Settings.ACTION_WIFI_SETTINGS)
+                            }
+                            context.startActivity(intent)
                         }
-                    } else {
-                        "PTPIP 기능을 활성화하세요"
-                    },
-                    style = MaterialTheme.typography.body2,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                    ) {
+                        Text("Wi-Fi 연결")
+                    }
+                }
+            }
+
+            // 카메라 AP 연결 가이드 추가
+            if (isPtpipEnabled && !isWifiConnected) {
+                Spacer(modifier = Modifier.height(12.dp))
+                CameraApConnectionGuide()
+            }
+        }
+    }
+}
+
+/**
+ * 카메라 AP 연결 가이드 컴포넌트
+ */
+@Composable
+private fun CameraApConnectionGuide() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        backgroundColor = MaterialTheme.colors.primary.copy(alpha = 0.1f),
+        elevation = 0.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp)
+        ) {
+            Text(
+                text = "📱 카메라 AP 연결 방법",
+                style = MaterialTheme.typography.subtitle2,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colors.primary
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            val guideSteps = listOf(
+                "1. 카메라에서 Wi-Fi 핫스팟 모드를 활성화하세요",
+                "2. 카메라 화면에서 네트워크 이름과 비밀번호를 확인하세요",
+                "3. 위의 'Wi-Fi 연결' 버튼을 눌러 설정으로 이동하세요",
+                "4. 카메라 네트워크(예: Canon_xxxxx, Nikon_xxxxx)를 찾아 연결하세요",
+                "5. 연결 후 이 화면으로 돌아와서 '검색' 버튼을 누르세요"
+            )
+
+            guideSteps.forEach { step ->
+                Text(
+                    text = step,
+                    style = MaterialTheme.typography.caption,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f),
+                    modifier = Modifier.padding(vertical = 1.dp)
                 )
             }
 
-            // 버튼 표시 우선순위: PTPIP 활성화 > Wi-Fi 설정
-            if (!isPtpipEnabled) {
-                Button(onClick = onEnablePtpip) {
-                    Text("활성화")
-                }
-            } else if (!isWifiConnected) {
-                OutlinedButton(
-                    onClick = {
-                        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                            try {
-                                Intent(Settings.Panel.ACTION_WIFI)
-                            } catch (e: Exception) {
-                                Intent(Settings.ACTION_WIFI_SETTINGS)
-                            }
-                        } else {
-                            Intent(Settings.ACTION_WIFI_SETTINGS)
-                        }
-                        context.startActivity(intent)
-                    }
-                ) {
-                    Text("Wi-Fi 설정")
-                }
-            }
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "💡 주의: 카메라 AP에 연결하면 인터넷 연결이 끊어질 수 있습니다.",
+                style = MaterialTheme.typography.caption,
+                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                fontWeight = FontWeight.Medium
+            )
         }
     }
 }
@@ -525,7 +586,8 @@ private fun CameraListSection(
     onCameraSelect: (PtpipCamera) -> Unit,
     onCameraConnect: (PtpipCamera) -> Unit,
     onDiscoverCameras: () -> Unit,
-    isPtpipEnabled: Boolean
+    isPtpipEnabled: Boolean,
+    isWifiConnected: Boolean
 ) {
     Column {
         Row(
@@ -540,7 +602,7 @@ private fun CameraListSection(
             )
             Button(
                 onClick = onDiscoverCameras,
-                enabled = !isDiscovering
+                enabled = !isDiscovering && isWifiConnected
             ) {
                 Text("검색")
             }
@@ -549,6 +611,32 @@ private fun CameraListSection(
         Spacer(modifier = Modifier.height(8.dp))
 
         when {
+            !isPtpipEnabled -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = null,
+                            modifier = Modifier.size(48.dp),
+                            tint = MaterialTheme.colors.onSurface.copy(alpha = 0.5f)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "PTPIP 기능을 먼저 활성화하세요.",
+                            style = MaterialTheme.typography.body2,
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+            }
+
             isDiscovering -> {
                 Box(
                     modifier = Modifier
@@ -584,13 +672,15 @@ private fun CameraListSection(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = if (isPtpipEnabled) {
-                                "PTPIP 카메라를 찾을 수 없습니다.\n검색 버튼을 눌러 다시 시도하세요."
-                            } else {
-                                "PTPIP 기능을 먼저 활성화하세요."
-                            },
+                            text = "PTPIP 카메라를 찾을 수 없습니다.",
                             style = MaterialTheme.typography.body2,
                             color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "카메라 AP에 연결했는지 확인하고\n'검색' 버튼을 눌러 다시 시도하세요.",
+                            style = MaterialTheme.typography.caption,
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                         )
                     }
                 }
