@@ -45,6 +45,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.inik.camcon.data.datasource.ptpip.PtpipCamera
 import com.inik.camcon.data.datasource.ptpip.PtpipCameraInfo
 import com.inik.camcon.data.datasource.ptpip.PtpipConnectionState
+import com.inik.camcon.data.datasource.ptpip.WifiCapabilities
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
 
 /**
@@ -121,6 +122,13 @@ fun PtpipConnectionScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Wi-Fi 기능 정보 카드
+            WifiCapabilitiesCard(
+                wifiCapabilities = ptpipViewModel.getWifiCapabilities()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             // 연결 상태 카드
             if (connectionState != PtpipConnectionState.DISCONNECTED) {
                 ConnectionStatusCard(
@@ -191,6 +199,90 @@ private fun WifiStatusCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun WifiCapabilitiesCard(
+    wifiCapabilities: WifiCapabilities
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = 4.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = "Wi-Fi 기능 정보",
+                style = MaterialTheme.typography.h6,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colors.primary
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // 네트워크 정보
+            if (wifiCapabilities.isConnected) {
+                wifiCapabilities.networkName?.let { name ->
+                    InfoRow(label = "연결된 네트워크", value = name)
+                }
+                wifiCapabilities.linkSpeed?.let { speed ->
+                    InfoRow(label = "링크 속도", value = "${speed}Mbps")
+                }
+                wifiCapabilities.frequency?.let { freq ->
+                    InfoRow(label = "주파수", value = "${freq}MHz")
+                }
+            }
+
+            // STA 동시 연결 지원 여부 (핵심 정보)
+            InfoRow(
+                label = "STA 동시 연결 지원",
+                value = if (wifiCapabilities.isStaConcurrencySupported) "✅ 지원됨" else "❌ 지원되지 않음",
+                valueColor = if (wifiCapabilities.isStaConcurrencySupported) Color.Green else Color.Red
+            )
+
+            // 안드로이드 버전 정보
+            InfoRow(
+                label = "Android 버전",
+                value = "API ${android.os.Build.VERSION.SDK_INT} (${android.os.Build.VERSION.RELEASE})"
+            )
+
+            if (!wifiCapabilities.isStaConcurrencySupported && android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "💡 STA 동시 연결 기능은 Android 10 (API 29) 이상에서 지원됩니다.",
+                    style = MaterialTheme.typography.caption,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun InfoRow(
+    label: String,
+    value: String,
+    valueColor: Color = MaterialTheme.colors.onSurface
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.body2,
+            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.body2,
+            fontWeight = FontWeight.Medium,
+            color = valueColor
+        )
     }
 }
 

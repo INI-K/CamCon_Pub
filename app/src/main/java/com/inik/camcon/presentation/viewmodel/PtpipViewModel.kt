@@ -280,6 +280,20 @@ class PtpipViewModel @Inject constructor(
     }
 
     /**
+     * Wi-Fi STA 동시 연결 지원 여부 확인
+     */
+    fun isStaConcurrencySupported(): Boolean {
+        return ptpipDataSource.isStaConcurrencySupported()
+    }
+
+    /**
+     * Wi-Fi 기능 상세 정보 가져오기
+     */
+    fun getWifiCapabilities(): com.inik.camcon.data.datasource.ptpip.WifiCapabilities {
+        return ptpipDataSource.getWifiCapabilities()
+    }
+
+    /**
      * 현재 연결 상태 문자열 반환
      */
     fun getConnectionStatusText(): String {
