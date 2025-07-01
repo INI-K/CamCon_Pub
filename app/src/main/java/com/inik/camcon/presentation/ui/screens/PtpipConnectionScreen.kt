@@ -1,8 +1,10 @@
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.wifi.WifiManager
 import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -36,6 +38,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.runtime.Composable
@@ -133,13 +136,13 @@ fun PtpipConnectionScreen(
                 title = { Text("Wi-Fi 카메라 연결") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "뒤로가기")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "뒤로가기")
                     }
                 },
                 actions = {
                     IconButton(
                         onClick = { ptpipViewModel.discoverCameras() },
-                        enabled = !isDiscovering && isPtpipEnabled
+                        enabled = !isDiscovering
                     ) {
                         if (isDiscovering) {
                             CircularProgressIndicator(
@@ -149,6 +152,20 @@ fun PtpipConnectionScreen(
                         } else {
                             Icon(Icons.Filled.Refresh, contentDescription = "새로고침")
                         }
+                    }
+                    IconButton(onClick = {
+                        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            try {
+                                Intent(Settings.Panel.ACTION_WIFI)
+                            } catch (e: Exception) {
+                                Intent(Settings.ACTION_WIFI_SETTINGS)
+                            }
+                        } else {
+                            Intent(Settings.ACTION_WIFI_SETTINGS)
+                        }
+                        context.startActivity(intent)
+                    }) {
+                        Icon(Icons.Filled.Settings, contentDescription = "Wi-Fi 설정")
                     }
                 },
                 backgroundColor = MaterialTheme.colors.primary,
@@ -218,6 +235,8 @@ private fun WifiStatusCard(
     isPtpipEnabled: Boolean,
     onEnablePtpip: () -> Unit
 ) {
+    val context = LocalContext.current
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = 4.dp
@@ -241,7 +260,11 @@ private fun WifiStatusCard(
                 )
                 Text(
                     text = if (isPtpipEnabled) {
-                        "PTPIP 기능 활성화됨"
+                        if (isWifiConnected) {
+                            "PTPIP 기능 활성화됨"
+                        } else {
+                            "Wi-Fi를 연결하세요"
+                        }
                     } else {
                         "PTPIP 기능을 활성화하세요"
                     },
@@ -249,9 +272,28 @@ private fun WifiStatusCard(
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                 )
             }
+
+            // 버튼 표시 우선순위: PTPIP 활성화 > Wi-Fi 설정
             if (!isPtpipEnabled) {
                 Button(onClick = onEnablePtpip) {
                     Text("활성화")
+                }
+            } else if (!isWifiConnected) {
+                OutlinedButton(
+                    onClick = {
+                        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            try {
+                                Intent(Settings.Panel.ACTION_WIFI)
+                            } catch (e: Exception) {
+                                Intent(Settings.ACTION_WIFI_SETTINGS)
+                            }
+                        } else {
+                            Intent(Settings.ACTION_WIFI_SETTINGS)
+                        }
+                        context.startActivity(intent)
+                    }
+                ) {
+                    Text("Wi-Fi 설정")
                 }
             }
         }
@@ -498,7 +540,7 @@ private fun CameraListSection(
             )
             Button(
                 onClick = onDiscoverCameras,
-                enabled = !isDiscovering && isPtpipEnabled
+                enabled = !isDiscovering
             ) {
                 Text("검색")
             }
