@@ -105,6 +105,8 @@ fun PtpipConnectionScreen(
     val selectedCamera by ptpipViewModel.selectedCamera.collectAsState()
     val cameraInfo by ptpipViewModel.cameraInfo.collectAsState()
     val isPtpipEnabled by ptpipViewModel.isPtpipEnabled.collectAsState(initial = false)
+    val isWifiConnected = ptpipViewModel.isWifiConnected()
+    val wifiCapabilities = ptpipViewModel.getWifiCapabilities()
 
     // 에러 메시지 표시
     LaunchedEffect(errorMessage) {
@@ -182,7 +184,7 @@ fun PtpipConnectionScreen(
         ) {
             // Wi-Fi 상태 카드
             WifiStatusCard(
-                isWifiConnected = ptpipViewModel.isWifiConnected(),
+                isWifiConnected = isWifiConnected,
                 isPtpipEnabled = isPtpipEnabled,
                 onEnablePtpip = { ptpipViewModel.setPtpipEnabled(true) }
             )
@@ -191,7 +193,7 @@ fun PtpipConnectionScreen(
 
             // Wi-Fi 기능 정보 카드
             WifiCapabilitiesCard(
-                wifiCapabilities = ptpipViewModel.getWifiCapabilities(),
+                wifiCapabilities = wifiCapabilities,
                 hasLocationPermission = hasLocationPermission,
                 onRequestPermission = {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -224,7 +226,7 @@ fun PtpipConnectionScreen(
                 onCameraConnect = { ptpipViewModel.connectToCamera(it) },
                 onDiscoverCameras = { ptpipViewModel.discoverCameras() },
                 isPtpipEnabled = isPtpipEnabled,
-                isWifiConnected = ptpipViewModel.isWifiConnected()
+                isWifiConnected = isWifiConnected
             )
         }
     }
@@ -337,7 +339,7 @@ private fun CameraApConnectionGuide() {
                 "2. 카메라 화면에서 네트워크 이름과 비밀번호를 확인하세요",
                 "3. 위의 'Wi-Fi 연결' 버튼을 눌러 설정으로 이동하세요",
                 "4. 카메라 네트워크(예: Canon_xxxxx, Nikon_xxxxx)를 찾아 연결하세요",
-                "5. 연결 후 이 화면으로 돌아와서 '검색' 버튼을 누르세요"
+                "5. 연결 후 이 화면으로 돌아와서 '카메라 찾기' 버튼을 누르세요"
             )
 
             guideSteps.forEach { step ->
@@ -596,15 +598,23 @@ private fun CameraListSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "발견된 카메라 (${cameras.size})",
+                text = if (isDiscovering) "카메라 검색 중..." else "발견된 카메라 (${cameras.size})",
                 style = MaterialTheme.typography.h6,
                 fontWeight = FontWeight.Bold
             )
+
+            // 검색 버튼 텍스트와 동작 개선
             Button(
                 onClick = onDiscoverCameras,
                 enabled = !isDiscovering && isWifiConnected
             ) {
-                Text("검색")
+                Text(
+                    when {
+                        isDiscovering -> "검색 중..."
+                        cameras.isEmpty() -> "카메라 찾기"
+                        else -> "다시 검색"
+                    }
+                )
             }
         }
 
@@ -637,6 +647,38 @@ private fun CameraListSection(
                 }
             }
 
+            !isWifiConnected -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.WifiOff,
+                            contentDescription = null,
+                            modifier = Modifier.size(48.dp),
+                            tint = MaterialTheme.colors.onSurface.copy(alpha = 0.5f)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "카메라 AP에 연결하세요.",
+                            style = MaterialTheme.typography.body2,
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "연결 후 '카메라 찾기' 버튼을 눌러 검색하세요.",
+                            style = MaterialTheme.typography.caption,
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+            }
+
             isDiscovering -> {
                 Box(
                     modifier = Modifier
@@ -649,7 +691,7 @@ private fun CameraListSection(
                     ) {
                         CircularProgressIndicator()
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text("카메라 검색 중...")
+                        Text("네트워크에서 카메라를 찾고 있습니다...")
                     }
                 }
             }
@@ -672,13 +714,13 @@ private fun CameraListSection(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "PTPIP 카메라를 찾을 수 없습니다.",
+                            text = "카메라를 찾을 수 없습니다.",
                             style = MaterialTheme.typography.body2,
                             color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "카메라 AP에 연결했는지 확인하고\n'검색' 버튼을 눌러 다시 시도하세요.",
+                            text = "카메라의 Wi-Fi 기능이 활성화되어 있는지 확인하고\n'카메라 찾기' 버튼을 눌러보세요.",
                             style = MaterialTheme.typography.caption,
                             color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                         )
