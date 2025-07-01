@@ -1,5 +1,6 @@
 package com.inik.camcon.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource
@@ -23,6 +24,10 @@ class PtpipViewModel @Inject constructor(
     private val ptpipDataSource: PtpipDataSource,
     private val preferencesDataSource: PtpipPreferencesDataSource
 ) : ViewModel() {
+
+    companion object {
+        private const val TAG = "PtpipViewModel"
+    }
 
     // PTPIP 연결 상태
     val connectionState = ptpipDataSource.connectionState
@@ -156,27 +161,44 @@ class PtpipViewModel @Inject constructor(
      * Wi-Fi 네트워크에서 PTPIP 카메라 검색
      */
     fun discoverCameras() {
-        if (_isDiscovering.value) return
+        if (_isDiscovering.value) {
+            Log.w(TAG, "이미 카메라 검색 중입니다")
+            return
+        }
+
+        Log.i(TAG, "사용자가 카메라 검색을 요청했습니다")
 
         viewModelScope.launch {
             try {
                 _isDiscovering.value = true
                 _errorMessage.value = null
 
+                // Wi-Fi 연결 상태 확인
                 if (!ptpipDataSource.isWifiConnected()) {
-                    _errorMessage.value = "Wi-Fi에 연결되어 있지 않습니다."
+                    val errorMsg = "Wi-Fi가 연결되어 있지 않습니다. Wi-Fi를 켜고 네트워크에 연결해주세요."
+                    Log.w(TAG, errorMsg)
+                    _errorMessage.value = errorMsg
                     return@launch
                 }
 
+                Log.i(TAG, "Wi-Fi 연결 확인됨, 카메라 검색 시작...")
                 val cameras = ptpipDataSource.discoverCameras()
+
                 if (cameras.isEmpty()) {
-                    _errorMessage.value = "PTPIP 지원 카메라를 찾을 수 없습니다."
+                    val errorMsg = "PTPIP 지원 카메라를 찾을 수 없습니다. 같은 네트워크에 카메라가 연결되어 있는지 확인해주세요."
+                    Log.w(TAG, errorMsg)
+                    _errorMessage.value = errorMsg
+                } else {
+                    Log.i(TAG, "검색 완료: " + cameras.size + "개 카메라 발견")
                 }
 
             } catch (e: Exception) {
-                _errorMessage.value = "카메라 검색 중 오류가 발생했습니다: ${e.message}"
+                val errorMsg = "카메라 검색 중 오류가 발생했습니다: ${e.message}"
+                Log.e(TAG, errorMsg, e)
+                _errorMessage.value = errorMsg
             } finally {
                 _isDiscovering.value = false
+                Log.d(TAG, "카메라 검색 작업 완료")
             }
         }
     }
