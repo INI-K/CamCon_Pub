@@ -64,7 +64,7 @@ import com.inik.camcon.presentation.viewmodel.PtpipViewModel
 
 /**
  * PTPIP Wi-Fi 카메라 연결 화면
- * 카메라 검색, 연결, 관리 기능 제공
+ * 동일 네트워크에서 카메라 검색, 연결, 관리 기능 제공 (STA 모드)
  */
 @Composable
 fun PtpipConnectionScreen(
@@ -266,9 +266,9 @@ private fun WifiStatusCard(
                     Text(
                         text = if (isPtpipEnabled) {
                             if (isWifiConnected) {
-                                "PTPIP 기능 활성화됨"
+                                "PTPIP 기능 활성화됨 - 동일 네트워크에서 카메라 검색"
                             } else {
-                                "카메라 AP에 연결하세요"
+                                "Wi-Fi 네트워크에 연결하세요"
                             }
                         } else {
                             "PTPIP 기능을 활성화하세요"
@@ -303,20 +303,20 @@ private fun WifiStatusCard(
                 }
             }
 
-            // 카메라 AP 연결 가이드 추가
+            // STA 모드 연결 가이드 추가
             if (isPtpipEnabled && !isWifiConnected) {
                 Spacer(modifier = Modifier.height(12.dp))
-                CameraApConnectionGuide()
+                StaModeConnectionGuide()
             }
         }
     }
 }
 
 /**
- * 카메라 AP 연결 가이드 컴포넌트
+ * STA 모드 연결 가이드 컴포넌트
  */
 @Composable
-private fun CameraApConnectionGuide() {
+private fun StaModeConnectionGuide() {
     Card(
         modifier = Modifier.fillMaxWidth(),
         backgroundColor = MaterialTheme.colors.primary.copy(alpha = 0.1f),
@@ -326,7 +326,7 @@ private fun CameraApConnectionGuide() {
             modifier = Modifier.padding(12.dp)
         ) {
             Text(
-                text = "📱 카메라 AP 연결 방법",
+                text = "📱 STA 모드 카메라 연결 방법",
                 style = MaterialTheme.typography.subtitle2,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colors.primary
@@ -335,10 +335,10 @@ private fun CameraApConnectionGuide() {
             Spacer(modifier = Modifier.height(8.dp))
 
             val guideSteps = listOf(
-                "1. 카메라에서 Wi-Fi 핫스팟 모드를 활성화하세요",
-                "2. 카메라 화면에서 네트워크 이름과 비밀번호를 확인하세요",
-                "3. 위의 'Wi-Fi 연결' 버튼을 눌러 설정으로 이동하세요",
-                "4. 카메라 네트워크(예: Canon_xxxxx, Nikon_xxxxx)를 찾아 연결하세요",
+                "1. 카메라와 스마트폰을 동일한 Wi-Fi 네트워크에 연결하세요",
+                "2. 카메라에서 Wi-Fi 기능을 활성화하고 네트워크에 연결하세요",
+                "3. 위의 'Wi-Fi 연결' 버튼을 눌러 네트워크 설정으로 이동하세요",
+                "4. 카메라와 동일한 네트워크에 연결하세요",
                 "5. 연결 후 이 화면으로 돌아와서 '카메라 찾기' 버튼을 누르세요"
             )
 
@@ -354,7 +354,7 @@ private fun CameraApConnectionGuide() {
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "💡 주의: 카메라 AP에 연결하면 인터넷 연결이 끊어질 수 있습니다.",
+                text = "💡 장점: 카메라와 스마트폰 모두 인터넷에 연결된 상태를 유지할 수 있습니다.",
                 style = MaterialTheme.typography.caption,
                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
                 fontWeight = FontWeight.Medium
@@ -665,13 +665,13 @@ private fun CameraListSection(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "카메라 AP에 연결하세요.",
+                            text = "카메라와 동일한 Wi-Fi 네트워크에 연결하세요.",
                             style = MaterialTheme.typography.body2,
                             color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "연결 후 '카메라 찾기' 버튼을 눌러 검색하세요.",
+                            text = "연결 후 '카메라 찾기' 버튼을 눌러 동일 네트워크에서 검색하세요.",
                             style = MaterialTheme.typography.caption,
                             color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                         )
@@ -714,13 +714,13 @@ private fun CameraListSection(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "카메라를 찾을 수 없습니다.",
+                            text = "동일 네트워크에서 카메라를 찾을 수 없습니다.",
                             style = MaterialTheme.typography.body2,
                             color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "카메라의 Wi-Fi 기능이 활성화되어 있는지 확인하고\n'카메라 찾기' 버튼을 눌러보세요.",
+                            text = "카메라가 동일한 Wi-Fi 네트워크에 연결되어 있는지 확인하고\n'카메라 찾기' 버튼을 눌러보세요.",
                             style = MaterialTheme.typography.caption,
                             color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                         )

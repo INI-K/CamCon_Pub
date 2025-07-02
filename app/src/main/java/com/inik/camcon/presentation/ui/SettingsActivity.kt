@@ -125,8 +125,8 @@ fun SettingsScreen(
                 if (isPtpipEnabled) {
                     SettingsItemWithSwitch(
                         icon = Icons.Default.NetworkWifi,
-                        title = "Wi-Fi STA 모드",
-                        subtitle = "기존 Wi-Fi 네트워크를 통한 연결",
+                        title = "동일 네트워크 연결 (STA 모드)",
+                        subtitle = "카메라와 동일한 Wi-Fi 네트워크에서 연결 (권장)",
                         checked = isWifiStaModeEnabled,
                         onCheckedChange = { ptpipViewModel.setWifiStaModeEnabled(it) }
                     )

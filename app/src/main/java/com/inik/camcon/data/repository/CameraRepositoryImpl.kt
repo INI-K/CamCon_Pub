@@ -682,7 +682,7 @@ class CameraRepositoryImpl @Inject constructor(
         // 이벤트 리스너를 백그라운드 스레드에서 시작
         CoroutineScope(Dispatchers.IO).launch {
             var retryCount = 0
-            val maxRetries = 3
+            val maxRetries = 1
             
             while (retryCount < maxRetries && _isConnected.value) {
                 try {
