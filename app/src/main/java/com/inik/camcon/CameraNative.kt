@@ -25,21 +25,20 @@ object CameraNative {
     external fun getLibGphoto2Version(): String
     external fun getPortInfo(): String
     external fun initCamera(): String
-    external fun listenCameraEvents(callback: CameraCaptureListener)
+    external fun initCameraWithPtpip(ipAddress: String, port: Int, libDir: String): String
     external fun initCameraWithFd(fd: Int, nativeLibDir: String): Int
+    external fun listenCameraEvents(callback: CameraCaptureListener)
     external fun capturePhoto(): Int
     external fun capturePhotoAsync(callback: CameraCaptureListener, saveDir: String)
     external fun getCameraSummary(): String
     external fun closeCamera()
     external fun detectCamera(): String
     external fun isCameraConnected(): Boolean
-    //    external fun listCameraCapabilities(): String
     external fun listCameraAbilities(): String
     external fun requestCapture()
-    //    external fun startListenCameraEvents(callback: CameraCaptureListener)
     external fun stopListenCameraEvents()
-    external fun cameraAutoDetect():String
-    external fun buildWidgetJson():String
+    external fun cameraAutoDetect(): String
+    external fun buildWidgetJson(): String
     external fun queryConfig()
 
     external fun getSupportedCameras(): Array<String>?
@@ -61,4 +60,11 @@ object CameraNative {
     external fun getCameraThumbnail(photoPath: String): ByteArray?
     external fun downloadCameraPhoto(photoPath: String): ByteArray?
     external fun deleteCameraPhoto(photoPath: String): Boolean
+
+    // PTP/IP 연결 안정성을 위한 함수들
+    external fun clearPtpipSettings(): Boolean // libgphoto2의 ptp2_ip 설정을 모두 삭제하여 새로운 GUID 생성 강제
+    external fun waitBeforeRetry(ms: Int): Boolean // 네이티브에서 정확한 타이밍으로 대기
+    external fun resetPtpipGuid(): Boolean // GUID만 특별히 초기화
+    external fun setPtpipVerbose(enabled: Boolean): Boolean // PTPIP 디버그 로그 활성화
+
 }
