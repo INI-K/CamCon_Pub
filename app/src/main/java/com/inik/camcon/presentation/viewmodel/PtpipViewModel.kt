@@ -207,7 +207,14 @@ class PtpipViewModel @Inject constructor(
      * 특정 카메라에 연결
      */
     fun connectToCamera(camera: PtpipCamera) {
-        if (_isConnecting.value) return
+        Log.i(TAG, "카메라 연결 요청: ${camera.name} (${camera.ipAddress}:${camera.port})")
+
+        if (_isConnecting.value) {
+            Log.w(TAG, "이미 연결 시도 중입니다")
+            return
+        }
+
+        Log.d(TAG, "연결 시작 - _isConnecting을 true로 설정")
 
         viewModelScope.launch {
             try {
@@ -215,19 +222,27 @@ class PtpipViewModel @Inject constructor(
                 _errorMessage.value = null
                 _selectedCamera.value = camera
 
+                Log.d(TAG, "PTPIP 데이터소스 연결 시도 시작")
                 val success = ptpipDataSource.connectToCamera(camera)
+
+                Log.d(TAG, "연결 결과: ${if (success) "성공" else "실패"}")
+
                 if (success) {
+                    Log.i(TAG, "카메라 연결 성공")
                     // 연결 성공 시 마지막 연결 정보 저장
                     preferencesDataSource.saveLastConnectedCamera(camera.ipAddress, camera.name)
                 } else {
+                    Log.w(TAG, "카메라 연결 실패")
                     _errorMessage.value = "카메라 연결에 실패했습니다."
                     _selectedCamera.value = null
                 }
 
             } catch (e: Exception) {
+                Log.e(TAG, "연결 중 예외 발생", e)
                 _errorMessage.value = "연결 중 오류가 발생했습니다: ${e.message}"
                 _selectedCamera.value = null
             } finally {
+                Log.d(TAG, "연결 시도 완료 - _isConnecting을 false로 설정")
                 _isConnecting.value = false
             }
         }
