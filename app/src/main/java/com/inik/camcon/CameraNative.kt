@@ -31,7 +31,7 @@ object CameraNative {
     external fun capturePhoto(): Int
     external fun capturePhotoAsync(callback: CameraCaptureListener, saveDir: String)
     external fun getCameraSummary(): String
-    external fun closeCamera()
+    external fun closeCamera(): String
     external fun detectCamera(): String
     external fun isCameraConnected(): Boolean
     external fun listCameraAbilities(): String
@@ -67,4 +67,7 @@ object CameraNative {
     external fun resetPtpipGuid(): Boolean // GUID만 특별히 초기화
     external fun setPtpipVerbose(enabled: Boolean): Boolean // PTPIP 디버그 로그 활성화
 
+    // Nikon 전용 PTP 명령어 전송 함수 추가
+    external fun sendNikonCommand(operationCode: Int): Int
+    external fun sendNikonCommands(): Int
 }

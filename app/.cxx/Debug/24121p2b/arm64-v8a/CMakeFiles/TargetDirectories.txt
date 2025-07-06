@@ -1,3 +1,3 @@
-/Users/meo/CamConT/app/.cxx/Debug/24121p2b/arm64-v8a/CMakeFiles/native-lib.dir
-/Users/meo/CamConT/app/.cxx/Debug/24121p2b/arm64-v8a/CMakeFiles/edit_cache.dir
-/Users/meo/CamConT/app/.cxx/Debug/24121p2b/arm64-v8a/CMakeFiles/rebuild_cache.dir
+/Users/ini-k/CamCon/app/.cxx/Debug/24121p2b/arm64-v8a/CMakeFiles/native-lib.dir
+/Users/ini-k/CamCon/app/.cxx/Debug/24121p2b/arm64-v8a/CMakeFiles/edit_cache.dir
+/Users/ini-k/CamCon/app/.cxx/Debug/24121p2b/arm64-v8a/CMakeFiles/rebuild_cache.dir
