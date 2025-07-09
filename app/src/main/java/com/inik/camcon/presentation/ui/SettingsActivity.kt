@@ -78,7 +78,9 @@ fun SettingsScreen(
     
     // PTPIP 설정 상태
     val isPtpipEnabled by ptpipViewModel.isPtpipEnabled.collectAsState(initial = false)
-    val isWifiStaModeEnabled by ptpipViewModel.isWifiStaModeEnabled.collectAsState(initial = true)
+    val isWifiConnectionModeEnabled by ptpipViewModel.isWifiConnectionModeEnabled.collectAsState(
+        initial = true
+    )
     val isAutoDiscoveryEnabled by ptpipViewModel.isAutoDiscoveryEnabled.collectAsState(initial = true)
     val isAutoConnectEnabled by ptpipViewModel.isAutoConnectEnabled.collectAsState(initial = false)
     val lastConnectedName by ptpipViewModel.lastConnectedName.collectAsState(initial = null)
@@ -125,10 +127,10 @@ fun SettingsScreen(
                 if (isPtpipEnabled) {
                     SettingsItemWithSwitch(
                         icon = Icons.Default.NetworkWifi,
-                        title = "동일 네트워크 연결 (STA 모드)",
+                        title = "WIFI 연결 하기",
                         subtitle = "카메라와 동일한 Wi-Fi 네트워크에서 연결 (권장)",
-                        checked = isWifiStaModeEnabled,
-                        onCheckedChange = { ptpipViewModel.setWifiStaModeEnabled(it) }
+                        checked = isWifiConnectionModeEnabled,
+                        onCheckedChange = { ptpipViewModel.setWifiConnectionModeEnabled(it) }
                     )
                     
                     SettingsItemWithSwitch(
