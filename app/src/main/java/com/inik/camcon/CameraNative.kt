@@ -70,4 +70,9 @@ object CameraNative {
     // Nikon 전용 PTP 명령어 전송 함수 추가
     external fun sendNikonCommand(operationCode: Int): Int
     external fun sendNikonCommands(): Int
+
+    // gphoto2 호환성을 위한 함수들 추가
+    external fun isGphoto2Available(): Boolean
+    external fun waitForGphoto2Access(timeoutMs: Int): Boolean
+    external fun releaseForGphoto2(): Boolean
 }

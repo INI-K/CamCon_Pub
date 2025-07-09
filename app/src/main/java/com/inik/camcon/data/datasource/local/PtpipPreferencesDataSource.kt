@@ -32,7 +32,7 @@ class PtpipPreferencesDataSource @Inject constructor(
         private val DISCOVERY_TIMEOUT = intPreferencesKey("discovery_timeout")
         private val PTPIP_PORT = intPreferencesKey("ptpip_port")
         private val AUTO_CONNECT = booleanPreferencesKey("auto_connect")
-        private val WIFI_STA_MODE = booleanPreferencesKey("wifi_sta_mode")
+        private val WIFI_CONNECTION_MODE = booleanPreferencesKey("wifi_connection_mode")
     }
 
     /**
@@ -100,11 +100,14 @@ class PtpipPreferencesDataSource @Inject constructor(
         }
 
     /**
-     * Wi-Fi STA 모드 활성화 여부 (기본값: true - STA 모드 우선)
+     * Wi-Fi 연결 활성화 여부 (기본값: true - WIFI 연결 우선)
+     *
+     * @return Wi-Fi 연결 활성화 여부
+     * @since 2024
      */
-    val isWifiStaModeEnabled: Flow<Boolean> = context.ptpipDataStore.data
+    val isWifiConnectionModeEnabled: Flow<Boolean> = context.ptpipDataStore.data
         .map { preferences ->
-            preferences[WIFI_STA_MODE] ?: true
+            preferences[WIFI_CONNECTION_MODE] ?: true
         }
 
     /**
@@ -172,13 +175,16 @@ class PtpipPreferencesDataSource @Inject constructor(
     }
 
     /**
-     * Wi-Fi STA 모드 활성화/비활성화
-     * true: 동일 네트워크에서 카메라 검색 (STA 모드)
-     * false: 카메라 AP 모드 (레거시 지원용)
+     * Wi-Fi 연결 활성화/비활성화
+     * true: 동일 네트워크에서 카메라 검색 (WIFI 연결)
+     * false: 직접 연결 (AP 모드)
+     *
+     * @param enabled 활성화 여부
+     * @since 2024
      */
-    suspend fun setWifiStaModeEnabled(enabled: Boolean) {
+    suspend fun setWifiConnectionModeEnabled(enabled: Boolean) {
         context.ptpipDataStore.edit { preferences ->
-            preferences[WIFI_STA_MODE] = enabled
+            preferences[WIFI_CONNECTION_MODE] = enabled
         }
     }
 

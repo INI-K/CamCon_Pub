@@ -4,10 +4,12 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource
-import com.inik.camcon.data.datasource.ptpip.PtpipCamera
-import com.inik.camcon.data.datasource.ptpip.PtpipConnectionState
 import com.inik.camcon.data.datasource.ptpip.PtpipDataSource
+import com.inik.camcon.domain.model.PtpipCamera
+import com.inik.camcon.domain.model.PtpipConnectionState
+import com.inik.camcon.domain.model.WifiCapabilities
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,7 +44,7 @@ class PtpipViewModel @Inject constructor(
     val isPtpipEnabled = preferencesDataSource.isPtpipEnabled
     val isAutoDiscoveryEnabled = preferencesDataSource.isAutoDiscoveryEnabled
     val isAutoConnectEnabled = preferencesDataSource.isAutoConnectEnabled
-    val isWifiStaModeEnabled = preferencesDataSource.isWifiStaModeEnabled
+    val isWifiConnectionModeEnabled = preferencesDataSource.isWifiConnectionModeEnabled
     val lastConnectedIp = preferencesDataSource.lastConnectedIp
     val lastConnectedName = preferencesDataSource.lastConnectedName
     val connectionTimeout = preferencesDataSource.connectionTimeout
@@ -65,7 +67,7 @@ class PtpipViewModel @Inject constructor(
     // 종합 상태 (PTPIP 활성화 + Wi-Fi 연결)
     val isPtpipAvailable = combine(
         isPtpipEnabled,
-        isWifiStaModeEnabled
+        isWifiConnectionModeEnabled
     ) { enabled, wifiEnabled ->
         enabled && wifiEnabled && ptpipDataSource.isWifiConnected()
     }
@@ -104,11 +106,11 @@ class PtpipViewModel @Inject constructor(
     }
 
     /**
-     * Wi-Fi STA 모드 활성화/비활성화
+     * Wi-Fi 연결 활성화/비활성화
      */
-    fun setWifiStaModeEnabled(enabled: Boolean) {
+    fun setWifiConnectionModeEnabled(enabled: Boolean) {
         viewModelScope.launch {
-            preferencesDataSource.setWifiStaModeEnabled(enabled)
+            preferencesDataSource.setWifiConnectionModeEnabled(enabled)
         }
     }
 
@@ -326,7 +328,7 @@ class PtpipViewModel @Inject constructor(
     /**
      * Wi-Fi 기능 상세 정보 가져오기
      */
-    fun getWifiCapabilities(): com.inik.camcon.data.datasource.ptpip.WifiCapabilities {
+    fun getWifiCapabilities(): WifiCapabilities {
         return ptpipDataSource.getWifiCapabilities()
     }
 
@@ -339,6 +341,224 @@ class PtpipViewModel @Inject constructor(
             PtpipConnectionState.CONNECTING -> "연결 중..."
             PtpipConnectionState.CONNECTED -> "연결됨"
             PtpipConnectionState.ERROR -> "연결 오류"
+        }
+    }
+
+    /**
+     * 1단계: 기본 PTPIP 연결 테스트
+     */
+    fun testBasicPtpipConnection(camera: PtpipCamera) {
+        Log.i(TAG, "=== 디버그: 기본 PTPIP 연결 테스트 시작 ===")
+        
+        viewModelScope.launch {
+            try {
+                _isConnecting.value = true
+                _errorMessage.value = null
+
+                // 연결 전 잠시 대기 (카메라 안정화)
+                delay(1000)
+
+                // PtpipConnectionManager를 통한 기본 연결 테스트
+                val connectionManager = ptpipDataSource.getConnectionManager()
+                val success = connectionManager.establishConnection(camera)
+                
+                if (success) {
+                    Log.i(TAG, "✅ 기본 PTPIP 연결 성공")
+
+                    // 연결 후 잠시 대기 (카메라와의 통신 안정화)
+                    delay(500)
+
+                    // 디바이스 정보 가져오기
+                    val deviceInfo = connectionManager.getDeviceInfo()
+                    if (deviceInfo != null) {
+                        Log.i(TAG, "✅ 디바이스 정보 획득 성공: ${deviceInfo.manufacturer} ${deviceInfo.model}")
+                        _errorMessage.value = "기본 연결 성공: ${deviceInfo.manufacturer} ${deviceInfo.model}"
+
+                        // 정보 획득 후 잠시 대기 (카메라에게 처리 시간 제공)
+                        delay(1000)
+                    } else {
+                        Log.w(TAG, "⚠️ 디바이스 정보 획득 실패")
+                        _errorMessage.value = "기본 연결 성공하지만 디바이스 정보 없음"
+                    }
+
+                    // ⚠️ 중요: 연결 해제하지 않음 (카메라 Wi-Fi 종료 방지)
+                    // 실제 사용에서는 니콘 카메라 확인 후 STA 모드로 전환하므로
+                    // 연결을 유지해야 함
+                    Log.d(TAG, "✅ 연결 유지 (카메라 Wi-Fi 종료 방지)")
+                } else {
+                    Log.e(TAG, "❌ 기본 PTPIP 연결 실패")
+                    _errorMessage.value = "기본 PTPIP 연결 실패"
+                }
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "기본 연결 테스트 중 오류: ${e.message}")
+                _errorMessage.value = "기본 연결 테스트 오류: ${e.message}"
+            } finally {
+                _isConnecting.value = false
+            }
+        }
+    }
+
+    /**
+     * 2단계: 니콘 Phase 1 인증 테스트
+     */
+    fun testNikonPhase1Authentication(camera: PtpipCamera) {
+        Log.i(TAG, "=== 디버그: 니콘 Phase 1 인증 테스트 시작 ===")
+        
+        viewModelScope.launch {
+            try {
+                _isConnecting.value = true
+                _errorMessage.value = null
+                
+                // NikonAuthenticationService를 통한 Phase 1 테스트
+                val authService = ptpipDataSource.getNikonAuthService()
+                val success = authService.testPhase1Authentication(camera)
+                
+                if (success) {
+                    Log.i(TAG, "✅ 니콘 Phase 1 인증 성공")
+                    _errorMessage.value = "Phase 1 인증 성공"
+                } else {
+                    Log.e(TAG, "❌ 니콘 Phase 1 인증 실패")
+                    _errorMessage.value = "Phase 1 인증 실패"
+                }
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "Phase 1 테스트 중 오류: ${e.message}")
+                _errorMessage.value = "Phase 1 테스트 오류: ${e.message}"
+            } finally {
+                _isConnecting.value = false
+            }
+        }
+    }
+
+    /**
+     * 3단계: 니콘 Phase 2 인증 테스트
+     */
+    fun testNikonPhase2Authentication(camera: PtpipCamera) {
+        Log.i(TAG, "=== 디버그: 니콘 Phase 2 인증 테스트 시작 ===")
+        
+        viewModelScope.launch {
+            try {
+                _isConnecting.value = true
+                _errorMessage.value = null
+                
+                // NikonAuthenticationService를 통한 Phase 2 테스트
+                val authService = ptpipDataSource.getNikonAuthService()
+                val success = authService.testPhase2Authentication(camera)
+                
+                if (success) {
+                    Log.i(TAG, "✅ 니콘 Phase 2 인증 성공")
+                    _errorMessage.value = "Phase 2 인증 성공"
+                } else {
+                    Log.e(TAG, "❌ 니콘 Phase 2 인증 실패")
+                    _errorMessage.value = "Phase 2 인증 실패"
+                }
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "Phase 2 테스트 중 오류: ${e.message}")
+                _errorMessage.value = "Phase 2 테스트 오류: ${e.message}"
+            } finally {
+                _isConnecting.value = false
+            }
+        }
+    }
+
+    /**
+     * 4단계: 개별 니콘 명령 테스트
+     */
+    fun testNikonCommand(camera: PtpipCamera, command: String) {
+        Log.i(TAG, "=== 디버그: 니콘 명령 테스트 시작 ($command) ===")
+        
+        viewModelScope.launch {
+            try {
+                _isConnecting.value = true
+                _errorMessage.value = null
+                
+                val authService = ptpipDataSource.getNikonAuthService()
+                val success = when (command) {
+                    "0x952b" -> authService.testNikon952bCommand(camera)
+                    "0x935a" -> authService.testNikon935aCommand(camera)
+                    "GetDeviceInfo" -> authService.testGetDeviceInfo(camera)
+                    "OpenSession" -> authService.testOpenSession(camera)
+                    else -> false
+                }
+                
+                if (success) {
+                    Log.i(TAG, "✅ 니콘 명령 ($command) 성공")
+                    _errorMessage.value = "$command 명령 성공"
+                } else {
+                    Log.e(TAG, "❌ 니콘 명령 ($command) 실패")
+                    _errorMessage.value = "$command 명령 실패"
+                }
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "명령 테스트 중 오류: ${e.message}")
+                _errorMessage.value = "명령 테스트 오류: ${e.message}"
+            } finally {
+                _isConnecting.value = false
+            }
+        }
+    }
+
+    /**
+     * 5단계: 소켓 연결 테스트
+     */
+    fun testSocketConnection(camera: PtpipCamera) {
+        Log.i(TAG, "=== 디버그: 소켓 연결 테스트 시작 ===")
+        
+        viewModelScope.launch {
+            try {
+                _isConnecting.value = true
+                _errorMessage.value = null
+                
+                val authService = ptpipDataSource.getNikonAuthService()
+                val success = authService.testSocketConnection(camera)
+                
+                if (success) {
+                    Log.i(TAG, "✅ 소켓 연결 성공")
+                    _errorMessage.value = "소켓 연결 성공"
+                } else {
+                    Log.e(TAG, "❌ 소켓 연결 실패")
+                    _errorMessage.value = "소켓 연결 실패"
+                }
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "소켓 연결 테스트 중 오류: ${e.message}")
+                _errorMessage.value = "소켓 연결 테스트 오류: ${e.message}"
+            } finally {
+                _isConnecting.value = false
+            }
+        }
+    }
+
+    /**
+     * 6단계: 포트 스캔 테스트
+     */
+    fun testPortScan(ipAddress: String) {
+        Log.i(TAG, "=== 디버그: 포트 스캔 테스트 시작 ===")
+        
+        viewModelScope.launch {
+            try {
+                _isConnecting.value = true
+                _errorMessage.value = null
+                
+                val authService = ptpipDataSource.getNikonAuthService()
+                val openPorts = authService.scanPorts(ipAddress)
+                
+                if (openPorts.isNotEmpty()) {
+                    Log.i(TAG, "✅ 열린 포트 발견: ${openPorts.joinToString(", ")}")
+                    _errorMessage.value = "열린 포트: ${openPorts.joinToString(", ")}"
+                } else {
+                    Log.w(TAG, "⚠️ 열린 포트 없음")
+                    _errorMessage.value = "열린 포트 없음"
+                }
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "포트 스캔 테스트 중 오류: ${e.message}")
+                _errorMessage.value = "포트 스캔 테스트 오류: ${e.message}"
+            } finally {
+                _isConnecting.value = false
+            }
         }
     }
 

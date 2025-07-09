@@ -1,1 +1,1 @@
-/Users/ini-k/CamCon/app/src/main/cpp/CMakeLists.txt
+/Users/meo/CamConT/app/src/main/cpp/CMakeLists.txt
