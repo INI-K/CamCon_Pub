@@ -166,30 +166,34 @@ class PtpipDataSource @Inject constructor(
             if (isNikonCamera) {
                 Log.i(TAG, "=== 3단계: 니콘 STA 모드 인증 ===")
 
-                // 중요: 니콘 카메라의 경우 연결을 유지하고 STA 인증으로 넘어감
-                // 연결을 해제하면 카메라가 Wi-Fi를 종료할 수 있음
-                Log.d(TAG, "니콘 카메라 감지 - 기존 연결 유지하며 STA 인증 준비")
+                // 니콘 STA 모드: 기존 PTPIP 연결을 유지하면서 libgphoto2 세션 연결
+                Log.d(TAG, "니콘 STA 모드: 기존 PTPIP 연결 유지하며 libgphoto2 세션 연결")
 
-                // 부드러운 연결 해제 (세션만 종료, 소켓은 유지)
-                try {
-                    connectionManager.closeSession()
-                    Log.d(TAG, "기존 세션 종료 완료")
-                } catch (e: Exception) {
-                    Log.w(TAG, "세션 종료 중 오류 (무시): ${e.message}")
-                }
-
-                // 카메라 안정화 대기 (짧게)
-                kotlinx.coroutines.delay(1000)
-
-                // 소켓 연결 해제 (카메라 Wi-Fi 종료 방지를 위해 부드럽게)
-                connectionManager.closeConnections()
-
-                // 추가 안정화 대기
-                kotlinx.coroutines.delay(2000)
-
-                // 니콘 STA 인증 수행
+                // 니콘 STA 인증 수행 (기존 연결 유지)
                 if (nikonAuthService.performStaAuthentication(camera)) {
                     Log.i(TAG, "✅ 니콘 STA 모드 인증 성공!")
+
+                    // 기존 PTPIP 연결을 유지하면서 libgphoto2 세션 연결
+                    val libDir = context.applicationInfo.nativeLibraryDir
+                    try {
+                        Log.i(TAG, "=== STA 모드: 세션 유지 초기화 시작 ===")
+                        val initResult = CameraNative.initCameraWithSessionMaintenance(
+                            camera.ipAddress,
+                            camera.port,
+                            libDir
+                        )
+                        if (initResult >= 0) {
+                            Log.i(TAG, "✅ libgphoto2 세션 유지 초기화 성공!")
+                        } else {
+                            Log.w(TAG, "❌ libgphoto2 세션 유지 초기화 실패: $initResult (세션 유지)")
+                            // 세션 유지 실패해도 계속 진행 - 오류로 처리하지 않음
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "❌ libgphoto2 세션 유지 초기화 실패 (예외): ${e.message}")
+                        // 예외가 발생해도 계속 진행 - 오류로 처리하지 않음
+                    }
+
+                    // 세션 초기화 성공 여부와 관계없이 연결 상태를 성공으로 설정
                     _connectionState.value = PtpipConnectionState.CONNECTED
                     connectedCamera = camera
                     return@withContext true
@@ -202,6 +206,24 @@ class PtpipDataSource @Inject constructor(
                 Log.i(TAG, "니콘이 아닌 카메라 - 기본 PTPIP 연결 유지")
                 _connectionState.value = PtpipConnectionState.CONNECTED
                 connectedCamera = camera
+
+                // 니콘이 아닌 카메라의 경우 libgphoto2 세션 유지 초기화
+                val libDir = context.applicationInfo.nativeLibraryDir
+                try {
+                    val initResult = CameraNative.initCameraWithSessionMaintenance(
+                        camera.ipAddress,
+                        camera.port,
+                        libDir
+                    )
+                    if (initResult >= 0) {
+                        Log.i(TAG, "✅ libgphoto2 세션 유지 초기화 성공!")
+                    } else {
+                        Log.w(TAG, "❌ libgphoto2 세션 유지 초기화 실패: $initResult (세션 유지)")
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "❌ libgphoto2 세션 유지 초기화 실패 (예외): ${e.message}")
+                }
+
                 return@withContext true
             }
 
@@ -263,29 +285,38 @@ class PtpipDataSource @Inject constructor(
     /**
      * 카메라 연결 해제
      */
-    suspend fun disconnect() = withContext(Dispatchers.IO) {
+    suspend fun disconnect(keepSession: Boolean = false) = withContext(Dispatchers.IO) {
         try {
-            Log.d(TAG, "카메라 연결 해제 시작")
+            Log.d(TAG, "카메라 연결 해제 시작 (keepSession: $keepSession)")
 
             // Discovery 중지
             discoveryService.stopDiscovery()
 
             // libgphoto2 연결 해제
-            try {
-                CameraNative.closeCamera()
-            } catch (e: Exception) {
-                Log.w(TAG, "libgphoto2 연결 해제 중 오류: ${e.message}")
+            if (!keepSession) {
+                try {
+                    CameraNative.closeCamera()
+                } catch (e: Exception) {
+                    Log.w(TAG, "libgphoto2 연결 해제 중 오류: ${e.message}")
+                }
+            } else {
+                Log.d(TAG, "libgphoto2 연결 해제 무시 (세션 유지)")
             }
 
             // PTPIP 연결 해제
-            connectionManager.closeConnections()
+            connectionManager.closeConnections(!keepSession)
 
             // 상태 초기화
-            connectedCamera = null
-            _connectionState.value = PtpipConnectionState.DISCONNECTED
-            _cameraInfo.value = null
+            if (!keepSession) {
+                connectedCamera = null
+                _connectionState.value = PtpipConnectionState.DISCONNECTED
+                _cameraInfo.value = null
+                Log.d(TAG, "카메라 연결 해제 완료")
+            } else {
+                _connectionState.value = PtpipConnectionState.CONNECTED
+                Log.d(TAG, "카메라 연결 유지 (세션 유지)")
+            }
 
-            Log.d(TAG, "카메라 연결 해제 완료")
         } catch (e: Exception) {
             Log.e(TAG, "카메라 연결 해제 중 오류", e)
         }
@@ -294,19 +325,23 @@ class PtpipDataSource @Inject constructor(
     /**
      * gphoto2 접근을 위한 연결 해제
      */
-    suspend fun disconnectForGphoto2() = withContext(Dispatchers.IO) {
+    suspend fun disconnectForGphoto2(keepSession: Boolean = false) = withContext(Dispatchers.IO) {
         try {
-            Log.d(TAG, "gphoto2 호환 모드: 연결 해제 시작")
+            Log.d(TAG, "gphoto2 호환 모드: 연결 해제 시작 (keepSession: $keepSession)")
 
             // 니콘 카메라 특별 처리
             if (connectedCamera?.name?.contains("Nikon", ignoreCase = true) == true) {
-                Log.d(TAG, "니콘 카메라 세션 종료")
-                connectionManager.closeSession()
-                kotlinx.coroutines.delay(2000)
+                if (!keepSession) {
+                    Log.d(TAG, "니콘 카메라 세션 종료")
+                    connectionManager.closeSession()
+                    kotlinx.coroutines.delay(2000)
+                } else {
+                    Log.d(TAG, "니콘 카메라 세션 유지 모드")
+                }
             }
 
-            // 일반 연결 해제
-            disconnect()
+            // 일반 연결 해제 (세션 유지 여부 전달)
+            disconnect(keepSession)
             kotlinx.coroutines.delay(1000)
 
             Log.d(TAG, "gphoto2 호환 모드: 연결 해제 완료")
@@ -318,15 +353,16 @@ class PtpipDataSource @Inject constructor(
     /**
      * 임시 연결 해제
      */
-    suspend fun temporaryDisconnect(): Boolean = withContext(Dispatchers.IO) {
+    suspend fun temporaryDisconnect(keepSession: Boolean = true): Boolean =
+        withContext(Dispatchers.IO) {
         try {
-            Log.d(TAG, "임시 연결 해제 시작")
+            Log.d(TAG, "임시 연결 해제 시작 (keepSession: $keepSession)")
 
             val currentCamera = connectedCamera
             val wasConnected = _connectionState.value == PtpipConnectionState.CONNECTED
 
             if (wasConnected && currentCamera != null) {
-                disconnectForGphoto2()
+                disconnectForGphoto2(keepSession)
                 return@withContext true
             }
 
@@ -357,9 +393,44 @@ class PtpipDataSource @Inject constructor(
     suspend fun capturePhoto(): Boolean = withContext(Dispatchers.IO) {
         return@withContext try {
             Log.d(TAG, "사진 촬영 시작")
-            val result = CameraNative.capturePhoto()
-            Log.d(TAG, "사진 촬영 결과: $result")
-            result >= 0
+
+            // 현재 연결된 카메라 정보 확인
+            val camera = connectedCamera
+            if (camera == null) {
+                Log.e(TAG, "사진 촬영 실패: 연결된 카메라 없음")
+                return@withContext false
+            }
+
+            // PTP/IP 연결
+            try {
+                Log.i(TAG, "STA 모드 세션 유지 방식 시도")
+
+                // STA 모드 세션 유지 기능 사용
+                val maintainResult = CameraNative.maintainSessionForStaMode()
+                if (maintainResult >= 0) {
+                    Log.i(TAG, "STA 모드 세션 유지 성공")
+
+                    // 초기화 성공 후 촬영
+                    val result = CameraNative.capturePhoto()
+                    Log.d(TAG, "사진 촬영 결과: $result")
+
+                    return@withContext result >= 0
+                } else {
+                    Log.w(TAG, "❌ STA 모드 세션 유지 실패: $maintainResult")
+
+                    // 세션 유지 실패해도 계속 시도
+                    // 여러 번 재시도해도 실패하면 사용자에게 알림 필요
+
+                    // 여전히 촬영 시도
+                    val result = CameraNative.capturePhoto()
+                    Log.d(TAG, "세션 유지 실패 후 촬영 시도 결과: $result")
+
+                    return@withContext result >= 0
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "PTP/IP 세션 유지 중 오류", e)
+                return@withContext false
+            }
         } catch (e: Exception) {
             Log.e(TAG, "사진 촬영 중 오류", e)
             false
