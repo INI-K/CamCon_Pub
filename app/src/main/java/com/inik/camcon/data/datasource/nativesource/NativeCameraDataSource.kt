@@ -43,7 +43,12 @@ class NativeCameraDataSource @Inject constructor(
     fun getPortInfo(): String = CameraNative.getPortInfo()
 
     // 카메라 초기화
-    fun initCamera(): String = CameraNative.initCamera()
+    fun initCamera(): String {
+        Log.d(TAG, "카메라 초기화 시작")
+        val result = CameraNative.initCamera()
+        Log.d(TAG, "카메라 초기화 완료: 결과=$result")
+        return result
+    }
 
     // 파일 디스크립터 기반 초기화
     fun initCameraWithFd(fd: Int, nativeLibDir: String): Int {

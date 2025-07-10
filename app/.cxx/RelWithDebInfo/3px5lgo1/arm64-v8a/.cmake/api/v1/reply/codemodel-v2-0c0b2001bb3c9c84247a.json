@@ -6,7 +6,7 @@
 			[
 				{
 					"build" : ".",
-					"jsonFile" : "directory-.-Debug-f5ebdc15457944623624.json",
+					"jsonFile" : "directory-.-RelWithDebInfo-f5ebdc15457944623624.json",
 					"minimumCMakeVersion" : 
 					{
 						"string" : "3.6.0"
@@ -19,7 +19,7 @@
 					]
 				}
 			],
-			"name" : "Debug",
+			"name" : "RelWithDebInfo",
 			"projects" : 
 			[
 				{
@@ -27,7 +27,7 @@
 					[
 						0
 					],
-					"name" : "CamConT",
+					"name" : "camcont_native",
 					"targetIndexes" : 
 					[
 						0
@@ -38,9 +38,9 @@
 			[
 				{
 					"directoryIndex" : 0,
-					"id" : "native-lib::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-native-lib-Debug-025214b9e5413dbb3b49.json",
-					"name" : "native-lib",
+					"id" : "camcon_native::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-camcon_native-RelWithDebInfo-514708257416751282ab.json",
+					"name" : "camcon_native",
 					"projectIndex" : 0
 				}
 			]
@@ -49,8 +49,8 @@
 	"kind" : "codemodel",
 	"paths" : 
 	{
-		"build" : "/Users/ini-k/CamCon/app/.cxx/Debug/24121p2b/arm64-v8a",
-		"source" : "/Users/ini-k/CamCon/app/src/main/cpp"
+		"build" : "/Users/meo/CamConT/app/.cxx/RelWithDebInfo/3px5lgo1/arm64-v8a",
+		"source" : "/Users/meo/CamConT/app/src/main/cpp"
 	},
 	"version" : 
 	{

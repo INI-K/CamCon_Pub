@@ -177,68 +177,220 @@ fun PtpipConnectionScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-        Column(
+        // LazyColumn으로 변경하여 스크롤 가능하게 함
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
             // Wi-Fi 상태 카드
-            WifiStatusCard(
-                isWifiConnected = isWifiConnected,
-                isPtpipEnabled = isPtpipEnabled,
-                onEnablePtpip = { ptpipViewModel.setPtpipEnabled(true) }
-            )
+            item {
+                WifiStatusCard(
+                    isWifiConnected = isWifiConnected,
+                    isPtpipEnabled = isPtpipEnabled,
+                    onEnablePtpip = { ptpipViewModel.setPtpipEnabled(true) }
+                )
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-            // Wi-Fi 기능 정보 카드
-            WifiCapabilitiesCard(
-                wifiCapabilities = wifiCapabilities,
-                hasLocationPermission = hasLocationPermission,
-                onRequestPermission = {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                // Wi-Fi 기능 정보 카드
+                WifiCapabilitiesCard(
+                    wifiCapabilities = wifiCapabilities,
+                    hasLocationPermission = hasLocationPermission,
+                    onRequestPermission = {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                        }
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 연결 상태 카드
+                if (connectionState != PtpipConnectionState.DISCONNECTED) {
+                    ConnectionStatusCard(
+                        connectionState = connectionState,
+                        selectedCamera = selectedCamera,
+                        cameraInfo = cameraInfo,
+                        onDisconnect = { ptpipViewModel.disconnect() },
+                        onCapture = { ptpipViewModel.capturePhoto() }
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                // 카메라 목록 섹션 헤더
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (isDiscovering) "카메라 검색 중..." else "발견된 카메라 (${discoveredCameras.size})",
+                        style = MaterialTheme.typography.h6,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    // 검색 버튼 텍스트와 동작 개선
+                    Button(
+                        onClick = { ptpipViewModel.discoverCameras() },
+                        enabled = !isDiscovering && isWifiConnected
+                    ) {
+                        Text(
+                            when {
+                                isDiscovering -> "검색 중..."
+                                discoveredCameras.isEmpty() -> "카메라 찾기"
+                                else -> "다시 검색"
+                            }
+                        )
                     }
                 }
-            )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 연결 상태 카드
-            if (connectionState != PtpipConnectionState.DISCONNECTED) {
-                ConnectionStatusCard(
-                    connectionState = connectionState,
-                    selectedCamera = selectedCamera,
-                    cameraInfo = cameraInfo,
-                    onDisconnect = { ptpipViewModel.disconnect() },
-                    onCapture = { ptpipViewModel.capturePhoto() }
-                )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
             }
 
-            // 카메라 목록
-            CameraListSection(
-                cameras = discoveredCameras,
-                isDiscovering = isDiscovering,
-                isConnecting = isConnecting,
-                selectedCamera = selectedCamera,
-                onCameraSelect = { ptpipViewModel.selectCamera(it) },
-                onCameraConnect = { ptpipViewModel.connectToCamera(it) },
-                onDiscoverCameras = { ptpipViewModel.discoverCameras() },
-                isPtpipEnabled = isPtpipEnabled,
-                isWifiConnected = isWifiConnected
-            )
+            // 카메라 목록 섹션 내용
+            when {
+                !isPtpipEnabled -> {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Settings,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(48.dp),
+                                    tint = MaterialTheme.colors.onSurface.copy(alpha = 0.5f)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "PTPIP 기능을 먼저 활성화하세요.",
+                                    style = MaterialTheme.typography.body2,
+                                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                !isWifiConnected -> {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.WifiOff,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(48.dp),
+                                    tint = MaterialTheme.colors.onSurface.copy(alpha = 0.5f)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "카메라와 동일한 Wi-Fi 네트워크에 연결하세요.",
+                                    style = MaterialTheme.typography.body2,
+                                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "연결 후 이 화면으로 돌아와서 '카메라 찾기' 버튼을 눌러 동일 네트워크에서 검색하세요.",
+                                    style = MaterialTheme.typography.caption,
+                                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                isDiscovering -> {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                CircularProgressIndicator()
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("네트워크에서 카메라를 찾고 있습니다...")
+                            }
+                        }
+                    }
+                }
+
+                discoveredCameras.isEmpty() -> {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.CameraAlt,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(48.dp),
+                                    tint = MaterialTheme.colors.onSurface.copy(alpha = 0.5f)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "동일 네트워크에서 카메라를 찾을 수 없습니다.",
+                                    style = MaterialTheme.typography.body2,
+                                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "카메라가 동일한 Wi-Fi 네트워크에 연결되어 있는지 확인하고\n'카메라 찾기' 버튼을 눌러보세요.",
+                                    style = MaterialTheme.typography.caption,
+                                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                else -> {
+                    // 각 카메라 목록 반복
+                    items(discoveredCameras) { camera ->
+                        CameraItem(
+                            camera = camera,
+                            isSelected = camera == selectedCamera,
+                            isConnecting = isConnecting,
+                            onConnect = { ptpipViewModel.connectToCamera(camera) }
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+            }
 
             // 디버그 버튼 섹션 (발견된 카메라가 있을 때만 표시)
             if (discoveredCameras.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(16.dp))
-                DebugButtonsSection(
-                    cameras = discoveredCameras,
-                    selectedCamera = selectedCamera,
-                    isConnecting = isConnecting,
-                    ptpipViewModel = ptpipViewModel
-                )
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    DebugButtonsSection(
+                        cameras = discoveredCameras,
+                        selectedCamera = selectedCamera,
+                        isConnecting = isConnecting,
+                        ptpipViewModel = ptpipViewModel
+                    )
+                }
             }
         }
     }
@@ -667,10 +819,11 @@ private fun CameraListSection(
             }
 
             else -> {
-                LazyColumn(
+                // LazyColumnuc744 uc77cubc18 Columnuc73cub85c ubcc0uacbdud558uace0 ubc18ubcf5uc790 uc0acuc6a9
+                Column(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(cameras) { camera ->
+                    cameras.forEach { camera ->
                         CameraItem(
                             camera = camera,
                             isSelected = camera == selectedCamera,
@@ -837,6 +990,7 @@ private fun DebugButtonsSection(
 
     if (targetCamera == null) return
 
+    // LazyColumn을 일반 Column으로 변경
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = 4.dp
@@ -919,7 +1073,12 @@ private fun DebugButtonsSection(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 OutlinedButton(
-                    onClick = { ptpipViewModel.testNikonCommand(targetCamera, "GetDeviceInfo") },
+                    onClick = {
+                        ptpipViewModel.testNikonCommand(
+                            targetCamera,
+                            "GetDeviceInfo"
+                        )
+                    },
                     enabled = !isConnecting,
                     modifier = Modifier.weight(1f)
                 ) {
@@ -927,7 +1086,12 @@ private fun DebugButtonsSection(
                 }
 
                 OutlinedButton(
-                    onClick = { ptpipViewModel.testNikonCommand(targetCamera, "OpenSession") },
+                    onClick = {
+                        ptpipViewModel.testNikonCommand(
+                            targetCamera,
+                            "OpenSession"
+                        )
+                    },
                     enabled = !isConnecting,
                     modifier = Modifier.weight(1f)
                 ) {
