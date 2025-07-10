@@ -1,0 +1,15 @@
+# ninja log v5
+1271	1333	1752038768318379955	/Users/meo/CamConT/app/build/intermediates/cxx/RelWithDebInfo/3px5lgo1/obj/arm64-v8a/libnative-lib.so	dfdfeac7fe07ce3c
+0	1271	1752038768255824347	CMakeFiles/native-lib.dir/camera_init.cpp.o	b2d0e7c2f1b43034
+2	1108	1752038768092306587	CMakeFiles/native-lib.dir/camera_events.cpp.o	f99bb2196c637976
+0	1041	1752038768025903925	CMakeFiles/native-lib.dir/camera_config.cpp.o	b2085a99b2826e85
+0	29	1752131483585466806	build.ninja	c1d24f3dd41371a4
+0	5	0	clean	937d7af4873b4f14
+0	1017	1752038768002442577	CMakeFiles/native-lib.dir/camera_capture.cpp.o	90a22419ba679337
+1	1015	1752038767999090331	CMakeFiles/native-lib.dir/camera_liveview.cpp.o	ec82f480bf9dfb75
+2	979	1752038767962379033	CMakeFiles/native-lib.dir/camera_diagnostics.cpp.o	91fe5d31749f9254
+1	1158	1752038768143610684	CMakeFiles/native-lib.dir/camera_files.cpp.o	cc5ef49a469325f
+2	870	1752038767853194924	CMakeFiles/native-lib.dir/camera_utils.cpp.o	7f5b786de6e61ede
+0	805	1752038767789187556	CMakeFiles/native-lib.dir/native-lib.cpp.o	dec92cfe3b8c425
+0	86	1752131483585466806	build.ninja	c1d24f3dd41371a4
+0	7	0	clean	937d7af4873b4f14

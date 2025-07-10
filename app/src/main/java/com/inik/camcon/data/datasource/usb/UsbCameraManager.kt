@@ -518,9 +518,13 @@ class UsbCameraManager @Inject constructor(
             val generalResult = CameraNative.initCamera()
             Log.d(TAG, "일반 카메라 초기화 결과: $generalResult")
 
-            if (generalResult.contains("OK", ignoreCase = true) ||
-                generalResult.contains("0", ignoreCase = true)
-            ) {
+            // --- Begin fix:
+            // 기존 조건:
+            // if (generalResult.contains("OK", ignoreCase = true) ||
+            //     generalResult.contains("0", ignoreCase = true)
+            // )
+            // -> initCamera가 성공하면 "OK"가 반드시 포함되어야 함 (0포함은 금지)
+            if (generalResult.contains("OK", ignoreCase = true)) {
                 withContext(Dispatchers.Main) {
                     _isNativeCameraConnected.value = true
                 }
@@ -539,6 +543,7 @@ class UsbCameraManager @Inject constructor(
                     // 카메라가 감지되면 다시 초기화 시도
                     delay(1000)
                     val finalResult = CameraNative.initCamera()
+                    // 여기서도 OK만으로 성공 처리
                     if (finalResult.contains("OK", ignoreCase = true)) {
                         withContext(Dispatchers.Main) {
                             _isNativeCameraConnected.value = true
@@ -560,6 +565,8 @@ class UsbCameraManager @Inject constructor(
                     }
                 }
             }
+            // --- End fix.
+
         } catch (e: Exception) {
             Log.e(TAG, "일반 카메라 초기화 중 예외 발생", e)
             withContext(Dispatchers.Main) {
