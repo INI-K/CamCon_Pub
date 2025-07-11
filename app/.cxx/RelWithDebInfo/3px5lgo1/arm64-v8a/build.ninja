@@ -41,137 +41,137 @@ include CMakeFiles/rules.ninja
 
 cmake_ninja_workdir = /Users/meo/CamConT/app/.cxx/RelWithDebInfo/3px5lgo1/arm64-v8a/
 # =============================================================================
-# Object build statements for SHARED_LIBRARY target camcon_native
+# Object build statements for SHARED_LIBRARY target native-lib
 
 
 #############################################
-# Order-only phony target for camcon_native
+# Order-only phony target for native-lib
 
-build cmake_object_order_depends_target_camcon_native: phony || CMakeFiles/camcon_native.dir
+build cmake_object_order_depends_target_native-lib: phony || CMakeFiles/native-lib.dir
 
-build CMakeFiles/camcon_native.dir/camera_common.cpp.o: CXX_COMPILER__camcon_native_RelWithDebInfo /Users/meo/CamConT/app/src/main/cpp/camera_common.cpp || cmake_object_order_depends_target_camcon_native
-  DEFINES = -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2\" -DIOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port\" -Dcamcon_native_EXPORTS
-  DEP_FILE = CMakeFiles/camcon_native.dir/camera_common.cpp.o.d
+build CMakeFiles/native-lib.dir/camera_common.cpp.o: CXX_COMPILER__native-lib_RelWithDebInfo /Users/meo/CamConT/app/src/main/cpp/camera_common.cpp || cmake_object_order_depends_target_native-lib
+  DEFINES = -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2\" -DIOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port\" -Dnative_lib_EXPORTS
+  DEP_FILE = CMakeFiles/native-lib.dir/camera_common.cpp.o.d
   FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -O2 -g -DNDEBUG -fPIC -std=c++17 -fvisibility=hidden -fexceptions -O2 -DNDEBUG
   INCLUDES = -I/Users/meo/CamConT/app/src/main/cpp/include -I/Users/meo/CamConT/app/src/main/cpp/include/gphoto2
-  OBJECT_DIR = CMakeFiles/camcon_native.dir
-  OBJECT_FILE_DIR = CMakeFiles/camcon_native.dir
+  OBJECT_DIR = CMakeFiles/native-lib.dir
+  OBJECT_FILE_DIR = CMakeFiles/native-lib.dir
 
-build CMakeFiles/camcon_native.dir/camera_init.cpp.o: CXX_COMPILER__camcon_native_RelWithDebInfo /Users/meo/CamConT/app/src/main/cpp/camera_init.cpp || cmake_object_order_depends_target_camcon_native
-  DEFINES = -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2\" -DIOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port\" -Dcamcon_native_EXPORTS
-  DEP_FILE = CMakeFiles/camcon_native.dir/camera_init.cpp.o.d
+build CMakeFiles/native-lib.dir/camera_init.cpp.o: CXX_COMPILER__native-lib_RelWithDebInfo /Users/meo/CamConT/app/src/main/cpp/camera_init.cpp || cmake_object_order_depends_target_native-lib
+  DEFINES = -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2\" -DIOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port\" -Dnative_lib_EXPORTS
+  DEP_FILE = CMakeFiles/native-lib.dir/camera_init.cpp.o.d
   FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -O2 -g -DNDEBUG -fPIC -std=c++17 -fvisibility=hidden -fexceptions -O2 -DNDEBUG
   INCLUDES = -I/Users/meo/CamConT/app/src/main/cpp/include -I/Users/meo/CamConT/app/src/main/cpp/include/gphoto2
-  OBJECT_DIR = CMakeFiles/camcon_native.dir
-  OBJECT_FILE_DIR = CMakeFiles/camcon_native.dir
+  OBJECT_DIR = CMakeFiles/native-lib.dir
+  OBJECT_FILE_DIR = CMakeFiles/native-lib.dir
 
-build CMakeFiles/camcon_native.dir/camera_init_usb.cpp.o: CXX_COMPILER__camcon_native_RelWithDebInfo /Users/meo/CamConT/app/src/main/cpp/camera_init_usb.cpp || cmake_object_order_depends_target_camcon_native
-  DEFINES = -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2\" -DIOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port\" -Dcamcon_native_EXPORTS
-  DEP_FILE = CMakeFiles/camcon_native.dir/camera_init_usb.cpp.o.d
+build CMakeFiles/native-lib.dir/camera_init_usb.cpp.o: CXX_COMPILER__native-lib_RelWithDebInfo /Users/meo/CamConT/app/src/main/cpp/camera_init_usb.cpp || cmake_object_order_depends_target_native-lib
+  DEFINES = -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2\" -DIOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port\" -Dnative_lib_EXPORTS
+  DEP_FILE = CMakeFiles/native-lib.dir/camera_init_usb.cpp.o.d
   FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -O2 -g -DNDEBUG -fPIC -std=c++17 -fvisibility=hidden -fexceptions -O2 -DNDEBUG
   INCLUDES = -I/Users/meo/CamConT/app/src/main/cpp/include -I/Users/meo/CamConT/app/src/main/cpp/include/gphoto2
-  OBJECT_DIR = CMakeFiles/camcon_native.dir
-  OBJECT_FILE_DIR = CMakeFiles/camcon_native.dir
+  OBJECT_DIR = CMakeFiles/native-lib.dir
+  OBJECT_FILE_DIR = CMakeFiles/native-lib.dir
 
-build CMakeFiles/camcon_native.dir/camera_detection.cpp.o: CXX_COMPILER__camcon_native_RelWithDebInfo /Users/meo/CamConT/app/src/main/cpp/camera_detection.cpp || cmake_object_order_depends_target_camcon_native
-  DEFINES = -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2\" -DIOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port\" -Dcamcon_native_EXPORTS
-  DEP_FILE = CMakeFiles/camcon_native.dir/camera_detection.cpp.o.d
+build CMakeFiles/native-lib.dir/camera_detection.cpp.o: CXX_COMPILER__native-lib_RelWithDebInfo /Users/meo/CamConT/app/src/main/cpp/camera_detection.cpp || cmake_object_order_depends_target_native-lib
+  DEFINES = -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2\" -DIOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port\" -Dnative_lib_EXPORTS
+  DEP_FILE = CMakeFiles/native-lib.dir/camera_detection.cpp.o.d
   FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -O2 -g -DNDEBUG -fPIC -std=c++17 -fvisibility=hidden -fexceptions -O2 -DNDEBUG
   INCLUDES = -I/Users/meo/CamConT/app/src/main/cpp/include -I/Users/meo/CamConT/app/src/main/cpp/include/gphoto2
-  OBJECT_DIR = CMakeFiles/camcon_native.dir
-  OBJECT_FILE_DIR = CMakeFiles/camcon_native.dir
+  OBJECT_DIR = CMakeFiles/native-lib.dir
+  OBJECT_FILE_DIR = CMakeFiles/native-lib.dir
 
-build CMakeFiles/camcon_native.dir/camera_ptpip.cpp.o: CXX_COMPILER__camcon_native_RelWithDebInfo /Users/meo/CamConT/app/src/main/cpp/camera_ptpip.cpp || cmake_object_order_depends_target_camcon_native
-  DEFINES = -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2\" -DIOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port\" -Dcamcon_native_EXPORTS
-  DEP_FILE = CMakeFiles/camcon_native.dir/camera_ptpip.cpp.o.d
+build CMakeFiles/native-lib.dir/camera_ptpip.cpp.o: CXX_COMPILER__native-lib_RelWithDebInfo /Users/meo/CamConT/app/src/main/cpp/camera_ptpip.cpp || cmake_object_order_depends_target_native-lib
+  DEFINES = -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2\" -DIOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port\" -Dnative_lib_EXPORTS
+  DEP_FILE = CMakeFiles/native-lib.dir/camera_ptpip.cpp.o.d
   FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -O2 -g -DNDEBUG -fPIC -std=c++17 -fvisibility=hidden -fexceptions -O2 -DNDEBUG
   INCLUDES = -I/Users/meo/CamConT/app/src/main/cpp/include -I/Users/meo/CamConT/app/src/main/cpp/include/gphoto2
-  OBJECT_DIR = CMakeFiles/camcon_native.dir
-  OBJECT_FILE_DIR = CMakeFiles/camcon_native.dir
+  OBJECT_DIR = CMakeFiles/native-lib.dir
+  OBJECT_FILE_DIR = CMakeFiles/native-lib.dir
 
-build CMakeFiles/camcon_native.dir/camera_config.cpp.o: CXX_COMPILER__camcon_native_RelWithDebInfo /Users/meo/CamConT/app/src/main/cpp/camera_config.cpp || cmake_object_order_depends_target_camcon_native
-  DEFINES = -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2\" -DIOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port\" -Dcamcon_native_EXPORTS
-  DEP_FILE = CMakeFiles/camcon_native.dir/camera_config.cpp.o.d
+build CMakeFiles/native-lib.dir/camera_config.cpp.o: CXX_COMPILER__native-lib_RelWithDebInfo /Users/meo/CamConT/app/src/main/cpp/camera_config.cpp || cmake_object_order_depends_target_native-lib
+  DEFINES = -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2\" -DIOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port\" -Dnative_lib_EXPORTS
+  DEP_FILE = CMakeFiles/native-lib.dir/camera_config.cpp.o.d
   FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -O2 -g -DNDEBUG -fPIC -std=c++17 -fvisibility=hidden -fexceptions -O2 -DNDEBUG
   INCLUDES = -I/Users/meo/CamConT/app/src/main/cpp/include -I/Users/meo/CamConT/app/src/main/cpp/include/gphoto2
-  OBJECT_DIR = CMakeFiles/camcon_native.dir
-  OBJECT_FILE_DIR = CMakeFiles/camcon_native.dir
+  OBJECT_DIR = CMakeFiles/native-lib.dir
+  OBJECT_FILE_DIR = CMakeFiles/native-lib.dir
 
-build CMakeFiles/camcon_native.dir/camera_capture.cpp.o: CXX_COMPILER__camcon_native_RelWithDebInfo /Users/meo/CamConT/app/src/main/cpp/camera_capture.cpp || cmake_object_order_depends_target_camcon_native
-  DEFINES = -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2\" -DIOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port\" -Dcamcon_native_EXPORTS
-  DEP_FILE = CMakeFiles/camcon_native.dir/camera_capture.cpp.o.d
+build CMakeFiles/native-lib.dir/camera_capture.cpp.o: CXX_COMPILER__native-lib_RelWithDebInfo /Users/meo/CamConT/app/src/main/cpp/camera_capture.cpp || cmake_object_order_depends_target_native-lib
+  DEFINES = -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2\" -DIOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port\" -Dnative_lib_EXPORTS
+  DEP_FILE = CMakeFiles/native-lib.dir/camera_capture.cpp.o.d
   FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -O2 -g -DNDEBUG -fPIC -std=c++17 -fvisibility=hidden -fexceptions -O2 -DNDEBUG
   INCLUDES = -I/Users/meo/CamConT/app/src/main/cpp/include -I/Users/meo/CamConT/app/src/main/cpp/include/gphoto2
-  OBJECT_DIR = CMakeFiles/camcon_native.dir
-  OBJECT_FILE_DIR = CMakeFiles/camcon_native.dir
+  OBJECT_DIR = CMakeFiles/native-lib.dir
+  OBJECT_FILE_DIR = CMakeFiles/native-lib.dir
 
-build CMakeFiles/camcon_native.dir/camera_diagnostics.cpp.o: CXX_COMPILER__camcon_native_RelWithDebInfo /Users/meo/CamConT/app/src/main/cpp/camera_diagnostics.cpp || cmake_object_order_depends_target_camcon_native
-  DEFINES = -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2\" -DIOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port\" -Dcamcon_native_EXPORTS
-  DEP_FILE = CMakeFiles/camcon_native.dir/camera_diagnostics.cpp.o.d
+build CMakeFiles/native-lib.dir/camera_diagnostics.cpp.o: CXX_COMPILER__native-lib_RelWithDebInfo /Users/meo/CamConT/app/src/main/cpp/camera_diagnostics.cpp || cmake_object_order_depends_target_native-lib
+  DEFINES = -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2\" -DIOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port\" -Dnative_lib_EXPORTS
+  DEP_FILE = CMakeFiles/native-lib.dir/camera_diagnostics.cpp.o.d
   FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -O2 -g -DNDEBUG -fPIC -std=c++17 -fvisibility=hidden -fexceptions -O2 -DNDEBUG
   INCLUDES = -I/Users/meo/CamConT/app/src/main/cpp/include -I/Users/meo/CamConT/app/src/main/cpp/include/gphoto2
-  OBJECT_DIR = CMakeFiles/camcon_native.dir
-  OBJECT_FILE_DIR = CMakeFiles/camcon_native.dir
+  OBJECT_DIR = CMakeFiles/native-lib.dir
+  OBJECT_FILE_DIR = CMakeFiles/native-lib.dir
 
-build CMakeFiles/camcon_native.dir/camera_events.cpp.o: CXX_COMPILER__camcon_native_RelWithDebInfo /Users/meo/CamConT/app/src/main/cpp/camera_events.cpp || cmake_object_order_depends_target_camcon_native
-  DEFINES = -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2\" -DIOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port\" -Dcamcon_native_EXPORTS
-  DEP_FILE = CMakeFiles/camcon_native.dir/camera_events.cpp.o.d
+build CMakeFiles/native-lib.dir/camera_events.cpp.o: CXX_COMPILER__native-lib_RelWithDebInfo /Users/meo/CamConT/app/src/main/cpp/camera_events.cpp || cmake_object_order_depends_target_native-lib
+  DEFINES = -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2\" -DIOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port\" -Dnative_lib_EXPORTS
+  DEP_FILE = CMakeFiles/native-lib.dir/camera_events.cpp.o.d
   FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -O2 -g -DNDEBUG -fPIC -std=c++17 -fvisibility=hidden -fexceptions -O2 -DNDEBUG
   INCLUDES = -I/Users/meo/CamConT/app/src/main/cpp/include -I/Users/meo/CamConT/app/src/main/cpp/include/gphoto2
-  OBJECT_DIR = CMakeFiles/camcon_native.dir
-  OBJECT_FILE_DIR = CMakeFiles/camcon_native.dir
+  OBJECT_DIR = CMakeFiles/native-lib.dir
+  OBJECT_FILE_DIR = CMakeFiles/native-lib.dir
 
-build CMakeFiles/camcon_native.dir/camera_files.cpp.o: CXX_COMPILER__camcon_native_RelWithDebInfo /Users/meo/CamConT/app/src/main/cpp/camera_files.cpp || cmake_object_order_depends_target_camcon_native
-  DEFINES = -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2\" -DIOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port\" -Dcamcon_native_EXPORTS
-  DEP_FILE = CMakeFiles/camcon_native.dir/camera_files.cpp.o.d
+build CMakeFiles/native-lib.dir/camera_files.cpp.o: CXX_COMPILER__native-lib_RelWithDebInfo /Users/meo/CamConT/app/src/main/cpp/camera_files.cpp || cmake_object_order_depends_target_native-lib
+  DEFINES = -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2\" -DIOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port\" -Dnative_lib_EXPORTS
+  DEP_FILE = CMakeFiles/native-lib.dir/camera_files.cpp.o.d
   FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -O2 -g -DNDEBUG -fPIC -std=c++17 -fvisibility=hidden -fexceptions -O2 -DNDEBUG
   INCLUDES = -I/Users/meo/CamConT/app/src/main/cpp/include -I/Users/meo/CamConT/app/src/main/cpp/include/gphoto2
-  OBJECT_DIR = CMakeFiles/camcon_native.dir
-  OBJECT_FILE_DIR = CMakeFiles/camcon_native.dir
+  OBJECT_DIR = CMakeFiles/native-lib.dir
+  OBJECT_FILE_DIR = CMakeFiles/native-lib.dir
 
-build CMakeFiles/camcon_native.dir/camera_liveview.cpp.o: CXX_COMPILER__camcon_native_RelWithDebInfo /Users/meo/CamConT/app/src/main/cpp/camera_liveview.cpp || cmake_object_order_depends_target_camcon_native
-  DEFINES = -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2\" -DIOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port\" -Dcamcon_native_EXPORTS
-  DEP_FILE = CMakeFiles/camcon_native.dir/camera_liveview.cpp.o.d
+build CMakeFiles/native-lib.dir/camera_liveview.cpp.o: CXX_COMPILER__native-lib_RelWithDebInfo /Users/meo/CamConT/app/src/main/cpp/camera_liveview.cpp || cmake_object_order_depends_target_native-lib
+  DEFINES = -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2\" -DIOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port\" -Dnative_lib_EXPORTS
+  DEP_FILE = CMakeFiles/native-lib.dir/camera_liveview.cpp.o.d
   FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -O2 -g -DNDEBUG -fPIC -std=c++17 -fvisibility=hidden -fexceptions -O2 -DNDEBUG
   INCLUDES = -I/Users/meo/CamConT/app/src/main/cpp/include -I/Users/meo/CamConT/app/src/main/cpp/include/gphoto2
-  OBJECT_DIR = CMakeFiles/camcon_native.dir
-  OBJECT_FILE_DIR = CMakeFiles/camcon_native.dir
+  OBJECT_DIR = CMakeFiles/native-lib.dir
+  OBJECT_FILE_DIR = CMakeFiles/native-lib.dir
 
-build CMakeFiles/camcon_native.dir/camera_utils.cpp.o: CXX_COMPILER__camcon_native_RelWithDebInfo /Users/meo/CamConT/app/src/main/cpp/camera_utils.cpp || cmake_object_order_depends_target_camcon_native
-  DEFINES = -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2\" -DIOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port\" -Dcamcon_native_EXPORTS
-  DEP_FILE = CMakeFiles/camcon_native.dir/camera_utils.cpp.o.d
+build CMakeFiles/native-lib.dir/camera_utils.cpp.o: CXX_COMPILER__native-lib_RelWithDebInfo /Users/meo/CamConT/app/src/main/cpp/camera_utils.cpp || cmake_object_order_depends_target_native-lib
+  DEFINES = -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2\" -DIOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port\" -Dnative_lib_EXPORTS
+  DEP_FILE = CMakeFiles/native-lib.dir/camera_utils.cpp.o.d
   FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -O2 -g -DNDEBUG -fPIC -std=c++17 -fvisibility=hidden -fexceptions -O2 -DNDEBUG
   INCLUDES = -I/Users/meo/CamConT/app/src/main/cpp/include -I/Users/meo/CamConT/app/src/main/cpp/include/gphoto2
-  OBJECT_DIR = CMakeFiles/camcon_native.dir
-  OBJECT_FILE_DIR = CMakeFiles/camcon_native.dir
+  OBJECT_DIR = CMakeFiles/native-lib.dir
+  OBJECT_FILE_DIR = CMakeFiles/native-lib.dir
 
-build CMakeFiles/camcon_native.dir/native-lib.cpp.o: CXX_COMPILER__camcon_native_RelWithDebInfo /Users/meo/CamConT/app/src/main/cpp/native-lib.cpp || cmake_object_order_depends_target_camcon_native
-  DEFINES = -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2\" -DIOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port\" -Dcamcon_native_EXPORTS
-  DEP_FILE = CMakeFiles/camcon_native.dir/native-lib.cpp.o.d
+build CMakeFiles/native-lib.dir/native-lib.cpp.o: CXX_COMPILER__native-lib_RelWithDebInfo /Users/meo/CamConT/app/src/main/cpp/native-lib.cpp || cmake_object_order_depends_target_native-lib
+  DEFINES = -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2\" -DIOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port\" -Dnative_lib_EXPORTS
+  DEP_FILE = CMakeFiles/native-lib.dir/native-lib.cpp.o.d
   FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -O2 -g -DNDEBUG -fPIC -std=c++17 -fvisibility=hidden -fexceptions -O2 -DNDEBUG
   INCLUDES = -I/Users/meo/CamConT/app/src/main/cpp/include -I/Users/meo/CamConT/app/src/main/cpp/include/gphoto2
-  OBJECT_DIR = CMakeFiles/camcon_native.dir
-  OBJECT_FILE_DIR = CMakeFiles/camcon_native.dir
+  OBJECT_DIR = CMakeFiles/native-lib.dir
+  OBJECT_FILE_DIR = CMakeFiles/native-lib.dir
 
 
 # =============================================================================
-# Link build statements for SHARED_LIBRARY target camcon_native
+# Link build statements for SHARED_LIBRARY target native-lib
 
 
 #############################################
-# Link the shared library /Users/meo/CamConT/app/build/intermediates/cxx/RelWithDebInfo/3px5lgo1/obj/arm64-v8a/libcamcon_native.so
+# Link the shared library /Users/meo/CamConT/app/build/intermediates/cxx/RelWithDebInfo/3px5lgo1/obj/arm64-v8a/libnative-lib.so
 
-build /Users/meo/CamConT/app/build/intermediates/cxx/RelWithDebInfo/3px5lgo1/obj/arm64-v8a/libcamcon_native.so: CXX_SHARED_LIBRARY_LINKER__camcon_native_RelWithDebInfo CMakeFiles/camcon_native.dir/camera_common.cpp.o CMakeFiles/camcon_native.dir/camera_init.cpp.o CMakeFiles/camcon_native.dir/camera_init_usb.cpp.o CMakeFiles/camcon_native.dir/camera_detection.cpp.o CMakeFiles/camcon_native.dir/camera_ptpip.cpp.o CMakeFiles/camcon_native.dir/camera_config.cpp.o CMakeFiles/camcon_native.dir/camera_capture.cpp.o CMakeFiles/camcon_native.dir/camera_diagnostics.cpp.o CMakeFiles/camcon_native.dir/camera_events.cpp.o CMakeFiles/camcon_native.dir/camera_files.cpp.o CMakeFiles/camcon_native.dir/camera_liveview.cpp.o CMakeFiles/camcon_native.dir/camera_utils.cpp.o CMakeFiles/camcon_native.dir/native-lib.cpp.o | /Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libjpeg.a /Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libusb-1.0.a /Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libexif.a
+build /Users/meo/CamConT/app/build/intermediates/cxx/RelWithDebInfo/3px5lgo1/obj/arm64-v8a/libnative-lib.so: CXX_SHARED_LIBRARY_LINKER__native-lib_RelWithDebInfo CMakeFiles/native-lib.dir/camera_common.cpp.o CMakeFiles/native-lib.dir/camera_init.cpp.o CMakeFiles/native-lib.dir/camera_init_usb.cpp.o CMakeFiles/native-lib.dir/camera_detection.cpp.o CMakeFiles/native-lib.dir/camera_ptpip.cpp.o CMakeFiles/native-lib.dir/camera_config.cpp.o CMakeFiles/native-lib.dir/camera_capture.cpp.o CMakeFiles/native-lib.dir/camera_diagnostics.cpp.o CMakeFiles/native-lib.dir/camera_events.cpp.o CMakeFiles/native-lib.dir/camera_files.cpp.o CMakeFiles/native-lib.dir/camera_liveview.cpp.o CMakeFiles/native-lib.dir/camera_utils.cpp.o CMakeFiles/native-lib.dir/native-lib.cpp.o | /Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2.so /Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port.so
   LANGUAGE_COMPILE_FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -O2 -g -DNDEBUG
   LINK_FLAGS = -static-libstdc++ -Wl,--build-id=sha1 -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments  -Wl,--gc-sections  -Wl,--export-dynamic -Wl,-rpath,/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a
-  LINK_LIBRARIES = -llog  -landroid  -lgphoto2  -lgphoto2_port  -lltdl  -lxml2  /Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libjpeg.a  /Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libusb-1.0.a  /Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libexif.a  -latomic -lm
-  OBJECT_DIR = CMakeFiles/camcon_native.dir
+  LINK_LIBRARIES = -llog  -landroid  /Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2.so  /Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port.so  -latomic -lm
+  OBJECT_DIR = CMakeFiles/native-lib.dir
   POST_BUILD = :
   PRE_LINK = :
-  SONAME = libcamcon_native.so
+  SONAME = libnative-lib.so
   SONAME_FLAG = -Wl,-soname,
-  TARGET_FILE = /Users/meo/CamConT/app/build/intermediates/cxx/RelWithDebInfo/3px5lgo1/obj/arm64-v8a/libcamcon_native.so
-  TARGET_PDB = camcon_native.so.dbg
+  TARGET_FILE = /Users/meo/CamConT/app/build/intermediates/cxx/RelWithDebInfo/3px5lgo1/obj/arm64-v8a/libnative-lib.so
+  TARGET_PDB = native-lib.so.dbg
 
 
 #############################################
@@ -200,9 +200,9 @@ build rebuild_cache: phony CMakeFiles/rebuild_cache.util
 # =============================================================================
 # Target aliases.
 
-build camcon_native: phony /Users/meo/CamConT/app/build/intermediates/cxx/RelWithDebInfo/3px5lgo1/obj/arm64-v8a/libcamcon_native.so
+build libnative-lib.so: phony /Users/meo/CamConT/app/build/intermediates/cxx/RelWithDebInfo/3px5lgo1/obj/arm64-v8a/libnative-lib.so
 
-build libcamcon_native.so: phony /Users/meo/CamConT/app/build/intermediates/cxx/RelWithDebInfo/3px5lgo1/obj/arm64-v8a/libcamcon_native.so
+build native-lib: phony /Users/meo/CamConT/app/build/intermediates/cxx/RelWithDebInfo/3px5lgo1/obj/arm64-v8a/libnative-lib.so
 
 # =============================================================================
 # Folder targets.
@@ -212,7 +212,7 @@ build libcamcon_native.so: phony /Users/meo/CamConT/app/build/intermediates/cxx/
 #############################################
 # Folder: /Users/meo/CamConT/app/.cxx/RelWithDebInfo/3px5lgo1/arm64-v8a
 
-build all: phony /Users/meo/CamConT/app/build/intermediates/cxx/RelWithDebInfo/3px5lgo1/obj/arm64-v8a/libcamcon_native.so
+build all: phony /Users/meo/CamConT/app/build/intermediates/cxx/RelWithDebInfo/3px5lgo1/obj/arm64-v8a/libnative-lib.so
 
 # =============================================================================
 # Built-in targets
