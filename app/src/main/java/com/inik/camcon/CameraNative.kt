@@ -66,6 +66,14 @@ object CameraNative {
     external fun resetPtpipGuid(): Boolean // GUID만 특별히 초기화
     external fun setPtpipVerbose(enabled: Boolean): Boolean // PTPIP 디버그 로그 활성화
 
+    // PtpipConnectionManager에서 받은 카메라 정보를 libgphoto2에 전달
+    external fun setCameraInfoFromPtpip(
+        manufacturer: String,
+        model: String,
+        version: String,
+        serial: String
+    ): Int
+
     // Nikon 전용 PTP 명령어 전송 함수 추가
     external fun sendNikonCommand(operationCode: Int): Int
     external fun sendNikonCommands(): Int

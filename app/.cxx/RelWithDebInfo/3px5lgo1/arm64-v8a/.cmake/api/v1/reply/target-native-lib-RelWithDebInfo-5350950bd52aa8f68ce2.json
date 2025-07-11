@@ -2,7 +2,7 @@
 	"artifacts" : 
 	[
 		{
-			"path" : "/Users/meo/CamConT/app/build/intermediates/cxx/Debug/24121p2b/obj/arm64-v8a/libnative-lib.so"
+			"path" : "/Users/meo/CamConT/app/build/intermediates/cxx/RelWithDebInfo/3px5lgo1/obj/arm64-v8a/libnative-lib.so"
 		}
 	],
 	"backtrace" : 1,
@@ -46,7 +46,7 @@
 			{
 				"command" : 2,
 				"file" : 0,
-				"line" : 64,
+				"line" : 66,
 				"parent" : 0
 			},
 			{
@@ -59,12 +59,6 @@
 				"command" : 3,
 				"file" : 0,
 				"line" : 70,
-				"parent" : 0
-			},
-			{
-				"command" : 3,
-				"file" : 0,
-				"line" : 63,
 				"parent" : 0
 			},
 			{
@@ -81,7 +75,7 @@
 			"compileCommandFragments" : 
 			[
 				{
-					"fragment" : "-g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fno-limit-debug-info  -fPIC"
+					"fragment" : "-g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -O2 -g -DNDEBUG -fPIC"
 				},
 				{
 					"backtrace" : 3,
@@ -97,11 +91,11 @@
 				},
 				{
 					"backtrace" : 4,
-					"fragment" : "-g"
+					"fragment" : "-O2"
 				},
 				{
 					"backtrace" : 4,
-					"fragment" : "-O0"
+					"fragment" : "-DNDEBUG"
 				}
 			],
 			"defines" : 
@@ -115,10 +109,6 @@
 					"define" : "CAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2\""
 				},
 				{
-					"backtrace" : 7,
-					"define" : "DEBUG_BUILD"
-				},
-				{
 					"backtrace" : 6,
 					"define" : "IOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port\""
 				},
@@ -129,11 +119,11 @@
 			"includes" : 
 			[
 				{
-					"backtrace" : 8,
+					"backtrace" : 7,
 					"path" : "/Users/meo/CamConT/app/src/main/cpp/include"
 				},
 				{
-					"backtrace" : 8,
+					"backtrace" : 7,
 					"path" : "/Users/meo/CamConT/app/src/main/cpp/include/gphoto2"
 				}
 			],
@@ -166,7 +156,7 @@
 		"commandFragments" : 
 		[
 			{
-				"fragment" : "-static-libstdc++ -Wl,--build-id=sha1 -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments   -Wl,--export-dynamic -Wl,-rpath,/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a",
+				"fragment" : "-static-libstdc++ -Wl,--build-id=sha1 -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments  -Wl,--gc-sections  -Wl,--export-dynamic -Wl,-rpath,/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a",
 				"role" : "flags"
 			},
 			{

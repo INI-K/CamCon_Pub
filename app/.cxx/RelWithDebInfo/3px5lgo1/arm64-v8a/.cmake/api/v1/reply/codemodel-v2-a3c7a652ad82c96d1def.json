@@ -38,9 +38,9 @@
 			[
 				{
 					"directoryIndex" : 0,
-					"id" : "camcon_native::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-camcon_native-RelWithDebInfo-514708257416751282ab.json",
-					"name" : "camcon_native",
+					"id" : "native-lib::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-native-lib-RelWithDebInfo-5350950bd52aa8f68ce2.json",
+					"name" : "native-lib",
 					"projectIndex" : 0
 				}
 			]

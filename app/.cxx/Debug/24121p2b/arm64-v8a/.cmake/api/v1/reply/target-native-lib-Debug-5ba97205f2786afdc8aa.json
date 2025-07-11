@@ -2,7 +2,7 @@
 	"artifacts" : 
 	[
 		{
-			"path" : "/Users/meo/CamConT/app/build/intermediates/cxx/RelWithDebInfo/3px5lgo1/obj/arm64-v8a/libcamcon_native.so"
+			"path" : "/Users/meo/CamConT/app/build/intermediates/cxx/Debug/24121p2b/obj/arm64-v8a/libnative-lib.so"
 		}
 	],
 	"backtrace" : 1,
@@ -34,31 +34,37 @@
 			{
 				"command" : 1,
 				"file" : 0,
-				"line" : 39,
+				"line" : 36,
 				"parent" : 0
 			},
 			{
 				"command" : 2,
 				"file" : 0,
-				"line" : 53,
+				"line" : 50,
 				"parent" : 0
 			},
 			{
 				"command" : 2,
 				"file" : 0,
-				"line" : 69,
+				"line" : 64,
 				"parent" : 0
 			},
 			{
 				"command" : 3,
 				"file" : 0,
-				"line" : 61,
+				"line" : 58,
 				"parent" : 0
 			},
 			{
 				"command" : 3,
 				"file" : 0,
-				"line" : 73,
+				"line" : 70,
+				"parent" : 0
+			},
+			{
+				"command" : 3,
+				"file" : 0,
+				"line" : 63,
 				"parent" : 0
 			},
 			{
@@ -75,7 +81,7 @@
 			"compileCommandFragments" : 
 			[
 				{
-					"fragment" : "-g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -O2 -g -DNDEBUG -fPIC"
+					"fragment" : "-g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fno-limit-debug-info  -fPIC"
 				},
 				{
 					"backtrace" : 3,
@@ -91,11 +97,11 @@
 				},
 				{
 					"backtrace" : 4,
-					"fragment" : "-O2"
+					"fragment" : "-g"
 				},
 				{
 					"backtrace" : 4,
-					"fragment" : "-DNDEBUG"
+					"fragment" : "-O0"
 				}
 			],
 			"defines" : 
@@ -106,24 +112,28 @@
 				},
 				{
 					"backtrace" : 6,
-					"define" : "CAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2\""
+					"define" : "CAMLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a\""
+				},
+				{
+					"backtrace" : 7,
+					"define" : "DEBUG_BUILD"
 				},
 				{
 					"backtrace" : 6,
-					"define" : "IOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port\""
+					"define" : "IOLIBS_DIR=\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a\""
 				},
 				{
-					"define" : "camcon_native_EXPORTS"
+					"define" : "native_lib_EXPORTS"
 				}
 			],
 			"includes" : 
 			[
 				{
-					"backtrace" : 7,
+					"backtrace" : 8,
 					"path" : "/Users/meo/CamConT/app/src/main/cpp/include"
 				},
 				{
-					"backtrace" : 7,
+					"backtrace" : 8,
 					"path" : "/Users/meo/CamConT/app/src/main/cpp/include/gphoto2"
 				}
 			],
@@ -150,13 +160,13 @@
 			}
 		}
 	],
-	"id" : "camcon_native::@6890427a1f51a3e7e1df",
+	"id" : "native-lib::@6890427a1f51a3e7e1df",
 	"link" : 
 	{
 		"commandFragments" : 
 		[
 			{
-				"fragment" : "-static-libstdc++ -Wl,--build-id=sha1 -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments  -Wl,--gc-sections  -Wl,--export-dynamic -Wl,-rpath,/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a",
+				"fragment" : "-static-libstdc++ -Wl,--build-id=sha1 -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments   -Wl,--export-dynamic -Wl,-rpath,/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a",
 				"role" : "flags"
 			},
 			{
@@ -171,37 +181,12 @@
 			},
 			{
 				"backtrace" : 2,
-				"fragment" : "-lgphoto2",
+				"fragment" : "/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2.so",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 2,
-				"fragment" : "-lgphoto2_port",
-				"role" : "libraries"
-			},
-			{
-				"backtrace" : 2,
-				"fragment" : "-lltdl",
-				"role" : "libraries"
-			},
-			{
-				"backtrace" : 2,
-				"fragment" : "-lxml2",
-				"role" : "libraries"
-			},
-			{
-				"backtrace" : 2,
-				"fragment" : "/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libjpeg.a",
-				"role" : "libraries"
-			},
-			{
-				"backtrace" : 2,
-				"fragment" : "/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libusb-1.0.a",
-				"role" : "libraries"
-			},
-			{
-				"backtrace" : 2,
-				"fragment" : "/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libexif.a",
+				"fragment" : "/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a/libgphoto2_port.so",
 				"role" : "libraries"
 			},
 			{
@@ -215,8 +200,8 @@
 			"path" : "/Users/meo/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/sysroot"
 		}
 	},
-	"name" : "camcon_native",
-	"nameOnDisk" : "libcamcon_native.so",
+	"name" : "native-lib",
+	"nameOnDisk" : "libnative-lib.so",
 	"paths" : 
 	{
 		"build" : ".",
