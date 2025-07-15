@@ -8,6 +8,7 @@ import com.inik.camcon.data.datasource.ptpip.PtpipDataSource
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.model.WifiCapabilities
+import com.inik.camcon.domain.model.WifiNetworkState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,11 +41,15 @@ class PtpipViewModel @Inject constructor(
     // 현재 연결된 카메라 정보
     val cameraInfo = ptpipDataSource.cameraInfo
 
+    // Wi-Fi 네트워크 상태
+    val wifiNetworkState = ptpipDataSource.wifiNetworkState
+
     // PTPIP 설정 상태
     val isPtpipEnabled = preferencesDataSource.isPtpipEnabled
     val isAutoDiscoveryEnabled = preferencesDataSource.isAutoDiscoveryEnabled
     val isAutoConnectEnabled = preferencesDataSource.isAutoConnectEnabled
     val isWifiConnectionModeEnabled = preferencesDataSource.isWifiConnectionModeEnabled
+    val isAutoReconnectEnabled = preferencesDataSource.isAutoReconnectEnabled
     val lastConnectedIp = preferencesDataSource.lastConnectedIp
     val lastConnectedName = preferencesDataSource.lastConnectedName
     val connectionTimeout = preferencesDataSource.connectionTimeout
@@ -67,12 +72,20 @@ class PtpipViewModel @Inject constructor(
     // 종합 상태 (PTPIP 활성화 + Wi-Fi 연결)
     val isPtpipAvailable = combine(
         isPtpipEnabled,
-        isWifiConnectionModeEnabled
-    ) { enabled, wifiEnabled ->
-        enabled && wifiEnabled && ptpipDataSource.isWifiConnected()
+        isWifiConnectionModeEnabled,
+        wifiNetworkState
+    ) { enabled, wifiEnabled, networkState ->
+        enabled && wifiEnabled && networkState.isConnected
     }
 
     init {
+        // 자동 재연결 설정 감지 및 적용
+        viewModelScope.launch {
+            isAutoReconnectEnabled.collect { enabled ->
+                ptpipDataSource.setAutoReconnectEnabled(enabled)
+            }
+        }
+
         // 자동 연결 설정이 활성화된 경우 마지막 연결 카메라로 자동 연결 시도
         viewModelScope.launch {
             combine(
@@ -562,11 +575,58 @@ class PtpipViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 자동 재연결 활성화/비활성화
+     */
+    fun setAutoReconnectEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesDataSource.setAutoReconnectEnabled(enabled)
+        }
+    }
+
+    /**
+     * 현재 Wi-Fi 네트워크 상태 확인
+     */
+    fun getCurrentWifiNetworkState(): WifiNetworkState {
+        return wifiNetworkState.value
+    }
+
+    /**
+     * 네트워크 상태 기반 상태 메시지 반환
+     */
+    fun getNetworkStatusMessage(): String {
+        val networkState = wifiNetworkState.value
+        return when {
+            !networkState.isConnected -> "Wi-Fi 연결 안됨"
+            networkState.isConnectedToCameraAP -> "카메라 AP 연결됨 (${networkState.ssid})"
+            networkState.ssid != null -> "일반 Wi-Fi 연결됨 (${networkState.ssid})"
+            else -> "네트워크 연결됨"
+        }
+    }
+
+    /**
+     * 카메라 연결 상태와 네트워크 상태를 종합한 상태 메시지
+     */
+    fun getComprehensiveStatusMessage(): String {
+        val connectionState = connectionState.value
+        val networkState = wifiNetworkState.value
+
+        return when {
+            !networkState.isConnected -> "Wi-Fi 연결 필요"
+            connectionState == PtpipConnectionState.CONNECTED -> "카메라 연결됨"
+            connectionState == PtpipConnectionState.CONNECTING -> "카메라 연결 중..."
+            connectionState == PtpipConnectionState.ERROR -> "카메라 연결 오류"
+            networkState.isConnectedToCameraAP -> "카메라 AP 연결됨 - 카메라 검색 가능"
+            else -> "카메라 연결 안됨"
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         // ViewModel이 소멸될 때 연결 정리
         viewModelScope.launch {
             ptpipDataSource.disconnect()
+            ptpipDataSource.cleanup()
         }
     }
 }

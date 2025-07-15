@@ -24,6 +24,7 @@ object CameraNative {
     external fun getPortInfo(): String
     external fun initCamera(): String
     external fun initCameraWithPtpip(ipAddress: String, port: Int, libDir: String): String
+    external fun initCameraForAPMode(ipAddress: String, port: Int, libDir: String): String
     external fun initCameraWithFd(fd: Int, nativeLibDir: String): Int
     external fun listenCameraEvents(callback: CameraCaptureListener)
     external fun initCameraWithSessionMaintenance(ipAddress: String, port: Int, libDir: String): Int

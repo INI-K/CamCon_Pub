@@ -39,10 +39,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
+import com.inik.camcon.domain.model.CapturedPhoto
+import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.ServerPhotosViewModel
 import java.io.File
 import java.text.SimpleDateFormat
@@ -200,5 +203,34 @@ fun CapturedPhotoItem(
                 )
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun EmptyServerStatePreview() {
+    CamConTheme {
+        EmptyServerState()
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun CapturedPhotoItemPreview() {
+    CamConTheme {
+        CapturedPhotoItem(
+            photo = CapturedPhoto(
+                id = "1",
+                filePath = "/storage/emulated/0/Pictures/IMG_001.jpg",
+                thumbnailPath = "/storage/emulated/0/Pictures/thumb_IMG_001.jpg",
+                captureTime = System.currentTimeMillis(),
+                cameraModel = "Canon EOS R6",
+                settings = null,
+                size = 1024 * 1024 * 5,
+                width = 1920,
+                height = 1080
+            ),
+            onDelete = {}
+        )
     }
 }

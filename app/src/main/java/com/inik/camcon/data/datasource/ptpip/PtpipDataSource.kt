@@ -12,10 +12,18 @@ import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.PtpipCameraInfo
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.model.WifiCapabilities
+import com.inik.camcon.domain.model.WifiNetworkState
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -38,6 +46,10 @@ class PtpipDataSource @Inject constructor(
     private val wifiHelper: WifiNetworkHelper
 ) {
     private var connectedCamera: PtpipCamera? = null
+    private var lastConnectedCamera: PtpipCamera? = null
+    private var isAutoReconnectEnabled = false
+    private var networkMonitoringJob: Job? = null
+    private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     // StateFlow for UI observation
     private val _connectionState = MutableStateFlow(PtpipConnectionState.DISCONNECTED)
@@ -49,8 +61,121 @@ class PtpipDataSource @Inject constructor(
     private val _cameraInfo = MutableStateFlow<PtpipCameraInfo?>(null)
     val cameraInfo: StateFlow<PtpipCameraInfo?> = _cameraInfo.asStateFlow()
 
+    private val _wifiNetworkState = MutableStateFlow(WifiNetworkState(false, false, null, null))
+    val wifiNetworkState: StateFlow<WifiNetworkState> = _wifiNetworkState.asStateFlow()
+
     companion object {
         private const val TAG = "PtpipDataSource"
+        private const val RECONNECT_DELAY_MS = 3000L
+    }
+
+    init {
+        startNetworkMonitoring()
+    }
+
+    /**
+     * 네트워크 상태 모니터링 시작
+     */
+    private fun startNetworkMonitoring() {
+        networkMonitoringJob = wifiHelper.networkStateFlow
+            .onEach { networkState ->
+                Log.d(TAG, "네트워크 상태 변화: $networkState")
+                _wifiNetworkState.value = networkState
+                
+                if (isAutoReconnectEnabled) {
+                    handleNetworkStateChange(networkState)
+                }
+            }
+            .launchIn(coroutineScope)
+    }
+
+    /**
+     * 네트워크 상태 변화 처리
+     */
+    private fun handleNetworkStateChange(networkState: WifiNetworkState) {
+        coroutineScope.launch {
+            val currentState = _connectionState.value
+            
+            when {
+                // Wi-Fi 연결 해제됨
+                !networkState.isConnected -> {
+                    if (currentState == PtpipConnectionState.CONNECTED) {
+                        Log.i(TAG, "Wi-Fi 연결 해제됨 - 카메라 연결 해제")
+                        _connectionState.value = PtpipConnectionState.DISCONNECTED
+                        connectedCamera = null
+                    }
+                }
+                
+                // Wi-Fi 연결되고 이전에 연결된 카메라가 있는 경우
+                networkState.isConnected && lastConnectedCamera != null -> {
+                    if (currentState == PtpipConnectionState.DISCONNECTED) {
+                        Log.i(TAG, "Wi-Fi 연결됨 - 이전 카메라 자동 재연결 시도")
+                        delay(RECONNECT_DELAY_MS)
+                        
+                        // AP 모드에서 카메라 IP 업데이트
+                        val cameraToConnect = if (networkState.isConnectedToCameraAP && networkState.detectedCameraIP != null) {
+                            lastConnectedCamera!!.copy(ipAddress = networkState.detectedCameraIP)
+                        } else {
+                            lastConnectedCamera!!
+                        }
+                        
+                        attemptAutoReconnect(cameraToConnect)
+                    }
+                }
+                
+                // 같은 Wi-Fi에 연결되었지만 카메라 IP가 변경된 경우
+                networkState.isConnected && networkState.isConnectedToCameraAP && 
+                networkState.detectedCameraIP != null && 
+                connectedCamera?.ipAddress != networkState.detectedCameraIP -> {
+                    Log.i(TAG, "AP 모드에서 카메라 IP 변경 감지 - 재연결 시도")
+                    val updatedCamera = connectedCamera?.copy(ipAddress = networkState.detectedCameraIP)
+                    if (updatedCamera != null) {
+                        attemptAutoReconnect(updatedCamera)
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 자동 재연결 시도
+     */
+    private suspend fun attemptAutoReconnect(camera: PtpipCamera) {
+        try {
+            Log.i(TAG, "자동 재연결 시도: ${camera.name} (${camera.ipAddress})")
+            _connectionState.value = PtpipConnectionState.CONNECTING
+            
+            if (connectToCamera(camera)) {
+                Log.i(TAG, "✅ 자동 재연결 성공")
+            } else {
+                Log.w(TAG, "❌ 자동 재연결 실패")
+                _connectionState.value = PtpipConnectionState.ERROR
+                delay(5000) // 5초 후 다시 시도
+                if (isAutoReconnectEnabled && _connectionState.value == PtpipConnectionState.ERROR) {
+                    attemptAutoReconnect(camera)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "자동 재연결 중 오류", e)
+            _connectionState.value = PtpipConnectionState.ERROR
+        }
+    }
+
+    /**
+     * 자동 재연결 활성화/비활성화
+     */
+    fun setAutoReconnectEnabled(enabled: Boolean) {
+        isAutoReconnectEnabled = enabled
+        Log.d(TAG, "자동 재연결 ${if (enabled) "활성화" else "비활성화"}")
+    }
+
+    /**
+     * 리소스 정리
+     */
+    fun cleanup() {
+        networkMonitoringJob?.cancel()
+        networkMonitoringJob = null
+        Log.d(TAG, "리소스 정리 완료")
     }
 
     /**
@@ -66,6 +191,31 @@ class PtpipDataSource @Inject constructor(
                 return emptyList()
             }
 
+            // AP모드인지 확인하고 직접 IP 사용
+            if (wifiHelper.isConnectedToCameraAP()) {
+                Log.d(TAG, "AP모드 감지: libgphoto2 기반 카메라 IP 검색 시작")
+                val cameraIP = wifiHelper.findAvailableCameraIP()
+                if (cameraIP != null) {
+                    Log.i(TAG, "✅ AP모드: libgphoto2로 검증된 카메라 IP $cameraIP 발견")
+                    val networkName = wifiHelper.getCurrentSSID() ?: "카메라 AP"
+                    val apCamera = PtpipCamera(
+                        ipAddress = cameraIP,
+                        port = 15740, // 표준 PTP/IP 포트
+                        name = "$networkName (AP모드)",
+                        isOnline = true
+                    )
+                    _discoveredCameras.value = listOf(apCamera)
+                    return listOf(apCamera)
+                } else {
+                    Log.w(TAG, "❌ AP모드이지만 libgphoto2로 연결 가능한 카메라 IP를 찾을 수 없음")
+                    // 빈 리스트 반환하여 사용자에게 상황을 알림
+                    _discoveredCameras.value = emptyList()
+                    return emptyList()
+                }
+            }
+
+            // STA모드에서는 mDNS 검색 사용
+            Log.d(TAG, "STA모드 또는 일반 네트워크: mDNS 검색 시작")
             val cameras = discoveryService.discoverCameras()
             _discoveredCameras.value = cameras
             cameras
@@ -126,7 +276,14 @@ class PtpipDataSource @Inject constructor(
             Log.i(TAG, "=== 1단계: libgphoto2 PTP/IP 연결 시도 ===")
             val libDir = context.applicationInfo.nativeLibraryDir
             val ptpipResult = try {
-                CameraNative.initCameraWithPtpip(camera.ipAddress, camera.port, libDir)
+                // AP모드인지 확인
+                if (wifiHelper.isConnectedToCameraAP()) {
+                    Log.i(TAG, "AP모드 감지: 단순 연결 방식 사용")
+                    CameraNative.initCameraForAPMode(camera.ipAddress, camera.port, libDir)
+                } else {
+                    Log.i(TAG, "STA모드 또는 일반 모드: 복잡한 연결 방식 사용")
+                    CameraNative.initCameraWithPtpip(camera.ipAddress, camera.port, libDir)
+                }
             } catch (e: Exception) {
                 Log.w(TAG, "libgphoto2 초기화 실패: ${e.message}")
                 null
@@ -137,6 +294,7 @@ class PtpipDataSource @Inject constructor(
                 Log.i(TAG, "✅ AP 모드 감지: libgphoto2 연결 성공!")
                 _connectionState.value = PtpipConnectionState.CONNECTED
                 connectedCamera = camera
+                lastConnectedCamera = camera
                 return@withContext true
             }
 
@@ -196,6 +354,7 @@ class PtpipDataSource @Inject constructor(
                     // 세션 초기화 성공 여부와 관계없이 연결 상태를 성공으로 설정
                     _connectionState.value = PtpipConnectionState.CONNECTED
                     connectedCamera = camera
+                    lastConnectedCamera = camera
                     return@withContext true
                 } else {
                     Log.e(TAG, "❌ 니콘 STA 모드 인증 실패")
@@ -206,6 +365,7 @@ class PtpipDataSource @Inject constructor(
                 Log.i(TAG, "니콘이 아닌 카메라 - 기본 PTPIP 연결 유지")
                 _connectionState.value = PtpipConnectionState.CONNECTED
                 connectedCamera = camera
+                lastConnectedCamera = camera
 
                 // 니콘이 아닌 카메라의 경우 libgphoto2 세션 유지 초기화
                 val libDir = context.applicationInfo.nativeLibraryDir
@@ -309,6 +469,7 @@ class PtpipDataSource @Inject constructor(
             // 상태 초기화
             if (!keepSession) {
                 connectedCamera = null
+                lastConnectedCamera = null
                 _connectionState.value = PtpipConnectionState.DISCONNECTED
                 _cameraInfo.value = null
                 Log.d(TAG, "카메라 연결 해제 완료")
@@ -469,55 +630,3 @@ class PtpipDataSource @Inject constructor(
      */
     fun getNikonAuthService() = nikonAuthService
 }
-
-/**
- * PTPIP 연결 상태
- */
-enum class PtpipConnectionState {
-    DISCONNECTED,
-    CONNECTING,
-    CONNECTED,
-    ERROR
-}
-
-/**
- * 니콘 카메라 연결 모드 (AP/STA/UNKNOWN)
- */
-enum class NikonConnectionMode {
-    AP_MODE,
-    STA_MODE,
-    UNKNOWN
-}
-
-/**
- * PTPIP 카메라 정보
- */
-data class PtpipCamera(
-    val ipAddress: String,
-    val port: Int,
-    val name: String,
-    val isOnline: Boolean
-)
-
-/**
- * PTPIP 카메라 디바이스 정보
- */
-data class PtpipCameraInfo(
-    val manufacturer: String,
-    val model: String,
-    val version: String,
-    val serialNumber: String
-)
-
-/**
- * Wi-Fi 기능 정보
- */
-data class WifiCapabilities(
-    val isConnected: Boolean,
-    val isStaConcurrencySupported: Boolean,
-    val networkName: String?,
-    val linkSpeed: Int?,
-    val frequency: Int?,
-    val ipAddress: Int?,
-    val macAddress: String?
-)
