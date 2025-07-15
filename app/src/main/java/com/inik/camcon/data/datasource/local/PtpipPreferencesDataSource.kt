@@ -33,6 +33,7 @@ class PtpipPreferencesDataSource @Inject constructor(
         private val PTPIP_PORT = intPreferencesKey("ptpip_port")
         private val AUTO_CONNECT = booleanPreferencesKey("auto_connect")
         private val WIFI_CONNECTION_MODE = booleanPreferencesKey("wifi_connection_mode")
+        private val AUTO_RECONNECT = booleanPreferencesKey("auto_reconnect")
     }
 
     /**
@@ -97,6 +98,14 @@ class PtpipPreferencesDataSource @Inject constructor(
     val isAutoConnectEnabled: Flow<Boolean> = context.ptpipDataStore.data
         .map { preferences ->
             preferences[AUTO_CONNECT] ?: false
+        }
+
+    /**
+     * 자동 재연결 활성화 여부
+     */
+    val isAutoReconnectEnabled: Flow<Boolean> = context.ptpipDataStore.data
+        .map { preferences ->
+            preferences[AUTO_RECONNECT] ?: true
         }
 
     /**
@@ -171,6 +180,15 @@ class PtpipPreferencesDataSource @Inject constructor(
     suspend fun setAutoConnectEnabled(enabled: Boolean) {
         context.ptpipDataStore.edit { preferences ->
             preferences[AUTO_CONNECT] = enabled
+        }
+    }
+
+    /**
+     * 자동 재연결 활성화/비활성화
+     */
+    suspend fun setAutoReconnectEnabled(enabled: Boolean) {
+        context.ptpipDataStore.edit { preferences ->
+            preferences[AUTO_RECONNECT] = enabled
         }
     }
 

@@ -9,16 +9,44 @@ import android.view.WindowInsetsController
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.*
+import androidx.compose.material.Card
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.ModalBottomSheetLayout
+import androidx.compose.material.ModalBottomSheetState
+import androidx.compose.material.ModalBottomSheetValue
+import androidx.compose.material.Surface
+import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Photo
+import androidx.compose.material.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,7 +57,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -37,7 +64,6 @@ import com.inik.camcon.R
 import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.domain.model.CameraSettings
 import com.inik.camcon.domain.model.CapturedPhoto
-import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.components.CameraPreviewArea
 import com.inik.camcon.presentation.ui.screens.components.CameraSettingsOverlay
@@ -554,6 +580,89 @@ private fun CameraControlScreenPreview() {
         ) {
             Text(
                 "카메라 컨트롤 스크린",
+                color = Color.White,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+@Preview(name = "Camera Settings Sheet", showBackground = true)
+@Composable
+private fun CameraSettingsSheetPreview() {
+    CamConTheme {
+        CameraSettingsSheet(
+            settings = CameraSettings(
+                iso = "400",
+                shutterSpeed = "1/125",
+                aperture = "f/2.8",
+                whiteBalance = "자동",
+                focusMode = "자동",
+                exposureCompensation = "0"
+            ),
+            onSettingChange = { _, _ -> },
+            onClose = { }
+        )
+    }
+}
+
+@Preview(name = "Recent Captures Row", showBackground = true)
+@Composable
+private fun RecentCapturesRowPreview() {
+    CamConTheme {
+        RecentCapturesRow(
+            photos = listOf(
+                CapturedPhoto(
+                    id = "1",
+                    filePath = "/path/to/test1.jpg",
+                    thumbnailPath = "/path/to/thumb1.jpg",
+                    captureTime = System.currentTimeMillis(),
+                    cameraModel = "Canon EOS R5",
+                    settings = null,
+                    size = 1024 * 1024,
+                    width = 1920,
+                    height = 1080
+                ),
+                CapturedPhoto(
+                    id = "2",
+                    filePath = "/path/to/test2.jpg",
+                    thumbnailPath = "/path/to/thumb2.jpg",
+                    captureTime = System.currentTimeMillis(),
+                    cameraModel = "Canon EOS R5",
+                    settings = null,
+                    size = 1024 * 1024,
+                    width = 1920,
+                    height = 1080
+                ),
+                CapturedPhoto(
+                    id = "3",
+                    filePath = "/path/to/test3.jpg",
+                    thumbnailPath = "/path/to/thumb3.jpg",
+                    captureTime = System.currentTimeMillis(),
+                    cameraModel = "Canon EOS R5",
+                    settings = null,
+                    size = 1024 * 1024,
+                    width = 1920,
+                    height = 1080
+                )
+            ),
+            modifier = Modifier.padding(16.dp)
+        )
+    }
+}
+
+@Preview(name = "Fullscreen Control Panel", showBackground = true)
+@Composable
+private fun FullscreenControlPanelPreview() {
+    CamConTheme {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                "전체화면 컨트롤 패널",
                 color = Color.White,
                 textAlign = TextAlign.Center
             )

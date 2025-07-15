@@ -49,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.inik.camcon.presentation.theme.CamConTheme
@@ -66,6 +67,17 @@ class SettingsActivity : ComponentActivity() {
                 )
             }
         }
+    }
+}
+
+@Preview(showBackground = true, name = "SettingsScreen Preview")
+@Composable
+fun SettingsScreenPreview() {
+    CamConTheme {
+        // Provide a default onBackClick. ViewModel is not injected in Preview.
+        SettingsScreen(
+            onBackClick = {}
+        )
     }
 }
 
