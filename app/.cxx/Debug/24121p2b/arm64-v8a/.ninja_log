@@ -47,3 +47,7 @@
 619	755	1752218167792144977	/Users/meo/CamConT/app/build/intermediates/cxx/Debug/24121p2b/obj/arm64-v8a/libnative-lib.so	f02aca777d8f4e6e
 3	707	1752218580688841255	CMakeFiles/native-lib.dir/camera_ptpip.cpp.o	1941a4dba4817772
 707	856	1752218580834638205	/Users/meo/CamConT/app/build/intermediates/cxx/Debug/24121p2b/obj/arm64-v8a/libnative-lib.so	f02aca777d8f4e6e
+10	1034	1752486359955667776	CMakeFiles/native-lib.dir/camera_config.cpp.o	f08c9148b5e8c788
+1034	1339	1752486360252194274	/Users/meo/CamConT/app/build/intermediates/cxx/Debug/24121p2b/obj/arm64-v8a/libnative-lib.so	f02aca777d8f4e6e
+5	1737	1752545199367850825	CMakeFiles/native-lib.dir/camera_ptpip.cpp.o	1941a4dba4817772
+1737	2316	1752545199946957099	/Users/meo/CamConT/app/build/intermediates/cxx/Debug/24121p2b/obj/arm64-v8a/libnative-lib.so	f02aca777d8f4e6e
