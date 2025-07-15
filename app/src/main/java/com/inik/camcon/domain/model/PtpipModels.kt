@@ -40,14 +40,26 @@ data class PtpipCameraInfo(
 )
 
 /**
+ * Wi-Fi 네트워크 상태 정보
+ */
+data class WifiNetworkState(
+    val isConnected: Boolean,
+    val isConnectedToCameraAP: Boolean,
+    val ssid: String?,
+    val detectedCameraIP: String?
+)
+
+/**
  * Wi-Fi 기능 정보
  */
 data class WifiCapabilities(
     val isConnected: Boolean,
     val isStaConcurrencySupported: Boolean,
+    val isConnectedToCameraAP: Boolean,
     val networkName: String?,
     val linkSpeed: Int?,
     val frequency: Int?,
     val ipAddress: Int?,
-    val macAddress: String?
+    val macAddress: String?,
+    val detectedCameraIP: String?
 )

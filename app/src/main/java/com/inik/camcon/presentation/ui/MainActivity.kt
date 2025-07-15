@@ -35,6 +35,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.inik.camcon.R
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
+import com.inik.camcon.presentation.navigation.MainNavigation
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.CameraControlScreen
 import com.inik.camcon.presentation.ui.screens.PhotoPreviewScreen
@@ -149,9 +150,12 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             CamConTheme {
-                MainScreen(
+                MainNavigation(
                     onSettingsClick = {
                         startActivity(Intent(this, SettingsActivity::class.java))
+                    },
+                    onPtpipConnectionClick = {
+                        startActivity(Intent(this, PtpipConnectionActivity::class.java))
                     }
                 )
             }
@@ -252,7 +256,7 @@ class MainActivity : ComponentActivity() {
                         withContext(Dispatchers.Main) {
                             usbCameraManager.requestPermission(device)
                         }
-                    }else{
+                    } else {
                         Log.d(TAG, "카메라 디바이스 연결됨")
                     }
                 } else {
@@ -272,5 +276,18 @@ class MainActivity : ComponentActivity() {
         } catch (e: Exception) {
             Log.w(TAG, "USB 매니저 정리 중 오류", e)
         }
+    }
+}
+
+/**
+ * 메인 액티비티 프리뷰
+ */
+@Composable
+fun MainActivityPreview() {
+    CamConTheme {
+        MainNavigation(
+            onSettingsClick = { },
+            onPtpipConnectionClick = { }
+        )
     }
 }
