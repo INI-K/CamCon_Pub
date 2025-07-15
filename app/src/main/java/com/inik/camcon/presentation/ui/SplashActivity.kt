@@ -1,30 +1,41 @@
 package com.inik.camcon.presentation.ui
 
+// import androidx.activity.viewModels // AuthViewModel을 직접 사용하지 않으므로 제거
+// import com.inik.camcon.presentation.viewmodel.AuthViewModel // AuthViewModel을 직접 사용하지 않으므로 제거
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-// import androidx.activity.viewModels // AuthViewModel을 직접 사용하지 않으므로 제거
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
 import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
-// import com.inik.camcon.presentation.viewmodel.AuthViewModel // AuthViewModel을 직접 사용하지 않으므로 제거
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import javax.inject.Inject
@@ -50,6 +61,7 @@ class SplashActivity : ComponentActivity() {
                         // 로그인되지 않은 사용자는 LoginActivity로 이동
                         startActivity(Intent(this, LoginActivity::class.java))
                     }
+                    // 스플래시 화면 종료
                     finish()
                 }
             }
@@ -99,5 +111,13 @@ fun SplashScreen(navigateToNext: () -> Unit) { // navigateToLogin에서 navigate
                 color = Color.White.copy(alpha = 0.8f)
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun SplashScreenPreview() {
+    CamConTheme {
+        SplashScreen(navigateToNext = {})
     }
 }

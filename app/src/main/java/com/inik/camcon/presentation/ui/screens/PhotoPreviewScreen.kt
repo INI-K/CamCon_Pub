@@ -40,9 +40,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.inik.camcon.R
+import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.components.EmptyPhotoState
 import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
 import com.inik.camcon.presentation.ui.screens.components.PhotoThumbnail
@@ -339,5 +341,68 @@ private fun ErrorSnackbar(
                 color = MaterialTheme.colors.onError
             )
         }
+    }
+}
+
+/**
+ * Previews
+ */
+
+@Preview(showBackground = true)
+@Composable
+private fun PhotoPreviewTitlePreview_NoPhotos() {
+    CamConTheme {
+        PhotoPreviewTitle(
+            photoCount = 0,
+            currentPage = 0,
+            totalPages = 0
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun PhotoPreviewTitlePreview_WithPhotos() {
+    CamConTheme {
+        PhotoPreviewTitle(
+            photoCount = 42,
+            currentPage = 1,
+            totalPages = 3
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun LoadingIndicatorPreview() {
+    CamConTheme {
+        LoadingIndicator()
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun LoadMoreIndicatorPreview() {
+    CamConTheme {
+        LoadMoreIndicator()
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun EndOfListMessagePreview() {
+    CamConTheme {
+        EndOfListMessage(photoCount = 42)
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ErrorSnackbarPreview() {
+    CamConTheme {
+        ErrorSnackbar(
+            error = "사진을 불러오는 중 오류가 발생했습니다.",
+            onRetry = {}
+        )
     }
 }

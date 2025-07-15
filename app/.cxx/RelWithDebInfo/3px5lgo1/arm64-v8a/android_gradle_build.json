@@ -23,10 +23,8 @@
       "artifactName": "native-lib",
       "output": "/Users/meo/CamConT/app/build/intermediates/cxx/RelWithDebInfo/3px5lgo1/obj/arm64-v8a/libnative-lib.so",
       "runtimeFiles": [
-        "/Users/meo/CamConT/Complete_arm64-v8a/lib/libgphoto2.so",
-        "/Users/meo/CamConT/Complete_arm64-v8a/lib/libgphoto2_port.so",
-        "/Users/meo/CamConT/Complete_arm64-v8a/lib/libltdl.so",
-        "/Users/meo/CamConT/Complete_arm64-v8a/lib/libxml2.so"
+        "/Users/meo/CamConT/app/src/main/jniLibs/arm64-v8a/libgphoto2.so",
+        "/Users/meo/CamConT/app/src/main/jniLibs/arm64-v8a/libgphoto2_port.so"
       ]
     }
   },
