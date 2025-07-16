@@ -10,6 +10,7 @@ import com.inik.camcon.data.network.ptpip.authentication.NikonAuthenticationServ
 import com.inik.camcon.data.network.ptpip.connection.PtpipConnectionManager
 import com.inik.camcon.data.network.ptpip.discovery.PtpipDiscoveryService
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
+import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -66,6 +67,13 @@ object AppModule {
     @Singleton
     fun providePtpipPreferencesDataSource(@ApplicationContext context: Context) =
         PtpipPreferencesDataSource(context)
+
+    @Provides
+    @Singleton
+    fun provideCameraConnectionGlobalManager(
+        ptpipDataSource: PtpipDataSource,
+        usbCameraManager: UsbCameraManager
+    ) = CameraConnectionGlobalManager(ptpipDataSource, usbCameraManager)
 
 //    @Provides
 //    @Singleton
