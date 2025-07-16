@@ -36,3 +36,5 @@
 3161	7832	1752651762468461867	CMakeFiles/native-lib.dir/camera_files.cpp.o	f85d8dfabb2548bb
 3621	8430	1752651763115981845	CMakeFiles/native-lib.dir/camera_driver_optimizer.cpp.o	99366a7dff681a81
 8432	8901	1752651763535520446	/Users/meo/CamConT/app/build/intermediates/cxx/RelWithDebInfo/3px5lgo1/obj/arm64-v8a/libnative-lib.so	e833446fb45359f4
+3	468	1752652179564991268	CMakeFiles/native-lib.dir/camera_file_saver.cpp.o	82cd309612d068d
+468	549	1752652179635894749	/Users/meo/CamConT/app/build/intermediates/cxx/RelWithDebInfo/3px5lgo1/obj/arm64-v8a/libnative-lib.so	e833446fb45359f4
