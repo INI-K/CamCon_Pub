@@ -105,13 +105,15 @@ class PtpipDataSource @Inject constructor(
                         connectedCamera = null
                     }
                 }
-                
-                // Wi-Fi 연결되고 이전에 연결된 카메라가 있는 경우
-                networkState.isConnected && lastConnectedCamera != null -> {
-                    if (currentState == PtpipConnectionState.DISCONNECTED) {
-                        Log.i(TAG, "Wi-Fi 연결됨 - 이전 카메라 자동 재연결 시도")
-                        delay(RECONNECT_DELAY_MS)
-                        
+
+                // Wi-Fi 연결되고 자동 재연결이 활성화되어 있으며 이전에 연결된 카메라가 있는 경우
+                networkState.isConnected && isAutoReconnectEnabled &&
+                        lastConnectedCamera != null && currentState == PtpipConnectionState.DISCONNECTED -> {
+                    Log.i(TAG, "Wi-Fi 연결됨 - 이전 카메라 자동 재연결 시도")
+                    delay(RECONNECT_DELAY_MS)
+
+                    // 연결 해제 상태에서만 재연결 시도
+                    if (_connectionState.value == PtpipConnectionState.DISCONNECTED) {
                         // AP 모드에서 카메라 IP 업데이트
                         val cameraToConnect = if (networkState.isConnectedToCameraAP && networkState.detectedCameraIP != null) {
                             lastConnectedCamera!!.copy(ipAddress = networkState.detectedCameraIP)
@@ -122,14 +124,15 @@ class PtpipDataSource @Inject constructor(
                         attemptAutoReconnect(cameraToConnect)
                     }
                 }
-                
-                // 같은 Wi-Fi에 연결되었지만 카메라 IP가 변경된 경우
+
+                // 이미 연결된 상태에서 카메라 IP가 변경된 경우 (AP 모드에서)
                 networkState.isConnected && networkState.isConnectedToCameraAP && 
-                networkState.detectedCameraIP != null && 
-                connectedCamera?.ipAddress != networkState.detectedCameraIP -> {
+                networkState.detectedCameraIP != null &&
+                        connectedCamera?.ipAddress != networkState.detectedCameraIP &&
+                        currentState == PtpipConnectionState.CONNECTED -> {
                     Log.i(TAG, "AP 모드에서 카메라 IP 변경 감지 - 재연결 시도")
                     val updatedCamera = connectedCamera?.copy(ipAddress = networkState.detectedCameraIP)
-                    if (updatedCamera != null) {
+                    if (updatedCamera != null && isAutoReconnectEnabled) {
                         attemptAutoReconnect(updatedCamera)
                     }
                 }
@@ -142,6 +145,12 @@ class PtpipDataSource @Inject constructor(
      */
     private suspend fun attemptAutoReconnect(camera: PtpipCamera) {
         try {
+            // 이미 연결 시도 중이면 무시
+            if (_connectionState.value == PtpipConnectionState.CONNECTING) {
+                Log.d(TAG, "이미 연결 시도 중이므로 자동 재연결 무시")
+                return
+            }
+
             Log.i(TAG, "자동 재연결 시도: ${camera.name} (${camera.ipAddress})")
             _connectionState.value = PtpipConnectionState.CONNECTING
             
@@ -150,9 +159,15 @@ class PtpipDataSource @Inject constructor(
             } else {
                 Log.w(TAG, "❌ 자동 재연결 실패")
                 _connectionState.value = PtpipConnectionState.ERROR
-                delay(5000) // 5초 후 다시 시도
-                if (isAutoReconnectEnabled && _connectionState.value == PtpipConnectionState.ERROR) {
-                    attemptAutoReconnect(camera)
+
+                // 자동 재연결 활성화 상태에서만 재시도
+                if (isAutoReconnectEnabled) {
+                    delay(5000) // 5초 후 다시 시도
+                    // 여전히 오류 상태이고 자동 재연결이 활성화되어 있으면 재시도
+                    if (_connectionState.value == PtpipConnectionState.ERROR && isAutoReconnectEnabled) {
+                        Log.i(TAG, "자동 재연결 재시도")
+                        attemptAutoReconnect(camera)
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -562,35 +577,44 @@ class PtpipDataSource @Inject constructor(
                 return@withContext false
             }
 
-            // PTP/IP 연결
-            try {
-                Log.i(TAG, "STA 모드 세션 유지 방식 시도")
+            // AP 모드와 STA 모드 구분 처리
+            if (wifiHelper.isConnectedToCameraAP()) {
+                Log.i(TAG, "AP 모드 감지: 직접 촬영 수행")
 
-                // STA 모드 세션 유지 기능 사용
-                val maintainResult = CameraNative.maintainSessionForStaMode()
-                if (maintainResult >= 0) {
-                    Log.i(TAG, "STA 모드 세션 유지 성공")
-
-                    // 초기화 성공 후 촬영
+                // AP 모드에서는 바로 촬영
+                try {
                     val result = CameraNative.capturePhoto()
-                    Log.d(TAG, "사진 촬영 결과: $result")
-
+                    Log.d(TAG, "AP 모드 촬영 결과: $result")
                     return@withContext result >= 0
-                } else {
-                    Log.w(TAG, "❌ STA 모드 세션 유지 실패: $maintainResult")
-
-                    // 세션 유지 실패해도 계속 시도
-                    // 여러 번 재시도해도 실패하면 사용자에게 알림 필요
-
-                    // 여전히 촬영 시도
-                    val result = CameraNative.capturePhoto()
-                    Log.d(TAG, "세션 유지 실패 후 촬영 시도 결과: $result")
-
-                    return@withContext result >= 0
+                } catch (e: Exception) {
+                    Log.e(TAG, "AP 모드 촬영 중 오류", e)
+                    return@withContext false
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "PTP/IP 세션 유지 중 오류", e)
-                return@withContext false
+            } else {
+                Log.i(TAG, "STA 모드 감지: 세션 유지 후 촬영")
+
+                // STA 모드에서는 세션 유지 후 촬영
+                try {
+                    val maintainResult = CameraNative.maintainSessionForStaMode()
+                    if (maintainResult >= 0) {
+                        Log.i(TAG, "STA 모드 세션 유지 성공")
+
+                        // 초기화 성공 후 촬영
+                        val result = CameraNative.capturePhoto()
+                        Log.d(TAG, "STA 모드 촬영 결과: $result")
+                        return@withContext result >= 0
+                    } else {
+                        Log.w(TAG, "❌ STA 모드 세션 유지 실패: $maintainResult")
+
+                        // 세션 유지 실패해도 촬영 시도
+                        val result = CameraNative.capturePhoto()
+                        Log.d(TAG, "세션 유지 실패 후 촬영 시도 결과: $result")
+                        return@withContext result >= 0
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "STA 모드 촬영 중 오류", e)
+                    return@withContext false
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "사진 촬영 중 오류", e)
