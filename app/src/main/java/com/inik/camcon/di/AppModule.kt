@@ -37,8 +37,10 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun providePtpipDiscoveryService(@ApplicationContext context: Context) =
-        PtpipDiscoveryService(context)
+    fun providePtpipDiscoveryService(
+        @ApplicationContext context: Context,
+        wifiHelper: WifiNetworkHelper
+    ) = PtpipDiscoveryService(context, wifiHelper)
 
     @Provides
     @Singleton
