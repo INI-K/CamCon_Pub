@@ -98,7 +98,7 @@ fun PtpipConnectionScreen(
     val cameraInfo by ptpipViewModel.cameraInfo.collectAsState()
     val isPtpipEnabled by ptpipViewModel.isPtpipEnabled.collectAsState(initial = false)
     val wifiNetworkState by ptpipViewModel.wifiNetworkState.collectAsState()
-    val isAutoReconnectEnabled by ptpipViewModel.isAutoReconnectEnabled.collectAsState()
+    val isAutoReconnectEnabled by ptpipViewModel.isAutoReconnectEnabled.collectAsState(initial = false)
     val isWifiConnected = ptpipViewModel.isWifiConnected()
     val wifiCapabilities = ptpipViewModel.getWifiCapabilities()
 

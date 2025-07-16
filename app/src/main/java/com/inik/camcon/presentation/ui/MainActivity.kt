@@ -22,6 +22,8 @@ import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -35,6 +37,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.inik.camcon.R
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
+import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.presentation.navigation.MainNavigation
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.CameraControlScreen
@@ -58,7 +61,10 @@ sealed class BottomNavItem(val route: String, val titleRes: Int, val icon: Image
 }
 
 @Composable
-fun MainScreen(onSettingsClick: () -> Unit) {
+fun MainScreen(
+    onSettingsClick: () -> Unit,
+    globalManager: CameraConnectionGlobalManager
+) {
     val navController = rememberNavController()
     val items = listOf(
         BottomNavItem.PhotoPreview,
@@ -66,10 +72,25 @@ fun MainScreen(onSettingsClick: () -> Unit) {
         BottomNavItem.ServerPhotos
     )
 
+    // 전역 연결 상태 모니터링
+    val globalConnectionState by globalManager.globalConnectionState.collectAsState()
+    val activeConnectionType by globalManager.activeConnectionType.collectAsState()
+    val connectionStatusMessage by globalManager.connectionStatusMessage.collectAsState()
+
+    // 전역 상태 변화 시 로그 출력
+    LaunchedEffect(globalConnectionState) {
+        Log.d("MainScreen", "전역 연결 상태 변화: $connectionStatusMessage")
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.app_name)) },
+                title = {
+                    Text(
+                        stringResource(R.string.app_name) +
+                                if (activeConnectionType != null) " - ${connectionStatusMessage}" else ""
+                    )
+                },
                 actions = {
                     IconButton(onClick = onSettingsClick) {
                         Icon(
@@ -78,7 +99,18 @@ fun MainScreen(onSettingsClick: () -> Unit) {
                         )
                     }
                 },
-                backgroundColor = MaterialTheme.colors.primary,
+                backgroundColor = when (activeConnectionType) {
+                    com.inik.camcon.domain.model.CameraConnectionType.AP_MODE ->
+                        MaterialTheme.colors.primary
+
+                    com.inik.camcon.domain.model.CameraConnectionType.STA_MODE ->
+                        MaterialTheme.colors.secondary
+
+                    com.inik.camcon.domain.model.CameraConnectionType.USB ->
+                        MaterialTheme.colors.surface
+
+                    else -> MaterialTheme.colors.primary
+                },
                 contentColor = MaterialTheme.colors.onPrimary
             )
         },
@@ -136,6 +168,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var usbCameraManager: UsbCameraManager
 
+    @Inject
+    lateinit var globalManager: CameraConnectionGlobalManager
+
     companion object {
         private const val TAG = "MainActivity"
     }
@@ -146,6 +181,11 @@ class MainActivity : ComponentActivity() {
         // USB 디바이스 연결 Intent 처리를 비동기로 수행
         lifecycleScope.launch(Dispatchers.IO) {
             handleUsbIntent(intent)
+        }
+
+        // 전역 매니저 초기화
+        lifecycleScope.launch {
+            globalManager.forceUpdateState()
         }
 
         setContent {
@@ -192,12 +232,18 @@ class MainActivity : ComponentActivity() {
                     withContext(Dispatchers.Main) {
                         usbCameraManager.requestPermission(it)
                     }
+
+                    // 전역 상태 업데이트
+                    globalManager.forceUpdateState()
                 }
             }
             UsbManager.ACTION_USB_DEVICE_DETACHED -> {
                 val device: UsbDevice? = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
                 device?.let {
                     Log.d(TAG, "USB 디바이스가 분리됨: ${it.deviceName}")
+
+                    // 전역 상태 업데이트
+                    globalManager.forceUpdateState()
                 }
             }
         }
@@ -223,6 +269,11 @@ class MainActivity : ComponentActivity() {
         // 앱이 다시 활성화될 때 USB 상태만 확인 (디바이스 재검색은 하지 않음)
         lifecycleScope.launch(Dispatchers.IO) {
             checkUsbPermissionStatus()
+        }
+
+        // 전역 상태 업데이트
+        lifecycleScope.launch {
+            globalManager.forceUpdateState()
         }
     }
 
@@ -273,8 +324,9 @@ class MainActivity : ComponentActivity() {
         // Activity가 종료될 때 USB 매니저 정리
         try {
             usbCameraManager.cleanup()
+            globalManager.cleanup()
         } catch (e: Exception) {
-            Log.w(TAG, "USB 매니저 정리 중 오류", e)
+            Log.w(TAG, "매니저 정리 중 오류", e)
         }
     }
 }
