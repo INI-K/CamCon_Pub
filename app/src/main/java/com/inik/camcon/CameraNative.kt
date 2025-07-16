@@ -4,6 +4,13 @@ import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
 import com.inik.camcon.data.datasource.nativesource.LiveViewCallback
 
 object CameraNative {
+    // libgphoto2 로그 레벨 상수들
+    const val GP_LOG_ERROR = 0
+    const val GP_LOG_VERBOSE = 1
+    const val GP_LOG_DEBUG = 2
+    const val GP_LOG_DATA = 3
+    const val GP_LOG_ALL = GP_LOG_DATA
+
     init {
         System.loadLibrary("gphoto2_port") // Port 라이브러리 먼저
         System.loadLibrary("gphoto2_port_iolib_disk")
@@ -97,4 +104,9 @@ object CameraNative {
     // 로그 파일 관련 함수들
     external fun closeLogFile()
     external fun getLogFilePath(): String
+
+    // libgphoto2 로그 레벨 설정 함수 추가
+    external fun setLogLevel(level: Int): Boolean
+    external fun enableVerboseLogging(enabled: Boolean): Boolean
+    external fun enableDebugLogging(enabled: Boolean): Boolean
 }

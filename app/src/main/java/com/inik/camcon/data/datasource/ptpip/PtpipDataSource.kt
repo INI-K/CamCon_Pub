@@ -71,6 +71,24 @@ class PtpipDataSource @Inject constructor(
 
     init {
         startNetworkMonitoring()
+
+        // libgphoto2 디버그 로그 활성화
+        try {
+            // GP_LOG_ALL = 3 (모든 로그 레벨 활성화)
+            CameraNative.setLogLevel(CameraNative.GP_LOG_DEBUG)
+            Log.d(TAG, "libgphoto2 로그 레벨을 GP_LOG_ALL로 설정 완료")
+        } catch (e: Exception) {
+            Log.e(TAG, "libgphoto2 로그 레벨 설정 실패", e)
+
+            // 대체 방법으로 개별 로그 활성화
+            try {
+                CameraNative.enableDebugLogging(true)
+                CameraNative.enableVerboseLogging(true)
+                Log.d(TAG, "libgphoto2 개별 로그 활성화 완료")
+            } catch (e2: Exception) {
+                Log.e(TAG, "libgphoto2 개별 로그 활성화 실패", e2)
+            }
+        }
     }
 
     /**
@@ -114,14 +132,21 @@ class PtpipDataSource @Inject constructor(
 
                     // 연결 해제 상태에서만 재연결 시도
                     if (_connectionState.value == PtpipConnectionState.DISCONNECTED) {
-                        // AP 모드에서 카메라 IP 업데이트
-                        val cameraToConnect = if (networkState.isConnectedToCameraAP && networkState.detectedCameraIP != null) {
-                            lastConnectedCamera!!.copy(ipAddress = networkState.detectedCameraIP)
+                        // race condition 방지를 위해 로컬 변수로 저장
+                        val lastCamera = lastConnectedCamera
+                        if (lastCamera != null) {
+                            // AP 모드에서 카메라 IP 업데이트
+                            val cameraToConnect =
+                                if (networkState.isConnectedToCameraAP && networkState.detectedCameraIP != null) {
+                                    lastCamera.copy(ipAddress = networkState.detectedCameraIP)
+                                } else {
+                                    lastCamera
+                                }
+
+                            attemptAutoReconnect(cameraToConnect)
                         } else {
-                            lastConnectedCamera!!
+                            Log.w(TAG, "자동 재연결 중 lastConnectedCamera가 null로 변경됨")
                         }
-                        
-                        attemptAutoReconnect(cameraToConnect)
                     }
                 }
 
@@ -131,9 +156,13 @@ class PtpipDataSource @Inject constructor(
                         connectedCamera?.ipAddress != networkState.detectedCameraIP &&
                         currentState == PtpipConnectionState.CONNECTED -> {
                     Log.i(TAG, "AP 모드에서 카메라 IP 변경 감지 - 재연결 시도")
-                    val updatedCamera = connectedCamera?.copy(ipAddress = networkState.detectedCameraIP)
-                    if (updatedCamera != null && isAutoReconnectEnabled) {
-                        attemptAutoReconnect(updatedCamera)
+                    val currentCamera = connectedCamera
+                    if (currentCamera != null) {
+                        val updatedCamera =
+                            currentCamera.copy(ipAddress = networkState.detectedCameraIP)
+                        if (isAutoReconnectEnabled) {
+                            attemptAutoReconnect(updatedCamera)
+                        }
                     }
                 }
             }
