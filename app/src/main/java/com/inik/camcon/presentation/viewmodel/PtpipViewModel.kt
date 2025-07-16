@@ -94,6 +94,8 @@ class PtpipViewModel @Inject constructor(
         }
 
         // 자동 연결 설정이 활성화된 경우 마지막 연결 카메라로 자동 연결 시도
+        // 자동 연결 기능 비활성화 - 사용자가 직접 연결하도록 변경
+        /*
         viewModelScope.launch {
             combine(
                 isAutoConnectEnabled,
@@ -111,6 +113,7 @@ class PtpipViewModel @Inject constructor(
                 }
             }
         }
+        */
 
         // 전역 상태 변화 모니터링
         viewModelScope.launch {
@@ -217,18 +220,38 @@ class PtpipViewModel @Inject constructor(
                     return@launch
                 }
 
+                // 네트워크 상태 확인
+                val networkState = ptpipDataSource.getCurrentWifiNetworkState()
+                if (networkState.isConnectedToCameraAP) {
+                    Log.i(TAG, "✅ AP 모드 연결 감지됨: ${networkState.ssid}")
+                    Log.i(TAG, "카메라 IP: ${networkState.detectedCameraIP}")
+                } else {
+                    Log.i(TAG, "STA 모드 또는 일반 네트워크 연결")
+                }
+
                 Log.i(TAG, "Wi-Fi 연결 확인됨, 카메라 검색 시작...")
                 val cameras = ptpipDataSource.discoverCameras()
 
+                Log.i(TAG, "카메라 검색 완료: ${cameras.size}개 발견")
+
                 if (cameras.isEmpty()) {
-                    val errorMsg = "PTPIP 지원 카메라를 찾을 수 없습니다. 같은 네트워크에 카메라가 연결되어 있는지 확인해주세요."
+                    val errorMsg = if (networkState.isConnectedToCameraAP) {
+                        "카메라 AP에 연결되어 있지만 카메라를 찾을 수 없습니다.\n" +
+                                "카메라의 Wi-Fi 설정을 확인하고 다시 시도해주세요."
+                    } else {
+                        "PTPIP 지원 카메라를 찾을 수 없습니다. 같은 네트워크에 카메라가 연결되어 있는지 확인해주세요."
+                    }
                     Log.w(TAG, errorMsg)
                     _errorMessage.value = errorMsg
                 } else {
-                    Log.i(TAG, "검색 완료: " + cameras.size + "개 카메라 발견")
-                    
-                    // 전역 상태 강제 업데이트
-                    globalManager.forceUpdateState()
+                    Log.i(TAG, "✅ 카메라 검색 성공:")
+                    cameras.forEachIndexed { index, camera ->
+                        Log.i(
+                            TAG,
+                            "  ${index + 1}. ${camera.name} (${camera.ipAddress}:${camera.port})"
+                        )
+                    }
+                    _errorMessage.value = null
                 }
 
             } catch (e: Exception) {
@@ -262,17 +285,16 @@ class PtpipViewModel @Inject constructor(
                 _selectedCamera.value = camera
 
                 Log.d(TAG, "PTPIP 데이터소스 연결 시도 시작")
-                val success = ptpipDataSource.connectToCamera(camera)
+                val isConnected = ptpipDataSource.connectToCamera(camera)
 
-                Log.d(TAG, "연결 결과: ${if (success) "성공" else "실패"}")
+                Log.d(TAG, "연결 결과: ${if (isConnected) "성공" else "실패"}")
 
-                if (success) {
+                if (isConnected) {
                     Log.i(TAG, "카메라 연결 성공")
                     // 연결 성공 시 마지막 연결 정보 저장
                     preferencesDataSource.saveLastConnectedCamera(camera.ipAddress, camera.name)
-                    
-                    // 전역 상태 강제 업데이트
-                    globalManager.forceUpdateState()
+
+                    // 연결 성공 후 자동 검색을 시작하지 않음
                 } else {
                     Log.w(TAG, "카메라 연결 실패")
                     _errorMessage.value = "카메라 연결에 실패했습니다."
@@ -299,9 +321,6 @@ class PtpipViewModel @Inject constructor(
                 ptpipDataSource.disconnect()
                 _selectedCamera.value = null
                 _errorMessage.value = null
-                
-                // 전역 상태 강제 업데이트
-                globalManager.forceUpdateState()
             } catch (e: Exception) {
                 _errorMessage.value = "연결 해제 중 오류가 발생했습니다: ${e.message}"
             }
@@ -652,18 +671,6 @@ class PtpipViewModel @Inject constructor(
     }
 
     /**
-     * 전역 상태 강제 업데이트
-     */
-    fun forceUpdateGlobalState() {
-        globalManager.forceUpdateState()
-    }
-
-    /**
-     * 현재 활성 연결 타입 확인
-     */
-    fun getCurrentActiveConnectionType() = globalManager.getCurrentActiveConnectionType()
-
-    /**
      * AP 모드 연결 여부 확인
      */
     fun isApModeConnected() = globalManager.isApModeConnected()
@@ -672,6 +679,20 @@ class PtpipViewModel @Inject constructor(
      * STA 모드 연결 여부 확인
      */
     fun isStaModeConnected() = globalManager.isStaModeConnected()
+
+    /**
+     * 자동 검색 시작
+     */
+    private fun startAutoDiscovery() {
+        // 자동 검색 로직 추가
+    }
+
+    /**
+     * 자동 검색 중단
+     */
+    private fun stopAutoDiscovery() {
+        // 자동 검색 중단 로직 추가
+    }
 
     override fun onCleared() {
         super.onCleared()

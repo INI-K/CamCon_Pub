@@ -117,8 +117,9 @@ class CameraConnectionGlobalManager @Inject constructor(
             discoveredCameras = discoveredCameras
         )
 
-        // 전역 상태 업데이트
-        _globalConnectionState.value = GlobalCameraConnectionState(
+        // 상태 변경이 있을 때만 업데이트
+        val currentState = _globalConnectionState.value
+        val newState = GlobalCameraConnectionState(
             isUsbConnected = usbConnected,
             ptpipConnectionState = ptpipState,
             wifiNetworkState = wifiState,
@@ -127,10 +128,21 @@ class CameraConnectionGlobalManager @Inject constructor(
             isAnyConnectionActive = usbConnected || ptpipState == PtpipConnectionState.CONNECTED
         )
 
-        _activeConnectionType.value = activeConnection
-        _connectionStatusMessage.value = statusMessage
+        // 상태가 실제로 변경되었을 때만 업데이트
+        if (currentState != newState ||
+            _activeConnectionType.value != activeConnection ||
+            _connectionStatusMessage.value != statusMessage
+        ) {
 
-        Log.d(TAG, "전역 상태 업데이트: activeConnection=$activeConnection, statusMessage=$statusMessage")
+            _globalConnectionState.value = newState
+            _activeConnectionType.value = activeConnection
+            _connectionStatusMessage.value = statusMessage
+
+            Log.d(
+                TAG,
+                "전역 상태 업데이트: activeConnection=$activeConnection, statusMessage=$statusMessage"
+            )
+        }
     }
 
     /**
@@ -202,14 +214,6 @@ class CameraConnectionGlobalManager @Inject constructor(
      */
     fun isUsbConnected(): Boolean {
         return globalConnectionState.value.isUsbConnected
-    }
-
-    /**
-     * 연결 상태 강제 업데이트
-     */
-    fun forceUpdateState() {
-        Log.d(TAG, "연결 상태 강제 업데이트 요청")
-        updateGlobalState()
     }
 
     /**

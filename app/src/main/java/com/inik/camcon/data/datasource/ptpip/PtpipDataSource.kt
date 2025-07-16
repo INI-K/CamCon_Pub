@@ -645,6 +645,13 @@ class PtpipDataSource @Inject constructor(
     fun getWifiCapabilities(): WifiCapabilities = wifiHelper.getWifiCapabilities()
 
     /**
+     * 현재 Wi-Fi 네트워크 상태 가져오기
+     */
+    fun getCurrentWifiNetworkState(): WifiNetworkState {
+        return _wifiNetworkState.value
+    }
+
+    /**
      * 디버그용: ConnectionManager 접근
      */
     fun getConnectionManager() = connectionManager

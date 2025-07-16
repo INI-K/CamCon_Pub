@@ -183,11 +183,6 @@ class MainActivity : ComponentActivity() {
             handleUsbIntent(intent)
         }
 
-        // 전역 매니저 초기화
-        lifecycleScope.launch {
-            globalManager.forceUpdateState()
-        }
-
         setContent {
             CamConTheme {
                 MainNavigation(
@@ -234,7 +229,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     // 전역 상태 업데이트
-                    globalManager.forceUpdateState()
+                    //globalManager.forceUpdateState() // 불필요한 호출 제거
                 }
             }
             UsbManager.ACTION_USB_DEVICE_DETACHED -> {
@@ -243,7 +238,7 @@ class MainActivity : ComponentActivity() {
                     Log.d(TAG, "USB 디바이스가 분리됨: ${it.deviceName}")
 
                     // 전역 상태 업데이트
-                    globalManager.forceUpdateState()
+                    //globalManager.forceUpdateState() // 불필요한 호출 제거
                 }
             }
         }
@@ -272,9 +267,9 @@ class MainActivity : ComponentActivity() {
         }
 
         // 전역 상태 업데이트
-        lifecycleScope.launch {
-            globalManager.forceUpdateState()
-        }
+        //lifecycleScope.launch {
+        //    globalManager.forceUpdateState() // 불필요한 호출 제거
+        //}
     }
 
     private suspend fun checkUsbPermissionStatus() = withContext(Dispatchers.IO) {
@@ -325,6 +320,16 @@ class MainActivity : ComponentActivity() {
         try {
             usbCameraManager.cleanup()
             globalManager.cleanup()
+
+            // libgphoto2 로그 파일 닫기
+            lifecycleScope.launch(Dispatchers.IO) {
+                try {
+                    com.inik.camcon.CameraNative.closeLogFile()
+                    Log.d(TAG, "libgphoto2 로그 파일 닫기 완료")
+                } catch (e: Exception) {
+                    Log.w(TAG, "로그 파일 닫기 중 오류", e)
+                }
+            }
         } catch (e: Exception) {
             Log.w(TAG, "매니저 정리 중 오류", e)
         }
