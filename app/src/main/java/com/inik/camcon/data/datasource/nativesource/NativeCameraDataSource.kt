@@ -592,6 +592,55 @@ class NativeCameraDataSource @Inject constructor(
         }
     }
 
+    // 최신 파일만 가져오는 최적화된 함수 (촬영 후 사용)
+    fun getLatestCameraFile(): NativeCameraPhoto? {
+        return try {
+            Log.d(TAG, "최신 카메라 파일 가져오기 시작")
+
+            val latestFileJson = try {
+                CameraNative.getLatestCameraFile()
+            } catch (e: UnsatisfiedLinkError) {
+                Log.e(TAG, "네이티브 메서드 getLatestCameraFile이 구현되지 않음", e)
+                return null
+            }
+
+            if (latestFileJson.isNullOrEmpty()) {
+                Log.w(TAG, "최신 파일 정보가 비어있음")
+                return null
+            }
+
+            // JSON 파싱
+            val json = try {
+                JSONObject(latestFileJson)
+            } catch (e: Exception) {
+                Log.e(TAG, "최신 파일 JSON 파싱 실패: $latestFileJson", e)
+                return null
+            }
+
+            if (!json.optBoolean("success", false)) {
+                Log.w(TAG, "최신 파일 가져오기 실패: ${json.optString("error", "알 수 없는 오류")}")
+                return null
+            }
+
+            val photo = NativeCameraPhoto(
+                path = json.optString("path", ""),
+                name = json.optString("path", "").substringAfterLast("/"),
+                size = json.optLong("size", 0),
+                date = json.optLong("date", System.currentTimeMillis()),
+                width = 0,
+                height = 0,
+                thumbnailPath = null
+            )
+
+            Log.d(TAG, "최신 파일 가져오기 성공: ${photo.name}")
+            photo
+
+        } catch (e: Exception) {
+            Log.e(TAG, "최신 파일 가져오기 실패", e)
+            null
+        }
+    }
+
     // 네이티브 카메라 사진 정보 데이터 클래스
     data class NativeCameraPhoto(
         val path: String,              // 사진 경로
