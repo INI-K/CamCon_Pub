@@ -5,10 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
 import com.inik.camcon.domain.model.Camera
-import com.inik.camcon.domain.model.CameraCapabilities
-import com.inik.camcon.domain.model.CameraSettings
-import com.inik.camcon.domain.model.CapturedPhoto
-import com.inik.camcon.domain.model.LiveViewFrame
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.domain.model.TimelapseSettings
 import com.inik.camcon.domain.repository.CameraRepository
@@ -42,26 +38,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
-
-data class CameraUiState(
-    val isConnected: Boolean = false,
-    val currentCamera: Camera? = null,
-    val cameraSettings: CameraSettings? = null,
-    val isCapturing: Boolean = false,
-    val capturedPhotos: List<CapturedPhoto> = emptyList(),
-    val liveViewFrame: LiveViewFrame? = null,
-    val isLiveViewActive: Boolean = false,
-    val shootingMode: ShootingMode = ShootingMode.SINGLE,
-    val error: String? = null,
-    val usbDeviceCount: Int = 0,
-    val hasUsbPermission: Boolean = false,
-    val cameraCapabilities: CameraCapabilities? = null,
-    val isNativeCameraConnected: Boolean = false,
-    val isLoading: Boolean = false,
-    val isFocusing: Boolean = false,
-    val isInitializing: Boolean = false,
-    val isLiveViewLoading: Boolean = false
-)
 
 @HiltViewModel
 class CameraViewModel @Inject constructor(
@@ -139,7 +115,7 @@ class CameraViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isConnected = isConnected,
-                        error = if (isConnected) null else it.error // 연결되면 에러 메시지 제거
+                        error = if (isConnected) null else it.error
                     )
                 }
                 if (isConnected) {
@@ -210,12 +186,11 @@ class CameraViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isNativeCameraConnected = isConnected,
-                        isConnected = isConnected // 네이티브 연결 상태를 기본 연결 상태로도 반영
+                        isConnected = isConnected
                     )
                 }
 
                 if (isConnected) {
-                    // 네이티브 카메라가 연결되면 자동으로 CameraRepository의 connectCamera 호출
                     Log.d("CameraViewModel", "네이티브 카메라 연결됨 - 자동으로 카메라 연결 시작")
                     autoConnectCamera()
                 } else {
@@ -233,7 +208,6 @@ class CameraViewModel @Inject constructor(
             try {
                 Log.d("CameraViewModel", "자동 카메라 연결 시작")
 
-                // USB로 연결된 카메라를 자동으로 연결
                 connectCameraUseCase("auto")
                     .onSuccess {
                         Log.d("CameraViewModel", "자동 카메라 연결 성공 - 이벤트 리스너 활성화됨")
@@ -246,9 +220,7 @@ class CameraViewModel @Inject constructor(
                             }
                         }
 
-                        // 카메라 capabilities 가져오기
                         loadCameraCapabilitiesAsync()
-                        // 카메라 설정과 지원 확인도 수행
                         loadCameraSettingsAsync()
                     }
                     .onFailure { error ->
@@ -308,9 +280,7 @@ class CameraViewModel @Inject constructor(
                             _uiState.update { it.copy(isConnected = true) }
                         }
 
-                        // 카메라 capabilities 가져오기
                         loadCameraCapabilitiesAsync()
-                        // 카메라 설정과 지원 확인도 수행
                         loadCameraSettingsAsync()
                     }
                     .onFailure { error ->
@@ -346,7 +316,6 @@ class CameraViewModel @Inject constructor(
     fun refreshUsbDevices() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                // USB 디바이스 목록 새로고침
                 val devices = refreshUsbDevicesUseCase()
                 withContext(Dispatchers.Main) {
                     _uiState.update {
@@ -357,7 +326,6 @@ class CameraViewModel @Inject constructor(
                     }
                 }
 
-                // 디바이스가 발견되면 권한 요청
                 devices.firstOrNull()?.let { device ->
                     if (!usbCameraManager.hasUsbPermission.value) {
                         withContext(Dispatchers.Main) {
@@ -410,17 +378,12 @@ class CameraViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 Log.d("CameraViewModel", "=== 사진 촬영 요청 시작 ===")
-                Log.d("CameraViewModel", "현재 UI 상태: isConnected=${_uiState.value.isConnected}")
-                Log.d("CameraViewModel", "현재 UI 상태: isCapturing=${_uiState.value.isCapturing}")
-                Log.d("CameraViewModel", "촬영 모드: ${_uiState.value.shootingMode}")
 
                 _uiState.update { it.copy(isCapturing = true, error = null) }
 
                 capturePhotoUseCase(_uiState.value.shootingMode)
                     .onSuccess { photo ->
-                        // Photo will be added to the list via observeCapturedPhotos
                         Log.d("CameraViewModel", "✓ 사진 촬영 성공: ${photo.filePath}")
-                        Log.d("CameraViewModel", "파일 크기: ${photo.size} bytes")
                     }
                     .onFailure { error ->
                         Log.e("CameraViewModel", "❌ 사진 촬영 실패", error)
@@ -434,7 +397,6 @@ class CameraViewModel @Inject constructor(
                 withContext(Dispatchers.Main) {
                     _uiState.update { it.copy(isCapturing = false) }
                 }
-                Log.d("CameraViewModel", "=== 사진 촬영 요청 완료 ===")
             } catch (e: Exception) {
                 Log.e("CameraViewModel", "❌ 사진 촬영 중 예외 발생", e)
                 withContext(Dispatchers.Main) {
@@ -458,7 +420,6 @@ class CameraViewModel @Inject constructor(
 
         liveViewJob = viewModelScope.launch(Dispatchers.IO) {
             try {
-                // 라이브뷰 지원 여부 확인
                 val capabilities = _uiState.value.cameraCapabilities
                 if (capabilities != null && !capabilities.canLiveView) {
                     withContext(Dispatchers.Main) {
@@ -528,7 +489,7 @@ class CameraViewModel @Inject constructor(
                         )
                     }
                 }
-                Log.d("CameraViewModel", "라이브뷰 중지 성공. PC 모드 종료를 위해 disconnectCamera 호출.")
+                Log.d("CameraViewModel", "라이브뷰 중지 성공")
                 disconnectCamera()
             } catch (e: Exception) {
                 Log.e("CameraViewModel", "라이브뷰 중지 중 예외 발생", e)
@@ -542,7 +503,6 @@ class CameraViewModel @Inject constructor(
                         )
                     }
                 }
-                Log.w("CameraViewModel", "라이브뷰 중지 실패했으나, 카메라 연결 해제 시도")
                 disconnectCamera()
             }
         }
@@ -579,7 +539,6 @@ class CameraViewModel @Inject constructor(
                         }
                     }
                     .collect { photo ->
-                        // Photos will be added via observeCapturedPhotos
                         Log.d("CameraViewModel", "타임랩스 사진 촬영: ${photo.filePath}")
                     }
 
@@ -639,11 +598,8 @@ class CameraViewModel @Inject constructor(
 
                 performAutoFocusUseCase()
                     .onSuccess {
-                        // 포커싱 성공 피드백 (잠시 표시 후 사라짐)
                         withContext(Dispatchers.Main) {
                             _uiState.update { it.copy(isFocusing = false) }
-
-                            // 성공 메시지를 잠시 표시
                             _uiState.update { it.copy(error = "초점 맞춤 완료") }
                         }
 
@@ -689,7 +645,7 @@ class CameraViewModel @Inject constructor(
     }
 
     fun disconnectCamera() {
-        Log.d("CameraViewModel", "disconnectCamera 호출됨. PC 모드 종료 시도.")
+        Log.d("CameraViewModel", "disconnectCamera 호출됨")
         liveViewJob?.cancel()
         timelapseJob?.cancel()
         initializationJob?.cancel()
@@ -713,7 +669,7 @@ class CameraViewModel @Inject constructor(
                         )
                     }
                 }
-                Log.i("CameraViewModel", "카메라 연결 해제 성공 (UseCase). PC 모드 종료됨.")
+                Log.i("CameraViewModel", "카메라 연결 해제 성공")
             } catch (e: Exception) {
                 Log.e("CameraViewModel", "카메라 연결 해제 실패", e)
                 withContext(Dispatchers.Main) {
@@ -737,7 +693,7 @@ class CameraViewModel @Inject constructor(
                         }
                     }
                     .onFailure { error ->
-                        Log.e("CameraViewModel", "Failed to load camera capabilities", error)
+                        Log.e("CameraViewModel", "카메라 기능 로드 실패", error)
                     }
             } catch (e: Exception) {
                 Log.e("CameraViewModel", "카메라 기능 로드 중 예외 발생", e)
@@ -747,12 +703,10 @@ class CameraViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        // ViewModel이 해제될 때 모든 작업 정리
         liveViewJob?.cancel()
         timelapseJob?.cancel()
         initializationJob?.cancel()
 
-        // USB 매니저 정리
         try {
             usbCameraManager.cleanup()
         } catch (e: Exception) {
