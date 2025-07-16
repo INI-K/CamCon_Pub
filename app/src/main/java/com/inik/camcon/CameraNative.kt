@@ -92,4 +92,8 @@ object CameraNative {
     external fun isGphoto2Available(): Boolean
     external fun waitForGphoto2Access(timeoutMs: Int): Boolean
     external fun releaseForGphoto2(): Boolean
+
+    // 로그 파일 관련 함수들
+    external fun closeLogFile()
+    external fun getLogFilePath(): String
 }

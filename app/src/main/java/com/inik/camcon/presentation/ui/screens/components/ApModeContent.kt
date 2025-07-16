@@ -14,7 +14,6 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Switch
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -29,7 +28,6 @@ import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
-import kotlinx.coroutines.delay
 
 /**
  * AP 모드 화면 컴포넌트
@@ -56,30 +54,6 @@ fun ApModeContent(
     val globalConnectionState by ptpipViewModel.globalConnectionState.collectAsState()
     val activeConnectionType by ptpipViewModel.activeConnectionType.collectAsState()
     val connectionStatusMessage by ptpipViewModel.connectionStatusMessage.collectAsState()
-
-    // 실시간 상태 업데이트
-    LaunchedEffect(wifiNetworkState.isConnectedToCameraAP) {
-        if (wifiNetworkState.isConnectedToCameraAP) {
-            // AP 모드 연결 감지 시 전역 상태 업데이트
-            ptpipViewModel.forceUpdateGlobalState()
-
-            // 약간의 딜레이 후 다시 업데이트 (네트워크 안정화 대기)
-            delay(1000)
-            ptpipViewModel.forceUpdateGlobalState()
-        }
-    }
-
-    // 실시간 와이파이 상태 확인
-    LaunchedEffect(Unit) {
-        // 초기 상태 업데이트
-        ptpipViewModel.forceUpdateGlobalState()
-
-        // 주기적으로 상태 업데이트 (5초마다)
-        while (true) {
-            delay(5000)
-            ptpipViewModel.forceUpdateGlobalState()
-        }
-    }
 
     LazyColumn(
         modifier = modifier
