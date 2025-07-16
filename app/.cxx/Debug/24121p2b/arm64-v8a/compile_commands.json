@@ -26,6 +26,16 @@
 },
 {
   "directory": "/Users/meo/CamConT/app/.cxx/Debug/24121p2b/arm64-v8a",
+  "command": "/Users/meo/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ --target=aarch64-none-linux-android31 --sysroot=/Users/meo/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\\\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a\\\" -DDEBUG_BUILD -DIOLIBS_DIR=\\\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a\\\" -Dnative_lib_EXPORTS -I/Users/meo/CamConT/app/src/main/cpp/include -I/Users/meo/CamConT/app/src/main/cpp/include/gphoto2 -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fno-limit-debug-info  -fPIC -std=c++17 -fvisibility=hidden -fexceptions -g -O0 -o CMakeFiles/native-lib.dir/camera_ptpip_setup.cpp.o -c /Users/meo/CamConT/app/src/main/cpp/camera_ptpip_setup.cpp",
+  "file": "/Users/meo/CamConT/app/src/main/cpp/camera_ptpip_setup.cpp"
+},
+{
+  "directory": "/Users/meo/CamConT/app/.cxx/Debug/24121p2b/arm64-v8a",
+  "command": "/Users/meo/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ --target=aarch64-none-linux-android31 --sysroot=/Users/meo/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\\\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a\\\" -DDEBUG_BUILD -DIOLIBS_DIR=\\\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a\\\" -Dnative_lib_EXPORTS -I/Users/meo/CamConT/app/src/main/cpp/include -I/Users/meo/CamConT/app/src/main/cpp/include/gphoto2 -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fno-limit-debug-info  -fPIC -std=c++17 -fvisibility=hidden -fexceptions -g -O0 -o CMakeFiles/native-lib.dir/camera_ptpip_commands.cpp.o -c /Users/meo/CamConT/app/src/main/cpp/camera_ptpip_commands.cpp",
+  "file": "/Users/meo/CamConT/app/src/main/cpp/camera_ptpip_commands.cpp"
+},
+{
+  "directory": "/Users/meo/CamConT/app/.cxx/Debug/24121p2b/arm64-v8a",
   "command": "/Users/meo/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ --target=aarch64-none-linux-android31 --sysroot=/Users/meo/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\\\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a\\\" -DDEBUG_BUILD -DIOLIBS_DIR=\\\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a\\\" -Dnative_lib_EXPORTS -I/Users/meo/CamConT/app/src/main/cpp/include -I/Users/meo/CamConT/app/src/main/cpp/include/gphoto2 -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fno-limit-debug-info  -fPIC -std=c++17 -fvisibility=hidden -fexceptions -g -O0 -o CMakeFiles/native-lib.dir/camera_config.cpp.o -c /Users/meo/CamConT/app/src/main/cpp/camera_config.cpp",
   "file": "/Users/meo/CamConT/app/src/main/cpp/camera_config.cpp"
 },
@@ -58,6 +68,11 @@
   "directory": "/Users/meo/CamConT/app/.cxx/Debug/24121p2b/arm64-v8a",
   "command": "/Users/meo/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ --target=aarch64-none-linux-android31 --sysroot=/Users/meo/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\\\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a\\\" -DDEBUG_BUILD -DIOLIBS_DIR=\\\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a\\\" -Dnative_lib_EXPORTS -I/Users/meo/CamConT/app/src/main/cpp/include -I/Users/meo/CamConT/app/src/main/cpp/include/gphoto2 -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fno-limit-debug-info  -fPIC -std=c++17 -fvisibility=hidden -fexceptions -g -O0 -o CMakeFiles/native-lib.dir/camera_utils.cpp.o -c /Users/meo/CamConT/app/src/main/cpp/camera_utils.cpp",
   "file": "/Users/meo/CamConT/app/src/main/cpp/camera_utils.cpp"
+},
+{
+  "directory": "/Users/meo/CamConT/app/.cxx/Debug/24121p2b/arm64-v8a",
+  "command": "/Users/meo/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ --target=aarch64-none-linux-android31 --sysroot=/Users/meo/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -DANDROID_API_28_PLUS -DCAMLIBS_DIR=\\\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a\\\" -DDEBUG_BUILD -DIOLIBS_DIR=\\\"/Users/meo/CamConT/app/src/main/cpp/../jniLibs/arm64-v8a\\\" -Dnative_lib_EXPORTS -I/Users/meo/CamConT/app/src/main/cpp/include -I/Users/meo/CamConT/app/src/main/cpp/include/gphoto2 -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fno-limit-debug-info  -fPIC -std=c++17 -fvisibility=hidden -fexceptions -g -O0 -o CMakeFiles/native-lib.dir/camera_driver_optimizer.cpp.o -c /Users/meo/CamConT/app/src/main/cpp/camera_driver_optimizer.cpp",
+  "file": "/Users/meo/CamConT/app/src/main/cpp/camera_driver_optimizer.cpp"
 },
 {
   "directory": "/Users/meo/CamConT/app/.cxx/Debug/24121p2b/arm64-v8a",

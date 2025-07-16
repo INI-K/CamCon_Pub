@@ -14,6 +14,9 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Switch
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -26,6 +29,7 @@ import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
+import kotlinx.coroutines.delay
 
 /**
  * AP 모드 화면 컴포넌트
@@ -48,6 +52,35 @@ fun ApModeContent(
     onRequestPermission: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // 전역 상태 수집
+    val globalConnectionState by ptpipViewModel.globalConnectionState.collectAsState()
+    val activeConnectionType by ptpipViewModel.activeConnectionType.collectAsState()
+    val connectionStatusMessage by ptpipViewModel.connectionStatusMessage.collectAsState()
+
+    // 실시간 상태 업데이트
+    LaunchedEffect(wifiNetworkState.isConnectedToCameraAP) {
+        if (wifiNetworkState.isConnectedToCameraAP) {
+            // AP 모드 연결 감지 시 전역 상태 업데이트
+            ptpipViewModel.forceUpdateGlobalState()
+
+            // 약간의 딜레이 후 다시 업데이트 (네트워크 안정화 대기)
+            delay(1000)
+            ptpipViewModel.forceUpdateGlobalState()
+        }
+    }
+
+    // 실시간 와이파이 상태 확인
+    LaunchedEffect(Unit) {
+        // 초기 상태 업데이트
+        ptpipViewModel.forceUpdateGlobalState()
+
+        // 주기적으로 상태 업데이트 (5초마다)
+        while (true) {
+            delay(5000)
+            ptpipViewModel.forceUpdateGlobalState()
+        }
+    }
+
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -55,6 +88,16 @@ fun ApModeContent(
     ) {
         item {
             ApModeDescriptionCard()
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // 전역 연결 상태 카드 (새로 추가)
+        item {
+            GlobalConnectionStatusCard(
+                connectionStatusMessage = connectionStatusMessage,
+                activeConnectionType = activeConnectionType,
+                globalConnectionState = globalConnectionState
+            )
             Spacer(modifier = Modifier.height(16.dp))
         }
 
@@ -108,6 +151,93 @@ fun ApModeContent(
                 isWifiConnected = isWifiConnected
             )
         }
+    }
+}
+
+/**
+ * 전역 연결 상태 카드 (새로 추가)
+ */
+@Composable
+private fun GlobalConnectionStatusCard(
+    connectionStatusMessage: String,
+    activeConnectionType: com.inik.camcon.domain.model.CameraConnectionType?,
+    globalConnectionState: com.inik.camcon.domain.model.GlobalCameraConnectionState
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = 4.dp,
+        backgroundColor = when (activeConnectionType) {
+            com.inik.camcon.domain.model.CameraConnectionType.AP_MODE ->
+                MaterialTheme.colors.primary.copy(alpha = 0.1f)
+
+            com.inik.camcon.domain.model.CameraConnectionType.STA_MODE ->
+                MaterialTheme.colors.secondary.copy(alpha = 0.1f)
+
+            com.inik.camcon.domain.model.CameraConnectionType.USB ->
+                MaterialTheme.colors.surface.copy(alpha = 0.1f)
+
+            else -> MaterialTheme.colors.error.copy(alpha = 0.1f)
+        }
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = "🌐 전역 연결 상태",
+                style = MaterialTheme.typography.h6,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colors.primary
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = connectionStatusMessage,
+                style = MaterialTheme.typography.body1,
+                color = when (activeConnectionType) {
+                    com.inik.camcon.domain.model.CameraConnectionType.AP_MODE ->
+                        MaterialTheme.colors.primary
+
+                    com.inik.camcon.domain.model.CameraConnectionType.STA_MODE ->
+                        MaterialTheme.colors.secondary
+
+                    com.inik.camcon.domain.model.CameraConnectionType.USB ->
+                        MaterialTheme.colors.onSurface
+
+                    else -> MaterialTheme.colors.error
+                },
+                fontWeight = FontWeight.Medium
+            )
+
+            activeConnectionType?.let { type ->
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "활성 연결: ${getConnectionTypeText(type)}",
+                    style = MaterialTheme.typography.caption,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                )
+            }
+
+            if (globalConnectionState.discoveredCameras.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "발견된 카메라: ${globalConnectionState.discoveredCameras.size}개",
+                    style = MaterialTheme.typography.caption,
+                    color = MaterialTheme.colors.primary
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 연결 타입을 한국어로 변환
+ */
+private fun getConnectionTypeText(type: com.inik.camcon.domain.model.CameraConnectionType): String {
+    return when (type) {
+        com.inik.camcon.domain.model.CameraConnectionType.USB -> "USB 연결"
+        com.inik.camcon.domain.model.CameraConnectionType.AP_MODE -> "AP 모드"
+        com.inik.camcon.domain.model.CameraConnectionType.STA_MODE -> "STA 모드"
     }
 }
 

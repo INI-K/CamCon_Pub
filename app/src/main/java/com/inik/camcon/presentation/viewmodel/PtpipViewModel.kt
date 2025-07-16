@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource
 import com.inik.camcon.data.datasource.ptpip.PtpipDataSource
+import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.model.WifiCapabilities
@@ -25,7 +26,8 @@ import javax.inject.Inject
 @HiltViewModel
 class PtpipViewModel @Inject constructor(
     private val ptpipDataSource: PtpipDataSource,
-    private val preferencesDataSource: PtpipPreferencesDataSource
+    private val preferencesDataSource: PtpipPreferencesDataSource,
+    private val globalManager: CameraConnectionGlobalManager
 ) : ViewModel() {
 
     companion object {
@@ -43,6 +45,11 @@ class PtpipViewModel @Inject constructor(
 
     // Wi-Fi 네트워크 상태
     val wifiNetworkState = ptpipDataSource.wifiNetworkState
+
+    // 전역 연결 상태 (새로 추가)
+    val globalConnectionState = globalManager.globalConnectionState
+    val activeConnectionType = globalManager.activeConnectionType
+    val connectionStatusMessage = globalManager.connectionStatusMessage
 
     // PTPIP 설정 상태
     val isPtpipEnabled = preferencesDataSource.isPtpipEnabled
@@ -101,6 +108,20 @@ class PtpipViewModel @Inject constructor(
                         isOnline = true
                     )
                     connectToCamera(camera)
+                }
+            }
+        }
+
+        // 전역 상태 변화 모니터링
+        viewModelScope.launch {
+            globalConnectionState.collect { state ->
+                Log.d(TAG, "전역 상태 변화 감지: activeType=${state.activeConnectionType}")
+                
+                // AP 모드 연결 상태 변화 시 추가 처리
+                if (state.wifiNetworkState.isConnectedToCameraAP) {
+                    Log.d(TAG, "AP 모드 연결 감지됨")
+                    // 자동 검색은 사용자가 직접 실행하도록 변경
+                    // 자동 검색 기능은 추후 개선 예정
                 }
             }
         }
@@ -205,6 +226,9 @@ class PtpipViewModel @Inject constructor(
                     _errorMessage.value = errorMsg
                 } else {
                     Log.i(TAG, "검색 완료: " + cameras.size + "개 카메라 발견")
+                    
+                    // 전역 상태 강제 업데이트
+                    globalManager.forceUpdateState()
                 }
 
             } catch (e: Exception) {
@@ -246,6 +270,9 @@ class PtpipViewModel @Inject constructor(
                     Log.i(TAG, "카메라 연결 성공")
                     // 연결 성공 시 마지막 연결 정보 저장
                     preferencesDataSource.saveLastConnectedCamera(camera.ipAddress, camera.name)
+                    
+                    // 전역 상태 강제 업데이트
+                    globalManager.forceUpdateState()
                 } else {
                     Log.w(TAG, "카메라 연결 실패")
                     _errorMessage.value = "카메라 연결에 실패했습니다."
@@ -272,6 +299,9 @@ class PtpipViewModel @Inject constructor(
                 ptpipDataSource.disconnect()
                 _selectedCamera.value = null
                 _errorMessage.value = null
+                
+                // 전역 상태 강제 업데이트
+                globalManager.forceUpdateState()
             } catch (e: Exception) {
                 _errorMessage.value = "연결 해제 중 오류가 발생했습니다: ${e.message}"
             }
@@ -621,12 +651,35 @@ class PtpipViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 전역 상태 강제 업데이트
+     */
+    fun forceUpdateGlobalState() {
+        globalManager.forceUpdateState()
+    }
+
+    /**
+     * 현재 활성 연결 타입 확인
+     */
+    fun getCurrentActiveConnectionType() = globalManager.getCurrentActiveConnectionType()
+
+    /**
+     * AP 모드 연결 여부 확인
+     */
+    fun isApModeConnected() = globalManager.isApModeConnected()
+
+    /**
+     * STA 모드 연결 여부 확인
+     */
+    fun isStaModeConnected() = globalManager.isStaModeConnected()
+
     override fun onCleared() {
         super.onCleared()
         // ViewModel이 소멸될 때 연결 정리
         viewModelScope.launch {
             ptpipDataSource.disconnect()
             ptpipDataSource.cleanup()
+            globalManager.cleanup()
         }
     }
 }
