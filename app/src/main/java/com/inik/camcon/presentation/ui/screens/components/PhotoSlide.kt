@@ -1,6 +1,5 @@
 package com.inik.camcon.presentation.ui.screens.components
 
-import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,14 +16,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
+import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.inik.camcon.domain.model.CameraPhoto
-import java.io.File
 
 /**
  * 개별 사진 슬라이드 컴포넌트
@@ -40,33 +37,21 @@ fun PhotoSlide(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        when {
-            thumbnailData != null -> {
-                val bitmap = BitmapFactory.decodeByteArray(thumbnailData, 0, thumbnailData.size)
-                Image(
-                    bitmap = bitmap.asImageBitmap(),
-                    contentDescription = photo.name,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit
-                )
-            }
+        // Coil을 사용하여 이미지 로딩 - ByteArray와 파일 경로 모두 지원
+        val painter = rememberAsyncImagePainter(
+            ImageRequest.Builder(LocalContext.current)
+                .data(thumbnailData ?: photo.path)
+                .crossfade(true)
+                .size(1920, 1080) // 최대 크기 제한으로 메모리 절약
+                .build()
+        )
 
-            !photo.path.isNullOrEmpty() && File(photo.path).exists() -> {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(photo.path)
-                        .crossfade(false)
-                        .build(),
-                    contentDescription = photo.name,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit
-                )
-            }
-
-            else -> {
-                PhotoLoadError()
-            }
-        }
+        Image(
+            painter = painter,
+            contentDescription = photo.name,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Fit
+        )
     }
 }
 

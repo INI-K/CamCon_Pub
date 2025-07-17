@@ -1,8 +1,5 @@
 package com.inik.camcon.presentation.ui.screens
 
-import android.graphics.BitmapFactory
-import android.util.Log
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,13 +36,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
 import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
 
@@ -234,28 +233,14 @@ private fun LatestPhotoDisplay(photo: CapturedPhoto) {
     ) {
         Box {
             // 사진 이미지
-            val bitmap = remember(photo.filePath) {
-                try {
-                    val file = java.io.File(photo.filePath)
-                    if (file.exists()) {
-                        BitmapFactory.decodeFile(photo.filePath)
-                    } else {
-                        null
-                    }
-                } catch (e: Exception) {
-                    Log.e("ApModePhotoReceive", "이미지 로드 실패: ${photo.filePath}", e)
-                    null
-                }
-            }
-
-            if (bitmap != null) {
-                Image(
-                    bitmap = bitmap.asImageBitmap(),
-                    contentDescription = "최신 수신 사진",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
+            val painter = rememberAsyncImagePainter(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(photo.filePath)
+                    .crossfade(true)
+                    .build()
+            )
+            val state = painter.state
+            if (state is coil.compose.AsyncImagePainter.State.Error) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -269,6 +254,25 @@ private fun LatestPhotoDisplay(photo: CapturedPhoto) {
                         modifier = Modifier.size(48.dp)
                     )
                 }
+            } else if (state is coil.compose.AsyncImagePainter.State.Loading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.DarkGray),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        strokeWidth = 3.dp
+                    )
+                }
+            } else {
+                androidx.compose.foundation.Image(
+                    painter = painter,
+                    contentDescription = "최신 수신 사진",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
             }
 
             // 다운로드 상태 오버레이
@@ -330,27 +334,14 @@ private fun ReceivedPhotoThumbnail(photo: CapturedPhoto) {
         shape = RoundedCornerShape(8.dp)
     ) {
         Box {
-            val bitmap = remember(photo.filePath) {
-                try {
-                    val file = java.io.File(photo.filePath)
-                    if (file.exists()) {
-                        BitmapFactory.decodeFile(photo.filePath)
-                    } else {
-                        null
-                    }
-                } catch (e: Exception) {
-                    null
-                }
-            }
-
-            if (bitmap != null) {
-                Image(
-                    bitmap = bitmap.asImageBitmap(),
-                    contentDescription = "수신된 사진",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
+            val painter = rememberAsyncImagePainter(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(photo.filePath)
+                    .crossfade(true)
+                    .build()
+            )
+            val state = painter.state
+            if (state is coil.compose.AsyncImagePainter.State.Error) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -364,6 +355,25 @@ private fun ReceivedPhotoThumbnail(photo: CapturedPhoto) {
                         modifier = Modifier.size(24.dp)
                     )
                 }
+            } else if (state is coil.compose.AsyncImagePainter.State.Loading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.DarkGray),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                }
+            } else {
+                androidx.compose.foundation.Image(
+                    painter = painter,
+                    contentDescription = "수신된 사진",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
             }
 
             if (photo.isDownloading) {
