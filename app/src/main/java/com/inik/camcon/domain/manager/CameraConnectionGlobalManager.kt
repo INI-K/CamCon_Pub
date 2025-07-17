@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -107,6 +108,19 @@ class CameraConnectionGlobalManager @Inject constructor(
             }
 
             else -> null
+        }
+
+        // AP 모드 연결 시 PTPIP 파일 자동 수신 대기 시작
+        if (activeConnection == CameraConnectionType.AP_MODE) {
+            scope.launch {
+                try {
+                    // PTPIP 데이터소스에서 이미 연결된 카메라에 대해 파일 수신 시작
+                    Log.d(TAG, "AP 모드 연결 감지: 자동 파일 수신 대기 시작")
+                    // 파일 수신은 PtpipDataSource.connectToCamera()에서 자동으로 시작됨
+                } catch (e: Exception) {
+                    Log.e(TAG, "AP 모드 파일 수신 대기 시작 실패", e)
+                }
+            }
         }
 
         // 연결 상태 메시지 생성
