@@ -3,6 +3,7 @@ package com.inik.camcon.data.datasource.ptpip
 import android.content.Context
 import android.util.Log
 import com.inik.camcon.CameraNative
+import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
 import com.inik.camcon.data.network.ptpip.authentication.NikonAuthenticationService
 import com.inik.camcon.data.network.ptpip.connection.PtpipConnectionManager
 import com.inik.camcon.data.network.ptpip.discovery.PtpipDiscoveryService
@@ -593,9 +594,11 @@ class PtpipDataSource @Inject constructor(
     }
 
     /**
-     * 사진 촬영
+     * 사진 촬영 (비동기)
      */
-    suspend fun capturePhoto(): Boolean = withContext(Dispatchers.IO) {
+    suspend fun capturePhoto(
+        callback: CameraCaptureListener? = null,
+    ): Boolean = withContext(Dispatchers.IO) {
         return@withContext try {
             Log.d(TAG, "사진 촬영 시작")
 
@@ -606,45 +609,30 @@ class PtpipDataSource @Inject constructor(
                 return@withContext false
             }
 
-            // AP 모드와 STA 모드 구분 처리
-            if (wifiHelper.isConnectedToCameraAP()) {
-                Log.i(TAG, "AP 모드 감지: 직접 촬영 수행")
-
-                // AP 모드에서는 바로 촬영
+            // callback이 없으면 동기 방식으로 처리
+            if (callback == null) {
+                // 동기 방식 - 기존 코드
                 try {
                     val result = CameraNative.capturePhoto()
-                    Log.d(TAG, "AP 모드 촬영 결과: $result")
+                    Log.d(TAG, "동기 촬영 결과: $result")
                     return@withContext result >= 0
                 } catch (e: Exception) {
-                    Log.e(TAG, "AP 모드 촬영 중 오류", e)
-                    return@withContext false
-                }
-            } else {
-                Log.i(TAG, "STA 모드 감지: 세션 유지 후 촬영")
-
-                // STA 모드에서는 세션 유지 후 촬영
-                try {
-                    val maintainResult = CameraNative.maintainSessionForStaMode()
-                    if (maintainResult >= 0) {
-                        Log.i(TAG, "STA 모드 세션 유지 성공")
-
-                        // 초기화 성공 후 촬영
-                        val result = CameraNative.capturePhoto()
-                        Log.d(TAG, "STA 모드 촬영 결과: $result")
-                        return@withContext result >= 0
-                    } else {
-                        Log.w(TAG, "❌ STA 모드 세션 유지 실패: $maintainResult")
-
-                        // 세션 유지 실패해도 촬영 시도
-                        val result = CameraNative.capturePhoto()
-                        Log.d(TAG, "세션 유지 실패 후 촬영 시도 결과: $result")
-                        return@withContext result >= 0
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "STA 모드 촬영 중 오류", e)
+                    Log.e(TAG, "동기 촬영 중 오류", e)
                     return@withContext false
                 }
             }
+
+            // 비동기 방식 - callback 있을 때
+            // 파일은 외부 저장소 > 기본 외부 저장소 > 내부 저장소 순으로 자동 저장됨
+            try {
+                CameraNative.capturePhotoAsync(callback, "") // callback은 여기서 non-null 보장됨
+                Log.d(TAG, "비동기 촬영 요청 완료 (외부 저장소 우선 저장)")
+                return@withContext true
+            } catch (e: Exception) {
+                Log.e(TAG, "비동기 촬영 중 오류", e)
+                return@withContext false
+            }
+
         } catch (e: Exception) {
             Log.e(TAG, "사진 촬영 중 오류", e)
             false
