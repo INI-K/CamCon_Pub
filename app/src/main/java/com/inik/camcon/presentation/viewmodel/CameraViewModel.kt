@@ -760,13 +760,14 @@ class CameraViewModel @Inject constructor(
     /**
      * 이벤트 리스너 중지
      */
-    fun stopEventListener() {
+    fun stopEventListener(onComplete: (() -> Unit)? = null) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 Log.d("CameraViewModel", "이벤트 리스너 중지 요청")
                 cameraRepository.stopCameraEventListener()
                     .onSuccess {
                         Log.d("CameraViewModel", "이벤트 리스너 중지 성공")
+                        onComplete?.invoke()
                     }
                     .onFailure { error ->
                         Log.e("CameraViewModel", "이벤트 리스너 중지 실패", error)
@@ -775,6 +776,8 @@ class CameraViewModel @Inject constructor(
                                 it.copy(error = "이벤트 리스너 중지 실패: ${error.message}")
                             }
                         }
+                        // 실패해도 콜백 호출
+                        onComplete?.invoke()
                     }
             } catch (e: Exception) {
                 Log.e("CameraViewModel", "이벤트 리스너 중지 중 예외 발생", e)
@@ -783,6 +786,8 @@ class CameraViewModel @Inject constructor(
                         it.copy(error = "이벤트 리스너 중지 실패: ${e.message}")
                     }
                 }
+                // 예외 발생해도 콜백 호출
+                onComplete?.invoke()
             }
         }
     }
