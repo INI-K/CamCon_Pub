@@ -1,8 +1,7 @@
 package com.inik.camcon.presentation.ui.screens.components
 
-import android.graphics.BitmapFactory
+// Coil imports for image loading
 import android.util.Log
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,31 +26,25 @@ import androidx.compose.material.icons.filled.UsbOff
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.VideocamOff
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.CameraUiState
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
  * 카메라 프리뷰 영역 - 라이브뷰와 연결 상태를 관리
@@ -65,60 +58,30 @@ fun CameraPreviewArea(
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         if (uiState.isLiveViewActive && uiState.liveViewFrame != null) {
-            // Display live view frame
+            // Display live view frame using Coil
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 uiState.liveViewFrame?.let { frame ->
-                    var bitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
-
-                    // DisposableEffect를 사용하여 프레임 변경 시 메모리 정리
-                    DisposableEffect(frame) {
-                        val job = CoroutineScope(Dispatchers.IO).launch {
-                            try {
-                                val decodedBitmap = BitmapFactory.decodeByteArray(
-                                    frame.data,
-                                    0,
-                                    frame.data.size
-                                )
-
-                                withContext(Dispatchers.Main) {
-                                    // 기존 비트맵 정리
-                                    bitmap?.takeIf { !it.isRecycled }?.recycle()
-                                    bitmap = decodedBitmap
-                                }
-                            } catch (e: Exception) {
-                                Log.e("CameraPreview", "프레임 디코딩 실패", e)
-                                withContext(Dispatchers.Main) {
-                                    bitmap?.takeIf { !it.isRecycled }?.recycle()
-                                    bitmap = null
-                                }
-                            }
-                        }
-
-                        onDispose {
-                            job.cancel()
-                            bitmap?.takeIf { !it.isRecycled }?.recycle()
-                            bitmap = null
-                        }
+                    // Use Coil's AsyncImage with a custom ImageRequest with byte array
+                    val context = LocalContext.current
+                    val imageRequest = remember(frame) {
+                        ImageRequest.Builder(context)
+                            .data(frame.data)
+                            .crossfade(true)
+                            .memoryCacheKey("liveViewFrame")
+                            .build()
                     }
-
-                    bitmap?.let { bmp ->
-                        if (!bmp.isRecycled) {
-                            Image(
-                                bitmap = bmp.asImageBitmap(),
-                                contentDescription = "Live View",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Fit
-                            )
-                        } else {
-                            LoadingIndicator("라이브뷰 프레임 처리 중...")
-                        }
-                    } ?: run {
-                        LoadingIndicator("라이브뷰 프레임 로딩 중...")
-                    }
-                }
+                    AsyncImage(
+                        model = imageRequest,
+                        contentDescription = "Live View",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit,
+                        placeholder = null,
+                        error = null
+                    )
+                } ?: LoadingIndicator("라이브뷰 프레임 로딩 중...")
 
                 // 라이브뷰 중지 버튼 오버레이
                 Button(
