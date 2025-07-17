@@ -87,8 +87,18 @@ fun MainScreen(
             TopAppBar(
                 title = {
                     Text(
-                        stringResource(R.string.app_name) +
-                                if (activeConnectionType != null) " - ${connectionStatusMessage}" else ""
+                        when (activeConnectionType) {
+                            com.inik.camcon.domain.model.CameraConnectionType.AP_MODE ->
+                                "AP 모드로 연결됨"
+
+                            com.inik.camcon.domain.model.CameraConnectionType.STA_MODE ->
+                                "STA 모드로 연결됨"
+
+                            com.inik.camcon.domain.model.CameraConnectionType.USB ->
+                                "USB로 연결됨"
+
+                            else -> stringResource(R.string.app_name)
+                        }
                     )
                 },
                 actions = {
@@ -185,13 +195,11 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             CamConTheme {
-                MainNavigation(
+                MainScreen(
                     onSettingsClick = {
                         startActivity(Intent(this, SettingsActivity::class.java))
                     },
-                    onPtpipConnectionClick = {
-                        startActivity(Intent(this, PtpipConnectionActivity::class.java))
-                    }
+                    globalManager = globalManager
                 )
             }
         }

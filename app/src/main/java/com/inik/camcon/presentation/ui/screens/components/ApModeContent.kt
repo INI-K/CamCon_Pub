@@ -7,12 +7,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.Badge
+import androidx.compose.material.BadgedBox
 import androidx.compose.material.Card
+import androidx.compose.material.Icon
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Switch
 import androidx.compose.material.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.GetApp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -54,6 +61,8 @@ fun ApModeContent(
     val globalConnectionState by ptpipViewModel.globalConnectionState.collectAsState()
     val activeConnectionType by ptpipViewModel.activeConnectionType.collectAsState()
     val connectionStatusMessage by ptpipViewModel.connectionStatusMessage.collectAsState()
+    val autoDownloadEnabled by ptpipViewModel.autoDownloadEnabled.collectAsState()
+    val lastDownloadedFile by ptpipViewModel.lastDownloadedFile.collectAsState()
 
     LazyColumn(
         modifier = modifier
@@ -93,6 +102,75 @@ fun ApModeContent(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
+        // 자동 파일 다운로드 설정 카드
+        item {
+            if (autoDownloadEnabled) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = 4.dp,
+                    backgroundColor = MaterialTheme.colors.primary.copy(alpha = 0.1f)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CloudDownload,
+                                contentDescription = "자동 다운로드",
+                                tint = MaterialTheme.colors.primary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "자동 파일 다운로드 활성화",
+                                style = MaterialTheme.typography.h6,
+                                color = MaterialTheme.colors.primary
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "카메라에서 촬영한 사진이 자동으로 스마트폰에 저장됩니다.",
+                            style = MaterialTheme.typography.body2,
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f)
+                        )
+
+                        // 마지막 다운로드 파일 정보 표시
+                        lastDownloadedFile?.let { fileName ->
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                elevation = 2.dp,
+                                backgroundColor = MaterialTheme.colors.surface
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.GetApp,
+                                        contentDescription = "다운로드 완료",
+                                        tint = MaterialTheme.colors.secondary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "최근 다운로드: $fileName",
+                                        style = MaterialTheme.typography.caption,
+                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
         // 공통 Wi-Fi 상태 카드
         item {
             WifiStatusCard(
@@ -113,17 +191,30 @@ fun ApModeContent(
 
         // 공통 카메라 연결 및 검색 UI
         item {
-            CameraConnectionContent(
-                ptpipViewModel = ptpipViewModel,
-                connectionState = connectionState,
-                discoveredCameras = discoveredCameras,
-                isDiscovering = isDiscovering,
-                isConnecting = isConnecting,
-                selectedCamera = selectedCamera,
-                cameraInfo = cameraInfo,
-                isPtpipEnabled = isPtpipEnabled,
-                isWifiConnected = isWifiConnected
-            )
+            BadgedBox(
+                badge = {
+                    if (autoDownloadEnabled) {
+                        Badge(
+                            backgroundColor = MaterialTheme.colors.primary,
+                            contentColor = MaterialTheme.colors.onPrimary
+                        ) {
+                            Text("AUTO")
+                        }
+                    }
+                }
+            ) {
+                CameraConnectionContent(
+                    ptpipViewModel = ptpipViewModel,
+                    connectionState = connectionState,
+                    discoveredCameras = discoveredCameras,
+                    isDiscovering = isDiscovering,
+                    isConnecting = isConnecting,
+                    selectedCamera = selectedCamera,
+                    cameraInfo = cameraInfo,
+                    isPtpipEnabled = isPtpipEnabled,
+                    isWifiConnected = isWifiConnected
+                )
+            }
         }
     }
 }
