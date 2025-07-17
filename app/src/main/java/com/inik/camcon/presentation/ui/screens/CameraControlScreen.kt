@@ -2,6 +2,7 @@ package com.inik.camcon.presentation.ui.screens
 
 import android.app.Activity
 import android.content.pm.ActivityInfo
+import android.media.ExifInterface
 import android.util.Log
 import android.view.View
 import android.view.WindowInsets
@@ -34,7 +35,6 @@ import androidx.compose.material.ModalBottomSheetValue
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.rememberModalBottomSheetState
@@ -81,6 +81,7 @@ import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.CameraUiState
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import kotlinx.coroutines.launch
+import java.io.File
 
 /**
  * 메인 카메라 컨트롤 스크린 - 컴포넌트들로 분리됨
@@ -92,6 +93,8 @@ fun CameraControlScreen(
     viewModel: CameraViewModel = hiltViewModel(),
     appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
 ) {
+    Log.d("CameraControl", "=== CameraControlScreen 컴포저블 시작 ===")
+
     var showConnectionHelpDialog by remember { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -101,30 +104,91 @@ fun CameraControlScreen(
     val isAutoStartEventListener by appSettingsViewModel.isAutoStartEventListenerEnabled.collectAsState()
     val isShowLatestPhotoWhenDisabled by appSettingsViewModel.isShowLatestPhotoWhenDisabled.collectAsState()
 
-    // 라이프사이클 관리
+    Log.d("CameraControl", "현재 설정 상태:")
+    Log.d("CameraControl", "  - isCameraControlsEnabled: $isCameraControlsEnabled")
+    Log.d("CameraControl", "  - isLiveViewEnabled: $isLiveViewEnabled")
+    Log.d("CameraControl", "  - isAutoStartEventListener: $isAutoStartEventListener")
+    Log.d("CameraControl", "  - isShowLatestPhotoWhenDisabled: $isShowLatestPhotoWhenDisabled")
+
+    // 탭 전환 감지를 위한 변수
+    var isReturningFromOtherTab by remember { mutableStateOf(false) }
+
+    // 라이프사이클 관리 (통합된 버전)
     DisposableEffect(lifecycleOwner) {
+        Log.d("CameraControl", "=== DisposableEffect 시작 ===")
         val observer = LifecycleEventObserver { _, event ->
+            Log.d("CameraControl", "라이프사이클 이벤트: $event")
             when (event) {
-                Lifecycle.Event.ON_RESUME -> {
-                    // 카메라 제어 탭 진입 시 자동 이벤트 리스너 시작
-                    if (isAutoStartEventListener && !viewModel.uiState.value.isEventListenerActive) {
-                        Log.d("CameraControl", "자동 이벤트 리스너 시작")
-                        viewModel.startEventListener()
-                    }
-                }
                 Lifecycle.Event.ON_PAUSE -> {
+                    Log.d("CameraControl", "ON_PAUSE - 다른 탭으로 이동")
+                    isReturningFromOtherTab = true
+
+                    Log.d("CameraControl", "ON_PAUSE - 라이브뷰 상태 확인")
+                    Log.d(
+                        "CameraControl",
+                        "현재 라이브뷰 활성화 상태: ${viewModel.uiState.value.isLiveViewActive}"
+                    )
+
                     if (viewModel.uiState.value.isLiveViewActive) {
+                        Log.d("CameraControl", "라이브뷰 중지")
                         viewModel.stopLiveView()
                     }
                 }
+                Lifecycle.Event.ON_RESUME -> {
+                    Log.d("CameraControl", "ON_RESUME - MVVM 스타일 이벤트 리스너 상태 관리 시도")
+                    Log.d("CameraControl", "isAutoStartEventListener: $isAutoStartEventListener")
+                    Log.d("CameraControl", "isReturningFromOtherTab: $isReturningFromOtherTab")
+                    Log.d(
+                        "CameraControl",
+                        "현재 이벤트 리스너 활성화 상태: ${viewModel.uiState.value.isEventListenerActive}"
+                    )
+
+                    // 탭 복귀 여부, 이벤트 리스너 자동시작 여부에 따라 MVVM스럽게 위임
+                    if (isAutoStartEventListener) {
+                        if (isReturningFromOtherTab) {
+                            Log.d("CameraControl", "다른 탭에서 복귀 - 강제 이벤트 리스너 재시작")
+                            viewModel.stopEventListener {
+                                Log.d("CameraControl", "탭 복귀 시 이벤트 리스너 중지 완료, 재시작 시도")
+                                viewModel.startEventListener()
+                            }
+                        } else if (!viewModel.uiState.value.isEventListenerActive) {
+                            Log.d("CameraControl", "자동 이벤트 리스너 시작 요청")
+                            viewModel.startEventListener()
+                        } else {
+                            Log.d("CameraControl", "Resume - 이미 이벤트 리스너가 활성")
+                        }
+                    } else {
+                        Log.d("CameraControl", "자동 이벤트 리스너 OFF - 별도 동작 없음")
+                    }
+
+                    // 탭 복귀 플래그 안전 초기화
+                    isReturningFromOtherTab = false
+                }
                 Lifecycle.Event.ON_STOP -> {
-                    // 필요시 연결 해제: viewModel.disconnectCamera()
+                    Log.d(
+                        "CameraControl",
+                        "ON_STOP - 이벤트 리스너 상태: ${viewModel.uiState.value.isEventListenerActive}"
+                    )
+                }
+
+                Lifecycle.Event.ON_START -> {
+                    Log.d("CameraControl", "ON_START")
+                }
+
+                Lifecycle.Event.ON_CREATE -> {
+                    Log.d("CameraControl", "ON_CREATE")
+                }
+
+                Lifecycle.Event.ON_DESTROY -> {
+                    Log.d("CameraControl", "ON_DESTROY")
                 }
                 else -> Unit
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
+            Log.d("CameraControl", "=== DisposableEffect 정리 ===")
+            Log.d("CameraControl", "observer 제거")
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
@@ -140,6 +204,21 @@ fun CameraControlScreen(
     // UI 상태 변경 로깅
     LaunchedEffect(uiState.isLiveViewActive) {
         Log.d("CameraControl", "라이브뷰 상태 변경: ${uiState.isLiveViewActive}")
+    }
+
+    // 이벤트 리스너 상태 변경 로깅
+    LaunchedEffect(uiState.isEventListenerActive) {
+        Log.d("CameraControl", "이벤트 리스너 상태 변경: ${uiState.isEventListenerActive}")
+    }
+
+    // 촬영된 사진 개수 변경 로깅
+    LaunchedEffect(uiState.capturedPhotos.size) {
+        Log.d("CameraControl", "수신된 사진 개수: ${uiState.capturedPhotos.size}")
+    }
+
+    // 카메라 연결 상태 변경 로깅
+    LaunchedEffect(uiState.isConnected) {
+        Log.d("CameraControl", "카메라 연결 상태 변경: ${uiState.isConnected}")
     }
 
     ModalBottomSheetLayout(
@@ -234,6 +313,13 @@ private fun PortraitCameraLayout(
     isLiveViewEnabled: Boolean,
     isShowLatestPhotoWhenDisabled: Boolean
 ) {
+    Log.d("CameraControl", "=== PortraitCameraLayout 컴포저블 시작 ===")
+    Log.d("CameraControl", "PortraitCameraLayout 상태:")
+    Log.d("CameraControl", "  - isConnected: ${uiState.isConnected}")
+    Log.d("CameraControl", "  - isEventListenerActive: ${uiState.isEventListenerActive}")
+    Log.d("CameraControl", "  - isLiveViewActive: ${uiState.isLiveViewActive}")
+    Log.d("CameraControl", "  - capturedPhotos.size: ${uiState.capturedPhotos.size}")
+
     val context = LocalContext.current
 
     // 포트레이트 모드 설정
@@ -290,67 +376,39 @@ private fun PortraitCameraLayout(
                     cameraFeed = cameraFeed,
                     viewModel = viewModel
                 )
-            } else if (!isCameraControlsEnabled && isShowLatestPhotoWhenDisabled) {
-                // 최신 사진 표시
-                uiState.capturedPhotos.lastOrNull()?.let { latestPhoto ->
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(latestPhoto.filePath)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = "최신 사진",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } ?: run {
-                    // 촬영된 사진이 없을 때 안내 메시지
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            Icons.Default.Photo,
-                            contentDescription = "사진 없음",
-                            modifier = Modifier.size(64.dp),
-                            tint = Color.Gray
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            "촬영된 사진이 없습니다",
-                            color = Color.Gray,
-                            textAlign = TextAlign.Center
-                        )
-                        Text(
-                            "카메라 셔터 버튼을 눌러 사진을 촬영하세요",
-                            color = Color.Gray.copy(alpha = 0.7f),
-                            fontSize = 12.sp,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                    }
-                }
+            } else if (uiState.capturedPhotos.isNotEmpty()) {
+                // 수신된 사진이 있으면 최신 사진을 화면 중앙에 표시
+                val latestPhoto = uiState.capturedPhotos.last()
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(latestPhoto.filePath)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "최신 수신된 사진",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
             } else {
-                // 라이브뷰도 비활성화된 경우 안내 메시지
+                // 수신된 사진이 없을 때 안내 메시지
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
                     Icon(
-                        Icons.Default.CameraAlt,
-                        contentDescription = "카메라",
+                        Icons.Default.Photo,
+                        contentDescription = "사진 없음",
                         modifier = Modifier.size(64.dp),
                         tint = Color.Gray
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        "카메라 컨트롤이 비활성화됨",
+                        "수신된 사진이 없습니다",
                         color = Color.Gray,
                         textAlign = TextAlign.Center
                     )
                     Text(
-                        "설정에서 활성화할 수 있습니다",
+                        "카메라에서 사진을 촬영하면 여기에 표시됩니다",
                         color = Color.Gray.copy(alpha = 0.7f),
                         fontSize = 12.sp,
                         textAlign = TextAlign.Center,
@@ -360,10 +418,23 @@ private fun PortraitCameraLayout(
             }
 
             // 카메라 설정 오버레이 - 분리된 컴포넌트 사용
-            CameraSettingsOverlay(
-                settings = uiState.cameraSettings,
-                modifier = Modifier.align(Alignment.TopCenter)
-            )
+            if (isCameraControlsEnabled && isLiveViewEnabled) {
+                // 라이브뷰 활성화 시 현재 카메라 설정 표시
+                CameraSettingsOverlay(
+                    settings = uiState.cameraSettings,
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
+            } else if (uiState.capturedPhotos.isNotEmpty()) {
+                // 수신된 사진이 있을 때 최신 사진의 메타데이터 표시
+                val latestPhoto = uiState.capturedPhotos.last()
+                val exifSettings = readExifMetadata(latestPhoto.filePath)
+                exifSettings?.let { photoSettings ->
+                    CameraSettingsOverlay(
+                        settings = photoSettings,
+                        modifier = Modifier.align(Alignment.TopCenter)
+                    )
+                }
+            }
 
             // 전체화면 안내 텍스트
             if (uiState.isLiveViewActive) {
@@ -390,15 +461,17 @@ private fun PortraitCameraLayout(
             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
         ) {
             Column {
-                // 촬영 모드 선택 - 분리된 컴포넌트 사용
-                ShootingModeSelector(
-                    uiState = uiState,
-                    onModeSelected = { mode -> viewModel.setShootingMode(mode) },
-                    modifier = Modifier.padding(vertical = 12.dp)
-                )
+                // 촬영 모드 선택 - 라이브뷰가 활성화되어 있을 때만 표시
+                if (isCameraControlsEnabled && isLiveViewEnabled) {
+                    ShootingModeSelector(
+                        uiState = uiState,
+                        onModeSelected = { mode -> viewModel.setShootingMode(mode) },
+                        modifier = Modifier.padding(vertical = 12.dp)
+                    )
+                }
 
-                // 촬영 컨트롤 - 분리된 컴포넌트 사용
-                if (isCameraControlsEnabled) {
+                // 촬영 컨트롤 - 라이브뷰가 활성화되어 있을 때만 표시
+                if (isCameraControlsEnabled && isLiveViewEnabled) {
                     CaptureControls(
                         uiState = uiState,
                         viewModel = viewModel,
@@ -415,7 +488,8 @@ private fun PortraitCameraLayout(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
                     RecentCapturesRow(
-                        photos = uiState.capturedPhotos.takeLast(10), // 최근 10개
+                        photos = uiState.capturedPhotos.takeLast(10)
+                            .reversed(), // 최근 10개만 표시하되 최신 사진이 0번째 자리에 오도록
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
                 }
@@ -726,6 +800,79 @@ private fun CameraSettingsSheet(
         } ?: run {
             Text("카메라 설정을 로드할 수 없습니다", color = Color.Gray)
         }
+    }
+}
+
+/**
+ * 사진 파일에서 EXIF 메타데이터를 읽어서 CameraSettings 객체로 변환
+ */
+private fun readExifMetadata(filePath: String): CameraSettings? {
+    return try {
+        val file = File(filePath)
+        if (!file.exists()) return null
+
+        val exif = ExifInterface(filePath)
+
+        // ISO 값 읽기
+        val iso = exif.getAttribute(ExifInterface.TAG_ISO_SPEED_RATINGS) ?: "AUTO"
+
+        // 조리개 값 읽기
+        val aperture = exif.getAttribute(ExifInterface.TAG_F_NUMBER)?.let { fNumber ->
+            try {
+                val parts = fNumber.split("/")
+                if (parts.size == 2) {
+                    val numerator = parts[0].toDouble()
+                    val denominator = parts[1].toDouble()
+                    String.format("%.1f", numerator / denominator)
+                } else {
+                    fNumber
+                }
+            } catch (e: Exception) {
+                fNumber
+            }
+        } ?: "AUTO"
+
+        // 셔터 속도 읽기
+        val shutterSpeed = exif.getAttribute(ExifInterface.TAG_EXPOSURE_TIME)?.let { exposureTime ->
+            try {
+                val speed = exposureTime.toDouble()
+
+                if (speed >= 1.0) {
+                    "${speed.toInt()}s"
+                } else {
+                    val denominator = (1.0 / speed).toInt()
+                    "1/$denominator"
+                }
+            } catch (e: Exception) {
+                Log.e("CameraControl", "셔터 속도 파싱 실패: $exposureTime")
+                exposureTime
+            }
+        } ?: "AUTO"
+
+        // 화이트 밸런스 읽기
+        val whiteBalance = when (exif.getAttribute(ExifInterface.TAG_WHITE_BALANCE)) {
+            "0" -> "자동"
+            "1" -> "수동"
+            else -> "자동"
+        }
+
+        // 초점 모드 읽기 (기본값)
+        val focusMode = "자동"
+
+        // 노출 보정 읽기
+        val exposureCompensation = exif.getAttribute(ExifInterface.TAG_EXPOSURE_BIAS_VALUE) ?: "0"
+
+        CameraSettings(
+            iso = iso,
+            shutterSpeed = shutterSpeed,
+            aperture = aperture,
+            whiteBalance = whiteBalance,
+            focusMode = focusMode,
+            exposureCompensation = exposureCompensation
+        )
+    } catch (e: Exception) {
+        Log.e("CameraControl", "EXIF 메타데이터 읽기 실패: ${e.message}")
+        null
     }
 }
 
