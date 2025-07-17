@@ -11,11 +11,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.BottomNavigation
 import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Scaffold
 import androidx.compose.material.Text
-import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CloudDownload
@@ -58,6 +56,9 @@ sealed class BottomNavItem(val route: String, val titleRes: Int, val icon: Image
 
     object ServerPhotos :
         BottomNavItem("server_photos", R.string.server_photos, Icons.Default.CloudDownload)
+
+    object Settings :
+        BottomNavItem("settings", R.string.settings, Icons.Default.Settings)
 }
 
 @Composable
@@ -69,7 +70,8 @@ fun MainScreen(
     val items = listOf(
         BottomNavItem.PhotoPreview,
         BottomNavItem.CameraControl,
-        BottomNavItem.ServerPhotos
+        BottomNavItem.ServerPhotos,
+        BottomNavItem.Settings
     )
 
     // 전역 연결 상태 모니터링
@@ -83,47 +85,6 @@ fun MainScreen(
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        when (activeConnectionType) {
-                            com.inik.camcon.domain.model.CameraConnectionType.AP_MODE ->
-                                "AP 모드로 연결됨"
-
-                            com.inik.camcon.domain.model.CameraConnectionType.STA_MODE ->
-                                "STA 모드로 연결됨"
-
-                            com.inik.camcon.domain.model.CameraConnectionType.USB ->
-                                "USB로 연결됨"
-
-                            else -> stringResource(R.string.app_name)
-                        }
-                    )
-                },
-                actions = {
-                    IconButton(onClick = onSettingsClick) {
-                        Icon(
-                            Icons.Default.Settings,
-                            contentDescription = stringResource(R.string.settings)
-                        )
-                    }
-                },
-                backgroundColor = when (activeConnectionType) {
-                    com.inik.camcon.domain.model.CameraConnectionType.AP_MODE ->
-                        MaterialTheme.colors.primary
-
-                    com.inik.camcon.domain.model.CameraConnectionType.STA_MODE ->
-                        MaterialTheme.colors.secondary
-
-                    com.inik.camcon.domain.model.CameraConnectionType.USB ->
-                        MaterialTheme.colors.surface
-
-                    else -> MaterialTheme.colors.primary
-                },
-                contentColor = MaterialTheme.colors.onPrimary
-            )
-        },
         bottomBar = {
             BottomNavigation(
                 backgroundColor = MaterialTheme.colors.surface,
@@ -143,12 +104,16 @@ fun MainScreen(
                         label = { Text(stringResource(screen.titleRes)) },
                         selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
                         onClick = {
-                            navController.navigate(screen.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
+                            if (screen.route == "settings") {
+                                onSettingsClick()
+                            } else {
+                                navController.navigate(screen.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
                                 }
-                                launchSingleTop = true
-                                restoreState = true
                             }
                         },
                         selectedContentColor = MaterialTheme.colors.primary,
@@ -165,9 +130,15 @@ fun MainScreen(
         ) {
             composable(BottomNavItem.PhotoPreview.route) { PhotoPreviewScreen() }
             composable(BottomNavItem.CameraControl.route) {
-                CameraControlScreen()
+                // AP 모드일 때는 사진 수신 대기 화면, 아니면 카메라 컨트롤 화면
+                if (activeConnectionType == com.inik.camcon.domain.model.CameraConnectionType.AP_MODE) {
+                    com.inik.camcon.presentation.ui.screens.ApModePhotoReceiveScreen()
+                } else {
+                    CameraControlScreen()
+                }
             }
             composable(BottomNavItem.ServerPhotos.route) { ServerPhotosScreen() }
+            // 설정은 별도 액티비티로 처리하므로 여기서 제외
         }
     }
 }
