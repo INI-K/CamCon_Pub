@@ -2,11 +2,13 @@ package com.inik.camcon.presentation.ui.screens
 
 import android.app.Activity
 import android.content.pm.ActivityInfo
+import android.graphics.BitmapFactory
 import android.util.Log
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -50,6 +52,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
@@ -172,10 +176,12 @@ fun CameraControlScreen(
     // 에러 처리
     uiState.error?.let { error ->
         LaunchedEffect(error) {
-            if (error.contains("Could not find the requested device") ||
-                error.contains("-52")
-            ) {
-                showConnectionHelpDialog = true
+            when {
+                error.contains("Could not find the requested device") ||
+                        error.contains("-52") -> {
+                    showConnectionHelpDialog = true
+                }
+                // PTP 타임아웃 자동 처리 제거 - 기본값 사용
             }
         }
     }
@@ -310,9 +316,14 @@ private fun PortraitCameraLayout(
 
                 // 최근 촬영 사진들 - 여기는 간소화된 버전 유지
                 if (uiState.capturedPhotos.isNotEmpty()) {
+                    Text(
+                        "수신된 사진 (${uiState.capturedPhotos.size}개)",
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
                     RecentCapturesRow(
-                        photos = uiState.capturedPhotos.take(5),
-                        modifier = Modifier.padding(16.dp)
+                        photos = uiState.capturedPhotos.takeLast(10), // 최근 10개
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
                 }
             }
@@ -497,12 +508,13 @@ private fun RecentCapturesRow(
 ) {
     LazyRow(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(photos) { photo ->
             Card(
-                modifier = Modifier.size(60.dp),
-                shape = RoundedCornerShape(8.dp)
+                modifier = Modifier.size(100.dp),
+                shape = RoundedCornerShape(12.dp),
+                elevation = 4.dp
             ) {
                 Box(
                     modifier = Modifier
@@ -510,12 +522,132 @@ private fun RecentCapturesRow(
                         .background(Color.DarkGray),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        Icons.Default.Photo,
-                        contentDescription = null,
-                        tint = Color.Gray,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    // 실제 이미지가 있으면 표출
+                    photo.thumbnailPath?.let { thumbnailPath ->
+                        val bitmap = remember(thumbnailPath) {
+                            try {
+                                val file = java.io.File(thumbnailPath)
+                                if (file.exists()) {
+                                    BitmapFactory.decodeFile(thumbnailPath)
+                                } else {
+                                    null
+                                }
+                            } catch (e: Exception) {
+                                Log.e("RecentCaptures", "썸네일 로드 실패: $thumbnailPath", e)
+                                null
+                            }
+                        }
+                        
+                        bitmap?.let { bmp ->
+                            Image(
+                                bitmap = bmp.asImageBitmap(),
+                                contentDescription = "촬영된 사진",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } ?: run {
+                            // 썸네일이 없으면 원본 이미지 시도
+                            val originalBitmap = remember(photo.filePath) {
+                                try {
+                                    val file = java.io.File(photo.filePath)
+                                    if (file.exists()) {
+                                        BitmapFactory.decodeFile(photo.filePath)
+                                    } else {
+                                        null
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e("RecentCaptures", "원본 이미지 로드 실패: ${photo.filePath}", e)
+                                    null
+                                }
+                            }
+                            
+                            originalBitmap?.let { bmp ->
+                                Image(
+                                    bitmap = bmp.asImageBitmap(),
+                                    contentDescription = "촬영된 사진",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } ?: run {
+                                // 이미지 로드 실패 시 기본 아이콘
+                                Icon(
+                                    Icons.Default.Photo,
+                                    contentDescription = null,
+                                    tint = Color.Gray,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                        }
+                    } ?: run {
+                        // 썸네일 경로가 없으면 원본 이미지 시도
+                        val originalBitmap = remember(photo.filePath) {
+                            try {
+                                val file = java.io.File(photo.filePath)
+                                if (file.exists()) {
+                                    BitmapFactory.decodeFile(photo.filePath)
+                                } else {
+                                    null
+                                }
+                            } catch (e: Exception) {
+                                Log.e("RecentCaptures", "원본 이미지 로드 실패: ${photo.filePath}", e)
+                                null
+                            }
+                        }
+                        
+                        originalBitmap?.let { bmp ->
+                            Image(
+                                bitmap = bmp.asImageBitmap(),
+                                contentDescription = "촬영된 사진",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } ?: run {
+                            // 이미지 로드 실패 시 기본 아이콘
+                            Icon(
+                                Icons.Default.Photo,
+                                contentDescription = null,
+                                tint = Color.Gray,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
+
+                    // 다운로드 상태 표시
+                    if (photo.isDownloading) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.5f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "다운로드 중...",
+                                color = Color.White,
+                                fontSize = 10.sp
+                            )
+                        }
+                    }
+
+                    // 파일 크기 표시 (하단)
+                    if (photo.size > 0) {
+                        val sizeText = when {
+                            photo.size > 1024 * 1024 -> "${photo.size / (1024 * 1024)}MB"
+                            photo.size > 1024 -> "${photo.size / 1024}KB"
+                            else -> "${photo.size}B"
+                        }
+                        Text(
+                            sizeText,
+                            color = Color.White,
+                            fontSize = 10.sp,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .background(
+                                    Color.Black.copy(alpha = 0.7f),
+                                    RoundedCornerShape(4.dp)
+                                )
+                                .padding(4.dp)
+                        )
+                    }
                 }
             }
         }
