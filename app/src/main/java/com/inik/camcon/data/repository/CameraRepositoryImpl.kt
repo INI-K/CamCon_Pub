@@ -323,13 +323,6 @@ class CameraRepositoryImpl @Inject constructor(
                             isDownloading = true // 다운로드 중 표시
                         )
 
-                        // UI에 즉시 반영
-                        CoroutineScope(Dispatchers.Main).launch {
-                            _capturedPhotos.value = _capturedPhotos.value + photo
-                            Log.d("카메라레포지토리", "⚡ JPEG 사진 즉시 목록 추가: $fileName (다운로드 시작)")
-                        }
-
-                        // 백그라운드에서 비동기 다운로드 처리
                         CoroutineScope(Dispatchers.IO).launch {
                             handlePhotoDownload(photo, fullPath, fileName)
                         }
@@ -800,7 +793,7 @@ class CameraRepositoryImpl @Inject constructor(
                                 return
                             }
 
-                            // 즉시 UI에 임시 사진 정보 추가 (썸네일 없이)
+                            // 임시 사진 정보 생성
                             val tempPhoto = CapturedPhoto(
                                 id = UUID.randomUUID().toString(),
                                 filePath = fullPath,
@@ -814,13 +807,7 @@ class CameraRepositoryImpl @Inject constructor(
                                 isDownloading = true // 다운로드 중 표시
                             )
 
-                            // UI에 즉시 반영
-                            CoroutineScope(Dispatchers.Main).launch {
-                                _capturedPhotos.value = _capturedPhotos.value + tempPhoto
-                                Log.d("카메라레포지토리", "⚡ JPEG 사진 즉시 목록 추가: $fileName (다운로드 시작)")
-                            }
-
-                            // 백그라운드에서 비동기 다운로드 처리
+                            // 백그라운드에서 비동기 다운로드 처리 (UI 추가는 완료 후)
                             CoroutineScope(Dispatchers.IO).launch {
                                 handlePhotoDownload(tempPhoto, fullPath, fileName)
                             }
@@ -907,8 +894,8 @@ class CameraRepositoryImpl @Inject constructor(
      * JPEG 사진 다운로드를 비동기로 처리
      */
     private suspend fun handlePhotoDownload(
-        tempPhoto: CapturedPhoto,
-        remotePath: String,
+        photo: CapturedPhoto,
+        fullPath: String,
         fileName: String
     ) {
         try {
@@ -916,10 +903,10 @@ class CameraRepositoryImpl @Inject constructor(
             val startTime = System.currentTimeMillis()
 
             // 파일 확인 - 빠른 체크
-            val file = File(remotePath)
+            val file = File(fullPath)
             if (!file.exists()) {
-                Log.e("카메라레포지토리", "❌ 사진 파일을 찾을 수 없음: $remotePath")
-                updatePhotoDownloadFailed(tempPhoto.id)
+                Log.e("카메라레포지토리", "❌ 사진 파일을 찾을 수 없음: $fullPath")
+                updatePhotoDownloadFailed(fileName)
                 return
             }
 
@@ -928,61 +915,36 @@ class CameraRepositoryImpl @Inject constructor(
             Log.d("카메라레포지토리", "   크기: ${fileSize / 1024}KB")
 
             // SAF를 사용한 후처리 (Android 10+에서 MediaStore로 이동)
-            val finalPath = postProcessPhoto(remotePath, fileName)
+            val finalPath = postProcessPhoto(fullPath, fileName)
             Log.d("카메라레포지토리", "✅ 사진 후처리 완료: $finalPath")
 
-            // JPEG 파일 처리 완료
-            completePhotoDownload(
-                tempPhoto.copy(filePath = finalPath),
-                fileSize,
-                fileName,
-                startTime
+            // 즉시 UI에 임시 사진 정보 추가 (썸네일 없이)
+            val tempPhoto = photo.copy(
+                filePath = finalPath,
+                isDownloading = false
             )
 
+            // UI 업데이트
+            CoroutineScope(Dispatchers.Main).launch {
+                updateDownloadedPhoto(tempPhoto)
+            }
+
+            val downloadTime = System.currentTimeMillis() - startTime
+            Log.d("카메라레포지토리", "✅ JPEG 사진 다운로드 완료: $fileName (${downloadTime}ms)")
+
+            // 사진 촬영 이벤트 발생
+            photoCaptureEventManager.emitPhotoCaptured()
         } catch (e: Exception) {
             Log.e("카메라레포지토리", "❌ JPEG 사진 다운로드 실패: $fileName", e)
-            updatePhotoDownloadFailed(tempPhoto.id)
+            updatePhotoDownloadFailed(fileName)
         }
-    }
-
-    /**
-     * JPEG 사진 다운로드 완료 처리
-     */
-    private suspend fun completePhotoDownload(
-        photo: CapturedPhoto,
-        fileSize: Long,
-        fileName: String,
-        startTime: Long
-    ) {
-        val downloadedPhoto = photo.copy(
-            size = fileSize,
-            isDownloading = false,
-            downloadCompleteTime = System.currentTimeMillis()
-        )
-
-        // UI 업데이트
-        CoroutineScope(Dispatchers.Main).launch {
-            updateDownloadedPhoto(downloadedPhoto)
-        }
-
-        val downloadTime = System.currentTimeMillis() - startTime
-        Log.d("카메라레포지토리", "✅ JPEG 사진 다운로드 완료: $fileName (${downloadTime}ms)")
-
-        // 사진 촬영 이벤트 발생
-        photoCaptureEventManager.emitPhotoCaptured()
     }
 
     /**
      * 다운로드 완료된 사진 정보 업데이트
      */
     private fun updateDownloadedPhoto(downloadedPhoto: CapturedPhoto) {
-        _capturedPhotos.value = _capturedPhotos.value.map { photo ->
-            if (photo.id == downloadedPhoto.id) {
-                downloadedPhoto
-            } else {
-                photo
-            }
-        }
+        _capturedPhotos.value = _capturedPhotos.value + downloadedPhoto
         Log.d(
             "카메라레포지토리",
             "✓ 사진 다운로드 완료 업데이트. 총 ${_capturedPhotos.value.size}개"
@@ -992,10 +954,10 @@ class CameraRepositoryImpl @Inject constructor(
     /**
      * 다운로드 실패한 사진 제거
      */
-    private fun updatePhotoDownloadFailed(photoId: String) {
+    private fun updatePhotoDownloadFailed(fileName: String) {
         CoroutineScope(Dispatchers.Main).launch {
-            _capturedPhotos.value = _capturedPhotos.value.filter { it.id != photoId }
-            Log.d("카메라레포지토리", "❌ 다운로드 실패한 사진 제거: $photoId")
+            _capturedPhotos.value = _capturedPhotos.value.filter { it.filePath != fileName }
+            Log.d("카메라레포지토리", "❌ 다운로드 실패한 사진 제거: $fileName")
         }
     }
 
