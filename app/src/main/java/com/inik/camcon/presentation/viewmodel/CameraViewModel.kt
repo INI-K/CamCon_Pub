@@ -83,6 +83,7 @@ class CameraViewModel @Inject constructor(
         observeCapturedPhotos()
         observeUsbDevices()
         observeCameraCapabilities()
+        observeEventListenerState()
     }
 
     private fun initializeCameraDatabase() {
@@ -196,6 +197,18 @@ class CameraViewModel @Inject constructor(
                 } else {
                     Log.d("CameraViewModel", "네이티브 카메라 연결 해제됨")
                 }
+            }
+            .launchIn(viewModelScope)
+    }
+
+    private fun observeEventListenerState() {
+        cameraRepository.isEventListenerActive()
+            .onEach { isActive ->
+                Log.d("CameraViewModel", "이벤트 리스너 상태 변경: $isActive")
+                _uiState.update { it.copy(isEventListenerActive = isActive) }
+            }
+            .catch { e ->
+                Log.e("CameraViewModel", "이벤트 리스너 상태 관찰 중 오류", e)
             }
             .launchIn(viewModelScope)
     }
@@ -711,6 +724,66 @@ class CameraViewModel @Inject constructor(
             usbCameraManager.cleanup()
         } catch (e: Exception) {
             Log.w("CameraViewModel", "USB 매니저 정리 중 오류", e)
+        }
+    }
+
+    /**
+     * 이벤트 리스너 시작
+     */
+    fun startEventListener() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                Log.d("CameraViewModel", "이벤트 리스너 시작 요청")
+                cameraRepository.startCameraEventListener()
+                    .onSuccess {
+                        Log.d("CameraViewModel", "이벤트 리스너 시작 성공")
+                    }
+                    .onFailure { error ->
+                        Log.e("CameraViewModel", "이벤트 리스너 시작 실패", error)
+                        withContext(Dispatchers.Main) {
+                            _uiState.update {
+                                it.copy(error = "이벤트 리스너 시작 실패: ${error.message}")
+                            }
+                        }
+                    }
+            } catch (e: Exception) {
+                Log.e("CameraViewModel", "이벤트 리스너 시작 중 예외 발생", e)
+                withContext(Dispatchers.Main) {
+                    _uiState.update {
+                        it.copy(error = "이벤트 리스너 시작 실패: ${e.message}")
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 이벤트 리스너 중지
+     */
+    fun stopEventListener() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                Log.d("CameraViewModel", "이벤트 리스너 중지 요청")
+                cameraRepository.stopCameraEventListener()
+                    .onSuccess {
+                        Log.d("CameraViewModel", "이벤트 리스너 중지 성공")
+                    }
+                    .onFailure { error ->
+                        Log.e("CameraViewModel", "이벤트 리스너 중지 실패", error)
+                        withContext(Dispatchers.Main) {
+                            _uiState.update {
+                                it.copy(error = "이벤트 리스너 중지 실패: ${error.message}")
+                            }
+                        }
+                    }
+            } catch (e: Exception) {
+                Log.e("CameraViewModel", "이벤트 리스너 중지 중 예외 발생", e)
+                withContext(Dispatchers.Main) {
+                    _uiState.update {
+                        it.copy(error = "이벤트 리스너 중지 실패: ${e.message}")
+                    }
+                }
+            }
         }
     }
 }
