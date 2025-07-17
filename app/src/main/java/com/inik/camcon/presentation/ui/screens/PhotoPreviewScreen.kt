@@ -1,5 +1,6 @@
 package com.inik.camcon.presentation.ui.screens
 
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,7 +26,6 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Snackbar
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
-import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
@@ -58,11 +58,22 @@ import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
 fun PhotoPreviewScreen(
     viewModel: PhotoPreviewViewModel = hiltViewModel()
 ) {
+    Log.d("PhotoPreviewScreen", "=== PhotoPreviewScreen 컴포저블 시작 ===")
+
     val uiState by viewModel.uiState.collectAsState()
+
+    Log.d("PhotoPreviewScreen", "현재 UI 상태:")
+    Log.d("PhotoPreviewScreen", "  - isConnected: ${uiState.isConnected}")
+    Log.d("PhotoPreviewScreen", "  - isLoading: ${uiState.isLoading}")
+    Log.d("PhotoPreviewScreen", "  - photos.size: ${uiState.photos.size}")
+    Log.d("PhotoPreviewScreen", "  - error: ${uiState.error}")
 
     val pullRefreshState = rememberPullRefreshState(
         refreshing = uiState.isLoading,
-        onRefresh = { viewModel.loadCameraPhotos() }
+        onRefresh = {
+            Log.d("PhotoPreviewScreen", "Pull to refresh 트리거")
+            viewModel.loadCameraPhotos()
+        }
     )
 
     Box(
@@ -83,6 +94,10 @@ fun PhotoPreviewScreen(
 
             // 메인 콘텐츠
             when {
+                !uiState.isConnected -> {
+                    CameraDisconnectedState()
+                }
+
                 uiState.isLoading && uiState.photos.isEmpty() -> {
                     LoadingIndicator()
                 }
@@ -112,12 +127,47 @@ fun PhotoPreviewScreen(
 
     // 전체화면 사진 뷰어
     uiState.selectedPhoto?.let { photo ->
+        // fullImageCache 상태 관찰
+        val fullImageCache by viewModel.fullImageCache.collectAsState()
+        val downloadingImages by viewModel.downloadingImages.collectAsState()
+        
+        // 선택된 사진의 실제 파일 다운로드 시작
+        LaunchedEffect(photo.path) {
+            android.util.Log.d("PhotoPreviewScreen", "전체화면 뷰어에서 실제 파일 다운로드 시작: ${photo.path}")
+            viewModel.downloadFullImage(photo.path)
+        }
+        
+        // 실제 파일 다운로드 상태 로깅
+        LaunchedEffect(fullImageCache[photo.path]) {
+            val fullImageData = fullImageCache[photo.path]
+            if (fullImageData != null) {
+                android.util.Log.d(
+                    "PhotoPreviewScreen",
+                    "✅ 실제 파일 다운로드 완료, 고화질로 교체: ${photo.path} (${fullImageData.size} bytes)"
+                )
+            } else {
+                android.util.Log.d("PhotoPreviewScreen", "📥 썸네일 표시 중, 실제 파일 다운로드 대기: ${photo.path}")
+            }
+        }
+
+        // 다운로드 상태 로깅
+        LaunchedEffect(downloadingImages.contains(photo.path)) {
+            val isDownloading = downloadingImages.contains(photo.path)
+            android.util.Log.d("PhotoPreviewScreen", "🔄 다운로드 상태 변경: ${photo.path} → $isDownloading")
+        }
+
         FullScreenPhotoViewer(
             photo = photo,
             photos = uiState.photos,
             onDismiss = { viewModel.selectPhoto(null) },
-            onPhotoChanged = { newPhoto -> viewModel.selectPhoto(newPhoto) },
+            onPhotoChanged = { newPhoto ->
+                viewModel.selectPhoto(newPhoto)
+                // 새로운 사진의 실제 파일도 미리 다운로드
+                viewModel.downloadFullImage(newPhoto.path)
+            },
             thumbnailData = viewModel.getThumbnail(photo.path),
+            fullImageData = fullImageCache[photo.path], // 실시간으로 업데이트되는 실제 파일 데이터
+            isDownloadingFullImage = downloadingImages.contains(photo.path), // 다운로드 상태 전달
             onDownload = { viewModel.downloadPhoto(photo) }
         )
     }
@@ -131,6 +181,41 @@ fun PhotoPreviewScreen(
                 viewModel.loadCameraPhotos()
             }
         )
+    }
+}
+
+/**
+ * 카메라 연결이 끊어진 상태를 표시하는 컴포넌트
+ */
+@Composable
+private fun CameraDisconnectedState() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "📷",
+                style = MaterialTheme.typography.h2,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+            Text(
+                text = "카메라가 연결되지 않았습니다",
+                style = MaterialTheme.typography.h6,
+                color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f),
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "USB 케이블을 연결하고 카메라를 켜주세요",
+                style = MaterialTheme.typography.body2,
+                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }
 

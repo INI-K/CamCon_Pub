@@ -34,6 +34,8 @@ fun PhotoViewerContent(
     photo: CameraPhoto,
     photos: List<CameraPhoto>,
     thumbnailData: ByteArray?,
+    fullImageData: ByteArray?,
+    isDownloadingFullImage: Boolean = false,
     currentPhotoIndex: Int,
     scale: Float,
     offsetX: Float,
@@ -178,6 +180,8 @@ fun PhotoViewerContent(
             PhotoSlide(
                 photo = pagePhoto,
                 thumbnailData = if (pagePhoto.path == photo.path) thumbnailData else null,
+                fullImageData = if (pagePhoto.path == photo.path) fullImageData else null,
+                isDownloadingFullImage = if (pagePhoto.path == photo.path) isDownloadingFullImage else false,
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer(

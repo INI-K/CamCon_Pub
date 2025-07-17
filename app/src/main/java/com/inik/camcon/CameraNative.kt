@@ -112,4 +112,7 @@ object CameraNative {
 
     // capturetarget 지원 값들 조회 함수 추가
     external fun logCaptureTargetChoices(): Int
+
+    // 카메라 초기화 상태 확인
+    external fun isCameraInitialized(): Boolean
 }
