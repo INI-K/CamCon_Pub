@@ -487,8 +487,56 @@ class CameraRepositoryImpl @Inject constructor(
     }
 
     override suspend fun downloadPhotoFromCamera(photoId: String): Result<CapturedPhoto> {
-        // TODO: 카메라에서 사진 다운로드 기능 구현
-        return Result.failure(Exception("아직 구현되지 않음"))
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("카메라레포지토리", "=== 카메라에서 사진 다운로드 시작: $photoId ===")
+
+                // 네이티브 코드를 통해 실제 파일 데이터 다운로드
+                val imageData = nativeDataSource.downloadCameraPhoto(photoId)
+
+                if (imageData != null && imageData.isNotEmpty()) {
+                    Log.d("카메라레포지토리", "네이티브 다운로드 성공: ${imageData.size} bytes")
+
+                    // 임시 파일 생성
+                    val fileName = photoId.substringAfterLast("/")
+                    val tempFile = File(context.cacheDir, "temp_downloads/$fileName")
+
+                    // 디렉토리 생성
+                    tempFile.parentFile?.mkdirs()
+
+                    // 데이터를 파일로 저장
+                    tempFile.writeBytes(imageData)
+
+                    Log.d("카메라레포지토리", "임시 파일 저장 완료: ${tempFile.absolutePath}")
+
+                    // 후처리 (MediaStore 저장 등)
+                    val finalPath = postProcessPhoto(tempFile.absolutePath, fileName)
+
+                    val capturedPhoto = CapturedPhoto(
+                        id = UUID.randomUUID().toString(),
+                        filePath = finalPath,
+                        thumbnailPath = null,
+                        captureTime = System.currentTimeMillis(),
+                        cameraModel = _cameraCapabilities.value?.model ?: "알 수 없음",
+                        settings = _cameraSettings.value,
+                        size = imageData.size.toLong(),
+                        width = 0,
+                        height = 0,
+                        isDownloading = false,
+                        downloadCompleteTime = System.currentTimeMillis()
+                    )
+
+                    Log.d("카메라레포지토리", "✅ 카메라에서 사진 다운로드 완료: $finalPath")
+                    Result.success(capturedPhoto)
+                } else {
+                    Log.e("카메라레포지토리", "네이티브 다운로드 실패: 데이터가 비어있음")
+                    Result.failure(Exception("카메라에서 사진 데이터를 가져올 수 없습니다"))
+                }
+            } catch (e: Exception) {
+                Log.e("카메라레포지토리", "카메라에서 사진 다운로드 실패", e)
+                Result.failure(e)
+            }
+        }
     }
 
     override suspend fun getCameraCapabilities(): Result<CameraCapabilities?> {
@@ -625,7 +673,7 @@ class CameraRepositoryImpl @Inject constructor(
             try {
                 Log.d("카메라레포지토리", "썸네일 가져오기 시작: $photoPath")
 
-                val thumbnailData = nativeDataSource.getCameraThumbnailOptimized(photoPath)
+                val thumbnailData = nativeDataSource.getCameraThumbnail(photoPath)
 
                 if (thumbnailData != null) {
                     Log.d("카메라레포지토리", "썸네일 가져오기 성공: ${thumbnailData.size} bytes")

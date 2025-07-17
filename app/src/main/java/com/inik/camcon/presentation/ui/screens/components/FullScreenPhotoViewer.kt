@@ -43,6 +43,8 @@ fun FullScreenPhotoViewer(
     onDismiss: () -> Unit,
     onPhotoChanged: (CameraPhoto) -> Unit,
     thumbnailData: ByteArray?,
+    fullImageData: ByteArray?,
+    isDownloadingFullImage: Boolean = false,
     onDownload: () -> Unit
 ) {
     var showDetails by remember { mutableStateOf(false) }
@@ -103,6 +105,8 @@ fun FullScreenPhotoViewer(
                 photo = photo,
                 photos = photos,
                 thumbnailData = thumbnailData,
+                fullImageData = fullImageData,
+                isDownloadingFullImage = isDownloadingFullImage,
                 currentPhotoIndex = currentPhotoIndex,
                 scale = scaleAnimatable.value,
                 offsetX = offsetXAnimatable.value,
