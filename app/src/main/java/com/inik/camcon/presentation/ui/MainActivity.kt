@@ -11,6 +11,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.BottomNavigation
 import androidx.compose.material.BottomNavigationItem
@@ -27,9 +28,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -79,6 +84,9 @@ fun MainScreen(
         BottomNavItem.Settings
     )
 
+    // 전체화면 상태 관리
+    var isFullscreen by remember { mutableStateOf(false) }
+
     // 전역 연결 상태 모니터링
     val globalConnectionState by globalManager.globalConnectionState.collectAsState()
     val activeConnectionType by globalManager.activeConnectionType.collectAsState()
@@ -91,39 +99,42 @@ fun MainScreen(
 
     Scaffold(
         bottomBar = {
-            BottomNavigation(
-                backgroundColor = MaterialTheme.colors.surface,
-                contentColor = MaterialTheme.colors.onSurface
-            ) {
-                val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentDestination = navBackStackEntry?.destination
+            // 전체화면 모드가 아닐 때만 하단 탭 표시
+            if (!isFullscreen) {
+                BottomNavigation(
+                    backgroundColor = MaterialTheme.colors.surface,
+                    contentColor = MaterialTheme.colors.onSurface
+                ) {
+                    val navBackStackEntry by navController.currentBackStackEntryAsState()
+                    val currentDestination = navBackStackEntry?.destination
 
-                items.forEach { screen ->
-                    BottomNavigationItem(
-                        icon = {
-                            Icon(
-                                screen.icon,
-                                contentDescription = stringResource(screen.titleRes)
-                            )
-                        },
-                        label = { Text(stringResource(screen.titleRes)) },
-                        selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
-                        onClick = {
-                            if (screen.route == "settings") {
-                                onSettingsClick()
-                            } else {
-                                navController.navigate(screen.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
+                    items.forEach { screen ->
+                        BottomNavigationItem(
+                            icon = {
+                                Icon(
+                                    screen.icon,
+                                    contentDescription = stringResource(screen.titleRes)
+                                )
+                            },
+                            label = { Text(stringResource(screen.titleRes)) },
+                            selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                            onClick = {
+                                if (screen.route == "settings") {
+                                    onSettingsClick()
+                                } else {
+                                    navController.navigate(screen.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
                                     }
-                                    launchSingleTop = true
-                                    restoreState = true
                                 }
-                            }
-                        },
-                        selectedContentColor = MaterialTheme.colors.primary,
-                        unselectedContentColor = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-                    )
+                            },
+                            selectedContentColor = MaterialTheme.colors.primary,
+                            unselectedContentColor = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
                 }
             }
         }
@@ -131,7 +142,9 @@ fun MainScreen(
         NavHost(
             navController,
             startDestination = BottomNavItem.CameraControl.route,
-            Modifier.padding(innerPadding)
+            Modifier.padding(
+                if (isFullscreen) PaddingValues(0.dp) else innerPadding
+            )
         ) {
             composable(BottomNavItem.PhotoPreview.route) { PhotoPreviewScreen() }
             composable(BottomNavItem.CameraControl.route) {
@@ -139,7 +152,9 @@ fun MainScreen(
                 if (activeConnectionType == com.inik.camcon.domain.model.CameraConnectionType.AP_MODE) {
                     com.inik.camcon.presentation.ui.screens.ApModePhotoReceiveScreen()
                 } else {
-                    CameraControlScreen()
+                    CameraControlScreen(
+                        onFullscreenChange = { isFullscreen = it }
+                    )
                 }
             }
             composable(BottomNavItem.ServerPhotos.route) { ServerPhotosScreen() }
