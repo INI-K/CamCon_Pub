@@ -50,6 +50,7 @@ class CameraRepositoryImpl @Inject constructor(
     private val _cameraSettings = MutableStateFlow<CameraSettings?>(null)
 
     // 카메라 이벤트 리스너 상태 추적
+    private val _isEventListenerActive = MutableStateFlow(false)
     private var isEventListenerRunning = false
 
     init {
@@ -93,7 +94,7 @@ class CameraRepositoryImpl @Inject constructor(
                                 updateCameraList()
                                 updateCameraCapabilities()
                                 Log.d("카메라레포지토리", "이벤트 리스너 시작 시도")
-                                startCameraEventListener()
+                                startCameraEventListenerInternal()
                                 Log.d("카메라레포지토리", "이벤트 리스너 시작 후 상태: $isEventListenerRunning")
 
                                 // 이벤트 리스너가 제대로 시작되었는지 확인
@@ -121,7 +122,7 @@ class CameraRepositoryImpl @Inject constructor(
                         updateCameraList()
                         updateCameraCapabilities()
                         Log.d("카메라레포지토리", "이벤트 리스너 시작 시도")
-                        startCameraEventListener()
+                        startCameraEventListenerInternal()
                         Log.d("카메라레포지토리", "이벤트 리스너 시작 후 상태: $isEventListenerRunning")
 
                         // 이벤트 리스너가 제대로 시작되었는지 확인
@@ -147,7 +148,7 @@ class CameraRepositoryImpl @Inject constructor(
                 Log.d("카메라레포지토리", "카메라 연결 해제 시작")
 
                 // 이벤트 리스너 중지
-                stopCameraEventListener()
+                stopCameraEventListenerInternal()
 
                 // 네이티브 카메라 연결 해제
                 nativeDataSource.closeCamera()
@@ -167,6 +168,38 @@ class CameraRepositoryImpl @Inject constructor(
     }
 
     override fun isCameraConnected(): Flow<Boolean> = _isConnected.asStateFlow()
+
+    override fun isEventListenerActive(): Flow<Boolean> = _isEventListenerActive.asStateFlow()
+
+    /**
+     * 카메라 이벤트 리스너 시작 (public)
+     */
+    override suspend fun startCameraEventListener(): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                if (isEventListenerRunning) {
+                    Log.d("카메라레포지토리", "카메라 이벤트 리스너가 이미 실행 중입니다 (public)")
+                    return@withContext Result.success(true)
+                }
+
+                // 카메라 연결 상태 확인
+                if (!_isConnected.value) {
+                    Log.e("카메라레포지토리", "카메라가 연결되지 않은 상태에서 이벤트 리스너 시작 불가 (public)")
+                    return@withContext Result.failure(Exception("카메라가 연결되지 않음"))
+                }
+
+                Log.d("카메라레포지토리", "=== 카메라 이벤트 리스너 시작 (public) ===")
+
+                // 내부 함수 호출
+                startCameraEventListenerInternal()
+
+                Result.success(true)
+            } catch (e: Exception) {
+                Log.e("카메라레포지토리", "❌ 카메라 이벤트 리스너 시작 실패 (public)", e)
+                Result.failure(e)
+            }
+        }
+    }
 
     override suspend fun getCameraSettings(): Result<CameraSettings> {
         return withContext(Dispatchers.IO) {
@@ -481,7 +514,7 @@ class CameraRepositoryImpl @Inject constructor(
                     if (!isEventListenerRunning) {
                         try {
                             Log.d("카메라레포지토리", "이벤트 리스너 재시작 시도")
-                            startCameraEventListener()
+                            startCameraEventListenerInternal()
                         } catch (e: Exception) {
                             Log.w("카메라레포지토리", "이벤트 리스너 재시작 실패, 나중에 다시 시도", e)
                             // 실패해도 사진 목록 반환에는 영향 없음
@@ -533,7 +566,7 @@ class CameraRepositoryImpl @Inject constructor(
                     if (!isEventListenerRunning) {
                         try {
                             Log.d("카메라레포지토리", "이벤트 리스너 재시작 시도")
-                            startCameraEventListener()
+                            startCameraEventListenerInternal()
                         } catch (e: Exception) {
                             Log.w("카메라레포지토리", "이벤트 리스너 재시작 실패", e)
                         }
@@ -665,7 +698,7 @@ class CameraRepositoryImpl @Inject constructor(
         }
     }
 
-    private fun startCameraEventListener() {
+    private fun startCameraEventListenerInternal() {
         if (isEventListenerRunning) {
             Log.d("카메라레포지토리", "카메라 이벤트 리스너가 이미 실행 중입니다")
             return
@@ -755,21 +788,55 @@ class CameraRepositoryImpl @Inject constructor(
                 }
             }
         }
+        CoroutineScope(Dispatchers.Main).launch {
+            _isEventListenerActive.value = true
+        }
     }
 
-    private fun stopCameraEventListener() {
+    /**
+     * 카메라 이벤트 리스너 중지 (public)
+     */
+    override suspend fun stopCameraEventListener(): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                if (!isEventListenerRunning) {
+                    return@withContext Result.success(true)
+                }
+
+                Log.d("카메라레포지토리", "카메라 이벤트 리스너 중지 (public)")
+                nativeDataSource.stopListenCameraEvents()
+                isEventListenerRunning = false
+                CoroutineScope(Dispatchers.Main).launch {
+                    _isEventListenerActive.value = false
+                }
+                Log.d("카메라레포지토리", "✓ 카메라 이벤트 리스너 중지 완료 (public)")
+                Result.success(true)
+            } catch (e: Exception) {
+                Log.e("카메라레포지토리", "❌ 카메라 이벤트 리스너 중지 실패 (public)", e)
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * (내부용) 카메라 이벤트 리스너 중지
+     */
+    private fun stopCameraEventListenerInternal() {
         if (!isEventListenerRunning) {
             return
         }
 
-        Log.d("카메라레포지토리", "카메라 이벤트 리스너 중지")
+        Log.d("카메라레포지토리", "카메라 이벤트 리스너 내부 중지")
         try {
             nativeDataSource.stopListenCameraEvents()
-            Log.d("카메라레포지토리", "✓ 카메라 이벤트 리스너 중지 완료")
+            Log.d("카메라레포지토리", "✓ 카메라 이벤트 리스너 내부 중지 완료")
         } catch (e: Exception) {
-            Log.e("카메라레포지토리", "❌ 카메라 이벤트 리스너 중지 실패", e)
+            Log.e("카메라레포지토리", "❌ 카메라 이벤트 리스너 내부 중지 실패", e)
         } finally {
             isEventListenerRunning = false
+            CoroutineScope(Dispatchers.Main).launch {
+                _isEventListenerActive.value = false
+            }
         }
     }
 
@@ -822,7 +889,7 @@ class CameraRepositoryImpl @Inject constructor(
         )
 
         // UI 업데이트
-        withContext(Dispatchers.Main) {
+        CoroutineScope(Dispatchers.Main).launch {
             updateDownloadedPhoto(downloadedPhoto)
         }
 
