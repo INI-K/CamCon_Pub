@@ -110,9 +110,6 @@ fun CameraControlScreen(
     Log.d("CameraControl", "  - isAutoStartEventListener: $isAutoStartEventListener")
     Log.d("CameraControl", "  - isShowLatestPhotoWhenDisabled: $isShowLatestPhotoWhenDisabled")
 
-    // 탭 전환 감지를 위한 변수
-    var isReturningFromOtherTab by remember { mutableStateOf(false) }
-
     // 라이프사이클 관리 (통합된 버전)
     DisposableEffect(lifecycleOwner) {
         Log.d("CameraControl", "=== DisposableEffect 시작 ===")
@@ -120,8 +117,8 @@ fun CameraControlScreen(
             Log.d("CameraControl", "라이프사이클 이벤트: $event")
             when (event) {
                 Lifecycle.Event.ON_PAUSE -> {
-                    Log.d("CameraControl", "ON_PAUSE - 다른 탭으로 이동")
-                    isReturningFromOtherTab = true
+                    Log.d("CameraControl", "ON_PAUSE - 다른 탭으로 이동, ViewModel에 플래그 설정")
+                    viewModel.setTabSwitchFlag(true)
 
                     Log.d("CameraControl", "ON_PAUSE - 라이브뷰 상태 확인")
                     Log.d(
@@ -137,7 +134,12 @@ fun CameraControlScreen(
                 Lifecycle.Event.ON_RESUME -> {
                     Log.d("CameraControl", "ON_RESUME - MVVM 스타일 이벤트 리스너 상태 관리 시도")
                     Log.d("CameraControl", "isAutoStartEventListener: $isAutoStartEventListener")
-                    Log.d("CameraControl", "isReturningFromOtherTab: $isReturningFromOtherTab")
+
+                    val isReturningFromOtherTab = viewModel.getAndClearTabSwitchFlag()
+                    Log.d(
+                        "CameraControl",
+                        "isReturningFromOtherTab (ViewModel): $isReturningFromOtherTab"
+                    )
                     Log.d(
                         "CameraControl",
                         "현재 이벤트 리스너 활성화 상태: ${viewModel.uiState.value.isEventListenerActive}"
@@ -160,9 +162,6 @@ fun CameraControlScreen(
                     } else {
                         Log.d("CameraControl", "자동 이벤트 리스너 OFF - 별도 동작 없음")
                     }
-
-                    // 탭 복귀 플래그 안전 초기화
-                    isReturningFromOtherTab = false
                 }
                 Lifecycle.Event.ON_STOP -> {
                     Log.d(

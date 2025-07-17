@@ -1,12 +1,16 @@
 package com.inik.camcon.presentation.ui
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.BottomNavigation
 import androidx.compose.material.BottomNavigationItem
@@ -26,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -152,12 +157,27 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var globalManager: CameraConnectionGlobalManager
 
+    // 권한 요청 런처
+    private val storagePermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.all { it.value }
+        if (allGranted) {
+            Log.d("MainActivity", "모든 저장소 권한이 승인됨")
+        } else {
+            Log.w("MainActivity", "일부 저장소 권한이 거부됨: $permissions")
+        }
+    }
+
     companion object {
         private const val TAG = "MainActivity"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 저장소 권한 요청
+        requestStoragePermissions()
 
         // USB 디바이스 연결 Intent 처리를 비동기로 수행
         lifecycleScope.launch(Dispatchers.IO) {
@@ -290,6 +310,41 @@ class MainActivity : ComponentActivity() {
             }
         } catch (e: Exception) {
             Log.e(TAG, "USB 권한 상태 확인 중 오류", e)
+        }
+    }
+
+    /**
+     * 저장소 권한 요청
+     */
+    private fun requestStoragePermissions() {
+        val permissionsToRequest = mutableListOf<String>()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Android 13+: 세분화된 미디어 권한
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                permissionsToRequest.add(Manifest.permission.READ_MEDIA_IMAGES)
+            }
+        } else {
+            // Android 12 이하: 기존 저장소 권한
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                permissionsToRequest.add(Manifest.permission.READ_EXTERNAL_STORAGE)
+            }
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                permissionsToRequest.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }
+        }
+
+        if (permissionsToRequest.isNotEmpty()) {
+            Log.d("MainActivity", "저장소 권한 요청: $permissionsToRequest")
+            storagePermissionLauncher.launch(permissionsToRequest.toTypedArray())
+        } else {
+            Log.d("MainActivity", "저장소 권한이 이미 승인됨")
         }
     }
 
