@@ -77,6 +77,13 @@ class PtpipViewModel @Inject constructor(
     private val _selectedCamera = MutableStateFlow<PtpipCamera?>(null)
     val selectedCamera: StateFlow<PtpipCamera?> = _selectedCamera.asStateFlow()
 
+    // 자동 파일 다운로드 상태
+    private val _autoDownloadEnabled = MutableStateFlow(false)
+    val autoDownloadEnabled: StateFlow<Boolean> = _autoDownloadEnabled.asStateFlow()
+
+    private val _lastDownloadedFile = MutableStateFlow<String?>(null)
+    val lastDownloadedFile: StateFlow<String?> = _lastDownloadedFile.asStateFlow()
+
     // 종합 상태 (PTPIP 활성화 + Wi-Fi 연결)
     val isPtpipAvailable = combine(
         isPtpipEnabled,
@@ -267,48 +274,42 @@ class PtpipViewModel @Inject constructor(
     }
 
     /**
-     * 특정 카메라에 연결
+     * 카메라 연결 (AP/STA 모드 지원)
      */
     fun connectToCamera(camera: PtpipCamera) {
-        Log.i(TAG, "카메라 연결 요청: ${camera.name} (${camera.ipAddress}:${camera.port})")
-
-        if (_isConnecting.value) {
-            Log.w(TAG, "이미 연결 시도 중입니다")
-            return
-        }
-
-        Log.d(TAG, "연결 시작 - _isConnecting을 true로 설정")
-
         viewModelScope.launch {
             try {
                 _isConnecting.value = true
                 _errorMessage.value = null
-                _selectedCamera.value = camera
+                _autoDownloadEnabled.value = false // 연결 시도 중에는 비활성화
 
-                Log.d(TAG, "PTPIP 데이터소스 연결 시도 시작")
-                val isConnected = ptpipDataSource.connectToCamera(camera)
+                val success = ptpipDataSource.connectToCamera(camera)
+                if (success) {
+                    _isConnecting.value = false
+                    _errorMessage.value = null
+                    _selectedCamera.value = camera
 
-                Log.d(TAG, "연결 결과: ${if (isConnected) "성공" else "실패"}")
+                    // 연결 성공 시 자동 다운로드 활성화 (파일 수신 전용)
+                    _autoDownloadEnabled.value = true
 
-                if (isConnected) {
-                    Log.i(TAG, "카메라 연결 성공")
+                    // 연결 모드에 따른 메시지 설정
+                    if (globalManager.isApModeConnected()) {
+                        Log.i(TAG, "AP 모드 연결 완료 - 파일 수신 리스너 활성화 (자동 촬영 없음)")
+                    } else {
+                        Log.i(TAG, "카메라 연결 완료 - 파일 수신 리스너 활성화 (자동 촬영 없음)")
+                    }
                     // 연결 성공 시 마지막 연결 정보 저장
                     preferencesDataSource.saveLastConnectedCamera(camera.ipAddress, camera.name)
-
-                    // 연결 성공 후 자동 검색을 시작하지 않음
                 } else {
-                    Log.w(TAG, "카메라 연결 실패")
-                    _errorMessage.value = "카메라 연결에 실패했습니다."
-                    _selectedCamera.value = null
+                    _isConnecting.value = false
+                    _errorMessage.value = "카메라 연결에 실패했습니다"
+                    _autoDownloadEnabled.value = false
                 }
-
             } catch (e: Exception) {
-                Log.e(TAG, "연결 중 예외 발생", e)
-                _errorMessage.value = "연결 중 오류가 발생했습니다: ${e.message}"
-                _selectedCamera.value = null
-            } finally {
-                Log.d(TAG, "연결 시도 완료 - _isConnecting을 false로 설정")
                 _isConnecting.value = false
+                _errorMessage.value = "카메라 연결 중 오류가 발생했습니다: ${e.message}"
+                _autoDownloadEnabled.value = false
+                Log.e(TAG, "카메라 연결 중 오류", e)
             }
         }
     }
@@ -319,51 +320,95 @@ class PtpipViewModel @Inject constructor(
     fun disconnect() {
         viewModelScope.launch {
             try {
+                Log.d(TAG, "카메라 연결 해제 시작")
+
+                // 자동 다운로드 비활성화
+                _autoDownloadEnabled.value = false
+                _lastDownloadedFile.value = null
+
                 ptpipDataSource.disconnect()
+
                 _selectedCamera.value = null
                 _errorMessage.value = null
+
+                Log.d(TAG, "카메라 연결 해제 완료")
             } catch (e: Exception) {
-                _errorMessage.value = "연결 해제 중 오류가 발생했습니다: ${e.message}"
+                Log.e(TAG, "카메라 연결 해제 중 오류", e)
             }
         }
     }
 
     /**
-     * 원격 촬영 실행 (비동기, 콜백 지원)
+     * 수동 사진 촬영 (사용자 요청 시에만 실행)
      */
     fun capturePhoto(listener: CameraCaptureListener? = null) {
         viewModelScope.launch {
             try {
+                Log.d(TAG, "수동 사진 촬영 시작 (사용자 요청)")
+
                 if (connectionState.value != PtpipConnectionState.CONNECTED) {
                     _errorMessage.value = "카메라가 연결되어 있지 않습니다."
                     listener?.onCaptureFailed(-1)
                     return@launch
                 }
 
-                ptpipDataSource.capturePhoto(object : CameraCaptureListener {
-                    override fun onFlushComplete() {
-                        Log.d(TAG, "촬영 플러시 완료")
-                        listener?.onFlushComplete()
-                    }
+                // 자동 다운로드가 활성화된 경우 리스너 생성
+                val captureListener = if (_autoDownloadEnabled.value) {
+                    object : CameraCaptureListener {
+                        override fun onFlushComplete() {
+                            Log.d(TAG, "수동 촬영: 플러시 완료")
+                            listener?.onFlushComplete()
+                        }
 
-                    override fun onPhotoCaptured(filePath: String, fileName: String) {
-                        Log.i(TAG, "촬영 성공: $fileName -> $filePath")
-                        _errorMessage.value = null
-                        listener?.onPhotoCaptured(filePath, fileName)
-                    }
+                        override fun onPhotoCaptured(filePath: String, fileName: String) {
+                            Log.i(TAG, "수동 촬영: 사진 자동 저장됨 - $fileName")
+                            Log.i(TAG, "저장 경로: $filePath")
 
-                    override fun onCaptureFailed(errorCode: Int) {
-                        Log.e(TAG, "촬영 실패: 에러 코드 $errorCode")
-                        _errorMessage.value = "촬영에 실패했습니다 (에러 코드: $errorCode)"
-                        listener?.onCaptureFailed(errorCode)
+                            // UI 상태 업데이트
+                            _lastDownloadedFile.value = fileName
+                            _errorMessage.value = null
+
+                            // 원래 리스너도 호출
+                            listener?.onPhotoCaptured(filePath, fileName)
+                        }
+
+                        override fun onCaptureFailed(errorCode: Int) {
+                            Log.e(TAG, "수동 촬영: 촬영 실패 (에러 코드: $errorCode)")
+                            _errorMessage.value = "촬영에 실패했습니다 (에러 코드: $errorCode)"
+                            listener?.onCaptureFailed(errorCode)
+                        }
                     }
-                })
+                } else {
+                    // 자동 다운로드 비활성화 시 기본 리스너 사용
+                    object : CameraCaptureListener {
+                        override fun onFlushComplete() {
+                            Log.d(TAG, "수동 촬영: 플러시 완료")
+                            listener?.onFlushComplete()
+                        }
+
+                        override fun onPhotoCaptured(filePath: String, fileName: String) {
+                            Log.i(TAG, "수동 촬영: 성공 $fileName -> $filePath")
+                            _errorMessage.value = null
+                            listener?.onPhotoCaptured(filePath, fileName)
+                        }
+
+                        override fun onCaptureFailed(errorCode: Int) {
+                            Log.e(TAG, "수동 촬영: 실패 에러 코드 $errorCode")
+                            _errorMessage.value = "촬영에 실패했습니다 (에러 코드: $errorCode)"
+                            listener?.onCaptureFailed(errorCode)
+                        }
+                    }
+                }
+
+                // 수동 촬영 명령 실행
+                ptpipDataSource.capturePhoto(captureListener)
+                Log.d(TAG, "수동 촬영 명령 전송 완료")
 
             } catch (e: Exception) {
-                val msg = "촬영 중 오류가 발생했습니다: ${e.message}"
+                val msg = "수동 촬영 중 오류가 발생했습니다: ${e.message}"
                 Log.e(TAG, msg, e)
                 _errorMessage.value = msg
-                listener?.onCaptureFailed(-999)
+                listener?.onCaptureFailed(-1)
             }
         }
     }
@@ -711,6 +756,21 @@ class PtpipViewModel @Inject constructor(
      */
     private fun stopAutoDiscovery() {
         // 자동 검색 중단 로직 추가
+    }
+
+    /**
+     * 자동 다운로드 활성화/비활성화
+     */
+    fun setAutoDownloadEnabled(enabled: Boolean) {
+        _autoDownloadEnabled.value = enabled
+        Log.d(TAG, "자동 다운로드 ${if (enabled) "활성화" else "비활성화"}")
+    }
+
+    /**
+     * 마지막 다운로드 파일 정보 초기화
+     */
+    fun clearLastDownloadedFile() {
+        _lastDownloadedFile.value = null
     }
 
     override fun onCleared() {

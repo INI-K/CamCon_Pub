@@ -49,10 +49,6 @@ class CameraRepositoryImpl @Inject constructor(
     private val _cameraCapabilities = MutableStateFlow<CameraCapabilities?>(null)
     private val _cameraSettings = MutableStateFlow<CameraSettings?>(null)
 
-    // 다운로드 큐 관리
-    private val downloadQueue = mutableListOf<Pair<CapturedPhoto, String>>()
-    private var isProcessingQueue = false
-
     // 카메라 이벤트 리스너 상태 추적
     private var isEventListenerRunning = false
 
@@ -255,9 +251,14 @@ class CameraRepositoryImpl @Inject constructor(
                         Log.d("카메라레포지토리", "파일명: $fileName")
                         Log.d("카메라레포지토리", "전체 경로: $fullPath")
 
-                        // 파일 확장자 확인 로그 추가
+                        // 파일 확장자 확인 - JPEG만 처리
                         val extension = fileName.substringAfterLast(".", "").lowercase()
-                        Log.d("카메라레포지토리", "촬영된 파일: $fileName (확장자: $extension)")
+                        if (extension !in listOf("jpg", "jpeg")) {
+                            Log.d("카메라레포지토리", "JPEG가 아닌 파일 무시: $fileName (확장자: $extension)")
+                            return
+                        }
+
+                        Log.d("카메라레포지토리", "JPEG 파일 처리: $fileName (확장자: $extension)")
 
                         // 파일 존재 확인
                         val file = File(fullPath)
@@ -282,7 +283,7 @@ class CameraRepositoryImpl @Inject constructor(
                         // UI에 즉시 반영
                         CoroutineScope(Dispatchers.Main).launch {
                             _capturedPhotos.value = _capturedPhotos.value + photo
-                            Log.d("카메라레포지토리", "⚡ 사진 즉시 목록 추가: $fileName (다운로드 시작)")
+                            Log.d("카메라레포지토리", "⚡ JPEG 사진 즉시 목록 추가: $fileName (다운로드 시작)")
                         }
 
                         // 백그라운드에서 비동기 다운로드 처리
@@ -695,7 +696,14 @@ class CameraRepositoryImpl @Inject constructor(
 
                         override fun onPhotoCaptured(fullPath: String, fileName: String) {
                             Log.d("카메라레포지토리", "🎉 외부 셔터 사진 촬영 감지: $fileName")
-                            
+
+                            // 파일 확장자 확인 - JPEG만 처리
+                            val extension = fileName.substringAfterLast(".", "").lowercase()
+                            if (extension !in listOf("jpg", "jpeg")) {
+                                Log.d("카메라레포지토리", "JPEG가 아닌 파일 무시: $fileName (확장자: $extension)")
+                                return
+                            }
+
                             // 즉시 UI에 임시 사진 정보 추가 (썸네일 없이)
                             val tempPhoto = CapturedPhoto(
                                 id = UUID.randomUUID().toString(),
@@ -713,7 +721,7 @@ class CameraRepositoryImpl @Inject constructor(
                             // UI에 즉시 반영
                             CoroutineScope(Dispatchers.Main).launch {
                                 _capturedPhotos.value = _capturedPhotos.value + tempPhoto
-                                Log.d("카메라레포지토리", "⚡ 사진 즉시 목록 추가: $fileName (다운로드 시작)")
+                                Log.d("카메라레포지토리", "⚡ JPEG 사진 즉시 목록 추가: $fileName (다운로드 시작)")
                             }
 
                             // 백그라운드에서 비동기 다운로드 처리
@@ -766,7 +774,7 @@ class CameraRepositoryImpl @Inject constructor(
     }
 
     /**
-     * 사진 다운로드를 비동기로 처리
+     * JPEG 사진 다운로드를 비동기로 처리
      */
     private suspend fun handlePhotoDownload(
         tempPhoto: CapturedPhoto,
@@ -774,7 +782,7 @@ class CameraRepositoryImpl @Inject constructor(
         fileName: String
     ) {
         try {
-            Log.d("카메라레포지토리", "📥 사진 다운로드 시작: $fileName")
+            Log.d("카메라레포지토리", "📥 JPEG 사진 다운로드 시작: $fileName")
             val startTime = System.currentTimeMillis()
 
             // 파일 확인 - 빠른 체크
@@ -786,66 +794,20 @@ class CameraRepositoryImpl @Inject constructor(
             }
 
             val fileSize = file.length()
-            val extension = fileName.substringAfterLast(".", "").lowercase()
-            val isRawFile = extension in listOf("arw", "cr2", "nef", "dng", "raf", "orf")
+            Log.d("카메라레포지토리", "✓ JPEG 파일 확인: $fileName")
+            Log.d("카메라레포지토리", "   크기: ${fileSize / 1024}KB")
 
-            Log.d("카메라레포지토리", "✓ 사진 파일 확인: $fileName")
-            Log.d("카메라레포지토리", "   크기: ${fileSize / 1024}KB, RAW: $isRawFile")
-
-            // 작은 파일(JPG)은 즉시 처리, 큰 파일(RAW)은 큐에 추가
-            if (isRawFile && fileSize > 10 * 1024 * 1024) { // 10MB 이상
-                synchronized(downloadQueue) {
-                    downloadQueue.add(tempPhoto to remotePath)
-                }
-                processDownloadQueue()
-                return
-            }
-
-            // 작은 파일은 즉시 처리
+            // JPEG 파일은 즉시 처리
             completePhotoDownload(tempPhoto, fileSize, fileName, startTime)
 
         } catch (e: Exception) {
-            Log.e("카메라레포지토리", "❌ 사진 다운로드 실패: $fileName", e)
+            Log.e("카메라레포지토리", "❌ JPEG 사진 다운로드 실패: $fileName", e)
             updatePhotoDownloadFailed(tempPhoto.id)
         }
     }
 
     /**
-     * 다운로드 큐 처리 (RAW 파일 등 큰 파일들)
-     */
-    private fun processDownloadQueue() {
-        if (isProcessingQueue) return
-        isProcessingQueue = true
-
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                while (downloadQueue.isNotEmpty()) {
-                    val (photo, path) = synchronized(downloadQueue) {
-                        downloadQueue.removeFirstOrNull() ?: return@launch
-                    }
-
-                    val file = File(path)
-                    if (file.exists()) {
-                        val fileName = file.name
-                        val startTime = System.currentTimeMillis()
-
-                        Log.d("카메라레포지토리", "🔄 큐에서 처리 중: $fileName")
-                        completePhotoDownload(photo, file.length(), fileName, startTime)
-
-                        // 큰 파일 처리 후 잠시 대기 (시스템 부하 방지)
-                        kotlinx.coroutines.delay(100)
-                    } else {
-                        updatePhotoDownloadFailed(photo.id)
-                    }
-                }
-            } finally {
-                isProcessingQueue = false
-            }
-        }
-    }
-
-    /**
-     * 사진 다운로드 완료 처리
+     * JPEG 사진 다운로드 완료 처리
      */
     private suspend fun completePhotoDownload(
         photo: CapturedPhoto,
@@ -865,7 +827,7 @@ class CameraRepositoryImpl @Inject constructor(
         }
 
         val downloadTime = System.currentTimeMillis() - startTime
-        Log.d("카메라레포지토리", "✅ 사진 다운로드 완료: $fileName (${downloadTime}ms)")
+        Log.d("카메라레포지토리", "✅ JPEG 사진 다운로드 완료: $fileName (${downloadTime}ms)")
 
         // 사진 촬영 이벤트 발생
         photoCaptureEventManager.emitPhotoCaptured()
