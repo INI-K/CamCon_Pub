@@ -86,9 +86,6 @@ class NativeCameraDataSource @Inject constructor(
     // 카메라 감지
     fun detectCamera(): String = CameraNative.detectCamera()
 
-    // 카메라 연결 상태 반환
-    fun isCameraConnected(): Boolean = CameraNative.isCameraConnected()
-
     // 카메라 기능 목록 반환 (쉼표로 구분된 문자열)
     fun listCameraAbilities(): String = CameraNative.listCameraAbilities()
 
@@ -132,25 +129,20 @@ class NativeCameraDataSource @Inject constructor(
         CameraNative.stopLiveView()
     }
 
+    // 카메라 초기화 상태 반환
+    fun isCameraInitialized(): Boolean {
+        return try {
+            CameraNative.isCameraInitialized()
+        } catch (e: Exception) {
+            Log.e(TAG, "카메라 초기화 상태 확인 실패", e)
+            false
+        }
+    }
+
     // 페이징을 지원하는 카메라 사진 목록 가져오기
     fun getCameraPhotosPaged(page: Int, pageSize: Int = 20): PaginatedCameraPhotos {
         return try {
             Log.d(TAG, "=== 페이징 카메라 사진 목록 가져오기 시작 (페이지: $page, 크기: $pageSize) ===")
-
-            // 먼저 카메라 연결 상태 확인
-            val isConnected = try {
-                CameraNative.isCameraConnected()
-            } catch (e: Exception) {
-                Log.e(TAG, "카메라 연결 상태 확인 실패", e)
-                false
-            }
-
-            Log.d(TAG, "카메라 연결 상태: $isConnected")
-
-            if (!isConnected) {
-                Log.w(TAG, "카메라가 연결되지 않음, 테스트 데이터 반환")
-                return createTestPhotosPaged(page, pageSize)
-            }
 
             // 카메라 이벤트 리스너 일시 중지 (리소스 경합 방지)
             var needsListenerRestart = false
@@ -160,17 +152,43 @@ class NativeCameraDataSource @Inject constructor(
                 needsListenerRestart = true
 
                 // 리스너가 완전히 중지될 때까지 충분히 대기
-                Thread.sleep(300)
+                Thread.sleep(1000)
+                Log.d(TAG, "이벤트 리스너 중지 대기 완료")
             } catch (e: Exception) {
                 Log.w(TAG, "이벤트 리스너 중지 실패 (이미 중지되었을 수 있음)", e)
+            }
+
+            // 카메라 초기화 상태 확인 (타임아웃 포함)
+            val isInitialized = try {
+                Log.d(TAG, "카메라 초기화 상태 확인 시작")
+                callWithTimeout(5000) {
+                    isCameraInitialized()
+                } ?: false
+            } catch (e: Exception) {
+                Log.e(TAG, "카메라 초기화 상태 확인 실패", e)
+                false
+            }
+
+            Log.d(TAG, "카메라 초기화 상태: $isInitialized")
+
+            if (!isInitialized) {
+                Log.w(TAG, "카메라가 초기화되지 않음")
+                return PaginatedCameraPhotos(
+                    photos = emptyList(),
+                    currentPage = page,
+                    pageSize = pageSize,
+                    totalItems = 0,
+                    totalPages = 0,
+                    hasNext = false
+                )
             }
 
             // 페이징된 네이티브 메서드 호출
             val photoListJson = try {
                 Log.d(TAG, "CameraNative.getCameraFileListPaged() 호출 (페이지: $page, 크기: $pageSize)")
 
-                // 타임아웃을 위한 별도 스레드 사용 (페이징은 더 빠르므로 타임아웃 단축)
-                val result = callWithTimeout(30000) {  // 30초 타임아웃 (페이징이므로 더 여유있게)
+                // 타임아웃을 위한 별도 스레드 사용
+                val result = callWithTimeout(30000) {
                     CameraNative.getCameraFileListPaged(page, pageSize)
                 }
 
@@ -192,8 +210,15 @@ class NativeCameraDataSource @Inject constructor(
             Log.d(TAG, "카메라 파일 목록 JSON: $photoListJson")
 
             if (photoListJson.isNullOrEmpty() || photoListJson == "null") {
-                Log.d(TAG, "카메라에 사진이 없거나 목록을 가져올 수 없음, 테스트 데이터 반환")
-                return createTestPhotosPaged(page, pageSize)
+                Log.d(TAG, "카메라에 사진이 없거나 목록을 가져올 수 없음")
+                return PaginatedCameraPhotos(
+                    photos = emptyList(),
+                    currentPage = page,
+                    pageSize = pageSize,
+                    totalItems = 0,
+                    totalPages = 0,
+                    hasNext = false
+                )
             }
 
             // JSON 파싱
@@ -201,13 +226,27 @@ class NativeCameraDataSource @Inject constructor(
                 JSONObject(photoListJson)
             } catch (e: Exception) {
                 Log.e(TAG, "JSON 파싱 실패: $photoListJson", e)
-                return createTestPhotosPaged(page, pageSize)
+                return PaginatedCameraPhotos(
+                    photos = emptyList(),
+                    currentPage = page,
+                    pageSize = pageSize,
+                    totalItems = 0,
+                    totalPages = 0,
+                    hasNext = false
+                )
             }
 
             if (json.has("error")) {
                 val error = json.getString("error")
                 Log.e(TAG, "카메라 사진 목록 가져오기 오류: $error")
-                return createTestPhotosPaged(page, pageSize)
+                return PaginatedCameraPhotos(
+                    photos = emptyList(),
+                    currentPage = page,
+                    pageSize = pageSize,
+                    totalItems = 0,
+                    totalPages = 0,
+                    hasNext = false
+                )
             }
 
             // 페이징 정보 추출
@@ -245,9 +284,6 @@ class NativeCameraDataSource @Inject constructor(
                         Log.e(TAG, "파일 항목 $i 처리 중 오류", e)
                     }
                 }
-            } else {
-                Log.d(TAG, "파일 배열이 비어있음 (페이지 $currentPage), 테스트 데이터 반환")
-                return createTestPhotosPaged(page, pageSize)
             }
 
             Log.d(
@@ -266,7 +302,14 @@ class NativeCameraDataSource @Inject constructor(
 
         } catch (e: Exception) {
             Log.e(TAG, "페이징 카메라 사진 목록 가져오기 실패", e)
-            createTestPhotosPaged(page, pageSize)
+            PaginatedCameraPhotos(
+                photos = emptyList(),
+                currentPage = page,
+                pageSize = pageSize,
+                totalItems = 0,
+                totalPages = 0,
+                hasNext = false
+            )
         }
     }
 
@@ -276,180 +319,55 @@ class NativeCameraDataSource @Inject constructor(
         return getCameraPhotosPaged(0, 50).photos
     }
 
-    // 페이징된 테스트 데이터 생성
-    private fun createTestPhotosPaged(page: Int, pageSize: Int): PaginatedCameraPhotos {
-        val allTestPhotos = createTestPhotos()
-        val startIndex = page * pageSize
-        val endIndex = minOf(startIndex + pageSize, allTestPhotos.size)
-
-        val pagePhotos = if (startIndex < allTestPhotos.size) {
-            allTestPhotos.subList(startIndex, endIndex)
-        } else {
-            emptyList()
-        }
-
-        val totalPages = (allTestPhotos.size + pageSize - 1) / pageSize
-        val hasNext = page < totalPages - 1
-
-        return PaginatedCameraPhotos(
-            photos = pagePhotos,
-            currentPage = page,
-            pageSize = pageSize,
-            totalItems = allTestPhotos.size,
-            totalPages = totalPages,
-            hasNext = hasNext
-        )
-    }
-
-    // 썸네일만 가져오는 최적화된 함수
-    fun getCameraThumbnailOptimized(photoPath: String): ByteArray? {
+    // 썸네일 가져오기 함수
+    fun getCameraThumbnail(photoPath: String): ByteArray? {
         return try {
-            Log.d(TAG, "썸네일 최적화 요청: $photoPath")
+            Log.d(TAG, "썸네일 가져오기: $photoPath")
 
-            // 썸네일 캐시 확인 (메모리 절약)
-            val thumbnailData = CameraNative.getCameraThumbnail(photoPath)
+            // 카메라 초기화 상태 확인
+            if (!isCameraInitialized()) {
+                Log.w(TAG, "카메라가 초기화되지 않음 - 썸네일 가져오기 실패")
+                return null
+            }
 
-            if (thumbnailData != null && thumbnailData.isNotEmpty()) {
-                Log.d(TAG, "썸네일 로드 성공: ${thumbnailData.size} bytes")
-                thumbnailData
+            val thumbnail = CameraNative.getCameraThumbnail(photoPath)
+
+            if (thumbnail != null && thumbnail.isNotEmpty()) {
+                Log.d(TAG, "썸네일 가져오기 성공: ${thumbnail.size} 바이트")
+                thumbnail
             } else {
-                Log.w(TAG, "썸네일 로드 실패: $photoPath")
+                Log.w(TAG, "썸네일이 없거나 가져오기 실패")
                 null
             }
         } catch (e: Exception) {
-            Log.e(TAG, "썸네일 로드 중 예외", e)
+            Log.e(TAG, "썸네일 가져오기 실패", e)
             null
         }
     }
 
-    // 카메라에서 사진 목록 가져오기
-    fun getCameraPhotosOriginal(): List<NativeCameraPhoto> {
+    // 실제 파일 다운로드 함수
+    fun downloadCameraPhoto(photoPath: String): ByteArray? {
         return try {
-            Log.d(TAG, "=== 카메라 사진 목록 가져오기 시작 ===")
+            Log.d(TAG, "실제 파일 다운로드: $photoPath")
 
-            // 먼저 카메라 연결 상태 확인
-            val isConnected = try {
-                CameraNative.isCameraConnected()
-            } catch (e: Exception) {
-                Log.e(TAG, "카메라 연결 상태 확인 실패", e)
-                false
+            // 카메라 초기화 상태 확인
+            if (!isCameraInitialized()) {
+                Log.w(TAG, "카메라가 초기화되지 않음 - 파일 다운로드 실패")
+                return null
             }
 
-            Log.d(TAG, "카메라 연결 상태: $isConnected")
+            val imageData = CameraNative.downloadCameraPhoto(photoPath)
 
-            if (!isConnected) {
-                Log.w(TAG, "카메라가 연결되지 않음, 테스트 데이터 반환")
-                return createTestPhotos()
-            }
-
-            // 카메라 이벤트 리스너 일시 중지 (리소스 경합 방지)
-            var needsListenerRestart = false
-            try {
-                Log.d(TAG, "카메라 이벤트 리스너 일시 중지")
-                CameraNative.stopListenCameraEvents()
-                needsListenerRestart = true
-
-                // 리스너가 완전히 중지될 때까지 충분히 대기
-                Thread.sleep(300)
-            } catch (e: Exception) {
-                Log.w(TAG, "이벤트 리스너 중지 실패 (이미 중지되었을 수 있음)", e)
-            }
-
-            // 네이티브 메서드를 통해 카메라 파일 목록 가져오기
-            val photoListJson = try {
-                Log.d(TAG, "CameraNative.getCameraFileList() 호출 (타임아웃: 15초)")
-
-                // 타임아웃을 위한 별도 스레드 사용
-                val result = callWithTimeout(15000) {
-                    CameraNative.getCameraFileList()
-                }
-
-                Log.d(TAG, "네이티브 메서드 호출 성공, 결과 길이: ${result?.length ?: 0}")
-                result
-            } catch (e: UnsatisfiedLinkError) {
-                Log.e(TAG, "네이티브 메서드 getCameraFileList가 구현되지 않음", e)
-                null
-            } catch (e: Exception) {
-                Log.e(TAG, "네이티브 메서드 호출 중 예외 발생 (타임아웃 또는 리소스 경합)", e)
-                null
-            }
-
-            // 이벤트 리스너 재시작은 Repository에서 처리하도록 함 (JNI 스레드 문제 방지)
-            if (needsListenerRestart) {
-                Log.d(TAG, "이벤트 리스너 재시작은 Repository에서 처리됩니다")
-            }
-
-            Log.d(TAG, "카메라 파일 목록 JSON: $photoListJson")
-
-            if (photoListJson.isNullOrEmpty() || photoListJson == "null") {
-                Log.d(TAG, "카메라에 사진이 없거나 목록을 가져올 수 없음, 테스트 데이터 반환")
-                return createTestPhotos()
-            }
-
-            // JSON 파싱
-            val json = try {
-                JSONObject(photoListJson)
-            } catch (e: Exception) {
-                Log.e(TAG, "JSON 파싱 실패: $photoListJson", e)
-                return createTestPhotos()
-            }
-
-            if (json.has("error")) {
-                val error = json.getString("error")
-                Log.e(TAG, "카메라 사진 목록 가져오기 오류: $error")
-
-                // 오류가 있어도 빈 목록 대신 테스트 데이터 반환 (개발/테스트용)
-                Log.d(TAG, "오류 발생으로 테스트 데이터 반환")
-                return createTestPhotos()
-            }
-
-            val photos = mutableListOf<NativeCameraPhoto>()
-            val filesArray = json.optJSONArray("files")
-
-            if (filesArray != null && filesArray.length() > 0) {
-                Log.d(TAG, "파일 배열에서 ${filesArray.length()}개 항목 처리")
-
-                for (i in 0 until filesArray.length()) {
-                    try {
-                        val fileObj = filesArray.getJSONObject(i)
-
-                        val photo = NativeCameraPhoto(
-                            path = fileObj.optString("path", ""),
-                            name = fileObj.optString("name", ""),
-                            size = fileObj.optLong("size", 0),
-                            date = fileObj.optLong("date", System.currentTimeMillis()),
-                            width = fileObj.optInt("width", 0),
-                            height = fileObj.optInt("height", 0),
-                            thumbnailPath = fileObj.optString("thumbnail", null)
-                        )
-
-                        if (photo.path.isNotEmpty() && photo.name.isNotEmpty()) {
-                            photos.add(photo)
-                            Log.d(TAG, "사진 추가: ${photo.name} (${photo.size} bytes)")
-                        }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "파일 항목 $i 처리 중 오류", e)
-                    }
-                }
+            if (imageData != null && imageData.isNotEmpty()) {
+                Log.d(TAG, "실제 파일 다운로드 성공: ${imageData.size} 바이트")
+                imageData
             } else {
-                Log.d(TAG, "파일 배열이 비어있음 (실제 카메라에 사진이 없을 수 있음), 테스트 데이터 반환")
-                return createTestPhotos()
+                Log.w(TAG, "실제 파일이 없거나 다운로드 실패")
+                null
             }
-
-            Log.d(TAG, "=== 카메라 사진 목록 가져오기 완료: ${photos.size}개 ===")
-
-            // 실제 사진이 없으면 테스트 데이터 반환
-            if (photos.isEmpty()) {
-                Log.d(TAG, "실제 사진이 없으므로 테스트 데이터 반환")
-                return createTestPhotos()
-            }
-
-            photos
         } catch (e: Exception) {
-            Log.e(TAG, "카메라 사진 목록 가져오기 실패", e)
-            // 오류 발생 시에도 테스트 데이터 반환 (개발/테스트용)
-            Log.d(TAG, "오류 발생으로 테스트 데이터 반환")
-            createTestPhotos()
+            Log.e(TAG, "실제 파일 다운로드 실패", e)
+            null
         }
     }
 
@@ -484,59 +402,25 @@ class NativeCameraDataSource @Inject constructor(
         }
     }
 
-    // 테스트용 사진 데이터 생성
-    private fun createTestPhotos(): List<NativeCameraPhoto> {
-        return listOf(
-            NativeCameraPhoto(
-                path = "/store_00020001/DCIM/100CANON/IMG_0001.JPG",
-                name = "IMG_0001.JPG",
-                size = 4567890,
-                date = System.currentTimeMillis() - 3600000,
-                width = 6000,
-                height = 4000
-            ),
-            NativeCameraPhoto(
-                path = "/store_00020001/DCIM/100CANON/IMG_0002.JPG",
-                name = "IMG_0002.JPG",
-                size = 5123456,
-                date = System.currentTimeMillis() - 1800000,
-                width = 6000,
-                height = 4000
-            ),
-            NativeCameraPhoto(
-                path = "/store_00020001/DCIM/100CANON/IMG_0003.CR2",
-                name = "IMG_0003.CR2",
-                size = 25123456,
-                date = System.currentTimeMillis() - 900000,
-                width = 6000,
-                height = 4000
-            )
-        )
-    }
+    // 네이티브 카메라 사진 정보 데이터 클래스
+    data class NativeCameraPhoto(
+        val path: String,              // 사진 경로
+        val name: String,              // 파일 이름
+        val size: Long,                // 파일 크기
+        val date: Long,                // 촬영 날짜
+        val width: Int,                // 이미지 너비
+        val height: Int,               // 이미지 높이
+        val thumbnailPath: String? = null  // 썸네일 경로
+    )
 
-    // 카메라에서 썸네일 가져오기
-    fun getCameraThumbnail(photoPath: String): ByteArray? {
-        return try {
-            Log.d(TAG, "썸네일 가져오기: $photoPath")
-            val thumbnail = try {
-                CameraNative.getCameraThumbnail(photoPath)
-            } catch (e: UnsatisfiedLinkError) {
-                Log.w(TAG, "네이티브 메서드 getCameraThumbnail이 구현되지 않음")
-                null
-            }
-
-            if (thumbnail is ByteArray && thumbnail.isNotEmpty()) {
-                Log.d(TAG, "썸네일 가져오기 성공: ${thumbnail.size} 바이트")
-                thumbnail
-            } else {
-                Log.d(TAG, "썸네일이 없거나 가져오기 실패")
-                null
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "썸네일 가져오기 실패", e)
-            null
-        }
-    }
+    data class PaginatedCameraPhotos(
+        val photos: List<NativeCameraPhoto>,
+        val currentPage: Int,
+        val pageSize: Int,
+        val totalItems: Int,
+        val totalPages: Int,
+        val hasNext: Boolean
+    )
 
     // 카메라 기능 정보를 가져오는 새로운 함수
     fun getCameraCapabilities(): CameraCapabilities? {
@@ -640,24 +524,4 @@ class NativeCameraDataSource @Inject constructor(
             null
         }
     }
-
-    // 네이티브 카메라 사진 정보 데이터 클래스
-    data class NativeCameraPhoto(
-        val path: String,              // 사진 경로
-        val name: String,              // 파일 이름
-        val size: Long,                // 파일 크기
-        val date: Long,                // 촬영 날짜
-        val width: Int,                // 이미지 너비
-        val height: Int,               // 이미지 높이
-        val thumbnailPath: String? = null  // 썸네일 경로
-    )
-
-    data class PaginatedCameraPhotos(
-        val photos: List<NativeCameraPhoto>,
-        val currentPage: Int,
-        val pageSize: Int,
-        val totalItems: Int,
-        val totalPages: Int,
-        val hasNext: Boolean
-    )
 }
