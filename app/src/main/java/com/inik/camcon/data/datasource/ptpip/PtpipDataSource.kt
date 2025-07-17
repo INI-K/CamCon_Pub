@@ -340,6 +340,10 @@ class PtpipDataSource @Inject constructor(
                 _connectionState.value = PtpipConnectionState.CONNECTED
                 connectedCamera = camera
                 lastConnectedCamera = camera
+
+                // AP 모드 성공 시 파일 수신 리스너 시작
+                startAutomaticFileReceiving(camera)
+
                 return@withContext true
             }
 
@@ -400,6 +404,10 @@ class PtpipDataSource @Inject constructor(
                     _connectionState.value = PtpipConnectionState.CONNECTED
                     connectedCamera = camera
                     lastConnectedCamera = camera
+
+                    // STA 모드에서도 파일 수신 리스너 시작
+                    startAutomaticFileReceiving(camera)
+
                     return@withContext true
                 } else {
                     Log.e(TAG, "❌ 니콘 STA 모드 인증 실패")
@@ -428,6 +436,9 @@ class PtpipDataSource @Inject constructor(
                 } catch (e: Exception) {
                     Log.w(TAG, "❌ libgphoto2 세션 유지 초기화 실패 (예외): ${e.message}")
                 }
+
+                // 다른 카메라에서도 파일 수신 리스너 시작
+                startAutomaticFileReceiving(camera)
 
                 return@withContext true
             }
@@ -488,11 +499,122 @@ class PtpipDataSource @Inject constructor(
     }
 
     /**
+     * AP 모드 연결 성공 시 파일 수신 리스너만 시작 (자동 촬영 없음)
+     */
+    private fun startAutomaticFileReceiving(camera: PtpipCamera) {
+        Log.i(TAG, "파일 수신 리스너 시작: ${camera.name} (자동 촬영 없음)")
+
+        coroutineScope.launch {
+            try {
+                // 파일 수신 전용 리스너 (촬영 명령 없음)
+                val fileReceiveListener = object : CameraCaptureListener {
+                    override fun onFlushComplete() {
+                        Log.d(TAG, "파일 수신: 플러시 완료")
+                    }
+
+                    override fun onPhotoCaptured(filePath: String, fileName: String) {
+                        Log.i(TAG, "파일 수신: 외부 촬영 파일 자동 다운로드 완료 - $fileName")
+                        Log.i(TAG, "파일 경로: $filePath")
+
+                        // 추가 처리 로직 (예: 썸네일 생성, 메타데이터 추출 등)
+                        handleAutomaticDownload(filePath, fileName)
+                    }
+
+                    override fun onCaptureFailed(errorCode: Int) {
+                        Log.e(TAG, "파일 수신: 수신 실패 (에러 코드: $errorCode)")
+                    }
+                }
+
+                // 파일 수신 리스너만 시작 (촬영 명령 실행 없음)
+                startFileReceiveListener(fileReceiveListener)
+                Log.i(TAG, "파일 수신 리스너 시작됨 - 외부 촬영 파일 자동 다운로드 대기 중")
+
+            } catch (e: Exception) {
+                Log.e(TAG, "파일 수신 리스너 시작 중 오류", e)
+            }
+        }
+    }
+
+    /**
+     * 파일 수신 전용 리스너 시작 (촬영 명령 없음)
+     */
+    private fun startFileReceiveListener(listener: CameraCaptureListener) {
+        try {
+            // 카메라 이벤트 리스너 시작 (파일 수신 전용)
+            CameraNative.listenCameraEvents(listener)
+            Log.i(TAG, "파일 수신 전용 리스너 활성화됨")
+        } catch (e: Exception) {
+            Log.e(TAG, "파일 수신 리스너 시작 실패", e)
+        }
+    }
+
+    /**
+     * 사진 촬영 (수동 촬영 명령 - 사용자 요청 시에만 실행)
+     */
+    suspend fun capturePhoto(
+        callback: CameraCaptureListener? = null,
+    ): Boolean = withContext(Dispatchers.IO) {
+        return@withContext try {
+            Log.d(TAG, "수동 사진 촬영 시작 (사용자 요청)")
+
+            // 현재 연결된 카메라 정보 확인
+            val camera = connectedCamera
+            if (camera == null) {
+                Log.e(TAG, "수동 촬영 실패: 연결된 카메라 없음")
+                return@withContext false
+            }
+
+            // callback이 없으면 동기 방식으로 처리
+            if (callback == null) {
+                // 동기 방식 - 기존 코드
+                try {
+                    val result = CameraNative.capturePhoto()
+                    Log.d(TAG, "수동 동기 촬영 결과: $result")
+                    return@withContext result >= 0
+                } catch (e: Exception) {
+                    Log.e(TAG, "수동 동기 촬영 중 오류", e)
+                    return@withContext false
+                }
+            }
+
+            // 비동기 방식 - callback 있을 때 (수동 촬영 명령)
+            try {
+                CameraNative.capturePhotoAsync(callback, "") // 사용자 요청 시에만 촬영
+                Log.d(TAG, "수동 비동기 촬영 요청 완료")
+                return@withContext true
+            } catch (e: Exception) {
+                Log.e(TAG, "수동 비동기 촬영 중 오류", e)
+                return@withContext false
+            }
+
+        } catch (e: Exception) {
+            Log.e(TAG, "수동 사진 촬영 중 오류", e)
+            false
+        }
+    }
+
+    /**
+     * 자동 파일 수신 중지
+     */
+    private fun stopAutomaticFileReceiving() {
+        try {
+            Log.d(TAG, "자동 파일 수신 중지")
+            CameraNative.stopListenCameraEvents()
+            Log.d(TAG, "카메라 이벤트 리스너 중지됨")
+        } catch (e: Exception) {
+            Log.e(TAG, "자동 파일 수신 중지 중 오류", e)
+        }
+    }
+
+    /**
      * 카메라 연결 해제
      */
     suspend fun disconnect(keepSession: Boolean = false) = withContext(Dispatchers.IO) {
         try {
             Log.d(TAG, "카메라 연결 해제 시작 (keepSession: $keepSession)")
+
+            // 자동 파일 수신 중지
+            stopAutomaticFileReceiving()
 
             // Discovery 중지
             discoveryService.stopDiscovery()
@@ -525,6 +647,43 @@ class PtpipDataSource @Inject constructor(
 
         } catch (e: Exception) {
             Log.e(TAG, "카메라 연결 해제 중 오류", e)
+        }
+    }
+
+    /**
+     * 자동 다운로드된 파일 처리
+     */
+    private fun handleAutomaticDownload(filePath: String, fileName: String) {
+        coroutineScope.launch {
+            try {
+                Log.d(TAG, "자동 다운로드 파일 처리 시작: $fileName")
+
+                // 파일 정보 확인
+                val fileInfo = java.io.File(filePath)
+                if (fileInfo.exists()) {
+                    val fileSize = fileInfo.length()
+                    Log.i(TAG, "자동 다운로드 완료: $fileName (크기: ${fileSize / 1024}KB)")
+
+                    // 파일 타입 확인
+                    val fileExtension = fileName.substringAfterLast(".", "").lowercase()
+                    Log.d(TAG, "파일 타입: $fileExtension")
+
+                    // 이미지 파일인 경우 썸네일 생성 시도
+                    if (fileExtension in listOf("jpg", "jpeg", "png", "cr2", "nef", "arw", "dng")) {
+                        Log.d(TAG, "이미지 파일 감지 - 썸네일 생성 시도")
+                        // 썸네일 생성 로직은 추후 구현
+                    }
+
+                    // 파일 다운로드 성공 알림
+                    Log.i(TAG, "✅ 자동 파일 다운로드 성공: $fileName")
+
+                } else {
+                    Log.w(TAG, "❌ 자동 다운로드 파일이 존재하지 않음: $filePath")
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "자동 다운로드 파일 처리 중 오류", e)
+            }
         }
     }
 
@@ -590,52 +749,6 @@ class PtpipDataSource @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "임시 해제 후 재연결 중 오류", e)
             return@withContext false
-        }
-    }
-
-    /**
-     * 사진 촬영 (비동기)
-     */
-    suspend fun capturePhoto(
-        callback: CameraCaptureListener? = null,
-    ): Boolean = withContext(Dispatchers.IO) {
-        return@withContext try {
-            Log.d(TAG, "사진 촬영 시작")
-
-            // 현재 연결된 카메라 정보 확인
-            val camera = connectedCamera
-            if (camera == null) {
-                Log.e(TAG, "사진 촬영 실패: 연결된 카메라 없음")
-                return@withContext false
-            }
-
-            // callback이 없으면 동기 방식으로 처리
-            if (callback == null) {
-                // 동기 방식 - 기존 코드
-                try {
-                    val result = CameraNative.capturePhoto()
-                    Log.d(TAG, "동기 촬영 결과: $result")
-                    return@withContext result >= 0
-                } catch (e: Exception) {
-                    Log.e(TAG, "동기 촬영 중 오류", e)
-                    return@withContext false
-                }
-            }
-
-            // 비동기 방식 - callback 있을 때
-            // 파일은 외부 저장소 > 기본 외부 저장소 > 내부 저장소 순으로 자동 저장됨
-            try {
-                CameraNative.capturePhotoAsync(callback, "") // callback은 여기서 non-null 보장됨
-                Log.d(TAG, "비동기 촬영 요청 완료 (외부 저장소 우선 저장)")
-                return@withContext true
-            } catch (e: Exception) {
-                Log.e(TAG, "비동기 촬영 중 오류", e)
-                return@withContext false
-            }
-
-        } catch (e: Exception) {
-            Log.e(TAG, "사진 촬영 중 오류", e)
-            false
         }
     }
 

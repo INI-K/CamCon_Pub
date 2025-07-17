@@ -109,4 +109,7 @@ object CameraNative {
     external fun setLogLevel(level: Int): Boolean
     external fun enableVerboseLogging(enabled: Boolean): Boolean
     external fun enableDebugLogging(enabled: Boolean): Boolean
+
+    // capturetarget 지원 값들 조회 함수 추가
+    external fun logCaptureTargetChoices(): Int
 }
