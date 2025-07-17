@@ -1,5 +1,11 @@
 package com.inik.camcon.data.repository
 
+import android.content.ContentValues
+import android.content.Context
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import android.util.Log
 import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
 import com.inik.camcon.data.datasource.nativesource.LiveViewCallback
@@ -17,6 +23,7 @@ import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.domain.model.TimelapseSettings
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.usecase.camera.PhotoCaptureEventManager
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
@@ -29,6 +36,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileInputStream
 import java.nio.ByteBuffer
 import java.util.UUID
 import javax.inject.Inject
@@ -38,6 +46,7 @@ import kotlin.coroutines.resumeWithException
 
 @Singleton
 class CameraRepositoryImpl @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val nativeDataSource: NativeCameraDataSource,
     private val usbCameraManager: UsbCameraManager,
     private val photoCaptureEventManager: PhotoCaptureEventManager
@@ -254,7 +263,8 @@ class CameraRepositoryImpl @Inject constructor(
 
     override suspend fun capturePhoto(mode: ShootingMode): Result<CapturedPhoto> {
         return suspendCancellableCoroutine<Result<CapturedPhoto>> { continuation ->
-            val saveDir = "/data/data/com.inik.camcon/files"
+            // 네이티브 코드에서 자동으로 우선순위에 따라 저장 경로 결정
+            val saveDir = getSaveDirectory()
             Log.d("카메라레포지토리", "=== 사진 촬영 시작 ===")
             Log.d("카메라레포지토리", "촬영 모드: $mode")
             Log.d("카메라레포지토리", "저장 디렉토리: $saveDir")
@@ -710,6 +720,10 @@ class CameraRepositoryImpl @Inject constructor(
             return
         }
 
+        // 저장 디렉토리 결정
+        val saveDir = getSaveDirectory()
+        Log.d("카메라레포지토리", "이벤트 리스너 저장 디렉토리: $saveDir")
+
         Log.d("카메라레포지토리", "=== 카메라 이벤트 리스너 시작 ===")
         isEventListenerRunning = true
 
@@ -717,11 +731,11 @@ class CameraRepositoryImpl @Inject constructor(
         CoroutineScope(Dispatchers.IO).launch {
             var retryCount = 0
             val maxRetries = 1
-            
+
             while (retryCount < maxRetries && _isConnected.value) {
                 try {
                     Log.d("카메라레포지토리", "CameraNative.listenCameraEvents 호출 시작 (시도 ${retryCount + 1}/$maxRetries)")
-                    
+
                     nativeDataSource.listenCameraEvents(object : CameraCaptureListener {
                         override fun onFlushComplete() {
                             Log.d("카메라레포지토리", "✓ 카메라 이벤트 큐 플러시 완료")
@@ -729,6 +743,7 @@ class CameraRepositoryImpl @Inject constructor(
 
                         override fun onPhotoCaptured(fullPath: String, fileName: String) {
                             Log.d("카메라레포지토리", "🎉 외부 셔터 사진 촬영 감지: $fileName")
+                            Log.d("카메라레포지토리", "외부 촬영 저장됨: $fullPath")
 
                             // 파일 확장자 확인 - JPEG만 처리
                             val extension = fileName.substringAfterLast(".", "").lowercase()
@@ -770,14 +785,14 @@ class CameraRepositoryImpl @Inject constructor(
                             )
                         }
                     })
-                    
+
                     Log.d("카메라레포지토리", "✓ 카메라 이벤트 리스너 설정 완료")
                     break // 성공적으로 시작되었으므로 반복 종료
-                    
+
                 } catch (e: Exception) {
                     Log.e("카메라레포지토리", "❌ 카메라 이벤트 리스너 시작 실패 (시도 ${retryCount + 1}/$maxRetries)", e)
                     retryCount++
-                    
+
                     if (retryCount < maxRetries) {
                         Log.d("카메라레포지토리", "이벤트 리스너 재시도 대기 중...")
                         kotlinx.coroutines.delay(1000) // 1초 대기 후 재시도
@@ -864,8 +879,17 @@ class CameraRepositoryImpl @Inject constructor(
             Log.d("카메라레포지토리", "✓ JPEG 파일 확인: $fileName")
             Log.d("카메라레포지토리", "   크기: ${fileSize / 1024}KB")
 
-            // JPEG 파일은 즉시 처리
-            completePhotoDownload(tempPhoto, fileSize, fileName, startTime)
+            // SAF를 사용한 후처리 (Android 10+에서 MediaStore로 이동)
+            val finalPath = postProcessPhoto(remotePath, fileName)
+            Log.d("카메라레포지토리", "✅ 사진 후처리 완료: $finalPath")
+
+            // JPEG 파일 처리 완료
+            completePhotoDownload(
+                tempPhoto.copy(filePath = finalPath),
+                fileSize,
+                fileName,
+                startTime
+            )
 
         } catch (e: Exception) {
             Log.e("카메라레포지토리", "❌ JPEG 사진 다운로드 실패: $fileName", e)
@@ -924,6 +948,162 @@ class CameraRepositoryImpl @Inject constructor(
         CoroutineScope(Dispatchers.Main).launch {
             _capturedPhotos.value = _capturedPhotos.value.filter { it.id != photoId }
             Log.d("카메라레포지토리", "❌ 다운로드 실패한 사진 제거: $photoId")
+        }
+    }
+
+    /**
+     * 저장소 권한 확인
+     */
+    private fun hasStoragePermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Android 13+: 세분화된 미디어 권한
+            context.checkSelfPermission(android.Manifest.permission.READ_MEDIA_IMAGES) ==
+                    android.content.pm.PackageManager.PERMISSION_GRANTED
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            // Android 6-12: 기존 저장소 권한
+            context.checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) ==
+                    android.content.pm.PackageManager.PERMISSION_GRANTED &&
+                    context.checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) ==
+                    android.content.pm.PackageManager.PERMISSION_GRANTED
+        } else {
+            // Android 5 이하: 권한 확인 불필요
+            true
+        }
+    }
+
+    /**
+     * SAF를 고려한 저장 디렉토리 결정
+     * Android 10+ 에서는 SAF 사용, 그 이전에는 직접 파일 시스템 접근
+     */
+    private fun getSaveDirectory(): String {
+        return try {
+            // 권한 확인
+            if (!hasStoragePermission()) {
+                Log.w("카메라레포지토리", "저장소 권한 없음, 내부 저장소 사용")
+                return File(context.cacheDir, "temp_photos").apply { mkdirs() }.absolutePath
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // Android 10+ : SAF 사용하므로 임시 디렉토리 반환
+                val tempDir = File(context.cacheDir, "temp_photos")
+                if (!tempDir.exists()) {
+                    tempDir.mkdirs()
+                }
+                Log.d("카메라레포지토리", "✅ SAF 사용 - 임시 디렉토리: ${tempDir.absolutePath}")
+                tempDir.absolutePath
+            } else {
+                // Android 9 이하: 직접 외부 저장소 접근 가능
+                val externalStorageState = Environment.getExternalStorageState()
+                if (externalStorageState == Environment.MEDIA_MOUNTED) {
+                    val dcimDir = File(Environment.getExternalStorageDirectory(), "DCIM/CamCon")
+                    if (!dcimDir.exists()) {
+                        dcimDir.mkdirs()
+                    }
+                    Log.d("카메라레포지토리", "✅ 직접 외부 저장소 사용: ${dcimDir.absolutePath}")
+                    dcimDir.absolutePath
+                } else {
+                    // 외부 저장소를 사용할 수 없으면 내부 저장소
+                    val internalDir = File(context.filesDir, "photos")
+                    if (!internalDir.exists()) {
+                        internalDir.mkdirs()
+                    }
+                    Log.w("카메라레포지토리", "⚠️ 내부 저장소 사용: ${internalDir.absolutePath}")
+                    internalDir.absolutePath
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("카메라레포지토리", "저장 디렉토리 결정 실패, 기본값 사용", e)
+            context.filesDir.absolutePath
+        }
+    }
+
+    /**
+     * 사진 후처리 - SAF를 사용하여 최종 저장소에 저장
+     */
+    private suspend fun postProcessPhoto(tempFilePath: String, fileName: String): String {
+        return withContext(Dispatchers.IO) {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    // Android 10+: MediaStore API 사용
+                    saveToMediaStore(tempFilePath, fileName)
+                } else {
+                    // Android 9 이하: 이미 올바른 위치에 저장되어 있음
+                    tempFilePath
+                }
+            } catch (e: Exception) {
+                Log.e("카메라레포지토리", "사진 후처리 실패", e)
+                tempFilePath // 실패 시 원본 경로 반환
+            }
+        }
+    }
+
+    /**
+     * MediaStore를 사용하여 사진을 외부 저장소에 저장
+     */
+    private fun saveToMediaStore(tempFilePath: String, fileName: String): String {
+        return try {
+            val tempFile = File(tempFilePath)
+            if (!tempFile.exists()) {
+                Log.e("카메라레포지토리", "임시 파일이 존재하지 않음: $tempFilePath")
+                return tempFilePath
+            }
+
+            // MediaStore를 사용하여 DCIM 폴더에 저장
+            val contentValues = ContentValues().apply {
+                put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
+                put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+                put(MediaStore.Images.Media.RELATIVE_PATH, "DCIM/CamCon")
+            }
+
+            val uri = context.contentResolver.insert(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                contentValues
+            )
+            if (uri != null) {
+                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    FileInputStream(tempFile).use { inputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
+                }
+
+                // 임시 파일 삭제
+                tempFile.delete()
+
+                // MediaStore URI를 파일 경로로 변환
+                val savedPath = getPathFromUri(uri) ?: uri.toString()
+                Log.d("카메라레포지토리", "✅ MediaStore 저장 성공: $savedPath")
+                savedPath
+            } else {
+                Log.e("카메라레포지토리", "MediaStore URI 생성 실패")
+                tempFilePath
+            }
+        } catch (e: Exception) {
+            Log.e("카메라레포지토리", "MediaStore 저장 실패", e)
+            tempFilePath
+        }
+    }
+
+    /**
+     * URI를 실제 파일 경로로 변환
+     */
+    private fun getPathFromUri(uri: Uri): String? {
+        return try {
+            val cursor = context.contentResolver.query(
+                uri,
+                arrayOf(MediaStore.Images.Media.DATA),
+                null,
+                null,
+                null
+            )
+            cursor?.use {
+                if (it.moveToFirst()) {
+                    val columnIndex = it.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
+                    it.getString(columnIndex)
+                } else null
+            }
+        } catch (e: Exception) {
+            Log.e("카메라레포지토리", "URI 경로 변환 실패", e)
+            null
         }
     }
 }

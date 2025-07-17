@@ -5,27 +5,24 @@ import androidx.lifecycle.viewModelScope
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.usecase.camera.GetCameraPhotosPagedUseCase
-import com.inik.camcon.domain.usecase.camera.GetCameraPhotosUseCase
 import com.inik.camcon.domain.usecase.camera.GetCameraThumbnailUseCase
 import com.inik.camcon.domain.usecase.camera.PhotoCaptureEventManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class PhotoPreviewUiState(
     val photos: List<CameraPhoto> = emptyList(),
     val isLoading: Boolean = false,
+    val isLoadingMore: Boolean = false,
     val error: String? = null,
     val selectedPhoto: CameraPhoto? = null,
     val currentPage: Int = 0,
     val totalPages: Int = 0,
     val hasNextPage: Boolean = false,
-    val isLoadingMore: Boolean = false,
     val thumbnailCache: Map<String, ByteArray> = emptyMap()
 )
 
@@ -34,7 +31,6 @@ class PhotoPreviewViewModel @Inject constructor(
     private val cameraRepository: CameraRepository,
     private val getCameraPhotosPagedUseCase: GetCameraPhotosPagedUseCase,
     private val getCameraThumbnailUseCase: GetCameraThumbnailUseCase,
-    private val getCameraPhotosUseCase: GetCameraPhotosUseCase,
     private val photoCaptureEventManager: PhotoCaptureEventManager
 ) : ViewModel() {
 
@@ -47,12 +43,19 @@ class PhotoPreviewViewModel @Inject constructor(
     }
 
     private fun observePhotoCaptureEvents() {
+        // 사진 촬영 이벤트 자동 새로고침 비활성화
+        // (카메라 제어 화면에서 이벤트 리스너가 중지되는 문제 방지)
+        /*
         photoCaptureEventManager.photoCaptureEvent
             .onEach {
                 // 사진이 촬영되면 목록을 자동으로 새로고침
                 loadInitialPhotos()
             }
             .launchIn(viewModelScope)
+        */
+
+        // 수동 새로고침만 허용하도록 변경
+        android.util.Log.d("PhotoPreviewViewModel", "사진 촬영 이벤트 자동 새로고침 비활성화 - 수동 새로고침만 허용")
     }
 
     fun loadInitialPhotos() {
@@ -60,7 +63,6 @@ class PhotoPreviewViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(
                 isLoading = true,
                 error = null,
-                photos = emptyList(),
                 currentPage = 0
             )
 
@@ -124,8 +126,8 @@ class PhotoPreviewViewModel @Inject constructor(
         loadInitialPhotos()
     }
 
-    fun selectPhoto(photo: CameraPhoto?) {
-        _uiState.value = _uiState.value.copy(selectedPhoto = photo)
+    fun clearError() {
+        _uiState.value = _uiState.value.copy(error = null)
     }
 
     fun downloadPhoto(photo: CameraPhoto) {
@@ -183,7 +185,7 @@ class PhotoPreviewViewModel @Inject constructor(
         return _uiState.value.thumbnailCache[photoPath]
     }
 
-    fun clearError() {
-        _uiState.value = _uiState.value.copy(error = null)
+    fun selectPhoto(photo: CameraPhoto?) {
+        _uiState.value = _uiState.value.copy(selectedPhoto = photo)
     }
 }
