@@ -73,6 +73,9 @@ class CameraViewModel @Inject constructor(
     private var timelapseJob: Job? = null
     private var initializationJob: Job? = null
 
+    // 탭 전환 감지를 위한 플래그
+    private var isTabSwitching = false
+
     init {
         observeDataSources()
         initializeCameraDatabase()
@@ -790,5 +793,23 @@ class CameraViewModel @Inject constructor(
                 onComplete?.invoke()
             }
         }
+    }
+
+    /**
+     * 탭 전환 플래그 설정
+     */
+    fun setTabSwitchFlag(isReturning: Boolean) {
+        Log.d("CameraViewModel", "탭 전환 플래그 설정: $isReturning")
+        isTabSwitching = isReturning
+    }
+
+    /**
+     * 탭 전환 플래그 확인 후 초기화
+     */
+    fun getAndClearTabSwitchFlag(): Boolean {
+        val wasReturning = isTabSwitching
+        isTabSwitching = false
+        Log.d("CameraViewModel", "탭 전환 플래그 확인 및 초기화: $wasReturning -> false")
+        return wasReturning
     }
 }

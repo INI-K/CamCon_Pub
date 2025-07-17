@@ -103,7 +103,7 @@
     <string name="photo_details">사진 정보</string>
 
     <!-- 서버/클라우드 -->
-    <string name="server_photos">서버 사진</string>
+    <string name="server_photos">내 사진</string>
     <string name="upload_to_cloud">클라우드 업로드</string>
     <string name="download_from_cloud">클라우드 다운로드</string>
     <string name="sync_photos">사진 동기화</string>
