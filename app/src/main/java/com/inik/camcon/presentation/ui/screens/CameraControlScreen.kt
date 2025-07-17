@@ -2,13 +2,11 @@ package com.inik.camcon.presentation.ui.screens
 
 import android.app.Activity
 import android.content.pm.ActivityInfo
-import android.graphics.BitmapFactory
 import android.util.Log
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -37,7 +35,6 @@ import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -52,7 +49,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -64,6 +60,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.domain.model.CameraSettings
@@ -524,92 +522,26 @@ private fun RecentCapturesRow(
                 ) {
                     // 실제 이미지가 있으면 표출
                     photo.thumbnailPath?.let { thumbnailPath ->
-                        val bitmap = remember(thumbnailPath) {
-                            try {
-                                val file = java.io.File(thumbnailPath)
-                                if (file.exists()) {
-                                    BitmapFactory.decodeFile(thumbnailPath)
-                                } else {
-                                    null
-                                }
-                            } catch (e: Exception) {
-                                Log.e("RecentCaptures", "썸네일 로드 실패: $thumbnailPath", e)
-                                null
-                            }
-                        }
-                        
-                        bitmap?.let { bmp ->
-                            Image(
-                                bitmap = bmp.asImageBitmap(),
-                                contentDescription = "촬영된 사진",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        } ?: run {
-                            // 썸네일이 없으면 원본 이미지 시도
-                            val originalBitmap = remember(photo.filePath) {
-                                try {
-                                    val file = java.io.File(photo.filePath)
-                                    if (file.exists()) {
-                                        BitmapFactory.decodeFile(photo.filePath)
-                                    } else {
-                                        null
-                                    }
-                                } catch (e: Exception) {
-                                    Log.e("RecentCaptures", "원본 이미지 로드 실패: ${photo.filePath}", e)
-                                    null
-                                }
-                            }
-                            
-                            originalBitmap?.let { bmp ->
-                                Image(
-                                    bitmap = bmp.asImageBitmap(),
-                                    contentDescription = "촬영된 사진",
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } ?: run {
-                                // 이미지 로드 실패 시 기본 아이콘
-                                Icon(
-                                    Icons.Default.Photo,
-                                    contentDescription = null,
-                                    tint = Color.Gray,
-                                    modifier = Modifier.size(32.dp)
-                                )
-                            }
-                        }
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(thumbnailPath)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "촬영된 사진",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
                     } ?: run {
-                        // 썸네일 경로가 없으면 원본 이미지 시도
-                        val originalBitmap = remember(photo.filePath) {
-                            try {
-                                val file = java.io.File(photo.filePath)
-                                if (file.exists()) {
-                                    BitmapFactory.decodeFile(photo.filePath)
-                                } else {
-                                    null
-                                }
-                            } catch (e: Exception) {
-                                Log.e("RecentCaptures", "원본 이미지 로드 실패: ${photo.filePath}", e)
-                                null
-                            }
-                        }
-                        
-                        originalBitmap?.let { bmp ->
-                            Image(
-                                bitmap = bmp.asImageBitmap(),
-                                contentDescription = "촬영된 사진",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        } ?: run {
-                            // 이미지 로드 실패 시 기본 아이콘
-                            Icon(
-                                Icons.Default.Photo,
-                                contentDescription = null,
-                                tint = Color.Gray,
-                                modifier = Modifier.size(32.dp)
-                            )
-                        }
+                        // 썸네일이 없으면 원본 이미지 시도
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(photo.filePath)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "촬영된 사진",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
                     }
 
                     // 다운로드 상태 표시
