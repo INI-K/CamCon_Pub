@@ -19,3 +19,15 @@ local.properties
 
 # OS files
 .DS_Store
+
+# Android NDK/CMake build files
+app/.cxx/
+app/build/
+*.so
+*.o
+
+# Gradle build cache
+.gradle/*/executionHistory/
+.gradle/*/fileHashes/
+.gradle/buildOutputCleanup/
+.gradle/file-system.probe
