@@ -27,5 +27,6 @@ data class CameraUiState(
     val isLoading: Boolean = false,
     val isFocusing: Boolean = false,
     val isInitializing: Boolean = false,
-    val isLiveViewLoading: Boolean = false
+    val isLiveViewLoading: Boolean = false,
+    val isEventListenerActive: Boolean = false
 )

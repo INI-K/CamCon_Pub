@@ -34,7 +34,9 @@ import androidx.compose.material.ModalBottomSheetValue
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -75,6 +77,7 @@ import com.inik.camcon.presentation.ui.screens.components.ShootingModeSelector
 import com.inik.camcon.presentation.ui.screens.components.TopControlsBar
 import com.inik.camcon.presentation.ui.screens.dialogs.CameraConnectionHelpDialog
 import com.inik.camcon.presentation.ui.screens.dialogs.TimelapseSettingsDialog
+import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.CameraUiState
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import kotlinx.coroutines.launch
@@ -86,15 +89,29 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterialApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun CameraControlScreen(
-    viewModel: CameraViewModel = hiltViewModel()
+    viewModel: CameraViewModel = hiltViewModel(),
+    appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
 ) {
     var showConnectionHelpDialog by remember { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    // 설정 상태
+    val isCameraControlsEnabled by appSettingsViewModel.isCameraControlsEnabled.collectAsState()
+    val isLiveViewEnabled by appSettingsViewModel.isLiveViewEnabled.collectAsState()
+    val isAutoStartEventListener by appSettingsViewModel.isAutoStartEventListenerEnabled.collectAsState()
+    val isShowLatestPhotoWhenDisabled by appSettingsViewModel.isShowLatestPhotoWhenDisabled.collectAsState()
 
     // 라이프사이클 관리
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
+                Lifecycle.Event.ON_RESUME -> {
+                    // 카메라 제어 탭 진입 시 자동 이벤트 리스너 시작
+                    if (isAutoStartEventListener && !viewModel.uiState.value.isEventListenerActive) {
+                        Log.d("CameraControl", "자동 이벤트 리스너 시작")
+                        viewModel.startEventListener()
+                    }
+                }
                 Lifecycle.Event.ON_PAUSE -> {
                     if (viewModel.uiState.value.isLiveViewActive) {
                         viewModel.stopLiveView()
@@ -140,12 +157,13 @@ fun CameraControlScreen(
             )
         }
     ) {
-        if (isFullscreen) {
+        if (isFullscreen && isCameraControlsEnabled) {
             FullscreenCameraLayout(
                 uiState = uiState,
                 cameraFeed = cameraFeed,
                 viewModel = viewModel,
-                onExitFullscreen = { isFullscreen = false }
+                onExitFullscreen = { isFullscreen = false },
+                isLiveViewEnabled = isLiveViewEnabled
             )
         } else {
             PortraitCameraLayout(
@@ -155,7 +173,10 @@ fun CameraControlScreen(
                 scope = scope,
                 bottomSheetState = bottomSheetState,
                 onShowTimelapseDialog = { showTimelapseDialog = true },
-                onEnterFullscreen = { isFullscreen = true }
+                onEnterFullscreen = { isFullscreen = true },
+                isCameraControlsEnabled = isCameraControlsEnabled,
+                isLiveViewEnabled = isLiveViewEnabled,
+                isShowLatestPhotoWhenDisabled = isShowLatestPhotoWhenDisabled
             )
         }
     }
@@ -208,7 +229,10 @@ private fun PortraitCameraLayout(
     scope: kotlinx.coroutines.CoroutineScope,
     bottomSheetState: ModalBottomSheetState,
     onShowTimelapseDialog: () -> Unit,
-    onEnterFullscreen: () -> Unit
+    onEnterFullscreen: () -> Unit,
+    isCameraControlsEnabled: Boolean,
+    isLiveViewEnabled: Boolean,
+    isShowLatestPhotoWhenDisabled: Boolean
 ) {
     val context = LocalContext.current
 
@@ -260,11 +284,80 @@ private fun PortraitCameraLayout(
             contentAlignment = Alignment.Center
         ) {
             // 카메라 프리뷰 영역 - 분리된 컴포넌트 사용
-            CameraPreviewArea(
-                uiState = uiState,
-                cameraFeed = cameraFeed,
-                viewModel = viewModel
-            )
+            if (isCameraControlsEnabled && isLiveViewEnabled) {
+                CameraPreviewArea(
+                    uiState = uiState,
+                    cameraFeed = cameraFeed,
+                    viewModel = viewModel
+                )
+            } else if (!isCameraControlsEnabled && isShowLatestPhotoWhenDisabled) {
+                // 최신 사진 표시
+                uiState.capturedPhotos.lastOrNull()?.let { latestPhoto ->
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(latestPhoto.filePath)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "최신 사진",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } ?: run {
+                    // 촬영된 사진이 없을 때 안내 메시지
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Photo,
+                            contentDescription = "사진 없음",
+                            modifier = Modifier.size(64.dp),
+                            tint = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            "촬영된 사진이 없습니다",
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            "카메라 셔터 버튼을 눌러 사진을 촬영하세요",
+                            color = Color.Gray.copy(alpha = 0.7f),
+                            fontSize = 12.sp,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                }
+            } else {
+                // 라이브뷰도 비활성화된 경우 안내 메시지
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        Icons.Default.CameraAlt,
+                        contentDescription = "카메라",
+                        modifier = Modifier.size(64.dp),
+                        tint = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "카메라 컨트롤이 비활성화됨",
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        "설정에서 활성화할 수 있습니다",
+                        color = Color.Gray.copy(alpha = 0.7f),
+                        fontSize = 12.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+            }
 
             // 카메라 설정 오버레이 - 분리된 컴포넌트 사용
             CameraSettingsOverlay(
@@ -305,12 +398,14 @@ private fun PortraitCameraLayout(
                 )
 
                 // 촬영 컨트롤 - 분리된 컴포넌트 사용
-                CaptureControls(
-                    uiState = uiState,
-                    viewModel = viewModel,
-                    onShowTimelapseDialog = onShowTimelapseDialog,
-                    isVertical = false
-                )
+                if (isCameraControlsEnabled) {
+                    CaptureControls(
+                        uiState = uiState,
+                        viewModel = viewModel,
+                        onShowTimelapseDialog = onShowTimelapseDialog,
+                        isVertical = false
+                    )
+                }
 
                 // 최근 촬영 사진들 - 여기는 간소화된 버전 유지
                 if (uiState.capturedPhotos.isNotEmpty()) {
@@ -338,7 +433,8 @@ private fun FullscreenCameraLayout(
     uiState: CameraUiState,
     cameraFeed: List<Camera>,
     viewModel: CameraViewModel,
-    onExitFullscreen: () -> Unit
+    onExitFullscreen: () -> Unit,
+    isLiveViewEnabled: Boolean
 ) {
     val context = LocalContext.current
     var showTimelapseDialog by remember { mutableStateOf(false) }
@@ -384,12 +480,14 @@ private fun FullscreenCameraLayout(
             )
     ) {
         // 메인 라이브뷰 영역 - 분리된 컴포넌트 사용
-        CameraPreviewArea(
-            uiState = uiState,
-            cameraFeed = cameraFeed,
-            viewModel = viewModel,
-            modifier = Modifier.fillMaxSize()
-        )
+        if (isLiveViewEnabled) {
+            CameraPreviewArea(
+                uiState = uiState,
+                cameraFeed = cameraFeed,
+                viewModel = viewModel,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
 
         // 상단 카메라 설정 오버레이 - 분리된 컴포넌트 사용
         CameraSettingsOverlay(

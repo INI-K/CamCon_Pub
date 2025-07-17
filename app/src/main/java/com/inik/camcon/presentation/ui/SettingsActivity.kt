@@ -34,17 +34,16 @@ import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.NetworkWifi
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Update
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -53,6 +52,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -84,7 +84,8 @@ fun SettingsScreenPreview() {
 @Composable
 fun SettingsScreen(
     onBackClick: () -> Unit,
-    ptpipViewModel: PtpipViewModel = hiltViewModel()
+    ptpipViewModel: PtpipViewModel = hiltViewModel(),
+    appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     
@@ -97,6 +98,13 @@ fun SettingsScreen(
     val isAutoConnectEnabled by ptpipViewModel.isAutoConnectEnabled.collectAsState(initial = false)
     val lastConnectedName by ptpipViewModel.lastConnectedName.collectAsState(initial = null)
     val connectionState by ptpipViewModel.connectionState.collectAsState()
+
+    // 앱 설정 상태
+    val isCameraControlsEnabled by appSettingsViewModel.isCameraControlsEnabled.collectAsState()
+    val isLiveViewEnabled by appSettingsViewModel.isLiveViewEnabled.collectAsState()
+    val isDarkMode by appSettingsViewModel.isDarkModeEnabled.collectAsState()
+    val isAutoStartEventListener by appSettingsViewModel.isAutoStartEventListenerEnabled.collectAsState()
+    val isShowLatestPhotoWhenDisabled by appSettingsViewModel.isShowLatestPhotoWhenDisabled.collectAsState()
 
     Scaffold(
         topBar = {
@@ -118,6 +126,51 @@ fun SettingsScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
+            // 카메라 제어 설정 섹션
+            SettingsSection(title = "📱 카메라 제어 설정") {
+                SettingsItemWithSwitch(
+                    icon = Icons.Default.CameraAlt,
+                    title = "카메라 컨트롤 표시",
+                    subtitle = if (isCameraControlsEnabled) {
+                        "라이브뷰 및 카메라 컨트롤 UI 표시"
+                    } else {
+                        "비활성화 - 최신 촬영 사진이 표시됩니다"
+                    },
+                    checked = isCameraControlsEnabled,
+                    onCheckedChange = { appSettingsViewModel.setCameraControlsEnabled(it) }
+                )
+
+                if (isCameraControlsEnabled) {
+                    SettingsItemWithSwitch(
+                        icon = Icons.Default.Visibility,
+                        title = "라이브뷰 활성화",
+                        subtitle = "실시간 카메라 화면 표시",
+                        checked = isLiveViewEnabled,
+                        onCheckedChange = { appSettingsViewModel.setLiveViewEnabled(it) }
+                    )
+
+                    SettingsItemWithSwitch(
+                        icon = Icons.Default.Settings,
+                        title = "자동 이벤트 수신",
+                        subtitle = "카메라 제어 탭 진입 시 자동으로 이벤트 리스너 시작",
+                        checked = isAutoStartEventListener,
+                        onCheckedChange = { appSettingsViewModel.setAutoStartEventListenerEnabled(it) }
+                    )
+                }
+
+                if (!isCameraControlsEnabled) {
+                    SettingsItemWithSwitch(
+                        icon = Icons.Default.Photo,
+                        title = "최신 사진 표시",
+                        subtitle = "카메라 컨트롤 비활성화 시 최근 촬영한 사진 표시",
+                        checked = isShowLatestPhotoWhenDisabled,
+                        onCheckedChange = { appSettingsViewModel.setShowLatestPhotoWhenDisabled(it) }
+                    )
+                }
+            }
+
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
+
             // PTPIP Wi-Fi 카메라 설정 섹션
             SettingsSection(title = "📷 Wi-Fi 카메라 연결 (PTPIP)") {
                 SettingsItemWithSwitch(
@@ -220,13 +273,12 @@ fun SettingsScreen(
                     subtitle = "푸시 알림 및 소리 설정",
                     onClick = { /* TODO */ }
                 )
-                var isDarkMode by remember { mutableStateOf(false) }
                 SettingsItemWithSwitch(
                     icon = Icons.Default.DarkMode,
                     title = "다크 모드",
                     subtitle = "어두운 테마 사용",
                     checked = isDarkMode,
-                    onCheckedChange = { isDarkMode = it }
+                    onCheckedChange = { appSettingsViewModel.setDarkModeEnabled(it) }
                 )
             }
 

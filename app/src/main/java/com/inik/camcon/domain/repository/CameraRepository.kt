@@ -23,6 +23,11 @@ interface CameraRepository {
     suspend fun getCameraCapabilities(): Result<CameraCapabilities?>
     suspend fun updateCameraSetting(key: String, value: String): Result<Boolean>
 
+    // 이벤트 리스너 관련
+    suspend fun startCameraEventListener(): Result<Boolean>
+    suspend fun stopCameraEventListener(): Result<Boolean>
+    fun isEventListenerActive(): Flow<Boolean>
+
     // 촬영 관련
     suspend fun capturePhoto(mode: ShootingMode = ShootingMode.SINGLE): Result<CapturedPhoto>
     fun startBurstCapture(count: Int): Flow<CapturedPhoto>
