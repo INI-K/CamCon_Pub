@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource
+import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
 import com.inik.camcon.data.datasource.ptpip.PtpipDataSource
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.domain.model.PtpipCamera
@@ -328,23 +329,41 @@ class PtpipViewModel @Inject constructor(
     }
 
     /**
-     * 원격 촬영 실행
+     * 원격 촬영 실행 (비동기, 콜백 지원)
      */
-    fun capturePhoto() {
+    fun capturePhoto(listener: CameraCaptureListener? = null) {
         viewModelScope.launch {
             try {
                 if (connectionState.value != PtpipConnectionState.CONNECTED) {
                     _errorMessage.value = "카메라가 연결되어 있지 않습니다."
+                    listener?.onCaptureFailed(-1)
                     return@launch
                 }
 
-                val success = ptpipDataSource.capturePhoto()
-                if (!success) {
-                    _errorMessage.value = "촬영에 실패했습니다."
-                }
+                ptpipDataSource.capturePhoto(object : CameraCaptureListener {
+                    override fun onFlushComplete() {
+                        Log.d(TAG, "촬영 플러시 완료")
+                        listener?.onFlushComplete()
+                    }
+
+                    override fun onPhotoCaptured(filePath: String, fileName: String) {
+                        Log.i(TAG, "촬영 성공: $fileName -> $filePath")
+                        _errorMessage.value = null
+                        listener?.onPhotoCaptured(filePath, fileName)
+                    }
+
+                    override fun onCaptureFailed(errorCode: Int) {
+                        Log.e(TAG, "촬영 실패: 에러 코드 $errorCode")
+                        _errorMessage.value = "촬영에 실패했습니다 (에러 코드: $errorCode)"
+                        listener?.onCaptureFailed(errorCode)
+                    }
+                })
 
             } catch (e: Exception) {
-                _errorMessage.value = "촬영 중 오류가 발생했습니다: ${e.message}"
+                val msg = "촬영 중 오류가 발생했습니다: ${e.message}"
+                Log.e(TAG, msg, e)
+                _errorMessage.value = msg
+                listener?.onCaptureFailed(-999)
             }
         }
     }
