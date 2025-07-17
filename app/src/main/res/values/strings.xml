@@ -11,7 +11,6 @@
     <string name="cancel">Cancel</string>
     <string name="retry">Retry</string>
     <string name="close">Close</string>
-    <string name="settings">Settings</string>
     <string name="save">Save</string>
     <string name="delete">Delete</string>
     <string name="share">Share</string>
@@ -92,6 +91,7 @@
 
     <!-- Photo Management -->
     <string name="recent_captures">Recent Captures</string>
+    <string name="camera_photo_list">카메라 사진 목록</string>
     <string name="captured_photos">Captured Photos</string>
     <string name="photo_saved">Photo saved</string>
     <string name="photo_save_failed">Failed to save photo</string>
@@ -103,7 +103,7 @@
     <string name="photo_details">Photo Details</string>
 
     <!-- Server/Cloud -->
-    <string name="server_photos">Server Photos</string>
+    <string name="server_photos">내 사진</string>
     <string name="upload_to_cloud">Upload to Cloud</string>
     <string name="download_from_cloud">Download from Cloud</string>
     <string name="sync_photos">Sync Photos</string>
@@ -148,8 +148,9 @@
     <string name="grant_permission">Grant Permission</string>
 
     <!-- Navigation -->
-    <string name="camera_control">Camera Control</string>
-    <string name="photo_preview">Photo Preview</string>
+    <string name="camera_control">컨트롤</string>
+    <string name="photo_preview">카메라</string>
+    <string name="settings">설정</string>
     <string name="splash_screen">Splash Screen</string>
     <string name="main_screen">Main Screen</string>
 
