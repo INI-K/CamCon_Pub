@@ -73,30 +73,12 @@ fun PhotoPreviewScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // 상단 앱바
-            TopAppBar(
-                title = {
-                    PhotoPreviewTitle(
-                        photoCount = uiState.photos.size,
-                        currentPage = uiState.currentPage,
-                        totalPages = uiState.totalPages
-                    )
-                },
-                backgroundColor = MaterialTheme.colors.primary,
-                elevation = 4.dp,
-                actions = {
-                    if (uiState.photos.isNotEmpty()) {
-                        IconButton(
-                            onClick = { viewModel.loadCameraPhotos() }
-                        ) {
-                            Icon(
-                                Icons.Default.Refresh,
-                                contentDescription = "새로고침",
-                                tint = MaterialTheme.colors.onPrimary
-                            )
-                        }
-                    }
-                }
+            // 상단 타이틀 영역 (모던한 디자인)
+            ModernHeader(
+                photoCount = uiState.photos.size,
+                currentPage = uiState.currentPage,
+                totalPages = uiState.totalPages,
+                onRefresh = { viewModel.loadCameraPhotos() }
             )
 
             // 메인 콘텐츠
@@ -153,17 +135,18 @@ fun PhotoPreviewScreen(
 }
 
 /**
- * 상단 앱바 제목 컴포넌트
+ * 모던한 디자인의 상단 타이틀 컴포넌트
  */
 @Composable
-private fun PhotoPreviewTitle(
+private fun ModernHeader(
     photoCount: Int,
     currentPage: Int,
-    totalPages: Int
+    totalPages: Int,
+    onRefresh: () -> Unit
 ) {
     Column {
         Text(
-            text = stringResource(R.string.recent_captures),
+            text = stringResource(R.string.camera_photo_list),
             color = MaterialTheme.colors.onPrimary,
             style = MaterialTheme.typography.h6
         )
@@ -174,6 +157,21 @@ private fun PhotoPreviewTitle(
                 color = MaterialTheme.colors.onPrimary.copy(alpha = 0.7f),
                 style = MaterialTheme.typography.caption
             )
+        }
+        Row(
+            modifier = Modifier.padding(top = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Spacer(modifier = Modifier.weight(1f))
+            IconButton(
+                onClick = onRefresh
+            ) {
+                Icon(
+                    Icons.Default.Refresh,
+                    contentDescription = "새로고침",
+                    tint = MaterialTheme.colors.onPrimary
+                )
+            }
         }
     }
 }
@@ -350,24 +348,26 @@ private fun ErrorSnackbar(
 
 @Preview(showBackground = true)
 @Composable
-private fun PhotoPreviewTitlePreview_NoPhotos() {
+private fun ModernHeaderPreview_NoPhotos() {
     CamConTheme {
-        PhotoPreviewTitle(
+        ModernHeader(
             photoCount = 0,
             currentPage = 0,
-            totalPages = 0
+            totalPages = 0,
+            onRefresh = {}
         )
     }
 }
 
 @Preview(showBackground = true)
 @Composable
-private fun PhotoPreviewTitlePreview_WithPhotos() {
+private fun ModernHeaderPreview_WithPhotos() {
     CamConTheme {
-        PhotoPreviewTitle(
+        ModernHeader(
             photoCount = 42,
             currentPage = 1,
-            totalPages = 3
+            totalPages = 3,
+            onRefresh = {}
         )
     }
 }
