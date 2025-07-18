@@ -1,5 +1,6 @@
 package com.inik.camcon.presentation.ui.screens
 
+import android.graphics.ColorSpace
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -237,6 +238,12 @@ private fun LatestPhotoDisplay(photo: CapturedPhoto) {
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(photo.filePath)
                     .crossfade(true)
+                    .apply {
+                        // sRGB 색공간 설정
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                            colorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
+                        }
+                    }
                     .build()
             )
             val state = painter.state
@@ -338,6 +345,12 @@ private fun ReceivedPhotoThumbnail(photo: CapturedPhoto) {
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(photo.filePath)
                     .crossfade(true)
+                    .apply {
+                        // sRGB 색공간 설정
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                            colorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
+                        }
+                    }
                     .build()
             )
             val state = painter.state

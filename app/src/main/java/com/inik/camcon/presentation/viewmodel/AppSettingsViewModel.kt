@@ -3,6 +3,7 @@ package com.inik.camcon.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
+import com.inik.camcon.domain.usecase.ColorTransferUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -12,7 +13,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class AppSettingsViewModel @Inject constructor(
-    private val appPreferencesDataSource: AppPreferencesDataSource
+    private val appPreferencesDataSource: AppPreferencesDataSource,
+    private val colorTransferUseCase: ColorTransferUseCase
 ) : ViewModel() {
 
     /**
@@ -69,6 +71,27 @@ class AppSettingsViewModel @Inject constructor(
             )
 
     /**
+     * 색감 전송 기능 활성화 여부
+     */
+    val isColorTransferEnabled: StateFlow<Boolean> = appPreferencesDataSource.isColorTransferEnabled
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
+
+    /**
+     * 색감 전송 참조 이미지 경로
+     */
+    val colorTransferReferenceImagePath: StateFlow<String?> =
+        appPreferencesDataSource.colorTransferReferenceImagePath
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = null
+            )
+
+    /**
      * 카메라 컨트롤 표시 여부 설정
      */
     fun setCameraControlsEnabled(enabled: Boolean) {
@@ -110,6 +133,25 @@ class AppSettingsViewModel @Inject constructor(
     fun setShowLatestPhotoWhenDisabled(enabled: Boolean) {
         viewModelScope.launch {
             appPreferencesDataSource.setShowLatestPhotoWhenDisabled(enabled)
+        }
+    }
+
+    /**
+     * 색감 전송 기능 활성화/비활성화
+     */
+    fun setColorTransferEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            appPreferencesDataSource.setColorTransferEnabled(enabled)
+        }
+    }
+
+    /**
+     * 색감 전송 참조 이미지 경로 설정
+     */
+    fun setColorTransferReferenceImagePath(path: String?) {
+        viewModelScope.launch {
+            colorTransferUseCase.clearReferenceCache()
+            appPreferencesDataSource.setColorTransferReferenceImagePath(path)
         }
     }
 
