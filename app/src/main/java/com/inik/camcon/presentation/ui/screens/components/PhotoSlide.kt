@@ -99,7 +99,8 @@ fun PhotoSlide(
             painter = painter,
             contentDescription = photo.name,
             modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Fit
+            contentScale = ContentScale.Fit,
+            alignment = Alignment.Center
         )
     }
 }

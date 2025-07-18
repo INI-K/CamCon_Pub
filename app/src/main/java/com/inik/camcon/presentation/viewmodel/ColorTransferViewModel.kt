@@ -25,6 +25,15 @@ class ColorTransferViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    private val _processingProgress = MutableStateFlow(0f)
+    val processingProgress: StateFlow<Float> = _processingProgress.asStateFlow()
+
+    private val _processingStatus = MutableStateFlow<String?>(null)
+    val processingStatus: StateFlow<String?> = _processingStatus.asStateFlow()
+
+    private val _performanceInfo = MutableStateFlow<String?>(null)
+    val performanceInfo: StateFlow<String?> = _performanceInfo.asStateFlow()
+
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
@@ -33,6 +42,22 @@ class ColorTransferViewModel @Inject constructor(
 
     private val _selectedImagePath = MutableStateFlow<String?>(null)
     val selectedImagePath: StateFlow<String?> = _selectedImagePath.asStateFlow()
+
+    /**
+     * 색감 전송 처리 상태를 업데이트합니다
+     */
+    private fun updateProcessingStatus(status: String, progress: Float = 0f) {
+        _processingStatus.value = status
+        _processingProgress.value = progress
+    }
+
+    /**
+     * 성능 정보를 업데이트합니다
+     */
+    private fun updatePerformanceInfo(processingTime: Long, isNativeUsed: Boolean) {
+        val method = if (isNativeUsed) "네이티브 최적화" else "코틀린 폴백"
+        _performanceInfo.value = "처리 시간: ${processingTime}ms ($method)"
+    }
 
     /**
      * 사용 가능한 이미지 목록을 로드합니다
@@ -119,5 +144,20 @@ class ColorTransferViewModel @Inject constructor(
      */
     fun clearError() {
         _errorMessage.value = null
+    }
+
+    /**
+     * 성능 정보를 초기화합니다
+     */
+    fun clearPerformanceInfo() {
+        _performanceInfo.value = null
+    }
+
+    /**
+     * 처리 상태를 초기화합니다
+     */
+    fun clearProcessingStatus() {
+        _processingStatus.value = null
+        _processingProgress.value = 0f
     }
 }
