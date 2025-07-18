@@ -92,6 +92,16 @@ class AppSettingsViewModel @Inject constructor(
             )
 
     /**
+     * 색감 전송 강도 (0.0 ~ 1.0)
+     */
+    val colorTransferIntensity: StateFlow<Float> = appPreferencesDataSource.colorTransferIntensity
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = 0.03f
+        )
+
+    /**
      * 카메라 컨트롤 표시 여부 설정
      */
     fun setCameraControlsEnabled(enabled: Boolean) {
@@ -152,6 +162,15 @@ class AppSettingsViewModel @Inject constructor(
         viewModelScope.launch {
             colorTransferUseCase.clearReferenceCache()
             appPreferencesDataSource.setColorTransferReferenceImagePath(path)
+        }
+    }
+
+    /**
+     * 색감 전송 강도 설정 (0.0 ~ 1.0)
+     */
+    fun setColorTransferIntensity(intensity: Float) {
+        viewModelScope.launch {
+            appPreferencesDataSource.setColorTransferIntensity(intensity)
         }
     }
 
