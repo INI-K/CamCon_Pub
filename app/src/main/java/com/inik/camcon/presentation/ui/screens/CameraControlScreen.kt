@@ -80,6 +80,7 @@ import com.inik.camcon.presentation.ui.screens.components.CaptureControls
 import com.inik.camcon.presentation.ui.screens.components.LoadingOverlay
 import com.inik.camcon.presentation.ui.screens.components.ShootingModeSelector
 import com.inik.camcon.presentation.ui.screens.components.TopControlsBar
+import com.inik.camcon.presentation.ui.screens.components.UsbInitializationOverlay
 import com.inik.camcon.presentation.ui.screens.dialogs.CameraConnectionHelpDialog
 import com.inik.camcon.presentation.ui.screens.dialogs.TimelapseSettingsDialog
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
@@ -226,47 +227,56 @@ fun CameraControlScreen(
         Log.d("CameraControl", "카메라 연결 상태 변경: ${uiState.isConnected}")
     }
 
-    ModalBottomSheetLayout(
-        sheetState = bottomSheetState,
-        sheetShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-        sheetContent = {
-            CameraSettingsSheet(
-                settings = uiState.cameraSettings,
-                onSettingChange = { key, value ->
-                    viewModel.updateCameraSetting(key, value)
-                },
-                onClose = {
-                    scope.launch { bottomSheetState.hide() }
-                }
-            )
+    Box(modifier = Modifier.fillMaxSize()) {
+        ModalBottomSheetLayout(
+            sheetState = bottomSheetState,
+            sheetShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+            sheetContent = {
+                CameraSettingsSheet(
+                    settings = uiState.cameraSettings,
+                    onSettingChange = { key, value ->
+                        viewModel.updateCameraSetting(key, value)
+                    },
+                    onClose = {
+                        scope.launch { bottomSheetState.hide() }
+                    }
+                )
+            }
+        ) {
+            if (isFullscreen && isCameraControlsEnabled) {
+                FullscreenCameraLayout(
+                    uiState = uiState,
+                    cameraFeed = cameraFeed,
+                    viewModel = viewModel,
+                    onExitFullscreen = {
+                        isFullscreen = false
+                        onFullscreenChange(false)
+                    },
+                    isLiveViewEnabled = isLiveViewEnabled
+                )
+            } else {
+                PortraitCameraLayout(
+                    uiState = uiState,
+                    cameraFeed = cameraFeed,
+                    viewModel = viewModel,
+                    scope = scope,
+                    bottomSheetState = bottomSheetState,
+                    onShowTimelapseDialog = { showTimelapseDialog = true },
+                    onEnterFullscreen = {
+                        isFullscreen = true
+                        onFullscreenChange(true)
+                    },
+                    isCameraControlsEnabled = isCameraControlsEnabled,
+                    isLiveViewEnabled = isLiveViewEnabled,
+                    isShowLatestPhotoWhenDisabled = isShowLatestPhotoWhenDisabled
+                )
+            }
         }
-    ) {
-        if (isFullscreen && isCameraControlsEnabled) {
-            FullscreenCameraLayout(
-                uiState = uiState,
-                cameraFeed = cameraFeed,
-                viewModel = viewModel,
-                onExitFullscreen = {
-                    isFullscreen = false
-                    onFullscreenChange(false)
-                },
-                isLiveViewEnabled = isLiveViewEnabled
-            )
-        } else {
-            PortraitCameraLayout(
-                uiState = uiState,
-                cameraFeed = cameraFeed,
-                viewModel = viewModel,
-                scope = scope,
-                bottomSheetState = bottomSheetState,
-                onShowTimelapseDialog = { showTimelapseDialog = true },
-                onEnterFullscreen = {
-                    isFullscreen = true
-                    onFullscreenChange(true)
-                },
-                isCameraControlsEnabled = isCameraControlsEnabled,
-                isLiveViewEnabled = isLiveViewEnabled,
-                isShowLatestPhotoWhenDisabled = isShowLatestPhotoWhenDisabled
+
+        // USB 초기화 오버레이 - 전체 화면을 덮도록 표시
+        if (uiState.isUsbInitializing) {
+            UsbInitializationOverlay(
+                message = uiState.usbInitializationMessage ?: "USB 카메라 초기화 중..."
             )
         }
     }
