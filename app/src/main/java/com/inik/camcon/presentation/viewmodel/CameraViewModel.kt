@@ -163,7 +163,10 @@ class CameraViewModel @Inject constructor(
                     it.copy(
                         hasUsbPermission = hasPermission,
                         error = if (!hasPermission && _uiState.value.usbDeviceCount > 0)
-                            "USB 권한이 필요합니다" else _uiState.value.error
+                            "USB 권한이 필요합니다" else _uiState.value.error,
+                        // 권한이 승인되면 초기화 상태 해제
+                        isUsbInitializing = if (hasPermission) false else it.isUsbInitializing,
+                        usbInitializationMessage = if (hasPermission) null else it.usbInitializationMessage
                     )
                 }
             }
@@ -224,6 +227,16 @@ class CameraViewModel @Inject constructor(
             try {
                 Log.d("CameraViewModel", "자동 카메라 연결 시작")
 
+                // USB 초기화 시작
+                withContext(Dispatchers.Main) {
+                    _uiState.update {
+                        it.copy(
+                            isUsbInitializing = true,
+                            usbInitializationMessage = "USB 카메라 초기화 중..."
+                        )
+                    }
+                }
+
                 connectCameraUseCase("auto")
                     .onSuccess {
                         Log.d("CameraViewModel", "자동 카메라 연결 성공 - 이벤트 리스너 활성화됨")
@@ -231,7 +244,9 @@ class CameraViewModel @Inject constructor(
                             _uiState.update {
                                 it.copy(
                                     isConnected = true,
-                                    error = null
+                                    error = null,
+                                    isUsbInitializing = false,
+                                    usbInitializationMessage = null
                                 )
                             }
                         }
@@ -243,7 +258,11 @@ class CameraViewModel @Inject constructor(
                         Log.e("CameraViewModel", "자동 카메라 연결 실패", error)
                         withContext(Dispatchers.Main) {
                             _uiState.update {
-                                it.copy(error = "자동 카메라 연결 실패: ${error.message}")
+                                it.copy(
+                                    error = "자동 카메라 연결 실패: ${error.message}",
+                                    isUsbInitializing = false,
+                                    usbInitializationMessage = null
+                                )
                             }
                         }
                     }
@@ -251,7 +270,11 @@ class CameraViewModel @Inject constructor(
                 Log.e("CameraViewModel", "자동 카메라 연결 중 예외 발생", e)
                 withContext(Dispatchers.Main) {
                     _uiState.update {
-                        it.copy(error = "자동 카메라 연결 실패: ${e.message}")
+                        it.copy(
+                            error = "자동 카메라 연결 실패: ${e.message}",
+                            isUsbInitializing = false,
+                            usbInitializationMessage = null
+                        )
                     }
                 }
             }
@@ -281,6 +304,39 @@ class CameraViewModel @Inject constructor(
                     _uiState.update { it.copy(error = "카메라 설정 로드 실패: ${e.message}") }
                 }
             }
+        }
+    }
+
+    /**
+     * USB 초기화 시작
+     */
+    fun startUsbInitialization(message: String = "USB 카메라 초기화 중...") {
+        _uiState.update {
+            it.copy(
+                isUsbInitializing = true,
+                usbInitializationMessage = message
+            )
+        }
+    }
+
+    /**
+     * USB 초기화 완료
+     */
+    fun completeUsbInitialization() {
+        _uiState.update {
+            it.copy(
+                isUsbInitializing = false,
+                usbInitializationMessage = null
+            )
+        }
+    }
+
+    /**
+     * USB 초기화 상태 업데이트
+     */
+    fun updateUsbInitializationMessage(message: String) {
+        _uiState.update {
+            it.copy(usbInitializationMessage = message)
         }
     }
 
@@ -363,19 +419,36 @@ class CameraViewModel @Inject constructor(
     fun requestUsbPermission() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                // USB 초기화 시작
+                withContext(Dispatchers.Main) {
+                    _uiState.update {
+                        it.copy(
+                            isUsbInitializing = true,
+                            usbInitializationMessage = "USB 권한 요청 중..."
+                        )
+                    }
+                }
+
                 val devices = refreshUsbDevicesUseCase()
                 if (devices.isNotEmpty()) {
                     val device = devices.first()
                     withContext(Dispatchers.Main) {
                         requestUsbPermissionUseCase(device)
                         _uiState.update {
-                            it.copy(error = "USB 권한을 요청했습니다. 대화상자에서 승인해주세요.")
+                            it.copy(
+                                error = "USB 권한을 요청했습니다. 대화상자에서 승인해주세요.",
+                                usbInitializationMessage = "USB 권한 대기 중..."
+                            )
                         }
                     }
                 } else {
                     withContext(Dispatchers.Main) {
                         _uiState.update {
-                            it.copy(error = "USB 카메라가 감지되지 않았습니다")
+                            it.copy(
+                                error = "USB 카메라가 감지되지 않았습니다",
+                                isUsbInitializing = false,
+                                usbInitializationMessage = null
+                            )
                         }
                     }
                 }
@@ -383,7 +456,11 @@ class CameraViewModel @Inject constructor(
                 Log.e("CameraViewModel", "USB 권한 요청 실패", e)
                 withContext(Dispatchers.Main) {
                     _uiState.update {
-                        it.copy(error = "USB 권한 요청 실패: ${e.message}")
+                        it.copy(
+                            error = "USB 권한 요청 실패: ${e.message}",
+                            isUsbInitializing = false,
+                            usbInitializationMessage = null
+                        )
                     }
                 }
             }
