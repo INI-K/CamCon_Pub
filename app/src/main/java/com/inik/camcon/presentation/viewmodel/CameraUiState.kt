@@ -28,5 +28,8 @@ data class CameraUiState(
     val isFocusing: Boolean = false,
     val isInitializing: Boolean = false,
     val isLiveViewLoading: Boolean = false,
-    val isEventListenerActive: Boolean = false
+    val isEventListenerActive: Boolean = false,
+    // USB 연결 및 초기화 중 전체 UI 블로킹을 위한 상태
+    val isUsbInitializing: Boolean = false,
+    val usbInitializationMessage: String? = null
 )
