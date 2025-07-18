@@ -1,13 +1,17 @@
 package com.inik.camcon.domain.usecase
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ColorSpace
+import android.graphics.Matrix
 import android.os.Build
+import androidx.exifinterface.media.ExifInterface
 import com.inik.camcon.data.processor.ColorTransferProcessor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -38,11 +42,19 @@ class ColorTransferUseCase @Inject constructor(
             val referenceStats = colorTransferProcessor.getCachedReferenceStats(referenceImagePath)
                 ?: return@withContext null
 
-            // 캐시된 통계를 사용하여 색감 전송 적용
-            val transferredBitmap = colorTransferProcessor.applyColorTransferWithCachedStats(
-                inputBitmap,
-                referenceStats
-            )
+            // 최적화된 네이티브 함수를 우선 사용하여 색감 전송 적용
+            val transferredBitmap = try {
+                colorTransferProcessor.applyColorTransferWithCachedStatsOptimized(
+                    inputBitmap,
+                    referenceStats
+                )
+            } catch (e: Exception) {
+                // 네이티브 함수 실패 시 코틀린 폴백
+                colorTransferProcessor.applyColorTransferWithCachedStats(
+                    inputBitmap,
+                    referenceStats
+                )
+            }
 
             // 결과 이미지를 파일로 저장
             val outputFile = File(outputPath)
@@ -94,7 +106,7 @@ class ColorTransferUseCase @Inject constructor(
                 // 처리된 이미지임을 표시
                 resultExif.setAttribute(
                     androidx.exifinterface.media.ExifInterface.TAG_SOFTWARE,
-                    "CamCon - Color Transfer Applied"
+                    "CamCon - Color Transfer Applied (Optimized)"
                 )
 
                 // EXIF 데이터 저장
@@ -153,7 +165,19 @@ class ColorTransferUseCase @Inject constructor(
             val referenceStats = colorTransferProcessor.getCachedReferenceStats(referenceImagePath)
                 ?: return@withContext null
 
-            colorTransferProcessor.applyColorTransferWithCachedStats(inputBitmap, referenceStats)
+            // 최적화된 네이티브 함수를 우선 사용
+            try {
+                colorTransferProcessor.applyColorTransferWithCachedStatsOptimized(
+                    inputBitmap,
+                    referenceStats
+                )
+            } catch (e: Exception) {
+                // 네이티브 함수 실패 시 코틀린 폴백
+                colorTransferProcessor.applyColorTransferWithCachedStats(
+                    inputBitmap,
+                    referenceStats
+                )
+            }
         } catch (e: Exception) {
             e.printStackTrace()
             null
@@ -171,7 +195,13 @@ class ColorTransferUseCase @Inject constructor(
         referenceBitmap: Bitmap
     ): Bitmap? = withContext(Dispatchers.IO) {
         try {
-            colorTransferProcessor.applyColorTransfer(inputBitmap, referenceBitmap)
+            // 최적화된 네이티브 함수를 우선 사용
+            try {
+                colorTransferProcessor.applyColorTransferOptimized(inputBitmap, referenceBitmap)
+            } catch (e: Exception) {
+                // 네이티브 함수 실패 시 코틀린 폴백
+                colorTransferProcessor.applyColorTransfer(inputBitmap, referenceBitmap)
+            }
         } catch (e: Exception) {
             e.printStackTrace()
             null
@@ -216,5 +246,218 @@ class ColorTransferUseCase @Inject constructor(
             }
         }
         return BitmapFactory.decodeFile(imagePath, options)
+    }
+
+    /**
+     * GPUImage를 초기화합니다.
+     * @param context Android Context
+     */
+    fun initializeGPU(context: Context) {
+        colorTransferProcessor.initializeGPUImage(context)
+    }
+
+    /**
+     * GPU 가속을 사용하여 색감 전송을 수행합니다.
+     * @param inputImagePath 색감을 적용할 입력 이미지 경로
+     * @param referenceImagePath 참조할 색감의 이미지 경로
+     * @return 색감이 적용된 결과 이미지, 실패 시 null
+     */
+    suspend fun applyColorTransferWithGPU(
+        inputImagePath: String,
+        referenceImagePath: String
+    ): Bitmap? = withContext(Dispatchers.Default) {
+        try {
+            android.util.Log.d(
+                "ColorTransferUseCase",
+                "🎮 GPU 색감 전송 시도: ${File(inputImagePath).name}"
+            )
+
+            // 입력 이미지 로드
+            val inputBitmap = loadBitmapWithOrientation(inputImagePath) ?: return@withContext null
+            
+            // 참조 이미지 로드
+            val referenceBitmap = loadBitmapWithOrientation(referenceImagePath) ?: return@withContext null
+            
+            try {
+                // GPU 가속 색감 전송 적용
+                val result = colorTransferProcessor.applyColorTransferWithGPU(
+                    inputBitmap,
+                    referenceBitmap
+                )
+
+                if (result != null) {
+                    android.util.Log.d("ColorTransferUseCase", "✅ GPU 색감 전송 성공")
+                    // 메모리 해제
+                    referenceBitmap.recycle()
+                    inputBitmap.recycle()
+                    return@withContext result
+                } else {
+                    android.util.Log.w("ColorTransferUseCase", "⚠️ GPU 색감 전송 실패 - CPU 폴백")
+                }
+                
+            } catch (e: Exception) {
+                android.util.Log.w("ColorTransferUseCase", "❌ GPU 색감 전송 예외 - CPU 폴백: ${e.message}")
+            }
+
+            // GPU 실패 시 CPU 폴백
+            android.util.Log.d("ColorTransferUseCase", "🔄 CPU 폴백 처리 시작")
+            val result = colorTransferProcessor.applyColorTransferOptimized(
+                inputBitmap,
+                referenceBitmap
+            )
+
+            referenceBitmap.recycle()
+            inputBitmap.recycle()
+
+            android.util.Log.d("ColorTransferUseCase", "✅ CPU 폴백 처리 완료")
+            result
+
+        } catch (e: Exception) {
+            android.util.Log.e("ColorTransferUseCase", "❌ 색감 전송 전체 실패: ${e.message}")
+            e.printStackTrace()
+            null
+        }
+    }
+
+    /**
+     * GPU 가속을 사용하여 색감 전송을 수행하고 결과를 저장합니다.
+     * @param inputImagePath 색감을 적용할 입력 이미지 경로
+     * @param referenceImagePath 참조할 색감의 이미지 경로
+     * @param outputPath 결과 이미지 저장 경로
+     * @return 색감이 적용된 결과 이미지, 실패 시 null
+     */
+    suspend fun applyColorTransferWithGPUAndSave(
+        inputImagePath: String,
+        referenceImagePath: String,
+        outputPath: String
+    ): Bitmap? = withContext(Dispatchers.Default) {
+        try {
+            // GPU 가속 색감 전송 적용
+            val transferredBitmap = applyColorTransferWithGPU(inputImagePath, referenceImagePath)
+                ?: return@withContext null
+            
+            // 결과 이미지를 파일로 저장
+            val outputFile = File(outputPath)
+            FileOutputStream(outputFile).use { outputStream ->
+                transferredBitmap.compress(
+                    Bitmap.CompressFormat.JPEG,
+                    95,
+                    outputStream
+                )
+            }
+            
+            // EXIF 메타데이터 복사
+            try {
+                copyExifMetadata(inputImagePath, outputPath)
+                android.util.Log.d("ColorTransferUseCase", "✅ EXIF 메타데이터 복사 완료")
+            } catch (e: Exception) {
+                android.util.Log.w("ColorTransferUseCase", "⚠️ EXIF 메타데이터 복사 실패: ${e.message}")
+            }
+            
+            transferredBitmap
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    /**
+     * 캐시된 참조 통계와 GPU 가속을 사용하여 색감 전송을 수행합니다.
+     * @param inputBitmap 색감을 적용할 입력 이미지
+     * @param referenceImagePath 참조 이미지 경로
+     * @return 색감이 적용된 결과 이미지, 실패 시 null
+     */
+    suspend fun applyColorTransferWithGPUCached(
+        inputBitmap: Bitmap,
+        referenceImagePath: String
+    ): Bitmap? = withContext(Dispatchers.Default) {
+        try {
+            // 캐시된 참조 통계 가져오기
+            val referenceStats = colorTransferProcessor.getCachedReferenceStats(referenceImagePath)
+                ?: return@withContext null
+            
+            // GPU 가속 색감 전송 적용
+            val result = colorTransferProcessor.applyColorTransferWithGPUCached(
+                inputBitmap,
+                referenceStats
+            )
+            
+            // GPU 실패 시 CPU 폴백
+            return@withContext result ?: colorTransferProcessor.applyColorTransferWithCachedStatsOptimized(
+                inputBitmap,
+                referenceStats
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    private fun loadBitmapWithOrientation(imagePath: String): Bitmap? {
+        val options = BitmapFactory.Options().apply {
+            inJustDecodeBounds = true
+        }
+        BitmapFactory.decodeFile(imagePath, options)
+
+        val exif = ExifInterface(imagePath)
+        val orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+
+        val bitmap = BitmapFactory.decodeFile(imagePath, BitmapFactory.Options().apply {
+            inPreferredConfig = Bitmap.Config.ARGB_8888
+        })
+
+        return when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> rotateBitmap(bitmap, 90)
+            ExifInterface.ORIENTATION_ROTATE_180 -> rotateBitmap(bitmap, 180)
+            ExifInterface.ORIENTATION_ROTATE_270 -> rotateBitmap(bitmap, 270)
+            else -> bitmap
+        }
+    }
+
+    private fun rotateBitmap(bitmap: Bitmap, degrees: Int): Bitmap {
+        val matrix = Matrix()
+        matrix.postRotate(degrees.toFloat())
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    }
+
+    private fun copyExifMetadata(inputImagePath: String, outputPath: String) {
+        val inputExif = ExifInterface(inputImagePath)
+        val outputExif = ExifInterface(outputPath)
+
+        val tagsToPreserve = arrayOf(
+            ExifInterface.TAG_DATETIME,
+            ExifInterface.TAG_DATETIME_ORIGINAL,
+            ExifInterface.TAG_DATETIME_DIGITIZED,
+            ExifInterface.TAG_MAKE,
+            ExifInterface.TAG_MODEL,
+            ExifInterface.TAG_ORIENTATION,
+            ExifInterface.TAG_GPS_LATITUDE,
+            ExifInterface.TAG_GPS_LONGITUDE,
+            ExifInterface.TAG_GPS_LATITUDE_REF,
+            ExifInterface.TAG_GPS_LONGITUDE_REF,
+            ExifInterface.TAG_EXPOSURE_TIME,
+            ExifInterface.TAG_F_NUMBER,
+            ExifInterface.TAG_ISO_SPEED_RATINGS,
+            ExifInterface.TAG_FOCAL_LENGTH,
+            ExifInterface.TAG_APERTURE_VALUE,
+            ExifInterface.TAG_SHUTTER_SPEED_VALUE,
+            ExifInterface.TAG_WHITE_BALANCE,
+            ExifInterface.TAG_FLASH
+        )
+
+        var copiedTags = 0
+        for (tag in tagsToPreserve) {
+            inputExif.getAttribute(tag)?.let { value ->
+                outputExif.setAttribute(tag, value)
+                copiedTags++
+            }
+        }
+
+        outputExif.setAttribute(
+            ExifInterface.TAG_SOFTWARE,
+            "CamCon - Color Transfer Applied (Optimized)"
+        )
+
+        outputExif.saveAttributes()
     }
 }

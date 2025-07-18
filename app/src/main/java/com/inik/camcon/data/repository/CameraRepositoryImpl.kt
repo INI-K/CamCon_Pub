@@ -60,6 +60,11 @@ class CameraRepositoryImpl @Inject constructor(
     private val colorTransferUseCase: ColorTransferUseCase
 ) : CameraRepository {
 
+    init {
+        // GPU 초기화
+        colorTransferUseCase.initializeGPU(context)
+    }
+
     private val _cameraFeed = MutableStateFlow<List<Camera>>(emptyList())
     private val _isConnected = MutableStateFlow(false)
     private val _capturedPhotos = MutableStateFlow<List<CapturedPhoto>>(emptyList())
@@ -933,73 +938,46 @@ class CameraRepositoryImpl @Inject constructor(
                 Log.d("카메라레포지토리", "🎨 색감 전송 적용 시작: $fileName")
 
                 try {
-                    // 메모리 효율적인 이미지 로드 옵션 설정
-                    val options = BitmapFactory.Options().apply {
-                        inJustDecodeBounds = true
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            inPreferredColorSpace = ColorSpace.get(ColorSpace.Named.SRGB)
-                        }
-                    }
+                    // 메모리 효율성을 위한 사전 검사
+                    val runtime = Runtime.getRuntime()
+                    val freeMemory = runtime.freeMemory()
+                    val totalMemory = runtime.totalMemory()
+                    val maxMemory = runtime.maxMemory()
+                    val usedMemory = totalMemory - freeMemory
+                    val availableMemory = maxMemory - usedMemory
 
-                    // 이미지 크기 확인
-                    BitmapFactory.decodeFile(fullPath, options)
-                    val originalWidth = options.outWidth
-                    val originalHeight = options.outHeight
+                    Log.d("카메라레포지토리", "메모리 상태 - 사용중: ${usedMemory / 1024 / 1024}MB, 사용가능: ${availableMemory / 1024 / 1024}MB")
 
-                    Log.d("카메라레포지토리", "원본 이미지 크기: ${originalWidth}x${originalHeight}")
+                    // 색감 전송 적용 (원본 해상도로 처리)
+                    val colorTransferredFile = File(
+                        file.parent,
+                        "${file.nameWithoutExtension}_color_transferred.jpg"
+                    )
 
-                    // 색감 전송은 원본 해상도로 처리 (성능 최적화)
-                    options.inJustDecodeBounds = false
-                    options.inPreferredConfig = Bitmap.Config.ARGB_8888 // 색감 전송을 위한 고품질 설정
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        options.inPreferredColorSpace = ColorSpace.get(ColorSpace.Named.SRGB)
-                    }
+                    val transferredBitmap = colorTransferUseCase.applyColorTransferWithGPUAndSave(
+                        file.absolutePath, // 입력 파일 경로
+                        referenceImagePath, // 참조 이미지 경로
+                        colorTransferredFile.absolutePath // 출력 파일 경로
+                    )
 
-                    // 원본 이미지 로드 (다운샘플링 최소화)
-                    val originalBitmap = BitmapFactory.decodeFile(fullPath, options)
-
-                    if (originalBitmap != null) {
+                    if (transferredBitmap != null) {
+                        processedPath = colorTransferredFile.absolutePath
                         Log.d(
                             "카메라레포지토리",
-                            "로드된 이미지 크기: ${originalBitmap.width}x${originalBitmap.height}"
+                            "✅ 색감 전송 적용 완료 (원본 해상도): ${colorTransferredFile.name}"
                         )
 
-                        // 색감 전송 적용 - EXIF 메타데이터 보존 및 캐시 사용
-                        val colorTransferredFile = File(
-                            file.parent,
-                            "${file.nameWithoutExtension}_color_transferred.jpg"
-                        )
-
-                        val transferredBitmap = colorTransferUseCase.applyColorTransferAndSave(
-                            originalBitmap,
-                            referenceImagePath, // 파일 경로 사용 (캐시됨)
-                            fullPath, // 원본 파일 경로 (EXIF 메타데이터 복사용)
-                            colorTransferredFile.absolutePath // 출력 파일 경로
-                        )
-
-                        if (transferredBitmap != null) {
-                            processedPath = colorTransferredFile.absolutePath
-                            Log.d(
-                                "카메라레포지토리",
-                                "✅ 색감 전송 적용 완료 (원본 해상도): ${colorTransferredFile.name}"
-                            )
-
-                            // 메모리 정리
-                            transferredBitmap.recycle()
-                        } else {
-                            Log.w("카메라레포지토리", "⚠️ 색감 전송 실패, 원본 이미지 사용")
-                        }
-
-                        // 원본 비트맵 메모리 정리
-                        originalBitmap.recycle()
+                        // 메모리 정리 - 즉시 해제
+                        transferredBitmap.recycle()
                     } else {
-                        Log.w("카메라레포지토리", "⚠️ 원본 이미지 로드 실패, 색감 전송 건너뛰기")
+                        Log.w("카메라레포지토리", "⚠️ 색감 전송 실패, 원본 이미지 사용")
                     }
-
                 } catch (e: OutOfMemoryError) {
                     Log.e("카메라레포지토리", "❌ 메모리 부족으로 색감 전송 실패", e)
-                    // 메모리 부족 시 강제 GC 실행
+                    // 메모리 부족 시 강제 GC 실행 및 메모리 정리
                     System.gc()
+                    Thread.sleep(100) // GC 완료 대기
+                    Log.d("카메라레포지토리", "메모리 정리 완료")
                 } catch (e: Exception) {
                     Log.e("카메라레포지토리", "❌ 색감 전송 처리 중 오류", e)
                     // 오류 발생 시 원본 이미지 사용
@@ -1031,6 +1009,11 @@ class CameraRepositoryImpl @Inject constructor(
 
             // 사진 촬영 이벤트 발생
             photoCaptureEventManager.emitPhotoCaptured()
+
+            // 메모리 정리 - 마지막에 한 번 더 실행
+            if (isColorTransferEnabled) {
+                System.gc()
+            }
         } catch (e: Exception) {
             Log.e("카메라레포지토리", "❌ JPEG 사진 다운로드 실패: $fileName", e)
             updatePhotoDownloadFailed(fileName)
