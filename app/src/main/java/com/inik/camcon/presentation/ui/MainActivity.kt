@@ -11,7 +11,9 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.BottomNavigation
 import androidx.compose.material.BottomNavigationItem
@@ -36,6 +38,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -46,11 +49,13 @@ import androidx.navigation.compose.rememberNavController
 import com.inik.camcon.R
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
-import com.inik.camcon.presentation.navigation.MainNavigation
+import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.CameraControlScreen
 import com.inik.camcon.presentation.ui.screens.PhotoPreviewScreen
 import com.inik.camcon.presentation.ui.screens.ServerPhotosScreen
+import com.inik.camcon.presentation.ui.screens.components.UsbInitializationOverlay
+import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -74,7 +79,8 @@ sealed class BottomNavItem(val route: String, val titleRes: Int, val icon: Image
 @Composable
 fun MainScreen(
     onSettingsClick: () -> Unit,
-    globalManager: CameraConnectionGlobalManager
+    globalManager: CameraConnectionGlobalManager,
+    cameraViewModel: CameraViewModel = hiltViewModel()
 ) {
     val navController = rememberNavController()
     val items = listOf(
@@ -92,73 +98,93 @@ fun MainScreen(
     val activeConnectionType by globalManager.activeConnectionType.collectAsState()
     val connectionStatusMessage by globalManager.connectionStatusMessage.collectAsState()
 
+    // CameraViewModel의 USB 초기화 상태 모니터링
+    val cameraUiState by cameraViewModel.uiState.collectAsState()
+
     // 전역 상태 변화 시 로그 출력
     LaunchedEffect(globalConnectionState) {
         Log.d("MainScreen", "전역 연결 상태 변화: $connectionStatusMessage")
     }
 
-    Scaffold(
-        bottomBar = {
-            // 전체화면 모드가 아닐 때만 하단 탭 표시
-            if (!isFullscreen) {
-                BottomNavigation(
-                    backgroundColor = MaterialTheme.colors.surface,
-                    contentColor = MaterialTheme.colors.onSurface
-                ) {
-                    val navBackStackEntry by navController.currentBackStackEntryAsState()
-                    val currentDestination = navBackStackEntry?.destination
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            bottomBar = {
+                // 전체화면 모드가 아닐 때만 하단 탭 표시
+                if (!isFullscreen) {
+                    BottomNavigation(
+                        backgroundColor = MaterialTheme.colors.surface,
+                        contentColor = MaterialTheme.colors.onSurface
+                    ) {
+                        val navBackStackEntry by navController.currentBackStackEntryAsState()
+                        val currentDestination = navBackStackEntry?.destination
 
-                    items.forEach { screen ->
-                        BottomNavigationItem(
-                            icon = {
-                                Icon(
-                                    screen.icon,
-                                    contentDescription = stringResource(screen.titleRes)
-                                )
-                            },
-                            label = { Text(stringResource(screen.titleRes)) },
-                            selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
-                            onClick = {
-                                if (screen.route == "settings") {
-                                    onSettingsClick()
-                                } else {
-                                    navController.navigate(screen.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
+                        items.forEach { screen ->
+                            BottomNavigationItem(
+                                icon = {
+                                    Icon(
+                                        screen.icon,
+                                        contentDescription = stringResource(screen.titleRes)
+                                    )
+                                },
+                                label = { Text(stringResource(screen.titleRes)) },
+                                selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                                onClick = {
+                                    if (screen.route == "settings") {
+                                        onSettingsClick()
+                                    } else {
+                                        navController.navigate(screen.route) {
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
                                         }
-                                        launchSingleTop = true
-                                        restoreState = true
                                     }
-                                }
-                            },
-                            selectedContentColor = MaterialTheme.colors.primary,
-                            unselectedContentColor = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-                        )
+                                },
+                                selectedContentColor = MaterialTheme.colors.primary,
+                                unselectedContentColor = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
                     }
                 }
             }
-        }
-    ) { innerPadding ->
-        NavHost(
-            navController,
-            startDestination = BottomNavItem.CameraControl.route,
-            Modifier.padding(
-                if (isFullscreen) PaddingValues(0.dp) else innerPadding
-            )
-        ) {
-            composable(BottomNavItem.PhotoPreview.route) { PhotoPreviewScreen() }
-            composable(BottomNavItem.CameraControl.route) {
-                // AP 모드일 때는 사진 수신 대기 화면, 아니면 카메라 컨트롤 화면
-                if (activeConnectionType == com.inik.camcon.domain.model.CameraConnectionType.AP_MODE) {
-                    com.inik.camcon.presentation.ui.screens.ApModePhotoReceiveScreen()
-                } else {
-                    CameraControlScreen(
-                        onFullscreenChange = { isFullscreen = it }
-                    )
+        ) { innerPadding ->
+            NavHost(
+                navController,
+                startDestination = BottomNavItem.CameraControl.route,
+                Modifier.padding(
+                    if (isFullscreen) PaddingValues(0.dp) else innerPadding
+                )
+            ) {
+                composable(BottomNavItem.PhotoPreview.route) { PhotoPreviewScreen() }
+                composable(BottomNavItem.CameraControl.route) {
+                    // AP 모드일 때는 사진 수신 대기 화면, 아니면 카메라 컨트롤 화면
+                    if (activeConnectionType == com.inik.camcon.domain.model.CameraConnectionType.AP_MODE) {
+                        com.inik.camcon.presentation.ui.screens.ApModePhotoReceiveScreen()
+                    } else {
+                        CameraControlScreen(
+                            onFullscreenChange = { isFullscreen = it }
+                        )
+                    }
                 }
+                composable(BottomNavItem.ServerPhotos.route) { ServerPhotosScreen() }
+                // 설정은 별도 액티비티로 처리하므로 여기서 제외
             }
-            composable(BottomNavItem.ServerPhotos.route) { ServerPhotosScreen() }
-            // 설정은 별도 액티비티로 처리하므로 여기서 제외
+        }
+
+        // USB 연결 및 초기화 상태에 따른 UI 블로킹 오버레이
+        if (globalConnectionState.ptpipConnectionState == PtpipConnectionState.CONNECTING ||
+            connectionStatusMessage.contains("초기화 중") ||
+            cameraUiState.isUsbInitializing
+        ) {
+            UsbInitializationOverlay(
+                message = when {
+                    cameraUiState.isUsbInitializing -> cameraUiState.usbInitializationMessage
+                        ?: "USB 카메라 초기화 중..."
+
+                    else -> connectionStatusMessage
+                }
+            )
         }
     }
 }
@@ -238,21 +264,16 @@ class MainActivity : ComponentActivity() {
                     }
 
                     Log.d(TAG, "카메라 디바이스 확인됨, 권한 요청")
+
                     withContext(Dispatchers.Main) {
                         usbCameraManager.requestPermission(it)
                     }
-
-                    // 전역 상태 업데이트
-                    //globalManager.forceUpdateState() // 불필요한 호출 제거
                 }
             }
             UsbManager.ACTION_USB_DEVICE_DETACHED -> {
                 val device: UsbDevice? = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
                 device?.let {
                     Log.d(TAG, "USB 디바이스가 분리됨: ${it.deviceName}")
-
-                    // 전역 상태 업데이트
-                    //globalManager.forceUpdateState() // 불필요한 호출 제거
                 }
             }
         }
@@ -279,11 +300,6 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             checkUsbPermissionStatus()
         }
-
-        // 전역 상태 업데이트
-        //lifecycleScope.launch {
-        //    globalManager.forceUpdateState() // 불필요한 호출 제거
-        //}
     }
 
     private suspend fun checkUsbPermissionStatus() = withContext(Dispatchers.IO) {
@@ -391,9 +407,21 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainActivityPreview() {
     CamConTheme {
-        MainNavigation(
-            onSettingsClick = { },
-            onPtpipConnectionClick = { }
-        )
+        // 프리뷰용 간단한 컴포넌트
+        Scaffold(
+            backgroundColor = MaterialTheme.colors.background
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(it),
+                contentAlignment = androidx.compose.ui.Alignment.Center
+            ) {
+                Text(
+                    text = "CamCon - 메인 화면",
+                    style = MaterialTheme.typography.h6
+                )
+            }
+        }
     }
 }
