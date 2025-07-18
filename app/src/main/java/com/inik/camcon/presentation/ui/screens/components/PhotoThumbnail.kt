@@ -1,5 +1,6 @@
 package com.inik.camcon.presentation.ui.screens.components
 
+import android.graphics.ColorSpace
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -58,6 +59,12 @@ fun PhotoThumbnail(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(photo.thumbnailPath)
                             .crossfade(true)
+                            .apply {
+                                // sRGB 색공간 설정
+                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                    colorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
+                                }
+                            }
                             .build(),
                         contentDescription = photo.name,
                         modifier = Modifier.fillMaxSize(),
@@ -70,6 +77,12 @@ fun PhotoThumbnail(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(photo.path)
                             .crossfade(true)
+                            .apply {
+                                // sRGB 색공간 설정
+                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                    colorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
+                                }
+                            }
                             .build(),
                         contentDescription = photo.name,
                         modifier = Modifier.fillMaxSize(),
@@ -82,6 +95,12 @@ fun PhotoThumbnail(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(thumbnailData)
                             .crossfade(true)
+                            .apply {
+                                // sRGB 색공간 설정
+                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                    colorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
+                                }
+                            }
                             .build(),
                         contentDescription = photo.name,
                         modifier = Modifier.fillMaxSize(),

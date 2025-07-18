@@ -1,5 +1,6 @@
 package com.inik.camcon.presentation.ui.screens.components
 
+import android.graphics.ColorSpace
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -85,6 +86,12 @@ fun PhotoSlide(
                 )
                 .memoryCachePolicy(CachePolicy.ENABLED) // 메모리 캐시 활성화
                 .diskCachePolicy(CachePolicy.ENABLED) // 디스크 캐시 활성화
+                .apply {
+                    // sRGB 색공간 설정
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                        colorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
+                    }
+                }
                 .build()
         )
 
