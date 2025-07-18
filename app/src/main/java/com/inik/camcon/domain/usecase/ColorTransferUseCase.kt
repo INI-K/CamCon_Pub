@@ -29,13 +29,15 @@ class ColorTransferUseCase @Inject constructor(
      * @param referenceImagePath 참조할 이미지의 파일 경로
      * @param originalImagePath 원본 이미지 파일 경로 (EXIF 메타데이터 복사용)
      * @param outputPath 결과 이미지 저장 경로
+     * @param intensity 색감 전송 강도 (0.0 ~ 1.0, 기본값 0.03)
      * @return 색감이 적용된 결과 이미지, 실패 시 null
      */
     suspend fun applyColorTransferAndSave(
         inputBitmap: Bitmap,
         referenceImagePath: String,
         originalImagePath: String,
-        outputPath: String
+        outputPath: String,
+        intensity: Float = 0.03f
     ): Bitmap? = withContext(Dispatchers.IO) {
         try {
             // 참조 이미지 통계를 캐시에서 가져오거나 계산
@@ -46,13 +48,15 @@ class ColorTransferUseCase @Inject constructor(
             val transferredBitmap = try {
                 colorTransferProcessor.applyColorTransferWithCachedStatsOptimized(
                     inputBitmap,
-                    referenceStats
+                    referenceStats,
+                    intensity
                 )
             } catch (e: Exception) {
                 // 네이티브 함수 실패 시 코틀린 폴백
                 colorTransferProcessor.applyColorTransferWithCachedStats(
                     inputBitmap,
-                    referenceStats
+                    referenceStats,
+                    intensity
                 )
             }
 
@@ -129,20 +133,23 @@ class ColorTransferUseCase @Inject constructor(
      * @param referenceBitmap 참조할 색감의 이미지
      * @param originalImagePath 원본 이미지 파일 경로 (EXIF 메타데이터 복사용)
      * @param outputPath 결과 이미지 저장 경로
+     * @param intensity 색감 전송 강도 (0.0 ~ 1.0, 기본값 0.03)
      * @return 색감이 적용된 결과 이미지, 실패 시 null
      */
     suspend fun applyColorTransferAndSave(
         inputBitmap: Bitmap,
         referenceBitmap: Bitmap,
         originalImagePath: String,
-        outputPath: String
+        outputPath: String,
+        intensity: Float = 0.03f
     ): Bitmap? = withContext(Dispatchers.IO) {
         try {
             colorTransferProcessor.applyColorTransferAndSave(
                 inputBitmap,
                 referenceBitmap,
                 originalImagePath,
-                outputPath
+                outputPath,
+                intensity
             )
         } catch (e: Exception) {
             e.printStackTrace()
@@ -154,11 +161,13 @@ class ColorTransferUseCase @Inject constructor(
      * 파일 경로의 참조 이미지를 사용하여 색감 전송을 수행합니다.
      * @param inputBitmap 색감을 적용할 입력 이미지
      * @param referenceImagePath 참조할 이미지의 파일 경로
+     * @param intensity 색감 전송 강도 (0.0 ~ 1.0, 기본값 0.03)
      * @return 색감이 적용된 결과 이미지, 실패 시 null
      */
     suspend fun applyColorTransfer(
         inputBitmap: Bitmap,
-        referenceImagePath: String
+        referenceImagePath: String,
+        intensity: Float = 0.03f
     ): Bitmap? = withContext(Dispatchers.IO) {
         try {
             // 캐시된 참조 이미지 통계 사용
@@ -169,13 +178,15 @@ class ColorTransferUseCase @Inject constructor(
             try {
                 colorTransferProcessor.applyColorTransferWithCachedStatsOptimized(
                     inputBitmap,
-                    referenceStats
+                    referenceStats,
+                    intensity
                 )
             } catch (e: Exception) {
                 // 네이티브 함수 실패 시 코틀린 폴백
                 colorTransferProcessor.applyColorTransferWithCachedStats(
                     inputBitmap,
-                    referenceStats
+                    referenceStats,
+                    intensity
                 )
             }
         } catch (e: Exception) {
@@ -188,19 +199,25 @@ class ColorTransferUseCase @Inject constructor(
      * 비트맵을 직접 사용하여 색감 전송을 수행합니다.
      * @param inputBitmap 색감을 적용할 입력 이미지
      * @param referenceBitmap 참조할 색감의 이미지
+     * @param intensity 색감 전송 강도 (0.0 ~ 1.0, 기본값 0.03)
      * @return 색감이 적용된 결과 이미지, 실패 시 null
      */
     suspend fun applyColorTransfer(
         inputBitmap: Bitmap,
-        referenceBitmap: Bitmap
+        referenceBitmap: Bitmap,
+        intensity: Float = 0.03f
     ): Bitmap? = withContext(Dispatchers.IO) {
         try {
             // 최적화된 네이티브 함수를 우선 사용
             try {
-                colorTransferProcessor.applyColorTransferOptimized(inputBitmap, referenceBitmap)
+                colorTransferProcessor.applyColorTransferOptimized(
+                    inputBitmap,
+                    referenceBitmap,
+                    intensity
+                )
             } catch (e: Exception) {
                 // 네이티브 함수 실패 시 코틀린 폴백
-                colorTransferProcessor.applyColorTransfer(inputBitmap, referenceBitmap)
+                colorTransferProcessor.applyColorTransfer(inputBitmap, referenceBitmap, intensity)
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -260,11 +277,13 @@ class ColorTransferUseCase @Inject constructor(
      * GPU 가속을 사용하여 색감 전송을 수행합니다.
      * @param inputImagePath 색감을 적용할 입력 이미지 경로
      * @param referenceImagePath 참조할 색감의 이미지 경로
+     * @param intensity 색감 전송 강도 (0.0 ~ 1.0, 기본값 0.03)
      * @return 색감이 적용된 결과 이미지, 실패 시 null
      */
     suspend fun applyColorTransferWithGPU(
         inputImagePath: String,
-        referenceImagePath: String
+        referenceImagePath: String,
+        intensity: Float = 0.03f
     ): Bitmap? = withContext(Dispatchers.Default) {
         try {
             android.util.Log.d(
@@ -282,7 +301,8 @@ class ColorTransferUseCase @Inject constructor(
                 // GPU 가속 색감 전송 적용
                 val result = colorTransferProcessor.applyColorTransferWithGPU(
                     inputBitmap,
-                    referenceBitmap
+                    referenceBitmap,
+                    intensity
                 )
 
                 if (result != null) {
@@ -303,7 +323,8 @@ class ColorTransferUseCase @Inject constructor(
             android.util.Log.d("ColorTransferUseCase", "🔄 CPU 폴백 처리 시작")
             val result = colorTransferProcessor.applyColorTransferOptimized(
                 inputBitmap,
-                referenceBitmap
+                referenceBitmap,
+                intensity
             )
 
             referenceBitmap.recycle()
@@ -324,38 +345,88 @@ class ColorTransferUseCase @Inject constructor(
      * @param inputImagePath 색감을 적용할 입력 이미지 경로
      * @param referenceImagePath 참조할 색감의 이미지 경로
      * @param outputPath 결과 이미지 저장 경로
+     * @param intensity 색감 전송 강도 (0.0 ~ 1.0, 기본값 0.03)
      * @return 색감이 적용된 결과 이미지, 실패 시 null
      */
     suspend fun applyColorTransferWithGPUAndSave(
         inputImagePath: String,
         referenceImagePath: String,
-        outputPath: String
+        outputPath: String,
+        intensity: Float = 0.03f
     ): Bitmap? = withContext(Dispatchers.Default) {
         try {
+            android.util.Log.d("ColorTransferUseCase", "🎮 GPU 색감 전송 저장 시작")
+            android.util.Log.d("ColorTransferUseCase", "  입력: ${File(inputImagePath).name}")
+            android.util.Log.d("ColorTransferUseCase", "  참조: ${File(referenceImagePath).name}")
+            android.util.Log.d("ColorTransferUseCase", "  출력: ${File(outputPath).name}")
+            
             // GPU 가속 색감 전송 적용
-            val transferredBitmap = applyColorTransferWithGPU(inputImagePath, referenceImagePath)
-                ?: return@withContext null
+            val transferredBitmap =
+                applyColorTransferWithGPU(inputImagePath, referenceImagePath, intensity)
             
-            // 결과 이미지를 파일로 저장
-            val outputFile = File(outputPath)
-            FileOutputStream(outputFile).use { outputStream ->
-                transferredBitmap.compress(
-                    Bitmap.CompressFormat.JPEG,
-                    95,
-                    outputStream
-                )
+            if (transferredBitmap != null) {
+                android.util.Log.d("ColorTransferUseCase", "✅ GPU 색감 전송 성공 - 파일 저장 중")
+                
+                // 결과 이미지를 파일로 저장
+                val outputFile = File(outputPath)
+                FileOutputStream(outputFile).use { outputStream ->
+                    transferredBitmap.compress(
+                        Bitmap.CompressFormat.JPEG,
+                        95,
+                        outputStream
+                    )
+                }
+                
+                android.util.Log.d("ColorTransferUseCase", "✅ GPU 색감 전송 파일 저장 완료")
+                
+                // EXIF 메타데이터 복사
+                try {
+                    copyExifMetadata(inputImagePath, outputPath)
+                    android.util.Log.d("ColorTransferUseCase", "✅ EXIF 메타데이터 복사 완료")
+                } catch (e: Exception) {
+                    android.util.Log.w("ColorTransferUseCase", "⚠️ EXIF 메타데이터 복사 실패: ${e.message}")
+                }
+                
+                return@withContext transferredBitmap
+            } else {
+                android.util.Log.w("ColorTransferUseCase", "⚠️ GPU 색감 전송 실패 - CPU 폴백 시도")
+                
+                // CPU 폴백
+                val inputBitmap = loadBitmapWithOrientation(inputImagePath)
+                val referenceBitmap = loadBitmapWithOrientation(referenceImagePath)
+                
+                if (inputBitmap != null && referenceBitmap != null) {
+                    val result = colorTransferProcessor.applyColorTransferOptimized(
+                        inputBitmap,
+                        referenceBitmap,
+                        intensity
+                    )
+                    
+                    // 결과 저장
+                    val outputFile = File(outputPath)
+                    FileOutputStream(outputFile).use { outputStream ->
+                        result.compress(Bitmap.CompressFormat.JPEG, 95, outputStream)
+                    }
+                    
+                    // EXIF 복사
+                    try {
+                        copyExifMetadata(inputImagePath, outputPath)
+                    } catch (e: Exception) {
+                        android.util.Log.w("ColorTransferUseCase", "⚠️ EXIF 메타데이터 복사 실패: ${e.message}")
+                    }
+                    
+                    inputBitmap.recycle()
+                    referenceBitmap.recycle()
+                    
+                    android.util.Log.d("ColorTransferUseCase", "✅ CPU 폴백 완료")
+                    return@withContext result
+                } else {
+                    android.util.Log.e("ColorTransferUseCase", "❌ 이미지 로드 실패")
+                    return@withContext null
+                }
             }
-            
-            // EXIF 메타데이터 복사
-            try {
-                copyExifMetadata(inputImagePath, outputPath)
-                android.util.Log.d("ColorTransferUseCase", "✅ EXIF 메타데이터 복사 완료")
-            } catch (e: Exception) {
-                android.util.Log.w("ColorTransferUseCase", "⚠️ EXIF 메타데이터 복사 실패: ${e.message}")
-            }
-            
-            transferredBitmap
         } catch (e: Exception) {
+            android.util.Log.e("ColorTransferUseCase", "❌ GPU 색감 전송 저장 실패: ${e.message}")
             e.printStackTrace()
             null
         }
@@ -365,11 +436,13 @@ class ColorTransferUseCase @Inject constructor(
      * 캐시된 참조 통계와 GPU 가속을 사용하여 색감 전송을 수행합니다.
      * @param inputBitmap 색감을 적용할 입력 이미지
      * @param referenceImagePath 참조 이미지 경로
+     * @param intensity 색감 전송 강도 (0.0 ~ 1.0, 기본값 0.03)
      * @return 색감이 적용된 결과 이미지, 실패 시 null
      */
     suspend fun applyColorTransferWithGPUCached(
         inputBitmap: Bitmap,
-        referenceImagePath: String
+        referenceImagePath: String,
+        intensity: Float = 0.03f
     ): Bitmap? = withContext(Dispatchers.Default) {
         try {
             // 캐시된 참조 통계 가져오기
@@ -379,13 +452,15 @@ class ColorTransferUseCase @Inject constructor(
             // GPU 가속 색감 전송 적용
             val result = colorTransferProcessor.applyColorTransferWithGPUCached(
                 inputBitmap,
-                referenceStats
+                referenceStats,
+                intensity
             )
             
             // GPU 실패 시 CPU 폴백
             return@withContext result ?: colorTransferProcessor.applyColorTransferWithCachedStatsOptimized(
                 inputBitmap,
-                referenceStats
+                referenceStats,
+                intensity
             )
         } catch (e: Exception) {
             e.printStackTrace()
