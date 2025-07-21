@@ -179,6 +179,11 @@ fun FullScreenPhotoViewer(
                             style = MaterialTheme.typography.caption,
                             color = Color.White.copy(alpha = 0.7f)
                         )
+                        Text(
+                            text = "← 슬라이드하여 다른 사진 보기 →",
+                            style = MaterialTheme.typography.caption,
+                            color = Color.White.copy(alpha = 0.5f)
+                        )
                     }
                 }
             }
