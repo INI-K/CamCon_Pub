@@ -155,7 +155,10 @@ class PhotoPreviewViewModel @Inject constructor(
                     android.util.Log.d(TAG, "사진 목록 불러오기 성공: ${paginatedPhotos.photos.size}개")
                     _uiState.value = _uiState.value.copy(
                         allPhotos = paginatedPhotos.photos,
-                        photos = filterPhotos(paginatedPhotos.photos),
+                        photos = filterPhotos(
+                            paginatedPhotos.photos,
+                            _uiState.value.fileTypeFilter
+                        ),
                         isLoading = false,
                         currentPage = paginatedPhotos.currentPage,
                         totalPages = paginatedPhotos.totalPages,
@@ -192,7 +195,7 @@ class PhotoPreviewViewModel @Inject constructor(
 
                     _uiState.value = _uiState.value.copy(
                         allPhotos = newPhotos,
-                        photos = filterPhotos(newPhotos),
+                        photos = filterPhotos(newPhotos, _uiState.value.fileTypeFilter),
                         isLoadingMore = false,
                         currentPage = paginatedPhotos.currentPage,
                         totalPages = paginatedPhotos.totalPages,
@@ -367,7 +370,7 @@ class PhotoPreviewViewModel @Inject constructor(
 
                     _uiState.value = _uiState.value.copy(
                         allPhotos = newPhotos,
-                        photos = filterPhotos(newPhotos),
+                        photos = filterPhotos(newPhotos, _uiState.value.fileTypeFilter),
                         isLoadingMore = false,
                         currentPage = paginatedPhotos.currentPage,
                         totalPages = paginatedPhotos.totalPages,
@@ -393,26 +396,31 @@ class PhotoPreviewViewModel @Inject constructor(
         }
     }
 
-    private fun filterPhotos(photos: List<CameraPhoto>): List<CameraPhoto> {
-        return when (_uiState.value.fileTypeFilter) {
+    private fun filterPhotos(
+        photos: List<CameraPhoto>,
+        filter: FileTypeFilter = _uiState.value.fileTypeFilter
+    ): List<CameraPhoto> {
+        android.util.Log.d(TAG, "filterPhotos 호출: 필터=$filter, 전체사진=${photos.size}개")
+
+        val filtered = when (filter) {
             FileTypeFilter.ALL -> photos
             FileTypeFilter.JPG -> photos.filter {
-                it.path.endsWith(
-                    ".jpg",
-                    true
-                ) || it.path.endsWith(".jpeg", true)
+                val isJpg = it.path.endsWith(".jpg", true) || it.path.endsWith(".jpeg", true)
+                android.util.Log.v(TAG, "JPG 필터 확인: ${it.path} -> $isJpg")
+                isJpg
             }
-
             FileTypeFilter.RAW -> photos.filter {
-                it.path.endsWith(
-                    ".arw",
-                    true
-                ) || it.path.endsWith(".cr2", true) || it.path.endsWith(
-                    ".nef",
-                    true
-                ) || it.path.endsWith(".dng", true)
+                val isRaw = it.path.endsWith(".arw", true) ||
+                        it.path.endsWith(".cr2", true) ||
+                        it.path.endsWith(".nef", true) ||
+                        it.path.endsWith(".dng", true)
+                android.util.Log.v(TAG, "RAW 필터 확인: ${it.path} -> $isRaw")
+                isRaw
             }
         }
+
+        android.util.Log.d(TAG, "필터링 결과: ${filtered.size}개")
+        return filtered
     }
 
     /**
@@ -421,16 +429,18 @@ class PhotoPreviewViewModel @Inject constructor(
     fun changeFileTypeFilter(filter: FileTypeFilter) {
         android.util.Log.d(TAG, "파일 타입 필터 변경: ${_uiState.value.fileTypeFilter} -> $filter")
 
+        val filteredPhotos = filterPhotos(_uiState.value.allPhotos, filter)
+
         _uiState.value = _uiState.value.copy(
             fileTypeFilter = filter,
-            photos = filterPhotos(_uiState.value.allPhotos)
+            photos = filteredPhotos
         )
 
-        _prefetchedPage.value = 0 // Reset prefetched page when filter changes
+        _prefetchedPage.value = 0 // 필터 변경 시 프리로드 페이지 리셋
 
         android.util.Log.d(
             TAG,
-            "필터링 완료: 전체 ${_uiState.value.allPhotos.size}개 -> 필터링된 ${_uiState.value.photos.size}개"
+            "필터링 완료: 전체 ${_uiState.value.allPhotos.size}개 -> 필터링된 ${filteredPhotos.size}개"
         )
     }
 }
