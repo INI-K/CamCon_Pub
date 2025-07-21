@@ -63,7 +63,6 @@ class PhotoPreviewViewModel @Inject constructor(
     companion object {
         private const val TAG = "PhotoPreviewViewModel"
         private const val PREFETCH_PAGE_SIZE = 50
-        private const val PREFETCH_THRESHOLD = 30
     }
 
     init {
@@ -332,20 +331,42 @@ class PhotoPreviewViewModel @Inject constructor(
 
     /**
      * 프리로딩: 사용자가 특정 인덱스에 도달했을 때 호출
-     * 30번째 사진에 도달하면 다음 50장을 백그라운드에서 미리 로드
+     * 필터링된 사진 수에 따라 동적으로 임계값 조정
      */
     fun onPhotoIndexReached(currentIndex: Int) {
-        val photos = _uiState.value.photos
+        val filteredPhotos = _uiState.value.photos
+        val totalFilteredPhotos = filteredPhotos.size
         val currentPage = _uiState.value.currentPage
-        val shouldPrefetch = currentIndex >= PREFETCH_THRESHOLD &&
+
+        // 동적 임계값 계산: 필터링된 사진의 70% 지점 또는 최소 10개, 최대 30개
+        val dynamicThreshold = when {
+            totalFilteredPhotos <= 15 -> 10  // 적은 사진이면 빨리 트리거
+            totalFilteredPhotos <= 50 -> (totalFilteredPhotos * 0.6).toInt()  // 60% 지점
+            else -> (totalFilteredPhotos * 0.7).toInt().coerceAtMost(30)  // 70% 지점, 최대 30
+        }
+
+        val shouldPrefetch = currentIndex >= dynamicThreshold &&
                 !_uiState.value.isLoadingMore &&
                 _uiState.value.hasNextPage &&
                 _prefetchedPage.value <= currentPage // 아직 프리로드하지 않은 페이지만
 
+        android.util.Log.d(
+            TAG, """
+            프리로딩 체크:
+            - 현재 인덱스: $currentIndex
+            - 필터링된 사진 수: $totalFilteredPhotos
+            - 동적 임계값: $dynamicThreshold
+            - 프리로드 조건 만족: $shouldPrefetch
+            - hasNextPage: ${_uiState.value.hasNextPage}
+            - isLoadingMore: ${_uiState.value.isLoadingMore}
+            - prefetchedPage: ${_prefetchedPage.value} vs currentPage: $currentPage
+        """.trimIndent()
+        )
+
         if (shouldPrefetch) {
-            android.util.Log.d(TAG, "프리로드 트리거: 현재 인덱스 $currentIndex, 임계값 $PREFETCH_THRESHOLD 도달")
+            android.util.Log.d(TAG, "프리로드 트리거: 현재 인덱스 $currentIndex, 동적 임계값 $dynamicThreshold 도달")
             prefetchNextPage()
-            _prefetchedPage.value = currentPage + 1 // Update prefetched page
+            _prefetchedPage.value = currentPage + 1
         }
     }
 
@@ -433,14 +454,16 @@ class PhotoPreviewViewModel @Inject constructor(
 
         _uiState.value = _uiState.value.copy(
             fileTypeFilter = filter,
-            photos = filteredPhotos
+            photos = filteredPhotos,
+            // 필터 변경 시 프리로딩 관련 상태는 유지 (hasNextPage는 전체 데이터 기준)
         )
 
-        _prefetchedPage.value = 0 // 필터 변경 시 프리로드 페이지 리셋
+        // 프리로딩 페이지 리셋 - 새 필터에서 다시 프리로딩 가능하도록
+        _prefetchedPage.value = _uiState.value.currentPage
 
         android.util.Log.d(
             TAG,
-            "필터링 완료: 전체 ${_uiState.value.allPhotos.size}개 -> 필터링된 ${filteredPhotos.size}개"
+            "필터링 완료: 전체 ${_uiState.value.allPhotos.size}개 -> 필터링된 ${filteredPhotos.size}개, hasNextPage: ${_uiState.value.hasNextPage}"
         )
     }
 }
