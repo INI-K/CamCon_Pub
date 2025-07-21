@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -55,7 +54,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.inik.camcon.presentation.theme.CamConTheme
-import com.inik.camcon.presentation.ui.screens.components.ColorTransferPreviewView
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -263,26 +261,6 @@ fun SettingsScreen(
                 )
 
                 if (isColorTransferEnabled) {
-                    // 색감 미리보기 컴포넌트
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    ColorTransferPreviewView(
-                        referenceImagePath = colorTransferReferenceImagePath,
-                        targetImagePath = colorTransferTargetImagePath,
-                        onReferenceImageClick = {
-                            referenceImagePickerLauncher.launch("image/*")
-                        },
-                        onTargetImageClick = {
-                            // 실제로는 서버에서 받은 최신 사진을 표시하지만, 
-                            // 데모를 위해 갤러리에서 선택하도록 함
-                            targetImagePickerLauncher.launch("image/*")
-                        },
-                        enabled = isColorTransferEnabled,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
                     // 기존 참조 이미지 선택 항목을 간소화
                     SettingsItemWithNavigation(
                         icon = Icons.Default.Settings,
