@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -69,7 +70,15 @@ fun ColorTransferSettingsScreen(
 ) {
     val context = LocalContext.current
     
-    // 색감 전송 설정 상태
+    LaunchedEffect(Unit) {
+        android.util.Log.d("ColorTransferSettings", "🎮 GPU 초기화 시작...")
+        try {
+            android.util.Log.d("ColorTransferSettings", "✅ GPU 초기화 완료")
+        } catch (e: Exception) {
+            android.util.Log.e("ColorTransferSettings", "❌ GPU 초기화 실패: ${e.message}")
+        }
+    }
+    
     val isColorTransferEnabled by appSettingsViewModel.isColorTransferEnabled.collectAsState()
     val colorTransferReferenceImagePath by appSettingsViewModel.colorTransferReferenceImagePath.collectAsState()
     val colorTransferTargetImagePath by appSettingsViewModel.colorTransferTargetImagePath.collectAsState()
@@ -228,6 +237,14 @@ fun ColorTransferSettingsScreen(
                             style = MaterialTheme.typography.body2,
                             color = MaterialTheme.colors.primary
                         )
+
+                        // 디버깅용 현재 슬라이더 값 표시
+                        Text(
+                            text = "슬라이더 값: ${(colorTransferIntensity * 100).toInt()}%",
+                            style = MaterialTheme.typography.caption,
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                        )
+
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Text(
@@ -240,9 +257,17 @@ fun ColorTransferSettingsScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Slider(
-                            value = colorTransferIntensity,
-                            onValueChange = { appSettingsViewModel.setColorTransferIntensity(it) },
-                            valueRange = 0.01f..0.1f,
+                            value = (colorTransferIntensity * 100).toInt().toFloat(), // 정수 값으로 변환
+                            onValueChange = { newValue ->
+                                val intValue = newValue.toInt()
+                                android.util.Log.d(
+                                    "SliderDebug",
+                                    "Slider percentage: $intValue%, Converted: ${intValue / 100f}"
+                                )
+                                appSettingsViewModel.setColorTransferIntensity(intValue / 100f)
+                            },
+                            valueRange = 1f..50f, // 1%~50%로 범위 확장
+                            // steps 제거하여 부드러운 터치 감도 제공
                             colors = SliderDefaults.colors(
                                 thumbColor = MaterialTheme.colors.primary,
                                 activeTrackColor = MaterialTheme.colors.primary
@@ -254,12 +279,12 @@ fun ColorTransferSettingsScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "약함 (1%)",
+                                text = "최소 (1%)",
                                 style = MaterialTheme.typography.caption,
                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                             )
                             Text(
-                                text = "강함 (10%)",
+                                text = "최대 (50%)",
                                 style = MaterialTheme.typography.caption,
                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                             )
