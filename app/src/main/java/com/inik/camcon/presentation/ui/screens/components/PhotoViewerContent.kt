@@ -1,6 +1,8 @@
 package com.inik.camcon.presentation.ui.screens.components
 
 import android.util.Log
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.pager.HorizontalPager
@@ -14,10 +16,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.inik.camcon.domain.model.CameraPhoto
+import kotlin.math.max
+import kotlin.math.min
 
 /**
  * 사진 뷰어의 메인 이미지 콘텐츠
@@ -96,7 +101,8 @@ fun PhotoViewerContent(
         state = pagerState,
         modifier = Modifier.fillMaxSize(),
         pageSpacing = 0.dp,
-        userScrollEnabled = true // 디버깅을 위해 항상 활성화
+        // 줌 상태일 때 스와이프 비활성화
+        userScrollEnabled = imageScale <= 1.1f
     ) { pageIndex ->
         val pagePhoto = photos[pageIndex]
         val isCurrentPage = pageIndex == pagerState.currentPage
@@ -106,76 +112,75 @@ fun PhotoViewerContent(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-            // 디버깅을 위해 제스처 처리를 일시적으로 비활성화
-            /*
-            .pointerInput(pageIndex, imageScale) {
-                // 모든 제스처를 하나의 pointerInput으로 통합
-                detectTapGestures(
-                    onDoubleTap = { tapOffset ->
-                        if (pageIndex == pagerState.currentPage) {
-                            val currentTime = System.currentTimeMillis()
-                            if (currentTime - lastTapTime > 300) { // 중복 방지
-                                lastTapTime = currentTime
-                                Log.d("PhotoViewer", "더블탭 감지! 현재 스케일: $imageScale")
+                .pointerInput(pageIndex, imageScale) {
+                    // Tap 및 Transform 제스처 통합, 현재 페이지에서만 동작
+                    if (pageIndex == pagerState.currentPage) {
+                        detectTransformGestures(
+                            onGesture = { _, pan, zoom, _ ->
+                                val newScale = max(1f, min(imageScale * zoom, 4f))
 
-                                if (imageScale > 1.5f) {
-                                    // 축소
-                                    imageScale = 1f
-                                    imageOffsetX = 0f
-                                    imageOffsetY = 0f
-                                    onAnimateScale(1f)
-                                    onAnimateOffset(0f, 0f)
-                                } else {
-                                    // 확대 (탭한 지점을 중심으로)
-                                    val newScale = 2.5f
+                                if (newScale > 1f || imageScale > 1f) {
                                     imageScale = newScale
 
-                                    // 탭한 지점을 화면 중앙으로 이동
-                                    val centerX = screenWidth / 2f
-                                    val centerY = screenHeight / 2f
-                                    imageOffsetX =
-                                        (centerX - tapOffset.x) * (newScale - 1f) / newScale
-                                    imageOffsetY =
-                                        (centerY - tapOffset.y) * (newScale - 1f) / newScale
+                                    // 확대된 상태에서만 팬 처리
+                                    if (imageScale > 1f) {
+                                        val maxOffsetX = (screenWidth * (imageScale - 1f)) / 2f
+                                        val maxOffsetY = (screenHeight * (imageScale - 1f)) / 2f
 
-                                    onAnimateScale(newScale)
-                                    onAnimateOffset(imageOffsetX, imageOffsetY)
+                                        imageOffsetX =
+                                            (imageOffsetX + pan.x).coerceIn(-maxOffsetX, maxOffsetX)
+                                        imageOffsetY =
+                                            (imageOffsetY + pan.y).coerceIn(-maxOffsetY, maxOffsetY)
+                                    } else {
+                                        imageOffsetX = 0f
+                                        imageOffsetY = 0f
+                                    }
+
+                                    onScaleChange(imageScale)
+                                    onOffsetChange(imageOffsetX, imageOffsetY)
                                 }
                             }
-                        }
-                    }
-                )
-            }
-            .pointerInput(pageIndex, imageScale) {
-                // 핀치 줌과 팬을 함께 처리 (현재 페이지에서만)
-                if (pageIndex == pagerState.currentPage) {
-                    detectTransformGestures { _, pan, zoom, _ ->
-                        val newScale = max(1f, min(imageScale * zoom, 4f))
-
-                        if (newScale > 1f || imageScale > 1f) {
-                            imageScale = newScale
-
-                            // 확대된 상태에서만 팬 처리
-                            if (imageScale > 1f) {
-                                val maxOffsetX = (screenWidth * (imageScale - 1f)) / 2f
-                                val maxOffsetY = (screenHeight * (imageScale - 1f)) / 2f
-
-                                imageOffsetX =
-                                    (imageOffsetX + pan.x).coerceIn(-maxOffsetX, maxOffsetX)
-                                imageOffsetY =
-                                    (imageOffsetY + pan.y).coerceIn(-maxOffsetY, maxOffsetY)
-                            } else {
-                                imageOffsetX = 0f
-                                imageOffsetY = 0f
-                            }
-
-                            onScaleChange(imageScale)
-                            onOffsetChange(imageOffsetX, imageOffsetY)
-                        }
+                        )
                     }
                 }
-            }
-            */,
+                .pointerInput(pageIndex, imageScale) {
+                    // 더블탭 확대/축소, 현재 페이지에서만
+                    if (pageIndex == pagerState.currentPage) {
+                        detectTapGestures(
+                            onDoubleTap = { tapOffset ->
+                                val currentTime = System.currentTimeMillis()
+                                if (currentTime - lastTapTime > 300) { // 중복 방지
+                                    lastTapTime = currentTime
+                                    Log.d("PhotoViewer", "더블탭 감지! 현재 스케일: $imageScale")
+
+                                    if (imageScale > 1.5f) {
+                                        // 축소
+                                        imageScale = 1f
+                                        imageOffsetX = 0f
+                                        imageOffsetY = 0f
+                                        onAnimateScale(1f)
+                                        onAnimateOffset(0f, 0f)
+                                    } else {
+                                        // 확대 (탭한 지점을 중심으로)
+                                        val newScale = 2.5f
+                                        imageScale = newScale
+
+                                        // 탭한 지점을 화면 중앙으로 이동
+                                        val centerX = screenWidth / 2f
+                                        val centerY = screenHeight / 2f
+                                        imageOffsetX =
+                                            (centerX - tapOffset.x) * (newScale - 1f) / newScale
+                                        imageOffsetY =
+                                            (centerY - tapOffset.y) * (newScale - 1f) / newScale
+
+                                        onAnimateScale(newScale)
+                                        onAnimateOffset(imageOffsetX, imageOffsetY)
+                                    }
+                                }
+                            }
+                        )
+                    }
+                },
             contentAlignment = Alignment.Center
         ) {
             PhotoSlide(
