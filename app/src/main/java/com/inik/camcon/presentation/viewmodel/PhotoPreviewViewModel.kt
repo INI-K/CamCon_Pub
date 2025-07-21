@@ -26,8 +26,16 @@ data class PhotoPreviewUiState(
     val hasNextPage: Boolean = false,
     val thumbnailCache: Map<String, ByteArray> = emptyMap(),
     val isConnected: Boolean = false,
-    val isInitialized: Boolean = false
+    val isInitialized: Boolean = false,
+    val fileTypeFilter: FileTypeFilter = FileTypeFilter.JPG,
+    val allPhotos: List<CameraPhoto> = emptyList()
 )
+
+enum class FileTypeFilter {
+    ALL,
+    JPG,
+    RAW
+}
 
 @HiltViewModel
 class PhotoPreviewViewModel @Inject constructor(
@@ -49,8 +57,13 @@ class PhotoPreviewViewModel @Inject constructor(
     private val _downloadingImages = MutableStateFlow<Set<String>>(emptySet())
     val downloadingImages: StateFlow<Set<String>> = _downloadingImages.asStateFlow()
 
+    // 프리로딩 상태 추적
+    private val _prefetchedPage = MutableStateFlow(0)
+
     companion object {
         private const val TAG = "PhotoPreviewViewModel"
+        private const val PREFETCH_PAGE_SIZE = 50
+        private const val PREFETCH_THRESHOLD = 30
     }
 
     init {
@@ -117,7 +130,8 @@ class PhotoPreviewViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(
                 isLoading = true,
                 error = null,
-                currentPage = 0
+                currentPage = 0,
+                allPhotos = emptyList()
             )
             android.util.Log.d(TAG, "UI 상태 업데이트: isLoading=true")
 
@@ -136,11 +150,12 @@ class PhotoPreviewViewModel @Inject constructor(
             }
 
             android.util.Log.d(TAG, "getCameraPhotosPagedUseCase 호출 시작")
-            getCameraPhotosPagedUseCase(page = 0, pageSize = 20).fold(
+            getCameraPhotosPagedUseCase(page = 0, pageSize = PREFETCH_PAGE_SIZE).fold(
                 onSuccess = { paginatedPhotos ->
                     android.util.Log.d(TAG, "사진 목록 불러오기 성공: ${paginatedPhotos.photos.size}개")
                     _uiState.value = _uiState.value.copy(
-                        photos = paginatedPhotos.photos,
+                        allPhotos = paginatedPhotos.photos,
+                        photos = filterPhotos(paginatedPhotos.photos),
                         isLoading = false,
                         currentPage = paginatedPhotos.currentPage,
                         totalPages = paginatedPhotos.totalPages,
@@ -170,13 +185,14 @@ class PhotoPreviewViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoadingMore = true)
 
             val nextPage = _uiState.value.currentPage + 1
-            getCameraPhotosPagedUseCase(page = nextPage, pageSize = 20).fold(
+            getCameraPhotosPagedUseCase(page = nextPage, pageSize = PREFETCH_PAGE_SIZE).fold(
                 onSuccess = { paginatedPhotos ->
-                    val currentPhotos = _uiState.value.photos
+                    val currentPhotos = _uiState.value.allPhotos
                     val newPhotos = currentPhotos + paginatedPhotos.photos
 
                     _uiState.value = _uiState.value.copy(
-                        photos = newPhotos,
+                        allPhotos = newPhotos,
+                        photos = filterPhotos(newPhotos),
                         isLoadingMore = false,
                         currentPage = paginatedPhotos.currentPage,
                         totalPages = paginatedPhotos.totalPages,
@@ -309,5 +325,112 @@ class PhotoPreviewViewModel @Inject constructor(
 
     fun selectPhoto(photo: CameraPhoto?) {
         _uiState.value = _uiState.value.copy(selectedPhoto = photo)
+    }
+
+    /**
+     * 프리로딩: 사용자가 특정 인덱스에 도달했을 때 호출
+     * 30번째 사진에 도달하면 다음 50장을 백그라운드에서 미리 로드
+     */
+    fun onPhotoIndexReached(currentIndex: Int) {
+        val photos = _uiState.value.photos
+        val currentPage = _uiState.value.currentPage
+        val shouldPrefetch = currentIndex >= PREFETCH_THRESHOLD &&
+                !_uiState.value.isLoadingMore &&
+                _uiState.value.hasNextPage &&
+                _prefetchedPage.value <= currentPage // 아직 프리로드하지 않은 페이지만
+
+        if (shouldPrefetch) {
+            android.util.Log.d(TAG, "프리로드 트리거: 현재 인덱스 $currentIndex, 임계값 $PREFETCH_THRESHOLD 도달")
+            prefetchNextPage()
+            _prefetchedPage.value = currentPage + 1 // Update prefetched page
+        }
+    }
+
+    /**
+     * 백그라운드에서 다음 페이지를 미리 로드 (사용자가 느끼지 못하게)
+     */
+    private fun prefetchNextPage() {
+        if (_uiState.value.isLoadingMore || !_uiState.value.hasNextPage) {
+            android.util.Log.d(TAG, "프리로드 건너뛰기: 이미 로딩 중이거나 다음 페이지가 없음")
+            return
+        }
+
+        viewModelScope.launch {
+            android.util.Log.d(TAG, "백그라운드 프리로드 시작")
+            _uiState.value = _uiState.value.copy(isLoadingMore = true)
+
+            val nextPage = _uiState.value.currentPage + 1
+            getCameraPhotosPagedUseCase(page = nextPage, pageSize = PREFETCH_PAGE_SIZE).fold(
+                onSuccess = { paginatedPhotos ->
+                    val currentPhotos = _uiState.value.allPhotos
+                    val newPhotos = currentPhotos + paginatedPhotos.photos
+
+                    _uiState.value = _uiState.value.copy(
+                        allPhotos = newPhotos,
+                        photos = filterPhotos(newPhotos),
+                        isLoadingMore = false,
+                        currentPage = paginatedPhotos.currentPage,
+                        totalPages = paginatedPhotos.totalPages,
+                        hasNextPage = paginatedPhotos.hasNext
+                    )
+
+                    android.util.Log.d(
+                        TAG,
+                        "백그라운드 프리로드 완료: 추가된 사진 ${paginatedPhotos.photos.size}개, 총 ${newPhotos.size}개"
+                    )
+
+                    // 새로 로드된 사진들의 썸네일을 백그라운드에서 로드
+                    loadThumbnailsForNewPhotos(paginatedPhotos.photos)
+                },
+                onFailure = { exception ->
+                    android.util.Log.e(TAG, "백그라운드 프리로드 실패", exception)
+                    _uiState.value = _uiState.value.copy(
+                        isLoadingMore = false,
+                        error = exception.message ?: "추가 사진을 불러오는데 실패했습니다"
+                    )
+                }
+            )
+        }
+    }
+
+    private fun filterPhotos(photos: List<CameraPhoto>): List<CameraPhoto> {
+        return when (_uiState.value.fileTypeFilter) {
+            FileTypeFilter.ALL -> photos
+            FileTypeFilter.JPG -> photos.filter {
+                it.path.endsWith(
+                    ".jpg",
+                    true
+                ) || it.path.endsWith(".jpeg", true)
+            }
+
+            FileTypeFilter.RAW -> photos.filter {
+                it.path.endsWith(
+                    ".arw",
+                    true
+                ) || it.path.endsWith(".cr2", true) || it.path.endsWith(
+                    ".nef",
+                    true
+                ) || it.path.endsWith(".dng", true)
+            }
+        }
+    }
+
+    /**
+     * 파일 타입 필터 변경
+     */
+    fun changeFileTypeFilter(filter: FileTypeFilter) {
+        android.util.Log.d(TAG, "파일 타입 필터 변경: ${_uiState.value.fileTypeFilter} -> $filter")
+
+        _uiState.value = _uiState.value.copy(
+            fileTypeFilter = filter,
+            photos = filterPhotos(_uiState.value.allPhotos)
+        )
+
+        _prefetchedPage.value = 0 // Reset prefetched page when filter changes
+
+        android.util.Log.d(
+            TAG,
+            "필터링 완료: 전체 ${_uiState.value.allPhotos.size}개 -> 필터링된 ${_uiState.value.photos.size}개"
+        )
     }
 }
