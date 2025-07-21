@@ -1,7 +1,6 @@
 package com.inik.camcon.presentation.ui.screens.components
 
 import android.util.Log
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
@@ -74,17 +73,29 @@ fun PhotoViewerContent(
 
     // 페이저 상태 변경 감지
     LaunchedEffect(pagerState.currentPage) {
+        Log.d("PhotoViewer", "🔄 페이저 상태 변경: ${pagerState.currentPage} (기존: $currentPhotoIndex)")
         if (pagerState.currentPage != currentPhotoIndex && pagerState.currentPage < photos.size) {
+            Log.d("PhotoViewer", "📸 새 사진으로 변경: ${photos[pagerState.currentPage].name}")
             onPhotoChanged(photos[pagerState.currentPage])
         }
     }
 
     // 외부에서 사진이 변경될 때 페이저 동기화
     LaunchedEffect(currentPhotoIndex) {
+        Log.d(
+            "PhotoViewer",
+            "🔄 외부에서 사진 인덱스 변경: $currentPhotoIndex (페이저: ${pagerState.currentPage})"
+        )
         if (pagerState.currentPage != currentPhotoIndex) {
+            Log.d("PhotoViewer", "📱 페이저 동기화 중...")
             pagerState.animateScrollToPage(currentPhotoIndex)
         }
     }
+
+    Log.d(
+        "PhotoViewer",
+        "🎬 HorizontalPager 렌더링: 총 ${photos.size}개, 현재 페이지: ${pagerState.currentPage}, userScrollEnabled: ${imageScale <= 1.1f}"
+    )
 
     HorizontalPager(
         state = pagerState,
@@ -98,8 +109,8 @@ fun PhotoViewerContent(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(pageIndex) {
-                    // 더블탭 줌 제스처 (현재 페이지에서만 동작)
+                .pointerInput(pageIndex, imageScale) {
+                    // 모든 제스처를 하나의 pointerInput으로 통합
                     detectTapGestures(
                         onDoubleTap = { tapOffset ->
                             if (pageIndex == pagerState.currentPage) {
@@ -136,50 +147,32 @@ fun PhotoViewerContent(
                         }
                     )
                 }
-                .pointerInput(pageIndex) {
-                    // 핀치 줌 제스처 (현재 페이지에서만 동작)
-                    detectTransformGestures { _, pan, zoom, _ ->
-                        if (pageIndex == pagerState.currentPage) {
+                .pointerInput(pageIndex, imageScale) {
+                    // 핀치 줌과 팬을 함께 처리 (현재 페이지에서만)
+                    if (pageIndex == pagerState.currentPage) {
+                        detectTransformGestures { _, pan, zoom, _ ->
                             val newScale = max(1f, min(imageScale * zoom, 4f))
 
-                            if (newScale > 1f) {
+                            if (newScale > 1f || imageScale > 1f) {
                                 imageScale = newScale
 
-                                // 확대된 상태에서 팬 제한
-                                val maxOffsetX = (screenWidth * (newScale - 1f)) / 2f
-                                val maxOffsetY = (screenHeight * (newScale - 1f)) / 2f
+                                // 확대된 상태에서만 팬 처리
+                                if (imageScale > 1f) {
+                                    val maxOffsetX = (screenWidth * (imageScale - 1f)) / 2f
+                                    val maxOffsetY = (screenHeight * (imageScale - 1f)) / 2f
 
-                                imageOffsetX =
-                                    (imageOffsetX + pan.x).coerceIn(-maxOffsetX, maxOffsetX)
-                                imageOffsetY =
-                                    (imageOffsetY + pan.y).coerceIn(-maxOffsetY, maxOffsetY)
+                                    imageOffsetX =
+                                        (imageOffsetX + pan.x).coerceIn(-maxOffsetX, maxOffsetX)
+                                    imageOffsetY =
+                                        (imageOffsetY + pan.y).coerceIn(-maxOffsetY, maxOffsetY)
+                                } else {
+                                    imageOffsetX = 0f
+                                    imageOffsetY = 0f
+                                }
 
-                                onScaleChange(newScale)
+                                onScaleChange(imageScale)
                                 onOffsetChange(imageOffsetX, imageOffsetY)
-                            } else {
-                                // 기본 크기로 복귀
-                                imageScale = 1f
-                                imageOffsetX = 0f
-                                imageOffsetY = 0f
-                                onScaleChange(1f)
-                                onOffsetChange(0f, 0f)
                             }
-                        }
-                    }
-                }
-                .pointerInput(pageIndex) {
-                    // 확대된 상태에서 드래그 제스처 (현재 페이지에서만 동작)
-                    detectDragGestures { _, dragAmount ->
-                        if (pageIndex == pagerState.currentPage && imageScale > 1f) {
-                            val maxOffsetX = (screenWidth * (imageScale - 1f)) / 2f
-                            val maxOffsetY = (screenHeight * (imageScale - 1f)) / 2f
-
-                            imageOffsetX =
-                                (imageOffsetX + dragAmount.x).coerceIn(-maxOffsetX, maxOffsetX)
-                            imageOffsetY =
-                                (imageOffsetY + dragAmount.y).coerceIn(-maxOffsetY, maxOffsetY)
-
-                            onOffsetChange(imageOffsetX, imageOffsetY)
                         }
                     }
                 },
