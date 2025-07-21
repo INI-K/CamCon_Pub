@@ -92,6 +92,11 @@
             android:exported="false"
             android:screenOrientation="fullSensor"
             android:label="Wi-Fi 카메라 연결" />
+        <activity
+            android:name=".presentation.ui.ColorTransferSettingsActivity"
+            android:exported="false"
+            android:screenOrientation="fullSensor"
+            android:label="색감 전송 설정" />
     </application>
 
 </manifest>
