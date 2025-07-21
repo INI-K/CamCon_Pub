@@ -1,6 +1,7 @@
 package com.inik.camcon.presentation.ui.screens.components
 
 // Coil imports for image loading
+import android.graphics.ColorSpace
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -71,6 +72,12 @@ fun CameraPreviewArea(
                             .data(frame.data)
                             .crossfade(true)
                             .memoryCacheKey("liveViewFrame")
+                            .apply {
+                                // sRGB 색공간 설정
+                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                    colorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
+                                }
+                            }
                             .build()
                     }
                     AsyncImage(
