@@ -62,8 +62,8 @@ fun ZoomableImage(
 
                     scale = newScale
                     offset = Offset(
-                        x = adjustedOffset.x.coerceIn(-maxX, maxX),
-                        y = adjustedOffset.y.coerceIn(-maxY, maxY)
+                        x = if (maxX > 0) adjustedOffset.x.coerceIn(-maxX, maxX) else 0f,
+                        y = if (maxY > 0) adjustedOffset.y.coerceIn(-maxY, maxY) else 0f
                     )
                 }
             }
@@ -126,8 +126,8 @@ fun ZoomableImageWithDoubleTap(
 
                     scale = newScale
                     offset = Offset(
-                        x = adjustedOffset.x.coerceIn(-maxX, maxX),
-                        y = adjustedOffset.y.coerceIn(-maxY, maxY)
+                        x = if (maxX > 0) adjustedOffset.x.coerceIn(-maxX, maxX) else 0f,
+                        y = if (maxY > 0) adjustedOffset.y.coerceIn(-maxY, maxY) else 0f
                     )
                 }
             }
