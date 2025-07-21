@@ -1,5 +1,6 @@
 package com.inik.camcon.presentation.ui.screens.components
 
+import android.graphics.ColorSpace
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -30,8 +31,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import coil.transform.Transformation
+import androidx.exifinterface.media.ExifInterface
 import com.inik.camcon.domain.model.CameraPhoto
 import java.io.File
+import android.graphics.Bitmap
+import android.graphics.Matrix
+import java.security.MessageDigest
 
 /**
  * 사진 썸네일을 표시하는 카드 컴포넌트
@@ -58,6 +64,14 @@ fun PhotoThumbnail(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(photo.thumbnailPath)
                             .crossfade(true)
+                            .allowHardware(true)
+                            .transformations(
+                                if (photo.thumbnailPath.isNotEmpty()) {
+                                    listOf(ExifOrientationTransformation(photo.thumbnailPath))
+                                } else {
+                                    emptyList()
+                                }
+                            )
                             .build(),
                         contentDescription = photo.name,
                         modifier = Modifier.fillMaxSize(),
@@ -70,6 +84,14 @@ fun PhotoThumbnail(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(photo.path)
                             .crossfade(true)
+                            .allowHardware(true)
+                            .transformations(
+                                if (photo.path.isNotEmpty()) {
+                                    listOf(ExifOrientationTransformation(photo.path))
+                                } else {
+                                    emptyList()
+                                }
+                            )
                             .build(),
                         contentDescription = photo.name,
                         modifier = Modifier.fillMaxSize(),
@@ -82,6 +104,8 @@ fun PhotoThumbnail(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(thumbnailData)
                             .crossfade(true)
+                            .allowHardware(true)
+                            // 썸네일 바이트 배열에서는 EXIF를 따로 읽을 수 없음
                             .build(),
                         contentDescription = photo.name,
                         modifier = Modifier.fillMaxSize(),
@@ -181,3 +205,4 @@ private fun formatFileSize(size: Long): String {
         else -> String.format("%.1f GB", size / (1024.0 * 1024.0 * 1024.0))
     }
 }
+

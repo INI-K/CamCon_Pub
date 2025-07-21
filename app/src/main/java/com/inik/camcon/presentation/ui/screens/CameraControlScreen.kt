@@ -2,6 +2,7 @@ package com.inik.camcon.presentation.ui.screens
 
 import android.app.Activity
 import android.content.pm.ActivityInfo
+import android.graphics.ColorSpace
 import android.media.ExifInterface
 import android.util.Log
 import android.view.View
@@ -734,6 +735,12 @@ private fun RecentCapturesRow(
                                 .crossfade(180)
                                 .memoryCacheKey(photo.id + "_thumb")
                                 .scale(Scale.FILL)
+                                .apply {
+                                    // sRGB 색공간 설정
+                                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                        colorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
+                                    }
+                                }
                                 .build(),
                             contentDescription = "촬영된 사진",
                             modifier = Modifier.fillMaxSize(),
@@ -747,6 +754,12 @@ private fun RecentCapturesRow(
                                 .crossfade(180)
                                 .memoryCacheKey(photo.id + "_full")
                                 .scale(Scale.FILL)
+                                .apply {
+                                    // sRGB 색공간 설정
+                                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                        colorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
+                                    }
+                                }
                                 .build(),
                             contentDescription = "촬영된 사진",
                             modifier = Modifier.fillMaxSize(),
@@ -823,6 +836,12 @@ private fun AnimatedPhotoSwitcher(
                         .crossfade(200)
                         .memoryCacheKey(photo.id + "_main")
                         .scale(Scale.FIT)
+                        .apply {
+                            // sRGB 색공간 설정
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                colorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
+                            }
+                        }
                         .build(),
                     contentDescription = "사진",
                     modifier = Modifier

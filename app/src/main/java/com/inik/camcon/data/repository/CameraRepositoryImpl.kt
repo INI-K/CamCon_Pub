@@ -2,11 +2,15 @@ package com.inik.camcon.data.repository
 
 import android.content.ContentValues
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.ColorSpace
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
+import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
 import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
 import com.inik.camcon.data.datasource.nativesource.LiveViewCallback
 import com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource
@@ -22,6 +26,7 @@ import com.inik.camcon.domain.model.PaginatedCameraPhotos
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.domain.model.TimelapseSettings
 import com.inik.camcon.domain.repository.CameraRepository
+import com.inik.camcon.domain.usecase.ColorTransferUseCase
 import com.inik.camcon.domain.usecase.camera.PhotoCaptureEventManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -31,6 +36,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -49,8 +55,15 @@ class CameraRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val nativeDataSource: NativeCameraDataSource,
     private val usbCameraManager: UsbCameraManager,
-    private val photoCaptureEventManager: PhotoCaptureEventManager
+    private val photoCaptureEventManager: PhotoCaptureEventManager,
+    private val appPreferencesDataSource: AppPreferencesDataSource,
+    private val colorTransferUseCase: ColorTransferUseCase
 ) : CameraRepository {
+
+    init {
+        // GPU 초기화
+        colorTransferUseCase.initializeGPU(context)
+    }
 
     private val _cameraFeed = MutableStateFlow<List<Camera>>(emptyList())
     private val _isConnected = MutableStateFlow(false)
@@ -272,7 +285,7 @@ class CameraRepositoryImpl @Inject constructor(
 
             // 연결 상태 확인
             if (!_isConnected.value) {
-                Log.e("카메라레포지토리", "카메라가 연결되지 않음")
+                Log.e("카메라레포지토리", "카메라가 연결되지 않은 상태에서 사진 촬영 불가")
                 continuation.resumeWithException(Exception("카메라가 연결되지 않음"))
                 return@suspendCancellableCoroutine
             }
@@ -914,8 +927,70 @@ class CameraRepositoryImpl @Inject constructor(
             Log.d("카메라레포지토리", "✓ JPEG 파일 확인: $fileName")
             Log.d("카메라레포지토리", "   크기: ${fileSize / 1024}KB")
 
+            // 색감 전송 적용 확인
+            val isColorTransferEnabled = appPreferencesDataSource.isColorTransferEnabled.first()
+            val referenceImagePath =
+                appPreferencesDataSource.colorTransferReferenceImagePath.first()
+
+            var processedPath = fullPath
+
+            if (isColorTransferEnabled && referenceImagePath != null && File(referenceImagePath).exists()) {
+                Log.d("카메라레포지토리", "🎨 색감 전송 적용 시작: $fileName")
+
+                try {
+                    // 메모리 효율성을 위한 사전 검사
+                    val runtime = Runtime.getRuntime()
+                    val freeMemory = runtime.freeMemory()
+                    val totalMemory = runtime.totalMemory()
+                    val maxMemory = runtime.maxMemory()
+                    val usedMemory = totalMemory - freeMemory
+                    val availableMemory = maxMemory - usedMemory
+
+                    Log.d("카메라레포지토리", "메모리 상태 - 사용중: ${usedMemory / 1024 / 1024}MB, 사용가능: ${availableMemory / 1024 / 1024}MB")
+
+                    // 색감 전송 적용 (원본 해상도로 처리)
+                    val colorTransferredFile = File(
+                        file.parent,
+                        "${file.nameWithoutExtension}_color_transferred.jpg"
+                    )
+
+                    val transferredBitmap = colorTransferUseCase.applyColorTransferWithGPUAndSave(
+                        file.absolutePath, // 입력 파일 경로
+                        referenceImagePath, // 참조 이미지 경로
+                        colorTransferredFile.absolutePath // 출력 파일 경로
+                    )
+
+                    if (transferredBitmap != null) {
+                        processedPath = colorTransferredFile.absolutePath
+                        Log.d(
+                            "카메라레포지토리",
+                            "✅ 색감 전송 적용 완료 (원본 해상도): ${colorTransferredFile.name}"
+                        )
+
+                        // 메모리 정리 - 즉시 해제
+                        transferredBitmap.recycle()
+                    } else {
+                        Log.w("카메라레포지토리", "⚠️ 색감 전송 실패, 원본 이미지 사용")
+                    }
+                } catch (e: OutOfMemoryError) {
+                    Log.e("카메라레포지토리", "❌ 메모리 부족으로 색감 전송 실패", e)
+                    // 메모리 부족 시 강제 GC 실행 및 메모리 정리
+                    System.gc()
+                    Thread.sleep(100) // GC 완료 대기
+                    Log.d("카메라레포지토리", "메모리 정리 완료")
+                } catch (e: Exception) {
+                    Log.e("카메라레포지토리", "❌ 색감 전송 처리 중 오류", e)
+                    // 오류 발생 시 원본 이미지 사용
+                }
+
+            } else {
+                if (isColorTransferEnabled) {
+                    Log.d("카메라레포지토리", "⚠️ 색감 전송 활성화되어 있지만 참조 이미지가 없음")
+                }
+            }
+
             // SAF를 사용한 후처리 (Android 10+에서 MediaStore로 이동)
-            val finalPath = postProcessPhoto(fullPath, fileName)
+            val finalPath = postProcessPhoto(processedPath, fileName)
             Log.d("카메라레포지토리", "✅ 사진 후처리 완료: $finalPath")
 
             // 즉시 UI에 임시 사진 정보 추가 (썸네일 없이)
@@ -934,10 +1009,43 @@ class CameraRepositoryImpl @Inject constructor(
 
             // 사진 촬영 이벤트 발생
             photoCaptureEventManager.emitPhotoCaptured()
+
+            // 메모리 정리 - 마지막에 한 번 더 실행
+            if (isColorTransferEnabled) {
+                System.gc()
+            }
         } catch (e: Exception) {
             Log.e("카메라레포지토리", "❌ JPEG 사진 다운로드 실패: $fileName", e)
             updatePhotoDownloadFailed(fileName)
         }
+    }
+
+    /**
+     * 이미지 크기에 따른 샘플링 비율 계산
+     */
+    private fun calculateInSampleSize(
+        width: Int,
+        height: Int,
+        reqWidth: Int,
+        reqHeight: Int
+    ): Int {
+        var inSampleSize = 1
+
+        // 더 큰 임계값 사용 (4K 이상에서만 다운샘플링)
+        val maxWidth = maxOf(reqWidth, 3840) // 4K 너비
+        val maxHeight = maxOf(reqHeight, 2160) // 4K 높이
+
+        if (height > maxHeight || width > maxWidth) {
+            val halfHeight = height / 2
+            val halfWidth = width / 2
+
+            // 요구되는 크기보다 작아질 때까지 샘플링 비율을 2배씩 증가
+            while ((halfHeight / inSampleSize) >= maxHeight && (halfWidth / inSampleSize) >= maxWidth) {
+                inSampleSize *= 2
+            }
+        }
+
+        return inSampleSize
     }
 
     /**
