@@ -88,7 +88,9 @@ fun PhotoViewerContent(
 
     HorizontalPager(
         state = pagerState,
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize(),
+        pageSpacing = 0.dp,
+        userScrollEnabled = imageScale <= 1.1f
     ) { pageIndex ->
         val pagePhoto = photos[pageIndex]
         val isCurrentPage = pageIndex == pagerState.currentPage
@@ -96,73 +98,79 @@ fun PhotoViewerContent(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(Unit) {
-                    // 더블탭 줌 제스처
+                .pointerInput(pageIndex) {
+                    // 더블탭 줌 제스처 (현재 페이지에서만 동작)
                     detectTapGestures(
                         onDoubleTap = { tapOffset ->
-                            val currentTime = System.currentTimeMillis()
-                            if (currentTime - lastTapTime > 300) { // 중복 방지
-                                lastTapTime = currentTime
-                                Log.d("PhotoViewer", "더블탭 감지! 현재 스케일: $imageScale")
+                            if (pageIndex == pagerState.currentPage) {
+                                val currentTime = System.currentTimeMillis()
+                                if (currentTime - lastTapTime > 300) { // 중복 방지
+                                    lastTapTime = currentTime
+                                    Log.d("PhotoViewer", "더블탭 감지! 현재 스케일: $imageScale")
 
-                                if (imageScale > 1.5f) {
-                                    // 축소
-                                    imageScale = 1f
-                                    imageOffsetX = 0f
-                                    imageOffsetY = 0f
-                                    onAnimateScale(1f)
-                                    onAnimateOffset(0f, 0f)
-                                } else {
-                                    // 확대 (탭한 지점을 중심으로)
-                                    val newScale = 2.5f
-                                    imageScale = newScale
+                                    if (imageScale > 1.5f) {
+                                        // 축소
+                                        imageScale = 1f
+                                        imageOffsetX = 0f
+                                        imageOffsetY = 0f
+                                        onAnimateScale(1f)
+                                        onAnimateOffset(0f, 0f)
+                                    } else {
+                                        // 확대 (탭한 지점을 중심으로)
+                                        val newScale = 2.5f
+                                        imageScale = newScale
 
-                                    // 탭한 지점을 화면 중앙으로 이동
-                                    val centerX = screenWidth / 2f
-                                    val centerY = screenHeight / 2f
-                                    imageOffsetX =
-                                        (centerX - tapOffset.x) * (newScale - 1f) / newScale
-                                    imageOffsetY =
-                                        (centerY - tapOffset.y) * (newScale - 1f) / newScale
+                                        // 탭한 지점을 화면 중앙으로 이동
+                                        val centerX = screenWidth / 2f
+                                        val centerY = screenHeight / 2f
+                                        imageOffsetX =
+                                            (centerX - tapOffset.x) * (newScale - 1f) / newScale
+                                        imageOffsetY =
+                                            (centerY - tapOffset.y) * (newScale - 1f) / newScale
 
-                                    onAnimateScale(newScale)
-                                    onAnimateOffset(imageOffsetX, imageOffsetY)
+                                        onAnimateScale(newScale)
+                                        onAnimateOffset(imageOffsetX, imageOffsetY)
+                                    }
                                 }
                             }
                         }
                     )
                 }
-                .pointerInput(Unit) {
-                    // 핀치 줌 제스처
+                .pointerInput(pageIndex) {
+                    // 핀치 줌 제스처 (현재 페이지에서만 동작)
                     detectTransformGestures { _, pan, zoom, _ ->
-                        val newScale = max(1f, min(imageScale * zoom, 4f))
+                        if (pageIndex == pagerState.currentPage) {
+                            val newScale = max(1f, min(imageScale * zoom, 4f))
 
-                        if (newScale > 1f) {
-                            imageScale = newScale
+                            if (newScale > 1f) {
+                                imageScale = newScale
 
-                            // 확대된 상태에서 팬 제한
-                            val maxOffsetX = (screenWidth * (newScale - 1f)) / 2f
-                            val maxOffsetY = (screenHeight * (newScale - 1f)) / 2f
+                                // 확대된 상태에서 팬 제한
+                                val maxOffsetX = (screenWidth * (newScale - 1f)) / 2f
+                                val maxOffsetY = (screenHeight * (newScale - 1f)) / 2f
 
-                            imageOffsetX = (imageOffsetX + pan.x).coerceIn(-maxOffsetX, maxOffsetX)
-                            imageOffsetY = (imageOffsetY + pan.y).coerceIn(-maxOffsetY, maxOffsetY)
+                                imageOffsetX =
+                                    (imageOffsetX + pan.x).coerceIn(-maxOffsetX, maxOffsetX)
+                                imageOffsetY =
+                                    (imageOffsetY + pan.y).coerceIn(-maxOffsetY, maxOffsetY)
 
-                            onScaleChange(newScale)
-                            onOffsetChange(imageOffsetX, imageOffsetY)
-                        } else {
-                            // 기본 크기로 복귀
-                            imageScale = 1f
-                            imageOffsetX = 0f
-                            imageOffsetY = 0f
-                            onScaleChange(1f)
-                            onOffsetChange(0f, 0f)
+                                onScaleChange(newScale)
+                                onOffsetChange(imageOffsetX, imageOffsetY)
+                            } else {
+                                // 기본 크기로 복귀
+                                imageScale = 1f
+                                imageOffsetX = 0f
+                                imageOffsetY = 0f
+                                onScaleChange(1f)
+                                onOffsetChange(0f, 0f)
+                            }
                         }
                     }
                 }
-                .pointerInput(Unit) {
-                    // 확대된 상태에서 드래그 제스처
+                .pointerInput(pageIndex) {
+                    // 확대된 상태에서 드래그 제스처 (현재 페이지에서만 동작)
                     detectDragGestures { _, dragAmount ->
-                        if (imageScale > 1f) {
+                        if (pageIndex == pagerState.currentPage && imageScale > 1f) {
                             val maxOffsetX = (screenWidth * (imageScale - 1f)) / 2f
                             val maxOffsetY = (screenHeight * (imageScale - 1f)) / 2f
 
