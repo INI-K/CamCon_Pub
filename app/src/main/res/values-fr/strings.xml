@@ -4,7 +4,7 @@
     <string name="app_description">Contrôle Professionnel d\'Appareil Photo pour Android</string>
 
     <!-- Google Sign-In -->
-    <string name="default_web_client_id">YOUR_WEB_CLIENT_ID_HERE</string>
+    <string name="default_web_client_id">527188051661-b9cru75i7min570psfn47fmd04hh2qn6.apps.googleusercontent.com</string>
 
     <!-- Commun -->
     <string name="ok">OK</string>
@@ -92,6 +92,7 @@
 
     <!-- Gestion Photos -->
     <string name="recent_captures">Captures Récentes</string>
+    <string name="camera_photo_list">Liste Photos Appareil</string>
     <string name="captured_photos">Photos Capturées</string>
     <string name="photo_saved">Photo enregistrée</string>
     <string name="photo_save_failed">Échec enregistrement photo</string>
@@ -103,7 +104,7 @@
     <string name="photo_details">Détails Photo</string>
 
     <!-- Serveur/Cloud -->
-    <string name="server_photos">Photos Serveur</string>
+    <string name="server_photos">Mes Photos</string>
     <string name="upload_to_cloud">Téléverser vers Cloud</string>
     <string name="download_from_cloud">Télécharger depuis Cloud</string>
     <string name="sync_photos">Synchroniser Photos</string>
