@@ -6,6 +6,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
+import androidx.compose.material.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -184,6 +186,32 @@ fun FullScreenPhotoViewer(
                             style = MaterialTheme.typography.caption,
                             color = Color.White.copy(alpha = 0.5f)
                         )
+                        // 디버깅용 수동 이전/다음 버튼
+                        Row(modifier = Modifier.padding(top = 4.dp)) {
+                            TextButton(
+                                enabled = currentPhotoIndex > 0,
+                                onClick = {
+                                    if (currentPhotoIndex > 0) {
+                                        onPhotoChanged(photos[currentPhotoIndex - 1])
+                                    }
+                                }
+                            ) {
+                                Text("이전")
+                            }
+                            Spacer(modifier = Modifier
+                                .height(0.dp)
+                                .weight(1f, fill = true))
+                            TextButton(
+                                enabled = currentPhotoIndex < photos.lastIndex,
+                                onClick = {
+                                    if (currentPhotoIndex < photos.lastIndex) {
+                                        onPhotoChanged(photos[currentPhotoIndex + 1])
+                                    }
+                                }
+                            ) {
+                                Text("다음")
+                            }
+                        }
                     }
                 }
             }
