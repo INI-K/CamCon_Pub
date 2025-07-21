@@ -237,24 +237,28 @@ private fun ModernHeader(
     onFilterChange: (FileTypeFilter) -> Unit
 ) {
     Column {
-        Text(
-            text = stringResource(R.string.camera_photo_list),
-            color = MaterialTheme.colors.onPrimary,
-            style = MaterialTheme.typography.h6
-        )
-        if (photoCount > 0) {
-            Text(
-                text = "${photoCount}장의 사진" +
-                        if (totalPages > 0) " (페이지 ${currentPage + 1}/${totalPages})" else "",
-                color = MaterialTheme.colors.onPrimary.copy(alpha = 0.7f),
-                style = MaterialTheme.typography.caption
-            )
-        }
+        // 첫 번째 행: 제목과 새로고침 버튼
         Row(
-            modifier = Modifier.padding(top = 8.dp),
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Spacer(modifier = Modifier.weight(1f))
+            Column {
+                Text(
+                    text = stringResource(R.string.camera_photo_list),
+                    color = MaterialTheme.colors.onPrimary,
+                    style = MaterialTheme.typography.h6
+                )
+                if (photoCount > 0) {
+                    Text(
+                        text = "${photoCount}장의 사진" +
+                                if (totalPages > 0) " (페이지 ${currentPage + 1}/${totalPages})" else "",
+                        color = MaterialTheme.colors.onPrimary.copy(alpha = 0.7f),
+                        style = MaterialTheme.typography.caption
+                    )
+                }
+            }
+
             IconButton(
                 onClick = onRefresh
             ) {
@@ -264,38 +268,60 @@ private fun ModernHeader(
                     tint = MaterialTheme.colors.onPrimary
                 )
             }
-            Spacer(modifier = Modifier.width(8.dp))
-            // 필터 버튼 추가
-            Row {
-                TextButton(
-                    onClick = { onFilterChange(FileTypeFilter.ALL) },
-                    enabled = fileTypeFilter != FileTypeFilter.ALL
-                ) {
-                    Text(
-                        text = "ALL",
-                        color = if (fileTypeFilter == FileTypeFilter.ALL) MaterialTheme.colors.secondary else MaterialTheme.colors.onPrimary
-                    )
-                }
-                Spacer(modifier = Modifier.width(4.dp))
-                TextButton(
-                    onClick = { onFilterChange(FileTypeFilter.RAW) },
-                    enabled = fileTypeFilter != FileTypeFilter.RAW
-                ) {
-                    Text(
-                        text = "RAW",
-                        color = if (fileTypeFilter == FileTypeFilter.RAW) MaterialTheme.colors.secondary else MaterialTheme.colors.onPrimary
-                    )
-                }
-                Spacer(modifier = Modifier.width(4.dp))
-                TextButton(
-                    onClick = { onFilterChange(FileTypeFilter.JPG) },
-                    enabled = fileTypeFilter != FileTypeFilter.JPG
-                ) {
-                    Text(
-                        text = "JPG",
-                        color = if (fileTypeFilter == FileTypeFilter.JPG) MaterialTheme.colors.secondary else MaterialTheme.colors.onPrimary
-                    )
-                }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // 두 번째 행: 파일 타입 필터 버튼들
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "필터:",
+                color = MaterialTheme.colors.onPrimary.copy(alpha = 0.8f),
+                style = MaterialTheme.typography.body2,
+                modifier = Modifier.padding(end = 8.dp)
+            )
+
+            TextButton(
+                onClick = { onFilterChange(FileTypeFilter.ALL) },
+                enabled = fileTypeFilter != FileTypeFilter.ALL
+            ) {
+                Text(
+                    text = "ALL",
+                    color = if (fileTypeFilter == FileTypeFilter.ALL) MaterialTheme.colors.secondary else MaterialTheme.colors.onPrimary.copy(
+                        alpha = 0.7f
+                    ),
+                    style = MaterialTheme.typography.button
+                )
+            }
+
+            TextButton(
+                onClick = { onFilterChange(FileTypeFilter.RAW) },
+                enabled = fileTypeFilter != FileTypeFilter.RAW
+            ) {
+                Text(
+                    text = "RAW",
+                    color = if (fileTypeFilter == FileTypeFilter.RAW) MaterialTheme.colors.secondary else MaterialTheme.colors.onPrimary.copy(
+                        alpha = 0.7f
+                    ),
+                    style = MaterialTheme.typography.button
+                )
+            }
+
+            TextButton(
+                onClick = { onFilterChange(FileTypeFilter.JPG) },
+                enabled = fileTypeFilter != FileTypeFilter.JPG
+            ) {
+                Text(
+                    text = "JPG",
+                    color = if (fileTypeFilter == FileTypeFilter.JPG) MaterialTheme.colors.secondary else MaterialTheme.colors.onPrimary.copy(
+                        alpha = 0.7f
+                    ),
+                    style = MaterialTheme.typography.button
+                )
             }
         }
     }
@@ -345,12 +371,15 @@ private fun PhotoGrid(
             val lastVisibleItemIndex = visibleItemsInfo.lastOrNull()?.index ?: -1
             val totalItemsCount = uiState.photos.size
 
-            // 프리로딩 트리거: 30번째 사진 근처에 도달했을 때
+            // 스크롤 상태 정보를 더 상세하게 로깅
             lastVisibleItemIndex
         }
             .collect { lastVisibleIndex ->
-                // 프리로딩 트리거 (30번째 사진에 도달)
-                if (lastVisibleIndex >= 29) {
+                if (lastVisibleIndex >= 0 && uiState.photos.isNotEmpty()) {
+                    Log.d(
+                        "PhotoPreviewScreen",
+                        "스크롤 감지: 마지막 보이는 인덱스=$lastVisibleIndex, 총 사진=${uiState.photos.size}개"
+                    )
                     viewModel.onPhotoIndexReached(lastVisibleIndex)
                 }
             }
