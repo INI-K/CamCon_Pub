@@ -1,7 +1,6 @@
 package com.inik.camcon.presentation.ui.screens.components
 
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -48,6 +47,7 @@ import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.inik.camcon.presentation.viewmodel.ColorTransferViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -82,11 +82,11 @@ fun ColorTransferLivePreview(
             // 슬라이더가 활발하게 움직이고 있음을 표시
             isSliderActive = true
 
-            // 500ms 디바운싱 - 마지막 변경 후 500ms 후에 처리
-            kotlinx.coroutines.delay(500)
+            // 500ms 디바운싱 - 0.5초로 변경
+            delay(500)
 
             // 강도가 실제로 변경되었을 때만 처리
-            if (kotlin.math.abs(intensity - lastProcessedIntensity) >= 0.001f) {
+            if (kotlin.math.abs(intensity - lastProcessedIntensity) >= 0.0005f) {
                 isProcessing = true
                 isSliderActive = false
 
@@ -99,7 +99,8 @@ fun ColorTransferLivePreview(
                         val processed = processColorTransferPreview(
                             referenceImagePath,
                             targetImagePath,
-                            intensity
+                            intensity,
+                            colorTransferViewModel
                         )
                         processedBitmap = processed
                         lastProcessedIntensity = intensity
@@ -129,6 +130,9 @@ fun ColorTransferLivePreview(
         fullSizeProcessedBitmap?.recycle()
         fullSizeProcessedBitmap = null
         lastProcessedIntensity = 0f
+
+        // ColorTransferUseCase 캐시도 초기화
+        colorTransferViewModel.clearPerformanceInfo()
     }
 
     Card(
@@ -255,7 +259,8 @@ fun ColorTransferLivePreview(
                                                 val fullSize = processColorTransferFullSize(
                                                     referenceImagePath,
                                                     targetImagePath,
-                                                    lastProcessedIntensity
+                                                    lastProcessedIntensity,
+                                                    colorTransferViewModel
                                                 )
                                                 fullSizeProcessedBitmap = fullSize
                                                 showFullSizeImage = true
@@ -443,39 +448,18 @@ fun ColorTransferLivePreview(
 private suspend fun processColorTransferPreview(
     referenceImagePath: String,
     targetImagePath: String,
-    intensity: Float
+    intensity: Float,
+    colorTransferViewModel: ColorTransferViewModel
 ): Bitmap? {
     return withContext(Dispatchers.IO) {
         try {
-            // 원본 이미지 로드
-            val targetBitmap = BitmapFactory.decodeFile(targetImagePath)
-            val referenceBitmap = BitmapFactory.decodeFile(referenceImagePath)
-
-            if (targetBitmap == null || referenceBitmap == null) return@withContext null
-
-            // 미리보기용으로 크기를 줄여서 처리 속도 향상
-            val previewSize = 400 // 200에서 400으로 증가하여 더 선명한 미리보기
-            val scaledTarget = Bitmap.createScaledBitmap(
-                targetBitmap,
-                previewSize,
-                (previewSize * targetBitmap.height / targetBitmap.width),
-                true
+            // ColorTransferUseCase를 사용하여 색감 전송 처리
+            val result = colorTransferViewModel.processColorTransfer(
+                referenceImagePath,
+                targetImagePath,
+                intensity
             )
-            val scaledReference = Bitmap.createScaledBitmap(
-                referenceBitmap,
-                previewSize,
-                (previewSize * referenceBitmap.height / referenceBitmap.width),
-                true
-            )
-
-            // 간단한 색감 전송 알고리즘 (데모용)
-            val processed = simpleColorTransfer(scaledTarget, scaledReference, intensity)
-
-            // 메모리 정리
-            if (scaledTarget != targetBitmap) scaledTarget.recycle()
-            if (scaledReference != referenceBitmap) scaledReference.recycle()
-
-            processed
+            result
         } catch (e: Exception) {
             e.printStackTrace()
             null
@@ -490,88 +474,21 @@ private suspend fun processColorTransferPreview(
 private suspend fun processColorTransferFullSize(
     referenceImagePath: String,
     targetImagePath: String,
-    intensity: Float
+    intensity: Float,
+    colorTransferViewModel: ColorTransferViewModel
 ): Bitmap? {
     return withContext(Dispatchers.IO) {
         try {
-            // 원본 이미지 로드
-            val targetBitmap = BitmapFactory.decodeFile(targetImagePath)
-            val referenceBitmap = BitmapFactory.decodeFile(referenceImagePath)
-
-            if (targetBitmap == null || referenceBitmap == null) return@withContext null
-
-            // 간단한 색감 전송 알고리즘 (데모용)
-            val processed = simpleColorTransfer(targetBitmap, referenceBitmap, intensity)
-
-            processed
+            // ColorTransferUseCase를 사용하여 색감 전송 처리
+            val result = colorTransferViewModel.processColorTransferFullSize(
+                referenceImagePath,
+                targetImagePath,
+                intensity
+            )
+            result
         } catch (e: Exception) {
             e.printStackTrace()
             null
         }
     }
-}
-
-/**
- * 간단한 색감 전송 알고리즘 (데모용)
- * 실제로는 더 정교한 알고리즘이나 네이티브 구현을 사용해야 함
- */
-private fun simpleColorTransfer(
-    target: Bitmap,
-    reference: Bitmap,
-    intensity: Float
-): Bitmap {
-    val width = target.width
-    val height = target.height
-    val result = target.copy(Bitmap.Config.ARGB_8888, true)
-
-    // 참조 이미지의 평균 색상 계산
-    var refR = 0f
-    var refG = 0f
-    var refB = 0f
-    val refPixels = IntArray(reference.width * reference.height)
-    reference.getPixels(refPixels, 0, reference.width, 0, 0, reference.width, reference.height)
-
-    for (pixel in refPixels) {
-        refR += android.graphics.Color.red(pixel)
-        refG += android.graphics.Color.green(pixel)
-        refB += android.graphics.Color.blue(pixel)
-    }
-    refR /= refPixels.size
-    refG /= refPixels.size
-    refB /= refPixels.size
-
-    // 대상 이미지의 평균 색상 계산
-    var targetR = 0f
-    var targetG = 0f
-    var targetB = 0f
-    val targetPixels = IntArray(width * height)
-    target.getPixels(targetPixels, 0, width, 0, 0, width, height)
-
-    for (pixel in targetPixels) {
-        targetR += android.graphics.Color.red(pixel)
-        targetG += android.graphics.Color.green(pixel)
-        targetB += android.graphics.Color.blue(pixel)
-    }
-    targetR /= targetPixels.size
-    targetG /= targetPixels.size
-    targetB /= targetPixels.size
-
-    // 색상 차이 계산 및 적용
-    val deltaR = (refR - targetR) * intensity
-    val deltaG = (refG - targetG) * intensity
-    val deltaB = (refB - targetB) * intensity
-
-    for (y in 0 until height) {
-        for (x in 0 until width) {
-            val pixel = result.getPixel(x, y)
-            val alpha = android.graphics.Color.alpha(pixel)
-            val red = (android.graphics.Color.red(pixel) + deltaR).coerceIn(0f, 255f).toInt()
-            val green = (android.graphics.Color.green(pixel) + deltaG).coerceIn(0f, 255f).toInt()
-            val blue = (android.graphics.Color.blue(pixel) + deltaB).coerceIn(0f, 255f).toInt()
-
-            result.setPixel(x, y, android.graphics.Color.argb(alpha, red, green, blue))
-        }
-    }
-
-    return result
 }
