@@ -48,6 +48,7 @@ import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.components.EmptyPhotoState
 import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
 import com.inik.camcon.presentation.ui.screens.components.PhotoThumbnail
+import com.inik.camcon.presentation.viewmodel.FileTypeFilter
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
 
 /**
@@ -82,14 +83,18 @@ fun PhotoPreviewScreen(
             .pullRefresh(pullRefreshState)
     ) {
         Column(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 16.dp) // 상단 마진 추가
         ) {
             // 상단 타이틀 영역 (모던한 디자인)
             ModernHeader(
                 photoCount = uiState.photos.size,
                 currentPage = uiState.currentPage,
                 totalPages = uiState.totalPages,
-                onRefresh = { viewModel.loadCameraPhotos() }
+                onRefresh = { viewModel.loadCameraPhotos() },
+                fileTypeFilter = uiState.fileTypeFilter,
+                onFilterChange = { filter -> viewModel.changeFileTypeFilter(filter) }
             )
 
             // 메인 콘텐츠
@@ -227,7 +232,9 @@ private fun ModernHeader(
     photoCount: Int,
     currentPage: Int,
     totalPages: Int,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    fileTypeFilter: FileTypeFilter,
+    onFilterChange: (FileTypeFilter) -> Unit
 ) {
     Column {
         Text(
@@ -256,6 +263,39 @@ private fun ModernHeader(
                     contentDescription = "새로고침",
                     tint = MaterialTheme.colors.onPrimary
                 )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            // 필터 버튼 추가
+            Row {
+                TextButton(
+                    onClick = { onFilterChange(FileTypeFilter.ALL) },
+                    enabled = fileTypeFilter != FileTypeFilter.ALL
+                ) {
+                    Text(
+                        text = "ALL",
+                        color = if (fileTypeFilter == FileTypeFilter.ALL) MaterialTheme.colors.secondary else MaterialTheme.colors.onPrimary
+                    )
+                }
+                Spacer(modifier = Modifier.width(4.dp))
+                TextButton(
+                    onClick = { onFilterChange(FileTypeFilter.RAW) },
+                    enabled = fileTypeFilter != FileTypeFilter.RAW
+                ) {
+                    Text(
+                        text = "RAW",
+                        color = if (fileTypeFilter == FileTypeFilter.RAW) MaterialTheme.colors.secondary else MaterialTheme.colors.onPrimary
+                    )
+                }
+                Spacer(modifier = Modifier.width(4.dp))
+                TextButton(
+                    onClick = { onFilterChange(FileTypeFilter.JPG) },
+                    enabled = fileTypeFilter != FileTypeFilter.JPG
+                ) {
+                    Text(
+                        text = "JPG",
+                        color = if (fileTypeFilter == FileTypeFilter.JPG) MaterialTheme.colors.secondary else MaterialTheme.colors.onPrimary
+                    )
+                }
             }
         }
     }
@@ -297,19 +337,21 @@ private fun PhotoGrid(
 ) {
     val lazyGridState = rememberLazyGridState()
 
-    // 무한 스크롤 구현
+    // 무한 스크롤 구현 - 푸터 감지 개선
     LaunchedEffect(lazyGridState) {
-        snapshotFlow { lazyGridState.layoutInfo.visibleItemsInfo }
-            .collect { visibleItems ->
-                val lastVisibleItemIndex = visibleItems.lastOrNull()?.index ?: -1
-                val totalItemsCount = uiState.photos.size
+        snapshotFlow {
+            val layoutInfo = lazyGridState.layoutInfo
+            val visibleItemsInfo = layoutInfo.visibleItemsInfo
+            val lastVisibleItemIndex = visibleItemsInfo.lastOrNull()?.index ?: -1
+            val totalItemsCount = uiState.photos.size
 
-                // 마지막에서 5개 아이템 전에 도달하면 다음 페이지 로드
-                if (lastVisibleItemIndex >= totalItemsCount - 5 &&
-                    uiState.hasNextPage &&
-                    !uiState.isLoadingMore
-                ) {
-                    viewModel.loadNextPage()
+            // 프리로딩 트리거: 30번째 사진 근처에 도달했을 때
+            lastVisibleItemIndex
+        }
+            .collect { lastVisibleIndex ->
+                // 프리로딩 트리거 (30번째 사진에 도달)
+                if (lastVisibleIndex >= 29) {
+                    viewModel.onPhotoIndexReached(lastVisibleIndex)
                 }
             }
     }
@@ -330,15 +372,9 @@ private fun PhotoGrid(
             )
         }
 
-        // 더 로딩 중일 때 로딩 인디케이터 표시
-        if (uiState.isLoadingMore) {
-            item(span = { GridItemSpan(3) }) {
-                LoadMoreIndicator()
-            }
-        }
-
+        // 더 로딩 중일 때 로딩 인디케이터 표시 (프리로딩은 백그라운드이므로 표시하지 않음)
         // 마지막 페이지일 때 완료 메시지
-        if (!uiState.hasNextPage && uiState.photos.isNotEmpty() && !uiState.isLoadingMore) {
+        if (!uiState.hasNextPage && uiState.photos.isNotEmpty()) {
             item(span = { GridItemSpan(3) }) {
                 EndOfListMessage(photoCount = uiState.photos.size)
             }
@@ -439,7 +475,9 @@ private fun ModernHeaderPreview_NoPhotos() {
             photoCount = 0,
             currentPage = 0,
             totalPages = 0,
-            onRefresh = {}
+            onRefresh = {},
+            fileTypeFilter = FileTypeFilter.JPG,
+            onFilterChange = {}
         )
     }
 }
@@ -452,7 +490,9 @@ private fun ModernHeaderPreview_WithPhotos() {
             photoCount = 42,
             currentPage = 1,
             totalPages = 3,
-            onRefresh = {}
+            onRefresh = {},
+            fileTypeFilter = FileTypeFilter.JPG,
+            onFilterChange = {}
         )
     }
 }
