@@ -372,6 +372,7 @@ private fun PhotoGrid(
     viewModel: PhotoPreviewViewModel
 ) {
     val lazyGridState = rememberLazyGridState()
+    val fullImageCache by viewModel.fullImageCache.collectAsState()
 
     // 무한 스크롤 구현 - 푸터 감지 개선
     LaunchedEffect(lazyGridState) {
@@ -406,8 +407,9 @@ private fun PhotoGrid(
         items(uiState.photos) { photo ->
             PhotoThumbnail(
                 photo = photo,
-                onClick = { viewModel.selectPhoto(photo) },
-                thumbnailData = viewModel.getThumbnail(photo.path)
+                thumbnailData = viewModel.getThumbnail(photo.path),
+                fullImageCache = fullImageCache,
+                onClick = { viewModel.selectPhoto(photo) }
             )
         }
 

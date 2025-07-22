@@ -118,7 +118,8 @@ fun FullScreenPhotoViewer(
             }
         }
             .withStartPosition(currentPhotoIndex) // 시작 위치 설정
-            .withHiddenStatusBar(true) // 상태바 숨기기
+            .withBackgroundColor(0xFF121212.toInt()) // 다크 테마 배경색 설정 (상태바와 어우러지도록)
+            .withHiddenStatusBar(false) // 상태바를 숨기지 않고 투명하게 처리
             .allowSwipeToDismiss(true) // 스와이프로 닫기 허용
             .allowZooming(true) // 줌 허용
             .withOverlayView(
@@ -155,28 +156,26 @@ fun FullScreenPhotoViewer(
                                     // 고화질 이미지가 캐시에 있으면 즉시 적용
                                     val newPhoto = photos[position]
                                     if (fullImageCache[newPhoto.path] != null) {
-                                        imageViewRefs[newPhoto.path]?.let { imageView ->
+                                        // 백그라운드에서 비트맵 디코딩
+                                        CoroutineScope(Dispatchers.IO).launch {
                                             fullImageCache[newPhoto.path]?.let { imageData ->
                                                 try {
-                                                    val bitmap = BitmapFactory.decodeByteArray(
+                                                    val bitmap = decodeBitmapWithExifRotation(
                                                         imageData,
-                                                        0,
-                                                        imageData.size
-                                                    )
-                                                    if (bitmap != null && !bitmap.isRecycled) {
-                                                        imageView.setImageBitmap(bitmap)
-                                                        imageView.scaleType =
-                                                            ImageView.ScaleType.FIT_CENTER
-                                                        highQualityUpdated.add(newPhoto.path)
-                                                        Log.d(
-                                                            "StfalconViewer",
-                                                            "✅ 수동 고화질 적용: ${newPhoto.name}"
-                                                        )
-                                                    } else {
-                                                        Log.d(
-                                                            "StfalconViewer",
-                                                            "🚫 Bitmap null or recycled"
-                                                        )
+                                                        photos.find { it.path == newPhoto.path })
+
+                                                    // 메인 스레드에서 UI 업데이트
+                                                    CoroutineScope(Dispatchers.Main).launch {
+                                                        imageViewRefs[newPhoto.path]?.let { imageView ->
+                                                            imageView.setImageBitmap(bitmap)
+                                                            imageView.scaleType =
+                                                                ImageView.ScaleType.FIT_CENTER
+                                                            highQualityUpdated.add(newPhoto.path)
+                                                            Log.d(
+                                                                "StfalconViewer",
+                                                                "✅ 수동 고화질 적용: ${newPhoto.name}"
+                                                            )
+                                                        }
                                                     }
                                                 } catch (e: Exception) {
                                                     Log.e(
@@ -218,36 +217,40 @@ fun FullScreenPhotoViewer(
                             // 이미 고화질이 캐시에 있으면 즉시 적용
                             Log.d("StfalconViewer", "💾 캐시된 고화질 즉시 적용: ${newPhoto.name}")
 
-                            // 약간의 지연 후 고화질 적용 (setCurrentPosition 완료 대기)
-                            CoroutineScope(Dispatchers.Main).launch {
-                                delay(200) // 위치 변경 완료 대기
-
-                                imageViewRefs[newPhoto.path]?.let { imageView ->
-                                    fullImageCache[newPhoto.path]?.let { imageData ->
-                                        try {
-                                            val bitmap = BitmapFactory.decodeByteArray(
-                                                imageData,
-                                                0,
-                                                imageData.size
-                                            )
-                                            if (bitmap != null && !bitmap.isRecycled) {
-                                                imageView.setImageBitmap(bitmap)
-                                                imageView.scaleType = ImageView.ScaleType.FIT_CENTER
-                                                highQualityUpdated.add(newPhoto.path)
-                                                Log.d(
-                                                    "StfalconViewer",
-                                                    "✅ 썸네일 클릭 후 고화질 적용 성공: ${newPhoto.name}"
-                                                )
-                                            } else {
-                                                Log.d("StfalconViewer", "🚫 Bitmap null or recycled")
+                            // 백그라운드에서 비트맵 디코딩
+                            CoroutineScope(Dispatchers.IO).launch {
+                                fullImageCache[newPhoto.path]?.let { imageData ->
+                                    try {
+                                        val bitmap = decodeBitmapWithExifRotation(
+                                            imageData,
+                                            photos.find { it.path == newPhoto.path }
+                                        )
+                                        if (bitmap != null && !bitmap.isRecycled) {
+                                            // 메인 스레드에서 UI 업데이트
+                                            CoroutineScope(Dispatchers.Main).launch {
+                                                imageViewRefs[newPhoto.path]?.let { imageView ->
+                                                    imageView.setImageBitmap(bitmap)
+                                                    imageView.scaleType =
+                                                        ImageView.ScaleType.FIT_CENTER
+                                                    highQualityUpdated.add(newPhoto.path)
+                                                    Log.d(
+                                                        "StfalconViewer",
+                                                        "✅ 썸네일 클릭 후 고화질 적용 성공: ${newPhoto.name}"
+                                                    )
+                                                }
                                             }
-                                        } catch (e: Exception) {
-                                            Log.e(
+                                        } else {
+                                            Log.d(
                                                 "StfalconViewer",
-                                                "❌ 썸네일 클릭 후 고화질 적용 오류: ${newPhoto.path}",
-                                                e
+                                                "🚫 Bitmap null or recycled"
                                             )
                                         }
+                                    } catch (e: Exception) {
+                                        Log.e(
+                                            "StfalconViewer",
+                                            "❌ 썸네일 클릭 후 고화질 적용 오류: ${newPhoto.path}",
+                                            e
+                                        )
                                     }
                                 }
                             }
@@ -341,19 +344,21 @@ fun FullScreenPhotoViewer(
 
                     val cacheKey = "${photoPath}_full"
                     if (!bitmapCache.containsKey(cacheKey)) {
-                        try {
-                            val bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.size)
-                            if (bitmap != null && !bitmap.isRecycled) {
-                                bitmapCache[cacheKey] = bitmap
-                                highQualityUpdated.add(photoPath) // 중복 방지
+                        // 백그라운드에서 비트맵 디코딩
+                        CoroutineScope(Dispatchers.IO).launch {
+                            try {
+                                val bitmap = decodeBitmapWithExifRotation(
+                                    imageData,
+                                    photos.find { it.path == photoPath })
 
                                 // 메인 스레드에서 UI 업데이트 (전환 완료 후)
                                 CoroutineScope(Dispatchers.Main).launch {
-                                    delay(500) // 전환 완료 대기
+                                    delay(100) // 전환 완료 대기 시간 단축 (500ms → 100ms)
 
-                                    if (!bitmap.isRecycled) {
+                                    if (bitmap != null && !bitmap.isRecycled) {
                                         imageView.setImageBitmap(bitmap)
                                         imageView.scaleType = ImageView.ScaleType.FIT_CENTER
+                                        highQualityUpdated.add(photoPath) // 중복 방지
                                         Log.d(
                                             "StfalconViewer",
                                             "✅ 실시간 고화질 교체 성공: ${photoPath.substringAfterLast("/")}"
@@ -362,16 +367,19 @@ fun FullScreenPhotoViewer(
                                         Log.d("StfalconViewer", "🚫 Bitmap recycled")
                                     }
                                 }
-                            } else {
-                                Log.d("StfalconViewer", "🚫 Bitmap null")
+                            } catch (e: Exception) {
+                                Log.e("StfalconViewer", "❌ 실시간 고화질 처리 오류: $photoPath", e)
                             }
-                        } catch (e: Exception) {
-                            Log.e("StfalconViewer", "❌ 실시간 고화질 처리 오류: $photoPath", e)
                         }
                     }
                 }
             }
         }
+    }
+
+    // ThumbnailAdapter에 고화질 캐시 업데이트를 전달
+    LaunchedEffect(fullImageCache) {
+        thumbnailAdapter?.updateFullImageCache(fullImageCache)
     }
 
     // Compose가 dispose될 때 뷰어 정리
@@ -419,6 +427,8 @@ private fun preloadAdjacentPhotosOptimized(
 /**
  * ImageView에 이미지 데이터를 로드하는 함수
  * 고화질 이미지가 있으면 우선 표시, 없으면 썸네일 표시
+ * 비트맵 디코딩은 백그라운드에서 처리하여 메인 스레드 차단 방지
+ * EXIF 방향 정보를 고려한 회전 처리 추가
  */
 private fun loadImageIntoView(
     imageView: ImageView,
@@ -429,66 +439,202 @@ private fun loadImageIntoView(
     imageViewRefs: MutableMap<String, ImageView>,
     highQualityUpdated: MutableSet<String>
 ) {
-    try {
-        // 1. 고화질 이미지가 있으면 우선 표시
-        if (fullImageData != null) {
-            val fullCacheKey = "${photo.path}_full"
-            var fullBitmap = bitmapCache[fullCacheKey]
+    // ImageView 참조 저장 (실시간 고화질 업데이트용)
+    imageViewRefs[photo.path] = imageView
 
-            if (fullBitmap == null) {
-                fullBitmap = BitmapFactory.decodeByteArray(fullImageData, 0, fullImageData.size)
-                if (fullBitmap != null) {
-                    bitmapCache[fullCacheKey] = fullBitmap
+    // 백그라운드에서 이미지 디코딩 처리
+    CoroutineScope(Dispatchers.IO).launch {
+        try {
+            var selectedBitmap: Bitmap? = null
+            var isHighQuality = false
+
+            // 1. 고화질 이미지가 있으면 우선 처리
+            if (fullImageData != null) {
+                val fullCacheKey = "${photo.path}_full"
+                var fullBitmap = bitmapCache[fullCacheKey]
+
+                if (fullBitmap == null) {
+                    fullBitmap = decodeBitmapWithExifRotation(fullImageData, photo)
+                    if (fullBitmap != null) {
+                        bitmapCache[fullCacheKey] = fullBitmap
+                    }
+                }
+
+                if (fullBitmap != null && !fullBitmap.isRecycled) {
+                    selectedBitmap = fullBitmap
+                    isHighQuality = true
+                    Log.d("StfalconViewer", "🖼️ 고화질 이미지 준비 완료 (회전 적용): ${photo.name}")
                 }
             }
 
-            if (fullBitmap != null && !fullBitmap.isRecycled) {
-                imageView.setImageBitmap(fullBitmap)
-                imageView.scaleType = ImageView.ScaleType.FIT_CENTER
-                highQualityUpdated.add(photo.path) // 고화질로 업데이트됨을 표시
-                Log.d("StfalconViewer", "🖼️ 고화질 이미지 표시: ${photo.name}")
+            // 2. 고화질이 없으면 썸네일 처리
+            if (selectedBitmap == null && thumbnailData != null) {
+                val thumbnailCacheKey = "${photo.path}_thumbnail"
+                var thumbnailBitmap = bitmapCache[thumbnailCacheKey]
 
-                // ImageView 참조 저장
-                imageViewRefs[photo.path] = imageView
-                return
-            }
-        }
+                if (thumbnailBitmap == null) {
+                    thumbnailBitmap = decodeBitmapWithExifRotation(thumbnailData, photo)
+                    if (thumbnailBitmap != null) {
+                        bitmapCache[thumbnailCacheKey] = thumbnailBitmap
+                    }
+                }
 
-        // 2. 고화질이 없으면 썸네일 표시 (기존 로직)
-        if (thumbnailData != null) {
-            val thumbnailCacheKey = "${photo.path}_thumbnail"
-            var thumbnailBitmap = bitmapCache[thumbnailCacheKey]
-
-            if (thumbnailBitmap == null) {
-                thumbnailBitmap =
-                    BitmapFactory.decodeByteArray(thumbnailData, 0, thumbnailData.size)
-                if (thumbnailBitmap != null) {
-                    bitmapCache[thumbnailCacheKey] = thumbnailBitmap
+                if (thumbnailBitmap != null && !thumbnailBitmap.isRecycled) {
+                    selectedBitmap = thumbnailBitmap
+                    Log.d("StfalconViewer", "📱 썸네일 준비 완료 (회전 적용): ${photo.name}")
                 }
             }
 
-            if (thumbnailBitmap != null) {
-                imageView.setImageBitmap(thumbnailBitmap)
-                imageView.scaleType = ImageView.ScaleType.FIT_CENTER
-                Log.d("StfalconViewer", "📱 썸네일 표시: ${photo.name}")
+            // 3. 메인 스레드에서 UI 업데이트 (비트맵이 준비된 후)
+            CoroutineScope(Dispatchers.Main).launch {
+                if (selectedBitmap != null && !selectedBitmap.isRecycled) {
+                    imageView.setImageBitmap(selectedBitmap)
+                    imageView.scaleType = ImageView.ScaleType.FIT_CENTER
+
+                    if (isHighQuality) {
+                        highQualityUpdated.add(photo.path)
+                        Log.d("StfalconViewer", "✅ 고화질 이미지 표시 완료: ${photo.name}")
+                    } else {
+                        Log.d("StfalconViewer", "✅ 썸네일 표시 완료: ${photo.name}")
+                    }
+                } else {
+                    // 플레이스홀더 설정
+                    Log.w("StfalconViewer", "⚠️ 이미지 없음, 플레이스홀더 표시: ${photo.name}")
+                    setPlaceholderImage(imageView)
+                }
             }
-        } else {
-            // 썸네일이 없으면 플레이스홀더
-            Log.w("StfalconViewer", "⚠️ 썸네일 없음: ${photo.name}")
-            setPlaceholderImage(imageView)
+
+        } catch (e: Exception) {
+            Log.e("StfalconViewer", "❌ 이미지 로딩 에러: ${photo.name}", e)
+            CoroutineScope(Dispatchers.Main).launch {
+                setPlaceholderImage(imageView)
+            }
         }
-
-        // ImageView 참조 저장 (실시간 고화질 업데이트용)
-        imageViewRefs[photo.path] = imageView
-
-    } catch (e: Exception) {
-        Log.e("StfalconViewer", "❌ 이미지 로딩 에러: ${photo.name}", e)
-        setPlaceholderImage(imageView)
     }
 }
 
 /**
- * 인접 사진 미리 로딩 최적화 함수 - 최소한의 로딩
+ * ByteArray에서 EXIF 방향 정보를 고려하여 비트맵을 디코딩하는 함수 (개선된 버전)
+ */
+private fun decodeBitmapWithExifRotation(
+    imageData: ByteArray,
+    photo: CameraPhoto? = null
+): Bitmap? {
+    return try {
+        Log.d("StfalconViewer", "=== EXIF 디코딩 시작: ${photo?.name ?: "unknown"} ===")
+        Log.d("StfalconViewer", "imageData size: ${imageData.size} bytes")
+        Log.d("StfalconViewer", "photo.path: ${photo?.path}")
+
+        // 1. 기본 비트맵 디코딩
+        val originalBitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.size)
+            ?: return null
+
+        Log.d("StfalconViewer", "원본 비트맵 크기: ${originalBitmap.width}x${originalBitmap.height}")
+
+        // 2. EXIF 방향 정보 읽기 (원본 파일 우선, 실패 시 바이트 스트림)
+        val orientation = try {
+            // 원본 파일이 있고 존재하는 경우 파일에서 직접 읽기
+            if (!photo?.path.isNullOrEmpty() && java.io.File(photo?.path ?: "").exists()) {
+                Log.d("StfalconViewer", "원본 파일에서 EXIF 읽기 시도: ${photo!!.path}")
+                val exif = androidx.exifinterface.media.ExifInterface(photo.path)
+                val orientation = exif.getAttributeInt(
+                    androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION,
+                    androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
+                )
+                Log.d("StfalconViewer", "파일 EXIF 읽기 성공: orientation = $orientation")
+                orientation
+            } else {
+                Log.d("StfalconViewer", "바이트 스트림에서 EXIF 읽기 시도")
+                Log.d(
+                    "StfalconViewer",
+                    "파일 존재 여부: ${
+                        if (photo?.path != null) java.io.File(photo.path)
+                            .exists() else "path is null"
+                    }"
+                )
+
+                // 원본 파일이 없으면 바이트 스트림에서 읽기
+                val exif = androidx.exifinterface.media.ExifInterface(imageData.inputStream())
+                val orientation = exif.getAttributeInt(
+                    androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION,
+                    androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
+                )
+                Log.d("StfalconViewer", "바이트 스트림 EXIF 읽기 성공: orientation = $orientation")
+                orientation
+            }
+        } catch (e: Exception) {
+            Log.e("StfalconViewer", "EXIF 읽기 실패: ${e.message}", e)
+            androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
+        }
+
+        Log.d("StfalconViewer", "최종 EXIF Orientation: $orientation (${photo?.name ?: "unknown"})")
+
+        // 3. 방향에 따른 회전 적용
+        when (orientation) {
+            androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> {
+                Log.d("StfalconViewer", "90도 회전 적용: ${photo?.name}")
+                val matrix = android.graphics.Matrix()
+                matrix.postRotate(90f)
+                Bitmap.createBitmap(
+                    originalBitmap,
+                    0,
+                    0,
+                    originalBitmap.width,
+                    originalBitmap.height,
+                    matrix,
+                    true
+                )
+            }
+
+            androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> {
+                Log.d("StfalconViewer", "180도 회전 적용: ${photo?.name}")
+                val matrix = android.graphics.Matrix()
+                matrix.postRotate(180f)
+                Bitmap.createBitmap(
+                    originalBitmap,
+                    0,
+                    0,
+                    originalBitmap.width,
+                    originalBitmap.height,
+                    matrix,
+                    true
+                )
+            }
+
+            androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> {
+                Log.d("StfalconViewer", "270도 회전 적용: ${photo?.name}")
+                val matrix = android.graphics.Matrix()
+                matrix.postRotate(270f)
+                Bitmap.createBitmap(
+                    originalBitmap,
+                    0,
+                    0,
+                    originalBitmap.width,
+                    originalBitmap.height,
+                    matrix,
+                    true
+                )
+            }
+
+            else -> {
+                Log.d("StfalconViewer", "회전 없음: ${photo?.name} (orientation: $orientation)")
+                originalBitmap
+            }
+        }
+    } catch (e: Exception) {
+        Log.e("StfalconViewer", "EXIF 회전 처리 완전 실패: ${photo?.name}", e)
+        // EXIF 처리 실패 시 원본 디코딩 시도
+        try {
+            BitmapFactory.decodeByteArray(imageData, 0, imageData.size)
+        } catch (ex: Exception) {
+            Log.e("StfalconViewer", "❌ 비트맵 디코딩 완전 실패", ex)
+            null
+        }
+    }
+}
+
+/**
+ * 인접 사진 미리 로드 함수 - 최소한의 로딩
  */
 private fun preloadAdjacentPhotosMinimal(
     currentPosition: Int,
@@ -497,11 +643,13 @@ private fun preloadAdjacentPhotosMinimal(
     viewModel: PhotoPreviewViewModel?,
     loadingPhotos: MutableSet<String>
 ) {
+    val preloadRange = 1 // 앞뒤 1장씩만 미리 로드
+
     // 현재 사진의 바로 앞뒤 사진만 체크
-    val adjacentIndices = listOf(currentPosition - 1, currentPosition + 1)
+    val indicesToPreload = listOf(currentPosition - 1, currentPosition + 1)
         .filter { it in photos.indices }
 
-    for (index in adjacentIndices) {
+    for (index in indicesToPreload) {
         val adjacentPhoto = photos[index]
 
         if (fullImageCache[adjacentPhoto.path] == null && !loadingPhotos.contains(adjacentPhoto.path)) {
@@ -531,6 +679,25 @@ class ThumbnailAdapter(
     private var lastClickTime = 0L
     private val clickDebounceTime = 300L // 300ms 디바운스
 
+    // 고화질 캐시에 접근하기 위한 참조 추가
+    private var fullImageCache: Map<String, ByteArray> = emptyMap()
+
+    fun updateFullImageCache(cache: Map<String, ByteArray>) {
+        val oldSize = fullImageCache.size
+        fullImageCache = cache
+        val newSize = fullImageCache.size
+
+        Log.d("ThumbnailAdapter", "=== 고화질 캐시 업데이트 ===")
+        Log.d("ThumbnailAdapter", "이전 캐시 크기: $oldSize, 새 캐시 크기: $newSize")
+        Log.d("ThumbnailAdapter", "캐시된 사진들: ${cache.keys.map { it.substringAfterLast("/") }}")
+
+        // 캐시가 업데이트되면 전체 어댑터를 새로고침
+        if (newSize > oldSize) {
+            Log.d("ThumbnailAdapter", "새로운 고화질 데이터 감지, 어댑터 새로고침")
+            notifyDataSetChanged()
+        }
+    }
+
     fun setSelectedPosition(position: Int) {
         val previousPosition = selectedPosition
         selectedPosition = position
@@ -547,11 +714,58 @@ class ThumbnailAdapter(
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val photo = photos[position]
         val thumbnailData = thumbnailCache[photo.path] ?: viewModel?.getThumbnail(photo.path)
+        val fullImageData = fullImageCache[photo.path]
 
+        Log.d("ThumbnailAdapter", "=== 썸네일 어댑터 처리 시작: ${photo.name} (position: $position) ===")
+        Log.d("ThumbnailAdapter", "photo.path: ${photo.path}")
+        Log.d("ThumbnailAdapter", "thumbnailData size: ${thumbnailData?.size ?: 0} bytes")
+        Log.d("ThumbnailAdapter", "fullImageData size: ${fullImageData?.size ?: 0} bytes")
+
+        // EXIF 처리를 위해 고화질 데이터 우선 사용
         if (thumbnailData != null) {
-            val bitmap = BitmapFactory.decodeByteArray(thumbnailData, 0, thumbnailData.size)
-            holder.imageView.setImageBitmap(bitmap)
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    Log.d("ThumbnailAdapter", "비트맵 디코딩 시작: ${photo.name}")
+
+                    // 썸네일에 EXIF 적용하기 위해 고화질 데이터에서 EXIF 읽기
+                    val bitmap = if (fullImageData != null) {
+                        Log.d("ThumbnailAdapter", "고화질 데이터에서 EXIF 읽어서 썸네일에 적용: ${photo.name}")
+                        decodeThumbnailWithFullImageExif(thumbnailData, fullImageData, photo)
+                    } else {
+                        Log.d("ThumbnailAdapter", "고화질 데이터 없음, 기본 썸네일 디코딩: ${photo.name}")
+                        decodeBitmapWithExifRotation(thumbnailData, photo)
+                    }
+
+                    Log.d(
+                        "ThumbnailAdapter",
+                        "비트맵 디코딩 완료: ${photo.name}, bitmap: ${bitmap != null}"
+                    )
+
+                    // 메인 스레드에서 UI 업데이트
+                    CoroutineScope(Dispatchers.Main).launch {
+                        if (bitmap != null && !bitmap.isRecycled) {
+                            Log.d(
+                                "ThumbnailAdapter",
+                                "썸네일 비트맵 적용 성공: ${photo.name} (${bitmap.width}x${bitmap.height})"
+                            )
+                            holder.imageView.setImageBitmap(bitmap)
+                            holder.imageView.scaleType = ImageView.ScaleType.CENTER_CROP
+                        } else {
+                            Log.w("ThumbnailAdapter", "썸네일 비트맵 null 또는 recycled: ${photo.name}")
+                            holder.imageView.setImageResource(android.R.drawable.ic_menu_gallery)
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("ThumbnailAdapter", "썸네일 EXIF 처리 에러: ${photo.name}", e)
+                    // 에러 시 메인 스레드에서 플레이스홀더 설정
+                    CoroutineScope(Dispatchers.Main).launch {
+                        holder.imageView.setImageResource(android.R.drawable.ic_menu_gallery)
+                    }
+                }
+            }
         } else {
+            Log.w("ThumbnailAdapter", "썸네일 데이터 없음: ${photo.name}")
+            // 썸네일이 없으면 즉시 플레이스홀더 설정
             holder.imageView.setImageResource(android.R.drawable.ic_menu_gallery)
         }
 
@@ -582,5 +796,73 @@ class ThumbnailAdapter(
 
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val imageView: ImageView = itemView.findViewById(R.id.image_view)
+    }
+}
+
+private fun decodeThumbnailWithFullImageExif(
+    thumbnailData: ByteArray,
+    fullImageData: ByteArray,
+    photo: CameraPhoto
+): Bitmap? {
+    // 고화질 이미지에서 EXIF 읽기
+    val fullExif = try {
+        val exif = androidx.exifinterface.media.ExifInterface(fullImageData.inputStream())
+        exif.getAttributeInt(
+            androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION,
+            androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
+        )
+    } catch (e: Exception) {
+        Log.e("StfalconViewer", "고화질 EXIF 읽기 실패: ${photo.name}", e)
+        androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
+    }
+
+    // 썸네일 이미지 디코딩
+    val thumbnailBitmap = decodeBitmapWithExifRotation(thumbnailData, photo)
+
+    // 고화질 이미지의 EXIF 정보를 썸네일에 적용
+    return when (fullExif) {
+        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> {
+            val matrix = android.graphics.Matrix()
+            matrix.postRotate(90f)
+            Bitmap.createBitmap(
+                thumbnailBitmap!!,
+                0,
+                0,
+                thumbnailBitmap.width,
+                thumbnailBitmap.height,
+                matrix,
+                true
+            )
+        }
+
+        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> {
+            val matrix = android.graphics.Matrix()
+            matrix.postRotate(180f)
+            Bitmap.createBitmap(
+                thumbnailBitmap!!,
+                0,
+                0,
+                thumbnailBitmap.width,
+                thumbnailBitmap.height,
+                matrix,
+                true
+            )
+        }
+
+        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> {
+            val matrix = android.graphics.Matrix()
+            matrix.postRotate(270f)
+            Bitmap.createBitmap(
+                thumbnailBitmap!!,
+                0,
+                0,
+                thumbnailBitmap.width,
+                thumbnailBitmap.height,
+                matrix,
+                true
+            )
+        }
+
+        else -> thumbnailBitmap
     }
 }
