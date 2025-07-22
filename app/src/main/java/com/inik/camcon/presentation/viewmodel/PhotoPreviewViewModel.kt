@@ -285,9 +285,18 @@ class PhotoPreviewViewModel @Inject constructor(
             return
         }
 
+        // 이미 다운로드 중인지 확인
+        if (_downloadingImages.value.contains(photoPath)) {
+            android.util.Log.d(TAG, "이미 다운로드 중, 중복 요청 무시")
+            return
+        }
+
         viewModelScope.launch {
             try {
                 android.util.Log.d(TAG, "실제 파일 다운로드 시작: $photoPath")
+
+                // 다운로드 중 상태로 설정
+                _downloadingImages.value = _downloadingImages.value + photoPath
 
                 // 네이티브 코드에서 직접 다운로드
                 val imageData = com.inik.camcon.CameraNative.downloadCameraPhoto(photoPath)
@@ -303,6 +312,10 @@ class PhotoPreviewViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 android.util.Log.e(TAG, "실제 파일 다운로드 중 예외", e)
+            } finally {
+                // 다운로드 완료 후 상태에서 제거
+                _downloadingImages.value = _downloadingImages.value - photoPath
+                android.util.Log.d(TAG, "다운로드 상태 정리 완료: $photoPath")
             }
         }
     }
@@ -327,6 +340,35 @@ class PhotoPreviewViewModel @Inject constructor(
 
     fun selectPhoto(photo: CameraPhoto?) {
         _uiState.value = _uiState.value.copy(selectedPhoto = photo)
+    }
+
+    /**
+     * 선택된 사진과 인접 사진들을 미리 다운로드하는 함수
+     * UI 스레드를 차단하지 않고 백그라운드에서 실행
+     */
+    fun preloadAdjacentImages(selectedPhoto: CameraPhoto, photos: List<CameraPhoto>) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            android.util.Log.d(TAG, "=== preloadAdjacentImages 시작: ${selectedPhoto.name} ===")
+
+            // 먼저 선택된 사진 다운로드
+            downloadFullImage(selectedPhoto.path)
+
+            // 인접 사진 찾기
+            val currentIndex = photos.indexOfFirst { it.path == selectedPhoto.path }
+            val adjacentIndices = listOf(currentIndex - 1, currentIndex + 1)
+                .filter { it in photos.indices }
+
+            android.util.Log.d(TAG, "인접 사진 인덱스: $adjacentIndices")
+
+            // 인접 사진들 백그라운드에서 다운로드
+            adjacentIndices.forEach { index ->
+                val adjacentPhoto = photos[index]
+                android.util.Log.d(TAG, "인접 사진 다운로드: ${adjacentPhoto.name}")
+                downloadFullImage(adjacentPhoto.path)
+            }
+
+            android.util.Log.d(TAG, "preloadAdjacentImages 완료")
+        }
     }
 
     /**
