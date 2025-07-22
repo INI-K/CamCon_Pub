@@ -66,14 +66,12 @@ object CameraNative {
     external fun getLatestCameraFile(): String  // 최신 파일만 가져오기 (촬영 후 사용)
     external fun invalidateFileCache()  // 캐시 무효화
     external fun getCameraThumbnail(photoPath: String): ByteArray?
+    external fun getCameraPhotoExif(photoPath: String): String? // EXIF 정보를 JSON 문자열로 반환
     external fun downloadCameraPhoto(photoPath: String): ByteArray?
-    external fun deleteCameraPhoto(photoPath: String): Boolean
 
     // PTP/IP 연결 안정성을 위한 함수들
     external fun clearPtpipSettings(): Boolean // libgphoto2의 ptp2_ip 설정을 모두 삭제하여 새로운 GUID 생성 강제
-    external fun waitBeforeRetry(ms: Int): Boolean // 네이티브에서 정확한 타이밍으로 대기
     external fun resetPtpipGuid(): Boolean // GUID만 특별히 초기화
-    external fun setPtpipVerbose(enabled: Boolean): Boolean // PTPIP 디버그 로그 활성화
 
     // PtpipConnectionManager에서 받은 카메라 정보를 libgphoto2에 전달
     external fun setCameraInfoFromPtpip(
@@ -83,23 +81,11 @@ object CameraNative {
         serial: String
     ): Int
 
-    // Nikon 전용 PTP 명령어 전송 함수 추가
-    external fun sendNikonCommand(operationCode: Int): Int
-    external fun sendNikonCommands(): Int
 
     // Connection type detection and session management
-    external fun detectConnectionType(): String // Returns "AP" or "STA"
-    external fun isCameraInApMode(): Boolean
-    external fun isCameraInStaMode(): Boolean
-    external fun maintainSessionForApMode(): Int
     external fun maintainSessionForStaMode(): Int
-    external fun sendVendorOperationForAuth(): Int
-    external fun resetSessionMaintenance(): Int
 
-    // gphoto2 호환성을 위한 함수들 추가
-    external fun isGphoto2Available(): Boolean
-    external fun waitForGphoto2Access(timeoutMs: Int): Boolean
-    external fun releaseForGphoto2(): Boolean
+
 
     // 로그 파일 관련 함수들
     external fun closeLogFile()
@@ -110,8 +96,6 @@ object CameraNative {
     external fun enableVerboseLogging(enabled: Boolean): Boolean
     external fun enableDebugLogging(enabled: Boolean): Boolean
 
-    // capturetarget 지원 값들 조회 함수 추가
-    external fun logCaptureTargetChoices(): Int
 
     // 카메라 초기화 상태 확인
     external fun isCameraInitialized(): Boolean

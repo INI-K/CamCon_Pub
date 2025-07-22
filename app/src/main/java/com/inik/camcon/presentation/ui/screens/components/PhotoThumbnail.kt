@@ -1,6 +1,7 @@
 package com.inik.camcon.presentation.ui.screens.components
 
-import android.graphics.ColorSpace
+import android.util.Log
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -20,10 +21,17 @@ import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
@@ -31,13 +39,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import coil.transform.Transformation
-import androidx.exifinterface.media.ExifInterface
 import com.inik.camcon.domain.model.CameraPhoto
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.ByteArrayInputStream
 import java.io.File
-import android.graphics.Bitmap
-import android.graphics.Matrix
-import java.security.MessageDigest
 
 /**
  * 사진 썸네일을 표시하는 카드 컴포넌트
@@ -46,8 +52,24 @@ import java.security.MessageDigest
 fun PhotoThumbnail(
     photo: CameraPhoto,
     onClick: () -> Unit,
-    thumbnailData: ByteArray? = null
+    thumbnailData: ByteArray? = null,
+    fullImageCache: Map<String, ByteArray> = emptyMap()
 ) {
+    // 디버깅을 위한 로그 추가
+    Log.d("PhotoThumbnail", "=== ${photo.name} ===")
+    Log.d("PhotoThumbnail", "thumbnailPath: ${photo.thumbnailPath}")
+    Log.d("PhotoThumbnail", "path: ${photo.path}")
+    Log.d("PhotoThumbnail", "thumbnailData: ${thumbnailData?.size ?: 0} bytes")
+    Log.d(
+        "PhotoThumbnail",
+        "thumbnailPath exists: ${!photo.thumbnailPath.isNullOrEmpty() && File(photo.thumbnailPath).exists()}"
+    )
+    Log.d(
+        "PhotoThumbnail",
+        "path exists: ${!photo.path.isNullOrEmpty() && File(photo.path).exists()}"
+    )
+    Log.d("PhotoThumbnail", "fullImageCache size: ${fullImageCache.size}")
+
     Card(
         modifier = Modifier
             .aspectRatio(1f)
@@ -64,18 +86,11 @@ fun PhotoThumbnail(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(photo.thumbnailPath)
                             .crossfade(true)
-                            .allowHardware(true)
-                            .transformations(
-                                if (photo.thumbnailPath.isNotEmpty()) {
-                                    listOf(ExifOrientationTransformation(photo.thumbnailPath))
-                                } else {
-                                    emptyList()
-                                }
-                            )
+                            .allowHardware(false) // EXIF 처리를 위해 하드웨어 가속 비활성화
                             .build(),
                         contentDescription = photo.name,
                         modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+                        contentScale = ContentScale.Fit
                     )
                 }
 
@@ -84,33 +99,35 @@ fun PhotoThumbnail(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(photo.path)
                             .crossfade(true)
-                            .allowHardware(true)
-                            .transformations(
-                                if (photo.path.isNotEmpty()) {
-                                    listOf(ExifOrientationTransformation(photo.path))
-                                } else {
-                                    emptyList()
-                                }
-                            )
+                            .allowHardware(false) // EXIF 처리를 위해 하드웨어 가속 비활성화
                             .build(),
                         contentDescription = photo.name,
                         modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+                        contentScale = ContentScale.Fit
                     )
                 }
 
                 thumbnailData != null -> {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(thumbnailData)
-                            .crossfade(true)
-                            .allowHardware(true)
-                            // 썸네일 바이트 배열에서는 EXIF를 따로 읽을 수 없음
-                            .build(),
-                        contentDescription = photo.name,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
+                    val fullImageData = fullImageCache[photo.path]
+                    if (fullImageData != null) {
+                        ExifAwareThumbnail(
+                            thumbnailData = thumbnailData,
+                            fullImageData = fullImageData,
+                            photo = photo,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(thumbnailData)
+                                .crossfade(true)
+                                .allowHardware(false)
+                                .build(),
+                            contentDescription = photo.name,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
                 }
 
                 else -> {
@@ -160,6 +177,116 @@ fun PhotoThumbnail(
                 }
             }
         }
+    }
+}
+
+/**
+ * 고화질 데이터의 EXIF 정보를 사용하여 썸네일에 올바른 회전을 적용하는 컴포넌트
+ */
+@Composable
+private fun ExifAwareThumbnail(
+    thumbnailData: ByteArray,
+    fullImageData: ByteArray,
+    photo: CameraPhoto,
+    modifier: Modifier = Modifier
+) {
+    var rotatedBitmap by remember(photo.path, thumbnailData, fullImageData) {
+        mutableStateOf<ImageBitmap?>(null)
+    }
+
+    LaunchedEffect(photo.path, thumbnailData, fullImageData) {
+        withContext(Dispatchers.IO) {
+            try {
+                // 1. 고화질 이미지에서 EXIF 정보 읽기
+                val fullExif = try {
+                    val exif = androidx.exifinterface.media.ExifInterface(
+                        ByteArrayInputStream(fullImageData)
+                    )
+                    exif.getAttributeInt(
+                        androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION,
+                        androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
+                    )
+                } catch (e: Exception) {
+                    Log.e("PhotoThumbnail", "고화질 EXIF 읽기 실패: ${photo.name}", e)
+                    androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
+                }
+
+                Log.d("PhotoThumbnail", "고화질 EXIF orientation: $fullExif (${photo.name})")
+
+                // 2. 썸네일 비트맵 디코딩
+                val originalBitmap = android.graphics.BitmapFactory.decodeByteArray(
+                    thumbnailData, 0, thumbnailData.size
+                )
+
+                if (originalBitmap != null) {
+                    Log.d(
+                        "PhotoThumbnail",
+                        "썸네일 비트맵 크기: ${originalBitmap.width}x${originalBitmap.height}"
+                    )
+
+                    // 3. 고화질 이미지의 EXIF 정보를 썸네일에 적용
+                    val rotatedBmp = when (fullExif) {
+                        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> {
+                            Log.d("PhotoThumbnail", "90도 회전 적용: ${photo.name}")
+                            val matrix = android.graphics.Matrix()
+                            matrix.postRotate(90f)
+                            android.graphics.Bitmap.createBitmap(
+                                originalBitmap, 0, 0,
+                                originalBitmap.width, originalBitmap.height,
+                                matrix, true
+                            )
+                        }
+
+                        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> {
+                            Log.d("PhotoThumbnail", "180도 회전 적용: ${photo.name}")
+                            val matrix = android.graphics.Matrix()
+                            matrix.postRotate(180f)
+                            android.graphics.Bitmap.createBitmap(
+                                originalBitmap, 0, 0,
+                                originalBitmap.width, originalBitmap.height,
+                                matrix, true
+                            )
+                        }
+
+                        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> {
+                            Log.d("PhotoThumbnail", "270도 회전 적용: ${photo.name}")
+                            val matrix = android.graphics.Matrix()
+                            matrix.postRotate(270f)
+                            android.graphics.Bitmap.createBitmap(
+                                originalBitmap, 0, 0,
+                                originalBitmap.width, originalBitmap.height,
+                                matrix, true
+                            )
+                        }
+
+                        else -> {
+                            Log.d("PhotoThumbnail", "회전 없음: ${photo.name}")
+                            originalBitmap
+                        }
+                    }
+
+                    rotatedBitmap = rotatedBmp.asImageBitmap()
+                    Log.d("PhotoThumbnail", "최종 썸네일 크기: ${rotatedBmp.width}x${rotatedBmp.height}")
+                } else {
+                    Log.e("PhotoThumbnail", "썸네일 비트맵 디코딩 실패: ${photo.name}")
+                }
+            } catch (e: Exception) {
+                Log.e("PhotoThumbnail", "EXIF 썸네일 처리 실패: ${photo.name}", e)
+            }
+        }
+    }
+
+    // 회전된 비트맵 표시
+    rotatedBitmap?.let { bitmap ->
+        Image(
+            bitmap = bitmap,
+            contentDescription = photo.name,
+            modifier = modifier,
+            contentScale = ContentScale.Fit
+        )
+    } ?: run {
+        // 로딩 중이거나 실패 시 플레이스홀더
+        ThumbnailPlaceholder()
     }
 }
 
