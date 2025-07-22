@@ -1,9 +1,5 @@
 package com.inik.camcon.presentation.ui.screens.components
 
-import android.graphics.Bitmap
-import android.graphics.ColorSpace
-import android.graphics.Matrix
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -24,58 +20,9 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import androidx.exifinterface.media.ExifInterface
-import coil.compose.rememberAsyncImagePainter
-import coil.request.CachePolicy
+import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import coil.size.Size
-import coil.transform.Transformation
 import com.inik.camcon.domain.model.CameraPhoto
-import java.io.File
-
-/**
- * EXIF Orientation Transformation for Coil
- */
-class ExifOrientationTransformation(private val imagePath: String) : Transformation {
-
-    override val cacheKey: String = "${ExifOrientationTransformation::class.java.name}:$imagePath"
-
-    override suspend fun transform(input: Bitmap, size: Size): Bitmap {
-        return try {
-            val exif = ExifInterface(imagePath)
-            val orientation =
-                exif.getAttributeInt(
-                    ExifInterface.TAG_ORIENTATION,
-                    ExifInterface.ORIENTATION_NORMAL
-                )
-
-            when (orientation) {
-                ExifInterface.ORIENTATION_ROTATE_90 -> {
-                    val matrix = Matrix()
-                    matrix.postRotate(90f)
-                    Bitmap.createBitmap(input, 0, 0, input.width, input.height, matrix, true)
-                }
-
-                ExifInterface.ORIENTATION_ROTATE_180 -> {
-                    val matrix = Matrix()
-                    matrix.postRotate(180f)
-                    Bitmap.createBitmap(input, 0, 0, input.width, input.height, matrix, true)
-                }
-
-                ExifInterface.ORIENTATION_ROTATE_270 -> {
-                    val matrix = Matrix()
-                    matrix.postRotate(270f)
-                    Bitmap.createBitmap(input, 0, 0, input.width, input.height, matrix, true)
-                }
-
-                else -> input
-            }
-        } catch (e: Exception) {
-            // EXIF를 읽을 수 없거나 오류 발생 시 원본 반환
-            input
-        }
-    }
-}
 
 /**
  * 개별 사진 슬라이드 컴포넌트
@@ -116,44 +63,15 @@ fun PhotoSlide(
             "사용할 이미지 데이터: ${if (isFullQuality) "고화질" else if (thumbnailData != null) "썸네일" else "파일 경로"}"
         )
 
-        // 파일 경로인 경우 EXIF 방향 처리 추가
-        val imagePath = if (imageData is String) imageData else null
-        val transformations = if (imagePath != null && File(imagePath).exists()) {
-            listOf(ExifOrientationTransformation(imagePath))
-        } else {
-            emptyList()
-        }
-
-        // Coil을 사용하여 이미지 로딩 - ByteArray와 파일 경로 모두 지원
-        val painter = rememberAsyncImagePainter(
-            ImageRequest.Builder(LocalContext.current)
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
                 .data(imageData)
                 .crossfade(true)
-                .allowHardware(true)
-                .transformations(transformations)
-                .size(
-                    // 화면 크기의 2배 정도로 제한 (고해상도 디스플레이 고려, 하지만 메모리 안전)
-                    if (fullImageData != null) {
-                        Size(
-                            width = (screenWidth * 2).coerceAtMost(3840),  // 최대 4K 너비
-                            height = (screenHeight * 2).coerceAtMost(2160) // 최대 4K 높이
-                        )
-                    } else {
-                        // 썸네일의 경우 화면 크기 정도로 제한
-                        Size(screenWidth, screenHeight)
-                    }
-                )
-                .memoryCachePolicy(CachePolicy.ENABLED) // 메모리 캐시 활성화
-                .diskCachePolicy(CachePolicy.ENABLED) // 디스크 캐시 활성화
-                .build()
-        )
-
-        Image(
-            painter = painter,
+                .allowHardware(false)
+                .build(),
             contentDescription = photo.name,
             modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Fit,
-            alignment = Alignment.Center
+            contentScale = ContentScale.Fit
         )
     }
 }
