@@ -139,4 +139,6 @@ dependencies {
     implementation "androidx.exifinterface:exifinterface:1.4.1"
     // GPUImage for color transfer and image processing
     implementation 'jp.co.cyberagent.android:gpuimage:2.1.0'
+    implementation 'com.github.stfalcon-studio:StfalconImageViewer:1.0.1'
+
 }
