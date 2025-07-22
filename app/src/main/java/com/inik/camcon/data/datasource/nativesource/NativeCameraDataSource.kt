@@ -316,7 +316,7 @@ class NativeCameraDataSource @Inject constructor(
     // 기존 메서드는 첫 번째 페이지만 반환하도록 수정
     fun getCameraPhotos(): List<NativeCameraPhoto> {
         Log.d(TAG, "getCameraPhotos 호출 - 페이징 버전으로 위임 (첫 페이지)")
-        return getCameraPhotosPaged(0, 50).photos
+        return getCameraPhotosPaged(0, 100).photos
     }
 
     // 썸네일 가져오기 함수
