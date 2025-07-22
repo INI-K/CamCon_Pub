@@ -9,6 +9,8 @@ import com.inik.camcon.domain.usecase.camera.GetCameraPhotosPagedUseCase
 import com.inik.camcon.domain.usecase.camera.GetCameraThumbnailUseCase
 import com.inik.camcon.domain.usecase.camera.PhotoCaptureEventManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -343,31 +345,47 @@ class PhotoPreviewViewModel @Inject constructor(
     }
 
     /**
-     * 선택된 사진과 인접 사진들을 미리 다운로드하는 함수
+     * 선택된 사진과 인접 사진들을 미리 다운로드하는 함수 (성능 최적화)
      * UI 스레드를 차단하지 않고 백그라운드에서 실행
      */
     fun preloadAdjacentImages(selectedPhoto: CameraPhoto, photos: List<CameraPhoto>) {
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        viewModelScope.launch(Dispatchers.IO) {
             android.util.Log.d(TAG, "=== preloadAdjacentImages 시작: ${selectedPhoto.name} ===")
 
-            // 먼저 선택된 사진 다운로드
+            // 먼저 선택된 사진 다운로드 (우선순위)
             downloadFullImage(selectedPhoto.path)
 
-            // 인접 사진 찾기
+            // 100ms 지연 후 인접 사진 다운로드 (슬라이딩 성능 보호)
+            delay(100)
+
+            // 인접 사진 찾기 (범위 축소)
             val currentIndex = photos.indexOfFirst { it.path == selectedPhoto.path }
             val adjacentIndices = listOf(currentIndex - 1, currentIndex + 1)
                 .filter { it in photos.indices }
 
             android.util.Log.d(TAG, "인접 사진 인덱스: $adjacentIndices")
 
-            // 인접 사진들 백그라운드에서 다운로드
+            // 인접 사진들 순차적으로 다운로드 (동시 다운로드 방지)
             adjacentIndices.forEach { index ->
                 val adjacentPhoto = photos[index]
                 android.util.Log.d(TAG, "인접 사진 다운로드: ${adjacentPhoto.name}")
                 downloadFullImage(adjacentPhoto.path)
+
+                // 각 다운로드 간 짧은 지연 (시스템 부하 방지)
+                delay(50)
             }
 
             android.util.Log.d(TAG, "preloadAdjacentImages 완료")
+        }
+    }
+
+    /**
+     * 빠른 미리 로딩 - 현재 사진만 우선 다운로드 (슬라이딩 성능 우선)
+     */
+    fun quickPreloadCurrentImage(selectedPhoto: CameraPhoto) {
+        viewModelScope.launch(Dispatchers.IO) {
+            android.util.Log.d(TAG, "빠른 다운로드: ${selectedPhoto.name}")
+            downloadFullImage(selectedPhoto.path)
         }
     }
 

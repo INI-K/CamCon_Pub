@@ -1,5 +1,6 @@
 package com.inik.camcon.presentation.ui.screens.components
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
 import android.widget.ImageView
@@ -17,6 +18,7 @@ import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
 import com.stfalcon.imageviewer.StfalconImageViewer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -52,15 +54,18 @@ fun FullScreenPhotoViewer(
     
     // 현재 표시 중인 뷰어 인스턴스 추적
     var currentViewer: Any? by remember { mutableStateOf(null) }
-    
-    Log.d("StfalconViewer", "=== StfalconImageViewer 시작 ===")
-    Log.d("StfalconViewer", "사진: ${photo.name}, 인덱스: $currentPhotoIndex")
-    Log.d("StfalconViewer", "전체 사진 수: ${photos.size}")
-    Log.d("StfalconViewer", "미리 로드된 썸네일: ${thumbnailCache.size}개")
-    
-    LaunchedEffect(photo.path) {
-        Log.d("StfalconViewer", "🚀 StfalconImageViewer 실행")
-        
+
+    // 이미지 로딩 성능 개선을 위한 비트맵 캐시
+    val bitmapCache = remember { mutableMapOf<String, Bitmap>() }
+
+    // 현재 보이는 사진들의 ImageView 참조를 저장 (실시간 업데이트용)
+    val imageViewRefs = remember { mutableMapOf<String, ImageView>() }
+
+    // 고화질 업데이트가 완료된 사진들을 추적 (중복 방지)
+    val highQualityUpdated = remember { mutableSetOf<String>() }
+
+    // 뷰어 초기화를 한 번만 수행하도록 개선
+    LaunchedEffect(Unit) { // photo.path 대신 Unit 사용으로 한 번만 실행
         // 이전 뷰어가 있으면 먼저 닫기
         (currentViewer as? com.stfalcon.imageviewer.StfalconImageViewer<*>)?.dismiss()
         
@@ -73,18 +78,29 @@ fun FullScreenPhotoViewer(
             val photoThumbnail =
                 thumbnailCache[cameraPhoto.path] ?: viewModel?.getThumbnail(cameraPhoto.path)
             val photoFullImage = fullImageCache[cameraPhoto.path]
-            
-            // 로딩 최적화: 현재 보이는 사진과 인접한 사진만 로그 출력
-            val isCurrentOrAdjacent = kotlin.math.abs(photos.indexOf(cameraPhoto) - currentPhotoIndex) <= 1
+
+            // 현재 보이는 사진과 인접한 사진만 로그 출력 (성능 개선)
+            val photoIndex = photos.indexOf(cameraPhoto)
+            val isCurrentOrAdjacent = kotlin.math.abs(photoIndex - currentPhotoIndex) <= 2
+
             if (isCurrentOrAdjacent) {
                 Log.d("StfalconViewer", "📸 이미지 로더 호출: ${cameraPhoto.name}")
-                Log.d("StfalconViewer", "  - 썸네일: ${photoThumbnail?.size ?: 0} bytes (캐시에서 가져옴)")
+                Log.d("StfalconViewer", "  - 썸네일: ${photoThumbnail?.size ?: 0} bytes (캐시에서)")
                 Log.d("StfalconViewer", "  - 고화질: ${photoFullImage?.size ?: 0} bytes")
             }
-            
-            loadImageIntoView(imageView, cameraPhoto, photoFullImage, photoThumbnail)
-            
-            // 현재 보이는 사진과 바로 인접한 사진만 고화질 다운로드
+
+            // 최적화된 이미지 로딩 (비트맵 캐시 활용)
+            loadImageIntoView(
+                imageView,
+                cameraPhoto,
+                photoFullImage,
+                photoThumbnail,
+                bitmapCache,
+                imageViewRefs,
+                highQualityUpdated
+            )
+
+            // 현재 보이는 사진과 바로 인접한 사진만 고화질 다운로드 (범위 축소)
             if (isCurrentOrAdjacent && photoFullImage == null && !loadingPhotos.contains(cameraPhoto.path)) {
                 loadingPhotos.add(cameraPhoto.path)
                 Log.d("StfalconViewer", "🔄 고화질 이미지 다운로드 시작: ${cameraPhoto.path}")
@@ -96,24 +112,33 @@ fun FullScreenPhotoViewer(
             .allowSwipeToDismiss(true) // 스와이프로 닫기 허용
             .allowZooming(true) // 줌 허용
             .withImageChangeListener { position ->
-                // 사진 변경 시 콜백 - 디바운싱 적용
-                Log.d("StfalconViewer", "📸 사진 변경됨: 인덱스 $position")
+                // 사진 변경 시 콜백 - 성능 최적화
                 if (position in photos.indices) {
                     val newPhoto = photos[position]
-                    
-                    // UI 상태 즉시 업데이트 (매끄러운 전환을 위해)
+
+                    Log.d("StfalconViewer", "📸 사진 변경됨: 인덱스 $position → ${newPhoto.name}")
+
+                    // UI 상태 즉시 업데이트 (메인 스레드에서 빠르게)
                     onPhotoChanged(newPhoto)
-                    
-                    // 백그라운드에서 고화질 이미지 로드
+
+                    // 백그라운드에서 최소한의 미리 로딩만 수행 (성능 향상)
                     CoroutineScope(Dispatchers.IO).launch {
+                        // 현재 사진만 우선 다운로드
                         if (fullImageCache[newPhoto.path] == null && !loadingPhotos.contains(newPhoto.path)) {
                             loadingPhotos.add(newPhoto.path)
-                            Log.d("StfalconViewer", "🔄 새 사진 고화질 이미지 다운로드: ${newPhoto.path}")
+                            Log.d("StfalconViewer", "🔄 현재 사진 우선 다운로드: ${newPhoto.path}")
                             viewModel?.downloadFullImage(newPhoto.path)
                         }
-                        
-                        // 인접 사진들을 백그라운드에서 미리 로드
-                        preloadAdjacentPhotosOptimized(position, photos, fullImageCache, viewModel, loadingPhotos)
+
+                        // 인접 사진은 더 긴 지연 후 다운로드 (슬라이딩 전환 완전 완료 대기)
+                        delay(800) // 800ms 지연 - 전환 애니메이션 완료 대기
+                        preloadAdjacentPhotosMinimal(
+                            position,
+                            photos,
+                            fullImageCache,
+                            viewModel,
+                            loadingPhotos
+                        )
                     }
                 }
             }
@@ -121,6 +146,9 @@ fun FullScreenPhotoViewer(
                 // 뷰어 닫기 시 콜백
                 Log.d("StfalconViewer", "❌ 뷰어 닫힘 - 정상적인 종료")
                 loadingPhotos.clear() // 로딩 상태 초기화
+                bitmapCache.clear() // 비트맵 캐시 정리
+                imageViewRefs.clear() // ImageView 참조 정리
+                highQualityUpdated.clear() // 고화질 업데이트 상태 정리
                 currentViewer = null
                 onDismiss()
             }
@@ -129,7 +157,46 @@ fun FullScreenPhotoViewer(
         currentViewer = viewer
         viewer.show()
     }
-    
+
+    // 고화질 이미지 캐시가 업데이트되면 실시간으로 고화질 교체
+    LaunchedEffect(fullImageCache) {
+        fullImageCache.forEach { (photoPath, imageData) ->
+            // 이미 고화질로 업데이트된 사진은 건너뛰기
+            if (!highQualityUpdated.contains(photoPath)) {
+                imageViewRefs[photoPath]?.let { imageView ->
+                    Log.d("StfalconViewer", "🔄 실시간 고화질 교체 시작: $photoPath")
+
+                    val cacheKey = "${photoPath}_full"
+                    if (!bitmapCache.containsKey(cacheKey)) {
+                        try {
+                            val bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.size)
+                            if (bitmap != null && !bitmap.isRecycled) {
+                                bitmapCache[cacheKey] = bitmap
+                                highQualityUpdated.add(photoPath) // 중복 방지
+
+                                // 메인 스레드에서 UI 업데이트 (전환 완료 후)
+                                CoroutineScope(Dispatchers.Main).launch {
+                                    delay(500) // 전환 완료 대기
+
+                                    if (!bitmap.isRecycled) {
+                                        imageView.setImageBitmap(bitmap)
+                                        imageView.scaleType = ImageView.ScaleType.FIT_CENTER
+                                        Log.d(
+                                            "StfalconViewer",
+                                            "✅ 실시간 고화질 교체 성공: ${photoPath.substringAfterLast("/")}"
+                                        )
+                                    }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e("StfalconViewer", "❌ 실시간 고화질 처리 오류: $photoPath", e)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // Compose가 dispose될 때 뷰어 정리
     DisposableEffect(Unit) {
         onDispose {
@@ -137,6 +204,9 @@ fun FullScreenPhotoViewer(
             (currentViewer as? com.stfalcon.imageviewer.StfalconImageViewer<*>)?.dismiss()
             currentViewer = null
             loadingPhotos.clear()
+            bitmapCache.clear() // 비트맵 캐시도 정리
+            imageViewRefs.clear() // ImageView 참조도 정리
+            highQualityUpdated.clear() // 고화질 업데이트 상태도 정리
         }
     }
 }
@@ -157,15 +227,11 @@ private fun preloadAdjacentPhotosOptimized(
     val indicesToPreload = listOf(currentPosition - 1, currentPosition + 1)
         .filter { it in photos.indices && it != currentPosition }
 
-    Log.d("StfalconViewer", "🔄 인접 사진 미리 로드 체크: 인덱스 $indicesToPreload")
-
     for (i in indicesToPreload) {
         val adjacentPhoto = photos[i]
 
-        // 이미 캐시에 있거나 로딩 중이면 건너뛰기
         if (fullImageCache[adjacentPhoto.path] == null && !loadingPhotos.contains(adjacentPhoto.path)) {
             loadingPhotos.add(adjacentPhoto.path)
-            Log.d("StfalconViewer", "🔄 인접 사진 미리 로드 시작: ${adjacentPhoto.name} (인덱스 $i)")
             viewModel?.downloadFullImage(adjacentPhoto.path)
         } else {
             Log.d("StfalconViewer", "⏭️ 인접 사진 미리 로드 건너뛰기: ${adjacentPhoto.name} (이미 캐시되거나 로딩 중)")
@@ -175,37 +241,72 @@ private fun preloadAdjacentPhotosOptimized(
 
 /**
  * ImageView에 이미지 데이터를 로드하는 함수
+ * 썸네일만 즉시 표시하고 고화질은 실시간 업데이트로 처리
  */
 private fun loadImageIntoView(
     imageView: ImageView,
     photo: CameraPhoto,
     fullImageData: ByteArray?,
-    thumbnailData: ByteArray?
+    thumbnailData: ByteArray?,
+    bitmapCache: MutableMap<String, Bitmap>,
+    imageViewRefs: MutableMap<String, ImageView>,
+    highQualityUpdated: MutableSet<String>
 ) {
     try {
-        // 고해상도 이미지가 있으면 우선 사용, 없으면 썸네일 사용
-        val imageData = fullImageData ?: thumbnailData
+        // 1. 썸네일이 있으면 즉시 표시 (빠른 반응성)
+        if (thumbnailData != null) {
+            val thumbnailCacheKey = "${photo.path}_thumbnail"
+            var thumbnailBitmap = bitmapCache[thumbnailCacheKey]
 
-        if (imageData != null) {
-            val imageType = if (fullImageData != null) "고화질" else "썸네일"
-            Log.d("StfalconViewer", "🖼️ $imageType 이미지 로딩: ${photo.name} (${imageData.size} bytes)")
+            if (thumbnailBitmap == null) {
+                thumbnailBitmap =
+                    BitmapFactory.decodeByteArray(thumbnailData, 0, thumbnailData.size)
+                if (thumbnailBitmap != null) {
+                    bitmapCache[thumbnailCacheKey] = thumbnailBitmap
+                }
+            }
 
-            val bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.size)
-            if (bitmap != null) {
-                imageView.setImageBitmap(bitmap)
+            if (thumbnailBitmap != null) {
+                imageView.setImageBitmap(thumbnailBitmap)
                 imageView.scaleType = ImageView.ScaleType.FIT_CENTER
-                Log.d("StfalconViewer", "✅ $imageType 이미지 로딩 성공: ${bitmap.width}x${bitmap.height}")
-            } else {
-                Log.e("StfalconViewer", "❌ 비트맵 디코딩 실패: ${photo.name}")
-                setPlaceholderImage(imageView)
+                Log.d("StfalconViewer", "📱 썸네일 표시: ${photo.name}")
             }
         } else {
-            Log.w("StfalconViewer", "⚠️ 이미지 데이터 없음: ${photo.name}")
+            // 썸네일이 없으면 플레이스홀더
+            Log.w("StfalconViewer", "⚠️ 썸네일 없음: ${photo.name}")
             setPlaceholderImage(imageView)
         }
+
+        // ImageView 참조 저장 (실시간 고화질 업데이트용)
+        imageViewRefs[photo.path] = imageView
+
     } catch (e: Exception) {
         Log.e("StfalconViewer", "❌ 이미지 로딩 에러: ${photo.name}", e)
         setPlaceholderImage(imageView)
+    }
+}
+
+/**
+ * 인접 사진 미리 로딩 최적화 함수 - 최소한의 로딩
+ */
+private fun preloadAdjacentPhotosMinimal(
+    currentPosition: Int,
+    photos: List<CameraPhoto>,
+    fullImageCache: Map<String, ByteArray>,
+    viewModel: PhotoPreviewViewModel?,
+    loadingPhotos: MutableSet<String>
+) {
+    // 현재 사진의 바로 앞뒤 사진만 체크
+    val adjacentIndices = listOf(currentPosition - 1, currentPosition + 1)
+        .filter { it in photos.indices }
+
+    for (index in adjacentIndices) {
+        val adjacentPhoto = photos[index]
+
+        if (fullImageCache[adjacentPhoto.path] == null && !loadingPhotos.contains(adjacentPhoto.path)) {
+            loadingPhotos.add(adjacentPhoto.path)
+            viewModel?.downloadFullImage(adjacentPhoto.path)
+        }
     }
 }
 
