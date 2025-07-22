@@ -87,7 +87,7 @@ fun PhotoPreviewScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 16.dp) // 상단 마진 추가
+                .padding(top = 24.dp) // 상단 마진 증가 (16dp → 24dp)
         ) {
             // 상단 타이틀 영역 (모던한 디자인)
             ModernHeader(
@@ -280,7 +280,7 @@ private fun ModernHeader(
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(16.dp)) // 여백 증가 (12dp → 16dp)
 
         // 두 번째 행: 파일 타입 필터 버튼들
         Row(

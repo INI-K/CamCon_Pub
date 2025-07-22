@@ -3,6 +3,9 @@ package com.inik.camcon.presentation.ui.screens.components
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -13,6 +16,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.inik.camcon.R
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
 import com.stfalcon.imageviewer.StfalconImageViewer
@@ -53,7 +59,11 @@ fun FullScreenPhotoViewer(
     val loadingPhotos = remember { mutableSetOf<String>() }
     
     // 현재 표시 중인 뷰어 인스턴스 추적
-    var currentViewer: Any? by remember { mutableStateOf(null) }
+    var currentViewer: StfalconImageViewer<CameraPhoto>? by remember { mutableStateOf(null) }
+
+    // 썸네일 어댑터 참조 (동기화를 위해)
+    var thumbnailAdapter: ThumbnailAdapter? by remember { mutableStateOf(null) }
+    var thumbnailRecyclerView: RecyclerView? by remember { mutableStateOf(null) }
 
     // 이미지 로딩 성능 개선을 위한 비트맵 캐시
     val bitmapCache = remember { mutableMapOf<String, Bitmap>() }
@@ -67,7 +77,7 @@ fun FullScreenPhotoViewer(
     // 뷰어 초기화를 한 번만 수행하도록 개선
     LaunchedEffect(Unit) { // photo.path 대신 Unit 사용으로 한 번만 실행
         // 이전 뷰어가 있으면 먼저 닫기
-        (currentViewer as? com.stfalcon.imageviewer.StfalconImageViewer<*>)?.dismiss()
+        currentViewer?.dismiss()
         
         // 이미지 뷰어 생성 및 실행
         val viewer = StfalconImageViewer.Builder<CameraPhoto>(
@@ -111,15 +121,176 @@ fun FullScreenPhotoViewer(
             .withHiddenStatusBar(true) // 상태바 숨기기
             .allowSwipeToDismiss(true) // 스와이프로 닫기 허용
             .allowZooming(true) // 줌 허용
-            .withImageChangeListener { position ->
-                // 사진 변경 시 콜백 - 성능 최적화
-                if (position in photos.indices) {
-                    val newPhoto = photos[position]
+            .withOverlayView(
+                run {
+                    val layout = LayoutInflater.from(context)
+                        .inflate(R.layout.thumbnail_gallery, null) as ViewGroup
+                    val recyclerView = layout.findViewById<RecyclerView>(R.id.recycler_view)
+                    recyclerView.layoutManager =
+                        LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
+                    val adapter = ThumbnailAdapter(photos, thumbnailCache, viewModel) { position ->
+                        // 썸네일 클릭 시 뷰어를 해당 위치로 이동
+                        Log.d("StfalconViewer", "🖱️ 썸네일 클릭: 인덱스 $position 로 이동")
 
-                    Log.d("StfalconViewer", "📸 사진 변경됨: 인덱스 $position → ${newPhoto.name}")
+                        // StfalconImageViewer의 setCurrentPosition을 사용하여 프로그래밍 방식으로 위치 변경
+                        val viewer = currentViewer
+                        Log.d("StfalconViewer", "현재 뷰어 상태: ${viewer != null}")
+
+                        if (viewer != null) {
+                            Log.d("StfalconViewer", "setCurrentPosition 호출 전: 위치 $position")
+                            viewer.setCurrentPosition(position)
+                            Log.d("StfalconViewer", "setCurrentPosition 호출 완료: 위치 $position")
+
+                            // setCurrentPosition이 withImageChangeListener를 트리거하는지 확인
+                            Log.d("StfalconViewer", "withImageChangeListener 트리거 대기 중...")
+
+                            // setCurrentPosition 후 약간의 지연을 두고 이미지 변경 리스너 로직 수동 실행
+                            CoroutineScope(Dispatchers.Main).launch {
+                                delay(100) // setCurrentPosition 완료 대기
+
+                                // 이미지 변경 리스너와 동일한 로직 수동 실행
+                                if (position in photos.indices) {
+                                    Log.d("StfalconViewer", "🔄 수동 이미지 변경 리스너 실행: 위치 $position")
+
+                                    // 고화질 이미지가 캐시에 있으면 즉시 적용
+                                    val newPhoto = photos[position]
+                                    if (fullImageCache[newPhoto.path] != null) {
+                                        imageViewRefs[newPhoto.path]?.let { imageView ->
+                                            fullImageCache[newPhoto.path]?.let { imageData ->
+                                                try {
+                                                    val bitmap = BitmapFactory.decodeByteArray(
+                                                        imageData,
+                                                        0,
+                                                        imageData.size
+                                                    )
+                                                    if (bitmap != null && !bitmap.isRecycled) {
+                                                        imageView.setImageBitmap(bitmap)
+                                                        imageView.scaleType =
+                                                            ImageView.ScaleType.FIT_CENTER
+                                                        highQualityUpdated.add(newPhoto.path)
+                                                        Log.d(
+                                                            "StfalconViewer",
+                                                            "✅ 수동 고화질 적용: ${newPhoto.name}"
+                                                        )
+                                                    } else {
+                                                        Log.d(
+                                                            "StfalconViewer",
+                                                            "🚫 Bitmap null or recycled"
+                                                        )
+                                                    }
+                                                } catch (e: Exception) {
+                                                    Log.e(
+                                                        "StfalconViewer",
+                                                        "❌ 수동 고화질 적용 오류: ${newPhoto.path}",
+                                                        e
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        Log.d(
+                                            "StfalconViewer",
+                                            "⚠️ 고화질 캐시 없음, 다운로드 대기: ${newPhoto.name}"
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            Log.e("StfalconViewer", "❌ 뷰어 참조를 찾을 수 없음")
+                        }
+
+                        val newPhoto = photos[position]
+                        onPhotoChanged(newPhoto)
+
+                        // 썸네일 갤러리 업데이트
+                        thumbnailAdapter?.setSelectedPosition(position)
+                        thumbnailRecyclerView?.scrollToPosition(position)
+
+                        // 위치 변경 후 해당 사진의 고화질 이미지 다운로드 트리거
+                        if (fullImageCache[newPhoto.path] == null && !loadingPhotos.contains(
+                                newPhoto.path
+                            )
+                        ) {
+                            loadingPhotos.add(newPhoto.path)
+                            Log.d("StfalconViewer", "🔄 썸네일 클릭 후 고화질 다운로드: ${newPhoto.path}")
+                            viewModel?.downloadFullImage(newPhoto.path)
+                        } else if (fullImageCache[newPhoto.path] != null) {
+                            // 이미 고화질이 캐시에 있으면 즉시 적용
+                            Log.d("StfalconViewer", "💾 캐시된 고화질 즉시 적용: ${newPhoto.name}")
+
+                            // 약간의 지연 후 고화질 적용 (setCurrentPosition 완료 대기)
+                            CoroutineScope(Dispatchers.Main).launch {
+                                delay(200) // 위치 변경 완료 대기
+
+                                imageViewRefs[newPhoto.path]?.let { imageView ->
+                                    fullImageCache[newPhoto.path]?.let { imageData ->
+                                        try {
+                                            val bitmap = BitmapFactory.decodeByteArray(
+                                                imageData,
+                                                0,
+                                                imageData.size
+                                            )
+                                            if (bitmap != null && !bitmap.isRecycled) {
+                                                imageView.setImageBitmap(bitmap)
+                                                imageView.scaleType = ImageView.ScaleType.FIT_CENTER
+                                                highQualityUpdated.add(newPhoto.path)
+                                                Log.d(
+                                                    "StfalconViewer",
+                                                    "✅ 썸네일 클릭 후 고화질 적용 성공: ${newPhoto.name}"
+                                                )
+                                            } else {
+                                                Log.d("StfalconViewer", "🚫 Bitmap null or recycled")
+                                            }
+                                        } catch (e: Exception) {
+                                            Log.e(
+                                                "StfalconViewer",
+                                                "❌ 썸네일 클릭 후 고화질 적용 오류: ${newPhoto.path}",
+                                                e
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // 인접 사진들도 미리 로드
+                        CoroutineScope(Dispatchers.IO).launch {
+                            delay(500) // 현재 사진 로드 완료 후
+                            preloadAdjacentPhotosMinimal(
+                                position,
+                                photos,
+                                fullImageCache,
+                                viewModel,
+                                loadingPhotos
+                            )
+                        }
+
+                        Log.d("StfalconViewer", "✅ 뷰어 위치 변경 및 고화질 로드 트리거 완료: $position")
+                    }
+                    recyclerView.adapter = adapter
+                    thumbnailAdapter = adapter
+                    thumbnailRecyclerView = recyclerView
+                    // 초기 선택 위치 설정
+                    adapter.setSelectedPosition(currentPhotoIndex)
+                    recyclerView.scrollToPosition(currentPhotoIndex)
+                    layout
+                }
+            )
+            .withImageChangeListener { pos ->
+                Log.d("StfalconViewer", "🎯 withImageChangeListener 호출됨: 위치 $pos")
+
+                if (pos in photos.indices) {
+                    val newPhoto = photos[pos]
+
+                    Log.d("StfalconViewer", "📸 사진 변경됨: 인덱스 $pos → ${newPhoto.name}")
 
                     // UI 상태 즉시 업데이트 (메인 스레드에서 빠르게)
                     onPhotoChanged(newPhoto)
+
+                    // 썸네일 갤러리 동기화
+                    thumbnailAdapter?.setSelectedPosition(pos)
+                    thumbnailRecyclerView?.scrollToPosition(pos)
+                    Log.d("StfalconViewer", "🔄 썸네일 갤러리 동기화: 인덱스 $pos")
 
                     // 백그라운드에서 최소한의 미리 로딩만 수행 (성능 향상)
                     CoroutineScope(Dispatchers.IO).launch {
@@ -133,7 +304,7 @@ fun FullScreenPhotoViewer(
                         // 인접 사진은 더 긴 지연 후 다운로드 (슬라이딩 전환 완전 완료 대기)
                         delay(800) // 800ms 지연 - 전환 애니메이션 완료 대기
                         preloadAdjacentPhotosMinimal(
-                            position,
+                            pos,
                             photos,
                             fullImageCache,
                             viewModel,
@@ -154,8 +325,10 @@ fun FullScreenPhotoViewer(
             }
 
         // 뷰어 표시
-        currentViewer = viewer
-        viewer.show()
+        val actualViewer = viewer.show()
+        currentViewer = actualViewer
+        Log.d("StfalconViewer", "뷰어 참조 저장 완료: ${currentViewer != null}")
+        Log.d("StfalconViewer", "뷰어 표시 완료")
     }
 
     // 고화질 이미지 캐시가 업데이트되면 실시간으로 고화질 교체
@@ -185,8 +358,12 @@ fun FullScreenPhotoViewer(
                                             "StfalconViewer",
                                             "✅ 실시간 고화질 교체 성공: ${photoPath.substringAfterLast("/")}"
                                         )
+                                    } else {
+                                        Log.d("StfalconViewer", "🚫 Bitmap recycled")
                                     }
                                 }
+                            } else {
+                                Log.d("StfalconViewer", "🚫 Bitmap null")
                             }
                         } catch (e: Exception) {
                             Log.e("StfalconViewer", "❌ 실시간 고화질 처리 오류: $photoPath", e)
@@ -201,7 +378,7 @@ fun FullScreenPhotoViewer(
     DisposableEffect(Unit) {
         onDispose {
             Log.d("StfalconViewer", "🧹 Compose dispose - 뷰어 정리")
-            (currentViewer as? com.stfalcon.imageviewer.StfalconImageViewer<*>)?.dismiss()
+            currentViewer?.dismiss()
             currentViewer = null
             loadingPhotos.clear()
             bitmapCache.clear() // 비트맵 캐시도 정리
@@ -241,7 +418,7 @@ private fun preloadAdjacentPhotosOptimized(
 
 /**
  * ImageView에 이미지 데이터를 로드하는 함수
- * 썸네일만 즉시 표시하고 고화질은 실시간 업데이트로 처리
+ * 고화질 이미지가 있으면 우선 표시, 없으면 썸네일 표시
  */
 private fun loadImageIntoView(
     imageView: ImageView,
@@ -253,7 +430,31 @@ private fun loadImageIntoView(
     highQualityUpdated: MutableSet<String>
 ) {
     try {
-        // 1. 썸네일이 있으면 즉시 표시 (빠른 반응성)
+        // 1. 고화질 이미지가 있으면 우선 표시
+        if (fullImageData != null) {
+            val fullCacheKey = "${photo.path}_full"
+            var fullBitmap = bitmapCache[fullCacheKey]
+
+            if (fullBitmap == null) {
+                fullBitmap = BitmapFactory.decodeByteArray(fullImageData, 0, fullImageData.size)
+                if (fullBitmap != null) {
+                    bitmapCache[fullCacheKey] = fullBitmap
+                }
+            }
+
+            if (fullBitmap != null && !fullBitmap.isRecycled) {
+                imageView.setImageBitmap(fullBitmap)
+                imageView.scaleType = ImageView.ScaleType.FIT_CENTER
+                highQualityUpdated.add(photo.path) // 고화질로 업데이트됨을 표시
+                Log.d("StfalconViewer", "🖼️ 고화질 이미지 표시: ${photo.name}")
+
+                // ImageView 참조 저장
+                imageViewRefs[photo.path] = imageView
+                return
+            }
+        }
+
+        // 2. 고화질이 없으면 썸네일 표시 (기존 로직)
         if (thumbnailData != null) {
             val thumbnailCacheKey = "${photo.path}_thumbnail"
             var thumbnailBitmap = bitmapCache[thumbnailCacheKey]
@@ -317,4 +518,69 @@ private fun setPlaceholderImage(imageView: ImageView) {
     // 기본 플레이스홀더 설정
     imageView.setImageResource(android.R.drawable.ic_menu_gallery)
     imageView.scaleType = ImageView.ScaleType.CENTER
+}
+
+class ThumbnailAdapter(
+    private val photos: List<CameraPhoto>,
+    private val thumbnailCache: Map<String, ByteArray>,
+    private val viewModel: PhotoPreviewViewModel?,
+    private val onClick: (Int) -> Unit
+) : RecyclerView.Adapter<ThumbnailAdapter.ViewHolder>() {
+
+    private var selectedPosition = 0
+    private var lastClickTime = 0L
+    private val clickDebounceTime = 300L // 300ms 디바운스
+
+    fun setSelectedPosition(position: Int) {
+        val previousPosition = selectedPosition
+        selectedPosition = position
+        notifyItemChanged(previousPosition)
+        notifyItemChanged(selectedPosition)
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+        val view =
+            LayoutInflater.from(parent.context).inflate(R.layout.thumbnail_item, parent, false)
+        return ViewHolder(view)
+    }
+
+    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        val photo = photos[position]
+        val thumbnailData = thumbnailCache[photo.path] ?: viewModel?.getThumbnail(photo.path)
+
+        if (thumbnailData != null) {
+            val bitmap = BitmapFactory.decodeByteArray(thumbnailData, 0, thumbnailData.size)
+            holder.imageView.setImageBitmap(bitmap)
+        } else {
+            holder.imageView.setImageResource(android.R.drawable.ic_menu_gallery)
+        }
+
+        // 현재 선택된 썸네일 강조표시
+        if (position == selectedPosition) {
+            holder.imageView.setBackgroundResource(R.drawable.thumbnail_selected_background)
+            holder.imageView.alpha = 1.0f
+        } else {
+            holder.imageView.setBackgroundResource(R.drawable.thumbnail_background)
+            holder.imageView.alpha = 0.7f
+        }
+
+        holder.itemView.setOnClickListener {
+            val currentTime = System.currentTimeMillis()
+            if (currentTime - lastClickTime > clickDebounceTime) {
+                lastClickTime = currentTime
+                Log.d("ThumbnailAdapter", "썸네일 클릭: ${photo.name} (인덱스 $position)")
+                onClick(position)
+            } else {
+                Log.d("ThumbnailAdapter", "썸네일 클릭 무시 (디바운스): ${photo.name}")
+            }
+        }
+    }
+
+    override fun getItemCount(): Int {
+        return photos.size
+    }
+
+    class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val imageView: ImageView = itemView.findViewById(R.id.image_view)
+    }
 }
