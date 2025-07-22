@@ -1,6 +1,7 @@
 package com.inik.camcon.presentation.ui.screens
 
 import android.util.Log
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -132,49 +133,53 @@ fun PhotoPreviewScreen(
 
     // 전체화면 사진 뷰어
     uiState.selectedPhoto?.let { photo ->
-        // fullImageCache 상태 관찰
+        // fullImageCache와 downloadingImages 상태 관찰
         val fullImageCache by viewModel.fullImageCache.collectAsState()
         val downloadingImages by viewModel.downloadingImages.collectAsState()
         
         // 선택된 사진의 실제 파일 다운로드 시작
         LaunchedEffect(photo.path) {
-            android.util.Log.d("PhotoPreviewScreen", "전체화면 뷰어에서 실제 파일 다운로드 시작: ${photo.path}")
-            viewModel.downloadFullImage(photo.path)
-        }
-        
-        // 실제 파일 다운로드 상태 로깅
-        LaunchedEffect(fullImageCache[photo.path]) {
-            val fullImageData = fullImageCache[photo.path]
-            if (fullImageData != null) {
-                android.util.Log.d(
-                    "PhotoPreviewScreen",
-                    "✅ 실제 파일 다운로드 완료, 고화질로 교체: ${photo.path} (${fullImageData.size} bytes)"
-                )
-            } else {
-                android.util.Log.d("PhotoPreviewScreen", "📥 썸네일 표시 중, 실제 파일 다운로드 대기: ${photo.path}")
-            }
+            android.util.Log.d(
+                "PhotoPreviewScreen",
+                "StfalconImageViewer 진입 - 미리 다운로드 시작"
+            )
+
+            // ViewModel에서 백그라운드로 미리 다운로드 수행 (UI 끊김 없음)
+            viewModel.preloadAdjacentImages(photo, uiState.photos)
         }
 
-        // 다운로드 상태 로깅
-        LaunchedEffect(downloadingImages.contains(photo.path)) {
-            val isDownloading = downloadingImages.contains(photo.path)
-            android.util.Log.d("PhotoPreviewScreen", "🔄 다운로드 상태 변경: ${photo.path} → $isDownloading")
-        }
-
+        // StfalconImageViewer 호출
         FullScreenPhotoViewer(
             photo = photo,
             photos = uiState.photos,
-            onDismiss = { viewModel.selectPhoto(null) },
+            onDismiss = {
+                android.util.Log.d("PhotoPreviewScreen", "❌ StfalconImageViewer 닫힘")
+                viewModel.selectPhoto(null)
+            },
             onPhotoChanged = { newPhoto ->
-                viewModel.selectPhoto(newPhoto)
-                // 새로운 사진의 실제 파일도 미리 다운로드
-                viewModel.downloadFullImage(newPhoto.path)
+                // 같은 사진이면 호출하지 않음 (중복 방지)
+                if (newPhoto.path != photo.path) {
+                    android.util.Log.d(
+                        "PhotoPreviewScreen",
+                        "📸 StfalconImageViewer - 사진 변경: ${photo.name} → ${newPhoto.name}"
+                    )
+                    viewModel.selectPhoto(newPhoto)
+
+                    // 새 사진과 인접 사진들을 백그라운드에서 미리 다운로드
+                    viewModel.preloadAdjacentImages(newPhoto, uiState.photos)
+                }
             },
             thumbnailData = viewModel.getThumbnail(photo.path),
             fullImageData = fullImageCache[photo.path], // 실시간으로 업데이트되는 실제 파일 데이터
-            isDownloadingFullImage = downloadingImages.contains(photo.path), // 다운로드 상태 전달
-            onDownload = { viewModel.downloadPhoto(photo) }
+            isDownloadingFullImage = downloadingImages.contains(photo.path),
+            onDownload = { viewModel.downloadPhoto(photo) },
+            viewModel = viewModel, // ViewModel 전달
+            thumbnailCache = uiState.thumbnailCache // 전체 썸네일 캐시 전달
         )
+
+        BackHandler {
+            viewModel.selectPhoto(null)
+        }
     }
 
     // 에러 메시지
