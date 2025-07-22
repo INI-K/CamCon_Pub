@@ -2,9 +2,6 @@ package com.inik.camcon.data.repository
 
 import android.content.ContentValues
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.ColorSpace
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -114,7 +111,7 @@ class CameraRepositoryImpl @Inject constructor(
                                     _isConnected.value = true
                                 }
                                 updateCameraList()
-                                updateCameraCapabilities()
+                                // updateCameraCapabilities() 제거 - observeNativeCameraConnection에서 처리됨
                                 Log.d("카메라레포지토리", "이벤트 리스너 시작 시도")
                                 startCameraEventListenerInternal()
                                 Log.d("카메라레포지토리", "이벤트 리스너 시작 후 상태: $isEventListenerRunning")
@@ -142,7 +139,7 @@ class CameraRepositoryImpl @Inject constructor(
                             _isConnected.value = true
                         }
                         updateCameraList()
-                        updateCameraCapabilities()
+                        // updateCameraCapabilities() 제거 - observeNativeCameraConnection에서 처리됨
                         Log.d("카메라레포지토리", "이벤트 리스너 시작 시도")
                         startCameraEventListenerInternal()
                         Log.d("카메라레포지토리", "이벤트 리스너 시작 후 상태: $isEventListenerRunning")
@@ -737,10 +734,15 @@ class CameraRepositoryImpl @Inject constructor(
 
                 if (isConnected) {
                     updateCameraList()
-                    updateCameraCapabilities()
+                    // 카메라 기능 정보는 한 번만 업데이트하도록 중복 방지 로직 추가
+                    if (_cameraCapabilities.value == null) {
+                        updateCameraCapabilities()
+                    }
                 } else {
                     withContext(Dispatchers.Main) {
                         _cameraFeed.value = emptyList()
+                        // 연결이 끊어지면 capabilities도 초기화
+                        _cameraCapabilities.value = null
                     }
                 }
             }
