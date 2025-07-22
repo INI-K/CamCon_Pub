@@ -51,6 +51,7 @@ import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
 import com.inik.camcon.presentation.ui.screens.components.PhotoThumbnail
 import com.inik.camcon.presentation.viewmodel.FileTypeFilter
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
+import kotlinx.coroutines.delay
 
 /**
  * 카메라에서 촬영한 사진들을 미리보기로 보여주는 메인 화면
@@ -136,15 +137,19 @@ fun PhotoPreviewScreen(
         // fullImageCache와 downloadingImages 상태 관찰
         val fullImageCache by viewModel.fullImageCache.collectAsState()
         val downloadingImages by viewModel.downloadingImages.collectAsState()
-        
-        // 선택된 사진의 실제 파일 다운로드 시작
+
+        // 선택된 사진의 실제 파일 다운로드 시작 (한 번만 실행)
         LaunchedEffect(photo.path) {
             android.util.Log.d(
                 "PhotoPreviewScreen",
-                "StfalconImageViewer 진입 - 미리 다운로드 시작"
+                "StfalconImageViewer 진입 - 최적화된 다운로드: ${photo.name}"
             )
 
-            // ViewModel에서 백그라운드로 미리 다운로드 수행 (UI 끊김 없음)
+            // 우선 현재 사진만 빠르게 다운로드 (슬라이딩 성능 우선)
+            viewModel.quickPreloadCurrentImage(photo)
+
+            // 200ms 후에 인접 사진들 백그라운드 다운로드 (지연 시간 증가)
+            delay(200)
             viewModel.preloadAdjacentImages(photo, uiState.photos)
         }
 
@@ -165,8 +170,8 @@ fun PhotoPreviewScreen(
                     )
                     viewModel.selectPhoto(newPhoto)
 
-                    // 새 사진과 인접 사진들을 백그라운드에서 미리 다운로드
-                    viewModel.preloadAdjacentImages(newPhoto, uiState.photos)
+                    // 즉시 현재 사진만 빠르게 다운로드 (슬라이딩 성능 우선)
+                    viewModel.quickPreloadCurrentImage(newPhoto)
                 }
             },
             thumbnailData = viewModel.getThumbnail(photo.path),
