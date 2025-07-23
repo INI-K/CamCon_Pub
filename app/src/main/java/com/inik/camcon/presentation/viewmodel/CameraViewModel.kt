@@ -509,12 +509,23 @@ class CameraViewModel @Inject constructor(
     }
 
     fun startLiveView() {
-        if (_uiState.value.isLiveViewActive || liveViewJob?.isActive == true) return
+        if (_uiState.value.isLiveViewActive || liveViewJob?.isActive == true) {
+            Log.d("CameraViewModel", "라이브뷰가 이미 활성화되어 있거나 시작 중입니다")
+            return
+        }
+
+        Log.d("CameraViewModel", "=== 라이브뷰 시작 요청 ===")
+        Log.d("CameraViewModel", "카메라 연결 상태: ${_uiState.value.isConnected}")
+        Log.d("CameraViewModel", "네이티브 카메라 연결: ${_uiState.value.isNativeCameraConnected}")
+        Log.d("CameraViewModel", "카메라 기능 정보: ${_uiState.value.cameraCapabilities}")
 
         liveViewJob = viewModelScope.launch(Dispatchers.IO) {
             try {
                 val capabilities = _uiState.value.cameraCapabilities
+                Log.d("CameraViewModel", "카메라 라이브뷰 지원 여부: ${capabilities?.canLiveView}")
+
                 if (capabilities != null && !capabilities.canLiveView) {
+                    Log.w("CameraViewModel", "카메라가 라이브뷰를 지원하지 않습니다: ${capabilities.model}")
                     withContext(Dispatchers.Main) {
                         _uiState.update {
                             it.copy(error = "이 카메라는 라이브뷰를 지원하지 않습니다.")
@@ -523,29 +534,45 @@ class CameraViewModel @Inject constructor(
                     return@launch
                 }
 
-                Log.d("CameraViewModel", "라이브뷰 시작 시도")
-                _uiState.update { it.copy(isLiveViewLoading = true) }
+                // 연결 상태 재확인
+                if (!_uiState.value.isConnected) {
+                    Log.e("CameraViewModel", "카메라가 연결되지 않은 상태에서 라이브뷰 시작 불가")
+                    withContext(Dispatchers.Main) {
+                        _uiState.update {
+                            it.copy(error = "카메라가 연결되지 않았습니다. 먼저 카메라를 연결해주세요.")
+                        }
+                    }
+                    return@launch
+                }
 
+                Log.d("CameraViewModel", "라이브뷰 시작 - 로딩 상태 설정")
+                withContext(Dispatchers.Main) {
+                    _uiState.update { it.copy(isLiveViewLoading = true, error = null) }
+                }
+
+                Log.d("CameraViewModel", "StartLiveViewUseCase 호출")
                 startLiveViewUseCase()
                     .catch { error ->
-                        Log.e("CameraViewModel", "라이브뷰 오류", error)
+                        Log.e("CameraViewModel", "라이브뷰 Flow 오류", error)
                         withContext(Dispatchers.Main) {
                             _uiState.update {
                                 it.copy(
                                     isLiveViewActive = false,
                                     isLiveViewLoading = false,
-                                    error = error.message
+                                    error = "라이브뷰 시작 실패: ${error.message}"
                                 )
                             }
                         }
                     }
                     .collect { frame ->
+                        Log.d("CameraViewModel", "라이브뷰 프레임 수신: 크기=${frame.data.size} bytes")
                         withContext(Dispatchers.Main) {
                             _uiState.update {
                                 it.copy(
                                     isLiveViewActive = true,
                                     liveViewFrame = frame,
-                                    isLiveViewLoading = false
+                                    isLiveViewLoading = false,
+                                    error = null
                                 )
                             }
                         }
