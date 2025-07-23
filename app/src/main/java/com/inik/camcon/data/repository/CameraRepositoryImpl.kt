@@ -395,18 +395,7 @@ class CameraRepositoryImpl @Inject constructor(
         }
 
         try {
-            // 라이브뷰 시작 전에 자동초점 활성화 - IO 스레드에서 실행
-            launch(Dispatchers.IO) {
-                try {
-                    Log.d("카메라레포지토리", "라이브뷰 시작 전 자동초점 시도")
-                    val focusResult = nativeDataSource.autoFocus()
-                    Log.d("카메라레포지토리", "자동초점 결과: $focusResult")
-                } catch (e: Exception) {
-                    Log.w("카메라레포지토리", "라이브뷰 시작 전 자동초점 실패", e)
-                }
-            }
-
-            Log.d("카메라레포지토리", "네이티브 startLiveView 호출 시작")
+            Log.d("카메라레포지토리", "네이티브 startLiveView 호출 시작 (자동초점 생략)")
             nativeDataSource.startLiveView(object : LiveViewCallback {
                 override fun onLiveViewFrame(frame: ByteBuffer) {
                     try {
@@ -526,13 +515,51 @@ class CameraRepositoryImpl @Inject constructor(
                     val fileName = photoId.substringAfterLast("/")
                     val tempFile = File(context.cacheDir, "temp_downloads/$fileName")
 
-                    // 디렉토리 생성
-                    tempFile.parentFile?.mkdirs()
+                    // 디렉토리 생성 - 실패 시 대체 경로 사용
+                    if (!tempFile.parentFile?.exists()!!) {
+                        val created = tempFile.parentFile?.mkdirs() ?: false
+                        if (!created) {
+                            Log.w("카메라레포지토리", "디렉토리 생성 실패, 캐시 루트 사용: ${context.cacheDir}")
+                            val fallbackFile = File(context.cacheDir, fileName)
+                            // 데이터를 파일로 저장 - 안전한 쓰기
+                            try {
+                                fallbackFile.writeBytes(imageData)
+                                Log.d("카메라레포지토리", "대체 경로 파일 저장 완료: ${fallbackFile.absolutePath}")
+                            } catch (e: Exception) {
+                                Log.e("카메라레포지토리", "대체 경로 파일 저장 실패", e)
+                                return@withContext Result.failure(Exception("파일 저장 실패: ${e.message}"))
+                            }
 
-                    // 데이터를 파일로 저장
-                    tempFile.writeBytes(imageData)
+                            // 후처리 (MediaStore 저장 등)
+                            val finalPath = postProcessPhoto(fallbackFile.absolutePath, fileName)
 
-                    Log.d("카메라레포지토리", "임시 파일 저장 완료: ${tempFile.absolutePath}")
+                            val capturedPhoto = CapturedPhoto(
+                                id = UUID.randomUUID().toString(),
+                                filePath = finalPath,
+                                thumbnailPath = null,
+                                captureTime = System.currentTimeMillis(),
+                                cameraModel = _cameraCapabilities.value?.model ?: "알 수 없음",
+                                settings = _cameraSettings.value,
+                                size = imageData.size.toLong(),
+                                width = 0,
+                                height = 0,
+                                isDownloading = false,
+                                downloadCompleteTime = System.currentTimeMillis()
+                            )
+
+                            Log.d("카메라레포지토리", "✅ 카메라에서 사진 다운로드 완료: $finalPath")
+                            return@withContext Result.success(capturedPhoto)
+                        }
+                    }
+
+                    // 데이터를 파일로 저장 - 안전한 쓰기
+                    try {
+                        tempFile.writeBytes(imageData)
+                        Log.d("카메라레포지토리", "임시 파일 저장 완료: ${tempFile.absolutePath}")
+                    } catch (e: Exception) {
+                        Log.e("카메라레포지토리", "임시 파일 저장 실패", e)
+                        return@withContext Result.failure(Exception("파일 저장 실패: ${e.message}"))
+                    }
 
                     // 후처리 (MediaStore 저장 등)
                     val finalPath = postProcessPhoto(tempFile.absolutePath, fileName)
@@ -719,17 +746,42 @@ class CameraRepositoryImpl @Inject constructor(
         try {
             Log.d("카메라레포지토리", "카메라 목록 업데이트")
             val detected = nativeDataSource.detectCamera()
+            Log.d("카메라레포지토리", "detectCamera 반환값: $detected")
+            
             if (detected != "No camera detected") {
-                val cameras = detected.split("\n")
+                // 감지된 카메라 문자열을 줄 단위로 분할
+                val lines = detected.split("\n")
                     .filter { it.isNotBlank() }
-                    .mapIndexed { index, line ->
-                        val parts = line.split(" @ ")
-                        Camera(
-                            id = "camera_$index",
-                            name = parts.getOrNull(0) ?: "알 수 없음",
-                            isActive = true
-                        )
-                    }
+                
+                Log.d("카메라레포지토리", "분할된 줄 수: ${lines.size}")
+                lines.forEachIndexed { index, line ->
+                    Log.d("카메라레포지토리", "줄 $index: '$line'")
+                }
+                
+                // 실제 카메라 정보가 포함된 줄만 필터링 ("[숫자]" 패턴 또는 "@" 기호 포함)
+                val cameraLines = lines.filter { line ->
+                    line.contains("@") && (line.contains("[") || line.matches(Regex(".*\\w+.*@.*")))
+                }
+                
+                Log.d("카메라레포지토리", "필터링된 카메라 라인 수: ${cameraLines.size}")
+                cameraLines.forEachIndexed { index, line ->
+                    Log.d("카메라레포지토리", "카메라 라인 $index: '$line'")
+                }
+                
+                val cameras = cameraLines.mapIndexed { index, line ->
+                    val parts = line.split(" @ ")
+                    val name = parts.getOrNull(0)?.trim()?.let { rawName ->
+                        // "[1] " 같은 번호 제거
+                        rawName.replace(Regex("^\\[\\d+\\]\\s*"), "")
+                    } ?: "알 수 없음"
+                    
+                    Camera(
+                        id = "camera_$index",
+                        name = name,
+                        isActive = true
+                    )
+                }
+                
                 withContext(Dispatchers.Main) {
                     _cameraFeed.value = cameras
                 }
