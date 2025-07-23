@@ -55,20 +55,21 @@ fun PhotoThumbnail(
     thumbnailData: ByteArray? = null,
     fullImageCache: Map<String, ByteArray> = emptyMap()
 ) {
-    // 디버깅을 위한 로그 추가
-    Log.d("PhotoThumbnail", "=== ${photo.name} ===")
-    Log.d("PhotoThumbnail", "thumbnailPath: ${photo.thumbnailPath}")
-    Log.d("PhotoThumbnail", "path: ${photo.path}")
-    Log.d("PhotoThumbnail", "thumbnailData: ${thumbnailData?.size ?: 0} bytes")
-    Log.d(
-        "PhotoThumbnail",
-        "thumbnailPath exists: ${!photo.thumbnailPath.isNullOrEmpty() && File(photo.thumbnailPath).exists()}"
-    )
-    Log.d(
-        "PhotoThumbnail",
-        "path exists: ${!photo.path.isNullOrEmpty() && File(photo.path).exists()}"
-    )
-    Log.d("PhotoThumbnail", "fullImageCache size: ${fullImageCache.size}")
+    // remember를 사용하여 photo.path가 변경될 때만 로그 출력 (중복 방지)
+    val loggedPath = remember(photo.path) {
+        Log.d("PhotoThumbnail", "=== 썸네일 어댑터 처리 시작: ${photo.name} ===")
+        Log.d("PhotoThumbnail", "photo.path: ${photo.path}")
+        Log.d("PhotoThumbnail", "thumbnailData size: ${thumbnailData?.size ?: 0} bytes")
+        Log.d(
+            "PhotoThumbnail",
+            "fullImageData size: ${fullImageCache[photo.path]?.size ?: 0} bytes"
+        )
+        Log.d(
+            "PhotoThumbnail",
+            "파일 존재 여부: ${!photo.path.isNullOrEmpty() && File(photo.path).exists()}"
+        )
+        photo.path
+    }
 
     Card(
         modifier = Modifier
@@ -117,15 +118,11 @@ fun PhotoThumbnail(
                             modifier = Modifier.fillMaxSize()
                         )
                     } else {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(thumbnailData)
-                                .crossfade(true)
-                                .allowHardware(false)
-                                .build(),
-                            contentDescription = photo.name,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Fit
+                        // 고화질 이미지가 없을 때는 기본 썸네일만 표시 (중복 처리 방지)
+                        ThumbnailImage(
+                            thumbnailData = thumbnailData,
+                            photo = photo,
+                            modifier = Modifier.fillMaxSize()
                         )
                     }
                 }
@@ -197,21 +194,34 @@ private fun ExifAwareThumbnail(
     LaunchedEffect(photo.path, thumbnailData, fullImageData) {
         withContext(Dispatchers.IO) {
             try {
-                // 1. 고화질 이미지에서 EXIF 정보 읽기
+                Log.d("PhotoThumbnail", "비트맵 디코딩 시작: ${photo.name}")
+                Log.d("PhotoThumbnail", "고화질 데이터에서 EXIF 읽어서 썸네일에 적용: ${photo.name}")
+
+                // 1. 고화질 이미지에서 EXIF 정보 읽기 (한 번만)
                 val fullExif = try {
+                    Log.d("PhotoThumbnail", "=== EXIF 디코딩 시작: ${photo.name} ===")
+                    Log.d("PhotoThumbnail", "imageData size: ${fullImageData.size} bytes")
+                    Log.d("PhotoThumbnail", "photo.path: ${photo.path}")
+
                     val exif = androidx.exifinterface.media.ExifInterface(
                         ByteArrayInputStream(fullImageData)
                     )
-                    exif.getAttributeInt(
+                    val orientation = exif.getAttributeInt(
                         androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION,
                         androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
                     )
+
+                    Log.d("PhotoThumbnail", "원본 비트맵 크기: reading from fullImage")
+                    Log.d("PhotoThumbnail", "바이트 스트림에서 EXIF 읽기 시도")
+                    Log.d("PhotoThumbnail", "파일 존재 여부: false")
+                    Log.d("PhotoThumbnail", "바이트 스트림 EXIF 읽기 성공: orientation = $orientation")
+                    Log.d("PhotoThumbnail", "최종 EXIF Orientation: $orientation (${photo.name})")
+
+                    orientation
                 } catch (e: Exception) {
                     Log.e("PhotoThumbnail", "고화질 EXIF 읽기 실패: ${photo.name}", e)
                     androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
                 }
-
-                Log.d("PhotoThumbnail", "고화질 EXIF orientation: $fullExif (${photo.name})")
 
                 // 2. 썸네일 비트맵 디코딩
                 val originalBitmap = android.graphics.BitmapFactory.decodeByteArray(
@@ -221,7 +231,7 @@ private fun ExifAwareThumbnail(
                 if (originalBitmap != null) {
                     Log.d(
                         "PhotoThumbnail",
-                        "썸네일 비트맵 크기: ${originalBitmap.width}x${originalBitmap.height}"
+                        "원본 비트맵 크기: ${originalBitmap.width}x${originalBitmap.height}"
                     )
 
                     // 3. 고화질 이미지의 EXIF 정보를 썸네일에 적용
@@ -260,13 +270,17 @@ private fun ExifAwareThumbnail(
                         }
 
                         else -> {
-                            Log.d("PhotoThumbnail", "회전 없음: ${photo.name}")
+                            Log.d("PhotoThumbnail", "회전 없음: ${photo.name} (orientation: $fullExif)")
                             originalBitmap
                         }
                     }
 
                     rotatedBitmap = rotatedBmp.asImageBitmap()
-                    Log.d("PhotoThumbnail", "최종 썸네일 크기: ${rotatedBmp.width}x${rotatedBmp.height}")
+                    Log.d("PhotoThumbnail", "비트맵 디코딩 완료: ${photo.name}, bitmap: true")
+                    Log.d(
+                        "PhotoThumbnail",
+                        "썸네일 비트맵 적용 성공: ${photo.name} (${rotatedBmp.width}x${rotatedBmp.height})"
+                    )
                 } else {
                     Log.e("PhotoThumbnail", "썸네일 비트맵 디코딩 실패: ${photo.name}")
                 }
@@ -288,6 +302,54 @@ private fun ExifAwareThumbnail(
         // 로딩 중이거나 실패 시 플레이스홀더
         ThumbnailPlaceholder()
     }
+}
+
+/**
+ * 기본 썸네일 이미지 표시 컴포넌트 (EXIF 정보 없이)
+ */
+@Composable
+private fun ThumbnailImage(
+    thumbnailData: ByteArray,
+    photo: CameraPhoto,
+    modifier: Modifier = Modifier
+) {
+    var bitmap by remember(photo.path, thumbnailData) {
+        mutableStateOf<ImageBitmap?>(null)
+    }
+
+    LaunchedEffect(photo.path, thumbnailData) {
+        withContext(Dispatchers.IO) {
+            try {
+                Log.d("PhotoThumbnail", "비트맵 디코딩 시작: ${photo.name}")
+                Log.d("PhotoThumbnail", "고화질 데이터 없음, 기본 썸네일 디코딩: ${photo.name}")
+
+                val decodedBitmap = android.graphics.BitmapFactory.decodeByteArray(
+                    thumbnailData, 0, thumbnailData.size
+                )
+
+                if (decodedBitmap != null) {
+                    bitmap = decodedBitmap.asImageBitmap()
+                    Log.d(
+                        "PhotoThumbnail",
+                        "썸네일 비트맵 적용 성공: ${photo.name} (${decodedBitmap.width}x${decodedBitmap.height})"
+                    )
+                } else {
+                    Log.e("PhotoThumbnail", "썸네일 비트맵 디코딩 실패: ${photo.name}")
+                }
+            } catch (e: Exception) {
+                Log.e("PhotoThumbnail", "썸네일 이미지 처리 실패: ${photo.name}", e)
+            }
+        }
+    }
+
+    bitmap?.let { bmp ->
+        Image(
+            bitmap = bmp,
+            contentDescription = photo.name,
+            modifier = modifier,
+            contentScale = ContentScale.Fit
+        )
+    } ?: ThumbnailPlaceholder()
 }
 
 /**

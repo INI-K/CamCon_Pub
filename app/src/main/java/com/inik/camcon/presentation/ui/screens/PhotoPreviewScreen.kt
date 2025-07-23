@@ -36,6 +36,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -96,7 +99,8 @@ fun PhotoPreviewScreen(
                 totalPages = uiState.totalPages,
                 onRefresh = { viewModel.loadCameraPhotos() },
                 fileTypeFilter = uiState.fileTypeFilter,
-                onFilterChange = { filter -> viewModel.changeFileTypeFilter(filter) }
+                onFilterChange = { filter -> viewModel.changeFileTypeFilter(filter) },
+                viewModel = viewModel
             )
 
             // 메인 콘텐츠
@@ -138,7 +142,7 @@ fun PhotoPreviewScreen(
         val fullImageCache by viewModel.fullImageCache.collectAsState()
         val downloadingImages by viewModel.downloadingImages.collectAsState()
 
-        // 선택된 사진의 실제 파일 다운로드 시작 (한 번만 실행)
+        // 선택된 사진의 실제 파일 다운로드 시작 (한 번만 실행, photo.path가 변경될 때만)
         LaunchedEffect(photo.path) {
             android.util.Log.d(
                 "PhotoPreviewScreen",
@@ -148,15 +152,14 @@ fun PhotoPreviewScreen(
             // 우선 현재 사진만 빠르게 다운로드 (슬라이딩 성능 우선)
             viewModel.quickPreloadCurrentImage(photo)
 
-            // 200ms 후에 인접 사진들 백그라운드 다운로드 (지연 시간 증가)
-            delay(200)
+            // 500ms 후에 인접 사진들 백그라운드 다운로드 (지연 시간 증가로 재구성 방지)
+            delay(500)
             viewModel.preloadAdjacentImages(photo, uiState.photos)
         }
 
         // StfalconImageViewer 호출
         FullScreenPhotoViewer(
             photo = photo,
-            photos = uiState.photos,
             onDismiss = {
                 android.util.Log.d("PhotoPreviewScreen", "❌ StfalconImageViewer 닫힘")
                 viewModel.selectPhoto(null)
@@ -244,8 +247,11 @@ private fun ModernHeader(
     totalPages: Int,
     onRefresh: () -> Unit,
     fileTypeFilter: FileTypeFilter,
-    onFilterChange: (FileTypeFilter) -> Unit
+    onFilterChange: (FileTypeFilter) -> Unit,
+    viewModel: PhotoPreviewViewModel? = null
 ) {
+    var lastClickTime by remember { mutableStateOf(0L) }
+    
     Column {
         // 첫 번째 행: 제목과 새로고침 버튼
         Row(
@@ -270,7 +276,18 @@ private fun ModernHeader(
             }
 
             IconButton(
-                onClick = onRefresh
+                onClick = {
+                    val currentTime = System.currentTimeMillis()
+                    if (currentTime - lastClickTime < 1000) {
+                        // 더블클릭 감지 - 강제 로딩 테스트
+                        Log.d("PhotoPreviewScreen", "🧪 더블클릭 감지 - 강제 로딩 테스트")
+                        viewModel?.forceLoadNextPage()
+                    } else {
+                        // 일반 새로고침
+                        onRefresh()
+                    }
+                    lastClickTime = currentTime
+                }
             ) {
                 Icon(
                     Icons.Default.Refresh,
@@ -413,12 +430,29 @@ private fun PhotoGrid(
             )
         }
 
-        // 더 로딩 중일 때 로딩 인디케이터 표시 (프리로딩은 백그라운드이므로 표시하지 않음)
+        // 로딩 상태 디버깅
+        Log.d("PhotoPreviewScreen", "로딩 상태 체크:")
+        Log.d("PhotoPreviewScreen", "  - isLoading: ${uiState.isLoading}")
+        Log.d("PhotoPreviewScreen", "  - isLoadingMore: ${uiState.isLoadingMore}")
+        Log.d("PhotoPreviewScreen", "  - photos.size: ${uiState.photos.size}")
+        Log.d("PhotoPreviewScreen", "  - hasNextPage: ${uiState.hasNextPage}")
+
+        // 더 로딩 중일 때 로딩 인디케이터 표시
+        if ((uiState.isLoading || uiState.isLoadingMore) && uiState.photos.isNotEmpty()) {
+            Log.d("PhotoPreviewScreen", "LoadMoreIndicator 표시 조건 만족")
+            item(span = { GridItemSpan(3) }) {
+                LoadMoreIndicator()
+            }
+        }
+
         // 마지막 페이지일 때 완료 메시지
-        if (!uiState.hasNextPage && uiState.photos.isNotEmpty()) {
+        else if (!uiState.hasNextPage && uiState.photos.isNotEmpty() && !uiState.isLoadingMore) {
+            Log.d("PhotoPreviewScreen", "EndOfListMessage 표시 조건 만족")
             item(span = { GridItemSpan(3) }) {
                 EndOfListMessage(photoCount = uiState.photos.size)
             }
+        } else {
+            Log.d("PhotoPreviewScreen", "로딩 인디케이터/완료 메시지 표시하지 않음")
         }
     }
 }
@@ -428,6 +462,8 @@ private fun PhotoGrid(
  */
 @Composable
 private fun LoadMoreIndicator() {
+    Log.d("PhotoPreviewScreen", "🔄 LoadMoreIndicator 컴포넌트 렌더링됨")
+
     Box(
         modifier = Modifier
             .fillMaxWidth()

@@ -16,6 +16,7 @@ interface CameraRepository {
     suspend fun connectCamera(cameraId: String): Result<Boolean>
     suspend fun disconnectCamera(): Result<Boolean>
     fun isCameraConnected(): Flow<Boolean>
+    fun isInitializing(): Flow<Boolean>
 
     // 카메라 정보
     suspend fun getCameraInfo(): Result<String>

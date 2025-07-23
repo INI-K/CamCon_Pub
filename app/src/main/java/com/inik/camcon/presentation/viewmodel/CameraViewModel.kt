@@ -90,6 +90,7 @@ class CameraViewModel @Inject constructor(
         observeUsbDevices()
         observeCameraCapabilities()
         observeEventListenerState()
+        observeCameraInitialization()
     }
 
     private fun initializeCameraDatabase() {
@@ -220,6 +221,18 @@ class CameraViewModel @Inject constructor(
             }
             .catch { e ->
                 Log.e("CameraViewModel", "이벤트 리스너 상태 관찰 중 오류", e)
+            }
+            .launchIn(viewModelScope)
+    }
+
+    private fun observeCameraInitialization() {
+        cameraRepository.isInitializing()
+            .onEach { isInitializing ->
+                Log.d("CameraViewModel", "카메라 초기화 상태 변경: $isInitializing")
+                _uiState.update { it.copy(isCameraInitializing = isInitializing) }
+            }
+            .catch { e ->
+                Log.e("CameraViewModel", "카메라 초기화 상태 관찰 중 오류", e)
             }
             .launchIn(viewModelScope)
     }
