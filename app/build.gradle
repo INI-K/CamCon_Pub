@@ -26,9 +26,27 @@ android {
     }
 
     buildTypes {
+        debug {
+            debuggable true
+            minifyEnabled false
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
+
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // 릴리즈에서 디버깅을 원하면 아래 주석을 해제하세요
+            // debuggable true
+        }
+
+        // 릴리즈 성능 + 디버깅 가능한 빌드 타입
+        releaseDebug {
+            initWith release
+            debuggable true
+            applicationIdSuffix ".release.debug"
+            versionNameSuffix "-release-debug"
+            matchingFallbacks = ['release', 'debug']
         }
     }
     compileOptions {
@@ -42,6 +60,19 @@ android {
         cmake {
             path file('src/main/cpp/CMakeLists.txt')
             version '3.22.1'
+        }
+    }
+    android.buildTypes.all { buildType ->
+        externalNativeBuild.cmake {
+            if (buildType.name == 'debug') {
+                arguments '-DCMAKE_BUILD_TYPE=Debug'
+            } else if (buildType.name == 'releaseDebug') {
+                arguments '-DCMAKE_BUILD_TYPE=RelWithDebInfo'
+            } else {
+                arguments '-DCMAKE_BUILD_TYPE=Release'
+            }
+            cFlags '-g'
+            cppFlags '-g'
         }
     }
     sourceSets {
@@ -141,4 +172,38 @@ dependencies {
     implementation 'jp.co.cyberagent.android:gpuimage:2.1.0'
     implementation 'com.github.stfalcon-studio:StfalconImageViewer:1.0.1'
 
+}
+
+// 커스텀 빌드 태스크들
+task buildDebug(type: GradleBuild) {
+    description = '디버그 모드로 빌드 및 설치'
+    tasks = ['assembleDebug', 'installDebug']
+}
+
+task buildRelease(type: GradleBuild) {
+    description = '릴리즈 모드로 빌드'
+    tasks = ['assembleRelease']
+}
+
+task buildReleaseDebug(type: GradleBuild) {
+    description = '릴리즈 성능 + 디버깅 가능 모드로 빌드 및 설치'
+    tasks = ['assembleReleaseDebug', 'installReleaseDebug']
+}
+
+task runDebug(type: Exec) {
+    description = '디버그 앱 실행'
+    dependsOn 'installDebug'
+    commandLine 'adb', 'shell', 'am', 'start', '-n', 'com.inik.camcon.debug/.presentation.ui.MainActivity'
+}
+
+task runRelease(type: Exec) {
+    description = '릴리즈 앱 실행'
+    dependsOn 'installRelease'
+    commandLine 'adb', 'shell', 'am', 'start', '-n', 'com.inik.camcon/.presentation.ui.MainActivity'
+}
+
+task runReleaseDebug(type: Exec) {
+    description = '릴리즈 디버그 앱 실행'
+    dependsOn 'installReleaseDebug'
+    commandLine 'adb', 'shell', 'am', 'start', '-n', 'com.inik.camcon.release.debug/.presentation.ui.MainActivity'
 }

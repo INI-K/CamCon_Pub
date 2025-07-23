@@ -28,8 +28,18 @@ class CamCon: Application() {
     }
 
     override fun onTerminate() {
-        Log.d(TAG, "앱 종료")
+        Log.d(TAG, "앱 종료 - 카메라 세션 정리 시작")
+
+        try {
+            // 네이티브 카메라 세션 강제 종료
+            CameraNative.closeCamera()
+            Log.d(TAG, "카메라 세션 정리 완료")
+        } catch (e: Exception) {
+            Log.w(TAG, "카메라 세션 정리 중 오류", e)
+        }
+
         super.onTerminate()
+        Log.d(TAG, "앱 종료 완료")
     }
 
     override fun onLowMemory() {
