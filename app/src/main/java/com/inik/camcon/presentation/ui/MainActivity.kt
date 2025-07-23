@@ -175,13 +175,14 @@ fun MainScreen(
         // USB 연결 및 초기화 상태에 따른 UI 블로킹 오버레이
         if (globalConnectionState.ptpipConnectionState == PtpipConnectionState.CONNECTING ||
             connectionStatusMessage.contains("초기화 중") ||
-            cameraUiState.isUsbInitializing
+            cameraUiState.isUsbInitializing ||
+            cameraUiState.isCameraInitializing  // 카메라 이벤트 리스너 초기화 상태 추가
         ) {
             UsbInitializationOverlay(
                 message = when {
+                    cameraUiState.isCameraInitializing -> "카메라 이벤트 초기화 중..."
                     cameraUiState.isUsbInitializing -> cameraUiState.usbInitializationMessage
                         ?: "USB 카메라 초기화 중..."
-
                     else -> connectionStatusMessage
                 }
             )

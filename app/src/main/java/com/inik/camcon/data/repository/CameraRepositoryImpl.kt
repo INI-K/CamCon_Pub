@@ -72,6 +72,9 @@ class CameraRepositoryImpl @Inject constructor(
     private val _isEventListenerActive = MutableStateFlow(false)
     private var isEventListenerRunning = false
 
+    // 초기화 중 UI 블록 상태 추가
+    private val _isInitializing = MutableStateFlow(false)
+
     init {
         // USB 카메라 매니저의 네이티브 카메라 연결 상태를 관찰
         observeNativeCameraConnection()
@@ -83,6 +86,9 @@ class CameraRepositoryImpl @Inject constructor(
         return withContext(Dispatchers.IO) {
             try {
                 Log.d("카메라레포지토리", "카메라 연결 시작: $cameraId")
+
+                // 초기화 시작 - UI 블록
+                _isInitializing.value = true
 
                 // USB 디바이스 확인 및 연결
                 // StateFlow를 통해 이미 검색된 디바이스 목록 사용 (중복 검색 방지)
@@ -157,6 +163,8 @@ class CameraRepositoryImpl @Inject constructor(
             } catch (e: Exception) {
                 Log.e("카메라레포지토리", "카메라 연결 중 예외 발생", e)
                 Result.failure(e)
+            } finally {
+                _isInitializing.value = false
             }
         }
     }
@@ -187,6 +195,8 @@ class CameraRepositoryImpl @Inject constructor(
     }
 
     override fun isCameraConnected(): Flow<Boolean> = _isConnected.asStateFlow()
+
+    override fun isInitializing(): Flow<Boolean> = _isInitializing.asStateFlow()
 
     override fun isEventListenerActive(): Flow<Boolean> = _isEventListenerActive.asStateFlow()
 
@@ -297,6 +307,9 @@ class CameraRepositoryImpl @Inject constructor(
                 nativeDataSource.capturePhotoAsync(object : CameraCaptureListener {
                     override fun onFlushComplete() {
                         Log.d("카메라레포지토리", "✓ 사진 촬영 플러시 완료")
+                        CoroutineScope(Dispatchers.Main).launch {
+                            _isInitializing.value = false
+                        }
                     }
 
                     override fun onPhotoCaptured(fullPath: String, fileName: String) {
@@ -869,6 +882,9 @@ class CameraRepositoryImpl @Inject constructor(
                     nativeDataSource.listenCameraEvents(object : CameraCaptureListener {
                         override fun onFlushComplete() {
                             Log.d("카메라레포지토리", "✓ 카메라 이벤트 큐 플러시 완료")
+                            CoroutineScope(Dispatchers.Main).launch {
+                                _isInitializing.value = false
+                            }
                         }
 
                         override fun onPhotoCaptured(fullPath: String, fileName: String) {
