@@ -76,6 +76,9 @@ class CameraViewModel @Inject constructor(
     // 탭 전환 감지를 위한 플래그
     private var isTabSwitching = false
 
+    // 자동 연결 중복 실행 방지를 위한 플래그
+    private var isAutoConnecting = false
+
     init {
         observeDataSources()
         initializeCameraDatabase()
@@ -197,11 +200,13 @@ class CameraViewModel @Inject constructor(
                     )
                 }
 
-                if (isConnected) {
+                if (isConnected && !isAutoConnecting) {
                     Log.d("CameraViewModel", "네이티브 카메라 연결됨 - 자동으로 카메라 연결 시작")
+                    isAutoConnecting = true
                     autoConnectCamera()
                 } else {
                     Log.d("CameraViewModel", "네이티브 카메라 연결 해제됨")
+                    isAutoConnecting = false
                 }
             }
             .launchIn(viewModelScope)
@@ -253,6 +258,7 @@ class CameraViewModel @Inject constructor(
 
                         loadCameraCapabilitiesAsync()
                         loadCameraSettingsAsync()
+                        isAutoConnecting = false
                     }
                     .onFailure { error ->
                         Log.e("CameraViewModel", "자동 카메라 연결 실패", error)
@@ -265,6 +271,7 @@ class CameraViewModel @Inject constructor(
                                 )
                             }
                         }
+                        isAutoConnecting = false
                     }
             } catch (e: Exception) {
                 Log.e("CameraViewModel", "자동 카메라 연결 중 예외 발생", e)
@@ -277,6 +284,7 @@ class CameraViewModel @Inject constructor(
                         )
                     }
                 }
+                isAutoConnecting = false
             }
         }
     }
@@ -609,8 +617,7 @@ class CameraViewModel @Inject constructor(
                         )
                     }
                 }
-                Log.d("CameraViewModel", "라이브뷰 중지 성공")
-                disconnectCamera()
+                Log.d("CameraViewModel", "라이브뷰 중지 성공 - 카메라 연결은 유지됨")
             } catch (e: Exception) {
                 Log.e("CameraViewModel", "라이브뷰 중지 중 예외 발생", e)
                 withContext(Dispatchers.Main) {
@@ -623,7 +630,6 @@ class CameraViewModel @Inject constructor(
                         )
                     }
                 }
-                disconnectCamera()
             }
         }
     }
