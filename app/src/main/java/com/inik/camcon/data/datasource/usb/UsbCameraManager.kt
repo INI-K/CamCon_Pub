@@ -59,6 +59,15 @@ class UsbCameraManager @Inject constructor(
     // 카메라 기능 정보 중복 호출 방지를 위한 플래그 추가
     private var isFetchingCapabilities = false
 
+    // 카메라 기능 정보 캐시 관련 변수 추가
+    private var lastCapabilitiesFetch = 0L
+    private val capabilitiesCacheTimeout = 10000L // 10초간 캐시 유효
+    private var cachedCapabilities: CameraCapabilities? = null
+
+    // 위젯 JSON 캐시 관련 변수 추가
+    private var lastWidgetJsonFetch = 0L
+    private var cachedWidgetJson: String? = null
+
     // 네이티브 카메라 초기화 중복 방지를 위한 플래그 추가
     private var isInitializingNativeCamera = false
 
@@ -448,6 +457,14 @@ class UsbCameraManager @Inject constructor(
 
     private suspend fun initializeNativeCamera(fd: Int) = withContext(Dispatchers.IO) {
         try {
+            // 이미 카메라가 연결되어 있으면 재초기화 차단
+            if (_isNativeCameraConnected.value) {
+                Log.d(TAG, "카메라가 이미 연결되어 있음. 재초기화 차단. FD: $fd")
+                // 기능 정보만 새로고침 (필요시)
+                fetchCameraCapabilitiesIfNeeded()
+                return@withContext
+            }
+
             // 중복 초기화 방지
             if (isInitializingNativeCamera) {
                 Log.d(TAG, "네이티브 카메라 초기화가 이미 진행 중입니다. FD: $fd")
@@ -479,33 +496,9 @@ class UsbCameraManager @Inject constructor(
                 fetchCameraCapabilitiesIfNeeded()
 
             } else if (result == -52) { // GP_ERROR_IO_USB_FIND
-                Log.e(TAG, "USB 포트에서 카메라를 찾을 수 없음. 재시도 중...")
-
-                // USB 재초기화 시도
-                currentDevice?.let { device ->
-                    // 기존 연결 닫기
-                    delay(1000)
-
-                    // 다시 연결 시도
-                    val connection = usbManager.openDevice(device)
-                    connection?.let { conn ->
-                        val newFd = conn.fileDescriptor
-                        Log.d(TAG, "USB 재연결 시도 with FD: $newFd")
-
-                        val retryResult = CameraNative.initCameraWithFd(newFd, nativeLibDir)
-                        if (retryResult == 0) {
-                            Log.d(TAG, "재시도 성공!")
-                            withContext(Dispatchers.Main) {
-                                _isNativeCameraConnected.value = true
-                            }
-                            // 중복 방지하면서 capabilities 가져오기
-                            fetchCameraCapabilitiesIfNeeded()
-                        } else {
-                            Log.e(TAG, "재시도도 실패: $retryResult")
-                            tryGeneralInit()
-                        }
-                    }
-                } ?: tryGeneralInit()
+                Log.e(TAG, "USB 포트에서 카메라를 찾을 수 없음. 일반 초기화로 대체")
+                // USB 재연결 대신 바로 일반 초기화로 이동
+                tryGeneralInit()
 
             } else {
                 Log.e(TAG, "네이티브 카메라 초기화 실패: $result")
@@ -528,6 +521,12 @@ class UsbCameraManager @Inject constructor(
     }
 
     private suspend fun tryGeneralInit() = withContext(Dispatchers.IO) {
+        // 이미 카메라가 연결되어 있으면 일반 초기화도 차단
+        if (_isNativeCameraConnected.value) {
+            Log.d(TAG, "카메라가 이미 연결되어 있음. 일반 초기화 차단")
+            return@withContext
+        }
+
         Log.d(TAG, "일반 카메라 초기화 시도...")
 
         try {
@@ -542,33 +541,9 @@ class UsbCameraManager @Inject constructor(
                 // 중복 방지하면서 capabilities 가져오기
                 fetchCameraCapabilitiesIfNeeded()
             } else {
-                Log.e(TAG, "일반 초기화도 실패: $generalResult")
-
-                // 마지막으로 카메라 감지 시도
-                val detected = CameraNative.detectCamera()
-                Log.d(TAG, "카메라 감지 결과: $detected")
-
-                if (!detected.contains("No camera detected")) {
-                    // 카메라가 감지되면 다시 초기화 시도
-                    delay(1000)
-                    val finalResult = CameraNative.initCamera()
-                    if (finalResult.contains("OK", ignoreCase = true)) {
-                        withContext(Dispatchers.Main) {
-                            _isNativeCameraConnected.value = true
-                        }
-                        // 중복 방지하면서 capabilities 가져오기
-                        fetchCameraCapabilitiesIfNeeded()
-                    } else {
-                        // 일반 초기화 실패 시 최종 처리
-                        withContext(Dispatchers.Main) {
-                            _isNativeCameraConnected.value = false
-                        }
-                    }
-                } else {
-                    // 카메라 감지 실패 시 최종 처리
-                    withContext(Dispatchers.Main) {
-                        _isNativeCameraConnected.value = false
-                    }
+                Log.e(TAG, "일반 초기화 실패: $generalResult")
+                withContext(Dispatchers.Main) {
+                    _isNativeCameraConnected.value = false
                 }
             }
 
@@ -588,6 +563,18 @@ class UsbCameraManager @Inject constructor(
             return
         }
 
+        // 캐시된 결과가 있고 아직 유효하면 캐시 반환
+        val now = System.currentTimeMillis()
+        cachedCapabilities?.let { cached ->
+            if (now - lastCapabilitiesFetch < capabilitiesCacheTimeout) {
+                Log.d(TAG, "캐시된 카메라 기능 정보 반환")
+                withContext(Dispatchers.Main) {
+                    _cameraCapabilities.value = cached
+                }
+                return
+            }
+        }
+
         isFetchingCapabilities = true
         try {
             fetchCameraCapabilities()
@@ -600,16 +587,19 @@ class UsbCameraManager @Inject constructor(
         try {
             Log.d(TAG, "카메라 기능 정보 가져오기 시작")
 
-            // 카메라 능력 정보 가져오기 - 네이티브 호출을 IO 스레드에서
+            // 카메라 능력 정보 가져오기 - 네이티브 호출을 IO 스레드에서  
             val abilitiesJson = CameraNative.listCameraAbilities()
             Log.d(TAG, "카메라 능력 정보: $abilitiesJson")
 
-            // 카메라 위젯 정보 가져오기 (설정 가능한 옵션들) - 무거운 작업
-            val widgetJson = CameraNative.buildWidgetJson()
-            Log.d(TAG, "카메라 위젯 정보 길이: ${widgetJson.length}")
+            // 위젯 JSON 캐시 확인 및 가져오기
+            val widgetJson = getCachedOrFetchWidgetJson()
 
             // JSON 파싱하여 CameraCapabilities 객체 생성 - 무거운 작업
             val capabilities = parseCameraCapabilities(abilitiesJson, widgetJson)
+
+            // 캐시 갱신
+            cachedCapabilities = capabilities
+            lastCapabilitiesFetch = System.currentTimeMillis()
 
             // UI 업데이트만 메인 스레드에서
             withContext(Dispatchers.Main) {
@@ -624,6 +614,26 @@ class UsbCameraManager @Inject constructor(
                 _cameraCapabilities.value = null
             }
         }
+    }
+
+    private fun getCachedOrFetchWidgetJson(): String {
+        val now = System.currentTimeMillis()
+
+        // 캐시된 위젯 JSON이 있고 유효하면 반환
+        cachedWidgetJson?.let { cached ->
+            if (now - lastWidgetJsonFetch < 10000) { // 10초간 캐시 유효
+                Log.d(TAG, "캐시된 위젯 JSON 사용")
+                return cached
+            }
+        }
+
+        // 캐시가 없거나 만료되었으면 새로 가져오기
+        Log.d(TAG, "새로운 위젯 JSON 가져오는 중...")
+        val widgetJson = CameraNative.buildWidgetJson()
+        cachedWidgetJson = widgetJson
+        lastWidgetJsonFetch = now
+        Log.d(TAG, "새로 가져온 위젯 JSON 길이: ${widgetJson.length}")
+        return widgetJson
     }
 
     private fun parseCameraCapabilities(abilitiesJson: String, widgetJson: String): CameraCapabilities {
@@ -774,6 +784,8 @@ class UsbCameraManager @Inject constructor(
     fun refreshCameraCapabilities() {
         if (_isNativeCameraConnected.value) {
             CoroutineScope(Dispatchers.IO).launch {
+                // 강제 새로고침을 위해 캐시 무효화
+                invalidateCapabilitiesCache()
                 fetchCameraCapabilitiesIfNeeded()
             }
         }
@@ -814,6 +826,9 @@ class UsbCameraManager @Inject constructor(
                 currentConnection?.close()
                 currentConnection = null
 
+                // 캐시 무효화
+                invalidateCapabilitiesCache()
+
                 Log.d(TAG, "카메라 연결 해제 완료 - PC 모드에서 완전히 해제됨")
             } catch (e: Exception) {
                 Log.e(TAG, "카메라 연결 해제 중 오류", e)
@@ -827,8 +842,18 @@ class UsbCameraManager @Inject constructor(
                 currentDevice = null
                 currentConnection?.close()
                 currentConnection = null
+
+                // 캐시 무효화
+                invalidateCapabilitiesCache()
             }
         }
+    }
+
+    private fun invalidateCapabilitiesCache() {
+        cachedCapabilities = null
+        lastCapabilitiesFetch = 0
+        cachedWidgetJson = null
+        lastWidgetJsonFetch = 0
     }
 
     fun getCurrentDevice(): UsbDevice? = currentDevice
