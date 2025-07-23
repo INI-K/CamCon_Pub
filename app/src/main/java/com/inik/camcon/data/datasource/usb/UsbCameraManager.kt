@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.hardware.usb.UsbDevice
+import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbManager
 import android.os.Build
 import android.util.Log
@@ -43,6 +44,7 @@ class UsbCameraManager @Inject constructor(
     val isNativeCameraConnected: StateFlow<Boolean> = _isNativeCameraConnected.asStateFlow()
 
     private var currentDevice: UsbDevice? = null
+    private var currentConnection: UsbDeviceConnection? = null
 
     companion object {
         private const val TAG = "USB카메라매니저"
@@ -56,6 +58,9 @@ class UsbCameraManager @Inject constructor(
 
     // 카메라 기능 정보 중복 호출 방지를 위한 플래그 추가
     private var isFetchingCapabilities = false
+
+    // 네이티브 카메라 초기화 중복 방지를 위한 플래그 추가
+    private var isInitializingNativeCamera = false
 
     private val knownCameraVendorIds = listOf(
         // 주요 DSLR/미러리스 제조사
@@ -187,6 +192,8 @@ class UsbCameraManager @Inject constructor(
                         if (it == currentDevice) {
                             _hasUsbPermission.value = false
                             currentDevice = null
+                            currentConnection?.close()
+                            currentConnection = null
                         }
                         updateDeviceList()
                     }
@@ -399,6 +406,7 @@ class UsbCameraManager @Inject constructor(
 
                 val connection = usbManager.openDevice(device)
                 connection?.let {
+                    currentConnection = it
                     val fd = it.fileDescriptor
                     Log.d(TAG, "카메라에 연결되었습니다. 파일 디스크립터: $fd")
 
@@ -440,6 +448,14 @@ class UsbCameraManager @Inject constructor(
 
     private suspend fun initializeNativeCamera(fd: Int) = withContext(Dispatchers.IO) {
         try {
+            // 중복 초기화 방지
+            if (isInitializingNativeCamera) {
+                Log.d(TAG, "네이티브 카메라 초기화가 이미 진행 중입니다. FD: $fd")
+                return@withContext
+            }
+
+            isInitializingNativeCamera = true
+
             val nativeLibDir = context.applicationInfo.nativeLibraryDir
             Log.d(TAG, "네이티브 라이브러리 디렉토리: $nativeLibDir")
 
@@ -506,6 +522,8 @@ class UsbCameraManager @Inject constructor(
                 _isNativeCameraConnected.value = false
             }
             tryGeneralInit()
+        } finally {
+            isInitializingNativeCamera = false
         }
     }
 
@@ -793,6 +811,9 @@ class UsbCameraManager @Inject constructor(
                     _hasUsbPermission.value = false
                 }
 
+                currentConnection?.close()
+                currentConnection = null
+
                 Log.d(TAG, "카메라 연결 해제 완료 - PC 모드에서 완전히 해제됨")
             } catch (e: Exception) {
                 Log.e(TAG, "카메라 연결 해제 중 오류", e)
@@ -804,6 +825,8 @@ class UsbCameraManager @Inject constructor(
                     _hasUsbPermission.value = false
                 }
                 currentDevice = null
+                currentConnection?.close()
+                currentConnection = null
             }
         }
     }
@@ -813,7 +836,22 @@ class UsbCameraManager @Inject constructor(
     fun getFileDescriptor(): Int? {
         return currentDevice?.let { device ->
             try {
-                usbManager.openDevice(device)?.fileDescriptor
+                // 기존 연결이 있다면 재사용
+                currentConnection?.let { existingConnection ->
+                    Log.d(TAG, "기존 연결 재사용: FD=${existingConnection.fileDescriptor}")
+                    return existingConnection.fileDescriptor
+                }
+
+                // 새 연결 생성
+                val connection = usbManager.openDevice(device)
+                connection?.let { conn ->
+                    currentConnection = conn
+                    Log.d(TAG, "새 연결 생성: FD=${conn.fileDescriptor}")
+                    conn.fileDescriptor
+                } ?: run {
+                    Log.e(TAG, "USB 디바이스 연결 실패")
+                    null
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "파일 디스크립터 가져오기 실패", e)
                 null
