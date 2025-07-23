@@ -384,32 +384,51 @@ class CameraRepositoryImpl @Inject constructor(
     }
 
     override fun startLiveView(): Flow<LiveViewFrame> = callbackFlow {
-        Log.d("카메라레포지토리", "라이브뷰 시작")
+        Log.d("카메라레포지토리", "=== 라이브뷰 시작 (Repository) ===")
+        Log.d("카메라레포지토리", "카메라 연결 상태: ${_isConnected.value}")
+
+        // 연결 상태 확인
+        if (!_isConnected.value) {
+            Log.e("카메라레포지토리", "카메라가 연결되지 않은 상태에서 라이브뷰 시작 불가")
+            close(IllegalStateException("카메라가 연결되지 않음"))
+            return@callbackFlow
+        }
 
         try {
             // 라이브뷰 시작 전에 자동초점 활성화 - IO 스레드에서 실행
             launch(Dispatchers.IO) {
                 try {
-                    nativeDataSource.autoFocus()
+                    Log.d("카메라레포지토리", "라이브뷰 시작 전 자동초점 시도")
+                    val focusResult = nativeDataSource.autoFocus()
+                    Log.d("카메라레포지토리", "자동초점 결과: $focusResult")
                 } catch (e: Exception) {
                     Log.w("카메라레포지토리", "라이브뷰 시작 전 자동초점 실패", e)
                 }
             }
 
+            Log.d("카메라레포지토리", "네이티브 startLiveView 호출 시작")
             nativeDataSource.startLiveView(object : LiveViewCallback {
                 override fun onLiveViewFrame(frame: ByteBuffer) {
                     try {
+                        Log.d(
+                            "카메라레포지토리",
+                            "라이브뷰 프레임 콜백 수신: position=${frame.position()}, limit=${frame.limit()}"
+                        )
+
                         val bytes = ByteArray(frame.remaining())
                         frame.get(bytes)
 
-                        trySend(
-                            LiveViewFrame(
-                                data = bytes,
-                                width = 0, // TODO: 실제 크기 가져오기
-                                height = 0,
-                                timestamp = System.currentTimeMillis()
-                            )
+                        Log.d("카메라레포지토리", "라이브뷰 프레임 변환 완료: ${bytes.size} bytes")
+
+                        val liveViewFrame = LiveViewFrame(
+                            data = bytes,
+                            width = 0, // TODO: 실제 크기 가져오기
+                            height = 0,
+                            timestamp = System.currentTimeMillis()
                         )
+
+                        val result = trySend(liveViewFrame)
+                        Log.d("카메라레포지토리", "프레임 전송 결과: ${result.isSuccess}")
                     } catch (e: Exception) {
                         Log.e("카메라레포지토리", "라이브뷰 프레임 처리 실패", e)
                     }
@@ -420,15 +439,18 @@ class CameraRepositoryImpl @Inject constructor(
                     // 라이브뷰 중 촬영된 사진 처리
                 }
             })
+
+            Log.d("카메라레포지토리", "라이브뷰 콜백 등록 완료")
         } catch (e: Exception) {
             Log.e("카메라레포지토리", "라이브뷰 시작 실패", e)
             close(e)
         }
 
         awaitClose {
-            Log.d("카메라레포지토리", "라이브뷰 중지")
+            Log.d("카메라레포지토리", "라이브뷰 중지 (awaitClose)")
             try {
                 nativeDataSource.stopLiveView()
+                Log.d("카메라레포지토리", "라이브뷰 중지 완료")
             } catch (e: Exception) {
                 Log.e("카메라레포지토리", "라이브뷰 중지 중 오류", e)
             }
