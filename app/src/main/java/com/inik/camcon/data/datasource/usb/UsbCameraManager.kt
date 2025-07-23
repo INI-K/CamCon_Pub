@@ -54,6 +54,9 @@ class UsbCameraManager @Inject constructor(
     private val deviceListCacheTimeout = 1000L // 1초간 캐시 유효
     private var cachedDeviceList: List<UsbDevice>? = null
 
+    // 카메라 기능 정보 중복 호출 방지를 위한 플래그 추가
+    private var isFetchingCapabilities = false
+
     private val knownCameraVendorIds = listOf(
         // 주요 DSLR/미러리스 제조사
         0x04A9, // Canon
@@ -452,14 +455,12 @@ class UsbCameraManager @Inject constructor(
                     _isNativeCameraConnected.value = true
                 }
 
-                // 카메라 기능 정보 가져오기 - 비동기 실행
-                launch {
-                    fetchCameraCapabilities()
-                }
-                
-                // 카메라 요약 정보 가져오기
+                // 카메라 요약 정보 가져오기 - 한 번만 호출
                 val summary = CameraNative.getCameraSummary()
                 Log.d(TAG, "카메라 요약: $summary")
+
+                // 카메라 기능 정보 가져오기 - 중복 방지하면서 한 번만 실행
+                fetchCameraCapabilitiesIfNeeded()
 
             } else if (result == -52) { // GP_ERROR_IO_USB_FIND
                 Log.e(TAG, "USB 포트에서 카메라를 찾을 수 없음. 재시도 중...")
@@ -481,10 +482,8 @@ class UsbCameraManager @Inject constructor(
                             withContext(Dispatchers.Main) {
                                 _isNativeCameraConnected.value = true
                             }
-                            // 비동기로 capabilities 가져오기
-                            launch {
-                                fetchCameraCapabilities()
-                            }
+                            // 중복 방지하면서 capabilities 가져오기
+                            fetchCameraCapabilitiesIfNeeded()
                         } else {
                             Log.e(TAG, "재시도도 실패: $retryResult")
                             tryGeneralInit()
@@ -518,20 +517,12 @@ class UsbCameraManager @Inject constructor(
             val generalResult = CameraNative.initCamera()
             Log.d(TAG, "일반 카메라 초기화 결과: $generalResult")
 
-            // --- Begin fix:
-            // 기존 조건:
-            // if (generalResult.contains("OK", ignoreCase = true) ||
-            //     generalResult.contains("0", ignoreCase = true)
-            // )
-            // -> initCamera가 성공하면 "OK"가 반드시 포함되어야 함 (0포함은 금지)
             if (generalResult.contains("OK", ignoreCase = true)) {
                 withContext(Dispatchers.Main) {
                     _isNativeCameraConnected.value = true
                 }
-                // 비동기로 capabilities 가져오기
-                launch {
-                    fetchCameraCapabilities()
-                }
+                // 중복 방지하면서 capabilities 가져오기
+                fetchCameraCapabilitiesIfNeeded()
             } else {
                 Log.e(TAG, "일반 초기화도 실패: $generalResult")
 
@@ -543,15 +534,12 @@ class UsbCameraManager @Inject constructor(
                     // 카메라가 감지되면 다시 초기화 시도
                     delay(1000)
                     val finalResult = CameraNative.initCamera()
-                    // 여기서도 OK만으로 성공 처리
                     if (finalResult.contains("OK", ignoreCase = true)) {
                         withContext(Dispatchers.Main) {
                             _isNativeCameraConnected.value = true
                         }
-                        // 비동기로 capabilities 가져오기
-                        launch {
-                            fetchCameraCapabilities()
-                        }
+                        // 중복 방지하면서 capabilities 가져오기
+                        fetchCameraCapabilitiesIfNeeded()
                     } else {
                         // 일반 초기화 실패 시 최종 처리
                         withContext(Dispatchers.Main) {
@@ -565,13 +553,28 @@ class UsbCameraManager @Inject constructor(
                     }
                 }
             }
-            // --- End fix.
 
         } catch (e: Exception) {
             Log.e(TAG, "일반 카메라 초기화 중 예외 발생", e)
             withContext(Dispatchers.Main) {
                 _isNativeCameraConnected.value = false
             }
+        }
+    }
+
+    // 중복 방지가 있는 capabilities 가져오기 함수
+    private suspend fun fetchCameraCapabilitiesIfNeeded() {
+        // 이미 가져오는 중이면 건너뛰기
+        if (isFetchingCapabilities) {
+            Log.d(TAG, "카메라 기능 정보 가져오기 중복 호출 방지")
+            return
+        }
+
+        isFetchingCapabilities = true
+        try {
+            fetchCameraCapabilities()
+        } finally {
+            isFetchingCapabilities = false
         }
     }
 
@@ -753,7 +756,7 @@ class UsbCameraManager @Inject constructor(
     fun refreshCameraCapabilities() {
         if (_isNativeCameraConnected.value) {
             CoroutineScope(Dispatchers.IO).launch {
-                fetchCameraCapabilities()
+                fetchCameraCapabilitiesIfNeeded()
             }
         }
     }
