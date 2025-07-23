@@ -17,6 +17,16 @@ local.properties
 *.jks
 *.keystore
 
+# App signing keys
+app-release-key.jks
+app-debug-key.jks
+key.properties
+keystore.properties
+signing.properties
+KEY/
+KEY/appkey
+# KEY 폴더 전체를 ignore
+
 # OS files
 .DS_Store
 
