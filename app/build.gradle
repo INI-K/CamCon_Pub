@@ -10,6 +10,24 @@ android {
     namespace 'com.inik.camcon'
     compileSdk 35
 
+    // 키스토어 설정 로드
+    def keystorePropertiesFile = rootProject.file("key.properties")
+    def keystoreProperties = new Properties()
+    if (keystorePropertiesFile.exists()) {
+        keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+    }
+
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+            }
+        }
+    }
+
     defaultConfig {
         applicationId "com.inik.camcon"
         minSdk 31
@@ -36,8 +54,8 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            // 릴리즈에서 디버깅을 원하면 아래 주석을 해제하세요
-            // debuggable true
+            debuggable true  // 로그 확인을 위해 활성화
+            signingConfig signingConfigs.release
         }
 
         // 릴리즈 성능 + 디버깅 가능한 빌드 타입
