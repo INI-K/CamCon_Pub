@@ -2,17 +2,24 @@ package com.inik.camcon.presentation.ui.screens.components
 
 import android.app.AlertDialog
 import android.content.Context
+import android.content.Intent
 import android.util.Log
 import android.view.LayoutInflater
+import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
+import androidx.core.content.FileProvider
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
+import com.inik.camcon.utils.Constants
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -47,10 +54,13 @@ object PhotoInfoDialog {
                     val exifContainer = dialogView.findViewById<LinearLayout>(R.id.exif_container)
                     setupExifInfo(exifInfo, exifContainer, context)
 
+                    // 버튼 리스너 설정
+                    setupActionButtons(dialogView, context, photo, viewModel)
+
                     AlertDialog.Builder(context)
-                        .setTitle("사진 정보")
+                        .setTitle(Constants.UI.PHOTO_INFO_DIALOG_TITLE)
                         .setView(dialogView)
-                        .setPositiveButton("확인") { dialog, _ -> dialog.dismiss() }
+                        .setPositiveButton(Constants.UI.DIALOG_POSITIVE_BUTTON_TEXT) { dialog, _ -> dialog.dismiss() }
                         .show()
                 }
             } catch (e: Exception) {
@@ -76,7 +86,7 @@ object PhotoInfoDialog {
         val formattedDate = try {
             dateFormat.format(Date(photo.date * 1000L))
         } catch (e: Exception) {
-            "알 수 없음"
+            Constants.UI.UNKNOWN_VALUE
         }
         dialogView.findViewById<TextView>(R.id.tv_photo_date).text = formattedDate
     }
@@ -95,10 +105,20 @@ object PhotoInfoDialog {
                 parseAndDisplayExif(exifInfo, exifContainer, context)
             } catch (e: Exception) {
                 Log.e("PhotoInfo", "EXIF 파싱 오류", e)
-                addExifItem(exifContainer, context, "EXIF 정보", "파싱 오류")
+                addExifItem(
+                    exifContainer,
+                    context,
+                    Constants.UI.EXIF_INFO_LABEL,
+                    Constants.UI.PARSING_ERROR
+                )
             }
         } else {
-            addExifItem(exifContainer, context, "EXIF 정보", "없음")
+            addExifItem(
+                exifContainer,
+                context,
+                Constants.UI.EXIF_INFO_LABEL,
+                Constants.UI.NO_EXIF_INFO
+            )
         }
     }
 
@@ -129,7 +149,7 @@ object PhotoInfoDialog {
         if (entries.isNotEmpty()) {
             displayExifEntries(entries, container, context)
         } else {
-            addExifItem(container, context, "EXIF 정보", "없음")
+            addExifItem(container, context, Constants.UI.EXIF_INFO_LABEL, Constants.UI.NO_EXIF_INFO)
         }
     }
 
@@ -142,45 +162,45 @@ object PhotoInfoDialog {
         context: Context
     ) {
         entries["width"]?.let { width ->
-            addExifItem(container, context, "너비", "${width}px")
+            addExifItem(container, context, Constants.UI.WIDTH_LABEL, "${width}px")
         }
 
         entries["height"]?.let { height ->
-            addExifItem(container, context, "높이", "${height}px")
+            addExifItem(container, context, Constants.UI.HEIGHT_LABEL, "${height}px")
         }
 
         entries["orientation"]?.let { orientation ->
             val orientationText = getOrientationText(orientation)
-            addExifItem(container, context, "방향", orientationText)
+            addExifItem(container, context, Constants.UI.ORIENTATION_LABEL, orientationText)
         }
 
         // 추가적인 EXIF 정보들
         entries["make"]?.let { make ->
-            addExifItem(container, context, "제조사", make)
+            addExifItem(container, context, Constants.UI.MAKE_LABEL, make)
         }
 
         entries["model"]?.let { model ->
-            addExifItem(container, context, "모델", model)
+            addExifItem(container, context, Constants.UI.MODEL_LABEL, model)
         }
 
         entries["iso"]?.let { iso ->
-            addExifItem(container, context, "ISO", iso)
+            addExifItem(container, context, Constants.UI.ISO_LABEL, iso)
         }
 
         entries["exposure_time"]?.let { exposureTime ->
-            addExifItem(container, context, "노출시간", exposureTime)
+            addExifItem(container, context, Constants.UI.EXPOSURE_TIME_LABEL, exposureTime)
         }
 
         entries["f_number"]?.let { fNumber ->
-            addExifItem(container, context, "조리개", "f/$fNumber")
+            addExifItem(container, context, Constants.UI.F_NUMBER_LABEL, "f/$fNumber")
         }
 
         entries["focal_length"]?.let { focalLength ->
-            addExifItem(container, context, "초점거리", "${focalLength}mm")
+            addExifItem(container, context, Constants.UI.FOCAL_LENGTH_LABEL, "${focalLength}mm")
         }
 
         entries["datetime"]?.let { datetime ->
-            addExifItem(container, context, "촬영일시", datetime)
+            addExifItem(container, context, Constants.UI.DATETIME_LABEL, datetime)
         }
     }
 
@@ -189,11 +209,11 @@ object PhotoInfoDialog {
      */
     private fun getOrientationText(orientation: String): String {
         return when (orientation) {
-            "1" -> "정상 (0°)"
-            "3" -> "180° 회전"
-            "6" -> "시계방향 90° 회전"
-            "8" -> "반시계방향 90° 회전"
-            else -> "알 수 없음 ($orientation)"
+            "1" -> Constants.UI.ORIENTATION_NORMAL
+            "3" -> Constants.UI.ORIENTATION_ROTATED_180
+            "6" -> Constants.UI.ORIENTATION_ROTATED_90_CLOCKWISE
+            "8" -> Constants.UI.ORIENTATION_ROTATED_90_COUNTERCLOCKWISE
+            else -> Constants.UI.UNKNOWN_VALUE
         }
     }
 
@@ -216,13 +236,141 @@ object PhotoInfoDialog {
     }
 
     /**
+     * 액션 버튼들 설정
+     */
+    private fun setupActionButtons(
+        dialogView: android.view.View,
+        context: Context,
+        photo: CameraPhoto,
+        viewModel: PhotoPreviewViewModel?
+    ) {
+        val downloadButton = dialogView.findViewById<Button>(R.id.btn_download)
+        val shareButton = dialogView.findViewById<Button>(R.id.btn_share)
+
+        // 다운로드 버튼 클릭 리스너
+        downloadButton.setOnClickListener {
+            downloadPhoto(context, photo, viewModel)
+        }
+
+        // 공유 버튼 클릭 리스너
+        shareButton.setOnClickListener {
+            sharePhoto(context, photo, viewModel)
+        }
+    }
+
+    /**
+     * 사진 다운로드 기능
+     */
+    private fun downloadPhoto(
+        context: Context,
+        photo: CameraPhoto,
+        viewModel: PhotoPreviewViewModel?
+    ) {
+        // ViewModel의 네이티브 다운로드 기능 사용
+        viewModel?.downloadPhoto(photo)
+
+        Toast.makeText(
+            context,
+            Constants.Messages.DOWNLOAD_STARTED_MESSAGE + " ${photo.name}",
+            Toast.LENGTH_SHORT
+        ).show()
+
+        Log.d("PhotoInfo", Constants.Messages.DOWNLOAD_STARTED_LOG + " ${photo.path}")
+    }
+
+    /**
+     * 사진 공유 기능
+     */
+    private fun sharePhoto(
+        context: Context,
+        photo: CameraPhoto,
+        viewModel: PhotoPreviewViewModel?
+    ) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // 고화질 이미지 데이터 가져오기 (썸네일보다 우선)
+                val fullImageData = viewModel?.fullImageCache?.value?.get(photo.path)
+                val imageData = fullImageData ?: viewModel?.getThumbnail(photo.path)
+
+                if (imageData != null) {
+                    // 임시 파일 생성
+                    val cacheDir = File(context.cacheDir, Constants.FilePaths.SHARED_PHOTOS_DIR)
+                    if (!cacheDir.exists()) {
+                        cacheDir.mkdirs()
+                    }
+
+                    val tempFile = File(cacheDir, "share_${photo.name}")
+                    FileOutputStream(tempFile).use { fos ->
+                        fos.write(imageData)
+                    }
+
+                    withContext(Dispatchers.Main) {
+                        try {
+                            // FileProvider를 사용하여 URI 생성
+                            val fileUri = FileProvider.getUriForFile(
+                                context,
+                                Constants.FileProvider.getAuthority(context.packageName),
+                                tempFile
+                            )
+
+                            // 공유 인텐트 생성
+                            val shareIntent = Intent().apply {
+                                action = Intent.ACTION_SEND
+                                type = Constants.MimeTypes.IMAGE_WILDCARD
+                                putExtra(Intent.EXTRA_STREAM, fileUri)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+
+                            val chooser =
+                                Intent.createChooser(
+                                    shareIntent,
+                                    Constants.Messages.SHARE_PHOTO_TITLE
+                                )
+                            context.startActivity(chooser)
+
+                            Log.d(
+                                "PhotoInfo",
+                                Constants.Messages.SHARE_INTENT_STARTED_LOG + " ${tempFile.name}"
+                            )
+                        } catch (e: Exception) {
+                            Log.e("PhotoInfo", Constants.Messages.SHARE_INTENT_ERROR_LOG, e)
+                            Toast.makeText(
+                                context,
+                                Constants.Messages.SHARE_FAILED_MESSAGE,
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            context,
+                            Constants.Messages.IMAGE_DATA_LOAD_FAILED_MESSAGE,
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("PhotoInfo", Constants.Messages.SHARE_PREPARATION_ERROR_LOG, e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        context,
+                        Constants.Messages.SHARE_FAILED_MESSAGE + " ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }
+    }
+
+    /**
      * 오류 다이얼로그 표시
      */
     private fun showErrorDialog(context: Context) {
         AlertDialog.Builder(context)
-            .setTitle("오류")
-            .setMessage("사진 정보를 불러올 수 없습니다.")
-            .setPositiveButton("확인") { dialog, _ -> dialog.dismiss() }
+            .setTitle(Constants.UI.ERROR_DIALOG_TITLE)
+            .setMessage(Constants.Messages.ERROR_LOADING_PHOTO_INFO_MESSAGE)
+            .setPositiveButton(Constants.UI.DIALOG_POSITIVE_BUTTON_TEXT) { dialog, _ -> dialog.dismiss() }
             .show()
     }
 }

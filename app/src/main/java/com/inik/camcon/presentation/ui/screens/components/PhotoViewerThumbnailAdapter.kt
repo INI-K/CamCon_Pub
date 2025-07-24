@@ -10,8 +10,10 @@ import androidx.recyclerview.widget.RecyclerView
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
+import com.stfalcon.imageviewer.StfalconImageViewer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -21,7 +23,8 @@ import kotlinx.coroutines.launch
 class PhotoViewerThumbnailAdapter(
     private val viewModel: PhotoPreviewViewModel?,
     private val thumbnailCache: Map<String, ByteArray>,
-    private val onClick: (Int) -> Unit
+    private val onClick: (Int) -> Unit,
+    private val initialPhotos: List<CameraPhoto> = emptyList() // 뷰어와 동일한 리스트 사용
 ) : RecyclerView.Adapter<PhotoViewerThumbnailAdapter.ViewHolder>() {
 
     companion object {
@@ -34,134 +37,161 @@ class PhotoViewerThumbnailAdapter(
     private var selectedPosition = 0
     private var lastClickTime = 0L
 
+    // StfalconImageViewer 참조 추가
+    private var viewer: StfalconImageViewer<CameraPhoto>? = null
+
     // 고화질 캐시에 접근하기 위한 참조
     private var fullImageCache: Map<String, ByteArray> = emptyMap()
 
     // 비트맵 캐시 (메모리 효율성을 위해)
     private val bitmapCache = mutableMapOf<String, Bitmap>()
 
-    // 사진 리스트를 캐시하여 빠른 접근과 안정성 확보
-    private var cachedPhotos: List<CameraPhoto> = emptyList()
-    private var lastUpdateTime = 0L
+    // 데이터 일관성을 위한 스냅샷 저장 - 초기값을 뷰어와 동일하게 설정
+    private var photosSnapshot: List<CameraPhoto> = initialPhotos
+    private var isLoadingSnapshot = false
+    private var hasNextPageSnapshot = true
 
-    // 로딩 상태
-    private var isLoading = false
-    private var hasNextPage = true
-
-    // ViewModel에서 안전하게 photos 리스트 가져오기
-    private val photos: List<CameraPhoto>
-        get() {
-            val currentTime = System.currentTimeMillis()
-            // 스로틀링: 너무 자주 업데이트하지 않도록 제한
-            if (currentTime - lastUpdateTime > UPDATE_THROTTLE_TIME) {
-                val newPhotos = viewModel?.uiState?.value?.photos ?: emptyList()
-                if (newPhotos != cachedPhotos) {
-                    cachedPhotos = newPhotos
-                    lastUpdateTime = currentTime
-
-                    // UI 상태도 동시에 업데이트
-                    val uiState = viewModel?.uiState?.value
-                    isLoading = uiState?.isLoading == true || uiState?.isLoadingMore == true
-                    hasNextPage = uiState?.hasNextPage == true
-                }
+    init {
+        // 초기 데이터 로드 - 뷰어와 동일한 리스트 우선 사용
+        try {
+            if (initialPhotos.isNotEmpty()) {
+                photosSnapshot = initialPhotos
+                Log.d("ThumbnailAdapter", "뷰어와 동일한 초기 리스트 사용: ${photosSnapshot.size}개 사진")
+            } else {
+                val uiState = viewModel?.uiState?.value
+                photosSnapshot = uiState?.photos ?: emptyList()
+                Log.d("ThumbnailAdapter", "ViewModel에서 초기 데이터 로드: ${photosSnapshot.size}개 사진")
             }
-            return cachedPhotos
+
+            isLoadingSnapshot =
+                viewModel?.uiState?.value?.isLoading == true || viewModel?.uiState?.value?.isLoadingMore == true
+            hasNextPageSnapshot = viewModel?.uiState?.value?.hasNextPage == true
+
+        } catch (e: Exception) {
+            Log.e("ThumbnailAdapter", "초기 데이터 로드 실패", e)
+            // 안전한 기본값으로 초기화
+            photosSnapshot = initialPhotos
+            isLoadingSnapshot = false
+            hasNextPageSnapshot = true
         }
-
-    /**
-     * 사진 리스트 강제 업데이트 (외부에서 호출)
-     */
-    fun refreshPhotos() {
-        val oldSize = cachedPhotos.size
-        val oldIsLoading = isLoading
-        val oldHasNextPage = hasNextPage
-
-        // ViewModel에서 최신 상태 가져오기
-        val uiState = viewModel?.uiState?.value
-        val newPhotos = uiState?.photos ?: emptyList()
-        val newIsLoading = uiState?.isLoading == true || uiState?.isLoadingMore == true
-        val newHasNextPage = uiState?.hasNextPage == true
-
-        // 상태 업데이트
-        cachedPhotos = newPhotos
-        isLoading = newIsLoading
-        hasNextPage = newHasNextPage
-        lastUpdateTime = System.currentTimeMillis()
-
-        Log.d(
-            "ThumbnailAdapter",
-            "사진 리스트 새로고침: $oldSize → ${cachedPhotos.size}, 로딩: $oldIsLoading → $isLoading, hasNextPage: $oldHasNextPage → $hasNextPage"
-        )
-
-        // 변경사항에 따른 적절한 notify 호출
-        handleDataSetChanges(oldSize, oldIsLoading, oldHasNextPage)
     }
 
     /**
-     * 데이터셋 변경에 따른 적절한 notify 처리
+     * 사진 리스트 강제 업데이트 (외부에서 호출)
+     * 데이터 일관성을 보장하기 위해 스냅샷 방식 사용
      */
-    private fun handleDataSetChanges(
-        oldSize: Int,
-        oldIsLoading: Boolean,
-        oldHasNextPage: Boolean
+    fun refreshPhotos() {
+        try {
+            // 현재 상태를 스냅샷으로 저장
+            val oldPhotos = photosSnapshot
+            val oldIsLoading = isLoadingSnapshot
+            val oldHasNextPage = hasNextPageSnapshot
+            val oldItemCount = if (oldIsLoading && oldPhotos.isNotEmpty() && oldHasNextPage) {
+                oldPhotos.size + 1
+            } else {
+                oldPhotos.size
+            }
+
+            // ViewModel에서 최신 상태 가져오기
+            val uiState = viewModel?.uiState?.value
+            val newPhotos = uiState?.photos ?: emptyList()
+            val newIsLoading = uiState?.isLoading == true || uiState?.isLoadingMore == true
+            val newHasNextPage = uiState?.hasNextPage == true
+
+            // 스냅샷 업데이트
+            photosSnapshot = newPhotos
+            isLoadingSnapshot = newIsLoading
+            hasNextPageSnapshot = newHasNextPage
+
+            val newItemCount = if (newIsLoading && newPhotos.isNotEmpty() && newHasNextPage) {
+                newPhotos.size + 1
+            } else {
+                newPhotos.size
+            }
+
+            Log.d(
+                "ThumbnailAdapter",
+                "데이터 새로고침: 사진 ${oldPhotos.size}→${newPhotos.size}, " +
+                        "아이템 ${oldItemCount}→${newItemCount}, " +
+                        "로딩 ${oldIsLoading}→${newIsLoading}, " +
+                        "hasNext ${oldHasNextPage}→${newHasNextPage}"
+            )
+
+            // 안전한 데이터셋 변경 처리
+            handleSafeDataSetChange(oldPhotos.size, oldItemCount, newItemCount)
+
+        } catch (e: Exception) {
+            Log.e("ThumbnailAdapter", "refreshPhotos 처리 중 오류", e)
+            // 오류 발생 시 안전한 전체 새로고침
+            try {
+                notifyDataSetChanged()
+            } catch (ex: Exception) {
+                Log.e("ThumbnailAdapter", "notifyDataSetChanged도 실패", ex)
+            }
+        }
+    }
+
+    /**
+     * 안전한 데이터셋 변경 처리
+     */
+    private fun handleSafeDataSetChange(
+        oldPhotoCount: Int,
+        oldItemCount: Int,
+        newItemCount: Int
     ) {
         when {
-            // 사진이 새로 추가된 경우
-            cachedPhotos.size > oldSize -> {
-                Log.d("ThumbnailAdapter", "새 사진 추가됨: ${oldSize} → ${cachedPhotos.size}")
-                if (oldIsLoading && !isLoading) {
-                    // 로딩이 완료되고 새 사진이 추가됨 - 로딩 아이템을 사진으로 교체
-                    notifyItemChanged(oldSize)
-                    if (cachedPhotos.size - oldSize > 1) {
-                        notifyItemRangeInserted(oldSize + 1, cachedPhotos.size - oldSize - 1)
-                    }
-                } else {
-                    // 단순히 새 사진 추가
-                    notifyItemRangeInserted(oldSize, cachedPhotos.size - oldSize)
-                }
-
-                // 새 로딩 아이템이 필요한 경우
-                if (isLoading && hasNextPage && (!oldIsLoading || !oldHasNextPage)) {
-                    notifyItemInserted(cachedPhotos.size)
-                }
+            // 데이터가 크게 변경되었거나 복잡한 경우 전체 새로고침
+            kotlin.math.abs(newItemCount - oldItemCount) > 10 || 
+            photosSnapshot.size < oldPhotoCount -> {
+                Log.d("ThumbnailAdapter", "전체 데이터셋 새로고침 (큰 변경 감지)")
+                notifyDataSetChanged()
             }
 
-            // 로딩 상태만 변경된 경우
-            cachedPhotos.size == oldSize && (isLoading != oldIsLoading || hasNextPage != oldHasNextPage) -> {
-                handleLoadingStateChange(oldIsLoading, oldHasNextPage, oldSize)
+            // 새로운 사진이 추가된 경우
+            photosSnapshot.size > oldPhotoCount -> {
+                val photosAdded = photosSnapshot.size - oldPhotoCount
+                Log.d("ThumbnailAdapter", "새 사진 추가: $photosAdded 개")
+                
+                // 기존 아이템들은 그대로 두고 새 아이템만 추가
+                notifyItemRangeInserted(oldPhotoCount, photosAdded)
+                
+                // 로딩 아이템 상태 변경
+                handleLoadingItemChange(oldItemCount, newItemCount)
             }
 
-            // 사진이 제거된 경우 (드문 경우)
-            cachedPhotos.size < oldSize -> {
-                Log.d("ThumbnailAdapter", "사진 제거됨: $oldSize → ${cachedPhotos.size}")
-                notifyItemRangeRemoved(cachedPhotos.size, oldSize - cachedPhotos.size)
+            // 사진 개수는 같지만 로딩 상태가 변경된 경우
+            photosSnapshot.size == oldPhotoCount && oldItemCount != newItemCount -> {
+                Log.d("ThumbnailAdapter", "로딩 상태만 변경")
+                handleLoadingItemChange(oldItemCount, newItemCount)
             }
 
-            // 전체 데이터셋이 변경된 경우
+            // 변경사항이 없는 경우
+            oldItemCount == newItemCount -> {
+                Log.d("ThumbnailAdapter", "변경사항 없음")
+            }
+
+            // 기타 예상치 못한 경우
             else -> {
-                Log.d("ThumbnailAdapter", "전체 데이터셋 변경")
+                Log.d("ThumbnailAdapter", "예상치 못한 변경 - 전체 새로고침")
                 notifyDataSetChanged()
             }
         }
     }
 
     /**
-     * 로딩 상태 변경 처리
+     * 로딩 아이템 변경 처리
      */
-    private fun handleLoadingStateChange(
-        oldIsLoading: Boolean,
-        oldHasNextPage: Boolean,
-        oldSize: Int
-    ) {
-        if (isLoading && hasNextPage && cachedPhotos.size > 0) {
-            if (!oldIsLoading || !oldHasNextPage) {
-                Log.d("ThumbnailAdapter", "로딩 아이템 추가")
-                notifyItemInserted(cachedPhotos.size)
+    private fun handleLoadingItemChange(oldItemCount: Int, newItemCount: Int) {
+        when {
+            newItemCount > oldItemCount -> {
+                // 로딩 아이템 추가
+                Log.d("ThumbnailAdapter", "로딩 아이템 추가: ${oldItemCount} → ${newItemCount}")
+                notifyItemInserted(oldItemCount)
             }
-        } else if (!isLoading || !hasNextPage) {
-            if (oldIsLoading && oldHasNextPage) {
-                Log.d("ThumbnailAdapter", "로딩 아이템 제거")
-                notifyItemRemoved(oldSize)
+            newItemCount < oldItemCount -> {
+                // 로딩 아이템 제거
+                Log.d("ThumbnailAdapter", "로딩 아이템 제거: ${oldItemCount} → ${newItemCount}")
+                notifyItemRemoved(oldItemCount - 1)
             }
         }
     }
@@ -180,8 +210,8 @@ class PhotoViewerThumbnailAdapter(
 
             // 새로 추가된 아이템들의 위치를 찾아서 개별 업데이트
             newItems.forEach { photoPath ->
-                val position = photos.indexOfFirst { it.path == photoPath }
-                if (position != -1) {
+                val position = photosSnapshot.indexOfFirst { it.path == photoPath }
+                if (position != -1 && position < photosSnapshot.size) {
                     notifyItemChanged(position)
                 }
             }
@@ -207,12 +237,29 @@ class PhotoViewerThumbnailAdapter(
     fun setSelectedPosition(position: Int) {
         val previousPosition = selectedPosition
         selectedPosition = position
-        notifyItemChanged(previousPosition)
-        notifyItemChanged(selectedPosition)
+        
+        // 유효한 범위 내에서만 업데이트
+        if (previousPosition < photosSnapshot.size) {
+            notifyItemChanged(previousPosition)
+        }
+        if (selectedPosition < photosSnapshot.size) {
+            notifyItemChanged(selectedPosition)
+        }
+    }
+
+    /**
+     * StfalconImageViewer 참조 설정
+     */
+    fun setViewer(imageViewer: StfalconImageViewer<CameraPhoto>) {
+        this.viewer = imageViewer
+        Log.d("ThumbnailAdapter", "ImageViewer 참조 설정 완료")
+
+        // 설정 직후 뷰어 상태 확인
+        Log.d("ThumbnailAdapter", "뷰어 참조가 성공적으로 설정됨")
     }
 
     override fun getItemViewType(position: Int): Int {
-        return if (position < photos.size) VIEW_TYPE_PHOTO else VIEW_TYPE_LOADING
+        return if (position < photosSnapshot.size) VIEW_TYPE_PHOTO else VIEW_TYPE_LOADING
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -241,22 +288,45 @@ class PhotoViewerThumbnailAdapter(
     }
 
     override fun getItemCount(): Int {
-        val photoCount = photos.size
-        val shouldShowLoading = isLoading && photoCount > 0 && hasNextPage
-        return if (shouldShowLoading) photoCount + 1 else photoCount
+        val currentTime = System.currentTimeMillis()
+
+        // 50ms 이내에는 캐시된 값 사용 (과도한 재계산 방지)
+        if (currentTime - lastCountUpdate < 50 && cachedItemCount > 0) {
+            return cachedItemCount
+        }
+
+        val photoCount = photosSnapshot.size
+        val shouldShowLoading = isLoadingSnapshot && photoCount > 0 && hasNextPageSnapshot
+        val itemCount = if (shouldShowLoading) photoCount + 1 else photoCount
+
+        // 값이 실제로 변경되었을 때만 로그 출력
+        if (itemCount != cachedItemCount) {
+            Log.d(
+                "ThumbnailAdapter",
+                "getItemCount 변경됨 - 사진: $photoCount, 로딩표시: $shouldShowLoading, 총아이템: $itemCount"
+            )
+        }
+
+        cachedItemCount = itemCount
+        lastCountUpdate = currentTime
+
+        return itemCount
     }
+
+    // 아이템 수 캐싱 (성능 최적화)
+    private var cachedItemCount = 0
+    private var lastCountUpdate = 0L
 
     /**
      * 사진 아이템 바인딩
      */
     private fun bindPhotoItem(holder: ViewHolder, position: Int) {
-        val currentPhotos = photos
-        if (position >= currentPhotos.size) {
-            Log.w("ThumbnailAdapter", "잘못된 position: $position, 총 사진: ${currentPhotos.size}")
+        if (position >= photosSnapshot.size) {
+            Log.w("ThumbnailAdapter", "잘못된 position: $position, 총 사진: ${photosSnapshot.size}")
             return
         }
 
-        val photo = currentPhotos[position]
+        val photo = photosSnapshot[position]
 
         // 선택 상태 표시 (즉시 적용)
         setSelectionState(holder, position)
@@ -294,6 +364,69 @@ class PhotoViewerThumbnailAdapter(
             lastClickTime = currentTime
 
             Log.d("ThumbnailAdapter", "썸네일 클릭: ${photo.name} (position: $position)")
+            Log.d("ThumbnailAdapter", "현재 어댑터 리스트 크기: ${photosSnapshot.size}")
+
+            // 뷰어 참조 상태 확인
+            if (viewer == null) {
+                Log.e("ThumbnailAdapter", "뷰어 참조가 null입니다!")
+                // 뷰어가 없어도 UI 상태는 업데이트
+                setSelectedPosition(position)
+                onClick(position)
+                return@setOnClickListener
+            }
+
+            // 이제 뷰어와 동일한 리스트를 사용하므로 position을 그대로 사용
+            if (position < 0 || position >= photosSnapshot.size) {
+                Log.e("ThumbnailAdapter", "잘못된 position: $position (총 ${photosSnapshot.size}개)")
+                return@setOnClickListener
+            }
+
+            // 뷰어의 현재 위치 변경 시도 - 지연 처리
+            CoroutineScope(Dispatchers.Main).launch {
+                try {
+                    Log.d("ThumbnailAdapter", "뷰어 위치 변경 시도: → $position")
+
+                    // 강제 위치 변경을 위한 트릭: 다른 위치로 먼저 이동 후 원하는 위치로 이동
+                    val tempPosition = if (position == 0) {
+                        // position 0이면 1로 먼저 이동
+                        if (photosSnapshot.size > 1) 1 else 0
+                    } else {
+                        // position 0이 아니면 0으로 먼저 이동
+                        0
+                    }
+
+                    // 임시 위치로 먼저 이동 (withImageChangeListener 트리거 방지를 위해 짧은 지연)
+                    if (tempPosition != position && photosSnapshot.size > 1) {
+                        Log.d("ThumbnailAdapter", "강제 변경을 위한 임시 이동: → $tempPosition")
+                        viewer?.setCurrentPosition(tempPosition)
+                        delay(50) // 매우 짧은 지연
+                    }
+
+                    // 실제 원하는 위치로 이동
+                    viewer?.setCurrentPosition(position)
+                    Log.d("ThumbnailAdapter", "setCurrentPosition 1차 호출 완료: $position")
+
+                    // 100ms 후 한 번 더 시도 (뷰어가 완전히 준비되지 않을 수 있음)
+                    delay(100)
+
+                    viewer?.setCurrentPosition(position)
+                    Log.d("ThumbnailAdapter", "setCurrentPosition 2차 호출 완료: $position")
+
+                    // 추가로 200ms 후 한 번 더 시도
+                    delay(200)
+
+                    viewer?.setCurrentPosition(position)
+                    Log.d("ThumbnailAdapter", "setCurrentPosition 3차 호출 완료: $position")
+
+                } catch (e: Exception) {
+                    Log.e("ThumbnailAdapter", "setCurrentPosition 호출 실패", e)
+                }
+            }
+
+            // 선택 상태 업데이트
+            setSelectedPosition(position)
+
+            // 기존 onClick 콜백도 호출
             onClick(position)
         }
     }
@@ -414,10 +547,73 @@ class PhotoViewerThumbnailAdapter(
      * 로딩 아이템 바인딩
      */
     private fun bindLoadingItem(holder: ViewHolder) {
+        Log.d("ThumbnailAdapter", "로딩 아이템 바인딩 시작 - 위치: ${holder.adapterPosition}")
+
+        // 로딩 인디케이터를 명시적으로 표시
+        val progressBar =
+            holder.itemView.findViewById<android.widget.ProgressBar>(android.R.id.progress)
+        val textView = holder.itemView.findViewById<android.widget.TextView>(android.R.id.text1)
+
+        // ProgressBar와 TextView가 없다면 레이아웃에서 직접 찾기
+        val allProgressBars =
+            holder.itemView.findViewsWithType(android.widget.ProgressBar::class.java)
+        val allTextViews = holder.itemView.findViewsWithType(android.widget.TextView::class.java)
+
+        val actualProgressBar = progressBar ?: allProgressBars.firstOrNull()
+        val actualTextView = textView ?: allTextViews.firstOrNull()
+
+        // 로딩 인디케이터 활성화
+        actualProgressBar?.let { pb ->
+            pb.visibility = android.view.View.VISIBLE
+            pb.isIndeterminate = true
+            Log.d("ThumbnailAdapter", "ProgressBar 활성화됨")
+        }
+
+        // 로딩 텍스트 표시
+        actualTextView?.let { tv ->
+            tv.visibility = android.view.View.VISIBLE
+            tv.text = "로딩중"
+            Log.d("ThumbnailAdapter", "로딩 텍스트 설정됨")
+        }
+
+        // 전체 아이템을 보이도록 설정
+        holder.itemView.visibility = android.view.View.VISIBLE
+        holder.itemView.alpha = 1.0f
+
+        // 스냅샷과 실시간 상태 모두 확인
+        val snapshotLoading = isLoadingSnapshot && hasNextPageSnapshot
+        val realtimeState = viewModel?.uiState?.value
+        val realtimeLoading =
+            (realtimeState?.isLoading == true || realtimeState?.isLoadingMore == true)
+                    && realtimeState?.hasNextPage == true
+
         Log.d(
             "ThumbnailAdapter",
-            "로딩 썸네일 표시 - 총 사진: ${photos.size}개, isLoading: $isLoading, hasNextPage: $hasNextPage"
+            "로딩 상태 확인 - 스냅샷: $snapshotLoading, 실시간: $realtimeLoading, " +
+                    "총사진: ${photosSnapshot.size}, 어댑터위치: ${holder.adapterPosition}"
         )
+
+        // 로딩 완료 후 정리를 위한 디바운스
+        holder.itemView.post {
+            Log.d("ThumbnailAdapter", "로딩 아이템 UI 표시 완료 - 최종 확인")
+        }
+    }
+
+    /**
+     * View에서 특정 타입의 자식 뷰들을 찾는 확장 함수
+     */
+    private fun <T : android.view.View> android.view.View.findViewsWithType(clazz: Class<T>): List<T> {
+        val result = mutableListOf<T>()
+        if (clazz.isInstance(this)) {
+            @Suppress("UNCHECKED_CAST")
+            result.add(this as T)
+        }
+        if (this is ViewGroup) {
+            for (i in 0 until childCount) {
+                result.addAll(getChildAt(i).findViewsWithType(clazz))
+            }
+        }
+        return result
     }
 
     /**
