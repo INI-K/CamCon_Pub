@@ -144,9 +144,9 @@ fun PhotoPreviewScreen(
 
         // 선택된 사진의 실제 파일 다운로드 시작 (한 번만 실행, photo.path가 변경될 때만)
         LaunchedEffect(photo.path) {
-            android.util.Log.d(
+            Log.d(
                 "PhotoPreviewScreen",
-                "StfalconImageViewer 진입 - 최적화된 다운로드: ${photo.name}"
+                "ImageViewer 진입 - 최적화된 다운로드: ${photo.name}"
             )
 
             // 우선 현재 사진만 빠르게 다운로드 (슬라이딩 성능 우선)
@@ -157,19 +157,19 @@ fun PhotoPreviewScreen(
             viewModel.preloadAdjacentImages(photo, uiState.photos)
         }
 
-        // StfalconImageViewer 호출
+        // ImageViewer 호출
         FullScreenPhotoViewer(
             photo = photo,
             onDismiss = {
-                android.util.Log.d("PhotoPreviewScreen", "❌ StfalconImageViewer 닫힘")
+                Log.d("PhotoPreviewScreen", "❌ ImageViewer 닫힘")
                 viewModel.selectPhoto(null)
             },
             onPhotoChanged = { newPhoto ->
                 // 같은 사진이면 호출하지 않음 (중복 방지)
                 if (newPhoto.path != photo.path) {
-                    android.util.Log.d(
+                    Log.d(
                         "PhotoPreviewScreen",
-                        "📸 StfalconImageViewer - 사진 변경: ${photo.name} → ${newPhoto.name}"
+                        "📸 ImageViewer - 사진 변경: ${photo.name} → ${newPhoto.name}"
                     )
                     viewModel.selectPhoto(newPhoto)
 
