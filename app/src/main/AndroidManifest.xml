@@ -98,6 +98,18 @@
             android:exported="false"
             android:screenOrientation="fullSensor"
             android:label="색감 전송 설정" />
+
+        <!-- FileProvider for sharing photos -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
     </application>
 
 </manifest>

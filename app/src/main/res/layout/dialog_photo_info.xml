@@ -124,7 +124,48 @@
             android:id="@+id/exif_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical" />
+            android:orientation="vertical"
+            android:layout_marginBottom="24dp" />
+
+        <!-- 액션 버튼들 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginTop="16dp">
+
+            <Button
+                android:id="@+id/btn_download"
+                style="@style/Widget.Material3.Button"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:text="다운로드"
+                android:textSize="16sp"
+                android:textColor="@color/white"
+                android:backgroundTint="@color/colorPrimary"
+                android:drawableLeft="@android:drawable/stat_sys_download"
+                android:drawableTint="@color/white"
+                android:drawablePadding="8dp" />
+
+            <Button
+                android:id="@+id/btn_share"
+                style="@style/Widget.Material3.Button"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="공유하기"
+                android:textSize="16sp"
+                android:textColor="@color/white"
+                android:backgroundTint="@color/colorSecondary"
+                android:drawableLeft="@android:drawable/ic_menu_share"
+                android:drawableTint="@color/white"
+                android:drawablePadding="8dp" />
+
+        </LinearLayout>
 
     </LinearLayout>
 
