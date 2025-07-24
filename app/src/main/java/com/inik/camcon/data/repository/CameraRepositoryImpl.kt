@@ -4,7 +4,6 @@ import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
 import android.os.Build
-import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
@@ -25,6 +24,7 @@ import com.inik.camcon.domain.model.TimelapseSettings
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.usecase.ColorTransferUseCase
 import com.inik.camcon.domain.usecase.camera.PhotoCaptureEventManager
+import com.inik.camcon.utils.Constants
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -317,14 +317,14 @@ class CameraRepositoryImpl @Inject constructor(
                         Log.d("카메라레포지토리", "파일명: $fileName")
                         Log.d("카메라레포지토리", "전체 경로: $fullPath")
 
-                        // 파일 확장자 확인 - JPEG만 처리
+                        // 파일 확장자 확인 
                         val extension = fileName.substringAfterLast(".", "").lowercase()
-                        if (extension !in listOf("jpg", "jpeg")) {
-                            Log.d("카메라레포지토리", "JPEG가 아닌 파일 무시: $fileName (확장자: $extension)")
+                        if (extension !in Constants.ImageProcessing.SUPPORTED_IMAGE_EXTENSIONS) {
+                            Log.d("카메라레포지토리", "지원하지 않는 파일 무시: $fileName (확장자: $extension)")
                             return
                         }
 
-                        Log.d("카메라레포지토리", "JPEG 파일 처리: $fileName (확장자: $extension)")
+                        Log.d("카메라레포지토리", "파일 처리: $fileName (확장자: $extension)")
 
                         // 파일 존재 확인
                         val file = File(fullPath)
@@ -891,10 +891,10 @@ class CameraRepositoryImpl @Inject constructor(
                             Log.d("카메라레포지토리", "🎉 외부 셔터 사진 촬영 감지: $fileName")
                             Log.d("카메라레포지토리", "외부 촬영 저장됨: $fullPath")
 
-                            // 파일 확장자 확인 - JPEG만 처리
+                            // 파일 확장자 확인 
                             val extension = fileName.substringAfterLast(".", "").lowercase()
-                            if (extension !in listOf("jpg", "jpeg")) {
-                                Log.d("카메라레포지토리", "JPEG가 아닌 파일 무시: $fileName (확장자: $extension)")
+                            if (extension !in Constants.ImageProcessing.SUPPORTED_IMAGE_EXTENSIONS) {
+                                Log.d("카메라레포지토리", "지원하지 않는 파일 무시: $fileName (확장자: $extension)")
                                 return
                             }
 
@@ -996,7 +996,7 @@ class CameraRepositoryImpl @Inject constructor(
     }
 
     /**
-     * JPEG 사진 다운로드를 비동기로 처리
+     * JPEG 및 RAW 사진 다운로드를 비동기로 처리
      */
     private suspend fun handlePhotoDownload(
         photo: CapturedPhoto,
@@ -1004,7 +1004,7 @@ class CameraRepositoryImpl @Inject constructor(
         fileName: String
     ) {
         try {
-            Log.d("카메라레포지토리", "📥 JPEG 사진 다운로드 시작: $fileName")
+            Log.d("카메라레포지토리", "📥 사진 다운로드 시작: $fileName")
             val startTime = System.currentTimeMillis()
 
             // 파일 확인 - 빠른 체크
@@ -1016,17 +1016,23 @@ class CameraRepositoryImpl @Inject constructor(
             }
 
             val fileSize = file.length()
-            Log.d("카메라레포지토리", "✓ JPEG 파일 확인: $fileName")
+            val extension = fileName.substringAfterLast(".", "").lowercase()
+            Log.d("카메라레포지토리", "✓ 사진 파일 확인: $fileName")
+            Log.d("카메라레포지토리", "   확장자: $extension")
             Log.d("카메라레포지토리", "   크기: ${fileSize / 1024}KB")
 
-            // 색감 전송 적용 확인
+            // 색감 전송 적용 확인 (JPEG 파일만)
             val isColorTransferEnabled = appPreferencesDataSource.isColorTransferEnabled.first()
             val referenceImagePath =
                 appPreferencesDataSource.colorTransferReferenceImagePath.first()
 
             var processedPath = fullPath
 
-            if (isColorTransferEnabled && referenceImagePath != null && File(referenceImagePath).exists()) {
+            if (isColorTransferEnabled &&
+                referenceImagePath != null &&
+                File(referenceImagePath).exists() &&
+                extension in Constants.ImageProcessing.JPEG_EXTENSIONS
+            ) {
                 Log.d("카메라레포지토리", "🎨 색감 전송 적용 시작: $fileName")
 
                 try {
@@ -1097,7 +1103,7 @@ class CameraRepositoryImpl @Inject constructor(
             }
 
             val downloadTime = System.currentTimeMillis() - startTime
-            Log.d("카메라레포지토리", "✅ JPEG 사진 다운로드 완료: $fileName (${downloadTime}ms)")
+            Log.d("카메라레포지토리", "✅ 사진 다운로드 완료: $fileName (${downloadTime}ms)")
 
             // 사진 촬영 이벤트 발생
             photoCaptureEventManager.emitPhotoCaptured()
@@ -1107,7 +1113,7 @@ class CameraRepositoryImpl @Inject constructor(
                 System.gc()
             }
         } catch (e: Exception) {
-            Log.e("카메라레포지토리", "❌ JPEG 사진 다운로드 실패: $fileName", e)
+            Log.e("카메라레포지토리", "❌ 사진 다운로드 실패: $fileName", e)
             updatePhotoDownloadFailed(fileName)
         }
     }
@@ -1190,27 +1196,33 @@ class CameraRepositoryImpl @Inject constructor(
             // 권한 확인
             if (!hasStoragePermission()) {
                 Log.w("카메라레포지토리", "저장소 권한 없음, 내부 저장소 사용")
-                return File(context.cacheDir, "temp_photos").apply { mkdirs() }.absolutePath
+                return File(
+                    context.cacheDir,
+                    Constants.FilePaths.TEMP_CACHE_DIR
+                ).apply { mkdirs() }.absolutePath
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                // Android 10+ : SAF 사용하므로 임시 디렉토리 반환
-                val tempDir = File(context.cacheDir, "temp_photos")
+                // Android 10+: SAF 사용하므로 임시 디렉토리 반환 (후처리에서 MediaStore 사용)
+                val tempDir = File(context.cacheDir, Constants.FilePaths.TEMP_CACHE_DIR)
                 if (!tempDir.exists()) {
                     tempDir.mkdirs()
                 }
                 Log.d("카메라레포지토리", "✅ SAF 사용 - 임시 디렉토리: ${tempDir.absolutePath}")
                 tempDir.absolutePath
             } else {
-                // Android 9 이하: 직접 외부 저장소 접근 가능
-                val externalStorageState = Environment.getExternalStorageState()
-                if (externalStorageState == Environment.MEDIA_MOUNTED) {
-                    val dcimDir = File(Environment.getExternalStorageDirectory(), "DCIM/CamCon")
-                    if (!dcimDir.exists()) {
-                        dcimDir.mkdirs()
-                    }
-                    Log.d("카메라레포지토리", "✅ 직접 외부 저장소 사용: ${dcimDir.absolutePath}")
-                    dcimDir.absolutePath
+                // Android 9 이하: 직접 외부 저장소 접근 - 우선순위 시스템 사용
+                val externalPath = Constants.FilePaths.findAvailableExternalStoragePath()
+                val externalDir = File(externalPath)
+
+                if (!externalDir.exists()) {
+                    externalDir.mkdirs()
+                }
+
+                if (externalDir.exists() && externalDir.canWrite()) {
+                    val storageType = Constants.FilePaths.getStorageType(externalPath)
+                    Log.d("카메라레포지토리", "✅ 외부 저장소 사용: $externalPath (타입: $storageType)")
+                    externalPath
                 } else {
                     // 외부 저장소를 사용할 수 없으면 내부 저장소
                     val internalDir = File(context.filesDir, "photos")
@@ -1258,11 +1270,28 @@ class CameraRepositoryImpl @Inject constructor(
                 return tempFilePath
             }
 
+            // 파일 확장자에 따른 MIME 타입 결정
+            val extension = fileName.substringAfterLast(".", "").lowercase()
+            val mimeType = when (extension) {
+                in Constants.ImageProcessing.JPEG_EXTENSIONS -> Constants.MimeTypes.IMAGE_JPEG
+                "nef" -> Constants.MimeTypes.IMAGE_NEF
+                "cr2" -> Constants.MimeTypes.IMAGE_CR2
+                "arw" -> Constants.MimeTypes.IMAGE_ARW
+                "dng" -> Constants.MimeTypes.IMAGE_DNG
+                "orf" -> Constants.MimeTypes.IMAGE_ORF
+                "rw2" -> Constants.MimeTypes.IMAGE_RW2
+                "raf" -> Constants.MimeTypes.IMAGE_RAF
+                else -> Constants.MimeTypes.IMAGE_JPEG // 기본값
+            }
+
             // MediaStore를 사용하여 DCIM 폴더에 저장
             val contentValues = ContentValues().apply {
                 put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
-                put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-                put(MediaStore.Images.Media.RELATIVE_PATH, "DCIM/CamCon")
+                put(MediaStore.Images.Media.MIME_TYPE, mimeType)
+                put(
+                    MediaStore.Images.Media.RELATIVE_PATH,
+                    Constants.FilePaths.getMediaStoreRelativePath()
+                )
             }
 
             val uri = context.contentResolver.insert(
