@@ -278,17 +278,58 @@ class PhotoPreviewViewModel @Inject constructor(
 
             photos.forEach { photo ->
                 if (!currentCache.containsKey(photo.path)) {
-                    // 썸네일이 캐시에 없으면 로드
+                    // RAW 파일인지 확인
+                    val isRawFile = photo.path.endsWith(".nef", true) ||
+                            photo.path.endsWith(".cr2", true) ||
+                            photo.path.endsWith(".arw", true) ||
+                            photo.path.endsWith(".dng", true)
+
+                    // 모든 파일에 대해 썸네일 가져오기 시도 (RAW, JPG 구분 없이)
                     getCameraThumbnailUseCase(photo.path).fold(
                         onSuccess = { thumbnailData ->
                             currentCache[photo.path] = thumbnailData
                             _uiState.value = _uiState.value.copy(
                                 thumbnailCache = currentCache.toMap()
                             )
+                            android.util.Log.d(
+                                TAG,
+                                "썸네일 로드 성공: ${photo.name} (${thumbnailData.size} bytes)"
+                            )
                         },
                         onFailure = { exception ->
-                            // 썸네일 로드 실패는 로그만 남기고 UI에는 영향 주지 않음
-                            // Log.w("PhotoPreviewViewModel", "썸네일 로드 실패: ${photo.path}", exception)
+                            android.util.Log.w(TAG, "썸네일 로드 실패: ${photo.path}", exception)
+
+                            // RAW 파일의 경우 더 긴 지연 후 재시도
+                            val retryDelay = if (isRawFile) 800L else 300L
+
+                            viewModelScope.launch {
+                                delay(retryDelay)
+                                getCameraThumbnailUseCase(photo.path).fold(
+                                    onSuccess = { retryThumbnailData ->
+                                        currentCache[photo.path] = retryThumbnailData
+                                        _uiState.value = _uiState.value.copy(
+                                            thumbnailCache = currentCache.toMap()
+                                        )
+                                        android.util.Log.d(
+                                            TAG,
+                                            "썸네일 재시도 성공: ${photo.name} (${retryThumbnailData.size} bytes)"
+                                        )
+                                    },
+                                    onFailure = { retryException ->
+                                        android.util.Log.e(
+                                            TAG,
+                                            "썸네일 재시도 실패: ${photo.path}",
+                                            retryException
+                                        )
+
+                                        // 재시도도 실패하면 빈 ByteArray로 캐시에 추가 (무한 재시도 방지)
+                                        currentCache[photo.path] = ByteArray(0)
+                                        _uiState.value = _uiState.value.copy(
+                                            thumbnailCache = currentCache.toMap()
+                                        )
+                                    }
+                                )
+                            }
                         }
                     )
                 }
@@ -335,15 +376,38 @@ class PhotoPreviewViewModel @Inject constructor(
                     // 캐시 업데이트를 한 번만 수행 (기존 캐시 전체를 복사하지 않고 효율적으로 처리)
                     val currentCache = _fullImageCache.value
                     if (!currentCache.containsKey(photoPath)) {
-                        _fullImageCache.value = currentCache + (photoPath to imageData)
+                        val newCache = currentCache + (photoPath to imageData)
+                        _fullImageCache.value = newCache
                         
                         android.util.Log.d(TAG, "이미지 데이터 반환: ${imageData.size} 바이트")
                         android.util.Log.d(TAG, "실제 파일 다운로드 성공: ${imageData.size} bytes")
                         
                         // 캐시 업데이트 로그 출력 (디버깅용)
                         android.util.Log.d(TAG, "=== 고화질 캐시 업데이트 ===")
-                        android.util.Log.d(TAG, "이전 캐시 크기: ${currentCache.size}, 새 캐시 크기: ${_fullImageCache.value.size}")
-                        android.util.Log.d(TAG, "캐시된 사진들: ${_fullImageCache.value.keys.map { it.substringAfterLast("/") }}")
+                        android.util.Log.d(
+                            TAG,
+                            "이전 캐시 크기: ${currentCache.size}, 새 캐시 크기: ${newCache.size}"
+                        )
+                        android.util.Log.d(
+                            TAG,
+                            "캐시된 사진들: ${newCache.keys.map { it.substringAfterLast("/") }}"
+                        )
+
+                        // 캐시 업데이트 후 StateFlow를 한 번 더 업데이트하여 UI 반응성 보장
+                        delay(50)
+                        if (_fullImageCache.value == newCache) {
+                            // StateFlow 변경 감지를 위해 새 Map 인스턴스 생성
+                            _fullImageCache.value = newCache.toMap()
+                            android.util.Log.d(
+                                TAG,
+                                "🔄 StateFlow 강제 업데이트 완료: ${photoPath.substringAfterLast("/")}"
+                            )
+                        }
+                    } else {
+                        android.util.Log.d(
+                            TAG,
+                            "이미 캐시에 존재하여 중복 추가 방지: ${photoPath.substringAfterLast("/")}"
+                        )
                     }
                 } else {
                     android.util.Log.e(TAG, "실제 파일 다운로드 실패: 데이터가 비어있음")
@@ -458,31 +522,36 @@ class PhotoPreviewViewModel @Inject constructor(
 
     /**
      * 프리로딩: 사용자가 특정 인덱스에 도달했을 때 호출
-     * 필터링된 사진 수에 따라 동적으로 임계값 조정
+     * 필터링된 사진 수에 따라 동적으로 임계값 조정 (엄격한 조건)
      */
     fun onPhotoIndexReached(currentIndex: Int) {
         val filteredPhotos = _uiState.value.photos
         val totalFilteredPhotos = filteredPhotos.size
         val currentPage = _uiState.value.currentPage
 
-        // 동적 임계값 계산: 필터링된 사진의 70% 지점 또는 최소 10개, 최대 30개
+        // 매우 엄격한 동적 임계값 계산: 더 높은 임계값 적용
         val dynamicThreshold = when {
-            totalFilteredPhotos <= 15 -> 10  // 적은 사진이면 빨리 트리거
-            totalFilteredPhotos <= 50 -> (totalFilteredPhotos * 0.6).toInt()  // 60% 지점
-            else -> (totalFilteredPhotos * 0.7).toInt().coerceAtMost(30)  // 70% 지점, 최대 30
+            totalFilteredPhotos <= 20 -> totalFilteredPhotos - 3  // 끝에서 3개 이전
+            totalFilteredPhotos <= 50 -> (totalFilteredPhotos * 0.8).toInt()  // 80% 지점
+            else -> (totalFilteredPhotos * 0.85).toInt().coerceAtLeast(40)  // 85% 지점, 최소 40개
         }
 
+        // 더 엄격한 조건들 추가
         val shouldPrefetch = currentIndex >= dynamicThreshold &&
                 !_uiState.value.isLoadingMore &&
                 _uiState.value.hasNextPage &&
-                _prefetchedPage.value <= currentPage // 아직 프리로드하지 않은 페이지만
+                _prefetchedPage.value <= currentPage && // 아직 프리로드하지 않은 페이지만
+                currentIndex >= totalFilteredPhotos - 5 && // 끝에서 5개 이내에서만
+                totalFilteredPhotos >= 20 // 최소 20개 이상일 때만
 
         android.util.Log.d(
             TAG, """
-            프리로딩 체크:
+            프리로딩 체크 (엄격한 조건):
             - 현재 인덱스: $currentIndex
             - 필터링된 사진 수: $totalFilteredPhotos
             - 동적 임계값: $dynamicThreshold
+            - 끝에서 5개 이내: ${currentIndex >= totalFilteredPhotos - 5}
+            - 최소 20개 조건: ${totalFilteredPhotos >= 20}
             - 프리로드 조건 만족: $shouldPrefetch
             - hasNextPage: ${_uiState.value.hasNextPage}
             - isLoadingMore: ${_uiState.value.isLoadingMore}
@@ -491,7 +560,7 @@ class PhotoPreviewViewModel @Inject constructor(
         )
 
         if (shouldPrefetch) {
-            android.util.Log.d(TAG, "프리로드 트리거: 현재 인덱스 $currentIndex, 동적 임계값 $dynamicThreshold 도달")
+            android.util.Log.d(TAG, "🚀 프리로드 트리거: 현재 인덱스 $currentIndex, 동적 임계값 $dynamicThreshold 도달")
             prefetchNextPage()
             _prefetchedPage.value = currentPage + 1
         } else {
@@ -601,5 +670,9 @@ class PhotoPreviewViewModel @Inject constructor(
             TAG,
             "필터링 완료: 전체 ${_uiState.value.allPhotos.size}개 -> 필터링된 ${filteredPhotos.size}개, hasNextPage: ${_uiState.value.hasNextPage}"
         )
+
+        // 필터 변경 시 새로 필터링된 사진들의 썸네일 로드
+        android.util.Log.d(TAG, "필터 변경으로 인한 썸네일 재로드 시작")
+        loadThumbnailsForNewPhotos(filteredPhotos)
     }
 }
