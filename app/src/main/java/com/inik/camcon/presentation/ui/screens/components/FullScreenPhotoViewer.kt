@@ -62,8 +62,7 @@ fun FullScreenPhotoViewer(
     fullImageData: ByteArray?,
     isDownloadingFullImage: Boolean = false,
     onDownload: () -> Unit,
-    viewModel: PhotoPreviewViewModel? = null,
-    thumbnailCache: Map<String, ByteArray> = emptyMap()
+    viewModel: PhotoPreviewViewModel? = null
 ) {
     val context = LocalContext.current
 
@@ -71,6 +70,9 @@ fun FullScreenPhotoViewer(
     val uiState by viewModel?.uiState?.collectAsState() ?: remember {
         mutableStateOf(com.inik.camcon.presentation.viewmodel.PhotoPreviewUiState())
     }
+
+    // ViewModel의 썸네일 캐시 직접 사용 (성능 최적화)
+    val sharedThumbnailCache = uiState.thumbnailCache
 
     // 현재 사진 인덱스 찾기
     val currentPhotoIndex = remember(photo.path, uiState.photos) {
@@ -97,6 +99,8 @@ fun FullScreenPhotoViewer(
                 "Pager 페이지 변경 성공: ${photo.name} → ${newPhoto.name} (페이지: ${pagerState.currentPage})"
             )
             onPhotoChanged(newPhoto)
+            // 페이지네이션 체크: 뷰어에서도 페이지 로딩 트리거
+            viewModel?.onPhotoIndexReached(pagerState.currentPage)
         } else {
             Log.d(
                 "FullScreenPhotoViewer",
@@ -158,7 +162,8 @@ fun FullScreenPhotoViewer(
         ) { pageIndex ->
             val pagePhoto = uiState.photos.getOrNull(pageIndex)
             if (pagePhoto != null) {
-                val imageData = fullImageCache[pagePhoto.path] ?: thumbnailCache[pagePhoto.path]
+                val imageData =
+                    fullImageCache[pagePhoto.path] ?: sharedThumbnailCache[pagePhoto.path]
 
                 GalleryStyleImage(
                     imageData = imageData,
@@ -184,7 +189,7 @@ fun FullScreenPhotoViewer(
         BottomThumbnailStrip(
             photos = uiState.photos,
             currentPhotoIndex = pagerState.currentPage,
-            thumbnailCache = thumbnailCache,
+            thumbnailCache = sharedThumbnailCache,
             viewModel = viewModel,
             onPhotoSelected = { selectedPhoto ->
                 val newIndex = uiState.photos.indexOfFirst { it.path == selectedPhoto.path }
@@ -316,6 +321,9 @@ private fun BottomThumbnailStrip(
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
+    val uiState by viewModel?.uiState?.collectAsState() ?: remember {
+        mutableStateOf(com.inik.camcon.presentation.viewmodel.PhotoPreviewUiState())
+    }
 
     // 현재 사진이 변경되면 썸네일 리스트를 해당 위치로 스크롤
     LaunchedEffect(currentPhotoIndex) {
@@ -326,6 +334,24 @@ private fun BottomThumbnailStrip(
                 scrollOffset = -200 // 선택된 아이템이 화면 중앙에 오도록 조정
             )
         }
+    }
+
+    // 스크롤 상태 감지하여 페이지네이션 트리거
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+            .collect { lastVisibleIndex ->
+                if (lastVisibleIndex != null && viewModel != null) {
+                    // 마지막에서 5개 정도 남았을 때 다음 페이지 로드
+                    val threshold = photos.size - 5
+                    if (lastVisibleIndex >= threshold && uiState.hasNextPage && !uiState.isLoadingMore) {
+                        Log.d(
+                            "ThumbnailStrip",
+                            "썸네일 스크롤에서 페이지네이션 트리거: $lastVisibleIndex >= $threshold"
+                        )
+                        viewModel.onPhotoIndexReached(lastVisibleIndex)
+                    }
+                }
+            }
     }
 
     LazyRow(
@@ -344,6 +370,33 @@ private fun BottomThumbnailStrip(
                 onClick = { onPhotoSelected(photo) }
             )
         }
+
+        // 로딩 인디케이터 아이템 추가
+        if (uiState.isLoadingMore && uiState.hasNextPage) {
+            item {
+                LoadingThumbnailItem()
+            }
+        }
+    }
+}
+
+/**
+ * 로딩 중인 썸네일 아이템
+ */
+@Composable
+private fun LoadingThumbnailItem() {
+    Box(
+        modifier = Modifier
+            .size(60.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color.Gray.copy(alpha = 0.3f)),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(24.dp),
+            color = Color.White,
+            strokeWidth = 2.dp
+        )
     }
 }
 
