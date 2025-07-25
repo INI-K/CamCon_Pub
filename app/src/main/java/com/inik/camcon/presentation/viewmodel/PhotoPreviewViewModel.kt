@@ -349,18 +349,19 @@ class PhotoPreviewViewModel @Inject constructor(
             return
         }
 
-        // 이미 다운로드 중인지 확인
-        if (_downloadingImages.value.contains(photoPath)) {
-            android.util.Log.d(TAG, "이미 다운로드 중, 중복 요청 무시")
-            return
+        // 이미 다운로드 중인지 확인 (동시성 안전)
+        synchronized(this) {
+            if (_downloadingImages.value.contains(photoPath)) {
+                android.util.Log.d(TAG, "이미 다운로드 중, 중복 요청 무시")
+                return
+            }
+            // 다운로드 중 상태로 즉시 설정
+            _downloadingImages.value = _downloadingImages.value + photoPath
         }
 
         viewModelScope.launch {
             try {
                 android.util.Log.d(TAG, "실제 파일 다운로드 시작: $photoPath")
-
-                // 다운로드 중 상태로 설정
-                _downloadingImages.value = _downloadingImages.value + photoPath
 
                 // 네이티브 코드에서 직접 다운로드 (Main 스레드에서 실행 방지)
                 val imageData = withContext(Dispatchers.IO) {
@@ -452,15 +453,23 @@ class PhotoPreviewViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             android.util.Log.d(TAG, "=== preloadAdjacentImages 시작: ${selectedPhoto.name} ===")
 
-            // 먼저 선택된 사진 다운로드 (우선순위) - 이미 있으면 건너뛰기
-            if (!_fullImageCache.value.containsKey(selectedPhoto.path)) {
+            // 먼저 선택된 사진 다운로드 (우선순위) - 이미 있거나 다운로드 중이면 건너뛰기
+            val hasSelectedPhoto = _fullImageCache.value.containsKey(selectedPhoto.path)
+            val isDownloadingSelected = _downloadingImages.value.contains(selectedPhoto.path)
+
+            if (!hasSelectedPhoto && !isDownloadingSelected) {
                 downloadFullImage(selectedPhoto.path)
-                // 선택된 사진 다운로드 완료 대기 (최대 3초)
+                // 선택된 사진 다운로드 완료 대기 (최대 2초)
                 var waitCount = 0
-                while (!_fullImageCache.value.containsKey(selectedPhoto.path) && waitCount < 30) {
+                while (!_fullImageCache.value.containsKey(selectedPhoto.path) &&
+                    _downloadingImages.value.contains(selectedPhoto.path) &&
+                    waitCount < 20
+                ) {
                     delay(100)
                     waitCount++
                 }
+            } else {
+                android.util.Log.d(TAG, "선택된 사진 다운로드 건너뛰기 (이미 처리됨): ${selectedPhoto.name}")
             }
 
             // 200ms 지연 후 인접 사진 다운로드 (슬라이딩 성능 보호)
@@ -478,12 +487,13 @@ class PhotoPreviewViewModel @Inject constructor(
 
             android.util.Log.d(TAG, "인접 사진 인덱스: $adjacentIndices")
 
-            // 인접 사진들 순차적으로 다운로드 (이미 캐시에 있으면 건너뛰기)
+            // 인접 사진들 순차적으로 다운로드 (이미 캐시에 있거나 다운로드 중이면 건너뛰기)
             adjacentIndices.forEach { index ->
                 val adjacentPhoto = photos[index]
-                if (!_fullImageCache.value.containsKey(adjacentPhoto.path) &&
-                    !_downloadingImages.value.contains(adjacentPhoto.path)
-                ) {
+                val hasAdjacent = _fullImageCache.value.containsKey(adjacentPhoto.path)
+                val isDownloadingAdjacent = _downloadingImages.value.contains(adjacentPhoto.path)
+
+                if (!hasAdjacent && !isDownloadingAdjacent) {
                     android.util.Log.d(TAG, "인접 사진 다운로드: ${adjacentPhoto.name}")
                     downloadFullImage(adjacentPhoto.path)
 
