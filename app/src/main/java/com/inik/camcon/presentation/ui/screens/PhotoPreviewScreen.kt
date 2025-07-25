@@ -191,8 +191,7 @@ fun PhotoPreviewScreen(
             fullImageData = fullImageCache[photo.path], // 실시간으로 업데이트되는 실제 파일 데이터
             isDownloadingFullImage = downloadingImages.contains(photo.path),
             onDownload = { viewModel.downloadPhoto(photo) },
-            viewModel = viewModel, // ViewModel 전달
-            thumbnailCache = uiState.thumbnailCache // 전체 썸네일 캐시 전달
+            viewModel = viewModel // ViewModel을 통해 썸네일 캐시 공유
         )
 
         BackHandler {
