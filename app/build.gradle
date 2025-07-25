@@ -188,10 +188,10 @@ dependencies {
     implementation "androidx.exifinterface:exifinterface:1.4.1"
     // GPUImage for color transfer and image processing
     implementation 'jp.co.cyberagent.android:gpuimage:2.1.0'
-    // Remove ImageViewer dependency
-    // implementation 'com.github.0xZhangKe:ImageViewer:1.0.3'
-    // Add SmartToolFactory Compose-Image for advanced image handling
-    implementation 'com.github.SmartToolFactory:Compose-Image:1.2.2'
+    // 0xZhangKe ImageViewer library for advanced image viewing
+    implementation 'com.github.0xZhangKe:ImageViewer:1.0.3'
+    // 기본 Compose 제스처를 사용한 이미지 뷰어 구현
+
 }
 
 // 커스텀 빌드 태스크들
