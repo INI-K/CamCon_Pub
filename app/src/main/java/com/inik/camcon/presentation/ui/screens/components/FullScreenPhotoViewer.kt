@@ -32,6 +32,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,10 +45,12 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
+import com.zhangke.imageviewer.ImageViewer
 import kotlinx.coroutines.delay
+import kotlin.math.abs
 
 /**
- * SmartToolFactory Compose-Image를 사용한 전체화면 사진 뷰어
+ * 0xZhangKe ImageViewer를 사용한 전체화면 사진 뷰어
  * 고급 줌/팬 제스처, 스와이프 네비게이션, 썸네일 지원
  */
 @Composable
@@ -89,23 +92,53 @@ fun FullScreenPhotoViewer(
     LaunchedEffect(pagerState.currentPage) {
         val newPhoto = uiState.photos.getOrNull(pagerState.currentPage)
         if (newPhoto != null && newPhoto.path != photo.path) {
+            Log.d(
+                "FullScreenPhotoViewer",
+                "Pager 페이지 변경 성공: ${photo.name} → ${newPhoto.name} (페이지: ${pagerState.currentPage})"
+            )
             onPhotoChanged(newPhoto)
+        } else {
+            Log.d(
+                "FullScreenPhotoViewer",
+                "Pager 현재 페이지: ${pagerState.currentPage}, 총 ${uiState.photos.size}장"
+            )
         }
     }
 
-    // 외부에서 photo가 변경되면 pager도 동기화
+    // Pager 스크롤 상태 모니터링
+    LaunchedEffect(pagerState) {
+        snapshotFlow<Boolean> { pagerState.isScrollInProgress }.collect { isScrolling ->
+            Log.d(
+                "FullScreenPhotoViewer",
+                "HorizontalPager 스크롤: ${if (isScrolling) "진행중" else "정지"}"
+            )
+        }
+    }
+
+    LaunchedEffect(pagerState) {
+        snapshotFlow<Float> { pagerState.currentPageOffsetFraction }.collect { offset ->
+            if (abs(offset) > 0.01f) {
+                Log.d("FullScreenPhotoViewer", "HorizontalPager 오프셋: $offset")
+            }
+        }
+    }
+
+    // 외부에서 photo가 변경되면 pager도 동기화 (애니메이션 없이 즉시 이동)
     LaunchedEffect(currentPhotoIndex) {
-        if (pagerState.currentPage != currentPhotoIndex) {
-            pagerState.animateScrollToPage(currentPhotoIndex)
+        if (pagerState.currentPage != currentPhotoIndex && currentPhotoIndex >= 0) {
+            Log.d("FullScreenPhotoViewer", "외부 photo 변경으로 pager 동기화: index=$currentPhotoIndex")
+            pagerState.scrollToPage(currentPhotoIndex)
         }
     }
 
-    // 현재 페이지 사진의 고화질 다운로드
+    // 현재 페이지 사진의 고화질 다운로드 (중복 방지)
     LaunchedEffect(pagerState.currentPage) {
         val currentPhoto = uiState.photos.getOrNull(pagerState.currentPage)
         if (currentPhoto != null && viewModel != null) {
             val hasFullImage = fullImageCache.containsKey(currentPhoto.path)
-            if (!hasFullImage) {
+            val isDownloading = viewModel.isDownloadingFullImage(currentPhoto.path)
+
+            if (!hasFullImage && !isDownloading) {
                 Log.d("ImageViewer", "현재 사진 고화질 다운로드: ${currentPhoto.name}")
                 viewModel.downloadFullImage(currentPhoto.path)
             }
@@ -127,7 +160,7 @@ fun FullScreenPhotoViewer(
             if (pagePhoto != null) {
                 val imageData = fullImageCache[pagePhoto.path] ?: thumbnailCache[pagePhoto.path]
 
-                SmartZoomableImageViewer(
+                GalleryStyleImage(
                     imageData = imageData,
                     photo = pagePhoto,
                     onDismiss = onDismiss,
@@ -165,47 +198,45 @@ fun FullScreenPhotoViewer(
 }
 
 /**
- * 기본 이미지 뷰어 (라이브러리 로딩 문제 해결 후 개선 예정)
+ * 0xZhangKe ImageViewer를 사용한 갤러리 스타일의 이미지 뷰어
+ * pagerState를 받아서(예: 스와이프 상태 상호작용 차단 등에도 활용 가능)
  */
 @Composable
-private fun SmartZoomableImageViewer(
+private fun GalleryStyleImage(
     imageData: ByteArray?,
     photo: CameraPhoto,
     onDismiss: () -> Unit,
     context: android.content.Context
 ) {
     if (imageData != null) {
-        // 이미지 비트맵 생성
         val bitmap = remember(imageData) {
             BitmapFactory.decodeByteArray(imageData, 0, imageData.size)
         }
 
         if (bitmap != null) {
-            // 기본 Image 사용 (임시)
-            Image(
-                bitmap = bitmap.asImageBitmap(),
-                contentDescription = photo.name,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clickable { onDismiss() }
-            )
+            ImageViewer {
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = photo.name,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
         } else {
-            // 바이트 배열 디코딩 실패 시 Coil 사용
-            AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(imageData)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = photo.name,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clickable { onDismiss() }
-            )
+            // 비트맵 디코딩 실패 시 로딩 표시
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(48.dp),
+                    color = Color.White,
+                    strokeWidth = 3.dp
+                )
+            }
         }
     } else {
-        // 이미지 데이터가 없을 때 플레이스홀더
+        // 이미지 데이터 없을 때 로딩 표시
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center

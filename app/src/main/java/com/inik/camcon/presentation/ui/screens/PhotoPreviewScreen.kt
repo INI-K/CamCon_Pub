@@ -149,12 +149,25 @@ fun PhotoPreviewScreen(
                 "ImageViewer 진입 - 최적화된 다운로드: ${photo.name}"
             )
 
-            // 우선 현재 사진만 빠르게 다운로드 (슬라이딩 성능 우선)
-            viewModel.quickPreloadCurrentImage(photo)
+            // 현재 사진이 이미 다운로드 중이거나 캐시에 있으면 건너뛰기
+            if (!downloadingImages.contains(photo.path) && !fullImageCache.containsKey(photo.path)) {
+                // 우선 현재 사진만 빠르게 다운로드
+                viewModel.quickPreloadCurrentImage(photo)
 
-            // 500ms 후에 인접 사진들 백그라운드 다운로드 (지연 시간 증가로 재구성 방지)
-            delay(500)
-            viewModel.preloadAdjacentImages(photo, uiState.photos)
+                // 현재 사진 다운로드 완료 대기 (최대 2초)
+                var waitCount = 0
+                while (!fullImageCache.containsKey(photo.path) &&
+                    downloadingImages.contains(photo.path) &&
+                    waitCount < 20
+                ) {
+                    delay(100)
+                    waitCount++
+                }
+
+                // 인접 사진들 백그라운드 다운로드 (1초 후)
+                delay(1000)
+                viewModel.preloadAdjacentImages(photo, uiState.photos)
+            }
         }
 
         // ImageViewer 호출
@@ -172,9 +185,6 @@ fun PhotoPreviewScreen(
                         "📸 ImageViewer - 사진 변경: ${photo.name} → ${newPhoto.name}"
                     )
                     viewModel.selectPhoto(newPhoto)
-
-                    // 즉시 현재 사진만 빠르게 다운로드 (슬라이딩 성능 우선)
-                    viewModel.quickPreloadCurrentImage(newPhoto)
                 }
             },
             thumbnailData = viewModel.getThumbnail(photo.path),
