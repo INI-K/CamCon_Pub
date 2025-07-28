@@ -6,6 +6,9 @@ import com.inik.camcon.CameraNative
 import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.domain.model.CameraCapabilities
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -20,6 +23,9 @@ class NativeCameraDataSource @Inject constructor(
     companion object {
         private const val TAG = "네이티브_카메라_데이터소스"
     }
+
+    // initCameraWithFd 중복 호출 방지용 Mutex
+    private val initCameraWithFdMutex = Mutex()
 
     // 카메라 이벤트 리스닝 시작
     fun listenCameraEvents(callback: CameraCaptureListener) {
@@ -51,16 +57,18 @@ class NativeCameraDataSource @Inject constructor(
     }
 
     // 파일 디스크립터 기반 초기화
-    fun initCameraWithFd(fd: Int, nativeLibDir: String): Int {
-        Log.d(TAG, "카메라 초기화 (FD 기반) 시작: fd=$fd, libDir=$nativeLibDir")
-        // 올바른 네이티브 라이브러리 경로 설정
-        val applicationInfo = context.applicationInfo
-        val correctNativeLibDir = applicationInfo.nativeLibraryDir
-        Log.d(TAG, "실제 네이티브 라이브러리 경로: $correctNativeLibDir")
+    fun initCameraWithFd(fd: Int, nativeLibDir: String): Int = runBlocking {
+        initCameraWithFdMutex.withLock {
+            Log.d(TAG, "카메라 초기화 (FD 기반) 시작: fd=$fd, libDir=$nativeLibDir")
+            // 올바른 네이티브 라이브러리 경로 설정
+            val applicationInfo = context.applicationInfo
+            val correctNativeLibDir = applicationInfo.nativeLibraryDir
+            Log.d(TAG, "실제 네이티브 라이브러리 경로: $correctNativeLibDir")
 
-        val result = CameraNative.initCameraWithFd(fd, correctNativeLibDir)
-        Log.d(TAG, "카메라 초기화 (FD 기반) 완료: 결과 코드=$result")
-        return result
+            val result = CameraNative.initCameraWithFd(fd, correctNativeLibDir)
+            Log.d(TAG, "카메라 초기화 (FD 기반) 완료: 결과 코드=$result")
+            result
+        }
     }
 
     // 동기식 사진 촬영 (성공시 0 이라고 가정)
@@ -101,7 +109,12 @@ class NativeCameraDataSource @Inject constructor(
     fun cameraAutoDetect(): String = CameraNative.cameraAutoDetect()
 
     // 위젯 JSON 빌드 결과
-    fun buildWidgetJson(): String = CameraNative.buildWidgetJson()
+    fun buildWidgetJson(): String {
+        Log.d(TAG, "⚠️ buildWidgetJson 호출 - NativeCameraDataSource에서 직접 네이티브 호출 (마스터 데이터 미사용)")
+        val result = CameraNative.buildWidgetJson()
+        Log.d(TAG, "직접 네이티브 호출 완료 - 위젯 JSON 길이: ${result.length}")
+        return result
+    }
 
     // 카메라 설정 쿼리
     fun queryConfig() {
