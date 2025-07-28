@@ -201,13 +201,21 @@ class CameraViewModel @Inject constructor(
                     )
                 }
 
-                if (isConnected && !isAutoConnecting) {
-                    Log.d("CameraViewModel", "네이티브 카메라 연결됨 - 자동으로 카메라 연결 시작")
-                    isAutoConnecting = true
-                    autoConnectCamera()
-                } else {
-                    Log.d("CameraViewModel", "네이티브 카메라 연결 해제됨")
-                    isAutoConnecting = false
+                // 중복 실행 방지 로직 강화 - 연결된 경우만 자동 연결 시도
+                when {
+                    isConnected && !isAutoConnecting -> {
+                        Log.d("CameraViewModel", "네이티브 카메라 연결됨 - 자동으로 카메라 연결 시작")
+                        autoConnectCamera()
+                    }
+
+                    isConnected && isAutoConnecting -> {
+                        Log.d("CameraViewModel", "자동 연결이 이미 진행 중이므로 중복 실행 방지")
+                    }
+
+                    !isConnected -> {
+                        Log.d("CameraViewModel", "네이티브 카메라 연결 해제됨")
+                        isAutoConnecting = false
+                    }
                 }
             }
             .launchIn(viewModelScope)
@@ -241,6 +249,14 @@ class CameraViewModel @Inject constructor(
      * 네이티브 카메라가 연결되었을 때 자동으로 CameraRepository에 연결
      */
     private fun autoConnectCamera() {
+        // 이미 연결이 진행 중이면 즉시 반환
+        if (isAutoConnecting) {
+            Log.d("CameraViewModel", "자동 카메라 연결이 이미 진행 중입니다 - 중복 실행 방지")
+            return
+        }
+
+        isAutoConnecting = true // 플래그를 함수 시작 시점에 설정
+
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 Log.d("CameraViewModel", "자동 카메라 연결 시작")
@@ -271,7 +287,6 @@ class CameraViewModel @Inject constructor(
 
                         loadCameraCapabilitiesAsync()
                         loadCameraSettingsAsync()
-                        isAutoConnecting = false
                     }
                     .onFailure { error ->
                         Log.e("CameraViewModel", "자동 카메라 연결 실패", error)
@@ -284,7 +299,6 @@ class CameraViewModel @Inject constructor(
                                 )
                             }
                         }
-                        isAutoConnecting = false
                     }
             } catch (e: Exception) {
                 Log.e("CameraViewModel", "자동 카메라 연결 중 예외 발생", e)
@@ -297,7 +311,10 @@ class CameraViewModel @Inject constructor(
                         )
                     }
                 }
+            } finally {
+                // 성공/실패와 관계없이 플래그를 해제
                 isAutoConnecting = false
+                Log.d("CameraViewModel", "자동 카메라 연결 완료 - 플래그 해제")
             }
         }
     }
