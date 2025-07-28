@@ -37,7 +37,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import java.io.File
 import java.io.FileInputStream
 import java.nio.ByteBuffer
@@ -56,6 +59,9 @@ class CameraRepositoryImpl @Inject constructor(
     private val appPreferencesDataSource: AppPreferencesDataSource,
     private val colorTransferUseCase: ColorTransferUseCase
 ) : CameraRepository {
+
+    // Mutex 동기화 추가(중복 connectCamera 방지)
+    private val connectCameraMutex = Mutex()
 
     init {
         // GPU 초기화
@@ -80,91 +86,114 @@ class CameraRepositoryImpl @Inject constructor(
         observeNativeCameraConnection()
     }
 
-    override fun getCameraFeed(): Flow<List<Camera>> = _cameraFeed.asStateFlow()
+    override fun getCameraFeed(): Flow<List<Camera>> =
+        _cameraFeed.asStateFlow()
 
     override suspend fun connectCamera(cameraId: String): Result<Boolean> {
-        return withContext(Dispatchers.IO) {
-            try {
-                Log.d("카메라레포지토리", "카메라 연결 시작: $cameraId")
+        return connectCameraMutex.withLock {
+            withContext(Dispatchers.IO) {
+                try {
+                    Log.d("카메라레포지토리", "카메라 연결 시작: $cameraId (Mutex 보호)")
 
-                // 초기화 시작 - UI 블록
-                _isInitializing.value = true
+                    // 이미 연결되어 있으면 성공 반환 - 더 엄격한 체크
+                    if (_isConnected.value) {
+                        Log.d(
+                            "카메라레포지토리",
+                            "카메라가 이미 연결되어 있음 - 중복 연결 방지 (connected=${_isConnected.value})"
+                        )
+                        return@withContext Result.success(true)
+                    }
 
-                // USB 디바이스 확인 및 연결
-                // StateFlow를 통해 이미 검색된 디바이스 목록 사용 (중복 검색 방지)
-                val usbDevices = usbCameraManager.connectedDevices.value
-                if (usbDevices.isNotEmpty()) {
-                    val device = usbDevices.first()
-                    Log.d("카메라레포지토리", "연결된 USB 디바이스 발견: ${device.deviceName}")
+                    // 초기화 중인 경우도 체크
+                    if (_isInitializing.value) {
+                        Log.d(
+                            "카메라레포지토리",
+                            "카메라가 이미 초기화 중임 - 중복 연결 방지 (initializing=${_isInitializing.value})"
+                        )
+                        return@withContext Result.success(true)
+                    }
 
-                    // USB 권한 요청
-                    if (!usbCameraManager.hasUsbPermission.value) {
-                        Log.d("카메라레포지토리", "USB 권한 없음, 권한 요청")
-                        withContext(Dispatchers.Main) {
-                            usbCameraManager.requestPermission(device)
-                        }
-                        Result.failure(Exception("USB 권한이 필요합니다"))
-                    } else {
-                        // 파일 디스크립터를 사용한 네이티브 초기화
-                        val fd = usbCameraManager.getFileDescriptor()
-                        if (fd != null) {
-                            Log.d("카메라레포지토리", "파일 디스크립터로 카메라 초기화: $fd")
-                            val nativeLibDir = "/data/data/com.inik.camcon/lib"
-                            val result = nativeDataSource.initCameraWithFd(fd, nativeLibDir)
-                            if (result == 0) {
-                                Log.d("카메라레포지토리", "네이티브 카메라 초기화 성공")
-                                withContext(Dispatchers.Main) {
-                                    _isConnected.value = true
-                                }
-                                updateCameraList()
-                                // updateCameraCapabilities() 제거 - observeNativeCameraConnection에서 처리됨
-                                Log.d("카메라레포지토리", "이벤트 리스너 시작 시도")
-                                startCameraEventListenerInternal()
-                                Log.d("카메라레포지토리", "이벤트 리스너 시작 후 상태: $isEventListenerRunning")
+                    // 초기화 시작 - UI 블록
+                    _isInitializing.value = true
+                    Log.d("카메라레포지토리", "카메라 초기화 상태 변경: true")
 
-                                // 이벤트 리스너가 제대로 시작되었는지 확인
-                                kotlinx.coroutines.delay(1000) // 1초 대기
-                                Log.d("카메라레포지토리", "이벤트 리스너 1초 후 상태: $isEventListenerRunning")
+                    // USB 디바이스 확인 및 연결
+                    // StateFlow를 통해 이미 검색된 디바이스 목록 사용 (중복 검색 방지)
+                    val usbDevices = usbCameraManager.connectedDevices.value
+                    if (usbDevices.isNotEmpty()) {
+                        val device = usbDevices.first()
+                        Log.d("카메라레포지토리", "연결된 USB 디바이스 발견: ${device.deviceName}")
 
-                                Result.success(true)
-                            } else {
-                                Log.e("카메라레포지토리", "네이티브 카메라 초기화 실패: $result")
-                                Result.failure(Exception("카메라 연결 실패: $result"))
+                        // USB 권한 요청
+                        if (!usbCameraManager.hasUsbPermission.value) {
+                            Log.d("카메라레포지토리", "USB 권한 없음, 권한 요청")
+                            withContext(Dispatchers.Main) {
+                                usbCameraManager.requestPermission(device)
                             }
+                            Result.failure(Exception("USB 권한이 필요합니다"))
                         } else {
-                            Result.failure(Exception("파일 디스크립터를 가져올 수 없음"))
-                        }
-                    }
-                } else {
-                    // USB 연결이 안되면 일반 초기화 시도
-                    Log.d("카메라레포지토리", "일반 카메라 초기화 시도")
-                    val result = nativeDataSource.initCamera()
-                    if (result.contains("success", ignoreCase = true)) {
-                        Log.d("카메라레포지토리", "일반 카메라 초기화 성공")
-                        withContext(Dispatchers.Main) {
-                            _isConnected.value = true
-                        }
-                        updateCameraList()
-                        // updateCameraCapabilities() 제거 - observeNativeCameraConnection에서 처리됨
-                        Log.d("카메라레포지토리", "이벤트 리스너 시작 시도")
-                        startCameraEventListenerInternal()
-                        Log.d("카메라레포지토리", "이벤트 리스너 시작 후 상태: $isEventListenerRunning")
+                            // 파일 디스크립터를 사용한 네이티브 초기화
+                            val fd = usbCameraManager.getFileDescriptor()
+                            if (fd != null) {
+                                Log.d("카메라레포지토리", "파일 디스크립터로 카메라 초기화: $fd")
+                                val nativeLibDir = "/data/data/com.inik.camcon/lib"
+                                val result = nativeDataSource.initCameraWithFd(fd, nativeLibDir)
+                                if (result == 0) {
+                                    Log.d("카메라레포지토리", "네이티브 카메라 초기화 성공")
+                                    withContext(Dispatchers.Main) {
+                                        _isConnected.value = true
+                                    }
+                                    updateCameraList()
+                                    // updateCameraCapabilities() 제거 - observeNativeCameraConnection에서 처리됨
+                                    Log.d("카메라레포지토리", "이벤트 리스너 시작 시도")
+                                    startCameraEventListenerInternal()
+                                    Log.d("카메라레포지토리", "이벤트 리스너 시작 후 상태: $isEventListenerRunning")
 
-                        // 이벤트 리스너가 제대로 시작되었는지 확인
-                        kotlinx.coroutines.delay(1000) // 1초 대기
-                        Log.d("카메라레포지토리", "이벤트 리스너 1초 후 상태: $isEventListenerRunning")
+                                    // 이벤트 리스너가 제대로 시작되었는지 확인
+                                    kotlinx.coroutines.delay(1000) // 1초 대기
+                                    Log.d("카메라레포지토리", "이벤트 리스너 1초 후 상태: $isEventListenerRunning")
 
-                        Result.success(true)
+                                    Result.success(true)
+                                } else {
+                                    Log.e("카메라레포지토리", "네이티브 카메라 초기화 실패: $result")
+                                    Result.failure(Exception("카메라 연결 실패: $result"))
+                                }
+                            } else {
+                                Result.failure(Exception("파일 디스크립터를 가져올 수 없음"))
+                            }
+                        }
                     } else {
-                        Log.e("카메라레포지토리", "일반 카메라 초기화 실패: $result")
-                        Result.failure(Exception("카메라 연결 실패: $result"))
+                        // USB 연결이 안되면 일반 초기화 시도
+                        Log.d("카메라레포지토리", "일반 카메라 초기화 시도")
+                        val result = nativeDataSource.initCamera()
+                        if (result.contains("success", ignoreCase = true)) {
+                            Log.d("카메라레포지토리", "일반 카메라 초기화 성공")
+                            withContext(Dispatchers.Main) {
+                                _isConnected.value = true
+                            }
+                            updateCameraList()
+                            // updateCameraCapabilities() 제거 - observeNativeCameraConnection에서 처리됨
+                            Log.d("카메라레포지토리", "이벤트 리스너 시작 시도")
+                            startCameraEventListenerInternal()
+                            Log.d("카메라레포지토리", "이벤트 리스너 시작 후 상태: $isEventListenerRunning")
+
+                            // 이벤트 리스너가 제대로 시작되었는지 확인
+                            kotlinx.coroutines.delay(1000) // 1초 대기
+                            Log.d("카메라레포지토리", "이벤트 리스너 1초 후 상태: $isEventListenerRunning")
+
+                            Result.success(true)
+                        } else {
+                            Log.e("카메라레포지토리", "일반 카메라 초기화 실패: $result")
+                            Result.failure(Exception("카메라 연결 실패: $result"))
+                        }
                     }
+                } catch (e: Exception) {
+                    Log.e("카메라레포지토리", "카메라 연결 중 예외 발생", e)
+                    Result.failure(e)
+                } finally {
+                    _isInitializing.value = false
+                    Log.d("카메라레포지토리", "카메라 초기화 상태 변경: false")
                 }
-            } catch (e: Exception) {
-                Log.e("카메라레포지토리", "카메라 연결 중 예외 발생", e)
-                Result.failure(e)
-            } finally {
-                _isInitializing.value = false
             }
         }
     }
@@ -194,11 +223,14 @@ class CameraRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun isCameraConnected(): Flow<Boolean> = _isConnected.asStateFlow()
+    override fun isCameraConnected(): Flow<Boolean> =
+        _isConnected.asStateFlow()
 
-    override fun isInitializing(): Flow<Boolean> = _isInitializing.asStateFlow()
+    override fun isInitializing(): Flow<Boolean> =
+        _isInitializing.asStateFlow()
 
-    override fun isEventListenerActive(): Flow<Boolean> = _isEventListenerActive.asStateFlow()
+    override fun isEventListenerActive(): Flow<Boolean> =
+        _isEventListenerActive.asStateFlow()
 
     /**
      * 카메라 이벤트 리스너 시작 (public)
@@ -233,8 +265,15 @@ class CameraRepositoryImpl @Inject constructor(
     override suspend fun getCameraSettings(): Result<CameraSettings> {
         return withContext(Dispatchers.IO) {
             try {
-                // 위젯 JSON에서 설정 파싱 - 무거운 작업
-                val widgetJson = nativeDataSource.buildWidgetJson()
+                // 위젯 JSON에서 설정 파싱 - 마스터 데이터 사용
+                val widgetJson = if (usbCameraManager.isNativeCameraConnected.value) {
+                    Log.d("카메라레포지토리", "USB 카메라 연결됨 - 마스터 데이터 사용")
+                    usbCameraManager.buildWidgetJsonFromMaster()
+                } else {
+                    Log.d("카메라레포지토리", "USB 카메라 미연결 - 직접 네이티브 호출")
+                    nativeDataSource.buildWidgetJson()
+                }
+
                 // TODO: JSON 파싱하여 설정 추출
                 val settings = CameraSettings(
                     iso = "100",
@@ -496,7 +535,8 @@ class CameraRepositoryImpl @Inject constructor(
         return Result.success(true)
     }
 
-    override fun getCapturedPhotos(): Flow<List<CapturedPhoto>> = _capturedPhotos.asStateFlow()
+    override fun getCapturedPhotos(): Flow<List<CapturedPhoto>> =
+        _capturedPhotos.asStateFlow()
 
     override suspend fun deletePhoto(photoId: String): Result<Boolean> {
         return withContext(Dispatchers.IO) {
@@ -815,17 +855,28 @@ class CameraRepositoryImpl @Inject constructor(
             usbCameraManager.isNativeCameraConnected.collect { isConnected ->
                 Log.d("카메라레포지토리", "네이티브 카메라 연결 상태 변경: $isConnected")
 
-                withContext(Dispatchers.Main) {
-                    _isConnected.value = isConnected
+                // 상태가 실제로 변경된 경우만 업데이트
+                val currentConnected = _isConnected.value
+                if (currentConnected != isConnected) {
+                    withContext(Dispatchers.Main) {
+                        _isConnected.value = isConnected
+                    }
+                    Log.d("카메라레포지토리", "Repository 연결 상태 업데이트: $currentConnected -> $isConnected")
+                } else {
+                    Log.d("카메라레포지토리", "Repository 연결 상태 이미 동일: $isConnected - 업데이트 생략")
                 }
 
                 if (isConnected) {
                     updateCameraList()
-                    // 카메라 기능 정보는 한 번만 업데이트하도록 중복 방지 로직 추가
+                    // 카메라 기능 정보는 한 번만 업데이트하도록 중복 방지 로직 강화
                     if (_cameraCapabilities.value == null) {
+                        Log.d("카메라레포지토리", "카메라 기능 정보 없음 - 업데이트 시작")
                         updateCameraCapabilities()
+                    } else {
+                        Log.d("카메라레포지토리", "카메라 기능 정보 이미 존재 - 업데이트 생략")
                     }
                 } else {
+                    Log.d("카메라레포지토리", "네이티브 카메라 연결 해제 - 상태 초기화")
                     withContext(Dispatchers.Main) {
                         _cameraFeed.value = emptyList()
                         // 연결이 끊어지면 capabilities도 초기화
@@ -839,7 +890,22 @@ class CameraRepositoryImpl @Inject constructor(
     private suspend fun updateCameraCapabilities() = withContext(Dispatchers.IO) {
         try {
             Log.d("카메라레포지토리", "카메라 기능 정보 업데이트")
-            val capabilities = nativeDataSource.getCameraCapabilities()
+
+            // 마스터 데이터 사용 여부 결정
+            val capabilities = if (usbCameraManager.isNativeCameraConnected.value) {
+                Log.d("카메라레포지토리", "USB 카메라 연결됨 - 마스터 데이터로 기능 정보 생성")
+
+                // 마스터 데이터에서 정보 가져오기
+                val abilitiesJson = usbCameraManager.getCameraAbilitiesFromMaster()
+                val widgetJson = usbCameraManager.buildWidgetJsonFromMaster()
+
+                // CameraCapabilities 생성 로직을 Repository에서 직접 처리
+                parseCameraCapabilitiesFromJson(abilitiesJson, widgetJson)
+            } else {
+                Log.d("카메라레포지토리", "USB 카메라 미연결 - 직접 네이티브 호출")
+                nativeDataSource.getCameraCapabilities()
+            }
+
             capabilities?.let {
                 withContext(Dispatchers.Main) {
                     _cameraCapabilities.value = it
@@ -848,6 +914,72 @@ class CameraRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e("카메라레포지토리", "카메라 기능 정보 업데이트 실패", e)
+        }
+    }
+
+    /**
+     * JSON 데이터에서 CameraCapabilities 객체를 생성하는 함수
+     */
+    private fun parseCameraCapabilitiesFromJson(
+        abilitiesJson: String,
+        widgetJson: String
+    ): CameraCapabilities? {
+        return try {
+            Log.d("카메라레포지토리", "마스터 데이터에서 CameraCapabilities 파싱 시작")
+
+            // abilities JSON 파싱
+            val abilities = try {
+                JSONObject(abilitiesJson)
+            } catch (e: Exception) {
+                Log.e("카메라레포지토리", "abilities JSON 파싱 실패: $abilitiesJson", e)
+                JSONObject()
+            }
+
+            // widget JSON 파싱 (더 많은 정보 포함)
+            val widgets = try {
+                JSONObject(widgetJson)
+            } catch (e: Exception) {
+                Log.e("카메라레포지토리", "widget JSON 파싱 실패: $widgetJson", e)
+                JSONObject()
+            }
+
+            // 모델명 추출
+            val model = abilities.optString("model", "알 수 없음")
+
+            // 라이브뷰 지원 확인
+            val supportsLiveView = widgetJson.contains("liveviewsize", ignoreCase = true) ||
+                    widgetJson.contains("liveview", ignoreCase = true)
+
+            val capabilities = CameraCapabilities(
+                model = model,
+                canCapturePhoto = abilities.optBoolean("canCapturePhoto", true),
+                canCaptureVideo = abilities.optBoolean("canCaptureVideo", false),
+                canLiveView = supportsLiveView,
+                canTriggerCapture = abilities.optBoolean("canTriggerCapture", true),
+                supportsAutofocus = abilities.optBoolean("supportsAutofocus", true),
+                supportsManualFocus = abilities.optBoolean("supportsManualFocus", false),
+                supportsFocusPoint = abilities.optBoolean("supportsFocusPoint", false),
+                supportsBurstMode = abilities.optBoolean("supportsBurstMode", false),
+                supportsTimelapse = abilities.optBoolean("supportsTimelapse", false),
+                supportsBracketing = abilities.optBoolean("supportsBracketing", false),
+                supportsBulbMode = abilities.optBoolean("supportsBulbMode", false),
+                canDownloadFiles = abilities.optBoolean("canDownloadFiles", true),
+                canDeleteFiles = abilities.optBoolean("canDeleteFiles", false),
+                canPreviewFiles = abilities.optBoolean("canPreviewFiles", false),
+                availableIsoSettings = emptyList(), // TODO: 위젯에서 파싱 필요
+                availableShutterSpeeds = emptyList(), // TODO: 위젯에서 파싱 필요
+                availableApertures = emptyList(), // TODO: 위젯에서 파싱 필요
+                availableWhiteBalanceSettings = emptyList(), // TODO: 위젯에서 파싱 필요
+                supportsRemoteControl = abilities.optBoolean("supportsRemoteControl", false),
+                supportsConfigChange = abilities.optBoolean("supportsConfigChange", false),
+                batteryLevel = null
+            )
+
+            Log.d("카메라레포지토리", "마스터 데이터에서 CameraCapabilities 파싱 완료: ${capabilities.model}")
+            capabilities
+        } catch (e: Exception) {
+            Log.e("카메라레포지토리", "CameraCapabilities 파싱 실패", e)
+            null
         }
     }
 
