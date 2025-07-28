@@ -15,11 +15,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Card
-import androidx.compose.material.Icon
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -366,17 +363,16 @@ private fun ThumbnailPlaceholder() {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(
-                Icons.Default.PhotoLibrary,
-                contentDescription = null,
-                tint = MaterialTheme.colors.onSurface.copy(alpha = 0.4f),
-                modifier = Modifier.size(40.dp)
+            androidx.compose.material.CircularProgressIndicator(
+                color = MaterialTheme.colors.primary,
+                modifier = Modifier.size(24.dp),
+                strokeWidth = 2.dp
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "이미지 없음",
+                text = "로딩 중...",
                 style = MaterialTheme.typography.caption,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.4f),
+                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
                 fontSize = 9.sp
             )
         }
