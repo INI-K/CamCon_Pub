@@ -161,20 +161,7 @@ object PhotoInfoDialog {
         container: LinearLayout,
         context: Context
     ) {
-        entries["width"]?.let { width ->
-            addExifItem(container, context, Constants.UI.WIDTH_LABEL, "${width}px")
-        }
-
-        entries["height"]?.let { height ->
-            addExifItem(container, context, Constants.UI.HEIGHT_LABEL, "${height}px")
-        }
-
-        entries["orientation"]?.let { orientation ->
-            val orientationText = getOrientationText(orientation)
-            addExifItem(container, context, Constants.UI.ORIENTATION_LABEL, orientationText)
-        }
-
-        // 추가적인 EXIF 정보들
+        // 카메라 정보 우선 표시
         entries["make"]?.let { make ->
             addExifItem(container, context, Constants.UI.MAKE_LABEL, make)
         }
@@ -183,24 +170,215 @@ object PhotoInfoDialog {
             addExifItem(container, context, Constants.UI.MODEL_LABEL, model)
         }
 
+        // 촬영 설정 정보 (주요 카메라 설정)
         entries["iso"]?.let { iso ->
-            addExifItem(container, context, Constants.UI.ISO_LABEL, iso)
+            val isoValue = try {
+                val isoNumber = iso.toIntOrNull()
+                if (isoNumber != null) "ISO $isoNumber" else "ISO $iso"
+            } catch (e: Exception) {
+                "ISO $iso"
+            }
+            addExifItem(container, context, Constants.UI.ISO_LABEL, isoValue)
         }
 
         entries["exposure_time"]?.let { exposureTime ->
-            addExifItem(container, context, Constants.UI.EXPOSURE_TIME_LABEL, exposureTime)
+            val shutterSpeed = formatShutterSpeed(exposureTime)
+            addExifItem(container, context, "셔터스피드", shutterSpeed)
         }
 
         entries["f_number"]?.let { fNumber ->
-            addExifItem(container, context, Constants.UI.F_NUMBER_LABEL, "f/$fNumber")
+            val aperture = formatAperture(fNumber)
+            addExifItem(container, context, "조리개", aperture)
         }
 
         entries["focal_length"]?.let { focalLength ->
-            addExifItem(container, context, Constants.UI.FOCAL_LENGTH_LABEL, "${focalLength}mm")
+            val formattedFocalLength = formatFocalLength(focalLength)
+            addExifItem(container, context, "초점거리", formattedFocalLength)
         }
 
+        // 이미지 크기 정보
+        val width = entries["width"]
+        val height = entries["height"]
+        if (width != null && height != null) {
+            addExifItem(container, context, "해상도", "${width} × ${height}px")
+        } else {
+            width?.let { w -> addExifItem(container, context, Constants.UI.WIDTH_LABEL, "${w}px") }
+            height?.let { h ->
+                addExifItem(
+                    container,
+                    context,
+                    Constants.UI.HEIGHT_LABEL,
+                    "${h}px"
+                )
+            }
+        }
+
+        // 방향 정보
+        entries["orientation"]?.let { orientation ->
+            val orientationText = getOrientationText(orientation)
+            addExifItem(container, context, Constants.UI.ORIENTATION_LABEL, orientationText)
+        }
+
+        // 촬영 일시
         entries["datetime"]?.let { datetime ->
-            addExifItem(container, context, Constants.UI.DATETIME_LABEL, datetime)
+            val formattedDateTime = formatDateTime(datetime)
+            addExifItem(container, context, "촬영일시", formattedDateTime)
+        }
+
+        // 추가 EXIF 정보들
+        entries["white_balance"]?.let { whiteBalance ->
+            addExifItem(container, context, "화이트밸런스", formatWhiteBalance(whiteBalance))
+        }
+
+        entries["flash"]?.let { flash ->
+            addExifItem(container, context, "플래시", formatFlash(flash))
+        }
+
+        entries["metering_mode"]?.let { meteringMode ->
+            addExifItem(container, context, "측광모드", formatMeteringMode(meteringMode))
+        }
+
+        entries["exposure_mode"]?.let { exposureMode ->
+            addExifItem(container, context, "노출모드", formatExposureMode(exposureMode))
+        }
+
+        entries["scene_type"]?.let { sceneType ->
+            addExifItem(container, context, "장면모드", sceneType)
+        }
+    }
+
+    /**
+     * 셔터 스피드를 읽기 쉬운 형태로 포맷팅
+     */
+    private fun formatShutterSpeed(exposureTime: String): String {
+        return try {
+            val time = exposureTime.toDoubleOrNull()
+            when {
+                time == null -> exposureTime
+                time >= 1.0 -> "${time.toInt()}초"
+                time > 0 -> {
+                    val fraction = 1.0 / time
+                    if (fraction > 1000) {
+                        "1/${fraction.toInt()}"
+                    } else {
+                        "1/${String.format("%.0f", fraction)}"
+                    }
+                }
+
+                else -> exposureTime
+            }
+        } catch (e: Exception) {
+            exposureTime
+        }
+    }
+
+    /**
+     * 조리개 값을 포맷팅
+     */
+    private fun formatAperture(fNumber: String): String {
+        return try {
+            val aperture = fNumber.toDoubleOrNull()
+            if (aperture != null) {
+                "f/${String.format("%.1f", aperture)}"
+            } else {
+                "f/$fNumber"
+            }
+        } catch (e: Exception) {
+            "f/$fNumber"
+        }
+    }
+
+    /**
+     * 초점거리를 포맷팅
+     */
+    private fun formatFocalLength(focalLength: String): String {
+        return try {
+            val focal = focalLength.toDoubleOrNull()
+            if (focal != null) {
+                "${String.format("%.0f", focal)}mm"
+            } else {
+                "${focalLength}mm"
+            }
+        } catch (e: Exception) {
+            "${focalLength}mm"
+        }
+    }
+
+    /**
+     * 날짜시간을 포맷팅
+     */
+    private fun formatDateTime(datetime: String): String {
+        return try {
+            // EXIF 날짜 형식 처리: "YYYY:MM:DD HH:MM:SS"
+            if (datetime.contains(":") && datetime.length >= 19) {
+                val parts = datetime.split(" ")
+                if (parts.size >= 2) {
+                    val datePart = parts[0].replace(":", "-")
+                    val timePart = parts[1]
+                    "$datePart $timePart"
+                } else {
+                    datetime.replace(":", "-")
+                }
+            } else {
+                datetime
+            }
+        } catch (e: Exception) {
+            datetime
+        }
+    }
+
+    /**
+     * 화이트밸런스 값을 포맷팅
+     */
+    private fun formatWhiteBalance(whiteBalance: String): String {
+        return when (whiteBalance) {
+            "0" -> "자동"
+            "1" -> "수동"
+            else -> whiteBalance
+        }
+    }
+
+    /**
+     * 플래시 정보를 포맷팅
+     */
+    private fun formatFlash(flash: String): String {
+        return try {
+            val flashValue = flash.toIntOrNull() ?: return flash
+            when {
+                flashValue and 0x01 == 0 -> "플래시 없음"
+                flashValue and 0x01 == 1 -> "플래시 사용"
+                else -> flash
+            }
+        } catch (e: Exception) {
+            flash
+        }
+    }
+
+    /**
+     * 측광모드를 포맷팅
+     */
+    private fun formatMeteringMode(meteringMode: String): String {
+        return when (meteringMode) {
+            "0" -> "알 수 없음"
+            "1" -> "평균"
+            "2" -> "중앙중점"
+            "3" -> "스팟"
+            "4" -> "멀티스팟"
+            "5" -> "패턴"
+            "6" -> "부분"
+            else -> meteringMode
+        }
+    }
+
+    /**
+     * 노출모드를 포맷팅
+     */
+    private fun formatExposureMode(exposureMode: String): String {
+        return when (exposureMode) {
+            "0" -> "자동노출"
+            "1" -> "수동노출"
+            "2" -> "자동브라케팅"
+            else -> exposureMode
         }
     }
 
