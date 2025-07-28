@@ -16,12 +16,18 @@ interface CameraRepository {
     suspend fun connectCamera(cameraId: String): Result<Boolean>
     suspend fun disconnectCamera(): Result<Boolean>
     fun isCameraConnected(): Flow<Boolean>
+    fun isInitializing(): Flow<Boolean>
 
     // 카메라 정보
     suspend fun getCameraInfo(): Result<String>
     suspend fun getCameraSettings(): Result<CameraSettings>
     suspend fun getCameraCapabilities(): Result<CameraCapabilities?>
     suspend fun updateCameraSetting(key: String, value: String): Result<Boolean>
+
+    // 이벤트 리스너 관련
+    suspend fun startCameraEventListener(): Result<Boolean>
+    suspend fun stopCameraEventListener(): Result<Boolean>
+    fun isEventListenerActive(): Flow<Boolean>
 
     // 촬영 관련
     suspend fun capturePhoto(mode: ShootingMode = ShootingMode.SINGLE): Result<CapturedPhoto>
