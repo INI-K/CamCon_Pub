@@ -1,8 +1,9 @@
 package com.inik.camcon.presentation.ui.screens.components
 
 // Coil imports for image loading
-import android.graphics.ColorSpace
+import android.graphics.BitmapFactory
 import android.util.Log
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,16 +32,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.presentation.theme.CamConTheme
@@ -59,35 +58,35 @@ fun CameraPreviewArea(
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         if (uiState.isLiveViewActive && uiState.liveViewFrame != null) {
-            // Display live view frame using Coil
+            // Display live view frame using Android Bitmap
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 uiState.liveViewFrame?.let { frame ->
-                    // Use Coil's AsyncImage with a custom ImageRequest with byte array
-                    val context = LocalContext.current
-                    val imageRequest = remember(frame) {
-                        ImageRequest.Builder(context)
-                            .data(frame.data)
-                            .crossfade(true)
-                            .memoryCacheKey("liveViewFrame")
-                            .apply {
-                                // sRGB 색공간 설정
-                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                                    colorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
-                                }
-                            }
-                            .build()
+                    // 바이트 배열을 비트맵으로 직접 디코딩
+                    val bitmap = remember(frame.timestamp) {
+                        try {
+                            Log.d("CameraPreview", "바이트 배열을 비트맵으로 디코딩 시도: ${frame.data.size} bytes")
+                            BitmapFactory.decodeByteArray(frame.data, 0, frame.data.size)
+                        } catch (e: Exception) {
+                            Log.e("CameraPreview", "비트맵 디코딩 실패", e)
+                            null
+                        }
                     }
-                    AsyncImage(
-                        model = imageRequest,
-                        contentDescription = "Live View",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit,
-                        placeholder = null,
-                        error = null
-                    )
+
+                    bitmap?.let {
+                        Log.d("CameraPreview", "비트맵 디코딩 성공: ${it.width}x${it.height}")
+                        Image(
+                            bitmap = it.asImageBitmap(),
+                            contentDescription = "Live View",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit
+                        )
+                    } ?: run {
+                        Log.w("CameraPreview", "비트맵 디코딩 실패 - LoadingIndicator 표시")
+                        LoadingIndicator("라이브뷰 프레임 처리 중...")
+                    }
                 } ?: LoadingIndicator("라이브뷰 프레임 로딩 중...")
 
                 // 라이브뷰 중지 버튼 오버레이
