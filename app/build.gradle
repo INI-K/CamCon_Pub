@@ -10,6 +10,24 @@ android {
     namespace 'com.inik.camcon'
     compileSdk 35
 
+    // 키스토어 설정 로드
+    def keystorePropertiesFile = rootProject.file("key.properties")
+    def keystoreProperties = new Properties()
+    if (keystorePropertiesFile.exists()) {
+        keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+    }
+
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+            }
+        }
+    }
+
     defaultConfig {
         applicationId "com.inik.camcon"
         minSdk 31
@@ -26,9 +44,27 @@ android {
     }
 
     buildTypes {
+        debug {
+            debuggable true
+            minifyEnabled false
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
+
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            debuggable true  // 로그 확인을 위해 활성화
+            signingConfig signingConfigs.release
+        }
+
+        // 릴리즈 성능 + 디버깅 가능한 빌드 타입
+        releaseDebug {
+            initWith release
+            debuggable true
+            applicationIdSuffix ".release.debug"
+            versionNameSuffix "-release-debug"
+            matchingFallbacks = ['release', 'debug']
         }
     }
     compileOptions {
@@ -42,6 +78,19 @@ android {
         cmake {
             path file('src/main/cpp/CMakeLists.txt')
             version '3.22.1'
+        }
+    }
+    android.buildTypes.all { buildType ->
+        externalNativeBuild.cmake {
+            if (buildType.name == 'debug') {
+                arguments '-DCMAKE_BUILD_TYPE=Debug'
+            } else if (buildType.name == 'releaseDebug') {
+                arguments '-DCMAKE_BUILD_TYPE=RelWithDebInfo'
+            } else {
+                arguments '-DCMAKE_BUILD_TYPE=Release'
+            }
+            cFlags '-g'
+            cppFlags '-g'
         }
     }
     sourceSets {
@@ -119,7 +168,7 @@ dependencies {
     // DataStore for preferences
     implementation "androidx.datastore:datastore-preferences:1.0.0"
 
-    // ㄹ
+    //
     implementation "com.google.accompanist:accompanist-systemuicontroller:0.32.0"
 
     // Image loading
@@ -134,4 +183,47 @@ dependencies {
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
     implementation 'com.google.firebase:firebase-messaging-ktx'
+
+    // ExifInterface for preserving image metadata
+    implementation "androidx.exifinterface:exifinterface:1.4.1"
+    // GPUImage for color transfer and image processing
+    implementation 'jp.co.cyberagent.android:gpuimage:2.1.0'
+    // 0xZhangKe ImageViewer library for advanced image viewing
+    implementation 'com.github.0xZhangKe:ImageViewer:1.0.3'
+    // 기본 Compose 제스처를 사용한 이미지 뷰어 구현
+
+}
+
+// 커스텀 빌드 태스크들
+task buildDebug(type: GradleBuild) {
+    description = '디버그 모드로 빌드 및 설치'
+    tasks = ['assembleDebug', 'installDebug']
+}
+
+task buildRelease(type: GradleBuild) {
+    description = '릴리즈 모드로 빌드'
+    tasks = ['assembleRelease']
+}
+
+task buildReleaseDebug(type: GradleBuild) {
+    description = '릴리즈 성능 + 디버깅 가능 모드로 빌드 및 설치'
+    tasks = ['assembleReleaseDebug', 'installReleaseDebug']
+}
+
+task runDebug(type: Exec) {
+    description = '디버그 앱 실행'
+    dependsOn 'installDebug'
+    commandLine 'adb', 'shell', 'am', 'start', '-n', 'com.inik.camcon.debug/.presentation.ui.MainActivity'
+}
+
+task runRelease(type: Exec) {
+    description = '릴리즈 앱 실행'
+    dependsOn 'installRelease'
+    commandLine 'adb', 'shell', 'am', 'start', '-n', 'com.inik.camcon/.presentation.ui.MainActivity'
+}
+
+task runReleaseDebug(type: Exec) {
+    description = '릴리즈 디버그 앱 실행'
+    dependsOn 'installReleaseDebug'
+    commandLine 'adb', 'shell', 'am', 'start', '-n', 'com.inik.camcon.release.debug/.presentation.ui.MainActivity'
 }

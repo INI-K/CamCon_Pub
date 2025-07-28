@@ -2,13 +2,17 @@ package com.inik.camcon.presentation.ui.screens
 
 import android.app.Activity
 import android.content.pm.ActivityInfo
-import android.graphics.BitmapFactory
+import android.graphics.ColorSpace
+import android.media.ExifInterface
 import android.util.Log
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -42,6 +46,7 @@ import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,7 +57,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -64,22 +68,27 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.size.Scale
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.domain.model.CameraSettings
 import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.components.CameraPreviewArea
-import com.inik.camcon.presentation.ui.screens.components.CameraSettingsOverlay
 import com.inik.camcon.presentation.ui.screens.components.CaptureControls
 import com.inik.camcon.presentation.ui.screens.components.LoadingOverlay
 import com.inik.camcon.presentation.ui.screens.components.ShootingModeSelector
 import com.inik.camcon.presentation.ui.screens.components.TopControlsBar
+import com.inik.camcon.presentation.ui.screens.components.UsbInitializationOverlay
 import com.inik.camcon.presentation.ui.screens.dialogs.CameraConnectionHelpDialog
 import com.inik.camcon.presentation.ui.screens.dialogs.TimelapseSettingsDialog
+import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.CameraUiState
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import kotlinx.coroutines.launch
+import java.io.File
 
 /**
  * 메인 카메라 컨트롤 스크린 - 컴포넌트들로 분리됨
@@ -88,22 +97,56 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterialApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun CameraControlScreen(
-    viewModel: CameraViewModel = hiltViewModel()
+    viewModel: CameraViewModel = hiltViewModel(),
+    appSettingsViewModel: AppSettingsViewModel = hiltViewModel(),
+    onFullscreenChange: (Boolean) -> Unit = {}
 ) {
     var showConnectionHelpDialog by remember { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    // 라이프사이클 관리
-    DisposableEffect(lifecycleOwner) {
+    // 설정 상태들을 collectAsState로 개별 수집하되 리컴포지션 최적화
+    val isCameraControlsEnabled by appSettingsViewModel.isCameraControlsEnabled.collectAsState()
+    val isLiveViewEnabled by appSettingsViewModel.isLiveViewEnabled.collectAsState()
+    val isAutoStartEventListener by appSettingsViewModel.isAutoStartEventListenerEnabled.collectAsState()
+    val isShowLatestPhotoWhenDisabled by appSettingsViewModel.isShowLatestPhotoWhenDisabled.collectAsState()
+
+    // 설정들을 묶은 객체를 remember로 캐싱하여 리컴포지션 최적화
+    val appSettings = remember(
+        isCameraControlsEnabled,
+        isLiveViewEnabled,
+        isAutoStartEventListener,
+        isShowLatestPhotoWhenDisabled
+    ) {
+        AppSettings(
+            isCameraControlsEnabled = isCameraControlsEnabled,
+            isLiveViewEnabled = isLiveViewEnabled,
+            isAutoStartEventListener = isAutoStartEventListener,
+            isShowLatestPhotoWhenDisabled = isShowLatestPhotoWhenDisabled
+        )
+    }
+
+    // 라이프사이클 관리 (통합된 버전) - 의존성 최적화
+    DisposableEffect(lifecycleOwner, isAutoStartEventListener) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_PAUSE -> {
+                    viewModel.setTabSwitchFlag(true)
                     if (viewModel.uiState.value.isLiveViewActive) {
                         viewModel.stopLiveView()
                     }
                 }
-                Lifecycle.Event.ON_STOP -> {
-                    // 필요시 연결 해제: viewModel.disconnectCamera()
+                Lifecycle.Event.ON_RESUME -> {
+                    val isReturningFromOtherTab = viewModel.getAndClearTabSwitchFlag()
+
+                    if (isAutoStartEventListener) {
+                        if (isReturningFromOtherTab) {
+                            viewModel.stopEventListener {
+                                viewModel.startEventListener()
+                            }
+                        } else if (!viewModel.uiState.value.isEventListenerActive) {
+                            viewModel.startEventListener()
+                        }
+                    }
                 }
                 else -> Unit
             }
@@ -114,55 +157,73 @@ fun CameraControlScreen(
         }
     }
 
+    // UI 상태들을 선별적으로 수집
     val uiState by viewModel.uiState.collectAsState()
     val cameraFeed by viewModel.cameraFeed.collectAsState()
+
+    // 상태 변화들을 remember로 캐싱하여 불필요한 리컴포지션 방지
+    var isFullscreen by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val bottomSheetState = rememberModalBottomSheetState(ModalBottomSheetValue.Hidden)
-
     var showTimelapseDialog by remember { mutableStateOf(false) }
-    var isFullscreen by rememberSaveable { mutableStateOf(false) }
 
-    // UI 상태 변경 로깅
-    LaunchedEffect(uiState.isLiveViewActive) {
-        Log.d("CameraControl", "라이브뷰 상태 변경: ${uiState.isLiveViewActive}")
+    // UI 상태 변경 로깅을 하나로 통합하고 필요한 것만 로깅
+    LaunchedEffect(uiState.isConnected, uiState.isLiveViewActive, uiState.capturedPhotos.size) {
+        // 로깅 최소화 - 필요시에만 활성화
+        // Log.d("CameraControl", "상태 변경 - 연결: ${uiState.isConnected}, 라이브뷰: ${uiState.isLiveViewActive}, 사진: ${uiState.capturedPhotos.size}")
     }
 
-    ModalBottomSheetLayout(
-        sheetState = bottomSheetState,
-        sheetShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-        sheetContent = {
-            CameraSettingsSheet(
-                settings = uiState.cameraSettings,
-                onSettingChange = { key, value ->
-                    viewModel.updateCameraSetting(key, value)
-                },
-                onClose = {
-                    scope.launch { bottomSheetState.hide() }
-                }
-            )
+    Box(modifier = Modifier.fillMaxSize()) {
+        ModalBottomSheetLayout(
+            sheetState = bottomSheetState,
+            sheetShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+            sheetContent = {
+                CameraSettingsSheet(
+                    settings = uiState.cameraSettings,
+                    onSettingChange = { key, value ->
+                        viewModel.updateCameraSetting(key, value)
+                    },
+                    onClose = {
+                        scope.launch { bottomSheetState.hide() }
+                    }
+                )
+            }
+        ) {
+            if (isFullscreen && appSettings.isCameraControlsEnabled) {
+                FullscreenCameraLayout(
+                    uiState = uiState,
+                    cameraFeed = cameraFeed,
+                    viewModel = viewModel,
+                    onExitFullscreen = {
+                        isFullscreen = false
+                        onFullscreenChange(false)
+                    },
+                    isLiveViewEnabled = appSettings.isLiveViewEnabled
+                )
+            } else {
+                PortraitCameraLayout(
+                    uiState = uiState,
+                    cameraFeed = cameraFeed,
+                    viewModel = viewModel,
+                    scope = scope,
+                    bottomSheetState = bottomSheetState,
+                    onShowTimelapseDialog = { showTimelapseDialog = true },
+                    onEnterFullscreen = {
+                        isFullscreen = true
+                        onFullscreenChange(true)
+                    },
+                    appSettings = appSettings
+                )
+            }
         }
-    ) {
-        if (isFullscreen) {
-            FullscreenCameraLayout(
-                uiState = uiState,
-                cameraFeed = cameraFeed,
-                viewModel = viewModel,
-                onExitFullscreen = { isFullscreen = false }
-            )
-        } else {
-            PortraitCameraLayout(
-                uiState = uiState,
-                cameraFeed = cameraFeed,
-                viewModel = viewModel,
-                scope = scope,
-                bottomSheetState = bottomSheetState,
-                onShowTimelapseDialog = { showTimelapseDialog = true },
-                onEnterFullscreen = { isFullscreen = true }
+
+        if (uiState.isUsbInitializing) {
+            UsbInitializationOverlay(
+                message = uiState.usbInitializationMessage ?: "USB 카메라 초기화 중..."
             )
         }
     }
 
-    // 타임랩스 설정 다이얼로그
     if (showTimelapseDialog) {
         TimelapseSettingsDialog(
             onConfirm = { interval, shots ->
@@ -173,20 +234,17 @@ fun CameraControlScreen(
         )
     }
 
-    // 에러 처리
-    uiState.error?.let { error ->
-        LaunchedEffect(error) {
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { error ->
             when {
                 error.contains("Could not find the requested device") ||
                         error.contains("-52") -> {
                     showConnectionHelpDialog = true
                 }
-                // PTP 타임아웃 자동 처리 제거 - 기본값 사용
             }
         }
     }
 
-    // 연결 도움말 다이얼로그
     if (showConnectionHelpDialog) {
         CameraConnectionHelpDialog(
             onDismiss = { showConnectionHelpDialog = false },
@@ -197,6 +255,14 @@ fun CameraControlScreen(
         )
     }
 }
+
+@Stable
+private data class AppSettings(
+    val isCameraControlsEnabled: Boolean,
+    val isLiveViewEnabled: Boolean,
+    val isAutoStartEventListener: Boolean,
+    val isShowLatestPhotoWhenDisabled: Boolean
+)
 
 /**
  * 포트레이트 모드 레이아웃 - 분리된 컴포넌트들 사용
@@ -210,23 +276,33 @@ private fun PortraitCameraLayout(
     scope: kotlinx.coroutines.CoroutineScope,
     bottomSheetState: ModalBottomSheetState,
     onShowTimelapseDialog: () -> Unit,
-    onEnterFullscreen: () -> Unit
+    onEnterFullscreen: () -> Unit,
+    appSettings: AppSettings
 ) {
     val context = LocalContext.current
 
-    // 포트레이트 모드 설정
     LaunchedEffect(Unit) {
         (context as? Activity)?.let { activity ->
-            Log.d("PortraitCameraLayout", "화면 방향 PORTRAIT로 설정")
             activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                 activity.window.setDecorFitsSystemWindows(true)
                 activity.window.insetsController?.show(WindowInsets.Type.systemBars())
             } else {
-                @Suppress("DEPRECATION")
                 activity.window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
             }
         }
+    }
+
+    val recentPhotos = remember(uiState.capturedPhotos.size) {
+        if (uiState.capturedPhotos.isNotEmpty()) {
+            uiState.capturedPhotos.takeLast(10).reversed()
+        } else {
+            emptyList()
+        }
+    }
+
+    val canEnterFullscreen = remember(uiState.isLiveViewActive, uiState.capturedPhotos.size) {
+        uiState.isLiveViewActive || uiState.capturedPhotos.isNotEmpty()
     }
 
     Column(
@@ -234,48 +310,40 @@ private fun PortraitCameraLayout(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // 상단 컨트롤 바 - 분리된 컴포넌트 사용
         TopControlsBar(
             uiState = uiState,
             cameraFeed = cameraFeed,
             onSettingsClick = { scope.launch { bottomSheetState.show() } }
         )
 
-        // 라이브뷰/프리뷰 영역
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
                 .background(Color.Black)
                 .combinedClickable(
-                    onClick = {
-                        Log.d("CameraControl", "=== 단일 클릭 감지 ===")
-                    },
+                    onClick = { /* 단일 클릭 처리 */ },
                     onDoubleClick = {
-                        Log.d("CameraControl", "=== 더블 클릭 감지 ===")
-                        if (uiState.isLiveViewActive) {
-                            Log.d("CameraControl", "전체화면 모드로 진입")
+                        if (canEnterFullscreen) {
                             onEnterFullscreen()
                         }
                     }
                 ),
             contentAlignment = Alignment.Center
         ) {
-            // 카메라 프리뷰 영역 - 분리된 컴포넌트 사용
-            CameraPreviewArea(
-                uiState = uiState,
-                cameraFeed = cameraFeed,
-                viewModel = viewModel
-            )
+            if (appSettings.isCameraControlsEnabled && appSettings.isLiveViewEnabled) {
+                CameraPreviewArea(
+                    uiState = uiState,
+                    cameraFeed = cameraFeed,
+                    viewModel = viewModel
+                )
+            } else {
+                AnimatedPhotoSwitcher(
+                    capturedPhotos = uiState.capturedPhotos
+                )
+            }
 
-            // 카메라 설정 오버레이 - 분리된 컴포넌트 사용
-            CameraSettingsOverlay(
-                settings = uiState.cameraSettings,
-                modifier = Modifier.align(Alignment.TopCenter)
-            )
-
-            // 전체화면 안내 텍스트
-            if (uiState.isLiveViewActive) {
+            if (canEnterFullscreen) {
                 Text(
                     "더블클릭으로 전체화면",
                     color = Color.White.copy(alpha = 0.6f),
@@ -292,37 +360,37 @@ private fun PortraitCameraLayout(
             }
         }
 
-        // 하단 컨트롤
         Card(
             modifier = Modifier.fillMaxWidth(),
             backgroundColor = Color.Black.copy(alpha = 0.9f),
             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
         ) {
             Column {
-                // 촬영 모드 선택 - 분리된 컴포넌트 사용
-                ShootingModeSelector(
-                    uiState = uiState,
-                    onModeSelected = { mode -> viewModel.setShootingMode(mode) },
-                    modifier = Modifier.padding(vertical = 12.dp)
-                )
+                if (appSettings.isCameraControlsEnabled && appSettings.isLiveViewEnabled) {
+                    ShootingModeSelector(
+                        uiState = uiState,
+                        onModeSelected = { mode -> viewModel.setShootingMode(mode) },
+                        modifier = Modifier.padding(vertical = 12.dp)
+                    )
+                }
 
-                // 촬영 컨트롤 - 분리된 컴포넌트 사용
-                CaptureControls(
-                    uiState = uiState,
-                    viewModel = viewModel,
-                    onShowTimelapseDialog = onShowTimelapseDialog,
-                    isVertical = false
-                )
+                if (appSettings.isCameraControlsEnabled && appSettings.isLiveViewEnabled) {
+                    CaptureControls(
+                        uiState = uiState,
+                        viewModel = viewModel,
+                        onShowTimelapseDialog = onShowTimelapseDialog,
+                        isVertical = false
+                    )
+                }
 
-                // 최근 촬영 사진들 - 여기는 간소화된 버전 유지
-                if (uiState.capturedPhotos.isNotEmpty()) {
+                if (recentPhotos.isNotEmpty()) {
                     Text(
                         "수신된 사진 (${uiState.capturedPhotos.size}개)",
                         color = Color.White,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
                     RecentCapturesRow(
-                        photos = uiState.capturedPhotos.takeLast(10), // 최근 10개
+                        photos = recentPhotos,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
                 }
@@ -340,15 +408,15 @@ private fun FullscreenCameraLayout(
     uiState: CameraUiState,
     cameraFeed: List<Camera>,
     viewModel: CameraViewModel,
-    onExitFullscreen: () -> Unit
+    onExitFullscreen: () -> Unit,
+    isLiveViewEnabled: Boolean
 ) {
     val context = LocalContext.current
     var showTimelapseDialog by remember { mutableStateOf(false) }
 
-    // 전체화면 모드 설정
+    // 전체화면 모드 설정 - 한 번만 실행
     LaunchedEffect(Unit) {
         (context as? Activity)?.let { activity ->
-            Log.d("FullscreenCameraLayout", "전체화면 모드 설정")
             activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                 activity.window.setDecorFitsSystemWindows(false)
@@ -371,46 +439,74 @@ private fun FullscreenCameraLayout(
         }
     }
 
+    // EXIF 설정을 remember로 캐싱
+    val exifSettings = remember(uiState.capturedPhotos.lastOrNull()?.filePath) {
+        uiState.capturedPhotos.lastOrNull()?.let { photo ->
+            readExifMetadata(photo.filePath)
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
             .combinedClickable(
-                onClick = {
-                    Log.d("CameraControl", "전체화면 단일 클릭")
-                },
-                onDoubleClick = {
-                    Log.d("CameraControl", "전체화면 더블 클릭 - 종료")
-                    onExitFullscreen()
-                }
+                onClick = { /* 전체화면 단일 클릭 */ },
+                onDoubleClick = onExitFullscreen
             )
     ) {
-        // 메인 라이브뷰 영역 - 분리된 컴포넌트 사용
-        CameraPreviewArea(
-            uiState = uiState,
-            cameraFeed = cameraFeed,
-            viewModel = viewModel,
-            modifier = Modifier.fillMaxSize()
-        )
+        // 메인 라이브뷰 또는 사진 뷰 영역
+        if (isLiveViewEnabled && uiState.isLiveViewActive) {
+            // 라이브뷰 모드
+            CameraPreviewArea(
+                uiState = uiState,
+                cameraFeed = cameraFeed,
+                viewModel = viewModel,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            AnimatedPhotoSwitcher(
+                capturedPhotos = uiState.capturedPhotos,
+                modifier = Modifier.fillMaxSize(),
+                emptyTextColor = Color.White
+            )
+        }
 
-        // 상단 카메라 설정 오버레이 - 분리된 컴포넌트 사용
-        CameraSettingsOverlay(
-            settings = uiState.cameraSettings,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(16.dp)
-        )
-
-        // 우측 컨트롤 패널 - 분리된 컴포넌트들로 구성
-        FullscreenControlPanel(
-            uiState = uiState,
-            viewModel = viewModel,
-            onShowTimelapseDialog = { showTimelapseDialog = true },
-            onExitFullscreen = onExitFullscreen,
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(16.dp)
-        )
+        // 우측 컨트롤 패널 - 라이브뷰가 활성화되어 있을 때만 표시
+        if (isLiveViewEnabled && uiState.isLiveViewActive) {
+            FullscreenControlPanel(
+                uiState = uiState,
+                viewModel = viewModel,
+                onShowTimelapseDialog = { showTimelapseDialog = true },
+                onExitFullscreen = onExitFullscreen,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(16.dp)
+            )
+        } else if (uiState.capturedPhotos.isNotEmpty()) {
+            // 사진 뷰 모드에서는 종료 버튼만 표시
+            Surface(
+                color = Color.Black.copy(alpha = 0.7f),
+                shape = CircleShape,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+            ) {
+                IconButton(
+                    onClick = onExitFullscreen,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(Color.Red.copy(alpha = 0.3f), CircleShape)
+                ) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "전체화면 종료",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+        }
 
         // 하단 안내 텍스트
         Text(
@@ -433,7 +529,7 @@ private fun FullscreenCameraLayout(
         }
     }
 
-    // 타임랩스 설정 다이얼로그 - 분리된 컴포넌트 사용
+    // 타임랩스 설정 다이얼로그
     if (showTimelapseDialog) {
         TimelapseSettingsDialog(
             onConfirm = { interval, shots ->
@@ -499,7 +595,7 @@ private fun FullscreenControlPanel(
 }
 
 /**
- * 간단한 최근 촬영 사진 로우
+ * 간단한 최근 촬영 사진 로우 - 부드러운 이미지 로딩 최적화
  */
 @Composable
 private fun RecentCapturesRow(
@@ -510,145 +606,192 @@ private fun RecentCapturesRow(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(photos) { photo ->
-            Card(
-                modifier = Modifier.size(100.dp),
-                shape = RoundedCornerShape(12.dp),
-                elevation = 4.dp
-            ) {
+        items(
+            items = photos,
+            key = { photo -> photo.id } // key 추가로 리컴포지션 최적화
+        ) { photo ->
+            RecentCaptureItem(photo = photo)
+        }
+    }
+}
+
+/**
+ * 개별 사진 아이템 - 리컴포지션 최적화를 위해 분리
+ */
+@Composable
+private fun RecentCaptureItem(
+    photo: CapturedPhoto
+) {
+    // 파일 크기 텍스트를 remember로 캐싱
+    val sizeText = remember(photo.size) {
+        when {
+            photo.size > 1024 * 1024 -> "${photo.size / (1024 * 1024)}MB"
+            photo.size > 1024 -> "${photo.size / 1024}KB"
+            else -> "${photo.size}B"
+        }
+    }
+
+    Card(
+        modifier = Modifier.size(100.dp),
+        shape = RoundedCornerShape(12.dp),
+        elevation = 4.dp
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.DarkGray),
+            contentAlignment = Alignment.Center
+        ) {
+            // 실제 이미지가 있으면 표출
+            photo.thumbnailPath?.let { thumbnailPath ->
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(thumbnailPath)
+                        .crossfade(180)
+                        .memoryCacheKey(photo.id + "_thumb")
+                        .scale(Scale.FILL)
+                        .apply {
+                            // sRGB 색공간 설정
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                colorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
+                            }
+                        }
+                        .build(),
+                    contentDescription = "촬영된 사진",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } ?: run {
+                // 썸네일이 없으면 원본 이미지 시도
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(photo.filePath)
+                        .crossfade(180)
+                        .memoryCacheKey(photo.id + "_full")
+                        .scale(Scale.FILL)
+                        .apply {
+                            // sRGB 색공간 설정
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                colorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
+                            }
+                        }
+                        .build(),
+                    contentDescription = "촬영된 사진",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
+
+            // 다운로드 상태 표시
+            if (photo.isDownloading) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.DarkGray),
+                        .background(Color.Black.copy(alpha = 0.5f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    // 실제 이미지가 있으면 표출
-                    photo.thumbnailPath?.let { thumbnailPath ->
-                        val bitmap = remember(thumbnailPath) {
-                            try {
-                                val file = java.io.File(thumbnailPath)
-                                if (file.exists()) {
-                                    BitmapFactory.decodeFile(thumbnailPath)
-                                } else {
-                                    null
-                                }
-                            } catch (e: Exception) {
-                                Log.e("RecentCaptures", "썸네일 로드 실패: $thumbnailPath", e)
-                                null
-                            }
-                        }
-                        
-                        bitmap?.let { bmp ->
-                            Image(
-                                bitmap = bmp.asImageBitmap(),
-                                contentDescription = "촬영된 사진",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        } ?: run {
-                            // 썸네일이 없으면 원본 이미지 시도
-                            val originalBitmap = remember(photo.filePath) {
-                                try {
-                                    val file = java.io.File(photo.filePath)
-                                    if (file.exists()) {
-                                        BitmapFactory.decodeFile(photo.filePath)
-                                    } else {
-                                        null
-                                    }
-                                } catch (e: Exception) {
-                                    Log.e("RecentCaptures", "원본 이미지 로드 실패: ${photo.filePath}", e)
-                                    null
-                                }
-                            }
-                            
-                            originalBitmap?.let { bmp ->
-                                Image(
-                                    bitmap = bmp.asImageBitmap(),
-                                    contentDescription = "촬영된 사진",
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } ?: run {
-                                // 이미지 로드 실패 시 기본 아이콘
-                                Icon(
-                                    Icons.Default.Photo,
-                                    contentDescription = null,
-                                    tint = Color.Gray,
-                                    modifier = Modifier.size(32.dp)
-                                )
-                            }
-                        }
-                    } ?: run {
-                        // 썸네일 경로가 없으면 원본 이미지 시도
-                        val originalBitmap = remember(photo.filePath) {
-                            try {
-                                val file = java.io.File(photo.filePath)
-                                if (file.exists()) {
-                                    BitmapFactory.decodeFile(photo.filePath)
-                                } else {
-                                    null
-                                }
-                            } catch (e: Exception) {
-                                Log.e("RecentCaptures", "원본 이미지 로드 실패: ${photo.filePath}", e)
-                                null
-                            }
-                        }
-                        
-                        originalBitmap?.let { bmp ->
-                            Image(
-                                bitmap = bmp.asImageBitmap(),
-                                contentDescription = "촬영된 사진",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        } ?: run {
-                            // 이미지 로드 실패 시 기본 아이콘
-                            Icon(
-                                Icons.Default.Photo,
-                                contentDescription = null,
-                                tint = Color.Gray,
-                                modifier = Modifier.size(32.dp)
-                            )
-                        }
-                    }
-
-                    // 다운로드 상태 표시
-                    if (photo.isDownloading) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.Black.copy(alpha = 0.5f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                "다운로드 중...",
-                                color = Color.White,
-                                fontSize = 10.sp
-                            )
-                        }
-                    }
-
-                    // 파일 크기 표시 (하단)
-                    if (photo.size > 0) {
-                        val sizeText = when {
-                            photo.size > 1024 * 1024 -> "${photo.size / (1024 * 1024)}MB"
-                            photo.size > 1024 -> "${photo.size / 1024}KB"
-                            else -> "${photo.size}B"
-                        }
-                        Text(
-                            sizeText,
-                            color = Color.White,
-                            fontSize = 10.sp,
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .background(
-                                    Color.Black.copy(alpha = 0.7f),
-                                    RoundedCornerShape(4.dp)
-                                )
-                                .padding(4.dp)
-                        )
-                    }
+                    Text(
+                        "다운로드 중...",
+                        color = Color.White,
+                        fontSize = 10.sp
+                    )
                 }
+            }
+
+            // 파일 크기 표시 (하단)
+            if (photo.size > 0) {
+                Text(
+                    sizeText,
+                    color = Color.White,
+                    fontSize = 10.sp,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .background(
+                            Color.Black.copy(alpha = 0.7f),
+                            RoundedCornerShape(4.dp)
+                        )
+                        .padding(4.dp)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 사진 변경시 fadeIn/fadeOut 애니메이션으로 부드럽게 전환 + Coil 옵션 최적화
+ */
+@Composable
+private fun AnimatedPhotoSwitcher(
+    capturedPhotos: List<CapturedPhoto>,
+    modifier: Modifier = Modifier,
+    emptyTextColor: Color = Color.Gray
+) {
+    // 최신 사진을 remember로 캐싱하여 리컴포지션 최적화
+    val latestPhoto = remember(capturedPhotos.size) {
+        capturedPhotos.lastOrNull()
+    }
+
+    Box(
+        modifier = modifier
+    ) {
+        // 사진이 있을 때 애니메이션 표시
+        AnimatedVisibility(
+            visible = latestPhoto != null,
+            enter = fadeIn(animationSpec = tween(350)),
+            exit = fadeOut(animationSpec = tween(350))
+        ) {
+            latestPhoto?.let { photo ->
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(photo.filePath)
+                        .crossfade(200)
+                        .memoryCacheKey(photo.id + "_main")
+                        .scale(Scale.FIT)
+                        .apply {
+                            // sRGB 색공간 설정
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                colorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
+                            }
+                        }
+                        .build(),
+                    contentDescription = "사진",
+                    modifier = Modifier
+                        .matchParentSize(),
+                    contentScale = ContentScale.Fit
+                )
+            }
+        }
+        // 사진이 없을 때 애니메이션 표시
+        AnimatedVisibility(
+            visible = latestPhoto == null,
+            enter = fadeIn(animationSpec = tween(350)),
+            exit = fadeOut(animationSpec = tween(350))
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    Icons.Default.Photo,
+                    contentDescription = "사진 없음",
+                    modifier = Modifier.size(64.dp),
+                    tint = emptyTextColor
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    "수신된 사진이 없습니다",
+                    color = emptyTextColor,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    "카메라에서 사진을 촬영하면 여기에 표시됩니다",
+                    color = emptyTextColor.copy(alpha = 0.7f),
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
             }
         }
     }
@@ -696,6 +839,79 @@ private fun CameraSettingsSheet(
         } ?: run {
             Text("카메라 설정을 로드할 수 없습니다", color = Color.Gray)
         }
+    }
+}
+
+/**
+ * 사진 파일에서 EXIF 메타데이터를 읽어서 CameraSettings 객체로 변환
+ */
+private fun readExifMetadata(filePath: String): CameraSettings? {
+    return try {
+        val file = File(filePath)
+        if (!file.exists()) return null
+
+        val exif = ExifInterface(filePath)
+
+        // ISO 값 읽기
+        val iso = exif.getAttribute(ExifInterface.TAG_ISO_SPEED_RATINGS) ?: "AUTO"
+
+        // 조리개 값 읽기
+        val aperture = exif.getAttribute(ExifInterface.TAG_F_NUMBER)?.let { fNumber ->
+            try {
+                val parts = fNumber.split("/")
+                if (parts.size == 2) {
+                    val numerator = parts[0].toDouble()
+                    val denominator = parts[1].toDouble()
+                    String.format("%.1f", numerator / denominator)
+                } else {
+                    fNumber
+                }
+            } catch (e: Exception) {
+                fNumber
+            }
+        } ?: "AUTO"
+
+        // 셔터 속도 읽기
+        val shutterSpeed = exif.getAttribute(ExifInterface.TAG_EXPOSURE_TIME)?.let { exposureTime ->
+            try {
+                val speed = exposureTime.toDouble()
+
+                if (speed >= 1.0) {
+                    "${speed.toInt()}s"
+                } else {
+                    val denominator = (1.0 / speed).toInt()
+                    "1/$denominator"
+                }
+            } catch (e: Exception) {
+                Log.e("CameraControl", "셔터 속도 파싱 실패: $exposureTime")
+                exposureTime
+            }
+        } ?: "AUTO"
+
+        // 화이트 밸런스 읽기
+        val whiteBalance = when (exif.getAttribute(ExifInterface.TAG_WHITE_BALANCE)) {
+            "0" -> "자동"
+            "1" -> "수동"
+            else -> "자동"
+        }
+
+        // 초점 모드 읽기 (기본값)
+        val focusMode = "자동"
+
+        // 노출 보정 읽기
+        val exposureCompensation = exif.getAttribute(ExifInterface.TAG_EXPOSURE_BIAS_VALUE) ?: "0"
+
+        CameraSettings(
+            iso = iso,
+            shutterSpeed = shutterSpeed,
+            aperture = aperture,
+            whiteBalance = whiteBalance,
+            focusMode = focusMode,
+            exposureCompensation = exposureCompensation
+        )
+    } catch (e: Exception) {
+        Log.e("CameraControl", "EXIF 메타데이터 읽기 실패: ${e.message}")
+        null
     }
 }
 

@@ -4,7 +4,7 @@
     <string name="app_description">Controllo Professionale della Fotocamera per Android</string>
 
     <!-- Accesso Google -->
-    <string name="default_web_client_id">YOUR_WEB_CLIENT_ID_HERE</string>
+    <string name="default_web_client_id">527188051661-b9cru75i7min570psfn47fmd04hh2qn6.apps.googleusercontent.com</string>
 
     <!-- Comune -->
     <string name="ok">OK</string>
@@ -92,6 +92,7 @@
 
     <!-- Gestione Foto -->
     <string name="recent_captures">Scatti Recenti</string>
+    <string name="camera_photo_list">Elenco Foto Fotocamera</string>
     <string name="captured_photos">Foto Scattate</string>
     <string name="photo_saved">Foto salvata</string>
     <string name="photo_save_failed">Salvataggio foto fallito</string>
@@ -103,7 +104,7 @@
     <string name="photo_details">Dettagli Foto</string>
 
     <!-- Server/Cloud -->
-    <string name="server_photos">Foto Server</string>
+    <string name="server_photos">Le Mie Foto</string>
     <string name="upload_to_cloud">Carica su Cloud</string>
     <string name="download_from_cloud">Scarica da Cloud</string>
     <string name="sync_photos">Sincronizza Foto</string>
