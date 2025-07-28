@@ -4,7 +4,6 @@ import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
 import android.os.Build
-import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
@@ -25,6 +24,7 @@ import com.inik.camcon.domain.model.TimelapseSettings
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.usecase.ColorTransferUseCase
 import com.inik.camcon.domain.usecase.camera.PhotoCaptureEventManager
+import com.inik.camcon.utils.Constants
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -72,6 +72,9 @@ class CameraRepositoryImpl @Inject constructor(
     private val _isEventListenerActive = MutableStateFlow(false)
     private var isEventListenerRunning = false
 
+    // 초기화 중 UI 블록 상태 추가
+    private val _isInitializing = MutableStateFlow(false)
+
     init {
         // USB 카메라 매니저의 네이티브 카메라 연결 상태를 관찰
         observeNativeCameraConnection()
@@ -83,6 +86,9 @@ class CameraRepositoryImpl @Inject constructor(
         return withContext(Dispatchers.IO) {
             try {
                 Log.d("카메라레포지토리", "카메라 연결 시작: $cameraId")
+
+                // 초기화 시작 - UI 블록
+                _isInitializing.value = true
 
                 // USB 디바이스 확인 및 연결
                 // StateFlow를 통해 이미 검색된 디바이스 목록 사용 (중복 검색 방지)
@@ -157,6 +163,8 @@ class CameraRepositoryImpl @Inject constructor(
             } catch (e: Exception) {
                 Log.e("카메라레포지토리", "카메라 연결 중 예외 발생", e)
                 Result.failure(e)
+            } finally {
+                _isInitializing.value = false
             }
         }
     }
@@ -187,6 +195,8 @@ class CameraRepositoryImpl @Inject constructor(
     }
 
     override fun isCameraConnected(): Flow<Boolean> = _isConnected.asStateFlow()
+
+    override fun isInitializing(): Flow<Boolean> = _isInitializing.asStateFlow()
 
     override fun isEventListenerActive(): Flow<Boolean> = _isEventListenerActive.asStateFlow()
 
@@ -297,6 +307,9 @@ class CameraRepositoryImpl @Inject constructor(
                 nativeDataSource.capturePhotoAsync(object : CameraCaptureListener {
                     override fun onFlushComplete() {
                         Log.d("카메라레포지토리", "✓ 사진 촬영 플러시 완료")
+                        CoroutineScope(Dispatchers.Main).launch {
+                            _isInitializing.value = false
+                        }
                     }
 
                     override fun onPhotoCaptured(fullPath: String, fileName: String) {
@@ -304,14 +317,14 @@ class CameraRepositoryImpl @Inject constructor(
                         Log.d("카메라레포지토리", "파일명: $fileName")
                         Log.d("카메라레포지토리", "전체 경로: $fullPath")
 
-                        // 파일 확장자 확인 - JPEG만 처리
+                        // 파일 확장자 확인 
                         val extension = fileName.substringAfterLast(".", "").lowercase()
-                        if (extension !in listOf("jpg", "jpeg")) {
-                            Log.d("카메라레포지토리", "JPEG가 아닌 파일 무시: $fileName (확장자: $extension)")
+                        if (extension !in Constants.ImageProcessing.SUPPORTED_IMAGE_EXTENSIONS) {
+                            Log.d("카메라레포지토리", "지원하지 않는 파일 무시: $fileName (확장자: $extension)")
                             return
                         }
 
-                        Log.d("카메라레포지토리", "JPEG 파일 처리: $fileName (확장자: $extension)")
+                        Log.d("카메라레포지토리", "파일 처리: $fileName (확장자: $extension)")
 
                         // 파일 존재 확인
                         val file = File(fullPath)
@@ -384,32 +397,40 @@ class CameraRepositoryImpl @Inject constructor(
     }
 
     override fun startLiveView(): Flow<LiveViewFrame> = callbackFlow {
-        Log.d("카메라레포지토리", "라이브뷰 시작")
+        Log.d("카메라레포지토리", "=== 라이브뷰 시작 (Repository) ===")
+        Log.d("카메라레포지토리", "카메라 연결 상태: ${_isConnected.value}")
+
+        // 연결 상태 확인
+        if (!_isConnected.value) {
+            Log.e("카메라레포지토리", "카메라가 연결되지 않은 상태에서 라이브뷰 시작 불가")
+            close(IllegalStateException("카메라가 연결되지 않음"))
+            return@callbackFlow
+        }
 
         try {
-            // 라이브뷰 시작 전에 자동초점 활성화 - IO 스레드에서 실행
-            launch(Dispatchers.IO) {
-                try {
-                    nativeDataSource.autoFocus()
-                } catch (e: Exception) {
-                    Log.w("카메라레포지토리", "라이브뷰 시작 전 자동초점 실패", e)
-                }
-            }
-
+            Log.d("카메라레포지토리", "네이티브 startLiveView 호출 시작 (자동초점 생략)")
             nativeDataSource.startLiveView(object : LiveViewCallback {
                 override fun onLiveViewFrame(frame: ByteBuffer) {
                     try {
+                        Log.d(
+                            "카메라레포지토리",
+                            "라이브뷰 프레임 콜백 수신: position=${frame.position()}, limit=${frame.limit()}"
+                        )
+
                         val bytes = ByteArray(frame.remaining())
                         frame.get(bytes)
 
-                        trySend(
-                            LiveViewFrame(
-                                data = bytes,
-                                width = 0, // TODO: 실제 크기 가져오기
-                                height = 0,
-                                timestamp = System.currentTimeMillis()
-                            )
+                        Log.d("카메라레포지토리", "라이브뷰 프레임 변환 완료: ${bytes.size} bytes")
+
+                        val liveViewFrame = LiveViewFrame(
+                            data = bytes,
+                            width = 0, // TODO: 실제 크기 가져오기
+                            height = 0,
+                            timestamp = System.currentTimeMillis()
                         )
+
+                        val result = trySend(liveViewFrame)
+                        Log.d("카메라레포지토리", "프레임 전송 결과: ${result.isSuccess}")
                     } catch (e: Exception) {
                         Log.e("카메라레포지토리", "라이브뷰 프레임 처리 실패", e)
                     }
@@ -420,15 +441,18 @@ class CameraRepositoryImpl @Inject constructor(
                     // 라이브뷰 중 촬영된 사진 처리
                 }
             })
+
+            Log.d("카메라레포지토리", "라이브뷰 콜백 등록 완료")
         } catch (e: Exception) {
             Log.e("카메라레포지토리", "라이브뷰 시작 실패", e)
             close(e)
         }
 
         awaitClose {
-            Log.d("카메라레포지토리", "라이브뷰 중지")
+            Log.d("카메라레포지토리", "라이브뷰 중지 (awaitClose)")
             try {
                 nativeDataSource.stopLiveView()
+                Log.d("카메라레포지토리", "라이브뷰 중지 완료")
             } catch (e: Exception) {
                 Log.e("카메라레포지토리", "라이브뷰 중지 중 오류", e)
             }
@@ -504,13 +528,51 @@ class CameraRepositoryImpl @Inject constructor(
                     val fileName = photoId.substringAfterLast("/")
                     val tempFile = File(context.cacheDir, "temp_downloads/$fileName")
 
-                    // 디렉토리 생성
-                    tempFile.parentFile?.mkdirs()
+                    // 디렉토리 생성 - 실패 시 대체 경로 사용
+                    if (!tempFile.parentFile?.exists()!!) {
+                        val created = tempFile.parentFile?.mkdirs() ?: false
+                        if (!created) {
+                            Log.w("카메라레포지토리", "디렉토리 생성 실패, 캐시 루트 사용: ${context.cacheDir}")
+                            val fallbackFile = File(context.cacheDir, fileName)
+                            // 데이터를 파일로 저장 - 안전한 쓰기
+                            try {
+                                fallbackFile.writeBytes(imageData)
+                                Log.d("카메라레포지토리", "대체 경로 파일 저장 완료: ${fallbackFile.absolutePath}")
+                            } catch (e: Exception) {
+                                Log.e("카메라레포지토리", "대체 경로 파일 저장 실패", e)
+                                return@withContext Result.failure(Exception("파일 저장 실패: ${e.message}"))
+                            }
 
-                    // 데이터를 파일로 저장
-                    tempFile.writeBytes(imageData)
+                            // 후처리 (MediaStore 저장 등)
+                            val finalPath = postProcessPhoto(fallbackFile.absolutePath, fileName)
 
-                    Log.d("카메라레포지토리", "임시 파일 저장 완료: ${tempFile.absolutePath}")
+                            val capturedPhoto = CapturedPhoto(
+                                id = UUID.randomUUID().toString(),
+                                filePath = finalPath,
+                                thumbnailPath = null,
+                                captureTime = System.currentTimeMillis(),
+                                cameraModel = _cameraCapabilities.value?.model ?: "알 수 없음",
+                                settings = _cameraSettings.value,
+                                size = imageData.size.toLong(),
+                                width = 0,
+                                height = 0,
+                                isDownloading = false,
+                                downloadCompleteTime = System.currentTimeMillis()
+                            )
+
+                            Log.d("카메라레포지토리", "✅ 카메라에서 사진 다운로드 완료: $finalPath")
+                            return@withContext Result.success(capturedPhoto)
+                        }
+                    }
+
+                    // 데이터를 파일로 저장 - 안전한 쓰기
+                    try {
+                        tempFile.writeBytes(imageData)
+                        Log.d("카메라레포지토리", "임시 파일 저장 완료: ${tempFile.absolutePath}")
+                    } catch (e: Exception) {
+                        Log.e("카메라레포지토리", "임시 파일 저장 실패", e)
+                        return@withContext Result.failure(Exception("파일 저장 실패: ${e.message}"))
+                    }
 
                     // 후처리 (MediaStore 저장 등)
                     val finalPath = postProcessPhoto(tempFile.absolutePath, fileName)
@@ -697,17 +759,42 @@ class CameraRepositoryImpl @Inject constructor(
         try {
             Log.d("카메라레포지토리", "카메라 목록 업데이트")
             val detected = nativeDataSource.detectCamera()
+            Log.d("카메라레포지토리", "detectCamera 반환값: $detected")
+            
             if (detected != "No camera detected") {
-                val cameras = detected.split("\n")
+                // 감지된 카메라 문자열을 줄 단위로 분할
+                val lines = detected.split("\n")
                     .filter { it.isNotBlank() }
-                    .mapIndexed { index, line ->
-                        val parts = line.split(" @ ")
-                        Camera(
-                            id = "camera_$index",
-                            name = parts.getOrNull(0) ?: "알 수 없음",
-                            isActive = true
-                        )
-                    }
+                
+                Log.d("카메라레포지토리", "분할된 줄 수: ${lines.size}")
+                lines.forEachIndexed { index, line ->
+                    Log.d("카메라레포지토리", "줄 $index: '$line'")
+                }
+                
+                // 실제 카메라 정보가 포함된 줄만 필터링 ("[숫자]" 패턴 또는 "@" 기호 포함)
+                val cameraLines = lines.filter { line ->
+                    line.contains("@") && (line.contains("[") || line.matches(Regex(".*\\w+.*@.*")))
+                }
+                
+                Log.d("카메라레포지토리", "필터링된 카메라 라인 수: ${cameraLines.size}")
+                cameraLines.forEachIndexed { index, line ->
+                    Log.d("카메라레포지토리", "카메라 라인 $index: '$line'")
+                }
+                
+                val cameras = cameraLines.mapIndexed { index, line ->
+                    val parts = line.split(" @ ")
+                    val name = parts.getOrNull(0)?.trim()?.let { rawName ->
+                        // "[1] " 같은 번호 제거
+                        rawName.replace(Regex("^\\[\\d+\\]\\s*"), "")
+                    } ?: "알 수 없음"
+                    
+                    Camera(
+                        id = "camera_$index",
+                        name = name,
+                        isActive = true
+                    )
+                }
+                
                 withContext(Dispatchers.Main) {
                     _cameraFeed.value = cameras
                 }
@@ -795,16 +882,19 @@ class CameraRepositoryImpl @Inject constructor(
                     nativeDataSource.listenCameraEvents(object : CameraCaptureListener {
                         override fun onFlushComplete() {
                             Log.d("카메라레포지토리", "✓ 카메라 이벤트 큐 플러시 완료")
+                            CoroutineScope(Dispatchers.Main).launch {
+                                _isInitializing.value = false
+                            }
                         }
 
                         override fun onPhotoCaptured(fullPath: String, fileName: String) {
                             Log.d("카메라레포지토리", "🎉 외부 셔터 사진 촬영 감지: $fileName")
                             Log.d("카메라레포지토리", "외부 촬영 저장됨: $fullPath")
 
-                            // 파일 확장자 확인 - JPEG만 처리
+                            // 파일 확장자 확인 
                             val extension = fileName.substringAfterLast(".", "").lowercase()
-                            if (extension !in listOf("jpg", "jpeg")) {
-                                Log.d("카메라레포지토리", "JPEG가 아닌 파일 무시: $fileName (확장자: $extension)")
+                            if (extension !in Constants.ImageProcessing.SUPPORTED_IMAGE_EXTENSIONS) {
+                                Log.d("카메라레포지토리", "지원하지 않는 파일 무시: $fileName (확장자: $extension)")
                                 return
                             }
 
@@ -906,7 +996,7 @@ class CameraRepositoryImpl @Inject constructor(
     }
 
     /**
-     * JPEG 사진 다운로드를 비동기로 처리
+     * JPEG 및 RAW 사진 다운로드를 비동기로 처리
      */
     private suspend fun handlePhotoDownload(
         photo: CapturedPhoto,
@@ -914,7 +1004,7 @@ class CameraRepositoryImpl @Inject constructor(
         fileName: String
     ) {
         try {
-            Log.d("카메라레포지토리", "📥 JPEG 사진 다운로드 시작: $fileName")
+            Log.d("카메라레포지토리", "📥 사진 다운로드 시작: $fileName")
             val startTime = System.currentTimeMillis()
 
             // 파일 확인 - 빠른 체크
@@ -926,17 +1016,23 @@ class CameraRepositoryImpl @Inject constructor(
             }
 
             val fileSize = file.length()
-            Log.d("카메라레포지토리", "✓ JPEG 파일 확인: $fileName")
+            val extension = fileName.substringAfterLast(".", "").lowercase()
+            Log.d("카메라레포지토리", "✓ 사진 파일 확인: $fileName")
+            Log.d("카메라레포지토리", "   확장자: $extension")
             Log.d("카메라레포지토리", "   크기: ${fileSize / 1024}KB")
 
-            // 색감 전송 적용 확인
+            // 색감 전송 적용 확인 (JPEG 파일만)
             val isColorTransferEnabled = appPreferencesDataSource.isColorTransferEnabled.first()
             val referenceImagePath =
                 appPreferencesDataSource.colorTransferReferenceImagePath.first()
 
             var processedPath = fullPath
 
-            if (isColorTransferEnabled && referenceImagePath != null && File(referenceImagePath).exists()) {
+            if (isColorTransferEnabled &&
+                referenceImagePath != null &&
+                File(referenceImagePath).exists() &&
+                extension in Constants.ImageProcessing.JPEG_EXTENSIONS
+            ) {
                 Log.d("카메라레포지토리", "🎨 색감 전송 적용 시작: $fileName")
 
                 try {
@@ -1007,7 +1103,7 @@ class CameraRepositoryImpl @Inject constructor(
             }
 
             val downloadTime = System.currentTimeMillis() - startTime
-            Log.d("카메라레포지토리", "✅ JPEG 사진 다운로드 완료: $fileName (${downloadTime}ms)")
+            Log.d("카메라레포지토리", "✅ 사진 다운로드 완료: $fileName (${downloadTime}ms)")
 
             // 사진 촬영 이벤트 발생
             photoCaptureEventManager.emitPhotoCaptured()
@@ -1017,7 +1113,7 @@ class CameraRepositoryImpl @Inject constructor(
                 System.gc()
             }
         } catch (e: Exception) {
-            Log.e("카메라레포지토리", "❌ JPEG 사진 다운로드 실패: $fileName", e)
+            Log.e("카메라레포지토리", "❌ 사진 다운로드 실패: $fileName", e)
             updatePhotoDownloadFailed(fileName)
         }
     }
@@ -1100,27 +1196,33 @@ class CameraRepositoryImpl @Inject constructor(
             // 권한 확인
             if (!hasStoragePermission()) {
                 Log.w("카메라레포지토리", "저장소 권한 없음, 내부 저장소 사용")
-                return File(context.cacheDir, "temp_photos").apply { mkdirs() }.absolutePath
+                return File(
+                    context.cacheDir,
+                    Constants.FilePaths.TEMP_CACHE_DIR
+                ).apply { mkdirs() }.absolutePath
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                // Android 10+ : SAF 사용하므로 임시 디렉토리 반환
-                val tempDir = File(context.cacheDir, "temp_photos")
+                // Android 10+: SAF 사용하므로 임시 디렉토리 반환 (후처리에서 MediaStore 사용)
+                val tempDir = File(context.cacheDir, Constants.FilePaths.TEMP_CACHE_DIR)
                 if (!tempDir.exists()) {
                     tempDir.mkdirs()
                 }
                 Log.d("카메라레포지토리", "✅ SAF 사용 - 임시 디렉토리: ${tempDir.absolutePath}")
                 tempDir.absolutePath
             } else {
-                // Android 9 이하: 직접 외부 저장소 접근 가능
-                val externalStorageState = Environment.getExternalStorageState()
-                if (externalStorageState == Environment.MEDIA_MOUNTED) {
-                    val dcimDir = File(Environment.getExternalStorageDirectory(), "DCIM/CamCon")
-                    if (!dcimDir.exists()) {
-                        dcimDir.mkdirs()
-                    }
-                    Log.d("카메라레포지토리", "✅ 직접 외부 저장소 사용: ${dcimDir.absolutePath}")
-                    dcimDir.absolutePath
+                // Android 9 이하: 직접 외부 저장소 접근 - 우선순위 시스템 사용
+                val externalPath = Constants.FilePaths.findAvailableExternalStoragePath()
+                val externalDir = File(externalPath)
+
+                if (!externalDir.exists()) {
+                    externalDir.mkdirs()
+                }
+
+                if (externalDir.exists() && externalDir.canWrite()) {
+                    val storageType = Constants.FilePaths.getStorageType(externalPath)
+                    Log.d("카메라레포지토리", "✅ 외부 저장소 사용: $externalPath (타입: $storageType)")
+                    externalPath
                 } else {
                     // 외부 저장소를 사용할 수 없으면 내부 저장소
                     val internalDir = File(context.filesDir, "photos")
@@ -1168,11 +1270,28 @@ class CameraRepositoryImpl @Inject constructor(
                 return tempFilePath
             }
 
+            // 파일 확장자에 따른 MIME 타입 결정
+            val extension = fileName.substringAfterLast(".", "").lowercase()
+            val mimeType = when (extension) {
+                in Constants.ImageProcessing.JPEG_EXTENSIONS -> Constants.MimeTypes.IMAGE_JPEG
+                "nef" -> Constants.MimeTypes.IMAGE_NEF
+                "cr2" -> Constants.MimeTypes.IMAGE_CR2
+                "arw" -> Constants.MimeTypes.IMAGE_ARW
+                "dng" -> Constants.MimeTypes.IMAGE_DNG
+                "orf" -> Constants.MimeTypes.IMAGE_ORF
+                "rw2" -> Constants.MimeTypes.IMAGE_RW2
+                "raf" -> Constants.MimeTypes.IMAGE_RAF
+                else -> Constants.MimeTypes.IMAGE_JPEG // 기본값
+            }
+
             // MediaStore를 사용하여 DCIM 폴더에 저장
             val contentValues = ContentValues().apply {
                 put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
-                put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-                put(MediaStore.Images.Media.RELATIVE_PATH, "DCIM/CamCon")
+                put(MediaStore.Images.Media.MIME_TYPE, mimeType)
+                put(
+                    MediaStore.Images.Media.RELATIVE_PATH,
+                    Constants.FilePaths.getMediaStoreRelativePath()
+                )
             }
 
             val uri = context.contentResolver.insert(
