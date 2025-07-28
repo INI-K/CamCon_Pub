@@ -21,6 +21,20 @@
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         tools:ignore="ScopedStorage" />
 
+    <!-- Android 13+ 세분화된 미디어 권한 -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+
+    <!-- SAF 관련 권한 -->
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+
+    <!-- 미디어 스캔 권한 -->
+    <uses-permission
+        android:name="android.permission.MEDIA_CONTENT_CONTROL"
+        tools:ignore="ProtectedPermissions" />
+
     <!-- USB Host 모드 지원 선언 -->
     <uses-feature
         android:name="android.hardware.usb.host"
@@ -41,6 +55,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.CamCon"
+        android:hardwareAccelerated="true"
         android:usesCleartextTraffic="true"
         android:requestLegacyExternalStorage="true"
         tools:targetApi="31">
@@ -78,6 +93,23 @@
             android:exported="false"
             android:screenOrientation="fullSensor"
             android:label="Wi-Fi 카메라 연결" />
+        <activity
+            android:name=".presentation.ui.ColorTransferSettingsActivity"
+            android:exported="false"
+            android:screenOrientation="fullSensor"
+            android:label="색감 전송 설정" />
+
+        <!-- FileProvider for sharing photos -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
     </application>
 
 </manifest>

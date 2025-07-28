@@ -8,6 +8,8 @@
         <item name="colorSecondary">@color/colorSecondary</item>
         <item name="colorSecondaryVariant">@color/colorSecondaryVariant</item>
         <item name="colorOnSecondary">@color/colorOnSecondary</item>
+        <!-- 상태바 색상을 앱 메인 색상으로 설정 -->
+        <item name="android:statusBarColor">@color/colorPrimary</item>
         <!-- 필요에 따라 추가 커스터마이징 -->
     </style>
 </resources>

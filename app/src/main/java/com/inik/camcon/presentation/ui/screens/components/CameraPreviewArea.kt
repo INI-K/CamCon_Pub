@@ -1,5 +1,6 @@
 package com.inik.camcon.presentation.ui.screens.components
 
+// Coil imports for image loading
 import android.graphics.BitmapFactory
 import android.util.Log
 import androidx.compose.foundation.Image
@@ -27,11 +28,7 @@ import androidx.compose.material.icons.filled.UsbOff
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.VideocamOff
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -48,10 +45,6 @@ import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.CameraUiState
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
  * 카메라 프리뷰 영역 - 라이브뷰와 연결 상태를 관리
@@ -65,60 +58,36 @@ fun CameraPreviewArea(
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         if (uiState.isLiveViewActive && uiState.liveViewFrame != null) {
-            // Display live view frame
+            // Display live view frame using Android Bitmap
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 uiState.liveViewFrame?.let { frame ->
-                    var bitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
-
-                    // DisposableEffect를 사용하여 프레임 변경 시 메모리 정리
-                    DisposableEffect(frame) {
-                        val job = CoroutineScope(Dispatchers.IO).launch {
-                            try {
-                                val decodedBitmap = BitmapFactory.decodeByteArray(
-                                    frame.data,
-                                    0,
-                                    frame.data.size
-                                )
-
-                                withContext(Dispatchers.Main) {
-                                    // 기존 비트맵 정리
-                                    bitmap?.takeIf { !it.isRecycled }?.recycle()
-                                    bitmap = decodedBitmap
-                                }
-                            } catch (e: Exception) {
-                                Log.e("CameraPreview", "프레임 디코딩 실패", e)
-                                withContext(Dispatchers.Main) {
-                                    bitmap?.takeIf { !it.isRecycled }?.recycle()
-                                    bitmap = null
-                                }
-                            }
-                        }
-
-                        onDispose {
-                            job.cancel()
-                            bitmap?.takeIf { !it.isRecycled }?.recycle()
-                            bitmap = null
+                    // 바이트 배열을 비트맵으로 직접 디코딩
+                    val bitmap = remember(frame.timestamp) {
+                        try {
+                            Log.d("CameraPreview", "바이트 배열을 비트맵으로 디코딩 시도: ${frame.data.size} bytes")
+                            BitmapFactory.decodeByteArray(frame.data, 0, frame.data.size)
+                        } catch (e: Exception) {
+                            Log.e("CameraPreview", "비트맵 디코딩 실패", e)
+                            null
                         }
                     }
 
-                    bitmap?.let { bmp ->
-                        if (!bmp.isRecycled) {
-                            Image(
-                                bitmap = bmp.asImageBitmap(),
-                                contentDescription = "Live View",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Fit
-                            )
-                        } else {
-                            LoadingIndicator("라이브뷰 프레임 처리 중...")
-                        }
+                    bitmap?.let {
+                        Log.d("CameraPreview", "비트맵 디코딩 성공: ${it.width}x${it.height}")
+                        Image(
+                            bitmap = it.asImageBitmap(),
+                            contentDescription = "Live View",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit
+                        )
                     } ?: run {
-                        LoadingIndicator("라이브뷰 프레임 로딩 중...")
+                        Log.w("CameraPreview", "비트맵 디코딩 실패 - LoadingIndicator 표시")
+                        LoadingIndicator("라이브뷰 프레임 처리 중...")
                     }
-                }
+                } ?: LoadingIndicator("라이브뷰 프레임 로딩 중...")
 
                 // 라이브뷰 중지 버튼 오버레이
                 Button(

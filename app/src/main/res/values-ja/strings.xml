@@ -4,7 +4,7 @@
     <string name="app_description">Android用プロフェッショナルカメラコントロール</string>
 
     <!-- Google Sign-In -->
-    <string name="default_web_client_id">YOUR_WEB_CLIENT_ID_HERE</string>
+    <string name="default_web_client_id">527188051661-b9cru75i7min570psfn47fmd04hh2qn6.apps.googleusercontent.com</string>
 
     <!-- 共通 -->
     <string name="ok">OK</string>
@@ -92,6 +92,7 @@
 
     <!-- 写真管理 -->
     <string name="recent_captures">最近の撮影</string>
+    <string name="camera_photo_list">カメラ写真一覧</string>
     <string name="captured_photos">撮影された写真</string>
     <string name="photo_saved">写真を保存しました</string>
     <string name="photo_save_failed">写真の保存に失敗しました</string>
@@ -103,7 +104,7 @@
     <string name="photo_details">写真の詳細</string>
 
     <!-- サーバー/クラウド -->
-    <string name="server_photos">サーバー写真</string>
+    <string name="server_photos">マイ写真</string>
     <string name="upload_to_cloud">クラウドにアップロード</string>
     <string name="download_from_cloud">クラウドからダウンロード</string>
     <string name="sync_photos">写真を同期</string>

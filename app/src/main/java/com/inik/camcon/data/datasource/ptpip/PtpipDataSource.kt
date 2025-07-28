@@ -76,7 +76,7 @@ class PtpipDataSource @Inject constructor(
         // libgphoto2 디버그 로그 활성화
         try {
             // GP_LOG_ALL = 3 (모든 로그 레벨 활성화)
-            CameraNative.setLogLevel(CameraNative.GP_LOG_DEBUG)
+            CameraNative.setLogLevel(0)
             Log.d(TAG, "libgphoto2 로그 레벨을 GP_LOG_ALL로 설정 완료")
         } catch (e: Exception) {
             Log.e(TAG, "libgphoto2 로그 레벨 설정 실패", e)

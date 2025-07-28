@@ -1,7 +1,5 @@
 package com.inik.camcon.presentation.ui.screens.components
 
-import android.graphics.BitmapFactory
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -17,14 +15,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.inik.camcon.domain.model.CameraPhoto
-import java.io.File
 
 /**
  * 개별 사진 슬라이드 컴포넌트
@@ -34,39 +32,47 @@ import java.io.File
 fun PhotoSlide(
     photo: CameraPhoto,
     modifier: Modifier = Modifier,
-    thumbnailData: ByteArray? = null
+    thumbnailData: ByteArray? = null,
+    fullImageData: ByteArray? = null,
+    isDownloadingFullImage: Boolean = false
 ) {
+    // 화면 크기 가져오기
+    val configuration = LocalConfiguration.current
+    val density = LocalDensity.current
+
+    val screenWidth = with(density) { configuration.screenWidthDp.dp.roundToPx() }
+    val screenHeight = with(density) { configuration.screenHeightDp.dp.roundToPx() }
+
+    // 이미지 데이터 상태 로깅
+    android.util.Log.d("PhotoSlide", "=== PhotoSlide 렌더링: ${photo.name} ===")
+    android.util.Log.d("PhotoSlide", "썸네일 데이터: ${thumbnailData?.size ?: 0} bytes")
+    android.util.Log.d("PhotoSlide", "실제 파일 데이터: ${fullImageData?.size ?: 0} bytes")
+    android.util.Log.d("PhotoSlide", "다운로드 중: $isDownloadingFullImage")
+    android.util.Log.d("PhotoSlide", "화면 크기: ${screenWidth}x${screenHeight}")
+
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        when {
-            thumbnailData != null -> {
-                val bitmap = BitmapFactory.decodeByteArray(thumbnailData, 0, thumbnailData.size)
-                Image(
-                    bitmap = bitmap.asImageBitmap(),
-                    contentDescription = photo.name,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit
-                )
-            }
+        // 실제 파일 데이터가 있으면 우선 사용, 없으면 썸네일, 그것도 없으면 파일 경로 사용
+        val imageData = fullImageData ?: thumbnailData ?: photo.path
+        val isFullQuality = fullImageData != null
 
-            !photo.path.isNullOrEmpty() && File(photo.path).exists() -> {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(photo.path)
-                        .crossfade(false)
-                        .build(),
-                    contentDescription = photo.name,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit
-                )
-            }
+        android.util.Log.d(
+            "PhotoSlide",
+            "사용할 이미지 데이터: ${if (isFullQuality) "고화질" else if (thumbnailData != null) "썸네일" else "파일 경로"}"
+        )
 
-            else -> {
-                PhotoLoadError()
-            }
-        }
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(imageData)
+                .crossfade(true)
+                .allowHardware(false)
+                .build(),
+            contentDescription = photo.name,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Fit
+        )
     }
 }
 
