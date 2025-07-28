@@ -45,13 +45,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.exifinterface.media.ExifInterface
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
 import com.zhangke.imageviewer.ImageViewer
 import com.zhangke.imageviewer.rememberImageViewerState
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import java.io.ByteArrayInputStream
 import kotlin.math.abs
 
@@ -499,20 +499,27 @@ private fun BottomThumbnailStrip(
     // 현재 사진이 변경되면 썸네일 리스트를 해당 위치로 스크롤
     LaunchedEffect(currentPhotoIndex) {
         if (currentPhotoIndex >= 0 && currentPhotoIndex < photos.size) {
-            delay(100) // 약간의 지연으로 부드러운 스크롤
+            delay(100)
             listState.animateScrollToItem(
                 index = currentPhotoIndex,
-                scrollOffset = -200 // 선택된 아이템이 화면 중앙에 오도록 조정
+                scrollOffset = -200
             )
         }
     }
 
-    // 스크롤 상태 감지하여 페이지네이션 트리거
+    // 스크롤 상태 감지 최적화 - 디바운싱 적용
     LaunchedEffect(listState) {
-        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
-            .collect { lastVisibleIndex ->
+        var lastEmissionTime = 0L
+        snapshotFlow {
+            listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+        }.collect { lastVisibleIndex: Int? ->
+            val currentTime = System.currentTimeMillis()
+            lastEmissionTime = currentTime
+
+            // 300ms 지연 후 처리 (디바운싱)
+            delay(300)
+            if (currentTime == lastEmissionTime) { // 마지막 이벤트인지 확인
                 if (lastVisibleIndex != null && viewModel != null) {
-                    // 마지막에서 5개 정도 남았을 때 다음 페이지 로드
                     val threshold = photos.size - 5
                     if (lastVisibleIndex >= threshold && uiState.hasNextPage && !uiState.isLoadingMore) {
                         Log.d(
@@ -523,6 +530,7 @@ private fun BottomThumbnailStrip(
                     }
                 }
             }
+        }
     }
 
     LazyRow(
@@ -533,11 +541,14 @@ private fun BottomThumbnailStrip(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(horizontal = 16.dp)
     ) {
-        itemsIndexed(photos) { index, photo ->
+        itemsIndexed(
+            items = photos,
+            key = { _, photo -> photo.path }
+        ) { index, photo ->
             ThumbnailItem(
                 photo = photo,
                 isSelected = index == currentPhotoIndex,
-                thumbnailData = thumbnailCache[photo.path] ?: viewModel?.getThumbnail(photo.path),
+                thumbnailData = thumbnailCache[photo.path],
                 onClick = { onPhotoSelected(photo) }
             )
         }
@@ -572,7 +583,7 @@ private fun LoadingThumbnailItem() {
 }
 
 /**
- * 개별 썸네일 아이템
+ * 개별 썸네일 아이템 - 성능 최적화
  */
 @Composable
 private fun ThumbnailItem(
@@ -582,6 +593,24 @@ private fun ThumbnailItem(
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
+    val bitmap = remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+
+    // 백그라운드에서 비트맵 디코딩
+    LaunchedEffect(thumbnailData) {
+        if (thumbnailData != null) {
+            val decodedBitmap = withContext(Dispatchers.IO) {
+                try {
+                    BitmapFactory.decodeByteArray(thumbnailData, 0, thumbnailData.size)
+                } catch (e: Exception) {
+                    Log.e("ThumbnailItem", "비트맵 디코딩 실패: ${e.message}")
+                    null
+                }
+            }
+            bitmap.value = decodedBitmap
+        } else {
+            bitmap.value = null
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -593,48 +622,50 @@ private fun ThumbnailItem(
             .clickable { onClick() }
             .padding(if (isSelected) 2.dp else 0.dp)
     ) {
-        if (thumbnailData != null) {
-            val bitmap = remember(thumbnailData) {
-                BitmapFactory.decodeByteArray(thumbnailData, 0, thumbnailData.size)
+        val currentBitmap = bitmap.value
+        when {
+            currentBitmap != null -> {
+                Image(
+                    bitmap = currentBitmap.asImageBitmap(),
+                    contentDescription = photo.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(if (isSelected) 6.dp else 8.dp))
+                )
             }
 
-            if (bitmap != null) {
-                Image(
-                    bitmap = bitmap.asImageBitmap(),
-                    contentDescription = photo.name,
-                    contentScale = ContentScale.Crop,
+            thumbnailData != null -> {
+                // 비트맵 디코딩 중일 때
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .clip(RoundedCornerShape(if (isSelected) 6.dp else 8.dp))
-                )
-            } else {
-                // 바이트 배열 디코딩 실패 시 Coil 사용
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(thumbnailData)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = photo.name,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(if (isSelected) 6.dp else 8.dp))
-                )
+                        .background(Color.Gray.copy(alpha = 0.5f))
+                        .clip(RoundedCornerShape(if (isSelected) 6.dp else 8.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = Color.White,
+                        strokeWidth = 1.5.dp
+                    )
+                }
             }
-        } else {
-            // 썸네일이 없을 때 플레이스홀더
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Gray.copy(alpha = 0.5f))
-                    .clip(RoundedCornerShape(if (isSelected) 6.dp else 8.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    color = Color.White,
-                    strokeWidth = 2.dp
-                )
+            else -> {
+                // 썸네일 데이터가 아직 없을 때
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Gray.copy(alpha = 0.5f))
+                        .clip(RoundedCornerShape(if (isSelected) 6.dp else 8.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                }
             }
         }
     }
