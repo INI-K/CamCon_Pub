@@ -2,6 +2,7 @@ package com.inik.camcon.di
 
 import android.content.Context
 import com.google.firebase.auth.FirebaseAuth
+import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
 import com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource
 import com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource
 import com.inik.camcon.data.datasource.ptpip.PtpipDataSource
@@ -69,6 +70,11 @@ object AppModule {
     @Singleton
     fun providePtpipPreferencesDataSource(@ApplicationContext context: Context) =
         PtpipPreferencesDataSource(context)
+
+    @Provides
+    @Singleton
+    fun provideAppPreferencesDataSource(@ApplicationContext context: Context) =
+        AppPreferencesDataSource(context)
 
     @Provides
     @Singleton

@@ -4,7 +4,7 @@
     <string name="app_description">Professionelle Kamera-Steuerung für Android</string>
 
     <!-- Google Sign-In -->
-    <string name="default_web_client_id">YOUR_WEB_CLIENT_ID_HERE</string>
+    <string name="default_web_client_id">527188051661-b9cru75i7min570psfn47fmd04hh2qn6.apps.googleusercontent.com</string>
 
     <!-- Allgemein -->
     <string name="ok">OK</string>
@@ -92,6 +92,7 @@
 
     <!-- Foto-Verwaltung -->
     <string name="recent_captures">Aktuelle Aufnahmen</string>
+    <string name="camera_photo_list">Kamera-Fotoliste</string>
     <string name="captured_photos">Aufgenommene Fotos</string>
     <string name="photo_saved">Foto gespeichert</string>
     <string name="photo_save_failed">Foto-Speicherung fehlgeschlagen</string>
@@ -103,7 +104,7 @@
     <string name="photo_details">Foto-Details</string>
 
     <!-- Server/Cloud -->
-    <string name="server_photos">Server-Fotos</string>
+    <string name="server_photos">Meine Fotos</string>
     <string name="upload_to_cloud">In Cloud Hochladen</string>
     <string name="download_from_cloud">Aus Cloud Herunterladen</string>
     <string name="sync_photos">Fotos Synchronisieren</string>

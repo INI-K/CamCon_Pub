@@ -1,204 +1,641 @@
 package com.inik.camcon.presentation.ui.screens.components
 
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.util.Log
-import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
+import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
+import androidx.exifinterface.media.ExifInterface
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.inik.camcon.domain.model.CameraPhoto
-import kotlinx.coroutines.launch
+import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
+import com.zhangke.imageviewer.ImageViewer
+import com.zhangke.imageviewer.rememberImageViewerState
+import kotlinx.coroutines.delay
+import java.io.ByteArrayInputStream
+import kotlin.math.abs
 
 /**
- * 전체화면으로 사진을 볼 수 있는 뷰어 컴포넌트
- * 갤러리 앱처럼 동작: 더블탭 줌, 핀치 줌, 스와이프 전환, 가로/세로 화면 대응
+ * 0xZhangKe ImageViewer를 사용한 전체화면 사진 뷰어
+ * 고급 줌/팬 제스처, 스와이프 네비게이션, 썸네일 지원
  */
 @Composable
 fun FullScreenPhotoViewer(
     photo: CameraPhoto,
-    photos: List<CameraPhoto>,
     onDismiss: () -> Unit,
     onPhotoChanged: (CameraPhoto) -> Unit,
     thumbnailData: ByteArray?,
-    onDownload: () -> Unit
+    fullImageData: ByteArray?,
+    isDownloadingFullImage: Boolean = false,
+    onDownload: () -> Unit,
+    viewModel: PhotoPreviewViewModel? = null
 ) {
-    var showDetails by remember { mutableStateOf(false) }
-    var scale by remember { mutableStateOf(1f) }
-    var offsetX by remember { mutableStateOf(0f) }
-    var offsetY by remember { mutableStateOf(0f) }
+    val context = LocalContext.current
 
-    val scaleAnimatable = remember { Animatable(1f) }
-    val offsetXAnimatable = remember { Animatable(0f) }
-    val offsetYAnimatable = remember { Animatable(0f) }
-
-    val currentPhotoIndex = photos.indexOfFirst { it.path == photo.path }
-    val coroutineScope = rememberCoroutineScope()
-    val configuration = LocalConfiguration.current
-
-    Log.d("FullScreenViewer", "=== FullScreenPhotoViewer 렌더링 ===")
-    Log.d("FullScreenViewer", "사진: ${photo.name}, 인덱스: $currentPhotoIndex")
-    Log.d("FullScreenViewer", "화면 방향: ${configuration.orientation}")
-
-    // 화면 회전 시 상태 초기화
-    LaunchedEffect(configuration.orientation) {
-        Log.d("FullScreenViewer", "🔄 화면 회전 감지 - 상태 초기화")
-        scale = 1f
-        offsetX = 0f
-        offsetY = 0f
-        scaleAnimatable.snapTo(1f)
-        offsetXAnimatable.snapTo(0f)
-        offsetYAnimatable.snapTo(0f)
+    // ViewModel의 상태 관찰
+    val uiState by viewModel?.uiState?.collectAsState() ?: remember {
+        mutableStateOf(com.inik.camcon.presentation.viewmodel.PhotoPreviewUiState())
     }
 
-    // 새 사진으로 변경될 때 변환 상태 초기화
-    LaunchedEffect(photo.path) {
-        Log.d("FullScreenViewer", "🔄 사진 변경됨 - 상태 초기화: ${photo.name}")
-        scale = 1f
-        offsetX = 0f
-        offsetY = 0f
-        scaleAnimatable.snapTo(1f)
-        offsetXAnimatable.snapTo(0f)
-        offsetYAnimatable.snapTo(0f)
-        Log.d("FullScreenViewer", "✅ 상태 초기화 완료")
+    // ViewModel의 썸네일 캐시 직접 사용 (성능 최적화)
+    val sharedThumbnailCache = uiState.thumbnailCache
+
+    // 현재 사진 인덱스 찾기
+    val currentPhotoIndex = remember(photo.path, uiState.photos) {
+        uiState.photos.indexOfFirst { it.path == photo.path }.takeIf { it >= 0 } ?: 0
     }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            dismissOnBackPress = true,
-            dismissOnClickOutside = false,
-            usePlatformDefaultWidth = false
-        )
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black)
-        ) {
-            // 메인 이미지 영역
-            PhotoViewerContent(
-                photo = photo,
-                photos = photos,
-                thumbnailData = thumbnailData,
-                currentPhotoIndex = currentPhotoIndex,
-                scale = scaleAnimatable.value,
-                offsetX = offsetXAnimatable.value,
-                offsetY = offsetYAnimatable.value,
-                onScaleChange = { newScale ->
-                    Log.d("FullScreenViewer", "📊 스케일 변경 요청: $scale → $newScale")
-                    scale = newScale
-                    coroutineScope.launch {
-                        scaleAnimatable.snapTo(newScale)
-                        Log.d("FullScreenViewer", "✅ 스케일 애니메이션 적용 완료: ${scaleAnimatable.value}")
-                    }
-                },
-                onOffsetChange = { x, y ->
-                    Log.d("FullScreenViewer", "📍 오프셋 변경 요청: ($offsetX, $offsetY) → ($x, $y)")
-                    offsetX = x
-                    offsetY = y
-                    coroutineScope.launch {
-                        offsetXAnimatable.snapTo(x)
-                        offsetYAnimatable.snapTo(y)
-                        Log.d("FullScreenViewer", "✅ 오프셋 애니메이션 적용 완료: (${offsetXAnimatable.value}, ${offsetYAnimatable.value})")
-                    }
-                },
-                onAnimateScale = { targetScale ->
-                    Log.d("FullScreenViewer", "🎬 스케일 애니메이션 시작: $scale → $targetScale")
-                    coroutineScope.launch {
-                        scaleAnimatable.animateTo(targetScale, tween(300))
-                        scale = targetScale
-                        Log.d("FullScreenViewer", "✅ 스케일 애니메이션 완료: ${scaleAnimatable.value}")
-                    }
-                },
-                onAnimateOffset = { targetX, targetY ->
-                    Log.d("FullScreenViewer", "🎬 오프셋 애니메이션 시작: ($offsetX, $offsetY) → ($targetX, $targetY)")
-                    coroutineScope.launch {
-                        offsetXAnimatable.animateTo(targetX, tween(300))
-                        offsetYAnimatable.animateTo(targetY, tween(300))
-                        offsetX = targetX
-                        offsetY = targetY
-                        Log.d("FullScreenViewer", "✅ 오프셋 애니메이션 완료: (${offsetXAnimatable.value}, ${offsetYAnimatable.value})")
-                    }
-                },
-                onPhotoChanged = { newPhoto ->
-                    Log.d("FullScreenViewer", "📸 사진 변경 요청: ${photo.name} → ${newPhoto.name}")
-                    onPhotoChanged(newPhoto)
-                }
+    // ViewModel의 캐시 상태 관찰
+    val fullImageCache by viewModel?.fullImageCache?.collectAsState() ?: remember { 
+        mutableStateOf(emptyMap<String, ByteArray>()) 
+    }
+
+    // Pager 상태 - 스와이프 네비게이션용
+    val pagerState = rememberPagerState(
+        initialPage = currentPhotoIndex,
+        pageCount = { uiState.photos.size }
+    )
+
+    // 페이지 변경 감지
+    LaunchedEffect(pagerState.currentPage) {
+        val newPhoto = uiState.photos.getOrNull(pagerState.currentPage)
+        if (newPhoto != null && newPhoto.path != photo.path) {
+            Log.d(
+                "FullScreenPhotoViewer",
+                "Pager 페이지 변경 성공: ${photo.name} → ${newPhoto.name} (페이지: ${pagerState.currentPage})"
             )
+            onPhotoChanged(newPhoto)
+            // 페이지네이션 체크: 뷰어에서도 페이지 로딩 트리거
+            viewModel?.onPhotoIndexReached(pagerState.currentPage)
+        } else {
+            Log.d(
+                "FullScreenPhotoViewer",
+                "Pager 현재 페이지: ${pagerState.currentPage}, 총 ${uiState.photos.size}장"
+            )
+        }
+    }
 
-            // 상단 파일명과 페이지 정보
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .fillMaxWidth()
-                    .background(
-                        Color.Black.copy(alpha = 0.7f),
-                        RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
-                    )
-                    .padding(16.dp)
-            ) {
-                Column {
-                    Text(
-                        text = photo.name,
-                        style = MaterialTheme.typography.h6,
-                        color = Color.White,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    if (photos.size > 1) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "${currentPhotoIndex + 1} / ${photos.size}",
-                            style = MaterialTheme.typography.caption,
-                            color = Color.White.copy(alpha = 0.7f)
-                        )
-                    }
-                }
-            }
+    // Pager 스크롤 상태 모니터링
+    LaunchedEffect(pagerState) {
+        snapshotFlow<Boolean> { pagerState.isScrollInProgress }.collect { isScrolling ->
+            Log.d(
+                "FullScreenPhotoViewer",
+                "HorizontalPager 스크롤: ${if (isScrolling) "진행중" else "정지"}"
+            )
+        }
+    }
 
-            // 상단 컨트롤 버튼들 (오른쪽 상단)
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(16.dp)
-            ) {
-                PhotoViewerTopControls(
-                    onShowDetails = { showDetails = true },
-                    onDismiss = onDismiss
-                )
+    LaunchedEffect(pagerState) {
+        snapshotFlow<Float> { pagerState.currentPageOffsetFraction }.collect { offset ->
+            if (abs(offset) > 0.01f) {
+                Log.d("FullScreenPhotoViewer", "HorizontalPager 오프셋: $offset")
             }
         }
     }
 
-    // 상세 정보 다이얼로그
-    if (showDetails) {
-        PhotoDetailsDialog(
-            photo = photo,
-            onDismiss = { showDetails = false },
-            onDownload = onDownload
+    // 외부에서 photo가 변경되면 pager도 동기화 (애니메이션 없이 즉시 이동)
+    LaunchedEffect(currentPhotoIndex) {
+        if (pagerState.currentPage != currentPhotoIndex && currentPhotoIndex >= 0) {
+            Log.d("FullScreenPhotoViewer", "외부 photo 변경으로 pager 동기화: index=$currentPhotoIndex")
+            pagerState.scrollToPage(currentPhotoIndex)
+        }
+    }
+
+    // 현재 페이지 사진의 고화질 다운로드 (중복 방지)
+    LaunchedEffect(pagerState.currentPage) {
+        val currentPhoto = uiState.photos.getOrNull(pagerState.currentPage)
+        if (currentPhoto != null && viewModel != null) {
+            val hasFullImage = fullImageCache.containsKey(currentPhoto.path)
+            val isDownloading = viewModel.isDownloadingFullImage(currentPhoto.path)
+
+            if (!hasFullImage && !isDownloading) {
+                Log.d("ImageViewer", "현재 사진 고화질 다운로드: ${currentPhoto.name}")
+                viewModel.downloadFullImage(currentPhoto.path)
+            }
+        }
+    }
+
+    // 전체화면 배경
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+    ) {
+        // 메인 이미지 페이저 (스와이프 네비게이션)
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize()
+        ) { pageIndex ->
+            val pagePhoto = uiState.photos.getOrNull(pageIndex)
+            if (pagePhoto != null) {
+                val imageData =
+                    fullImageCache[pagePhoto.path] ?: sharedThumbnailCache[pagePhoto.path]
+
+                GalleryStyleImage(
+                    fullImageData = fullImageCache[pagePhoto.path],
+                    thumbnailData = sharedThumbnailCache[pagePhoto.path],
+                    photo = pagePhoto,
+                    onDismiss = onDismiss,
+                    context = context
+                )
+            }
+        }
+
+        // 상단 컨트롤 바
+        TopControlBar(
+            photo = uiState.photos.getOrNull(pagerState.currentPage) ?: photo,
+            onClose = onDismiss,
+            onInfoClick = {
+                val currentPhoto = uiState.photos.getOrNull(pagerState.currentPage) ?: photo
+                PhotoInfoDialog.showPhotoInfoDialog(context, currentPhoto, viewModel)
+            },
+            modifier = Modifier.align(Alignment.TopStart)
         )
+
+        // 하단 썸네일 리스트
+        BottomThumbnailStrip(
+            photos = uiState.photos,
+            currentPhotoIndex = pagerState.currentPage,
+            thumbnailCache = sharedThumbnailCache,
+            viewModel = viewModel,
+            onPhotoSelected = { selectedPhoto ->
+                val newIndex = uiState.photos.indexOfFirst { it.path == selectedPhoto.path }
+                if (newIndex >= 0) {
+                    onPhotoChanged(selectedPhoto)
+                }
+            },
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
+    }
+}
+
+/**
+ * 0xZhangKe ImageViewer를 사용한 갤러리 스타일의 이미지 뷰어
+ * pagerState를 받아서(예: 스와이프 상태 상호작용 차단 등에도 활용 가능)
+ */
+@Composable
+private fun GalleryStyleImage(
+    fullImageData: ByteArray?,
+    thumbnailData: ByteArray?,
+    photo: CameraPhoto,
+    onDismiss: () -> Unit,
+    context: android.content.Context
+) {
+    // "고화질(full) 있으면 고화질, 없으면 썸네일 둘 중 하나로 Crossfade"
+    Crossfade(
+        targetState = if (fullImageData != null) "full" else "thumbnail",
+        animationSpec = tween(durationMillis = 350)
+    ) { which ->
+        when (which) {
+            "full" -> {
+                // EXIF 회전을 실제로 적용 (remember로 캐싱)
+                val (rotatedBitmap, isPortrait) = remember(fullImageData) {
+                    var bitmap: android.graphics.Bitmap? = null
+                    var rotationDegrees = 0
+
+                    fullImageData?.let { data ->
+                        try {
+                            bitmap = BitmapFactory.decodeByteArray(data, 0, data.size)
+                            val exif = ExifInterface(ByteArrayInputStream(data))
+                            val orientation = exif.getAttributeInt(
+                                ExifInterface.TAG_ORIENTATION,
+                                ExifInterface.ORIENTATION_UNDEFINED
+                            )
+                            rotationDegrees = when (orientation) {
+                                ExifInterface.ORIENTATION_ROTATE_90 -> 90
+                                ExifInterface.ORIENTATION_ROTATE_180 -> 180
+                                ExifInterface.ORIENTATION_ROTATE_270 -> 270
+                                else -> 0
+                            }
+                            Log.d(
+                                "EXIF_ROTATE",
+                                "full이미지 사진: ${photo.name}, EXIF Orientation: $orientation, 회전 각도: $rotationDegrees"
+                            )
+                        } catch (e: Exception) {
+                            Log.e("EXIF_ROTATE", "EXIF 읽기/비트맵 생성 실패: ${e.message}")
+                        }
+                    }
+
+                    val finalBitmap = if (bitmap != null && rotationDegrees != 0) {
+                        val matrix = Matrix()
+                        matrix.postRotate(rotationDegrees.toFloat())
+                        try {
+                            android.graphics.Bitmap.createBitmap(
+                                bitmap!!, 0, 0, bitmap!!.width, bitmap!!.height, matrix, true
+                            )
+                        } catch (e: Exception) {
+                            Log.e("EXIF_ROTATE", "비트맵 회전 실패: ${e.message}")
+                            bitmap
+                        }
+                    } else {
+                        bitmap
+                    }
+
+                    // 세로/가로 판별
+                    val portrait = finalBitmap?.let { it.height > it.width } ?: false
+                    finalBitmap?.let { bmp ->
+                        Log.d(
+                            "EXIF_ROTATE",
+                            "full이미지 실제 비트맵 크기(회전적용후): ${bmp.width}x${bmp.height}, isPortrait: $portrait"
+                        )
+                    }
+
+                    Pair(finalBitmap, portrait)
+                }
+
+                if (rotatedBitmap != null) {
+                    val contentScale =
+                        if (isPortrait) ContentScale.Fit else ContentScale.FillBounds
+
+                    Log.d(
+                        "EXIF_ROTATE",
+                        "최종 결정 - 사진: ${photo.name}, isPortrait: $isPortrait, ContentScale: ${if (isPortrait) "Fit" else "FillBounds"}"
+                    )
+
+                    val imageViewerState = rememberImageViewerState(
+                        minimumScale = 1.0f,
+                        maximumScale = 5.0f
+                    )
+                    ImageViewer(state = imageViewerState) {
+                        Image(
+                            bitmap = rotatedBitmap.asImageBitmap(),
+                            contentDescription = photo.name,
+                            contentScale = contentScale,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(48.dp),
+                            color = Color.White,
+                            strokeWidth = 3.dp
+                        )
+                    }
+                }
+            }
+            "thumbnail" -> {
+                if (thumbnailData != null) {
+                    // EXIF 회전을 실제로 적용 (remember로 캐싱)
+                    val (rotatedBitmap, isPortrait) = remember(thumbnailData) {
+                        var bitmap: android.graphics.Bitmap? = null
+                        var rotationDegrees = 0
+
+                        thumbnailData?.let { data ->
+                            try {
+                                bitmap = BitmapFactory.decodeByteArray(data, 0, data.size)
+                                val exif = ExifInterface(ByteArrayInputStream(data))
+                                val orientation = exif.getAttributeInt(
+                                    ExifInterface.TAG_ORIENTATION,
+                                    ExifInterface.ORIENTATION_UNDEFINED
+                                )
+                                rotationDegrees = when (orientation) {
+                                    ExifInterface.ORIENTATION_ROTATE_90 -> 90
+                                    ExifInterface.ORIENTATION_ROTATE_180 -> 180
+                                    ExifInterface.ORIENTATION_ROTATE_270 -> 270
+                                    else -> 0
+                                }
+                                Log.d(
+                                    "EXIF_ROTATE_THUMB",
+                                    "썸네일 사진: ${photo.name}, EXIF Orientation: $orientation, 회전 각도: $rotationDegrees"
+                                )
+                            } catch (e: Exception) {
+                                Log.e("EXIF_ROTATE_THUMB", "EXIF 읽기/비트맵 생성 실패: ${e.message}")
+                            }
+                        }
+
+                        val finalBitmap = if (bitmap != null && rotationDegrees != 0) {
+                            val matrix = Matrix()
+                            matrix.postRotate(rotationDegrees.toFloat())
+                            try {
+                                android.graphics.Bitmap.createBitmap(
+                                    bitmap!!, 0, 0, bitmap!!.width, bitmap!!.height, matrix, true
+                                )
+                            } catch (e: Exception) {
+                                Log.e("EXIF_ROTATE_THUMB", "썸네일 비트맵 회전 실패: ${e.message}")
+                                bitmap
+                            }
+                        } else {
+                            bitmap
+                        }
+
+                        // 세로/가로 판별
+                        val portrait = finalBitmap?.let { it.height > it.width } ?: false
+                        finalBitmap?.let { bmp ->
+                            Log.d(
+                                "EXIF_ROTATE_THUMB",
+                                "썸네일 실제 비트맵 크기(회전적용후): ${bmp.width}x${bmp.height}, isPortrait: $portrait"
+                            )
+                        }
+
+                        Pair(finalBitmap, portrait)
+                    }
+
+                    if (rotatedBitmap != null) {
+                        val contentScale =
+                            if (isPortrait) ContentScale.Fit else ContentScale.FillBounds
+
+                        Log.d(
+                            "EXIF_ROTATE_THUMB",
+                            "썸네일 최종 결정 - 사진: ${photo.name}, isPortrait: $isPortrait, ContentScale: ${if (isPortrait) "Fit" else "FillBounds"}"
+                        )
+
+                        val imageViewerState = rememberImageViewerState(
+                            minimumScale = 1.0f,
+                            maximumScale = 5.0f
+                        )
+                        ImageViewer(state = imageViewerState) {
+                            Image(
+                                bitmap = rotatedBitmap.asImageBitmap(),
+                                contentDescription = photo.name,
+                                contentScale = contentScale,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    } else {
+                        // 둘 다 없을 시 로딩
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(48.dp),
+                                color = Color.White,
+                                strokeWidth = 3.dp
+                            )
+                        }
+                    }
+                } else {
+                    // 둘 다 없을 시 로딩
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(48.dp),
+                            color = Color.White,
+                            strokeWidth = 3.dp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 상단 컨트롤 바
+ */
+@Composable
+private fun TopControlBar(
+    photo: CameraPhoto,
+    onClose: () -> Unit,
+    onInfoClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // 닫기 버튼
+        IconButton(
+            onClick = onClose,
+            modifier = Modifier
+                .background(
+                    Color.Black.copy(alpha = 0.6f),
+                    RoundedCornerShape(20.dp)
+                )
+        ) {
+            Icon(
+                Icons.Default.Close,
+                contentDescription = "닫기",
+                tint = Color.White
+            )
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        // 정보 버튼
+        IconButton(
+            onClick = onInfoClick,
+            modifier = Modifier
+                .background(
+                    Color.Black.copy(alpha = 0.6f),
+                    RoundedCornerShape(20.dp)
+                )
+        ) {
+            Icon(
+                Icons.Default.Info,
+                contentDescription = "정보",
+                tint = Color.White
+            )
+        }
+    }
+}
+
+/**
+ * 하단 썸네일 스트립
+ */
+@Composable
+private fun BottomThumbnailStrip(
+    photos: List<CameraPhoto>,
+    currentPhotoIndex: Int,
+    thumbnailCache: Map<String, ByteArray>,
+    viewModel: PhotoPreviewViewModel?,
+    onPhotoSelected: (CameraPhoto) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val listState = rememberLazyListState()
+    val uiState by viewModel?.uiState?.collectAsState() ?: remember {
+        mutableStateOf(com.inik.camcon.presentation.viewmodel.PhotoPreviewUiState())
+    }
+
+    // 현재 사진이 변경되면 썸네일 리스트를 해당 위치로 스크롤
+    LaunchedEffect(currentPhotoIndex) {
+        if (currentPhotoIndex >= 0 && currentPhotoIndex < photos.size) {
+            delay(100) // 약간의 지연으로 부드러운 스크롤
+            listState.animateScrollToItem(
+                index = currentPhotoIndex,
+                scrollOffset = -200 // 선택된 아이템이 화면 중앙에 오도록 조정
+            )
+        }
+    }
+
+    // 스크롤 상태 감지하여 페이지네이션 트리거
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+            .collect { lastVisibleIndex ->
+                if (lastVisibleIndex != null && viewModel != null) {
+                    // 마지막에서 5개 정도 남았을 때 다음 페이지 로드
+                    val threshold = photos.size - 5
+                    if (lastVisibleIndex >= threshold && uiState.hasNextPage && !uiState.isLoadingMore) {
+                        Log.d(
+                            "ThumbnailStrip",
+                            "썸네일 스크롤에서 페이지네이션 트리거: $lastVisibleIndex >= $threshold"
+                        )
+                        viewModel.onPhotoIndexReached(lastVisibleIndex)
+                    }
+                }
+            }
+    }
+
+    LazyRow(
+        state = listState,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp)
+    ) {
+        itemsIndexed(photos) { index, photo ->
+            ThumbnailItem(
+                photo = photo,
+                isSelected = index == currentPhotoIndex,
+                thumbnailData = thumbnailCache[photo.path] ?: viewModel?.getThumbnail(photo.path),
+                onClick = { onPhotoSelected(photo) }
+            )
+        }
+
+        // 로딩 인디케이터 아이템 추가
+        if (uiState.isLoadingMore && uiState.hasNextPage) {
+            item {
+                LoadingThumbnailItem()
+            }
+        }
+    }
+}
+
+/**
+ * 로딩 중인 썸네일 아이템
+ */
+@Composable
+private fun LoadingThumbnailItem() {
+    Box(
+        modifier = Modifier
+            .size(60.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color.Gray.copy(alpha = 0.3f)),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(24.dp),
+            color = Color.White,
+            strokeWidth = 2.dp
+        )
+    }
+}
+
+/**
+ * 개별 썸네일 아이템
+ */
+@Composable
+private fun ThumbnailItem(
+    photo: CameraPhoto,
+    isSelected: Boolean,
+    thumbnailData: ByteArray?,
+    onClick: () -> Unit
+) {
+    val context = LocalContext.current
+
+    Box(
+        modifier = Modifier
+            .size(60.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                if (isSelected) Color.White else Color.Gray.copy(alpha = 0.3f)
+            )
+            .clickable { onClick() }
+            .padding(if (isSelected) 2.dp else 0.dp)
+    ) {
+        if (thumbnailData != null) {
+            val bitmap = remember(thumbnailData) {
+                BitmapFactory.decodeByteArray(thumbnailData, 0, thumbnailData.size)
+            }
+
+            if (bitmap != null) {
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = photo.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(if (isSelected) 6.dp else 8.dp))
+                )
+            } else {
+                // 바이트 배열 디코딩 실패 시 Coil 사용
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(thumbnailData)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = photo.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(if (isSelected) 6.dp else 8.dp))
+                )
+            }
+        } else {
+            // 썸네일이 없을 때 플레이스홀더
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Gray.copy(alpha = 0.5f))
+                    .clip(RoundedCornerShape(if (isSelected) 6.dp else 8.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    color = Color.White,
+                    strokeWidth = 2.dp
+                )
+            }
+        }
     }
 }

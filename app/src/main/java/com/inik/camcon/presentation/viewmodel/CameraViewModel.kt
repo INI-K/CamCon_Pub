@@ -73,6 +73,12 @@ class CameraViewModel @Inject constructor(
     private var timelapseJob: Job? = null
     private var initializationJob: Job? = null
 
+    // 탭 전환 감지를 위한 플래그
+    private var isTabSwitching = false
+
+    // 자동 연결 중복 실행 방지를 위한 플래그
+    private var isAutoConnecting = false
+
     init {
         observeDataSources()
         initializeCameraDatabase()
@@ -83,6 +89,8 @@ class CameraViewModel @Inject constructor(
         observeCapturedPhotos()
         observeUsbDevices()
         observeCameraCapabilities()
+        observeEventListenerState()
+        observeCameraInitialization()
     }
 
     private fun initializeCameraDatabase() {
@@ -159,7 +167,10 @@ class CameraViewModel @Inject constructor(
                     it.copy(
                         hasUsbPermission = hasPermission,
                         error = if (!hasPermission && _uiState.value.usbDeviceCount > 0)
-                            "USB 권한이 필요합니다" else _uiState.value.error
+                            "USB 권한이 필요합니다" else _uiState.value.error,
+                        // 권한이 승인되면 초기화 상태 해제
+                        isUsbInitializing = if (hasPermission) false else it.isUsbInitializing,
+                        usbInitializationMessage = if (hasPermission) null else it.usbInitializationMessage
                     )
                 }
             }
@@ -190,12 +201,38 @@ class CameraViewModel @Inject constructor(
                     )
                 }
 
-                if (isConnected) {
+                if (isConnected && !isAutoConnecting) {
                     Log.d("CameraViewModel", "네이티브 카메라 연결됨 - 자동으로 카메라 연결 시작")
+                    isAutoConnecting = true
                     autoConnectCamera()
                 } else {
                     Log.d("CameraViewModel", "네이티브 카메라 연결 해제됨")
+                    isAutoConnecting = false
                 }
+            }
+            .launchIn(viewModelScope)
+    }
+
+    private fun observeEventListenerState() {
+        cameraRepository.isEventListenerActive()
+            .onEach { isActive ->
+                Log.d("CameraViewModel", "이벤트 리스너 상태 변경: $isActive")
+                _uiState.update { it.copy(isEventListenerActive = isActive) }
+            }
+            .catch { e ->
+                Log.e("CameraViewModel", "이벤트 리스너 상태 관찰 중 오류", e)
+            }
+            .launchIn(viewModelScope)
+    }
+
+    private fun observeCameraInitialization() {
+        cameraRepository.isInitializing()
+            .onEach { isInitializing ->
+                Log.d("CameraViewModel", "카메라 초기화 상태 변경: $isInitializing")
+                _uiState.update { it.copy(isCameraInitializing = isInitializing) }
+            }
+            .catch { e ->
+                Log.e("CameraViewModel", "카메라 초기화 상태 관찰 중 오류", e)
             }
             .launchIn(viewModelScope)
     }
@@ -208,6 +245,16 @@ class CameraViewModel @Inject constructor(
             try {
                 Log.d("CameraViewModel", "자동 카메라 연결 시작")
 
+                // USB 초기화 시작
+                withContext(Dispatchers.Main) {
+                    _uiState.update {
+                        it.copy(
+                            isUsbInitializing = true,
+                            usbInitializationMessage = "USB 카메라 초기화 중..."
+                        )
+                    }
+                }
+
                 connectCameraUseCase("auto")
                     .onSuccess {
                         Log.d("CameraViewModel", "자동 카메라 연결 성공 - 이벤트 리스너 활성화됨")
@@ -215,29 +262,42 @@ class CameraViewModel @Inject constructor(
                             _uiState.update {
                                 it.copy(
                                     isConnected = true,
-                                    error = null
+                                    error = null,
+                                    isUsbInitializing = false,
+                                    usbInitializationMessage = null
                                 )
                             }
                         }
 
                         loadCameraCapabilitiesAsync()
                         loadCameraSettingsAsync()
+                        isAutoConnecting = false
                     }
                     .onFailure { error ->
                         Log.e("CameraViewModel", "자동 카메라 연결 실패", error)
                         withContext(Dispatchers.Main) {
                             _uiState.update {
-                                it.copy(error = "자동 카메라 연결 실패: ${error.message}")
+                                it.copy(
+                                    error = "자동 카메라 연결 실패: ${error.message}",
+                                    isUsbInitializing = false,
+                                    usbInitializationMessage = null
+                                )
                             }
                         }
+                        isAutoConnecting = false
                     }
             } catch (e: Exception) {
                 Log.e("CameraViewModel", "자동 카메라 연결 중 예외 발생", e)
                 withContext(Dispatchers.Main) {
                     _uiState.update {
-                        it.copy(error = "자동 카메라 연결 실패: ${e.message}")
+                        it.copy(
+                            error = "자동 카메라 연결 실패: ${e.message}",
+                            isUsbInitializing = false,
+                            usbInitializationMessage = null
+                        )
                     }
                 }
+                isAutoConnecting = false
             }
         }
     }
@@ -265,6 +325,39 @@ class CameraViewModel @Inject constructor(
                     _uiState.update { it.copy(error = "카메라 설정 로드 실패: ${e.message}") }
                 }
             }
+        }
+    }
+
+    /**
+     * USB 초기화 시작
+     */
+    fun startUsbInitialization(message: String = "USB 카메라 초기화 중...") {
+        _uiState.update {
+            it.copy(
+                isUsbInitializing = true,
+                usbInitializationMessage = message
+            )
+        }
+    }
+
+    /**
+     * USB 초기화 완료
+     */
+    fun completeUsbInitialization() {
+        _uiState.update {
+            it.copy(
+                isUsbInitializing = false,
+                usbInitializationMessage = null
+            )
+        }
+    }
+
+    /**
+     * USB 초기화 상태 업데이트
+     */
+    fun updateUsbInitializationMessage(message: String) {
+        _uiState.update {
+            it.copy(usbInitializationMessage = message)
         }
     }
 
@@ -347,19 +440,36 @@ class CameraViewModel @Inject constructor(
     fun requestUsbPermission() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                // USB 초기화 시작
+                withContext(Dispatchers.Main) {
+                    _uiState.update {
+                        it.copy(
+                            isUsbInitializing = true,
+                            usbInitializationMessage = "USB 권한 요청 중..."
+                        )
+                    }
+                }
+
                 val devices = refreshUsbDevicesUseCase()
                 if (devices.isNotEmpty()) {
                     val device = devices.first()
                     withContext(Dispatchers.Main) {
                         requestUsbPermissionUseCase(device)
                         _uiState.update {
-                            it.copy(error = "USB 권한을 요청했습니다. 대화상자에서 승인해주세요.")
+                            it.copy(
+                                error = "USB 권한을 요청했습니다. 대화상자에서 승인해주세요.",
+                                usbInitializationMessage = "USB 권한 대기 중..."
+                            )
                         }
                     }
                 } else {
                     withContext(Dispatchers.Main) {
                         _uiState.update {
-                            it.copy(error = "USB 카메라가 감지되지 않았습니다")
+                            it.copy(
+                                error = "USB 카메라가 감지되지 않았습니다",
+                                isUsbInitializing = false,
+                                usbInitializationMessage = null
+                            )
                         }
                     }
                 }
@@ -367,7 +477,11 @@ class CameraViewModel @Inject constructor(
                 Log.e("CameraViewModel", "USB 권한 요청 실패", e)
                 withContext(Dispatchers.Main) {
                     _uiState.update {
-                        it.copy(error = "USB 권한 요청 실패: ${e.message}")
+                        it.copy(
+                            error = "USB 권한 요청 실패: ${e.message}",
+                            isUsbInitializing = false,
+                            usbInitializationMessage = null
+                        )
                     }
                 }
             }
@@ -416,12 +530,23 @@ class CameraViewModel @Inject constructor(
     }
 
     fun startLiveView() {
-        if (_uiState.value.isLiveViewActive || liveViewJob?.isActive == true) return
+        if (_uiState.value.isLiveViewActive || liveViewJob?.isActive == true) {
+            Log.d("CameraViewModel", "라이브뷰가 이미 활성화되어 있거나 시작 중입니다")
+            return
+        }
+
+        Log.d("CameraViewModel", "=== 라이브뷰 시작 요청 ===")
+        Log.d("CameraViewModel", "카메라 연결 상태: ${_uiState.value.isConnected}")
+        Log.d("CameraViewModel", "네이티브 카메라 연결: ${_uiState.value.isNativeCameraConnected}")
+        Log.d("CameraViewModel", "카메라 기능 정보: ${_uiState.value.cameraCapabilities}")
 
         liveViewJob = viewModelScope.launch(Dispatchers.IO) {
             try {
                 val capabilities = _uiState.value.cameraCapabilities
+                Log.d("CameraViewModel", "카메라 라이브뷰 지원 여부: ${capabilities?.canLiveView}")
+
                 if (capabilities != null && !capabilities.canLiveView) {
+                    Log.w("CameraViewModel", "카메라가 라이브뷰를 지원하지 않습니다: ${capabilities.model}")
                     withContext(Dispatchers.Main) {
                         _uiState.update {
                             it.copy(error = "이 카메라는 라이브뷰를 지원하지 않습니다.")
@@ -430,29 +555,45 @@ class CameraViewModel @Inject constructor(
                     return@launch
                 }
 
-                Log.d("CameraViewModel", "라이브뷰 시작 시도")
-                _uiState.update { it.copy(isLiveViewLoading = true) }
+                // 연결 상태 재확인
+                if (!_uiState.value.isConnected) {
+                    Log.e("CameraViewModel", "카메라가 연결되지 않은 상태에서 라이브뷰 시작 불가")
+                    withContext(Dispatchers.Main) {
+                        _uiState.update {
+                            it.copy(error = "카메라가 연결되지 않았습니다. 먼저 카메라를 연결해주세요.")
+                        }
+                    }
+                    return@launch
+                }
 
+                Log.d("CameraViewModel", "라이브뷰 시작 - 로딩 상태 설정")
+                withContext(Dispatchers.Main) {
+                    _uiState.update { it.copy(isLiveViewLoading = true, error = null) }
+                }
+
+                Log.d("CameraViewModel", "StartLiveViewUseCase 호출")
                 startLiveViewUseCase()
                     .catch { error ->
-                        Log.e("CameraViewModel", "라이브뷰 오류", error)
+                        Log.e("CameraViewModel", "라이브뷰 Flow 오류", error)
                         withContext(Dispatchers.Main) {
                             _uiState.update {
                                 it.copy(
                                     isLiveViewActive = false,
                                     isLiveViewLoading = false,
-                                    error = error.message
+                                    error = "라이브뷰 시작 실패: ${error.message}"
                                 )
                             }
                         }
                     }
                     .collect { frame ->
+                        Log.d("CameraViewModel", "라이브뷰 프레임 수신: 크기=${frame.data.size} bytes")
                         withContext(Dispatchers.Main) {
                             _uiState.update {
                                 it.copy(
                                     isLiveViewActive = true,
                                     liveViewFrame = frame,
-                                    isLiveViewLoading = false
+                                    isLiveViewLoading = false,
+                                    error = null
                                 )
                             }
                         }
@@ -489,8 +630,7 @@ class CameraViewModel @Inject constructor(
                         )
                     }
                 }
-                Log.d("CameraViewModel", "라이브뷰 중지 성공")
-                disconnectCamera()
+                Log.d("CameraViewModel", "라이브뷰 중지 성공 - 카메라 연결은 유지됨")
             } catch (e: Exception) {
                 Log.e("CameraViewModel", "라이브뷰 중지 중 예외 발생", e)
                 withContext(Dispatchers.Main) {
@@ -503,7 +643,6 @@ class CameraViewModel @Inject constructor(
                         )
                     }
                 }
-                disconnectCamera()
             }
         }
     }
@@ -712,5 +851,88 @@ class CameraViewModel @Inject constructor(
         } catch (e: Exception) {
             Log.w("CameraViewModel", "USB 매니저 정리 중 오류", e)
         }
+    }
+
+    /**
+     * 이벤트 리스너 시작
+     */
+    fun startEventListener() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                Log.d("CameraViewModel", "이벤트 리스너 시작 요청")
+                cameraRepository.startCameraEventListener()
+                    .onSuccess {
+                        Log.d("CameraViewModel", "이벤트 리스너 시작 성공")
+                    }
+                    .onFailure { error ->
+                        Log.e("CameraViewModel", "이벤트 리스너 시작 실패", error)
+                        withContext(Dispatchers.Main) {
+                            _uiState.update {
+                                it.copy(error = "이벤트 리스너 시작 실패: ${error.message}")
+                            }
+                        }
+                    }
+            } catch (e: Exception) {
+                Log.e("CameraViewModel", "이벤트 리스너 시작 중 예외 발생", e)
+                withContext(Dispatchers.Main) {
+                    _uiState.update {
+                        it.copy(error = "이벤트 리스너 시작 실패: ${e.message}")
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 이벤트 리스너 중지
+     */
+    fun stopEventListener(onComplete: (() -> Unit)? = null) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                Log.d("CameraViewModel", "이벤트 리스너 중지 요청")
+                cameraRepository.stopCameraEventListener()
+                    .onSuccess {
+                        Log.d("CameraViewModel", "이벤트 리스너 중지 성공")
+                        onComplete?.invoke()
+                    }
+                    .onFailure { error ->
+                        Log.e("CameraViewModel", "이벤트 리스너 중지 실패", error)
+                        withContext(Dispatchers.Main) {
+                            _uiState.update {
+                                it.copy(error = "이벤트 리스너 중지 실패: ${error.message}")
+                            }
+                        }
+                        // 실패해도 콜백 호출
+                        onComplete?.invoke()
+                    }
+            } catch (e: Exception) {
+                Log.e("CameraViewModel", "이벤트 리스너 중지 중 예외 발생", e)
+                withContext(Dispatchers.Main) {
+                    _uiState.update {
+                        it.copy(error = "이벤트 리스너 중지 실패: ${e.message}")
+                    }
+                }
+                // 예외 발생해도 콜백 호출
+                onComplete?.invoke()
+            }
+        }
+    }
+
+    /**
+     * 탭 전환 플래그 설정
+     */
+    fun setTabSwitchFlag(isReturning: Boolean) {
+        Log.d("CameraViewModel", "탭 전환 플래그 설정: $isReturning")
+        isTabSwitching = isReturning
+    }
+
+    /**
+     * 탭 전환 플래그 확인 후 초기화
+     */
+    fun getAndClearTabSwitchFlag(): Boolean {
+        val wasReturning = isTabSwitching
+        isTabSwitching = false
+        Log.d("CameraViewModel", "탭 전환 플래그 확인 및 초기화: $wasReturning -> false")
+        return wasReturning
     }
 }

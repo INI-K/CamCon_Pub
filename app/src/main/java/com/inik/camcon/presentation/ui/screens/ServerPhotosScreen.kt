@@ -1,5 +1,6 @@
 package com.inik.camcon.presentation.ui.screens
 
+import android.graphics.ColorSpace
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -200,6 +201,12 @@ private fun PhotoGridItem(
                 ImageRequest.Builder(LocalContext.current)
                     .data(File(photo.filePath))
                     .crossfade(true)
+                    .apply {
+                        // sRGB 색공간 설정
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                            colorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
+                        }
+                    }
                     .build()
             )
 
@@ -342,6 +349,12 @@ fun CapturedPhotoItem(
                 ImageRequest.Builder(LocalContext.current)
                     .data(File(photo.filePath))
                     .crossfade(true)
+                    .apply {
+                        // sRGB 색공간 설정
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                            colorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
+                        }
+                    }
                     .build()
             )
 
