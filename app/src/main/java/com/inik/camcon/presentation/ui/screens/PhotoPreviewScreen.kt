@@ -86,6 +86,7 @@ fun PhotoPreviewScreen(
         modifier = Modifier
             .fillMaxSize()
             .pullRefresh(pullRefreshState)
+            .padding(horizontal = 16.dp) // 좌우 마진 추가
     ) {
         Column(
             modifier = Modifier
@@ -262,28 +263,33 @@ private fun ModernHeader(
     var lastClickTime by remember { mutableStateOf(0L) }
     
     Column {
-        // 첫 번째 행: 제목과 새로고침 버튼
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        // 첫 번째 행: 제목 중앙 정렬, 새로고침 버튼 우측
+        Box(
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Column {
+            // 중앙 정렬된 제목
+            Column(
+                modifier = Modifier.align(Alignment.Center),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 Text(
                     text = stringResource(R.string.camera_photo_list),
-                    color = MaterialTheme.colors.onPrimary,
-                    style = MaterialTheme.typography.h6
+                    color = MaterialTheme.colors.onSurface,
+                    style = MaterialTheme.typography.h6,
+                    textAlign = TextAlign.Center
                 )
                 if (photoCount > 0) {
                     Text(
                         text = "${photoCount}장의 사진" +
                                 if (totalPages > 0) " (페이지 ${currentPage + 1}/${totalPages})" else "",
-                        color = MaterialTheme.colors.onPrimary.copy(alpha = 0.7f),
-                        style = MaterialTheme.typography.caption
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
+                        style = MaterialTheme.typography.caption,
+                        textAlign = TextAlign.Center
                     )
                 }
             }
 
+            // 우측 새로고침 버튼
             IconButton(
                 onClick = {
                     val currentTime = System.currentTimeMillis()
@@ -296,27 +302,28 @@ private fun ModernHeader(
                         onRefresh()
                     }
                     lastClickTime = currentTime
-                }
+                },
+                modifier = Modifier.align(Alignment.CenterEnd)
             ) {
                 Icon(
                     Icons.Default.Refresh,
                     contentDescription = "새로고침",
-                    tint = MaterialTheme.colors.onPrimary
+                    tint = MaterialTheme.colors.onSurface
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp)) // 여백 증가 (12dp → 16dp)
 
-        // 두 번째 행: 파일 타입 필터 버튼들
+        // 두 번째 행: 파일 타입 필터 버튼들 (중앙 정렬)
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Start,
+            horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = "필터:",
-                color = MaterialTheme.colors.onPrimary.copy(alpha = 0.8f),
+                color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f),
                 style = MaterialTheme.typography.body2,
                 modifier = Modifier.padding(end = 8.dp)
             )
@@ -327,9 +334,10 @@ private fun ModernHeader(
             ) {
                 Text(
                     text = "ALL",
-                    color = if (fileTypeFilter == FileTypeFilter.ALL) MaterialTheme.colors.secondary else MaterialTheme.colors.onPrimary.copy(
-                        alpha = 0.7f
-                    ),
+                    color = if (fileTypeFilter == FileTypeFilter.ALL)
+                        MaterialTheme.colors.primary
+                    else
+                        MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
                     style = MaterialTheme.typography.button
                 )
             }
@@ -340,9 +348,10 @@ private fun ModernHeader(
             ) {
                 Text(
                     text = "RAW",
-                    color = if (fileTypeFilter == FileTypeFilter.RAW) MaterialTheme.colors.secondary else MaterialTheme.colors.onPrimary.copy(
-                        alpha = 0.7f
-                    ),
+                    color = if (fileTypeFilter == FileTypeFilter.RAW)
+                        MaterialTheme.colors.primary
+                    else
+                        MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
                     style = MaterialTheme.typography.button
                 )
             }
@@ -353,9 +362,10 @@ private fun ModernHeader(
             ) {
                 Text(
                     text = "JPG",
-                    color = if (fileTypeFilter == FileTypeFilter.JPG) MaterialTheme.colors.secondary else MaterialTheme.colors.onPrimary.copy(
-                        alpha = 0.7f
-                    ),
+                    color = if (fileTypeFilter == FileTypeFilter.JPG)
+                        MaterialTheme.colors.primary
+                    else
+                        MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
                     style = MaterialTheme.typography.button
                 )
             }
@@ -425,12 +435,15 @@ private fun PhotoGrid(
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
         state = lazyGridState,
-        contentPadding = PaddingValues(8.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        contentPadding = PaddingValues(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.fillMaxSize()
     ) {
-        items(uiState.photos) { photo ->
+        items(
+            items = uiState.photos,
+            key = { photo -> photo.path }
+        ) { photo ->
             PhotoThumbnail(
                 photo = photo,
                 thumbnailData = viewModel.getThumbnail(photo.path),
