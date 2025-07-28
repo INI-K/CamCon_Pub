@@ -1,0 +1,179 @@
+<resources>
+    <!-- 应用信息 -->
+    <string name="app_name">CamCon</string>
+    <string name="app_description">Android专业相机控制</string>
+
+    <!-- Google Sign-In -->
+    <string name="default_web_client_id">527188051661-b9cru75i7min570psfn47fmd04hh2qn6.apps.googleusercontent.com</string>
+
+    <!-- 通用 -->
+    <string name="ok">确定</string>
+    <string name="cancel">取消</string>
+    <string name="retry">重试</string>
+    <string name="close">关闭</string>
+    <string name="save">保存</string>
+    <string name="delete">删除</string>
+    <string name="share">分享</string>
+    <string name="back">返回</string>
+    <string name="next">下一步</string>
+    <string name="done">完成</string>
+    <string name="loading">加载中...</string>
+    <string name="error">错误</string>
+    <string name="success">成功</string>
+
+    <!-- 身份验证 -->
+    <string name="login">登录</string>
+    <string name="logout">退出登录</string>
+    <string name="login_with_google">使用Google登录</string>
+    <string name="welcome">欢迎使用CamCon</string>
+    <string name="welcome_message">专业相机控制尽在掌握</string>
+    <string name="login_required">请登录以继续</string>
+    <string name="login_success">登录成功</string>
+    <string name="login_failed">登录失败</string>
+    <string name="logout_success">退出登录成功</string>
+    <string name="terms_agreement">登录即表示您同意我们的服务条款和隐私政策。</string>
+
+    <!-- 相机连接 -->
+    <string name="camera_connected">已连接</string>
+    <string name="camera_disconnected">已断开连接</string>
+    <string name="camera_not_connected">相机未连接</string>
+    <string name="connect_camera_usb">通过USB OTG连接您的相机</string>
+    <string name="retry_connection">重试连接</string>
+    <string name="camera_connection_failed">相机连接失败</string>
+    <string name="camera_connection_success">相机连接成功</string>
+    <string name="detecting_camera">检测相机中...</string>
+    <string name="camera_detected">检测到相机：%s</string>
+    <string name="no_camera_detected">未检测到相机</string>
+
+    <!-- 相机控制 -->
+    <string name="capture">拍摄</string>
+    <string name="capture_photo">拍照</string>
+    <string name="start_live_view">开始实时取景</string>
+    <string name="stop_live_view">停止实时取景</string>
+    <string name="live_view_active">实时取景激活</string>
+    <string name="focus">对焦</string>
+    <string name="auto_focus">自动对焦</string>
+    <string name="manual_focus">手动对焦</string>
+    <string name="gallery">图库</string>
+    <string name="photo_library">照片库</string>
+
+    <!-- 拍摄模式 -->
+    <string name="shooting_mode">拍摄模式</string>
+    <string name="single_shot">单张</string>
+    <string name="burst_mode">连拍</string>
+    <string name="timelapse">延时摄影</string>
+    <string name="bulb_mode">手动曝光</string>
+    <string name="hdr_bracket">HDR</string>
+
+    <!-- 相机设置 -->
+    <string name="camera_settings">相机设置</string>
+    <string name="iso">ISO</string>
+    <string name="shutter_speed">快门速度</string>
+    <string name="aperture">光圈</string>
+    <string name="white_balance">白平衡</string>
+    <string name="exposure_compensation">曝光补偿</string>
+    <string name="focus_mode">对焦模式</string>
+    <string name="metering_mode">测光模式</string>
+    <string name="flash_mode">闪光灯模式</string>
+    <string name="image_quality">图像质量</string>
+    <string name="file_format">文件格式</string>
+
+    <!-- 延时摄影 -->
+    <string name="timelapse_settings">延时摄影设置</string>
+    <string name="interval_seconds">间隔（秒）</string>
+    <string name="total_shots">总拍摄数</string>
+    <string name="estimated_duration">预计时长</string>
+    <string name="start_timelapse">开始延时摄影</string>
+    <string name="stop_timelapse">停止延时摄影</string>
+    <string name="timelapse_in_progress">延时摄影进行中</string>
+    <string name="timelapse_completed">延时摄影完成</string>
+    <string name="shots_remaining">剩余拍摄：%d</string>
+
+    <!-- 照片管理 -->
+    <string name="recent_captures">最近拍摄</string>
+    <string name="camera_photo_list">相机照片列表</string>
+    <string name="captured_photos">已拍摄照片</string>
+    <string name="photo_saved">照片已保存</string>
+    <string name="photo_save_failed">照片保存失败</string>
+    <string name="delete_photo">删除照片</string>
+    <string name="delete_photo_confirm">确定要删除这张照片吗？</string>
+    <string name="photo_deleted">照片已删除</string>
+    <string name="share_photo">分享照片</string>
+    <string name="edit_photo">编辑照片</string>
+    <string name="photo_details">照片详情</string>
+
+    <!-- 服务器/云端 -->
+    <string name="server_photos">我的照片</string>
+    <string name="upload_to_cloud">上传到云端</string>
+    <string name="download_from_cloud">从云端下载</string>
+    <string name="sync_photos">同步照片</string>
+    <string name="uploading">上传中...</string>
+    <string name="downloading">下载中...</string>
+    <string name="upload_success">上传成功</string>
+    <string name="upload_failed">上传失败</string>
+    <string name="download_success">下载成功</string>
+    <string name="download_failed">下载失败</string>
+
+    <!-- 设置 -->
+    <string name="app_settings">应用设置</string>
+    <string name="language">语言</string>
+    <string name="theme">主题</string>
+    <string name="auto_save">自动保存</string>
+    <string name="save_location">保存位置</string>
+    <string name="camera_timeout">相机超时</string>
+    <string name="preview_quality">预览质量</string>
+    <string name="sound_enabled">启用声音</string>
+    <string name="vibration_enabled">启用振动</string>
+    <string name="about">关于</string>
+    <string name="version">版本</string>
+    <string name="privacy_policy">隐私政策</string>
+    <string name="terms_of_service">服务条款</string>
+
+    <!-- 错误消息 -->
+    <string name="error_camera_init">相机初始化失败</string>
+    <string name="error_camera_capture">照片拍摄失败</string>
+    <string name="error_live_view">实时取景启动失败</string>
+    <string name="error_camera_settings">相机设置加载失败</string>
+    <string name="error_network">网络错误</string>
+    <string name="error_storage">存储错误</string>
+    <string name="error_permission">权限被拒绝</string>
+    <string name="error_unknown">发生未知错误</string>
+    <string name="error_usb_not_supported">不支持USB OTG</string>
+    <string name="error_camera_busy">相机忙碌中</string>
+
+    <!-- 权限 -->
+    <string name="permission_camera">需要相机权限</string>
+    <string name="permission_storage">需要存储权限</string>
+    <string name="permission_internet">需要网络权限</string>
+    <string name="grant_permission">授予权限</string>
+
+    <!-- 导航 -->
+    <string name="camera_control">相机控制</string>
+    <string name="photo_preview">照片预览</string>
+    <string name="settings">设置</string>
+    <string name="splash_screen">启动页面</string>
+    <string name="main_screen">主页面</string>
+
+    <!-- 状态 -->
+    <string name="ready">就绪</string>
+    <string name="busy">忙碌</string>
+    <string name="capturing">拍摄中...</string>
+    <string name="processing">处理中...</string>
+    <string name="connecting">连接中...</string>
+    <string name="initialized">已初始化</string>
+
+    <!-- 文件大小/质量 -->
+    <string name="high_quality">高质量</string>
+    <string name="medium_quality">中等质量</string>
+    <string name="low_quality">低质量</string>
+    <string name="raw_format">RAW</string>
+    <string name="jpeg_format">JPEG</string>
+
+    <!-- 时间/日期 -->
+    <string name="today">今天</string>
+    <string name="yesterday">昨天</string>
+    <string name="this_week">本周</string>
+    <string name="minutes_ago">%d分钟前</string>
+    <string name="hours_ago">%d小时前</string>
+    <string name="days_ago">%d天前</string>
+</resources>
