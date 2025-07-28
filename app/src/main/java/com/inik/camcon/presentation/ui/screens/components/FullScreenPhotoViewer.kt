@@ -1,7 +1,10 @@
 package com.inik.camcon.presentation.ui.screens.components
 
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.util.Log
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -41,12 +44,15 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.exifinterface.media.ExifInterface
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
 import com.zhangke.imageviewer.ImageViewer
+import com.zhangke.imageviewer.rememberImageViewerState
 import kotlinx.coroutines.delay
+import java.io.ByteArrayInputStream
 import kotlin.math.abs
 
 /**
@@ -166,7 +172,8 @@ fun FullScreenPhotoViewer(
                     fullImageCache[pagePhoto.path] ?: sharedThumbnailCache[pagePhoto.path]
 
                 GalleryStyleImage(
-                    imageData = imageData,
+                    fullImageData = fullImageCache[pagePhoto.path],
+                    thumbnailData = sharedThumbnailCache[pagePhoto.path],
                     photo = pagePhoto,
                     onDismiss = onDismiss,
                     context = context
@@ -208,49 +215,213 @@ fun FullScreenPhotoViewer(
  */
 @Composable
 private fun GalleryStyleImage(
-    imageData: ByteArray?,
+    fullImageData: ByteArray?,
+    thumbnailData: ByteArray?,
     photo: CameraPhoto,
     onDismiss: () -> Unit,
     context: android.content.Context
 ) {
-    if (imageData != null) {
-        val bitmap = remember(imageData) {
-            BitmapFactory.decodeByteArray(imageData, 0, imageData.size)
-        }
+    // "고화질(full) 있으면 고화질, 없으면 썸네일 둘 중 하나로 Crossfade"
+    Crossfade(
+        targetState = if (fullImageData != null) "full" else "thumbnail",
+        animationSpec = tween(durationMillis = 350)
+    ) { which ->
+        when (which) {
+            "full" -> {
+                // EXIF 회전을 실제로 적용 (remember로 캐싱)
+                val (rotatedBitmap, isPortrait) = remember(fullImageData) {
+                    var bitmap: android.graphics.Bitmap? = null
+                    var rotationDegrees = 0
 
-        if (bitmap != null) {
-            ImageViewer {
-                Image(
-                    bitmap = bitmap.asImageBitmap(),
-                    contentDescription = photo.name,
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxSize()
-                )
+                    fullImageData?.let { data ->
+                        try {
+                            bitmap = BitmapFactory.decodeByteArray(data, 0, data.size)
+                            val exif = ExifInterface(ByteArrayInputStream(data))
+                            val orientation = exif.getAttributeInt(
+                                ExifInterface.TAG_ORIENTATION,
+                                ExifInterface.ORIENTATION_UNDEFINED
+                            )
+                            rotationDegrees = when (orientation) {
+                                ExifInterface.ORIENTATION_ROTATE_90 -> 90
+                                ExifInterface.ORIENTATION_ROTATE_180 -> 180
+                                ExifInterface.ORIENTATION_ROTATE_270 -> 270
+                                else -> 0
+                            }
+                            Log.d(
+                                "EXIF_ROTATE",
+                                "full이미지 사진: ${photo.name}, EXIF Orientation: $orientation, 회전 각도: $rotationDegrees"
+                            )
+                        } catch (e: Exception) {
+                            Log.e("EXIF_ROTATE", "EXIF 읽기/비트맵 생성 실패: ${e.message}")
+                        }
+                    }
+
+                    val finalBitmap = if (bitmap != null && rotationDegrees != 0) {
+                        val matrix = Matrix()
+                        matrix.postRotate(rotationDegrees.toFloat())
+                        try {
+                            android.graphics.Bitmap.createBitmap(
+                                bitmap!!, 0, 0, bitmap!!.width, bitmap!!.height, matrix, true
+                            )
+                        } catch (e: Exception) {
+                            Log.e("EXIF_ROTATE", "비트맵 회전 실패: ${e.message}")
+                            bitmap
+                        }
+                    } else {
+                        bitmap
+                    }
+
+                    // 세로/가로 판별
+                    val portrait = finalBitmap?.let { it.height > it.width } ?: false
+                    finalBitmap?.let { bmp ->
+                        Log.d(
+                            "EXIF_ROTATE",
+                            "full이미지 실제 비트맵 크기(회전적용후): ${bmp.width}x${bmp.height}, isPortrait: $portrait"
+                        )
+                    }
+
+                    Pair(finalBitmap, portrait)
+                }
+
+                if (rotatedBitmap != null) {
+                    val contentScale =
+                        if (isPortrait) ContentScale.Fit else ContentScale.FillBounds
+
+                    Log.d(
+                        "EXIF_ROTATE",
+                        "최종 결정 - 사진: ${photo.name}, isPortrait: $isPortrait, ContentScale: ${if (isPortrait) "Fit" else "FillBounds"}"
+                    )
+
+                    val imageViewerState = rememberImageViewerState(
+                        minimumScale = 1.0f,
+                        maximumScale = 5.0f
+                    )
+                    ImageViewer(state = imageViewerState) {
+                        Image(
+                            bitmap = rotatedBitmap.asImageBitmap(),
+                            contentDescription = photo.name,
+                            contentScale = contentScale,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(48.dp),
+                            color = Color.White,
+                            strokeWidth = 3.dp
+                        )
+                    }
+                }
             }
-        } else {
-            // 비트맵 디코딩 실패 시 로딩 표시
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(48.dp),
-                    color = Color.White,
-                    strokeWidth = 3.dp
-                )
+            "thumbnail" -> {
+                if (thumbnailData != null) {
+                    // EXIF 회전을 실제로 적용 (remember로 캐싱)
+                    val (rotatedBitmap, isPortrait) = remember(thumbnailData) {
+                        var bitmap: android.graphics.Bitmap? = null
+                        var rotationDegrees = 0
+
+                        thumbnailData?.let { data ->
+                            try {
+                                bitmap = BitmapFactory.decodeByteArray(data, 0, data.size)
+                                val exif = ExifInterface(ByteArrayInputStream(data))
+                                val orientation = exif.getAttributeInt(
+                                    ExifInterface.TAG_ORIENTATION,
+                                    ExifInterface.ORIENTATION_UNDEFINED
+                                )
+                                rotationDegrees = when (orientation) {
+                                    ExifInterface.ORIENTATION_ROTATE_90 -> 90
+                                    ExifInterface.ORIENTATION_ROTATE_180 -> 180
+                                    ExifInterface.ORIENTATION_ROTATE_270 -> 270
+                                    else -> 0
+                                }
+                                Log.d(
+                                    "EXIF_ROTATE_THUMB",
+                                    "썸네일 사진: ${photo.name}, EXIF Orientation: $orientation, 회전 각도: $rotationDegrees"
+                                )
+                            } catch (e: Exception) {
+                                Log.e("EXIF_ROTATE_THUMB", "EXIF 읽기/비트맵 생성 실패: ${e.message}")
+                            }
+                        }
+
+                        val finalBitmap = if (bitmap != null && rotationDegrees != 0) {
+                            val matrix = Matrix()
+                            matrix.postRotate(rotationDegrees.toFloat())
+                            try {
+                                android.graphics.Bitmap.createBitmap(
+                                    bitmap!!, 0, 0, bitmap!!.width, bitmap!!.height, matrix, true
+                                )
+                            } catch (e: Exception) {
+                                Log.e("EXIF_ROTATE_THUMB", "썸네일 비트맵 회전 실패: ${e.message}")
+                                bitmap
+                            }
+                        } else {
+                            bitmap
+                        }
+
+                        // 세로/가로 판별
+                        val portrait = finalBitmap?.let { it.height > it.width } ?: false
+                        finalBitmap?.let { bmp ->
+                            Log.d(
+                                "EXIF_ROTATE_THUMB",
+                                "썸네일 실제 비트맵 크기(회전적용후): ${bmp.width}x${bmp.height}, isPortrait: $portrait"
+                            )
+                        }
+
+                        Pair(finalBitmap, portrait)
+                    }
+
+                    if (rotatedBitmap != null) {
+                        val contentScale =
+                            if (isPortrait) ContentScale.Fit else ContentScale.FillBounds
+
+                        Log.d(
+                            "EXIF_ROTATE_THUMB",
+                            "썸네일 최종 결정 - 사진: ${photo.name}, isPortrait: $isPortrait, ContentScale: ${if (isPortrait) "Fit" else "FillBounds"}"
+                        )
+
+                        val imageViewerState = rememberImageViewerState(
+                            minimumScale = 1.0f,
+                            maximumScale = 5.0f
+                        )
+                        ImageViewer(state = imageViewerState) {
+                            Image(
+                                bitmap = rotatedBitmap.asImageBitmap(),
+                                contentDescription = photo.name,
+                                contentScale = contentScale,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    } else {
+                        // 둘 다 없을 시 로딩
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(48.dp),
+                                color = Color.White,
+                                strokeWidth = 3.dp
+                            )
+                        }
+                    }
+                } else {
+                    // 둘 다 없을 시 로딩
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(48.dp),
+                            color = Color.White,
+                            strokeWidth = 3.dp
+                        )
+                    }
+                }
             }
-        }
-    } else {
-        // 이미지 데이터 없을 때 로딩 표시
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(48.dp),
-                color = Color.White,
-                strokeWidth = 3.dp
-            )
         }
     }
 }
