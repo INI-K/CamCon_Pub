@@ -158,12 +158,10 @@ class NativeCameraDataSource @Inject constructor(
                 Log.w(TAG, "이벤트 리스너 중지 실패 (이미 중지되었을 수 있음)", e)
             }
 
-            // 카메라 초기화 상태 확인 (타임아웃 포함)
+            // 카메라 초기화 상태 확인 (타임아웃 없음)
             val isInitialized = try {
                 Log.d(TAG, "카메라 초기화 상태 확인 시작")
-                callWithTimeout(5000) {
-                    isCameraInitialized()
-                } ?: false
+                isCameraInitialized()
             } catch (e: Exception) {
                 Log.e(TAG, "카메라 초기화 상태 확인 실패", e)
                 false
@@ -183,14 +181,12 @@ class NativeCameraDataSource @Inject constructor(
                 )
             }
 
-            // 페이징된 네이티브 메서드 호출
+            // 페이징된 네이티브 메서드 호출 (타임아웃 없음)
             val photoListJson = try {
                 Log.d(TAG, "CameraNative.getCameraFileListPaged() 호출 (페이지: $page, 크기: $pageSize)")
 
-                // 타임아웃을 위한 별도 스레드 사용
-                val result = callWithTimeout(30000) {
-                    CameraNative.getCameraFileListPaged(page, pageSize)
-                }
+                // 직접 호출 (타임아웃 제거)
+                val result = CameraNative.getCameraFileListPaged(page, pageSize)
 
                 Log.d(TAG, "페이징 네이티브 메서드 호출 성공, 결과 길이: ${result?.length ?: 0}")
                 result
@@ -319,7 +315,7 @@ class NativeCameraDataSource @Inject constructor(
         return getCameraPhotosPaged(0, 100).photos
     }
 
-    // 썸네일 가져오기 함수
+    // 썸네일 가져오기 함수 (타임아웃 없음)
     fun getCameraThumbnail(photoPath: String): ByteArray? {
         return try {
             Log.d(TAG, "썸네일 가져오기: $photoPath")
@@ -330,6 +326,7 @@ class NativeCameraDataSource @Inject constructor(
                 return null
             }
 
+            // 직접 호출 (타임아웃 제거)
             val thumbnail = CameraNative.getCameraThumbnail(photoPath)
 
             if (thumbnail != null && thumbnail.isNotEmpty()) {
@@ -345,7 +342,7 @@ class NativeCameraDataSource @Inject constructor(
         }
     }
 
-    // 실제 파일 다운로드 함수
+    // 실제 파일 다운로드 함수 (타임아웃 없음)
     fun downloadCameraPhoto(photoPath: String): ByteArray? {
         return try {
             Log.d(TAG, "실제 파일 다운로드: $photoPath")
@@ -356,6 +353,7 @@ class NativeCameraDataSource @Inject constructor(
                 return null
             }
 
+            // 직접 호출 (타임아웃 제거)
             val imageData = CameraNative.downloadCameraPhoto(photoPath)
 
             if (imageData != null && imageData.isNotEmpty()) {
@@ -371,7 +369,8 @@ class NativeCameraDataSource @Inject constructor(
         }
     }
 
-    // 타임아웃과 함께 함수 호출하는 헬퍼 함수
+    // 타임아웃과 함께 함수 호출하는 헬퍼 함수 (미사용)
+    /*
     private fun <T> callWithTimeout(timeoutMs: Long, action: () -> T): T? {
         return try {
             val result = arrayOfNulls<Any>(1)
@@ -401,6 +400,7 @@ class NativeCameraDataSource @Inject constructor(
             throw e
         }
     }
+    */
 
     // 네이티브 카메라 사진 정보 데이터 클래스
     data class NativeCameraPhoto(
