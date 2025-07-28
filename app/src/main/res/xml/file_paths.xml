@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 캐시 폴더 내의 shared_photos 폴더 -->
+    <cache-path
+        name="shared_photos"
+        path="shared_photos/" />
+    <!-- 전체 캐시 폴더 접근 -->
+    <cache-path
+        name="cache"
+        path="." />
+</paths>
