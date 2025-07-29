@@ -35,5 +35,7 @@ data class CameraUiState(
     // 카메라 이벤트 리스너 초기화 중 UI 블로킹을 위한 상태
     val isCameraInitializing: Boolean = false,
     // PTP 타임아웃 오류 상태
-    val isPtpTimeout: Boolean = false
+    val isPtpTimeout: Boolean = false,
+    // 앱 재시작 다이얼로그 표시 플래그
+    val showRestartDialog: Boolean = false
 )
