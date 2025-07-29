@@ -29,6 +29,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.AlertDialog
+import androidx.compose.material.Button
 import androidx.compose.material.Card
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
@@ -39,6 +41,7 @@ import androidx.compose.material.ModalBottomSheetState
 import androidx.compose.material.ModalBottomSheetValue
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
+import androidx.compose.material.TextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Photo
@@ -101,27 +104,38 @@ fun CameraControlScreen(
     appSettingsViewModel: AppSettingsViewModel = hiltViewModel(),
     onFullscreenChange: (Boolean) -> Unit = {}
 ) {
-    var showConnectionHelpDialog by remember { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    // UI 상태들을 선별적으로 수집
+    val uiState by viewModel.uiState.collectAsState()
+    val cameraFeed by viewModel.cameraFeed.collectAsState()
 
     // 설정 상태들을 collectAsState로 개별 수집하되 리컴포지션 최적화
     val isCameraControlsEnabled by appSettingsViewModel.isCameraControlsEnabled.collectAsState()
     val isLiveViewEnabled by appSettingsViewModel.isLiveViewEnabled.collectAsState()
     val isAutoStartEventListener by appSettingsViewModel.isAutoStartEventListenerEnabled.collectAsState()
-    val isShowLatestPhotoWhenDisabled by appSettingsViewModel.isShowLatestPhotoWhenDisabled.collectAsState()
+    val isShowPreviewInCapture by appSettingsViewModel.isShowLatestPhotoWhenDisabled.collectAsState()
+
+    // 다이얼로그 상태들
+    var showFolderSelectionDialog by remember { mutableStateOf(false) }
+    var showSaveFormatSelectionDialog by remember { mutableStateOf(false) }
+    var showConnectionHelpDialog by remember { mutableStateOf(false) }
+
+    // 앱 재시작 다이얼로그 - uiState의 showRestartDialog를 observe
+    val showAppRestartDialog = uiState.showRestartDialog
 
     // 설정들을 묶은 객체를 remember로 캐싱하여 리컴포지션 최적화
     val appSettings = remember(
         isCameraControlsEnabled,
         isLiveViewEnabled,
         isAutoStartEventListener,
-        isShowLatestPhotoWhenDisabled
+        isShowPreviewInCapture
     ) {
         AppSettings(
             isCameraControlsEnabled = isCameraControlsEnabled,
             isLiveViewEnabled = isLiveViewEnabled,
             isAutoStartEventListener = isAutoStartEventListener,
-            isShowLatestPhotoWhenDisabled = isShowLatestPhotoWhenDisabled
+            isShowPreviewInCapture = isShowPreviewInCapture
         )
     }
 
@@ -134,16 +148,15 @@ fun CameraControlScreen(
                     if (viewModel.uiState.value.isLiveViewActive) {
                         viewModel.stopLiveView()
                     }
+                    // 이벤트 리스너는 중지하지 않음 - 탭 전환 중에도 유지
                 }
                 Lifecycle.Event.ON_RESUME -> {
                     val isReturningFromOtherTab = viewModel.getAndClearTabSwitchFlag()
 
                     if (isAutoStartEventListener) {
-                        if (isReturningFromOtherTab) {
-                            viewModel.stopEventListener {
-                                viewModel.startEventListener()
-                            }
-                        } else if (!viewModel.uiState.value.isEventListenerActive) {
+                        // 다른 탭에서 돌아왔을 때도 이벤트 리스너를 중지/재시작하지 않음
+                        // 이벤트 리스너가 비활성화되어 있을 때만 시작
+                        if (!viewModel.uiState.value.isEventListenerActive) {
                             viewModel.startEventListener()
                         }
                     }
@@ -156,10 +169,6 @@ fun CameraControlScreen(
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
-
-    // UI 상태들을 선별적으로 수집
-    val uiState by viewModel.uiState.collectAsState()
-    val cameraFeed by viewModel.cameraFeed.collectAsState()
 
     // 상태 변화들을 remember로 캐싱하여 불필요한 리컴포지션 방지
     var isFullscreen by rememberSaveable { mutableStateOf(false) }
@@ -237,8 +246,7 @@ fun CameraControlScreen(
     LaunchedEffect(uiState.error) {
         uiState.error?.let { error ->
             when {
-                error.contains("Could not find the requested device") ||
-                        error.contains("-52") -> {
+                error.contains("Could not find the requested device") -> {
                     showConnectionHelpDialog = true
                 }
             }
@@ -254,6 +262,47 @@ fun CameraControlScreen(
             }
         )
     }
+
+    if (showAppRestartDialog) {
+        val context = LocalContext.current
+        AppRestartDialog(
+            onDismiss = { viewModel.dismissRestartDialog() },
+            onRestart = {
+                viewModel.dismissRestartDialog()
+                // 액티비티 재시작 로직
+                (context as? Activity)?.recreate()
+            }
+        )
+    }
+}
+
+/**
+ * 앱 재시작을 요구하는 AlertDialog
+ */
+@Composable
+private fun AppRestartDialog(
+    onDismiss: () -> Unit,
+    onRestart: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text("앱 재시작 필요")
+        },
+        text = {
+            Text("USB 장치 연결이 제대로 해제되지 않았거나 시스템 오류(-52)가 발생했습니다.\n\n앱을 재시작해야 정상적으로 사용할 수 있습니다.\n\n지금 앱을 재시작하시겠습니까?")
+        },
+        confirmButton = {
+            Button(onClick = onRestart) {
+                Text("앱 재시작")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("취소")
+            }
+        }
+    )
 }
 
 @Stable
@@ -261,7 +310,7 @@ private data class AppSettings(
     val isCameraControlsEnabled: Boolean,
     val isLiveViewEnabled: Boolean,
     val isAutoStartEventListener: Boolean,
-    val isShowLatestPhotoWhenDisabled: Boolean
+    val isShowPreviewInCapture: Boolean
 )
 
 /**
@@ -649,7 +698,7 @@ private fun RecentCaptureItem(
                         .data(thumbnailPath)
                         .crossfade(180)
                         .memoryCacheKey(photo.id + "_thumb")
-                        .scale(Scale.FILL)
+                        .scale(Scale.FIT)
                         .apply {
                             // sRGB 색공간 설정
                             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
@@ -668,7 +717,7 @@ private fun RecentCaptureItem(
                         .data(photo.filePath)
                         .crossfade(180)
                         .memoryCacheKey(photo.id + "_full")
-                        .scale(Scale.FILL)
+                        .scale(Scale.FIT)
                         .apply {
                             // sRGB 색공간 설정
                             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {

@@ -3,6 +3,8 @@ package com.inik.camcon.presentation.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.inik.camcon.CameraNative
+import com.inik.camcon.NativeErrorCallback
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
 import com.inik.camcon.data.repository.managers.PtpTimeoutException
 import com.inik.camcon.domain.model.Camera
@@ -110,6 +112,9 @@ class CameraViewModel @Inject constructor(
                 Log.d("CameraViewModel", "앱 재개 상태 해제")
             }
 
+            // 네이티브 에러 콜백 등록
+            registerNativeErrorCallback()
+
             // 초기화 완료 플래그 설정
             isViewModelInitialized = true
         } else {
@@ -117,14 +122,70 @@ class CameraViewModel @Inject constructor(
         }
     }
 
-    private fun observeDataSources() {
-        observeCameraConnection()
-        observeCapturedPhotos()
-        observeUsbDevices()
-        observeCameraCapabilities()
-        observeEventListenerState()
-        observeCameraInitialization()
+    /**
+     * 네이티브 에러 콜백 등록
+     */
+    private fun registerNativeErrorCallback() {
+        try {
+            CameraNative.setErrorCallback(object : NativeErrorCallback {
+                override fun onNativeError(errorCode: Int, errorMessage: String) {
+                    Log.e(
+                        "CameraViewModel",
+                        "네이티브 에러 감지: 코드=$errorCode, 메시지=$errorMessage"
+                    )
+
+                    // -10 타임아웃 에러 처리
+                    if (errorCode == -10) {
+                        viewModelScope.launch(Dispatchers.Main) {
+                            _uiState.update {
+                                it.copy(
+                                    error = "USB 포트 타임아웃 에러 발생 (-10): $errorMessage"
+                                )
+                            }
+                        }
+                    }
+                    // -52 USB 카메라 감지 실패 에러 처리 (앱 재시작 필요)
+                    else if (errorCode == -52) {
+                        viewModelScope.launch(Dispatchers.Main) {
+                            _uiState.update {
+                                it.copy(
+                                    showRestartDialog = true,
+                                    error = "USB 카메라 감지 실패 (-52): $errorMessage"
+                                )
+                            }
+                        }
+                    }
+                    // -35 USB 포트 쓰기 실패 에러 처리
+                    else if (errorCode == -35) {
+                        viewModelScope.launch(Dispatchers.Main) {
+                            _uiState.update {
+                                it.copy(
+                                    error = "USB 포트 쓰기 실패 (-35): $errorMessage\n\nUSB 케이블을 확인하거나 카메라를 재연결하세요."
+                                )
+                            }
+                        }
+                    }
+                    // 필요시 다른 에러 코드도 처리 가능
+                }
+            })
+            Log.d("CameraViewModel", "네이티브 에러 콜백 등록 완료")
+        } catch (e: Exception) {
+            Log.e("CameraViewModel", "네이티브 에러 콜백 등록 실패", e)
+        }
     }
+
+    /**
+     * 네이티브 에러 콜백 해제
+     */
+    private fun unregisterNativeErrorCallback() {
+        try {
+            CameraNative.setErrorCallback(null)
+            Log.d("CameraViewModel", "네이티브 에러 콜백 해제 완료")
+        } catch (e: Exception) {
+            Log.e("CameraViewModel", "네이티브 에러 콜백 해제 실패", e)
+        }
+    }
+
 
     private fun initializeCameraDatabase() {
         if (initializationJob?.isActive == true) return
@@ -955,6 +1016,9 @@ class CameraViewModel @Inject constructor(
         timelapseJob?.cancel()
         initializationJob?.cancel()
 
+        // onCleared에서 네이티브 에러 콜백을 항상 해제합니다.
+        CameraNative.setErrorCallback(null)
+
         try {
             usbCameraManager.cleanup()
         } catch (e: Exception) {
@@ -1059,5 +1123,26 @@ class CameraViewModel @Inject constructor(
     fun restartApp() {
         Log.d("CameraViewModel", "앱 재시작 요청")
         // Activity에서 처리되어야 함
+    }
+
+    /**
+     * 앱 재시작 다이얼로그 닫기
+     */
+    fun dismissRestartDialog() {
+        _uiState.update {
+            it.copy(showRestartDialog = false)
+        }
+    }
+
+    /**
+     * 데이터 소스 관찰
+     */
+    private fun observeDataSources() {
+        observeCameraConnection()
+        observeCapturedPhotos()
+        observeUsbDevices()
+        observeCameraCapabilities()
+        observeEventListenerState()
+        observeCameraInitialization()
     }
 }
