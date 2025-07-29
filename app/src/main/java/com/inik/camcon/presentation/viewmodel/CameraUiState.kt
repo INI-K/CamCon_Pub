@@ -33,5 +33,7 @@ data class CameraUiState(
     val isUsbInitializing: Boolean = false,
     val usbInitializationMessage: String? = null,
     // 카메라 이벤트 리스너 초기화 중 UI 블로킹을 위한 상태
-    val isCameraInitializing: Boolean = false
+    val isCameraInitializing: Boolean = false,
+    // PTP 타임아웃 오류 상태
+    val isPtpTimeout: Boolean = false
 )
