@@ -37,5 +37,7 @@ data class CameraUiState(
     // PTP 타임아웃 오류 상태
     val isPtpTimeout: Boolean = false,
     // 앱 재시작 다이얼로그 표시 플래그
-    val showRestartDialog: Boolean = false
+    val showRestartDialog: Boolean = false,
+    // USB 디바이스 분리 상태
+    val isUsbDisconnected: Boolean = false
 )

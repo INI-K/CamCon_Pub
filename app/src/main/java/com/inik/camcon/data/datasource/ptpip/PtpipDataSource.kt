@@ -523,6 +523,11 @@ class PtpipDataSource @Inject constructor(
                     override fun onCaptureFailed(errorCode: Int) {
                         Log.e(TAG, "파일 수신: 수신 실패 (에러 코드: $errorCode)")
                     }
+
+                    override fun onUsbDisconnected() {
+                        Log.w(TAG, "USB 분리 이벤트 - PTPIP는 영향받지 않음 (Wi-Fi 연결)")
+                        // PTPIP 연결에서는 USB 분리 이벤트가 관련없으므로 무시
+                    }
                 }
 
                 // 파일 수신 리스너만 시작 (촬영 명령 실행 없음)

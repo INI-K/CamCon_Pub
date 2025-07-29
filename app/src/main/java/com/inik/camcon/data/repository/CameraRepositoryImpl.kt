@@ -255,6 +255,11 @@ class CameraRepositoryImpl @Inject constructor(
                         Log.e("카메라레포지토리", "✗ 사진 촬영 실패, 오류 코드: $errorCode")
                         continuation.resume(Result.failure(Exception("사진 촬영 실패: 오류 코드 $errorCode")))
                     }
+
+                    override fun onUsbDisconnected() {
+                        Log.e("카메라레포지토리", "USB 디바이스 분리 감지 - 촬영 실패 처리")
+                        continuation.resume(Result.failure(Exception("USB 디바이스가 분리되어 촬영을 완료할 수 없습니다")))
+                    }
                 }, saveDir)
 
                 Log.d("카메라레포지토리", "비동기 사진 촬영 호출 완료, 콜백 대기 중...")
@@ -583,5 +588,12 @@ class CameraRepositoryImpl @Inject constructor(
             _capturedPhotos.value = _capturedPhotos.value.filter { it.filePath != fileName }
             Log.d("카메라레포지토리", "❌ 다운로드 실패한 사진 제거: $fileName")
         }
+    }
+
+    /**
+     * USB 분리 콜백 설정
+     */
+    fun setUsbDisconnectionCallback(callback: () -> Unit) {
+        eventManager.onUsbDisconnectedCallback = callback
     }
 }

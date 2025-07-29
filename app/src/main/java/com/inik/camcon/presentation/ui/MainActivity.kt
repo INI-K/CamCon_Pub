@@ -14,6 +14,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.BottomNavigation
 import androidx.compose.material.BottomNavigationItem
@@ -158,6 +159,52 @@ fun MainScreen(
                         }
                     ) { Text("취소") }
                 }
+            )
+        }
+
+        // USB 분리 다이얼로그 표시
+        if (cameraUiState.isUsbDisconnected == true) {
+            androidx.compose.material.AlertDialog(
+                onDismissRequest = { cameraViewModel.clearUsbDisconnection() },
+                title = {
+                    Text(
+                        "USB 디바이스 분리",
+                        style = androidx.compose.material.MaterialTheme.typography.h6,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        color = androidx.compose.material.MaterialTheme.colors.error
+                    )
+                },
+                text = {
+                    androidx.compose.foundation.layout.Column {
+                        Text(
+                            "카메라 USB 연결이 끊어졌습니다.",
+                            style = androidx.compose.material.MaterialTheme.typography.body1
+                        )
+                        androidx.compose.foundation.layout.Spacer(
+                            modifier = androidx.compose.ui.Modifier.height(
+                                8.dp
+                            )
+                        )
+                        Text(
+                            "• USB 케이블 연결을 확인해주세요\n• 카메라 전원을 확인해주세요\n• 카메라를 PC 모드로 설정해주세요",
+                            style = androidx.compose.material.MaterialTheme.typography.caption,
+                            color = androidx.compose.material.MaterialTheme.colors.onSurface.copy(
+                                alpha = 0.7f
+                            )
+                        )
+                    }
+                },
+                confirmButton = {
+                    androidx.compose.material.TextButton(
+                        onClick = { cameraViewModel.clearUsbDisconnection() }
+                    ) {
+                        Text("확인")
+                    }
+                },
+                properties = androidx.compose.ui.window.DialogProperties(
+                    dismissOnBackPress = true,
+                    dismissOnClickOutside = true
+                )
             )
         }
 
