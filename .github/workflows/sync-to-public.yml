@@ -6,200 +6,322 @@ on:
   pull_request:
     branches: [ main ]
     types: [ closed ]
+  workflow_dispatch: # 수동 실행 가능
 
 jobs:
   sync:
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true) || github.event_name == 'workflow_dispatch'
     
     steps:
       - name: Checkout private repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # 전체 히스토리 가져오기
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Git
-        run: |
-          git config --global user.name "GitHub Actions Bot"
-          git config --global user.email "actions@github.com"
+    - name: Setup Git
+      run: |
+        git config --global user.name "GitHub Actions Bot"
+        git config --global user.email "actions@github.com"
 
-      - name: Clone public repository
-        run: |
-          git clone https://${{ secrets.PUBLIC_REPO_TOKEN }}@github.com/INI-K/CamCon_Pub.git public_repo
-          cd public_repo
-          git remote add private ${{ github.server_url }}/${{ github.repository }}.git
+    - name: Install git-filter-repo
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y python3-pip
+        pip3 install git-filter-repo
 
-      - name: Sync files from private to public
-        run: |
-          cd public_repo
-          
-          # 현재 퍼블릭 레포지토리의 main 브랜치를 확인
-          git checkout main || git checkout -b main
-          
-          # 프라이빗 레포지토리의 변경사항을 임시 브랜치로 가져오기
-          git remote set-url private https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-          git fetch private
-          
-          # 프라이빗 레포지토리의 파일들을 복사 (제외 파일들 빼고)
-          git checkout private/${{ github.ref_name }} -- . || git checkout private/main -- .
-          
-          # 제외할 파일들과 디렉토리들 삭제
-          rm -rf app/src/main/cpp/ || true
-          rm -rf app/src/main/jniLibs/ || true
-          rm -rf Complete_arm64-v8a/ || true
-          rm -rf Key/ || true
-          rm -f key.properties || true
-          rm -f app/google-services.json || true
-          rm -f local.properties || true
-          rm -f build_libgphoto2.sh || true
-          rm -rf app/release/ || true
-          rm -f *.log || true
-          rm -f kapt_error.log || true
-          rm -f build.log || true
-          
-          # .gitignore 파일 생성/업데이트
-          cat > .gitignore << 'EOF'
-          # 네이티브 코드 제외
-          app/src/main/cpp/
-          app/src/main/jniLibs/
-          Complete_arm64-v8a/
-          
-          # 드라이버 및 네이티브 라이브러리 파일들 제외
-          *.so
-          *.so.*
-          *.a
-          *.la
-          
-          # 빌드 스크립트 제외
-          build_libgphoto2.sh
-          
-          # 키 파일들 제외 (보안)
-          Key/
-          key.properties
-          app/google-services.json
-          local.properties
-          
-          # 빌드 결과물 및 로그
-          app/release/
-          *.log
-          kapt_error.log
-          build.log
-          
-          # IDE 파일들
-          .idea/
-          *.iml
-          
-          # Android 빌드 파일들
-          .gradle/
-          build/
-          captures/
-          .externalNativeBuild/
-          .cxx/
-          EOF
+    - name: Debug - Check secrets and environment
+      run: |
+        echo "Repository: ${{ github.repository }}"
+        echo "Branch: ${{ github.ref_name }}"
+        echo "SHA: ${{ github.sha }}"
+        echo "PUBLIC_REPO_TOKEN is set: ${{ secrets.PUBLIC_REPO_TOKEN != '' }}"
 
-      - name: Create README for public repository
-        run: |
+    - name: Create filtered repository with history
+      run: |
+        # 작업용 디렉토리 생성
+        mkdir -p filtered_repo
+        cd filtered_repo
+        
+        # 프라이빗 레포지토리 클론 (전체 히스토리 포함)
+        git clone --bare https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git .
+        
+        # 제외할 파일들의 패턴 정의
+        cat > exclude_patterns.txt << 'EOF'
+        app/src/main/cpp/
+        app/src/main/jniLibs/
+        Complete_arm64-v8a/
+        Key/
+        key.properties
+        app/google-services.json
+        local.properties
+        build_libgphoto2.sh
+        app/release/
+        *.log
+        kapt_error.log
+        build.log
+        EOF
+        
+        # git-filter-repo를 사용해 히스토리에서 제외 파일들 제거
+        echo "커밋 히스토리에서 제외 파일들 제거 중..."
+        git filter-repo --force --invert-paths --paths-from-file exclude_patterns.txt || echo "일부 파일이 존재하지 않을 수 있습니다"
+        
+        # .gitignore 파일을 모든 커밋에 추가
+        cat > add_gitignore.py << 'EOF'
+        #!/usr/bin/env python3
+        import os
+        import git_filter_repo as fr
+
+        def add_gitignore(commit, metadata):
+            gitignore_content = b"""# 네이티브 코드 제외
+        app/src/main/cpp/
+        app/src/main/jniLibs/
+        Complete_arm64-v8a/
+
+        # 드라이버 및 네이티브 라이브러리 파일들 제외
+        *.so
+        *.so.*
+        *.a
+        *.la
+
+        # 빌드 스크립트 제외
+        build_libgphoto2.sh
+
+        # 키 파일들 제외 (보안)
+        Key/
+        key.properties
+        app/google-services.json
+        local.properties
+
+        # 빌드 결과물 및 로그
+        app/release/
+        *.log
+        kapt_error.log
+        build.log
+
+        # IDE 파일들
+        .idea/
+        *.iml
+
+        # Android 빌드 파일들
+        .gradle/
+        build/
+        captures/
+        .externalNativeBuild/
+        .cxx/
+        """
+        
+            # .gitignore 파일이 없으면 추가
+            gitignore_found = False
+            for file_change in commit.file_changes:
+                if file_change.filename == b'.gitignore':
+                    gitignore_found = True
+                    break
+        
+            if not gitignore_found:
+                commit.file_changes.append(
+                    fr.FileChange(b'M', b'.gitignore', fr.Blob(gitignore_content))
+                )
+        
+        args = fr.FilteringOptions.default_options()
+        args.force = True
+        filter = fr.RepoFilter(args, commit_callback=add_gitignore)
+        filter.run()
+        EOF
+        
+        # Python 스크립트 실행 (선택적)
+        # python3 add_gitignore.py || echo ".gitignore 추가 스크립트 실행 실패"
+
+    - name: Clone or create public repository
+      run: |
+        # 퍼블릭 레포지토리 클론 시도
+        if git clone https://${{ secrets.PUBLIC_REPO_TOKEN }}@github.com/INI-K/CamCon_Pub.git public_repo; then
+          echo "퍼블릭 레포지토리 클론 성공"
           cd public_repo
-          
-          # 퍼블릭 버전용 README 생성
-          cat > README_PUBLIC.md << 'EOF'
-          # CamCon - 퍼블릭 버전
-          
-          이 레포지토리는 CamCon 프로젝트의 퍼블릭 버전입니다.
-          
-          ## ⚠️ 주의사항
-          - 이 버전에는 네이티브 코드와 드라이버 파일이 제외되어 있습니다
-          - 완전한 빌드를 위해서는 별도의 네이티브 라이브러리가 필요합니다
-          - 자동으로 프라이빗 레포지토리와 동기화됩니다
-          
-          ## 🚫 제외된 파일들
-          - `app/src/main/cpp/`: C++ 네이티브 코드
-          - `app/src/main/jniLibs/`: JNI 라이브러리 파일들
-          - `Complete_arm64-v8a/`: ARM64 라이브러리
-          - `Key/`: 키 파일들 (보안)
-          - 드라이버 관련 스크립트 및 설정 파일들
-          - 빌드 결과물 및 로그 파일들
-          
-          ## 📁 포함된 파일들
-          - Android 애플리케이션 소스코드 (Java/Kotlin)
-          - UI 리소스 및 레이아웃
-          - 설정 파일들 (민감하지 않은 파일들만)
-          - 문서 및 README
-          
-          ## 🔄 동기화 정보
-          - 자동 동기화: main, develop 브랜치 푸시 시
-          - 마지막 동기화: $(date '+%Y-%m-%d %H:%M:%S UTC')
-          - 원본 레포지토리: 프라이빗 저장소에서 관리
-          
-          ## 📝 라이선스
-          원본 프로젝트의 라이선스를 따릅니다.
-          EOF
-          
-          # 기존 README가 있다면 백업
-          if [ -f README.md ] && ! grep -q "퍼블릭 버전" README.md; then
-            mv README.md README_ORIGINAL.md
+        
+          # 기존 커밋들 백업
+          if git rev-parse --verify HEAD >/dev/null 2>&1; then
+            git tag backup-$(date +%Y%m%d-%H%M%S) HEAD || true
           fi
-          mv README_PUBLIC.md README.md
-
-      - name: Commit and push changes
-        run: |
+        else
+          echo "퍼블릭 레포지토리 클론 실패. 새로 생성합니다."
+          mkdir public_repo
           cd public_repo
-          
-          # 변경사항이 있는지 확인
-          git add .
-          
-          if [ -n "$(git status --porcelain)" ]; then
-            # 커밋 메시지 생성
-            COMMIT_MSG="Sync from private repository
-          
-            - 동기화 날짜: $(date '+%Y-%m-%d %H:%M:%S UTC')
-            - 소스 브랜치: ${{ github.ref_name }}
-            - 커밋 SHA: ${{ github.sha }}
-            - 제외된 파일: 네이티브 코드, 드라이버, 민감한 설정 파일들"
-          
-            git commit -m "$COMMIT_MSG"
-          
-            # 퍼블릭 레포지토리에 푸시
-            git push origin main
-          
-            echo "✅ 퍼블릭 레포지토리 동기화 완료"
-          else
-            echo "ℹ️ 동기화할 변경사항이 없습니다"
-          fi
+          git init
+          git remote add origin https://${{ secrets.PUBLIC_REPO_TOKEN }}@github.com/INI-K/CamCon_Pub.git
+        fi
 
-      - name: Create or update sync status
-        run: |
-          cd public_repo
-          
-          # 동기화 상태 파일 생성
-          mkdir -p .github
-          cat > .github/SYNC_STATUS.md << EOF
-          # 동기화 상태
-          
-          ## 마지막 동기화 정보
-          - **날짜**: $(date '+%Y-%m-%d %H:%M:%S UTC')
-          - **소스 브랜치**: ${{ github.ref_name }}
-          - **커밋 SHA**: ${{ github.sha }}
-          - **워크플로**: ${{ github.workflow }}
-          - **실행 번호**: ${{ github.run_number }}
-          
-          ## 제외된 항목들
-          - 네이티브 C++ 코드 (`app/src/main/cpp/`)
-          - JNI 라이브러리들 (`app/src/main/jniLibs/`)
-          - ARM64 라이브러리 (`Complete_arm64-v8a/`)
-          - 보안 키 파일들 (`Key/`, `key.properties` 등)
-          - 빌드 결과물 및 로그
-          
-          ## 동기화 규칙
-          - main 브랜치 푸시 시 자동 동기화
-          - develop 브랜치 푸시 시 자동 동기화
-          - Pull Request가 main에 머지될 때 동기화
-          
-          ---
-          *이 파일은 자동으로 생성됩니다.*
-          EOF
-          
-          git add .github/SYNC_STATUS.md
-          git commit -m "Update sync status - $(date '+%Y-%m-%d %H:%M:%S')" || true
-          git push origin main || true
+    - name: Sync with history preservation
+      run: |
+        cd public_repo
+        
+        # 필터링된 레포지토리를 remote로 추가
+        git remote add filtered ../filtered_repo || git remote set-url filtered ../filtered_repo
+        
+        # 필터링된 히스토리 가져오기
+        echo "커밋 히스토리와 함께 동기화 중..."
+        git fetch filtered
+        
+        # main 브랜치를 필터링된 버전으로 리셋
+        git checkout -B main filtered/main 2>/dev/null || git checkout -B main filtered/master 2>/dev/null || echo "브랜치 체크아웃 실패"
+        
+        # 추가 정리 작업 (혹시 남은 파일들)
+        rm -rf app/src/main/cpp/ || true
+        rm -rf app/src/main/jniLibs/ || true
+        rm -rf Complete_arm64-v8a/ || true
+        rm -rf Key/ || true
+        rm -f key.properties || true
+        rm -f app/google-services.json || true
+        rm -f local.properties || true
+        rm -f build_libgphoto2.sh || true
+        rm -rf app/release/ || true
+        rm -f *.log || true
+        rm -f kapt_error.log || true
+        rm -f build.log || true
+
+    - name: Create public repository specific files
+      run: |
+        cd public_repo
+        
+        # .gitignore 파일 생성/업데이트
+        cat > .gitignore << 'EOF'
+        # 네이티브 코드 제외
+        app/src/main/cpp/
+        app/src/main/jniLibs/
+        Complete_arm64-v8a/
+
+        # 드라이버 및 네이티브 라이브러리 파일들 제외
+        *.so
+        *.so.*
+        *.a
+        *.la
+
+        # 빌드 스크립트 제외
+        build_libgphoto2.sh
+
+        # 키 파일들 제외 (보안)
+        Key/
+        key.properties
+        app/google-services.json
+        local.properties
+
+        # 빌드 결과물 및 로그
+        app/release/
+        *.log
+        kapt_error.log
+        build.log
+
+        # IDE 파일들
+        .idea/
+        *.iml
+
+        # Android 빌드 파일들
+        .gradle/
+        build/
+        captures/
+        .externalNativeBuild/
+        .cxx/
+        EOF
+        
+        # 퍼블릭 버전용 README 업데이트 (기존 README가 있다면 백업)
+        if [ -f README.md ] && ! grep -q "퍼블릭 버전" README.md; then
+          mv README.md README_ORIGINAL.md
+        fi
+        
+        cat > README.md << 'EOF'
+        # CamCon - 퍼블릭 버전
+
+        이 레포지토리는 CamCon 프로젝트의 퍼블릭 버전입니다.
+
+        ## 주의사항
+        - 이 버전에는 네이티브 코드와 드라이버 파일이 제외되어 있습니다
+        - 전체 커밋 히스토리가 보존됩니다 (제외 파일들만 히스토리에서 제거됨)
+        - 완전한 빌드를 위해서는 별도의 네이티브 라이브러리가 필요합니다
+        - 자동으로 프라이빗 레포지토리와 동기화됩니다
+
+        ## 제외된 파일들 (히스토리에서도 제거됨)
+        - `app/src/main/cpp/`: C++ 네이티브 코드
+        - `app/src/main/jniLibs/`: JNI 라이브러리 파일들
+        - `Complete_arm64-v8a/`: ARM64 라이브러리
+        - `Key/`: 키 파일들 (보안)
+        - 드라이버 관련 스크립트 및 설정 파일들
+        - 빌드 결과물 및 로그 파일들
+
+        ## 포함된 파일들
+        - Android 애플리케이션 소스코드 (Java/Kotlin)
+        - UI 리소스 및 레이아웃
+        - 설정 파일들 (민감하지 않은 파일들만)
+        - 문서 및 README
+        - 전체 개발 히스토리 (제외 파일들 제외)
+
+        ## 동기화 정보
+        - 자동 동기화: main, develop 브랜치 푸시 시
+        - 히스토리 보존: 모든 커밋 메시지와 작성자 정보 유지
+        - 마지막 동기화: $(date '+%Y-%m-%d %H:%M:%S UTC')
+        - 원본 레포지토리: 프라이빗 저장소에서 관리
+
+        ## 라이선스
+        원본 프로젝트의 라이선스를 따릅니다.
+        EOF
+        
+        # 동기화 상태 파일 생성
+        mkdir -p .github
+        cat > .github/SYNC_STATUS.md << EOF
+        # 동기화 상태 (히스토리 보존)
+
+        ## 마지막 동기화 정보
+        - **날짜**: $(date '+%Y-%m-%d %H:%M:%S UTC')
+        - **소스 브랜치**: ${{ github.ref_name }}
+        - **커밋 SHA**: ${{ github.sha }}
+        - **워크플로**: ${{ github.workflow }}
+        - **실행 번호**: ${{ github.run_number }}
+        - **히스토리 보존**: 모든 커밋 히스토리 유지
+
+        ## 제외된 항목들 (히스토리에서도 제거됨)
+        - 네이티브 C++ 코드 (`app/src/main/cpp/`)
+        - JNI 라이브러리들 (`app/src/main/jniLibs/`)
+        - ARM64 라이브러리 (`Complete_arm64-v8a/`)
+        - 보안 키 파일들 (`Key/`, `key.properties` 등)
+        - 빌드 결과물 및 로그
+
+        ## 동기화 방식
+        - **히스토리 보존**: git-filter-repo를 사용하여 커밋 히스토리 유지
+        - **커밋 작성자**: 원본 커밋의 작성자 정보 보존
+        - **커밋 메시지**: 원본 커밋 메시지 그대로 유지
+        - **브랜치**: main, develop 브랜치 동기화
+
+        ## 동기화 규칙
+        - main 브랜치 푸시 시 자동 동기화
+        - develop 브랜치 푸시 시 자동 동기화
+        - Pull Request가 main에 머지될 때 동기화
+
+        ---
+        *이 파일은 자동으로 생성됩니다.*
+        EOF
+
+    - name: Commit additional changes and push
+      run: |
+        cd public_repo
+        
+        # 추가된 파일들 (README, .gitignore 등) 커밋
+        git add .
+        
+        if [ -n "$(git status --porcelain)" ]; then
+          git commit -m "Update public repository files
+
+          - 퍼블릭 버전 README 업데이트
+          - .gitignore 파일 추가/업데이트
+          - 동기화 상태 파일 추가
+          - 동기화 날짜: $(date '+%Y-%m-%d %H:%M:%S UTC')" || echo "추가 변경사항 없음"
+        fi
+        
+        # 퍼블릭 레포지토리에 강제 푸시 (히스토리 덮어쓰기)
+        echo "퍼블릭 레포지토리에 푸시 중..."
+        git push --force-with-lease origin main || git push --force origin main
+        
+        echo "퍼블릭 레포지토리 동기화 완료"
+        
+        # 커밋 수 확인
+        COMMIT_COUNT=$(git rev-list --count HEAD)
+        echo "동기화된 커밋 수: $COMMIT_COUNT"
