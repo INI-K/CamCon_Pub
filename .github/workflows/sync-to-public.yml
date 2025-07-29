@@ -44,8 +44,8 @@ jobs:
           mkdir -p filtered_repo
           cd filtered_repo
           
-          # 프라이빗 레포지토리 클론 (전체 히스토리 포함)
-          git clone --bare https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git .
+          # 현재 체크아웃된 레포지토리를 복사하여 bare 레포지토리 생성
+          git clone --bare file://${{ github.workspace }} .
           
           # 제외할 파일들의 패턴 정의
           cat > exclude_patterns.txt << 'EOF'
