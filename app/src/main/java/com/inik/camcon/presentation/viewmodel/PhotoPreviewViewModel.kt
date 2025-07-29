@@ -276,62 +276,101 @@ class PhotoPreviewViewModel @Inject constructor(
         viewModelScope.launch {
             val currentCache = _uiState.value.thumbnailCache.toMutableMap()
 
+            // forEach 대신 각 사진별로 독립된 코루틴으로 병렬 처리
             photos.forEach { photo ->
-                if (!currentCache.containsKey(photo.path)) {
-                    // RAW 파일인지 확인
-                    val isRawFile = photo.path.endsWith(".nef", true) ||
-                            photo.path.endsWith(".cr2", true) ||
-                            photo.path.endsWith(".arw", true) ||
-                            photo.path.endsWith(".dng", true)
+                // 각 사진별로 독립된 코루틴 실행 (예외가 전파되지 않도록)
+                viewModelScope.launch {
+                    try {
+                        if (!currentCache.containsKey(photo.path)) {
+                            android.util.Log.d(TAG, "썸네일 로딩 시작: ${photo.name}")
+                            
+                            // RAW 파일인지 확인
+                            val isRawFile = photo.path.endsWith(".nef", true) ||
+                                    photo.path.endsWith(".cr2", true) ||
+                                    photo.path.endsWith(".arw", true) ||
+                                    photo.path.endsWith(".dng", true)
 
-                    // 모든 파일에 대해 썸네일 가져오기 시도 (RAW, JPG 구분 없이)
-                    getCameraThumbnailUseCase(photo.path).fold(
-                        onSuccess = { thumbnailData ->
-                            currentCache[photo.path] = thumbnailData
-                            _uiState.value = _uiState.value.copy(
-                                thumbnailCache = currentCache.toMap()
-                            )
-                            android.util.Log.d(
-                                TAG,
-                                "썸네일 로드 성공: ${photo.name} (${thumbnailData.size} bytes)"
-                            )
-                        },
-                        onFailure = { exception ->
-                            android.util.Log.w(TAG, "썸네일 로드 실패: ${photo.path}", exception)
-
-                            // RAW 파일의 경우 더 긴 지연 후 재시도
-                            val retryDelay = if (isRawFile) 800L else 300L
-
-                            viewModelScope.launch {
-                                delay(retryDelay)
-                                getCameraThumbnailUseCase(photo.path).fold(
-                                    onSuccess = { retryThumbnailData ->
-                                        currentCache[photo.path] = retryThumbnailData
-                                        _uiState.value = _uiState.value.copy(
-                                            thumbnailCache = currentCache.toMap()
-                                        )
-                                        android.util.Log.d(
-                                            TAG,
-                                            "썸네일 재시도 성공: ${photo.name} (${retryThumbnailData.size} bytes)"
-                                        )
-                                    },
-                                    onFailure = { retryException ->
-                                        android.util.Log.e(
-                                            TAG,
-                                            "썸네일 재시도 실패: ${photo.path}",
-                                            retryException
-                                        )
-
-                                        // 재시도도 실패하면 빈 ByteArray로 캐시에 추가 (무한 재시도 방지)
-                                        currentCache[photo.path] = ByteArray(0)
+                            // 모든 파일에 대해 썸네일 가져오기 시도 (RAW, JPG 구분 없이)
+                            getCameraThumbnailUseCase(photo.path).fold(
+                                onSuccess = { thumbnailData ->
+                                    synchronized(currentCache) {
+                                        currentCache[photo.path] = thumbnailData
                                         _uiState.value = _uiState.value.copy(
                                             thumbnailCache = currentCache.toMap()
                                         )
                                     }
-                                )
-                            }
+                                    android.util.Log.d(
+                                        TAG,
+                                        "썸네일 로드 성공: ${photo.name} (${thumbnailData.size} bytes)"
+                                    )
+                                },
+                                onFailure = { exception ->
+                                    android.util.Log.w(TAG, "썸네일 로드 실패: ${photo.path}", exception)
+
+                                    // RAW 파일의 경우 더 긴 지연 후 재시도
+                                    val retryDelay = if (isRawFile) 800L else 300L
+
+                                    // 재시도 로직도 독립된 코루틴으로 실행
+                                    viewModelScope.launch {
+                                        try {
+                                            delay(retryDelay)
+                                            android.util.Log.d(TAG, "썸네일 재시도: ${photo.name}")
+                                            
+                                            getCameraThumbnailUseCase(photo.path).fold(
+                                                onSuccess = { retryThumbnailData ->
+                                                    synchronized(currentCache) {
+                                                        currentCache[photo.path] = retryThumbnailData
+                                                        _uiState.value = _uiState.value.copy(
+                                                            thumbnailCache = currentCache.toMap()
+                                                        )
+                                                    }
+                                                    android.util.Log.d(
+                                                        TAG,
+                                                        "썸네일 재시도 성공: ${photo.name} (${retryThumbnailData.size} bytes)"
+                                                    )
+                                                },
+                                                onFailure = { retryException ->
+                                                    android.util.Log.e(
+                                                        TAG,
+                                                        "썸네일 재시도 실패: ${photo.path}",
+                                                        retryException
+                                                    )
+
+                                                    // 재시도도 실패하면 빈 ByteArray로 캐시에 추가 (무한 재시도 방지)
+                                                    synchronized(currentCache) {
+                                                        currentCache[photo.path] = ByteArray(0)
+                                                        _uiState.value = _uiState.value.copy(
+                                                            thumbnailCache = currentCache.toMap()
+                                                        )
+                                                    }
+                                                }
+                                            )
+                                        } catch (retryException: Exception) {
+                                            android.util.Log.e(TAG, "썸네일 재시도 중 예외: ${photo.name}", retryException)
+                                            // 예외 발생 시에도 빈 데이터로 캐시 추가
+                                            synchronized(currentCache) {
+                                                currentCache[photo.path] = ByteArray(0)
+                                                _uiState.value = _uiState.value.copy(
+                                                    thumbnailCache = currentCache.toMap()
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            )
+                        } else {
+                            android.util.Log.d(TAG, "썸네일 캐시에 이미 존재: ${photo.name}")
                         }
-                    )
+                    } catch (exception: Exception) {
+                        android.util.Log.e(TAG, "썸네일 로딩 중 예외: ${photo.name}", exception)
+                        // 예외 발생 시에도 빈 데이터로 캐시 추가하여 무한 로딩 방지
+                        synchronized(currentCache) {
+                            currentCache[photo.path] = ByteArray(0)
+                            _uiState.value = _uiState.value.copy(
+                                thumbnailCache = currentCache.toMap()
+                            )
+                        }
+                    }
                 }
             }
         }
