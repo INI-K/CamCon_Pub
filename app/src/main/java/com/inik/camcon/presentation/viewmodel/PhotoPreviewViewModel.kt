@@ -87,12 +87,17 @@ class PhotoPreviewViewModel @Inject constructor(
             try {
                 android.util.Log.d(TAG, "📸 사진 미리보기 탭 진입 - 이벤트 리스너 즉시 중단")
 
-                // **네이티브 작업 즉시 중단**
-                com.inik.camcon.CameraNative.cancelAllOperations()
-                android.util.Log.d(TAG, "🚫 네이티브 작업 중단 완료")
+                // ★★★ 사진 미리보기 모드 활성화 (자동 시작 방지)
+                cameraRepository.setPhotoPreviewMode(true)
 
+                // **이벤트 리스너만 중단 (글로벌 작업 중단 제거)**
                 cameraRepository.stopCameraEventListener()
-                android.util.Log.d(TAG, "✅ 이벤트 리스너 중단 완료")
+                android.util.Log.d(TAG, "✓ 이벤트 리스너 중단 완료")
+
+                // 카메라 연결 상태 관찰 시작은 별도 launch 블록에서 실행
+                // 중복 호출 방지: 아래 launch 블록에서 이미 호출됨
+                // observeCameraConnection()
+                // android.util.Log.d(TAG, "=== observeCameraConnection 시작 ===")
             } catch (e: Exception) {
                 android.util.Log.w(TAG, "이벤트 리스너 중단 실패 (무시하고 계속)", e)
             }
@@ -105,16 +110,16 @@ class PhotoPreviewViewModel @Inject constructor(
             launch { observePhotoCaptureEvents() }
         }
 
-        // 4. 카메라 연결 상태 확인 후 사진 로딩
-        viewModelScope.launch {
-            globalManager.globalConnectionState.collect { connectionState ->
-                if (connectionState.isAnyConnectionActive && _uiState.value.photos.isEmpty()) {
-                    android.util.Log.d(TAG, "카메라 연결 확인됨 - 사진 목록 로딩 시작")
-                    loadInitialPhotos()
-                    return@collect // 첫 번째 연결에서만 실행
-                }
-            }
-        }
+        // 4. 중복 호출 방지: observeCameraConnection()에서 이미 처리함
+        // viewModelScope.launch {
+        //     globalManager.globalConnectionState.collect { connectionState ->
+        //         if (connectionState.isAnyConnectionActive && _uiState.value.photos.isEmpty() && !loadedInitialPhotos) {
+        //             android.util.Log.d(TAG, "카메라 연결 확인됨 - 사진 목록 로딩 시작")
+        //             loadInitialPhotos()
+        //             loadedInitialPhotos = true
+        //         }
+        //     }
+        // }
 
         android.util.Log.d(TAG, "=== PhotoPreviewViewModel 초기화 완료 ===")
     }
@@ -134,7 +139,9 @@ class PhotoPreviewViewModel @Inject constructor(
 
                 if (isConnected && !previousConnected) {
                     android.util.Log.d(TAG, "카메라 연결됨 - 자동으로 사진 목록 불러오기")
-                    loadInitialPhotos()
+                    if (_uiState.value.photos.isEmpty()) {
+                        loadInitialPhotos()
+                    }
                 } else if (!isConnected && previousConnected) {
                     android.util.Log.d(TAG, "카메라 연결 해제됨 - 에러 상태 설정")
                     _uiState.value = _uiState.value.copy(
@@ -1099,6 +1106,9 @@ class PhotoPreviewViewModel @Inject constructor(
                     
                     cameraRepository.startCameraEventListener()
                     android.util.Log.d(TAG, "✅ 이벤트 리스너 재시작 완료")
+                    
+                    // ★★★ 사진 미리보기 모드 비활성화
+                    cameraRepository.setPhotoPreviewMode(false)
                 }
             } catch (e: Exception) {
                 android.util.Log.w(TAG, "이벤트 리스너 재시작 실패", e)

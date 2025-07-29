@@ -4,7 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
-import com.inik.camcon.data.repository.PtpTimeoutException
+import com.inik.camcon.data.repository.managers.PtpTimeoutException
 import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.domain.model.TimelapseSettings
@@ -84,9 +84,38 @@ class CameraViewModel @Inject constructor(
     // 자동 연결 중복 실행 방지를 위한 플래그
     private var isAutoConnecting = false
 
+    // 앱 재개 중인지 확인하는 플래그 추가
+    private var isAppResuming = false
+
+    // ViewModel 초기화 중복 방지 플래그
+    private var isViewModelInitialized = false
+
     init {
+        // 중복 초기화 방지
+        if (isViewModelInitialized) {
+            Log.d("CameraViewModel", "ViewModel 이미 초기화됨 - 중복 초기화 방지")
+            return
+        }
+
+        // 앱 재개 상태를 가장 먼저 설정
+        isAppResuming = true
+        Log.d("CameraViewModel", "ViewModel 초기화 - 앱 재개 상태 설정")
+
         observeDataSources()
         initializeCameraDatabase()
+
+        cameraRepository.setPhotoPreviewMode(false)
+        Log.d("CameraViewModel", "제어 탭 진입 - 사진 미리보기 모드 비활성화")
+
+        // 3초 후 앱 재개 상태 해제
+        viewModelScope.launch {
+            delay(3000)
+            isAppResuming = false
+            Log.d("CameraViewModel", "앱 재개 상태 해제")
+        }
+
+        // 초기화 완료 플래그 설정
+        isViewModelInitialized = true
     }
 
     private fun observeDataSources() {
@@ -199,6 +228,12 @@ class CameraViewModel @Inject constructor(
             .onEach { isConnected ->
                 Log.d("CameraViewModel", "네이티브 카메라 연결 상태 변경: $isConnected")
 
+                // 앱 재개 중이고 연결 해제 이벤트인 경우 무시
+                if (isAppResuming && !isConnected) {
+                    Log.d("CameraViewModel", "앱 재개 중 연결 해제 이벤트 무시")
+                    return@onEach
+                }
+
                 _uiState.update {
                     it.copy(
                         isNativeCameraConnected = isConnected,
@@ -208,7 +243,7 @@ class CameraViewModel @Inject constructor(
 
                 // 중복 실행 방지 로직 강화 - 연결된 경우만 자동 연결 시도
                 when {
-                    isConnected && !isAutoConnecting -> {
+                    isConnected && !isAutoConnecting && !isAppResuming -> {
                         Log.d("CameraViewModel", "네이티브 카메라 연결됨 - 자동으로 카메라 연결 시작")
                         autoConnectCamera()
                     }
