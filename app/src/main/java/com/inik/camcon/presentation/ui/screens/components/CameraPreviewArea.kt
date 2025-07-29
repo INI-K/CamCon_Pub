@@ -84,10 +84,10 @@ fun CameraPreviewArea(
                             contentScale = ContentScale.Fit
                         )
                     } ?: run {
-                        Log.w("CameraPreview", "비트맵 디코딩 실패 - LoadingIndicator 표시")
-                        LoadingIndicator("라이브뷰 프레임 처리 중...")
+                        Log.w("CameraPreview", "비트맵 디코딩 실패 - LoadingOverlay 표시")
+                        LoadingOverlay("라이브뷰 프레임 처리 중...")
                     }
-                } ?: LoadingIndicator("라이브뷰 프레임 로딩 중...")
+                } ?: LoadingOverlay("라이브뷰 프레임 로딩 중...")
 
                 // 라이브뷰 중지 버튼 오버레이
                 Button(
