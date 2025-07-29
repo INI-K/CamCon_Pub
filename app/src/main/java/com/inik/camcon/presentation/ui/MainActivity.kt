@@ -35,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -54,6 +55,7 @@ import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.CameraControlScreen
 import com.inik.camcon.presentation.ui.screens.PhotoPreviewScreen
 import com.inik.camcon.presentation.ui.screens.ServerPhotosScreen
+import com.inik.camcon.presentation.ui.screens.components.PtpTimeoutDialog
 import com.inik.camcon.presentation.ui.screens.components.UsbInitializationOverlay
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -101,12 +103,64 @@ fun MainScreen(
     // CameraViewModel의 USB 초기화 상태 모니터링
     val cameraUiState by cameraViewModel.uiState.collectAsState()
 
+    // LocalContext를 @Composable 내에서 미리 가져오기
+    val context = LocalContext.current
+
     // 전역 상태 변화 시 로그 출력
     LaunchedEffect(globalConnectionState) {
         Log.d("MainScreen", "전역 연결 상태 변화: $connectionStatusMessage")
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+
+        // --- PTP 타임아웃 다이얼로그 모니터링 및 표시 ---
+        var showRestartDialog by remember { mutableStateOf(false) }
+
+        if (cameraUiState.isPtpTimeout == true && !showRestartDialog) {
+            PtpTimeoutDialog(
+                onDismissRequest = { cameraViewModel.clearPtpTimeout() },
+                onRestartRequest = {
+                    showRestartDialog = true
+                }
+            )
+        }
+
+        // 앱 재시작 다이얼로그 표시
+        if (showRestartDialog) {
+            androidx.compose.material.AlertDialog(
+                onDismissRequest = { showRestartDialog = false },
+                title = { Text("앱을 재시작할까요?") },
+                text = { Text("연결 문제로 인해 앱을 재시작해야 할 수 있습니다. 계속하시겠습니까?") },
+                confirmButton = {
+                    androidx.compose.material.TextButton(
+                        onClick = {
+                            showRestartDialog = false
+                            cameraViewModel.clearPtpTimeout()
+                            // 실제 앱 재시작 로직: MainActivity 재시작 (context 사용)
+                            val activity = context as? ComponentActivity
+                            activity?.let { act ->
+                                val packageManager = act.packageManager
+                                val intent =
+                                    packageManager.getLaunchIntentForPackage(act.packageName)
+                                intent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                                intent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                act.startActivity(intent)
+                                act.finish()
+                                Runtime.getRuntime().exit(0)
+                            }
+                        }
+                    ) { Text("재시작") }
+                },
+                dismissButton = {
+                    androidx.compose.material.TextButton(
+                        onClick = {
+                            showRestartDialog = false
+                        }
+                    ) { Text("취소") }
+                }
+            )
+        }
+
         Scaffold(
             bottomBar = {
                 // 전체화면 모드가 아닐 때만 하단 탭 표시

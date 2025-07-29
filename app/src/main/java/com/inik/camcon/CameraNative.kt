@@ -99,4 +99,9 @@ object CameraNative {
 
     // 카메라 초기화 상태 확인
     external fun isCameraInitialized(): Boolean
+
+    // **글로벌 작업 중단 제어 함수들**
+    external fun cancelAllOperations()      // 모든 네이티브 작업 즉시 중단
+    external fun resumeOperations()         // 네이티브 작업 재개
+    external fun isOperationCanceled(): Boolean  // 현재 중단 상태 확인
 }
