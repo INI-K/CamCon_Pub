@@ -1101,6 +1101,17 @@ class UsbCameraManager @Inject constructor(
     private val masterCacheTimeout = 60000L // 1분간 유효
     private var isFetchingMasterData = false
 
+    // USB 분리 콜백
+    private var usbDisconnectionCallback: (() -> Unit)? = null
+
+    /**
+     * USB 분리 콜백 설정
+     */
+    fun setUsbDisconnectionCallback(callback: () -> Unit) {
+        usbDisconnectionCallback = callback
+        Log.d(TAG, "USB 분리 콜백 설정됨")
+    }
+
     /**
      * 마스터 데이터를 활용한 빠른 라이브뷰 지원 확인
      */
@@ -1160,6 +1171,45 @@ class UsbCameraManager @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "마스터 데이터에서 카메라 능력 가져오기 실패", e)
             "{\"error\": \"마스터 데이터 접근 실패\"}"
+        }
+    }
+
+    /**
+     * USB 디바이스 분리 이벤트 처리
+     * 네이티브 레벨에서 USB I/O 오류가 감지되었을 때 호출됩니다.
+     */
+    suspend fun handleUsbDisconnection() = withContext(Dispatchers.IO) {
+        Log.e(TAG, "USB 디바이스 분리 이벤트 처리 시작")
+
+        try {
+            // 카메라 연결 상태 즉시 업데이트
+            updateNativeCameraConnectionState(false, "USB 디바이스 분리 감지")
+
+            // UI 상태 초기화
+            withContext(Dispatchers.Main) {
+                _cameraCapabilities.value = null
+                _hasUsbPermission.value = false
+            }
+
+            // 현재 연결 정리
+            currentDevice = null
+            currentConnection?.close()
+            currentConnection = null
+
+            // 캐시 무효화
+            invalidateCapabilitiesCache()
+            lastInitializedFd = -1
+
+            // 디바이스 목록 업데이트
+            updateDeviceList()
+
+            // USB 분리 콜백 호출
+            usbDisconnectionCallback?.invoke()
+
+            Log.d(TAG, "USB 디바이스 분리 처리 완료")
+
+        } catch (e: Exception) {
+            Log.e(TAG, "USB 분리 처리 중 오류", e)
         }
     }
 }
