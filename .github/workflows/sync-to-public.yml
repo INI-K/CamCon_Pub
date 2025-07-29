@@ -156,6 +156,10 @@ jobs:
         run: |
           cd public_repo
           
+          # 현재 브랜치 확인
+          CURRENT_BRANCH="${{ github.ref_name }}"
+          echo "동기화할 브랜치: $CURRENT_BRANCH"
+          
           # 필터링된 레포지토리를 remote로 추가
           git remote add filtered ../filtered_repo || git remote set-url filtered ../filtered_repo
           
@@ -163,8 +167,17 @@ jobs:
           echo "커밋 히스토리와 함께 동기화 중..."
           git fetch filtered
           
-          # main 브랜치를 필터링된 버전으로 리셋
-          git checkout -B main filtered/main 2>/dev/null || git checkout -B main filtered/master 2>/dev/null || echo "브랜치 체크아웃 실패"
+          # 현재 브랜치를 필터링된 버전으로 리셋
+          if git checkout -B $CURRENT_BRANCH filtered/$CURRENT_BRANCH 2>/dev/null; then
+            echo "$CURRENT_BRANCH 브랜치 동기화 성공"
+          elif git checkout -B $CURRENT_BRANCH filtered/main 2>/dev/null; then
+            echo "main 브랜치를 $CURRENT_BRANCH로 동기화"
+          elif git checkout -B $CURRENT_BRANCH filtered/master 2>/dev/null; then
+            echo "master 브랜치를 $CURRENT_BRANCH로 동기화"
+          else
+            echo "브랜치 체크아웃 실패"
+            exit 1
+          fi
           
           # 추가 정리 작업 (혹시 남은 파일들)
           rm -rf app/src/main/cpp/ || true
@@ -304,6 +317,10 @@ jobs:
         run: |
           cd public_repo
           
+          # 현재 브랜치 확인 (이전 단계에서 설정한 브랜치)
+          CURRENT_BRANCH="${{ github.ref_name }}"
+          echo "푸시할 브랜치: $CURRENT_BRANCH"
+          
           # 추가된 파일들 (README, .gitignore 등) 커밋
           git add .
           
@@ -318,7 +335,7 @@ jobs:
           
           # 퍼블릭 레포지토리에 강제 푸시 (히스토리 덮어쓰기)
           echo "퍼블릭 레포지토리에 푸시 중..."
-          git push --force-with-lease origin main || git push --force origin main
+          git push --force-with-lease origin $CURRENT_BRANCH || git push --force origin $CURRENT_BRANCH
           
           echo "퍼블릭 레포지토리 동기화 완료"
           
