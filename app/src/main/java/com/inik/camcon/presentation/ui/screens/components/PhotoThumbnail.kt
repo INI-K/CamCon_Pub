@@ -88,7 +88,7 @@ fun PhotoThumbnail(
                             .build(),
                         contentDescription = photo.name,
                         modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit
+                        contentScale = ContentScale.Crop
                     )
                 }
 
@@ -101,7 +101,7 @@ fun PhotoThumbnail(
                             .build(),
                         contentDescription = photo.name,
                         modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit
+                        contentScale = ContentScale.Crop
                     )
                 }
 
@@ -293,7 +293,7 @@ private fun ExifAwareThumbnail(
             bitmap = bitmap,
             contentDescription = photo.name,
             modifier = modifier,
-            contentScale = ContentScale.Fit
+            contentScale = ContentScale.Crop
         )
     } ?: run {
         // 로딩 중이거나 실패 시 플레이스홀더
@@ -344,7 +344,7 @@ private fun ThumbnailImage(
             bitmap = bmp,
             contentDescription = photo.name,
             modifier = modifier,
-            contentScale = ContentScale.Fit
+            contentScale = ContentScale.Crop
         )
     } ?: ThumbnailPlaceholder()
 }

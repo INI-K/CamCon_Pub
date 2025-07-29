@@ -50,6 +50,8 @@ import javax.inject.Singleton
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
+class PtpTimeoutException(message: String) : Exception(message)
+
 @Singleton
 class CameraRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -145,15 +147,51 @@ class CameraRepositoryImpl @Inject constructor(
                                     }
                                     updateCameraList()
                                     // updateCameraCapabilities() 제거 - observeNativeCameraConnection에서 처리됨
+
+                                    // 카메라 연결 완료 후 충분한 대기 시간 확보
+                                    Log.d("카메라레포지토리", "카메라 연결 완료 - 안정화 대기 시작")
+                                    kotlinx.coroutines.delay(3000) // 3초 대기로 증가
+
                                     Log.d("카메라레포지토리", "이벤트 리스너 시작 시도")
                                     startCameraEventListenerInternal()
                                     Log.d("카메라레포지토리", "이벤트 리스너 시작 후 상태: $isEventListenerRunning")
 
-                                    // 이벤트 리스너가 제대로 시작되었는지 확인
-                                    kotlinx.coroutines.delay(1000) // 1초 대기
-                                    Log.d("카메라레포지토리", "이벤트 리스너 1초 후 상태: $isEventListenerRunning")
+                                    // 이벤트 리스너가 제대로 시작되었는지 확인 (재시도 로직 강화)
+                                    var retryCount = 0
+                                    val maxRetries = 5 // 재시도 횟수 증가
+
+                                    while (!isEventListenerRunning && retryCount < maxRetries) {
+                                        retryCount++
+                                        Log.w(
+                                            "카메라레포지토리",
+                                            "이벤트 리스너 시작 실패, 재시도 $retryCount/$maxRetries"
+                                        )
+                                        kotlinx.coroutines.delay(2000) // 재시도 간격 증가
+
+                                        // 카메라 연결 상태 재확인
+                                        if (_isConnected.value) {
+                                            startCameraEventListenerInternal()
+                                            Log.d(
+                                                "카메라레포지토리",
+                                                "이벤트 리스너 재시도 후 상태: $isEventListenerRunning"
+                                            )
+                                        } else {
+                                            Log.e("카메라레포지토리", "카메라 연결이 끊어져서 이벤트 리스너 재시도 중단")
+                                            break
+                                        }
+                                    }
+
+                                    if (!isEventListenerRunning) {
+                                        Log.e("카메라레포지토리", "이벤트 리스너 시작 최종 실패 - 최대 재시도 횟수 초과")
+                                    } else {
+                                        Log.d("카메라레포지토리", "이벤트 리스너 시작 성공")
+                                    }
 
                                     Result.success(true)
+                                } else if (result == -2000) {
+                                    // PTP 타임아웃 오류 감지
+                                    Log.e("카메라레포지토리", "PTP 타임아웃 오류 감지: $result")
+                                    Result.failure(PtpTimeoutException("카메라 연결 시 PTP 타임아웃이 발생했습니다. 앱을 재시작해주세요."))
                                 } else {
                                     Log.e("카메라레포지토리", "네이티브 카메라 초기화 실패: $result")
                                     Result.failure(Exception("카메라 연결 실패: $result"))
@@ -173,15 +211,45 @@ class CameraRepositoryImpl @Inject constructor(
                             }
                             updateCameraList()
                             // updateCameraCapabilities() 제거 - observeNativeCameraConnection에서 처리됨
+
+                            // 카메라 연결 완료 후 충분한 대기 시간 확보
+                            Log.d("카메라레포지토리", "카메라 연결 완료 - 안정화 대기 시작")
+                            kotlinx.coroutines.delay(3000) // 3초 대기로 증가
+
                             Log.d("카메라레포지토리", "이벤트 리스너 시작 시도")
                             startCameraEventListenerInternal()
                             Log.d("카메라레포지토리", "이벤트 리스너 시작 후 상태: $isEventListenerRunning")
 
-                            // 이벤트 리스너가 제대로 시작되었는지 확인
-                            kotlinx.coroutines.delay(1000) // 1초 대기
-                            Log.d("카메라레포지토리", "이벤트 리스너 1초 후 상태: $isEventListenerRunning")
+                            // 이벤트 리스너가 제대로 시작되었는지 확인 (재시도 로직 강화)
+                            var retryCount = 0
+                            val maxRetries = 5 // 재시도 횟수 증가
+
+                            while (!isEventListenerRunning && retryCount < maxRetries) {
+                                retryCount++
+                                Log.w("카메라레포지토리", "이벤트 리스너 시작 실패, 재시도 $retryCount/$maxRetries")
+                                kotlinx.coroutines.delay(2000) // 재시도 간격 증가
+
+                                // 카메라 연결 상태 재확인
+                                if (_isConnected.value) {
+                                    startCameraEventListenerInternal()
+                                    Log.d("카메라레포지토리", "이벤트 리스너 재시도 후 상태: $isEventListenerRunning")
+                                } else {
+                                    Log.e("카메라레포지토리", "카메라 연결이 끊어져서 이벤트 리스너 재시도 중단")
+                                    break
+                                }
+                            }
+
+                            if (!isEventListenerRunning) {
+                                Log.e("카메라레포지토리", "이벤트 리스너 시작 최종 실패 - 최대 재시도 횟수 초과")
+                            } else {
+                                Log.d("카메라레포지토리", "이벤트 리스너 시작 성공")
+                            }
 
                             Result.success(true)
+                        } else if (result.contains("-2000")) {
+                            // PTP 타임아웃 오류 감지 (문자열 형태)
+                            Log.e("카메라레포지토리", "일반 초기화에서 PTP 타임아웃 오류 감지: $result")
+                            Result.failure(PtpTimeoutException("카메라 연결 시 PTP 타임아웃이 발생했습니다. 앱을 재시작해주세요."))
                         } else {
                             Log.e("카메라레포지토리", "일반 카메라 초기화 실패: $result")
                             Result.failure(Exception("카메라 연결 실패: $result"))
@@ -875,6 +943,21 @@ class CameraRepositoryImpl @Inject constructor(
                     } else {
                         Log.d("카메라레포지토리", "카메라 기능 정보 이미 존재 - 업데이트 생략")
                     }
+
+                    // 자동 연결된 경우 이벤트 리스너 시작 (충분한 대기 시간 확보)
+                    CoroutineScope(Dispatchers.IO).launch {
+                        Log.d("카메라레포지토리", "자동 연결 완료 - 이벤트 리스너 시작 준비")
+                        kotlinx.coroutines.delay(2000) // 2초 안정화 대기
+
+                        if (_isConnected.value && !isEventListenerRunning) {
+                            Log.d("카메라레포지토리", "자동 연결 후 이벤트 리스너 시작 시도")
+                            startCameraEventListenerInternal()
+                        } else if (isEventListenerRunning) {
+                            Log.d("카메라레포지토리", "이벤트 리스너가 이미 실행 중")
+                        } else {
+                            Log.w("카메라레포지토리", "카메라 연결이 끊어져서 이벤트 리스너 시작 취소")
+                        }
+                    }
                 } else {
                     Log.d("카메라레포지토리", "네이티브 카메라 연결 해제 - 상태 초기화")
                     withContext(Dispatchers.Main) {
@@ -989,9 +1072,15 @@ class CameraRepositoryImpl @Inject constructor(
             return
         }
 
-        // 카메라 연결 상태 확인
+        // 카메라 연결 상태 더 엄격하게 확인
         if (!_isConnected.value) {
             Log.e("카메라레포지토리", "카메라가 연결되지 않은 상태에서 이벤트 리스너 시작 불가")
+            return
+        }
+
+        // 네이티브 카메라 연결 상태도 확인
+        if (!usbCameraManager.isNativeCameraConnected.value) {
+            Log.e("카메라레포지토리", "네이티브 카메라가 연결되지 않은 상태에서 이벤트 리스너 시작 불가")
             return
         }
 
@@ -1004,6 +1093,9 @@ class CameraRepositoryImpl @Inject constructor(
 
         // 이벤트 리스너를 백그라운드 스레드에서 시작
         CoroutineScope(Dispatchers.IO).launch {
+            // 안정화를 위한 추가 대기 시간
+            kotlinx.coroutines.delay(500)
+            
             var retryCount = 0
             val maxRetries = 1
 

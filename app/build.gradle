@@ -183,8 +183,6 @@ dependencies {
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
     implementation 'com.google.firebase:firebase-messaging-ktx'
-
-<<<<<<< HEAD
     // ExifInterface for preserving image metadata
     implementation "androidx.exifinterface:exifinterface:1.4.1"
     // GPUImage for color transfer and image processing
@@ -193,13 +191,12 @@ dependencies {
     implementation 'com.github.0xZhangKe:ImageViewer:1.0.3'
     // 기본 Compose 제스처를 사용한 이미지 뷰어 구현
 
-=======
     // GPUImage for image processing
     implementation 'jp.co.cyberagent.android:gpuimage:2.1.0'
 
     // ExifInterface for metadata handling
     implementation 'androidx.exifinterface:exifinterface:1.3.7'
->>>>>>> 2b74391 (feat: add GPUImage and ExifInterface dependencies)
+
 }
 
 // 커스텀 빌드 태스크들
