@@ -115,6 +115,9 @@ class CameraViewModel @Inject constructor(
             // 네이티브 에러 콜백 등록
             registerNativeErrorCallback()
 
+            // USB 분리 콜백 설정
+            setupUsbDisconnectionCallback()
+
             // 초기화 완료 플래그 설정
             isViewModelInitialized = true
         } else {
@@ -186,6 +189,19 @@ class CameraViewModel @Inject constructor(
         }
     }
 
+    /**
+     * USB 분리 콜백 설정
+     */
+    private fun setupUsbDisconnectionCallback() {
+        try {
+            usbCameraManager.setUsbDisconnectionCallback {
+                handleUsbDisconnection()
+            }
+            Log.d("CameraViewModel", "USB 분리 콜백 설정 완료")
+        } catch (e: Exception) {
+            Log.e("CameraViewModel", "USB 분리 콜백 설정 실패", e)
+        }
+    }
 
     private fun initializeCameraDatabase() {
         if (initializationJob?.isActive == true) return
@@ -1115,6 +1131,35 @@ class CameraViewModel @Inject constructor(
     fun clearPtpTimeout() {
         _uiState.update { it.copy(isPtpTimeout = false) }
         Log.d("CameraViewModel", "PTP 타임아웃 상태 초기화")
+    }
+
+    /**
+     * USB 분리 상태 처리
+     */
+    fun handleUsbDisconnection() {
+        Log.e("CameraViewModel", "USB 디바이스 분리 처리")
+        _uiState.update {
+            it.copy(
+                isUsbDisconnected = true,
+                isConnected = false,
+                isNativeCameraConnected = false,
+                isLiveViewActive = false,
+                liveViewFrame = null,
+                error = "USB 디바이스가 분리되었습니다. 카메라를 다시 연결해주세요."
+            )
+        }
+
+        // 진행 중인 작업들 중단
+        liveViewJob?.cancel()
+        timelapseJob?.cancel()
+    }
+
+    /**
+     * USB 분리 상태 초기화
+     */
+    fun clearUsbDisconnection() {
+        _uiState.update { it.copy(isUsbDisconnected = false) }
+        Log.d("CameraViewModel", "USB 분리 상태 초기화")
     }
 
     /**
