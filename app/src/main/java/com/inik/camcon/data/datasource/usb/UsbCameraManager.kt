@@ -272,7 +272,57 @@ class UsbCameraManager @Inject constructor(
 
     init {
         registerUsbReceiver()
+
+        // 앱 재개 시 기존 카메라 연결 상태를 먼저 확인
+        checkExistingCameraConnection()
+
         initializeDeviceList()
+    }
+
+    /**
+     * 앱 재개 시 기존 카메라 연결 상태를 확인하는 함수
+     */
+    private fun checkExistingCameraConnection() {
+        try {
+            // 네이티브 카메라가 이미 초기화되어 있는지 확인
+            val isNativeInitialized = try {
+                // 1단계: 카메라 요약 정보 확인
+                val summary = CameraNative.getCameraSummary()
+                if (summary.isEmpty() || summary.contains("에러", ignoreCase = true) ||
+                    summary.contains("error", ignoreCase = true)
+                ) {
+                    Log.d(TAG, "카메라 요약 정보가 없거나 오류: $summary")
+                    false
+                } else {
+                    // 2단계: 실제 카메라 감지 시도
+                    val detection = CameraNative.detectCamera()
+                    if (detection.contains("감지된 카메라", ignoreCase = true) &&
+                        !detection.contains("감지되지 않았습니다", ignoreCase = true) &&
+                        !detection.contains("Error loading a library", ignoreCase = true)
+                    ) {
+                        Log.d(TAG, "카메라 감지 성공: $detection")
+                        true
+                    } else {
+                        Log.d(TAG, "카메라 감지 실패: $detection")
+                        false
+                    }
+                }
+            } catch (e: Exception) {
+                Log.d(TAG, "네이티브 카메라 상태 확인 중 예외 (정상): ${e.message}")
+                false
+            }
+
+            if (isNativeInitialized) {
+                Log.d(TAG, "앱 재개 시 네이티브 카메라가 실제로 초기화되어 있음")
+                // 상태를 true로 미리 설정하여 불필요한 상태 변경 방지
+                _isNativeCameraConnected.value = true
+            } else {
+                Log.d(TAG, "앱 재개 시 네이티브 카메라 초기화되지 않음 - 새로 초기화 필요")
+                // false 상태 유지 (기본값)
+            }
+        } catch (e: Exception) {
+            Log.d(TAG, "기존 카메라 연결 상태 확인 실패: ${e.message}")
+        }
     }
 
     private fun registerUsbReceiver() {
@@ -304,6 +354,32 @@ class UsbCameraManager @Inject constructor(
     private fun initializeDeviceList() {
         Log.d(TAG, "USB 디바이스 목록 초기화 시작")
 
+        // 앱 재개 시 기존 연결 상태 확인
+        val currentlyConnected = _isNativeCameraConnected.value
+        if (currentlyConnected && currentDevice != null) {
+            Log.d(TAG, "앱 재개 시 기존 연결된 디바이스 확인: ${currentDevice?.deviceName}")
+
+            // 기존 디바이스에 여전히 권한이 있는지 확인
+            currentDevice?.let { device ->
+                if (usbManager.hasPermission(device)) {
+                    Log.d(TAG, "기존 디바이스에 권한이 있음: ${device.deviceName}")
+                    _hasUsbPermission.value = true
+                    _connectedDevices.value = listOf(device)
+                    // 이미 연결되어 있으므로 재연결하지 않음
+                    return
+                } else {
+                    Log.w(TAG, "기존 디바이스 권한이 없어짐: ${device.deviceName}")
+                    // 권한이 없어졌으므로 상태 초기화 - 코루틴 스코프에서 실행
+                    CoroutineScope(Dispatchers.IO).launch {
+                        updateNativeCameraConnectionState(false, "권한 손실")
+                    }
+                    currentDevice = null
+                    currentConnection?.close()
+                    currentConnection = null
+                }
+            }
+        }
+
         // 디바이스 목록을 한 번만 가져와서 캐시
         val devices = getUsbDevicesInternal()
         cachedDeviceList = devices
@@ -333,7 +409,13 @@ class UsbCameraManager @Inject constructor(
                 Log.d(TAG, "이미 권한이 있는 디바이스입니다: ${device.deviceName}")
                 _hasUsbPermission.value = true
                 currentDevice = device
-                connectToCamera(device)
+
+                // 이미 네이티브 카메라가 연결되어 있다면 재연결하지 않음
+                if (!_isNativeCameraConnected.value) {
+                    connectToCamera(device)
+                } else {
+                    Log.d(TAG, "네이티브 카메라가 이미 연결되어 있음 - 재연결 생략")
+                }
             }
         }
     }
@@ -471,6 +553,12 @@ class UsbCameraManager @Inject constructor(
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 Log.d(TAG, "백그라운드에서 카메라 연결 시작: ${device.deviceName}")
+
+                // 이미 네이티브 카메라가 연결되어 있으면 중복 연결 방지
+                if (_isNativeCameraConnected.value) {
+                    Log.d(TAG, "네이티브 카메라가 이미 연결되어 있음 - 중복 연결 방지: ${device.deviceName}")
+                    return@launch
+                }
 
                 // 이미 같은 디바이스에 연결 중이거나 연결되어 있으면 중복 실행 방지
                 if (currentDevice?.deviceName == device.deviceName && currentConnection != null) {
@@ -918,20 +1006,21 @@ class UsbCameraManager @Inject constructor(
 
     // 네이티브 카메라 상태를 안전하게 업데이트하는 함수
     private suspend fun updateNativeCameraConnectionState(newState: Boolean, reason: String = "") {
-        if (_isNativeCameraConnected.value != newState) {
-            withContext(Dispatchers.Main) {
-                _isNativeCameraConnected.value = newState
-            }
-            Log.d(
-                TAG,
-                "USB 카메라 연결 상태 변경: $newState ${if (reason.isNotEmpty()) "($reason)" else ""}"
-            )
-        } else {
+        if (_isNativeCameraConnected.value == newState) {
             Log.d(
                 TAG,
                 "USB 카메라 연결 상태 이미 $newState - UI 업데이트 생략 ${if (reason.isNotEmpty()) "($reason)" else ""}"
             )
+            return
         }
+
+        withContext(Dispatchers.Main) {
+            _isNativeCameraConnected.value = newState
+        }
+        Log.d(
+            TAG,
+            "USB 카메라 연결 상태 변경: $newState ${if (reason.isNotEmpty()) "($reason)" else ""}"
+        )
     }
 
     private suspend fun tryGeneralInit() = withContext(Dispatchers.IO) {

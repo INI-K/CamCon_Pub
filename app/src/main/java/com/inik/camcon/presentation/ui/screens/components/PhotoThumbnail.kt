@@ -194,7 +194,13 @@ private fun ExifAwareThumbnail(
                 Log.d("PhotoThumbnail", "비트맵 디코딩 시작: ${photo.name}")
                 Log.d("PhotoThumbnail", "고화질 데이터에서 EXIF 읽어서 썸네일에 적용: ${photo.name}")
 
-                // 1. 고화질 이미지에서 EXIF 정보 읽기 (한 번만)
+                // 1. 썸네일 데이터 유효성 검사
+                if (thumbnailData.isEmpty()) {
+                    Log.w("PhotoThumbnail", "썸네일 데이터가 비어있음: ${photo.name}")
+                    return@withContext
+                }
+
+                // 2. 고화질 이미지에서 EXIF 정보 읽기 (한 번만)
                 val fullExif = try {
                     Log.d("PhotoThumbnail", "=== EXIF 디코딩 시작: ${photo.name} ===")
                     Log.d("PhotoThumbnail", "imageData size: ${fullImageData.size} bytes")
@@ -220,10 +226,49 @@ private fun ExifAwareThumbnail(
                     androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
                 }
 
-                // 2. 썸네일 비트맵 디코딩
-                val originalBitmap = android.graphics.BitmapFactory.decodeByteArray(
-                    thumbnailData, 0, thumbnailData.size
-                )
+                // 3. 안전한 비트맵 디코딩 옵션 설정
+                val options = android.graphics.BitmapFactory.Options().apply {
+                    inJustDecodeBounds = false
+                    inPreferredConfig = android.graphics.Bitmap.Config.RGB_565 // 메모리 효율성
+                    inMutable = false
+                    inSampleSize = 1 // 썸네일이므로 원본 크기 유지
+
+                    // 하드웨어 가속 비활성화 (일부 디바이스에서 호환성 문제 방지)
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                        inPreferredColorSpace =
+                            android.graphics.ColorSpace.get(android.graphics.ColorSpace.Named.SRGB)
+                    }
+                }
+
+                // 4. 썸네일 비트맵 디코딩 (안전한 방식)
+                val originalBitmap = try {
+                    android.graphics.BitmapFactory.decodeByteArray(
+                        thumbnailData, 0, thumbnailData.size, options
+                    )
+                } catch (e: OutOfMemoryError) {
+                    Log.e("PhotoThumbnail", "메모리 부족으로 비트맵 디코딩 실패: ${photo.name}", e)
+                    // 메모리 부족 시 더 작은 샘플 사이즈로 재시도
+                    options.inSampleSize = 2
+                    try {
+                        android.graphics.BitmapFactory.decodeByteArray(
+                            thumbnailData, 0, thumbnailData.size, options
+                        )
+                    } catch (e2: Exception) {
+                        Log.e("PhotoThumbnail", "재시도 비트맵 디코딩도 실패: ${photo.name}", e2)
+                        null
+                    }
+                } catch (e: Exception) {
+                    Log.e("PhotoThumbnail", "비트맵 디코딩 실패: ${photo.name}", e)
+                    // 'unimplemented' 에러나 기타 디코딩 에러 처리
+                    if (e.message?.contains("unimplemented") == true) {
+                        Log.e(
+                            "PhotoThumbnail",
+                            "--- Failed to create image decoder with message 'unimplemented'"
+                        )
+                        Log.e("PhotoThumbnail", "썸네일 비트맵 디코딩 실패: ${photo.name}")
+                    }
+                    null
+                }
 
                 if (originalBitmap != null) {
                     Log.d(
@@ -231,39 +276,67 @@ private fun ExifAwareThumbnail(
                         "원본 비트맵 크기: ${originalBitmap.width}x${originalBitmap.height}"
                     )
 
-                    // 3. 고화질 이미지의 EXIF 정보를 썸네일에 적용
+                    // 5. 고화질 이미지의 EXIF 정보를 썸네일에 적용
                     val rotatedBmp = when (fullExif) {
                         androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> {
                             Log.d("PhotoThumbnail", "90도 회전 적용: ${photo.name}")
-                            val matrix = android.graphics.Matrix()
-                            matrix.postRotate(90f)
-                            android.graphics.Bitmap.createBitmap(
-                                originalBitmap, 0, 0,
-                                originalBitmap.width, originalBitmap.height,
-                                matrix, true
-                            )
+                            try {
+                                val matrix = android.graphics.Matrix()
+                                matrix.postRotate(90f)
+                                android.graphics.Bitmap.createBitmap(
+                                    originalBitmap, 0, 0,
+                                    originalBitmap.width, originalBitmap.height,
+                                    matrix, true
+                                ).also {
+                                    // 원본 비트맵 메모리 해제
+                                    if (it != originalBitmap) {
+                                        originalBitmap.recycle()
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                Log.e("PhotoThumbnail", "90도 회전 실패: ${photo.name}", e)
+                                originalBitmap
+                            }
                         }
 
                         androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> {
                             Log.d("PhotoThumbnail", "180도 회전 적용: ${photo.name}")
-                            val matrix = android.graphics.Matrix()
-                            matrix.postRotate(180f)
-                            android.graphics.Bitmap.createBitmap(
-                                originalBitmap, 0, 0,
-                                originalBitmap.width, originalBitmap.height,
-                                matrix, true
-                            )
+                            try {
+                                val matrix = android.graphics.Matrix()
+                                matrix.postRotate(180f)
+                                android.graphics.Bitmap.createBitmap(
+                                    originalBitmap, 0, 0,
+                                    originalBitmap.width, originalBitmap.height,
+                                    matrix, true
+                                ).also {
+                                    if (it != originalBitmap) {
+                                        originalBitmap.recycle()
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                Log.e("PhotoThumbnail", "180도 회전 실패: ${photo.name}", e)
+                                originalBitmap
+                            }
                         }
 
                         androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> {
                             Log.d("PhotoThumbnail", "270도 회전 적용: ${photo.name}")
-                            val matrix = android.graphics.Matrix()
-                            matrix.postRotate(270f)
-                            android.graphics.Bitmap.createBitmap(
-                                originalBitmap, 0, 0,
-                                originalBitmap.width, originalBitmap.height,
-                                matrix, true
-                            )
+                            try {
+                                val matrix = android.graphics.Matrix()
+                                matrix.postRotate(270f)
+                                android.graphics.Bitmap.createBitmap(
+                                    originalBitmap, 0, 0,
+                                    originalBitmap.width, originalBitmap.height,
+                                    matrix, true
+                                ).also {
+                                    if (it != originalBitmap) {
+                                        originalBitmap.recycle()
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                Log.e("PhotoThumbnail", "270도 회전 실패: ${photo.name}", e)
+                                originalBitmap
+                            }
                         }
 
                         else -> {
@@ -272,12 +345,19 @@ private fun ExifAwareThumbnail(
                         }
                     }
 
-                    rotatedBitmap = rotatedBmp.asImageBitmap()
-                    Log.d("PhotoThumbnail", "비트맵 디코딩 완료: ${photo.name}, bitmap: true")
-                    Log.d(
-                        "PhotoThumbnail",
-                        "썸네일 비트맵 적용 성공: ${photo.name} (${rotatedBmp.width}x${rotatedBmp.height})"
-                    )
+                    // 6. ImageBitmap으로 변환
+                    try {
+                        rotatedBitmap = rotatedBmp.asImageBitmap()
+                        Log.d("PhotoThumbnail", "비트맵 디코딩 완료: ${photo.name}, bitmap: true")
+                        Log.d(
+                            "PhotoThumbnail",
+                            "썸네일 비트맵 적용 성공: ${photo.name} (${rotatedBmp.width}x${rotatedBmp.height})"
+                        )
+                    } catch (e: Exception) {
+                        Log.e("PhotoThumbnail", "ImageBitmap 변환 실패: ${photo.name}", e)
+                        // 변환 실패 시 비트맵 메모리 해제
+                        rotatedBmp.recycle()
+                    }
                 } else {
                     Log.e("PhotoThumbnail", "썸네일 비트맵 디코딩 실패: ${photo.name}")
                 }
@@ -320,16 +400,64 @@ private fun ThumbnailImage(
                 Log.d("PhotoThumbnail", "비트맵 디코딩 시작: ${photo.name}")
                 Log.d("PhotoThumbnail", "고화질 데이터 없음, 기본 썸네일 디코딩: ${photo.name}")
 
-                val decodedBitmap = android.graphics.BitmapFactory.decodeByteArray(
-                    thumbnailData, 0, thumbnailData.size
-                )
+                // 썸네일 데이터 유효성 검사
+                if (thumbnailData.isEmpty()) {
+                    Log.w("PhotoThumbnail", "기본 썸네일 데이터가 비어있음: ${photo.name}")
+                    return@withContext
+                }
+
+                // 안전한 비트맵 디코딩 옵션 설정
+                val options = android.graphics.BitmapFactory.Options().apply {
+                    inJustDecodeBounds = false
+                    inPreferredConfig = android.graphics.Bitmap.Config.RGB_565
+                    inMutable = false
+                    inSampleSize = 1
+
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                        inPreferredColorSpace =
+                            android.graphics.ColorSpace.get(android.graphics.ColorSpace.Named.SRGB)
+                    }
+                }
+
+                val decodedBitmap = try {
+                    android.graphics.BitmapFactory.decodeByteArray(
+                        thumbnailData, 0, thumbnailData.size, options
+                    )
+                } catch (e: OutOfMemoryError) {
+                    Log.e("PhotoThumbnail", "기본 썸네일 메모리 부족: ${photo.name}", e)
+                    // 메모리 부족 시 샘플 사이즈 증가
+                    options.inSampleSize = 2
+                    try {
+                        android.graphics.BitmapFactory.decodeByteArray(
+                            thumbnailData, 0, thumbnailData.size, options
+                        )
+                    } catch (e2: Exception) {
+                        Log.e("PhotoThumbnail", "기본 썸네일 재시도도 실패: ${photo.name}", e2)
+                        null
+                    }
+                } catch (e: Exception) {
+                    Log.e("PhotoThumbnail", "기본 썸네일 디코딩 실패: ${photo.name}", e)
+                    if (e.message?.contains("unimplemented") == true) {
+                        Log.e(
+                            "PhotoThumbnail",
+                            "--- Failed to create image decoder with message 'unimplemented'"
+                        )
+                        Log.e("PhotoThumbnail", "썸네일 비트맵 디코딩 실패: ${photo.name}")
+                    }
+                    null
+                }
 
                 if (decodedBitmap != null) {
-                    bitmap = decodedBitmap.asImageBitmap()
-                    Log.d(
-                        "PhotoThumbnail",
-                        "썸네일 비트맵 적용 성공: ${photo.name} (${decodedBitmap.width}x${decodedBitmap.height})"
-                    )
+                    try {
+                        bitmap = decodedBitmap.asImageBitmap()
+                        Log.d(
+                            "PhotoThumbnail",
+                            "썸네일 비트맵 적용 성공: ${photo.name} (${decodedBitmap.width}x${decodedBitmap.height})"
+                        )
+                    } catch (e: Exception) {
+                        Log.e("PhotoThumbnail", "기본 썸네일 ImageBitmap 변환 실패: ${photo.name}", e)
+                        decodedBitmap.recycle()
+                    }
                 } else {
                     Log.e("PhotoThumbnail", "썸네일 비트맵 디코딩 실패: ${photo.name}")
                 }
