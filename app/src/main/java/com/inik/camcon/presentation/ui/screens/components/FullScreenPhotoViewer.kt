@@ -33,11 +33,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
-import androidx.compose.material.ModalBottomSheetLayout
-import androidx.compose.material.ModalBottomSheetValue
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -47,7 +44,7 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.PhotoCamera
-import androidx.compose.material.rememberModalBottomSheetState
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -80,6 +77,7 @@ import kotlinx.coroutines.withContext
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileOutputStream
+import java.text.SimpleDateFormat
 import java.util.Locale
 import kotlin.math.abs
 
@@ -154,7 +152,6 @@ private fun shareCurrentPhoto(
  * 0xZhangKe ImageViewer를 사용한 전체화면 사진 뷰어
  * 고급 줌/팬 제스처, 스와이프 네비게이션, 썸네일 지원
  */
-@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun FullScreenPhotoViewer(
     photo: CameraPhoto,
@@ -170,9 +167,8 @@ fun FullScreenPhotoViewer(
 
     // 사진 정보 바텀시트 관련 상태
     val showPhotoInfoSheet = remember { mutableStateOf(false) }
-    val bottomSheetState = rememberModalBottomSheetState(
-        initialValue = ModalBottomSheetValue.Hidden,
-        confirmStateChange = { it != ModalBottomSheetValue.HalfExpanded }
+    val modalBottomSheetState = androidx.compose.material3.rememberModalBottomSheetState(
+        skipPartiallyExpanded = true
     )
     val scope = rememberCoroutineScope()
 
@@ -263,98 +259,96 @@ fun FullScreenPhotoViewer(
     // 바텀시트 내부 컨텐츠
     val currentPhotoForSheet = uiState.photos.getOrNull(pagerState.currentPage) ?: photo
 
-    ModalBottomSheetLayout(
-        sheetState = bottomSheetState,
-        sheetContent = {
-            if (showPhotoInfoSheet.value) {
-                // Surface 제거하고 직접 Column 사용
-                PhotoInfoBottomSheetContent(
-                    photo = currentPhotoForSheet,
-                    viewModel = viewModel,
-                    onDismiss = {
-                        showPhotoInfoSheet.value = false
-                        // 바텀시트 닫기
-                        scope.launch {
-                            bottomSheetState.hide()
-                        }
-                    }
-                )
-            }
-        },
-        sheetBackgroundColor = Color.White, // 직접 흰색 배경
-        scrimColor = Color.Black.copy(alpha = 0.4f)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black)
+    @OptIn(ExperimentalMaterial3Api::class)
+    if (showPhotoInfoSheet.value) {
+        androidx.compose.material3.ModalBottomSheet(
+            onDismissRequest = {
+                showPhotoInfoSheet.value = false
+                scope.launch { modalBottomSheetState.hide() }
+            },
+            sheetState = modalBottomSheetState
         ) {
-            // 메인 이미지 페이저 (스와이프 네비게이션)
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxSize()
-            ) { pageIndex ->
-                val pagePhoto = uiState.photos.getOrNull(pageIndex)
-                if (pagePhoto != null) {
-                    val imageData =
-                        fullImageCache[pagePhoto.path] ?: sharedThumbnailCache[pagePhoto.path]
-
-                    GalleryStyleImage(
-                        fullImageData = fullImageCache[pagePhoto.path],
-                        thumbnailData = sharedThumbnailCache[pagePhoto.path],
-                        photo = pagePhoto,
-                        onDismiss = onDismiss,
-                        context = context
-                    )
-                }
-            }
-
-            // 상단 컨트롤 바
-            TopControlBar(
-                photo = uiState.photos.getOrNull(pagerState.currentPage) ?: photo,
-                onClose = onDismiss,
-                onInfoClick = {
-                    val currentPhoto = uiState.photos.getOrNull(pagerState.currentPage) ?: photo
-                    Log.d("FullScreenPhotoViewer", "정보 버튼 클릭됨: ${currentPhoto.name}")
-                    try {
-                        // 기존 AlertDialog/PhotoInfoDialog.showPhotoInfoDialog 대신 바텀시트로 상태 변경
-                        showPhotoInfoSheet.value = true
-                        scope.launch {
-                            bottomSheetState.show()
-                        }
-                        Log.d("FullScreenPhotoViewer", "PhotoInfo 바텀시트 호출 성공")
-                    } catch (e: Exception) {
-                        Log.e("FullScreenPhotoViewer", "PhotoInfoDialog 바텀시트 호출 실패", e)
-                    }
-                },
-                onDownloadClick = onDownload,
-                onShareClick = {
-                    val currentPhoto = uiState.photos.getOrNull(pagerState.currentPage) ?: photo
-                    shareCurrentPhoto(context, currentPhoto, viewModel)
-                },
-                modifier = Modifier.align(Alignment.TopStart)
-            )
-
-            // 하단 썸네일 리스트
-            BottomThumbnailStrip(
-                photos = uiState.photos,
-                currentPhotoIndex = pagerState.currentPage,
-                thumbnailCache = sharedThumbnailCache,
+            PhotoInfoBottomSheetContent(
+                photo = currentPhotoForSheet,
                 viewModel = viewModel,
-                onPhotoSelected = { selectedPhoto ->
-                    val newIndex = uiState.photos.indexOfFirst { it.path == selectedPhoto.path }
-                    if (newIndex >= 0) {
-                        onPhotoChanged(selectedPhoto)
-                    }
-                },
-                modifier = Modifier.align(Alignment.BottomCenter)
+                onDismiss = {
+                    showPhotoInfoSheet.value = false
+                    scope.launch { modalBottomSheetState.hide() }
+                }
             )
         }
     }
 
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+    ) {
+        // 메인 이미지 페이저 (스와이프 네비게이션)
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize()
+        ) { pageIndex ->
+            val pagePhoto = uiState.photos.getOrNull(pageIndex)
+            if (pagePhoto != null) {
+                val imageData =
+                    fullImageCache[pagePhoto.path] ?: sharedThumbnailCache[pagePhoto.path]
+
+                GalleryStyleImage(
+                    fullImageData = fullImageCache[pagePhoto.path],
+                    thumbnailData = sharedThumbnailCache[pagePhoto.path],
+                    photo = pagePhoto,
+                    onDismiss = onDismiss,
+                    context = context
+                )
+            }
+        }
+
+        // 상단 컨트롤 바
+        TopControlBar(
+            photo = uiState.photos.getOrNull(pagerState.currentPage) ?: photo,
+            onClose = onDismiss,
+            onInfoClick = {
+                val currentPhoto = uiState.photos.getOrNull(pagerState.currentPage) ?: photo
+                Log.d("FullScreenPhotoViewer", "정보 버튼 클릭됨: ${currentPhoto.name}")
+                try {
+                    // 기존 AlertDialog/PhotoInfoDialog.showPhotoInfoDialog 대신 바텀시트로 상태 변경
+                    showPhotoInfoSheet.value = true
+                    scope.launch {
+                        modalBottomSheetState.show()
+                    }
+                    Log.d("FullScreenPhotoViewer", "PhotoInfo 바텀시트 호출 성공")
+                } catch (e: Exception) {
+                    Log.e("FullScreenPhotoViewer", "PhotoInfoDialog 바텀시트 호출 실패", e)
+                }
+            },
+            onDownloadClick = onDownload,
+            onShareClick = {
+                val currentPhoto = uiState.photos.getOrNull(pagerState.currentPage) ?: photo
+                shareCurrentPhoto(context, currentPhoto, viewModel)
+            },
+            modifier = Modifier.align(Alignment.TopStart)
+        )
+
+        // 하단 썸네일 리스트
+        BottomThumbnailStrip(
+            photos = uiState.photos,
+            currentPhotoIndex = pagerState.currentPage,
+            thumbnailCache = sharedThumbnailCache,
+            viewModel = viewModel,
+            onPhotoSelected = { selectedPhoto ->
+                val newIndex = uiState.photos.indexOfFirst { it.path == selectedPhoto.path }
+                if (newIndex >= 0) {
+                    onPhotoChanged(selectedPhoto)
+                }
+            },
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
+    }
+
     // 바텀시트 상태와 showPhotoInfoSheet 동기화
-    LaunchedEffect(bottomSheetState.isVisible) {
-        if (!bottomSheetState.isVisible) {
+    LaunchedEffect(modalBottomSheetState.currentValue) {
+        if (!modalBottomSheetState.isVisible) {
             showPhotoInfoSheet.value = false
         }
     }
@@ -869,19 +863,61 @@ private fun PhotoInfoBottomSheetContent(
     val exifInfo = remember { mutableStateOf<String?>(null) }
     val isLoading = remember { mutableStateOf(true) }
 
-    // EXIF 정보 로드
-    LaunchedEffect(photo.path) {
-        withContext(Dispatchers.IO) {
+    // EXIF 캐시 상태 관찰
+    val exifCache by viewModel?.exifCache?.collectAsState() ?: remember {
+        mutableStateOf(emptyMap<String, String>())
+    }
+
+    // EXIF 정보 로드 (캐시 우선 사용)
+    LaunchedEffect(photo.path, exifCache) {
+        // 캐시에서 먼저 확인
+        val cachedExif = exifCache[photo.path]
+        if (cachedExif != null) {
+            Log.d("PhotoInfoDialog", "EXIF 캐시에서 가져옴: ${photo.path}")
+            exifInfo.value = cachedExif
+            isLoading.value = false
+            return@LaunchedEffect
+        }
+
+        // 캐시에 없으면 EXIF 정보 요청 (고화질 다운로드 트리거)
+        isLoading.value = true
+        try {
+            Log.d("PhotoInfoDialog", "EXIF 정보 요청: ${photo.path}")
+            viewModel?.getCameraPhotoExif(photo.path)
+
+            // EXIF 파싱이 완료될 때까지 대기 (최대 10초)
+            var waitCount = 0
+            while (waitCount < 100) { // 100 * 100ms = 10초
+                delay(100)
+                val updatedExif = viewModel?.exifCache?.value?.get(photo.path)
+                if (updatedExif != null) {
+                    Log.d("PhotoInfoDialog", "EXIF 파싱 완료 감지: ${photo.path}")
+                    exifInfo.value = updatedExif
+                    isLoading.value = false
+                    return@LaunchedEffect
+                }
+                waitCount++
+            }
+
+            // 타임아웃 시
+            Log.w("PhotoInfoDialog", "EXIF 파싱 타임아웃: ${photo.path}")
+            exifInfo.value = null
+            isLoading.value = false
+
+        } catch (e: Exception) {
+            // Composition이 취소되었거나 다른 예외 발생
+            if (e is kotlinx.coroutines.CancellationException) {
+                Log.d("PhotoInfoDialog", "EXIF 로딩 코루틴 취소됨 (정상)")
+            } else {
+                Log.e("PhotoInfoDialog", "EXIF 정보 로드 중 예외", e)
+            }
+            // 에러 상태에서도 로딩 상태를 false로 설정
             try {
-                Log.d("PhotoInfoDialog", "EXIF 정보 가져오기 시작: ${photo.path}")
-                val info = viewModel?.getCameraPhotoExif(photo.path)
-                Log.d("PhotoInfoDialog", "EXIF 정보 가져오기 완료: $info")
-                exifInfo.value = info
-            } catch (e: Exception) {
-                Log.e("PhotoInfoDialog", "EXIF 정보 로드 실패", e)
                 exifInfo.value = null
-            } finally {
                 isLoading.value = false
+            } catch (compositionError: Exception) {
+                // Composition이 이미 취소된 경우 무시
+                Log.d("PhotoInfoDialog", "Composition 취소로 인한 상태 업데이트 생략")
             }
         }
     }
@@ -945,12 +981,53 @@ private fun PhotoInfoBottomSheetContent(
                     )
                 },
                 content = {
-                    val dateFormat =
-                        java.text.SimpleDateFormat("yyyy년 M월 d일 오후 h:mm", Locale.KOREAN)
-                    val formattedDate = try {
-                        dateFormat.format(java.util.Date(photo.date * 1000L))
-                    } catch (e: Exception) {
-                        "알 수 없음"
+                    val formattedDate = remember(exifInfo.value, isLoading.value) {
+                        if (!isLoading.value && !exifInfo.value.isNullOrEmpty()) {
+                            try {
+                                val exifEntries = parseExifInfo(exifInfo.value!!)
+                                val dateTimeOriginal = exifEntries["date_time_original"]
+
+                                if (dateTimeOriginal != null) {
+                                    Log.d("PhotoInfoDialog", "EXIF 날짜 원본: $dateTimeOriginal")
+                                    // EXIF 날짜 형식: "2025:07:28 19:22:53"
+                                    val exifFormat =
+                                        SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.getDefault())
+                                    val displayFormat =
+                                        SimpleDateFormat("yyyy년 M월 d일 a h:mm", Locale.KOREAN)
+
+                                    try {
+                                        val parsedDate = exifFormat.parse(dateTimeOriginal)
+                                        if (parsedDate != null) {
+                                            val result = displayFormat.format(parsedDate)
+                                            Log.d("PhotoInfoDialog", "EXIF 날짜 파싱 성공: $result")
+                                            result
+                                        } else {
+                                            Log.w("PhotoInfoDialog", "EXIF 날짜 파싱 실패, 기본값 사용")
+                                            "촬영 날짜 알 수 없음"
+                                        }
+                                    } catch (e: Exception) {
+                                        Log.e(
+                                            "PhotoInfoDialog",
+                                            "EXIF 날짜 파싱 예외: $dateTimeOriginal",
+                                            e
+                                        )
+                                        "촬영 날짜 알 수 없음"
+                                    }
+                                } else {
+                                    Log.d("PhotoInfoDialog", "EXIF에 date_time_original 없음, 기본값 사용")
+                                    "촬영 날짜 알 수 없음"
+                                }
+                            } catch (e: Exception) {
+                                Log.w("PhotoInfoDialog", "EXIF 정보 파싱 실패", e)
+                                "촬영 날짜 알 수 없음"
+                            }
+                        } else {
+                            if (isLoading.value) {
+                                "날짜 정보 불러오는 중..."
+                            } else {
+                                "촬영 날짜 알 수 없음"
+                            }
+                        }
                     }
 
                     Text(
@@ -1223,9 +1300,31 @@ private fun formatAperture(fNumber: String): String {
 
 private fun formatFocalLength(focalLength: String): String {
     return try {
+        // 분수 형태 처리 ("400/10" -> 40.0)
+        if (focalLength.contains("/")) {
+            val parts = focalLength.split("/")
+            if (parts.size == 2) {
+                val numerator = parts[0].toDoubleOrNull()
+                val denominator = parts[1].toDoubleOrNull()
+                if (numerator != null && denominator != null && denominator != 0.0) {
+                    val result = numerator / denominator
+                    return if (result == result.toInt().toDouble()) {
+                        "${result.toInt()}mm"
+                    } else {
+                        "${String.format("%.1f", result)}mm"
+                    }
+                }
+            }
+        }
+
+        // 일반 숫자 형태 처리
         val focal = focalLength.toDoubleOrNull()
         if (focal != null) {
-            "${String.format("%.2f", focal)}mm"
+            if (focal == focal.toInt().toDouble()) {
+                "${focal.toInt()}mm"
+            } else {
+                "${String.format("%.1f", focal)}mm"
+            }
         } else {
             "${focalLength}mm"
         }

@@ -52,6 +52,7 @@ import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.components.EmptyPhotoState
 import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
 import com.inik.camcon.presentation.ui.screens.components.PhotoThumbnail
+import com.inik.camcon.presentation.ui.screens.components.UsbInitializationOverlay
 import com.inik.camcon.presentation.viewmodel.FileTypeFilter
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
 import kotlinx.coroutines.delay
@@ -103,6 +104,15 @@ fun PhotoPreviewScreen(
                 onFilterChange = { filter -> viewModel.changeFileTypeFilter(filter) },
                 viewModel = viewModel
             )
+
+            // 카메라 이벤트 초기화 블록 오버레이 표시
+            if (uiState.isInitializing) {
+                UsbInitializationOverlay(
+                    message = "카메라 이벤트 초기화 중...",
+                    progress = null
+                )
+                return@Column // UI 상호작용 완전 차단 (오버레이만 보임)
+            }
 
             // 메인 콘텐츠
             when {
