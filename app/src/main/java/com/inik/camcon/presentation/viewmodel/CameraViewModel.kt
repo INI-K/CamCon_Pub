@@ -92,30 +92,29 @@ class CameraViewModel @Inject constructor(
 
     init {
         // 중복 초기화 방지
-        if (isViewModelInitialized) {
+        if (!isViewModelInitialized) {
+            // 앱 재개 상태를 가장 먼저 설정
+            isAppResuming = true
+            Log.d("CameraViewModel", "ViewModel 초기화 - 앱 재개 상태 설정")
+
+            observeDataSources()
+            initializeCameraDatabase()
+
+            cameraRepository.setPhotoPreviewMode(false)
+            Log.d("CameraViewModel", "제어 탭 진입 - 사진 미리보기 모드 비활성화")
+
+            // 3초 후 앱 재개 상태 해제
+            viewModelScope.launch {
+                delay(3000)
+                isAppResuming = false
+                Log.d("CameraViewModel", "앱 재개 상태 해제")
+            }
+
+            // 초기화 완료 플래그 설정
+            isViewModelInitialized = true
+        } else {
             Log.d("CameraViewModel", "ViewModel 이미 초기화됨 - 중복 초기화 방지")
-            return
         }
-
-        // 앱 재개 상태를 가장 먼저 설정
-        isAppResuming = true
-        Log.d("CameraViewModel", "ViewModel 초기화 - 앱 재개 상태 설정")
-
-        observeDataSources()
-        initializeCameraDatabase()
-
-        cameraRepository.setPhotoPreviewMode(false)
-        Log.d("CameraViewModel", "제어 탭 진입 - 사진 미리보기 모드 비활성화")
-
-        // 3초 후 앱 재개 상태 해제
-        viewModelScope.launch {
-            delay(3000)
-            isAppResuming = false
-            Log.d("CameraViewModel", "앱 재개 상태 해제")
-        }
-
-        // 초기화 완료 플래그 설정
-        isViewModelInitialized = true
     }
 
     private fun observeDataSources() {
