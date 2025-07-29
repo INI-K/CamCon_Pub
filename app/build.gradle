@@ -105,7 +105,9 @@ android {
     kotlinOptions {
         jvmTarget = "11"
         freeCompilerArgs += [
-                "-opt-in=androidx.compose.material.ExperimentalMaterialApi"
+                "-opt-in=androidx.compose.material.ExperimentalMaterialApi",
+                "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
+                "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi"
         ]
     }
     packaging {
@@ -130,7 +132,9 @@ dependencies {
     implementation libs.material
     implementation libs.androidx.constraintlayout
     implementation libs.androidx.activity
-    implementation libs.compose.material
+    implementation "androidx.compose.material3:material3:1.1.2"
+    implementation "androidx.compose.material3:material3-window-size-class:1.1.2"
+    implementation "androidx.compose.material3:material3-adaptive:1.0.0-alpha06"
     implementation "androidx.compose.runtime:runtime-livedata:1.5.4"
     testImplementation libs.junit
     androidTestImplementation libs.androidx.junit
