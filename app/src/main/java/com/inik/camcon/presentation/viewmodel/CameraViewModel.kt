@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
+import com.inik.camcon.data.repository.PtpTimeoutException
 import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.domain.model.TimelapseSettings
@@ -61,6 +62,10 @@ class CameraViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(CameraUiState())
     val uiState: StateFlow<CameraUiState> = _uiState.asStateFlow()
+
+    // PTP 타임아웃 상태 관리
+    private val _isPtpTimeout = MutableStateFlow(false)
+    val isPtpTimeout: StateFlow<Boolean> = _isPtpTimeout.asStateFlow()
 
     val cameraFeed: StateFlow<List<Camera>> = getCameraFeedUseCase()
         .stateIn(
@@ -280,7 +285,8 @@ class CameraViewModel @Inject constructor(
                                     isConnected = true,
                                     error = null,
                                     isUsbInitializing = false,
-                                    usbInitializationMessage = null
+                                    usbInitializationMessage = null,
+                                    isPtpTimeout = false
                                 )
                             }
                         }
@@ -291,24 +297,50 @@ class CameraViewModel @Inject constructor(
                     .onFailure { error ->
                         Log.e("CameraViewModel", "자동 카메라 연결 실패", error)
                         withContext(Dispatchers.Main) {
-                            _uiState.update {
-                                it.copy(
-                                    error = "자동 카메라 연결 실패: ${error.message}",
-                                    isUsbInitializing = false,
-                                    usbInitializationMessage = null
-                                )
+                            val isPtpTimeout = error is PtpTimeoutException
+                            if (isPtpTimeout) {
+                                _uiState.update {
+                                    it.copy(
+                                        error = if (isPtpTimeout) "PTP 카메라 통신이 일정 시간 동안 응답하지 않습니다. 연결을 다시 시도해주세요."
+                                        else "자동 카메라 연결 실패: ${error.message}",
+                                        isUsbInitializing = false,
+                                        usbInitializationMessage = null,
+                                        isPtpTimeout = isPtpTimeout
+                                    )
+                                }
+                            } else {
+                                _uiState.update {
+                                    it.copy(
+                                        error = "자동 카메라 연결 실패: ${error.message}",
+                                        isUsbInitializing = false,
+                                        usbInitializationMessage = null
+                                    )
+                                }
                             }
                         }
                     }
             } catch (e: Exception) {
                 Log.e("CameraViewModel", "자동 카메라 연결 중 예외 발생", e)
                 withContext(Dispatchers.Main) {
-                    _uiState.update {
-                        it.copy(
-                            error = "자동 카메라 연결 실패: ${e.message}",
-                            isUsbInitializing = false,
-                            usbInitializationMessage = null
-                        )
+                    val isPtpTimeout = e is PtpTimeoutException
+                    if (isPtpTimeout) {
+                        _uiState.update {
+                            it.copy(
+                                error = if (isPtpTimeout) "PTP 카메라 통신이 일정 시간 동안 응답하지 않습니다. 연결을 다시 시도해주세요."
+                                else "자동 카메라 연결 실패: ${e.message}",
+                                isUsbInitializing = false,
+                                usbInitializationMessage = null,
+                                isPtpTimeout = isPtpTimeout
+                            )
+                        }
+                    } else {
+                        _uiState.update {
+                            it.copy(
+                                error = "자동 카메라 연결 실패: ${e.message}",
+                                isUsbInitializing = false,
+                                usbInitializationMessage = null
+                            )
+                        }
                     }
                 }
             } finally {
@@ -387,7 +419,7 @@ class CameraViewModel @Inject constructor(
                     .onSuccess {
                         Log.d("CameraViewModel", "카메라 연결 성공")
                         withContext(Dispatchers.Main) {
-                            _uiState.update { it.copy(isConnected = true) }
+                            _uiState.update { it.copy(isConnected = true, isPtpTimeout = false) }
                         }
 
                         loadCameraCapabilitiesAsync()
@@ -396,11 +428,23 @@ class CameraViewModel @Inject constructor(
                     .onFailure { error ->
                         Log.e("CameraViewModel", "카메라 연결 실패", error)
                         withContext(Dispatchers.Main) {
-                            _uiState.update {
-                                it.copy(
-                                    isConnected = false,
-                                    error = error.message
-                                )
+                            val isPtpTimeout = error is PtpTimeoutException
+                            if (isPtpTimeout) {
+                                _uiState.update {
+                                    it.copy(
+                                        isConnected = false,
+                                        error = if (isPtpTimeout) "PTP 카메라 통신이 일정 시간 동안 응답하지 않습니다. 연결을 다시 시도해주세요."
+                                        else error.message,
+                                        isPtpTimeout = isPtpTimeout
+                                    )
+                                }
+                            } else {
+                                _uiState.update {
+                                    it.copy(
+                                        isConnected = false,
+                                        error = error.message
+                                    )
+                                }
                             }
                         }
                     }
@@ -411,12 +455,25 @@ class CameraViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.e("CameraViewModel", "카메라 연결 중 예외 발생", e)
                 withContext(Dispatchers.Main) {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            isConnected = false,
-                            error = "카메라 연결 실패: ${e.message}"
-                        )
+                    val isPtpTimeout = e is PtpTimeoutException
+                    if (isPtpTimeout) {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                isConnected = false,
+                                error = if (isPtpTimeout) "PTP 카메라 통신이 일정 시간 동안 응답하지 않습니다. 연결을 다시 시도해주세요."
+                                else "카메라 연결 실패: ${e.message}",
+                                isPtpTimeout = isPtpTimeout
+                            )
+                        }
+                    } else {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                isConnected = false,
+                                error = "카메라 연결 실패: ${e.message}"
+                            )
+                        }
                     }
                 }
             }
@@ -821,7 +878,8 @@ class CameraViewModel @Inject constructor(
                             liveViewFrame = null,
                             isLiveViewLoading = false,
                             isCapturing = false,
-                            isFocusing = false
+                            isFocusing = false,
+                            isPtpTimeout = false
                         )
                     }
                 }
@@ -951,5 +1009,21 @@ class CameraViewModel @Inject constructor(
         isTabSwitching = false
         Log.d("CameraViewModel", "탭 전환 플래그 확인 및 초기화: $wasReturning -> false")
         return wasReturning
+    }
+
+    /**
+     * PTP 타임아웃 상태 초기화
+     */
+    fun clearPtpTimeout() {
+        _uiState.update { it.copy(isPtpTimeout = false) }
+        Log.d("CameraViewModel", "PTP 타임아웃 상태 초기화")
+    }
+
+    /**
+     * 앱 재시작을 위한 액티비티 재시작 요청
+     */
+    fun restartApp() {
+        Log.d("CameraViewModel", "앱 재시작 요청")
+        // Activity에서 처리되어야 함
     }
 }

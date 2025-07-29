@@ -30,6 +30,7 @@ data class PhotoPreviewUiState(
     val thumbnailCache: Map<String, ByteArray> = emptyMap(),
     val isConnected: Boolean = false,
     val isInitialized: Boolean = false,
+    val isInitializing: Boolean = false, // 카메라 초기화 상태 추가
     val fileTypeFilter: FileTypeFilter = FileTypeFilter.JPG,
     val allPhotos: List<CameraPhoto> = emptyList()
 )
@@ -60,6 +61,10 @@ class PhotoPreviewViewModel @Inject constructor(
     private val _downloadingImages = MutableStateFlow<Set<String>>(emptySet())
     val downloadingImages: StateFlow<Set<String>> = _downloadingImages.asStateFlow()
 
+    // EXIF 정보 캐시 추가
+    private val _exifCache = MutableStateFlow<Map<String, String>>(emptyMap())
+    val exifCache: StateFlow<Map<String, String>> = _exifCache.asStateFlow()
+
     // 프리로딩 상태 추적
     private val _prefetchedPage = MutableStateFlow(0)
 
@@ -68,11 +73,49 @@ class PhotoPreviewViewModel @Inject constructor(
         private const val PREFETCH_PAGE_SIZE = 50
     }
 
+    // 작업 취소를 위한 플래그 추가
+    private var isViewModelActive = true
+
     init {
         android.util.Log.d(TAG, "=== PhotoPreviewViewModel 초기화 시작 ===")
-        loadInitialPhotos()
-        observePhotoCaptureEvents()
-        observeCameraConnection()
+
+        // 1. 동기 초기화 (즉시 필요한 것들만)
+        _uiState.value = _uiState.value.copy(isInitializing = true)
+
+        // 2. 사진 미리보기 탭 진입 시 이벤트 리스너 즉시 중단
+        viewModelScope.launch {
+            try {
+                android.util.Log.d(TAG, "📸 사진 미리보기 탭 진입 - 이벤트 리스너 즉시 중단")
+
+                // **네이티브 작업 즉시 중단**
+                com.inik.camcon.CameraNative.cancelAllOperations()
+                android.util.Log.d(TAG, "🚫 네이티브 작업 중단 완료")
+
+                cameraRepository.stopCameraEventListener()
+                android.util.Log.d(TAG, "✅ 이벤트 리스너 중단 완료")
+            } catch (e: Exception) {
+                android.util.Log.w(TAG, "이벤트 리스너 중단 실패 (무시하고 계속)", e)
+            }
+        }
+
+        // 3. 리스너들 설정 (백그라운드에서)
+        viewModelScope.launch {
+            launch { observeCameraConnection() }
+            launch { observeCameraInitialization() }
+            launch { observePhotoCaptureEvents() }
+        }
+
+        // 4. 카메라 연결 상태 확인 후 사진 로딩
+        viewModelScope.launch {
+            globalManager.globalConnectionState.collect { connectionState ->
+                if (connectionState.isAnyConnectionActive && _uiState.value.photos.isEmpty()) {
+                    android.util.Log.d(TAG, "카메라 연결 확인됨 - 사진 목록 로딩 시작")
+                    loadInitialPhotos()
+                    return@collect // 첫 번째 연결에서만 실행
+                }
+            }
+        }
+
         android.util.Log.d(TAG, "=== PhotoPreviewViewModel 초기화 완료 ===")
     }
 
@@ -103,6 +146,14 @@ class PhotoPreviewViewModel @Inject constructor(
         }
     }
 
+    private fun observeCameraInitialization() {
+        viewModelScope.launch {
+            cameraRepository.isInitializing().collect { isInitializing ->
+                _uiState.value = _uiState.value.copy(isInitializing = isInitializing)
+            }
+        }
+    }
+
     private suspend fun checkCameraInitialization() {
         // 카메라 초기화 상태 확인 (Repository에 함수 추가 필요)
         // 임시로 연결 상태와 동일하게 처리
@@ -129,6 +180,13 @@ class PhotoPreviewViewModel @Inject constructor(
         android.util.Log.d(TAG, "=== loadInitialPhotos 호출 ===")
         viewModelScope.launch {
             android.util.Log.d(TAG, "loadInitialPhotos 코루틴 시작")
+
+            // 즉시 중단 체크
+            if (!isViewModelActive) {
+                android.util.Log.d(TAG, "⛔ loadInitialPhotos 작업 중단됨 (ViewModel 비활성)")
+                return@launch
+            }
+
             _uiState.value = _uiState.value.copy(
                 isLoading = true,
                 error = null,
@@ -151,9 +209,21 @@ class PhotoPreviewViewModel @Inject constructor(
                 return@launch
             }
 
+            // 작업 중단 체크
+            if (!isViewModelActive) {
+                android.util.Log.d(TAG, "⛔ loadInitialPhotos 중단됨 (카메라 확인 후)")
+                return@launch
+            }
+
             android.util.Log.d(TAG, "getCameraPhotosPagedUseCase 호출 시작")
             getCameraPhotosPagedUseCase(page = 0, pageSize = PREFETCH_PAGE_SIZE).fold(
                 onSuccess = { paginatedPhotos ->
+                    // 작업 중단 체크
+                    if (!isViewModelActive) {
+                        android.util.Log.d(TAG, "⛔ loadInitialPhotos 중단됨 (사진 목록 로딩 후)")
+                        return@launch
+                    }
+
                     android.util.Log.d(TAG, "사진 목록 불러오기 성공: ${paginatedPhotos.photos.size}개")
                     _uiState.value = _uiState.value.copy(
                         allPhotos = paginatedPhotos.photos,
@@ -167,16 +237,24 @@ class PhotoPreviewViewModel @Inject constructor(
                         hasNextPage = paginatedPhotos.hasNext
                     )
 
-                    // 첫 번째 페이지의 썸네일 로드 시작
-                    android.util.Log.d(TAG, "썸네일 로드 시작")
-                    loadThumbnailsForCurrentPage()
+                    // 작업 중단 체크 후 썸네일 로드
+                    if (isViewModelActive) {
+                        android.util.Log.d(TAG, "썸네일 로드 시작")
+                        loadThumbnailsForCurrentPage()
+                    } else {
+                        android.util.Log.d(TAG, "⛔ 썸네일 로드 중단됨")
+                    }
                 },
                 onFailure = { exception ->
-                    android.util.Log.e(TAG, "사진 목록 불러오기 실패", exception)
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = exception.message ?: "사진을 불러오는데 실패했습니다"
-                    )
+                    if (isViewModelActive) {
+                        android.util.Log.e(TAG, "사진 목록 불러오기 실패", exception)
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            error = exception.message ?: "사진을 불러오는데 실패했습니다"
+                        )
+                    } else {
+                        android.util.Log.d(TAG, "⛔ 사진 목록 로딩 실패 처리 중단됨")
+                    }
                 }
             )
             android.util.Log.d(TAG, "loadInitialPhotos 코루틴 완료")
@@ -192,14 +270,32 @@ class PhotoPreviewViewModel @Inject constructor(
             return
         }
 
+        // 즉시 중단 체크
+        if (!isViewModelActive) {
+            android.util.Log.d(TAG, "⛔ loadNextPage 작업 중단됨 (ViewModel 비활성)")
+            return
+        }
+
         android.util.Log.d(TAG, "=== loadNextPage 시작 ===")
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoadingMore = true)
             android.util.Log.d(TAG, "isLoadingMore = true 설정됨")
 
+            // 중단 체크
+            if (!isViewModelActive) {
+                android.util.Log.d(TAG, "⛔ loadNextPage 중단됨 (시작 후)")
+                return@launch
+            }
+
             val nextPage = _uiState.value.currentPage + 1
             getCameraPhotosPagedUseCase(page = nextPage, pageSize = PREFETCH_PAGE_SIZE).fold(
                 onSuccess = { paginatedPhotos ->
+                    // 성공 후 중단 체크
+                    if (!isViewModelActive) {
+                        android.util.Log.d(TAG, "⛔ loadNextPage 중단됨 (성공 후)")
+                        return@launch
+                    }
+
                     android.util.Log.d(TAG, "loadNextPage 성공: ${paginatedPhotos.photos.size}개 추가")
                     val currentPhotos = _uiState.value.allPhotos
                     val newPhotos = currentPhotos + paginatedPhotos.photos
@@ -214,16 +310,24 @@ class PhotoPreviewViewModel @Inject constructor(
                     )
                     android.util.Log.d(TAG, "isLoadingMore = false 설정됨")
 
-                    // 새로 로드된 사진들의 썸네일 로드
-                    loadThumbnailsForNewPhotos(paginatedPhotos.photos)
+                    // 중단 체크 후 썸네일 로드
+                    if (isViewModelActive) {
+                        loadThumbnailsForNewPhotos(paginatedPhotos.photos)
+                    } else {
+                        android.util.Log.d(TAG, "⛔ 새 페이지 썸네일 로드 중단됨")
+                    }
                 },
                 onFailure = { exception ->
-                    android.util.Log.e(TAG, "loadNextPage 실패", exception)
-                    _uiState.value = _uiState.value.copy(
-                        isLoadingMore = false,
-                        error = exception.message ?: "추가 사진을 불러오는데 실패했습니다"
-                    )
-                    android.util.Log.d(TAG, "isLoadingMore = false 설정됨 (실패)")
+                    if (isViewModelActive) {
+                        android.util.Log.e(TAG, "loadNextPage 실패", exception)
+                        _uiState.value = _uiState.value.copy(
+                            isLoadingMore = false,
+                            error = exception.message ?: "추가 사진을 불러오는데 실패했습니다"
+                        )
+                        android.util.Log.d(TAG, "isLoadingMore = false 설정됨 (실패)")
+                    } else {
+                        android.util.Log.d(TAG, "⛔ loadNextPage 실패 처리 중단됨")
+                    }
                 }
             )
         }
@@ -274,71 +378,194 @@ class PhotoPreviewViewModel @Inject constructor(
 
     private fun loadThumbnailsForNewPhotos(photos: List<CameraPhoto>) {
         viewModelScope.launch {
+            // 즉시 중단 체크
+            if (!isViewModelActive) {
+                android.util.Log.d(TAG, "⛔ loadThumbnailsForNewPhotos 작업 중단됨")
+                return@launch
+            }
+
             val currentCache = _uiState.value.thumbnailCache.toMutableMap()
 
+            // 카메라 초기화 대기 (최대 2초)
+            var waitCount = 0
+            while (!_uiState.value.isConnected && waitCount < 20 && isViewModelActive) {
+                delay(100)
+                waitCount++
+            }
+
+            if (!_uiState.value.isConnected) {
+                android.util.Log.w(TAG, "카메라 연결 대기 시간 초과 - 썸네일 로딩 중단")
+                return@launch
+            }
+
+            // 중단 체크
+            if (!isViewModelActive) {
+                android.util.Log.d(TAG, "⛔ 썸네일 로딩 중단됨 (카메라 대기 후)")
+                return@launch
+            }
+
+            // forEach 대신 각 사진별로 독립된 코루틴으로 병렬 처리
             photos.forEach { photo ->
-                if (!currentCache.containsKey(photo.path)) {
-                    // RAW 파일인지 확인
-                    val isRawFile = photo.path.endsWith(".nef", true) ||
-                            photo.path.endsWith(".cr2", true) ||
-                            photo.path.endsWith(".arw", true) ||
-                            photo.path.endsWith(".dng", true)
+                // 각 사진별로 독립된 코루틴 실행 (예외가 전파되지 않도록)
+                viewModelScope.launch {
+                    try {
+                        // 개별 썸네일 로딩 시작 전 중단 체크
+                        if (!isViewModelActive) {
+                            android.util.Log.d(TAG, "⛔ 개별 썸네일 로딩 중단됨: ${photo.name}")
+                            return@launch
+                        }
 
-                    // 모든 파일에 대해 썸네일 가져오기 시도 (RAW, JPG 구분 없이)
-                    getCameraThumbnailUseCase(photo.path).fold(
-                        onSuccess = { thumbnailData ->
-                            currentCache[photo.path] = thumbnailData
-                            _uiState.value = _uiState.value.copy(
-                                thumbnailCache = currentCache.toMap()
-                            )
-                            android.util.Log.d(
-                                TAG,
-                                "썸네일 로드 성공: ${photo.name} (${thumbnailData.size} bytes)"
-                            )
-                        },
-                        onFailure = { exception ->
-                            android.util.Log.w(TAG, "썸네일 로드 실패: ${photo.path}", exception)
+                        if (!currentCache.containsKey(photo.path)) {
+                            android.util.Log.d(TAG, "썸네일 로딩 시작: ${photo.name}")
+                            
+                            // RAW 파일인지 확인
+                            val isRawFile = photo.path.endsWith(".nef", true) ||
+                                    photo.path.endsWith(".cr2", true) ||
+                                    photo.path.endsWith(".arw", true) ||
+                                    photo.path.endsWith(".dng", true)
 
-                            // RAW 파일의 경우 더 긴 지연 후 재시도
-                            val retryDelay = if (isRawFile) 800L else 300L
+                            // 빠른 포기 전략: 초기 시도에서 빠르게 실패하면 재시도 간격 단축
+                            var retryDelay = if (isRawFile) 200L else 100L
+                            var maxRetries = 2
 
-                            viewModelScope.launch {
-                                delay(retryDelay)
-                                getCameraThumbnailUseCase(photo.path).fold(
-                                    onSuccess = { retryThumbnailData ->
-                                        currentCache[photo.path] = retryThumbnailData
-                                        _uiState.value = _uiState.value.copy(
-                                            thumbnailCache = currentCache.toMap()
-                                        )
-                                        android.util.Log.d(
-                                            TAG,
-                                            "썸네일 재시도 성공: ${photo.name} (${retryThumbnailData.size} bytes)"
-                                        )
-                                    },
-                                    onFailure = { retryException ->
-                                        android.util.Log.e(
-                                            TAG,
-                                            "썸네일 재시도 실패: ${photo.path}",
-                                            retryException
-                                        )
+                            // 모든 파일에 대해 썸네일 가져오기 시도 (RAW, JPG 구분 없이)
+                            getCameraThumbnailUseCase(photo.path).fold(
+                                onSuccess = { thumbnailData ->
+                                    // 성공 후 중단 체크
+                                    if (!isViewModelActive) {
+                                        android.util.Log.d(TAG, "⛔ 썸네일 성공 처리 중단됨: ${photo.name}")
+                                        return@launch
+                                    }
 
-                                        // 재시도도 실패하면 빈 ByteArray로 캐시에 추가 (무한 재시도 방지)
-                                        currentCache[photo.path] = ByteArray(0)
+                                    synchronized(currentCache) {
+                                        currentCache[photo.path] = thumbnailData
                                         _uiState.value = _uiState.value.copy(
                                             thumbnailCache = currentCache.toMap()
                                         )
                                     }
+                                    android.util.Log.d(
+                                        TAG,
+                                        "썸네일 로드 성공: ${photo.name} (${thumbnailData.size} bytes)"
+                                    )
+                                },
+                                onFailure = { exception ->
+                                    // 실패 후 중단 체크
+                                    if (!isViewModelActive) {
+                                        android.util.Log.d(TAG, "⛔ 썸네일 실패 처리 중단됨: ${photo.name}")
+                                        return@launch
+                                    }
+
+                                    android.util.Log.w(TAG, "썸네일 로드 실패: ${photo.path}", exception)
+
+                                    // 재시도 로직도 독립된 코루틴으로 실행
+                                    viewModelScope.launch {
+                                        repeat(maxRetries) { retryIndex ->
+                                            try {
+                                                // 재시도 전 중단 체크
+                                                if (!isViewModelActive) {
+                                                    android.util.Log.d(
+                                                        TAG,
+                                                        "⛔ 썸네일 재시도 중단됨: ${photo.name}"
+                                                    )
+                                                    return@launch
+                                                }
+
+                                                delay(retryDelay)
+                                                android.util.Log.d(
+                                                    TAG,
+                                                    "썸네일 재시도 ${retryIndex + 1}/${maxRetries}: ${photo.name}"
+                                                )
+
+                                                getCameraThumbnailUseCase(photo.path).fold(
+                                                    onSuccess = { retryThumbnailData ->
+                                                        // 재시도 성공 후 중단 체크
+                                                        if (!isViewModelActive) {
+                                                            android.util.Log.d(
+                                                                TAG,
+                                                                "⛔ 썸네일 재시도 성공 처리 중단됨: ${photo.name}"
+                                                            )
+                                                            return@launch
+                                                        }
+
+                                                        synchronized(currentCache) {
+                                                            currentCache[photo.path] =
+                                                                retryThumbnailData
+                                                            _uiState.value = _uiState.value.copy(
+                                                                thumbnailCache = currentCache.toMap()
+                                                            )
+                                                        }
+                                                        android.util.Log.d(
+                                                            TAG,
+                                                            "썸네일 재시도 성공: ${photo.name} (${retryThumbnailData.size} bytes)"
+                                                        )
+                                                        return@repeat // 성공하면 재시도 중단
+                                                    },
+                                                    onFailure = { retryException ->
+                                                        android.util.Log.e(
+                                                            TAG,
+                                                            "썸네일 재시도 ${retryIndex + 1} 실패: ${photo.path}",
+                                                            retryException
+                                                        )
+
+                                                        // 마지막 재시도에서도 실패하면 빈 ByteArray로 캐시에 추가
+                                                        if (retryIndex == maxRetries - 1 && isViewModelActive) {
+                                                            synchronized(currentCache) {
+                                                                currentCache[photo.path] =
+                                                                    ByteArray(0)
+                                                                _uiState.value =
+                                                                    _uiState.value.copy(
+                                                                        thumbnailCache = currentCache.toMap()
+                                                                    )
+                                                            }
+                                                        }
+                                                    }
+                                                )
+
+                                                // 재시도 간격 증가 (점진적 백오프)
+                                                retryDelay = (retryDelay * 1.5).toLong()
+
+                                            } catch (retryException: Exception) {
+                                                android.util.Log.e(
+                                                    TAG,
+                                                    "썸네일 재시도 중 예외: ${photo.name}",
+                                                    retryException
+                                                )
+                                                // 마지막 재시도에서 예외 발생 시에도 빈 데이터로 캐시 추가
+                                                if (retryIndex == maxRetries - 1 && isViewModelActive) {
+                                                    synchronized(currentCache) {
+                                                        currentCache[photo.path] = ByteArray(0)
+                                                        _uiState.value = _uiState.value.copy(
+                                                            thumbnailCache = currentCache.toMap()
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            )
+                        } else {
+                            android.util.Log.d(TAG, "썸네일 캐시에 이미 존재: ${photo.name}")
+                        }
+                    } catch (exception: Exception) {
+                        android.util.Log.e(TAG, "썸네일 로딩 중 예외: ${photo.name}", exception)
+                        // 예외 발생 시에도 빈 데이터로 캐시 추가하여 무한 로딩 방지
+                        if (isViewModelActive) {
+                            synchronized(currentCache) {
+                                currentCache[photo.path] = ByteArray(0)
+                                _uiState.value = _uiState.value.copy(
+                                    thumbnailCache = currentCache.toMap()
                                 )
                             }
                         }
-                    )
+                    }
                 }
             }
         }
     }
 
     /**
-     * 전체화면 뷰어용 실제 파일 다운로드
+     * 전체화면 뷰어용 실제 파일 다운로드 및 EXIF 파싱
      */
     fun downloadFullImage(photoPath: String) {
         android.util.Log.d(TAG, "=== downloadFullImage 호출: $photoPath ===")
@@ -369,12 +596,19 @@ class PhotoPreviewViewModel @Inject constructor(
                     val folderPath = photoPath.substringBeforeLast("/")
                     val fileName = photoPath.substringAfterLast("/")
                     android.util.Log.d(TAG, "이미지 다운로드: 폴더=$folderPath, 파일=$fileName")
-                    
-                    com.inik.camcon.CameraNative.downloadCameraPhoto(photoPath)
+
+                    val result = com.inik.camcon.CameraNative.downloadCameraPhoto(photoPath)
+                    android.util.Log.d(
+                        TAG,
+                        "downloadCameraPhoto 결과: ${if (result == null) "null" else "${result.size} bytes"}"
+                    )
+                    result
                 }
 
                 if (imageData != null && imageData.isNotEmpty()) {
-                    // 캐시 업데이트를 한 번만 수행 (기존 캐시 전체를 복사하지 않고 효율적으로 처리)
+                    android.util.Log.d(TAG, "이미지 데이터 확인: 유효함 (${imageData.size} bytes)")
+
+                    // 고화질 이미지 캐시 업데이트
                     val currentCache = _fullImageCache.value
                     if (!currentCache.containsKey(photoPath)) {
                         val newCache = currentCache + (photoPath to imageData)
@@ -382,6 +616,131 @@ class PhotoPreviewViewModel @Inject constructor(
                         
                         android.util.Log.d(TAG, "이미지 데이터 반환: ${imageData.size} 바이트")
                         android.util.Log.d(TAG, "실제 파일 다운로드 성공: ${imageData.size} bytes")
+
+                        // EXIF 파싱도 함께 처리 (EXIF 캐시에 없는 경우에만)
+                        val hasExifCache = _exifCache.value.containsKey(photoPath)
+                        android.util.Log.d(TAG, "EXIF 캐시 확인: ${if (hasExifCache) "있음" else "없음"}")
+
+                        if (!hasExifCache) {
+                            android.util.Log.d(TAG, "고화질 다운로드와 함께 EXIF 파싱 시작: $photoPath")
+                            withContext(Dispatchers.IO) {
+                                try {
+                                    // 임시 파일 생성
+                                    val tempFile = java.io.File.createTempFile("temp_exif", ".jpg")
+                                    tempFile.writeBytes(imageData)
+
+                                    try {
+                                        // Android ExifInterface로 상세 EXIF 정보 읽기
+                                        val exif =
+                                            androidx.exifinterface.media.ExifInterface(tempFile.absolutePath)
+
+                                        // JSON 형태로 EXIF 정보 구성
+                                        val exifMap = mutableMapOf<String, Any>()
+
+                                        // 기본 이미지 정보 추가 (네이티브에서 가져온 것)
+                                        val basicInfo =
+                                            com.inik.camcon.CameraNative.getCameraPhotoExif(
+                                                photoPath
+                                            )
+                                        basicInfo?.let { basic ->
+                                            try {
+                                                val basicJson = org.json.JSONObject(basic)
+                                                if (basicJson.has("width")) {
+                                                    exifMap["width"] = basicJson.getInt("width")
+                                                }
+                                                if (basicJson.has("height")) {
+                                                    exifMap["height"] = basicJson.getInt("height")
+                                                } else {
+                                                    exifMap["height"] = exif.getAttributeInt(
+                                                        androidx.exifinterface.media.ExifInterface.TAG_IMAGE_LENGTH,
+                                                        0
+                                                    )
+                                                }
+                                            } catch (e: Exception) {
+                                                android.util.Log.w(TAG, "기본 정보 파싱 실패", e)
+                                            }
+                                        }
+
+                                        // 카메라 정보
+                                        exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_MAKE)
+                                            ?.let {
+                                                exifMap["make"] = it
+                                            }
+                                        exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_MODEL)
+                                            ?.let {
+                                                exifMap["model"] = it
+                                            }
+
+                                        // 촬영 설정
+                                        exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_F_NUMBER)
+                                            ?.let {
+                                                exifMap["f_number"] = it
+                                            }
+                                        exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_EXPOSURE_TIME)
+                                            ?.let {
+                                                exifMap["exposure_time"] = it
+                                            }
+                                        exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_FOCAL_LENGTH)
+                                            ?.let {
+                                                exifMap["focal_length"] = it
+                                            }
+                                        exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_PHOTOGRAPHIC_SENSITIVITY)
+                                            ?.let {
+                                                exifMap["iso"] = it
+                                            }
+
+                                        // 기타 정보
+                                        exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION)
+                                            ?.let {
+                                                exifMap["orientation"] = it.toIntOrNull() ?: 1
+                                            }
+                                        exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_WHITE_BALANCE)
+                                            ?.let {
+                                                exifMap["white_balance"] = it
+                                            }
+                                        exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_FLASH)
+                                            ?.let {
+                                                exifMap["flash"] = it
+                                            }
+                                        exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_DATETIME_ORIGINAL)
+                                            ?.let {
+                                                exifMap["date_time_original"] = it
+                                            }
+
+                                        // GPS 정보
+                                        val latLong = FloatArray(2)
+                                        if (exif.getLatLong(latLong)) {
+                                            exifMap["gps_latitude"] = latLong[0]
+                                            exifMap["gps_longitude"] = latLong[1]
+                                        }
+
+                                        // JSON 문자열로 변환
+                                        val jsonObject = org.json.JSONObject()
+                                        exifMap.forEach { (key, value) ->
+                                            jsonObject.put(key, value)
+                                        }
+
+                                        val exifJson = jsonObject.toString()
+                                        android.util.Log.d(
+                                            TAG,
+                                            "고화질 다운로드와 함께 EXIF 파싱 완료: $exifJson"
+                                        )
+
+                                        // EXIF 캐시에 추가
+                                        _exifCache.value =
+                                            _exifCache.value + (photoPath to exifJson)
+
+                                    } finally {
+                                        // 임시 파일 삭제
+                                        tempFile.delete()
+                                    }
+                                } catch (e: Exception) {
+                                    android.util.Log.e(TAG, "고화질 다운로드 중 EXIF 파싱 실패", e)
+                                }
+                            }
+                        } else {
+                            android.util.Log.d(TAG, "EXIF 이미 캐시에 있음, 파싱 생략")
+                        }
                         
                         // 캐시 업데이트 로그 출력 (디버깅용)
                         android.util.Log.d(TAG, "=== 고화질 캐시 업데이트 ===")
@@ -519,15 +878,39 @@ class PhotoPreviewViewModel @Inject constructor(
     }
 
     /**
-     * 사진의 EXIF 정보를 가져오는 함수
+     * 사진의 EXIF 정보를 가져오는 함수 (캐시에서만 조회)
      */
     fun getCameraPhotoExif(photoPath: String): String? {
-        return try {
-            com.inik.camcon.CameraNative.getCameraPhotoExif(photoPath)
-        } catch (e: Exception) {
-            android.util.Log.e(TAG, "EXIF 정보 가져오기 실패: $photoPath", e)
-            null
+        // EXIF 캐시에서 확인
+        val cachedExif = _exifCache.value[photoPath]
+        if (cachedExif != null) {
+            android.util.Log.d(TAG, "EXIF 캐시에서 반환: $photoPath")
+            return cachedExif
         }
+
+        // 이미 다운로드 중인지 확인
+        val isDownloading = _downloadingImages.value.contains(photoPath)
+        val hasFullImage = _fullImageCache.value.containsKey(photoPath)
+
+        android.util.Log.d(
+            TAG,
+            "EXIF 상태 확인 - 캐시: ${cachedExif != null}, 다운로드중: $isDownloading, 고화질있음: $hasFullImage"
+        )
+
+        if (!isDownloading && !hasFullImage) {
+            // 캐시에 없고 다운로드 중이 아니면 고화질 다운로드 트리거
+            android.util.Log.d(TAG, "EXIF 캐시 없음, 고화질 다운로드 트리거: $photoPath")
+            downloadFullImage(photoPath)
+        } else if (isDownloading) {
+            android.util.Log.d(TAG, "이미 다운로드 중, EXIF 파싱 대기: $photoPath")
+        } else if (hasFullImage) {
+            android.util.Log.d(TAG, "고화질 있지만 EXIF 없음, 별도 파싱 필요: $photoPath")
+            // 고화질은 있지만 EXIF가 없는 경우 (드물지만 가능)
+            downloadFullImage(photoPath)
+        }
+
+        // 즉시 null 반환 (비동기 처리 후 캐시에 저장됨)
+        return null
     }
 
     /**
@@ -684,5 +1067,44 @@ class PhotoPreviewViewModel @Inject constructor(
         // 필터 변경 시 새로 필터링된 사진들의 썸네일 로드
         android.util.Log.d(TAG, "필터 변경으로 인한 썸네일 재로드 시작")
         loadThumbnailsForNewPhotos(filteredPhotos)
+    }
+
+    /**
+     * ViewModel 정리 시 모든 작업 중단 및 이벤트 리스너 재시작
+     */
+    override fun onCleared() {
+        super.onCleared()
+        android.util.Log.d(TAG, "=== PhotoPreviewViewModel 정리 시작 ===")
+
+        // 1. 즉시 모든 작업 중단 플래그 설정
+        isViewModelActive = false
+        android.util.Log.d(TAG, "⛔ 모든 진행 중인 작업 중단 요청")
+
+        // 2. ViewModelScope 취소 (모든 코루틴 즉시 중단)
+        // viewModelScope는 onCleared()에서 자동으로 취소되지만 명시적으로 확인
+        android.util.Log.d(TAG, "🚫 ViewModelScope 취소 - 모든 코루틴 중단")
+
+        // 3. 사진 미리보기 탭에서 나갈 때 이벤트 리스너 재시작
+        viewModelScope.launch {
+            try {
+                if (_uiState.value.isConnected) {
+                    android.util.Log.d(TAG, "📸 사진 미리보기 탭 종료 - 이벤트 리스너 재시작")
+
+                    // **네이티브 작업 재개 (반드시 먼저 실행)**
+                    com.inik.camcon.CameraNative.resumeOperations()
+                    android.util.Log.d(TAG, "▶️ 네이티브 작업 재개 완료 (중단 플래그 해제)")
+
+                    // 짧은 지연 후 이벤트 리스너 재시작
+                    kotlinx.coroutines.delay(100)
+                    
+                    cameraRepository.startCameraEventListener()
+                    android.util.Log.d(TAG, "✅ 이벤트 리스너 재시작 완료")
+                }
+            } catch (e: Exception) {
+                android.util.Log.w(TAG, "이벤트 리스너 재시작 실패", e)
+            }
+        }
+
+        android.util.Log.d(TAG, "=== PhotoPreviewViewModel 정리 완료 ===")
     }
 }
