@@ -100,7 +100,7 @@ import java.io.File
 @OptIn(ExperimentalMaterialApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun CameraControlScreen(
-    viewModel: CameraViewModel = hiltViewModel(),
+    viewModel: CameraViewModel,
     appSettingsViewModel: AppSettingsViewModel = hiltViewModel(),
     onFullscreenChange: (Boolean) -> Unit = {}
 ) {
@@ -152,14 +152,7 @@ fun CameraControlScreen(
                 }
                 Lifecycle.Event.ON_RESUME -> {
                     val isReturningFromOtherTab = viewModel.getAndClearTabSwitchFlag()
-
-                    if (isAutoStartEventListener) {
-                        // 다른 탭에서 돌아왔을 때도 이벤트 리스너를 중지/재시작하지 않음
-                        // 이벤트 리스너가 비활성화되어 있을 때만 시작
-                        if (!viewModel.uiState.value.isEventListenerActive) {
-                            viewModel.startEventListener()
-                        }
-                    }
+                    // 이벤트 리스너 자동 시작 로직을 제거 - 네이티브 초기화 완료 후에 처리됨
                 }
                 else -> Unit
             }
@@ -167,6 +160,23 @@ fun CameraControlScreen(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    // 네이티브 카메라 연결 상태와 초기화 상태를 모니터링하여 이벤트 리스너 자동 시작
+    LaunchedEffect(
+        uiState.isNativeCameraConnected,
+        uiState.isInitializing,
+        isAutoStartEventListener
+    ) {
+        // 네이티브 카메라가 연결되고, 초기화가 완료되었고, 자동 시작이 활성화되어 있고, 이벤트 리스너가 비활성화되어 있을 때만 시작
+        if (uiState.isNativeCameraConnected &&
+            !uiState.isInitializing &&
+            isAutoStartEventListener &&
+            !uiState.isEventListenerActive
+        ) {
+            Log.d("CameraControl", "네이티브 카메라 초기화 완료 - 이벤트 리스너 자동 시작")
+            viewModel.startEventListener()
         }
     }
 

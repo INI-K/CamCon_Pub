@@ -73,9 +73,7 @@ class CameraRepositoryImpl @Inject constructor(
             // 카메라 연결 완료 후 안정화 대기
             Log.d("카메라레포지토리", "카메라 연결 완료 - 안정화 대기 시작")
             kotlinx.coroutines.delay(3000)
-
-            // 이벤트 리스너 시작
-            startEventListenerWithRetry()
+            // 이벤트 리스너는 UI에서 명시적으로 시작되도록 변경
         }
         return result
     }
