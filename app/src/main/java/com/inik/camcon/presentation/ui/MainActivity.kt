@@ -208,6 +208,75 @@ fun MainScreen(
             )
         }
 
+        // 카메라 상태 점검 다이얼로그 표시 (초기화가 완료된 후에만 표시)
+        if (cameraUiState.showCameraStatusCheckDialog == true &&
+            !cameraUiState.isUsbInitializing &&
+            !cameraUiState.isCameraInitializing
+        ) {
+            androidx.compose.material.AlertDialog(
+                onDismissRequest = { cameraViewModel.dismissCameraStatusCheckDialog() },
+                title = {
+                    Text(
+                        "카메라 상태 점검 필요",
+                        style = androidx.compose.material.MaterialTheme.typography.h6,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        color = androidx.compose.material.MaterialTheme.colors.error
+                    )
+                },
+                text = {
+                    androidx.compose.foundation.layout.Column {
+                        Text(
+                            "카메라가 정상적으로 동작하지 않습니다.",
+                            style = androidx.compose.material.MaterialTheme.typography.body1
+                        )
+                        androidx.compose.foundation.layout.Spacer(
+                            modifier = androidx.compose.ui.Modifier.height(12.dp)
+                        )
+                        Text(
+                            "다음 사항을 확인해주세요:",
+                            style = androidx.compose.material.MaterialTheme.typography.body2,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                        )
+                        androidx.compose.foundation.layout.Spacer(
+                            modifier = androidx.compose.ui.Modifier.height(8.dp)
+                        )
+                        Text(
+                            "• 카메라 전원이 켜져 있는지 확인\n" +
+                                    "• 카메라 배터리가 충분한지 확인\n" +
+                                    "• USB 케이블 연결 상태 확인\n" +
+                                    "• 카메라가 PC 연결 모드로 설정되어 있는지 확인\n" +
+                                    "• 카메라를 껐다가 다시 켜보세요",
+                            style = androidx.compose.material.MaterialTheme.typography.caption,
+                            color = androidx.compose.material.MaterialTheme.colors.onSurface.copy(
+                                alpha = 0.8f
+                            )
+                        )
+                    }
+                },
+                confirmButton = {
+                    androidx.compose.material.TextButton(
+                        onClick = { cameraViewModel.dismissCameraStatusCheckDialog() }
+                    ) {
+                        Text("확인")
+                    }
+                },
+                dismissButton = {
+                    androidx.compose.material.TextButton(
+                        onClick = {
+                            cameraViewModel.dismissCameraStatusCheckDialog()
+                            cameraViewModel.refreshUsbDevices()
+                        }
+                    ) {
+                        Text("다시 연결")
+                    }
+                },
+                properties = androidx.compose.ui.window.DialogProperties(
+                    dismissOnBackPress = true,
+                    dismissOnClickOutside = false // 사용자가 명시적으로 확인하도록
+                )
+            )
+        }
+
         Scaffold(
             bottomBar = {
                 // 전체화면 모드가 아닐 때만 하단 탭 표시
@@ -354,7 +423,13 @@ class MainActivity : ComponentActivity() {
     private suspend fun handleUsbIntent(intent: Intent) = withContext(Dispatchers.IO) {
         when (intent.action) {
             UsbManager.ACTION_USB_DEVICE_ATTACHED -> {
-                val device: UsbDevice? = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+                val device: UsbDevice? =
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+                    }
                 device?.let {
                     Log.d(TAG, "USB 카메라 디바이스가 연결됨: ${it.deviceName}")
                     Log.d(
@@ -376,7 +451,13 @@ class MainActivity : ComponentActivity() {
                 }
             }
             UsbManager.ACTION_USB_DEVICE_DETACHED -> {
-                val device: UsbDevice? = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+                val device: UsbDevice? =
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+                    }
                 device?.let {
                     Log.d(TAG, "USB 디바이스가 분리됨: ${it.deviceName}")
                 }
