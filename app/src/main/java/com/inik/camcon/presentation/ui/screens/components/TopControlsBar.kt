@@ -1,7 +1,16 @@
 package com.inik.camcon.presentation.ui.screens.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Icon
@@ -93,13 +102,13 @@ fun TopControlsBar(
                         modifier = Modifier.padding(start = 12.dp)
                     ) {
                         if (capabilities.canLiveView) {
-                            FeatureBadge("라이브뷰", Color.Blue)
+                            FeatureBadge(stringResource(R.string.live_view), Color.Blue)
                         }
                         if (capabilities.supportsTimelapse) {
-                            FeatureBadge("타임랩스", Color(0xFF9C27B0))
+                            FeatureBadge(stringResource(R.string.time_lapse), Color(0xFF9C27B0))
                         }
                         if (capabilities.supportsBurstMode) {
-                            FeatureBadge("버스트", Color(0xFFFF9800))
+                            FeatureBadge(stringResource(R.string.burst), Color(0xFFFF9800))
                         }
                     }
                 }
