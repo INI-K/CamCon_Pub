@@ -1,3 +1,9 @@
+> **📢 퍼블릭 레포지토리**  
+> 네이티브 코드와 민감한 파일들이 제외된 퍼블릭 버전입니다.  
+> 마지막 동기화: $(date '+%Y-%m-%d %H:%M:%S UTC')
+
+---
+
 # CamCon - Camera Control Application
 
 [![Android](https://img.shields.io/badge/Platform-Android-green.svg)](https://developer.android.com)

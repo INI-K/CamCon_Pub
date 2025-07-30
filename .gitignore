@@ -1,43 +1,15 @@
-# Built application files
-*.apk
-*.aab
+# 네이티브 코드 제외
+app/src/main/cpp/
+app/src/main/jniLibs/
+Complete_arm64-v8a/
 
-# Gradle files
-.gradle/
-build/
-
-# Local configuration file (sdk path, etc)
+# 키 파일들 제외
+Key/
+key.properties
+app/google-services.json
 local.properties
 
-# Android Studio
-.idea/
-*.iml
-
-# Keystore files
-*.jks
-*.keystore
-
-# App signing keys
-app-release-key.jks
-app-debug-key.jks
-key.properties
-keystore.properties
-signing.properties
-KEY/
-KEY/appkey
-# KEY 폴더 전체를 ignore
-
-# OS files
-.DS_Store
-
-# Android NDK/CMake build files
-app/.cxx/
-app/build/
-*.so
-*.o
-
-# Gradle build cache
-.gradle/*/executionHistory/
-.gradle/*/fileHashes/
-.gradle/buildOutputCleanup/
-.gradle/file-system.probe
+# 빌드 결과물 제외
+app/release/
+*.log
+build_libgphoto2.sh
