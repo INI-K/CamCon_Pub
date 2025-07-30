@@ -26,6 +26,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.viewmodel.CameraViewModel
 
 /**
  * 메인 화면의 전체 네비게이션 구조
@@ -33,6 +34,7 @@ import com.inik.camcon.presentation.theme.CamConTheme
  */
 @Composable
 fun MainNavigation(
+    cameraViewModel: CameraViewModel,
     onSettingsClick: () -> Unit,
     onPtpipConnectionClick: () -> Unit
 ) {
@@ -54,6 +56,7 @@ fun MainNavigation(
     ) { innerPadding ->
         AppNavigation(
             navController = navController,
+            cameraViewModel = cameraViewModel,
             startDestination = AppDestination.CameraControl.route,
             onSettingsClick = onSettingsClick,
             modifier = Modifier.padding(innerPadding)
@@ -177,16 +180,17 @@ private fun getContentDescriptionForDestination(destination: AppDestination): St
 /**
  * 메인 네비게이션 프리뷰
  */
-@Preview(showBackground = true)
-@Composable
-fun MainNavigationPreview() {
-    CamConTheme {
-        MainNavigation(
-            onSettingsClick = { },
-            onPtpipConnectionClick = { }
-        )
-    }
-}
+// @Preview(showBackground = true)
+// @Composable
+// fun MainNavigationPreview() {
+//     CamConTheme {
+//         MainNavigation(
+//             cameraViewModel = // CameraViewModel 인스턴스가 필요하므로 프리뷰에서 제외
+//             onSettingsClick = { },
+//             onPtpipConnectionClick = { }
+//         )
+//     }
+// }
 
 /**
  * 메인 상단 앱바 프리뷰
