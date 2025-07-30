@@ -170,6 +170,25 @@ class UsbCameraManager @Inject constructor(
     }
 
     /**
+     * 카메라 전원 상태를 확인하고 필요시 테스트 실행
+     */
+    fun checkPowerStateAndTest() {
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            try {
+                Log.d(TAG, "카메라 전원 상태 확인 및 테스트 실행")
+
+                // 카메라 요약 정보를 가져와 전원 상태 확인 및 테스트 실행
+                // 이 과정에서 NativeCameraDataSource의 getCameraSummary()가 호출되어
+                // 전원 상태 확인 및 자동 테스트가 실행됩니다
+                capabilitiesManager.getCachedOrFetchSummary()
+
+            } catch (e: Exception) {
+                Log.e(TAG, "카메라 전원 상태 확인 중 오류", e)
+            }
+        }
+    }
+
+    /**
      * 정리 작업
      */
     fun cleanup() {
