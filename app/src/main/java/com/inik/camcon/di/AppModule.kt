@@ -6,7 +6,10 @@ import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
 import com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource
 import com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource
 import com.inik.camcon.data.datasource.ptpip.PtpipDataSource
+import com.inik.camcon.data.datasource.usb.CameraCapabilitiesManager
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
+import com.inik.camcon.data.datasource.usb.UsbConnectionManager
+import com.inik.camcon.data.datasource.usb.UsbDeviceDetector
 import com.inik.camcon.data.network.ptpip.authentication.NikonAuthenticationService
 import com.inik.camcon.data.network.ptpip.connection.PtpipConnectionManager
 import com.inik.camcon.data.network.ptpip.discovery.PtpipDiscoveryService
@@ -34,7 +37,27 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideUsbCameraManager(@ApplicationContext context: Context) = UsbCameraManager(context)
+    fun provideUsbDeviceDetector(@ApplicationContext context: Context) =
+        UsbDeviceDetector(context)
+
+    @Provides
+    @Singleton
+    fun provideUsbConnectionManager(@ApplicationContext context: Context) =
+        UsbConnectionManager(context)
+
+    @Provides
+    @Singleton
+    fun provideCameraCapabilitiesManager() =
+        CameraCapabilitiesManager()
+
+    @Provides
+    @Singleton
+    fun provideUsbCameraManager(
+        @ApplicationContext context: Context,
+        deviceDetector: UsbDeviceDetector,
+        connectionManager: UsbConnectionManager,
+        capabilitiesManager: CameraCapabilitiesManager
+    ) = UsbCameraManager(context, deviceDetector, connectionManager, capabilitiesManager)
 
     @Provides
     @Singleton
