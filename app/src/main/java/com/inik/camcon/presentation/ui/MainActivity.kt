@@ -261,9 +261,12 @@ fun MainScreen(
                 composable(BottomNavItem.CameraControl.route) {
                     // AP 모드일 때는 사진 수신 대기 화면, 아니면 카메라 컨트롤 화면
                     if (activeConnectionType == com.inik.camcon.domain.model.CameraConnectionType.AP_MODE) {
-                        com.inik.camcon.presentation.ui.screens.ApModePhotoReceiveScreen()
+                        com.inik.camcon.presentation.ui.screens.ApModePhotoReceiveScreen(
+                            viewModel = cameraViewModel // 전역 ViewModel 전달
+                        )
                     } else {
                         CameraControlScreen(
+                            viewModel = cameraViewModel, // 전역 ViewModel 전달
                             onFullscreenChange = { isFullscreen = it }
                         )
                     }
