@@ -321,6 +321,9 @@ class CameraViewModel @Inject constructor(
                         uiStateManager.onConnectionSuccess()
                         loadCameraCapabilitiesAsync()
                         loadCameraSettingsAsync()
+                        
+                        // 자동 연결 완료 후 카메라 전원 상태 확인 및 테스트
+                        checkCameraPowerStateAndTest()
                     }
                     .onFailure { error ->
                         Log.e(TAG, "자동 카메라 연결 실패", error)
@@ -332,6 +335,23 @@ class CameraViewModel @Inject constructor(
             } finally {
                 isAutoConnecting = false
                 Log.d(TAG, "자동 카메라 연결 완료")
+            }
+        }
+    }
+
+    /**
+     * 카메라 전원 상태를 확인하고 필요시 테스트 실행
+     */
+    private fun checkCameraPowerStateAndTest() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "자동 연결 완료 후 카메라 전원 상태 확인 중...")
+
+                // UsbCameraManager를 통해 카메라 전원 상태 확인 및 테스트 실행
+                usbCameraManager.checkPowerStateAndTest()
+
+            } catch (e: Exception) {
+                Log.e(TAG, "카메라 전원 상태 확인 중 오류", e)
             }
         }
     }
@@ -447,6 +467,80 @@ class CameraViewModel @Inject constructor(
                 uiStateManager.updateCapturingState(false)
                 uiStateManager.setError("사진 촬영 실패: ${e.message}")
             }
+        }
+    }
+
+    /**
+     * 카메라 파일 목록을 가져오기 전에 카메라 상태를 확인하고
+     * 카메라가 꺼져있으면 사용자에게 확인을 요청하는 알러트를 표시합니다.
+     */
+    fun checkCameraStatusAndLoadFiles(onFilesLoaded: (String) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "카메라 파일 목록 로드 전 상태 확인")
+                uiStateManager.updateLoadingState(true)
+                uiStateManager.clearError()
+
+                // 카메라 연결 상태 확인
+                if (!uiState.value.isConnected || !CameraNative.isCameraConnected()) {
+                    Log.w(TAG, "카메라가 연결되지 않았거나 전원이 꺼져 있음")
+                    uiStateManager.updateLoadingState(false)
+                    uiStateManager.setError("카메라 연결을 확인해주세요.\n카메라가 켜져 있고 올바르게 연결되어 있는지 확인하십시오.")
+                    return@launch
+                }
+
+                // 네이티브 카메라 초기화 상태 확인
+                if (!CameraNative.isCameraInitialized()) {
+                    Log.w(TAG, "네이티브 카메라가 초기화되지 않음")
+                    uiStateManager.updateLoadingState(false)
+                    uiStateManager.setError("카메라 초기화가 필요합니다.\n카메라를 다시 연결해주세요.")
+                    return@launch
+                }
+
+                // 카메라 파일 목록 가져오기
+                Log.d(TAG, "카메라 파일 목록 로드 시작")
+                val fileList = CameraNative.getCameraFileList()
+
+                if (fileList.isEmpty() || fileList.contains("ERROR") || fileList.contains("TIMEOUT")) {
+                    Log.w(TAG, "카메라 파일 목록 로드 실패: $fileList")
+                    uiStateManager.updateLoadingState(false)
+                    uiStateManager.setError("카메라에서 파일 목록을 불러올 수 없습니다.\n카메라 상태를 확인하고 다시 시도해주세요.")
+                    return@launch
+                }
+
+                Log.d(TAG, "카메라 파일 목록 로드 성공")
+                uiStateManager.updateLoadingState(false)
+                uiStateManager.clearError()
+                onFilesLoaded(fileList)
+
+            } catch (e: Exception) {
+                Log.e(TAG, "카메라 파일 목록 확인 중 예외 발생", e)
+                uiStateManager.updateLoadingState(false)
+                uiStateManager.setError("카메라 상태 확인 중 오류가 발생했습니다.\n카메라 연결을 확인해주세요.")
+            }
+        }
+    }
+
+    /**
+     * 카메라 전원 상태를 확인하고 필요시 사용자에게 알림
+     */
+    fun checkCameraPowerStatus(): Boolean {
+        return try {
+            val isConnected = CameraNative.isCameraConnected()
+            val isInitialized = CameraNative.isCameraInitialized()
+
+            Log.d(TAG, "카메라 상태 확인 - 연결: $isConnected, 초기화: $isInitialized")
+
+            if (!isConnected || !isInitialized) {
+                uiStateManager.setError("카메라 전원을 확인해주세요.\n카메라가 켜져 있고 정상적으로 연결되어 있는지 확인하십시오.")
+                return false
+            }
+
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "카메라 전원 상태 확인 실패", e)
+            uiStateManager.setError("카메라 상태를 확인할 수 없습니다.\n카메라 연결을 다시 확인해주세요.")
+            false
         }
     }
 
@@ -699,6 +793,7 @@ class CameraViewModel @Inject constructor(
     fun clearPtpTimeout() = uiStateManager.clearPtpTimeout()
     fun clearUsbDisconnection() = uiStateManager.clearUsbDisconnection()
     fun dismissRestartDialog() = uiStateManager.showRestartDialog(false)
+    fun dismissCameraStatusCheckDialog() = uiStateManager.showCameraStatusCheckDialog(false)
 
     fun setTabSwitchFlag(isReturning: Boolean) {
         Log.d(TAG, "탭 전환 플래그 설정: $isReturning")

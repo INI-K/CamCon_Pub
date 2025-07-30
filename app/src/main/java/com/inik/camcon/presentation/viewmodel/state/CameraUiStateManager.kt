@@ -262,6 +262,14 @@ class CameraUiStateManager @Inject constructor() {
     }
 
     /**
+     * 카메라 상태 점검 다이얼로그 관리
+     */
+    fun showCameraStatusCheckDialog(show: Boolean) {
+        _uiState.update { it.copy(showCameraStatusCheckDialog = show) }
+        Log.d(TAG, "카메라 상태 점검 다이얼로그 상태 업데이트: $show")
+    }
+
+    /**
      * 연결 성공 시 상태 초기화
      */
     fun onConnectionSuccess() {
