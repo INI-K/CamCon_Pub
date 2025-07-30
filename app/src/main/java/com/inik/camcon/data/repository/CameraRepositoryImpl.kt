@@ -73,9 +73,7 @@ class CameraRepositoryImpl @Inject constructor(
             // 카메라 연결 완료 후 안정화 대기
             Log.d("카메라레포지토리", "카메라 연결 완료 - 안정화 대기 시작")
             kotlinx.coroutines.delay(3000)
-
-            // 이벤트 리스너 시작
-            startEventListenerWithRetry()
+            // 이벤트 리스너는 UI에서 명시적으로 시작되도록 변경
         }
         return result
     }
@@ -125,13 +123,26 @@ class CameraRepositoryImpl @Inject constructor(
     override suspend fun getCameraSettings(): Result<CameraSettings> {
         return withContext(Dispatchers.IO) {
             try {
-                // 위젯 JSON에서 설정 파싱 - 마스터 데이터 사용
+                // 캐시된 설정이 있으면 우선 반환
+                _cameraSettings.value?.let { cachedSettings ->
+                    Log.d("카메라레포지토리", "캐시된 카메라 설정 반환")
+                    return@withContext Result.success(cachedSettings)
+                }
+
+                // 위젯 JSON에서 설정 파싱 - 마스터 데이터를 우선 사용
                 val widgetJson = if (usbCameraManager.isNativeCameraConnected.value) {
                     Log.d("카메라레포지토리", "USB 카메라 연결됨 - 마스터 데이터 사용")
                     usbCameraManager.buildWidgetJsonFromMaster()
                 } else {
-                    Log.d("카메라레포지토리", "USB 카메라 미연결 - 직접 네이티브 호출")
-                    nativeDataSource.buildWidgetJson()
+                    // 마스터 데이터가 있으면 우선 사용, 없으면 직접 호출
+                    val masterData = usbCameraManager.buildWidgetJsonFromMaster()
+                    if (masterData.isNotEmpty()) {
+                        Log.d("카메라레포지토리", "USB 카메라 미연결이지만 마스터 데이터 사용")
+                        masterData
+                    } else {
+                        Log.d("카메라레포지토리", "마스터 데이터 없음 - 직접 네이티브 호출")
+                        nativeDataSource.buildWidgetJson()
+                    }
                 }
 
                 // TODO: JSON 파싱하여 설정 추출
@@ -148,6 +159,7 @@ class CameraRepositoryImpl @Inject constructor(
                     _cameraSettings.value = settings
                 }
 
+                Log.d("카메라레포지토리", "카메라 설정 업데이트")
                 Result.success(settings)
             } catch (e: Exception) {
                 Log.e("카메라레포지토리", "카메라 설정 가져오기 실패", e)

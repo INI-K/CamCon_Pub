@@ -6,12 +6,16 @@ import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
 import com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource
 import com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource
 import com.inik.camcon.data.datasource.ptpip.PtpipDataSource
+import com.inik.camcon.data.datasource.usb.CameraCapabilitiesManager
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
+import com.inik.camcon.data.datasource.usb.UsbConnectionManager
+import com.inik.camcon.data.datasource.usb.UsbDeviceDetector
 import com.inik.camcon.data.network.ptpip.authentication.NikonAuthenticationService
 import com.inik.camcon.data.network.ptpip.connection.PtpipConnectionManager
 import com.inik.camcon.data.network.ptpip.discovery.PtpipDiscoveryService
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
+import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -25,8 +29,10 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideNativeCameraDataSource(@ApplicationContext context: Context) =
-        NativeCameraDataSource(context)
+    fun provideNativeCameraDataSource(
+        @ApplicationContext context: Context,
+        uiStateManager: CameraUiStateManager
+    ) = NativeCameraDataSource(context, uiStateManager)
 
     @Provides
     @Singleton
@@ -34,7 +40,28 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideUsbCameraManager(@ApplicationContext context: Context) = UsbCameraManager(context)
+    fun provideUsbDeviceDetector(@ApplicationContext context: Context) =
+        UsbDeviceDetector(context)
+
+    @Provides
+    @Singleton
+    fun provideUsbConnectionManager(@ApplicationContext context: Context) =
+        UsbConnectionManager(context)
+
+    @Provides
+    @Singleton
+    fun provideCameraCapabilitiesManager(
+        uiStateManager: CameraUiStateManager
+    ) = CameraCapabilitiesManager(uiStateManager)
+
+    @Provides
+    @Singleton
+    fun provideUsbCameraManager(
+        @ApplicationContext context: Context,
+        deviceDetector: UsbDeviceDetector,
+        connectionManager: UsbConnectionManager,
+        capabilitiesManager: CameraCapabilitiesManager
+    ) = UsbCameraManager(context, deviceDetector, connectionManager, capabilitiesManager)
 
     @Provides
     @Singleton
@@ -82,6 +109,10 @@ object AppModule {
         ptpipDataSource: PtpipDataSource,
         usbCameraManager: UsbCameraManager
     ) = CameraConnectionGlobalManager(ptpipDataSource, usbCameraManager)
+
+    @Provides
+    @Singleton
+    fun provideCameraUiStateManager(): CameraUiStateManager = CameraUiStateManager()
 
 //    @Provides
 //    @Singleton
