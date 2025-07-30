@@ -15,6 +15,7 @@ import com.inik.camcon.data.network.ptpip.connection.PtpipConnectionManager
 import com.inik.camcon.data.network.ptpip.discovery.PtpipDiscoveryService
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
+import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -28,8 +29,10 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideNativeCameraDataSource(@ApplicationContext context: Context) =
-        NativeCameraDataSource(context)
+    fun provideNativeCameraDataSource(
+        @ApplicationContext context: Context,
+        uiStateManager: CameraUiStateManager
+    ) = NativeCameraDataSource(context, uiStateManager)
 
     @Provides
     @Singleton
@@ -47,8 +50,9 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideCameraCapabilitiesManager() =
-        CameraCapabilitiesManager()
+    fun provideCameraCapabilitiesManager(
+        uiStateManager: CameraUiStateManager
+    ) = CameraCapabilitiesManager(uiStateManager)
 
     @Provides
     @Singleton
@@ -105,6 +109,10 @@ object AppModule {
         ptpipDataSource: PtpipDataSource,
         usbCameraManager: UsbCameraManager
     ) = CameraConnectionGlobalManager(ptpipDataSource, usbCameraManager)
+
+    @Provides
+    @Singleton
+    fun provideCameraUiStateManager(): CameraUiStateManager = CameraUiStateManager()
 
 //    @Provides
 //    @Singleton
