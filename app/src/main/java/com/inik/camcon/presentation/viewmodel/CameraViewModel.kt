@@ -31,6 +31,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
@@ -209,14 +210,40 @@ class CameraViewModel @Inject constructor(
         usbCameraManager.connectedDevices
             .onEach { devices ->
                 uiStateManager.updateUsbDeviceState(devices.size, uiState.value.hasUsbPermission)
+
+                // ⚠️ 주의: USB 권한 상태와 함께 체크하여 중복 실행 방지
+                // USB 디바이스만 감지되었을 때는 권한 상태를 먼저 확인하고 
+                // 권한이 있다면 즉시 연결, 없다면 권한 획득 후 연결
             }
             .launchIn(viewModelScope)
 
         usbCameraManager.hasUsbPermission
             .onEach { hasPermission ->
-                uiStateManager.updateUsbDeviceState(uiState.value.usbDeviceCount, hasPermission)
+                val deviceCount = uiState.value.usbDeviceCount
+                uiStateManager.updateUsbDeviceState(deviceCount, hasPermission)
+
+                // 🔥 권한이 새로 획득되고 디바이스가 있으면 자동 연결 시작
+                // 단, 이미 연결되지 않은 경우에만
+                if (hasPermission && deviceCount > 0 && !uiState.value.isConnected && !isAutoConnecting) {
+                    Log.d(TAG, "USB 권한 새로 획득 - 자동 연결 시작")
+                    autoConnectCamera()
+                }
             }
             .launchIn(viewModelScope)
+
+        // 🔥 USB 디바이스와 권한 상태를 모두 고려한 통합 연결 로직
+        combine(
+            usbCameraManager.connectedDevices,
+            usbCameraManager.hasUsbPermission
+        ) { devices, hasPermission ->
+            Pair(devices.size, hasPermission)
+        }.onEach { (deviceCount, hasPermission) ->
+            // 디바이스가 있고 권한도 있고 아직 연결되지 않았으면 자동 연결
+            if (deviceCount > 0 && hasPermission && !uiState.value.isConnected && !isAutoConnecting) {
+                Log.d(TAG, "USB 디바이스 및 권한 확인 완료 - 자동 연결 시작")
+                autoConnectCamera()
+            }
+        }.launchIn(viewModelScope)
     }
 
     private fun observeCameraCapabilities() {
@@ -715,13 +742,3 @@ class CameraViewModel @Inject constructor(
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
