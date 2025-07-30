@@ -10,6 +10,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -33,10 +34,31 @@ class NativeCameraDataSource @Inject constructor(
         CameraNative.listenCameraEvents(callback)
     }
 
+    // 이벤트 리스너 중복 호출 방지용
+    private val isStoppingEventListener = AtomicBoolean(false)
+    private val isClosingCamera = AtomicBoolean(false)
+
     // 카메라 이벤트 리스닝 중지
     fun stopListenCameraEvents() {
-        Log.d(TAG, "카메라 이벤트 리스닝 중지")
-        CameraNative.stopListenCameraEvents()
+        // 중복 호출 방지
+        if (!isStoppingEventListener.compareAndSet(false, true)) {
+            Log.d(TAG, "카메라 이벤트 리스닝 중지가 이미 진행 중 - 중복 방지")
+            return
+        }
+
+        try {
+            Log.d(TAG, "카메라 이벤트 리스닝 중지")
+            CameraNative.stopListenCameraEvents()
+        } catch (e: Exception) {
+            Log.e(TAG, "카메라 이벤트 리스닝 중지 중 오류", e)
+        } finally {
+            // 1초 후 상태 리셋
+            Thread {
+                Thread.sleep(1000)
+                isStoppingEventListener.set(false)
+                Log.d(TAG, "이벤트 리스너 중지 상태 리셋")
+            }.start()
+        }
     }
 
     // 라이브러리 로딩 테스트
@@ -88,7 +110,25 @@ class NativeCameraDataSource @Inject constructor(
 
     // 카메라 종료
     fun closeCamera() {
-        CameraNative.closeCamera()
+        // 중복 호출 방지
+        if (!isClosingCamera.compareAndSet(false, true)) {
+            Log.d(TAG, "카메라 종료가 이미 진행 중 - 중복 방지")
+            return
+        }
+
+        try {
+            Log.d(TAG, "카메라 종료")
+            CameraNative.closeCamera()
+        } catch (e: Exception) {
+            Log.e(TAG, "카메라 종료 중 오류", e)
+        } finally {
+            // 2초 후 상태 리셋
+            Thread {
+                Thread.sleep(2000)
+                isClosingCamera.set(false)
+                Log.d(TAG, "카메라 종료 상태 리셋")
+            }.start()
+        }
     }
 
     // 카메라 감지
