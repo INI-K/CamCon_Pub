@@ -16,9 +16,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
 
 /**
@@ -29,16 +31,18 @@ fun CameraConnectionHelpDialog(
     onDismiss: () -> Unit,
     onRetry: () -> Unit
 ) {
+    val context = LocalContext.current
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("카메라 연결 문제 해결") },
+        title = { Text(context.getString(R.string.camera_connection_help_title)) },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    "카메라를 찾을 수 없습니다. 다음을 확인해주세요:",
+                    context.getString(R.string.camera_connection_help_message),
                     style = MaterialTheme.typography.body1
                 )
 
@@ -50,17 +54,20 @@ fun CameraConnectionHelpDialog(
                         modifier = Modifier.padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        HelpRow("1. ", "카메라가 PC/원격 모드로 설정되어 있는지 확인하세요.")
-                        HelpRow("2. ", "USB 케이블이 제대로 연결되어 있는지 확인하세요.")
-                        HelpRow("3. ", "카메라 전원이 켜져 있는지 확인하세요.")
-                        HelpRow("4. ", "다른 앱에서 카메라를 사용 중이지 않은지 확인하세요.")
+                        HelpRow("1. ", context.getString(R.string.check_camera_pc_mode))
+                        HelpRow("2. ", context.getString(R.string.check_usb_cable))
+                        HelpRow("3. ", context.getString(R.string.check_camera_power))
+                        HelpRow(
+                            "4. ",
+                            context.getString(R.string.check_other_apps_not_using_camera)
+                        )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    "카메라별 설정 방법:",
+                    context.getString(R.string.camera_specific_settings),
                     style = MaterialTheme.typography.subtitle2,
                     fontWeight = FontWeight.Bold
                 )
@@ -70,12 +77,12 @@ fun CameraConnectionHelpDialog(
         },
         confirmButton = {
             TextButton(onClick = onRetry) {
-                Text("다시 시도")
+                Text(context.getString(R.string.retry))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("닫기")
+                Text(context.getString(R.string.close))
             }
         }
     )
@@ -94,21 +101,23 @@ private fun HelpRow(
 
 @Composable
 private fun CameraBrandInstructions() {
+    val context = LocalContext.current
+
     Column(
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Text(
-            "• 캐논: 메뉴 > 통신 설정 > USB 연결 > PC 원격 촬영",
+            context.getString(R.string.canon_camera_settings),
             style = MaterialTheme.typography.caption,
             color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
         )
         Text(
-            "• 니콘: 메뉴 > USB > PTP/MTP 모드",
+            context.getString(R.string.nikon_camera_settings),
             style = MaterialTheme.typography.caption,
             color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
         )
         Text(
-            "• 소니: 메뉴 > USB 연결 > PC 원격",
+            context.getString(R.string.sony_camera_settings),
             style = MaterialTheme.typography.caption,
             color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
         )

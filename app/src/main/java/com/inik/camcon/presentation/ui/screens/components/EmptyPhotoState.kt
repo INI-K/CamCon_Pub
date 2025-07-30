@@ -16,16 +16,20 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.inik.camcon.R
 
 /**
  * 사진이 없을 때 표시되는 빈 상태 화면
  */
 @Composable
 fun EmptyPhotoState() {
+    val context = LocalContext.current
+
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -43,7 +47,7 @@ fun EmptyPhotoState() {
             )
             Spacer(modifier = Modifier.height(24.dp))
             Text(
-                text = "사진이 없습니다",
+                text = context.getString(R.string.no_photos),
                 style = MaterialTheme.typography.h5,
                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center,
@@ -51,7 +55,7 @@ fun EmptyPhotoState() {
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "카메라를 USB로 연결하고\n사진을 촬영해보세요",
+                text = context.getString(R.string.connect_camera_and_capture),
                 style = MaterialTheme.typography.body2,
                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.5f),
                 textAlign = TextAlign.Center,
@@ -59,7 +63,7 @@ fun EmptyPhotoState() {
             )
             Spacer(modifier = Modifier.height(24.dp))
             Text(
-                text = "• 카메라가 연결되어 있는지 확인하세요\n• 위로 당겨서 새로고침하세요",
+                text = context.getString(R.string.check_camera_connection),
                 style = MaterialTheme.typography.caption,
                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.4f),
                 textAlign = TextAlign.Center,
