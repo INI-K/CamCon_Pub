@@ -129,25 +129,20 @@ fun MainScreen(
         // 앱 재시작 다이얼로그 표시
         if (showRestartDialog) {
             androidx.compose.material.AlertDialog(
-                onDismissRequest = { showRestartDialog = false },
-                title = { Text("앱을 재시작할까요?") },
-                text = { Text("연결 문제로 인해 앱을 재시작해야 할 수 있습니다. 계속하시겠습니까?") },
+                onDismissRequest = { /* 다이얼로그 닫기 방지 */ },
+                title = { Text("앱 재시작 필요") },
+                text = { Text("카메라 연결 문제로 인해 앱을 완전히 재시작해야 합니다.\n재시작 후 다시 연결을 시도해주세요.") },
                 confirmButton = {
                     androidx.compose.material.TextButton(
                         onClick = {
-                            showRestartDialog = false
+                            // 모든 상태 정리
                             cameraViewModel.clearPtpTimeout()
-                            // 실제 앱 재시작 로직: MainActivity 재시작 (context 사용)
+                            showRestartDialog = false
+
+                            // 완전한 앱 재시작을 위한 강력한 방법
                             val activity = context as? ComponentActivity
                             activity?.let { act ->
-                                val packageManager = act.packageManager
-                                val intent =
-                                    packageManager.getLaunchIntentForPackage(act.packageName)
-                                intent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                                intent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                act.startActivity(intent)
-                                act.finish()
-                                Runtime.getRuntime().exit(0)
+                                MainActivity.forceRestartApp(act)
                             }
                         }
                     ) { Text("재시작") }
@@ -156,9 +151,14 @@ fun MainScreen(
                     androidx.compose.material.TextButton(
                         onClick = {
                             showRestartDialog = false
+                            cameraViewModel.clearPtpTimeout()
                         }
-                    ) { Text("취소") }
-                }
+                    ) { Text("나중에") }
+                },
+                properties = androidx.compose.ui.window.DialogProperties(
+                    dismissOnBackPress = false,
+                    dismissOnClickOutside = false
+                )
             )
         }
 
@@ -386,6 +386,37 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private const val TAG = "MainActivity"
+
+        /**
+         * 앱을 완전히 재시작하는 함수
+         */
+        fun forceRestartApp(activity: ComponentActivity) {
+            try {
+                Log.d(TAG, "앱 강제 재시작 시작")
+
+                // 1. 네이티브 리소스 정리
+                try {
+                    com.inik.camcon.CameraNative.closeCamera()
+                    com.inik.camcon.CameraNative.closeLogFile()
+                    Log.d(TAG, "네이티브 리소스 정리 완료")
+                } catch (e: Exception) {
+                    Log.w(TAG, "네이티브 리소스 정리 중 오류", e)
+                }
+
+                // 2. 모든 Activity 종료
+                activity.finishAffinity()
+
+                // 3. 짧은 지연 후 프로세스 종료
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    android.os.Process.killProcess(android.os.Process.myPid())
+                }, 100)
+
+            } catch (e: Exception) {
+                Log.e(TAG, "앱 재시작 중 오류", e)
+                // 마지막 수단으로 프로세스 종료
+                android.os.Process.killProcess(android.os.Process.myPid())
+            }
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
