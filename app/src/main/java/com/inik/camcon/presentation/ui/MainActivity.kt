@@ -129,25 +129,20 @@ fun MainScreen(
         // 앱 재시작 다이얼로그 표시
         if (showRestartDialog) {
             androidx.compose.material.AlertDialog(
-                onDismissRequest = { showRestartDialog = false },
-                title = { Text("앱을 재시작할까요?") },
-                text = { Text("연결 문제로 인해 앱을 재시작해야 할 수 있습니다. 계속하시겠습니까?") },
+                onDismissRequest = { /* 다이얼로그 닫기 방지 */ },
+                title = { Text("앱 재시작 필요") },
+                text = { Text("카메라 연결 문제로 인해 앱을 완전히 재시작해야 합니다.\n재시작 후 다시 연결을 시도해주세요.") },
                 confirmButton = {
                     androidx.compose.material.TextButton(
                         onClick = {
-                            showRestartDialog = false
+                            // 모든 상태 정리
                             cameraViewModel.clearPtpTimeout()
-                            // 실제 앱 재시작 로직: MainActivity 재시작 (context 사용)
+                            showRestartDialog = false
+
+                            // 완전한 앱 재시작을 위한 강력한 방법
                             val activity = context as? ComponentActivity
                             activity?.let { act ->
-                                val packageManager = act.packageManager
-                                val intent =
-                                    packageManager.getLaunchIntentForPackage(act.packageName)
-                                intent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                                intent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                act.startActivity(intent)
-                                act.finish()
-                                Runtime.getRuntime().exit(0)
+                                MainActivity.forceRestartApp(act)
                             }
                         }
                     ) { Text("재시작") }
@@ -156,9 +151,14 @@ fun MainScreen(
                     androidx.compose.material.TextButton(
                         onClick = {
                             showRestartDialog = false
+                            cameraViewModel.clearPtpTimeout()
                         }
-                    ) { Text("취소") }
-                }
+                    ) { Text("나중에") }
+                },
+                properties = androidx.compose.ui.window.DialogProperties(
+                    dismissOnBackPress = false,
+                    dismissOnClickOutside = false
+                )
             )
         }
 
@@ -204,6 +204,75 @@ fun MainScreen(
                 properties = androidx.compose.ui.window.DialogProperties(
                     dismissOnBackPress = true,
                     dismissOnClickOutside = true
+                )
+            )
+        }
+
+        // 카메라 상태 점검 다이얼로그 표시 (초기화가 완료된 후에만 표시)
+        if (cameraUiState.showCameraStatusCheckDialog == true &&
+            !cameraUiState.isUsbInitializing &&
+            !cameraUiState.isCameraInitializing
+        ) {
+            androidx.compose.material.AlertDialog(
+                onDismissRequest = { cameraViewModel.dismissCameraStatusCheckDialog() },
+                title = {
+                    Text(
+                        "카메라 상태 점검 필요",
+                        style = androidx.compose.material.MaterialTheme.typography.h6,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        color = androidx.compose.material.MaterialTheme.colors.error
+                    )
+                },
+                text = {
+                    androidx.compose.foundation.layout.Column {
+                        Text(
+                            "카메라가 정상적으로 동작하지 않습니다.",
+                            style = androidx.compose.material.MaterialTheme.typography.body1
+                        )
+                        androidx.compose.foundation.layout.Spacer(
+                            modifier = androidx.compose.ui.Modifier.height(12.dp)
+                        )
+                        Text(
+                            "다음 사항을 확인해주세요:",
+                            style = androidx.compose.material.MaterialTheme.typography.body2,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                        )
+                        androidx.compose.foundation.layout.Spacer(
+                            modifier = androidx.compose.ui.Modifier.height(8.dp)
+                        )
+                        Text(
+                            "• 카메라 전원이 켜져 있는지 확인\n" +
+                                    "• 카메라 배터리가 충분한지 확인\n" +
+                                    "• USB 케이블 연결 상태 확인\n" +
+                                    "• 카메라가 PC 연결 모드로 설정되어 있는지 확인\n" +
+                                    "• 카메라를 껐다가 다시 켜보세요",
+                            style = androidx.compose.material.MaterialTheme.typography.caption,
+                            color = androidx.compose.material.MaterialTheme.colors.onSurface.copy(
+                                alpha = 0.8f
+                            )
+                        )
+                    }
+                },
+                confirmButton = {
+                    androidx.compose.material.TextButton(
+                        onClick = { cameraViewModel.dismissCameraStatusCheckDialog() }
+                    ) {
+                        Text("확인")
+                    }
+                },
+                dismissButton = {
+                    androidx.compose.material.TextButton(
+                        onClick = {
+                            cameraViewModel.dismissCameraStatusCheckDialog()
+                            cameraViewModel.refreshUsbDevices()
+                        }
+                    ) {
+                        Text("다시 연결")
+                    }
+                },
+                properties = androidx.compose.ui.window.DialogProperties(
+                    dismissOnBackPress = true,
+                    dismissOnClickOutside = false // 사용자가 명시적으로 확인하도록
                 )
             )
         }
@@ -261,9 +330,12 @@ fun MainScreen(
                 composable(BottomNavItem.CameraControl.route) {
                     // AP 모드일 때는 사진 수신 대기 화면, 아니면 카메라 컨트롤 화면
                     if (activeConnectionType == com.inik.camcon.domain.model.CameraConnectionType.AP_MODE) {
-                        com.inik.camcon.presentation.ui.screens.ApModePhotoReceiveScreen()
+                        com.inik.camcon.presentation.ui.screens.ApModePhotoReceiveScreen(
+                            viewModel = cameraViewModel // 전역 ViewModel 전달
+                        )
                     } else {
                         CameraControlScreen(
+                            viewModel = cameraViewModel, // 전역 ViewModel 전달
                             onFullscreenChange = { isFullscreen = it }
                         )
                     }
@@ -314,6 +386,37 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private const val TAG = "MainActivity"
+
+        /**
+         * 앱을 완전히 재시작하는 함수
+         */
+        fun forceRestartApp(activity: ComponentActivity) {
+            try {
+                Log.d(TAG, "앱 강제 재시작 시작")
+
+                // 1. 네이티브 리소스 정리
+                try {
+                    com.inik.camcon.CameraNative.closeCamera()
+                    com.inik.camcon.CameraNative.closeLogFile()
+                    Log.d(TAG, "네이티브 리소스 정리 완료")
+                } catch (e: Exception) {
+                    Log.w(TAG, "네이티브 리소스 정리 중 오류", e)
+                }
+
+                // 2. 모든 Activity 종료
+                activity.finishAffinity()
+
+                // 3. 짧은 지연 후 프로세스 종료
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    android.os.Process.killProcess(android.os.Process.myPid())
+                }, 100)
+
+            } catch (e: Exception) {
+                Log.e(TAG, "앱 재시작 중 오류", e)
+                // 마지막 수단으로 프로세스 종료
+                android.os.Process.killProcess(android.os.Process.myPid())
+            }
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -351,7 +454,13 @@ class MainActivity : ComponentActivity() {
     private suspend fun handleUsbIntent(intent: Intent) = withContext(Dispatchers.IO) {
         when (intent.action) {
             UsbManager.ACTION_USB_DEVICE_ATTACHED -> {
-                val device: UsbDevice? = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+                val device: UsbDevice? =
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+                    }
                 device?.let {
                     Log.d(TAG, "USB 카메라 디바이스가 연결됨: ${it.deviceName}")
                     Log.d(
@@ -373,7 +482,13 @@ class MainActivity : ComponentActivity() {
                 }
             }
             UsbManager.ACTION_USB_DEVICE_DETACHED -> {
-                val device: UsbDevice? = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+                val device: UsbDevice? =
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+                    }
                 device?.let {
                     Log.d(TAG, "USB 디바이스가 분리됨: ${it.deviceName}")
                 }
