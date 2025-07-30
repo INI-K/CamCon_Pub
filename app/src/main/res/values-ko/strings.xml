@@ -176,4 +176,74 @@
     <string name="minutes_ago">%d분 전</string>
     <string name="hours_ago">%d시간 전</string>
     <string name="days_ago">%d일 전</string>
+
+    <!-- 빈 상태 메시지 -->
+    <string name="no_photos">사진이 없습니다</string>
+    <string name="connect_camera_and_capture">카메라를 USB로 연결하고\n사진을 촬영해보세요</string>
+    <string name="check_camera_connection">• 카메라가 연결되어 있는지 확인하세요\n• 위로 당겨서 새로고침하세요</string>
+    <string name="image_load_failed">이미지를 불러올 수 없습니다</string>
+
+    <!-- USB 연결 -->
+    <string name="usb_refresh">USB 새로고침</string>
+    <string name="usb_permission_request">USB 권한 요청</string>
+
+    <!-- Wi-Fi 연결 -->
+    <string name="wifi_camera_connection">Wi-Fi 카메라 연결</string>
+    <string name="color_transfer_settings">색감 전송 설정</string>
+    <string name="not_connected_to_camera_ap">❌ 카메라 AP에 연결되지 않음</string>
+    <string name="connected_network">연결된 네트워크: %s</string>
+    <string name="detected_camera_ip">감지된 카메라 IP: %s</string>
+    <string name="connect_to_camera_wifi_first">카메라 Wi-Fi 핫스팟에 연결 후 카메라 검색을 시작할 수 있습니다.</string>
+    <string name="camera_connection_ui_area">카메라 연결 UI 영역</string>
+    <string name="auto_reconnect">🔄 자동 재연결</string>
+    <string name="auto_reconnect_description">Wi-Fi 네트워크 변화 시 자동으로 카메라 재연결 시도</string>
+    <string name="manual_connection_management">수동으로 카메라 연결 관리</string>
+    <string name="wifi_feature_info_area">Wi-Fi 기능 정보 카드 영역</string>
+
+    <!-- 사진 정보 -->
+    <string name="resolution">해상도</string>
+    <string name="capture_date">촬영 일시</string>
+    <string name="file_path">경로</string>
+    <string name="file_name">파일명</string>
+    <string name="file_size">크기</string>
+    <string name="download_photo">사진 다운로드</string>
+    <string name="date_format_pattern">yyyy년 MM월 dd일 HH:mm</string>
+    <string name="flash_not_used">플래시 사용 안 함</string>
+    <string name="flash_used">플래시 사용함</string>
+    <string name="focus_auto">자동</string>
+    <string name="focus_manual">수동</string>
+
+    <!-- 라이브뷰 -->
+    <string name="live_view_not_supported">라이브뷰 지원 안됨</string>
+    <string name="camera_does_not_support_live_view">이 카메라 모델은 라이브뷰를 지원하지 않습니다</string>
+    <string name="liveview_not_supported">라이브뷰 지원 안됨</string>
+    <string name="liveview_not_supported_detail">이 카메라 모델은 라이브뷰를 지원하지 않습니다</string>
+    <string name="processing_liveview_frame">라이브뷰 프레임 처리 중...</string>
+    <string name="loading_liveview_frame">라이브뷰 프레임 로딩 중...</string>
+    <string name="capturing_photo">촬영 중...</string>
+    <string name="starting_liveview">라이브뷰 시작 중...</string>
+
+    <!-- 기능 배지 -->
+    <string name="live_view">라이브뷰</string>
+    <string name="time_lapse">타임랩스</string>
+    <string name="burst">버스트</string>
+    <string name="burst_shooting">버스트</string>
+    <string name="video_4k">4K 동영상</string>
+    <string name="remote_control">원격제어</string>
+    <string name="bracketing">브라켓팅</string>
+
+    <!-- 카메라 도움말 -->
+    <string name="check_other_apps_not_using_camera">다른 앱에서 카메라를 사용 중이지 않은지 확인하세요.</string>
+    <string name="camera_specific_settings">카메라별 설정 방법:</string>
+    <string name="canon_usb_setting">• 캐논: 메뉴 > 통신 설정 > USB 연결 > PC 원격 촬영</string>
+    <string name="nikon_usb_setting">• 니콘: 메뉴 > USB > PTP/MTP 모드</string>
+    <string name="sony_usb_setting">• 소니: 메뉴 > USB 연결 > PC 원격</string>
+    <string name="camera_connection_help_title">카메라 연결 문제 해결</string>
+    <string name="camera_connection_help_message">카메라를 찾을 수 없습니다. 다음을 확인해주세요:</string>
+    <string name="check_camera_pc_mode">카메라가 PC/원격 모드로 설정되어 있는지 확인하세요.</string>
+    <string name="check_usb_cable">USB 케이블이 제대로 연결되어 있는지 확인하세요.</string>
+    <string name="check_camera_power">카메라 전원이 켜져 있는지 확인하세요.</string>
+    <string name="canon_camera_settings">• 캐논: 메뉴 > 통신 설정 > USB 연결 > PC 원격 촬영</string>
+    <string name="nikon_camera_settings">• 니콘: 메뉴 > USB > PTP/MTP 모드</string>
+    <string name="sony_camera_settings">• 소니: 메뉴 > USB 연결 > PC 원격</string>
 </resources>
