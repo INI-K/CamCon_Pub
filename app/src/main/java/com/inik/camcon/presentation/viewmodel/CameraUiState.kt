@@ -39,5 +39,7 @@ data class CameraUiState(
     // 앱 재시작 다이얼로그 표시 플래그
     val showRestartDialog: Boolean = false,
     // USB 디바이스 분리 상태
-    val isUsbDisconnected: Boolean = false
+    val isUsbDisconnected: Boolean = false,
+    // 카메라 상태 점검 다이얼로그 표시 플래그
+    val showCameraStatusCheckDialog: Boolean = false
 )

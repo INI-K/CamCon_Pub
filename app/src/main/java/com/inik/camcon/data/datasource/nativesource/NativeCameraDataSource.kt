@@ -5,11 +5,13 @@ import android.util.Log
 import com.inik.camcon.CameraNative
 import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.domain.model.CameraCapabilities
+import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -18,7 +20,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class NativeCameraDataSource @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val uiStateManager: CameraUiStateManager
 ) {
     companion object {
         private const val TAG = "네이티브_카메라_데이터소스"
@@ -33,10 +36,31 @@ class NativeCameraDataSource @Inject constructor(
         CameraNative.listenCameraEvents(callback)
     }
 
+    // 이벤트 리스너 중복 호출 방지용
+    private val isStoppingEventListener = AtomicBoolean(false)
+    private val isClosingCamera = AtomicBoolean(false)
+
     // 카메라 이벤트 리스닝 중지
     fun stopListenCameraEvents() {
-        Log.d(TAG, "카메라 이벤트 리스닝 중지")
-        CameraNative.stopListenCameraEvents()
+        // 중복 호출 방지
+        if (!isStoppingEventListener.compareAndSet(false, true)) {
+            Log.d(TAG, "카메라 이벤트 리스닝 중지가 이미 진행 중 - 중복 방지")
+            return
+        }
+
+        try {
+            Log.d(TAG, "카메라 이벤트 리스닝 중지")
+            CameraNative.stopListenCameraEvents()
+        } catch (e: Exception) {
+            Log.e(TAG, "카메라 이벤트 리스닝 중지 중 오류", e)
+        } finally {
+            // 1초 후 상태 리셋
+            Thread {
+                Thread.sleep(1000)
+                isStoppingEventListener.set(false)
+                Log.d(TAG, "이벤트 리스너 중지 상태 리셋")
+            }.start()
+        }
     }
 
     // 라이브러리 로딩 테스트
@@ -76,19 +100,109 @@ class NativeCameraDataSource @Inject constructor(
 
     // 카메라 요약 정보를 받아 Domain 모델인 Camera로 변환
     fun getCameraSummary(): Camera {
-        // 예시: summary 문자열이 "id,name,isActive" 형식
+        // 네이티브에서 카메라 요약 정보 가져오기
         val summary = CameraNative.getCameraSummary()
-        val parts = summary.split(",")
-        return Camera(
-            id = parts.getOrNull(0) ?: "0",
-            name = parts.getOrNull(1) ?: "알 수 없음",
-            isActive = parts.getOrNull(2)?.toBoolean() ?: false
+        Log.d(TAG, "=== 카메라 요약 정보 ===")
+        Log.d(TAG, summary)
+        Log.d(TAG, "========================")
+
+        // 카메라 전원 상태 확인
+        val isPoweredOff = isCameraPoweredOff(summary)
+        if (isPoweredOff) {
+            Log.w(TAG, "🔴 카메라가 꺼진 상태로 감지됨 - 사용자에게 카메라 상태 점검 알러트 표시")
+            showCameraStatusAlert()
+        } else {
+            Log.d(TAG, "🟢 카메라가 켜진 상태")
+        }
+
+        return try {
+            // JSON 파싱 시도
+            val json = JSONObject(summary)
+            Camera(
+                id = "1",
+                name = json.optString("model", "알 수 없음"),
+                isActive = !json.has("에러") && !isPoweredOff
+            )
+        } catch (e: Exception) {
+            // JSON 파싱 실패 시 기본값 반환
+            Log.w(TAG, "카메라 요약 정보 JSON 파싱 실패, 기본값 사용", e)
+            val parts = summary.split(",")
+            Camera(
+                id = parts.getOrNull(0) ?: "0",
+                name = parts.getOrNull(1) ?: "알 수 없음",
+                isActive = parts.getOrNull(2)?.toBoolean() ?: false
+            )
+        }
+    }
+
+    /**
+     * 카메라가 꺼진 상태인지 확인
+     */
+    private fun isCameraPoweredOff(summary: String): Boolean {
+        return try {
+            val json = JSONObject(summary)
+            val summaryText = json.optString("summary", "")
+
+            // PTP error 200f가 많이 발견되면 전원 꺼짐
+            val errorCount = summaryText.split("PTP error 200f").size - 1
+            val hasNoCaptureCapability = summaryText.contains("No Image Capture")
+
+            Log.d(TAG, "전원 상태 확인: PTP 에러 개수=$errorCount, 촬영불가=$hasNoCaptureCapability")
+
+            errorCount >= 5 && hasNoCaptureCapability
+        } catch (e: Exception) {
+            Log.e(TAG, "전원 상태 확인 실패", e)
+            false
+        }
+    }
+
+    /**
+     * 카메라 상태 점검 알러트를 사용자에게 표시
+     */
+    private fun showCameraStatusAlert() {
+        Log.e(TAG, "🚨 카메라 상태 점검이 필요합니다")
+        Log.e(TAG, "📋 다음 사항을 확인해주세요:")
+        Log.e(TAG, "   1. 카메라 전원이 켜져 있는지 확인")
+        Log.e(TAG, "   2. 카메라 배터리가 충분한지 확인")
+        Log.e(TAG, "   3. USB 케이블 연결 상태 확인")
+        Log.e(TAG, "   4. 카메라가 PC 연결 모드로 설정되어 있는지 확인")
+        Log.e(TAG, "   5. 카메라를 껐다가 다시 켜보세요")
+        Log.e(TAG, "문제가 계속되면 카메라를 재연결해주세요")
+        uiStateManager.showCameraStatusCheckDialog(true)
+    }
+
+    /**
+     * 카메라가 꺼진 상태일 때 파일 다운로드 기능 테스트
+     */
+    private fun testFileDownloadWhenPoweredOff() {
+        // 이 메서드는 더 이상 사용하지 않음 - 카메라 상태 알러트로 대체
+        Log.w(
+            TAG,
+            "⚠️ testFileDownloadWhenPoweredOff는 더 이상 사용되지 않습니다. showCameraStatusAlert를 사용하세요."
         )
     }
 
     // 카메라 종료
     fun closeCamera() {
-        CameraNative.closeCamera()
+        // 중복 호출 방지
+        if (!isClosingCamera.compareAndSet(false, true)) {
+            Log.d(TAG, "카메라 종료가 이미 진행 중 - 중복 방지")
+            return
+        }
+
+        try {
+            Log.d(TAG, "카메라 종료")
+            CameraNative.closeCamera()
+        } catch (e: Exception) {
+            Log.e(TAG, "카메라 종료 중 오류", e)
+        } finally {
+            // 2초 후 상태 리셋
+            Thread {
+                Thread.sleep(2000)
+                isClosingCamera.set(false)
+                Log.d(TAG, "카메라 종료 상태 리셋")
+            }.start()
+        }
     }
 
     // 카메라 감지
@@ -201,7 +315,7 @@ class NativeCameraDataSource @Inject constructor(
                 // 직접 호출 (타임아웃 제거)
                 val result = CameraNative.getCameraFileListPaged(page, pageSize)
 
-                Log.d(TAG, "페이징 네이티브 메서드 호출 성공, 결과 길이: ${result?.length ?: 0}")
+                Log.d(TAG, "페이징 네이티브 메서드 호출 성공, 결과 길이: ${result.length}")
                 result
             } catch (e: UnsatisfiedLinkError) {
                 Log.e(TAG, "네이티브 메서드 getCameraFileListPaged가 구현되지 않음", e)
@@ -439,7 +553,7 @@ class NativeCameraDataSource @Inject constructor(
     fun getCameraCapabilities(): CameraCapabilities? {
         return try {
             val summaryJson = CameraNative.getCameraSummary()
-            val json = JSONObject(summaryJson as String)
+            val json = JSONObject(summaryJson)
 
             if (json.has("error")) {
                 Log.e(TAG, "카메라 기능 정보 가져오기 오류: ${json.getString("error")}")
@@ -453,7 +567,7 @@ class NativeCameraDataSource @Inject constructor(
             // 추가 기능 정보를 가져오기 위해 abilities 조회
             val abilitiesJson = CameraNative.listCameraAbilities()
             val abilities = try {
-                JSONObject(abilitiesJson as String)
+                JSONObject(abilitiesJson)
             } catch (e: Exception) {
                 Log.e(TAG, "기능 정보 파싱 실패: $abilitiesJson", e)
                 JSONObject()
