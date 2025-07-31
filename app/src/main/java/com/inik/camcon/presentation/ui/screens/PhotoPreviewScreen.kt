@@ -154,7 +154,7 @@ fun PhotoPreviewScreen(
             }
         }
 
-        // Pull to refresh 인디케이터
+        // Pull to refresh 인디케이터 - 정상 동작 복원
         PullRefreshIndicator(
             refreshing = uiState.isLoading,
             state = pullRefreshState,
