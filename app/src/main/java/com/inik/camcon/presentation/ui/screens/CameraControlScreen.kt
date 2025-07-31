@@ -48,6 +48,7 @@ import androidx.compose.material.TextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Photo
+import androidx.compose.material.icons.filled.RotateRight
 import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -62,6 +63,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -512,8 +514,8 @@ private fun FullscreenCameraLayout(
 ) {
     val context = LocalContext.current
     var showTimelapseDialog by remember { mutableStateOf(false) }
+    var isRotated by remember { mutableStateOf(false) }
 
-    // 전체화면 모드 설정 - 한 번만 실행
     LaunchedEffect(Unit) {
         (context as? Activity)?.let { activity ->
             activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
@@ -560,7 +562,8 @@ private fun FullscreenCameraLayout(
             AnimatedPhotoSwitcher(
                 capturedPhotos = uiState.capturedPhotos,
                 modifier = Modifier.fillMaxSize(),
-                emptyTextColor = Color.White
+                emptyTextColor = Color.White,
+                isRotated = isRotated
             )
         }
 
@@ -571,31 +574,54 @@ private fun FullscreenCameraLayout(
                 viewModel = viewModel,
                 onShowTimelapseDialog = { showTimelapseDialog = true },
                 onExitFullscreen = onExitFullscreen,
+                onRotate = { isRotated = !isRotated },
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .padding(16.dp)
             )
         } else if (uiState.capturedPhotos.isNotEmpty()) {
-            // 사진 뷰 모드에서는 종료 버튼만 표시
-            Surface(
-                color = Color.Black.copy(alpha = 0.7f),
-                shape = CircleShape,
+            Row(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(16.dp)
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                IconButton(
-                    onClick = onExitFullscreen,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(Color.Red.copy(alpha = 0.3f), CircleShape)
+                Surface(
+                    color = Color.Black.copy(alpha = 0.7f),
+                    shape = CircleShape
                 ) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = "전체화면 종료",
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    IconButton(
+                        onClick = { isRotated = !isRotated },
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(Color.DarkGray.copy(alpha = 0.4f), CircleShape)
+                    ) {
+                        Icon(
+                            Icons.Default.RotateRight,
+                            contentDescription = "180도 회전",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+
+                Surface(
+                    color = Color.Black.copy(alpha = 0.7f),
+                    shape = CircleShape
+                ) {
+                    IconButton(
+                        onClick = onExitFullscreen,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(Color.Red.copy(alpha = 0.3f), CircleShape)
+                    ) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "전체화면 종료",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
             }
         }
@@ -642,6 +668,7 @@ private fun FullscreenControlPanel(
     viewModel: CameraViewModel,
     onShowTimelapseDialog: () -> Unit,
     onExitFullscreen: () -> Unit,
+    onRotate: (() -> Unit)? = null, // 180도 회전 콜백 추가 (기본값 null)
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -665,6 +692,22 @@ private fun FullscreenControlPanel(
                     Icons.Default.Close,
                     contentDescription = "전체화면 종료",
                     tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            // 180도 회전 버튼
+            IconButton(
+                onClick = { onRotate?.invoke() },
+                enabled = onRotate != null,
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(Color.DarkGray.copy(alpha = 0.4f), CircleShape)
+            ) {
+                Icon(
+                    Icons.Default.RotateRight,
+                    contentDescription = "180도 회전",
+                    tint = if (onRotate != null) Color.White else Color.LightGray,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -836,15 +879,16 @@ private fun RecentCaptureItem(
 private fun AnimatedPhotoSwitcher(
     capturedPhotos: List<CapturedPhoto>,
     modifier: Modifier = Modifier,
-    emptyTextColor: Color = Color.Gray
+    emptyTextColor: Color = Color.Gray,
+    isRotated: Boolean = false
 ) {
-    // 최신 사진을 remember로 캐싱하여 리컴포지션 최적화
     val latestPhoto = remember(capturedPhotos.size) {
         capturedPhotos.lastOrNull()
     }
 
     Box(
-        modifier = modifier
+        modifier = modifier,
+        contentAlignment = Alignment.Center
     ) {
         // 사진이 있을 때 애니메이션 표시
         AnimatedVisibility(
@@ -868,7 +912,8 @@ private fun AnimatedPhotoSwitcher(
                         .build(),
                     contentDescription = "사진",
                     modifier = Modifier
-                        .matchParentSize(),
+                        .fillMaxSize()
+                        .then(if (isRotated) Modifier.rotate(180f) else Modifier),
                     contentScale = ContentScale.Fit
                 )
             }
