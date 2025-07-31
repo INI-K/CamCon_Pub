@@ -92,12 +92,12 @@
             android:name=".presentation.ui.PtpipConnectionActivity"
             android:exported="false"
             android:screenOrientation="fullSensor"
-            android:label="Wi-Fi 카메라 연결" />
+            android:label="@string/wifi_camera_connection" />
         <activity
             android:name=".presentation.ui.ColorTransferSettingsActivity"
             android:exported="false"
             android:screenOrientation="fullSensor"
-            android:label="색감 전송 설정" />
+            android:label="@string/color_transfer_settings" />
 
         <!-- FileProvider for sharing photos -->
         <provider
