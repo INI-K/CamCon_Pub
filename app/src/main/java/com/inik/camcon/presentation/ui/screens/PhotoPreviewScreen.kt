@@ -1,13 +1,12 @@
 package com.inik.camcon.presentation.ui.screens
 
+// Multi-select feature: Required imports
 import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-
-// Multi-select feature: Required imports
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,11 +15,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
+import androidx.compose.foundation.lazy.staggeredgrid.items
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
@@ -52,8 +51,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.components.EmptyPhotoState
+import com.inik.camcon.presentation.ui.screens.components.FluidPhotoThumbnail
 import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
-import com.inik.camcon.presentation.ui.screens.components.PhotoThumbnail
 import com.inik.camcon.presentation.ui.screens.components.UsbInitializationOverlay
 import com.inik.camcon.presentation.viewmodel.FileTypeFilter
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
@@ -434,7 +433,7 @@ private fun PhotoGrid(
     uiState: com.inik.camcon.presentation.viewmodel.PhotoPreviewUiState,
     viewModel: PhotoPreviewViewModel
 ) {
-    val lazyGridState = rememberLazyGridState()
+    val lazyGridState = rememberLazyStaggeredGridState()
     val fullImageCache by viewModel.fullImageCache.collectAsState()
 
     // 무한 스크롤 구현 - 푸터 감지 개선
@@ -443,7 +442,6 @@ private fun PhotoGrid(
             val layoutInfo = lazyGridState.layoutInfo
             val visibleItemsInfo = layoutInfo.visibleItemsInfo
             val lastVisibleItemIndex = visibleItemsInfo.lastOrNull()?.index ?: -1
-            val totalItemsCount = uiState.photos.size
 
             // 스크롤 상태 정보를 더 상세하게 로깅
             lastVisibleItemIndex
@@ -459,19 +457,19 @@ private fun PhotoGrid(
             }
     }
 
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
+    LazyVerticalStaggeredGrid(
+        columns = StaggeredGridCells.Adaptive(120.dp),
         state = lazyGridState,
         contentPadding = PaddingValues(12.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalItemSpacing = 8.dp,
         modifier = Modifier.fillMaxSize()
     ) {
         items(
             items = uiState.photos,
             key = { photo -> photo.path }
         ) { photo ->
-            PhotoThumbnail(
+            FluidPhotoThumbnail(
                 photo = photo,
                 thumbnailData = viewModel.getThumbnail(photo.path),
                 fullImageCache = fullImageCache,
@@ -505,7 +503,7 @@ private fun PhotoGrid(
         // 더 로딩 중일 때 로딩 인디케이터 표시
         if ((uiState.isLoading || uiState.isLoadingMore) && uiState.photos.isNotEmpty()) {
             Log.d("PhotoPreviewScreen", "LoadMoreIndicator 표시 조건 만족")
-            item(span = { GridItemSpan(3) }) {
+            item(span = StaggeredGridItemSpan.FullLine) {
                 LoadMoreIndicator()
             }
         }
@@ -513,7 +511,7 @@ private fun PhotoGrid(
         // 마지막 페이지일 때 완료 메시지
         else if (!uiState.hasNextPage && uiState.photos.isNotEmpty() && !uiState.isLoadingMore) {
             Log.d("PhotoPreviewScreen", "EndOfListMessage 표시 조건 만족")
-            item(span = { GridItemSpan(3) }) {
+            item(span = StaggeredGridItemSpan.FullLine) {
                 EndOfListMessage(photoCount = uiState.photos.size)
             }
         } else {

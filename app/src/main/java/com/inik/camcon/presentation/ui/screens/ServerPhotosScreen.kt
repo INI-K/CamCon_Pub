@@ -17,9 +17,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Card
 import androidx.compose.material.CircularProgressIndicator
@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,7 +48,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
@@ -60,17 +60,16 @@ import java.util.Date
 import java.util.Locale
 
 @Composable
-fun ServerPhotosScreen(
+fun MyPhotosScreen(
     viewModel: ServerPhotosViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val context = LocalContext.current
 
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
         // 모던한 헤더
-        ModernServerHeader(
+        ModernMyPhotosHeader(
             photoCount = uiState.photos.size,
             onRefresh = { viewModel.refreshPhotos() }
         )
@@ -81,11 +80,11 @@ fun ServerPhotosScreen(
             }
 
             uiState.photos.isEmpty() -> {
-                EmptyServerState()
+                EmptyMyPhotosState()
             }
 
             else -> {
-                PhotoGrid(
+                FluidPhotoGrid(
                     photos = uiState.photos,
                     onPhotoClick = { /* TODO: 사진 상세 보기 */ },
                     onDeleteClick = { photo -> viewModel.deletePhoto(photo.id) }
@@ -122,7 +121,7 @@ fun ServerPhotosScreen(
 }
 
 @Composable
-private fun ModernServerHeader(
+private fun ModernMyPhotosHeader(
     photoCount: Int,
     onRefresh: () -> Unit
 ) {
@@ -159,20 +158,20 @@ private fun ModernServerHeader(
 }
 
 @Composable
-private fun PhotoGrid(
+private fun FluidPhotoGrid(
     photos: List<CapturedPhoto>,
     onPhotoClick: (CapturedPhoto) -> Unit,
     onDeleteClick: (CapturedPhoto) -> Unit
 ) {
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
-        contentPadding = PaddingValues(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+    LazyVerticalStaggeredGrid(
+        columns = StaggeredGridCells.Fixed(4),
+        contentPadding = PaddingValues(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalItemSpacing = 4.dp,
         modifier = Modifier.fillMaxSize()
     ) {
         items(photos) { photo ->
-            PhotoGridItem(
+            FluidPhotoGridItem(
                 photo = photo,
                 onClick = { onPhotoClick(photo) },
                 onDelete = { onDeleteClick(photo) }
@@ -182,18 +181,30 @@ private fun PhotoGrid(
 }
 
 @Composable
-private fun PhotoGridItem(
+private fun FluidPhotoGridItem(
     photo: CapturedPhoto,
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
+    // 원본 비율에 관계없이 썸네일은 세로 비율로 강제 설정
+    val aspectRatio = remember(photo.id) {
+        // 다양한 세로 비율 사용 (이미지처럼)
+        when ((0..4).random()) {
+            0 -> 1f        // 정사각형
+            1 -> 0.75f     // 3:4 세로형
+            2 -> 0.6f      // 긴 세로형
+            3 -> 0.8f      // 4:5 세로형  
+            else -> 0.65f  // 중간 세로형
+        }
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(1f)
+            .aspectRatio(aspectRatio)
             .clickable { onClick() },
-        elevation = 4.dp,
-        shape = RoundedCornerShape(12.dp)
+        elevation = 2.dp,
+        shape = RoundedCornerShape(6.dp)
     ) {
         Box {
             // 사진 이미지
@@ -214,57 +225,8 @@ private fun PhotoGridItem(
                 painter = painter,
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Crop // 가로 사진도 세로 비율로 크롭됨
             )
-
-            // 삭제 버튼 (우상단)
-            IconButton(
-                onClick = onDelete,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(4.dp)
-                    .size(32.dp)
-                    .background(
-                        Color.Black.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(16.dp)
-                    )
-            ) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "삭제",
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-
-            // 사진 정보 오버레이 (하단)
-            Card(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(8.dp),
-                backgroundColor = Color.Black.copy(alpha = 0.7f),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(8.dp)
-                ) {
-                    Text(
-                        text = File(photo.filePath).name,
-                        color = Color.White,
-                        style = MaterialTheme.typography.caption,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    val dateFormat = SimpleDateFormat("MM.dd", Locale.getDefault())
-                    Text(
-                        text = dateFormat.format(Date(photo.captureTime)),
-                        color = Color.White.copy(alpha = 0.8f),
-                        style = MaterialTheme.typography.caption,
-                        fontSize = 10.sp
-                    )
-                }
-            }
         }
     }
 }
@@ -293,7 +255,7 @@ private fun LoadingIndicator() {
 }
 
 @Composable
-fun EmptyServerState() {
+fun EmptyMyPhotosState() {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -415,9 +377,9 @@ fun CapturedPhotoItem(
 
 @Preview(showBackground = true)
 @Composable
-fun EmptyServerStatePreview() {
+fun EmptyMyPhotosStatePreview() {
     CamConTheme {
-        EmptyServerState()
+        EmptyMyPhotosState()
     }
 }
 
