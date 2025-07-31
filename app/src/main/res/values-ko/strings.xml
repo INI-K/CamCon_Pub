@@ -186,6 +186,8 @@
     <!-- USB 연결 -->
     <string name="usb_refresh">USB 새로고침</string>
     <string name="usb_permission_request">USB 권한 요청</string>
+    <string name="refresh_usb">USB 새로고침</string>
+    <string name="request_usb_permission">USB 권한 요청</string>
 
     <!-- Wi-Fi 연결 -->
     <string name="wifi_camera_connection">Wi-Fi 카메라 연결</string>

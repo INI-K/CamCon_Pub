@@ -186,6 +186,8 @@
     <!-- USB-Verbindung -->
     <string name="usb_refresh">USB Aktualisieren</string>
     <string name="usb_permission_request">USB-Berechtigungsanfrage</string>
+    <string name="refresh_usb">USB Aktualisieren</string>
+    <string name="request_usb_permission">USB-Berechtigung Anfordern</string>
 
     <!-- Wi-Fi-Verbindung -->
     <string name="wifi_camera_connection">Wi-Fi Kamera-Verbindung</string>
