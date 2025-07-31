@@ -176,4 +176,74 @@
     <string name="minutes_ago">vor %d Minuten</string>
     <string name="hours_ago">vor %d Stunden</string>
     <string name="days_ago">vor %d Tagen</string>
+
+    <!-- Leere Zustände -->
+    <string name="no_photos">Keine Fotos</string>
+    <string name="connect_camera_and_capture">Verbinden Sie Ihre Kamera über USB\nund nehmen Sie Fotos auf</string>
+    <string name="check_camera_connection">• Prüfen Sie, ob die Kamera verbunden ist\n• Nach unten wischen zum Aktualisieren</string>
+    <string name="image_load_failed">Bild kann nicht geladen werden</string>
+
+    <!-- USB-Verbindung -->
+    <string name="usb_refresh">USB Aktualisieren</string>
+    <string name="usb_permission_request">USB-Berechtigungsanfrage</string>
+
+    <!-- Wi-Fi-Verbindung -->
+    <string name="wifi_camera_connection">Wi-Fi Kamera-Verbindung</string>
+    <string name="color_transfer_settings">Farbübertragungseinstellungen</string>
+    <string name="not_connected_to_camera_ap">Nicht mit Kamera-AP verbunden</string>
+    <string name="connected_network">Verbundenes Netzwerk: %s</string>
+    <string name="detected_camera_ip">Erkannte Kamera-IP: %s</string>
+    <string name="connect_to_camera_wifi_first">Verbinden Sie sich zuerst mit dem Kamera-Wi-Fi-Hotspot, um die Kameraerkennung zu starten.</string>
+    <string name="camera_connection_ui_area">Kamera-Verbindungs-Benutzeroberfläche</string>
+    <string name="auto_reconnect">Automatische Wiederverbindung</string>
+    <string name="auto_reconnect_description">Automatisch mit der Kamera wieder verbinden, wenn sich das Wi-Fi-Netzwerk ändert</string>
+    <string name="manual_connection_management">Kamera-Verbindung manuell verwalten</string>
+    <string name="wifi_feature_info_area">Wi-Fi-Funktionsinfo-Kartenbereich</string>
+
+    <!-- Foto-Informationen -->
+    <string name="resolution">Auflösung</string>
+    <string name="capture_date">Aufnahmedatum</string>
+    <string name="file_path">Pfad</string>
+    <string name="file_name">Dateiname</string>
+    <string name="file_size">Größe</string>
+    <string name="download_photo">Foto Herunterladen</string>
+    <string name="date_format_pattern">dd.MM.yyyy HH:mm</string>
+    <string name="flash_not_used">Blitz nicht verwendet</string>
+    <string name="flash_used">Blitz verwendet</string>
+    <string name="focus_auto">Automatisch</string>
+    <string name="focus_manual">Manuell</string>
+
+    <!-- Live View -->
+    <string name="live_view_not_supported">Live View Nicht Unterstützt</string>
+    <string name="camera_does_not_support_live_view">Dieses Kameramodell unterstützt kein Live View</string>
+    <string name="liveview_not_supported">Live View Nicht Unterstützt</string>
+    <string name="liveview_not_supported_detail">Dieses Kameramodell unterstützt kein Live View</string>
+    <string name="processing_liveview_frame">Live View-Frame wird verarbeitet...</string>
+    <string name="loading_liveview_frame">Live View-Frame wird geladen...</string>
+    <string name="capturing_photo">Foto wird aufgenommen...</string>
+    <string name="starting_liveview">Live View wird gestartet...</string>
+
+    <!-- Funktions-Badges -->
+    <string name="live_view">Live View</string>
+    <string name="time_lapse">Zeitraffer</string>
+    <string name="burst">Serie</string>
+    <string name="burst_shooting">Serie</string>
+    <string name="video_4k">4K Video</string>
+    <string name="remote_control">Fernsteuerung</string>
+    <string name="bracketing">Belichtungsreihe</string>
+
+    <!-- Kamera-Hilfe -->
+    <string name="check_other_apps_not_using_camera">Prüfen Sie, dass keine andere App die Kamera verwendet.</string>
+    <string name="camera_specific_settings">Kamera-spezifische Einstellungen:</string>
+    <string name="canon_usb_setting">• Canon: Menü > Kommunikationseinstellungen > USB-Verbindung > PC-Fernsteuerung</string>
+    <string name="nikon_usb_setting">• Nikon: Menü > USB > PTP/MTP-Modus</string>
+    <string name="sony_usb_setting">• Sony: Menü > USB-Verbindung > PC-Fernsteuerung</string>
+    <string name="camera_connection_help_title">Fehlerbehebung Kamera-Verbindung</string>
+    <string name="camera_connection_help_message">Kamera kann nicht gefunden werden. Bitte prüfen Sie folgendes:</string>
+    <string name="check_camera_pc_mode">Prüfen Sie, ob die Kamera auf PC-/Fernsteuerungsmodus eingestellt ist.</string>
+    <string name="check_usb_cable">Prüfen Sie, ob das USB-Kabel ordnungsgemäß angeschlossen ist.</string>
+    <string name="check_camera_power">Prüfen Sie, ob die Kamera eingeschaltet ist.</string>
+    <string name="canon_camera_settings">• Canon: Menü > Kommunikationseinstellungen > USB-Verbindung > PC-Fernsteuerung</string>
+    <string name="nikon_camera_settings">• Nikon: Menü > USB > PTP/MTP-Modus</string>
+    <string name="sony_camera_settings">• Sony: Menü > USB-Verbindung > PC-Fernsteuerung</string>
 </resources>

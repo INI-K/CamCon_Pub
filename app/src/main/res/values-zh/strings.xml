@@ -176,4 +176,74 @@
     <string name="minutes_ago">%d分钟前</string>
     <string name="hours_ago">%d小时前</string>
     <string name="days_ago">%d天前</string>
+
+    <!-- 空状态 -->
+    <string name="no_photos">没有照片</string>
+    <string name="connect_camera_and_capture">通过USB连接您的相机\n并拍摄照片</string>
+    <string name="check_camera_connection">• 检查相机是否已连接\n• 下滑刷新</string>
+    <string name="image_load_failed">无法加载图像</string>
+
+    <!-- USB连接 -->
+    <string name="usb_refresh">USB刷新</string>
+    <string name="usb_permission_request">USB权限请求</string>
+
+    <!-- Wi-Fi连接 -->
+    <string name="wifi_camera_connection">Wi-Fi相机连接</string>
+    <string name="color_transfer_settings">颜色传输设置</string>
+    <string name="not_connected_to_camera_ap">未连接到相机AP</string>
+    <string name="connected_network">已连接网络：%s</string>
+    <string name="detected_camera_ip">检测到相机IP：%s</string>
+    <string name="connect_to_camera_wifi_first">请先连接到相机Wi-Fi热点以开始相机发现。</string>
+    <string name="camera_connection_ui_area">相机连接UI区域</string>
+    <string name="auto_reconnect">自动重连</string>
+    <string name="auto_reconnect_description">当Wi-Fi网络更改时自动重新连接到相机</string>
+    <string name="manual_connection_management">手动管理相机连接</string>
+    <string name="wifi_feature_info_area">Wi-Fi功能信息卡区域</string>
+
+    <!-- 照片信息 -->
+    <string name="resolution">分辨率</string>
+    <string name="capture_date">拍摄日期</string>
+    <string name="file_path">路径</string>
+    <string name="file_name">文件名</string>
+    <string name="file_size">大小</string>
+    <string name="download_photo">下载照片</string>
+    <string name="date_format_pattern">yyyy年MM月dd日 HH:mm</string>
+    <string name="flash_not_used">未使用闪光灯</string>
+    <string name="flash_used">使用闪光灯</string>
+    <string name="focus_auto">自动</string>
+    <string name="focus_manual">手动</string>
+
+    <!-- 实时取景 -->
+    <string name="live_view_not_supported">不支持实时取景</string>
+    <string name="camera_does_not_support_live_view">此相机型号不支持实时取景</string>
+    <string name="liveview_not_supported">不支持实时取景</string>
+    <string name="liveview_not_supported_detail">此相机型号不支持实时取景</string>
+    <string name="processing_liveview_frame">正在处理实时取景画面...</string>
+    <string name="loading_liveview_frame">正在加载实时取景画面...</string>
+    <string name="capturing_photo">正在拍摄照片...</string>
+    <string name="starting_liveview">正在启动实时取景...</string>
+
+    <!-- 功能标识 -->
+    <string name="live_view">实时取景</string>
+    <string name="time_lapse">延时摄影</string>
+    <string name="burst">连拍</string>
+    <string name="burst_shooting">连拍</string>
+    <string name="video_4k">4K视频</string>
+    <string name="remote_control">遥控</string>
+    <string name="bracketing">包围曝光</string>
+
+    <!-- 相机帮助 -->
+    <string name="check_other_apps_not_using_camera">检查没有其他应用正在使用相机。</string>
+    <string name="camera_specific_settings">相机特定设置：</string>
+    <string name="canon_usb_setting">• Canon：菜单 > 通信设置 > USB连接 > PC遥控拍摄</string>
+    <string name="nikon_usb_setting">• Nikon：菜单 > USB > PTP/MTP模式</string>
+    <string name="sony_usb_setting">• Sony：菜单 > USB连接 > PC遥控</string>
+    <string name="camera_connection_help_title">相机连接故障排除</string>
+    <string name="camera_connection_help_message">找不到相机。请检查以下项目：</string>
+    <string name="check_camera_pc_mode">检查相机是否设置为PC/遥控模式。</string>
+    <string name="check_usb_cable">检查USB线缆是否正确连接。</string>
+    <string name="check_camera_power">检查相机是否已开机。</string>
+    <string name="canon_camera_settings">• Canon：菜单 > 通信设置 > USB连接 > PC遥控拍摄</string>
+    <string name="nikon_camera_settings">• Nikon：菜单 > USB > PTP/MTP模式</string>
+    <string name="sony_camera_settings">• Sony：菜单 > USB连接 > PC遥控</string>
 </resources>
