@@ -396,7 +396,10 @@ fun SettingsScreen(
                     icon = Icons.Default.Info,
                     title = "오픈소스 라이선스",
                     subtitle = "사용된 오픈소스 라이브러리",
-                    onClick = { /* TODO */ }
+                    onClick = {
+                        val intent = Intent(context, OpenSourceLicensesActivity::class.java)
+                        context.startActivity(intent)
+                    }
                 )
                 SettingsItem(
                     icon = Icons.Default.Update,

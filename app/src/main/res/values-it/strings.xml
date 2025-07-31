@@ -246,4 +246,6 @@
     <string name="canon_camera_settings">• Canon: Menu > Impostazioni Comunicazione > Connessione USB > Scatto Remoto PC</string>
     <string name="nikon_camera_settings">• Nikon: Menu > USB > Modalità PTP/MTP</string>
     <string name="sony_camera_settings">• Sony: Menu > Connessione USB > Remoto PC</string>
+    <string name="refresh_usb">Aggiorna USB</string>
+    <string name="request_usb_permission">Richiesta Permesso USB</string>
 </resources>
