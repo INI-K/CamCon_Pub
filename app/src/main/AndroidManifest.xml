@@ -98,6 +98,11 @@
             android:exported="false"
             android:screenOrientation="fullSensor"
             android:label="@string/color_transfer_settings" />
+        <activity
+            android:name=".presentation.ui.OpenSourceLicensesActivity"
+            android:exported="false"
+            android:screenOrientation="fullSensor"
+            android:label="오픈소스 라이선스" />
 
         <!-- FileProvider for sharing photos -->
         <provider
