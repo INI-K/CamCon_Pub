@@ -2,9 +2,10 @@ package com.inik.camcon.presentation.ui.screens.components
 
 import android.graphics.ColorSpace
 import android.util.Log
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -14,10 +15,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Card
+import androidx.compose.material.Icon
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,12 +51,16 @@ import java.io.File
 /**
  * 사진 썸네일을 표시하는 카드 컴포넌트
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PhotoThumbnail(
     photo: CameraPhoto,
     onClick: () -> Unit,
+    onLongClick: () -> Unit = {},
     thumbnailData: ByteArray? = null,
-    fullImageCache: Map<String, ByteArray> = emptyMap()
+    fullImageCache: Map<String, ByteArray> = emptyMap(),
+    isSelected: Boolean = false,
+    isMultiSelectMode: Boolean = false
 ) {
     // remember를 사용하여 photo.path가 변경될 때만 로그 출력 (중복 방지)
     val loggedPath = remember(photo.path) {
@@ -73,11 +82,23 @@ fun PhotoThumbnail(
         modifier = Modifier
             .aspectRatio(1f)
             .clip(RoundedCornerShape(12.dp))
-            .clickable { onClick() },
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
         elevation = 6.dp,
         backgroundColor = MaterialTheme.colors.surface
     ) {
         Box {
+            // 선택된 상태일 때 오버레이 추가
+            if (isSelected) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Blue.copy(alpha = 0.3f))
+                )
+            }
+
             // 이미지 로딩 우선순위: 썸네일 경로 -> 원본 경로 -> 바이트 데이터 -> 플레이스홀더
             when {
                 !photo.thumbnailPath.isNullOrEmpty() && File(photo.thumbnailPath).exists() -> {
@@ -127,6 +148,40 @@ fun PhotoThumbnail(
 
                 else -> {
                     ThumbnailPlaceholder()
+                }
+            }
+
+            // 멀티 선택 모드에서 선택 상태 표시
+            if (isMultiSelectMode) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .size(24.dp)
+                        .background(
+                            color = if (isSelected) Color.Green else Color.White.copy(alpha = 0.8f),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isSelected) {
+                        Icon(
+                            imageVector = Icons.Filled.CheckCircle,
+                            contentDescription = "선택됨",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    } else {
+                        // 선택되지 않은 상태에서도 빈 원 표시
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .background(
+                                    color = Color.Transparent,
+                                    shape = CircleShape
+                                )
+                        )
+                    }
                 }
             }
 

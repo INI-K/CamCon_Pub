@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+
+// Multi-select feature: Required imports
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -83,6 +85,11 @@ fun PhotoPreviewScreen(
         }
     )
 
+    // 멀티 선택 모드에서 뒤로가기 처리
+    BackHandler(enabled = uiState.isMultiSelectMode) {
+        viewModel.exitMultiSelectMode()
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -95,15 +102,25 @@ fun PhotoPreviewScreen(
                 .padding(top = 24.dp) // 상단 마진 증가 (16dp → 24dp)
         ) {
             // 상단 타이틀 영역 (모던한 디자인)
-            ModernHeader(
-                photoCount = uiState.photos.size,
-                currentPage = uiState.currentPage,
-                totalPages = uiState.totalPages,
-                onRefresh = { viewModel.loadCameraPhotos() },
-                fileTypeFilter = uiState.fileTypeFilter,
-                onFilterChange = { filter -> viewModel.changeFileTypeFilter(filter) },
-                viewModel = viewModel
-            )
+            if (uiState.isMultiSelectMode) {
+                MultiSelectActionBar(
+                    selectedCount = uiState.selectedPhotos.size,
+                    onSelectAll = { viewModel.selectAllPhotos() },
+                    onDeselectAll = { viewModel.deselectAllPhotos() },
+                    onDownload = { viewModel.downloadSelectedPhotos() },
+                    onCancel = { viewModel.exitMultiSelectMode() }
+                )
+            } else {
+                ModernHeader(
+                    photoCount = uiState.photos.size,
+                    currentPage = uiState.currentPage,
+                    totalPages = uiState.totalPages,
+                    onRefresh = { viewModel.loadCameraPhotos() },
+                    fileTypeFilter = uiState.fileTypeFilter,
+                    onFilterChange = { filter -> viewModel.changeFileTypeFilter(filter) },
+                    viewModel = viewModel
+                )
+            }
 
             // 카메라 이벤트 초기화 블록 오버레이 표시
             if (uiState.isInitializing) {
@@ -205,7 +222,7 @@ fun PhotoPreviewScreen(
             viewModel = viewModel // ViewModel을 통해 썸네일 캐시 공유
         )
 
-        BackHandler {
+        BackHandler(enabled = !uiState.isMultiSelectMode) {
             viewModel.selectPhoto(null)
         }
     }
@@ -458,7 +475,23 @@ private fun PhotoGrid(
                 photo = photo,
                 thumbnailData = viewModel.getThumbnail(photo.path),
                 fullImageCache = fullImageCache,
-                onClick = { viewModel.selectPhoto(photo) }
+                onClick = {
+                    if (uiState.isMultiSelectMode) {
+                        // 멀티 선택 모드에서는 선택/해제
+                        viewModel.togglePhotoSelection(photo.path)
+                    } else {
+                        // 일반 모드에서는 전체화면으로 이동
+                        viewModel.selectPhoto(photo)
+                    }
+                },
+                onLongClick = {
+                    if (!uiState.isMultiSelectMode) {
+                        // 멀티 선택 모드 시작
+                        viewModel.startMultiSelectMode(photo.path)
+                    }
+                },
+                isSelected = uiState.selectedPhotos.contains(photo.path),
+                isMultiSelectMode = uiState.isMultiSelectMode
             )
         }
 
@@ -568,6 +601,65 @@ private fun ErrorSnackbar(
                 text = error,
                 color = MaterialTheme.colors.onError
             )
+        }
+    }
+}
+
+/**
+ * 멀티 선택 모드에서 표시되는 액션 바
+ */
+@Composable
+private fun MultiSelectActionBar(
+    selectedCount: Int,
+    onSelectAll: () -> Unit,
+    onDeselectAll: () -> Unit,
+    onDownload: () -> Unit,
+    onCancel: () -> Unit
+) {
+    Column {
+        // 첫 번째 행: 선택된 개수와 취소 버튼
+        Box(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            // 중앙 정렬된 선택된 개수
+            Text(
+                text = "${selectedCount}개 선택됨",
+                color = MaterialTheme.colors.primary,
+                style = MaterialTheme.typography.h6,
+                modifier = Modifier.align(Alignment.Center)
+            )
+
+            // 우측 취소 버튼
+            TextButton(
+                onClick = onCancel,
+                modifier = Modifier.align(Alignment.CenterEnd)
+            ) {
+                Text(
+                    text = "취소",
+                    color = MaterialTheme.colors.onSurface
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 두 번째 행: 액션 버튼들
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextButton(onClick = onSelectAll) {
+                Text("전체 선택")
+            }
+
+            TextButton(onClick = onDeselectAll) {
+                Text("전체 해제")
+            }
+
+            TextButton(onClick = onDownload) {
+                Text("다운로드")
+            }
         }
     }
 }
