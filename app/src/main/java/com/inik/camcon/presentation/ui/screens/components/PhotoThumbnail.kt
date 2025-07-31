@@ -1,5 +1,6 @@
 package com.inik.camcon.presentation.ui.screens.components
 
+import android.graphics.ColorSpace
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -229,7 +230,8 @@ private fun ExifAwareThumbnail(
                 // 3. 안전한 비트맵 디코딩 옵션 설정
                 val options = android.graphics.BitmapFactory.Options().apply {
                     inJustDecodeBounds = false
-                    inPreferredConfig = android.graphics.Bitmap.Config.RGB_565 // 메모리 효율성
+                    inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888 // sRGB 호환성
+                    inPreferredColorSpace = ColorSpace.get(ColorSpace.Named.SRGB) // sRGB 색공간
                     inMutable = false
                     inSampleSize = 1 // 썸네일이므로 원본 크기 유지
 
@@ -409,7 +411,7 @@ private fun ThumbnailImage(
                 // 안전한 비트맵 디코딩 옵션 설정
                 val options = android.graphics.BitmapFactory.Options().apply {
                     inJustDecodeBounds = false
-                    inPreferredConfig = android.graphics.Bitmap.Config.RGB_565
+                    inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
                     inMutable = false
                     inSampleSize = 1
 
