@@ -32,7 +32,10 @@ data class PhotoPreviewUiState(
     val isInitialized: Boolean = false,
     val isInitializing: Boolean = false, // 카메라 초기화 상태 추가
     val fileTypeFilter: FileTypeFilter = FileTypeFilter.JPG,
-    val allPhotos: List<CameraPhoto> = emptyList()
+    val allPhotos: List<CameraPhoto> = emptyList(),
+    // 멀티 선택 관련 상태
+    val isMultiSelectMode: Boolean = false, // 멀티 선택 모드 활성화 여부
+    val selectedPhotos: Set<String> = emptySet() // 선택된 사진들의 path 집합
 )
 
 enum class FileTypeFilter {
@@ -1116,5 +1119,82 @@ class PhotoPreviewViewModel @Inject constructor(
         }
 
         android.util.Log.d(TAG, "=== PhotoPreviewViewModel 정리 완료 ===")
+    }
+
+    /**
+     * 선택된 사진들을 다운로드합니다.
+     */
+    fun downloadSelectedPhotos() {
+        val selectedPaths = _uiState.value.selectedPhotos
+        android.util.Log.d(TAG, "선택된 사진들 다운로드 시작: ${selectedPaths.size}개")
+
+        selectedPaths.forEach { photoPath ->
+            downloadFullImage(photoPath)
+        }
+    }
+
+    // 멀티 선택 관련 메서드들
+
+    /**
+     * 멀티 선택 모드를 시작합니다.
+     * 일반적으로 사진을 롱클릭했을 때 호출됩니다.
+     */
+    fun startMultiSelectMode(initialPhotoPath: String) {
+        android.util.Log.d(TAG, "멀티 선택 모드 시작: $initialPhotoPath")
+        _uiState.value = _uiState.value.copy(
+            isMultiSelectMode = true,
+            selectedPhotos = setOf(initialPhotoPath),
+            selectedPhoto = null // 전체화면 뷰어 닫기
+        )
+    }
+
+    /**
+     * 멀티 선택 모드를 종료합니다.
+     */
+    fun exitMultiSelectMode() {
+        android.util.Log.d(TAG, "멀티 선택 모드 종료")
+        _uiState.value = _uiState.value.copy(
+            isMultiSelectMode = false,
+            selectedPhotos = emptySet()
+        )
+    }
+
+    /**
+     * 사진을 선택/해제합니다.
+     * 멀티 선택 모드에서 사진을 클릭했을 때 호출됩니다.
+     */
+    fun togglePhotoSelection(photoPath: String) {
+        val currentSelection = _uiState.value.selectedPhotos
+        val newSelection = if (currentSelection.contains(photoPath)) {
+            currentSelection - photoPath
+        } else {
+            currentSelection + photoPath
+        }
+
+        android.util.Log.d(TAG, "사진 선택 토글: $photoPath, 선택된 사진 수: ${newSelection.size}")
+
+        // 선택된 사진이 하나도 없으면 멀티 선택 모드를 종료
+        if (newSelection.isEmpty()) {
+            exitMultiSelectMode()
+        } else {
+            _uiState.value = _uiState.value.copy(selectedPhotos = newSelection)
+        }
+    }
+
+    /**
+     * 모든 사진을 선택합니다.
+     */
+    fun selectAllPhotos() {
+        val allPhotoPaths = _uiState.value.photos.map { it.path }.toSet()
+        android.util.Log.d(TAG, "모든 사진 선택: ${allPhotoPaths.size}개")
+        _uiState.value = _uiState.value.copy(selectedPhotos = allPhotoPaths)
+    }
+
+    /**
+     * 모든 사진 선택을 해제합니다.
+     */
+    fun deselectAllPhotos() {
+        android.util.Log.d(TAG, "모든 사진 선택 해제")
+        _uiState.value = _uiState.value.copy(selectedPhotos = emptySet())
     }
 }
