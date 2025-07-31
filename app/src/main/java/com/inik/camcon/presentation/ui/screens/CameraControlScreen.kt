@@ -8,12 +8,14 @@ import android.util.Log
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,6 +29,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.AlertDialog
@@ -76,11 +79,13 @@ import coil.request.ImageRequest
 import coil.size.Scale
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.Camera
+import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.CameraSettings
 import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.components.CameraPreviewArea
 import com.inik.camcon.presentation.ui.screens.components.CaptureControls
+import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
 import com.inik.camcon.presentation.ui.screens.components.LoadingOverlay
 import com.inik.camcon.presentation.ui.screens.components.ShootingModeSelector
 import com.inik.camcon.presentation.ui.screens.components.TopControlsBar
@@ -91,6 +96,7 @@ import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.CameraUiState
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 import java.io.File
 
 /**
@@ -121,8 +127,18 @@ fun CameraControlScreen(
     var showSaveFormatSelectionDialog by remember { mutableStateOf(false) }
     var showConnectionHelpDialog by remember { mutableStateOf(false) }
 
+    // FullScreenPhotoViewer 상태들
+    var showFullScreenViewer by remember { mutableStateOf(false) }
+    var selectedPhoto by remember { mutableStateOf<CapturedPhoto?>(null) }
+
     // 앱 재시작 다이얼로그 - uiState의 showRestartDialog를 observe
     val showAppRestartDialog = uiState.showRestartDialog
+
+    // FullScreenPhotoViewer가 열린 상태에서 뒤로가기 처리
+    BackHandler(enabled = showFullScreenViewer) {
+        showFullScreenViewer = false
+        selectedPhoto = null
+    }
 
     // 설정들을 묶은 객체를 remember로 캐싱하여 리컴포지션 최적화
     val appSettings = remember(
@@ -231,7 +247,11 @@ fun CameraControlScreen(
                         isFullscreen = true
                         onFullscreenChange(true)
                     },
-                    appSettings = appSettings
+                    appSettings = appSettings,
+                    onPhotoClick = { photo ->
+                        selectedPhoto = photo
+                        showFullScreenViewer = true
+                    }
                 )
             }
         }
@@ -239,6 +259,24 @@ fun CameraControlScreen(
         if (uiState.isUsbInitializing) {
             UsbInitializationOverlay(
                 message = uiState.usbInitializationMessage ?: "USB 카메라 초기화 중..."
+            )
+        }
+
+        // FullScreenPhotoViewer 표시
+        if (showFullScreenViewer && selectedPhoto != null) {
+            FullScreenPhotoViewer(
+                photo = selectedPhoto!!.toCameraPhoto(),
+                onDismiss = {
+                    showFullScreenViewer = false
+                    selectedPhoto = null
+                },
+                onPhotoChanged = { /* 단일 사진이므로 변경 없음 */ },
+                thumbnailData = selectedPhoto!!.getThumbnailData(),
+                fullImageData = selectedPhoto!!.getImageData(),
+                isDownloadingFullImage = false,
+                onDownload = { /* 이미 다운로드됨, 아무 동작 안함 */ },
+                viewModel = null, // PhotoPreviewViewModel 없이 사용
+                hideDownloadButton = true // 다운로드 버튼 숨김
             )
         }
     }
@@ -336,7 +374,8 @@ private fun PortraitCameraLayout(
     bottomSheetState: ModalBottomSheetState,
     onShowTimelapseDialog: () -> Unit,
     onEnterFullscreen: () -> Unit,
-    appSettings: AppSettings
+    appSettings: AppSettings,
+    onPhotoClick: (CapturedPhoto) -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -450,6 +489,7 @@ private fun PortraitCameraLayout(
                     )
                     RecentCapturesRow(
                         photos = recentPhotos,
+                        onPhotoClick = onPhotoClick,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
                 }
@@ -495,13 +535,6 @@ private fun FullscreenCameraLayout(
                                 or View.SYSTEM_UI_FLAG_FULLSCREEN
                         )
             }
-        }
-    }
-
-    // EXIF 설정을 remember로 캐싱
-    val exifSettings = remember(uiState.capturedPhotos.lastOrNull()?.filePath) {
-        uiState.capturedPhotos.lastOrNull()?.let { photo ->
-            readExifMetadata(photo.filePath)
         }
     }
 
@@ -659,9 +692,23 @@ private fun FullscreenControlPanel(
 @Composable
 private fun RecentCapturesRow(
     photos: List<CapturedPhoto>,
+    onPhotoClick: (CapturedPhoto) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+
+    // 새로운 사진이 추가될 때마다 첫 번째 아이템으로 스크롤
+    LaunchedEffect(photos.size) {
+        if (photos.isNotEmpty()) {
+            scope.launch {
+                listState.animateScrollToItem(0)
+            }
+        }
+    }
+
     LazyRow(
+        state = listState,
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -669,7 +716,10 @@ private fun RecentCapturesRow(
             items = photos,
             key = { photo -> photo.id } // key 추가로 리컴포지션 최적화
         ) { photo ->
-            RecentCaptureItem(photo = photo)
+            RecentCaptureItem(
+                photo = photo,
+                onClick = { onPhotoClick(photo) }
+            )
         }
     }
 }
@@ -679,7 +729,8 @@ private fun RecentCapturesRow(
  */
 @Composable
 private fun RecentCaptureItem(
-    photo: CapturedPhoto
+    photo: CapturedPhoto,
+    onClick: () -> Unit = {}
 ) {
     // 파일 크기 텍스트를 remember로 캐싱
     val sizeText = remember(photo.size) {
@@ -691,7 +742,9 @@ private fun RecentCaptureItem(
     }
 
     Card(
-        modifier = Modifier.size(100.dp),
+        modifier = Modifier
+            .size(100.dp)
+            .clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         elevation = 4.dp
     ) {
@@ -973,6 +1026,116 @@ private fun readExifMetadata(filePath: String): CameraSettings? {
         null
     }
 }
+
+// CapturedPhoto를 CameraPhoto로 변환하는 확장 함수
+private fun CapturedPhoto.toCameraPhoto(): CameraPhoto {
+    return CameraPhoto(
+        path = this.filePath,
+        name = this.filePath.substringAfterLast("/"),
+        size = this.size,
+        date = this.captureTime, // 캡처 시간 전달
+        width = this.width,
+        height = this.height,
+        thumbnailPath = this.thumbnailPath
+    )
+}
+
+// CapturedPhoto에서 썸네일 데이터를 가져오는 확장 함수
+private fun CapturedPhoto.getThumbnailData(): ByteArray? {
+    return try {
+        this.thumbnailPath?.let { File(it).readBytes() }
+    } catch (e: Exception) {
+        null
+    }
+}
+
+// CapturedPhoto에서 이미지 데이터를 가져오는 확장 함수  
+private fun CapturedPhoto.getImageData(): ByteArray? {
+    return try {
+        File(this.filePath).readBytes()
+    } catch (e: Exception) {
+        null
+    }
+}
+
+// CapturedPhoto에서 EXIF 정보를 JSON 형태로 읽어오는 확장 함수
+private fun CapturedPhoto.getExifData(): String? {
+    return try {
+        val file = File(this.filePath)
+        if (!file.exists()) return null
+
+        val exif = ExifInterface(this.filePath)
+        val exifMap = mutableMapOf<String, Any>()
+
+        // 기본 이미지 정보
+        exifMap["width"] = this.width
+        exifMap["height"] = this.height
+        exifMap["file_size"] = this.size
+        exifMap["capture_time"] = this.captureTime
+
+        // 카메라 정보
+        exif.getAttribute(ExifInterface.TAG_MAKE)?.let { exifMap["make"] = it }
+        exif.getAttribute(ExifInterface.TAG_MODEL)?.let { exifMap["model"] = it }
+
+        // 촬영 설정 (CapturedPhoto에 있는 settings 활용)
+        this.settings?.let { settings ->
+            exifMap["iso"] = settings.iso
+            exifMap["aperture"] = settings.aperture
+            exifMap["shutter_speed"] = settings.shutterSpeed
+            exifMap["white_balance"] = settings.whiteBalance
+            exifMap["focus_mode"] = settings.focusMode
+            exifMap["exposure_compensation"] = settings.exposureCompensation
+        }
+
+        // EXIF에서 추가 정보 읽기
+        exif.getAttribute(ExifInterface.TAG_F_NUMBER)?.let { exifMap["f_number"] = it }
+        exif.getAttribute(ExifInterface.TAG_EXPOSURE_TIME)?.let { exifMap["exposure_time"] = it }
+        exif.getAttribute(ExifInterface.TAG_FOCAL_LENGTH)?.let { exifMap["focal_length"] = it }
+        exif.getAttribute(ExifInterface.TAG_ISO_SPEED_RATINGS)?.let { exif_iso ->
+            if (!exifMap.containsKey("iso") || exifMap["iso"] == "AUTO") {
+                exifMap["iso"] = exif_iso
+            }
+        }
+
+        // 기타 정보
+        val orientation =
+            exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+        exifMap["orientation"] = orientation
+
+        exif.getAttribute(ExifInterface.TAG_WHITE_BALANCE)?.let { wb ->
+            val whiteBalanceText = when (wb) {
+                "0" -> "자동"
+                "1" -> "수동"
+                else -> "자동"
+            }
+            exifMap["white_balance_exif"] = whiteBalanceText
+        }
+
+        exif.getAttribute(ExifInterface.TAG_FLASH)?.let { exifMap["flash"] = it }
+        exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL)
+            ?.let { exifMap["date_time_original"] = it }
+
+        // GPS 정보
+        val latLong = floatArrayOf(0f, 0f)
+        if (exif.getLatLong(latLong)) {
+            exifMap["gps_latitude"] = latLong[0]
+            exifMap["gps_longitude"] = latLong[1]
+        }
+
+        // JSON 문자열로 변환
+        val jsonObject = JSONObject()
+        exifMap.forEach { (key, value) ->
+            jsonObject.put(key, value)
+        }
+
+        jsonObject.toString()
+    } catch (e: Exception) {
+        Log.e("CameraControl", "EXIF 정보 읽기 실패: ${e.message}", e)
+        null
+    }
+}
+
+// ... existing code ...
 
 // 프리뷰는 간소화
 @Preview(name = "Camera Control Screen", showBackground = true)
