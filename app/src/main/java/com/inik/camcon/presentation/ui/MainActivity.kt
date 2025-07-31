@@ -54,8 +54,8 @@ import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.CameraControlScreen
+import com.inik.camcon.presentation.ui.screens.MyPhotosScreen
 import com.inik.camcon.presentation.ui.screens.PhotoPreviewScreen
-import com.inik.camcon.presentation.ui.screens.ServerPhotosScreen
 import com.inik.camcon.presentation.ui.screens.components.PtpTimeoutDialog
 import com.inik.camcon.presentation.ui.screens.components.UsbInitializationOverlay
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
@@ -340,7 +340,7 @@ fun MainScreen(
                         )
                     }
                 }
-                composable(BottomNavItem.ServerPhotos.route) { ServerPhotosScreen() }
+                composable(BottomNavItem.ServerPhotos.route) { MyPhotosScreen() }
                 // 설정은 별도 액티비티로 처리하므로 여기서 제외
             }
         }
