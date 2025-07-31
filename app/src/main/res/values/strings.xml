@@ -186,6 +186,8 @@
     <!-- USB Connection -->
     <string name="usb_refresh">USB Refresh</string>
     <string name="usb_permission_request">USB Permission Request</string>
+    <string name="refresh_usb">Refresh USB</string>
+    <string name="request_usb_permission">Request USB Permission</string>
 
     <!-- Wi-Fi Connection -->
     <string name="wifi_camera_connection">Wi-Fi Camera Connection</string>

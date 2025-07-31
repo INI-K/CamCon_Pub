@@ -246,4 +246,8 @@
     <string name="canon_camera_settings">• Canon: Menu > Paramètres de Communication > Connexion USB > Prise de Vue à Distance PC</string>
     <string name="nikon_camera_settings">• Nikon: Menu > USB > Mode PTP/MTP</string>
     <string name="sony_camera_settings">• Sony: Menu > Connexion USB > Télécommande PC</string>
+
+    <!-- USB Connection -->
+    <string name="refresh_usb">Actualiser USB</string>
+    <string name="request_usb_permission">Demander Permission USB</string>
 </resources>

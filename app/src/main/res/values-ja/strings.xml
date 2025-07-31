@@ -246,4 +246,8 @@
     <string name="canon_camera_settings">• Canon: メニュー > 通信設定 > USB接続 > PCリモート撮影</string>
     <string name="nikon_camera_settings">• Nikon: メニュー > USB > PTP/MTPモード</string>
     <string name="sony_camera_settings">• Sony: メニュー > USB接続 > PCリモート</string>
+
+    <!-- USB Connection -->
+    <string name="refresh_usb">USBを更新</string>
+    <string name="request_usb_permission">USB権限を要求</string>
 </resources>
