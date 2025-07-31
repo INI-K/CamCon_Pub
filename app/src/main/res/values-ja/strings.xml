@@ -176,4 +176,74 @@
     <string name="minutes_ago">%d分前</string>
     <string name="hours_ago">%d時間前</string>
     <string name="days_ago">%d日前</string>
+
+    <!-- 空の状態 -->
+    <string name="no_photos">写真がありません</string>
+    <string name="connect_camera_and_capture">USB経由でカメラを接続し\n写真を撮影してください</string>
+    <string name="check_camera_connection">• カメラが接続されているか確認してください\n• 下にスワイプして更新</string>
+    <string name="image_load_failed">画像を読み込めません</string>
+
+    <!-- USB接続 -->
+    <string name="usb_refresh">USB更新</string>
+    <string name="usb_permission_request">USB権限リクエスト</string>
+
+    <!-- Wi-Fi接続 -->
+    <string name="wifi_camera_connection">Wi-Fiカメラ接続</string>
+    <string name="color_transfer_settings">カラー転送設定</string>
+    <string name="not_connected_to_camera_ap">カメラAPに接続されていません</string>
+    <string name="connected_network">接続されたネットワーク: %s</string>
+    <string name="detected_camera_ip">検出されたカメラIP: %s</string>
+    <string name="connect_to_camera_wifi_first">カメラの検出を開始するには、まずカメラのWi-Fiホットスポットに接続してください。</string>
+    <string name="camera_connection_ui_area">カメラ接続UIエリア</string>
+    <string name="auto_reconnect">自動再接続</string>
+    <string name="auto_reconnect_description">Wi-Fiネットワークが変更されたときに自動的にカメラに再接続する</string>
+    <string name="manual_connection_management">カメラ接続を手動で管理</string>
+    <string name="wifi_feature_info_area">Wi-Fi機能情報カードエリア</string>
+
+    <!-- 写真情報 -->
+    <string name="resolution">解像度</string>
+    <string name="capture_date">撮影日時</string>
+    <string name="file_path">パス</string>
+    <string name="file_name">ファイル名</string>
+    <string name="file_size">サイズ</string>
+    <string name="download_photo">写真をダウンロード</string>
+    <string name="date_format_pattern">yyyy年MM月dd日 HH:mm</string>
+    <string name="flash_not_used">フラッシュ未使用</string>
+    <string name="flash_used">フラッシュ使用</string>
+    <string name="focus_auto">オート</string>
+    <string name="focus_manual">マニュアル</string>
+
+    <!-- ライブビュー -->
+    <string name="live_view_not_supported">ライブビューはサポートされていません</string>
+    <string name="camera_does_not_support_live_view">このカメラモデルはライブビューをサポートしていません</string>
+    <string name="liveview_not_supported">ライブビューはサポートされていません</string>
+    <string name="liveview_not_supported_detail">このカメラモデルはライブビューをサポートしていません</string>
+    <string name="processing_liveview_frame">ライブビューフレームを処理中...</string>
+    <string name="loading_liveview_frame">ライブビューフレームを読み込み中...</string>
+    <string name="capturing_photo">写真を撮影中...</string>
+    <string name="starting_liveview">ライブビューを開始中...</string>
+
+    <!-- 機能バッジ -->
+    <string name="live_view">ライブビュー</string>
+    <string name="time_lapse">タイムラプス</string>
+    <string name="burst">連写</string>
+    <string name="burst_shooting">連写</string>
+    <string name="video_4k">4Kビデオ</string>
+    <string name="remote_control">リモートコントロール</string>
+    <string name="bracketing">ブラケット撮影</string>
+
+    <!-- カメラヘルプ -->
+    <string name="check_other_apps_not_using_camera">他のアプリがカメラを使用していないことを確認してください。</string>
+    <string name="camera_specific_settings">カメラ固有の設定:</string>
+    <string name="canon_usb_setting">• Canon: メニュー > 通信設定 > USB接続 > PCリモート撮影</string>
+    <string name="nikon_usb_setting">• Nikon: メニュー > USB > PTP/MTPモード</string>
+    <string name="sony_usb_setting">• Sony: メニュー > USB接続 > PCリモート</string>
+    <string name="camera_connection_help_title">カメラ接続トラブルシューティング</string>
+    <string name="camera_connection_help_message">カメラが見つかりません。以下をご確認ください:</string>
+    <string name="check_camera_pc_mode">カメラがPC/リモートモードに設定されているか確認してください。</string>
+    <string name="check_usb_cable">USBケーブルが正しく接続されているか確認してください。</string>
+    <string name="check_camera_power">カメラの電源が入っているか確認してください。</string>
+    <string name="canon_camera_settings">• Canon: メニュー > 通信設定 > USB接続 > PCリモート撮影</string>
+    <string name="nikon_camera_settings">• Nikon: メニュー > USB > PTP/MTPモード</string>
+    <string name="sony_camera_settings">• Sony: メニュー > USB接続 > PCリモート</string>
 </resources>
