@@ -85,9 +85,9 @@ fun CameraPreviewArea(
                         )
                     } ?: run {
                         Log.w("CameraPreview", "비트맵 디코딩 실패 - LoadingOverlay 표시")
-                        LoadingOverlay("라이브뷰 프레임 처리 중...")
+                        LoadingOverlay(stringResource(R.string.processing_liveview_frame))
                     }
-                } ?: LoadingOverlay("라이브뷰 프레임 로딩 중...")
+                } ?: LoadingOverlay(stringResource(R.string.loading_liveview_frame))
 
                 // 라이브뷰 중지 버튼 오버레이
                 Button(
@@ -109,7 +109,7 @@ fun CameraPreviewArea(
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("라이브뷰 중지", color = Color.White)
+                    Text(stringResource(R.string.stop_live_view), color = Color.White)
                 }
             }
         } else if (!uiState.isConnected) {
@@ -127,12 +127,12 @@ fun CameraPreviewArea(
 
         // 전역 로딩 오버레이
         if (uiState.isCapturing) {
-            LoadingOverlay("촬영 중...")
+            LoadingOverlay(stringResource(R.string.capturing_photo))
         }
 
         // 라이브뷰 로딩 오버레이
         if (uiState.isLiveViewLoading) {
-            LoadingOverlay("라이브뷰 시작 중...")
+            LoadingOverlay(stringResource(R.string.starting_liveview))
         }
     }
 }
@@ -242,14 +242,14 @@ fun CameraConnectedState(
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                "라이브뷰 지원 안됨",
+                stringResource(R.string.liveview_not_supported),
                 color = Color.Gray,
                 fontSize = 16.sp,
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                "이 카메라 모델은 라이브뷰를 지원하지 않습니다",
+                stringResource(R.string.liveview_not_supported_detail),
                 color = Color.Gray.copy(alpha = 0.7f),
                 fontSize = 14.sp,
                 textAlign = TextAlign.Center
@@ -304,7 +304,7 @@ fun CameraConnectionButtons(
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("USB 새로고침")
+                Text(stringResource(R.string.refresh_usb))
             }
         }
 
@@ -323,7 +323,7 @@ fun CameraConnectionButtons(
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("USB 권한 요청", color = Color.White)
+                    Text(stringResource(R.string.request_usb_permission), color = Color.White)
                 }
             }
         }
