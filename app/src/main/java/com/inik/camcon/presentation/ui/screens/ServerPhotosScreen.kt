@@ -1,6 +1,7 @@
 package com.inik.camcon.presentation.ui.screens
 
 import android.graphics.ColorSpace
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -36,7 +37,9 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,8 +54,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
+import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
 import com.inik.camcon.presentation.viewmodel.ServerPhotosViewModel
 import java.io.File
 import java.text.SimpleDateFormat
@@ -64,6 +69,7 @@ fun MyPhotosScreen(
     viewModel: ServerPhotosViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var selectedPhoto by remember { mutableStateOf<CapturedPhoto?>(null) }
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -86,10 +92,49 @@ fun MyPhotosScreen(
             else -> {
                 FluidPhotoGrid(
                     photos = uiState.photos,
-                    onPhotoClick = { /* TODO: 사진 상세 보기 */ },
+                    onPhotoClick = { photo -> selectedPhoto = photo },
                     onDeleteClick = { photo -> viewModel.deletePhoto(photo.id) }
                 )
             }
+        }
+    }
+
+    // 전체화면 사진 뷰어
+    selectedPhoto?.let { photo ->
+        val currentIndex = uiState.photos.indexOfFirst { it.id == photo.id }
+        val cameraPhotos = uiState.photos.map { capturedPhoto ->
+            CameraPhoto(
+                path = capturedPhoto.filePath,
+                name = File(capturedPhoto.filePath).name,
+                date = capturedPhoto.captureTime,
+                size = capturedPhoto.size
+            )
+        }
+
+        if (currentIndex >= 0 && cameraPhotos.isNotEmpty()) {
+            val currentCameraPhoto = cameraPhotos[currentIndex]
+
+            // 파일 존재 여부 로그
+            val file = File(currentCameraPhoto.path)
+            Log.d("MyPhotosScreen", "선택된 사진: ${currentCameraPhoto.name}")
+            Log.d("MyPhotosScreen", "파일 경로: ${currentCameraPhoto.path}")
+            Log.d("MyPhotosScreen", "파일 존재: ${file.exists()}")
+            Log.d("MyPhotosScreen", "파일 크기: ${file.length()} bytes")
+
+            FullScreenPhotoViewer(
+                photo = currentCameraPhoto,
+                onDismiss = { selectedPhoto = null },
+                onPhotoChanged = { newPhoto ->
+                    // 변경된 사진에 해당하는 CapturedPhoto 찾기
+                    val newCapturedPhoto = uiState.photos.find { it.filePath == newPhoto.path }
+                    selectedPhoto = newCapturedPhoto
+                },
+                thumbnailData = null,
+                fullImageData = ByteArray(0), // 빈 배열로 로컬 파일임을 표시
+                onDownload = { /* 이미 로컬 파일이므로 무시 */ },
+                hideDownloadButton = true,
+                localPhotos = cameraPhotos
+            )
         }
     }
 
