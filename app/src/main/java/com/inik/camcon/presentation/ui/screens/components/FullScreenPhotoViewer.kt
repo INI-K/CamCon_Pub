@@ -4,6 +4,7 @@ package com.inik.camcon.presentation.ui.screens.components
 // --------------------------
 import android.content.Intent
 import android.graphics.BitmapFactory
+import android.graphics.ColorSpace
 import android.graphics.Matrix
 import android.util.Log
 import android.widget.Toast
@@ -57,7 +58,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -78,6 +81,7 @@ import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
 
@@ -87,16 +91,30 @@ import kotlin.math.abs
 private fun shareCurrentPhoto(
     context: android.content.Context,
     photo: CameraPhoto,
-    viewModel: PhotoPreviewViewModel?
+    viewModel: PhotoPreviewViewModel?,
+    fullImageData: ByteArray? = null,
+    thumbnailData: ByteArray? = null
 ) {
     CoroutineScope(Dispatchers.IO).launch {
         try {
-            // 고화질 이미지 데이터 가져오기 (썸네일보다 우선)
-            val fullImageData = viewModel?.fullImageCache?.value?.get(photo.path)
-            val imageData =
-                fullImageData ?: viewModel?.uiState?.value?.thumbnailCache?.get(photo.path)
+            // 이미지 데이터 가져오기 우선순위:
+            // 1. viewModel의 고화질 이미지
+            // 2. 직접 전달받은 fullImageData
+            // 3. viewModel의 썸네일
+            // 4. 직접 전달받은 thumbnailData
+            val imageData = when {
+                viewModel != null -> {
+                    val fullImage = viewModel.fullImageCache.value[photo.path]
+                    val thumbnail = viewModel.uiState.value.thumbnailCache[photo.path]
+                    fullImage ?: thumbnail
+                }
 
-            if (imageData != null) {
+                fullImageData != null -> fullImageData
+                thumbnailData != null -> thumbnailData
+                else -> null
+            }
+
+            if (imageData != null && imageData.isNotEmpty()) {
                 // 임시 파일 생성
                 val cacheDir = File(context.cacheDir, "shared_photos")
                 if (!cacheDir.exists()) {
@@ -128,7 +146,7 @@ private fun shareCurrentPhoto(
                         val chooser = Intent.createChooser(shareIntent, "사진 공유")
                         context.startActivity(chooser)
 
-                        Log.d("PhotoShare", "사진 공유 시작: ${tempFile.name}")
+                        Log.d("PhotoShare", "사진 공유 시작: ${tempFile.name} (${imageData.size} bytes)")
                     } catch (e: Exception) {
                         Log.e("PhotoShare", "공유 인텐트 실행 실패", e)
                         Toast.makeText(context, "사진 공유에 실패했습니다.", Toast.LENGTH_SHORT).show()
@@ -136,7 +154,11 @@ private fun shareCurrentPhoto(
                 }
             } else {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "이미지 데이터를 불러오는 중입니다.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "공유할 이미지 데이터가 없습니다.", Toast.LENGTH_SHORT).show()
+                    Log.w(
+                        "PhotoShare",
+                        "공유할 이미지 데이터 없음: viewModel=${viewModel != null}, fullImageData=${fullImageData != null}, thumbnailData=${thumbnailData != null}"
+                    )
                 }
             }
         } catch (e: Exception) {
@@ -161,7 +183,8 @@ fun FullScreenPhotoViewer(
     fullImageData: ByteArray?,
     isDownloadingFullImage: Boolean = false,
     onDownload: () -> Unit,
-    viewModel: PhotoPreviewViewModel? = null
+    viewModel: PhotoPreviewViewModel? = null,
+    hideDownloadButton: Boolean = false // 다운로드 버튼 숨김 옵션 추가
 ) {
     val context = LocalContext.current
 
@@ -174,83 +197,96 @@ fun FullScreenPhotoViewer(
 
     // ViewModel의 상태 관찰
     val uiState by viewModel?.uiState?.collectAsState() ?: remember {
-        mutableStateOf(com.inik.camcon.presentation.viewmodel.PhotoPreviewUiState())
+        mutableStateOf(
+            com.inik.camcon.presentation.viewmodel.PhotoPreviewUiState(
+                photos = listOf(photo), // 단일 사진만 포함
+                thumbnailCache = thumbnailData?.let { mapOf(photo.path to it) } ?: emptyMap()
+            )
+        )
     }
 
     // ViewModel의 썸네일 캐시 직접 사용 (성능 최적화)
     val sharedThumbnailCache = uiState.thumbnailCache
 
-    // 현재 사진 인덱스 찾기
-    val currentPhotoIndex = remember(photo.path, uiState.photos) {
-        uiState.photos.indexOfFirst { it.path == photo.path }.takeIf { it >= 0 } ?: 0
+    // 현재 사진 인덱스 찾기 (단일 사진인 경우 항상 0)
+    val currentPhotoIndex = if (viewModel != null) {
+        remember(photo.path, uiState.photos) {
+            uiState.photos.indexOfFirst { it.path == photo.path }.takeIf { it >= 0 } ?: 0
+        }
+    } else {
+        0 // 단일 사진인 경우 항상 0
     }
 
     // ViewModel의 캐시 상태 관찰
-    val fullImageCache by viewModel?.fullImageCache?.collectAsState() ?: remember { 
-        mutableStateOf(emptyMap<String, ByteArray>()) 
+    val fullImageCache by viewModel?.fullImageCache?.collectAsState() ?: remember {
+        mutableStateOf(
+            fullImageData?.let { mapOf(photo.path to it) } ?: emptyMap()
+        )
     }
 
-    // Pager 상태 - 스와이프 네비게이션용
+    // Pager 상태 - 스와이프 네비게이션용 (단일 사진인 경우 비활성화)
     val pagerState = rememberPagerState(
         initialPage = currentPhotoIndex,
-        pageCount = { uiState.photos.size }
+        pageCount = { if (viewModel != null) uiState.photos.size else 1 }
     )
 
-    // 페이지 변경 감지
-    LaunchedEffect(pagerState.currentPage) {
-        val newPhoto = uiState.photos.getOrNull(pagerState.currentPage)
-        if (newPhoto != null && newPhoto.path != photo.path) {
-            Log.d(
-                "FullScreenPhotoViewer",
-                "Pager 페이지 변경 성공: ${photo.name} → ${newPhoto.name} (페이지: ${pagerState.currentPage})"
-            )
-            onPhotoChanged(newPhoto)
-            // 페이지네이션 체크: 뷰어에서도 페이지 로딩 트리거
-            viewModel?.onPhotoIndexReached(pagerState.currentPage)
-        } else {
-            Log.d(
-                "FullScreenPhotoViewer",
-                "Pager 현재 페이지: ${pagerState.currentPage}, 총 ${uiState.photos.size}장"
-            )
-        }
-    }
-
-    // Pager 스크롤 상태 모니터링
-    LaunchedEffect(pagerState) {
-        snapshotFlow<Boolean> { pagerState.isScrollInProgress }.collect { isScrolling ->
-            Log.d(
-                "FullScreenPhotoViewer",
-                "HorizontalPager 스크롤: ${if (isScrolling) "진행중" else "정지"}"
-            )
-        }
-    }
-
-    LaunchedEffect(pagerState) {
-        snapshotFlow<Float> { pagerState.currentPageOffsetFraction }.collect { offset ->
-            if (abs(offset) > 0.01f) {
-                Log.d("FullScreenPhotoViewer", "HorizontalPager 오프셋: $offset")
+    // 페이지 변경 감지 (PhotoPreviewViewModel이 있을 때만)
+    if (viewModel != null) {
+        LaunchedEffect(pagerState.currentPage) {
+            val newPhoto = uiState.photos.getOrNull(pagerState.currentPage)
+            if (newPhoto != null && newPhoto.path != photo.path) {
+                Log.d(
+                    "FullScreenPhotoViewer",
+                    "Pager 페이지 변경 성공: ${photo.name} → ${newPhoto.name} (페이지: ${pagerState.currentPage})"
+                )
+                onPhotoChanged(newPhoto)
+                // 페이지네이션 체크: 뷰어에서도 페이지 로딩 트리거
+                viewModel.onPhotoIndexReached(pagerState.currentPage)
+            } else {
+                Log.d(
+                    "FullScreenPhotoViewer",
+                    "Pager 현재 페이지: ${pagerState.currentPage}, 총 ${uiState.photos.size}장"
+                )
             }
         }
-    }
 
-    // 외부에서 photo가 변경되면 pager도 동기화 (애니메이션 없이 즉시 이동)
-    LaunchedEffect(currentPhotoIndex) {
-        if (pagerState.currentPage != currentPhotoIndex && currentPhotoIndex >= 0) {
-            Log.d("FullScreenPhotoViewer", "외부 photo 변경으로 pager 동기화: index=$currentPhotoIndex")
-            pagerState.scrollToPage(currentPhotoIndex)
+        // Pager 스크롤 상태 모니터링
+        LaunchedEffect(pagerState) {
+            snapshotFlow<Boolean> { pagerState.isScrollInProgress }.collect { isScrolling ->
+                Log.d(
+                    "FullScreenPhotoViewer",
+                    "HorizontalPager 스크롤: ${if (isScrolling) "진행중" else "정지"}"
+                )
+            }
         }
-    }
 
-    // 현재 페이지 사진의 고화질 다운로드 (중복 방지)
-    LaunchedEffect(pagerState.currentPage) {
-        val currentPhoto = uiState.photos.getOrNull(pagerState.currentPage)
-        if (currentPhoto != null && viewModel != null) {
-            val hasFullImage = fullImageCache.containsKey(currentPhoto.path)
-            val isDownloading = viewModel.isDownloadingFullImage(currentPhoto.path)
+        LaunchedEffect(pagerState) {
+            snapshotFlow<Float> { pagerState.currentPageOffsetFraction }.collect { offset ->
+                if (abs(offset) > 0.01f) {
+                    Log.d("FullScreenPhotoViewer", "HorizontalPager 오프셋: $offset")
+                }
+            }
+        }
 
-            if (!hasFullImage && !isDownloading) {
-                Log.d("ImageViewer", "현재 사진 고화질 다운로드: ${currentPhoto.name}")
-                viewModel.downloadFullImage(currentPhoto.path)
+        // 외부에서 photo가 변경되면 pager도 동기화 (애니메이션 없이 즉시 이동)
+        LaunchedEffect(currentPhotoIndex) {
+            if (pagerState.currentPage != currentPhotoIndex && currentPhotoIndex >= 0) {
+                Log.d("FullScreenPhotoViewer", "외부 photo 변경으로 pager 동기화: index=$currentPhotoIndex")
+                pagerState.scrollToPage(currentPhotoIndex)
+            }
+        }
+
+        // 현재 페이지 사진의 고화질 다운로드 (중복 방지)
+        LaunchedEffect(pagerState.currentPage) {
+            val currentPhoto = uiState.photos.getOrNull(pagerState.currentPage)
+            if (currentPhoto != null) {
+                val hasFullImage = fullImageCache.containsKey(currentPhoto.path)
+                val isDownloading = viewModel.isDownloadingFullImage(currentPhoto.path)
+
+                if (!hasFullImage && !isDownloading) {
+                    Log.d("ImageViewer", "현재 사진 고화질 다운로드: ${currentPhoto.name}")
+                    viewModel.downloadFullImage(currentPhoto.path)
+                }
             }
         }
     }
@@ -284,32 +320,43 @@ fun FullScreenPhotoViewer(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // 메인 이미지 페이저 (스와이프 네비게이션)
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize()
-        ) { pageIndex ->
-            val pagePhoto = uiState.photos.getOrNull(pageIndex)
-            if (pagePhoto != null) {
-                val imageData =
-                    fullImageCache[pagePhoto.path] ?: sharedThumbnailCache[pagePhoto.path]
-
-                GalleryStyleImage(
-                    fullImageData = fullImageCache[pagePhoto.path],
-                    thumbnailData = sharedThumbnailCache[pagePhoto.path],
-                    photo = pagePhoto,
-                    onDismiss = onDismiss,
-                    context = context
-                )
+        // 메인 이미지 페이저 (스와이프 네비게이션) - PhotoPreviewViewModel이 있을 때만 활성화
+        if (viewModel != null) {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { pageIndex ->
+                val pagePhoto = uiState.photos.getOrNull(pageIndex)
+                if (pagePhoto != null) {
+                    GalleryStyleImage(
+                        fullImageData = fullImageCache[pagePhoto.path],
+                        thumbnailData = sharedThumbnailCache[pagePhoto.path],
+                        photo = pagePhoto,
+                        onDismiss = onDismiss,
+                        context = context
+                    )
+                }
             }
+        } else {
+            // 단일 사진 표시
+            GalleryStyleImage(
+                fullImageData = fullImageData,
+                thumbnailData = thumbnailData,
+                photo = photo,
+                onDismiss = onDismiss,
+                context = context
+            )
         }
 
         // 상단 컨트롤 바
         TopControlBar(
-            photo = uiState.photos.getOrNull(pagerState.currentPage) ?: photo,
+            photo = if (viewModel != null) (uiState.photos.getOrNull(pagerState.currentPage)
+                ?: photo) else photo,
             onClose = onDismiss,
             onInfoClick = {
-                val currentPhoto = uiState.photos.getOrNull(pagerState.currentPage) ?: photo
+                val currentPhoto =
+                    if (viewModel != null) (uiState.photos.getOrNull(pagerState.currentPage)
+                        ?: photo) else photo
                 Log.d("FullScreenPhotoViewer", "정보 버튼 클릭됨: ${currentPhoto.name}")
                 try {
                     // 기존 AlertDialog/PhotoInfoDialog.showPhotoInfoDialog 대신 바텀시트로 상태 변경
@@ -322,28 +369,32 @@ fun FullScreenPhotoViewer(
                     Log.e("FullScreenPhotoViewer", "PhotoInfoDialog 바텀시트 호출 실패", e)
                 }
             },
-            onDownloadClick = onDownload,
+            onDownloadClick = if (hideDownloadButton) null else onDownload,
             onShareClick = {
-                val currentPhoto = uiState.photos.getOrNull(pagerState.currentPage) ?: photo
-                shareCurrentPhoto(context, currentPhoto, viewModel)
+                val currentPhoto =
+                    if (viewModel != null) (uiState.photos.getOrNull(pagerState.currentPage)
+                        ?: photo) else photo
+                shareCurrentPhoto(context, currentPhoto, viewModel, fullImageData, thumbnailData)
             },
             modifier = Modifier.align(Alignment.TopStart)
         )
 
-        // 하단 썸네일 리스트
-        BottomThumbnailStrip(
-            photos = uiState.photos,
-            currentPhotoIndex = pagerState.currentPage,
-            thumbnailCache = sharedThumbnailCache,
-            viewModel = viewModel,
-            onPhotoSelected = { selectedPhoto ->
-                val newIndex = uiState.photos.indexOfFirst { it.path == selectedPhoto.path }
-                if (newIndex >= 0) {
-                    onPhotoChanged(selectedPhoto)
-                }
-            },
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
+        // 하단 썸네일 리스트 (PhotoPreviewViewModel이 있을 때만 표시)
+        if (viewModel != null && uiState.photos.size > 1) {
+            BottomThumbnailStrip(
+                photos = uiState.photos,
+                currentPhotoIndex = pagerState.currentPage,
+                thumbnailCache = sharedThumbnailCache,
+                viewModel = viewModel,
+                onPhotoSelected = { selectedPhoto ->
+                    val newIndex = uiState.photos.indexOfFirst { it.path == selectedPhoto.path }
+                    if (newIndex >= 0) {
+                        onPhotoChanged(selectedPhoto)
+                    }
+                },
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
+        }
     }
 
     // 바텀시트 상태와 showPhotoInfoSheet 동기화
@@ -373,59 +424,12 @@ private fun GalleryStyleImage(
     ) { which ->
         when (which) {
             "full" -> {
-                // EXIF 회전을 실제로 적용 (remember로 캐싱)
-                val (rotatedBitmap, isPortrait) = remember(fullImageData) {
-                    var bitmap: android.graphics.Bitmap? = null
-                    var rotationDegrees = 0
-
-                    fullImageData?.let { data ->
-                        try {
-                            bitmap = BitmapFactory.decodeByteArray(data, 0, data.size)
-                            val exif = ExifInterface(ByteArrayInputStream(data))
-                            val orientation = exif.getAttributeInt(
-                                ExifInterface.TAG_ORIENTATION,
-                                ExifInterface.ORIENTATION_UNDEFINED
-                            )
-                            rotationDegrees = when (orientation) {
-                                ExifInterface.ORIENTATION_ROTATE_90 -> 90
-                                ExifInterface.ORIENTATION_ROTATE_180 -> 180
-                                ExifInterface.ORIENTATION_ROTATE_270 -> 270
-                                else -> 0
-                            }
-                            Log.d(
-                                "EXIF_ROTATE",
-                                "full이미지 사진: ${photo.name}, EXIF Orientation: $orientation, 회전 각도: $rotationDegrees"
-                            )
-                        } catch (e: Exception) {
-                            Log.e("EXIF_ROTATE", "EXIF 읽기/비트맵 생성 실패: ${e.message}")
-                        }
-                    }
-
-                    val finalBitmap = if (bitmap != null && rotationDegrees != 0) {
-                        val matrix = Matrix()
-                        matrix.postRotate(rotationDegrees.toFloat())
-                        try {
-                            android.graphics.Bitmap.createBitmap(
-                                bitmap!!, 0, 0, bitmap!!.width, bitmap!!.height, matrix, true
-                            )
-                        } catch (e: Exception) {
-                            Log.e("EXIF_ROTATE", "비트맵 회전 실패: ${e.message}")
-                            bitmap
-                        }
-                    } else {
-                        bitmap
-                    }
-
-                    // 세로/가로 판별
-                    val portrait = finalBitmap?.let { it.height > it.width } ?: false
-                    finalBitmap?.let { bmp ->
-                        Log.d(
-                            "EXIF_ROTATE",
-                            "full이미지 실제 비트맵 크기(회전적용후): ${bmp.width}x${bmp.height}, isPortrait: $portrait"
-                        )
-                    }
-
-                    Pair(finalBitmap, portrait)
+                // EXIF 회전을 실제로 적용 (remember로 캐싱) - remember 키 최적화
+                val (rotatedBitmap, isPortrait) = remember(
+                    fullImageData?.contentHashCode(),
+                    photo.path
+                ) {
+                    processImageWithOptimization(fullImageData, photo.name, "full")
                 }
 
                 if (rotatedBitmap != null) {
@@ -441,12 +445,19 @@ private fun GalleryStyleImage(
                         minimumScale = 1.0f,
                         maximumScale = 5.0f
                     )
+
+                    // 하드웨어 가속 및 성능 최적화를 위한 ImageViewer 설정
                     ImageViewer(state = imageViewerState) {
                         Image(
                             bitmap = rotatedBitmap.asImageBitmap(),
                             contentDescription = photo.name,
                             contentScale = contentScale,
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer(
+                                    // 하드웨어 가속 활성화
+                                    compositingStrategy = CompositingStrategy.Offscreen
+                                )
                         )
                     }
                 } else {
@@ -464,59 +475,12 @@ private fun GalleryStyleImage(
             }
             "thumbnail" -> {
                 if (thumbnailData != null) {
-                    // EXIF 회전을 실제로 적용 (remember로 캐싱)
-                    val (rotatedBitmap, isPortrait) = remember(thumbnailData) {
-                        var bitmap: android.graphics.Bitmap? = null
-                        var rotationDegrees = 0
-
-                        thumbnailData?.let { data ->
-                            try {
-                                bitmap = BitmapFactory.decodeByteArray(data, 0, data.size)
-                                val exif = ExifInterface(ByteArrayInputStream(data))
-                                val orientation = exif.getAttributeInt(
-                                    ExifInterface.TAG_ORIENTATION,
-                                    ExifInterface.ORIENTATION_UNDEFINED
-                                )
-                                rotationDegrees = when (orientation) {
-                                    ExifInterface.ORIENTATION_ROTATE_90 -> 90
-                                    ExifInterface.ORIENTATION_ROTATE_180 -> 180
-                                    ExifInterface.ORIENTATION_ROTATE_270 -> 270
-                                    else -> 0
-                                }
-                                Log.d(
-                                    "EXIF_ROTATE_THUMB",
-                                    "썸네일 사진: ${photo.name}, EXIF Orientation: $orientation, 회전 각도: $rotationDegrees"
-                                )
-                            } catch (e: Exception) {
-                                Log.e("EXIF_ROTATE_THUMB", "EXIF 읽기/비트맵 생성 실패: ${e.message}")
-                            }
-                        }
-
-                        val finalBitmap = if (bitmap != null && rotationDegrees != 0) {
-                            val matrix = Matrix()
-                            matrix.postRotate(rotationDegrees.toFloat())
-                            try {
-                                android.graphics.Bitmap.createBitmap(
-                                    bitmap!!, 0, 0, bitmap!!.width, bitmap!!.height, matrix, true
-                                )
-                            } catch (e: Exception) {
-                                Log.e("EXIF_ROTATE_THUMB", "썸네일 비트맵 회전 실패: ${e.message}")
-                                bitmap
-                            }
-                        } else {
-                            bitmap
-                        }
-
-                        // 세로/가로 판별
-                        val portrait = finalBitmap?.let { it.height > it.width } ?: false
-                        finalBitmap?.let { bmp ->
-                            Log.d(
-                                "EXIF_ROTATE_THUMB",
-                                "썸네일 실제 비트맵 크기(회전적용후): ${bmp.width}x${bmp.height}, isPortrait: $portrait"
-                            )
-                        }
-
-                        Pair(finalBitmap, portrait)
+                    // EXIF 회전을 실제로 적용 (remember로 캐싱) - remember 키 최적화
+                    val (rotatedBitmap, isPortrait) = remember(
+                        thumbnailData.contentHashCode(),
+                        photo.path
+                    ) {
+                        processImageWithOptimization(thumbnailData, photo.name, "thumbnail")
                     }
 
                     if (rotatedBitmap != null) {
@@ -537,7 +501,12 @@ private fun GalleryStyleImage(
                                 bitmap = rotatedBitmap.asImageBitmap(),
                                 contentDescription = photo.name,
                                 contentScale = contentScale,
-                                modifier = Modifier.fillMaxSize()
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer(
+                                        // 하드웨어 가속 활성화
+                                        compositingStrategy = CompositingStrategy.Offscreen
+                                    )
                             )
                         }
                     } else {
@@ -572,6 +541,126 @@ private fun GalleryStyleImage(
 }
 
 /**
+ * 이미지 처리 최적화 함수 - 성능 향상을 위한 비트맵 처리
+ */
+private fun processImageWithOptimization(
+    imageData: ByteArray?,
+    photoName: String,
+    imageType: String
+): Pair<android.graphics.Bitmap?, Boolean> {
+    if (imageData == null) return Pair(null, false)
+
+    var bitmap: android.graphics.Bitmap? = null
+    var rotationDegrees = 0
+
+    try {
+        // BitmapFactory.Options로 메모리 최적화
+        val options = BitmapFactory.Options().apply {
+            inJustDecodeBounds = true
+        }
+
+        // 이미지 크기 먼저 확인
+        BitmapFactory.decodeByteArray(imageData, 0, imageData.size, options)
+        val originalWidth = options.outWidth
+        val originalHeight = options.outHeight
+
+        // 메모리 절약을 위한 샘플링 (4K 이상 이미지는 다운스케일)
+        val maxDimension = 4096 // 4K 해상도 제한
+        val sampleSize = calculateInSampleSize(originalWidth, originalHeight, maxDimension)
+
+        // 실제 디코딩
+        val decodeOptions = BitmapFactory.Options().apply {
+            inSampleSize = sampleSize
+            inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
+            inPreferredColorSpace = ColorSpace.get(ColorSpace.Named.SRGB)
+            inDither = false
+            inTempStorage = ByteArray(16 * 1024) // 16KB 버퍼
+        }
+
+        bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.size, decodeOptions)
+
+        // EXIF 회전 정보 읽기
+        val exif = ExifInterface(ByteArrayInputStream(imageData))
+        val orientation = exif.getAttributeInt(
+            ExifInterface.TAG_ORIENTATION,
+            ExifInterface.ORIENTATION_UNDEFINED
+        )
+        rotationDegrees = when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> 90
+            ExifInterface.ORIENTATION_ROTATE_180 -> 180
+            ExifInterface.ORIENTATION_ROTATE_270 -> 270
+            else -> 0
+        }
+
+        Log.d(
+            "EXIF_ROTATE_OPTIMIZED",
+            "$imageType 사진: $photoName, 원본: ${originalWidth}x${originalHeight}, " +
+                    "샘플링: $sampleSize, EXIF Orientation: $orientation, 회전: $rotationDegrees"
+        )
+
+    } catch (e: Exception) {
+        Log.e("EXIF_ROTATE_OPTIMIZED", "$imageType EXIF 읽기/비트맵 생성 실패: ${e.message}")
+        return Pair(null, false)
+    }
+
+    // 회전 적용 (필요한 경우만)
+    val finalBitmap = if (bitmap != null && rotationDegrees != 0) {
+        try {
+            val matrix = Matrix().apply {
+                postRotate(rotationDegrees.toFloat())
+            }
+
+            val rotatedBitmap = android.graphics.Bitmap.createBitmap(
+                bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true
+            )
+
+            // 원본 비트맵 메모리 해제
+            if (rotatedBitmap != bitmap) {
+                bitmap.recycle()
+            }
+
+            rotatedBitmap
+        } catch (e: Exception) {
+            Log.e("EXIF_ROTATE_OPTIMIZED", "$imageType 비트맵 회전 실패: ${e.message}")
+            bitmap
+        }
+    } else {
+        bitmap
+    }
+
+    // 세로/가로 판별
+    val isPortrait = finalBitmap?.let { it.height > it.width } ?: false
+
+    finalBitmap?.let { bmp ->
+        Log.d(
+            "EXIF_ROTATE_OPTIMIZED",
+            "$imageType 최종 비트맵 크기(회전적용후): ${bmp.width}x${bmp.height}, isPortrait: $isPortrait"
+        )
+    }
+
+    return Pair(finalBitmap, isPortrait)
+}
+
+/**
+ * 적절한 샘플링 크기 계산 - 메모리 최적화
+ */
+private fun calculateInSampleSize(width: Int, height: Int, maxDimension: Int): Int {
+    var inSampleSize = 1
+
+    if (height > maxDimension || width > maxDimension) {
+        val halfHeight = height / 2
+        val halfWidth = width / 2
+
+        // 원하는 크기보다 작아질 때까지 반으로 나누기
+        while ((halfHeight / inSampleSize) >= maxDimension && (halfWidth / inSampleSize) >= maxDimension) {
+            inSampleSize *= 2
+        }
+    }
+
+    return inSampleSize
+}
+
+/**
  * 상단 컨트롤 바
  */
 @Composable
@@ -579,7 +668,7 @@ private fun TopControlBar(
     photo: CameraPhoto,
     onClose: () -> Unit,
     onInfoClick: () -> Unit,
-    onDownloadClick: () -> Unit,
+    onDownloadClick: (() -> Unit)?, // nullable로 변경
     onShareClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -624,20 +713,22 @@ private fun TopControlBar(
             )
         }
 
-        // 다운로드 버튼
-        IconButton(
-            onClick = onDownloadClick,
-            modifier = Modifier
-                .background(
-                    Color.Black.copy(alpha = 0.6f),
-                    RoundedCornerShape(20.dp)
+        // 다운로드 버튼 (조건부 표시)
+        if (onDownloadClick != null) {
+            IconButton(
+                onClick = onDownloadClick,
+                modifier = Modifier
+                    .background(
+                        Color.Black.copy(alpha = 0.6f),
+                        RoundedCornerShape(20.dp)
+                    )
+            ) {
+                Icon(
+                    Icons.Default.Download,
+                    contentDescription = "다운로드",
+                    tint = Color.White
                 )
-        ) {
-            Icon(
-                Icons.Default.Download,
-                contentDescription = "다운로드",
-                tint = Color.White
-            )
+            }
         }
 
         // 공유 버튼
@@ -862,62 +953,28 @@ private fun PhotoInfoBottomSheetContent(
     val context = LocalContext.current
     val exifInfo = remember { mutableStateOf<String?>(null) }
     val isLoading = remember { mutableStateOf(true) }
+    val scope = rememberCoroutineScope()
 
-    // EXIF 캐시 상태 관찰
-    val exifCache by viewModel?.exifCache?.collectAsState() ?: remember {
-        mutableStateOf(emptyMap<String, String>())
-    }
-
-    // EXIF 정보 로드 (캐시 우선 사용)
-    LaunchedEffect(photo.path, exifCache) {
-        // 캐시에서 먼저 확인
-        val cachedExif = exifCache[photo.path]
-        if (cachedExif != null) {
-            Log.d("PhotoInfoDialog", "EXIF 캐시에서 가져옴: ${photo.path}")
-            exifInfo.value = cachedExif
-            isLoading.value = false
-            return@LaunchedEffect
-        }
-
-        // 캐시에 없으면 EXIF 정보 요청 (고화질 다운로드 트리거)
-        isLoading.value = true
-        try {
-            Log.d("PhotoInfoDialog", "EXIF 정보 요청: ${photo.path}")
-            viewModel?.getCameraPhotoExif(photo.path)
-
-            // EXIF 파싱이 완료될 때까지 대기 (최대 10초)
-            var waitCount = 0
-            while (waitCount < 100) { // 100 * 100ms = 10초
-                delay(100)
-                val updatedExif = viewModel?.exifCache?.value?.get(photo.path)
-                if (updatedExif != null) {
-                    Log.d("PhotoInfoDialog", "EXIF 파싱 완료 감지: ${photo.path}")
-                    exifInfo.value = updatedExif
-                    isLoading.value = false
-                    return@LaunchedEffect
-                }
-                waitCount++
-            }
-
-            // 타임아웃 시
-            Log.w("PhotoInfoDialog", "EXIF 파싱 타임아웃: ${photo.path}")
-            exifInfo.value = null
-            isLoading.value = false
-
-        } catch (e: Exception) {
-            // Composition이 취소되었거나 다른 예외 발생
-            if (e is kotlinx.coroutines.CancellationException) {
-                Log.d("PhotoInfoDialog", "EXIF 로딩 코루틴 취소됨 (정상)")
-            } else {
-                Log.e("PhotoInfoDialog", "EXIF 정보 로드 중 예외", e)
-            }
-            // 에러 상태에서도 로딩 상태를 false로 설정
+    LaunchedEffect(photo.path) {
+        withContext(Dispatchers.IO) {
             try {
+                Log.d("PhotoInfoDialog", "EXIF 정보 가져오기 시작: ${photo.path}")
+
+                val info = if (viewModel != null) {
+                    // PhotoPreviewViewModel이 있으면 캐시에서 가져오기
+                    viewModel.getCameraPhotoExif(photo.path)
+                } else {
+                    // PhotoPreviewViewModel이 없으면 파일에서 직접 읽기
+                    readExifFromFile(photo.path)
+                }
+
+                Log.d("PhotoInfoDialog", "EXIF 정보 가져오기 완료: $info")
+                exifInfo.value = info
+            } catch (e: Exception) {
+                Log.e("PhotoInfoDialog", "EXIF 정보 로드 실패", e)
                 exifInfo.value = null
+            } finally {
                 isLoading.value = false
-            } catch (compositionError: Exception) {
-                // Composition이 이미 취소된 경우 무시
-                Log.d("PhotoInfoDialog", "Composition 취소로 인한 상태 업데이트 생략")
             }
         }
     }
@@ -1015,17 +1072,20 @@ private fun PhotoInfoBottomSheetContent(
                                     }
                                 } else {
                                     Log.d("PhotoInfoDialog", "EXIF에 date_time_original 없음, 기본값 사용")
-                                    "촬영 날짜 알 수 없음"
+                                    SimpleDateFormat("yyyy년 M월 d일 a h:mm", Locale.KOREAN)
+                                        .format(Date(photo.date))
                                 }
                             } catch (e: Exception) {
                                 Log.w("PhotoInfoDialog", "EXIF 정보 파싱 실패", e)
-                                "촬영 날짜 알 수 없음"
+                                SimpleDateFormat("yyyy년 M월 d일 a h:mm", Locale.KOREAN)
+                                    .format(Date(photo.date))
                             }
                         } else {
                             if (isLoading.value) {
                                 "날짜 정보 불러오는 중..."
                             } else {
-                                "촬영 날짜 알 수 없음"
+                                SimpleDateFormat("yyyy년 M월 d일 a h:mm", Locale.KOREAN)
+                                    .format(Date(photo.date))
                             }
                         }
                     }
@@ -1119,6 +1179,84 @@ private fun PhotoInfoBottomSheetContent(
                 }
             )
         }
+    }
+}
+
+// 파일에서 직접 EXIF 정보를 읽는 함수
+private fun readExifFromFile(filePath: String): String? {
+    return try {
+        val file = java.io.File(filePath)
+        if (!file.exists()) return null
+
+        val exif = androidx.exifinterface.media.ExifInterface(filePath)
+        val exifMap = mutableMapOf<String, Any>()
+
+        // 기본 이미지 정보
+        exifMap["width"] = exif.getAttributeInt(
+            androidx.exifinterface.media.ExifInterface.TAG_IMAGE_WIDTH, 0
+        )
+        exifMap["height"] = exif.getAttributeInt(
+            androidx.exifinterface.media.ExifInterface.TAG_IMAGE_LENGTH, 0
+        )
+        exifMap["file_size"] = file.length()
+
+        // 카메라 정보
+        exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_MAKE)?.let {
+            exifMap["make"] = it
+        }
+        exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_MODEL)?.let {
+            exifMap["model"] = it
+        }
+
+        // 촬영 설정
+        exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_F_NUMBER)?.let {
+            exifMap["f_number"] = it
+        }
+        exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_EXPOSURE_TIME)?.let {
+            exifMap["exposure_time"] = it
+        }
+        exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_FOCAL_LENGTH)?.let {
+            exifMap["focal_length"] = it
+        }
+        exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_PHOTOGRAPHIC_SENSITIVITY)
+            ?.let {
+                exifMap["iso"] = it
+            }
+
+        // 기타 정보
+        val orientation = exif.getAttributeInt(
+            androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION,
+            androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
+        )
+        exifMap["orientation"] = orientation
+
+        exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_WHITE_BALANCE)?.let {
+            exifMap["white_balance"] = it
+        }
+        exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_FLASH)?.let {
+            exifMap["flash"] = it
+        }
+        exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_DATETIME_ORIGINAL)?.let {
+            exifMap["date_time_original"] = it
+        }
+
+        // GPS 정보
+        val latLong = floatArrayOf(0f, 0f)
+        if (exif.getLatLong(latLong)) {
+            exifMap["gps_latitude"] = latLong[0]
+            exifMap["gps_longitude"] = latLong[1]
+        }
+
+        // JSON 문자열로 변환
+        val jsonObject = org.json.JSONObject()
+        exifMap.forEach { (key, value) ->
+            jsonObject.put(key, value)
+        }
+
+        jsonObject.toString()
+    } catch (e: Exception) {
+        Log.e("PhotoInfoDialog", "파일에서 EXIF 읽기 실패: ${e.message}", e)
+        null
     }
 }
 
