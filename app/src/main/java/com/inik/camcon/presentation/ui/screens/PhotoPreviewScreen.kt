@@ -57,6 +57,7 @@ import com.inik.camcon.presentation.ui.screens.components.UsbInitializationOverl
 import com.inik.camcon.presentation.viewmodel.FileTypeFilter
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
 import kotlinx.coroutines.delay
+import java.io.File
 
 /**
  * 카메라에서 촬영한 사진들을 미리보기로 보여주는 메인 화면
@@ -171,6 +172,14 @@ fun PhotoPreviewScreen(
 
         // 선택된 사진의 실제 파일 다운로드 시작 (한 번만 실행, photo.path가 변경될 때만)
         LaunchedEffect(photo.path) {
+            // 로컬 파일인지 확인
+            val isLocalFile = File(photo.path).exists()
+
+            if (isLocalFile) {
+                Log.d("PhotoPreviewScreen", "로컬 파일이므로 다운로드 건너뛰기: ${photo.name}")
+                return@LaunchedEffect
+            }
+
             Log.d(
                 "PhotoPreviewScreen",
                 "ImageViewer 진입 - 최적화된 다운로드: ${photo.name}"
@@ -218,7 +227,8 @@ fun PhotoPreviewScreen(
             fullImageData = fullImageCache[photo.path], // 실시간으로 업데이트되는 실제 파일 데이터
             isDownloadingFullImage = downloadingImages.contains(photo.path),
             onDownload = { viewModel.downloadPhoto(photo) },
-            viewModel = viewModel // ViewModel을 통해 썸네일 캐시 공유
+            viewModel = viewModel, // ViewModel을 통해 썸네일 캐시 공유
+            localPhotos = if (uiState.photos.any { File(it.path).exists() }) uiState.photos else null // 로컬 사진인 경우 목록 전달
         )
 
         BackHandler(enabled = !uiState.isMultiSelectMode) {
