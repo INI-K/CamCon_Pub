@@ -58,6 +58,7 @@ import com.inik.camcon.presentation.ui.screens.MyPhotosScreen
 import com.inik.camcon.presentation.ui.screens.PhotoPreviewScreen
 import com.inik.camcon.presentation.ui.screens.components.PtpTimeoutDialog
 import com.inik.camcon.presentation.ui.screens.components.UsbInitializationOverlay
+import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
@@ -111,6 +112,10 @@ fun MainScreen(
     LaunchedEffect(globalConnectionState) {
         Log.d("MainScreen", "전역 연결 상태 변화: $connectionStatusMessage")
     }
+
+    // 테마 모드 상태
+    val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
+    val themeMode by appSettingsViewModel.themeMode.collectAsState()
 
     Box(modifier = Modifier.fillMaxSize()) {
 
@@ -431,7 +436,10 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            CamConTheme {
+            val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
+            val themeMode by appSettingsViewModel.themeMode.collectAsState()
+
+            CamConTheme(themeMode = themeMode) {
                 MainScreen(
                     onSettingsClick = {
                         startActivity(Intent(this, SettingsActivity::class.java))

@@ -49,6 +49,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.LoginUiState
 import com.inik.camcon.presentation.viewmodel.LoginViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -82,7 +83,10 @@ class LoginActivity : ComponentActivity() {
         Log.d("LoginActivity", "onCreate called")
 
         setContent {
-            CamConTheme {
+            val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
+            val themeMode by appSettingsViewModel.themeMode.collectAsState()
+
+            CamConTheme(themeMode = themeMode) {
                 val viewModel: LoginViewModel = hiltViewModel()
                 loginViewModel = viewModel
 

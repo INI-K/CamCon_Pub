@@ -53,9 +53,14 @@ class ColorTransferSettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            CamConTheme {
+            val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
+            val themeMode by appSettingsViewModel.themeMode.collectAsState()
+            
+            CamConTheme(themeMode = themeMode) {
                 ColorTransferSettingsScreen(
-                    onBackClick = { finish() }
+                    onBackClick = { finish() },
+                    appSettingsViewModel = appSettingsViewModel,
+                    colorTransferViewModel = hiltViewModel()
                 )
             }
         }
@@ -65,7 +70,7 @@ class ColorTransferSettingsActivity : ComponentActivity() {
 @Composable
 fun ColorTransferSettingsScreen(
     onBackClick: () -> Unit,
-    appSettingsViewModel: AppSettingsViewModel = hiltViewModel(),
+    appSettingsViewModel: AppSettingsViewModel,
     colorTransferViewModel: ColorTransferViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
