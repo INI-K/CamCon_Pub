@@ -288,4 +288,39 @@ object Constants {
             return "$packageName$AUTHORITY_SUFFIX"
         }
     }
+
+    /**
+     * 구독 관련 상수
+     */
+    object Subscription {
+        // 구독 등급별 지원 포맷
+        val FREE_SUPPORTED_FORMATS = listOf("jpg", "jpeg")
+        val BASIC_SUPPORTED_FORMATS = listOf("jpg", "jpeg", "png")
+        val PRO_SUPPORTED_FORMATS = listOf(
+            "jpg",
+            "jpeg",
+            "png",
+            "webp",
+            "raw",
+            "nef",
+            "cr2",
+            "arw",
+            "dng",
+            "orf",
+            "rw2",
+            "raf"
+        )
+
+        // 구독 등급 메시지
+        const val FREE_TIER_MESSAGE = "무료 버전에서는 JPG 포맷만 지원됩니다"
+        const val UPGRADE_REQUIRED_MESSAGE = "이 기능을 사용하려면 업그레이드가 필요합니다"
+        const val FORMAT_NOT_SUPPORTED_MESSAGE = "현재 구독에서 지원하지 않는 포맷입니다"
+
+        // 기능 제한 키
+        const val FEATURE_RAW_PROCESSING = "raw_processing"
+        const val FEATURE_PNG_EXPORT = "png_export"
+        const val FEATURE_WEBP_EXPORT = "webp_export"
+        const val FEATURE_ADVANCED_FILTERS = "advanced_filters"
+        const val FEATURE_BATCH_PROCESSING = "batch_processing"
+    }
 }
