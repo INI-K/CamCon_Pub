@@ -14,20 +14,15 @@ class ValidateImageFormatUseCase @Inject constructor(
 
     /**
      * 파일 경로의 이미지 포맷이 현재 구독에서 지원되는지 확인
+     * 현재는 FREE 티어만 지원하므로 JPG만 허용
      */
     suspend fun isFormatSupported(filePath: String): Boolean {
         val extension = filePath.substringAfterLast('.', "")
         val format = SubscriptionUtils.getImageFormatFromExtension(extension)
             ?: return false
 
-        val subscription = getSubscriptionUseCase.invoke()
-        var currentTier = SubscriptionTier.FREE
-
-        subscription.collect { sub ->
-            currentTier = sub.tier
-            return@collect
-        }
-
+        // 현재는 FREE 티어만 사용
+        val currentTier = SubscriptionTier.FREE
         return SubscriptionUtils.isFormatSupported(format, currentTier)
     }
 
@@ -40,16 +35,11 @@ class ValidateImageFormatUseCase @Inject constructor(
 
     /**
      * 현재 구독에서 지원되는 모든 포맷 반환
+     * 현재는 FREE 티어만 지원하므로 JPG만 반환
      */
     suspend fun getSupportedFormats(): List<ImageFormat> {
-        val subscription = getSubscriptionUseCase.invoke()
-        var currentTier = SubscriptionTier.FREE
-
-        subscription.collect { sub ->
-            currentTier = sub.tier
-            return@collect
-        }
-
+        // 현재는 FREE 티어만 사용
+        val currentTier = SubscriptionTier.FREE
         return SubscriptionUtils.getSupportedImageFormats(currentTier)
     }
 }
