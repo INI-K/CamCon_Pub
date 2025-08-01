@@ -94,21 +94,75 @@ private fun shareCurrentPhoto(
 ) {
     CoroutineScope(Dispatchers.IO).launch {
         try {
+            // 로컬 파일인지 확인
+            val isLocalFile = java.io.File(photo.path).exists()
+
+            if (isLocalFile) {
+                Log.d("PhotoShare", "로컬 파일 직접 공유: ${photo.path}")
+
+                withContext(Dispatchers.Main) {
+                    try {
+                        val file = java.io.File(photo.path)
+
+                        // FileProvider를 사용하여 URI 생성
+                        val fileUri = FileProvider.getUriForFile(
+                            context,
+                            "${context.packageName}.fileprovider",
+                            file
+                        )
+
+                        // 공유 인텐트 생성
+                        val shareIntent = Intent().apply {
+                            action = Intent.ACTION_SEND
+                            type = "image/*"
+                            putExtra(Intent.EXTRA_STREAM, fileUri)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+
+                        val chooser = Intent.createChooser(shareIntent, "사진 공유")
+                        context.startActivity(chooser)
+
+                        Log.d("PhotoShare", "로컬 파일 공유 시작: ${file.name} (${file.length()} bytes)")
+                    } catch (e: Exception) {
+                        Log.e("PhotoShare", "로컬 파일 공유 인텐트 실행 실패", e)
+                        Toast.makeText(context, "사진 공유에 실패했습니다.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                return@launch
+            }
+
+            // 서버 사진의 경우 기존 로직 사용
             // 이미지 데이터 가져오기 우선순위:
-            // 1. viewModel의 고화질 이미지
-            // 2. 직접 전달받은 fullImageData
-            // 3. viewModel의 썸네일
-            // 4. 직접 전달받은 thumbnailData
+            // 1. 직접 전달받은 fullImageData (ViewModel이 없는 경우를 위해)
+            // 2. viewModel의 고화질 이미지
+            // 3. 직접 전달받은 thumbnailData
+            // 4. viewModel의 썸네일
             val imageData = when {
+                fullImageData != null && fullImageData.isNotEmpty() -> {
+                    Log.d("PhotoShare", "직접 전달된 고화질 이미지 사용: ${fullImageData.size} bytes")
+                    fullImageData
+                }
                 viewModel != null -> {
                     val fullImage = viewModel.fullImageCache.value[photo.path]
                     val thumbnail = viewModel.uiState.value.thumbnailCache[photo.path]
-                    fullImage ?: thumbnail
+                    val result = fullImage ?: thumbnail
+                    if (result != null) {
+                        Log.d(
+                            "PhotoShare",
+                            "ViewModel에서 이미지 데이터 사용: ${result.size} bytes (${if (fullImage != null) "고화질" else "썸네일"})"
+                        )
+                    }
+                    result
+                }
+                thumbnailData != null && thumbnailData.isNotEmpty() -> {
+                    Log.d("PhotoShare", "직접 전달된 썸네일 이미지 사용: ${thumbnailData.size} bytes")
+                    thumbnailData
                 }
 
-                fullImageData != null -> fullImageData
-                thumbnailData != null -> thumbnailData
-                else -> null
+                else -> {
+                    Log.w("PhotoShare", "사용 가능한 이미지 데이터가 없음")
+                    null
+                }
             }
 
             if (imageData != null && imageData.isNotEmpty()) {
@@ -143,7 +197,10 @@ private fun shareCurrentPhoto(
                         val chooser = Intent.createChooser(shareIntent, "사진 공유")
                         context.startActivity(chooser)
 
-                        Log.d("PhotoShare", "사진 공유 시작: ${tempFile.name} (${imageData.size} bytes)")
+                        Log.d(
+                            "PhotoShare",
+                            "서버 사진 공유 시작: ${tempFile.name} (${imageData.size} bytes)"
+                        )
                     } catch (e: Exception) {
                         Log.e("PhotoShare", "공유 인텐트 실행 실패", e)
                         Toast.makeText(context, "사진 공유에 실패했습니다.", Toast.LENGTH_SHORT).show()
@@ -154,7 +211,7 @@ private fun shareCurrentPhoto(
                     Toast.makeText(context, "공유할 이미지 데이터가 없습니다.", Toast.LENGTH_SHORT).show()
                     Log.w(
                         "PhotoShare",
-                        "공유할 이미지 데이터 없음: viewModel=${viewModel != null}, fullImageData=${fullImageData != null}, thumbnailData=${thumbnailData != null}"
+                        "공유할 이미지 데이터 없음: viewModel=${viewModel != null}, fullImageData=${fullImageData?.let { "${it.size} bytes" } ?: "null"}, thumbnailData=${thumbnailData?.let { "${it.size} bytes" } ?: "null"}"
                     )
                 }
             }
@@ -340,7 +397,33 @@ fun FullScreenPhotoViewer(
                 val currentPhoto =
                     if (viewModel != null) (uiState.photos.getOrNull(pagerState.currentPage)
                         ?: photo) else photo
-                shareCurrentPhoto(context, currentPhoto, viewModel, fullImageData, thumbnailData)
+
+                // 현재 페이지의 이미지 데이터 가져오기
+                val currentFullImageData = if (viewModel != null) {
+                    fullImageCache[currentPhoto.path]
+                } else {
+                    fullImageData
+                }
+
+                val currentThumbnailData = if (viewModel != null) {
+                    sharedThumbnailCache[currentPhoto.path]
+                } else {
+                    thumbnailData
+                }
+
+                Log.d("FullScreenPhotoViewer", "공유 버튼 클릭: ${currentPhoto.name}")
+                Log.d(
+                    "FullScreenPhotoViewer",
+                    "현재 이미지 데이터 상태: 고화질=${currentFullImageData?.size ?: "null"} bytes, 썸네일=${currentThumbnailData?.size ?: "null"} bytes"
+                )
+
+                shareCurrentPhoto(
+                    context,
+                    currentPhoto,
+                    viewModel,
+                    currentFullImageData,
+                    currentThumbnailData
+                )
             },
             modifier = Modifier.align(Alignment.TopStart)
         )
@@ -417,15 +500,15 @@ private fun GalleryStyleImage(
     val shouldUseLocalFile = isLocalPhoto || java.io.File(photo.path).exists()
 
     if (shouldUseLocalFile) {
-        // 로컬 파일을 Coil로 원본 해상도로 로드
-        val painter = coil.compose.rememberAsyncImagePainter(
+        // 로컬 파일을 Coil로 원본 해상도로 로드 - 캐시 활성화로 깜빡임 방지
+        val imageRequest = remember(photo.path) {
             coil.request.ImageRequest.Builder(context)
                 .data(java.io.File(photo.path))
                 .crossfade(true)
                 .allowHardware(true) // 하드웨어 가속 허용
                 .allowRgb565(false) // RGB565 비활성화로 품질 보장
-                .memoryCachePolicy(coil.request.CachePolicy.DISABLED) // 메모리 캐시 비활성화로 원본 보장
-                .diskCachePolicy(coil.request.CachePolicy.DISABLED) // 디스크 캐시 비활성화로 원본 보장
+                .memoryCachePolicy(coil.request.CachePolicy.ENABLED) // 메모리 캐시 활성화로 깜빡임 방지
+                .diskCachePolicy(coil.request.CachePolicy.ENABLED) // 디스크 캐시 활성화로 성능 향상
                 .size(coil.size.Size.ORIGINAL) // 원본 크기 명시적 설정
                 .apply {
                     // sRGB 색공간 설정
@@ -452,7 +535,9 @@ private fun GalleryStyleImage(
                     }
                 )
                 .build()
-        )
+        }
+
+        val painter = coil.compose.rememberAsyncImagePainter(model = imageRequest)
 
         ImageViewer(state = imageViewerState) {
             androidx.compose.foundation.Image(
@@ -1505,19 +1590,42 @@ private fun ExifInfoContent(exifInfo: String?) {
 // EXIF 파싱 및 포맷팅 함수들
 private fun parseExifInfo(exifJson: String): Map<String, String> {
     val entries = mutableMapOf<String, String>()
-    val cleanJson = exifJson.trim().removePrefix("{").removeSuffix("}")
 
-    if (cleanJson.isNotEmpty()) {
-        val pairs = cleanJson.split(",")
-        for (pair in pairs) {
-            val keyValue = pair.split(":")
-            if (keyValue.size == 2) {
-                val key = keyValue[0].trim().removeSurrounding("\"")
-                val value = keyValue[1].trim().removeSurrounding("\"")
+    try {
+        // JSON 문자열을 직접 파싱 (org.json.JSONObject 사용)
+        val jsonObject = org.json.JSONObject(exifJson)
+        val keys = jsonObject.keys()
+
+        while (keys.hasNext()) {
+            val key = keys.next()
+            val value = jsonObject.optString(key, "")
+            if (value.isNotEmpty()) {
                 entries[key] = value
             }
         }
+
+        Log.d("PhotoInfoDialog", "EXIF 파싱 성공: ${entries.keys}")
+        Log.d("PhotoInfoDialog", "date_time_original 값: ${entries["date_time_original"]}")
+
+    } catch (e: Exception) {
+        Log.e("PhotoInfoDialog", "JSON 파싱 실패, 수동 파싱 시도", e)
+
+        // 기존의 수동 파싱 로직을 백업으로 사용
+        val cleanJson = exifJson.trim().removePrefix("{").removeSuffix("}")
+
+        if (cleanJson.isNotEmpty()) {
+            val pairs = cleanJson.split(",")
+            for (pair in pairs) {
+                val keyValue = pair.split(":", limit = 2) // limit를 2로 설정하여 값에 ':'이 있어도 처리
+                if (keyValue.size == 2) {
+                    val key = keyValue[0].trim().removeSurrounding("\"")
+                    val value = keyValue[1].trim().removeSurrounding("\"")
+                    entries[key] = value
+                }
+            }
+        }
     }
+
     return entries
 }
 
