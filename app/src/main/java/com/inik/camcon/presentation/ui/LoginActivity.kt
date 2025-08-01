@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Card
@@ -50,6 +51,7 @@ import com.google.android.gms.common.api.ApiException
 import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
+import com.inik.camcon.presentation.viewmodel.AppVersionViewModel
 import com.inik.camcon.presentation.viewmodel.LoginUiState
 import com.inik.camcon.presentation.viewmodel.LoginViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -88,10 +90,18 @@ class LoginActivity : ComponentActivity() {
 
             CamConTheme(themeMode = themeMode) {
                 val viewModel: LoginViewModel = hiltViewModel()
+                val appVersionViewModel: AppVersionViewModel = hiltViewModel()
                 loginViewModel = viewModel
 
                 val uiState by viewModel.uiState.collectAsState()
+                val versionState by appVersionViewModel.uiState.collectAsState()
 
+                // 앱 시작 시 버전 체크
+                LaunchedEffect(Unit) {
+                    appVersionViewModel.checkForUpdate()
+                }
+
+                // 로그인 성공 시 MainActivity로 이동
                 LaunchedEffect(uiState.isLoggedIn) {
                     if (uiState.isLoggedIn) {
                         Log.d("LoginActivity", "User logged in, navigating to MainActivity")
@@ -102,11 +112,21 @@ class LoginActivity : ComponentActivity() {
 
                 LoginScreen(
                     uiState = uiState,
+                    versionState = versionState,
                     onGoogleSignIn = {
                         Log.d("LoginActivity", "Google Sign-In button clicked")
                         signInWithGoogle()
                     },
-                    onDismissError = { viewModel.clearError() }
+                    onDismissError = { viewModel.clearError() },
+                    onUpdateApp = { appVersionViewModel.startUpdate() },
+                    onDismissUpdateDialog = {
+                        // 강제 업데이트인 경우 앱 종료
+                        if (versionState.versionInfo?.isUpdateRequired == true) {
+                            finish()
+                        } else {
+                            appVersionViewModel.dismissUpdateDialog()
+                        }
+                    }
                 )
             }
         }
@@ -133,8 +153,11 @@ class LoginActivity : ComponentActivity() {
 @Composable
 fun LoginScreen(
     uiState: LoginUiState,
+    versionState: com.inik.camcon.presentation.viewmodel.AppVersionUiState,
     onGoogleSignIn: () -> Unit,
-    onDismissError: () -> Unit
+    onDismissError: () -> Unit,
+    onUpdateApp: () -> Unit,
+    onDismissUpdateDialog: () -> Unit
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -193,7 +216,7 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Google Sign In Button
+                // Google Sign In Button - 업데이트가 필요한 경우 비활성화
                 Button(
                     onClick = onGoogleSignIn,
                     modifier = Modifier
@@ -208,7 +231,7 @@ fun LoginScreen(
                         defaultElevation = 4.dp,
                         pressedElevation = 8.dp
                     ),
-                    enabled = !uiState.isLoading
+                    enabled = !uiState.isLoading && !(versionState.versionInfo?.isUpdateRequired == true)
                 ) {
                     if (uiState.isLoading) {
                         CircularProgressIndicator(
@@ -227,7 +250,11 @@ fun LoginScreen(
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = stringResource(R.string.login_with_google),
+                                text = if (versionState.versionInfo?.isUpdateRequired == true) {
+                                    "업데이트가 필요합니다"
+                                } else {
+                                    stringResource(R.string.login_with_google)
+                                },
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Medium
                             )
@@ -259,6 +286,50 @@ fun LoginScreen(
                     Text(error)
                 }
             }
+
+            // Update Dialog
+            if (versionState.showUpdateDialog) {
+                val versionInfo = versionState.versionInfo
+                if (versionInfo != null) {
+                    AlertDialog(
+                        onDismissRequest = {
+                            if (!versionInfo.isUpdateRequired) {
+                                onDismissUpdateDialog()
+                            }
+                        },
+                        title = {
+                            Text(
+                                text = if (versionInfo.isUpdateRequired) {
+                                    "필수 업데이트"
+                                } else {
+                                    "업데이트 가능"
+                                }
+                            )
+                        },
+                        text = {
+                            Text(
+                                text = if (versionInfo.isUpdateRequired) {
+                                    "앱을 사용하려면 최신 버전으로 업데이트해야 합니다.\n\n현재 버전: ${versionInfo.currentVersion}\n최신 버전: ${versionInfo.latestVersion}"
+                                } else {
+                                    "새로운 버전이 출시되었습니다. 업데이트하시겠습니까?\n\n현재 버전: ${versionInfo.currentVersion}\n최신 버전: ${versionInfo.latestVersion}"
+                                }
+                            )
+                        },
+                        confirmButton = {
+                            Button(onClick = onUpdateApp) {
+                                Text("업데이트")
+                            }
+                        },
+                        dismissButton = if (!versionInfo.isUpdateRequired) {
+                            {
+                                TextButton(onClick = onDismissUpdateDialog) {
+                                    Text("나중에")
+                                }
+                            }
+                        } else null
+                    )
+                }
+            }
         }
     }
 }
@@ -268,9 +339,12 @@ fun LoginScreen(
 fun LoginScreenPreview() {
     CamConTheme {
         LoginScreen(
-            uiState = com.inik.camcon.presentation.viewmodel.LoginUiState(),
+            uiState = LoginUiState(),
+            versionState = com.inik.camcon.presentation.viewmodel.AppVersionUiState(),
             onGoogleSignIn = {},
-            onDismissError = {}
+            onDismissError = {},
+            onUpdateApp = {},
+            onDismissUpdateDialog = {}
         )
     }
 }
