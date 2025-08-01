@@ -6,6 +6,43 @@ plugins {
     id 'com.google.gms.google-services'
 }
 
+// Git 태그에서 버전 정보를 가져오는 함수
+def getVersionFromGit() {
+    try {
+        // 현재 태그 가져오기 (정확히 현재 커밋의 태그)
+        def currentTag = 'git describe --exact-match --tags HEAD'.execute().text.trim()
+        if (currentTag) {
+            // v1.0 -> 1.0으로 변환
+            return currentTag.startsWith('v') ? currentTag.substring(1) : currentTag
+        }
+    } catch (Exception ignored) {
+        // 현재 커밋에 태그가 없으면 가장 최근 태그 + 커밋 수 가져오기
+        try {
+            def tagInfo = 'git describe --tags --abbrev=0'.execute().text.trim()
+            def commitCount = 'git rev-list --count HEAD'.execute().text.trim()
+            def shortHash = 'git rev-parse --short HEAD'.execute().text.trim()
+
+            if (tagInfo) {
+                def baseVersion = tagInfo.startsWith('v') ? tagInfo.substring(1) : tagInfo
+                return "${baseVersion}-dev.${commitCount}.${shortHash}"
+            }
+        } catch (Exception e2) {
+            // Git이 없거나 태그가 없으면 기본값 사용
+        }
+    }
+    return "1.0-unknown"
+}
+
+// Git 태그에서 버전 코드 생성 (태그의 마이너 버전 + 커밋 수)
+def getVersionCodeFromGit() {
+    try {
+        def commitCount = 'git rev-list --count HEAD'.execute().text.trim()
+        return commitCount.toInteger()
+    } catch (Exception ignored) {
+        return 1
+    }
+}
+
 android {
     namespace 'com.inik.camcon'
     compileSdk 35
@@ -32,8 +69,8 @@ android {
         applicationId "com.inik.camcon"
         minSdk 29
         targetSdk 35
-        versionCode 1
-        versionName "1.0"
+        versionCode getVersionCodeFromGit()
+        versionName getVersionFromGit()
         ndk {
             abiFilters "arm64-v8a"
         }
