@@ -57,6 +57,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.inik.camcon.BuildConfig
 import com.inik.camcon.data.datasource.local.ThemeMode
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
@@ -217,50 +218,118 @@ fun SettingsScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
-            // 카메라 제어 설정 섹션
-            SettingsSection(title = "📱 카메라 제어 설정") {
-                SettingsItemWithSwitch(
-                    icon = Icons.Default.CameraAlt,
-                    title = "카메라 컨트롤 표시",
-                    subtitle = if (isCameraControlsEnabled) {
-                        "라이브뷰 및 카메라 컨트롤 UI 표시"
-                    } else {
-                        "비활성화 - 최신 촬영 사진이 표시됩니다"
-                    },
-                    checked = isCameraControlsEnabled,
-                    onCheckedChange = { appSettingsViewModel.setCameraControlsEnabled(it) }
-                )
-
-                if (isCameraControlsEnabled) {
+            // 카메라 제어 설정 섹션 - 개발자 기능이 활성화된 경우만 표시
+            if (BuildConfig.SHOW_DEVELOPER_FEATURES) {
+                SettingsSection(title = "📱 카메라 제어 설정 (개발 버전)") {
                     SettingsItemWithSwitch(
-                        icon = Icons.Default.Visibility,
-                        title = "라이브뷰 활성화",
-                        subtitle = "실시간 카메라 화면 표시",
-                        checked = isLiveViewEnabled,
-                        onCheckedChange = { appSettingsViewModel.setLiveViewEnabled(it) }
+                        icon = Icons.Default.CameraAlt,
+                        title = "카메라 컨트롤 표시",
+                        subtitle = if (isCameraControlsEnabled) {
+                            "라이브뷰 및 카메라 컨트롤 UI 표시"
+                        } else {
+                            "비활성화 - 최신 촬영 사진이 표시됩니다"
+                        },
+                        checked = isCameraControlsEnabled,
+                        onCheckedChange = { appSettingsViewModel.setCameraControlsEnabled(it) }
                     )
 
-                    SettingsItemWithSwitch(
-                        icon = Icons.Default.Settings,
-                        title = "자동 이벤트 수신",
-                        subtitle = "카메라 제어 탭 진입 시 자동으로 이벤트 리스너 시작",
-                        checked = isAutoStartEventListener,
-                        onCheckedChange = { appSettingsViewModel.setAutoStartEventListenerEnabled(it) }
-                    )
+                    if (isCameraControlsEnabled) {
+                        SettingsItemWithSwitch(
+                            icon = Icons.Default.Visibility,
+                            title = "라이브뷰 활성화",
+                            subtitle = "실시간 카메라 화면 표시",
+                            checked = isLiveViewEnabled,
+                            onCheckedChange = { appSettingsViewModel.setLiveViewEnabled(it) }
+                        )
+
+                        SettingsItemWithSwitch(
+                            icon = Icons.Default.Settings,
+                            title = "자동 이벤트 수신",
+                            subtitle = "카메라 제어 탭 진입 시 자동으로 이벤트 리스너 시작",
+                            checked = isAutoStartEventListener,
+                            onCheckedChange = {
+                                appSettingsViewModel.setAutoStartEventListenerEnabled(
+                                    it
+                                )
+                            }
+                        )
+                    }
+
+                    if (!isCameraControlsEnabled) {
+                        SettingsItemWithSwitch(
+                            icon = Icons.Default.Photo,
+                            title = "최신 사진 표시",
+                            subtitle = "카메라 컨트롤 비활성화 시 최근 촬영한 사진 표시",
+                            checked = isShowLatestPhotoWhenDisabled,
+                            onCheckedChange = {
+                                appSettingsViewModel.setShowLatestPhotoWhenDisabled(
+                                    it
+                                )
+                            }
+                        )
+                    }
                 }
 
-                if (!isCameraControlsEnabled) {
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+                // PTPIP Wi-Fi 카메라 설정 섹션 - 개발자 기능이 활성화된 경우만 표시
+                SettingsSection(title = "📷 Wi-Fi 카메라 연결 (PTPIP) - 개발 버전") {
                     SettingsItemWithSwitch(
-                        icon = Icons.Default.Photo,
-                        title = "최신 사진 표시",
-                        subtitle = "카메라 컨트롤 비활성화 시 최근 촬영한 사진 표시",
-                        checked = isShowLatestPhotoWhenDisabled,
-                        onCheckedChange = { appSettingsViewModel.setShowLatestPhotoWhenDisabled(it) }
+                        icon = Icons.Default.Wifi,
+                        title = "Wi-Fi 카메라 연결",
+                        subtitle = if (isPtpipEnabled) {
+                            if (lastConnectedName != null) {
+                                "활성화됨 - 마지막 연결: $lastConnectedName"
+                            } else {
+                                "활성화됨 - 연결된 카메라 없음"
+                            }
+                        } else {
+                            "Wi-Fi를 통한 카메라 원격 제어"
+                        },
+                        checked = isPtpipEnabled,
+                        onCheckedChange = { ptpipViewModel.setPtpipEnabled(it) }
                     )
+
+                    if (isPtpipEnabled) {
+                        SettingsItemWithSwitch(
+                            icon = Icons.Default.NetworkWifi,
+                            title = "WIFI 연결 하기",
+                            subtitle = "카메라와 동일한 Wi-Fi 네트워크에서 연결 (권장)",
+                            checked = isWifiConnectionModeEnabled,
+                            onCheckedChange = { ptpipViewModel.setWifiConnectionModeEnabled(it) }
+                        )
+
+                        SettingsItemWithSwitch(
+                            icon = Icons.Default.Settings,
+                            title = "자동 카메라 검색",
+                            subtitle = "네트워크에서 PTPIP 카메라 자동 찾기",
+                            checked = isAutoDiscoveryEnabled,
+                            onCheckedChange = { ptpipViewModel.setAutoDiscoveryEnabled(it) }
+                        )
+
+                        SettingsItemWithSwitch(
+                            icon = Icons.Default.CameraAlt,
+                            title = "자동 연결",
+                            subtitle = "마지막 연결된 카메라에 자동 연결",
+                            checked = isAutoConnectEnabled,
+                            onCheckedChange = { ptpipViewModel.setAutoConnectEnabled(it) }
+                        )
+
+                        SettingsItemWithNavigation(
+                            icon = Icons.Default.Info,
+                            title = "카메라 연결 관리",
+                            subtitle = "${ptpipViewModel.getConnectionStatusText()} - 탭하여 자세히 보기",
+                            onClick = {
+                                // PtpipConnectionActivity 시작
+                                val intent = Intent(context, PtpipConnectionActivity::class.java)
+                                context.startActivity(intent)
+                            }
+                        )
+                    }
                 }
+
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
             }
-
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
 
             // 색감 전송 설정 섹션
             SettingsSection(title = "🎨 색감 전송 설정") {
@@ -297,64 +366,6 @@ fun SettingsScreen(
 
             Divider(modifier = Modifier.padding(vertical = 8.dp))
 
-            // PTPIP Wi-Fi 카메라 설정 섹션
-            SettingsSection(title = "📷 Wi-Fi 카메라 연결 (PTPIP)") {
-                SettingsItemWithSwitch(
-                    icon = Icons.Default.Wifi,
-                    title = "Wi-Fi 카메라 연결",
-                    subtitle = if (isPtpipEnabled) {
-                        if (lastConnectedName != null) {
-                            "활성화됨 - 마지막 연결: $lastConnectedName"
-                        } else {
-                            "활성화됨 - 연결된 카메라 없음"
-                        }
-                    } else {
-                        "Wi-Fi를 통한 카메라 원격 제어"
-                    },
-                    checked = isPtpipEnabled,
-                    onCheckedChange = { ptpipViewModel.setPtpipEnabled(it) }
-                )
-                
-                if (isPtpipEnabled) {
-                    SettingsItemWithSwitch(
-                        icon = Icons.Default.NetworkWifi,
-                        title = "WIFI 연결 하기",
-                        subtitle = "카메라와 동일한 Wi-Fi 네트워크에서 연결 (권장)",
-                        checked = isWifiConnectionModeEnabled,
-                        onCheckedChange = { ptpipViewModel.setWifiConnectionModeEnabled(it) }
-                    )
-                    
-                    SettingsItemWithSwitch(
-                        icon = Icons.Default.Settings,
-                        title = "자동 카메라 검색",
-                        subtitle = "네트워크에서 PTPIP 카메라 자동 찾기",
-                        checked = isAutoDiscoveryEnabled,
-                        onCheckedChange = { ptpipViewModel.setAutoDiscoveryEnabled(it) }
-                    )
-                    
-                    SettingsItemWithSwitch(
-                        icon = Icons.Default.CameraAlt,
-                        title = "자동 연결",
-                        subtitle = "마지막 연결된 카메라에 자동 연결",
-                        checked = isAutoConnectEnabled,
-                        onCheckedChange = { ptpipViewModel.setAutoConnectEnabled(it) }
-                    )
-                    
-                    SettingsItemWithNavigation(
-                        icon = Icons.Default.Info,
-                        title = "카메라 연결 관리",
-                        subtitle = "${ptpipViewModel.getConnectionStatusText()} - 탭하여 자세히 보기",
-                        onClick = {
-                            // PtpipConnectionActivity 시작
-                            val intent = Intent(context, PtpipConnectionActivity::class.java)
-                            context.startActivity(intent)
-                        }
-                    )
-                }
-            }
-
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
-
             // User Info Section
             SettingsSection(title = "사용자 정보") {
                 SettingsItem(
@@ -374,22 +385,24 @@ fun SettingsScreen(
             Divider(modifier = Modifier.padding(vertical = 8.dp))
 
             // Server Section
-            SettingsSection(title = "서버 설정") {
-                SettingsItem(
-                    icon = Icons.Default.Storage,
-                    title = "저장 공간",
-                    subtitle = "사용 중: 2.3GB / 10GB",
-                    onClick = { /* TODO */ }
-                )
-                SettingsItem(
-                    icon = Icons.Default.Security,
-                    title = "권한 관리",
-                    subtitle = "서버 접근 권한 설정",
-                    onClick = { /* TODO */ }
-                )
-            }
+            if (BuildConfig.SHOW_DEVELOPER_FEATURES) {
+                SettingsSection(title = "서버 설정 (개발 버전)") {
+                    SettingsItem(
+                        icon = Icons.Default.Storage,
+                        title = "저장 공간",
+                        subtitle = "사용 중: 2.3GB / 10GB",
+                        onClick = { /* TODO */ }
+                    )
+                    SettingsItem(
+                        icon = Icons.Default.Security,
+                        title = "권한 관리",
+                        subtitle = "서버 접근 권한 설정",
+                        onClick = { /* TODO */ }
+                    )
+                }
 
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
+            }
 
             // App Settings Section
             SettingsSection(title = "앱 설정") {

@@ -86,6 +86,8 @@ android {
             minifyEnabled false
 //            applicationIdSuffix ".debug"
             versionNameSuffix "-debug"
+            // 개발자 기능 표시 (라이브뷰, PTPIP)
+            buildConfigField "boolean", "SHOW_DEVELOPER_FEATURES", "true"
         }
 
         release {
@@ -93,6 +95,8 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             debuggable true  // 로그 확인을 위해 활성화
             signingConfig signingConfigs.release
+            // 개발자 기능 숨김 (라이브뷰, PTPIP)
+            buildConfigField "boolean", "SHOW_DEVELOPER_FEATURES", "false"
         }
 
         // 릴리즈 성능 + 디버깅 가능한 빌드 타입
@@ -102,6 +106,8 @@ android {
             applicationIdSuffix ".release.debug"
             versionNameSuffix "-release-debug"
             matchingFallbacks = ['release', 'debug']
+            // 개발자 기능 표시 (디버깅용)
+            buildConfigField "boolean", "SHOW_DEVELOPER_FEATURES", "true"
         }
     }
     compileOptions {
@@ -138,6 +144,7 @@ android {
     buildFeatures {
         viewBinding true
         compose true
+        buildConfig true
     }
     kotlinOptions {
         jvmTarget = "11"
