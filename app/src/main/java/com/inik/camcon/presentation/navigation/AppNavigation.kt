@@ -7,9 +7,9 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.inik.camcon.presentation.ui.screens.CameraControlScreen
+import com.inik.camcon.presentation.ui.screens.MyPhotosScreen
 import com.inik.camcon.presentation.ui.screens.PhotoPreviewScreen
 import com.inik.camcon.presentation.ui.screens.PtpipConnectionScreen
-import com.inik.camcon.presentation.ui.screens.ServerPhotosScreen
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
 
@@ -40,7 +40,7 @@ fun AppNavigation(
         }
 
         composable(AppDestination.ServerPhotos.route) {
-            ServerPhotosScreen()
+            MyPhotosScreen()
         }
 
         // 모달 화면들
