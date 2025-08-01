@@ -3,6 +3,7 @@ package com.inik.camcon.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
+import com.inik.camcon.data.datasource.local.ThemeMode
 import com.inik.camcon.domain.usecase.ColorTransferUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -113,6 +114,16 @@ class AppSettingsViewModel @Inject constructor(
             )
 
     /**
+     * 테마 모드 설정
+     */
+    val themeMode: StateFlow<ThemeMode> = appPreferencesDataSource.themeMode
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = ThemeMode.FOLLOW_SYSTEM
+        )
+
+    /**
      * 카메라 컨트롤 표시 여부 설정
      */
     fun setCameraControlsEnabled(enabled: Boolean) {
@@ -191,6 +202,15 @@ class AppSettingsViewModel @Inject constructor(
     fun setColorTransferTargetImagePath(path: String?) {
         viewModelScope.launch {
             appPreferencesDataSource.setColorTransferTargetImagePath(path)
+        }
+    }
+
+    /**
+     * 테마 모드 설정
+     */
+    fun setThemeMode(mode: ThemeMode) {
+        viewModelScope.launch {
+            appPreferencesDataSource.setThemeMode(mode)
         }
     }
 
