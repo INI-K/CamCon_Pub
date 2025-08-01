@@ -293,6 +293,12 @@ object Constants {
      * 구독 관련 상수
      */
     object Subscription {
+        // Google Play Console 구독 상품 ID들
+        const val BASIC_MONTHLY_PRODUCT_ID = "camcon_basic_monthly"
+        const val BASIC_YEARLY_PRODUCT_ID = "camcon_basic_yearly"
+        const val PRO_MONTHLY_PRODUCT_ID = "camcon_pro_monthly"
+        const val PRO_YEARLY_PRODUCT_ID = "camcon_pro_yearly"
+
         // 구독 등급별 지원 포맷
         val FREE_SUPPORTED_FORMATS = listOf("jpg", "jpeg")
         val BASIC_SUPPORTED_FORMATS = listOf("jpg", "jpeg", "png")
@@ -322,5 +328,9 @@ object Constants {
         const val FEATURE_WEBP_EXPORT = "webp_export"
         const val FEATURE_ADVANCED_FILTERS = "advanced_filters"
         const val FEATURE_BATCH_PROCESSING = "batch_processing"
+
+        // Firebase 컬렉션 이름
+        const val USERS_COLLECTION = "users"
+        const val SUBSCRIPTIONS_COLLECTION = "subscriptions"
     }
 }
