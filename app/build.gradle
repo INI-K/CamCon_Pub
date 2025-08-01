@@ -245,6 +245,9 @@ dependencies {
     // ExifInterface for metadata handling
     implementation 'androidx.exifinterface:exifinterface:1.3.7'
 
+    // Gson for JSON serialization
+    implementation 'com.google.code.gson:gson:2.10.1'
+
 }
 
 // 커스텀 빌드 태스크들
