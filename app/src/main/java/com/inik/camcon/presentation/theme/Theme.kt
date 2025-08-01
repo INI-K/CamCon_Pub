@@ -2,11 +2,11 @@ package com.inik.camcon.presentation.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Shapes
 import androidx.compose.material.darkColors
 import androidx.compose.material.lightColors
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import com.inik.camcon.data.datasource.local.ThemeMode
 
 private val DarkColorPalette = darkColors(
     primary = Color(0xFF1976D2),
@@ -34,9 +34,15 @@ private val LightColorPalette = lightColors(
 
 @Composable
 fun CamConTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    themeMode: ThemeMode = ThemeMode.FOLLOW_SYSTEM,
     content: @Composable () -> Unit
 ) {
+    val darkTheme = when (themeMode) {
+        ThemeMode.FOLLOW_SYSTEM -> isSystemInDarkTheme()
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
+
     val colors = if (darkTheme) {
         DarkColorPalette
     } else {
