@@ -1,5 +1,6 @@
 package com.inik.camcon.presentation.ui
 
+import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -46,6 +47,9 @@ import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -53,6 +57,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.inik.camcon.data.datasource.local.ThemeMode
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
@@ -65,7 +70,10 @@ class SettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            CamConTheme {
+            val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
+            val themeMode by appSettingsViewModel.themeMode.collectAsState()
+
+            CamConTheme(themeMode = themeMode) {
                 SettingsScreen(
                     onBackClick = { finish() }
                 )
@@ -106,7 +114,7 @@ fun SettingsScreen(
     // 앱 설정 상태
     val isCameraControlsEnabled by appSettingsViewModel.isCameraControlsEnabled.collectAsState()
     val isLiveViewEnabled by appSettingsViewModel.isLiveViewEnabled.collectAsState()
-    val isDarkMode by appSettingsViewModel.isDarkModeEnabled.collectAsState()
+    val currentThemeMode by appSettingsViewModel.themeMode.collectAsState()
     val isAutoStartEventListener by appSettingsViewModel.isAutoStartEventListenerEnabled.collectAsState()
     val isShowLatestPhotoWhenDisabled by appSettingsViewModel.isShowLatestPhotoWhenDisabled.collectAsState()
 
@@ -174,6 +182,18 @@ fun SettingsScreen(
             } catch (e: Exception) {
                 e.printStackTrace()
             }
+        }
+    }
+
+    // 테마 선택 다이얼로그 상태
+    var showThemeDialog by remember { mutableStateOf(false) }
+
+    // 테마 모드를 한글로 변환하는 함수
+    fun getThemeDisplayName(themeMode: ThemeMode): String {
+        return when (themeMode) {
+            ThemeMode.FOLLOW_SYSTEM -> "시스템 설정 따름"
+            ThemeMode.LIGHT -> "라이트 모드"
+            ThemeMode.DARK -> "다크 모드"
         }
     }
 
@@ -379,13 +399,38 @@ fun SettingsScreen(
                     subtitle = "푸시 알림 및 소리 설정",
                     onClick = { /* TODO */ }
                 )
-                SettingsItemWithSwitch(
+                SettingsItem(
                     icon = Icons.Default.DarkMode,
-                    title = "다크 모드",
-                    subtitle = "어두운 테마 사용",
-                    checked = isDarkMode,
-                    onCheckedChange = { appSettingsViewModel.setDarkModeEnabled(it) }
+                    title = "테마 설정",
+                    subtitle = "현재: ${getThemeDisplayName(currentThemeMode)}",
+                    onClick = {
+                        showThemeDialog = true
+                    }
                 )
+            }
+
+            if (showThemeDialog) {
+                AlertDialog.Builder(context)
+                    .setTitle("테마 설정")
+                    .setSingleChoiceItems(
+                        arrayOf("시스템 설정 따름", "라이트 모드", "다크 모드").map { it }.toTypedArray(),
+                        when (currentThemeMode) {
+                            ThemeMode.FOLLOW_SYSTEM -> 0
+                            ThemeMode.LIGHT -> 1
+                            ThemeMode.DARK -> 2
+                        }
+                    ) { _, which ->
+                        when (which) {
+                            0 -> appSettingsViewModel.setThemeMode(ThemeMode.FOLLOW_SYSTEM)
+                            1 -> appSettingsViewModel.setThemeMode(ThemeMode.LIGHT)
+                            2 -> appSettingsViewModel.setThemeMode(ThemeMode.DARK)
+                        }
+                        showThemeDialog = false
+                    }
+                    .setNegativeButton("취소") { _, _ ->
+                        showThemeDialog = false
+                    }
+                    .show()
             }
 
             Divider(modifier = Modifier.padding(vertical = 8.dp))
