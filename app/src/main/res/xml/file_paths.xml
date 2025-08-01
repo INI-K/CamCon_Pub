@@ -8,4 +8,12 @@
     <cache-path
         name="cache"
         path="." />
+    <!-- 외부 저장소 DCIM 폴더 (사진 공유용) -->
+    <external-path
+        name="external_dcim"
+        path="DCIM/" />
+    <!-- 전체 외부 저장소 접근 (사진 공유용) -->
+    <external-path
+        name="external_storage"
+        path="." />
 </paths>

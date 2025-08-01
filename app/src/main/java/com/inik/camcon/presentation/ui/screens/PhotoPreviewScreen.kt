@@ -1,5 +1,6 @@
 package com.inik.camcon.presentation.ui.screens
 
+// Multi-select feature: Required imports
 import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
@@ -14,11 +15,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
+import androidx.compose.foundation.lazy.staggeredgrid.items
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
@@ -50,12 +51,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.components.EmptyPhotoState
+import com.inik.camcon.presentation.ui.screens.components.FluidPhotoThumbnail
 import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
-import com.inik.camcon.presentation.ui.screens.components.PhotoThumbnail
 import com.inik.camcon.presentation.ui.screens.components.UsbInitializationOverlay
 import com.inik.camcon.presentation.viewmodel.FileTypeFilter
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
 import kotlinx.coroutines.delay
+import java.io.File
 
 /**
  * 카메라에서 촬영한 사진들을 미리보기로 보여주는 메인 화면
@@ -83,6 +85,11 @@ fun PhotoPreviewScreen(
         }
     )
 
+    // 멀티 선택 모드에서 뒤로가기 처리
+    BackHandler(enabled = uiState.isMultiSelectMode) {
+        viewModel.exitMultiSelectMode()
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -95,15 +102,25 @@ fun PhotoPreviewScreen(
                 .padding(top = 24.dp) // 상단 마진 증가 (16dp → 24dp)
         ) {
             // 상단 타이틀 영역 (모던한 디자인)
-            ModernHeader(
-                photoCount = uiState.photos.size,
-                currentPage = uiState.currentPage,
-                totalPages = uiState.totalPages,
-                onRefresh = { viewModel.loadCameraPhotos() },
-                fileTypeFilter = uiState.fileTypeFilter,
-                onFilterChange = { filter -> viewModel.changeFileTypeFilter(filter) },
-                viewModel = viewModel
-            )
+            if (uiState.isMultiSelectMode) {
+                MultiSelectActionBar(
+                    selectedCount = uiState.selectedPhotos.size,
+                    onSelectAll = { viewModel.selectAllPhotos() },
+                    onDeselectAll = { viewModel.deselectAllPhotos() },
+                    onDownload = { viewModel.downloadSelectedPhotos() },
+                    onCancel = { viewModel.exitMultiSelectMode() }
+                )
+            } else {
+                ModernHeader(
+                    photoCount = uiState.photos.size,
+                    currentPage = uiState.currentPage,
+                    totalPages = uiState.totalPages,
+                    onRefresh = { viewModel.loadCameraPhotos() },
+                    fileTypeFilter = uiState.fileTypeFilter,
+                    onFilterChange = { filter -> viewModel.changeFileTypeFilter(filter) },
+                    viewModel = viewModel
+                )
+            }
 
             // 카메라 이벤트 초기화 블록 오버레이 표시
             if (uiState.isInitializing) {
@@ -137,7 +154,7 @@ fun PhotoPreviewScreen(
             }
         }
 
-        // Pull to refresh 인디케이터
+        // Pull to refresh 인디케이터 - 정상 동작 복원
         PullRefreshIndicator(
             refreshing = uiState.isLoading,
             state = pullRefreshState,
@@ -155,6 +172,14 @@ fun PhotoPreviewScreen(
 
         // 선택된 사진의 실제 파일 다운로드 시작 (한 번만 실행, photo.path가 변경될 때만)
         LaunchedEffect(photo.path) {
+            // 로컬 파일인지 확인
+            val isLocalFile = File(photo.path).exists()
+
+            if (isLocalFile) {
+                Log.d("PhotoPreviewScreen", "로컬 파일이므로 다운로드 건너뛰기: ${photo.name}")
+                return@LaunchedEffect
+            }
+
             Log.d(
                 "PhotoPreviewScreen",
                 "ImageViewer 진입 - 최적화된 다운로드: ${photo.name}"
@@ -202,10 +227,11 @@ fun PhotoPreviewScreen(
             fullImageData = fullImageCache[photo.path], // 실시간으로 업데이트되는 실제 파일 데이터
             isDownloadingFullImage = downloadingImages.contains(photo.path),
             onDownload = { viewModel.downloadPhoto(photo) },
-            viewModel = viewModel // ViewModel을 통해 썸네일 캐시 공유
+            viewModel = viewModel, // ViewModel을 통해 썸네일 캐시 공유
+            localPhotos = if (uiState.photos.any { File(it.path).exists() }) uiState.photos else null // 로컬 사진인 경우 목록 전달
         )
 
-        BackHandler {
+        BackHandler(enabled = !uiState.isMultiSelectMode) {
             viewModel.selectPhoto(null)
         }
     }
@@ -417,7 +443,7 @@ private fun PhotoGrid(
     uiState: com.inik.camcon.presentation.viewmodel.PhotoPreviewUiState,
     viewModel: PhotoPreviewViewModel
 ) {
-    val lazyGridState = rememberLazyGridState()
+    val lazyGridState = rememberLazyStaggeredGridState()
     val fullImageCache by viewModel.fullImageCache.collectAsState()
 
     // 무한 스크롤 구현 - 푸터 감지 개선
@@ -426,7 +452,6 @@ private fun PhotoGrid(
             val layoutInfo = lazyGridState.layoutInfo
             val visibleItemsInfo = layoutInfo.visibleItemsInfo
             val lastVisibleItemIndex = visibleItemsInfo.lastOrNull()?.index ?: -1
-            val totalItemsCount = uiState.photos.size
 
             // 스크롤 상태 정보를 더 상세하게 로깅
             lastVisibleItemIndex
@@ -442,23 +467,39 @@ private fun PhotoGrid(
             }
     }
 
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
+    LazyVerticalStaggeredGrid(
+        columns = StaggeredGridCells.Adaptive(120.dp),
         state = lazyGridState,
         contentPadding = PaddingValues(12.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalItemSpacing = 8.dp,
         modifier = Modifier.fillMaxSize()
     ) {
         items(
             items = uiState.photos,
             key = { photo -> photo.path }
         ) { photo ->
-            PhotoThumbnail(
+            FluidPhotoThumbnail(
                 photo = photo,
                 thumbnailData = viewModel.getThumbnail(photo.path),
                 fullImageCache = fullImageCache,
-                onClick = { viewModel.selectPhoto(photo) }
+                onClick = {
+                    if (uiState.isMultiSelectMode) {
+                        // 멀티 선택 모드에서는 선택/해제
+                        viewModel.togglePhotoSelection(photo.path)
+                    } else {
+                        // 일반 모드에서는 전체화면으로 이동
+                        viewModel.selectPhoto(photo)
+                    }
+                },
+                onLongClick = {
+                    if (!uiState.isMultiSelectMode) {
+                        // 멀티 선택 모드 시작
+                        viewModel.startMultiSelectMode(photo.path)
+                    }
+                },
+                isSelected = uiState.selectedPhotos.contains(photo.path),
+                isMultiSelectMode = uiState.isMultiSelectMode
             )
         }
 
@@ -472,7 +513,7 @@ private fun PhotoGrid(
         // 더 로딩 중일 때 로딩 인디케이터 표시
         if ((uiState.isLoading || uiState.isLoadingMore) && uiState.photos.isNotEmpty()) {
             Log.d("PhotoPreviewScreen", "LoadMoreIndicator 표시 조건 만족")
-            item(span = { GridItemSpan(3) }) {
+            item(span = StaggeredGridItemSpan.FullLine) {
                 LoadMoreIndicator()
             }
         }
@@ -480,7 +521,7 @@ private fun PhotoGrid(
         // 마지막 페이지일 때 완료 메시지
         else if (!uiState.hasNextPage && uiState.photos.isNotEmpty() && !uiState.isLoadingMore) {
             Log.d("PhotoPreviewScreen", "EndOfListMessage 표시 조건 만족")
-            item(span = { GridItemSpan(3) }) {
+            item(span = StaggeredGridItemSpan.FullLine) {
                 EndOfListMessage(photoCount = uiState.photos.size)
             }
         } else {
@@ -568,6 +609,65 @@ private fun ErrorSnackbar(
                 text = error,
                 color = MaterialTheme.colors.onError
             )
+        }
+    }
+}
+
+/**
+ * 멀티 선택 모드에서 표시되는 액션 바
+ */
+@Composable
+private fun MultiSelectActionBar(
+    selectedCount: Int,
+    onSelectAll: () -> Unit,
+    onDeselectAll: () -> Unit,
+    onDownload: () -> Unit,
+    onCancel: () -> Unit
+) {
+    Column {
+        // 첫 번째 행: 선택된 개수와 취소 버튼
+        Box(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            // 중앙 정렬된 선택된 개수
+            Text(
+                text = "${selectedCount}개 선택됨",
+                color = MaterialTheme.colors.primary,
+                style = MaterialTheme.typography.h6,
+                modifier = Modifier.align(Alignment.Center)
+            )
+
+            // 우측 취소 버튼
+            TextButton(
+                onClick = onCancel,
+                modifier = Modifier.align(Alignment.CenterEnd)
+            ) {
+                Text(
+                    text = "취소",
+                    color = MaterialTheme.colors.onSurface
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 두 번째 행: 액션 버튼들
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextButton(onClick = onSelectAll) {
+                Text("전체 선택")
+            }
+
+            TextButton(onClick = onDeselectAll) {
+                Text("전체 해제")
+            }
+
+            TextButton(onClick = onDownload) {
+                Text("다운로드")
+            }
         }
     }
 }
