@@ -1,7 +1,5 @@
 package com.inik.camcon.presentation.ui
 
-// import androidx.activity.viewModels // AuthViewModel을 직접 사용하지 않으므로 제거
-// import com.inik.camcon.presentation.viewmodel.AuthViewModel // AuthViewModel을 직접 사용하지 않으므로 제거
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -20,6 +18,7 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,9 +32,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import javax.inject.Inject
@@ -46,12 +47,13 @@ class SplashActivity : ComponentActivity() {
     @Inject
     lateinit var firebaseAuth: FirebaseAuth
 
-    // private val authViewModel: AuthViewModel by viewModels() // AuthViewModel을 직접 사용하지 않으므로 제거
-    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            CamConTheme {
+            val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
+            val themeMode by appSettingsViewModel.themeMode.collectAsState()
+
+            CamConTheme(themeMode = themeMode) {
                 SplashScreen {
                     // 자동 로그인 확인
                     if (firebaseAuth.currentUser != null) {
@@ -70,7 +72,7 @@ class SplashActivity : ComponentActivity() {
 }
 
 @Composable
-fun SplashScreen(navigateToNext: () -> Unit) { // navigateToLogin에서 navigateToNext로 변경
+fun SplashScreen(navigateToNext: () -> Unit) {
     var startAnimation by remember { mutableStateOf(false) }
     val alphaAnim = animateFloatAsState(
         targetValue = if (startAnimation) 1f else 0f,
@@ -79,8 +81,8 @@ fun SplashScreen(navigateToNext: () -> Unit) { // navigateToLogin에서 navigate
 
     LaunchedEffect(key1 = true) {
         startAnimation = true
-        delay(1500) // 딜레이 약간 줄임
-        navigateToNext() // 콜백 실행
+        delay(1500)
+        navigateToNext()
     }
 
     Box(
