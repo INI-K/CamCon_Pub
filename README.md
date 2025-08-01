@@ -1,3 +1,12 @@
+> **📢 퍼블릭 레포지토리 안내**  
+> 이 레포지토리는 CamCon 프로젝트의 퍼블릭 버전입니다.  
+> 네이티브 코드와 민감한 파일들이 제외되어 있으며, 프라이빗 레포지토리와 자동으로 동기화됩니다.  
+> 
+> **제외된 파일들**: C++ 코드, JNI 라이브러리, 키 파일들, 빌드 스크립트  
+> **마지막 동기화**: $(date '+%Y-%m-%d %H:%M:%S UTC')
+
+---
+
 # CamConT - 전문 카메라 제어 애플리케이션
 
 [![Android](https://img.shields.io/badge/Platform-Android-green.svg)](https://developer.android.com)
