@@ -52,6 +52,7 @@ import com.inik.camcon.R
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.domain.model.PtpipConnectionState
+import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.CameraControlScreen
 import com.inik.camcon.presentation.ui.screens.MyPhotosScreen
@@ -62,6 +63,7 @@ import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -377,6 +379,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var globalManager: CameraConnectionGlobalManager
 
+    @Inject
+    lateinit var getSubscriptionUseCase: GetSubscriptionUseCase
+
     // 권한 요청 런처
     private val storagePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -426,6 +431,16 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 사용자 구독 티어 로그 출력
+        lifecycleScope.launch {
+            try {
+                // 상세한 티어 정보를 한 번만 로그에 출력
+                getSubscriptionUseCase.logCurrentTier()
+            } catch (e: Exception) {
+                Log.e(TAG, "사용자 티어 정보 로드 실패", e)
+            }
+        }
 
         // 저장소 권한 요청
         requestStoragePermissions()

@@ -1,0 +1,33 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "referral_codes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "isUsed",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "referral_codes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "isUsed",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "usedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
