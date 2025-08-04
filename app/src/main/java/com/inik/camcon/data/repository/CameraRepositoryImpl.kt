@@ -608,4 +608,11 @@ class CameraRepositoryImpl @Inject constructor(
     fun setUsbDisconnectionCallback(callback: () -> Unit) {
         eventManager.onUsbDisconnectedCallback = callback
     }
+
+    /**
+     * RAW 파일 제한 다이얼로그 콜백 설정
+     */
+    fun setRawFileRestrictionCallback(callback: (fileName: String, restrictionMessage: String) -> Unit) {
+        eventManager.onRawFileRestricted = callback
+    }
 }
