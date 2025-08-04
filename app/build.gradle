@@ -86,6 +86,7 @@ android {
             minifyEnabled false
 //            applicationIdSuffix ".debug"
             versionNameSuffix "-debug"
+            signingConfig signingConfigs.release  // 릴리즈 키스토어 사용
             // 개발자 기능 표시 (라이브뷰, PTPIP)
             buildConfigField "boolean", "SHOW_DEVELOPER_FEATURES", "true"
         }
