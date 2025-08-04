@@ -6,7 +6,4 @@ package com.inik.camcon.domain.model
 enum class ImageFormat(val extension: String, val mimeType: String) {
     JPG("jpg", "image/jpeg"),
     JPEG("jpeg", "image/jpeg"),
-    PNG("png", "image/png"),
-    WEBP("webp", "image/webp"),
-    RAW("raw", "image/x-adobe-dng")
 }
