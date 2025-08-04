@@ -238,7 +238,11 @@ fun CameraControlScreen(
                 )
             }
         ) {
-            if (isFullscreen && appSettings.isCameraControlsEnabled) {
+            if (isFullscreen && (appSettings.isCameraControlsEnabled || uiState.capturedPhotos.isNotEmpty())) {
+                Log.d(
+                    "CameraControl",
+                    "🌟 전체화면 모드 렌더링 - isFullscreen=$isFullscreen, isCameraControlsEnabled=${appSettings.isCameraControlsEnabled}, capturedPhotos=${uiState.capturedPhotos.size}"
+                )
                 FullscreenCameraLayout(
                     uiState = uiState,
                     cameraFeed = cameraFeed,
@@ -250,6 +254,10 @@ fun CameraControlScreen(
                     isLiveViewEnabled = appSettings.isLiveViewEnabled
                 )
             } else {
+                Log.d(
+                    "CameraControl",
+                    "📱 포트레이트 모드 렌더링 - isFullscreen=$isFullscreen, isCameraControlsEnabled=${appSettings.isCameraControlsEnabled}, capturedPhotos=${uiState.capturedPhotos.size}"
+                )
                 PortraitCameraLayout(
                     uiState = uiState,
                     cameraFeed = cameraFeed,
@@ -258,8 +266,10 @@ fun CameraControlScreen(
                     bottomSheetState = bottomSheetState,
                     onShowTimelapseDialog = { showTimelapseDialog = true },
                     onEnterFullscreen = {
+                        Log.d("CameraControl", "🌟 onEnterFullscreen 호출됨 - 전체화면 모드로 전환")
                         isFullscreen = true
                         onFullscreenChange(true)
+                        Log.d("CameraControl", "🌟 전체화면 상태 설정 완료: isFullscreen=$isFullscreen")
                     },
                     appSettings = appSettings,
                     onPhotoClick = { photo ->
@@ -442,7 +452,12 @@ private fun PortraitCameraLayout(
     }
 
     val canEnterFullscreen = remember(uiState.isLiveViewActive, uiState.capturedPhotos.size) {
-        uiState.isLiveViewActive || uiState.capturedPhotos.isNotEmpty()
+        val result = uiState.isLiveViewActive || uiState.capturedPhotos.isNotEmpty()
+        Log.d(
+            "CameraControl",
+            "🔍 canEnterFullscreen 계산: isLiveViewActive=${uiState.isLiveViewActive}, capturedPhotos.size=${uiState.capturedPhotos.size}, result=$result"
+        )
+        result
     }
 
     Column(
@@ -460,27 +475,55 @@ private fun PortraitCameraLayout(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .background(Color.Black)
-                .combinedClickable(
-                    onClick = { /* 단일 클릭 처리 */ },
-                    onDoubleClick = {
-                        if (canEnterFullscreen) {
-                            onEnterFullscreen()
-                        }
-                    }
-                ),
+                .background(Color.Black),
             contentAlignment = Alignment.Center
         ) {
             if (appSettings.isCameraControlsEnabled && appSettings.isLiveViewEnabled) {
                 CameraPreviewArea(
                     uiState = uiState,
                     cameraFeed = cameraFeed,
-                    viewModel = viewModel
+                    viewModel = viewModel,
+                    onDoubleClick = {
+                        if (canEnterFullscreen) {
+                            onEnterFullscreen()
+                        }
+                    }
                 )
             } else {
-                AnimatedPhotoSwitcher(
-                    capturedPhotos = uiState.capturedPhotos
-                )
+                Log.d("CameraControl", "사진 표시 모드 - 수신된 사진 개수: ${uiState.capturedPhotos.size}")
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .combinedClickable(
+                            onClick = {
+                                Log.d("CameraControl", "수신 사진 영역 단일 클릭")
+                            },
+                            onDoubleClick = {
+                                Log.d(
+                                    "CameraControl",
+                                    "수신 사진 영역 더블클릭 감지! canEnterFullscreen=$canEnterFullscreen"
+                                )
+                                if (canEnterFullscreen) {
+                                    Log.d("CameraControl", "전체화면 모드로 전환 시도")
+                                    onEnterFullscreen()
+                                } else {
+                                    Log.w("CameraControl", "전체화면 진입 불가 - 조건 미충족")
+                                }
+                            }
+                        )
+                ) {
+                    AnimatedPhotoSwitcher(
+                        capturedPhotos = uiState.capturedPhotos,
+                        modifier = Modifier.fillMaxSize(),
+                        emptyTextColor = Color.White,
+                        isRotated = false,
+                        onDoubleClick = {
+                            if (canEnterFullscreen) {
+                                onEnterFullscreen()
+                            }
+                        }
+                    )
+                }
             }
 
             if (canEnterFullscreen) {
@@ -584,10 +627,6 @@ private fun FullscreenCameraLayout(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .combinedClickable(
-                onClick = { /* 전체화면 단일 클릭 */ },
-                onDoubleClick = onExitFullscreen
-            )
     ) {
         // 메인 라이브뷰 또는 사진 뷰 영역
         if (isLiveViewEnabled && uiState.isLiveViewActive) {
@@ -596,15 +635,26 @@ private fun FullscreenCameraLayout(
                 uiState = uiState,
                 cameraFeed = cameraFeed,
                 viewModel = viewModel,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                onDoubleClick = onExitFullscreen
             )
         } else {
-            AnimatedPhotoSwitcher(
-                capturedPhotos = uiState.capturedPhotos,
-                modifier = Modifier.fillMaxSize(),
-                emptyTextColor = Color.White,
-                isRotated = isRotated
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .combinedClickable(
+                        onClick = { /* 단일 클릭 처리 */ },
+                        onDoubleClick = onExitFullscreen
+                    )
+            ) {
+                AnimatedPhotoSwitcher(
+                    capturedPhotos = uiState.capturedPhotos,
+                    modifier = Modifier.fillMaxSize(),
+                    emptyTextColor = Color.White,
+                    isRotated = isRotated,
+                    onDoubleClick = onExitFullscreen
+                )
+            }
         }
 
         // 우측 컨트롤 패널 - 라이브뷰가 활성화되어 있을 때만 표시
@@ -920,7 +970,8 @@ private fun AnimatedPhotoSwitcher(
     capturedPhotos: List<CapturedPhoto>,
     modifier: Modifier = Modifier,
     emptyTextColor: Color = Color.Gray,
-    isRotated: Boolean = false
+    isRotated: Boolean = false,
+    onDoubleClick: (() -> Unit)? = null
 ) {
     val latestPhoto = remember(capturedPhotos.size) {
         capturedPhotos.lastOrNull()
@@ -953,7 +1004,21 @@ private fun AnimatedPhotoSwitcher(
                     contentDescription = "사진",
                     modifier = Modifier
                         .fillMaxSize()
-                        .then(if (isRotated) Modifier.rotate(180f) else Modifier),
+                        .then(if (isRotated) Modifier.rotate(180f) else Modifier)
+                        .combinedClickable(
+                            onClick = {
+                                Log.d("CameraControl", "수신 사진 이미지 단일 클릭")
+                            },
+                            onDoubleClick = {
+                                Log.d("CameraControl", "🔥 수신 사진 이미지에서 더블클릭 감지!")
+                                Log.d(
+                                    "CameraControl",
+                                    "🔍 onDoubleClick 콜백 호출 시도 - 콜백 존재 여부: ${onDoubleClick != null}"
+                                )
+                                onDoubleClick?.invoke()
+                                Log.d("CameraControl", "✅ onDoubleClick 콜백 호출 완료")
+                            }
+                        ),
                     contentScale = ContentScale.Fit
                 )
             }
