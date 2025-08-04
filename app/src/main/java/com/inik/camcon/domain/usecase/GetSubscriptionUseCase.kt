@@ -1,8 +1,10 @@
 package com.inik.camcon.domain.usecase
 
+import android.util.Log
 import com.inik.camcon.domain.model.Subscription
 import com.inik.camcon.domain.model.SubscriptionTier
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -12,6 +14,10 @@ import javax.inject.Inject
  * 현재는 모든 사용자가 FREE 티어 사용
  */
 class GetSubscriptionUseCase @Inject constructor() {
+
+    companion object {
+        private const val TAG = "GetSubscriptionUseCase"
+    }
 
     /**
      * 현재 사용자의 구독 정보를 Flow로 반환
@@ -32,6 +38,45 @@ class GetSubscriptionUseCase @Inject constructor() {
      * 구독 상태 동기화 (현재는 아무 작업 안함)
      */
     suspend fun syncSubscriptionStatus() {
+        Log.d(TAG, "🔄 구독 상태 동기화 요청 (현재는 Firebase 미구현)")
         // 현재는 Firebase가 구현되지 않아 아무 작업 안함
+    }
+
+    /**
+     * 현재 사용자 티어를 즉시 로그에 출력하는 유틸리티 함수
+     */
+    suspend fun logCurrentTier() {
+        try {
+            // Flow에서 첫 번째 값만 가져와서 로그 출력 (중복 방지)
+            val subscription = invoke().first()
+            
+            Log.i(TAG, "======================================")
+            Log.i(TAG, " 현재 사용자 구독 티어 정보")
+            Log.i(TAG, "️ 티어: ${subscription.tier}")
+            Log.i(TAG, "✨ 지원 기능:")
+            when (subscription.tier) {
+                SubscriptionTier.FREE -> {
+                    Log.i(TAG, "    JPG/JPEG 포맷 지원")
+                    Log.i(TAG, "    기본 카메라 제어")
+                }
+
+                SubscriptionTier.BASIC -> {
+                    Log.i(TAG, "    JPG/JPEG/PNG 포맷 지원")
+                    Log.i(TAG, "    기본 카메라 제어")
+                    Log.i(TAG, "    배치 처리")
+                }
+
+                SubscriptionTier.PRO -> {
+                    Log.i(TAG, "    모든 포맷 지원 (RAW 포함)")
+                    Log.i(TAG, "    고급 카메라 제어")
+                    Log.i(TAG, "    배치 처리")
+                    Log.i(TAG, "    고급 필터")
+                    Log.i(TAG, "    WebP 내보내기")
+                }
+            }
+            Log.i(TAG, "======================================")
+        } catch (e: Exception) {
+            Log.e(TAG, "티어 로그 출력 실패", e)
+        }
     }
 }
