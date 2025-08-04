@@ -248,9 +248,33 @@ class CameraViewModel @Inject constructor(
             .onEach { devices ->
                 uiStateManager.updateUsbDeviceState(devices.size, uiState.value.hasUsbPermission)
 
-                // ⚠️ 주의: USB 권한 상태와 함께 체크하여 중복 실행 방지
-                // USB 디바이스만 감지되었을 때는 권한 상태를 먼저 확인하고 
-                // 권한이 있다면 즉시 연결, 없다면 권한 획득 후 연결
+                // USB 디바이스가 감지되었을 때 권한이 없으면 자동으로 권한 요청
+                // 단, 이미 권한 요청 중이 아닌 경우에만
+                if (devices.isNotEmpty() && !usbCameraManager.hasUsbPermission.value && !isAutoConnecting) {
+                    Log.d(TAG, "USB 디바이스 감지됨 - 권한 자동 요청")
+                    viewModelScope.launch(Dispatchers.IO) {
+                        try {
+                            val device = devices.first()
+
+                            // 디바이스별 권한 상태를 다시 확인
+                            val actualPermission =
+                                (context.getSystemService(Context.USB_SERVICE) as android.hardware.usb.UsbManager)
+                                    .hasPermission(device)
+
+                            if (!actualPermission) {
+                                Log.d(TAG, "실제 권한 없음 - 권한 요청 진행")
+                                requestUsbPermissionUseCase(device)
+                                uiStateManager.setError("USB 권한을 요청했습니다. 대화상자에서 승인해주세요.")
+                            } else {
+                                Log.d(TAG, "실제로는 권한이 있음 - 상태 업데이트")
+                                // 권한 상태를 강제로 업데이트
+                                refreshUsbDevices()
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "자동 USB 권한 요청 실패", e)
+                        }
+                    }
+                }
             }
             .launchIn(viewModelScope)
 
@@ -259,7 +283,7 @@ class CameraViewModel @Inject constructor(
                 val deviceCount = uiState.value.usbDeviceCount
                 uiStateManager.updateUsbDeviceState(deviceCount, hasPermission)
 
-                // 🔥 권한이 새로 획득되고 디바이스가 있으면 자동 연결 시작
+                // 권한이 새로 획득되고 디바이스가 있으면 자동 연결 시작
                 // 단, 이미 연결되지 않은 경우에만
                 if (hasPermission && deviceCount > 0 && !uiState.value.isConnected && !isAutoConnecting) {
                     Log.d(TAG, "USB 권한 새로 획득 - 자동 연결 시작")
@@ -268,7 +292,7 @@ class CameraViewModel @Inject constructor(
             }
             .launchIn(viewModelScope)
 
-        // 🔥 USB 디바이스와 권한 상태를 모두 고려한 통합 연결 로직
+        // USB 디바이스와 권한 상태를 모두 고려한 통합 연결 로직
         combine(
             usbCameraManager.connectedDevices,
             usbCameraManager.hasUsbPermission
