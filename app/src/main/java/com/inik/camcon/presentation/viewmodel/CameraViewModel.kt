@@ -1,11 +1,14 @@
 package com.inik.camcon.presentation.viewmodel
 
+import android.app.Activity
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.CameraNative
 import com.inik.camcon.NativeErrorCallback
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
+import com.inik.camcon.data.repository.CameraRepositoryImpl
 import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.domain.model.TimelapseSettings
@@ -25,6 +28,7 @@ import com.inik.camcon.domain.usecase.usb.RefreshUsbDevicesUseCase
 import com.inik.camcon.domain.usecase.usb.RequestUsbPermissionUseCase
 import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -44,6 +48,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class CameraViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val cameraRepository: CameraRepository,
     private val getCameraFeedUseCase: GetCameraFeedUseCase,
     private val connectCameraUseCase: ConnectCameraUseCase,
@@ -87,6 +92,37 @@ class CameraViewModel @Inject constructor(
         private const val TAG = "카메라뷰모델"
     }
 
+    // RAW 파일 제한 스타일링을 위한 현재 Activity 참조
+    private var currentActivity: Activity? = null
+
+    /**
+     * 현재 Activity 설정 (UI에서 호출)
+     */
+    fun setActivity(activity: Activity?) {
+        currentActivity = activity
+    }
+
+    /**
+     * RAW 파일 제한 콜백을 등록하여 ViewModel과 연동
+     * CameraRepositoryImpl을 통해 설정
+     */
+    private fun registerRawLimitCallback() {
+        try {
+            if (cameraRepository is CameraRepositoryImpl) {
+                cameraRepository.setRawFileRestrictionCallback { fileName, restrictionMessage ->
+                    Log.d(TAG, "RAW 파일 제한: $fileName - $restrictionMessage")
+                    // 특별한 RAW 파일 제한 상태로 설정
+                    uiStateManager.setRawFileRestriction(fileName, restrictionMessage)
+                }
+                Log.d(TAG, "RAW 파일 제한 콜백 등록 완료")
+            } else {
+                Log.w(TAG, "RAW 파일 제한 콜백 등록 실패: Repository가 CameraRepositoryImpl이 아님")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "RAW 파일 제한 콜백 등록 실패", e)
+        }
+    }
+
     init {
         initializeViewModel()
     }
@@ -99,6 +135,7 @@ class CameraViewModel @Inject constructor(
             setupObservers()
             initializeCameraRepository()
             registerNativeErrorCallback()
+            registerRawLimitCallback()
             setupUsbDisconnectionCallback()
 
             // 3초 후 앱 재개 상태 해제
@@ -792,6 +829,7 @@ class CameraViewModel @Inject constructor(
     fun clearError() = uiStateManager.clearError()
     fun clearPtpTimeout() = uiStateManager.clearPtpTimeout()
     fun clearUsbDisconnection() = uiStateManager.clearUsbDisconnection()
+    fun clearRawFileRestriction() = uiStateManager.clearRawFileRestriction()
     fun dismissRestartDialog() = uiStateManager.showRestartDialog(false)
     fun dismissCameraStatusCheckDialog() = uiStateManager.showCameraStatusCheckDialog(false)
 
@@ -829,6 +867,11 @@ class CameraViewModel @Inject constructor(
 
         // 네이티브 에러 콜백 해제
         CameraNative.setErrorCallback(null)
+
+        // RAW 제한 콜백 해제 - CameraRepositoryImpl을 통한 해제
+        if (cameraRepository is CameraRepositoryImpl) {
+            cameraRepository.setRawFileRestrictionCallback { _, _ -> }
+        }
 
         try {
             usbCameraManager.cleanup()
