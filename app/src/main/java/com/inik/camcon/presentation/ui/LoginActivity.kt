@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
@@ -26,6 +27,7 @@ import androidx.compose.material.Card
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Icon
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Snackbar
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
@@ -34,12 +36,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -59,6 +65,9 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class LoginActivity : ComponentActivity() {
 
+    // 추천 코드를 저장할 변수
+    private var currentReferralCode: String = ""
+
     private val googleSignInLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -69,7 +78,7 @@ class LoginActivity : ComponentActivity() {
             Log.d("LoginActivity", "Google account received: ${account?.email}")
             account?.idToken?.let { idToken ->
                 Log.d("LoginActivity", "ID Token received, length: ${idToken.length}")
-                loginViewModel?.signInWithGoogle(idToken)
+                loginViewModel?.signInWithGoogle(idToken, currentReferralCode.ifBlank { null })
             } ?: run {
                 Log.e("LoginActivity", "ID Token is null")
             }
@@ -113,11 +122,16 @@ class LoginActivity : ComponentActivity() {
                 LoginScreen(
                     uiState = uiState,
                     versionState = versionState,
-                    onGoogleSignIn = {
-                        Log.d("LoginActivity", "Google Sign-In button clicked")
-                        signInWithGoogle()
+                    onGoogleSignIn = { referralCode ->
+                        Log.d(
+                            "LoginActivity",
+                            "Google Sign-In button clicked with referral code: $referralCode"
+                        )
+                        currentReferralCode = referralCode  // 추천 코드 저장
+                        signInWithGoogle()  // Google 로그인 시작
                     },
                     onDismissError = { viewModel.clearError() },
+                    onDismissReferralMessage = { viewModel.clearReferralMessage() },
                     onUpdateApp = { appVersionViewModel.startUpdate() },
                     onDismissUpdateDialog = {
                         // 강제 업데이트인 경우 앱 종료
@@ -154,11 +168,16 @@ class LoginActivity : ComponentActivity() {
 fun LoginScreen(
     uiState: LoginUiState,
     versionState: com.inik.camcon.presentation.viewmodel.AppVersionUiState,
-    onGoogleSignIn: () -> Unit,
+    onGoogleSignIn: (String) -> Unit,
     onDismissError: () -> Unit,
+    onDismissReferralMessage: () -> Unit,
     onUpdateApp: () -> Unit,
     onDismissUpdateDialog: () -> Unit
 ) {
+
+    // State for recommendation code input
+    var recommendCode by remember { mutableStateOf("") }
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colors.background
@@ -216,9 +235,25 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
+                // 추천 코드 입력 필드
+                OutlinedTextField(
+                    value = recommendCode,
+                    onValueChange = { recommendCode = it },
+                    label = { Text("추천 코드(선택)") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    maxLines = 1,
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
+                )
+
                 // Google Sign In Button - 업데이트가 필요한 경우 비활성화
                 Button(
-                    onClick = onGoogleSignIn,
+                    onClick = {
+                        // Google Sign-In 버튼 클릭 시, 추천 코드(recommendCode) 활용 가능
+                        onGoogleSignIn(recommendCode)
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
@@ -287,6 +322,20 @@ fun LoginScreen(
                 }
             }
 
+            // Referral Message
+            uiState.referralCodeMessage?.let { message ->
+                Snackbar(
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                    action = {
+                        TextButton(onClick = onDismissReferralMessage) {
+                            Text(stringResource(R.string.close))
+                        }
+                    }
+                ) {
+                    Text(message)
+                }
+            }
+
             // Update Dialog
             if (versionState.showUpdateDialog) {
                 val versionInfo = versionState.versionInfo
@@ -341,8 +390,9 @@ fun LoginScreenPreview() {
         LoginScreen(
             uiState = LoginUiState(),
             versionState = com.inik.camcon.presentation.viewmodel.AppVersionUiState(),
-            onGoogleSignIn = {},
+            onGoogleSignIn = { _ -> },
             onDismissError = {},
+            onDismissReferralMessage = {},
             onUpdateApp = {},
             onDismissUpdateDialog = {}
         )

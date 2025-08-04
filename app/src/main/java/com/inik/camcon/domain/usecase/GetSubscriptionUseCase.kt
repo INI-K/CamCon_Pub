@@ -3,17 +3,18 @@ package com.inik.camcon.domain.usecase
 import android.util.Log
 import com.inik.camcon.domain.model.Subscription
 import com.inik.camcon.domain.model.SubscriptionTier
+import com.inik.camcon.domain.repository.AuthRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
 /**
  * 사용자 구독 정보를 가져오는 UseCase
- * 현재는 모든 사용자가 FREE 티어 사용
  */
-class GetSubscriptionUseCase @Inject constructor() {
+class GetSubscriptionUseCase @Inject constructor(
+    private val authRepository: AuthRepository
+) {
 
     companion object {
         private const val TAG = "GetSubscriptionUseCase"
@@ -21,10 +22,11 @@ class GetSubscriptionUseCase @Inject constructor() {
 
     /**
      * 현재 사용자의 구독 정보를 Flow로 반환
-     * 현재는 항상 FREE 티어 반환
      */
     operator fun invoke(): Flow<Subscription> {
-        return flowOf(Subscription(tier = SubscriptionTier.FREE))
+        return authRepository.getCurrentUser().map { user ->
+            user?.subscription ?: Subscription(tier = SubscriptionTier.FREE)
+        }
     }
 
     /**

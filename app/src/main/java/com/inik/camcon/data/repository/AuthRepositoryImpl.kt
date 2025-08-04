@@ -162,11 +162,15 @@ class AuthRepositoryImpl @Inject constructor(
                 .get()
                 .await()
 
-            snapshot.documents.mapNotNull { doc ->
+            val users = mutableListOf<User>()
+            for (doc in snapshot.documents) {
                 doc.data?.let { data ->
-                    mapDocumentToUser(doc.id, data)
+                    mapDocumentToUser(doc.id, data)?.let { user ->
+                        users.add(user)
+                    }
                 }
             }
+            users
         } catch (e: Exception) {
             Log.e(TAG, "전체 사용자 조회 실패", e)
             emptyList()
@@ -313,11 +317,15 @@ class AuthRepositoryImpl @Inject constructor(
                 .get()
                 .await()
 
-            snapshot.documents.mapNotNull { doc ->
+            val users = mutableListOf<User>()
+            for (doc in snapshot.documents) {
                 doc.data?.let { data ->
-                    mapDocumentToUser(doc.id, data)
+                    mapDocumentToUser(doc.id, data)?.let { user ->
+                        users.add(user)
+                    }
                 }
             }
+            users
         } catch (e: Exception) {
             Log.e(TAG, "사용자 검색 실패: $query", e)
             emptyList()
@@ -404,14 +412,45 @@ class AuthRepositoryImpl @Inject constructor(
     /**
      * Firestore 문서를 User 객체로 매핑
      */
-    private fun mapDocumentToUser(userId: String, data: Map<String, Any>): User? {
+    private suspend fun mapDocumentToUser(userId: String, data: Map<String, Any>): User? {
         return try {
+            // 구독 정보 조회
+            val subscription = try {
+                val subscriptionDoc = firestore.collection(USERS_COLLECTION)
+                    .document(userId)
+                    .collection(SUBSCRIPTIONS_COLLECTION)
+                    .document("current")
+                    .get()
+                    .await()
+
+                if (subscriptionDoc.exists()) {
+                    val tierString = subscriptionDoc.getString("tier") ?: "FREE"
+                    val tier = try {
+                        SubscriptionTier.valueOf(tierString)
+                    } catch (e: IllegalArgumentException) {
+                        SubscriptionTier.FREE
+                    }
+
+                    Subscription(
+                        tier = tier,
+                        isActive = subscriptionDoc.getBoolean("isActive") ?: false,
+                        startDate = subscriptionDoc.getDate("startDate"),
+                        endDate = subscriptionDoc.getDate("endDate")
+                    )
+                } else {
+                    Subscription(tier = SubscriptionTier.FREE)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "구독 정보 조회 실패: $userId", e)
+                Subscription(tier = SubscriptionTier.FREE)
+            }
+
             User(
                 id = userId,
                 email = data["email"] as? String ?: "",
                 displayName = data["displayName"] as? String ?: "",
                 photoUrl = data["photoUrl"] as? String,
-                subscription = Subscription(), // 별도로 구독 정보 조회 필요
+                subscription = subscription,
                 createdAt = data["createdAt"] as? Date,
                 lastLoginAt = data["lastLoginAt"] as? Date,
                 isActive = data["isActive"] as? Boolean ?: true,
