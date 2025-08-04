@@ -26,17 +26,18 @@ class AppSettingsViewModel @Inject constructor(
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5000),
-                initialValue = true
+                initialValue = false
             )
 
     /**
      * 라이브뷰 표시 여부
+     * 기본값을 false로 변경하여 USB 연결 시 기본적으로 수신 화면이 표시되도록 수정
      */
     val isLiveViewEnabled: StateFlow<Boolean> = appPreferencesDataSource.isLiveViewEnabled
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = true
+            initialValue = false
         )
 
     /**
