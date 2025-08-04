@@ -63,7 +63,6 @@ import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -138,7 +137,20 @@ fun MainScreen(
             androidx.compose.material.AlertDialog(
                 onDismissRequest = { /* 다이얼로그 닫기 방지 */ },
                 title = { Text("앱 재시작 필요") },
-                text = { Text("카메라 연결 문제로 인해 앱을 완전히 재시작해야 합니다.\n재시작 후 다시 연결을 시도해주세요.") },
+                text = {
+                androidx.compose.foundation.layout.Column {
+                        Text("카메라 연결 문제로 인해 앱을 완전히 재시작해야 합니다.")
+                        androidx.compose.foundation.layout.Spacer(
+                            modifier = androidx.compose.ui.Modifier.height(
+                                8.dp
+                            )
+                        )
+                        Text(
+                            "재시작이 실패할 경우:\n1. 앱을 완전히 종료해주세요\n2. 최근 앱 목록에서 앱을 제거해주세요\n3. 홈 화면에서 앱을 다시 실행해주세요",
+                            style = androidx.compose.material.MaterialTheme.typography.caption
+                        )
+                    }
+                },
                 confirmButton = {
                     androidx.compose.material.TextButton(
                         onClick = {
@@ -153,14 +165,6 @@ fun MainScreen(
                             }
                         }
                     ) { Text("재시작") }
-                },
-                dismissButton = {
-                    androidx.compose.material.TextButton(
-                        onClick = {
-                            showRestartDialog = false
-                            cameraViewModel.clearPtpTimeout()
-                        }
-                    ) { Text("나중에") }
                 },
                 properties = androidx.compose.ui.window.DialogProperties(
                     dismissOnBackPress = false,
@@ -413,18 +417,62 @@ class MainActivity : ComponentActivity() {
                     Log.w(TAG, "네이티브 리소스 정리 중 오류", e)
                 }
 
-                // 2. 모든 Activity 종료
+                // 2. AlarmManager를 사용한 지연 재시작 설정
+                val alarmManager =
+                    activity.getSystemService(android.content.Context.ALARM_SERVICE) as android.app.AlarmManager
+                val restartIntent =
+                    activity.packageManager.getLaunchIntentForPackage(activity.packageName)
+
+                if (restartIntent != null) {
+                    restartIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    restartIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    restartIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+
+                    val pendingIntent = android.app.PendingIntent.getActivity(
+                        activity,
+                        0,
+                        restartIntent,
+                        android.app.PendingIntent.FLAG_ONE_SHOT or android.app.PendingIntent.FLAG_IMMUTABLE
+                    )
+
+                    // 1초 후 재시작 예약
+                    alarmManager.setExact(
+                        android.app.AlarmManager.RTC,
+                        System.currentTimeMillis() + 1000,
+                        pendingIntent
+                    )
+
+                    Log.d(TAG, "AlarmManager로 재시작 예약 완료")
+                } else {
+                    Log.e(TAG, "재시작용 인텐트를 찾을 수 없음")
+                }
+
+                // 3. 현재 프로세스 종료
                 activity.finishAffinity()
 
-                // 3. 짧은 지연 후 프로세스 종료
+                // 4. 강제 프로세스 종료
                 android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                     android.os.Process.killProcess(android.os.Process.myPid())
                 }, 100)
 
+                Log.d(TAG, "앱 재시작 프로세스 완료")
+
             } catch (e: Exception) {
                 Log.e(TAG, "앱 재시작 중 오류", e)
-                // 마지막 수단으로 프로세스 종료
-                android.os.Process.killProcess(android.os.Process.myPid())
+                // 오류 발생 시 기본 방법 시도
+                try {
+                    val packageManager = activity.packageManager
+                    val intent = packageManager.getLaunchIntentForPackage(activity.packageName)
+                    intent?.let {
+                        it.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+                        activity.startActivity(it)
+                    }
+                    activity.finishAffinity()
+                    System.exit(0)
+                } catch (ex: Exception) {
+                    Log.e(TAG, "기본 재시작 방법도 실패", ex)
+                    System.exit(0)
+                }
             }
         }
     }
