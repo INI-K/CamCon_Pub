@@ -73,6 +73,18 @@ class GetSubscriptionUseCase @Inject constructor() {
                     Log.i(TAG, "    고급 필터")
                     Log.i(TAG, "    WebP 내보내기")
                 }
+
+                SubscriptionTier.REFERRER -> {
+                    Log.i(TAG, "    모든 PRO 기능")
+                    Log.i(TAG, "    추천인 혜택")
+                    Log.i(TAG, "    우선 고객 지원")
+                }
+
+                SubscriptionTier.ADMIN -> {
+                    Log.i(TAG, "    모든 기능 접근")
+                    Log.i(TAG, "    사용자 관리")
+                    Log.i(TAG, "    시스템 관리")
+                }
             }
             Log.i(TAG, "======================================")
         } catch (e: Exception) {
