@@ -1,14 +1,14 @@
 package com.inik.camcon.presentation.ui
 
-import android.app.AlertDialog
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Divider
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
@@ -34,6 +35,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Logout
@@ -69,6 +71,7 @@ import com.inik.camcon.BuildConfig
 import com.inik.camcon.data.datasource.local.ThemeMode
 import com.inik.camcon.domain.model.User
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.viewmodel.AdminReferralCodeViewModel
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.AuthViewModel
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
@@ -112,7 +115,8 @@ fun SettingsScreen(
     onBackClick: () -> Unit,
     ptpipViewModel: PtpipViewModel = hiltViewModel(),
     appSettingsViewModel: AppSettingsViewModel = hiltViewModel(),
-    authViewModel: AuthViewModel? = hiltViewModel()
+    authViewModel: AuthViewModel? = hiltViewModel(),
+    adminReferralCodeViewModel: AdminReferralCodeViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
 
@@ -120,6 +124,9 @@ fun SettingsScreen(
     val authUiState by authViewModel?.uiState?.collectAsState() ?: remember {
         mutableStateOf(com.inik.camcon.presentation.viewmodel.AuthUiState())
     }
+
+    // 관리자 레퍼럴 코드 상태
+    val adminReferralState by adminReferralCodeViewModel.uiState.collectAsState()
 
     // 로그아웃 성공 시 LoginActivity로 이동
     LaunchedEffect(authUiState.isSignOutSuccess) {
@@ -132,6 +139,21 @@ fun SettingsScreen(
         }
     }
 
+    // 관리자 레퍼럴 코드 관련 메시지 처리
+    adminReferralState.error?.let { error ->
+        LaunchedEffect(error) {
+            android.widget.Toast.makeText(context, error, android.widget.Toast.LENGTH_LONG).show()
+            adminReferralCodeViewModel.clearError()
+        }
+    }
+
+    adminReferralState.successMessage?.let { message ->
+        LaunchedEffect(message) {
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
+            adminReferralCodeViewModel.clearSuccessMessage()
+        }
+    }
+
     // PTPIP 설정 상태
     val isPtpipEnabled by ptpipViewModel.isPtpipEnabled.collectAsState(initial = false)
     val isWifiConnectionModeEnabled by ptpipViewModel.isWifiConnectionModeEnabled.collectAsState(
@@ -140,7 +162,6 @@ fun SettingsScreen(
     val isAutoDiscoveryEnabled by ptpipViewModel.isAutoDiscoveryEnabled.collectAsState(initial = true)
     val isAutoConnectEnabled by ptpipViewModel.isAutoConnectEnabled.collectAsState(initial = false)
     val lastConnectedName by ptpipViewModel.lastConnectedName.collectAsState(initial = null)
-    val connectionState by ptpipViewModel.connectionState.collectAsState()
 
     // 앱 설정 상태
     val isCameraControlsEnabled by appSettingsViewModel.isCameraControlsEnabled.collectAsState()
@@ -152,7 +173,6 @@ fun SettingsScreen(
     // 색감 전송 설정 상태
     val isColorTransferEnabled by appSettingsViewModel.isColorTransferEnabled.collectAsState()
     val colorTransferReferenceImagePath by appSettingsViewModel.colorTransferReferenceImagePath.collectAsState()
-    val colorTransferTargetImagePath by appSettingsViewModel.colorTransferTargetImagePath.collectAsState()
 
     // 색감 전송 이미지 선택 런처
     val referenceImagePickerLauncher = rememberLauncherForActivityResult(
@@ -181,36 +201,6 @@ fun SettingsScreen(
 
             } catch (e: Exception) {
                 // 오류 처리 (로그 출력 등)
-                e.printStackTrace()
-            }
-        }
-    }
-
-    // 대상 이미지 선택 런처
-    val targetImagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri ->
-        uri?.let { selectedUri ->
-            // 임시로 대상 이미지 설정 (실제 구현에서는 서버에서 받은 최신 사진을 사용)
-            try {
-                val imageDir = File(context.filesDir, "color_transfer_images")
-                if (!imageDir.exists()) {
-                    imageDir.mkdirs()
-                }
-
-                val fileName = "color_target_${System.currentTimeMillis()}.jpg"
-                val targetFile = File(imageDir, fileName)
-
-                context.contentResolver.openInputStream(selectedUri)?.use { inputStream ->
-                    FileOutputStream(targetFile).use { outputStream ->
-                        inputStream.copyTo(outputStream)
-                    }
-                }
-
-                // ViewModel을 통해 대상 이미지 경로 저장
-                appSettingsViewModel.setColorTransferTargetImagePath(targetFile.absolutePath)
-
-            } catch (e: Exception) {
                 e.printStackTrace()
             }
         }
@@ -423,7 +413,7 @@ fun SettingsScreen(
             // 로그아웃 에러 처리
             authUiState.error?.let { error ->
                 LaunchedEffect(error) {
-                    Toast.makeText(context, "로그아웃 실패: $error", Toast.LENGTH_LONG).show()
+                    android.widget.Toast.makeText(context, "로그아웃 실패: $error", android.widget.Toast.LENGTH_LONG).show()
                     authViewModel?.clearError()
                 }
             }
@@ -469,7 +459,7 @@ fun SettingsScreen(
             }
 
             if (showThemeDialog) {
-                AlertDialog.Builder(context)
+                android.app.AlertDialog.Builder(context)
                     .setTitle("테마 설정")
                     .setSingleChoiceItems(
                         arrayOf("시스템 설정 따름", "라이트 모드", "다크 모드").map { it }.toTypedArray(),
@@ -511,6 +501,75 @@ fun SettingsScreen(
                     subtitle = "1.0.0",
                     onClick = { /* TODO */ }
                 )
+            }
+
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+            // 관리자용 레퍼럴 코드 관리 섹션 - 관리자만 표시 (최하단으로 이동)
+            if (adminReferralState.isAdmin) {
+                SettingsSection(title = "관리자 레퍼럴 코드 관리") {
+                    // 통계 정보
+                    val totalCodes = adminReferralState.statistics["totalCodes"] as? Int ?: 0
+                    val availableCodes =
+                        adminReferralState.statistics["availableCodes"] as? Int ?: 0
+                    val usedCodes = adminReferralState.statistics["usedCodes"] as? Int ?: 0
+                    val usageRate = adminReferralState.statistics["usageRate"] as? Int ?: 0
+
+                    SettingsItem(
+                        icon = Icons.Default.Info,
+                        title = "레퍼럴 코드 사용량",
+                        subtitle = "전체: ${totalCodes}개 | 사용 가능: ${availableCodes}개 | 사용됨: ${usedCodes}개 (${usageRate}%)",
+                        onClick = { adminReferralCodeViewModel.refreshData() }
+                    )
+
+                    SettingsItem(
+                        icon = Icons.Default.Settings,
+                        title = "레퍼럴 코드 30개 생성",
+                        subtitle = if (adminReferralState.isLoading) "생성 중..." else "새로운 레퍼럴 코드 30개를 생성합니다",
+                        onClick = {
+                            if (!adminReferralState.isLoading) {
+                                adminReferralCodeViewModel.generateReferralCodes(30)
+                            }
+                        }
+                    )
+
+                    SettingsItem(
+                        icon = Icons.Default.ContentCopy,
+                        title = "사용 가능한 코드 하나 추출",
+                        subtitle = "사용하지 않은 레퍼럴 코드 하나를 클립보드에 복사",
+                        onClick = {
+                            val code = adminReferralCodeViewModel.extractOneAvailableCode()
+                            if (code != null) {
+                                val clipboard =
+                                    context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                val clip =
+                                    android.content.ClipData.newPlainText("referral_code", code)
+                                clipboard.setPrimaryClip(clip)
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "레퍼럴 코드 '$code'가 클립보드에 복사되었습니다",
+                                    android.widget.Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    )
+
+                    if (adminReferralState.isLoading) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.dp),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = MaterialTheme.colors.primary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("처리 중...")
+                        }
+                    }
+                }
             }
         }
     }
