@@ -13,6 +13,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -27,6 +29,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -97,6 +100,7 @@ import com.inik.camcon.presentation.ui.screens.dialogs.TimelapseSettingsDialog
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.CameraUiState
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
+import com.inik.camcon.presentation.viewmodel.RawFileRestriction
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.io.File
@@ -113,6 +117,14 @@ fun CameraControlScreen(
     onFullscreenChange: (Boolean) -> Unit = {}
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
+    val context = LocalContext.current
+
+    // Activity를 ViewModel에 설정
+    LaunchedEffect(context) {
+        (context as? Activity)?.let { activity ->
+            viewModel.setActivity(activity)
+        }
+    }
 
     // UI 상태들을 선별적으로 수집
     val uiState by viewModel.uiState.collectAsState()
@@ -261,6 +273,14 @@ fun CameraControlScreen(
         if (uiState.isUsbInitializing) {
             UsbInitializationOverlay(
                 message = uiState.usbInitializationMessage ?: "USB 카메라 초기화 중..."
+            )
+        }
+
+        // RAW 파일 제한 알림 표시
+        uiState.rawFileRestriction?.let { restriction ->
+            RawFileRestrictionNotification(
+                restriction = restriction,
+                onDismiss = { viewModel.clearRawFileRestriction() }
             )
         }
 
@@ -1201,6 +1221,96 @@ private fun CapturedPhoto.getExifData(): String? {
 }
 
 // ... existing code ...
+
+/**
+ * RAW 파일 제한 알림 컴포넌트 (슬라이드 인/아웃 + 페이드)
+ */
+@Composable
+private fun RawFileRestrictionNotification(
+    restriction: RawFileRestriction,
+    onDismiss: () -> Unit
+) {
+    // 5초 후 자동으로 사라지게 하기
+    LaunchedEffect(restriction.timestamp) {
+        kotlinx.coroutines.delay(5000L)
+        onDismiss()
+    }
+
+    // 화면 상단에 표시
+    AnimatedVisibility(
+        visible = true,
+        enter = slideInVertically(
+            initialOffsetY = { -80 }
+        ) + fadeIn(animationSpec = tween(260)),
+        exit = slideOutVertically(
+            targetOffsetY = { -80 }
+        ) + fadeOut(animationSpec = tween(260))
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 36.dp, start = 16.dp, end = 16.dp)
+        ) {
+            Card(
+                backgroundColor = Color(0xFFFF6B6B),
+                shape = RoundedCornerShape(12.dp),
+                elevation = 8.dp,
+                modifier = Modifier.align(Alignment.TopCenter)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth()
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Photo,
+                            contentDescription = "RAW 알림",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "RAW 파일 제한",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            style = MaterialTheme.typography.h6
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        IconButton(onClick = onDismiss) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "닫기",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "${restriction.fileName}",
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        style = MaterialTheme.typography.body2
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = restriction.message,
+                        color = Color.White.copy(alpha = 0.9f),
+                        fontSize = 13.sp,
+                        style = MaterialTheme.typography.body2
+                    )
+                }
+            }
+        }
+    }
+}
 
 // 프리뷰는 간소화
 @Preview(name = "Camera Control Screen", showBackground = true)
