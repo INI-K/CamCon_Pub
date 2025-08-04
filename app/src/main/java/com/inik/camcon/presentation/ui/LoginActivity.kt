@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
@@ -27,7 +26,6 @@ import androidx.compose.material.Card
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Icon
 import androidx.compose.material.MaterialTheme
-import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Snackbar
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
@@ -45,7 +43,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -235,7 +232,8 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // 추천 코드 입력 필드
+                // 추천 코드 입력 필드 - 숨김 처리
+                /*
                 OutlinedTextField(
                     value = recommendCode,
                     onValueChange = { recommendCode = it },
@@ -247,12 +245,13 @@ fun LoginScreen(
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
                 )
+                */
 
                 // Google Sign In Button - 업데이트가 필요한 경우 비활성화
                 Button(
                     onClick = {
-                        // Google Sign-In 버튼 클릭 시, 추천 코드(recommendCode) 활용 가능
-                        onGoogleSignIn(recommendCode)
+                        // Google Sign-In 버튼 클릭 시, 추천 코드는 빈 문자열로 전달
+                        onGoogleSignIn("")
                     },
                     modifier = Modifier
                         .fillMaxWidth()
