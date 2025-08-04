@@ -393,6 +393,26 @@ private fun PortraitCameraLayout(
         }
     }
 
+    LaunchedEffect(appSettings) {
+        Log.d(
+            "CameraControl",
+            "AppSettings - isCameraControlsEnabled: ${appSettings.isCameraControlsEnabled}"
+        )
+        Log.d("CameraControl", "AppSettings - isLiveViewEnabled: ${appSettings.isLiveViewEnabled}")
+        Log.d(
+            "CameraControl",
+            "AppSettings - isAutoStartEventListener: ${appSettings.isAutoStartEventListener}"
+        )
+        Log.d(
+            "CameraControl",
+            "AppSettings - isShowPreviewInCapture: ${appSettings.isShowPreviewInCapture}"
+        )
+        Log.d(
+            "CameraControl",
+            "조건 확인: ${appSettings.isCameraControlsEnabled && appSettings.isLiveViewEnabled}"
+        )
+    }
+
     val recentPhotos = remember(uiState.capturedPhotos.size) {
         if (uiState.capturedPhotos.isNotEmpty()) {
             uiState.capturedPhotos.takeLast(10).reversed()
