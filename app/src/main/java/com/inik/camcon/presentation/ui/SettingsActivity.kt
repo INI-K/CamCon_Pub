@@ -1,6 +1,6 @@
 package com.inik.camcon.presentation.ui
 
-import android.app.AlertDialog
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -8,6 +8,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,7 +19,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Divider
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
@@ -31,6 +35,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Logout
@@ -45,6 +50,7 @@ import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,15 +58,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
 import com.inik.camcon.BuildConfig
 import com.inik.camcon.data.datasource.local.ThemeMode
+import com.inik.camcon.domain.model.User
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.viewmodel.AdminReferralCodeViewModel
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
+import com.inik.camcon.presentation.viewmodel.AuthViewModel
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
@@ -73,10 +86,12 @@ class SettingsActivity : ComponentActivity() {
         setContent {
             val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
             val themeMode by appSettingsViewModel.themeMode.collectAsState()
+            val authViewModel: AuthViewModel = hiltViewModel()
 
             CamConTheme(themeMode = themeMode) {
                 SettingsScreen(
-                    onBackClick = { finish() }
+                    onBackClick = { finish() },
+                    authViewModel = authViewModel
                 )
             }
         }
@@ -89,7 +104,8 @@ fun SettingsScreenPreview() {
     CamConTheme {
         // Provide a default onBackClick. ViewModel is not injected in Preview.
         SettingsScreen(
-            onBackClick = {}
+            onBackClick = {},
+            authViewModel = null // Preview에서는 null로 처리
         )
     }
 }
@@ -98,10 +114,46 @@ fun SettingsScreenPreview() {
 fun SettingsScreen(
     onBackClick: () -> Unit,
     ptpipViewModel: PtpipViewModel = hiltViewModel(),
-    appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
+    appSettingsViewModel: AppSettingsViewModel = hiltViewModel(),
+    authViewModel: AuthViewModel? = hiltViewModel(),
+    adminReferralCodeViewModel: AdminReferralCodeViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-    
+
+    // Auth 상태 - null 체크 추가
+    val authUiState by authViewModel?.uiState?.collectAsState() ?: remember {
+        mutableStateOf(com.inik.camcon.presentation.viewmodel.AuthUiState())
+    }
+
+    // 관리자 레퍼럴 코드 상태
+    val adminReferralState by adminReferralCodeViewModel.uiState.collectAsState()
+
+    // 로그아웃 성공 시 LoginActivity로 이동
+    LaunchedEffect(authUiState.isSignOutSuccess) {
+        if (authUiState.isSignOutSuccess) {
+            val intent = Intent(context, LoginActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+            context.startActivity(intent)
+            (context as? ComponentActivity)?.finish()
+        }
+    }
+
+    // 관리자 레퍼럴 코드 관련 메시지 처리
+    adminReferralState.error?.let { error ->
+        LaunchedEffect(error) {
+            android.widget.Toast.makeText(context, error, android.widget.Toast.LENGTH_LONG).show()
+            adminReferralCodeViewModel.clearError()
+        }
+    }
+
+    adminReferralState.successMessage?.let { message ->
+        LaunchedEffect(message) {
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
+            adminReferralCodeViewModel.clearSuccessMessage()
+        }
+    }
+
     // PTPIP 설정 상태
     val isPtpipEnabled by ptpipViewModel.isPtpipEnabled.collectAsState(initial = false)
     val isWifiConnectionModeEnabled by ptpipViewModel.isWifiConnectionModeEnabled.collectAsState(
@@ -110,7 +162,6 @@ fun SettingsScreen(
     val isAutoDiscoveryEnabled by ptpipViewModel.isAutoDiscoveryEnabled.collectAsState(initial = true)
     val isAutoConnectEnabled by ptpipViewModel.isAutoConnectEnabled.collectAsState(initial = false)
     val lastConnectedName by ptpipViewModel.lastConnectedName.collectAsState(initial = null)
-    val connectionState by ptpipViewModel.connectionState.collectAsState()
 
     // 앱 설정 상태
     val isCameraControlsEnabled by appSettingsViewModel.isCameraControlsEnabled.collectAsState()
@@ -122,7 +173,6 @@ fun SettingsScreen(
     // 색감 전송 설정 상태
     val isColorTransferEnabled by appSettingsViewModel.isColorTransferEnabled.collectAsState()
     val colorTransferReferenceImagePath by appSettingsViewModel.colorTransferReferenceImagePath.collectAsState()
-    val colorTransferTargetImagePath by appSettingsViewModel.colorTransferTargetImagePath.collectAsState()
 
     // 색감 전송 이미지 선택 런처
     val referenceImagePickerLauncher = rememberLauncherForActivityResult(
@@ -151,36 +201,6 @@ fun SettingsScreen(
 
             } catch (e: Exception) {
                 // 오류 처리 (로그 출력 등)
-                e.printStackTrace()
-            }
-        }
-    }
-
-    // 대상 이미지 선택 런처
-    val targetImagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri ->
-        uri?.let { selectedUri ->
-            // 임시로 대상 이미지 설정 (실제 구현에서는 서버에서 받은 최신 사진을 사용)
-            try {
-                val imageDir = File(context.filesDir, "color_transfer_images")
-                if (!imageDir.exists()) {
-                    imageDir.mkdirs()
-                }
-
-                val fileName = "color_target_${System.currentTimeMillis()}.jpg"
-                val targetFile = File(imageDir, fileName)
-
-                context.contentResolver.openInputStream(selectedUri)?.use { inputStream ->
-                    FileOutputStream(targetFile).use { outputStream ->
-                        inputStream.copyTo(outputStream)
-                    }
-                }
-
-                // ViewModel을 통해 대상 이미지 경로 저장
-                appSettingsViewModel.setColorTransferTargetImagePath(targetFile.absolutePath)
-
-            } catch (e: Exception) {
                 e.printStackTrace()
             }
         }
@@ -220,7 +240,7 @@ fun SettingsScreen(
         ) {
             // 카메라 제어 설정 섹션 - 개발자 기능이 활성화된 경우만 표시
             if (BuildConfig.SHOW_DEVELOPER_FEATURES) {
-                SettingsSection(title = "📱 카메라 제어 설정 (개발 버전)") {
+                SettingsSection(title = "카메라 제어 설정 (개발 버전)") {
                     SettingsItemWithSwitch(
                         icon = Icons.Default.CameraAlt,
                         title = "카메라 컨트롤 표시",
@@ -273,7 +293,7 @@ fun SettingsScreen(
                 Divider(modifier = Modifier.padding(vertical = 8.dp))
 
                 // PTPIP Wi-Fi 카메라 설정 섹션 - 개발자 기능이 활성화된 경우만 표시
-                SettingsSection(title = "📷 Wi-Fi 카메라 연결 (PTPIP) - 개발 버전") {
+                SettingsSection(title = "Wi-Fi 카메라 연결 (PTPIP) - 개발 버전") {
                     SettingsItemWithSwitch(
                         icon = Icons.Default.Wifi,
                         title = "Wi-Fi 카메라 연결",
@@ -332,7 +352,7 @@ fun SettingsScreen(
             }
 
             // 색감 전송 설정 섹션
-            SettingsSection(title = "🎨 색감 전송 설정") {
+            SettingsSection(title = "색감 전송 설정") {
                 SettingsItemWithSwitch(
                     icon = Icons.Default.Photo,
                     title = "색감 전송 기능",
@@ -368,18 +388,34 @@ fun SettingsScreen(
 
             // User Info Section
             SettingsSection(title = "사용자 정보") {
-                SettingsItem(
-                    icon = Icons.Default.Person,
-                    title = "프로필",
-                    subtitle = "사용자 정보 확인 및 수정",
+                val currentUser = authUiState.currentUser
+
+                UserProfileItem(
+                    user = currentUser,
                     onClick = { /* TODO */ }
                 )
                 SettingsItem(
                     icon = Icons.Default.Logout,
-                    title = "로그아웃",
-                    subtitle = "현재 계정에서 로그아웃",
-                    onClick = { /* TODO */ }
+                    title = if (authUiState.isLoading) "로그아웃 중..." else "로그아웃",
+                    subtitle = if (authUiState.isLoading) {
+                        "잠시만 기다려주세요..."
+                    } else {
+                        "현재 계정에서 로그아웃"
+                    },
+                    onClick = {
+                        if (!authUiState.isLoading) {
+                            authViewModel?.signOut()
+                        }
+                    }
                 )
+            }
+
+            // 로그아웃 에러 처리
+            authUiState.error?.let { error ->
+                LaunchedEffect(error) {
+                    android.widget.Toast.makeText(context, "로그아웃 실패: $error", android.widget.Toast.LENGTH_LONG).show()
+                    authViewModel?.clearError()
+                }
             }
 
             Divider(modifier = Modifier.padding(vertical = 8.dp))
@@ -423,7 +459,7 @@ fun SettingsScreen(
             }
 
             if (showThemeDialog) {
-                AlertDialog.Builder(context)
+                android.app.AlertDialog.Builder(context)
                     .setTitle("테마 설정")
                     .setSingleChoiceItems(
                         arrayOf("시스템 설정 따름", "라이트 모드", "다크 모드").map { it }.toTypedArray(),
@@ -465,6 +501,75 @@ fun SettingsScreen(
                     subtitle = "1.0.0",
                     onClick = { /* TODO */ }
                 )
+            }
+
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+            // 관리자용 레퍼럴 코드 관리 섹션 - 관리자만 표시 (최하단으로 이동)
+            if (adminReferralState.isAdmin) {
+                SettingsSection(title = "관리자 레퍼럴 코드 관리") {
+                    // 통계 정보
+                    val totalCodes = adminReferralState.statistics["totalCodes"] as? Int ?: 0
+                    val availableCodes =
+                        adminReferralState.statistics["availableCodes"] as? Int ?: 0
+                    val usedCodes = adminReferralState.statistics["usedCodes"] as? Int ?: 0
+                    val usageRate = adminReferralState.statistics["usageRate"] as? Int ?: 0
+
+                    SettingsItem(
+                        icon = Icons.Default.Info,
+                        title = "레퍼럴 코드 사용량",
+                        subtitle = "전체: ${totalCodes}개 | 사용 가능: ${availableCodes}개 | 사용됨: ${usedCodes}개 (${usageRate}%)",
+                        onClick = { adminReferralCodeViewModel.refreshData() }
+                    )
+
+                    SettingsItem(
+                        icon = Icons.Default.Settings,
+                        title = "레퍼럴 코드 30개 생성",
+                        subtitle = if (adminReferralState.isLoading) "생성 중..." else "새로운 레퍼럴 코드 30개를 생성합니다",
+                        onClick = {
+                            if (!adminReferralState.isLoading) {
+                                adminReferralCodeViewModel.generateReferralCodes(30)
+                            }
+                        }
+                    )
+
+                    SettingsItem(
+                        icon = Icons.Default.ContentCopy,
+                        title = "사용 가능한 코드 하나 추출",
+                        subtitle = "사용하지 않은 레퍼럴 코드 하나를 클립보드에 복사",
+                        onClick = {
+                            val code = adminReferralCodeViewModel.extractOneAvailableCode()
+                            if (code != null) {
+                                val clipboard =
+                                    context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                val clip =
+                                    android.content.ClipData.newPlainText("referral_code", code)
+                                clipboard.setPrimaryClip(clip)
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "레퍼럴 코드 '$code'가 클립보드에 복사되었습니다",
+                                    android.widget.Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    )
+
+                    if (adminReferralState.isLoading) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.dp),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = MaterialTheme.colors.primary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("처리 중...")
+                        }
+                    }
+                }
             }
         }
     }
@@ -597,6 +702,67 @@ fun SettingsItemWithNavigation(
                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
             )
         }
+        Icon(
+            imageVector = Icons.Default.ChevronRight,
+            contentDescription = "더보기",
+            tint = MaterialTheme.colors.onSurface.copy(alpha = 0.4f),
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+@Composable
+fun UserProfileItem(
+    user: User?,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // 프로필 이미지
+        if (user?.photoUrl != null) {
+            AsyncImage(
+                model = user.photoUrl,
+                contentDescription = "프로필 이미지",
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "기본 프로필",
+                    tint = MaterialTheme.colors.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = user?.displayName ?: "사용자",
+                style = MaterialTheme.typography.body1,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = user?.email ?: "로그인이 필요합니다",
+                style = MaterialTheme.typography.caption,
+                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+            )
+        }
+
         Icon(
             imageVector = Icons.Default.ChevronRight,
             contentDescription = "더보기",
