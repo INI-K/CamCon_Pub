@@ -8,8 +8,6 @@ import android.graphics.ColorSpace
 import android.graphics.Matrix
 import android.util.Log
 import android.widget.Toast
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -67,6 +65,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.exifinterface.media.ExifInterface
+import com.github.panpf.zoomimage.CoilZoomAsyncImage
+import com.github.panpf.zoomimage.compose.rememberZoomState
+import com.github.panpf.zoomimage.rememberCoilZoomState
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
 import com.zhangke.imageviewer.ImageViewer
@@ -479,8 +480,8 @@ fun FullScreenPhotoViewer(
 }
 
 /**
- * 0xZhangKe ImageViewer를 사용한 갤러리 스타일의 이미지 뷰어
- * pagerState를 받아서(예: 스와이프 상태 상호작용 차단 등에도 활용 가능)
+ * SubsamplingScaleImageView를 사용한 갤러리 스타일의 이미지 뷰어
+ * 기존 ImageViewer와 유사한 제스처 동작 구현
  */
 @Composable
 private fun GalleryStyleImage(
@@ -489,62 +490,75 @@ private fun GalleryStyleImage(
     photo: CameraPhoto,
     onDismiss: () -> Unit,
     context: android.content.Context,
-    isLocalPhoto: Boolean = false // 로컬 사진 여부를 명시적으로 전달
+    isLocalPhoto: Boolean = false
 ) {
-    val imageViewerState = rememberImageViewerState(
-        minimumScale = 1.0f,
-        maximumScale = 5.0f
-    )
-
-    // 로컬 파일인 경우 Coil을 사용해서 직접 로드
-    val shouldUseLocalFile = isLocalPhoto || java.io.File(photo.path).exists()
-
-    if (shouldUseLocalFile) {
-        // 로컬 파일을 Coil로 원본 해상도로 로드 - 캐시 활성화로 깜빡임 방지
-        val imageRequest = remember(photo.path) {
-            coil.request.ImageRequest.Builder(context)
-                .data(java.io.File(photo.path))
-                .crossfade(true)
-                .allowHardware(true) // 하드웨어 가속 허용
-                .allowRgb565(false) // RGB565 비활성화로 품질 보장
-                .memoryCachePolicy(coil.request.CachePolicy.ENABLED) // 메모리 캐시 활성화로 깜빡임 방지
-                .diskCachePolicy(coil.request.CachePolicy.ENABLED) // 디스크 캐시 활성화로 성능 향상
-                .size(coil.size.Size.ORIGINAL) // 원본 크기 명시적 설정
-                .apply {
-                    // sRGB 색공간 설정
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                        colorSpace(android.graphics.ColorSpace.get(android.graphics.ColorSpace.Named.SRGB))
-                    }
-                }
-                .listener(
-                    onStart = {
-                        Log.d("CoilLoader", "로컬 파일 로드 시작: ${photo.path}")
-                    },
-                    onSuccess = { _, result ->
-                        val drawable = result.drawable
-                        Log.d(
-                            "CoilLoader",
-                            "로컬 파일 로드 성공: ${photo.name}, 크기: ${drawable.intrinsicWidth}x${drawable.intrinsicHeight}"
-                        )
-                    },
-                    onError = { _, result ->
-                        Log.e(
-                            "CoilLoader",
-                            "로컬 파일 로드 실패: ${photo.name}, 오류: ${result.throwable.message}"
-                        )
-                    }
-                )
-                .build()
+    val imageModel: Any? = when {
+        isLocalPhoto || java.io.File(photo.path).exists() -> {
+            Log.d("GalleryStyleImage", "로컬 파일 사용: ${photo.path}")
+            java.io.File(photo.path)
         }
 
-        val painter = coil.compose.rememberAsyncImagePainter(model = imageRequest)
+        fullImageData != null -> {
+            Log.d("GalleryStyleImage", "고화질 데이터 사용: ${fullImageData.size} bytes")
+            fullImageData
+        }
+
+        thumbnailData != null -> {
+            Log.d("GalleryStyleImage", "썸네일 데이터 사용: ${thumbnailData.size} bytes")
+            thumbnailData
+        }
+
+        else -> {
+            Log.d("GalleryStyleImage", "이미지 데이터 없음")
+            null
+        }
+    }
+
+    if (imageModel != null) {
+        Log.d("GalleryStyleImage", "ZoomImage 사용: $imageModel")
+        val zoomState = rememberCoilZoomState()
+        CoilZoomAsyncImage(
+            model = imageModel,
+            contentDescription = photo.name,
+            zoomState = zoomState,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Fit,
+        )
+    } else {
+        Log.d("GalleryStyleImage", "로딩 인디케이터 표시")
+        LoadingIndicator()
+    }
+}
+
+@Composable
+private fun HighResolutionImageViewer(
+    imageData: ByteArray,
+    photoName: String,
+    modifier: Modifier = Modifier
+) {
+    // 기존 방식으로 되돌림 - Canvas 최적화 적용
+    val (rotatedBitmap, isPortrait) = remember(
+        imageData.contentHashCode(),
+        photoName
+    ) {
+        processImageWithOptimization(imageData, photoName, "full")
+    }
+
+    if (rotatedBitmap != null) {
+        val contentScale =
+            if (isPortrait) ContentScale.Fit else ContentScale.FillBounds
+
+        val imageViewerState = rememberImageViewerState(
+            minimumScale = 1.0f,
+            maximumScale = 5.0f
+        )
 
         ImageViewer(state = imageViewerState) {
-            androidx.compose.foundation.Image(
-                painter = painter,
-                contentDescription = photo.name,
-                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                modifier = Modifier
+            Image(
+                bitmap = rotatedBitmap.asImageBitmap(),
+                contentDescription = photoName,
+                contentScale = contentScale,
+                modifier = modifier
                     .fillMaxSize()
                     .graphicsLayer(
                         compositingStrategy = CompositingStrategy.Offscreen
@@ -552,75 +566,7 @@ private fun GalleryStyleImage(
             )
         }
     } else {
-        // 기존 ByteArray 기반 로직
-        Crossfade(
-            targetState = if (fullImageData != null) "full" else "thumbnail",
-            animationSpec = tween(durationMillis = 350)
-        ) { which ->
-            when (which) {
-                "full" -> {
-                    val (rotatedBitmap, isPortrait) = remember(
-                        fullImageData?.contentHashCode(),
-                        photo.path
-                    ) {
-                        processImageWithOptimization(fullImageData, photo.name, "full")
-                    }
-
-                    if (rotatedBitmap != null) {
-                        val contentScale =
-                            if (isPortrait) ContentScale.Fit else ContentScale.FillBounds
-
-                        ImageViewer(state = imageViewerState) {
-                            Image(
-                                bitmap = rotatedBitmap.asImageBitmap(),
-                                contentDescription = photo.name,
-                                contentScale = contentScale,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .graphicsLayer(
-                                        compositingStrategy = CompositingStrategy.Offscreen
-                                    )
-                            )
-                        }
-                    } else {
-                        LoadingIndicator()
-                    }
-                }
-
-                "thumbnail" -> {
-                    if (thumbnailData != null) {
-                        val (rotatedBitmap, isPortrait) = remember(
-                            thumbnailData.contentHashCode(),
-                            photo.path
-                        ) {
-                            processImageWithOptimization(thumbnailData, photo.name, "thumbnail")
-                        }
-
-                        if (rotatedBitmap != null) {
-                            val contentScale =
-                                if (isPortrait) ContentScale.Fit else ContentScale.FillBounds
-
-                            ImageViewer(state = imageViewerState) {
-                                Image(
-                                    bitmap = rotatedBitmap.asImageBitmap(),
-                                    contentDescription = photo.name,
-                                    contentScale = contentScale,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .graphicsLayer(
-                                            compositingStrategy = CompositingStrategy.Offscreen
-                                        )
-                                )
-                            }
-                        } else {
-                            LoadingIndicator()
-                        }
-                    } else {
-                        LoadingIndicator()
-                    }
-                }
-            }
-        }
+        LoadingIndicator()
     }
 }
 
@@ -639,7 +585,7 @@ private fun LoadingIndicator() {
 }
 
 /**
- * 이미지 처리 최적화 함수 - 성능 향상을 위한 비트맵 처리
+ * 이미지 처리 최적화 함수 - Canvas 메모리 제한을 고려한 비트맵 처리
  */
 private fun processImageWithOptimization(
     imageData: ByteArray?,
@@ -662,9 +608,28 @@ private fun processImageWithOptimization(
         val originalWidth = options.outWidth
         val originalHeight = options.outHeight
 
-        // 메모리 절약을 위한 샘플링 (4K 이상 이미지는 다운스케일)
-        val maxDimension = 4096 // 4K 해상도 제한
+        // Canvas 제한을 고려한 동적 최대 해상도 계산
+        // Android Canvas 최대 비트맵 크기: 대략 100MB (가로 x 세로 x 4바이트)
+        val maxPixels = 25_000_000L // 약 25M pixels (Canvas 제한보다 보수적)
+        val currentPixels = originalWidth.toLong() * originalHeight.toLong()
+
+        val maxDimension = if (currentPixels > maxPixels) {
+            // 비율을 유지하면서 픽셀 수를 줄임
+            val scaleFactor = kotlin.math.sqrt(maxPixels.toDouble() / currentPixels.toDouble())
+            kotlin.math.min(originalWidth * scaleFactor, originalHeight * scaleFactor).toInt()
+        } else {
+            // 원본이 충분히 작으면 최대 4K까지 허용
+            4096
+        }
+
         val sampleSize = calculateInSampleSize(originalWidth, originalHeight, maxDimension)
+
+        Log.d(
+            "CANVAS_OPTIMIZATION",
+            "$imageType - 원본: ${originalWidth}x${originalHeight} (${currentPixels}px), " +
+                    "제한: ${maxDimension}px, 샘플링: ${sampleSize}, " +
+                    "예상 크기: ${originalWidth / sampleSize}x${originalHeight / sampleSize}"
+        )
 
         // 실제 디코딩
         val decodeOptions = BitmapFactory.Options().apply {
@@ -676,6 +641,35 @@ private fun processImageWithOptimization(
         }
 
         bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.size, decodeOptions)
+
+        // 비트맵 생성 후 크기 재확인 및 추가 스케일링 (안전장치)
+        bitmap?.let { bmp ->
+            val bitmapPixels = bmp.width.toLong() * bmp.height.toLong()
+            if (bitmapPixels > maxPixels) {
+                Log.w(
+                    "CANVAS_OPTIMIZATION",
+                    "비트맵이 여전히 너무 큼: ${bmp.width}x${bmp.height} (${bitmapPixels}px), 추가 스케일링 필요"
+                )
+
+                // 추가 스케일링
+                val additionalScale =
+                    kotlin.math.sqrt(maxPixels.toDouble() / bitmapPixels.toDouble())
+                val newWidth = (bmp.width * additionalScale).toInt()
+                val newHeight = (bmp.height * additionalScale).toInt()
+
+                val scaledBitmap =
+                    android.graphics.Bitmap.createScaledBitmap(bmp, newWidth, newHeight, true)
+                if (scaledBitmap != bmp) {
+                    bmp.recycle()
+                }
+                bitmap = scaledBitmap
+
+                Log.d(
+                    "CANVAS_OPTIMIZATION",
+                    "추가 스케일링 완료: ${newWidth}x${newHeight}"
+                )
+            }
+        }
 
         // EXIF 회전 정보 읽기
         val exif = ExifInterface(ByteArrayInputStream(imageData))
@@ -704,20 +698,33 @@ private fun processImageWithOptimization(
     // 회전 적용 (필요한 경우만)
     val finalBitmap = if (bitmap != null && rotationDegrees != 0) {
         try {
-            val matrix = Matrix().apply {
-                postRotate(rotationDegrees.toFloat())
+            // 회전 후 크기도 Canvas 제한 내인지 확인
+            val localBitmap = bitmap!! // Smart cast 회피를 위한 로컬 변수
+            val rotatedWidth =
+                if (rotationDegrees == 90 || rotationDegrees == 270) localBitmap.height else localBitmap.width
+            val rotatedHeight =
+                if (rotationDegrees == 90 || rotationDegrees == 270) localBitmap.width else localBitmap.height
+            val rotatedPixels = rotatedWidth.toLong() * rotatedHeight.toLong()
+
+            if (rotatedPixels > 25_000_000L) {
+                Log.w("CANVAS_OPTIMIZATION", "회전 후 비트맵이 너무 클 것으로 예상, 회전 생략")
+                localBitmap
+            } else {
+                val matrix = Matrix().apply {
+                    postRotate(rotationDegrees.toFloat())
+                }
+
+                val rotatedBitmap = android.graphics.Bitmap.createBitmap(
+                    localBitmap, 0, 0, localBitmap.width, localBitmap.height, matrix, true
+                )
+
+                // 원본 비트맵 메모리 해제
+                if (rotatedBitmap != localBitmap) {
+                    localBitmap.recycle()
+                }
+
+                rotatedBitmap
             }
-
-            val rotatedBitmap = android.graphics.Bitmap.createBitmap(
-                bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true
-            )
-
-            // 원본 비트맵 메모리 해제
-            if (rotatedBitmap != bitmap) {
-                bitmap.recycle()
-            }
-
-            rotatedBitmap
         } catch (e: Exception) {
             Log.e("EXIF_ROTATE_OPTIMIZED", "$imageType 비트맵 회전 실패: ${e.message}")
             bitmap
@@ -730,10 +737,16 @@ private fun processImageWithOptimization(
     val isPortrait = finalBitmap?.let { it.height > it.width } ?: false
 
     finalBitmap?.let { bmp ->
+        val finalPixels = bmp.width.toLong() * bmp.height.toLong()
         Log.d(
             "EXIF_ROTATE_OPTIMIZED",
-            "$imageType 최종 비트맵 크기(회전적용후): ${bmp.width}x${bmp.height}, isPortrait: $isPortrait"
+            "$imageType 최종 비트맵 크기(회전적용후): ${bmp.width}x${bmp.height} (${finalPixels}px), isPortrait: $isPortrait"
         )
+
+        // Canvas 제한 경고
+        if (finalPixels > 20_000_000L) {
+            Log.w("CANVAS_OPTIMIZATION", "⚠️ 최종 비트맵이 Canvas 제한에 근접함: ${finalPixels}px")
+        }
     }
 
     return Pair(finalBitmap, isPortrait)
