@@ -226,7 +226,31 @@ fun PhotoPreviewScreen(
             thumbnailData = viewModel.getThumbnail(photo.path),
             fullImageData = fullImageCache[photo.path], // 실시간으로 업데이트되는 실제 파일 데이터
             isDownloadingFullImage = downloadingImages.contains(photo.path),
-            onDownload = { viewModel.downloadPhoto(photo) },
+            onDownload = { 
+                // RAW 파일 접근 권한 체크
+                if (com.inik.camcon.utils.SubscriptionUtils.isRawFile(photo.path)) {
+                    val tier = uiState.currentTier
+                    val canAccess = tier == com.inik.camcon.domain.model.SubscriptionTier.PRO || 
+                                   tier == com.inik.camcon.domain.model.SubscriptionTier.REFERRER || 
+                                   tier == com.inik.camcon.domain.model.SubscriptionTier.ADMIN
+                    
+                    if (!canAccess) {
+                        // RAW 파일 다운로드 제한 메시지 표시
+                        val message = when (tier) {
+                            com.inik.camcon.domain.model.SubscriptionTier.FREE -> 
+                                "RAW 파일 다운로드는 준비중입니다.\nJPG 파일만 다운로드하실 수 있습니다."
+                            com.inik.camcon.domain.model.SubscriptionTier.BASIC -> 
+                                "RAW 파일 다운로드는 PRO 구독에서만 가능합니다.\nPRO로 업그레이드해주세요!"
+                            else -> "RAW 파일을 다운로드할 수 없습니다."
+                        }
+                        // 에러 메시지 표시 (ViewModel을 통해)
+                        viewModel.clearError() // 기존 에러 클리어 후
+                        // ViewModel에서 직접 에러 상태 설정은 불가하므로, 대신 다운로드 시도로 처리
+                        // viewModel.downloadPhoto에서 이미 RAW 제한 로직이 있음
+                    }
+                }
+                viewModel.downloadPhoto(photo) 
+            },
             viewModel = viewModel, // ViewModel을 통해 썸네일 캐시 공유
             localPhotos = if (uiState.photos.any { File(it.path).exists() }) uiState.photos else null // 로컬 사진인 경우 목록 전달
         )
@@ -297,7 +321,14 @@ private fun ModernHeader(
     viewModel: PhotoPreviewViewModel? = null
 ) {
     var lastClickTime by remember { mutableStateOf(0L) }
-    
+
+    // 사용자 티어 정보 가져오기
+    val uiState by viewModel?.uiState?.collectAsState()
+        ?: remember { mutableStateOf(com.inik.camcon.presentation.viewmodel.PhotoPreviewUiState()) }
+    val canAccessRaw = uiState.currentTier == com.inik.camcon.domain.model.SubscriptionTier.PRO ||
+            uiState.currentTier == com.inik.camcon.domain.model.SubscriptionTier.REFERRER ||
+            uiState.currentTier == com.inik.camcon.domain.model.SubscriptionTier.ADMIN
+
     Column {
         // 첫 번째 행: 제목 중앙 정렬, 새로고침 버튼 우측
         Box(
@@ -379,13 +410,37 @@ private fun ModernHeader(
             }
 
             TextButton(
-                onClick = { onFilterChange(FileTypeFilter.RAW) },
+                onClick = {
+                    if (canAccessRaw) {
+                        onFilterChange(FileTypeFilter.RAW)
+                    } else {
+                        // RAW 접근 권한 없을 때 제한 메시지 표시
+                        val message = when (uiState.currentTier) {
+                            com.inik.camcon.domain.model.SubscriptionTier.FREE ->
+                                "RAW 파일 보기는 준비중입니다.\nJPG 파일만 확인하실 수 있습니다."
+
+                            com.inik.camcon.domain.model.SubscriptionTier.BASIC ->
+                                "RAW 파일은 PRO 구독에서만 볼 수 있습니다.\nPRO로 업그레이드해주세요!"
+
+                            else -> "RAW 파일에 접근할 수 없습니다."
+                        }
+                        viewModel?.let { vm ->
+                            vm.uiState.value.copy(error = message).let { newState ->
+                                // ViewModel의 private 메서드이므로 직접 호출 불가
+                                // 대신 RAW 필터 선택을 시도하여 ViewModel에서 에러 처리하도록 함
+                                onFilterChange(FileTypeFilter.RAW)
+                            }
+                        }
+                    }
+                },
                 enabled = fileTypeFilter != FileTypeFilter.RAW
             ) {
                 Text(
-                    text = "RAW",
+                    text = "RAW${if (!canAccessRaw) " 🔒" else ""}",
                     color = if (fileTypeFilter == FileTypeFilter.RAW)
                         MaterialTheme.colors.primary
+                    else if (!canAccessRaw)
+                        MaterialTheme.colors.onSurface.copy(alpha = 0.4f)
                     else
                         MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
                     style = MaterialTheme.typography.button
