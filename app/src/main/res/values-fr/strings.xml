@@ -176,4 +176,78 @@
     <string name="minutes_ago">Il y a %d minutes</string>
     <string name="hours_ago">Il y a %d heures</string>
     <string name="days_ago">Il y a %d jours</string>
+
+    <!-- États Vides -->
+    <string name="no_photos">Pas de photos</string>
+    <string name="connect_camera_and_capture">Connectez votre appareil photo via USB\net capturez des photos</string>
+    <string name="check_camera_connection">• Vérifiez si l\'appareil photo est connecté\n• Balayez vers le bas pour actualiser</string>
+    <string name="image_load_failed">Impossible de charger l\'image</string>
+
+    <!-- Connexion USB -->
+    <string name="usb_refresh">Actualiser USB</string>
+    <string name="usb_permission_request">Demande de Permission USB</string>
+
+    <!-- Connexion Wi-Fi -->
+    <string name="wifi_camera_connection">Connexion Appareil Photo Wi-Fi</string>
+    <string name="color_transfer_settings">Paramètres de Transfert de Couleur</string>
+    <string name="not_connected_to_camera_ap">Non connecté au PA de l\'appareil photo</string>
+    <string name="connected_network">Réseau connecté: %s</string>
+    <string name="detected_camera_ip">IP d\'appareil photo détectée: %s</string>
+    <string name="connect_to_camera_wifi_first">Connectez-vous d\'abord au hotspot Wi-Fi de l\'appareil photo pour commencer la découverte de l\'appareil photo.</string>
+    <string name="camera_connection_ui_area">Zone Interface de Connexion Appareil Photo</string>
+    <string name="auto_reconnect">Reconnexion Automatique</string>
+    <string name="auto_reconnect_description">Se reconnecter automatiquement à l\'appareil photo lorsque le réseau Wi-Fi change</string>
+    <string name="manual_connection_management">Gérer la connexion de l\'appareil photo manuellement</string>
+    <string name="wifi_feature_info_area">Zone de Carte d\'Information des Fonctions Wi-Fi</string>
+
+    <!-- Informations Photo -->
+    <string name="resolution">Résolution</string>
+    <string name="capture_date">Date de Capture</string>
+    <string name="file_path">Chemin</string>
+    <string name="file_name">Nom de Fichier</string>
+    <string name="file_size">Taille</string>
+    <string name="download_photo">Télécharger Photo</string>
+    <string name="date_format_pattern">dd/MM/yyyy HH:mm</string>
+    <string name="flash_not_used">Flash non utilisé</string>
+    <string name="flash_used">Flash utilisé</string>
+    <string name="focus_auto">Automatique</string>
+    <string name="focus_manual">Manuel</string>
+
+    <!-- Live View -->
+    <string name="live_view_not_supported">Live View Non Supporté</string>
+    <string name="camera_does_not_support_live_view">Ce modèle d\'appareil photo ne supporte pas le live view</string>
+    <string name="liveview_not_supported">Live View Non Supporté</string>
+    <string name="liveview_not_supported_detail">Ce modèle d\'appareil photo ne supporte pas le live view</string>
+    <string name="processing_liveview_frame">Traitement de l\'image live view...</string>
+    <string name="loading_liveview_frame">Chargement de l\'image live view...</string>
+    <string name="capturing_photo">Capture de photo...</string>
+    <string name="starting_liveview">Démarrage du live view...</string>
+
+    <!-- Badges de Fonctionnalités -->
+    <string name="live_view">Live View</string>
+    <string name="time_lapse">Timelapse</string>
+    <string name="burst">Rafale</string>
+    <string name="burst_shooting">Rafale</string>
+    <string name="video_4k">Vidéo 4K</string>
+    <string name="remote_control">Télécommande</string>
+    <string name="bracketing">Bracketing</string>
+
+    <!-- Aide Appareil Photo -->
+    <string name="check_other_apps_not_using_camera">Vérifiez qu\'aucune autre app n\'utilise l\'appareil photo.</string>
+    <string name="camera_specific_settings">Paramètres spécifiques à l\'appareil photo:</string>
+    <string name="canon_usb_setting">• Canon: Menu > Paramètres de Communication > Connexion USB > Prise de Vue à Distance PC</string>
+    <string name="nikon_usb_setting">• Nikon: Menu > USB > Mode PTP/MTP</string>
+    <string name="sony_usb_setting">• Sony: Menu > Connexion USB > Télécommande PC</string>
+    <string name="camera_connection_help_title">Dépannage de Connexion d\'Appareil Photo</string>
+    <string name="camera_connection_help_message">Impossible de trouver l\'appareil photo. Veuillez vérifier ce qui suit:</string>
+    <string name="check_camera_pc_mode">Vérifiez si l\'appareil photo est réglé en mode PC/Télécommande.</string>
+    <string name="check_usb_cable">Vérifiez si le câble USB est correctement connecté.</string>
+    <string name="check_camera_power">Vérifiez si l\'appareil photo est allumé.</string>
+    <string name="canon_camera_settings">• Canon: Menu > Paramètres de Communication > Connexion USB > Prise de Vue à Distance PC</string>
+    <string name="nikon_camera_settings">• Nikon: Menu > USB > Mode PTP/MTP</string>
+    <string name="sony_camera_settings">• Sony: Menu > Connexion USB > Télécommande PC</string>
+
+    <!-- USB Connection -->
+    <string name="refresh_usb">Actualiser USB</string>
+    <string name="request_usb_permission">Demander Permission USB</string>
 </resources>

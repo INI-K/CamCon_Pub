@@ -7,9 +7,10 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.inik.camcon.presentation.ui.screens.CameraControlScreen
+import com.inik.camcon.presentation.ui.screens.MyPhotosScreen
 import com.inik.camcon.presentation.ui.screens.PhotoPreviewScreen
 import com.inik.camcon.presentation.ui.screens.PtpipConnectionScreen
-import com.inik.camcon.presentation.ui.screens.ServerPhotosScreen
+import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
 
 /**
@@ -19,6 +20,7 @@ import com.inik.camcon.presentation.viewmodel.PtpipViewModel
 @Composable
 fun AppNavigation(
     navController: NavHostController,
+    cameraViewModel: CameraViewModel,
     startDestination: String = AppDestination.CameraControl.route,
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -34,11 +36,11 @@ fun AppNavigation(
         }
 
         composable(AppDestination.CameraControl.route) {
-            CameraControlScreen()
+            CameraControlScreen(viewModel = cameraViewModel)
         }
 
         composable(AppDestination.ServerPhotos.route) {
-            ServerPhotosScreen()
+            MyPhotosScreen()
         }
 
         // 모달 화면들

@@ -3,6 +3,7 @@ package com.inik.camcon.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
+import com.inik.camcon.data.datasource.local.ThemeMode
 import com.inik.camcon.domain.usecase.ColorTransferUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -25,17 +26,18 @@ class AppSettingsViewModel @Inject constructor(
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5000),
-                initialValue = true
+                initialValue = false
             )
 
     /**
      * 라이브뷰 표시 여부
+     * 기본값을 false로 변경하여 USB 연결 시 기본적으로 수신 화면이 표시되도록 수정
      */
     val isLiveViewEnabled: StateFlow<Boolean> = appPreferencesDataSource.isLiveViewEnabled
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = true
+            initialValue = false
         )
 
     /**
@@ -111,6 +113,16 @@ class AppSettingsViewModel @Inject constructor(
                 started = SharingStarted.WhileSubscribed(5000),
                 initialValue = null
             )
+
+    /**
+     * 테마 모드 설정
+     */
+    val themeMode: StateFlow<ThemeMode> = appPreferencesDataSource.themeMode
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = ThemeMode.FOLLOW_SYSTEM
+        )
 
     /**
      * 카메라 컨트롤 표시 여부 설정
@@ -191,6 +203,15 @@ class AppSettingsViewModel @Inject constructor(
     fun setColorTransferTargetImagePath(path: String?) {
         viewModelScope.launch {
             appPreferencesDataSource.setColorTransferTargetImagePath(path)
+        }
+    }
+
+    /**
+     * 테마 모드 설정
+     */
+    fun setThemeMode(mode: ThemeMode) {
+        viewModelScope.launch {
+            appPreferencesDataSource.setThemeMode(mode)
         }
     }
 

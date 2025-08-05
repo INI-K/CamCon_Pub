@@ -14,6 +14,10 @@
     <uses-permission
         android:name="android.permission.MANAGE_USB"
         tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <!-- 파일 시스템 접근 권한 -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
@@ -35,6 +39,10 @@
         android:name="android.permission.MEDIA_CONTENT_CONTROL"
         tools:ignore="ProtectedPermissions" />
 
+    <!-- Google Play Services 관련 권한 추가 -->
+    <uses-permission android:name="com.google.android.providers.gsf.permission.READ_GSERVICES" />
+    <uses-permission android:name="com.google.android.gms.permission.ACTIVITY_RECOGNITION" />
+
     <!-- USB Host 모드 지원 선언 -->
     <uses-feature
         android:name="android.hardware.usb.host"
@@ -47,18 +55,35 @@
 
     <application
         android:name=".CamCon"
+        android:largeHeap="true"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
+        android:hardwareAccelerated="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:requestLegacyExternalStorage="true"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.CamCon"
-        android:hardwareAccelerated="true"
         android:usesCleartextTraffic="true"
-        android:requestLegacyExternalStorage="true"
         tools:targetApi="31">
+
+        <!-- Google Play Services 버전 메타데이터 추가 -->
+        <meta-data
+            android:name="com.google.android.gms.version"
+            android:value="@integer/google_play_services_version" />
+
+        <!-- Firebase 및 Google Services 설정 -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_launcher_foreground" />
+
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/colorPrimary" />
+
         <activity
             android:name=".presentation.ui.SplashActivity"
             android:exported="true"
@@ -92,12 +117,17 @@
             android:name=".presentation.ui.PtpipConnectionActivity"
             android:exported="false"
             android:screenOrientation="fullSensor"
-            android:label="Wi-Fi 카메라 연결" />
+            android:label="@string/wifi_camera_connection" />
         <activity
             android:name=".presentation.ui.ColorTransferSettingsActivity"
             android:exported="false"
             android:screenOrientation="fullSensor"
-            android:label="색감 전송 설정" />
+            android:label="@string/color_transfer_settings" />
+        <activity
+            android:name=".presentation.ui.OpenSourceLicensesActivity"
+            android:exported="false"
+            android:screenOrientation="fullSensor"
+            android:label="오픈소스 라이선스" />
 
         <!-- FileProvider for sharing photos -->
         <provider
@@ -109,6 +139,13 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <!-- 백그라운드 동기화 서비스 -->
+        <service
+            android:name=".data.service.BackgroundSyncService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
     </application>
 

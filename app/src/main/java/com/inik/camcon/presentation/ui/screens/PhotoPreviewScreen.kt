@@ -1,5 +1,6 @@
 package com.inik.camcon.presentation.ui.screens
 
+// Multi-select feature: Required imports
 import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
@@ -14,11 +15,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
+import androidx.compose.foundation.lazy.staggeredgrid.items
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
@@ -50,11 +51,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.components.EmptyPhotoState
+import com.inik.camcon.presentation.ui.screens.components.FluidPhotoThumbnail
 import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
-import com.inik.camcon.presentation.ui.screens.components.PhotoThumbnail
+import com.inik.camcon.presentation.ui.screens.components.UsbInitializationOverlay
 import com.inik.camcon.presentation.viewmodel.FileTypeFilter
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
 import kotlinx.coroutines.delay
+import java.io.File
 
 /**
  * 카메라에서 촬영한 사진들을 미리보기로 보여주는 메인 화면
@@ -82,10 +85,16 @@ fun PhotoPreviewScreen(
         }
     )
 
+    // 멀티 선택 모드에서 뒤로가기 처리
+    BackHandler(enabled = uiState.isMultiSelectMode) {
+        viewModel.exitMultiSelectMode()
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .pullRefresh(pullRefreshState)
+            .padding(horizontal = 16.dp) // 좌우 마진 추가
     ) {
         Column(
             modifier = Modifier
@@ -93,15 +102,34 @@ fun PhotoPreviewScreen(
                 .padding(top = 24.dp) // 상단 마진 증가 (16dp → 24dp)
         ) {
             // 상단 타이틀 영역 (모던한 디자인)
-            ModernHeader(
-                photoCount = uiState.photos.size,
-                currentPage = uiState.currentPage,
-                totalPages = uiState.totalPages,
-                onRefresh = { viewModel.loadCameraPhotos() },
-                fileTypeFilter = uiState.fileTypeFilter,
-                onFilterChange = { filter -> viewModel.changeFileTypeFilter(filter) },
-                viewModel = viewModel
-            )
+            if (uiState.isMultiSelectMode) {
+                MultiSelectActionBar(
+                    selectedCount = uiState.selectedPhotos.size,
+                    onSelectAll = { viewModel.selectAllPhotos() },
+                    onDeselectAll = { viewModel.deselectAllPhotos() },
+                    onDownload = { viewModel.downloadSelectedPhotos() },
+                    onCancel = { viewModel.exitMultiSelectMode() }
+                )
+            } else {
+                ModernHeader(
+                    photoCount = uiState.photos.size,
+                    currentPage = uiState.currentPage,
+                    totalPages = uiState.totalPages,
+                    onRefresh = { viewModel.loadCameraPhotos() },
+                    fileTypeFilter = uiState.fileTypeFilter,
+                    onFilterChange = { filter -> viewModel.changeFileTypeFilter(filter) },
+                    viewModel = viewModel
+                )
+            }
+
+            // 카메라 이벤트 초기화 블록 오버레이 표시
+            if (uiState.isInitializing) {
+                UsbInitializationOverlay(
+                    message = "카메라 이벤트 초기화 중...",
+                    progress = null
+                )
+                return@Column // UI 상호작용 완전 차단 (오버레이만 보임)
+            }
 
             // 메인 콘텐츠
             when {
@@ -126,7 +154,7 @@ fun PhotoPreviewScreen(
             }
         }
 
-        // Pull to refresh 인디케이터
+        // Pull to refresh 인디케이터 - 정상 동작 복원
         PullRefreshIndicator(
             refreshing = uiState.isLoading,
             state = pullRefreshState,
@@ -144,6 +172,14 @@ fun PhotoPreviewScreen(
 
         // 선택된 사진의 실제 파일 다운로드 시작 (한 번만 실행, photo.path가 변경될 때만)
         LaunchedEffect(photo.path) {
+            // 로컬 파일인지 확인
+            val isLocalFile = File(photo.path).exists()
+
+            if (isLocalFile) {
+                Log.d("PhotoPreviewScreen", "로컬 파일이므로 다운로드 건너뛰기: ${photo.name}")
+                return@LaunchedEffect
+            }
+
             Log.d(
                 "PhotoPreviewScreen",
                 "ImageViewer 진입 - 최적화된 다운로드: ${photo.name}"
@@ -190,11 +226,36 @@ fun PhotoPreviewScreen(
             thumbnailData = viewModel.getThumbnail(photo.path),
             fullImageData = fullImageCache[photo.path], // 실시간으로 업데이트되는 실제 파일 데이터
             isDownloadingFullImage = downloadingImages.contains(photo.path),
-            onDownload = { viewModel.downloadPhoto(photo) },
-            viewModel = viewModel // ViewModel을 통해 썸네일 캐시 공유
+            onDownload = { 
+                // RAW 파일 접근 권한 체크
+                if (com.inik.camcon.utils.SubscriptionUtils.isRawFile(photo.path)) {
+                    val tier = uiState.currentTier
+                    val canAccess = tier == com.inik.camcon.domain.model.SubscriptionTier.PRO || 
+                                   tier == com.inik.camcon.domain.model.SubscriptionTier.REFERRER || 
+                                   tier == com.inik.camcon.domain.model.SubscriptionTier.ADMIN
+                    
+                    if (!canAccess) {
+                        // RAW 파일 다운로드 제한 메시지 표시
+                        val message = when (tier) {
+                            com.inik.camcon.domain.model.SubscriptionTier.FREE -> 
+                                "RAW 파일 다운로드는 준비중입니다.\nJPG 파일만 다운로드하실 수 있습니다."
+                            com.inik.camcon.domain.model.SubscriptionTier.BASIC -> 
+                                "RAW 파일 다운로드는 PRO 구독에서만 가능합니다.\nPRO로 업그레이드해주세요!"
+                            else -> "RAW 파일을 다운로드할 수 없습니다."
+                        }
+                        // 에러 메시지 표시 (ViewModel을 통해)
+                        viewModel.clearError() // 기존 에러 클리어 후
+                        // ViewModel에서 직접 에러 상태 설정은 불가하므로, 대신 다운로드 시도로 처리
+                        // viewModel.downloadPhoto에서 이미 RAW 제한 로직이 있음
+                    }
+                }
+                viewModel.downloadPhoto(photo) 
+            },
+            viewModel = viewModel, // ViewModel을 통해 썸네일 캐시 공유
+            localPhotos = if (uiState.photos.any { File(it.path).exists() }) uiState.photos else null // 로컬 사진인 경우 목록 전달
         )
 
-        BackHandler {
+        BackHandler(enabled = !uiState.isMultiSelectMode) {
             viewModel.selectPhoto(null)
         }
     }
@@ -260,30 +321,42 @@ private fun ModernHeader(
     viewModel: PhotoPreviewViewModel? = null
 ) {
     var lastClickTime by remember { mutableStateOf(0L) }
-    
+
+    // 사용자 티어 정보 가져오기
+    val uiState by viewModel?.uiState?.collectAsState()
+        ?: remember { mutableStateOf(com.inik.camcon.presentation.viewmodel.PhotoPreviewUiState()) }
+    val canAccessRaw = uiState.currentTier == com.inik.camcon.domain.model.SubscriptionTier.PRO ||
+            uiState.currentTier == com.inik.camcon.domain.model.SubscriptionTier.REFERRER ||
+            uiState.currentTier == com.inik.camcon.domain.model.SubscriptionTier.ADMIN
+
     Column {
-        // 첫 번째 행: 제목과 새로고침 버튼
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        // 첫 번째 행: 제목 중앙 정렬, 새로고침 버튼 우측
+        Box(
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Column {
+            // 중앙 정렬된 제목
+            Column(
+                modifier = Modifier.align(Alignment.Center),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 Text(
                     text = stringResource(R.string.camera_photo_list),
-                    color = MaterialTheme.colors.onPrimary,
-                    style = MaterialTheme.typography.h6
+                    color = MaterialTheme.colors.onSurface,
+                    style = MaterialTheme.typography.h6,
+                    textAlign = TextAlign.Center
                 )
                 if (photoCount > 0) {
                     Text(
                         text = "${photoCount}장의 사진" +
                                 if (totalPages > 0) " (페이지 ${currentPage + 1}/${totalPages})" else "",
-                        color = MaterialTheme.colors.onPrimary.copy(alpha = 0.7f),
-                        style = MaterialTheme.typography.caption
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
+                        style = MaterialTheme.typography.caption,
+                        textAlign = TextAlign.Center
                     )
                 }
             }
 
+            // 우측 새로고침 버튼
             IconButton(
                 onClick = {
                     val currentTime = System.currentTimeMillis()
@@ -296,27 +369,28 @@ private fun ModernHeader(
                         onRefresh()
                     }
                     lastClickTime = currentTime
-                }
+                },
+                modifier = Modifier.align(Alignment.CenterEnd)
             ) {
                 Icon(
                     Icons.Default.Refresh,
                     contentDescription = "새로고침",
-                    tint = MaterialTheme.colors.onPrimary
+                    tint = MaterialTheme.colors.onSurface
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp)) // 여백 증가 (12dp → 16dp)
 
-        // 두 번째 행: 파일 타입 필터 버튼들
+        // 두 번째 행: 파일 타입 필터 버튼들 (중앙 정렬)
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Start,
+            horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = "필터:",
-                color = MaterialTheme.colors.onPrimary.copy(alpha = 0.8f),
+                color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f),
                 style = MaterialTheme.typography.body2,
                 modifier = Modifier.padding(end = 8.dp)
             )
@@ -327,22 +401,48 @@ private fun ModernHeader(
             ) {
                 Text(
                     text = "ALL",
-                    color = if (fileTypeFilter == FileTypeFilter.ALL) MaterialTheme.colors.secondary else MaterialTheme.colors.onPrimary.copy(
-                        alpha = 0.7f
-                    ),
+                    color = if (fileTypeFilter == FileTypeFilter.ALL)
+                        MaterialTheme.colors.primary
+                    else
+                        MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
                     style = MaterialTheme.typography.button
                 )
             }
 
             TextButton(
-                onClick = { onFilterChange(FileTypeFilter.RAW) },
+                onClick = {
+                    if (canAccessRaw) {
+                        onFilterChange(FileTypeFilter.RAW)
+                    } else {
+                        // RAW 접근 권한 없을 때 제한 메시지 표시
+                        val message = when (uiState.currentTier) {
+                            com.inik.camcon.domain.model.SubscriptionTier.FREE ->
+                                "RAW 파일 보기는 준비중입니다.\nJPG 파일만 확인하실 수 있습니다."
+
+                            com.inik.camcon.domain.model.SubscriptionTier.BASIC ->
+                                "RAW 파일은 PRO 구독에서만 볼 수 있습니다.\nPRO로 업그레이드해주세요!"
+
+                            else -> "RAW 파일에 접근할 수 없습니다."
+                        }
+                        viewModel?.let { vm ->
+                            vm.uiState.value.copy(error = message).let { newState ->
+                                // ViewModel의 private 메서드이므로 직접 호출 불가
+                                // 대신 RAW 필터 선택을 시도하여 ViewModel에서 에러 처리하도록 함
+                                onFilterChange(FileTypeFilter.RAW)
+                            }
+                        }
+                    }
+                },
                 enabled = fileTypeFilter != FileTypeFilter.RAW
             ) {
                 Text(
-                    text = "RAW",
-                    color = if (fileTypeFilter == FileTypeFilter.RAW) MaterialTheme.colors.secondary else MaterialTheme.colors.onPrimary.copy(
-                        alpha = 0.7f
-                    ),
+                    text = "RAW${if (!canAccessRaw) " 🔒" else ""}",
+                    color = if (fileTypeFilter == FileTypeFilter.RAW)
+                        MaterialTheme.colors.primary
+                    else if (!canAccessRaw)
+                        MaterialTheme.colors.onSurface.copy(alpha = 0.4f)
+                    else
+                        MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
                     style = MaterialTheme.typography.button
                 )
             }
@@ -353,9 +453,10 @@ private fun ModernHeader(
             ) {
                 Text(
                     text = "JPG",
-                    color = if (fileTypeFilter == FileTypeFilter.JPG) MaterialTheme.colors.secondary else MaterialTheme.colors.onPrimary.copy(
-                        alpha = 0.7f
-                    ),
+                    color = if (fileTypeFilter == FileTypeFilter.JPG)
+                        MaterialTheme.colors.primary
+                    else
+                        MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
                     style = MaterialTheme.typography.button
                 )
             }
@@ -397,7 +498,7 @@ private fun PhotoGrid(
     uiState: com.inik.camcon.presentation.viewmodel.PhotoPreviewUiState,
     viewModel: PhotoPreviewViewModel
 ) {
-    val lazyGridState = rememberLazyGridState()
+    val lazyGridState = rememberLazyStaggeredGridState()
     val fullImageCache by viewModel.fullImageCache.collectAsState()
 
     // 무한 스크롤 구현 - 푸터 감지 개선
@@ -406,7 +507,6 @@ private fun PhotoGrid(
             val layoutInfo = lazyGridState.layoutInfo
             val visibleItemsInfo = layoutInfo.visibleItemsInfo
             val lastVisibleItemIndex = visibleItemsInfo.lastOrNull()?.index ?: -1
-            val totalItemsCount = uiState.photos.size
 
             // 스크롤 상태 정보를 더 상세하게 로깅
             lastVisibleItemIndex
@@ -422,20 +522,39 @@ private fun PhotoGrid(
             }
     }
 
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
+    LazyVerticalStaggeredGrid(
+        columns = StaggeredGridCells.Adaptive(120.dp),
         state = lazyGridState,
-        contentPadding = PaddingValues(8.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        contentPadding = PaddingValues(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalItemSpacing = 8.dp,
         modifier = Modifier.fillMaxSize()
     ) {
-        items(uiState.photos) { photo ->
-            PhotoThumbnail(
+        items(
+            items = uiState.photos,
+            key = { photo -> photo.path }
+        ) { photo ->
+            FluidPhotoThumbnail(
                 photo = photo,
                 thumbnailData = viewModel.getThumbnail(photo.path),
                 fullImageCache = fullImageCache,
-                onClick = { viewModel.selectPhoto(photo) }
+                onClick = {
+                    if (uiState.isMultiSelectMode) {
+                        // 멀티 선택 모드에서는 선택/해제
+                        viewModel.togglePhotoSelection(photo.path)
+                    } else {
+                        // 일반 모드에서는 전체화면으로 이동
+                        viewModel.selectPhoto(photo)
+                    }
+                },
+                onLongClick = {
+                    if (!uiState.isMultiSelectMode) {
+                        // 멀티 선택 모드 시작
+                        viewModel.startMultiSelectMode(photo.path)
+                    }
+                },
+                isSelected = uiState.selectedPhotos.contains(photo.path),
+                isMultiSelectMode = uiState.isMultiSelectMode
             )
         }
 
@@ -449,7 +568,7 @@ private fun PhotoGrid(
         // 더 로딩 중일 때 로딩 인디케이터 표시
         if ((uiState.isLoading || uiState.isLoadingMore) && uiState.photos.isNotEmpty()) {
             Log.d("PhotoPreviewScreen", "LoadMoreIndicator 표시 조건 만족")
-            item(span = { GridItemSpan(3) }) {
+            item(span = StaggeredGridItemSpan.FullLine) {
                 LoadMoreIndicator()
             }
         }
@@ -457,7 +576,7 @@ private fun PhotoGrid(
         // 마지막 페이지일 때 완료 메시지
         else if (!uiState.hasNextPage && uiState.photos.isNotEmpty() && !uiState.isLoadingMore) {
             Log.d("PhotoPreviewScreen", "EndOfListMessage 표시 조건 만족")
-            item(span = { GridItemSpan(3) }) {
+            item(span = StaggeredGridItemSpan.FullLine) {
                 EndOfListMessage(photoCount = uiState.photos.size)
             }
         } else {
@@ -545,6 +664,65 @@ private fun ErrorSnackbar(
                 text = error,
                 color = MaterialTheme.colors.onError
             )
+        }
+    }
+}
+
+/**
+ * 멀티 선택 모드에서 표시되는 액션 바
+ */
+@Composable
+private fun MultiSelectActionBar(
+    selectedCount: Int,
+    onSelectAll: () -> Unit,
+    onDeselectAll: () -> Unit,
+    onDownload: () -> Unit,
+    onCancel: () -> Unit
+) {
+    Column {
+        // 첫 번째 행: 선택된 개수와 취소 버튼
+        Box(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            // 중앙 정렬된 선택된 개수
+            Text(
+                text = "${selectedCount}개 선택됨",
+                color = MaterialTheme.colors.primary,
+                style = MaterialTheme.typography.h6,
+                modifier = Modifier.align(Alignment.Center)
+            )
+
+            // 우측 취소 버튼
+            TextButton(
+                onClick = onCancel,
+                modifier = Modifier.align(Alignment.CenterEnd)
+            ) {
+                Text(
+                    text = "취소",
+                    color = MaterialTheme.colors.onSurface
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 두 번째 행: 액션 버튼들
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextButton(onClick = onSelectAll) {
+                Text("전체 선택")
+            }
+
+            TextButton(onClick = onDeselectAll) {
+                Text("전체 해제")
+            }
+
+            TextButton(onClick = onDownload) {
+                Text("다운로드")
+            }
         }
     }
 }

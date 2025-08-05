@@ -134,7 +134,11 @@ fun WifiCapabilitiesCard(
         context.getSystemService(Context.WIFI_SERVICE) as WifiManager
     }
     val supported = remember {
-        wifiManager.isStaConcurrencyForLocalOnlyConnectionsSupported
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            wifiManager.isStaConcurrencyForLocalOnlyConnectionsSupported
+        } else {
+            false
+        }
     }
 
     Card(

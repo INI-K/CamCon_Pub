@@ -523,6 +523,11 @@ class PtpipDataSource @Inject constructor(
                     override fun onCaptureFailed(errorCode: Int) {
                         Log.e(TAG, "파일 수신: 수신 실패 (에러 코드: $errorCode)")
                     }
+
+                    override fun onUsbDisconnected() {
+                        Log.w(TAG, "USB 분리 이벤트 - PTPIP는 영향받지 않음 (Wi-Fi 연결)")
+                        // PTPIP 연결에서는 USB 분리 이벤트가 관련없으므로 무시
+                    }
                 }
 
                 // 파일 수신 리스너만 시작 (촬영 명령 실행 없음)
@@ -619,12 +624,15 @@ class PtpipDataSource @Inject constructor(
             // Discovery 중지
             discoveryService.stopDiscovery()
 
-            // libgphoto2 연결 해제
+            // libgphoto2 연결 해제를 백그라운드 스레드에서 실행
             if (!keepSession) {
-                try {
-                    CameraNative.closeCamera()
-                } catch (e: Exception) {
-                    Log.w(TAG, "libgphoto2 연결 해제 중 오류: ${e.message}")
+                withContext(Dispatchers.Default) {
+                    try {
+                        CameraNative.closeCamera()
+                        Log.d(TAG, "libgphoto2 연결 해제 완료")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "libgphoto2 연결 해제 중 오류: ${e.message}")
+                    }
                 }
             } else {
                 Log.d(TAG, "libgphoto2 연결 해제 무시 (세션 유지)")
