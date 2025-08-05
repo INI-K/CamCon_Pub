@@ -3,8 +3,10 @@ package com.inik.camcon.presentation.ui.screens.components
 // Coil imports for image loading
 import android.graphics.BitmapFactory
 import android.util.Log
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,14 +51,23 @@ import com.inik.camcon.presentation.viewmodel.CameraViewModel
 /**
  * 카메라 프리뷰 영역 - 라이브뷰와 연결 상태를 관리
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CameraPreviewArea(
     uiState: CameraUiState,
     cameraFeed: List<Camera>,
     viewModel: CameraViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onDoubleClick: (() -> Unit)? = null
 ) {
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .combinedClickable(
+                onClick = { /* 단일 클릭 처리 */ },
+                onDoubleClick = { onDoubleClick?.invoke() }
+            )
+    ) {
         if (uiState.isLiveViewActive && uiState.liveViewFrame != null) {
             // Display live view frame using Android Bitmap
             Box(
@@ -80,7 +91,15 @@ fun CameraPreviewArea(
                         Image(
                             bitmap = it.asImageBitmap(),
                             contentDescription = "Live View",
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .combinedClickable(
+                                    onClick = { /* 단일 클릭 처리 */ },
+                                    onDoubleClick = {
+                                        Log.d("CameraPreview", "라이브뷰 이미지 더블클릭 감지")
+                                        onDoubleClick?.invoke()
+                                    }
+                                ),
                             contentScale = ContentScale.Fit
                         )
                     } ?: run {
