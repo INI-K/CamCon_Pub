@@ -4,10 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.domain.model.CameraPhoto
+import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.repository.CameraRepository
+import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.domain.usecase.camera.GetCameraPhotosPagedUseCase
 import com.inik.camcon.domain.usecase.camera.GetCameraThumbnailUseCase
 import com.inik.camcon.domain.usecase.camera.PhotoCaptureEventManager
+import com.inik.camcon.utils.SubscriptionUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -35,7 +38,9 @@ data class PhotoPreviewUiState(
     val allPhotos: List<CameraPhoto> = emptyList(),
     // 멀티 선택 관련 상태
     val isMultiSelectMode: Boolean = false, // 멀티 선택 모드 활성화 여부
-    val selectedPhotos: Set<String> = emptySet() // 선택된 사진들의 path 집합
+    val selectedPhotos: Set<String> = emptySet(), // 선택된 사진들의 path 집합
+    // 구독 관련 상태
+    val currentTier: SubscriptionTier = SubscriptionTier.FREE
 )
 
 enum class FileTypeFilter {
@@ -50,7 +55,8 @@ class PhotoPreviewViewModel @Inject constructor(
     private val getCameraPhotosPagedUseCase: GetCameraPhotosPagedUseCase,
     private val getCameraThumbnailUseCase: GetCameraThumbnailUseCase,
     private val photoCaptureEventManager: PhotoCaptureEventManager,
-    private val globalManager: CameraConnectionGlobalManager
+    private val globalManager: CameraConnectionGlobalManager,
+    private val getSubscriptionUseCase: GetSubscriptionUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PhotoPreviewUiState())
@@ -111,18 +117,8 @@ class PhotoPreviewViewModel @Inject constructor(
             launch { observeCameraConnection() }
             launch { observeCameraInitialization() }
             launch { observePhotoCaptureEvents() }
+            launch { observeSubscriptionTier() }  
         }
-
-        // 4. 중복 호출 방지: observeCameraConnection()에서 이미 처리함
-        // viewModelScope.launch {
-        //     globalManager.globalConnectionState.collect { connectionState ->
-        //         if (connectionState.isAnyConnectionActive && _uiState.value.photos.isEmpty() && !loadedInitialPhotos) {
-        //             android.util.Log.d(TAG, "카메라 연결 확인됨 - 사진 목록 로딩 시작")
-        //             loadInitialPhotos()
-        //             loadedInitialPhotos = true
-        //         }
-        //     }
-        // }
 
         android.util.Log.d(TAG, "=== PhotoPreviewViewModel 초기화 완료 ===")
     }
@@ -184,6 +180,40 @@ class PhotoPreviewViewModel @Inject constructor(
 
         // 수동 새로고침만 허용하도록 변경
         android.util.Log.d("PhotoPreviewViewModel", "사진 촬영 이벤트 자동 새로고침 비활성화 - 수동 새로고침만 허용")
+    }
+
+    private fun observeSubscriptionTier() {
+        viewModelScope.launch {
+            getSubscriptionUseCase.getSubscriptionTier().collect { tier ->
+                android.util.Log.d(TAG, "사용자 구독 티어 변경: $tier")
+                _uiState.value = _uiState.value.copy(currentTier = tier)
+
+                // 티어 변경 시 현재 필터에 따라 사진 목록 다시 필터링
+                val currentFilter = _uiState.value.fileTypeFilter
+                val filteredPhotos = filterPhotos(_uiState.value.allPhotos, currentFilter)
+                _uiState.value = _uiState.value.copy(photos = filteredPhotos)
+            }
+        }
+    }
+
+    private fun canAccessRawFiles(): Boolean {
+        val tier = _uiState.value.currentTier
+        return tier == SubscriptionTier.PRO || 
+               tier == SubscriptionTier.REFERRER || 
+               tier == SubscriptionTier.ADMIN
+    }
+
+    private fun handleRawFileAccess(photo: CameraPhoto): Boolean {
+        if (SubscriptionUtils.isRawFile(photo.path) && !canAccessRawFiles()) {
+            val message = when (_uiState.value.currentTier) {
+                SubscriptionTier.FREE -> SubscriptionUtils.getRawRestrictionMessage()
+                SubscriptionTier.BASIC -> SubscriptionUtils.getRawRestrictionMessageForBasic()
+                else -> "RAW 파일에 접근할 수 없습니다."
+            }
+            _uiState.value = _uiState.value.copy(error = message)
+            return false
+        }
+        return true
     }
 
     fun loadInitialPhotos() {
@@ -360,22 +390,334 @@ class PhotoPreviewViewModel @Inject constructor(
     }
 
     fun downloadPhoto(photo: CameraPhoto) {
+        if (!handleRawFileAccess(photo)) {
+            return
+        }
+        
         viewModelScope.launch {
             try {
-                cameraRepository.downloadPhotoFromCamera(photo.path)
-                    .onSuccess {
-                        // 다운로드 성공
+                // 현재 구독 티어 확인
+                val currentTier = _uiState.value.currentTier
+                android.util.Log.d(TAG, "사진 다운로드 시작: ${photo.name}, 티어: $currentTier")
+                
+                // 카메라에서 원본 사진 다운로드
+                val downloadResult = cameraRepository.downloadPhotoFromCamera(photo.path)
+                
+                downloadResult.onSuccess { capturedPhoto ->
+                    android.util.Log.d(TAG, "✅ 사진 다운로드 성공: ${photo.name}")
+                    
+                    // Free 티어 사용자의 경우 추가 리사이징 처리
+                    if (currentTier == SubscriptionTier.FREE) {
+                        android.util.Log.d(TAG, "🎯 Free 티어 사용자 - 리사이징 처리 시작")
+                        
+                        val originalFile = java.io.File(capturedPhoto.filePath)
+                        if (originalFile.exists() && photo.name.endsWith(".jpg", true)) {
+                            try {
+                                // 리사이즈된 파일 생성
+                                val resizedFile = java.io.File(
+                                    originalFile.parent, 
+                                    "${originalFile.nameWithoutExtension}_resized.jpg"
+                                )
+                                
+                                // 리사이즈 구현 (PhotoDownloadManager.kt에서 복사)
+                                val resizeSuccess = resizeImageForFreeTier(
+                                    originalFile.absolutePath, 
+                                    resizedFile.absolutePath
+                                )
+                                
+                                if (resizeSuccess) {
+                                    // 원본 파일 삭제하고 리사이즈된 파일로 교체
+                                    originalFile.delete()
+                                    resizedFile.renameTo(originalFile)
+                                    android.util.Log.d(TAG, "✅ Free 티어 리사이징 완료: ${photo.name}")
+                                } else {
+                                    android.util.Log.w(TAG, "⚠️ Free 티어 리사이징 실패, 원본 유지: ${photo.name}")
+                                }
+                            } catch (e: Exception) {
+                                android.util.Log.e(TAG, "❌ Free 티어 리사이징 처리 중 오류: ${photo.name}", e)
+                            }
+                        }
                     }
-                    .onFailure { error ->
-                        _uiState.value = _uiState.value.copy(
-                            error = error.message
-                        )
-                    }
+                }.onFailure { error ->
+                    android.util.Log.e(TAG, "❌ 사진 다운로드 실패: ${photo.name}", error)
+                    _uiState.value = _uiState.value.copy(
+                        error = error.message
+                    )
+                }
             } catch (e: Exception) {
+                android.util.Log.e(TAG, "❌ 사진 다운로드 중 예외: ${photo.name}", e)
                 _uiState.value = _uiState.value.copy(
                     error = e.message
                 )
             }
+        }
+    }
+
+    /**
+     * Free 티어 사용자를 위한 이미지 리사이즈 처리 (PhotoDownloadManager에서 복사)
+     * 장축 기준 2000픽셀로 리사이즈하고 모든 EXIF 정보 보존
+     */
+    private suspend fun resizeImageForFreeTier(inputPath: String, outputPath: String): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                android.util.Log.d(TAG, "🔧 Free 티어 이미지 리사이즈 시작: $inputPath")
+
+                // 원본 이미지 크기 확인
+                val options = android.graphics.BitmapFactory.Options().apply {
+                    inJustDecodeBounds = true
+                }
+                android.graphics.BitmapFactory.decodeFile(inputPath, options)
+
+                val originalWidth = options.outWidth
+                val originalHeight = options.outHeight
+                val maxDimension = kotlin.math.max(originalWidth, originalHeight)
+
+                android.util.Log.d(TAG, "원본 이미지 크기: ${originalWidth}x${originalHeight}")
+
+                // 이미 작은 이미지인 경우 리사이즈하지 않음
+                if (maxDimension <= 2000) {
+                    android.util.Log.d(TAG, "이미 작은 이미지 - 리사이즈 불필요")
+                    return@withContext java.io.File(inputPath).copyTo(java.io.File(outputPath), overwrite = true).exists()
+                }
+
+                // 리사이즈 비율 계산
+                val scale = 2000.toFloat() / maxDimension.toFloat()
+                val newWidth = (originalWidth * scale).toInt()
+                val newHeight = (originalHeight * scale).toInt()
+
+                android.util.Log.d(TAG, "리사이즈 목표 크기: ${newWidth}x${newHeight} (비율: $scale)")
+
+                // 메모리 효율적인 리사이즈를 위한 샘플링
+                val sampleSize = calculateInSampleSize(originalWidth, originalHeight, newWidth, newHeight)
+
+                options.apply {
+                    inJustDecodeBounds = false
+                    inSampleSize = sampleSize
+                    inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
+                }
+
+                val bitmap = android.graphics.BitmapFactory.decodeFile(inputPath, options) ?: run {
+                    android.util.Log.e(TAG, "이미지 디코딩 실패: $inputPath")
+                    return@withContext false
+                }
+
+                try {
+                    // 정확한 크기로 최종 리사이즈
+                    val resizedBitmap = android.graphics.Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
+
+                    // EXIF 정보 읽기 (회전 정보)
+                    val originalExif = androidx.exifinterface.media.ExifInterface(inputPath)
+                    val orientation = originalExif.getAttributeInt(
+                        androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION,
+                        androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
+                    )
+
+                    // 회전 적용
+                    val rotatedBitmap = rotateImageIfRequired(resizedBitmap, orientation)
+
+                    // 파일로 저장
+                    java.io.FileOutputStream(outputPath).use { out ->
+                        rotatedBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, out)
+                    }
+
+                    // 메모리 정리
+                    if (resizedBitmap != rotatedBitmap) {
+                        resizedBitmap.recycle()
+                    }
+                    rotatedBitmap.recycle()
+
+                    // ★★★ 모든 EXIF 정보를 새 파일에 복사 ★★★
+                    copyAllExifData(inputPath, outputPath, newWidth, newHeight)
+
+                    val outputFile = java.io.File(outputPath)
+                    val finalSize = outputFile.length()
+                    android.util.Log.d(TAG, "✅ Free 티어 리사이즈 완료 (EXIF 보존) - 최종 크기: ${finalSize / 1024}KB")
+
+                    true
+                } finally {
+                    bitmap.recycle()
+                }
+
+            } catch (e: OutOfMemoryError) {
+                android.util.Log.e(TAG, "❌ 메모리 부족으로 리사이즈 실패", e)
+                System.gc()
+                false
+            } catch (e: Exception) {
+                android.util.Log.e(TAG, "❌ 이미지 리사이즈 실패", e)
+                false
+            }
+        }
+    }
+
+    /**
+     * 원본 이미지의 모든 EXIF 정보를 리사이즈된 이미지에 복사
+     * 이미지 크기 정보는 새로운 값으로 업데이트
+     */
+    private fun copyAllExifData(originalPath: String, newPath: String, newWidth: Int, newHeight: Int) {
+        try {
+            android.util.Log.d(TAG, "EXIF 정보 복사 시작: $originalPath -> $newPath")
+            
+            val originalExif = androidx.exifinterface.media.ExifInterface(originalPath)
+            val newExif = androidx.exifinterface.media.ExifInterface(newPath)
+
+            // 복사할 EXIF 태그들 - 거의 모든 중요한 EXIF 정보
+            val tagsToPreserve = arrayOf(
+                // 카메라 정보
+                androidx.exifinterface.media.ExifInterface.TAG_MAKE,
+                androidx.exifinterface.media.ExifInterface.TAG_MODEL,
+                androidx.exifinterface.media.ExifInterface.TAG_SOFTWARE,
+                
+                // 촬영 설정
+                androidx.exifinterface.media.ExifInterface.TAG_F_NUMBER,
+                androidx.exifinterface.media.ExifInterface.TAG_EXPOSURE_TIME,
+                androidx.exifinterface.media.ExifInterface.TAG_ISO_SPEED_RATINGS,
+                androidx.exifinterface.media.ExifInterface.TAG_PHOTOGRAPHIC_SENSITIVITY,
+                androidx.exifinterface.media.ExifInterface.TAG_ISO_SPEED,
+                androidx.exifinterface.media.ExifInterface.TAG_FOCAL_LENGTH,
+                androidx.exifinterface.media.ExifInterface.TAG_FOCAL_LENGTH_IN_35MM_FILM,
+                androidx.exifinterface.media.ExifInterface.TAG_APERTURE_VALUE,
+                androidx.exifinterface.media.ExifInterface.TAG_SHUTTER_SPEED_VALUE,
+                androidx.exifinterface.media.ExifInterface.TAG_BRIGHTNESS_VALUE,
+                androidx.exifinterface.media.ExifInterface.TAG_EXPOSURE_BIAS_VALUE,
+                androidx.exifinterface.media.ExifInterface.TAG_MAX_APERTURE_VALUE,
+                androidx.exifinterface.media.ExifInterface.TAG_METERING_MODE,
+                androidx.exifinterface.media.ExifInterface.TAG_LIGHT_SOURCE,
+                androidx.exifinterface.media.ExifInterface.TAG_FLASH,
+                androidx.exifinterface.media.ExifInterface.TAG_SCENE_CAPTURE_TYPE,
+                androidx.exifinterface.media.ExifInterface.TAG_WHITE_BALANCE,
+                androidx.exifinterface.media.ExifInterface.TAG_DIGITAL_ZOOM_RATIO,
+                androidx.exifinterface.media.ExifInterface.TAG_EXPOSURE_MODE,
+                androidx.exifinterface.media.ExifInterface.TAG_GAIN_CONTROL,
+                androidx.exifinterface.media.ExifInterface.TAG_CONTRAST,
+                androidx.exifinterface.media.ExifInterface.TAG_SATURATION,
+                androidx.exifinterface.media.ExifInterface.TAG_SHARPNESS,
+                
+                // 날짜/시간 정보
+                androidx.exifinterface.media.ExifInterface.TAG_DATETIME,
+                androidx.exifinterface.media.ExifInterface.TAG_DATETIME_ORIGINAL,
+                androidx.exifinterface.media.ExifInterface.TAG_DATETIME_DIGITIZED,
+                androidx.exifinterface.media.ExifInterface.TAG_OFFSET_TIME,
+                androidx.exifinterface.media.ExifInterface.TAG_OFFSET_TIME_ORIGINAL,
+                androidx.exifinterface.media.ExifInterface.TAG_OFFSET_TIME_DIGITIZED,
+                androidx.exifinterface.media.ExifInterface.TAG_SUBSEC_TIME,
+                androidx.exifinterface.media.ExifInterface.TAG_SUBSEC_TIME_ORIGINAL,
+                androidx.exifinterface.media.ExifInterface.TAG_SUBSEC_TIME_DIGITIZED,
+                
+                // GPS 정보
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_LATITUDE,
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_LATITUDE_REF,
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_LONGITUDE,
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_LONGITUDE_REF,
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_ALTITUDE,
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_ALTITUDE_REF,
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_TIMESTAMP,
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_DATESTAMP,
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_PROCESSING_METHOD,
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_SPEED,
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_SPEED_REF,
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_TRACK,
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_TRACK_REF,
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_IMG_DIRECTION,
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_IMG_DIRECTION_REF,
+                
+                // 기타 메타데이터
+                androidx.exifinterface.media.ExifInterface.TAG_ARTIST,
+                androidx.exifinterface.media.ExifInterface.TAG_COPYRIGHT,
+                androidx.exifinterface.media.ExifInterface.TAG_IMAGE_DESCRIPTION,
+                androidx.exifinterface.media.ExifInterface.TAG_USER_COMMENT,
+                androidx.exifinterface.media.ExifInterface.TAG_CAMERA_OWNER_NAME,
+                androidx.exifinterface.media.ExifInterface.TAG_BODY_SERIAL_NUMBER,
+                androidx.exifinterface.media.ExifInterface.TAG_LENS_MAKE,
+                androidx.exifinterface.media.ExifInterface.TAG_LENS_MODEL,
+                androidx.exifinterface.media.ExifInterface.TAG_LENS_SERIAL_NUMBER,
+                androidx.exifinterface.media.ExifInterface.TAG_LENS_SPECIFICATION,
+                
+                // 색상 공간 및 렌더링
+                androidx.exifinterface.media.ExifInterface.TAG_COLOR_SPACE,
+                androidx.exifinterface.media.ExifInterface.TAG_GAMMA,
+                androidx.exifinterface.media.ExifInterface.TAG_PHOTOMETRIC_INTERPRETATION,
+                androidx.exifinterface.media.ExifInterface.TAG_REFERENCE_BLACK_WHITE,
+                androidx.exifinterface.media.ExifInterface.TAG_WHITE_POINT,
+                androidx.exifinterface.media.ExifInterface.TAG_PRIMARY_CHROMATICITIES,
+                androidx.exifinterface.media.ExifInterface.TAG_Y_CB_CR_COEFFICIENTS,
+                androidx.exifinterface.media.ExifInterface.TAG_Y_CB_CR_POSITIONING,
+                androidx.exifinterface.media.ExifInterface.TAG_Y_CB_CR_SUB_SAMPLING,
+                
+                // 방향 정보 (변경되지 않음 - 회전은 이미 적용됨)
+                androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION
+            )
+
+            var copiedCount = 0
+            // 모든 태그 복사
+            for (tag in tagsToPreserve) {
+                val value = originalExif.getAttribute(tag)
+                if (value != null) {
+                    newExif.setAttribute(tag, value)
+                    copiedCount++
+                }
+            }
+
+            // 새로운 이미지 크기 정보 설정 (필수)
+            newExif.setAttribute(androidx.exifinterface.media.ExifInterface.TAG_IMAGE_WIDTH, newWidth.toString())
+            newExif.setAttribute(androidx.exifinterface.media.ExifInterface.TAG_IMAGE_LENGTH, newHeight.toString())
+            newExif.setAttribute(androidx.exifinterface.media.ExifInterface.TAG_PIXEL_X_DIMENSION, newWidth.toString())
+            newExif.setAttribute(androidx.exifinterface.media.ExifInterface.TAG_PIXEL_Y_DIMENSION, newHeight.toString())
+
+            // 처리 소프트웨어 정보 추가
+            newExif.setAttribute(androidx.exifinterface.media.ExifInterface.TAG_SOFTWARE, "CamCon (Free Tier Resize)")
+
+            // EXIF 정보 저장
+            newExif.saveAttributes()
+            
+            android.util.Log.d(TAG, "✅ EXIF 정보 복사 완료: ${copiedCount}개 태그 복사됨")
+            android.util.Log.d(TAG, "   새 이미지 크기 정보: ${newWidth}x${newHeight}")
+
+        } catch (e: Exception) {
+            android.util.Log.e(TAG, "❌ EXIF 정보 복사 실패", e)
+            // EXIF 복사 실패해도 이미지 리사이즈는 성공으로 처리
+        }
+    }
+
+    /**
+     * 메모리 효율적인 샘플링 크기 계산
+     */
+    private fun calculateInSampleSize(width: Int, height: Int, reqWidth: Int, reqHeight: Int): Int {
+        var inSampleSize = 1
+
+        if (height > reqHeight || width > reqWidth) {
+            val halfHeight = height / 2
+            val halfWidth = width / 2
+
+            while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
+                inSampleSize *= 2
+            }
+        }
+
+        return inSampleSize
+    }
+
+    /**
+     * EXIF 정보에 따른 이미지 회전 처리
+     */
+    private fun rotateImageIfRequired(bitmap: android.graphics.Bitmap, orientation: Int): android.graphics.Bitmap {
+        val matrix = android.graphics.Matrix()
+
+        when (orientation) {
+            androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+            androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+            androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+            else -> return bitmap // 회전 불필요
+        }
+
+        return try {
+            val rotatedBitmap = android.graphics.Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+            if (rotatedBitmap != bitmap) {
+                bitmap.recycle()
+            }
+            rotatedBitmap
+        } catch (e: OutOfMemoryError) {
+            android.util.Log.e(TAG, "이미지 회전 중 메모리 부족", e)
+            bitmap // 회전 실패 시 원본 반환
         }
     }
 
@@ -426,7 +768,7 @@ class PhotoPreviewViewModel @Inject constructor(
                         }
 
                         if (!currentCache.containsKey(photo.path)) {
-                            android.util.Log.d(TAG, "썸네일 로딩 시작: ${photo.name}")
+                            android.util.Log.d(TAG, "썸네일 로드 시작: ${photo.name}")
                             
                             // RAW 파일인지 확인
                             val isRawFile = photo.path.endsWith(".nef", true) ||
@@ -578,6 +920,18 @@ class PhotoPreviewViewModel @Inject constructor(
      * 전체화면 뷰어용 실제 파일 다운로드 및 EXIF 파싱
      */
     fun downloadFullImage(photoPath: String) {
+        // RAW 파일 접근 권한 체크를 위한 임시 CameraPhoto 객체
+        val tempPhoto = CameraPhoto(
+            path = photoPath,
+            name = photoPath.substringAfterLast("/"),
+            size = 0L,
+            date = System.currentTimeMillis()
+        )
+        
+        if (!handleRawFileAccess(tempPhoto)) {
+            return
+        }
+        
         android.util.Log.d(TAG, "=== downloadFullImage 호출: $photoPath ===")
 
         // 이미 캐시에 있는지 확인
@@ -811,6 +1165,10 @@ class PhotoPreviewViewModel @Inject constructor(
     }
 
     fun selectPhoto(photo: CameraPhoto?) {
+        if (photo != null && !handleRawFileAccess(photo)) {
+            return
+        }
+        
         _uiState.value = _uiState.value.copy(selectedPhoto = photo)
     }
 
@@ -881,6 +1239,10 @@ class PhotoPreviewViewModel @Inject constructor(
      * 빠른 미리 로딩 - 현재 사진만 우선 다운로드 (슬라이딩 성능 우선)
      */
     fun quickPreloadCurrentImage(selectedPhoto: CameraPhoto) {
+        if (!handleRawFileAccess(selectedPhoto)) {
+            return
+        }
+        
         viewModelScope.launch(Dispatchers.IO) {
             android.util.Log.d(TAG, "빠른 다운로드: ${selectedPhoto.name}")
             downloadFullImage(selectedPhoto.path)
@@ -1029,26 +1391,57 @@ class PhotoPreviewViewModel @Inject constructor(
         photos: List<CameraPhoto>,
         filter: FileTypeFilter = _uiState.value.fileTypeFilter
     ): List<CameraPhoto> {
-        android.util.Log.d(TAG, "filterPhotos 호출: 필터=$filter, 전체사진=${photos.size}개")
+        android.util.Log.d(
+            TAG,
+            "filterPhotos 호출: 필터=$filter, 전체사진=${photos.size}개, 현재티어=${_uiState.value.currentTier}"
+        )
 
+        // 먼저 티어에 따른 접근 가능한 파일만 필터링
+        val accessiblePhotos = if (canAccessRawFiles()) {
+            // RAW 접근 권한이 있으면 모든 파일 접근 가능
+            photos
+        } else {
+            // RAW 접근 권한이 없으면 RAW 파일 제외
+            photos.filter { photo ->
+                val isRaw = SubscriptionUtils.isRawFile(photo.path)
+                if (isRaw) {
+                    android.util.Log.v(TAG, "RAW 파일 숨김 (권한없음): ${photo.path}")
+                }
+                !isRaw
+            }
+        }
+
+        // 그 다음 사용자가 선택한 필터 적용
         val filtered = when (filter) {
-            FileTypeFilter.ALL -> photos
-            FileTypeFilter.JPG -> photos.filter {
+            FileTypeFilter.ALL -> accessiblePhotos
+            FileTypeFilter.JPG -> accessiblePhotos.filter {
                 val isJpg = it.path.endsWith(".jpg", true) || it.path.endsWith(".jpeg", true)
                 android.util.Log.v(TAG, "JPG 필터 확인: ${it.path} -> $isJpg")
                 isJpg
             }
-            FileTypeFilter.RAW -> photos.filter {
-                val isRaw = it.path.endsWith(".arw", true) ||
-                        it.path.endsWith(".cr2", true) ||
-                        it.path.endsWith(".nef", true) ||
-                        it.path.endsWith(".dng", true)
-                android.util.Log.v(TAG, "RAW 필터 확인: ${it.path} -> $isRaw")
-                isRaw
+            FileTypeFilter.RAW -> {
+                if (!canAccessRawFiles()) {
+                    // RAW 필터 선택했지만 권한 없는 경우 에러 메시지 표시
+                    val message = when (_uiState.value.currentTier) {
+                        SubscriptionTier.FREE -> "RAW 파일 보기는 준비중입니다.\nJPG 파일만 확인하실 수 있습니다."
+                        SubscriptionTier.BASIC -> "RAW 파일은 PRO 구독에서만 볼 수 있습니다.\nPRO로 업그레이드해주세요!"
+                        else -> "RAW 파일에 접근할 수 없습니다."
+                    }
+                    _uiState.value = _uiState.value.copy(error = message)
+                    // 빈 목록 반환
+                    emptyList()
+                } else {
+                    // RAW 권한 있는 경우 RAW 파일만 필터링
+                    accessiblePhotos.filter {
+                        val isRaw = SubscriptionUtils.isRawFile(it.path)
+                        android.util.Log.v(TAG, "RAW 필터 확인: ${it.path} -> $isRaw")
+                        isRaw
+                    }
+                }
             }
         }
 
-        android.util.Log.d(TAG, "필터링 결과: ${filtered.size}개")
+        android.util.Log.d(TAG, "필터링 결과: 접근가능=${accessiblePhotos.size}개, 최종필터링=${filtered.size}개")
         return filtered
     }
 
@@ -1129,6 +1522,18 @@ class PhotoPreviewViewModel @Inject constructor(
         android.util.Log.d(TAG, "선택된 사진들 다운로드 시작: ${selectedPaths.size}개")
 
         selectedPaths.forEach { photoPath ->
+            // RAW 파일 접근 권한 체크를 위한 임시 CameraPhoto 객체
+            val tempPhoto = CameraPhoto(
+                path = photoPath,
+                name = photoPath.substringAfterLast("/"),
+                size = 0L,
+                date = System.currentTimeMillis()
+            )
+
+            if (!handleRawFileAccess(tempPhoto)) {
+                return@forEach
+            }
+            
             downloadFullImage(photoPath)
         }
     }
