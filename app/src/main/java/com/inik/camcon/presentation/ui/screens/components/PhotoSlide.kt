@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.inik.camcon.R
 import com.inik.camcon.domain.model.CameraPhoto
 
 /**
@@ -36,6 +37,8 @@ fun PhotoSlide(
     fullImageData: ByteArray? = null,
     isDownloadingFullImage: Boolean = false
 ) {
+    val context = LocalContext.current
+
     // 화면 크기 가져오기
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
@@ -64,7 +67,7 @@ fun PhotoSlide(
         )
 
         AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
+            model = ImageRequest.Builder(context)
                 .data(imageData)
                 .crossfade(true)
                 .allowHardware(false)
@@ -81,6 +84,8 @@ fun PhotoSlide(
  */
 @Composable
 private fun PhotoLoadError() {
+    val context = LocalContext.current
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -92,7 +97,7 @@ private fun PhotoLoadError() {
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "이미지를 불러올 수 없습니다",
+            text = context.getString(R.string.image_load_failed),
             style = MaterialTheme.typography.body2,
             color = Color.White.copy(alpha = 0.6f)
         )

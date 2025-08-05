@@ -21,4 +21,9 @@ interface CameraCaptureListener {
      * @param errorCode 에러 코드
      */
     fun onCaptureFailed(errorCode: Int)
+
+    /**
+     * USB 디바이스가 분리되었을 때 호출
+     */
+    fun onUsbDisconnected()
 }

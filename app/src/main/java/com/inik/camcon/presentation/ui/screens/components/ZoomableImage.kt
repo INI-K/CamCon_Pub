@@ -24,6 +24,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
+import com.inik.camcon.R
 
 /**
  * 핀치줌과 드래그가 가능한 이미지 컴포넌트
@@ -305,7 +307,7 @@ fun ZoomableImageFromByteArray(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "이미지를 불러올 수 없습니다",
+                text = stringResource(R.string.image_load_failed),
                 color = Color.White,
                 style = MaterialTheme.typography.body2
             )

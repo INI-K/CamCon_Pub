@@ -33,5 +33,24 @@ data class CameraUiState(
     val isUsbInitializing: Boolean = false,
     val usbInitializationMessage: String? = null,
     // 카메라 이벤트 리스너 초기화 중 UI 블로킹을 위한 상태
-    val isCameraInitializing: Boolean = false
+    val isCameraInitializing: Boolean = false,
+    // PTP 타임아웃 오류 상태
+    val isPtpTimeout: Boolean = false,
+    // 앱 재시작 다이얼로그 표시 플래그
+    val showRestartDialog: Boolean = false,
+    // USB 디바이스 분리 상태
+    val isUsbDisconnected: Boolean = false,
+    // 카메라 상태 점검 다이얼로그 표시 플래그
+    val showCameraStatusCheckDialog: Boolean = false,
+    // RAW 파일 제한 알림 상태
+    val rawFileRestriction: RawFileRestriction? = null
+)
+
+/**
+ * RAW 파일 제한 알림 정보
+ */
+data class RawFileRestriction(
+    val fileName: String,
+    val message: String,
+    val timestamp: Long = System.currentTimeMillis()
 )
