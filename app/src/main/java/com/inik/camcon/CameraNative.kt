@@ -3,6 +3,16 @@ package com.inik.camcon
 import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
 import com.inik.camcon.data.datasource.nativesource.LiveViewCallback
 
+// 네이티브 에러 콜백 인터페이스
+interface NativeErrorCallback {
+    fun onNativeError(errorCode: Int, errorMessage: String)
+}
+
+// 카메라 정리 완료 콜백 인터페이스
+interface CameraCleanupCallback {
+    fun onCleanupComplete(success: Boolean, message: String)
+}
+
 object CameraNative {
     // libgphoto2 로그 레벨 상수들
     const val GP_LOG_ERROR = 0
@@ -39,6 +49,7 @@ object CameraNative {
     external fun capturePhotoAsync(callback: CameraCaptureListener, saveDir: String)
     external fun getCameraSummary(): String
     external fun closeCamera(): String
+    external fun closeCameraAsync(callback: CameraCleanupCallback) // 비동기 closeCamera 메서드 추가
     external fun detectCamera(): String
     external fun isCameraConnected(): Boolean
     external fun listCameraAbilities(): String
@@ -99,4 +110,12 @@ object CameraNative {
 
     // 카메라 초기화 상태 확인
     external fun isCameraInitialized(): Boolean
+
+    // **글로벌 작업 중단 제어 함수들**
+    external fun cancelAllOperations()      // 모든 네이티브 작업 즉시 중단
+    external fun resumeOperations()         // 네이티브 작업 재개
+    external fun isOperationCanceled(): Boolean  // 현재 중단 상태 확인
+
+    // 네이티브 에러 콜백 등록
+    external fun setErrorCallback(callback: NativeErrorCallback?)
 }

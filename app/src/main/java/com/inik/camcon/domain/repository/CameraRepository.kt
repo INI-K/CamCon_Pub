@@ -26,7 +26,16 @@ interface CameraRepository {
 
     // 이벤트 리스너 관련
     suspend fun startCameraEventListener(): Result<Boolean>
+
+    /**
+     * 카메라 이벤트 리스너 종료
+     */
     suspend fun stopCameraEventListener(): Result<Boolean>
+
+    /**
+     * 사진 미리보기 모드 설정 (이벤트 리스너 자동 시작 방지용)
+     */
+    fun setPhotoPreviewMode(enabled: Boolean)
     fun isEventListenerActive(): Flow<Boolean>
 
     // 촬영 관련

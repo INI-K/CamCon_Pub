@@ -377,6 +377,11 @@ class PtpipViewModel @Inject constructor(
                             _errorMessage.value = "촬영에 실패했습니다 (에러 코드: $errorCode)"
                             listener?.onCaptureFailed(errorCode)
                         }
+
+                        override fun onUsbDisconnected() {
+                            Log.w(TAG, "USB 분리 이벤트 - PTPIP는 영향받지 않음")
+                            // PTPIP 연결에서는 USB 분리 이벤트가 관련없으므로 무시
+                        }
                     }
                 } else {
                     // 자동 다운로드 비활성화 시 기본 리스너 사용
@@ -396,6 +401,11 @@ class PtpipViewModel @Inject constructor(
                             Log.e(TAG, "수동 촬영: 실패 에러 코드 $errorCode")
                             _errorMessage.value = "촬영에 실패했습니다 (에러 코드: $errorCode)"
                             listener?.onCaptureFailed(errorCode)
+                        }
+
+                        override fun onUsbDisconnected() {
+                            Log.w(TAG, "USB 분리 이벤트 - PTPIP는 영향받지 않음")
+                            // PTPIP 연결에서는 USB 분리 이벤트가 관련없으므로 무시
                         }
                     }
                 }
