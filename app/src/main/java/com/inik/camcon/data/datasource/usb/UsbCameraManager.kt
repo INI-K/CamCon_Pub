@@ -191,13 +191,42 @@ class UsbCameraManager @Inject constructor(
     /**
      * 정리 작업
      */
-    fun cleanup() {
+    fun cleanup(onCleanupComplete: (() -> Unit)? = null) {
         try {
+            Log.d(TAG, "카메라 정리 작업 시작")
+
             deviceDetector.cleanup()
             connectionManager.cleanup()
             capabilitiesManager.reset()
+
+            // 네이티브 콜백을 사용한 안전한 카메라 정리
+            com.inik.camcon.CameraNative.closeCameraAsync(
+                object : com.inik.camcon.CameraCleanupCallback {
+                    override fun onCleanupComplete(success: Boolean, message: String) {
+                        Log.d(TAG, "카메라 네이티브 정리 완료: success=$success, message=$message")
+
+                        // 로그 파일 정리
+                        try {
+                            com.inik.camcon.CameraNative.closeLogFile()
+                            Log.d(TAG, "로그 파일 정리 완료")
+                        } catch (e: Exception) {
+                            Log.w(TAG, "로그 파일 정리 중 오류", e)
+                        }
+
+                        // 메인 스레드에서 콜백 호출
+                        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main)
+                            .launch {
+                                Log.d(TAG, "카메라 정리 작업 완료")
+                                onCleanupComplete?.invoke()
+                            }
+                    }
+                }
+            )
+
         } catch (e: Exception) {
             Log.w(TAG, "정리 작업 중 오류", e)
+            // 오류가 발생해도 콜백은 호출
+            onCleanupComplete?.invoke()
         }
     }
 }
