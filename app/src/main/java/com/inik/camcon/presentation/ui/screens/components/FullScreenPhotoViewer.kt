@@ -476,8 +476,65 @@ private fun GalleryStyleImage(
     if (imageModel != null) {
         Log.d("GalleryStyleImage", "ZoomImage 사용: $imageModel")
         val zoomState = rememberCoilZoomState()
+        
+        // Coil ImageRequest를 커스터마이징하여 EXIF 정보 확인
+        val imageRequest = coil.request.ImageRequest.Builder(context)
+            .data(imageModel)
+            .allowHardware(false) // EXIF 처리를 위해 하드웨어 가속 비활성화
+            .crossfade(true)
+            // Coil의 자동 EXIF 회전 처리 활성화 (기본값)
+            .listener(
+                onStart = { request ->
+                    Log.d("GalleryStyleImage", "이미지 로딩 시작: ${photo.name}")
+                },
+                onSuccess = { request, result ->
+                    Log.d("GalleryStyleImage", "이미지 로딩 성공: ${photo.name}")
+                    
+                    // EXIF 정보 확인 (ByteArray나 File인 경우)
+                    try {
+                        val exif = when (imageModel) {
+                            is ByteArray -> {
+                                androidx.exifinterface.media.ExifInterface(imageModel.inputStream())
+                            }
+                            is java.io.File -> {
+                                androidx.exifinterface.media.ExifInterface(imageModel.absolutePath)
+                            }
+                            else -> null
+                        }
+                        
+                        if (exif != null) {
+                            val orientation = exif.getAttributeInt(
+                                androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION,
+                                androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
+                            )
+                            
+                            val rotationNeeded = when (orientation) {
+                                androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> "90도"
+                                androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> "180도 (⚠️ Coil은 이 상태에서 상하반전)"
+                                androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> "270도"
+                                else -> "없음"
+                            }
+
+                            Log.d("EXIF_CHECK", "=== EXIF 회전 정보 확인 ===")
+                            Log.d("EXIF_CHECK", "파일: ${photo.name}")
+                            Log.d("EXIF_CHECK", "EXIF Orientation: $orientation")
+                            Log.d("EXIF_CHECK", "필요한 회전: $rotationNeeded")
+                            Log.d("EXIF_CHECK", "Coil의 자동 EXIF 회전 활성화 상태: 활성 (180도는 상하 반전됨)")
+                        } else {
+                            Log.d("EXIF_CHECK", "EXIF 정보를 읽을 수 없는 이미지 타입: ${imageModel::class.simpleName}")
+                        }
+                    } catch (e: Exception) {
+                        Log.e("EXIF_CHECK", "EXIF 정보 확인 실패: ${e.message}", e)
+                    }
+                },
+                onError = { request, error ->
+                    Log.e("GalleryStyleImage", "이미지 로딩 실패: ${photo.name}", error.throwable)
+                }
+            )
+            .build()
+        
         CoilZoomAsyncImage(
-            model = imageModel,
+            model = imageRequest,
             contentDescription = photo.name,
             zoomState = zoomState,
             modifier = Modifier.fillMaxSize(),
