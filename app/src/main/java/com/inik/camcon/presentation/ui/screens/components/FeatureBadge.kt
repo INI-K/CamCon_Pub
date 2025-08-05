@@ -12,10 +12,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.inik.camcon.R
 
 /**
  * 카메라 기능을 표시하는 배지 컴포넌트
@@ -44,20 +46,21 @@ fun FeatureBadge(
 @Preview(name = "Feature Badges", showBackground = true)
 @Composable
 private fun FeatureBadgesPreview() {
+    val context = LocalContext.current
     Column(
         modifier = Modifier.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FeatureBadge("라이브뷰", Color.Blue)
-            FeatureBadge("타임랩스", Color(0xFF9C27B0))
-            FeatureBadge("버스트", Color(0xFFFF9800))
+            FeatureBadge(context.getString(R.string.live_view), Color.Blue)
+            FeatureBadge(context.getString(R.string.time_lapse), Color(0xFF9C27B0))
+            FeatureBadge(context.getString(R.string.burst), Color(0xFFFF9800))
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FeatureBadge("4K 동영상", Color.Red)
-            FeatureBadge("원격제어", Color.Green)
-            FeatureBadge("브라켓팅", Color.Cyan)
+            FeatureBadge(context.getString(R.string.video_4k), Color.Red)
+            FeatureBadge(context.getString(R.string.remote_control), Color.Green)
+            FeatureBadge(context.getString(R.string.bracketing), Color.Cyan)
         }
     }
 }

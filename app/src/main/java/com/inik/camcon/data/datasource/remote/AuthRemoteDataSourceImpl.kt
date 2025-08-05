@@ -2,8 +2,11 @@ package com.inik.camcon.data.datasource.remote
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
-import kotlinx.coroutines.tasks.await
 import com.inik.camcon.domain.model.User
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 class AuthRemoteDataSourceImpl @Inject constructor(
@@ -24,5 +27,38 @@ class AuthRemoteDataSourceImpl @Inject constructor(
 
     override suspend fun signOut() {
         firebaseAuth.signOut()
+    }
+
+    override fun getCurrentUser(): Flow<User?> = callbackFlow {
+        val authStateListener = FirebaseAuth.AuthStateListener { auth ->
+            val firebaseUser = auth.currentUser
+            val user = firebaseUser?.let {
+                User(
+                    id = it.uid,
+                    email = it.email ?: "",
+                    displayName = it.displayName ?: "",
+                    photoUrl = it.photoUrl?.toString()
+                )
+            }
+            trySend(user)
+        }
+
+        firebaseAuth.addAuthStateListener(authStateListener)
+
+        awaitClose {
+            firebaseAuth.removeAuthStateListener(authStateListener)
+        }
+    }
+
+    override suspend fun getCurrentUserOnce(): User? {
+        val firebaseUser = firebaseAuth.currentUser
+        return firebaseUser?.let {
+            User(
+                id = it.uid,
+                email = it.email ?: "",
+                displayName = it.displayName ?: "",
+                photoUrl = it.photoUrl?.toString()
+            )
+        }
     }
 }
