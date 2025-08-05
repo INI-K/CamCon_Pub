@@ -3,8 +3,10 @@ package com.inik.camcon.presentation.ui.screens.components
 // Coil imports for image loading
 import android.graphics.BitmapFactory
 import android.util.Log
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,14 +51,23 @@ import com.inik.camcon.presentation.viewmodel.CameraViewModel
 /**
  * 카메라 프리뷰 영역 - 라이브뷰와 연결 상태를 관리
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CameraPreviewArea(
     uiState: CameraUiState,
     cameraFeed: List<Camera>,
     viewModel: CameraViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onDoubleClick: (() -> Unit)? = null
 ) {
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .combinedClickable(
+                onClick = { /* 단일 클릭 처리 */ },
+                onDoubleClick = { onDoubleClick?.invoke() }
+            )
+    ) {
         if (uiState.isLiveViewActive && uiState.liveViewFrame != null) {
             // Display live view frame using Android Bitmap
             Box(
@@ -80,14 +91,22 @@ fun CameraPreviewArea(
                         Image(
                             bitmap = it.asImageBitmap(),
                             contentDescription = "Live View",
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .combinedClickable(
+                                    onClick = { /* 단일 클릭 처리 */ },
+                                    onDoubleClick = {
+                                        Log.d("CameraPreview", "라이브뷰 이미지 더블클릭 감지")
+                                        onDoubleClick?.invoke()
+                                    }
+                                ),
                             contentScale = ContentScale.Fit
                         )
                     } ?: run {
-                        Log.w("CameraPreview", "비트맵 디코딩 실패 - LoadingIndicator 표시")
-                        LoadingIndicator("라이브뷰 프레임 처리 중...")
+                        Log.w("CameraPreview", "비트맵 디코딩 실패 - LoadingOverlay 표시")
+                        LoadingOverlay(stringResource(R.string.processing_liveview_frame))
                     }
-                } ?: LoadingIndicator("라이브뷰 프레임 로딩 중...")
+                } ?: LoadingOverlay(stringResource(R.string.loading_liveview_frame))
 
                 // 라이브뷰 중지 버튼 오버레이
                 Button(
@@ -109,7 +128,7 @@ fun CameraPreviewArea(
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("라이브뷰 중지", color = Color.White)
+                    Text(stringResource(R.string.stop_live_view), color = Color.White)
                 }
             }
         } else if (!uiState.isConnected) {
@@ -127,12 +146,12 @@ fun CameraPreviewArea(
 
         // 전역 로딩 오버레이
         if (uiState.isCapturing) {
-            LoadingOverlay("촬영 중...")
+            LoadingOverlay(stringResource(R.string.capturing_photo))
         }
 
         // 라이브뷰 로딩 오버레이
         if (uiState.isLiveViewLoading) {
-            LoadingOverlay("라이브뷰 시작 중...")
+            LoadingOverlay(stringResource(R.string.starting_liveview))
         }
     }
 }
@@ -242,14 +261,14 @@ fun CameraConnectedState(
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                "라이브뷰 지원 안됨",
+                stringResource(R.string.liveview_not_supported),
                 color = Color.Gray,
                 fontSize = 16.sp,
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                "이 카메라 모델은 라이브뷰를 지원하지 않습니다",
+                stringResource(R.string.liveview_not_supported_detail),
                 color = Color.Gray.copy(alpha = 0.7f),
                 fontSize = 14.sp,
                 textAlign = TextAlign.Center
@@ -304,7 +323,7 @@ fun CameraConnectionButtons(
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("USB 새로고침")
+                Text(stringResource(R.string.refresh_usb))
             }
         }
 
@@ -323,7 +342,7 @@ fun CameraConnectionButtons(
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("USB 권한 요청", color = Color.White)
+                    Text(stringResource(R.string.request_usb_permission), color = Color.White)
                 }
             }
         }

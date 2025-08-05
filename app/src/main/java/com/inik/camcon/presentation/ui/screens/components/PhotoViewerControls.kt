@@ -30,10 +30,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.inik.camcon.R
 import com.inik.camcon.domain.model.CameraPhoto
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -47,13 +49,15 @@ fun PhotoViewerTopControls(
     onShowDetails: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
+
     Row(
         horizontalArrangement = Arrangement.End
     ) {
         IconButton(onClick = onShowDetails) {
             Icon(
                 Icons.Default.Info,
-                contentDescription = "정보",
+                contentDescription = context.getString(R.string.photo_details),
                 tint = Color.White,
                 modifier = Modifier.size(28.dp)
             )
@@ -64,7 +68,7 @@ fun PhotoViewerTopControls(
         IconButton(onClick = onDismiss) {
             Icon(
                 Icons.Default.Close,
-                contentDescription = "닫기",
+                contentDescription = context.getString(R.string.close),
                 tint = Color.White,
                 modifier = Modifier.size(28.dp)
             )
@@ -81,6 +85,8 @@ fun PhotoDetailsDialog(
     onDismiss: () -> Unit,
     onDownload: () -> Unit
 ) {
+    val context = LocalContext.current
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
@@ -114,7 +120,7 @@ fun PhotoDetailsDialog(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "상세 정보",
+                        text = context.getString(R.string.photo_details),
                         style = MaterialTheme.typography.h6,
                         color = MaterialTheme.colors.onBackground
                     )
@@ -125,33 +131,33 @@ fun PhotoDetailsDialog(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 InfoRow(
-                    label = "파일명",
+                    label = context.getString(R.string.file_name),
                     value = photo.name,
                     icon = Icons.Default.PhotoLibrary
                 )
 
                 InfoRow(
-                    label = "크기",
+                    label = context.getString(R.string.file_size),
                     value = formatFileSize(photo.size),
                     icon = null
                 )
 
                 if (photo.width > 0 && photo.height > 0) {
                     InfoRow(
-                        label = "해상도",
+                        label = context.getString(R.string.resolution),
                         value = "${photo.width} × ${photo.height}",
                         icon = null
                     )
                 }
 
                 InfoRow(
-                    label = "촬영 일시",
-                    value = formatDate(photo.date),
+                    label = context.getString(R.string.capture_date),
+                    value = formatDate(photo.date, context),
                     icon = Icons.Default.DateRange
                 )
 
                 InfoRow(
-                    label = "경로",
+                    label = context.getString(R.string.file_path),
                     value = photo.path,
                     icon = null
                 )
@@ -170,7 +176,7 @@ fun PhotoDetailsDialog(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "사진 다운로드",
+                        text = context.getString(R.string.download_photo),
                         style = MaterialTheme.typography.button
                     )
                 }
@@ -242,7 +248,8 @@ private fun formatFileSize(size: Long): String {
 /**
  * 날짜를 사람이 읽기 쉬운 형태로 포맷
  */
-private fun formatDate(timestamp: Long): String {
-    val dateFormat = SimpleDateFormat("yyyy년 MM월 dd일 HH:mm", Locale.getDefault())
+private fun formatDate(timestamp: Long, context: android.content.Context): String {
+    val pattern = context.getString(R.string.date_format_pattern)
+    val dateFormat = SimpleDateFormat(pattern, Locale.getDefault())
     return dateFormat.format(Date(timestamp))
 }

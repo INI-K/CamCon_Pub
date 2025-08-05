@@ -1,9 +1,14 @@
 package com.inik.camcon.presentation.ui.screens
 
 import android.graphics.ColorSpace
+import android.util.Log
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,9 +22,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Card
 import androidx.compose.material.CircularProgressIndicator
@@ -30,12 +35,17 @@ import androidx.compose.material.Snackbar
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,12 +57,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
+import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
 import com.inik.camcon.presentation.viewmodel.ServerPhotosViewModel
 import java.io.File
 import java.text.SimpleDateFormat
@@ -60,20 +71,72 @@ import java.util.Date
 import java.util.Locale
 
 @Composable
-fun ServerPhotosScreen(
+fun MyPhotosScreen(
     viewModel: ServerPhotosViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val context = LocalContext.current
+    var selectedPhoto by remember { mutableStateOf<CapturedPhoto?>(null) }
+
+    // 화면에 진입할 때마다 새로고침 - 탭 전환 시 확실히 실행됨
+    DisposableEffect(Unit) {
+        Log.d("MyPhotosScreen", "화면 진입 - 사진 목록 새로고침 실행")
+        viewModel.refreshPhotos()
+        onDispose {
+            Log.d("MyPhotosScreen", "화면 종료")
+        }
+    }
+
+    // 권한 요청 런처
+    val deletePermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            // 권한 승인됨, 대기 중인 삭제 작업 재시도
+            viewModel.retryPendingDelete()
+        } else {
+            // 권한 거부됨
+            viewModel.clearPendingDeleteRequest()
+        }
+    }
+
+    // 권한 요청이 필요한 경우 처리
+    uiState.pendingDeleteRequest?.let { recoverableSecurityException ->
+        androidx.compose.runtime.LaunchedEffect(recoverableSecurityException) {
+            try {
+                val intentSender = recoverableSecurityException.userAction.actionIntent.intentSender
+                val request =
+                    androidx.activity.result.IntentSenderRequest.Builder(intentSender).build()
+                deletePermissionLauncher.launch(request)
+            } catch (e: Exception) {
+                Log.e("MyPhotosScreen", "권한 요청 실패", e)
+                viewModel.clearPendingDeleteRequest()
+            }
+        }
+    }
+
+    // 멀티 선택 모드에서 뒤로가기 처리
+    BackHandler(enabled = uiState.isMultiSelectMode) {
+        viewModel.exitMultiSelectMode()
+    }
 
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
-        // 모던한 헤더
-        ModernServerHeader(
-            photoCount = uiState.photos.size,
-            onRefresh = { viewModel.refreshPhotos() }
-        )
+        // 상단 헤더 - 멀티 선택 모드에 따라 다르게 표시
+        if (uiState.isMultiSelectMode) {
+            MyPhotosMultiSelectActionBar(
+                selectedCount = uiState.selectedPhotos.size,
+                onSelectAll = { viewModel.selectAllPhotos() },
+                onDeselectAll = { viewModel.deselectAllPhotos() },
+                onDelete = { viewModel.deleteSelectedPhotos() },
+                onCancel = { viewModel.exitMultiSelectMode() }
+            )
+        } else {
+            ModernMyPhotosHeader(
+                photoCount = uiState.photos.size,
+                onRefresh = { viewModel.refreshPhotos() }
+            )
+        }
 
         when {
             uiState.isLoading -> {
@@ -81,16 +144,59 @@ fun ServerPhotosScreen(
             }
 
             uiState.photos.isEmpty() -> {
-                EmptyServerState()
+                EmptyMyPhotosState()
             }
 
             else -> {
-                PhotoGrid(
-                    photos = uiState.photos,
-                    onPhotoClick = { /* TODO: 사진 상세 보기 */ },
-                    onDeleteClick = { photo -> viewModel.deletePhoto(photo.id) }
+                FluidPhotoGrid(
+                    photos = uiState.photos, // ViewModel에서 이미 최신순으로 정렬됨
+                    onPhotoClick = { photo -> selectedPhoto = photo },
+                    onDeleteClick = { photo -> viewModel.deletePhoto(photo.id) },
+                    isMultiSelectMode = uiState.isMultiSelectMode,
+                    selectedPhotos = uiState.selectedPhotos,
+                    onPhotoLongClick = { photo -> viewModel.startMultiSelectMode(photo.id) },
+                    onToggleSelection = { photo -> viewModel.togglePhotoSelection(photo.id) }
                 )
             }
+        }
+    }
+
+    // 전체화면 사진 뷰어
+    selectedPhoto?.let { photo ->
+        val currentIndex = uiState.photos.indexOfFirst { it.id == photo.id }
+        val cameraPhotos = uiState.photos.map { capturedPhoto ->
+            CameraPhoto(
+                path = capturedPhoto.filePath,
+                name = File(capturedPhoto.filePath).name,
+                date = capturedPhoto.captureTime,
+                size = capturedPhoto.size
+            )
+        }
+
+        if (currentIndex >= 0 && cameraPhotos.isNotEmpty()) {
+            val currentCameraPhoto = cameraPhotos[currentIndex]
+
+            // 파일 존재 여부 로그
+            val file = File(currentCameraPhoto.path)
+            Log.d("MyPhotosScreen", "선택된 사진: ${currentCameraPhoto.name}")
+            Log.d("MyPhotosScreen", "파일 경로: ${currentCameraPhoto.path}")
+            Log.d("MyPhotosScreen", "파일 존재: ${file.exists()}")
+            Log.d("MyPhotosScreen", "파일 크기: ${file.length()} bytes")
+
+            FullScreenPhotoViewer(
+                photo = currentCameraPhoto,
+                onDismiss = { selectedPhoto = null },
+                onPhotoChanged = { newPhoto ->
+                    // 변경된 사진에 해당하는 CapturedPhoto 찾기
+                    val newCapturedPhoto = uiState.photos.find { it.filePath == newPhoto.path }
+                    selectedPhoto = newCapturedPhoto
+                },
+                thumbnailData = null,
+                fullImageData = ByteArray(0), // 빈 배열로 로컬 파일임을 표시
+                onDownload = { /* 이미 로컬 파일이므로 무시 */ },
+                hideDownloadButton = true,
+                localPhotos = cameraPhotos
+            )
         }
     }
 
@@ -122,7 +228,7 @@ fun ServerPhotosScreen(
 }
 
 @Composable
-private fun ModernServerHeader(
+private fun ModernMyPhotosHeader(
     photoCount: Int,
     onRefresh: () -> Unit
 ) {
@@ -159,41 +265,73 @@ private fun ModernServerHeader(
 }
 
 @Composable
-private fun PhotoGrid(
+private fun FluidPhotoGrid(
     photos: List<CapturedPhoto>,
     onPhotoClick: (CapturedPhoto) -> Unit,
-    onDeleteClick: (CapturedPhoto) -> Unit
+    onDeleteClick: (CapturedPhoto) -> Unit,
+    isMultiSelectMode: Boolean = false,
+    selectedPhotos: Set<String> = emptySet(),
+    onPhotoLongClick: (CapturedPhoto) -> Unit = {},
+    onToggleSelection: (CapturedPhoto) -> Unit = {}
 ) {
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
-        contentPadding = PaddingValues(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+    LazyVerticalStaggeredGrid(
+        columns = StaggeredGridCells.Fixed(4),
+        contentPadding = PaddingValues(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalItemSpacing = 4.dp,
         modifier = Modifier.fillMaxSize()
     ) {
         items(photos) { photo ->
-            PhotoGridItem(
+            FluidPhotoGridItem(
                 photo = photo,
-                onClick = { onPhotoClick(photo) },
-                onDelete = { onDeleteClick(photo) }
+                onClick = {
+                    if (isMultiSelectMode) {
+                        onToggleSelection(photo)
+                    } else {
+                        onPhotoClick(photo)
+                    }
+                },
+                onDelete = { onDeleteClick(photo) },
+                onLongClick = { onPhotoLongClick(photo) },
+                isSelected = selectedPhotos.contains(photo.id),
+                isMultiSelectMode = isMultiSelectMode
             )
         }
     }
 }
 
 @Composable
-private fun PhotoGridItem(
+private fun FluidPhotoGridItem(
     photo: CapturedPhoto,
     onClick: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onLongClick: () -> Unit,
+    isSelected: Boolean = false,
+    isMultiSelectMode: Boolean = false
 ) {
+    // 원본 비율에 관계없이 썸네일은 세로 비율로 강제 설정
+    val aspectRatio = remember(photo.id) {
+        // 다양한 세로 비율 사용 (이미지처럼)
+        when ((0..4).random()) {
+            0 -> 1f        // 정사각형
+            1 -> 0.75f     // 3:4 세로형
+            2 -> 0.6f      // 긴 세로형
+            3 -> 0.8f      // 4:5 세로형  
+            else -> 0.65f  // 중간 세로형
+        }
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(1f)
-            .clickable { onClick() },
-        elevation = 4.dp,
-        shape = RoundedCornerShape(12.dp)
+            .aspectRatio(aspectRatio)
+            .combinedClickable(
+                onClick = { onClick() },
+                onLongClick = { onLongClick() }
+            ),
+        elevation = 2.dp,
+        shape = RoundedCornerShape(6.dp),
+        backgroundColor = if (isSelected) Color.LightGray else MaterialTheme.colors.surface
     ) {
         Box {
             // 사진 이미지
@@ -214,54 +352,29 @@ private fun PhotoGridItem(
                 painter = painter,
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Crop // 가로 사진도 세로 비율로 크롭됨
             )
 
-            // 삭제 버튼 (우상단)
-            IconButton(
-                onClick = onDelete,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(4.dp)
-                    .size(32.dp)
-                    .background(
-                        Color.Black.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(16.dp)
-                    )
-            ) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "삭제",
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp)
+            if (isMultiSelectMode && isSelected) {
+                // 선택된 상태 오버레이
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(Color.Blue.copy(alpha = 0.3f))
                 )
-            }
 
-            // 사진 정보 오버레이 (하단)
-            Card(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(8.dp),
-                backgroundColor = Color.Black.copy(alpha = 0.7f),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(8.dp)
+                // 체크 아이콘
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .padding(8.dp),
+                    contentAlignment = Alignment.TopEnd
                 ) {
-                    Text(
-                        text = File(photo.filePath).name,
-                        color = Color.White,
-                        style = MaterialTheme.typography.caption,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    val dateFormat = SimpleDateFormat("MM.dd", Locale.getDefault())
-                    Text(
-                        text = dateFormat.format(Date(photo.captureTime)),
-                        color = Color.White.copy(alpha = 0.8f),
-                        style = MaterialTheme.typography.caption,
-                        fontSize = 10.sp
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = "선택됨",
+                        modifier = Modifier.size(24.dp),
+                        tint = Color(0xFF27AE60) // 그린톤 (선택 표시)
                     )
                 }
             }
@@ -293,7 +406,7 @@ private fun LoadingIndicator() {
 }
 
 @Composable
-fun EmptyServerState() {
+fun EmptyMyPhotosState() {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -413,11 +526,48 @@ fun CapturedPhotoItem(
     }
 }
 
+@Composable
+fun MyPhotosMultiSelectActionBar(
+    selectedCount: Int,
+    onSelectAll: () -> Unit,
+    onDeselectAll: () -> Unit,
+    onDelete: () -> Unit,
+    onCancel: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "$selectedCount 개의 항목 선택됨",
+            style = MaterialTheme.typography.body1
+        )
+
+        Row {
+            TextButton(onClick = onSelectAll) {
+                Text("전체 선택")
+            }
+            TextButton(onClick = onDeselectAll) {
+                Text("선택 해제")
+            }
+            TextButton(onClick = onDelete) {
+                Text("삭제")
+            }
+            TextButton(onClick = onCancel) {
+                Text("취소")
+            }
+        }
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
-fun EmptyServerStatePreview() {
+fun EmptyMyPhotosStatePreview() {
     CamConTheme {
-        EmptyServerState()
+        EmptyMyPhotosState()
     }
 }
 
