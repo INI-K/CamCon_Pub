@@ -8,6 +8,7 @@ import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.domain.model.LiveViewFrame
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.presentation.viewmodel.CameraUiState
+import com.inik.camcon.presentation.viewmodel.RawFileRestriction
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -284,6 +285,28 @@ class CameraUiStateManager @Inject constructor() {
             )
         }
         Log.d(TAG, "연결 성공 상태로 업데이트")
+    }
+
+    /**
+     * RAW 파일 촬영 제한 상태 업데이트
+     */
+    fun setRawFileRestriction(fileName: String, message: String) {
+        val restriction = RawFileRestriction(fileName, message)
+        _uiState.update { it.copy(rawFileRestriction = restriction) }
+        Log.d(TAG, "RAW 파일 제한 상태 업데이트: $fileName - $message")
+    }
+
+    fun setRawFileRestriction(restriction: RawFileRestriction?) {
+        _uiState.update { it.copy(rawFileRestriction = restriction) }
+        Log.d(TAG, "RAW 파일 제한 상태 업데이트: $restriction")
+    }
+
+    /**
+     * RAW 파일 촬영 제한 초기화
+     */
+    fun clearRawFileRestriction() {
+        _uiState.update { it.copy(rawFileRestriction = null) }
+        Log.d(TAG, "RAW 파일 제한 상태 초기화")
     }
 
     /**
