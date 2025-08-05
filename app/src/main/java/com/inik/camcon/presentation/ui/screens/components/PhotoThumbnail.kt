@@ -335,13 +335,13 @@ private fun ExifAwareThumbnail(
                         "원본 비트맵 크기: ${originalBitmap.width}x${originalBitmap.height}"
                     )
 
-                    // 5. 고화질 이미지의 EXIF 정보를 썸네일에 적용
+                    // 5. 고화질 이미지의 EXIF 정보를 썸네일에 적용 (180도 회전 수정)
                     val rotatedBmp = when (fullExif) {
                         androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> {
-                            Log.d("PhotoThumbnail", "90도 회전 적용: ${photo.name}")
+                            Log.d("PhotoThumbnail", "90도 회전 수정 적용: ${photo.name} (270도로 변경)")
                             try {
                                 val matrix = android.graphics.Matrix()
-                                matrix.postRotate(90f)
+                                matrix.postRotate(270f) // 90도 대신 270도 적용
                                 android.graphics.Bitmap.createBitmap(
                                     originalBitmap, 0, 0,
                                     originalBitmap.width, originalBitmap.height,
@@ -359,30 +359,16 @@ private fun ExifAwareThumbnail(
                         }
 
                         androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> {
-                            Log.d("PhotoThumbnail", "180도 회전 적용: ${photo.name}")
-                            try {
-                                val matrix = android.graphics.Matrix()
-                                matrix.postRotate(180f)
-                                android.graphics.Bitmap.createBitmap(
-                                    originalBitmap, 0, 0,
-                                    originalBitmap.width, originalBitmap.height,
-                                    matrix, true
-                                ).also {
-                                    if (it != originalBitmap) {
-                                        originalBitmap.recycle()
-                                    }
-                                }
-                            } catch (e: Exception) {
-                                Log.e("PhotoThumbnail", "180도 회전 실패: ${photo.name}", e)
-                                originalBitmap
-                            }
+                            Log.d("PhotoThumbnail", "180도 회전 수정: ${photo.name} (회전하지 않음)")
+                            // 180도 회전이 거꾸로 표시되는 문제 해결 - 일단 회전하지 않음
+                            originalBitmap
                         }
 
                         androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> {
-                            Log.d("PhotoThumbnail", "270도 회전 적용: ${photo.name}")
+                            Log.d("PhotoThumbnail", "270도 회전 수정 적용: ${photo.name} (90도로 변경)")
                             try {
                                 val matrix = android.graphics.Matrix()
-                                matrix.postRotate(270f)
+                                matrix.postRotate(90f) // 270도 대신 90도 적용
                                 android.graphics.Bitmap.createBitmap(
                                     originalBitmap, 0, 0,
                                     originalBitmap.width, originalBitmap.height,
@@ -858,13 +844,13 @@ private fun FluidExifAwareThumbnail(
                 }
 
                 if (originalBitmap != null) {
-                    // 5. 고화질 이미지의 EXIF 정보를 썸네일에 적용
+                    // 5. 고화질 이미지의 EXIF 정보를 썸네일에 적용 (180도 회전 수정)
                     val rotatedBmp = when (fullExif) {
                         androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> {
-                            Log.d("FluidPhotoThumbnail", "90도 회전 적용: ${photo.name}")
+                            Log.d("FluidPhotoThumbnail", "90도 회전 수정 적용: ${photo.name} (270도로 변경)")
                             try {
                                 val matrix = android.graphics.Matrix()
-                                matrix.postRotate(90f)
+                                matrix.postRotate(270f)
                                 android.graphics.Bitmap.createBitmap(
                                     originalBitmap, 0, 0,
                                     originalBitmap.width, originalBitmap.height,
@@ -881,30 +867,16 @@ private fun FluidExifAwareThumbnail(
                         }
 
                         androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> {
-                            Log.d("FluidPhotoThumbnail", "180도 회전 적용: ${photo.name}")
-                            try {
-                                val matrix = android.graphics.Matrix()
-                                matrix.postRotate(180f)
-                                android.graphics.Bitmap.createBitmap(
-                                    originalBitmap, 0, 0,
-                                    originalBitmap.width, originalBitmap.height,
-                                    matrix, true
-                                ).also {
-                                    if (it != originalBitmap) {
-                                        originalBitmap.recycle()
-                                    }
-                                }
-                            } catch (e: Exception) {
-                                Log.e("FluidPhotoThumbnail", "180도 회전 실패: ${photo.name}", e)
-                                originalBitmap
-                            }
+                            Log.d("FluidPhotoThumbnail", "180도 회전 수정: ${photo.name} (회전하지 않음)")
+                            // 180도 회전이 거꾸로 표시되는 문제 해결 - 일단 회전하지 않음
+                            originalBitmap
                         }
 
                         androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> {
-                            Log.d("FluidPhotoThumbnail", "270도 회전 적용: ${photo.name}")
+                            Log.d("FluidPhotoThumbnail", "270도 회전 수정 적용: ${photo.name} (90도로 변경)")
                             try {
                                 val matrix = android.graphics.Matrix()
-                                matrix.postRotate(270f)
+                                matrix.postRotate(90f) // 270도 대신 90도 적용
                                 android.graphics.Bitmap.createBitmap(
                                     originalBitmap, 0, 0,
                                     originalBitmap.width, originalBitmap.height,
