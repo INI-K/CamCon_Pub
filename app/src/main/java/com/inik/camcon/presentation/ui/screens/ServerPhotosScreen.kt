@@ -2,9 +2,13 @@ package com.inik.camcon.presentation.ui.screens
 
 import android.graphics.ColorSpace
 import android.util.Log
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,10 +35,12 @@ import androidx.compose.material.Snackbar
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -71,14 +77,66 @@ fun MyPhotosScreen(
     val uiState by viewModel.uiState.collectAsState()
     var selectedPhoto by remember { mutableStateOf<CapturedPhoto?>(null) }
 
+    // 화면에 진입할 때마다 새로고침 - 탭 전환 시 확실히 실행됨
+    DisposableEffect(Unit) {
+        Log.d("MyPhotosScreen", "화면 진입 - 사진 목록 새로고침 실행")
+        viewModel.refreshPhotos()
+        onDispose {
+            Log.d("MyPhotosScreen", "화면 종료")
+        }
+    }
+
+    // 권한 요청 런처
+    val deletePermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            // 권한 승인됨, 대기 중인 삭제 작업 재시도
+            viewModel.retryPendingDelete()
+        } else {
+            // 권한 거부됨
+            viewModel.clearPendingDeleteRequest()
+        }
+    }
+
+    // 권한 요청이 필요한 경우 처리
+    uiState.pendingDeleteRequest?.let { recoverableSecurityException ->
+        androidx.compose.runtime.LaunchedEffect(recoverableSecurityException) {
+            try {
+                val intentSender = recoverableSecurityException.userAction.actionIntent.intentSender
+                val request =
+                    androidx.activity.result.IntentSenderRequest.Builder(intentSender).build()
+                deletePermissionLauncher.launch(request)
+            } catch (e: Exception) {
+                Log.e("MyPhotosScreen", "권한 요청 실패", e)
+                viewModel.clearPendingDeleteRequest()
+            }
+        }
+    }
+
+    // 멀티 선택 모드에서 뒤로가기 처리
+    BackHandler(enabled = uiState.isMultiSelectMode) {
+        viewModel.exitMultiSelectMode()
+    }
+
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
-        // 모던한 헤더
-        ModernMyPhotosHeader(
-            photoCount = uiState.photos.size,
-            onRefresh = { viewModel.refreshPhotos() }
-        )
+        // 상단 헤더 - 멀티 선택 모드에 따라 다르게 표시
+        if (uiState.isMultiSelectMode) {
+            MyPhotosMultiSelectActionBar(
+                selectedCount = uiState.selectedPhotos.size,
+                onSelectAll = { viewModel.selectAllPhotos() },
+                onDeselectAll = { viewModel.deselectAllPhotos() },
+                onDelete = { viewModel.deleteSelectedPhotos() },
+                onCancel = { viewModel.exitMultiSelectMode() }
+            )
+        } else {
+            ModernMyPhotosHeader(
+                photoCount = uiState.photos.size,
+                onRefresh = { viewModel.refreshPhotos() }
+            )
+        }
 
         when {
             uiState.isLoading -> {
@@ -91,9 +149,13 @@ fun MyPhotosScreen(
 
             else -> {
                 FluidPhotoGrid(
-                    photos = uiState.photos,
+                    photos = uiState.photos, // ViewModel에서 이미 최신순으로 정렬됨
                     onPhotoClick = { photo -> selectedPhoto = photo },
-                    onDeleteClick = { photo -> viewModel.deletePhoto(photo.id) }
+                    onDeleteClick = { photo -> viewModel.deletePhoto(photo.id) },
+                    isMultiSelectMode = uiState.isMultiSelectMode,
+                    selectedPhotos = uiState.selectedPhotos,
+                    onPhotoLongClick = { photo -> viewModel.startMultiSelectMode(photo.id) },
+                    onToggleSelection = { photo -> viewModel.togglePhotoSelection(photo.id) }
                 )
             }
         }
@@ -206,7 +268,11 @@ private fun ModernMyPhotosHeader(
 private fun FluidPhotoGrid(
     photos: List<CapturedPhoto>,
     onPhotoClick: (CapturedPhoto) -> Unit,
-    onDeleteClick: (CapturedPhoto) -> Unit
+    onDeleteClick: (CapturedPhoto) -> Unit,
+    isMultiSelectMode: Boolean = false,
+    selectedPhotos: Set<String> = emptySet(),
+    onPhotoLongClick: (CapturedPhoto) -> Unit = {},
+    onToggleSelection: (CapturedPhoto) -> Unit = {}
 ) {
     LazyVerticalStaggeredGrid(
         columns = StaggeredGridCells.Fixed(4),
@@ -218,8 +284,17 @@ private fun FluidPhotoGrid(
         items(photos) { photo ->
             FluidPhotoGridItem(
                 photo = photo,
-                onClick = { onPhotoClick(photo) },
-                onDelete = { onDeleteClick(photo) }
+                onClick = {
+                    if (isMultiSelectMode) {
+                        onToggleSelection(photo)
+                    } else {
+                        onPhotoClick(photo)
+                    }
+                },
+                onDelete = { onDeleteClick(photo) },
+                onLongClick = { onPhotoLongClick(photo) },
+                isSelected = selectedPhotos.contains(photo.id),
+                isMultiSelectMode = isMultiSelectMode
             )
         }
     }
@@ -229,7 +304,10 @@ private fun FluidPhotoGrid(
 private fun FluidPhotoGridItem(
     photo: CapturedPhoto,
     onClick: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onLongClick: () -> Unit,
+    isSelected: Boolean = false,
+    isMultiSelectMode: Boolean = false
 ) {
     // 원본 비율에 관계없이 썸네일은 세로 비율로 강제 설정
     val aspectRatio = remember(photo.id) {
@@ -247,9 +325,13 @@ private fun FluidPhotoGridItem(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(aspectRatio)
-            .clickable { onClick() },
+            .combinedClickable(
+                onClick = { onClick() },
+                onLongClick = { onLongClick() }
+            ),
         elevation = 2.dp,
-        shape = RoundedCornerShape(6.dp)
+        shape = RoundedCornerShape(6.dp),
+        backgroundColor = if (isSelected) Color.LightGray else MaterialTheme.colors.surface
     ) {
         Box {
             // 사진 이미지
@@ -272,6 +354,30 @@ private fun FluidPhotoGridItem(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop // 가로 사진도 세로 비율로 크롭됨
             )
+
+            if (isMultiSelectMode && isSelected) {
+                // 선택된 상태 오버레이
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(Color.Blue.copy(alpha = 0.3f))
+                )
+
+                // 체크 아이콘
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .padding(8.dp),
+                    contentAlignment = Alignment.TopEnd
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = "선택됨",
+                        modifier = Modifier.size(24.dp),
+                        tint = Color(0xFF27AE60) // 그린톤 (선택 표시)
+                    )
+                }
+            }
         }
     }
 }
@@ -415,6 +521,43 @@ fun CapturedPhotoItem(
                     contentDescription = "삭제",
                     tint = Color.Red.copy(alpha = 0.7f)
                 )
+            }
+        }
+    }
+}
+
+@Composable
+fun MyPhotosMultiSelectActionBar(
+    selectedCount: Int,
+    onSelectAll: () -> Unit,
+    onDeselectAll: () -> Unit,
+    onDelete: () -> Unit,
+    onCancel: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "$selectedCount 개의 항목 선택됨",
+            style = MaterialTheme.typography.body1
+        )
+
+        Row {
+            TextButton(onClick = onSelectAll) {
+                Text("전체 선택")
+            }
+            TextButton(onClick = onDeselectAll) {
+                Text("선택 해제")
+            }
+            TextButton(onClick = onDelete) {
+                Text("삭제")
+            }
+            TextButton(onClick = onCancel) {
+                Text("취소")
             }
         }
     }
