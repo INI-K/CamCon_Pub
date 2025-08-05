@@ -396,20 +396,328 @@ class PhotoPreviewViewModel @Inject constructor(
         
         viewModelScope.launch {
             try {
-                cameraRepository.downloadPhotoFromCamera(photo.path)
-                    .onSuccess {
-                        // 다운로드 성공
+                // 현재 구독 티어 확인
+                val currentTier = _uiState.value.currentTier
+                android.util.Log.d(TAG, "사진 다운로드 시작: ${photo.name}, 티어: $currentTier")
+                
+                // 카메라에서 원본 사진 다운로드
+                val downloadResult = cameraRepository.downloadPhotoFromCamera(photo.path)
+                
+                downloadResult.onSuccess { capturedPhoto ->
+                    android.util.Log.d(TAG, "✅ 사진 다운로드 성공: ${photo.name}")
+                    
+                    // Free 티어 사용자의 경우 추가 리사이징 처리
+                    if (currentTier == SubscriptionTier.FREE) {
+                        android.util.Log.d(TAG, "🎯 Free 티어 사용자 - 리사이징 처리 시작")
+                        
+                        val originalFile = java.io.File(capturedPhoto.filePath)
+                        if (originalFile.exists() && photo.name.endsWith(".jpg", true)) {
+                            try {
+                                // 리사이즈된 파일 생성
+                                val resizedFile = java.io.File(
+                                    originalFile.parent, 
+                                    "${originalFile.nameWithoutExtension}_resized.jpg"
+                                )
+                                
+                                // 리사이즈 구현 (PhotoDownloadManager.kt에서 복사)
+                                val resizeSuccess = resizeImageForFreeTier(
+                                    originalFile.absolutePath, 
+                                    resizedFile.absolutePath
+                                )
+                                
+                                if (resizeSuccess) {
+                                    // 원본 파일 삭제하고 리사이즈된 파일로 교체
+                                    originalFile.delete()
+                                    resizedFile.renameTo(originalFile)
+                                    android.util.Log.d(TAG, "✅ Free 티어 리사이징 완료: ${photo.name}")
+                                } else {
+                                    android.util.Log.w(TAG, "⚠️ Free 티어 리사이징 실패, 원본 유지: ${photo.name}")
+                                }
+                            } catch (e: Exception) {
+                                android.util.Log.e(TAG, "❌ Free 티어 리사이징 처리 중 오류: ${photo.name}", e)
+                            }
+                        }
                     }
-                    .onFailure { error ->
-                        _uiState.value = _uiState.value.copy(
-                            error = error.message
-                        )
-                    }
+                }.onFailure { error ->
+                    android.util.Log.e(TAG, "❌ 사진 다운로드 실패: ${photo.name}", error)
+                    _uiState.value = _uiState.value.copy(
+                        error = error.message
+                    )
+                }
             } catch (e: Exception) {
+                android.util.Log.e(TAG, "❌ 사진 다운로드 중 예외: ${photo.name}", e)
                 _uiState.value = _uiState.value.copy(
                     error = e.message
                 )
             }
+        }
+    }
+
+    /**
+     * Free 티어 사용자를 위한 이미지 리사이즈 처리 (PhotoDownloadManager에서 복사)
+     * 장축 기준 2000픽셀로 리사이즈하고 모든 EXIF 정보 보존
+     */
+    private suspend fun resizeImageForFreeTier(inputPath: String, outputPath: String): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                android.util.Log.d(TAG, "🔧 Free 티어 이미지 리사이즈 시작: $inputPath")
+
+                // 원본 이미지 크기 확인
+                val options = android.graphics.BitmapFactory.Options().apply {
+                    inJustDecodeBounds = true
+                }
+                android.graphics.BitmapFactory.decodeFile(inputPath, options)
+
+                val originalWidth = options.outWidth
+                val originalHeight = options.outHeight
+                val maxDimension = kotlin.math.max(originalWidth, originalHeight)
+
+                android.util.Log.d(TAG, "원본 이미지 크기: ${originalWidth}x${originalHeight}")
+
+                // 이미 작은 이미지인 경우 리사이즈하지 않음
+                if (maxDimension <= 2000) {
+                    android.util.Log.d(TAG, "이미 작은 이미지 - 리사이즈 불필요")
+                    return@withContext java.io.File(inputPath).copyTo(java.io.File(outputPath), overwrite = true).exists()
+                }
+
+                // 리사이즈 비율 계산
+                val scale = 2000.toFloat() / maxDimension.toFloat()
+                val newWidth = (originalWidth * scale).toInt()
+                val newHeight = (originalHeight * scale).toInt()
+
+                android.util.Log.d(TAG, "리사이즈 목표 크기: ${newWidth}x${newHeight} (비율: $scale)")
+
+                // 메모리 효율적인 리사이즈를 위한 샘플링
+                val sampleSize = calculateInSampleSize(originalWidth, originalHeight, newWidth, newHeight)
+
+                options.apply {
+                    inJustDecodeBounds = false
+                    inSampleSize = sampleSize
+                    inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
+                }
+
+                val bitmap = android.graphics.BitmapFactory.decodeFile(inputPath, options) ?: run {
+                    android.util.Log.e(TAG, "이미지 디코딩 실패: $inputPath")
+                    return@withContext false
+                }
+
+                try {
+                    // 정확한 크기로 최종 리사이즈
+                    val resizedBitmap = android.graphics.Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
+
+                    // EXIF 정보 읽기 (회전 정보)
+                    val originalExif = androidx.exifinterface.media.ExifInterface(inputPath)
+                    val orientation = originalExif.getAttributeInt(
+                        androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION,
+                        androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
+                    )
+
+                    // 회전 적용
+                    val rotatedBitmap = rotateImageIfRequired(resizedBitmap, orientation)
+
+                    // 파일로 저장
+                    java.io.FileOutputStream(outputPath).use { out ->
+                        rotatedBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, out)
+                    }
+
+                    // 메모리 정리
+                    if (resizedBitmap != rotatedBitmap) {
+                        resizedBitmap.recycle()
+                    }
+                    rotatedBitmap.recycle()
+
+                    // ★★★ 모든 EXIF 정보를 새 파일에 복사 ★★★
+                    copyAllExifData(inputPath, outputPath, newWidth, newHeight)
+
+                    val outputFile = java.io.File(outputPath)
+                    val finalSize = outputFile.length()
+                    android.util.Log.d(TAG, "✅ Free 티어 리사이즈 완료 (EXIF 보존) - 최종 크기: ${finalSize / 1024}KB")
+
+                    true
+                } finally {
+                    bitmap.recycle()
+                }
+
+            } catch (e: OutOfMemoryError) {
+                android.util.Log.e(TAG, "❌ 메모리 부족으로 리사이즈 실패", e)
+                System.gc()
+                false
+            } catch (e: Exception) {
+                android.util.Log.e(TAG, "❌ 이미지 리사이즈 실패", e)
+                false
+            }
+        }
+    }
+
+    /**
+     * 원본 이미지의 모든 EXIF 정보를 리사이즈된 이미지에 복사
+     * 이미지 크기 정보는 새로운 값으로 업데이트
+     */
+    private fun copyAllExifData(originalPath: String, newPath: String, newWidth: Int, newHeight: Int) {
+        try {
+            android.util.Log.d(TAG, "EXIF 정보 복사 시작: $originalPath -> $newPath")
+            
+            val originalExif = androidx.exifinterface.media.ExifInterface(originalPath)
+            val newExif = androidx.exifinterface.media.ExifInterface(newPath)
+
+            // 복사할 EXIF 태그들 - 거의 모든 중요한 EXIF 정보
+            val tagsToPreserve = arrayOf(
+                // 카메라 정보
+                androidx.exifinterface.media.ExifInterface.TAG_MAKE,
+                androidx.exifinterface.media.ExifInterface.TAG_MODEL,
+                androidx.exifinterface.media.ExifInterface.TAG_SOFTWARE,
+                
+                // 촬영 설정
+                androidx.exifinterface.media.ExifInterface.TAG_F_NUMBER,
+                androidx.exifinterface.media.ExifInterface.TAG_EXPOSURE_TIME,
+                androidx.exifinterface.media.ExifInterface.TAG_ISO_SPEED_RATINGS,
+                androidx.exifinterface.media.ExifInterface.TAG_PHOTOGRAPHIC_SENSITIVITY,
+                androidx.exifinterface.media.ExifInterface.TAG_ISO_SPEED,
+                androidx.exifinterface.media.ExifInterface.TAG_FOCAL_LENGTH,
+                androidx.exifinterface.media.ExifInterface.TAG_FOCAL_LENGTH_IN_35MM_FILM,
+                androidx.exifinterface.media.ExifInterface.TAG_APERTURE_VALUE,
+                androidx.exifinterface.media.ExifInterface.TAG_SHUTTER_SPEED_VALUE,
+                androidx.exifinterface.media.ExifInterface.TAG_BRIGHTNESS_VALUE,
+                androidx.exifinterface.media.ExifInterface.TAG_EXPOSURE_BIAS_VALUE,
+                androidx.exifinterface.media.ExifInterface.TAG_MAX_APERTURE_VALUE,
+                androidx.exifinterface.media.ExifInterface.TAG_METERING_MODE,
+                androidx.exifinterface.media.ExifInterface.TAG_LIGHT_SOURCE,
+                androidx.exifinterface.media.ExifInterface.TAG_FLASH,
+                androidx.exifinterface.media.ExifInterface.TAG_SCENE_CAPTURE_TYPE,
+                androidx.exifinterface.media.ExifInterface.TAG_WHITE_BALANCE,
+                androidx.exifinterface.media.ExifInterface.TAG_DIGITAL_ZOOM_RATIO,
+                androidx.exifinterface.media.ExifInterface.TAG_EXPOSURE_MODE,
+                androidx.exifinterface.media.ExifInterface.TAG_GAIN_CONTROL,
+                androidx.exifinterface.media.ExifInterface.TAG_CONTRAST,
+                androidx.exifinterface.media.ExifInterface.TAG_SATURATION,
+                androidx.exifinterface.media.ExifInterface.TAG_SHARPNESS,
+                
+                // 날짜/시간 정보
+                androidx.exifinterface.media.ExifInterface.TAG_DATETIME,
+                androidx.exifinterface.media.ExifInterface.TAG_DATETIME_ORIGINAL,
+                androidx.exifinterface.media.ExifInterface.TAG_DATETIME_DIGITIZED,
+                androidx.exifinterface.media.ExifInterface.TAG_OFFSET_TIME,
+                androidx.exifinterface.media.ExifInterface.TAG_OFFSET_TIME_ORIGINAL,
+                androidx.exifinterface.media.ExifInterface.TAG_OFFSET_TIME_DIGITIZED,
+                androidx.exifinterface.media.ExifInterface.TAG_SUBSEC_TIME,
+                androidx.exifinterface.media.ExifInterface.TAG_SUBSEC_TIME_ORIGINAL,
+                androidx.exifinterface.media.ExifInterface.TAG_SUBSEC_TIME_DIGITIZED,
+                
+                // GPS 정보
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_LATITUDE,
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_LATITUDE_REF,
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_LONGITUDE,
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_LONGITUDE_REF,
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_ALTITUDE,
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_ALTITUDE_REF,
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_TIMESTAMP,
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_DATESTAMP,
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_PROCESSING_METHOD,
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_SPEED,
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_SPEED_REF,
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_TRACK,
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_TRACK_REF,
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_IMG_DIRECTION,
+                androidx.exifinterface.media.ExifInterface.TAG_GPS_IMG_DIRECTION_REF,
+                
+                // 기타 메타데이터
+                androidx.exifinterface.media.ExifInterface.TAG_ARTIST,
+                androidx.exifinterface.media.ExifInterface.TAG_COPYRIGHT,
+                androidx.exifinterface.media.ExifInterface.TAG_IMAGE_DESCRIPTION,
+                androidx.exifinterface.media.ExifInterface.TAG_USER_COMMENT,
+                androidx.exifinterface.media.ExifInterface.TAG_CAMERA_OWNER_NAME,
+                androidx.exifinterface.media.ExifInterface.TAG_BODY_SERIAL_NUMBER,
+                androidx.exifinterface.media.ExifInterface.TAG_LENS_MAKE,
+                androidx.exifinterface.media.ExifInterface.TAG_LENS_MODEL,
+                androidx.exifinterface.media.ExifInterface.TAG_LENS_SERIAL_NUMBER,
+                androidx.exifinterface.media.ExifInterface.TAG_LENS_SPECIFICATION,
+                
+                // 색상 공간 및 렌더링
+                androidx.exifinterface.media.ExifInterface.TAG_COLOR_SPACE,
+                androidx.exifinterface.media.ExifInterface.TAG_GAMMA,
+                androidx.exifinterface.media.ExifInterface.TAG_PHOTOMETRIC_INTERPRETATION,
+                androidx.exifinterface.media.ExifInterface.TAG_REFERENCE_BLACK_WHITE,
+                androidx.exifinterface.media.ExifInterface.TAG_WHITE_POINT,
+                androidx.exifinterface.media.ExifInterface.TAG_PRIMARY_CHROMATICITIES,
+                androidx.exifinterface.media.ExifInterface.TAG_Y_CB_CR_COEFFICIENTS,
+                androidx.exifinterface.media.ExifInterface.TAG_Y_CB_CR_POSITIONING,
+                androidx.exifinterface.media.ExifInterface.TAG_Y_CB_CR_SUB_SAMPLING,
+                
+                // 방향 정보 (변경되지 않음 - 회전은 이미 적용됨)
+                androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION
+            )
+
+            var copiedCount = 0
+            // 모든 태그 복사
+            for (tag in tagsToPreserve) {
+                val value = originalExif.getAttribute(tag)
+                if (value != null) {
+                    newExif.setAttribute(tag, value)
+                    copiedCount++
+                }
+            }
+
+            // 새로운 이미지 크기 정보 설정 (필수)
+            newExif.setAttribute(androidx.exifinterface.media.ExifInterface.TAG_IMAGE_WIDTH, newWidth.toString())
+            newExif.setAttribute(androidx.exifinterface.media.ExifInterface.TAG_IMAGE_LENGTH, newHeight.toString())
+            newExif.setAttribute(androidx.exifinterface.media.ExifInterface.TAG_PIXEL_X_DIMENSION, newWidth.toString())
+            newExif.setAttribute(androidx.exifinterface.media.ExifInterface.TAG_PIXEL_Y_DIMENSION, newHeight.toString())
+
+            // 처리 소프트웨어 정보 추가
+            newExif.setAttribute(androidx.exifinterface.media.ExifInterface.TAG_SOFTWARE, "CamCon (Free Tier Resize)")
+
+            // EXIF 정보 저장
+            newExif.saveAttributes()
+            
+            android.util.Log.d(TAG, "✅ EXIF 정보 복사 완료: ${copiedCount}개 태그 복사됨")
+            android.util.Log.d(TAG, "   새 이미지 크기 정보: ${newWidth}x${newHeight}")
+
+        } catch (e: Exception) {
+            android.util.Log.e(TAG, "❌ EXIF 정보 복사 실패", e)
+            // EXIF 복사 실패해도 이미지 리사이즈는 성공으로 처리
+        }
+    }
+
+    /**
+     * 메모리 효율적인 샘플링 크기 계산
+     */
+    private fun calculateInSampleSize(width: Int, height: Int, reqWidth: Int, reqHeight: Int): Int {
+        var inSampleSize = 1
+
+        if (height > reqHeight || width > reqWidth) {
+            val halfHeight = height / 2
+            val halfWidth = width / 2
+
+            while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
+                inSampleSize *= 2
+            }
+        }
+
+        return inSampleSize
+    }
+
+    /**
+     * EXIF 정보에 따른 이미지 회전 처리
+     */
+    private fun rotateImageIfRequired(bitmap: android.graphics.Bitmap, orientation: Int): android.graphics.Bitmap {
+        val matrix = android.graphics.Matrix()
+
+        when (orientation) {
+            androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+            androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+            androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+            else -> return bitmap // 회전 불필요
+        }
+
+        return try {
+            val rotatedBitmap = android.graphics.Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+            if (rotatedBitmap != bitmap) {
+                bitmap.recycle()
+            }
+            rotatedBitmap
+        } catch (e: OutOfMemoryError) {
+            android.util.Log.e(TAG, "이미지 회전 중 메모리 부족", e)
+            bitmap // 회전 실패 시 원본 반환
         }
     }
 

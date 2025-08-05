@@ -1,7 +1,5 @@
 package com.inik.camcon.presentation.ui.screens.components
 
-// --- BottomSheet 관련 임포트 ---
-// --------------------------
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.graphics.ColorSpace
@@ -66,7 +64,6 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.exifinterface.media.ExifInterface
 import com.github.panpf.zoomimage.CoilZoomAsyncImage
-import com.github.panpf.zoomimage.compose.rememberZoomState
 import com.github.panpf.zoomimage.rememberCoilZoomState
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
@@ -95,7 +92,7 @@ private fun shareCurrentPhoto(
 ) {
     CoroutineScope(Dispatchers.IO).launch {
         try {
-            // 로컬 파일인지 확인
+            // 1. 로컬 파일인 경우
             val isLocalFile = java.io.File(photo.path).exists()
 
             if (isLocalFile) {
@@ -104,22 +101,18 @@ private fun shareCurrentPhoto(
                 withContext(Dispatchers.Main) {
                     try {
                         val file = java.io.File(photo.path)
-
-                        // FileProvider를 사용하여 URI 생성
                         val fileUri = FileProvider.getUriForFile(
                             context,
                             "${context.packageName}.fileprovider",
                             file
                         )
 
-                        // 공유 인텐트 생성
                         val shareIntent = Intent().apply {
                             action = Intent.ACTION_SEND
                             type = "image/*"
                             putExtra(Intent.EXTRA_STREAM, fileUri)
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         }
-
                         val chooser = Intent.createChooser(shareIntent, "사진 공유")
                         context.startActivity(chooser)
 
@@ -132,46 +125,21 @@ private fun shareCurrentPhoto(
                 return@launch
             }
 
-            // 서버 사진의 경우 기존 로직 사용
-            // 이미지 데이터 가져오기 우선순위:
-            // 1. 직접 전달받은 fullImageData (ViewModel이 없는 경우를 위해)
-            // 2. viewModel의 고화질 이미지
-            // 3. 직접 전달받은 thumbnailData
-            // 4. viewModel의 썸네일
+            // 2. 서버 사진의 경우: 최대한 원본에 가까운 imageData를 우선 사용
             val imageData = when {
-                fullImageData != null && fullImageData.isNotEmpty() -> {
-                    Log.d("PhotoShare", "직접 전달된 고화질 이미지 사용: ${fullImageData.size} bytes")
-                    fullImageData
-                }
+                fullImageData != null && fullImageData.isNotEmpty() -> fullImageData
                 viewModel != null -> {
                     val fullImage = viewModel.fullImageCache.value[photo.path]
                     val thumbnail = viewModel.uiState.value.thumbnailCache[photo.path]
-                    val result = fullImage ?: thumbnail
-                    if (result != null) {
-                        Log.d(
-                            "PhotoShare",
-                            "ViewModel에서 이미지 데이터 사용: ${result.size} bytes (${if (fullImage != null) "고화질" else "썸네일"})"
-                        )
-                    }
-                    result
+                    fullImage ?: thumbnail
                 }
-                thumbnailData != null && thumbnailData.isNotEmpty() -> {
-                    Log.d("PhotoShare", "직접 전달된 썸네일 이미지 사용: ${thumbnailData.size} bytes")
-                    thumbnailData
-                }
-
-                else -> {
-                    Log.w("PhotoShare", "사용 가능한 이미지 데이터가 없음")
-                    null
-                }
+                thumbnailData != null && thumbnailData.isNotEmpty() -> thumbnailData
+                else -> null
             }
 
             if (imageData != null && imageData.isNotEmpty()) {
-                // 임시 파일 생성
                 val cacheDir = File(context.cacheDir, "shared_photos")
-                if (!cacheDir.exists()) {
-                    cacheDir.mkdirs()
-                }
+                if (!cacheDir.exists()) cacheDir.mkdirs()
 
                 val tempFile = File(cacheDir, "share_${photo.name}")
                 FileOutputStream(tempFile).use { fos ->
@@ -180,28 +148,22 @@ private fun shareCurrentPhoto(
 
                 withContext(Dispatchers.Main) {
                     try {
-                        // FileProvider를 사용하여 URI 생성
                         val fileUri = FileProvider.getUriForFile(
                             context,
                             "${context.packageName}.fileprovider",
                             tempFile
                         )
 
-                        // 공유 인텐트 생성
                         val shareIntent = Intent().apply {
                             action = Intent.ACTION_SEND
                             type = "image/*"
                             putExtra(Intent.EXTRA_STREAM, fileUri)
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         }
-
                         val chooser = Intent.createChooser(shareIntent, "사진 공유")
                         context.startActivity(chooser)
 
-                        Log.d(
-                            "PhotoShare",
-                            "서버 사진 공유 시작: ${tempFile.name} (${imageData.size} bytes)"
-                        )
+                        Log.d("PhotoShare", "서버 사진 공유 시작: ${tempFile.name} (${imageData.size} bytes)")
                     } catch (e: Exception) {
                         Log.e("PhotoShare", "공유 인텐트 실행 실패", e)
                         Toast.makeText(context, "사진 공유에 실패했습니다.", Toast.LENGTH_SHORT).show()
@@ -210,10 +172,7 @@ private fun shareCurrentPhoto(
             } else {
                 withContext(Dispatchers.Main) {
                     Toast.makeText(context, "공유할 이미지 데이터가 없습니다.", Toast.LENGTH_SHORT).show()
-                    Log.w(
-                        "PhotoShare",
-                        "공유할 이미지 데이터 없음: viewModel=${viewModel != null}, fullImageData=${fullImageData?.let { "${it.size} bytes" } ?: "null"}, thumbnailData=${thumbnailData?.let { "${it.size} bytes" } ?: "null"}"
-                    )
+                    Log.w("PhotoShare", "공유할 이미지 데이터 없음: viewModel=${viewModel != null}, fullImageData=${fullImageData?.let { "${it.size} bytes" } ?: "null"}, thumbnailData=${thumbnailData?.let { "${it.size} bytes" } ?: "null"}")
                 }
             }
         } catch (e: Exception) {
