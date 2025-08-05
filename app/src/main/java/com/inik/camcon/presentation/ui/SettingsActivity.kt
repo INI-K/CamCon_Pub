@@ -2,7 +2,10 @@ package com.inik.camcon.presentation.ui
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.os.PowerManager
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -456,6 +459,35 @@ fun SettingsScreen(
                         showThemeDialog = true
                     }
                 )
+
+                // === 배터리 최적화 예외 설정 항목 추가 ===
+                val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+                val packageName = context.packageName
+                val isIgnoringOptimizations = pm.isIgnoringBatteryOptimizations(packageName)
+                SettingsItem(
+                    icon = Icons.Default.Settings,
+                    title = "배터리 최적화 예외 설정",
+                    subtitle = if (isIgnoringOptimizations) {
+                        "배터리 사용량 최적화 예외 처리됨"
+                    } else {
+                        "백그라운드 연결 및 알림을 위해 예외로 설정 필요"
+                    },
+                    onClick = {
+                        try {
+                            val intent =
+                                Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                            intent.data = Uri.parse("package:$packageName")
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            android.widget.Toast.makeText(
+                                context,
+                                "설정 화면을 열 수 없습니다: ${e.localizedMessage}",
+                                android.widget.Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                )
+                // === 배터리 최적화 예외 항목 끝 ===
             }
 
             if (showThemeDialog) {
