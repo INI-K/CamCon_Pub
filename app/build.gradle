@@ -1,7 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    id 'com.google.devtools.ksp'
+    alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.ksp)
     id 'com.google.dagger.hilt.android'
     id 'com.google.gms.google-services'
 }
@@ -115,9 +116,6 @@ android {
         sourceCompatibility JavaVersion.VERSION_11
         targetCompatibility JavaVersion.VERSION_11
     }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.4"
-    }
     externalNativeBuild {
         cmake {
             path file('src/main/cpp/CMakeLists.txt')
@@ -185,9 +183,9 @@ dependencies {
     androidTestImplementation libs.androidx.junit
     androidTestImplementation libs.androidx.espresso.core
     //hilt
-    implementation "com.google.dagger:hilt-android:2.49"
+    implementation libs.hilt.android
     implementation 'androidx.hilt:hilt-navigation-compose:1.2.0'
-    ksp "com.google.dagger:hilt-compiler:2.49"
+    ksp libs.hilt.compiler
 
     // 코루틴
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
@@ -240,6 +238,9 @@ dependencies {
     // 0xZhangKe ImageViewer library for advanced image viewing
     implementation 'com.github.0xZhangKe:ImageViewer:1.0.3'
     // 기본 Compose 제스처를 사용한 이미지 뷰어 구현
+
+    // ZoomImage with Coil integration for Compose - 최신 버전 사용
+    implementation "io.github.panpf.zoomimage:zoomimage-compose-coil2:1.4.0-beta04"
 
     // GPUImage for image processing
     implementation 'jp.co.cyberagent.android:gpuimage:2.1.0'

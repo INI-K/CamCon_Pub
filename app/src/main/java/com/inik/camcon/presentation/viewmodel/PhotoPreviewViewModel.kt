@@ -4,10 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.domain.model.CameraPhoto
+import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.repository.CameraRepository
+import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.domain.usecase.camera.GetCameraPhotosPagedUseCase
 import com.inik.camcon.domain.usecase.camera.GetCameraThumbnailUseCase
 import com.inik.camcon.domain.usecase.camera.PhotoCaptureEventManager
+import com.inik.camcon.utils.SubscriptionUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -35,7 +38,9 @@ data class PhotoPreviewUiState(
     val allPhotos: List<CameraPhoto> = emptyList(),
     // 멀티 선택 관련 상태
     val isMultiSelectMode: Boolean = false, // 멀티 선택 모드 활성화 여부
-    val selectedPhotos: Set<String> = emptySet() // 선택된 사진들의 path 집합
+    val selectedPhotos: Set<String> = emptySet(), // 선택된 사진들의 path 집합
+    // 구독 관련 상태
+    val currentTier: SubscriptionTier = SubscriptionTier.FREE
 )
 
 enum class FileTypeFilter {
@@ -50,7 +55,8 @@ class PhotoPreviewViewModel @Inject constructor(
     private val getCameraPhotosPagedUseCase: GetCameraPhotosPagedUseCase,
     private val getCameraThumbnailUseCase: GetCameraThumbnailUseCase,
     private val photoCaptureEventManager: PhotoCaptureEventManager,
-    private val globalManager: CameraConnectionGlobalManager
+    private val globalManager: CameraConnectionGlobalManager,
+    private val getSubscriptionUseCase: GetSubscriptionUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PhotoPreviewUiState())
@@ -111,18 +117,8 @@ class PhotoPreviewViewModel @Inject constructor(
             launch { observeCameraConnection() }
             launch { observeCameraInitialization() }
             launch { observePhotoCaptureEvents() }
+            launch { observeSubscriptionTier() }  
         }
-
-        // 4. 중복 호출 방지: observeCameraConnection()에서 이미 처리함
-        // viewModelScope.launch {
-        //     globalManager.globalConnectionState.collect { connectionState ->
-        //         if (connectionState.isAnyConnectionActive && _uiState.value.photos.isEmpty() && !loadedInitialPhotos) {
-        //             android.util.Log.d(TAG, "카메라 연결 확인됨 - 사진 목록 로딩 시작")
-        //             loadInitialPhotos()
-        //             loadedInitialPhotos = true
-        //         }
-        //     }
-        // }
 
         android.util.Log.d(TAG, "=== PhotoPreviewViewModel 초기화 완료 ===")
     }
@@ -184,6 +180,40 @@ class PhotoPreviewViewModel @Inject constructor(
 
         // 수동 새로고침만 허용하도록 변경
         android.util.Log.d("PhotoPreviewViewModel", "사진 촬영 이벤트 자동 새로고침 비활성화 - 수동 새로고침만 허용")
+    }
+
+    private fun observeSubscriptionTier() {
+        viewModelScope.launch {
+            getSubscriptionUseCase.getSubscriptionTier().collect { tier ->
+                android.util.Log.d(TAG, "사용자 구독 티어 변경: $tier")
+                _uiState.value = _uiState.value.copy(currentTier = tier)
+
+                // 티어 변경 시 현재 필터에 따라 사진 목록 다시 필터링
+                val currentFilter = _uiState.value.fileTypeFilter
+                val filteredPhotos = filterPhotos(_uiState.value.allPhotos, currentFilter)
+                _uiState.value = _uiState.value.copy(photos = filteredPhotos)
+            }
+        }
+    }
+
+    private fun canAccessRawFiles(): Boolean {
+        val tier = _uiState.value.currentTier
+        return tier == SubscriptionTier.PRO || 
+               tier == SubscriptionTier.REFERRER || 
+               tier == SubscriptionTier.ADMIN
+    }
+
+    private fun handleRawFileAccess(photo: CameraPhoto): Boolean {
+        if (SubscriptionUtils.isRawFile(photo.path) && !canAccessRawFiles()) {
+            val message = when (_uiState.value.currentTier) {
+                SubscriptionTier.FREE -> SubscriptionUtils.getRawRestrictionMessage()
+                SubscriptionTier.BASIC -> SubscriptionUtils.getRawRestrictionMessageForBasic()
+                else -> "RAW 파일에 접근할 수 없습니다."
+            }
+            _uiState.value = _uiState.value.copy(error = message)
+            return false
+        }
+        return true
     }
 
     fun loadInitialPhotos() {
@@ -360,6 +390,10 @@ class PhotoPreviewViewModel @Inject constructor(
     }
 
     fun downloadPhoto(photo: CameraPhoto) {
+        if (!handleRawFileAccess(photo)) {
+            return
+        }
+        
         viewModelScope.launch {
             try {
                 cameraRepository.downloadPhotoFromCamera(photo.path)
@@ -426,7 +460,7 @@ class PhotoPreviewViewModel @Inject constructor(
                         }
 
                         if (!currentCache.containsKey(photo.path)) {
-                            android.util.Log.d(TAG, "썸네일 로딩 시작: ${photo.name}")
+                            android.util.Log.d(TAG, "썸네일 로드 시작: ${photo.name}")
                             
                             // RAW 파일인지 확인
                             val isRawFile = photo.path.endsWith(".nef", true) ||
@@ -578,6 +612,18 @@ class PhotoPreviewViewModel @Inject constructor(
      * 전체화면 뷰어용 실제 파일 다운로드 및 EXIF 파싱
      */
     fun downloadFullImage(photoPath: String) {
+        // RAW 파일 접근 권한 체크를 위한 임시 CameraPhoto 객체
+        val tempPhoto = CameraPhoto(
+            path = photoPath,
+            name = photoPath.substringAfterLast("/"),
+            size = 0L,
+            date = System.currentTimeMillis()
+        )
+        
+        if (!handleRawFileAccess(tempPhoto)) {
+            return
+        }
+        
         android.util.Log.d(TAG, "=== downloadFullImage 호출: $photoPath ===")
 
         // 이미 캐시에 있는지 확인
@@ -811,6 +857,10 @@ class PhotoPreviewViewModel @Inject constructor(
     }
 
     fun selectPhoto(photo: CameraPhoto?) {
+        if (photo != null && !handleRawFileAccess(photo)) {
+            return
+        }
+        
         _uiState.value = _uiState.value.copy(selectedPhoto = photo)
     }
 
@@ -881,6 +931,10 @@ class PhotoPreviewViewModel @Inject constructor(
      * 빠른 미리 로딩 - 현재 사진만 우선 다운로드 (슬라이딩 성능 우선)
      */
     fun quickPreloadCurrentImage(selectedPhoto: CameraPhoto) {
+        if (!handleRawFileAccess(selectedPhoto)) {
+            return
+        }
+        
         viewModelScope.launch(Dispatchers.IO) {
             android.util.Log.d(TAG, "빠른 다운로드: ${selectedPhoto.name}")
             downloadFullImage(selectedPhoto.path)
@@ -1029,26 +1083,57 @@ class PhotoPreviewViewModel @Inject constructor(
         photos: List<CameraPhoto>,
         filter: FileTypeFilter = _uiState.value.fileTypeFilter
     ): List<CameraPhoto> {
-        android.util.Log.d(TAG, "filterPhotos 호출: 필터=$filter, 전체사진=${photos.size}개")
+        android.util.Log.d(
+            TAG,
+            "filterPhotos 호출: 필터=$filter, 전체사진=${photos.size}개, 현재티어=${_uiState.value.currentTier}"
+        )
 
+        // 먼저 티어에 따른 접근 가능한 파일만 필터링
+        val accessiblePhotos = if (canAccessRawFiles()) {
+            // RAW 접근 권한이 있으면 모든 파일 접근 가능
+            photos
+        } else {
+            // RAW 접근 권한이 없으면 RAW 파일 제외
+            photos.filter { photo ->
+                val isRaw = SubscriptionUtils.isRawFile(photo.path)
+                if (isRaw) {
+                    android.util.Log.v(TAG, "RAW 파일 숨김 (권한없음): ${photo.path}")
+                }
+                !isRaw
+            }
+        }
+
+        // 그 다음 사용자가 선택한 필터 적용
         val filtered = when (filter) {
-            FileTypeFilter.ALL -> photos
-            FileTypeFilter.JPG -> photos.filter {
+            FileTypeFilter.ALL -> accessiblePhotos
+            FileTypeFilter.JPG -> accessiblePhotos.filter {
                 val isJpg = it.path.endsWith(".jpg", true) || it.path.endsWith(".jpeg", true)
                 android.util.Log.v(TAG, "JPG 필터 확인: ${it.path} -> $isJpg")
                 isJpg
             }
-            FileTypeFilter.RAW -> photos.filter {
-                val isRaw = it.path.endsWith(".arw", true) ||
-                        it.path.endsWith(".cr2", true) ||
-                        it.path.endsWith(".nef", true) ||
-                        it.path.endsWith(".dng", true)
-                android.util.Log.v(TAG, "RAW 필터 확인: ${it.path} -> $isRaw")
-                isRaw
+            FileTypeFilter.RAW -> {
+                if (!canAccessRawFiles()) {
+                    // RAW 필터 선택했지만 권한 없는 경우 에러 메시지 표시
+                    val message = when (_uiState.value.currentTier) {
+                        SubscriptionTier.FREE -> "RAW 파일 보기는 준비중입니다.\nJPG 파일만 확인하실 수 있습니다."
+                        SubscriptionTier.BASIC -> "RAW 파일은 PRO 구독에서만 볼 수 있습니다.\nPRO로 업그레이드해주세요!"
+                        else -> "RAW 파일에 접근할 수 없습니다."
+                    }
+                    _uiState.value = _uiState.value.copy(error = message)
+                    // 빈 목록 반환
+                    emptyList()
+                } else {
+                    // RAW 권한 있는 경우 RAW 파일만 필터링
+                    accessiblePhotos.filter {
+                        val isRaw = SubscriptionUtils.isRawFile(it.path)
+                        android.util.Log.v(TAG, "RAW 필터 확인: ${it.path} -> $isRaw")
+                        isRaw
+                    }
+                }
             }
         }
 
-        android.util.Log.d(TAG, "필터링 결과: ${filtered.size}개")
+        android.util.Log.d(TAG, "필터링 결과: 접근가능=${accessiblePhotos.size}개, 최종필터링=${filtered.size}개")
         return filtered
     }
 
@@ -1129,6 +1214,18 @@ class PhotoPreviewViewModel @Inject constructor(
         android.util.Log.d(TAG, "선택된 사진들 다운로드 시작: ${selectedPaths.size}개")
 
         selectedPaths.forEach { photoPath ->
+            // RAW 파일 접근 권한 체크를 위한 임시 CameraPhoto 객체
+            val tempPhoto = CameraPhoto(
+                path = photoPath,
+                name = photoPath.substringAfterLast("/"),
+                size = 0L,
+                date = System.currentTimeMillis()
+            )
+
+            if (!handleRawFileAccess(tempPhoto)) {
+                return@forEach
+            }
+            
             downloadFullImage(photoPath)
         }
     }
