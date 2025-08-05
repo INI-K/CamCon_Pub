@@ -624,12 +624,15 @@ class PtpipDataSource @Inject constructor(
             // Discovery 중지
             discoveryService.stopDiscovery()
 
-            // libgphoto2 연결 해제
+            // libgphoto2 연결 해제를 백그라운드 스레드에서 실행
             if (!keepSession) {
-                try {
-                    CameraNative.closeCamera()
-                } catch (e: Exception) {
-                    Log.w(TAG, "libgphoto2 연결 해제 중 오류: ${e.message}")
+                withContext(Dispatchers.Default) {
+                    try {
+                        CameraNative.closeCamera()
+                        Log.d(TAG, "libgphoto2 연결 해제 완료")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "libgphoto2 연결 해제 중 오류: ${e.message}")
+                    }
                 }
             } else {
                 Log.d(TAG, "libgphoto2 연결 해제 무시 (세션 유지)")

@@ -1,11 +1,14 @@
 package com.inik.camcon.presentation.viewmodel
 
+import android.app.Activity
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.CameraNative
 import com.inik.camcon.NativeErrorCallback
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
+import com.inik.camcon.data.repository.CameraRepositoryImpl
 import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.domain.model.TimelapseSettings
@@ -25,6 +28,7 @@ import com.inik.camcon.domain.usecase.usb.RefreshUsbDevicesUseCase
 import com.inik.camcon.domain.usecase.usb.RequestUsbPermissionUseCase
 import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -44,6 +48,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class CameraViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val cameraRepository: CameraRepository,
     private val getCameraFeedUseCase: GetCameraFeedUseCase,
     private val connectCameraUseCase: ConnectCameraUseCase,
@@ -87,6 +92,37 @@ class CameraViewModel @Inject constructor(
         private const val TAG = "카메라뷰모델"
     }
 
+    // RAW 파일 제한 스타일링을 위한 현재 Activity 참조
+    private var currentActivity: Activity? = null
+
+    /**
+     * 현재 Activity 설정 (UI에서 호출)
+     */
+    fun setActivity(activity: Activity?) {
+        currentActivity = activity
+    }
+
+    /**
+     * RAW 파일 제한 콜백을 등록하여 ViewModel과 연동
+     * CameraRepositoryImpl을 통해 설정
+     */
+    private fun registerRawLimitCallback() {
+        try {
+            if (cameraRepository is CameraRepositoryImpl) {
+                cameraRepository.setRawFileRestrictionCallback { fileName, restrictionMessage ->
+                    Log.d(TAG, "RAW 파일 제한: $fileName - $restrictionMessage")
+                    // 특별한 RAW 파일 제한 상태로 설정
+                    uiStateManager.setRawFileRestriction(fileName, restrictionMessage)
+                }
+                Log.d(TAG, "RAW 파일 제한 콜백 등록 완료")
+            } else {
+                Log.w(TAG, "RAW 파일 제한 콜백 등록 실패: Repository가 CameraRepositoryImpl이 아님")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "RAW 파일 제한 콜백 등록 실패", e)
+        }
+    }
+
     init {
         initializeViewModel()
     }
@@ -99,6 +135,7 @@ class CameraViewModel @Inject constructor(
             setupObservers()
             initializeCameraRepository()
             registerNativeErrorCallback()
+            registerRawLimitCallback()
             setupUsbDisconnectionCallback()
 
             // 3초 후 앱 재개 상태 해제
@@ -211,9 +248,33 @@ class CameraViewModel @Inject constructor(
             .onEach { devices ->
                 uiStateManager.updateUsbDeviceState(devices.size, uiState.value.hasUsbPermission)
 
-                // ⚠️ 주의: USB 권한 상태와 함께 체크하여 중복 실행 방지
-                // USB 디바이스만 감지되었을 때는 권한 상태를 먼저 확인하고 
-                // 권한이 있다면 즉시 연결, 없다면 권한 획득 후 연결
+                // USB 디바이스가 감지되었을 때 권한이 없으면 자동으로 권한 요청
+                // 단, 이미 권한 요청 중이 아닌 경우에만
+                if (devices.isNotEmpty() && !usbCameraManager.hasUsbPermission.value && !isAutoConnecting) {
+                    Log.d(TAG, "USB 디바이스 감지됨 - 권한 자동 요청")
+                    viewModelScope.launch(Dispatchers.IO) {
+                        try {
+                            val device = devices.first()
+
+                            // 디바이스별 권한 상태를 다시 확인
+                            val actualPermission =
+                                (context.getSystemService(Context.USB_SERVICE) as android.hardware.usb.UsbManager)
+                                    .hasPermission(device)
+
+                            if (!actualPermission) {
+                                Log.d(TAG, "실제 권한 없음 - 권한 요청 진행")
+                                requestUsbPermissionUseCase(device)
+                                uiStateManager.setError("USB 권한을 요청했습니다. 대화상자에서 승인해주세요.")
+                            } else {
+                                Log.d(TAG, "실제로는 권한이 있음 - 상태 업데이트")
+                                // 권한 상태를 강제로 업데이트
+                                refreshUsbDevices()
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "자동 USB 권한 요청 실패", e)
+                        }
+                    }
+                }
             }
             .launchIn(viewModelScope)
 
@@ -222,7 +283,7 @@ class CameraViewModel @Inject constructor(
                 val deviceCount = uiState.value.usbDeviceCount
                 uiStateManager.updateUsbDeviceState(deviceCount, hasPermission)
 
-                // 🔥 권한이 새로 획득되고 디바이스가 있으면 자동 연결 시작
+                // 권한이 새로 획득되고 디바이스가 있으면 자동 연결 시작
                 // 단, 이미 연결되지 않은 경우에만
                 if (hasPermission && deviceCount > 0 && !uiState.value.isConnected && !isAutoConnecting) {
                     Log.d(TAG, "USB 권한 새로 획득 - 자동 연결 시작")
@@ -231,7 +292,7 @@ class CameraViewModel @Inject constructor(
             }
             .launchIn(viewModelScope)
 
-        // 🔥 USB 디바이스와 권한 상태를 모두 고려한 통합 연결 로직
+        // USB 디바이스와 권한 상태를 모두 고려한 통합 연결 로직
         combine(
             usbCameraManager.connectedDevices,
             usbCameraManager.hasUsbPermission
@@ -792,6 +853,7 @@ class CameraViewModel @Inject constructor(
     fun clearError() = uiStateManager.clearError()
     fun clearPtpTimeout() = uiStateManager.clearPtpTimeout()
     fun clearUsbDisconnection() = uiStateManager.clearUsbDisconnection()
+    fun clearRawFileRestriction() = uiStateManager.clearRawFileRestriction()
     fun dismissRestartDialog() = uiStateManager.showRestartDialog(false)
     fun dismissCameraStatusCheckDialog() = uiStateManager.showCameraStatusCheckDialog(false)
 
@@ -829,6 +891,11 @@ class CameraViewModel @Inject constructor(
 
         // 네이티브 에러 콜백 해제
         CameraNative.setErrorCallback(null)
+
+        // RAW 제한 콜백 해제 - CameraRepositoryImpl을 통한 해제
+        if (cameraRepository is CameraRepositoryImpl) {
+            cameraRepository.setRawFileRestrictionCallback { _, _ -> }
+        }
 
         try {
             usbCameraManager.cleanup()

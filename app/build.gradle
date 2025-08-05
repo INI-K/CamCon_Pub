@@ -253,6 +253,9 @@ dependencies {
     // Google Play Billing for subscription management
     implementation 'com.android.billingclient:billing-ktx:6.1.0'
 
+    // Toasty for showing stylish notifications
+    implementation 'com.github.GrenderG:Toasty:1.5.2'
+
     // Firebase Remote Config 제거됨 - Play Store에서 직접 버전 확인
 
     // Remove HTTP client for version checking

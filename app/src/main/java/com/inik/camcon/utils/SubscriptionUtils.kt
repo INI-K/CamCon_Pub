@@ -76,8 +76,8 @@ object SubscriptionUtils {
      * FREE 티어에서 RAW 파일 접근 시 표시할 메시지
      */
     fun getRawRestrictionMessage(): String {
-        return "RAW 파일은 PRO 구독에서만 사용할 수 있습니다.\n" +
-                "PRO로 업그레이드하여 RAW 파일 편집 기능을 이용해보세요!"
+        return "RAW 파일전송은 준비중입니다.\n" +
+                "JPG로만 촬영해주세요!"
     }
 
     /**

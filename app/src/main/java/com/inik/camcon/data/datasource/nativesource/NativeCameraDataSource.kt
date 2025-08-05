@@ -190,19 +190,23 @@ class NativeCameraDataSource @Inject constructor(
             return
         }
 
-        try {
-            Log.d(TAG, "카메라 종료")
-            CameraNative.closeCamera()
-        } catch (e: Exception) {
-            Log.e(TAG, "카메라 종료 중 오류", e)
-        } finally {
-            // 2초 후 상태 리셋
-            Thread {
-                Thread.sleep(2000)
-                isClosingCamera.set(false)
-                Log.d(TAG, "카메라 종료 상태 리셋")
-            }.start()
-        }
+        // 백그라운드 스레드에서 카메라 종료 수행
+        Thread {
+            try {
+                Log.d(TAG, "카메라 종료")
+                CameraNative.closeCamera()
+                Log.d(TAG, "카메라 종료 완료")
+            } catch (e: Exception) {
+                Log.e(TAG, "카메라 종료 중 오류", e)
+            } finally {
+                // 2초 후 상태 리셋
+                Thread {
+                    Thread.sleep(2000)
+                    isClosingCamera.set(false)
+                    Log.d(TAG, "카메라 종료 상태 리셋")
+                }.start()
+            }
+        }.start()
     }
 
     // 카메라 감지
