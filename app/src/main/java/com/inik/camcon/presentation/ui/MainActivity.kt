@@ -1,17 +1,23 @@
 package com.inik.camcon.presentation.ui
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
+import android.provider.Settings
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -27,6 +33,8 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -38,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -79,6 +88,50 @@ sealed class BottomNavItem(val route: String, val titleRes: Int, val icon: Image
 
     object Settings :
         BottomNavItem("settings", R.string.settings, Icons.Default.Settings)
+}
+
+@Composable
+fun CameraConnectionOptimizationDialog(
+    onDismissRequest: () -> Unit,
+    onGoToSettings: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        icon = { androidx.compose.material3.Icon(Icons.Default.Settings, contentDescription = null) },
+        title = {
+            androidx.compose.material3.Text(
+                "카메라 연결 최적화 설정",
+                style = androidx.compose.material3.MaterialTheme.typography.titleLarge, 
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                androidx.compose.material3.Text(
+                    text = "카메라와의 안정적인 연결을 위해 배터리 최적화 예외 설정을 권장합니다.",
+                    style = androidx.compose.material3.MaterialTheme.typography.bodyLarge
+                )
+                androidx.compose.material3.Text(
+                    text = "• 실시간 카메라 제어 유지\n" +
+                            "• 사진 자동 전송 안정성 향상\n" +
+                            "• 백그라운드 연결 끊김 방지\n\n" +
+                            "※ 카메라 주변기기 연결 앱으로서 Google Play 정책에 따라 허용됩니다.",
+                    style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                )
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.Button(onClick = onGoToSettings) {
+                androidx.compose.material3.Text("설정하기")
+            }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismissRequest) {
+                androidx.compose.material3.Text("나중에")
+            }
+        }
+    )
 }
 
 @Composable
@@ -134,37 +187,70 @@ fun MainScreen(
 
         // 앱 재시작 다이얼로그 표시
         if (showRestartDialog) {
+            var isRestarting by remember { mutableStateOf(false) }
+
             androidx.compose.material.AlertDialog(
                 onDismissRequest = { /* 다이얼로그 닫기 방지 */ },
                 title = { Text("앱 재시작 필요") },
                 text = {
                 androidx.compose.foundation.layout.Column {
-                        Text("카메라 연결 문제로 인해 앱을 완전히 재시작해야 합니다.")
+                    if (isRestarting) {
+                        Text("재시작 준비 중입니다...")
                         androidx.compose.foundation.layout.Spacer(
-                            modifier = androidx.compose.ui.Modifier.height(
-                                8.dp
-                            )
+                            modifier = androidx.compose.ui.Modifier.height(8.dp)
                         )
                         Text(
-                            "재시작이 실패할 경우:\n1. 앱을 완전히 종료해주세요\n2. 최근 앱 목록에서 앱을 제거해주세요\n3. 홈 화면에서 앱을 다시 실행해주세요",
+                            "잠시만 기다려주세요. 카메라 연결을 정리하고 있습니다.",
+                            style = androidx.compose.material.MaterialTheme.typography.caption
+                        )
+                    } else {
+                        Text("카메라 연결 문제로 인해 앱을 완전히 재시작해야 합니다.")
+                        androidx.compose.foundation.layout.Spacer(
+                            modifier = androidx.compose.ui.Modifier.height(8.dp)
+                        )
+                        Text(
+                            "• '즉시 재시작': 버튼 클릭 즉시 재시작\n• '종료': 앱만 종료 (수동 재실행 필요)",
                             style = androidx.compose.material.MaterialTheme.typography.caption
                         )
                     }
+                    }
                 },
                 confirmButton = {
-                    androidx.compose.material.TextButton(
-                        onClick = {
-                            // 모든 상태 정리
-                            cameraViewModel.clearPtpTimeout()
-                            showRestartDialog = false
+                    if (!isRestarting) {
+                        androidx.compose.foundation.layout.Row(
+                            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(
+                                8.dp
+                            )
+                        ) {
+                            androidx.compose.material.TextButton(
+                                onClick = {
+                                    isRestarting = true
+                                    // 모든 상태 정리
+                                    cameraViewModel.clearPtpTimeout()
 
-                            // 완전한 앱 재시작을 위한 강력한 방법
-                            val activity = context as? ComponentActivity
-                            activity?.let { act ->
-                                MainActivity.forceRestartApp(act)
-                            }
+                                    // 시스템 재시작 메커니즘을 사용한 재시작
+                                    val activity = context as? ComponentActivity
+                                    activity?.let { act ->
+                                        MainActivity.restartAppAfterCameraCleanup(act)
+                                    }
+                                }
+                            ) { Text("즉시 재시작") }
+
+                            androidx.compose.material.TextButton(
+                                onClick = {
+                                    isRestarting = true
+                                    // 모든 상태 정리
+                                    cameraViewModel.clearPtpTimeout()
+
+                                    // 간단한 재시작 (앱 종료만)
+                                    val activity = context as? ComponentActivity
+                                    activity?.let { act ->
+                                        MainActivity.systemRestartApp(act)
+                                    }
+                                }
+                            ) { Text("종료") }
                         }
-                    ) { Text("재시작") }
+                    }
                 },
                 properties = androidx.compose.ui.window.DialogProperties(
                     dismissOnBackPress = false,
@@ -377,6 +463,8 @@ fun MainScreen(
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
+    private var batteryDialogShown = false
+
     @Inject
     lateinit var usbCameraManager: UsbCameraManager
 
@@ -408,71 +496,272 @@ class MainActivity : ComponentActivity() {
             try {
                 Log.d(TAG, "앱 강제 재시작 시작")
 
-                // 1. 네이티브 리소스 정리
-                try {
-                    com.inik.camcon.CameraNative.closeCamera()
-                    com.inik.camcon.CameraNative.closeLogFile()
-                    Log.d(TAG, "네이티브 리소스 정리 완료")
-                } catch (e: Exception) {
-                    Log.w(TAG, "네이티브 리소스 정리 중 오류", e)
-                }
-
-                // 2. AlarmManager를 사용한 지연 재시작 설정
-                val alarmManager =
-                    activity.getSystemService(android.content.Context.ALARM_SERVICE) as android.app.AlarmManager
-                val restartIntent =
-                    activity.packageManager.getLaunchIntentForPackage(activity.packageName)
-
-                if (restartIntent != null) {
-                    restartIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                    restartIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    restartIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
-
-                    val pendingIntent = android.app.PendingIntent.getActivity(
-                        activity,
-                        0,
-                        restartIntent,
-                        android.app.PendingIntent.FLAG_ONE_SHOT or android.app.PendingIntent.FLAG_IMMUTABLE
-                    )
-
-                    // 1초 후 재시작 예약
-                    alarmManager.setExact(
-                        android.app.AlarmManager.RTC,
-                        System.currentTimeMillis() + 1000,
-                        pendingIntent
-                    )
-
-                    Log.d(TAG, "AlarmManager로 재시작 예약 완료")
-                } else {
-                    Log.e(TAG, "재시작용 인텐트를 찾을 수 없음")
-                }
-
-                // 3. 현재 프로세스 종료
+                // 1. 먼저 Activity 상태 정리
                 activity.finishAffinity()
 
-                // 4. 강제 프로세스 종료
-                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                    android.os.Process.killProcess(android.os.Process.myPid())
-                }, 100)
+                // 2. 네이티브 리소스 정리를 백그라운드 스레드에서 수행
+                Thread {
+                    try {
+                        Log.d(TAG, "closeCamera 호출")
+                        com.inik.camcon.CameraNative.closeCamera()
+                        com.inik.camcon.CameraNative.closeLogFile()
+                        Log.d(TAG, "네이티브 리소스 정리 완료")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "네이티브 리소스 정리 중 오류", e)
+                    }
+                }.start()
 
-                Log.d(TAG, "앱 재시작 프로세스 완료")
+                // 3. 더 긴 지연 후 재시작 실행 (네이티브 정리 완료 대기)
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    try {
+                        Log.d(TAG, "앱 재시작 실행")
+
+                        // 재시작 Intent 생성
+                        val restartIntent = Intent(activity, MainActivity::class.java).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                            addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP) // 추가
+                        }
+
+                        activity.startActivity(restartIntent)
+
+                        // 프로세스 종료는 더 긴 지연 후 실행
+                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                            Log.d(TAG, "프로세스 종료 실행")
+                            android.os.Process.killProcess(android.os.Process.myPid())
+                        }, 1000) // 1초 후 프로세스 종료
+
+                    } catch (e: Exception) {
+                        Log.e(TAG, "재시작 실행 중 오류", e)
+                        // Fallback: PackageManager 사용
+                        restartWithPackageManager(activity)
+                    }
+                }, 2000) // 2초 지연으로 네이티브 정리 완료 대기
+
+                Log.d(TAG, "재시작 예약 완료")
 
             } catch (e: Exception) {
                 Log.e(TAG, "앱 재시작 중 오류", e)
-                // 오류 발생 시 기본 방법 시도
-                try {
-                    val packageManager = activity.packageManager
-                    val intent = packageManager.getLaunchIntentForPackage(activity.packageName)
-                    intent?.let {
-                        it.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
-                        activity.startActivity(it)
-                    }
+                // 오류 발생 시 PackageManager 재시작 시도
+                restartWithPackageManager(activity)
+            }
+        }
+
+        /**
+         * PackageManager를 사용한 재시작 (Fallback)
+         */
+        private fun restartWithPackageManager(activity: ComponentActivity) {
+            try {
+                Log.d(TAG, "PackageManager 재시작 시도")
+                val packageManager = activity.packageManager
+                val restartIntent = packageManager.getLaunchIntentForPackage(activity.packageName)
+
+                if (restartIntent != null) {
+                    restartIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    restartIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                    restartIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+
+                    activity.startActivity(restartIntent)
+                    activity.finishAffinity()
+                    android.os.Process.killProcess(android.os.Process.myPid())
+                } else {
+                    Log.e(TAG, "PackageManager 재시작 실패 - Intent 없음")
                     activity.finishAffinity()
                     System.exit(0)
-                } catch (ex: Exception) {
-                    Log.e(TAG, "기본 재시작 방법도 실패", ex)
-                    System.exit(0)
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "PackageManager 재시작 중 오류", e)
+                activity.finishAffinity()
+                System.exit(0)
+            }
+        }
+
+        /**
+         * 간단한 앱 재시작 (사용자 수동 재시작 안내)
+         */
+        fun simpleRestartApp(activity: ComponentActivity) {
+            try {
+                Log.d(TAG, "간단한 앱 재시작 시작")
+
+                // 네이티브 리소스 정리
+                Thread {
+                    try {
+                        com.inik.camcon.CameraNative.closeCamera()
+                        com.inik.camcon.CameraNative.closeLogFile()
+                        Log.d(TAG, "간단 재시작: 네이티브 리소스 정리 완료")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "간단 재시작: 네이티브 리소스 정리 중 오류", e)
+                    }
+                }.start()
+
+                // 0.5초 후 앱 종료 (사용자가 수동으로 재시작해야 함)
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    Log.d(TAG, "앱 종료 - 사용자 수동 재시작 필요")
+                    activity.finishAffinity()
+                    android.os.Process.killProcess(android.os.Process.myPid())
+                }, 500)
+
+            } catch (e: Exception) {
+                Log.e(TAG, "간단한 앱 재시작 중 오류", e)
+                activity.finishAffinity()
+                android.os.Process.killProcess(android.os.Process.myPid())
+            }
+        }
+
+        /**
+         * 시스템 재시작 메커니즘을 사용한 안전한 재시작
+         */
+        fun systemRestartApp(activity: ComponentActivity) {
+            try {
+                Log.d(TAG, "시스템 재시작 시작")
+
+                // 1. makeRestartActivityTask를 사용한 즉시 재시작
+                val packageManager = activity.packageManager
+                val intent = packageManager.getLaunchIntentForPackage(activity.packageName)
+                val componentName = intent?.component
+
+                if (componentName != null) {
+                    val mainIntent = Intent.makeRestartActivityTask(componentName)
+                    activity.startActivity(mainIntent)
+                    Log.d(TAG, "makeRestartActivityTask 실행 완료")
+                } else {
+                    Log.e(TAG, "ComponentName을 찾을 수 없음")
+                    // Fallback: 기존 방식
+                    restartWithPackageManager(activity)
+                    return
+                }
+
+                // 2. 네이티브 리소스 정리 (백그라운드에서)
+                Thread {
+                    try {
+                        com.inik.camcon.CameraNative.closeCamera()
+                        com.inik.camcon.CameraNative.closeLogFile()
+                        Log.d(TAG, "시스템 재시작: 네이티브 리소스 정리 완료")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "시스템 재시작: 네이티브 리소스 정리 중 오류", e)
+                    }
+                }.start()
+
+                // 3. 프로세스 종료
+                kotlin.system.exitProcess(0)
+
+            } catch (e: Exception) {
+                Log.e(TAG, "시스템 재시작 중 오류", e)
+                // Fallback: 기존 방식
+                restartWithPackageManager(activity)
+            }
+        }
+
+        /**
+         * 즉시 재시작 (가장 빠른 방법)
+         */
+        fun instantRestartApp(activity: ComponentActivity) {
+            try {
+                Log.d(TAG, "즉시 재시작 시작")
+
+                // 1. makeRestartActivityTask를 사용한 즉시 재시작
+                val packageManager = activity.packageManager
+                val intent = packageManager.getLaunchIntentForPackage(activity.packageName)
+                val componentName = intent?.component
+
+                if (componentName != null) {
+                    val mainIntent = Intent.makeRestartActivityTask(componentName)
+                    activity.startActivity(mainIntent)
+                    Log.d(TAG, "즉시 재시작: makeRestartActivityTask 실행 완료")
+                } else {
+                    Log.e(TAG, "즉시 재시작: ComponentName을 찾을 수 없음")
+                    // Fallback: 기존 방식
+                    val restartIntent = Intent(activity, MainActivity::class.java).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                        addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    }
+                    activity.startActivity(restartIntent)
+                }
+
+                // 2. 네이티브 리소스 정리 (백그라운드에서)
+                Thread {
+                    try {
+                        com.inik.camcon.CameraNative.closeCamera()
+                        com.inik.camcon.CameraNative.closeLogFile()
+                        Log.d(TAG, "즉시 재시작: 네이티브 리소스 정리 완료")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "즉시 재시작: 네이티브 리소스 정리 중 오류", e)
+                    }
+                }.start()
+
+                // 3. 프로세스 종료
+                kotlin.system.exitProcess(0)
+
+            } catch (e: Exception) {
+                Log.e(TAG, "즉시 재시작 중 오류", e)
+                // Fallback: 기존 방식
+                try {
+                    activity.finishAffinity()
+                    kotlin.system.exitProcess(0)
+                } catch (ex: Exception) {
+                    android.os.Process.killProcess(android.os.Process.myPid())
+                }
+            }
+        }
+
+        /**
+         * 카메라 정리 완료 후 앱을 재시작하는 안전한 방법
+         */
+        fun restartAppAfterCameraCleanup(activity: ComponentActivity) {
+            try {
+                Log.d(TAG, "카메라 정리 후 앱 재시작 시작")
+
+                // 카메라 정리 완료 콜백을 사용한 안전한 재시작
+                com.inik.camcon.CameraNative.closeCameraAsync(
+                    object : com.inik.camcon.CameraCleanupCallback {
+                        override fun onCleanupComplete(success: Boolean, message: String) {
+                            Log.d(TAG, "카메라 정리 완료: success=$success, message=$message")
+                            
+                            // 메인 스레드에서 재시작 실행
+                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                try {
+                                    // 로그 파일도 닫기
+                                    com.inik.camcon.CameraNative.closeLogFile()
+                                    
+                                    // 시스템 재시작 메커니즘 사용
+                                    val packageManager = activity.packageManager
+                                    val intent = packageManager.getLaunchIntentForPackage(activity.packageName)
+                                    val componentName = intent?.component
+
+                                    if (componentName != null) {
+                                        val mainIntent = Intent.makeRestartActivityTask(componentName)
+                                        activity.startActivity(mainIntent)
+                                        Log.d(TAG, "카메라 정리 후 재시작 실행 완료")
+                                    } else {
+                                        // Fallback
+                                        val restartIntent = Intent(activity, MainActivity::class.java).apply {
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                                            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                                        }
+                                        activity.startActivity(restartIntent)
+                                    }
+
+                                    // 프로세스 정리
+                                    activity.finishAffinity()
+                                    kotlin.system.exitProcess(0)
+
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "카메라 정리 후 재시작 실행 중 오류", e)
+                                    // Fallback: 기존 방식
+                                    systemRestartApp(activity)
+                                }
+                            }
+                        }
+                    }
+                )
+
+            } catch (e: Exception) {
+                Log.e(TAG, "카메라 정리 후 재시작 중 오류", e)
+                // Fallback: 기존 방식 사용
+                systemRestartApp(activity)
             }
         }
     }
@@ -502,13 +791,40 @@ class MainActivity : ComponentActivity() {
             val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
             val themeMode by appSettingsViewModel.themeMode.collectAsState()
 
+            var showBatteryDialog by remember { mutableStateOf(false) }
+
+            // 한번만 다이얼로그를 띄움
+            LaunchedEffect(Unit) {
+                // check immediately after Compose composition
+                if (shouldShowCameraConnectionOptimizationDialog() && !batteryDialogShown) {
+                    showBatteryDialog = true
+                    batteryDialogShown = true
+                }
+            }
+
             CamConTheme(themeMode = themeMode) {
-                MainScreen(
-                    onSettingsClick = {
-                        startActivity(Intent(this, SettingsActivity::class.java))
-                    },
-                    globalManager = globalManager
-                )
+                Surface {
+                    if (showBatteryDialog) {
+                        CameraConnectionOptimizationDialog(
+                            onDismissRequest = {
+                                showBatteryDialog = false
+                                markCameraConnectionOptimizationDialogShown()
+                            },
+                            onGoToSettings = {
+                                // 배터리 최적화 예외 설정 화면으로 이동
+                                openBatteryOptimizationSettings()
+                                showBatteryDialog = false
+                                markCameraConnectionOptimizationDialogShown()
+                            }
+                        )
+                    }
+                    MainScreen(
+                        onSettingsClick = {
+                            startActivity(Intent(this, SettingsActivity::class.java))
+                        },
+                        globalManager = globalManager
+                    )
+                }
             }
         }
     }
@@ -671,30 +987,83 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         // Activity가 종료될 때 USB 매니저 정리
         try {
-            // 명시적으로 카메라 세션 종료
-            lifecycleScope.launch(Dispatchers.IO) {
+            // 명시적으로 카메라 세션 종료 - 백그라운드 스레드에서 안전하게 수행
+            Thread {
                 try {
+                    Log.d(TAG, "onDestroy - closeCamera 호출")
                     com.inik.camcon.CameraNative.closeCamera()
                     Log.d(TAG, "카메라 세션 명시적 종료 완료")
                 } catch (e: Exception) {
                     Log.w(TAG, "카메라 세션 종료 중 오류", e)
                 }
-            }
+            }.start()
 
             usbCameraManager.cleanup()
             globalManager.cleanup()
 
-            // libgphoto2 로그 파일 닫기
-            lifecycleScope.launch(Dispatchers.IO) {
+            // libgphoto2 로그 파일 닫기도 백그라운드에서 수행
+            Thread {
                 try {
                     com.inik.camcon.CameraNative.closeLogFile()
                     Log.d(TAG, "libgphoto2 로그 파일 닫기 완료")
                 } catch (e: Exception) {
                     Log.w(TAG, "로그 파일 닫기 중 오류", e)
                 }
-            }
+            }.start()
         } catch (e: Exception) {
             Log.w(TAG, "매니저 정리 중 오류", e)
+        }
+    }
+
+    /**
+     * 카메라 연결 최적화 다이얼로그 표시 여부 확인
+     */
+    private fun shouldShowCameraConnectionOptimizationDialog(): Boolean {
+        // 앱 설치 후 처음 실행 시에만 표시 + 아직 배터리 최적화 예외 미적용 시 노출
+        val prefs = getSharedPreferences("app_preferences", Context.MODE_PRIVATE)
+        val dialogShown = prefs.getBoolean("camera_connection_optimization_dialog_shown", false)
+        return !dialogShown && !isIgnoringBatteryOptimizations()
+    }
+
+    /**
+     * 카메라 연결 최적화 다이얼로그 표시 완료 기록
+     */
+    private fun markCameraConnectionOptimizationDialogShown() {
+        val prefs = getSharedPreferences("app_preferences", Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("camera_connection_optimization_dialog_shown", true).apply()
+    }
+
+    /**
+     * 배터리 최적화(Doze 모드) 무시 상태인지 확인
+     */
+    private fun isIgnoringBatteryOptimizations(): Boolean {
+        return try {
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            pm.isIgnoringBatteryOptimizations(packageName)
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * 배터리 최적화 예외 설정 화면으로 이동
+     */
+    private fun openBatteryOptimizationSettings() {
+        try {
+            val intent =
+                Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+            intent.data = Uri.parse("package:$packageName")
+            startActivity(intent)
+        } catch (e: Exception) {
+            Log.e(TAG, "배터리 최적화 예외 설정 화면 이동 실패", e)
+            // 대체 절차: 앱 상세 정보 화면
+            try {
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                intent.data = Uri.parse("package:$packageName")
+                startActivity(intent)
+            } catch (ex: Exception) {
+                Log.e(TAG, "APP 상세 정보 화면도 이동 실패", ex)
+            }
         }
     }
 }
