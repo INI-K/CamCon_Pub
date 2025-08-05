@@ -333,7 +333,21 @@ fun ColorTransferSettingsScreen(
                         }
                         
                         Spacer(modifier = Modifier.height(8.dp))
-                        
+
+                        // 대상 이미지 선택 버튼
+                        OutlinedButton(
+                            onClick = {
+                                targetImagePickerLauncher.launch("image/*")
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Photo, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("대상 이미지 선택")
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
                         // 캐시 초기화 버튼
                         OutlinedButton(
                             onClick = {
