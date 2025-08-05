@@ -895,6 +895,7 @@ private fun RecentCaptureItem(
                         .crossfade(180)
                         .memoryCacheKey(photo.id + "_thumb")
                         .scale(Scale.FIT)
+                        .allowHardware(false) // EXIF 처리를 위해 하드웨어 가속 비활성화
                         .apply {
                             // sRGB 색공간 설정
                             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
@@ -914,6 +915,7 @@ private fun RecentCaptureItem(
                         .crossfade(180)
                         .memoryCacheKey(photo.id + "_full")
                         .scale(Scale.FIT)
+                        .allowHardware(false) // EXIF 처리를 위해 하드웨어 가속 비활성화
                         .apply {
                             // sRGB 색공간 설정
                             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
@@ -994,6 +996,50 @@ private fun AnimatedPhotoSwitcher(
                         .crossfade(200)
                         .memoryCacheKey(photo.id + "_main")
                         .scale(Scale.FIT)
+                        .allowHardware(false) // EXIF 처리를 위해 하드웨어 가속 비활성화
+                        .listener(
+                            onStart = { request ->
+                                Log.d("CameraPhoto", "수신된 사진 로딩 시작: ${photo.filePath}")
+                            },
+                            onSuccess = { request, result ->
+                                Log.d("CameraPhoto", "수신된 사진 로딩 성공: ${photo.filePath}")
+
+                                // EXIF 정보 확인
+                                try {
+                                    val exif =
+                                        androidx.exifinterface.media.ExifInterface(photo.filePath)
+                                    val orientation = exif.getAttributeInt(
+                                        androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION,
+                                        androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
+                                    )
+
+                                    val rotationText = when (orientation) {
+                                        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> "90도 (270도로 수정 적용)"
+                                        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> "180도 (회전하지 않음)"
+                                        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> "270도 (90도로 수정 적용)"
+                                        else -> "없음"
+                                    }
+
+                                    Log.d("EXIF_RECEIVED_PHOTO", "=== 수신 사진 EXIF 정보 ===")
+                                    Log.d("EXIF_RECEIVED_PHOTO", "파일: ${photo.filePath}")
+                                    Log.d("EXIF_RECEIVED_PHOTO", "EXIF Orientation: $orientation")
+                                    Log.d("EXIF_RECEIVED_PHOTO", "회전 정보: $rotationText")
+                                    Log.d(
+                                        "EXIF_RECEIVED_PHOTO",
+                                        "Coil이 자동 회전 처리: ${orientation != androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL}"
+                                    )
+                                } catch (e: Exception) {
+                                    Log.e("EXIF_RECEIVED_PHOTO", "EXIF 정보 확인 실패: ${e.message}", e)
+                                }
+                            },
+                            onError = { request, error ->
+                                Log.e(
+                                    "CameraPhoto",
+                                    "수신된 사진 로딩 실패: ${photo.filePath}",
+                                    error.throwable
+                                )
+                            }
+                        )
                         .apply {
                             // sRGB 색공간 설정
                             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
