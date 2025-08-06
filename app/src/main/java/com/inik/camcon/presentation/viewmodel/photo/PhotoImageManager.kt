@@ -79,10 +79,16 @@ class PhotoImageManager @Inject constructor(
                             Log.d(TAG, "   - 경로: ${photo.path}")
                             Log.d(TAG, "   - 파일크기: ${photo.size} bytes")
 
+                            // 네이티브 썸네일 호출 전 카메라 상태 확인
+                            if (!isManagerActive) {
+                                Log.w(TAG, "매니저 비활성화됨, 썸네일 로딩 중단: ${photo.name}")
+                                return@launch
+                            }
+
                             getCameraThumbnailUseCase(photo.path).fold(
                                 onSuccess = { thumbnailData ->
                                     if (!isManagerActive) {
-                                        Log.d(TAG, "⛔ 썸네일 성공 처리 중단됨: ${photo.name}")
+                                        Log.d(TAG, "매니저 비활성화됨, 결과 무시: ${photo.name}")
                                         return@launch
                                     }
 
@@ -95,17 +101,35 @@ class PhotoImageManager @Inject constructor(
                                         val header = thumbnailData.take(8).map { "%02X".format(it) }
                                             .joinToString(" ")
                                         Log.d(TAG, "   - 썸네일 헤더: $header")
-                                    }
 
-                                    synchronized(currentCache) {
-                                        currentCache[photo.path] = thumbnailData
-                                        _thumbnailCache.value = currentCache.toMap()
+                                        // JPEG 헤더 확인 (FF D8 FF로 시작해야 함)
+                                        if (thumbnailData.size >= 3 &&
+                                            thumbnailData[0] == 0xFF.toByte() &&
+                                            thumbnailData[1] == 0xD8.toByte() &&
+                                            thumbnailData[2] == 0xFF.toByte()
+                                        ) {
+                                            Log.d(TAG, "   - 유효한 JPEG 썸네일 확인됨")
+                                        } else {
+                                            Log.w(TAG, "   - 비정상적인 썸네일 헤더 감지됨")
+                                        }
+
+                                        synchronized(currentCache) {
+                                            currentCache[photo.path] = thumbnailData
+                                            _thumbnailCache.value = currentCache.toMap()
+                                        }
+                                        Log.d(TAG, "💾 썸네일 캐시 저장 완료: ${photo.name}")
+                                    } else {
+                                        Log.w(TAG, "⚠️ 빈 썸네일 데이터 수신: ${photo.name}")
+                                        // 빈 데이터도 캐시에 저장하여 재시도 방지
+                                        synchronized(currentCache) {
+                                            currentCache[photo.path] = ByteArray(0)
+                                            _thumbnailCache.value = currentCache.toMap()
+                                        }
                                     }
-                                    Log.d(TAG, "💾 썸네일 캐시 저장 완료: ${photo.name}")
                                 },
                                 onFailure = { exception ->
                                     if (!isManagerActive) {
-                                        Log.d(TAG, "⛔ 썸네일 실패 처리 중단됨: ${photo.name}")
+                                        Log.d(TAG, "매니저 비활성화됨, 에러 무시: ${photo.name}")
                                         return@launch
                                     }
 
@@ -113,9 +137,44 @@ class PhotoImageManager @Inject constructor(
                                     Log.d(TAG, "   - 에러 메시지: ${exception.message}")
                                     Log.d(TAG, "   - 에러 타입: ${exception.javaClass.simpleName}")
 
-                                    // 재시도 로직
-                                    Log.d(TAG, "🔄 썸네일 재시도 시작: ${photo.name}")
-                                    retryThumbnailLoad(photo, currentCache, maxRetries = 2)
+                                    // 특정 에러 타입에 따른 처리
+                                    when {
+                                        exception.message?.contains("camera not initialized") == true -> {
+                                            Log.e(TAG, "   - 카메라 초기화 문제")
+                                        }
+
+                                        exception.message?.contains("file not found") == true -> {
+                                            Log.e(TAG, "   - 파일을 찾을 수 없음")
+                                        }
+
+                                        exception.message?.contains("timeout") == true -> {
+                                            Log.e(TAG, "   - 타임아웃 발생")
+                                        }
+
+                                        else -> {
+                                            Log.e(TAG, "   - 알 수 없는 에러")
+                                        }
+                                    }
+
+                                    // 재시도 로직 (네트워크 에러나 임시 문제인 경우)
+                                    if (!exception.message?.contains(
+                                            "file not found",
+                                            ignoreCase = true
+                                        )!!
+                                    ) {
+                                        Log.d(TAG, "🔄 썸네일 재시도 고려: ${photo.name}")
+                                        retryThumbnailLoad(
+                                            photo,
+                                            currentCache,
+                                            maxRetries = 1
+                                        ) // 재시도 횟수 줄임
+                                    } else {
+                                        // 파일이 없는 경우 빈 데이터로 캐시하여 재시도 방지
+                                        synchronized(currentCache) {
+                                            currentCache[photo.path] = ByteArray(0)
+                                            _thumbnailCache.value = currentCache.toMap()
+                                        }
+                                    }
                                 }
                             )
                         } else {
@@ -410,6 +469,8 @@ class PhotoImageManager @Inject constructor(
                             }
                             if (basicJson.has("height")) {
                                 exifMap["height"] = basicJson.getInt("height")
+                            }else{
+
                             }
                         } catch (e: Exception) {
                             Log.w(TAG, "기본 정보 파싱 실패", e)
