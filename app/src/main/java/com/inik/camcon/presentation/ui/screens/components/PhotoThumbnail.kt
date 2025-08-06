@@ -1,6 +1,7 @@
 package com.inik.camcon.presentation.ui.screens.components
 
 // Import for FluidPhotoThumbnail and helpers
+
 import android.graphics.ColorSpace
 import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -44,7 +45,6 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.inik.camcon.domain.model.CameraPhoto
-
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayInputStream
@@ -129,7 +129,7 @@ fun PhotoThumbnail(
                     )
                 }
 
-                thumbnailData != null -> {
+                thumbnailData != null && thumbnailData.isNotEmpty() -> {
                     val fullImageData = fullImageCache[photo.path]
                     if (fullImageData != null) {
                         ExifAwareThumbnail(
@@ -149,6 +149,8 @@ fun PhotoThumbnail(
                 }
 
                 else -> {
+                    // 네이티브 썸네일 데이터가 없거나 비어있는 경우
+                    Log.w("PhotoThumbnail", "썸네일 데이터 없음: ${photo.name}")
                     ThumbnailPlaceholder()
                 }
             }
@@ -660,7 +662,7 @@ fun FluidPhotoThumbnail(
                     )
                 }
 
-                thumbnailData != null -> {
+                thumbnailData != null && thumbnailData.isNotEmpty() -> {
                     val fullImageData = fullImageCache[photo.path]
                     if (fullImageData != null) {
                         FluidExifAwareThumbnail(
@@ -680,6 +682,8 @@ fun FluidPhotoThumbnail(
                 }
 
                 else -> {
+                    // 네이티브 썸네일 데이터가 없거나 비어있는 경우
+                    Log.w("FluidPhotoThumbnail", "썸네일 데이터 없음: ${photo.name}")
                     ThumbnailPlaceholder()
                 }
             }
