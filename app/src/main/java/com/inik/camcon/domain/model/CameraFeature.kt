@@ -7,7 +7,8 @@ data class CameraSettings(
     val aperture: String,
     val whiteBalance: String,
     val focusMode: String,
-    val exposureCompensation: String
+    val exposureCompensation: String,
+    val availableSettings: Map<String, List<String>> = emptyMap()
 )
 
 // 촬영 모드
@@ -112,5 +113,9 @@ data class CameraCapabilities(
     // 기타
     val supportsRemoteControl: Boolean,
     val supportsConfigChange: Boolean,
-    val batteryLevel: Int? = null
+    val batteryLevel: Int? = null,
+
+    // 추가 기능 프로퍼티
+    val canTimelapse: Boolean = supportsTimelapse,
+    val canAutoFocus: Boolean = supportsAutofocus
 )

@@ -130,7 +130,7 @@ private fun shareCurrentPhoto(
                 fullImageData != null && fullImageData.isNotEmpty() -> fullImageData
                 viewModel != null -> {
                     val fullImage = viewModel.fullImageCache.value[photo.path]
-                    val thumbnail = viewModel.uiState.value.thumbnailCache[photo.path]
+                    val thumbnail = viewModel.getThumbnail(photo.path)
                     fullImage ?: thumbnail
                 }
                 thumbnailData != null && thumbnailData.isNotEmpty() -> thumbnailData
@@ -211,22 +211,17 @@ fun FullScreenPhotoViewer(
     val scope = rememberCoroutineScope()
 
     // ViewModel의 상태 관찰 또는 로컬 사진 사용
-    val uiState by viewModel?.uiState?.collectAsState() ?: remember(localPhotos) {
-        mutableStateOf(
-            com.inik.camcon.presentation.viewmodel.PhotoPreviewUiState(
-                photos = localPhotos ?: listOf(photo), // 로컬 사진 목록 또는 단일 사진
-                thumbnailCache = thumbnailData?.let { mapOf(photo.path to it) } ?: emptyMap()
-            )
-        )
+    val photos by viewModel?.photos?.collectAsState() ?: remember(localPhotos) {
+        mutableStateOf(localPhotos ?: listOf(photo))
     }
-
-    // ViewModel의 썸네일 캐시 직접 사용 (성능 최적화)
-    val sharedThumbnailCache = uiState.thumbnailCache
+    val thumbnailCache by viewModel?.thumbnailCache?.collectAsState() ?: remember(thumbnailData) {
+        mutableStateOf(thumbnailData?.let { mapOf(photo.path to it) } ?: emptyMap())
+    }
 
     // 현재 사진 인덱스 찾기
     val currentPhotoIndex = if (viewModel != null || localPhotos != null) {
-        remember(photo.path, uiState.photos) {
-            uiState.photos.indexOfFirst { it.path == photo.path }.takeIf { it >= 0 } ?: 0
+        remember(photo.path, photos) {
+            photos.indexOfFirst { it.path == photo.path }.takeIf { it >= 0 } ?: 0
         }
     } else {
         0 // 단일 사진인 경우 항상 0
@@ -242,12 +237,12 @@ fun FullScreenPhotoViewer(
     // Pager 상태 - 스와이프 네비게이션용
     val pagerState = rememberPagerState(
         initialPage = currentPhotoIndex,
-        pageCount = { uiState.photos.size }
+        pageCount = { photos.size }
     )
 
     // 페이지 변경 감지
     LaunchedEffect(pagerState.currentPage) {
-        val newPhoto = uiState.photos.getOrNull(pagerState.currentPage)
+        val newPhoto = photos.getOrNull(pagerState.currentPage)
         if (newPhoto != null && newPhoto.path != photo.path) {
             Log.d(
                 "FullScreenPhotoViewer",
@@ -259,7 +254,7 @@ fun FullScreenPhotoViewer(
         } else {
             Log.d(
                 "FullScreenPhotoViewer",
-                "Pager 현재 페이지: ${pagerState.currentPage}, 총 ${uiState.photos.size}장"
+                "Pager 현재 페이지: ${pagerState.currentPage}, 총 ${photos.size}장"
             )
         }
     }
@@ -272,21 +267,21 @@ fun FullScreenPhotoViewer(
             return@LaunchedEffect
         }
 
-        val currentPhoto = uiState.photos.getOrNull(pagerState.currentPage)
+        val currentPhoto = photos.getOrNull(pagerState.currentPage)
         if (currentPhoto != null) {
             val hasFullImage = fullImageCache.containsKey(currentPhoto.path)
             val isDownloading = viewModel?.isDownloadingFullImage(currentPhoto.path) ?: false
 
             if (!hasFullImage && !isDownloading) {
                 Log.d("ImageViewer", "현재 사진 고화질 다운로드: ${currentPhoto.name}")
-                viewModel?.downloadFullImage(currentPhoto.path)
+                viewModel?.downloadPhoto(currentPhoto)
             }
         }
     }
 
     // 전체화면 배경
     // 바텀시트 내부 컨텐츠
-    val currentPhotoForSheet = uiState.photos.getOrNull(pagerState.currentPage) ?: photo
+    val currentPhotoForSheet = photos.getOrNull(pagerState.currentPage) ?: photo
 
     @OptIn(ExperimentalMaterial3Api::class)
     if (showPhotoInfoSheet.value) {
@@ -318,11 +313,11 @@ fun FullScreenPhotoViewer(
             state = pagerState,
             modifier = Modifier.fillMaxSize()
         ) { pageIndex ->
-            val pagePhoto = uiState.photos.getOrNull(pageIndex)
+            val pagePhoto = photos.getOrNull(pageIndex)
             if (pagePhoto != null) {
                 GalleryStyleImage(
                     fullImageData = fullImageCache[pagePhoto.path],
-                    thumbnailData = sharedThumbnailCache[pagePhoto.path],
+                    thumbnailData = thumbnailCache[pagePhoto.path],
                     photo = pagePhoto,
                     onDismiss = onDismiss,
                     context = context,
@@ -333,12 +328,12 @@ fun FullScreenPhotoViewer(
 
         // 상단 컨트롤 바
         TopControlBar(
-            photo = if (viewModel != null) (uiState.photos.getOrNull(pagerState.currentPage)
+            photo = if (viewModel != null) (photos.getOrNull(pagerState.currentPage)
                 ?: photo) else photo,
             onClose = onDismiss,
             onInfoClick = {
                 val currentPhoto =
-                    if (viewModel != null) (uiState.photos.getOrNull(pagerState.currentPage)
+                    if (viewModel != null) (photos.getOrNull(pagerState.currentPage)
                         ?: photo) else photo
                 Log.d("FullScreenPhotoViewer", "정보 버튼 클릭됨: ${currentPhoto.name}")
                 try {
@@ -355,7 +350,7 @@ fun FullScreenPhotoViewer(
             onDownloadClick = if (hideDownloadButton) null else onDownload,
             onShareClick = {
                 val currentPhoto =
-                    if (viewModel != null) (uiState.photos.getOrNull(pagerState.currentPage)
+                    if (viewModel != null) (photos.getOrNull(pagerState.currentPage)
                         ?: photo) else photo
 
                 // 현재 페이지의 이미지 데이터 가져오기
@@ -366,7 +361,7 @@ fun FullScreenPhotoViewer(
                 }
 
                 val currentThumbnailData = if (viewModel != null) {
-                    sharedThumbnailCache[currentPhoto.path]
+                    thumbnailCache[currentPhoto.path]
                 } else {
                     thumbnailData
                 }
@@ -389,18 +384,18 @@ fun FullScreenPhotoViewer(
         )
 
         // 하단 썸네일 리스트 (PhotoPreviewViewModel이 있거나 localPhotos가 있을 때 표시)
-        if ((viewModel != null && uiState.photos.size > 1) ||
+        if ((viewModel != null && photos.size > 1) ||
             (localPhotos != null && localPhotos.size > 1)
         ) {
             if (viewModel != null) {
                 // 서버 사진용 기존 썸네일 스트립
                 BottomThumbnailStrip(
-                    photos = uiState.photos,
+                    photos = photos,
                     currentPhotoIndex = pagerState.currentPage,
-                    thumbnailCache = sharedThumbnailCache,
+                    thumbnailCache = thumbnailCache,
                     viewModel = viewModel,
                     onPhotoSelected = { selectedPhoto ->
-                        val newIndex = uiState.photos.indexOfFirst { it.path == selectedPhoto.path }
+                        val newIndex = photos.indexOfFirst { it.path == selectedPhoto.path }
                         if (newIndex >= 0) {
                             scope.launch {
                                 pagerState.animateScrollToPage(newIndex)
@@ -413,10 +408,10 @@ fun FullScreenPhotoViewer(
             } else {
                 // 로컬 사진용 썸네일 스트립
                 LocalBottomThumbnailStrip(
-                    photos = uiState.photos,
+                    photos = photos,
                     currentPhotoIndex = pagerState.currentPage,
                     onPhotoSelected = { selectedPhoto ->
-                        val newIndex = uiState.photos.indexOfFirst { it.path == selectedPhoto.path }
+                        val newIndex = photos.indexOfFirst { it.path == selectedPhoto.path }
                         if (newIndex >= 0) {
                             scope.launch {
                                 pagerState.animateScrollToPage(newIndex)
@@ -991,8 +986,12 @@ private fun BottomThumbnailStrip(
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
-    val uiState by viewModel?.uiState?.collectAsState() ?: remember {
-        mutableStateOf(com.inik.camcon.presentation.viewmodel.PhotoPreviewUiState())
+    val hasNextPage by viewModel?.hasNextPage?.collectAsState()
+        ?: remember { mutableStateOf(false) }
+    val isLoadingMore by viewModel?.isLoadingMorePhotos?.collectAsState() ?: remember {
+        mutableStateOf(
+            false
+        )
     }
 
     // 현재 사진이 변경되면 썸네일 리스트를 해당 위치로 스크롤
@@ -1020,7 +1019,7 @@ private fun BottomThumbnailStrip(
             if (currentTime == lastEmissionTime) { // 마지막 이벤트인지 확인
                 if (lastVisibleIndex != null && viewModel != null) {
                     val threshold = photos.size - 5
-                    if (lastVisibleIndex >= threshold && uiState.hasNextPage && !uiState.isLoadingMore) {
+                    if (lastVisibleIndex >= threshold && hasNextPage && !isLoadingMore) {
                         Log.d(
                             "ThumbnailStrip",
                             "썸네일 스크롤에서 페이지네이션 트리거: $lastVisibleIndex >= $threshold"
@@ -1053,7 +1052,7 @@ private fun BottomThumbnailStrip(
         }
 
         // 로딩 인디케이터 아이템 추가
-        if (uiState.isLoadingMore && uiState.hasNextPage) {
+        if (isLoadingMore && hasNextPage) {
             item {
                 LoadingThumbnailItem()
             }
