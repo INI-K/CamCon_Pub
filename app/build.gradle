@@ -31,7 +31,7 @@ def getVersionFromGit() {
             // Git이 없거나 태그가 없으면 기본값 사용
         }
     }
-    return "1.0-unknown"
+    return "1.0"
 }
 
 // Git 태그에서 버전 코드 생성 (태그의 마이너 버전 + 커밋 수)
@@ -257,13 +257,14 @@ dependencies {
     // Toasty for showing stylish notifications
     implementation 'com.github.GrenderG:Toasty:1.5.2'
 
-    // Firebase Remote Config 제거됨 - Play Store에서 직접 버전 확인
+    // Firebase Remote Config for app update management
+    implementation 'com.google.firebase:firebase-config-ktx'
 
-    // Remove HTTP client for version checking
-    // implementation 'com.squareup.retrofit2:retrofit:2.9.0'
-    // implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
-    // implementation 'com.squareup.okhttp3:okhttp:4.12.0'
-    // implementation 'com.squareup.okhttp3:logging-interceptor:4.12.0'
+    // HTTP client for version checking (backup method)
+    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    implementation 'com.squareup.okhttp3:logging-interceptor:4.12.0'
 }
 
 // 커스텀 빌드 태스크들
