@@ -56,6 +56,8 @@ class PhotoImageManager @Inject constructor(
      * 썸네일 로드
      */
     fun loadThumbnailsForPhotos(photos: List<CameraPhoto>) {
+        Log.d(TAG, "=== 썸네일 로딩 시작: ${photos.size}개 사진 ===")
+
         CoroutineScope(Dispatchers.IO).launch {
             if (!isManagerActive) {
                 Log.d(TAG, "⛔ 썸네일 로딩 중단됨 (매니저 비활성)")
@@ -73,7 +75,9 @@ class PhotoImageManager @Inject constructor(
                         }
 
                         if (!currentCache.containsKey(photo.path)) {
-                            Log.d(TAG, "썸네일 로드 시작: ${photo.name}")
+                            Log.d(TAG, "📷 썸네일 로드 시작: ${photo.name}")
+                            Log.d(TAG, "   - 경로: ${photo.path}")
+                            Log.d(TAG, "   - 파일크기: ${photo.size} bytes")
 
                             getCameraThumbnailUseCase(photo.path).fold(
                                 onSuccess = { thumbnailData ->
@@ -82,14 +86,22 @@ class PhotoImageManager @Inject constructor(
                                         return@launch
                                     }
 
+                                    Log.d(TAG, "✅ 썸네일 데이터 받음: ${photo.name}")
+                                    Log.d(TAG, "   - 썸네일 크기: ${thumbnailData.size} bytes")
+                                    Log.d(TAG, "   - 썸네일 비어있음: ${thumbnailData.isEmpty()}")
+
+                                    if (thumbnailData.isNotEmpty()) {
+                                        // 썸네일 데이터의 헤더 확인 (JPEG인지 등)
+                                        val header = thumbnailData.take(8).map { "%02X".format(it) }
+                                            .joinToString(" ")
+                                        Log.d(TAG, "   - 썸네일 헤더: $header")
+                                    }
+
                                     synchronized(currentCache) {
                                         currentCache[photo.path] = thumbnailData
                                         _thumbnailCache.value = currentCache.toMap()
                                     }
-                                    Log.d(
-                                        TAG,
-                                        "썸네일 로드 성공: ${photo.name} (${thumbnailData.size} bytes)"
-                                    )
+                                    Log.d(TAG, "💾 썸네일 캐시 저장 완료: ${photo.name}")
                                 },
                                 onFailure = { exception ->
                                     if (!isManagerActive) {
@@ -97,15 +109,20 @@ class PhotoImageManager @Inject constructor(
                                         return@launch
                                     }
 
-                                    Log.w(TAG, "썸네일 로드 실패: ${photo.path}", exception)
+                                    Log.e(TAG, "❌ 썸네일 로드 실패: ${photo.path}", exception)
+                                    Log.d(TAG, "   - 에러 메시지: ${exception.message}")
+                                    Log.d(TAG, "   - 에러 타입: ${exception.javaClass.simpleName}")
 
                                     // 재시도 로직
+                                    Log.d(TAG, "🔄 썸네일 재시도 시작: ${photo.name}")
                                     retryThumbnailLoad(photo, currentCache, maxRetries = 2)
                                 }
                             )
+                        } else {
+                            Log.d(TAG, "♻️ 이미 캐시에 있음: ${photo.name}")
                         }
                     } catch (exception: Exception) {
-                        Log.e(TAG, "썸네일 로딩 중 예외: ${photo.name}", exception)
+                        Log.e(TAG, "💥 썸네일 로딩 중 예외: ${photo.name}", exception)
                         if (isManagerActive) {
                             synchronized(currentCache) {
                                 currentCache[photo.path] = ByteArray(0)
