@@ -163,7 +163,7 @@ class CameraConnectionManager @Inject constructor(
                 Log.d(TAG, "✅ 자동 연결 완료 - 이벤트 리스너 자동 시작 시도")
 
                 // 추가 안정화 대기 (네이티브 초기화 완료 확보)
-                kotlinx.coroutines.delay(1000)
+                kotlinx.coroutines.delay(100)
 
                 // 연결 상태 재확인 - 직접 매니저에서 확인
                 val isConnected = uiStateManager.uiState.value.isConnected

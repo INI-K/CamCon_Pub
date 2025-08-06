@@ -118,8 +118,15 @@ class CameraUiStateManager @Inject constructor() {
      * 카메라 초기화 상태 업데이트
      */
     fun updateCameraInitialization(isInitializing: Boolean) {
+        val previousState = _uiState.value.isCameraInitializing
         _uiState.update { it.copy(isCameraInitializing = isInitializing) }
-        Log.d(TAG, "카메라 초기화 상태 업데이트: $isInitializing")
+        Log.d(TAG, "카메라 초기화 상태 업데이트: $previousState -> $isInitializing")
+
+        if (!isInitializing && previousState) {
+            Log.d(TAG, " 카메라 초기화 완료! UI 블로킹 해제됨")
+        } else if (isInitializing && !previousState) {
+            Log.d(TAG, " 카메라 초기화 시작 - UI 블로킹 활성화")
+        }
     }
 
     /**

@@ -443,19 +443,42 @@ fun MainScreen(
         }
 
         // USB 연결 및 초기화 상태에 따른 UI 블로킹 오버레이
-        if (globalConnectionState.ptpipConnectionState == PtpipConnectionState.CONNECTING ||
+        val shouldShowOverlay =
+            globalConnectionState.ptpipConnectionState == PtpipConnectionState.CONNECTING ||
             connectionStatusMessage.contains("초기화 중") ||
             cameraUiState.isUsbInitializing ||
-            cameraUiState.isCameraInitializing  // 카메라 이벤트 리스너 초기화 상태 추가
-        ) {
-            UsbInitializationOverlay(
-                message = when {
-                    cameraUiState.isCameraInitializing -> "카메라 이벤트 초기화 중..."
-                    cameraUiState.isUsbInitializing -> cameraUiState.usbInitializationMessage
-                        ?: "USB 카메라 초기화 중..."
-                    else -> connectionStatusMessage
-                }
+                cameraUiState.isCameraInitializing
+
+        if (shouldShowOverlay) {
+            val overlayMessage = when {
+                cameraUiState.isCameraInitializing -> "카메라 이벤트 초기화 중..."
+                cameraUiState.isUsbInitializing -> cameraUiState.usbInitializationMessage
+                    ?: "USB 카메라 초기화 중..."
+
+                else -> connectionStatusMessage
+            }
+
+            Log.d("MainActivity", " UI 블로킹 오버레이 표시: $overlayMessage")
+            Log.d(
+                "MainActivity", "블로킹 조건 - PTP연결:${globalConnectionState.ptpipConnectionState}, " +
+                        "메시지초기화:${connectionStatusMessage.contains("초기화 중")}, " +
+                        "USB초기화:${cameraUiState.isUsbInitializing}, " +
+                        "카메라초기화:${cameraUiState.isCameraInitializing}"
             )
+
+            UsbInitializationOverlay(message = overlayMessage)
+        } else {
+            // 오버레이가 사라질 때도 로그 출력
+            LaunchedEffect(Unit) {
+                Log.d("MainActivity", " UI 블로킹 오버레이 해제됨")
+                Log.d(
+                    "MainActivity",
+                    "해제 조건 - PTP연결:${globalConnectionState.ptpipConnectionState}, " +
+                            "메시지초기화:${connectionStatusMessage.contains("초기화 중")}, " +
+                            "USB초기화:${cameraUiState.isUsbInitializing}, " +
+                            "카메라초기화:${cameraUiState.isCameraInitializing}"
+                )
+            }
         }
     }
 }

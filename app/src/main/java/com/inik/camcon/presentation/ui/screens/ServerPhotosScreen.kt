@@ -311,8 +311,9 @@ private fun FluidPhotoGridItem(
 ) {
     // 원본 비율에 관계없이 썸네일은 세로 비율로 강제 설정
     val aspectRatio = remember(photo.id) {
-        // 다양한 세로 비율 사용 (이미지처럼)
-        when ((0..4).random()) {
+        // photo.id를 기반으로 고정된 비율 생성 (무한 호출 방지)
+        val hashCode = photo.id.hashCode()
+        when (hashCode % 5) {
             0 -> 1f        // 정사각형
             1 -> 0.75f     // 3:4 세로형
             2 -> 0.6f      // 긴 세로형
@@ -336,10 +337,6 @@ private fun FluidPhotoGridItem(
         Box {
             // 사진 이미지 - 개선된 로딩
             val file = File(photo.filePath)
-            Log.d("FluidPhotoGridItem", "사진 로딩 시도: ${photo.id}")
-            Log.d("FluidPhotoGridItem", "파일 경로: ${photo.filePath}")
-            Log.d("FluidPhotoGridItem", "파일 존재: ${file.exists()}")
-            Log.d("FluidPhotoGridItem", "파일 크기: ${if (file.exists()) file.length() else 0} bytes")
 
             val painter = rememberAsyncImagePainter(
                 ImageRequest.Builder(LocalContext.current)
@@ -349,17 +346,6 @@ private fun FluidPhotoGridItem(
                     .error(android.R.drawable.ic_menu_gallery) // 에러 시 기본 이미지
                     .fallback(android.R.drawable.ic_menu_gallery) // 로딩 실패 시 기본 이미지
                     .placeholder(android.R.drawable.ic_menu_gallery) // 로딩 중 표시할 이미지
-                    .listener(
-                        onStart = {
-                            Log.d("FluidPhotoGridItem", "이미지 로딩 시작: ${photo.id}")
-                        },
-                        onSuccess = { _, _ ->
-                            Log.d("FluidPhotoGridItem", "이미지 로딩 성공: ${photo.id}")
-                        },
-                        onError = { _, error ->
-                            Log.e("FluidPhotoGridItem", "이미지 로딩 실패: ${photo.id}", error.throwable)
-                        }
-                    )
                     .apply {
                         // sRGB 색공간 설정
                         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {

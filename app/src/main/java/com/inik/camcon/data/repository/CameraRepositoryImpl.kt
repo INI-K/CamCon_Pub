@@ -53,7 +53,8 @@ class CameraRepositoryImpl @Inject constructor(
     private val colorTransferUseCase: ColorTransferUseCase,
     private val connectionManager: CameraConnectionManager,
     private val eventManager: CameraEventManager,
-    private val downloadManager: PhotoDownloadManager
+    private val downloadManager: PhotoDownloadManager,
+    private val uiStateManager: com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
 ) : CameraRepository {
 
     init {
@@ -72,7 +73,7 @@ class CameraRepositoryImpl @Inject constructor(
         if (result.isSuccess) {
             // 카메라 연결 완료 후 안정화 대기
             Log.d("카메라레포지토리", "카메라 연결 완료 - 안정화 대기 시작")
-            kotlinx.coroutines.delay(3000)
+            kotlinx.coroutines.delay(300)
             // 이벤트 리스너는 UI에서 명시적으로 시작되도록 변경
         }
         return result
@@ -106,9 +107,9 @@ class CameraRepositoryImpl @Inject constructor(
                 handleExternalPhotoCapture(fullPath, fileName)
             },
             onFlushComplete = {
-                CoroutineScope(Dispatchers.Main).launch {
-                    connectionManager.isInitializing
-                }
+                Log.d("카메라레포지토리", "🎯 카메라 이벤트 플러시 완료 - 초기화 상태 해제")
+                uiStateManager.updateCameraInitialization(false)
+                Log.d("카메라레포지토리", "✅ UI 블로킹 해제 완료 (isCameraInitializing = false)")
             },
             onCaptureFailed = { errorCode ->
                 Log.e("카메라레포지토리", "외부 셔터 촬영 실패: $errorCode")
@@ -541,7 +542,9 @@ class CameraRepositoryImpl @Inject constructor(
                 handleExternalPhotoCapture(fullPath, fileName)
             },
             onFlushComplete = {
-                // 플러시 완료 처리
+                Log.d("카메라레포지토리", "🎯 카메라 이벤트 플러시 완료 - 초기화 상태 해제")
+                uiStateManager.updateCameraInitialization(false)
+                Log.d("카메라레포지토리", "✅ UI 블로킹 해제 완료 (isCameraInitializing = false)")
             },
             onCaptureFailed = { errorCode ->
                 Log.e("카메라레포지토리", "외부 셔터 촬영 실패: $errorCode")
