@@ -59,6 +59,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.inik.camcon.R
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
+import com.inik.camcon.data.service.BackgroundSyncService
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
@@ -792,6 +793,15 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // 백그라운드 서비스(이벤트 리스너 유지) 시작
+        try {
+            val serviceIntent = Intent(this, BackgroundSyncService::class.java)
+            ContextCompat.startForegroundService(this, serviceIntent)
+            Log.d(TAG, "BackgroundSyncService 시작 요청됨")
+        } catch (e: Exception) {
+            Log.w(TAG, "BackgroundSyncService 시작 실패", e)
+        }
+
         // 사용자 구독 티어 로그 출력
         lifecycleScope.launch {
             try {
@@ -923,9 +933,54 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        Log.d(TAG, " 앱 포그라운드 진입 - 백그라운드 서비스 상태 확인")
+
         // 앱이 다시 활성화될 때 USB 상태만 확인 (디바이스 재검색은 하지 않음)
         lifecycleScope.launch(Dispatchers.IO) {
             checkUsbPermissionStatus()
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        Log.d(TAG, " 앱 백그라운드 진입 - 백그라운드 서비스 확인")
+
+        // 앱이 백그라운드로 이동할 때 백그라운드 서비스가 실행 중인지 확인
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                // 백그라운드 서비스가 실행 중인지 확인
+                val isServiceRunning = isServiceRunning(BackgroundSyncService::class.java)
+                if (!isServiceRunning) {
+                    Log.d(TAG, " 백그라운드 서비스 재시작 필요")
+                    withContext(Dispatchers.Main) {
+                        BackgroundSyncService.startService(this@MainActivity)
+                    }
+                } else {
+                    Log.d(TAG, " 백그라운드 서비스 이미 실행 중")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "백그라운드 서비스 상태 확인 실패", e)
+            }
+        }
+    }
+
+    /**
+     * 서비스 실행 상태 확인
+     */
+    private fun isServiceRunning(serviceClass: Class<*>): Boolean {
+        return try {
+            val manager = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+            for (service in manager.getRunningServices(Int.MAX_VALUE)) {
+                if (serviceClass.name == service.service.className) {
+                    Log.d(TAG, "서비스 실행 중: ${serviceClass.simpleName}")
+                    return true
+                }
+            }
+            Log.d(TAG, "서비스 실행되지 않음: ${serviceClass.simpleName}")
+            false
+        } catch (e: Exception) {
+            Log.w(TAG, "서비스 상태 확인 실패", e)
+            false
         }
     }
 
