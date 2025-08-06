@@ -715,7 +715,7 @@ class PtpipDataSource @Inject constructor(
 
             // 일반 연결 해제 (세션 유지 여부 전달)
             disconnect(keepSession)
-            kotlinx.coroutines.delay(1000)
+            kotlinx.coroutines.delay(100)
 
             Log.d(TAG, "gphoto2 호환 모드: 연결 해제 완료")
         } catch (e: Exception) {
