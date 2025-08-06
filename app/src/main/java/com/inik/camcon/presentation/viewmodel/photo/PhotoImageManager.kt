@@ -45,6 +45,10 @@ class PhotoImageManager @Inject constructor(
     private val _downloadingImages = MutableStateFlow<Set<String>>(emptySet())
     val downloadingImages: StateFlow<Set<String>> = _downloadingImages.asStateFlow()
 
+    // 썸네일 로딩 상태 관리 (중복 방지용)
+    private val _loadingThumbnails = MutableStateFlow<Set<String>>(emptySet())
+    val loadingThumbnails: StateFlow<Set<String>> = _loadingThumbnails.asStateFlow()
+
     // EXIF 정보 캐시
     private val _exifCache = MutableStateFlow<Map<String, String>>(emptyMap())
     val exifCache: StateFlow<Map<String, String>> = _exifCache.asStateFlow()
@@ -56,6 +60,12 @@ class PhotoImageManager @Inject constructor(
      * 썸네일 로드
      */
     fun loadThumbnailsForPhotos(photos: List<CameraPhoto>) {
+        val stackTrace = Thread.currentThread().stackTrace
+            .take(5)
+            .joinToString("\n") { "    at ${it.className}.${it.methodName}(${it.fileName}:${it.lineNumber})" }
+
+        Log.d(TAG, "🔍 loadThumbnailsForPhotos 호출됨!")
+        Log.d(TAG, "🔍 호출 스택:\n$stackTrace")
         Log.d(TAG, "=== 썸네일 로딩 시작: ${photos.size}개 사진 ===")
 
         CoroutineScope(Dispatchers.IO).launch {
@@ -65,196 +75,131 @@ class PhotoImageManager @Inject constructor(
             }
 
             val currentCache = _thumbnailCache.value.toMutableMap()
+            val currentlyLoading = _loadingThumbnails.value.toMutableSet()
 
+            // 순차적으로 처리 (동시 실행 방지)
             photos.forEach { photo ->
-                CoroutineScope(Dispatchers.IO).launch {
-                    try {
-                        if (!isManagerActive) {
-                            Log.d(TAG, "⛔ 개별 썸네일 로딩 중단됨: ${photo.name}")
-                            return@launch
-                        }
-
-                        if (!currentCache.containsKey(photo.path)) {
-                            Log.d(TAG, "📷 썸네일 로드 시작: ${photo.name}")
-                            Log.d(TAG, "   - 경로: ${photo.path}")
-                            Log.d(TAG, "   - 파일크기: ${photo.size} bytes")
-
-                            // 네이티브 썸네일 호출 전 카메라 상태 확인
-                            if (!isManagerActive) {
-                                Log.w(TAG, "매니저 비활성화됨, 썸네일 로딩 중단: ${photo.name}")
-                                return@launch
-                            }
-
-                            getCameraThumbnailUseCase(photo.path).fold(
-                                onSuccess = { thumbnailData ->
-                                    if (!isManagerActive) {
-                                        Log.d(TAG, "매니저 비활성화됨, 결과 무시: ${photo.name}")
-                                        return@launch
-                                    }
-
-                                    Log.d(TAG, "✅ 썸네일 데이터 받음: ${photo.name}")
-                                    Log.d(TAG, "   - 썸네일 크기: ${thumbnailData.size} bytes")
-                                    Log.d(TAG, "   - 썸네일 비어있음: ${thumbnailData.isEmpty()}")
-
-                                    if (thumbnailData.isNotEmpty()) {
-                                        // 썸네일 데이터의 헤더 확인 (JPEG인지 등)
-                                        val header = thumbnailData.take(8).map { "%02X".format(it) }
-                                            .joinToString(" ")
-                                        Log.d(TAG, "   - 썸네일 헤더: $header")
-
-                                        // JPEG 헤더 확인 (FF D8 FF로 시작해야 함)
-                                        if (thumbnailData.size >= 3 &&
-                                            thumbnailData[0] == 0xFF.toByte() &&
-                                            thumbnailData[1] == 0xD8.toByte() &&
-                                            thumbnailData[2] == 0xFF.toByte()
-                                        ) {
-                                            Log.d(TAG, "   - 유효한 JPEG 썸네일 확인됨")
-                                        } else {
-                                            Log.w(TAG, "   - 비정상적인 썸네일 헤더 감지됨")
-                                        }
-
-                                        synchronized(currentCache) {
-                                            currentCache[photo.path] = thumbnailData
-                                            _thumbnailCache.value = currentCache.toMap()
-                                        }
-                                        Log.d(TAG, "💾 썸네일 캐시 저장 완료: ${photo.name}")
-                                    } else {
-                                        Log.w(TAG, "⚠️ 빈 썸네일 데이터 수신: ${photo.name}")
-                                        // 빈 데이터도 캐시에 저장하여 재시도 방지
-                                        synchronized(currentCache) {
-                                            currentCache[photo.path] = ByteArray(0)
-                                            _thumbnailCache.value = currentCache.toMap()
-                                        }
-                                    }
-                                },
-                                onFailure = { exception ->
-                                    if (!isManagerActive) {
-                                        Log.d(TAG, "매니저 비활성화됨, 에러 무시: ${photo.name}")
-                                        return@launch
-                                    }
-
-                                    Log.e(TAG, "❌ 썸네일 로드 실패: ${photo.path}", exception)
-                                    Log.d(TAG, "   - 에러 메시지: ${exception.message}")
-                                    Log.d(TAG, "   - 에러 타입: ${exception.javaClass.simpleName}")
-
-                                    // 특정 에러 타입에 따른 처리
-                                    when {
-                                        exception.message?.contains("camera not initialized") == true -> {
-                                            Log.e(TAG, "   - 카메라 초기화 문제")
-                                        }
-
-                                        exception.message?.contains("file not found") == true -> {
-                                            Log.e(TAG, "   - 파일을 찾을 수 없음")
-                                        }
-
-                                        exception.message?.contains("timeout") == true -> {
-                                            Log.e(TAG, "   - 타임아웃 발생")
-                                        }
-
-                                        else -> {
-                                            Log.e(TAG, "   - 알 수 없는 에러")
-                                        }
-                                    }
-
-                                    // 재시도 로직 (네트워크 에러나 임시 문제인 경우)
-                                    if (!exception.message?.contains(
-                                            "file not found",
-                                            ignoreCase = true
-                                        )!!
-                                    ) {
-                                        Log.d(TAG, "🔄 썸네일 재시도 고려: ${photo.name}")
-                                        retryThumbnailLoad(
-                                            photo,
-                                            currentCache,
-                                            maxRetries = 1
-                                        ) // 재시도 횟수 줄임
-                                    } else {
-                                        // 파일이 없는 경우 빈 데이터로 캐시하여 재시도 방지
-                                        synchronized(currentCache) {
-                                            currentCache[photo.path] = ByteArray(0)
-                                            _thumbnailCache.value = currentCache.toMap()
-                                        }
-                                    }
-                                }
-                            )
-                        } else {
-                            Log.d(TAG, "♻️ 이미 캐시에 있음: ${photo.name}")
-                        }
-                    } catch (exception: Exception) {
-                        Log.e(TAG, "💥 썸네일 로딩 중 예외: ${photo.name}", exception)
-                        if (isManagerActive) {
-                            synchronized(currentCache) {
-                                currentCache[photo.path] = ByteArray(0)
-                                _thumbnailCache.value = currentCache.toMap()
-                            }
-                        }
+                // 이미 캐시에 있거나 로딩 중인 경우 건너뛰기
+                if (currentCache.containsKey(photo.path) || currentlyLoading.contains(photo.path)) {
+                    if (currentCache.containsKey(photo.path)) {
+                        Log.d(TAG, "♻️ 이미 캐시에 있음: ${photo.name}")
+                    } else {
+                        Log.d(TAG, "⏳ 이미 로딩 중: ${photo.name}")
                     }
+                    return@forEach
                 }
-            }
-        }
-    }
 
-    /**
-     * 썸네일 재시도 로직
-     */
-    private fun retryThumbnailLoad(
-        photo: CameraPhoto,
-        currentCache: MutableMap<String, ByteArray>,
-        maxRetries: Int
-    ) {
-        CoroutineScope(Dispatchers.IO).launch {
-            repeat(maxRetries) { retryIndex ->
+                // 매니저 비활성화 체크
+                if (!isManagerActive) {
+                    Log.d(TAG, "⛔ 썸네일 로딩 중단됨 (매니저 비활성)")
+                    return@launch
+                }
+
+                // 로딩 상태에 추가
+                currentlyLoading.add(photo.path)
+                _loadingThumbnails.value = currentlyLoading.toSet()
+
                 try {
-                    if (!isManagerActive) {
-                        Log.d(TAG, "⛔ 썸네일 재시도 중단됨: ${photo.name}")
-                        return@launch
-                    }
+                    Log.d(TAG, "📷 썸네일 로드 시작: ${photo.name}")
+                    Log.d(TAG, "   - 경로: ${photo.path}")
+                    Log.d(TAG, "   - 파일크기: ${photo.size} bytes")
 
-                    kotlinx.coroutines.delay(200L * (retryIndex + 1))
-                    Log.d(TAG, "썸네일 재시도 ${retryIndex + 1}/${maxRetries}: ${photo.name}")
-
+                    // 네이티브 썸네일 호출
                     getCameraThumbnailUseCase(photo.path).fold(
-                        onSuccess = { retryThumbnailData ->
+                        onSuccess = { thumbnailData ->
                             if (!isManagerActive) {
-                                Log.d(TAG, "⛔ 썸네일 재시도 성공 처리 중단됨: ${photo.name}")
-                                return@launch
+                                Log.d(TAG, "매니저 비활성화됨, 결과 무시: ${photo.name}")
+                                return@fold
                             }
 
-                            synchronized(currentCache) {
-                                currentCache[photo.path] = retryThumbnailData
-                                _thumbnailCache.value = currentCache.toMap()
-                            }
-                            Log.d(
-                                TAG,
-                                "썸네일 재시도 성공: ${photo.name} (${retryThumbnailData.size} bytes)"
-                            )
-                            return@repeat
-                        },
-                        onFailure = { retryException ->
-                            Log.e(
-                                TAG,
-                                "썸네일 재시도 ${retryIndex + 1} 실패: ${photo.path}",
-                                retryException
-                            )
+                            Log.d(TAG, "✅ 썸네일 데이터 받음: ${photo.name}")
+                            Log.d(TAG, "   - 썸네일 크기: ${thumbnailData.size} bytes")
+                            Log.d(TAG, "   - 썸네일 비어있음: ${thumbnailData.isEmpty()}")
 
-                            if (retryIndex == maxRetries - 1 && isManagerActive) {
+                            if (thumbnailData.isNotEmpty()) {
+                                // 썸네일 데이터의 헤더 확인 (JPEG인지 등)
+                                val header = thumbnailData.take(8).map { "%02X".format(it) }
+                                    .joinToString(" ")
+                                Log.d(TAG, "   - 썸네일 헤더: $header")
+
+                                // JPEG 헤더 확인 (FF D8 FF로 시작해야 함)
+                                if (thumbnailData.size >= 3 &&
+                                    thumbnailData[0] == 0xFF.toByte() &&
+                                    thumbnailData[1] == 0xD8.toByte() &&
+                                    thumbnailData[2] == 0xFF.toByte()
+                                ) {
+                                    Log.d(TAG, "   - 유효한 JPEG 썸네일 확인됨")
+                                } else {
+                                    Log.w(TAG, "   - 비정상적인 썸네일 헤더 감지됨")
+                                }
+
+                                synchronized(currentCache) {
+                                    currentCache[photo.path] = thumbnailData
+                                    _thumbnailCache.value = currentCache.toMap()
+                                }
+                                Log.d(TAG, "💾 썸네일 캐시 저장 완료: ${photo.name}")
+                            } else {
+                                Log.w(TAG, "⚠️ 빈 썸네일 데이터 수신: ${photo.name}")
+                                // 빈 데이터도 캐시에 저장하여 재시도 방지
                                 synchronized(currentCache) {
                                     currentCache[photo.path] = ByteArray(0)
                                     _thumbnailCache.value = currentCache.toMap()
                                 }
                             }
+                        },
+                        onFailure = { exception ->
+                            if (!isManagerActive) {
+                                Log.d(TAG, "매니저 비활성화됨, 에러 무시: ${photo.name}")
+                                return@fold
+                            }
+
+                            Log.e(TAG, "❌ 썸네일 로드 실패: ${photo.path}", exception)
+                            Log.d(TAG, "   - 에러 메시지: ${exception.message}")
+                            Log.d(TAG, "   - 에러 타입: ${exception.javaClass.simpleName}")
+
+                            // 특정 에러 타입에 따른 처리
+                            when {
+                                exception.message?.contains("camera not initialized") == true -> {
+                                    Log.e(TAG, "   - 카메라 초기화 문제")
+                                }
+
+                                exception.message?.contains("file not found") == true -> {
+                                    Log.e(TAG, "   - 파일을 찾을 수 없음")
+                                }
+
+                                exception.message?.contains("timeout") == true -> {
+                                    Log.e(TAG, "   - 타임아웃 발생")
+                                }
+
+                                else -> {
+                                    Log.e(TAG, "   - 알 수 없는 에러")
+                                }
+                            }
+
+                            // 실패한 경우도 빈 데이터로 캐시하여 재시도 방지
+                            synchronized(currentCache) {
+                                currentCache[photo.path] = ByteArray(0)
+                                _thumbnailCache.value = currentCache.toMap()
+                            }
                         }
                     )
-                } catch (retryException: Exception) {
-                    Log.e(TAG, "썸네일 재시도 중 예외: ${photo.name}", retryException)
-                    if (retryIndex == maxRetries - 1 && isManagerActive) {
+                } catch (exception: Exception) {
+                    Log.e(TAG, "💥 썸네일 로딩 중 예외: ${photo.name}", exception)
+                    if (isManagerActive) {
                         synchronized(currentCache) {
                             currentCache[photo.path] = ByteArray(0)
                             _thumbnailCache.value = currentCache.toMap()
                         }
                     }
+                } finally {
+                    // 로딩 상태에서 제거
+                    currentlyLoading.remove(photo.path)
+                    _loadingThumbnails.value = currentlyLoading.toSet()
+                    Log.d(TAG, "🔄 썸네일 로딩 완료 처리: ${photo.name}")
                 }
             }
+
+            Log.d(TAG, "=== 썸네일 로딩 완료: ${photos.size}개 사진 ===")
         }
     }
 
@@ -645,6 +590,7 @@ class PhotoImageManager @Inject constructor(
         _thumbnailCache.value = emptyMap()
         _fullImageCache.value = emptyMap()
         _downloadingImages.value = emptySet()
+        _loadingThumbnails.value = emptySet()
         _exifCache.value = emptyMap()
     }
 }
