@@ -136,6 +136,9 @@ class PhotoPreviewViewModel @Inject constructor(
         
         // 에러 이벤트 관찰
         observeErrorEvents()
+
+        // 사진 목록 변화 감지 및 썸네일 로드 (한 번만 설정)
+        observePhotosAndLoadThumbnails()
     }
 
     /**
@@ -154,6 +157,9 @@ class PhotoPreviewViewModel @Inject constructor(
                 if (isConnected && !previousConnected) {
                     Log.d(TAG, "카메라 연결됨 - 사진 목록 불러오기")
                     photoListManager.loadInitialPhotos(isConnected)
+
+                    // observePhotosAndLoadThumbnails()는 이미 setupObservers()에서 설정됨
+                    // 여기서 별도로 호출하지 않음
                 } else if (!isConnected && previousConnected) {
                     Log.d(TAG, "카메라 연결 해제됨")
                     _uiState.value = _uiState.value.copy(isInitialized = false)
@@ -163,6 +169,28 @@ class PhotoPreviewViewModel @Inject constructor(
                         null,
                         com.inik.camcon.domain.manager.ErrorSeverity.MEDIUM
                     )
+                }
+            }
+        }
+    }
+
+    /**
+     * 사진 목록 변화를 감지하고 썸네일 로드
+     */
+    private fun observePhotosAndLoadThumbnails() {
+        Log.d(TAG, "[TRACE] observePhotosAndLoadThumbnails() 호출됨")
+
+        viewModelScope.launch {
+            Log.d(TAG, "[TRACE] photoListManager.filteredPhotos.collect 시작")
+            var collectCount = 0
+
+            photoListManager.filteredPhotos.collect { photos ->
+                collectCount++
+                Log.d(TAG, "[TRACE] filteredPhotos collect 실행 #$collectCount - 사진 ${photos.size}개")
+
+                if (photos.isNotEmpty()) {
+                    Log.d(TAG, "사진 목록 변화 감지 (${photos.size}개) - 썸네일 로딩 시작")
+                    photoImageManager.loadThumbnailsForPhotos(photos)
                 }
             }
         }
@@ -223,6 +251,10 @@ class PhotoPreviewViewModel @Inject constructor(
      */
     fun loadNextPage() {
         photoListManager.loadNextPage()
+
+        // 다음 페이지 로드 시에는 observePhotosAndLoadThumbnails()의 collect가
+        // 자동으로 filteredPhotos 변화를 감지하여 썸네일 로딩을 처리함
+        // 직접 호출하지 않음 (중복 방지)
     }
 
     /**
