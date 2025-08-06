@@ -54,8 +54,8 @@ import com.inik.camcon.presentation.ui.screens.components.EmptyPhotoState
 import com.inik.camcon.presentation.ui.screens.components.FluidPhotoThumbnail
 import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
 import com.inik.camcon.presentation.ui.screens.components.UsbInitializationOverlay
-import com.inik.camcon.presentation.viewmodel.FileTypeFilter
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
+import com.inik.camcon.presentation.viewmodel.photo.FileTypeFilter
 import kotlinx.coroutines.delay
 import java.io.File
 
@@ -70,15 +70,24 @@ fun PhotoPreviewScreen(
     Log.d("PhotoPreviewScreen", "=== PhotoPreviewScreen 컴포저블 시작 ===")
 
     val uiState by viewModel.uiState.collectAsState()
+    val photos by viewModel.photos.collectAsState()
+    val isLoadingPhotos by viewModel.isLoadingPhotos.collectAsState()
+    val isLoadingMore by viewModel.isLoadingMorePhotos.collectAsState()
+    val hasNextPage by viewModel.hasNextPage.collectAsState()
+    val currentFilter by viewModel.currentFilter.collectAsState()
+    val currentPage by viewModel.currentPage.collectAsState()
+    val totalPages by viewModel.totalPages.collectAsState()
+    val isMultiSelectMode by viewModel.isMultiSelectMode.collectAsState()
+    val selectedPhotos by viewModel.selectedPhotos.collectAsState()
 
     Log.d("PhotoPreviewScreen", "현재 UI 상태:")
     Log.d("PhotoPreviewScreen", "  - isConnected: ${uiState.isConnected}")
-    Log.d("PhotoPreviewScreen", "  - isLoading: ${uiState.isLoading}")
-    Log.d("PhotoPreviewScreen", "  - photos.size: ${uiState.photos.size}")
+    Log.d("PhotoPreviewScreen", "  - isLoading: ${isLoadingPhotos}")
+    Log.d("PhotoPreviewScreen", "  - photos.size: ${photos.size}")
     Log.d("PhotoPreviewScreen", "  - error: ${uiState.error}")
 
     val pullRefreshState = rememberPullRefreshState(
-        refreshing = uiState.isLoading,
+        refreshing = isLoadingPhotos,
         onRefresh = {
             Log.d("PhotoPreviewScreen", "Pull to refresh 트리거")
             viewModel.loadCameraPhotos()
@@ -86,7 +95,7 @@ fun PhotoPreviewScreen(
     )
 
     // 멀티 선택 모드에서 뒤로가기 처리
-    BackHandler(enabled = uiState.isMultiSelectMode) {
+    BackHandler(enabled = isMultiSelectMode) {
         viewModel.exitMultiSelectMode()
     }
 
@@ -102,9 +111,9 @@ fun PhotoPreviewScreen(
                 .padding(top = 24.dp) // 상단 마진 증가 (16dp → 24dp)
         ) {
             // 상단 타이틀 영역 (모던한 디자인)
-            if (uiState.isMultiSelectMode) {
+            if (isMultiSelectMode) {
                 MultiSelectActionBar(
-                    selectedCount = uiState.selectedPhotos.size,
+                    selectedCount = selectedPhotos.size,
                     onSelectAll = { viewModel.selectAllPhotos() },
                     onDeselectAll = { viewModel.deselectAllPhotos() },
                     onDownload = { viewModel.downloadSelectedPhotos() },
@@ -112,11 +121,11 @@ fun PhotoPreviewScreen(
                 )
             } else {
                 ModernHeader(
-                    photoCount = uiState.photos.size,
-                    currentPage = uiState.currentPage,
-                    totalPages = uiState.totalPages,
+                    photoCount = photos.size,
+                    currentPage = currentPage,
+                    totalPages = totalPages,
                     onRefresh = { viewModel.loadCameraPhotos() },
-                    fileTypeFilter = uiState.fileTypeFilter,
+                    fileTypeFilter = currentFilter,
                     onFilterChange = { filter -> viewModel.changeFileTypeFilter(filter) },
                     viewModel = viewModel
                 )
@@ -137,17 +146,22 @@ fun PhotoPreviewScreen(
                     CameraDisconnectedState()
                 }
 
-                uiState.isLoading && uiState.photos.isEmpty() -> {
+                isLoadingPhotos && photos.isEmpty() -> {
                     LoadingIndicator()
                 }
 
-                uiState.photos.isEmpty() -> {
+                photos.isEmpty() -> {
                     EmptyPhotoState()
                 }
 
                 else -> {
                     PhotoGrid(
                         uiState = uiState,
+                        photos = photos,
+                        isLoadingMore = isLoadingMore,
+                        hasNextPage = hasNextPage,
+                        isMultiSelectMode = isMultiSelectMode,
+                        selectedPhotos = selectedPhotos.toSet(), // Change here
                         viewModel = viewModel
                     )
                 }
@@ -156,7 +170,7 @@ fun PhotoPreviewScreen(
 
         // Pull to refresh 인디케이터 - 정상 동작 복원
         PullRefreshIndicator(
-            refreshing = uiState.isLoading,
+            refreshing = isLoadingPhotos,
             state = pullRefreshState,
             modifier = Modifier.align(Alignment.TopCenter),
             backgroundColor = MaterialTheme.colors.surface,
@@ -202,7 +216,7 @@ fun PhotoPreviewScreen(
 
                 // 인접 사진들 백그라운드 다운로드 (1초 후)
                 delay(1000)
-                viewModel.preloadAdjacentImages(photo, uiState.photos)
+                viewModel.preloadAdjacentImages(photo, photos)
             }
         }
 
@@ -252,10 +266,10 @@ fun PhotoPreviewScreen(
                 viewModel.downloadPhoto(photo) 
             },
             viewModel = viewModel, // ViewModel을 통해 썸네일 캐시 공유
-            localPhotos = if (uiState.photos.any { File(it.path).exists() }) uiState.photos else null // 로컬 사진인 경우 목록 전달
+            localPhotos = if (photos.any { File(it.path).exists() }) photos else null // 로컬 사진인 경우 목록 전달
         )
 
-        BackHandler(enabled = !uiState.isMultiSelectMode) {
+        BackHandler(enabled = !isMultiSelectMode) {
             viewModel.selectPhoto(null)
         }
     }
@@ -496,6 +510,11 @@ private fun LoadingIndicator() {
 @Composable
 private fun PhotoGrid(
     uiState: com.inik.camcon.presentation.viewmodel.PhotoPreviewUiState,
+    photos: List<com.inik.camcon.domain.model.CameraPhoto>,
+    isLoadingMore: Boolean,
+    hasNextPage: Boolean,
+    isMultiSelectMode: Boolean,
+    selectedPhotos: Set<String>,
     viewModel: PhotoPreviewViewModel
 ) {
     val lazyGridState = rememberLazyStaggeredGridState()
@@ -512,10 +531,10 @@ private fun PhotoGrid(
             lastVisibleItemIndex
         }
             .collect { lastVisibleIndex ->
-                if (lastVisibleIndex >= 0 && uiState.photos.isNotEmpty()) {
+                if (lastVisibleIndex >= 0 && photos.isNotEmpty()) {
                     Log.d(
                         "PhotoPreviewScreen",
-                        "스크롤 감지: 마지막 보이는 인덱스=$lastVisibleIndex, 총 사진=${uiState.photos.size}개"
+                        "스크롤 감지: 마지막 보이는 인덱스=$lastVisibleIndex, 총 사진=${photos.size}개"
                     )
                     viewModel.onPhotoIndexReached(lastVisibleIndex)
                 }
@@ -531,7 +550,7 @@ private fun PhotoGrid(
         modifier = Modifier.fillMaxSize()
     ) {
         items(
-            items = uiState.photos,
+            items = photos,
             key = { photo -> photo.path }
         ) { photo ->
             FluidPhotoThumbnail(
@@ -539,7 +558,7 @@ private fun PhotoGrid(
                 thumbnailData = viewModel.getThumbnail(photo.path),
                 fullImageCache = fullImageCache,
                 onClick = {
-                    if (uiState.isMultiSelectMode) {
+                    if (isMultiSelectMode) {
                         // 멀티 선택 모드에서는 선택/해제
                         viewModel.togglePhotoSelection(photo.path)
                     } else {
@@ -548,25 +567,24 @@ private fun PhotoGrid(
                     }
                 },
                 onLongClick = {
-                    if (!uiState.isMultiSelectMode) {
+                    if (!isMultiSelectMode) {
                         // 멀티 선택 모드 시작
                         viewModel.startMultiSelectMode(photo.path)
                     }
                 },
-                isSelected = uiState.selectedPhotos.contains(photo.path),
-                isMultiSelectMode = uiState.isMultiSelectMode
+                isSelected = selectedPhotos.contains(photo.path),
+                isMultiSelectMode = isMultiSelectMode
             )
         }
 
         // 로딩 상태 디버깅
         Log.d("PhotoPreviewScreen", "로딩 상태 체크:")
-        Log.d("PhotoPreviewScreen", "  - isLoading: ${uiState.isLoading}")
-        Log.d("PhotoPreviewScreen", "  - isLoadingMore: ${uiState.isLoadingMore}")
-        Log.d("PhotoPreviewScreen", "  - photos.size: ${uiState.photos.size}")
-        Log.d("PhotoPreviewScreen", "  - hasNextPage: ${uiState.hasNextPage}")
+        Log.d("PhotoPreviewScreen", "  - isLoading: ${isLoadingMore}")
+        Log.d("PhotoPreviewScreen", "  - photos.size: ${photos.size}")
+        Log.d("PhotoPreviewScreen", "  - hasNextPage: ${hasNextPage}")
 
         // 더 로딩 중일 때 로딩 인디케이터 표시
-        if ((uiState.isLoading || uiState.isLoadingMore) && uiState.photos.isNotEmpty()) {
+        if ((isLoadingMore) && photos.isNotEmpty()) {
             Log.d("PhotoPreviewScreen", "LoadMoreIndicator 표시 조건 만족")
             item(span = StaggeredGridItemSpan.FullLine) {
                 LoadMoreIndicator()
@@ -574,10 +592,10 @@ private fun PhotoGrid(
         }
 
         // 마지막 페이지일 때 완료 메시지
-        else if (!uiState.hasNextPage && uiState.photos.isNotEmpty() && !uiState.isLoadingMore) {
+        else if (!hasNextPage && photos.isNotEmpty() && !isLoadingMore) {
             Log.d("PhotoPreviewScreen", "EndOfListMessage 표시 조건 만족")
             item(span = StaggeredGridItemSpan.FullLine) {
-                EndOfListMessage(photoCount = uiState.photos.size)
+                EndOfListMessage(photoCount = photos.size)
             }
         } else {
             Log.d("PhotoPreviewScreen", "로딩 인디케이터/완료 메시지 표시하지 않음")

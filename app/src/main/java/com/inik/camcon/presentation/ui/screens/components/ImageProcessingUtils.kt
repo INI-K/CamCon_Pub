@@ -455,7 +455,7 @@ object ImageProcessingUtils {
 
             if (fullImageCache[adjacentPhoto.path] == null && !loadingPhotos.contains(adjacentPhoto.path)) {
                 loadingPhotos.add(adjacentPhoto.path)
-                viewModel?.downloadFullImage(adjacentPhoto.path)
+                viewModel?.downloadPhoto(adjacentPhoto)
             }
         }
     }
