@@ -153,30 +153,46 @@ class PhotoImageManager @Inject constructor(
                                 return@fold
                             }
 
-                            Log.e(TAG, "❌ 썸네일 로드 실패: ${photo.path}", exception)
-                            Log.d(TAG, "   - 에러 메시지: ${exception.message}")
+                            val errorMessage = exception.message ?: "알 수 없는 오류"
+                            Log.e(TAG, "❌ 썸네일 로드 실패: ${photo.path}")
+                            Log.d(TAG, "   - 에러 메시지: $errorMessage")
                             Log.d(TAG, "   - 에러 타입: ${exception.javaClass.simpleName}")
+
+                            // 카메라 사용 중 오류에 대해 더 관대하게 처리
+                            val isCameraBusyError =
+                                errorMessage.contains("사용 중", ignoreCase = true) ||
+                                        errorMessage.contains("초기화 중", ignoreCase = true) ||
+                                        errorMessage.contains("카메라가 연결되지 않음", ignoreCase = true)
+
+                            if (isCameraBusyError) {
+                                Log.w(TAG, "⏳ 카메라 사용 중/초기화 중 오류 - 캐시에 저장하지 않고 나중에 재시도 허용")
+                                // 카메라 사용 중인 경우 캐시에 저장하지 않음 (자연스러운 재시도 허용)
+                                return@fold
+                            }
 
                             // 특정 에러 타입에 따른 처리
                             when {
-                                exception.message?.contains("camera not initialized") == true -> {
+                                errorMessage.contains(
+                                    "camera not initialized",
+                                    ignoreCase = true
+                                ) -> {
                                     Log.e(TAG, "   - 카메라 초기화 문제")
                                 }
 
-                                exception.message?.contains("file not found") == true -> {
+                                errorMessage.contains("file not found", ignoreCase = true) -> {
                                     Log.e(TAG, "   - 파일을 찾을 수 없음")
                                 }
 
-                                exception.message?.contains("timeout") == true -> {
+                                errorMessage.contains("timeout", ignoreCase = true) -> {
                                     Log.e(TAG, "   - 타임아웃 발생")
                                 }
 
                                 else -> {
-                                    Log.e(TAG, "   - 알 수 없는 에러")
+                                    Log.e(TAG, "   - 기타 오류: $errorMessage")
                                 }
                             }
 
-                            // 실패한 경우도 빈 데이터로 캐시하여 재시도 방지
+                            // 일반적인 실패한 경우만 빈 데이터로 캐시하여 재시도 방지
                             synchronized(currentCache) {
                                 currentCache[photo.path] = ByteArray(0)
                                 _thumbnailCache.value = currentCache.toMap()
