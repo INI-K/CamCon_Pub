@@ -34,6 +34,7 @@ import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -97,6 +98,17 @@ fun PhotoPreviewScreen(
     // 멀티 선택 모드에서 뒤로가기 처리
     BackHandler(enabled = isMultiSelectMode) {
         viewModel.exitMultiSelectMode()
+    }
+
+    DisposableEffect(Unit) {
+        Log.d("PhotoPreviewScreen", "📸 사진 미리보기 탭 진입 - 이벤트 리스너 관리 시작")
+
+        onDispose {
+            Log.d("PhotoPreviewScreen", "📸 사진 미리보기 탭 이탈 - 이벤트 리스너 재시작 신호")
+
+            // ViewModel에 탭 이탈을 알려서 이벤트 리스너를 재시작하도록 함
+            viewModel.onTabExit()
+        }
     }
 
     Box(

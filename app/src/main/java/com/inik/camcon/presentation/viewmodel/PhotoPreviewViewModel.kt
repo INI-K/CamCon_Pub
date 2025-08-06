@@ -438,6 +438,70 @@ class PhotoPreviewViewModel @Inject constructor(
         photoSelectionManager.logCurrentState()
     }
 
+    /**
+     * 탭 이탈 시 이벤트 리스너 재시작 처리
+     */
+    fun onTabExit() {
+        Log.d(TAG, "📸 사진 미리보기 탭 이탈 감지 - 이벤트 리스너 재시작 시도")
+
+        viewModelScope.launch {
+            try {
+                val currentConnected = _uiState.value.isConnected
+                Log.d(TAG, "📸 사진 미리보기 탭 종료 - 연결상태: $currentConnected")
+
+                if (currentConnected) {
+                    // 사진 미리보기 모드 비활성화 (먼저 실행)
+                    cameraRepository.setPhotoPreviewMode(false)
+                    Log.d(TAG, "📴 사진 미리보기 모드 비활성화 완료")
+
+                    // 네이티브 작업 재개
+                    try {
+                        com.inik.camcon.CameraNative.resumeOperations()
+                        Log.d(TAG, "▶️ 네이티브 작업 재개 완료")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "네이티브 작업 재개 실패 (무시)", e)
+                    }
+
+                    // 카메라 연결 상태 재확인
+                    kotlinx.coroutines.delay(200) // 지연 시간
+
+                    val isStillConnected = try {
+                        cameraRepository.isCameraConnected().first()
+                    } catch (e: Exception) {
+                        Log.w(TAG, "연결 상태 확인 실패", e)
+                        false
+                    }
+
+                    if (isStillConnected) {
+                        Log.d(TAG, "🔄 카메라 여전히 연결됨, 이벤트 리스너 재시작 시도")
+
+                        try {
+                            cameraRepository.startCameraEventListener()
+                            Log.d(TAG, "✅ 이벤트 리스너 재시작 성공")
+                        } catch (e: Exception) {
+                            Log.e(TAG, "이벤트 리스너 재시작 실패", e)
+
+                            // 재시도 1번 더
+                            kotlinx.coroutines.delay(500)
+                            try {
+                                cameraRepository.startCameraEventListener()
+                                Log.d(TAG, "✅ 이벤트 리스너 재시작 성공 (재시도)")
+                            } catch (e2: Exception) {
+                                Log.e(TAG, "이벤트 리스너 재시작 최종 실패", e2)
+                            }
+                        }
+                    } else {
+                        Log.w(TAG, "카메라 연결 해제됨, 이벤트 리스너 재시작 건너뛰기")
+                    }
+                } else {
+                    Log.d(TAG, "카메라 연결되지 않음, 이벤트 리스너 작업 건너뛰기")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "탭 이탈 시 이벤트 리스너 관리 실패", e)
+            }
+        }
+    }
+
     // MARK: - 멀티 선택 관련 메서드들 (PhotoSelectionManager에 위임)
 
     /**
