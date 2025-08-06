@@ -334,11 +334,32 @@ private fun FluidPhotoGridItem(
         backgroundColor = if (isSelected) Color.LightGray else MaterialTheme.colors.surface
     ) {
         Box {
-            // 사진 이미지
+            // 사진 이미지 - 개선된 로딩
+            val file = File(photo.filePath)
+            Log.d("FluidPhotoGridItem", "사진 로딩 시도: ${photo.id}")
+            Log.d("FluidPhotoGridItem", "파일 경로: ${photo.filePath}")
+            Log.d("FluidPhotoGridItem", "파일 존재: ${file.exists()}")
+            Log.d("FluidPhotoGridItem", "파일 크기: ${if (file.exists()) file.length() else 0} bytes")
+
             val painter = rememberAsyncImagePainter(
                 ImageRequest.Builder(LocalContext.current)
-                    .data(File(photo.filePath))
-                    .crossfade(true)
+                    .data(file)
+                    .size(300) // 썸네일 크기 제한
+                    .crossfade(200)
+                    .error(android.R.drawable.ic_menu_gallery) // 에러 시 기본 이미지
+                    .fallback(android.R.drawable.ic_menu_gallery) // 로딩 실패 시 기본 이미지
+                    .placeholder(android.R.drawable.ic_menu_gallery) // 로딩 중 표시할 이미지
+                    .listener(
+                        onStart = {
+                            Log.d("FluidPhotoGridItem", "이미지 로딩 시작: ${photo.id}")
+                        },
+                        onSuccess = { _, _ ->
+                            Log.d("FluidPhotoGridItem", "이미지 로딩 성공: ${photo.id}")
+                        },
+                        onError = { _, error ->
+                            Log.e("FluidPhotoGridItem", "이미지 로딩 실패: ${photo.id}", error.throwable)
+                        }
+                    )
                     .apply {
                         // sRGB 색공간 설정
                         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
@@ -350,10 +371,25 @@ private fun FluidPhotoGridItem(
 
             Image(
                 painter = painter,
-                contentDescription = null,
+                contentDescription = "${photo.id} 썸네일",
                 modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop // 가로 사진도 세로 비율로 크롭됨
+                contentScale = ContentScale.Crop
             )
+
+            // 로딩 상태 표시
+            if (painter.state is coil.compose.AsyncImagePainter.State.Loading) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(MaterialTheme.colors.surface.copy(alpha = 0.7f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colors.primary
+                    )
+                }
+            }
 
             if (isMultiSelectMode && isSelected) {
                 // 선택된 상태 오버레이
