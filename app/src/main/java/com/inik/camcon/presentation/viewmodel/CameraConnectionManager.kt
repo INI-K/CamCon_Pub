@@ -2,13 +2,16 @@ package com.inik.camcon.presentation.viewmodel
 
 import android.content.Context
 import android.util.Log
+import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
+import com.inik.camcon.data.repository.managers.CameraEventManager
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.usecase.camera.ConnectCameraUseCase
 import com.inik.camcon.domain.usecase.camera.DisconnectCameraUseCase
 import com.inik.camcon.domain.usecase.usb.RefreshUsbDevicesUseCase
 import com.inik.camcon.domain.usecase.usb.RequestUsbPermissionUseCase
 import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
+import com.inik.camcon.utils.Constants
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -17,9 +20,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -35,7 +40,9 @@ class CameraConnectionManager @Inject constructor(
     private val disconnectCameraUseCase: DisconnectCameraUseCase,
     private val refreshUsbDevicesUseCase: RefreshUsbDevicesUseCase,
     private val requestUsbPermissionUseCase: RequestUsbPermissionUseCase,
-    private val usbCameraManager: UsbCameraManager
+    private val usbCameraManager: UsbCameraManager,
+    private val eventManager: CameraEventManager,
+    private val appPreferencesDataSource: AppPreferencesDataSource
 ) {
 
     companion object {
@@ -120,6 +127,9 @@ class CameraConnectionManager @Inject constructor(
 
                         // 카메라 전원 상태 확인
                         checkCameraPowerStateAndTest()
+
+                        // 자동 연결 완료 후 이벤트 리스너 자동 시작 시도
+                        tryAutoStartEventListener(uiStateManager)
                     }
                     .onFailure { error ->
                         Log.e(TAG, "자동 카메라 연결 실패", error)
@@ -131,6 +141,67 @@ class CameraConnectionManager @Inject constructor(
             } finally {
                 _isAutoConnecting.value = false
                 Log.d(TAG, "자동 카메라 연결 완료")
+            }
+        }
+    }
+
+    /**
+     * 자동 연결 완료 후 이벤트 리스너 자동 시작 시도
+     */
+    private fun tryAutoStartEventListener(uiStateManager: CameraUiStateManager) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // 자동 시작 설정 확인
+                val isAutoStartEnabled =
+                    appPreferencesDataSource.isAutoStartEventListenerEnabled.first()
+
+                if (!isAutoStartEnabled) {
+                    Log.d(TAG, "이벤트 리스너 자동 시작 설정이 비활성화됨")
+                    return@launch
+                }
+
+                Log.d(TAG, "✅ 자동 연결 완료 - 이벤트 리스너 자동 시작 시도")
+
+                // 추가 안정화 대기 (네이티브 초기화 완료 확보)
+                kotlinx.coroutines.delay(1000)
+
+                // 연결 상태 재확인 - 직접 매니저에서 확인
+                val isConnected = uiStateManager.uiState.value.isConnected
+                val isNativeCameraConnected = usbCameraManager.isNativeCameraConnected.value
+
+                Log.d(TAG, "연결 상태 재확인:")
+                Log.d(TAG, "  - isConnected (UI): $isConnected")
+                Log.d(TAG, "  - isNativeCameraConnected (Direct): $isNativeCameraConnected")
+
+                if (!isConnected || !isNativeCameraConnected) {
+                    Log.w(TAG, "연결 상태 재확인 실패 - 이벤트 리스너 시작 중단")
+                    return@launch
+                }
+
+                // 이미 실행 중인지 확인
+                if (eventManager.isEventListenerActive.value) {
+                    Log.d(TAG, "이벤트 리스너가 이미 활성화되어 있음")
+                    return@launch
+                }
+
+                // 저장 디렉토리 준비
+                val tempDir = File(context.cacheDir, Constants.FilePaths.TEMP_CACHE_DIR)
+                if (!tempDir.exists()) {
+                    tempDir.mkdirs()
+                }
+                val saveDirectory = tempDir.absolutePath
+                Log.d(TAG, "이벤트 리스너 저장 디렉토리: $saveDirectory")
+
+                // 이벤트 리스너 시작 - CameraRepository를 통해 시작
+                val result = cameraRepository.startCameraEventListener()
+
+                result.onSuccess {
+                    Log.d(TAG, "🎉 자동 연결 완료 후 이벤트 리스너 자동 시작 성공!")
+                }.onFailure { error ->
+                    Log.e(TAG, "자동 연결 완료 후 이벤트 리스너 시작 실패", error)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "이벤트 리스너 자동 시작 중 예외", e)
             }
         }
     }
@@ -164,7 +235,7 @@ class CameraConnectionManager @Inject constructor(
     }
 
     /**
-     * 카���라 연결 해제
+     * 카메라 연결 해제
      */
     fun disconnectCamera(uiStateManager: CameraUiStateManager) {
         Log.d(TAG, "카메라 연결 해제 요청")

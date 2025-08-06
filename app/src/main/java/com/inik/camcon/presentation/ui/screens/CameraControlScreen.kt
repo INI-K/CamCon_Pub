@@ -193,20 +193,18 @@ fun CameraControlScreen(
         }
     }
 
-    // 네이티브 카메라 연결 상태와 초기화 상태를 모니터링하여 이벤트 리스너 자동 시작
-    LaunchedEffect(
-        uiState.isNativeCameraConnected,
-        uiState.isInitializing,
-        isAutoStartEventListener
-    ) {
-        // 네이티브 카메라가 연결되고, 초기화가 완료되었고, 자동 시작이 활성화되어 있고, 이벤트 리스너가 비활성화되어 있을 때만 시작
-        if (uiState.isNativeCameraConnected &&
-            !uiState.isInitializing &&
-            isAutoStartEventListener &&
-            !uiState.isEventListenerActive
-        ) {
-            Log.d("CameraControl", "네이티브 카메라 초기화 완료 - 이벤트 리스너 자동 시작")
-            viewModel.startEventListener()
+    // 이벤트 리스너 자동 시작 상태 추적 (중복 방지) - 더 이상 필요하지 않음
+    // CameraConnectionManager에서 자동 처리됨
+
+    // 기존 자동 시작 로직은 CameraConnectionManager로 이동됨
+    // 여기서는 연결 상태만 모니터링
+    LaunchedEffect(uiState.isConnected, uiState.isNativeCameraConnected) {
+        Log.d("CameraControl", "=== 연결 상태 모니터링 ===")
+        Log.d("CameraControl", "isConnected: ${uiState.isConnected}")
+        Log.d("CameraControl", "isNativeCameraConnected: ${uiState.isNativeCameraConnected}")
+
+        if (uiState.isConnected && uiState.isNativeCameraConnected) {
+            Log.d("CameraControl", "카메라 완전 연결 완료 - CameraConnectionManager에서 자동 처리됨")
         }
     }
 
@@ -439,7 +437,7 @@ private fun PortraitCameraLayout(
         )
         Log.d(
             "CameraControl",
-            "조건 확인: ${appSettings.isCameraControlsEnabled && appSettings.isLiveViewEnabled}"
+            "라이브뷰 UI 표시 조건 (카메라 컨트롤 & 라이브뷰 둘 다 활성화): ${appSettings.isCameraControlsEnabled && appSettings.isLiveViewEnabled}"
         )
     }
 
