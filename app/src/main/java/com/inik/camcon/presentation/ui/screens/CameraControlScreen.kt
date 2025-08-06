@@ -190,6 +190,8 @@ fun CameraControlScreen(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
+            // 이벤트 리스너를 여기서 중지하지 않음 - 탭 변경 시에도 계속 실행되어야 함
+            // viewModel.stopEventListener() 호출 제거
         }
     }
 
@@ -205,6 +207,8 @@ fun CameraControlScreen(
 
         if (uiState.isConnected && uiState.isNativeCameraConnected) {
             Log.d("CameraControl", "카메라 완전 연결 완료 - CameraConnectionManager에서 자동 처리됨")
+            // 탭 전환 시에도 이벤트 리스너가 유지되도록 여기서는 별도 처리하지 않음
+            // CameraConnectionManager에서 자동으로 이벤트 리스너를 관리함
         }
     }
 
