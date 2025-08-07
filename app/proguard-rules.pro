@@ -43,6 +43,40 @@
     native <methods>;
 }
 
+# === JNI 인터페이스 및 콜백 보호 ===
+# CameraNative 객체와 모든 메서드 유지
+-keep class com.inik.camcon.CameraNative { *; }
+
+# JNI 콜백 인터페이스들 완전 보호
+-keep interface com.inik.camcon.NativeErrorCallback { *; }
+-keep interface com.inik.camcon.CameraCleanupCallback { *; }
+-keep interface com.inik.camcon.data.datasource.nativesource.CameraCaptureListener { *; }
+-keep interface com.inik.camcon.data.datasource.nativesource.LiveViewCallback { *; }
+
+# JNI 콜백을 구현하는 모든 클래스의 콜백 메서드 보호
+-keep class ** implements com.inik.camcon.NativeErrorCallback { 
+    public void onNativeError(int, java.lang.String);
+}
+-keep class ** implements com.inik.camcon.CameraCleanupCallback { 
+    public void onCleanupComplete(boolean, java.lang.String);
+}
+-keep class ** implements com.inik.camcon.data.datasource.nativesource.CameraCaptureListener { 
+    public void onPhotoCaptured(java.lang.String, java.lang.String);
+}
+-keep class ** implements com.inik.camcon.data.datasource.nativesource.LiveViewCallback { 
+    public void onLiveViewFrame(byte[]);
+    public void onLiveViewError(java.lang.String);
+}
+
+# 익명 클래스와 람다로 생성된 콜백들도 보호
+-keepclassmembers class ** {
+    public void onNativeError(int, java.lang.String);
+    public void onCleanupComplete(boolean, java.lang.String);
+    public void onPhotoCaptured(java.lang.String, java.lang.String);
+    public void onLiveViewFrame(byte[]);
+    public void onLiveViewError(java.lang.String);
+}
+
 # === 경고 무시 ===
 -dontwarn java.lang.invoke.**
 -dontwarn org.conscrypt.**

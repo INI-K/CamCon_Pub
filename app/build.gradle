@@ -12,7 +12,7 @@ def getVersionFromGit() {
     try {
         // 현재 태그 가져오기 (정확히 현재 커밋의 태그)
         def currentTag = 'git describe --exact-match --tags HEAD'.execute().text.trim()
-        if (currentTag) {
+        if (currentTag) {ㄱ
             // v1.0 -> 1.0으로 변환
             return currentTag.startsWith('v') ? currentTag.substring(1) : currentTag
         }
