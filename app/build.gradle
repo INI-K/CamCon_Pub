@@ -93,9 +93,9 @@ android {
         }
 
         release {
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            debuggable true  // 로그 확인을 위해 활성화
+            debuggable false  // 프로가드 최적화를 위해 비활성화
             signingConfig signingConfigs.release
             // 개발자 기능 숨김 (라이브뷰, PTPIP)
             buildConfigField "boolean", "SHOW_DEVELOPER_FEATURES", "false"
