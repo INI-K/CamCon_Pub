@@ -130,12 +130,17 @@ class LoginActivity : ComponentActivity() {
             val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestIdToken(getString(R.string.default_web_client_id))
                 .requestEmail()
+                .requestProfile()
                 .build()
 
             val googleSignInClient = GoogleSignIn.getClient(this, gso)
-            val signInIntent = googleSignInClient.signInIntent
-            Log.d("LoginActivity", "Launching Google Sign-In intent")
-            googleSignInLauncher.launch(signInIntent)
+            
+            // 기존 계정이 있으면 먼저 로그아웃
+            googleSignInClient.signOut().addOnCompleteListener {
+                val signInIntent = googleSignInClient.signInIntent
+                Log.d("LoginActivity", "Launching Google Sign-In intent")
+                googleSignInLauncher.launch(signInIntent)
+            }
         } catch (e: Exception) {
             Log.e("LoginActivity", "Error creating Google Sign-In intent", e)
         }
