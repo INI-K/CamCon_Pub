@@ -12,6 +12,34 @@
 -keep class com.google.firebase.** { *; }
 -keep class com.google.android.gms.** { *; }
 
+# === Google Sign-In 구체적 규칙 ===
+# Google Sign-In API 클래스들 보호
+-keep class com.google.android.gms.auth.api.signin.** { *; }
+-keep class com.google.android.gms.auth.api.credentials.** { *; }
+-keep class com.google.android.gms.auth.api.identity.** { *; }
+
+# Google Sign-In 관련 예외 및 상태 코드 클래스 보호
+-keep class com.google.android.gms.common.api.ApiException { *; }
+-keep class com.google.android.gms.common.api.Status { *; }
+-keep class com.google.android.gms.common.ConnectionResult { *; }
+
+# Firebase Auth 관련 클래스들
+-keep class com.google.firebase.auth.** { *; }
+-keep class com.google.firebase.auth.GoogleAuthProvider { *; }
+-keep class com.google.firebase.auth.FirebaseAuth { *; }
+-keep class com.google.firebase.auth.FirebaseUser { *; }
+
+# Google Play Services Tasks API
+-keep class com.google.android.gms.tasks.** { *; }
+
+# JSON Web Token 관련 클래스들 (Google Sign-In에서 사용)
+#-keep class com.google.api.client.json.** { *; }
+#-keep class com.google.api.client.util.** { *; }
+
+# Gson이 사용하는 Google Sign-In 관련 모델 클래스들
+#-keep class * extends com.google.api.client.json.GenericJson { *; }
+#-keep class * extends com.google.api.client.util.GenericData { *; }
+
 # === Hilt/Dagger 기본 규칙 ===
 -keep class dagger.** { *; }
 -keep class javax.inject.** { *; }
