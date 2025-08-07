@@ -20,6 +20,30 @@
 
 # === Compose 기본 규칙 ===
 -keep @androidx.compose.runtime.Stable class * { *; }
+-keep @androidx.compose.runtime.Immutable class * { *; }
+-keep class androidx.compose.ui.** { *; }
+-keep class androidx.compose.material.** { *; }
+-keep class androidx.compose.material3.** { *; }
+-keep class androidx.compose.foundation.** { *; }
+-keep class androidx.compose.runtime.** { *; }
+
+# ModifierLocalProvider 충돌 방지
+-keep interface androidx.compose.ui.modifier.ModifierLocalProvider { *; }
+-keep class androidx.compose.ui.modifier.ModifierLocalProvider$DefaultImpls { *; }
+
+# Compose 컴파일러 생성 코드 보호
+-keep class **$Companion { *; }
+-keepclassmembers class ** {
+    *** Companion;
+}
+
+# Lambda 표현식 보호
+-keepclassmembers class ** {
+    private static synthetic *** lambda$*(...);
+}
+
+# Compose State 관련
+-keepclassmembers class androidx.compose.** { *; }
 
 # === 앱 도메인 모델 유지 ===
 -keep class com.inik.camcon.data.model.** { *; }
