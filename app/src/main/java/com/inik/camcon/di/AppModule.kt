@@ -15,7 +15,9 @@ import com.inik.camcon.data.network.ptpip.authentication.NikonAuthenticationServ
 import com.inik.camcon.data.network.ptpip.connection.PtpipConnectionManager
 import com.inik.camcon.data.network.ptpip.discovery.PtpipDiscoveryService
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
+import com.inik.camcon.data.repository.managers.CameraEventManager
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
+import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
 import dagger.Module
 import dagger.Provides
@@ -95,8 +97,16 @@ object AppModule {
         discoveryService: PtpipDiscoveryService,
         connectionManager: PtpipConnectionManager,
         nikonAuthService: NikonAuthenticationService,
-        wifiHelper: WifiNetworkHelper
-    ) = PtpipDataSource(context, discoveryService, connectionManager, nikonAuthService, wifiHelper)
+        wifiHelper: WifiNetworkHelper,
+        cameraEventManager: CameraEventManager
+    ) = PtpipDataSource(
+        context,
+        discoveryService,
+        connectionManager,
+        nikonAuthService,
+        wifiHelper,
+        cameraEventManager
+    )
 
     @Provides
     @Singleton
@@ -119,8 +129,12 @@ object AppModule {
     @Singleton
     fun provideCameraUiStateManager(): CameraUiStateManager = CameraUiStateManager()
 
-//    @Provides
-//    @Singleton
-//    fun provideCameraDatabaseManager(@ApplicationContext context: Context) =
-//        CameraDatabaseManager(context)
+    @Provides
+    @Singleton
+    fun provideCameraEventManager(
+        nativeDataSource: NativeCameraDataSource,
+        usbCameraManager: UsbCameraManager,
+        validateImageFormatUseCase: ValidateImageFormatUseCase
+    ): CameraEventManager =
+        CameraEventManager(nativeDataSource, usbCameraManager, validateImageFormatUseCase)
 }
