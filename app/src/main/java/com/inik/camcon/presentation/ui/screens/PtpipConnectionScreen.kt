@@ -137,7 +137,13 @@ fun PtpipConnectionScreen(
                 },
                 actions = {
                     IconButton(
-                        onClick = { ptpipViewModel.discoverCameras() },
+                        onClick = {
+                            when (pagerState.currentPage) {
+                                0 -> ptpipViewModel.discoverCamerasAp()
+                                1 -> ptpipViewModel.discoverCamerasSta()
+                                else -> {}
+                            }
+                        },
                         enabled = !isDiscovering
                     ) {
                         Icon(Icons.Filled.Refresh, contentDescription = "새로고침")

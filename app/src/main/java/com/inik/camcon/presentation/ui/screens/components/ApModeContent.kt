@@ -212,7 +212,8 @@ fun ApModeContent(
                     selectedCamera = selectedCamera,
                     cameraInfo = cameraInfo,
                     isPtpipEnabled = isPtpipEnabled,
-                    isWifiConnected = isWifiConnected
+                    isWifiConnected = isWifiConnected,
+                    isApMode = true
                 )
             }
         }
