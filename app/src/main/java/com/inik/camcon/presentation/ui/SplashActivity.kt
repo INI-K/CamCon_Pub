@@ -2,6 +2,7 @@ package com.inik.camcon.presentation.ui
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.animateFloatAsState
@@ -14,6 +15,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
 import androidx.compose.material.CircularProgressIndicator
@@ -38,12 +43,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.firebase.auth.FirebaseAuth
+import com.inik.camcon.CameraNative
 import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
+import com.inik.camcon.presentation.viewmodel.AppVersionUiState
 import com.inik.camcon.presentation.viewmodel.AppVersionViewModel
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -52,8 +63,20 @@ class SplashActivity : ComponentActivity() {
     @Inject
     lateinit var firebaseAuth: FirebaseAuth
 
+    private var libraryLoadingStatus by mutableStateOf("초기화 중...")
+    private var isLibraryLoaded by mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 엣지-투-엣지 설정을 제거하여 시스템 영역(상단바, 하단바)에 배경이 채워지도록 설정 해제
+        // WindowCompat.setDecorFitsSystemWindows(window, true)
+
+        Log.i("SplashActivity", "=== 스플래시 화면 시작 ===")
+        
+        // 백그라운드에서 라이브러리 로딩 시작
+        loadLibrariesInBackground()
+
         setContent {
             val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
             val appVersionViewModel: AppVersionViewModel = hiltViewModel()
@@ -69,6 +92,8 @@ class SplashActivity : ComponentActivity() {
 
                 SplashScreen(
                     versionState = versionState,
+                    libraryLoadingStatus = libraryLoadingStatus,
+                    isLibraryLoaded = isLibraryLoaded,
                     onUpdateApp = { appVersionViewModel.startUpdate() },
                     onDismissUpdateDialog = {
                         // 강제 업데이트인 경우 앱 종료
@@ -90,6 +115,66 @@ class SplashActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * 백그라운드에서 Libgphoto2 라이브러리들을 미리 로드합니다.
+     * 카메라 연결 시 빠른 초기화를 위해 스플래시 화면에서 수행합니다.
+     */
+    private fun loadLibrariesInBackground() {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                Log.i("SplashActivity", "🚀 라이브러리 로딩 프로세스 시작")
+                withContext(Dispatchers.Main) {
+                    libraryLoadingStatus = "라이브러리 로딩 중..."
+                }
+                
+                // 라이브러리 로딩 전 상태 확인
+                val alreadyLoaded = CameraNative.isLibrariesLoaded()
+                Log.d("SplashActivity", "라이브러리 로딩 전 상태: ${if (alreadyLoaded) "이미 로드됨" else "로드되지 않음"}")
+                
+                if (alreadyLoaded) {
+                    Log.i("SplashActivity", "✅ 라이브러리가 이미 로드되어 있음 - 스킵")
+                    withContext(Dispatchers.Main) {
+                        libraryLoadingStatus = "라이브러리 준비 완료"
+                        isLibraryLoaded = true
+                    }
+                    return@launch
+                }
+                
+                val startTime = System.currentTimeMillis()
+                Log.i("SplashActivity", "📦 Libgphoto2 라이브러리 로딩 시작...")
+                
+                CameraNative.loadLibraries()
+                
+                val endTime = System.currentTimeMillis()
+                val loadingTime = endTime - startTime
+                
+                Log.i("SplashActivity", "✅ 라이브러리 로딩 완료! (소요시간: ${loadingTime}ms)")
+                Log.d("SplashActivity", "라이브러리 상태 확인: ${CameraNative.isLibrariesLoaded()}")
+                
+                withContext(Dispatchers.Main) {
+                    libraryLoadingStatus = "라이브러리 로딩 완료 (${loadingTime}ms)"
+                    isLibraryLoaded = true
+                }
+                
+                // 추가 검증을 위해 라이브러리 버전 확인 시도
+                try {
+                    delay(100) // 약간의 지연 후 검증
+                    val version = CameraNative.getLibGphoto2Version()
+                    Log.i("SplashActivity", "📋 Libgphoto2 버전: $version")
+                } catch (e: Exception) {
+                    Log.w("SplashActivity", "⚠️ 라이브러리 버전 확인 실패 (정상적일 수 있음): ${e.message}")
+                }
+                
+            } catch (e: Exception) {
+                Log.e("SplashActivity", "❌ 라이브러리 로딩 실패: ${e.message}", e)
+                withContext(Dispatchers.Main) {
+                    libraryLoadingStatus = "라이브러리 로딩 실패: ${e.message}"
+                    isLibraryLoaded = false
+                }
+            }
+        }
+    }
+
     private fun navigateToNextScreen() {
         // 자동 로그인 확인
         if (firebaseAuth.currentUser != null) {
@@ -107,6 +192,8 @@ class SplashActivity : ComponentActivity() {
 @Composable
 fun SplashScreen(
     versionState: com.inik.camcon.presentation.viewmodel.AppVersionUiState,
+    libraryLoadingStatus: String,
+    isLibraryLoaded: Boolean,
     onUpdateApp: () -> Unit,
     onDismissUpdateDialog: () -> Unit,
     navigateToNext: () -> Unit
@@ -133,6 +220,7 @@ fun SplashScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .systemBarsPadding()
             .background(MaterialTheme.colors.primary),
         contentAlignment = Alignment.Center
     ) {
@@ -155,6 +243,13 @@ fun SplashScreen(
             Text(
                 text = "Camera Controller",
                 fontSize = 16.sp,
+                color = Color.White.copy(alpha = 0.8f)
+            )
+
+            // 라이브러리 로딩 상태 표시
+            Text(
+                text = libraryLoadingStatus,
+                fontSize = 14.sp,
                 color = Color.White.copy(alpha = 0.8f)
             )
 
@@ -225,7 +320,9 @@ fun SplashScreen(
 fun SplashScreenPreview() {
     CamConTheme {
         SplashScreen(
-            versionState = com.inik.camcon.presentation.viewmodel.AppVersionUiState(),
+            versionState = AppVersionUiState(),
+            libraryLoadingStatus = "라이브러리 로딩 중...",
+            isLibraryLoaded = false,
             onUpdateApp = {},
             onDismissUpdateDialog = {},
             navigateToNext = {}
