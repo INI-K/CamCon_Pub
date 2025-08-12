@@ -8,6 +8,7 @@ import com.inik.camcon.data.network.ptpip.authentication.NikonAuthenticationServ
 import com.inik.camcon.data.network.ptpip.connection.PtpipConnectionManager
 import com.inik.camcon.data.network.ptpip.discovery.PtpipDiscoveryService
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
+import com.inik.camcon.data.repository.managers.CameraEventManager
 import com.inik.camcon.domain.model.NikonConnectionMode
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.PtpipCameraInfo
@@ -44,7 +45,8 @@ class PtpipDataSource @Inject constructor(
     private val discoveryService: PtpipDiscoveryService,
     private val connectionManager: PtpipConnectionManager,
     private val nikonAuthService: NikonAuthenticationService,
-    private val wifiHelper: WifiNetworkHelper
+    private val wifiHelper: WifiNetworkHelper,
+    private val cameraEventManager: CameraEventManager
 ) {
     private var connectedCamera: PtpipCamera? = null
     private var lastConnectedCamera: PtpipCamera? = null
@@ -377,7 +379,7 @@ class PtpipDataSource @Inject constructor(
                 connectedCamera = camera
                 lastConnectedCamera = camera
 
-                // AP 모드 성공 시 파일 수신 리스너 시작
+                // AP 모드 성공 시 이벤트 리스너 시작
                 startAutomaticFileReceiving(camera)
 
                 return@withContext true
@@ -408,7 +410,7 @@ class PtpipDataSource @Inject constructor(
                 connectedCamera = camera
                 lastConnectedCamera = camera
 
-                // AP 모드에서 파일 수신 리스너 시작
+                // AP 모드에서 이벤트 리스너 시작
                 startAutomaticFileReceiving(camera)
 
                 return@withContext true
@@ -472,7 +474,7 @@ class PtpipDataSource @Inject constructor(
                     connectedCamera = camera
                     lastConnectedCamera = camera
 
-                    // STA 모드에서도 파일 수신 리스너 시작
+                    // STA 모드에서도 이벤트 리스너 시작
                     startAutomaticFileReceiving(camera)
 
                     return@withContext true
@@ -504,7 +506,7 @@ class PtpipDataSource @Inject constructor(
                     Log.w(TAG, "❌ libgphoto2 세션 유지 초기화 실패 (예외): ${e.message}")
                 }
 
-                // 다른 카메라에서도 파일 수신 리스너 시작
+                // 다른 카메라에서도 이벤트 리스너 시작
                 startAutomaticFileReceiving(camera)
 
                 return@withContext true
@@ -566,57 +568,88 @@ class PtpipDataSource @Inject constructor(
     }
 
     /**
-     * AP 모드 연결 성공 시 파일 수신 리스너만 시작 (자동 촬영 없음)
+     * AP 모드 연결 성공 시 이벤트 리스너 시작 (CameraEventManager 활용)
      */
     private fun startAutomaticFileReceiving(camera: PtpipCamera) {
-        Log.i(TAG, "파일 수신 리스너 시작: ${camera.name} (자동 촬영 없음)")
+        Log.i(TAG, "PTPIP AP 모드 이벤트 리스너 시작: ${camera.name}")
 
         coroutineScope.launch {
             try {
-                // 파일 수신 전용 리스너 (촬영 명령 없음)
-                val fileReceiveListener = object : CameraCaptureListener {
-                    override fun onFlushComplete() {
-                        Log.d(TAG, "파일 수신: 플러시 완료")
-                    }
-
-                    override fun onPhotoCaptured(filePath: String, fileName: String) {
-                        Log.i(TAG, "파일 수신: 외부 촬영 파일 자동 다운로드 완료 - $fileName")
-                        Log.i(TAG, "파일 경로: $filePath")
-
-                        // 추가 처리 로직 (예: 썸네일 생성, 메타데이터 추출 등)
+                // CameraEventManager를 통해 PTPIP 이벤트 리스너 시작
+                val result = cameraEventManager.startCameraEventListener(
+                    isConnected = true,
+                    isInitializing = false,
+                    saveDirectory = getDefaultSaveDirectory(),
+                    onPhotoCaptured = { filePath, fileName ->
                         handleAutomaticDownload(filePath, fileName)
-                    }
+                    },
+                    onFlushComplete = {
+                        Log.d(TAG, "PTPIP AP 모드 플러시 완료")
+                    },
+                    onCaptureFailed = { errorCode ->
+                        Log.e(TAG, "PTPIP AP 모드 촬영 실패: $errorCode")
+                    },
+                    connectionType = CameraEventManager.ConnectionType.PTPIP
+                )
 
-                    override fun onCaptureFailed(errorCode: Int) {
-                        Log.e(TAG, "파일 수신: 수신 실패 (에러 코드: $errorCode)")
-                    }
-
-                    override fun onUsbDisconnected() {
-                        Log.w(TAG, "USB 분리 이벤트 - PTPIP는 영향받지 않음 (Wi-Fi 연결)")
-                        // PTPIP 연결에서는 USB 분리 이벤트가 관련없으므로 무시
-                    }
+                if (result.isSuccess) {
+                    Log.i(TAG, "✅ PTPIP AP 모드 이벤트 리스너 시작 성공")
+                } else {
+                    Log.e(
+                        TAG,
+                        "❌ PTPIP AP 모드 이벤트 리스너 시작 실패: ${result.exceptionOrNull()?.message}"
+                    )
                 }
-
-                // 파일 수신 리스너만 시작 (촬영 명령 실행 없음)
-                startFileReceiveListener(fileReceiveListener)
-                Log.i(TAG, "파일 수신 리스너 시작됨 - 외부 촬영 파일 자동 다운로드 대기 중")
-
             } catch (e: Exception) {
-                Log.e(TAG, "파일 수신 리스너 시작 중 오류", e)
+                Log.e(TAG, "PTPIP AP 모드 이벤트 리스너 시작 중 오류", e)
+                // 폴백: 기존 방식 사용
+                startFileReceiveListenerFallback(camera)
             }
         }
     }
 
     /**
-     * 파일 수신 전용 리스너 시작 (촬영 명령 없음)
+     * 기본 저장 디렉토리 가져오기
      */
-    private fun startFileReceiveListener(listener: CameraCaptureListener) {
+    private fun getDefaultSaveDirectory(): String {
+        return context.getExternalFilesDir(null)?.absolutePath ?: "/sdcard/CamCon"
+    }
+
+    /**
+     * 기존 방식의 파일 수신 리스너 (폴백용)
+     */
+    private fun startFileReceiveListenerFallback(camera: PtpipCamera) {
+        Log.i(TAG, "기존 방식 파일 수신 리스너 시작: ${camera.name}")
+
         try {
-            // 카메라 이벤트 리스너 시작 (파일 수신 전용)
-            CameraNative.listenCameraEvents(listener)
-            Log.i(TAG, "파일 수신 전용 리스너 활성화됨")
+            // 파일 수신 전용 리스너 (촬영 명령 없음)
+            val fileReceiveListener = object : CameraCaptureListener {
+                override fun onFlushComplete() {
+                    Log.d(TAG, "파일 수신: 플러시 완료")
+                }
+
+                override fun onPhotoCaptured(filePath: String, fileName: String) {
+                    Log.i(TAG, "파일 수신: 외부 촬영 파일 자동 다운로드 완료 - $fileName")
+                    Log.i(TAG, "파일 경로: $filePath")
+                    handleAutomaticDownload(filePath, fileName)
+                }
+
+                override fun onCaptureFailed(errorCode: Int) {
+                    Log.e(TAG, "파일 수신: 수신 실패 (에러 코드: $errorCode)")
+                }
+
+                override fun onUsbDisconnected() {
+                    Log.w(TAG, "USB 분리 이벤트 - PTPIP는 영향받지 않음 (Wi-Fi 연결)")
+                    // PTPIP 연결에서는 USB 분리 이벤트가 관련없으므로 무시
+                }
+            }
+
+            // 기존 방식으로 파일 수신 리스너 시작
+            CameraNative.listenCameraEvents(fileReceiveListener)
+            Log.i(TAG, "기존 방식 파일 수신 리스너 시작됨")
+
         } catch (e: Exception) {
-            Log.e(TAG, "파일 수신 리스너 시작 실패", e)
+            Log.e(TAG, "기존 방식 파일 수신 리스너 시작 실패", e)
         }
     }
 
@@ -668,11 +701,29 @@ class PtpipDataSource @Inject constructor(
     /**
      * 자동 파일 수신 중지
      */
-    private fun stopAutomaticFileReceiving() {
+    private suspend fun stopAutomaticFileReceiving() {
         try {
-            Log.d(TAG, "자동 파일 수신 중지")
-            CameraNative.stopListenCameraEvents()
-            Log.d(TAG, "카메라 이벤트 리스너 중지됨")
+            Log.d(TAG, "PTPIP 자동 파일 수신 중지")
+
+            // CameraEventManager를 통해 이벤트 리스너 중지
+            val result = cameraEventManager.stopCameraEventListener()
+            if (result.isSuccess) {
+                Log.d(TAG, "✅ CameraEventManager 이벤트 리스너 중지 성공")
+            } else {
+                Log.w(
+                    TAG,
+                    "❌ CameraEventManager 이벤트 리스너 중지 실패: ${result.exceptionOrNull()?.message}"
+                )
+            }
+
+            // 기존 방식도 함께 중지 (안전장치)
+            try {
+                CameraNative.stopListenCameraEvents()
+                Log.d(TAG, "기존 방식 카메라 이벤트 리스너도 중지됨")
+            } catch (e: Exception) {
+                Log.w(TAG, "기존 방식 카메라 이벤트 리스너 중지 중 예외: ${e.message}")
+            }
+
         } catch (e: Exception) {
             Log.e(TAG, "자동 파일 수신 중지 중 오류", e)
         }
