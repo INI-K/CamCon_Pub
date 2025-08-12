@@ -14,14 +14,18 @@ import android.provider.Settings
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material.BottomNavigation
 import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.Icon
@@ -61,6 +65,7 @@ import com.inik.camcon.R
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
 import com.inik.camcon.data.service.BackgroundSyncService
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
+import com.inik.camcon.domain.model.CameraConnectionType
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.presentation.theme.CamConTheme
@@ -102,7 +107,7 @@ fun CameraConnectionOptimizationDialog(
         title = {
             androidx.compose.material3.Text(
                 "카메라 연결 최적화 설정",
-                style = androidx.compose.material3.MaterialTheme.typography.titleLarge, 
+                style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
         },
@@ -172,7 +177,9 @@ fun MainScreen(
     val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
     val themeMode by appSettingsViewModel.themeMode.collectAsState()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
 
         // --- PTP 타임아웃 다이얼로그 모니터링 및 표시 ---
         var showRestartDialog by remember { mutableStateOf(false) }
@@ -380,6 +387,7 @@ fun MainScreen(
                 // 전체화면 모드가 아닐 때만 하단 탭 표시
                 if (!isFullscreen) {
                     BottomNavigation(
+                        modifier = Modifier.navigationBarsPadding(),
                         backgroundColor = MaterialTheme.colors.surface,
                         contentColor = MaterialTheme.colors.onSurface
                     ) {
@@ -415,7 +423,8 @@ fun MainScreen(
                         }
                     }
                 }
-            }
+            },
+            contentWindowInsets = WindowInsets.safeDrawing
         ) { innerPadding ->
             NavHost(
                 navController,
@@ -427,7 +436,7 @@ fun MainScreen(
                 composable(BottomNavItem.PhotoPreview.route) { PhotoPreviewScreen() }
                 composable(BottomNavItem.CameraControl.route) {
                     // AP 모드일 때는 사진 수신 대기 화면, 아니면 카메라 컨트롤 화면
-                    if (activeConnectionType == com.inik.camcon.domain.model.CameraConnectionType.AP_MODE) {
+                    if (activeConnectionType == CameraConnectionType.AP_MODE) {
                         com.inik.camcon.presentation.ui.screens.ApModePhotoReceiveScreen(
                             viewModel = cameraViewModel // 전역 ViewModel 전달
                         )
@@ -742,13 +751,13 @@ class MainActivity : ComponentActivity() {
                     object : com.inik.camcon.CameraCleanupCallback {
                         override fun onCleanupComplete(success: Boolean, message: String) {
                             Log.d(TAG, "카메라 정리 완료: success=$success, message=$message")
-                            
+
                             // 메인 스레드에서 재시작 실행
                             android.os.Handler(android.os.Looper.getMainLooper()).post {
                                 try {
                                     // 로그 파일도 닫기
                                     com.inik.camcon.CameraNative.closeLogFile()
-                                    
+
                                     // 시스템 재시작 메커니즘 사용
                                     val packageManager = activity.packageManager
                                     val intent = packageManager.getLaunchIntentForPackage(activity.packageName)
@@ -792,6 +801,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        enableEdgeToEdge()
+
 
         // 백그라운드 서비스(이벤트 리스너 유지) 시작
         try {
@@ -1000,6 +1012,13 @@ class MainActivity : ComponentActivity() {
                     }
                 } else {
                     Log.d(TAG, "기존 디바이스에 권한이 있음: ${currentDevice.deviceName}")
+                    // 권한 있음 + 아직 네이티브 연결이 없다면 자동 초기화 트리거
+                    if (!usbCameraManager.isNativeCameraConnected.value) {
+                        Log.d(TAG, "네이티브 연결 없음 - 자동 초기화 시작: ${currentDevice.deviceName}")
+                        withContext(Dispatchers.Main) {
+                            usbCameraManager.connectToCamera(currentDevice)
+                        }
+                    }
                 }
             } else {
                 // 연결된 디바이스가 없으면 StateFlow를 통해 확인
@@ -1016,6 +1035,13 @@ class MainActivity : ComponentActivity() {
                         }
                     } else {
                         Log.d(TAG, "카메라 디바이스 연결됨")
+                        // 권한 있음 + 아직 네이티브 연결이 없다면 자동 초기화 트리거
+                        if (!usbCameraManager.isNativeCameraConnected.value) {
+                            Log.d(TAG, "네이티브 연결 없음 - 자동 초기화 시작: ${device.deviceName}")
+                            withContext(Dispatchers.Main) {
+                                usbCameraManager.connectToCamera(device)
+                            }
+                        }
                     }
                 } else {
                     Log.d(TAG, "앱 재개 시 USB 카메라 디바이스 없음")
