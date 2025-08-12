@@ -70,6 +70,23 @@ class PtpipDataSource @Inject constructor(
         private const val RECONNECT_DELAY_MS = 3000L
     }
 
+    /**
+     * 라이브러리가 로드되었는지 확인하고, 로드되지 않은 경우 로드합니다.
+     * 이 함수는 스플래시 화면에서 미리 로드가 실패한 경우의 백업용입니다.
+     */
+    private fun ensureLibrariesLoaded() {
+        if (!CameraNative.isLibrariesLoaded()) {
+            Log.w(TAG, "라이브러리가 로드되지 않음 - 백업 로딩 시작")
+            try {
+                CameraNative.loadLibraries()
+                Log.d(TAG, "백업 라이브러리 로딩 완료")
+            } catch (e: Exception) {
+                Log.e(TAG, "백업 라이브러리 로딩 실패", e)
+                throw RuntimeException("카메라 라이브러리 로딩 실패: ${e.message}", e)
+            }
+        }
+    }
+
     init {
         startNetworkMonitoring()
 
@@ -306,6 +323,9 @@ class PtpipDataSource @Inject constructor(
         try {
             Log.i(TAG, "스마트 카메라 연결 시작: ${camera.name}")
             _connectionState.value = PtpipConnectionState.CONNECTING
+
+            // 라이브러리가 로드되지 않은 경우 로드
+            ensureLibrariesLoaded()
 
             // 이전 연결 정리
             disconnect()
