@@ -100,13 +100,16 @@ class CameraConnectionGlobalManager @Inject constructor(
         val activeConnection = when {
             usbConnected -> CameraConnectionType.USB
             ptpipState == PtpipConnectionState.CONNECTED -> {
-                if (wifiState.isConnectedToCameraAP) {
+                // AP 모드 우선 판별: 카메라 AP에 연결되어 있거나, 192.168.1.1 등 카메라 IP 대역인 경우
+                if (wifiState.isConnectedToCameraAP ||
+                    wifiState.detectedCameraIP?.startsWith("192.168.1.") == true ||
+                    wifiState.detectedCameraIP?.startsWith("192.168.4.") == true
+                ) {
                     CameraConnectionType.AP_MODE
                 } else {
                     CameraConnectionType.STA_MODE
                 }
             }
-
             else -> null
         }
 
@@ -171,7 +174,10 @@ class CameraConnectionGlobalManager @Inject constructor(
         return when {
             usbConnected -> "USB 카메라 연결됨"
             ptpipState == PtpipConnectionState.CONNECTED -> {
-                if (wifiState.isConnectedToCameraAP) {
+                if (wifiState.isConnectedToCameraAP ||
+                    wifiState.detectedCameraIP?.startsWith("192.168.1.") == true ||
+                    wifiState.detectedCameraIP?.startsWith("192.168.4.") == true
+                ) {
                     "AP 모드 연결됨 (${wifiState.ssid})"
                 } else {
                     "STA 모드 연결됨 (${wifiState.ssid})"

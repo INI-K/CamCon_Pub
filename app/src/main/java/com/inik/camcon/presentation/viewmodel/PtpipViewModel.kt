@@ -207,7 +207,7 @@ class PtpipViewModel @Inject constructor(
     /**
      * Wi-Fi 네트워크에서 PTPIP 카메라 검색
      */
-    fun discoverCameras() {
+    fun discoverCameras(forceApMode: Boolean = false) {
         if (_isDiscovering.value) {
             Log.w(TAG, "이미 카메라 검색 중입니다")
             return
@@ -238,7 +238,7 @@ class PtpipViewModel @Inject constructor(
                 }
 
                 Log.i(TAG, "Wi-Fi 연결 확인됨, 카메라 검색 시작...")
-                val cameras = ptpipDataSource.discoverCameras()
+                val cameras = ptpipDataSource.discoverCameras(forceApMode)
 
                 Log.i(TAG, "카메라 검색 완료: ${cameras.size}개 발견")
 
@@ -273,17 +273,24 @@ class PtpipViewModel @Inject constructor(
         }
     }
 
+    // 호환성용 무파라미터 오버로드 유지
+    fun discoverCameras() = discoverCameras(false)
+
+    // AP/STA 전용 헬퍼 함수 추가
+    fun discoverCamerasAp() = discoverCameras(true)
+    fun discoverCamerasSta() = discoverCameras(false)
+
     /**
      * 카메라 연결 (AP/STA 모드 지원)
      */
-    fun connectToCamera(camera: PtpipCamera) {
+    fun connectToCamera(camera: PtpipCamera, forceApMode: Boolean = false) {
         viewModelScope.launch {
             try {
                 _isConnecting.value = true
                 _errorMessage.value = null
                 _autoDownloadEnabled.value = false // 연결 시도 중에는 비활성화
 
-                val success = ptpipDataSource.connectToCamera(camera)
+                val success = ptpipDataSource.connectToCamera(camera, forceApMode)
                 if (success) {
                     _isConnecting.value = false
                     _errorMessage.value = null
@@ -313,6 +320,10 @@ class PtpipViewModel @Inject constructor(
             }
         }
     }
+
+    fun connectToCameraAp(camera: PtpipCamera) = connectToCamera(camera, true)
+
+    fun connectToCameraSta(camera: PtpipCamera) = connectToCamera(camera, false)
 
     /**
      * 카메라 연결 해제
