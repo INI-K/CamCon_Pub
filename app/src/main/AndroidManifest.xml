@@ -142,7 +142,8 @@
             android:name=".data.service.BackgroundSyncService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="connectedDevice" />
+            android:foregroundServiceType="connectedDevice"
+            android:stopWithTask="true" />
 
     </application>
 
