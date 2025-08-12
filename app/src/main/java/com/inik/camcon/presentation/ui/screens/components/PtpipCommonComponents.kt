@@ -334,7 +334,8 @@ fun CameraConnectionContent(
     selectedCamera: PtpipCamera?,
     cameraInfo: PtpipCameraInfo?,
     isPtpipEnabled: Boolean,
-    isWifiConnected: Boolean
+    isWifiConnected: Boolean,
+    isApMode: Boolean = false
 ) {
     Column {
         // 연결 상태 카드
@@ -362,7 +363,13 @@ fun CameraConnectionContent(
             )
 
             Button(
-                onClick = { ptpipViewModel.discoverCameras() },
+                onClick = {
+                    if (isApMode) {
+                        ptpipViewModel.discoverCamerasAp()
+                    } else {
+                        ptpipViewModel.discoverCameras()
+                    }
+                },
                 enabled = !isDiscovering && isWifiConnected && isPtpipEnabled
             ) {
                 Text(
@@ -385,7 +392,8 @@ fun CameraConnectionContent(
             selectedCamera = selectedCamera,
             isPtpipEnabled = isPtpipEnabled,
             isWifiConnected = isWifiConnected,
-            ptpipViewModel = ptpipViewModel
+            ptpipViewModel = ptpipViewModel,
+            isApMode = isApMode
         )
     }
 }
@@ -401,7 +409,8 @@ fun CameraListContent(
     selectedCamera: PtpipCamera?,
     isPtpipEnabled: Boolean,
     isWifiConnected: Boolean,
-    ptpipViewModel: PtpipViewModel
+    ptpipViewModel: PtpipViewModel,
+    isApMode: Boolean = false
 ) {
     when {
         !isPtpipEnabled -> {
@@ -438,7 +447,14 @@ fun CameraListContent(
                         camera = camera,
                         isSelected = camera == selectedCamera,
                         isConnecting = isConnecting,
-                        onConnect = { ptpipViewModel.connectToCamera(camera) }
+                        onConnect = {
+                            if (isApMode) {
+                                ptpipViewModel.connectToCameraAp(camera)
+                            } else {
+                                ptpipViewModel.connectToCamera(camera)
+                            }
+                        },
+                        isApMode = isApMode
                     )
                 }
             }
@@ -454,7 +470,8 @@ fun CameraItem(
     camera: PtpipCamera,
     isSelected: Boolean,
     isConnecting: Boolean,
-    onConnect: () -> Unit
+    onConnect: () -> Unit,
+    isApMode: Boolean = false
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -503,7 +520,9 @@ fun CameraItem(
                         color = MaterialTheme.colors.onPrimary
                     )
                 } else {
-                    Text("연결")
+                    Text(
+                        if (isApMode) "AP 연결" else "STA 연결"
+                    )
                 }
             }
         }
@@ -631,7 +650,8 @@ private fun CameraItemOnlinePreview() {
             ),
             isSelected = false,
             isConnecting = false,
-            onConnect = { }
+            onConnect = { },
+            isApMode = false
         )
     }
 }
@@ -649,7 +669,8 @@ private fun CameraItemSelectedPreview() {
             ),
             isSelected = true,
             isConnecting = false,
-            onConnect = { }
+            onConnect = { },
+            isApMode = false
         )
     }
 }
