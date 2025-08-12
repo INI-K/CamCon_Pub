@@ -21,20 +21,76 @@ object CameraNative {
     const val GP_LOG_DATA = 3
     const val GP_LOG_ALL = GP_LOG_DATA
 
-    init {
-        System.loadLibrary("gphoto2_port") // Port 라이브러리 먼저
-        System.loadLibrary("gphoto2_port_iolib_disk")
-        System.loadLibrary("gphoto2_port_iolib_usb1") // "lib" prefix와 ".so" 확장자 없이 호출
+    // 라이브러리 로드 상태 추적
+    @Volatile
+    private var librariesLoaded = false
 
-        // gphoto2 port 라이브러리 및 I/O 모듈 로드 (순서 중요)
-        // 일반적인 의존성은 port -> iolib -> gphoto2
+    /**
+     * Libgphoto2 및 관련 라이브러리를 로드합니다.
+     * 스플래시 화면에서 미리 호출하여 카메라 연결 시 빠른 초기화를 가능하게 합니다.
+     */
+    @Synchronized
+    fun loadLibraries() {
+        if (librariesLoaded) {
+            android.util.Log.d("CameraNative", "라이브러리가 이미 로드됨 - 중복 로딩 방지")
+            return
+        }
 
-        // gphoto2 메인 라이브러리 로드
-        System.loadLibrary("gphoto2")
+        try {
+            android.util.Log.i("CameraNative", "=== Libgphoto2 라이브러리 로딩 시작 ===")
 
-        // 애플리케이션 JNI 라이브러리 로드 (가장 마지막에)
-        System.loadLibrary("native-lib")
+            // 1단계: gphoto2_port 라이브러리 로드
+            android.util.Log.d("CameraNative", "1/6 gphoto2_port 라이브러리 로딩...")
+            System.loadLibrary("gphoto2_port")
+            android.util.Log.d("CameraNative", "✅ gphoto2_port 로딩 완료")
+
+            // 2단계: gphoto2_port_iolib_disk 라이브러리 로드
+            android.util.Log.d("CameraNative", "2/6 gphoto2_port_iolib_disk 라이브러리 로딩...")
+            System.loadLibrary("gphoto2_port_iolib_disk")
+            android.util.Log.d("CameraNative", "✅ gphoto2_port_iolib_disk 로딩 완료")
+
+            // 3단계: gphoto2_port_iolib_usb1 라이브러리 로드
+            android.util.Log.d("CameraNative", "3/6 gphoto2_port_iolib_usb1 라이브러리 로딩...")
+            System.loadLibrary("gphoto2_port_iolib_usb1")
+            android.util.Log.d("CameraNative", "✅ gphoto2_port_iolib_usb1 로딩 완료")
+
+            // gphoto2 port 라이브러리 및 I/O 모듈 로드 (순서 중요)
+            // 일반적인 의존성은 port -> iolib -> gphoto2
+            android.util.Log.d("CameraNative", "Port 라이브러리 의존성 확인 완료")
+
+            // 4단계: gphoto2 메인 라이브러리 로드
+            android.util.Log.d("CameraNative", "4/6 gphoto2 메인 라이브러리 로딩...")
+            System.loadLibrary("gphoto2")
+            android.util.Log.d("CameraNative", "✅ gphoto2 메인 라이브러리 로딩 완료")
+
+            // 5단계: 애플리케이션 JNI 라이브러리 로드 (가장 마지막에)
+            android.util.Log.d("CameraNative", "5/6 native-lib 라이브러리 로딩...")
+            System.loadLibrary("native-lib")
+            android.util.Log.d("CameraNative", "✅ native-lib 라이브러리 로딩 완료")
+
+            // 6단계: 로딩 완료 확인
+            librariesLoaded = true
+            android.util.Log.i("CameraNative", "🎉 모든 라이브러리 로딩 성공!")
+            android.util.Log.d("CameraNative", "로딩된 라이브러리:")
+            android.util.Log.d("CameraNative", "  - gphoto2_port")
+            android.util.Log.d("CameraNative", "  - gphoto2_port_iolib_disk")
+            android.util.Log.d("CameraNative", "  - gphoto2_port_iolib_usb1")
+            android.util.Log.d("CameraNative", "  - gphoto2")
+            android.util.Log.d("CameraNative", "  - native-lib")
+            android.util.Log.i("CameraNative", "=== 라이브러리 로딩 완료 ===")
+
+        } catch (e: UnsatisfiedLinkError) {
+            android.util.Log.e("CameraNative", "❌ 라이브러리 로딩 실패: ${e.message}")
+            android.util.Log.e("CameraNative", "실패한 라이브러리: ${e.message}")
+            android.util.Log.e("CameraNative", "스택 트레이스:", e)
+            throw RuntimeException("라이브러리 로드 실패: ${e.message}", e)
+        }
     }
+
+    /**
+     * 라이브러리가 로드되었는지 확인합니다.
+     */
+    fun isLibrariesLoaded(): Boolean = librariesLoaded
 
     external fun testLibraryLoad(): String
     external fun getLibGphoto2Version(): String
