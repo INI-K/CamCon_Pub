@@ -10,31 +10,27 @@ plugins {
 // Git 태그에서 버전 정보를 가져오는 함수
 def getVersionFromGit() {
     try {
-        // 현재 태그 가져오기 (정확히 현재 커밋의 태그)
         def currentTag = 'git describe --exact-match --tags HEAD'.execute().text.trim()
-        if (currentTag) {로
-            // v1.0 -> 1.0으로 변환
+        if (currentTag) {
             return currentTag.startsWith('v') ? currentTag.substring(1) : currentTag
         }
     } catch (Exception ignored) {
-        // 현재 커밋에 태그가 없으면 가장 최근 태그 + 커밋 수 가져오기
         try {
             def tagInfo = 'git describe --tags --abbrev=0'.execute().text.trim()
             def commitCount = 'git rev-list --count HEAD'.execute().text.trim()
             def shortHash = 'git rev-parse --short HEAD'.execute().text.trim()
-
             if (tagInfo) {
                 def baseVersion = tagInfo.startsWith('v') ? tagInfo.substring(1) : tagInfo
                 return "${baseVersion}-dev.${commitCount}.${shortHash}"
             }
         } catch (Exception e2) {
-            // Git이 없거나 태그가 없으면 기본값 사용
+            // ignore
         }
     }
     return "1.0"
 }
 
-// Git 태그에서 버전 코드 생성 (태그의 마이너 버전 + 커밋 수)
+// Git 커밋 수로 버전 코드 생성 (단조증가 보장 필요)
 def getVersionCodeFromGit() {
     try {
         def commitCount = 'git rev-list --count HEAD'.execute().text.trim()
@@ -56,6 +52,7 @@ android {
     }
 
     signingConfigs {
+        // debug 키는 Android Gradle Plugin 기본 디버그 키 사용
         release {
             if (keystorePropertiesFile.exists()) {
                 keyAlias keystoreProperties['keyAlias']
@@ -69,12 +66,10 @@ android {
     defaultConfig {
         applicationId "com.inik.camcon"
         minSdk 29
-        targetSdk 34
+        targetSdk 35
         versionCode getVersionCodeFromGit()
         versionName getVersionFromGit()
-        ndk {
-            abiFilters "arm64-v8a"
-        }
+        ndk { abiFilters "arm64-v8a" }
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         // 지원하는 언어 설정
@@ -85,43 +80,48 @@ android {
         debug {
             debuggable true
             minifyEnabled false
+            shrinkResources false
 //            applicationIdSuffix ".debug"
             versionNameSuffix "-debug"
-            signingConfig signingConfigs.release  // 릴리즈 키스토어 사용
-            // 개발자 기능 표시 (라이브뷰, PTPIP)
             buildConfigField "boolean", "SHOW_DEVELOPER_FEATURES", "true"
+            signingConfig signingConfigs.debug
         }
 
         release {
+            debuggable false
             minifyEnabled true
+            shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            debuggable false  // 프로가드 최적화를 위해 비활성화
             signingConfig signingConfigs.release
-            // 개발자 기능 숨김 (라이브뷰, PTPIP)
             buildConfigField "boolean", "SHOW_DEVELOPER_FEATURES", "false"
         }
 
-        // 릴리즈 성능 + 디버깅 가능한 빌드 타입
-        releaseDebug {
-            initWith release
-            debuggable true
+//        // 릴리즈 최적화 + 디버깅 가능
+//        releaseDebug {
+//            initWith release
+//            debuggable true
+//            minifyEnabled false
+//            shrinkResources false
 //            applicationIdSuffix ".release.debug"
-            versionNameSuffix "-release-debug"
-            matchingFallbacks = ['release', 'debug']
-            // 개발자 기능 표시 (디버깅용)
-            buildConfigField "boolean", "SHOW_DEVELOPER_FEATURES", "true"
-        }
+//            versionNameSuffix "-release-debug"
+//            matchingFallbacks = ['release', 'debug']
+//            buildConfigField "boolean", "SHOW_DEVELOPER_FEATURES", "true"
+//        }
     }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_11
         targetCompatibility JavaVersion.VERSION_11
     }
+
     externalNativeBuild {
         cmake {
             path file('src/main/cpp/CMakeLists.txt')
             version '3.22.1'
         }
     }
+
+    // CMake 빌드 타입 스위치
     android.buildTypes.all { buildType ->
         externalNativeBuild.cmake {
             if (buildType.name == 'debug') {
@@ -135,16 +135,17 @@ android {
             cppFlags '-g'
         }
     }
+
     sourceSets {
-        main {
-            jniLibs.srcDirs = ['src/main/jniLibs']
-        }
+        main { jniLibs.srcDirs = ['src/main/jniLibs'] }
     }
+
     buildFeatures {
         viewBinding true
         compose true
         buildConfig true
     }
+
     kotlinOptions {
         jvmTarget = "11"
         freeCompilerArgs += [
@@ -153,12 +154,14 @@ android {
                 "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi"
         ]
     }
+
     packaging {
         jniLibs {
             useLegacyPackaging = true
             keepDebugSymbols += ['**/*.so']
         }
     }
+
 }
 
 // KSP configuration for better performance

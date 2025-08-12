@@ -1141,14 +1141,14 @@ private fun CameraSettingsSheet(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Settings would be dynamically loaded based on camera capabilities
-        settings?.let {
-            Text("ISO: ${it.iso}")
-            Text("셔터 속도: ${it.shutterSpeed}")
-            Text("조리개: ${it.aperture}")
-            Text("화이트밸런스: ${it.whiteBalance}")
-        } ?: run {
-            Text("카메라 설정을 로드할 수 없습니다", color = Color.Gray)
-        }
+//        settings?.let {
+//            Text("ISO: ${it.iso}")
+//            Text("셔터 속도: ${it.shutterSpeed}")
+//            Text("조리개: ${it.aperture}")
+//            Text("화이트밸런스: ${it.whiteBalance}")
+//        } ?: run {
+//            Text("카메라 설정을 로드할 수 없습니다", color = Color.Gray)
+//        }
     }
 }
 
