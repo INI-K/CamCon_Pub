@@ -92,6 +92,12 @@ object CameraNative {
      */
     fun isLibrariesLoaded(): Boolean = librariesLoaded
 
+    /**
+     * libgphoto2 환경변수를 설정합니다.
+     * PTP/IP나 USB 연결 전에 호출해야 합니다.
+     */
+    external fun setupEnvironmentPaths(nativeLibDir: String): Boolean
+
     external fun testLibraryLoad(): String
     external fun getLibGphoto2Version(): String
     external fun getPortInfo(): String
