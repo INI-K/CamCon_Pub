@@ -3,6 +3,33 @@
 # 빌드 성능 최적화
 -dontoptimize
 
+# ---- 로그 최적화 ----
+# 릴리즈 빌드에서 로그 호출을 완전히 제거하여 성능 향상
+# DEBUG 빌드에서는 이 규칙이 적용되지 않습니다
+-assumenosideeffects class android.util.Log {
+    public static boolean isLoggable(java.lang.String, int);
+    public static int v(...);
+    public static int d(...);
+    public static int i(...);
+    public static int w(...);
+    public static int e(...);
+}
+
+# LogcatManager object의 로그 호출도 제거
+-assumenosideeffects class com.inik.camcon.utils.LogcatManager {
+    public void d(java.lang.String, java.lang.String);
+    public void i(java.lang.String, java.lang.String);
+    public void w(java.lang.String, java.lang.String);
+    public void w(java.lang.String, java.lang.String, java.lang.Throwable);
+    public void e(java.lang.String, java.lang.String);
+    public void e(java.lang.String, java.lang.String, java.lang.Throwable);
+    public void v(java.lang.String, java.lang.String);
+    public void conditionalLog(boolean, java.lang.String, java.lang.String, int);
+    public void perfStart(java.lang.String, java.lang.String);
+    public void perfEnd(java.lang.String, java.lang.String, long);
+    public void printLogSettings();
+}
+
 # ---- [선택] 디버깅 편의용 심볼 ----
 # 릴리스 크기/속도가 중요하면 아래 두 줄을 주석 처리하세요.
 -keepattributes SourceFile,LineNumberTable
@@ -66,3 +93,14 @@
 #-keep class com.google.android.gms.common.api.Status { *; }
 #-keep class com.google.android.gms.auth.api.identity.SignInClient { *; }
 #-keep class com.google.android.gms.tasks.Task { *; }
+
+# ---- 로그 관련 클래스 최적화 ----
+# LogcatManager는 유지하되, 내부 로직은 최적화 허용
+-keep class com.inik.camcon.utils.LogcatManager {
+    # 클래스는 유지하지만 개별 메서드는 위에서 제거 규칙 적용
+}
+
+# Constants.Logging 클래스는 컴파일 타임 상수이므로 유지
+-keep class com.inik.camcon.utils.Constants$Logging {
+    *;
+}
