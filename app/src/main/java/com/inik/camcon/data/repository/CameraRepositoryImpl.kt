@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -86,7 +87,13 @@ class CameraRepositoryImpl @Inject constructor(
     }
 
     override fun isCameraConnected(): Flow<Boolean> =
-        connectionManager.isConnected
+        combine(
+            connectionManager.isConnected,
+            eventManager.isEventListenerActive
+        ) { isConnected, isListenerActive ->
+            // libgphoto2(AP 강제) 경로에서도 이벤트 리스너가 활성화되어 있으면 연결로 간주
+            isConnected || isListenerActive
+        }
 
     override fun isInitializing(): Flow<Boolean> =
         connectionManager.isInitializing
