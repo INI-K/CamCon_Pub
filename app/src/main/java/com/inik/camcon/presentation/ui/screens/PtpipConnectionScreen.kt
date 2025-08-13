@@ -74,47 +74,50 @@ fun PtpipConnectionScreen(
     val pagerState = rememberPagerState(initialPage = 0) { 2 }
     val tabTitles = listOf("AP 모드", "STA 모드")
 
-    // Wi‑Fi 스캔 권한 상태 (SDK별로 상이)
-    var hasWifiScanPermission by remember {
-        val hasPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.NEARBY_WIFI_DEVICES
-            ) == PackageManager.PERMISSION_GRANTED
-        } else {
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-        }
-
-        Log.d("PtpipConnectionScreen", "초기 Wi-Fi 스캔 권한 상태: $hasPermission")
-        mutableStateOf(hasPermission)
+    // Wi‑Fi 스캔 권한 상태 (WifiNetworkHelper 사용)
+    var wifiScanPermissionStatus by remember {
+        mutableStateOf(ptpipViewModel.getWifiHelper().analyzeWifiScanPermissionStatus())
     }
 
     var showPermissionDialog by remember { mutableStateOf(false) }
 
-    // 단일 권한 런처 (레거시: 위치)
-    val singlePermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        Log.d("PtpipConnectionScreen", "단일 권한 결과: $isGranted")
-        hasWifiScanPermission = isGranted
-        if (!isGranted) showPermissionDialog = true
-    }
-
-    // 다중 권한 런처 (Android 13+ NEARBY)
-    val multiPermissionLauncher = rememberLauncherForActivityResult(
+    // Wi-Fi 스캔 권한 런처
+    val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { results ->
-        val granted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            results[Manifest.permission.NEARBY_WIFI_DEVICES] == true
+        Log.d("PtpipConnectionScreen", "권한 요청 결과: $results")
+        // 권한 상태 업데이트
+        wifiScanPermissionStatus = ptpipViewModel.getWifiHelper().analyzeWifiScanPermissionStatus()
+
+        if (!wifiScanPermissionStatus.canScan) {
+            if (wifiScanPermissionStatus.missingPermissions.isNotEmpty()) {
+                showPermissionDialog = true
+            } else {
+                // 권한은 있지만 Wi-Fi나 위치 서비스가 꺼져있음 - 스낵바로 안내
+                scope.launch {
+                    val message = if (!wifiScanPermissionStatus.isWifiEnabled) {
+                        "Wi-Fi를 켜주세요"
+                    } else if (!wifiScanPermissionStatus.isLocationEnabled) {
+                        "위치 서비스를 켜주세요"
+                    } else {
+                        "스캔 조건을 확인해주세요"
+                    }
+                    snackbarHostState.showSnackbar(message)
+                }
+            }
         } else {
-            results[Manifest.permission.ACCESS_FINE_LOCATION] == true
+            // 모든 조건 만족 - 스캔 실행
+            ptpipViewModel.scanNearbyWifiNetworks()
         }
-        Log.d("PtpipConnectionScreen", "다중 권한 결과: $results, granted: $granted")
-        hasWifiScanPermission = granted
-        if (!granted) showPermissionDialog = true
+    }
+
+    fun requestWifiScanPermissions() {
+        Log.d("PtpipConnectionScreen", "Wi-Fi 스캔 권한 요청 시작")
+        val wifiHelper = ptpipViewModel.getWifiHelper()
+        val requiredPermissions = wifiHelper.getRequiredWifiScanPermissions()
+
+        Log.d("PtpipConnectionScreen", "필요한 권한: $requiredPermissions")
+        permissionLauncher.launch(requiredPermissions.toTypedArray())
     }
 
     // Activity Result 런처 추가 (위치 설정용)
@@ -127,17 +130,6 @@ fun PtpipConnectionScreen(
         if (result.resultCode == Activity.RESULT_OK) {
             Log.d("PtpipConnectionScreen", "위치 설정 성공 - Wi-Fi 스캔 재시도")
             ptpipViewModel.scanNearbyWifiNetworks()
-        }
-    }
-
-    fun requestWifiScanPermission() {
-        Log.d("PtpipConnectionScreen", "Wi-Fi 스캔 권한 요청 시작, SDK: ${Build.VERSION.SDK_INT}")
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            Log.d("PtpipConnectionScreen", "Android 13+ NEARBY_WIFI_DEVICES 권한 요청")
-            multiPermissionLauncher.launch(arrayOf(Manifest.permission.NEARBY_WIFI_DEVICES))
-        } else {
-            Log.d("PtpipConnectionScreen", "Android 12 이하 ACCESS_FINE_LOCATION 권한 요청")
-            singlePermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         }
     }
 
@@ -172,11 +164,21 @@ fun PtpipConnectionScreen(
             onDismissRequest = { showPermissionDialog = false },
             title = { Text("권한 필요") },
             text = {
-                Text("주변 Wi‑Fi 스캔을 위해 권한이 필요합니다. 설정에서 허용해주세요.")
+                Text(ptpipViewModel.getWifiHelper().getPermissionRationaleMessage())
             },
             confirmButton = {
+                TextButton(onClick = {
+                    showPermissionDialog = false
+                    // 설정으로 이동
+                    val intent = ptpipViewModel.getWifiHelper().createAppSettingsIntent()
+                    context.startActivity(intent)
+                }) {
+                    Text("설정으로 이동")
+                }
+            },
+            dismissButton = {
                 TextButton(onClick = { showPermissionDialog = false }) {
-                    Text("확인")
+                    Text("취소")
                 }
             }
         )
@@ -298,12 +300,14 @@ fun PtpipConnectionScreen(
                     IconButton(
                         onClick = {
                             when (pagerState.currentPage) {
-                                0 -> if (hasWifiScanPermission) {
+                                0 -> if (ptpipViewModel.getWifiHelper()
+                                        .analyzeWifiScanPermissionStatus().canScan
+                                ) {
                                     Log.d("PtpipConnectionScreen", "Wi-Fi 스캔 실행")
                                     ptpipViewModel.scanNearbyWifiNetworks()
                                 } else {
                                     Log.d("PtpipConnectionScreen", "권한 부족으로 권한 요청 호출")
-                                    requestWifiScanPermission()
+                                    requestWifiScanPermissions()
                                 }
                                 1 -> ptpipViewModel.discoverCamerasSta()
                                 else -> {}
@@ -377,8 +381,9 @@ fun PtpipConnectionScreen(
                         wifiCapabilities = wifiCapabilities,
                         wifiNetworkState = wifiNetworkState,
                         isAutoReconnectEnabled = isAutoReconnectEnabled,
-                        hasLocationPermission = hasWifiScanPermission,
-                        onRequestPermission = { requestWifiScanPermission() },
+                        hasLocationPermission = ptpipViewModel.getWifiHelper()
+                            .analyzeWifiScanPermissionStatus().canScan,
+                        onRequestPermission = { requestWifiScanPermissions() },
                         nearbyWifiSSIDs = nearbyWifiSSIDs,
                         onConnectToWifi = { ssid -> ptpipViewModel.connectToWifiSsid(ssid) }
                     )
@@ -395,8 +400,9 @@ fun PtpipConnectionScreen(
                         wifiCapabilities = wifiCapabilities,
                         wifiNetworkState = wifiNetworkState,
                         isAutoReconnectEnabled = isAutoReconnectEnabled,
-                        hasLocationPermission = hasWifiScanPermission,
-                        onRequestPermission = { requestWifiScanPermission() }
+                        hasLocationPermission = ptpipViewModel.getWifiHelper()
+                            .analyzeWifiScanPermissionStatus().canScan,
+                        onRequestPermission = { requestWifiScanPermissions() }
                     )
                 }
             }
@@ -442,4 +448,3 @@ private fun PtpipConnectionScreenPreview() {
         }
     }
 }
-

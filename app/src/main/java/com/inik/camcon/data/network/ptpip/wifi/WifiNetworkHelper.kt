@@ -35,6 +35,95 @@ import javax.inject.Singleton
 /**
  * Wi-Fi 네트워크 관련 헬퍼 클래스
  * 네트워크 연결 상태 확인 및 Wi-Fi 기능 관리
+ *
+ * ## Activity에서 권한 요청 예제:
+ *
+ * ```kotlin
+ * class YourActivity : AppCompatActivity() {
+ *     private val wifiNetworkHelper by lazy {
+ *         (application as YourApp).appComponent.wifiNetworkHelper
+ *     }
+ *
+ *     private val permissionLauncher = registerForActivityResult(
+ *         ActivityResultContracts.RequestMultiplePermissions()
+ *     ) { permissions ->
+ *         val allGranted = permissions.all { it.value }
+ *         if (allGranted) {
+ *             // 권한 허용됨 - Wi-Fi 스캔 실행
+ *             performWifiScan()
+ *         } else {
+ *             // 권한 거부됨 - 사용자에게 안내
+ *             handlePermissionDenied(permissions)
+ *         }
+ *     }
+ *
+ *     private fun requestWifiScanPermissions() {
+ *         val status = wifiNetworkHelper.analyzeWifiScanPermissionStatus()
+ *
+ *         if (status.canScan) {
+ *             // 이미 모든 권한이 있음
+ *             performWifiScan()
+ *             return
+ *         }
+ *
+ *         val missingPermissions = status.missingPermissions
+ *         if (missingPermissions.isEmpty()) {
+ *             // 권한은 있지만 Wi-Fi나 위치 서비스가 꺼져있음
+ *             handleSystemSettingsNeeded(status)
+ *             return
+ *         }
+ *
+ *         // 권한 요청 전 설명 표시 (선택적)
+ *         val shouldShowRationale = missingPermissions.any { permission ->
+ *             wifiNetworkHelper.shouldShowPermissionRationale(this, permission)
+ *         }
+ *
+ *         if (shouldShowRationale) {
+ *             showPermissionRationaleDialog(missingPermissions)
+ *         } else {
+ *             // 바로 권한 요청
+ *             permissionLauncher.launch(missingPermissions.toTypedArray())
+ *         }
+ *     }
+ *
+ *     private fun showPermissionRationaleDialog(permissions: List<String>) {
+ *         AlertDialog.Builder(this)
+ *             .setTitle("권한 필요")
+ *             .setMessage(wifiNetworkHelper.getPermissionRationaleMessage())
+ *             .setPositiveButton("허용") { _, _ ->
+ *                 permissionLauncher.launch(permissions.toTypedArray())
+ *             }
+ *             .setNegativeButton("취소", null)
+ *             .show()
+ *     }
+ *
+ *     private fun handlePermissionDenied(permissions: Map<String, Boolean>) {
+ *         val permanentlyDenied = permissions.filter { !it.value }
+ *             .keys.any { permission ->
+ *                 !wifiNetworkHelper.shouldShowPermissionRationale(this, permission)
+ *             }
+ *
+ *         if (permanentlyDenied) {
+ *             // 설정으로 이동 안내
+ *             AlertDialog.Builder(this)
+ *                 .setTitle("권한 설정 필요")
+ *                 .setMessage("Wi-Fi 스캔을 위해 설정에서 권한을 허용해주세요.")
+ *                 .setPositiveButton("설정으로 이동") { _, _ ->
+ *                     startActivity(wifiNetworkHelper.createAppSettingsIntent())
+ *                 }
+ *                 .setNegativeButton("취소", null)
+ *                 .show()
+ *         }
+ *     }
+ *
+ *     private fun performWifiScan() {
+ *         lifecycleScope.launch {
+ *             val ssids = wifiNetworkHelper.scanNearbyWifiSSIDs()
+ *             // 결과 처리
+ *         }
+ *     }
+ * }
+ * ```
  */
 @Singleton
 class WifiNetworkHelper @Inject constructor(
@@ -446,66 +535,58 @@ class WifiNetworkHelper @Inject constructor(
         try {
             Log.d(TAG, "=== Wi-Fi 스캔 시작 (Android ${Build.VERSION.SDK_INT}) ===")
 
-            // 권한 상태 확인 및 로그
-            val hasLocationPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                context.checkSelfPermission(android.Manifest.permission.NEARBY_WIFI_DEVICES) ==
-                        android.content.pm.PackageManager.PERMISSION_GRANTED
-            } else {
-                context.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) ==
-                        android.content.pm.PackageManager.PERMISSION_GRANTED
-            }
+            // 스캔 환경 진단 실행
+            logWifiScanDiagnosis()
 
-            Log.d(TAG, "권한 상태 체크:")
-            Log.d(TAG, "  - Android 버전: ${Build.VERSION.SDK_INT}")
-            Log.d(
-                TAG,
-                "  - 필요 권한: ${if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) "NEARBY_WIFI_DEVICES" else "ACCESS_FINE_LOCATION"}"
-            )
-            Log.d(TAG, "  - 권한 보유: $hasLocationPermission")
+            // 통합 권한 체크
+            val permissionStatus = analyzeWifiScanPermissionStatus()
 
-            if (!hasLocationPermission) {
-                Log.e(TAG, "❌ Wi-Fi 스캔 권한이 없음")
+            Log.d(TAG, "권한 상태 분석:")
+            Log.d(TAG, "  - 위치 권한: ${permissionStatus.hasFineLocationPermission}")
+            Log.d(TAG, "  - 근처 Wi-Fi 장치 권한: ${permissionStatus.hasNearbyWifiDevicesPermission}")
+            Log.d(TAG, "  - Wi-Fi 활성화: ${permissionStatus.isWifiEnabled}")
+            Log.d(TAG, "  - 위치 서비스 활성화: ${permissionStatus.isLocationEnabled}")
+            Log.d(TAG, "  - 스캔 가능: ${permissionStatus.canScan}")
+
+            if (permissionStatus.missingPermissions.isNotEmpty()) {
+                Log.e(TAG, "❌ 부족한 권한: ${permissionStatus.missingPermissions}")
                 return@withContext emptyList()
             }
 
-            // Android 10+ 제한 상황에서 대안적 방법들 시도
+            if (!permissionStatus.canScan) {
+                Log.e(TAG, "❌ Wi-Fi 스캔 조건이 충족되지 않음")
+                return@withContext emptyList()
+            }
+
             val results = mutableListOf<String>()
 
-            // 방법 1: 기존 캐시된 스캔 결과 활용 (가장 안정적)
-            Log.d(TAG, "방법 1: 캐시된 스캔 결과 확인...")
-            val cachedResults = getCachedScanResults()
-            if (cachedResults.isNotEmpty()) {
-                results.addAll(cachedResults)
-                Log.d(TAG, "✅ 캐시에서 ${cachedResults.size}개 발견")
+            // 방법 1: 실제 스캔 시도 (유일한 방법)
+            Log.d(TAG, "방법 1: 실제 Wi-Fi 스캔 시도...")
+            val scanResults = performConditionalScan()
+            if (scanResults.isNotEmpty()) {
+                results.addAll(scanResults)
+                Log.d(TAG, "✅ 실제 스캔에서 ${scanResults.size}개 발견")
             }
 
-            // 방법 2: 연결된 네트워크 정보에서 추출 (현재 네트워크)
-            Log.d(TAG, "방법 2: 현재 연결된 네트워크 정보 확인...")
-            val currentNetwork = getCurrentNetworkSSID()
-            if (currentNetwork != null && !results.contains(currentNetwork)) {
-                results.add(currentNetwork)
-                Log.d(TAG, "✅ 현재 네트워크 추가: '$currentNetwork'")
-            }
-
-            // 방법 3: 시스템 제한 우회를 위한 조건부 스캔 시도
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                Log.d(TAG, "방법 3: Android 10+ 조건부 스캔 시도...")
-                val scanResults = tryLimitedScan()
-                scanResults.forEach { ssid ->
+            // 방법 2: Android 13+ 전용 실험적 스캔
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && results.isEmpty()) {
+                Log.d(TAG, "방법 2: Android 13+ 실험적 스캔 시도...")
+                val android13Results = experimentalScanForAndroid13()
+                android13Results.forEach { ssid ->
                     if (!results.contains(ssid)) {
                         results.add(ssid)
-                        Log.d(TAG, "✅ 제한적 스캔에서 추가: '$ssid'")
+                        Log.d(TAG, "✅ Android 13+ 실험적 스캔에서 추가: '$ssid'")
                     }
                 }
-            } else {
-                // Android 9 이하는 기존 방식 사용
-                Log.d(TAG, "방법 3: 레거시 스캔 (Android 9 이하)...")
-                val legacyResults = performLegacyScan()
-                legacyResults.forEach { ssid ->
-                    if (!results.contains(ssid)) {
-                        results.add(ssid)
-                        Log.d(TAG, "✅ 레거시 스캔에서 추가: '$ssid'")
-                    }
+            }
+
+            // 방법 3: 현재 연결된 네트워크 정보만 (스캔 실패 시에만)
+            if (results.isEmpty()) {
+                Log.d(TAG, "방법 3: 현재 연결된 네트워크 정보 확인...")
+                val currentNetwork = getCurrentNetworkSSID()
+                if (currentNetwork != null) {
+                    results.add(currentNetwork)
+                    Log.d(TAG, "✅ 현재 네트워크 추가: '$currentNetwork'")
                 }
             }
 
@@ -523,56 +604,6 @@ class WifiNetworkHelper @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "Wi‑Fi 스캔 중 오류", e)
             return@withContext emptyList()
-        }
-    }
-
-    /**
-     * 캐시된 스캔 결과 가져오기
-     */
-    private fun getCachedScanResults(): List<String> {
-        return try {
-            val scanResults = wifiManager.scanResults
-            Log.d(TAG, "캐시된 스캔 결과: ${scanResults.size}개")
-
-            val ssids = scanResults.mapNotNull { result ->
-                val ssid = result.SSID
-                Log.d(
-                    TAG,
-                    "  - Raw SSID: '$ssid', BSSID: ${result.BSSID}, Level: ${result.level}dBm"
-                )
-
-                when {
-                    ssid.isBlank() -> {
-                        Log.d(TAG, "    ❌ 빈 SSID 제외")
-                        null
-                    }
-
-                    ssid == "<unknown ssid>" -> {
-                        Log.d(TAG, "    ❌ unknown SSID 제외")
-                        null
-                    }
-
-                    ssid.startsWith("\"") && ssid.endsWith("\"") -> {
-                        val cleaned = ssid.removeSurrounding("\"")
-                        Log.d(TAG, "    ✅ 따옴표 제거: '$cleaned'")
-                        cleaned
-                    }
-
-                    else -> {
-                        Log.d(TAG, "    ✅ 정상 SSID: '$ssid'")
-                        ssid
-                    }
-                }
-            }.distinct()
-
-            Log.d(TAG, "정리된 SSID: ${ssids.size}개")
-            ssids
-        } catch (e: SecurityException) {
-            Log.e(TAG, "캐시된 스캔 결과 조회 실패 (권한): ${e.message}")
-            emptyList()
-        } catch (e: Exception) {
-            Log.e(TAG, "캐시된 스캔 결과 조회 실패: ${e.message}")
-            emptyList()
         }
     }
 
@@ -627,7 +658,7 @@ class WifiNetworkHelper @Inject constructor(
     }
 
     /**
-     * Android 10+ 제한적 스캔 시도
+     * Android 10+ 제한적 스캔 시도 (캐시 사용 안함)
      */
     private suspend fun tryLimitedScan(): List<String> {
         return try {
@@ -644,29 +675,54 @@ class WifiNetworkHelper @Inject constructor(
 
             Log.d(TAG, "포그라운드 상태: $isInForeground")
 
-            if (!isInForeground) {
-                Log.w(TAG, "❌ 앱이 포그라운드에 있지 않음 - 스캔 제한됨")
-                return emptyList()
-            }
-
-            // 2. 신중한 스캔 요청 (실패할 가능성 높음)
+            // 2. 여러 번 스캔 시도
             var scanRequested = false
-            try {
-                @Suppress("DEPRECATION")
-                scanRequested = wifiManager.startScan()
-                Log.d(TAG, "제한적 스캔 요청 결과: $scanRequested")
-            } catch (e: Exception) {
-                Log.w(TAG, "제한적 스캔 요청 실패: ${e.message}")
+            for (attempt in 0 until 3) {
+                try {
+                    Log.d(TAG, "스캔 시도 ${attempt + 1}/3")
+                    @Suppress("DEPRECATION")
+                    scanRequested = wifiManager.startScan()
+                    Log.d(TAG, "스캔 요청 결과: $scanRequested")
+
+                    if (scanRequested) {
+                        break
+                    } else if (attempt < 2) {
+                        delay(1000)
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "스캔 시도 ${attempt + 1} 실패: ${e.message}")
+                    if (attempt < 2) delay(1000)
+                }
             }
 
             if (!scanRequested) {
-                Log.w(TAG, "❌ 시스템이 스캔 요청을 거부함 (빈도 제한)")
+                Log.w(TAG, "❌ 모든 스캔 시도 실패 (빈도 제한)")
                 return emptyList()
             }
 
-            // 3. 결과 대기 (짧게)
-            delay(2000)
-            return getCachedScanResults()
+            // 3. 실제 스캔 결과 직접 읽기 (캐시 안 함)
+            delay(3000) // 스캔 완료 대기
+
+            return try {
+                val scanResults = wifiManager.scanResults
+                Log.d(TAG, "스캔 결과: ${scanResults?.size ?: 0}개")
+
+                scanResults?.mapNotNull { result ->
+                    val ssid = result.SSID
+                    when {
+                        ssid.isNullOrBlank() -> null
+                        ssid == "<unknown ssid>" -> null
+                        ssid.startsWith("\"") && ssid.endsWith("\"") -> {
+                            ssid.removeSurrounding("\"")
+                        }
+
+                        else -> ssid
+                    }
+                }?.distinct() ?: emptyList()
+            } catch (e: SecurityException) {
+                Log.e(TAG, "스캔 결과 읽기 권한 오류: ${e.message}")
+                emptyList()
+            }
 
         } catch (e: Exception) {
             Log.e(TAG, "제한적 스캔 실패: ${e.message}")
@@ -686,13 +742,32 @@ class WifiNetworkHelper @Inject constructor(
             Log.d(TAG, "레거시 스캔 요청: $scanRequested")
 
             if (scanRequested) {
-                // 스캔 완료 대기
-                repeat(5) { attempt ->
+                // 스캔 완료 대기 후 직접 결과 읽기
+                for (attempt in 0 until 5) {
                     delay(1000)
-                    val results = getCachedScanResults()
-                    if (results.isNotEmpty()) {
-                        Log.d(TAG, "레거시 스캔 성공 (시도 ${attempt + 1}): ${results.size}개")
-                        return results
+
+                    try {
+                        val scanResults = wifiManager.scanResults
+                        val results = scanResults?.mapNotNull { result ->
+                            val ssid = result.SSID
+                            when {
+                                ssid.isNullOrBlank() -> null
+                                ssid == "<unknown ssid>" -> null
+                                ssid.startsWith("\"") && ssid.endsWith("\"") -> {
+                                    ssid.removeSurrounding("\"")
+                                }
+
+                                else -> ssid
+                            }
+                        }?.distinct() ?: emptyList()
+
+                        if (results.isNotEmpty()) {
+                            Log.d(TAG, "레거시 스캔 성공 (시도 ${attempt + 1}): ${results.size}개")
+                            return results
+                        }
+                    } catch (e: SecurityException) {
+                        Log.e(TAG, "레거시 스캔 결과 읽기 권한 오류: ${e.message}")
+                        return emptyList()
                     }
                 }
             }
@@ -710,15 +785,26 @@ class WifiNetworkHelper @Inject constructor(
      * WifiNetworkSpecifier로 로컬 전용 연결 요청
      * - 시스템 승인이 필요하며, 포그라운드에서 호출되어야 함
      * - 카메라 AP 등 인터넷 없는 네트워크는 INTERNET capability 제거 권장
+     * - Android 10+ 필요, 권한 부족 시 수동 연결 안내
      */
     fun requestConnectionWithSpecifier(
         ssid: String,
         passphrase: String? = null,
         requireNoInternet: Boolean = true,
         bindProcess: Boolean = true,
-        onResult: (Boolean) -> Unit
+        onResult: (Boolean) -> Unit,
+        onError: ((String) -> Unit)? = null
     ) {
         try {
+            // Android 10 미만에서는 지원되지 않음
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                val message =
+                    "Android 10 미만에서는 자동 Wi-Fi 연결이 지원되지 않습니다.\n수동으로 Wi-Fi 설정에서 '$ssid'에 연결해주세요."
+                onError?.invoke(message) ?: Log.w(TAG, message)
+                onResult(false)
+                return
+            }
+
             val builder = WifiNetworkSpecifier.Builder()
                 .setSsid(ssid)
 
@@ -756,6 +842,8 @@ class WifiNetworkHelper @Inject constructor(
 
                 override fun onUnavailable() {
                     Log.w(TAG, "WifiNetworkSpecifier 연결 불가: $ssid")
+                    val message = "자동 연결에 실패했습니다.\nWi-Fi 설정에서 '$ssid'에 수동으로 연결해주세요."
+                    onError?.invoke(message)
                     onResult(false)
                 }
 
@@ -766,8 +854,30 @@ class WifiNetworkHelper @Inject constructor(
 
             connectivityManager.requestNetwork(request, callback)
             Log.d(TAG, "WifiNetworkSpecifier 요청 전송: $ssid")
+
+        } catch (e: SecurityException) {
+            val message = when {
+                e.message?.contains("CHANGE_NETWORK_STATE") == true -> {
+                    "앱에 네트워크 변경 권한이 없습니다.\n\n수동 연결 방법:\n1. Wi-Fi 설정 열기\n2. '$ssid' 네트워크 선택\n3. 연결 완료 후 앱으로 돌아오기"
+                }
+
+                e.message?.contains("WRITE_SETTINGS") == true -> {
+                    "시스템 설정 변경 권한이 필요합니다.\n\nWi-Fi 설정에서 '$ssid'에 수동으로 연결해주세요."
+                }
+
+                else -> {
+                    "자동 Wi-Fi 연결 권한이 부족합니다.\n\n수동으로 Wi-Fi 설정에서 '$ssid'에 연결해주세요.\n\n오류: ${e.message}"
+                }
+            }
+
+            Log.e(TAG, "WifiNetworkSpecifier 권한 오류: ${e.message}")
+            onError?.invoke(message)
+            onResult(false)
         } catch (e: Exception) {
+            val message =
+                "Wi-Fi 연결 요청 중 오류가 발생했습니다.\n\n수동으로 Wi-Fi 설정에서 '$ssid'에 연결해주세요.\n\n오류: ${e.message}"
             Log.e(TAG, "WifiNetworkSpecifier 요청 중 오류", e)
+            onError?.invoke(message)
             onResult(false)
         }
     }
@@ -809,6 +919,80 @@ class WifiNetworkHelper @Inject constructor(
             macAddress = connectionInfo?.macAddress,
             detectedCameraIP = if (isConnectedToCameraAP) detectCameraIPInAPMode() else null
         )
+    }
+
+    /**
+     * 구성된 네트워크 SSID 목록 가져오기 (Android 10+ 대안)
+     */
+    private fun getConfiguredNetworkSSIDs(): List<String> {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // Android 10+ 에서는 제한적 접근만 가능
+                Log.d(TAG, "Android 10+: 구성된 네트워크 정보 제한됨")
+                emptyList()
+            } else {
+                // Android 9 이하에서만 사용 가능 - 권한 체크
+                val hasPermission = ContextCompat.checkSelfPermission(
+                    context,
+                    android.Manifest.permission.ACCESS_FINE_LOCATION
+                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+                if (!hasPermission) {
+                    Log.d(TAG, "구성된 네트워크 조회 권한 없음")
+                    return emptyList()
+                }
+
+                @Suppress("DEPRECATION")
+                val configuredNetworks = wifiManager.configuredNetworks
+                configuredNetworks?.mapNotNull { config ->
+                    config.SSID?.removeSurrounding("\"")?.takeIf { it.isNotBlank() }
+                } ?: emptyList()
+            }
+        } catch (e: SecurityException) {
+            Log.e(TAG, "구성된 네트워크 조회 권한 오류: ${e.message}")
+            emptyList()
+        } catch (e: Exception) {
+            Log.e(TAG, "구성된 네트워크 조회 실패: ${e.message}")
+            emptyList()
+        }
+    }
+
+    /**
+     * 조건부 스캔 수행 (캐시 사용 안함, 실제 스캔만)
+     */
+    private suspend fun performConditionalScan(): List<String> {
+        return try {
+            Log.d(TAG, "조건부 스캔 수행 시작...")
+
+            val results = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // Android 10+에서도 먼저 시도
+                Log.d(TAG, "Android 10+ 스캔 시도 중...")
+                tryLimitedScan()
+            } else {
+                // Android 9 이하는 기존 방식
+                performLegacyScan()
+            }
+
+            Log.d(TAG, "조건부 스캔 완료: ${results.size}개 발견")
+            results
+        } catch (e: Exception) {
+            Log.e(TAG, "조건부 스캔 실패: ${e.message}")
+            emptyList()
+        }
+    }
+
+    /**
+     * 저장된 네트워크 SSID 목록 가져오기 (Android 11+ API)
+     */
+    private fun getSavedNetworkSSIDs(): List<String> {
+        return try {
+            // Android 11+ 에서도 제한이 심해서 실제로는 사용하기 어려움
+            Log.d(TAG, "저장된 네트워크 API는 시스템 앱에만 제한됨")
+            emptyList()
+        } catch (e: Exception) {
+            Log.e(TAG, "저장된 네트워크 조회 실패: ${e.message}")
+            emptyList()
+        }
     }
 
     /**
@@ -905,4 +1089,323 @@ class WifiNetworkHelper @Inject constructor(
         cachedIsConnectedToCameraAP = null
         lastCheckedSSID = null
     }
+
+    /**
+     * Wi-Fi 스캔 환경 진단 (디버깅용)
+     */
+    fun diagnoseWifiScanEnvironment(): Map<String, Any> {
+        val diagnosis = mutableMapOf<String, Any>()
+
+        try {
+            // 기본 정보
+            diagnosis["android_version"] = Build.VERSION.SDK_INT
+            diagnosis["device_model"] = "${Build.MANUFACTURER} ${Build.MODEL}"
+
+            // 권한 상태
+            diagnosis["wifi_enabled"] = wifiManager.isWifiEnabled
+            diagnosis["location_enabled"] = isLocationEnabled()
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                diagnosis["nearby_wifi_devices_permission"] = ContextCompat.checkSelfPermission(
+                    context, android.Manifest.permission.NEARBY_WIFI_DEVICES
+                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            }
+
+            diagnosis["fine_location_permission"] = ContextCompat.checkSelfPermission(
+                context, android.Manifest.permission.ACCESS_FINE_LOCATION
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+            diagnosis["coarse_location_permission"] = ContextCompat.checkSelfPermission(
+                context, android.Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+            // 네트워크 정보
+            diagnosis["wifi_connected"] = isWifiConnected()
+            diagnosis["current_ssid"] = getCurrentSSID() ?: "null"
+
+            // 스캔 캐시 정보
+            try {
+                val scanResults = wifiManager.scanResults
+                diagnosis["cached_scan_count"] = scanResults?.size ?: 0
+                diagnosis["cached_scan_age"] = if (scanResults?.isNotEmpty() == true) {
+                    System.currentTimeMillis() - scanResults[0].timestamp / 1000
+                } else 0
+            } catch (e: SecurityException) {
+                diagnosis["cached_scan_error"] = "SecurityException: ${e.message}"
+            }
+
+            // 앱 상태
+            val activityManager =
+                context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+            val runningProcesses = activityManager.runningAppProcesses
+            diagnosis["app_foreground"] = runningProcesses?.any {
+                it.processName == context.packageName &&
+                        it.importance == android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
+            } ?: false
+
+        } catch (e: Exception) {
+            diagnosis["diagnosis_error"] = e.message ?: "Unknown error"
+        }
+
+        return diagnosis
+    }
+
+    /**
+     * 스캔 결과 상세 로그 출력
+     */
+    fun logWifiScanDiagnosis() {
+        val diagnosis = diagnoseWifiScanEnvironment()
+
+        Log.d(TAG, "=== Wi-Fi 스캔 환경 진단 ===")
+        diagnosis.forEach { (key, value) ->
+            Log.d(TAG, "  $key: $value")
+        }
+        Log.d(TAG, "=== 진단 완료 ===")
+    }
+
+    /**
+     * Android 13+ 전용 실험적 스캔 (NEARBY_WIFI_DEVICES만 사용)
+     */
+    suspend fun experimentalScanForAndroid13(): List<String> = withContext(Dispatchers.IO) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            Log.d(TAG, "Android 13 미만에서는 실행되지 않음")
+            return@withContext emptyList()
+        }
+
+        try {
+            Log.d(TAG, "=== Android 13+ 실험적 스캔 시작 ===")
+
+            // NEARBY_WIFI_DEVICES 권한만 확인
+            val hasNearbyWifiDevices = ContextCompat.checkSelfPermission(
+                context, android.Manifest.permission.NEARBY_WIFI_DEVICES
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+            Log.d(TAG, "NEARBY_WIFI_DEVICES 권한: $hasNearbyWifiDevices")
+
+            if (!hasNearbyWifiDevices) {
+                Log.e(TAG, "❌ NEARBY_WIFI_DEVICES 권한이 없음")
+                return@withContext emptyList()
+            }
+
+            // 강제 스캔 시도 (위치 권한 무시)
+            Log.d(TAG, "강제 스캔 시도 중...")
+
+            var scanSuccess = false
+            try {
+                @Suppress("DEPRECATION")
+                scanSuccess = wifiManager.startScan()
+                Log.d(TAG, "startScan() 결과: $scanSuccess")
+            } catch (e: SecurityException) {
+                Log.e(TAG, "스캔 권한 오류: ${e.message}")
+            } catch (e: Exception) {
+                Log.e(TAG, "스캔 요청 실패: ${e.message}")
+            }
+
+            // 스캔 결과 확인
+            delay(3000) // 3초 대기
+
+            val results = mutableListOf<String>()
+
+            try {
+                val scanResults = wifiManager.scanResults
+                Log.d(TAG, "스캔 결과 개수: ${scanResults?.size ?: 0}")
+
+                scanResults?.forEach { result ->
+                    Log.d(
+                        TAG,
+                        "  발견: SSID='${result.SSID}', BSSID=${result.BSSID}, Level=${result.level}dBm"
+                    )
+
+                    if (!result.SSID.isNullOrBlank() && result.SSID != "<unknown ssid>") {
+                        val cleanSSID = result.SSID.removeSurrounding("\"")
+                        if (!results.contains(cleanSSID)) {
+                            results.add(cleanSSID)
+                        }
+                    }
+                }
+            } catch (e: SecurityException) {
+                Log.e(TAG, "스캔 결과 읽기 권한 오류: ${e.message}")
+                return@withContext emptyList()
+            } catch (e: Exception) {
+                Log.e(TAG, "스캔 결과 읽기 실패: ${e.message}")
+                return@withContext emptyList()
+            }
+
+            Log.d(TAG, "=== 실험적 스캔 완료: ${results.size}개 발견 ===")
+            return@withContext results
+
+        } catch (e: Exception) {
+            Log.e(TAG, "실험적 스캔 중 오류", e)
+            return@withContext emptyList()
+        }
+    }
+
+    /**
+     * Wi-Fi 스캔에 필요한 권한들을 확인
+     */
+    fun getRequiredWifiScanPermissions(): List<String> {
+        val permissions = mutableListOf<String>()
+
+        // 기본 위치 권한 (모든 Android 버전)
+        permissions.add(android.Manifest.permission.ACCESS_FINE_LOCATION)
+
+        // Android 13+ 근처 Wi-Fi 장치 권한
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions.add(android.Manifest.permission.NEARBY_WIFI_DEVICES)
+        }
+
+        return permissions
+    }
+
+    /**
+     * Wi-Fi 스캔을 위한 모든 권한이 허용되었는지 확인
+     */
+    fun hasAllWifiScanPermissions(): Boolean {
+        val hasFineLocation = ContextCompat.checkSelfPermission(
+            context, android.Manifest.permission.ACCESS_FINE_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+        val hasNearbyWifiDevices = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
+                context, android.Manifest.permission.NEARBY_WIFI_DEVICES
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        } else true // Android 13 미만에서는 필요 없음
+
+        return hasFineLocation && hasNearbyWifiDevices
+    }
+
+    /**
+     * 부족한 Wi-Fi 스캔 권한 목록 반환
+     */
+    fun getMissingWifiScanPermissions(): List<String> {
+        val missing = mutableListOf<String>()
+
+        // ACCESS_FINE_LOCATION 확인
+        if (ContextCompat.checkSelfPermission(
+                context, android.Manifest.permission.ACCESS_FINE_LOCATION
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            missing.add(android.Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+
+        // Android 13+ NEARBY_WIFI_DEVICES 확인
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    context, android.Manifest.permission.NEARBY_WIFI_DEVICES
+                ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) {
+                missing.add(android.Manifest.permission.NEARBY_WIFI_DEVICES)
+            }
+        }
+
+        return missing
+    }
+
+    /**
+     * Wi-Fi 스캔 권한 상태를 상세히 분석
+     */
+    fun analyzeWifiScanPermissionStatus(): WifiScanPermissionStatus {
+        val hasFineLocation = ContextCompat.checkSelfPermission(
+            context, android.Manifest.permission.ACCESS_FINE_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+        val hasNearbyWifiDevices = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
+                context, android.Manifest.permission.NEARBY_WIFI_DEVICES
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        } else true
+
+        val isWifiEnabled = wifiManager.isWifiEnabled
+        val isLocationEnabled = isLocationEnabled()
+
+        return WifiScanPermissionStatus(
+            hasFineLocationPermission = hasFineLocation,
+            hasNearbyWifiDevicesPermission = hasNearbyWifiDevices,
+            isWifiEnabled = isWifiEnabled,
+            isLocationEnabled = isLocationEnabled,
+            canScan = hasFineLocation && hasNearbyWifiDevices && isWifiEnabled && isLocationEnabled,
+            androidVersion = Build.VERSION.SDK_INT,
+            missingPermissions = getMissingWifiScanPermissions()
+        )
+    }
+
+    /**
+     * Wi-Fi 스캔 권한 요청을 위한 설명 메시지 생성
+     */
+    fun getPermissionRationaleMessage(): String {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            "카메라와 Wi-Fi 연결을 위해 다음 권한이 필요합니다:\n\n" +
+                    "• 위치 권한: 주변 Wi-Fi 네트워크를 검색하기 위해\n" +
+                    "• 근처 Wi-Fi 장치 권한: Wi-Fi 네트워크에 연결하기 위해\n\n" +
+                    "이 권한들은 오직 카메라 연결 목적으로만 사용됩니다."
+        } else {
+            "카메라와 Wi-Fi 연결을 위해 위치 권한이 필요합니다.\n\n" +
+                    "이 권한은 주변 Wi-Fi 네트워크 검색을 위해서만 사용되며, " +
+                    "실제 위치 정보는 수집하지 않습니다."
+        }
+    }
+
+    /**
+     * 권한별 설명 메시지
+     */
+    fun getPermissionDescription(permission: String): String {
+        return when (permission) {
+            android.Manifest.permission.ACCESS_FINE_LOCATION -> {
+                "위치 권한 (필수)\n주변 Wi-Fi 네트워크를 검색하기 위해 필요합니다."
+            }
+
+            android.Manifest.permission.NEARBY_WIFI_DEVICES -> {
+                "근처 Wi-Fi 장치 권한 (Android 13+)\nWi-Fi 네트워크 연결을 위해 필요합니다."
+            }
+
+            else -> "알 수 없는 권한: $permission"
+        }
+    }
+
+    /**
+     * 권한이 영구적으로 거부되었는지 확인 (shouldShowRequestPermissionRationale 사용)
+     */
+    fun shouldShowPermissionRationale(activity: Activity, permission: String): Boolean {
+        return androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(
+            activity,
+            permission
+        )
+    }
+
+    /**
+     * 설정 앱으로 이동하는 Intent 생성
+     */
+    fun createAppSettingsIntent(): Intent {
+        return Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = android.net.Uri.fromParts("package", context.packageName, null)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+    }
+
+    /**
+     * Wi-Fi 설정 화면으로 이동하는 Intent 생성
+     */
+    fun createWifiSettingsIntent(): Intent {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                Intent(android.provider.Settings.Panel.ACTION_WIFI)
+            } catch (e: Exception) {
+                Intent(android.provider.Settings.ACTION_WIFI_SETTINGS)
+            }
+        } else {
+            Intent(android.provider.Settings.ACTION_WIFI_SETTINGS)
+        }.apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+    }
 }
+
+data class WifiScanPermissionStatus(
+    val hasFineLocationPermission: Boolean,
+    val hasNearbyWifiDevicesPermission: Boolean,
+    val isWifiEnabled: Boolean,
+    val isLocationEnabled: Boolean,
+    val canScan: Boolean,
+    val androidVersion: Int,
+    val missingPermissions: List<String>
+)
