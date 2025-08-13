@@ -67,6 +67,10 @@ class PtpipDataSource @Inject constructor(
     private val _wifiNetworkState = MutableStateFlow(WifiNetworkState(false, false, null, null))
     val wifiNetworkState: StateFlow<WifiNetworkState> = _wifiNetworkState.asStateFlow()
 
+    // AP 모드 강제 여부 (탭 선택 등으로 AP 모드를 명시적으로 사용하는 경우)
+    private val _isApModeForced = MutableStateFlow(false)
+    val isApModeForced: StateFlow<Boolean> = _isApModeForced.asStateFlow()
+
     companion object {
         private const val TAG = "PtpipDataSource"
         private const val RECONNECT_DELAY_MS = 3000L
@@ -248,7 +252,13 @@ class PtpipDataSource @Inject constructor(
     suspend fun discoverCameras(forceApMode: Boolean): List<PtpipCamera> {
         return try {
             Log.d(TAG, "카메라 검색 시작")
-            
+
+            // 연결 시도와 검색이 겹치지 않도록 직렬화: 연결 중이면 기존 목록 유지 반환
+            if (_connectionState.value == PtpipConnectionState.CONNECTING) {
+                Log.d(TAG, "연결 진행 중 - 검색 건너뜀 (직렬화 보호)")
+                return _discoveredCameras.value
+            }
+
             // Wi-Fi 연결 상태 확인
             if (!wifiHelper.isWifiConnected()) {
                 Log.w(TAG, "Wi-Fi 네트워크에 연결되어 있지 않음")
@@ -330,6 +340,9 @@ class PtpipDataSource @Inject constructor(
             Log.i(TAG, "스마트 카메라 연결 시작: ${camera.name}")
             _connectionState.value = PtpipConnectionState.CONNECTING
 
+            // AP 모드 강제 플래그 설정 (전역 표기용)
+            _isApModeForced.value = forceApMode
+
             // 라이브러리가 로드되지 않은 경우 로드
             ensureLibrariesLoaded()
 
@@ -353,69 +366,56 @@ class PtpipDataSource @Inject constructor(
                 return@withContext false
             }
 
+            // AP 모드 강제: libgphoto2로만 연결 시도 (폴백 없음)
+            if (forceApMode) {
+                // 검색/소켓 테스트와의 간섭 방지를 위한 짧은 안정화 대기
+                kotlinx.coroutines.delay(200)
+                val libDir = context.applicationInfo.nativeLibraryDir
+                val result = try {
+                    Log.i(TAG, "AP모드 강제: libgphoto2 초기화 시도")
+                    CameraNative.initCameraForAPMode(camera.ipAddress, camera.port, libDir)
+                } catch (e: Exception) {
+                    Log.w(TAG, "libgphoto2 초기화 실패: ${e.message}")
+                    null
+                }
+
+                val ok = (result == "OK" || result == "GP_OK" || result?.contains(
+                    "Success",
+                    ignoreCase = true
+                ) == true)
+                if (ok) {
+                    Log.i(TAG, "✅ AP 모드 (강제): libgphoto2 연결 성공!")
+                    _connectionState.value = PtpipConnectionState.CONNECTED
+                    connectedCamera = camera
+                    lastConnectedCamera = camera
+
+                    // AP 모드 성공 시 이벤트 리스너 시작
+                    startAutomaticFileReceiving(camera)
+                    return@withContext true
+                } else {
+                    Log.e(TAG, "❌ AP 모드 (강제): libgphoto2 초기화 실패 - 폴백 없음")
+                    _connectionState.value = PtpipConnectionState.ERROR
+                    return@withContext false
+                }
+            }
+
             // 1단계: libgphoto2 PTP/IP 연결 시도 (AP 모드 감지)
             Log.i(TAG, "=== 1단계: libgphoto2 PTP/IP 연결 시도 ===")
             val libDir = context.applicationInfo.nativeLibraryDir
             val ptpipResult = try {
-                if (forceApMode) {
-                    Log.i(TAG, "AP모드 강제: 단순 연결 방식 사용 (탭 선택 기반)")
-                    CameraNative.initCameraForAPMode(camera.ipAddress, camera.port, libDir)
-                } else {
-                    Log.i(TAG, "STA모드: 복잡한 연결 방식 사용")
-                    CameraNative.initCameraWithPtpip(camera.ipAddress, camera.port, libDir)
-                }
+                Log.i(TAG, "STA모드: 복잡한 연결 방식 사용")
+                CameraNative.initCameraWithPtpip(camera.ipAddress, camera.port, libDir)
             } catch (e: Exception) {
                 Log.w(TAG, "libgphoto2 초기화 실패: ${e.message}")
                 null
             }
 
-            if ((ptpipResult == "OK" || ptpipResult == "GP_OK" || ptpipResult?.contains(
-                    "Success",
-                    ignoreCase = true
-                ) == true) && forceApMode
-            ) {
-                Log.i(TAG, "✅ AP 모드 (탭 선택): libgphoto2 연결 성공!")
-                _connectionState.value = PtpipConnectionState.CONNECTED
-                connectedCamera = camera
-                lastConnectedCamera = camera
+            val initOk = (ptpipResult == "OK" || ptpipResult == "GP_OK" || ptpipResult?.contains(
+                "Success",
+                ignoreCase = true
+            ) == true)
 
-                // AP 모드 성공 시 이벤트 리스너 시작
-                startAutomaticFileReceiving(camera)
-
-                return@withContext true
-            }
-
-            // AP 모드 강제인 경우 libgphoto2 실패해도 PTPIP로만 연결 시도
-            if (forceApMode) {
-                Log.i(TAG, "AP 모드 강제: libgphoto2 실패했지만 기본 PTPIP 연결만 시도")
-
-                if (!connectionManager.establishConnection(camera)) {
-                    Log.e(TAG, "AP 모드: PTPIP 연결도 실패")
-                    _connectionState.value = PtpipConnectionState.ERROR
-                    return@withContext false
-                }
-
-                val deviceInfo = connectionManager.getDeviceInfo()
-                if (deviceInfo != null) {
-                    _cameraInfo.value = deviceInfo
-                    Log.i(
-                        TAG,
-                        "AP 모드: PTPIP만으로 연결 성공 - ${deviceInfo.manufacturer} ${deviceInfo.model}"
-                    )
-                } else {
-                    Log.w(TAG, "AP 모드: 장치 정보 확인 실패지만 연결 유지")
-                }
-
-                _connectionState.value = PtpipConnectionState.CONNECTED
-                connectedCamera = camera
-                lastConnectedCamera = camera
-
-                // AP 모드에서 이벤트 리스너 시작
-                startAutomaticFileReceiving(camera)
-
-                return@withContext true
-            }
-
+            // 비강제 모드(STA/일반)에서는 기존 로직 유지
             // 2단계: 기본 PTPIP 연결로 제조사 확인
             Log.i(TAG, "=== 2단계: 기본 PTPIP 연결로 제조사 확인 ===")
             if (!connectionManager.establishConnection(camera)) {
@@ -477,6 +477,9 @@ class PtpipDataSource @Inject constructor(
                     // STA 모드에서도 이벤트 리스너 시작
                     startAutomaticFileReceiving(camera)
 
+                    // STA 경로에서는 AP 강제 표시를 해제
+                    _isApModeForced.value = false
+
                     return@withContext true
                 } else {
                     Log.e(TAG, "❌ 니콘 STA 모드 인증 실패")
@@ -490,12 +493,12 @@ class PtpipDataSource @Inject constructor(
                 lastConnectedCamera = camera
 
                 // 니콘이 아닌 카메라의 경우 libgphoto2 세션 유지 초기화
-                val libDir = context.applicationInfo.nativeLibraryDir
+                val libDir2 = context.applicationInfo.nativeLibraryDir
                 try {
                     val initResult = CameraNative.initCameraWithSessionMaintenance(
                         camera.ipAddress,
                         camera.port,
-                        libDir
+                        libDir2
                     )
                     if (initResult >= 0) {
                         Log.i(TAG, "✅ libgphoto2 세션 유지 초기화 성공!")
@@ -508,6 +511,9 @@ class PtpipDataSource @Inject constructor(
 
                 // 다른 카메라에서도 이벤트 리스너 시작
                 startAutomaticFileReceiving(camera)
+
+                // STA/일반 경로에서는 AP 강제 표시를 해제
+                _isApModeForced.value = false
 
                 return@withContext true
             }
@@ -765,6 +771,8 @@ class PtpipDataSource @Inject constructor(
                 lastConnectedCamera = null
                 _connectionState.value = PtpipConnectionState.DISCONNECTED
                 _cameraInfo.value = null
+                // 연결 해제 시 AP 강제 표시 해제
+                _isApModeForced.value = false
                 Log.d(TAG, "카메라 연결 해제 완료")
             } else {
                 _connectionState.value = PtpipConnectionState.CONNECTED
@@ -891,6 +899,16 @@ class PtpipDataSource @Inject constructor(
     fun isWifiConnected(): Boolean = wifiHelper.isWifiConnected()
 
     /**
+     * Wi-Fi 활성화 여부 확인
+     */
+    fun isWifiEnabled(): Boolean = wifiHelper.isWifiEnabled()
+
+    /**
+     * 위치 서비스 활성화 여부 확인
+     */
+    fun isLocationEnabled(): Boolean = wifiHelper.isLocationEnabled()
+
+    /**
      * Wi-Fi STA 동시 연결 지원 여부 확인
      */
     fun isStaConcurrencySupported(): Boolean = wifiHelper.isStaConcurrencySupported()
@@ -916,4 +934,38 @@ class PtpipDataSource @Inject constructor(
      * 디버그용: NikonAuthenticationService 접근
      */
     fun getNikonAuthService() = nikonAuthService
+
+    /**
+     * 디버그용: WifiNetworkHelper 접근
+     */
+    fun getWifiHelper() = wifiHelper
+
+    /**
+     * 주변 Wi‑Fi SSID 스캔
+     */
+    suspend fun scanNearbyWifiSSIDs(): List<String> {
+        return try {
+            wifiHelper.scanNearbyWifiSSIDs()
+        } catch (e: Exception) {
+            Log.e(TAG, "Wi‑Fi 스캔 위임 중 오류", e)
+            emptyList()
+        }
+    }
+
+    /**
+     * WifiNetworkSpecifier 연결 요청
+     */
+    fun requestWifiSpecifierConnection(
+        ssid: String,
+        passphrase: String? = null,
+        onResult: (Boolean) -> Unit
+    ) {
+        wifiHelper.requestConnectionWithSpecifier(
+            ssid = ssid,
+            passphrase = passphrase,
+            requireNoInternet = true,
+            bindProcess = true,
+            onResult = onResult
+        )
+    }
 }
