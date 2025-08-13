@@ -130,29 +130,42 @@ class SplashActivity : ComponentActivity() {
                 // 라이브러리 로딩 전 상태 확인
                 val alreadyLoaded = NativeCall()
                 Log.d("SplashActivity", "라이브러리 로딩 전 상태: ${if (alreadyLoaded) "이미 로드됨" else "로드되지 않음"}")
-                
-                if (alreadyLoaded) {
-                    Log.i("SplashActivity", "✅ 라이브러리가 이미 로드되어 있음 - 스킵")
+
+                val startTime = System.currentTimeMillis()
+
+                if (!alreadyLoaded) {
+                    Log.i("SplashActivity", "📦 Libgphoto2 라이브러리 로딩 시작...")
+
+                    // 라이브러리 로딩
+                    NativeCall()
+
+                    val loadingTime = System.currentTimeMillis() - startTime
+                    Log.i("SplashActivity", "✅ 라이브러리 로딩 완료! (소요시간: ${loadingTime}ms)")
+                } else {
+                    Log.i("SplashActivity", "✅ 라이브러리가 이미 로드되어 있음")
+                }
+
+                // 라이브러리 로딩 후 환경변수 설정
+                val nativeLibDir = applicationContext.applicationInfo.nativeLibraryDir
+                Log.d("SplashActivity", "네이티브 라이브러리 경로: $nativeLibDir")
+
+                val envSetupResult = NativeCall(nativeLibDir)
+                if (!envSetupResult) {
+                    Log.e("SplashActivity", "❌ 환경변수 설정 실패")
                     withContext(Dispatchers.Main) {
-                        libraryLoadingStatus = "라이브러리 준비 완료"
-                        isLibraryLoaded = true
+                        libraryLoadingStatus = "환경변수 설정 실패"
+                        isLibraryLoaded = false
                     }
                     return@launch
                 }
-                
-                val startTime = System.currentTimeMillis()
-                Log.i("SplashActivity", "📦 Libgphoto2 라이브러리 로딩 시작...")
-                
-                NativeCall()
-                
-                val endTime = System.currentTimeMillis()
-                val loadingTime = endTime - startTime
-                
-                Log.i("SplashActivity", "✅ 라이브러리 로딩 완료! (소요시간: ${loadingTime}ms)")
+
+                Log.i("SplashActivity", "✅ 환경변수 설정 완료")
+
+                val totalTime = System.currentTimeMillis() - startTime
                 Log.d("SplashActivity", "라이브러리 상태 확인: ${NativeCall()}")
                 
                 withContext(Dispatchers.Main) {
-                    libraryLoadingStatus = "라이브러리 로딩 완료 (${loadingTime}ms)"
+                    libraryLoadingStatus = "라이브러리 준비 완료 (${totalTime}ms)"
                     isLibraryLoaded = true
                 }
                 
