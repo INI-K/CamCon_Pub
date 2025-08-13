@@ -249,10 +249,11 @@ class PtpipViewModel @Inject constructor(
                             Log.e(TAG, errorMsg)
                             _errorMessage.value = errorMsg
                         } else {
-                            Log.i(TAG, "Wi-Fi 연결 성공: $ssid - 카메라 검색 시작")
+                            Log.i(TAG, "Wi-Fi 연결 성공: $ssid - 카메라 정보 직접 생성")
                             _errorMessage.value = null // 기존 오류 메시지 클리어
-                            // 연결 성공 시 자동으로 카메라 검색
-                            discoverCameras()
+
+                            // 연결 성공 시 카메라 정보 바로 생성 (검색 생략)
+                            createCameraFromConnectedWifi(ssid)
                         }
                     },
                     onError = { errorMsg: String ->
@@ -265,6 +266,34 @@ class PtpipViewModel @Inject constructor(
                 Log.e(TAG, errorMsg, e)
                 _errorMessage.value = errorMsg
             }
+        }
+    }
+
+    private fun createCameraFromConnectedWifi(ssid: String) {
+        viewModelScope.launch {
+            // 연결된 Wi-Fi의 SSID를 사용하여 카메라 정보 생성
+            val wifiHelper = ptpipDataSource.getWifiHelper()
+            val cameraIP = wifiHelper.detectCameraIPFromCurrentNetwork() ?: "192.168.1.1"
+            val currentPortValue = 15740 // 기본 PTP/IP 포트
+
+            val camera = PtpipCamera(
+                name = "$ssid (연결됨)",
+                ipAddress = cameraIP,
+                port = currentPortValue,
+                isOnline = true
+            )
+
+            Log.i(
+                TAG,
+                "Wi-Fi 연결 성공 후 카메라 정보 생성: ${camera.name} (${camera.ipAddress}:${camera.port})"
+            )
+
+            // 카메라 정보를 선택
+            _selectedCamera.value = camera
+
+            // 연결된 Wi-Fi에서 검색하지 말고 바로 연결 시도
+            Log.i(TAG, "Wi-Fi 연결 성공 후 카메라 연결 시도")
+            connectToCamera(camera)
         }
     }
 

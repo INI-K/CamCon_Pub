@@ -1508,6 +1508,57 @@ class WifiNetworkHelper @Inject constructor(
         val securityType = getWifiSecurityType(ssid)
         return securityType != null && securityType != "OPEN"
     }
+
+    /**
+     * 현재 연결된 네트워크에서 카메라 IP 즉시 감지
+     */
+    fun detectCameraIPFromCurrentNetwork(): String? {
+        return try {
+            Log.d(TAG, "현재 네트워크에서 카메라 IP 감지 시작")
+
+            // 1. 게이트웨이 IP 확인
+            val dhcpInfo = wifiManager.dhcpInfo
+            if (dhcpInfo != null) {
+                val gatewayIP = dhcpInfo.gateway
+                if (gatewayIP != 0) {
+                    val gatewayIpStr = String.format(
+                        "%d.%d.%d.%d",
+                        gatewayIP and 0xff,
+                        gatewayIP shr 8 and 0xff,
+                        gatewayIP shr 16 and 0xff,
+                        gatewayIP shr 24 and 0xff
+                    )
+                    Log.d(TAG, "게이트웨이 IP 감지: $gatewayIpStr")
+                    return gatewayIpStr
+                }
+            }
+
+            // 2. 연결 정보에서 IP 추출
+            val connectionInfo = wifiManager.connectionInfo
+            if (connectionInfo != null) {
+                val ipAddress = connectionInfo.ipAddress
+                if (ipAddress != 0) {
+                    val networkBase = String.format(
+                        "%d.%d.%d",
+                        ipAddress and 0xff,
+                        ipAddress shr 8 and 0xff,
+                        ipAddress shr 16 and 0xff
+                    )
+                    val cameraIP = "$networkBase.1"
+                    Log.d(TAG, "추정 카메라 IP: $cameraIP")
+                    return cameraIP
+                }
+            }
+
+            // 3. 기본값 반환
+            Log.d(TAG, "기본 카메라 IP 사용: 192.168.1.1")
+            return "192.168.1.1"
+
+        } catch (e: Exception) {
+            Log.e(TAG, "카메라 IP 감지 실패: ${e.message}")
+            return "192.168.1.1"
+        }
+    }
 }
 
 data class WifiScanPermissionStatus(
