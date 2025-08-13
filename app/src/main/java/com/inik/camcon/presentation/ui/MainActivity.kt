@@ -76,11 +76,12 @@ import com.inik.camcon.presentation.ui.screens.components.PtpTimeoutDialog
 import com.inik.camcon.presentation.ui.screens.components.UsbInitializationOverlay
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
+import com.inik.camcon.utils.LogcatManager
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import javax.inject.Inject
 
 sealed class BottomNavItem(val route: String, val titleRes: Int, val icon: ImageVector) {
     object PhotoPreview :
@@ -170,7 +171,7 @@ fun MainScreen(
 
     // 전역 상태 변화 시 로그 출력
     LaunchedEffect(globalConnectionState) {
-        Log.d("MainScreen", "전역 연결 상태 변화: $connectionStatusMessage")
+        LogcatManager.d("MainScreen", "전역 연결 상태 변화: $connectionStatusMessage")
     }
 
     // 테마 모드 상태
@@ -468,8 +469,8 @@ fun MainScreen(
                 else -> connectionStatusMessage
             }
 
-            Log.d("MainActivity", " UI 블로킹 오버레이 표시: $overlayMessage")
-            Log.d(
+            LogcatManager.d("MainActivity", " UI 블로킹 오버레이 표시: $overlayMessage")
+            LogcatManager.d(
                 "MainActivity", "블로킹 조건 - PTP연결:${globalConnectionState.ptpipConnectionState}, " +
                         "메시지초기화:${connectionStatusMessage.contains("초기화 중")}, " +
                         "USB초기화:${cameraUiState.isUsbInitializing}, " +
@@ -480,8 +481,8 @@ fun MainScreen(
         } else {
             // 오버레이가 사라질 때도 로그 출력
             LaunchedEffect(Unit) {
-                Log.d("MainActivity", " UI 블로킹 오버레이 해제됨")
-                Log.d(
+                LogcatManager.d("MainActivity", " UI 블로킹 오버레이 해제됨")
+                LogcatManager.d(
                     "MainActivity",
                     "해제 조건 - PTP연결:${globalConnectionState.ptpipConnectionState}, " +
                             "메시지초기화:${connectionStatusMessage.contains("초기화 중")}, " +
@@ -513,9 +514,9 @@ class MainActivity : ComponentActivity() {
     ) { permissions ->
         val allGranted = permissions.all { it.value }
         if (allGranted) {
-            Log.d("MainActivity", "모든 저장소 권한이 승인됨")
+            LogcatManager.d("MainActivity", "모든 저장소 권한이 승인됨")
         } else {
-            Log.w("MainActivity", "일부 저장소 권한이 거부됨: $permissions")
+            LogcatManager.w("MainActivity", "일부 저장소 권한이 거부됨: $permissions")
         }
     }
 
@@ -527,7 +528,7 @@ class MainActivity : ComponentActivity() {
          */
         fun forceRestartApp(activity: ComponentActivity) {
             try {
-                Log.d(TAG, "앱 강제 재시작 시작")
+                LogcatManager.d(TAG, "앱 강제 재시작 시작")
 
                 // 1. 먼저 Activity 상태 정리
                 activity.finishAffinity()
@@ -535,19 +536,19 @@ class MainActivity : ComponentActivity() {
                 // 2. 네이티브 리소스 정리를 백그라운드 스레드에서 수행
                 Thread {
                     try {
-                        Log.d(TAG, "closeCamera 호출")
+                        LogcatManager.d(TAG, "closeCamera 호출")
                         com.inik.camcon.CameraNative.closeCamera()
                         com.inik.camcon.CameraNative.closeLogFile()
-                        Log.d(TAG, "네이티브 리소스 정리 완료")
+                        LogcatManager.d(TAG, "네이티브 리소스 정리 완료")
                     } catch (e: Exception) {
-                        Log.w(TAG, "네이티브 리소스 정리 중 오류", e)
+                        LogcatManager.w(TAG, "네이티브 리소스 정리 중 오류", e)
                     }
                 }.start()
 
                 // 3. 더 긴 지연 후 재시작 실행 (네이티브 정리 완료 대기)
                 android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                     try {
-                        Log.d(TAG, "앱 재시작 실행")
+                        LogcatManager.d(TAG, "앱 재시작 실행")
 
                         // 재시작 Intent 생성
                         val restartIntent = Intent(activity, MainActivity::class.java).apply {
@@ -561,21 +562,21 @@ class MainActivity : ComponentActivity() {
 
                         // 프로세스 종료는 더 긴 지연 후 실행
                         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                            Log.d(TAG, "프로세스 종료 실행")
+                            LogcatManager.d(TAG, "프로세스 종료 실행")
                             android.os.Process.killProcess(android.os.Process.myPid())
                         }, 1000) // 1초 후 프로세스 종료
 
                     } catch (e: Exception) {
-                        Log.e(TAG, "재시작 실행 중 오류", e)
+                        LogcatManager.e(TAG, "재시작 실행 중 오류", e)
                         // Fallback: PackageManager 사용
                         restartWithPackageManager(activity)
                     }
                 }, 2000) // 2초 지연으로 네이티브 정리 완료 대기
 
-                Log.d(TAG, "재시작 예약 완료")
+                LogcatManager.d(TAG, "재시작 예약 완료")
 
             } catch (e: Exception) {
-                Log.e(TAG, "앱 재시작 중 오류", e)
+                LogcatManager.e(TAG, "앱 재시작 중 오류", e)
                 // 오류 발생 시 PackageManager 재시작 시도
                 restartWithPackageManager(activity)
             }
@@ -586,7 +587,7 @@ class MainActivity : ComponentActivity() {
          */
         private fun restartWithPackageManager(activity: ComponentActivity) {
             try {
-                Log.d(TAG, "PackageManager 재시작 시도")
+                LogcatManager.d(TAG, "PackageManager 재시작 시도")
                 val packageManager = activity.packageManager
                 val restartIntent = packageManager.getLaunchIntentForPackage(activity.packageName)
 
@@ -599,12 +600,12 @@ class MainActivity : ComponentActivity() {
                     activity.finishAffinity()
                     android.os.Process.killProcess(android.os.Process.myPid())
                 } else {
-                    Log.e(TAG, "PackageManager 재시작 실패 - Intent 없음")
+                    LogcatManager.e(TAG, "PackageManager 재시작 실패 - Intent 없음")
                     activity.finishAffinity()
                     System.exit(0)
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "PackageManager 재시작 중 오류", e)
+                LogcatManager.e(TAG, "PackageManager 재시작 중 오류", e)
                 activity.finishAffinity()
                 System.exit(0)
             }
@@ -615,28 +616,28 @@ class MainActivity : ComponentActivity() {
          */
         fun simpleRestartApp(activity: ComponentActivity) {
             try {
-                Log.d(TAG, "간단한 앱 재시작 시작")
+                LogcatManager.d(TAG, "간단한 앱 재시작 시작")
 
                 // 네이티브 리소스 정리
                 Thread {
                     try {
                         com.inik.camcon.CameraNative.closeCamera()
                         com.inik.camcon.CameraNative.closeLogFile()
-                        Log.d(TAG, "간단 재시작: 네이티브 리소스 정리 완료")
+                        LogcatManager.d(TAG, "간단 재시작: 네이티브 리소스 정리 완료")
                     } catch (e: Exception) {
-                        Log.w(TAG, "간단 재시작: 네이티브 리소스 정리 중 오류", e)
+                        LogcatManager.w(TAG, "간단 재시작: 네이티브 리소스 정리 중 오류", e)
                     }
                 }.start()
 
                 // 0.5초 후 앱 종료 (사용자가 수동으로 재시작해야 함)
                 android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                    Log.d(TAG, "앱 종료 - 사용자 수동 재시작 필요")
+                    LogcatManager.d(TAG, "앱 종료 - 사용자 수동 재시작 필요")
                     activity.finishAffinity()
                     android.os.Process.killProcess(android.os.Process.myPid())
                 }, 500)
 
             } catch (e: Exception) {
-                Log.e(TAG, "간단한 앱 재시작 중 오류", e)
+                LogcatManager.e(TAG, "간단한 앱 재시작 중 오류", e)
                 activity.finishAffinity()
                 android.os.Process.killProcess(android.os.Process.myPid())
             }
@@ -647,7 +648,7 @@ class MainActivity : ComponentActivity() {
          */
         fun systemRestartApp(activity: ComponentActivity) {
             try {
-                Log.d(TAG, "시스템 재시작 시작")
+                LogcatManager.d(TAG, "시스템 재시작 시작")
 
                 // 1. makeRestartActivityTask를 사용한 즉시 재시작
                 val packageManager = activity.packageManager
@@ -657,9 +658,9 @@ class MainActivity : ComponentActivity() {
                 if (componentName != null) {
                     val mainIntent = Intent.makeRestartActivityTask(componentName)
                     activity.startActivity(mainIntent)
-                    Log.d(TAG, "makeRestartActivityTask 실행 완료")
+                    LogcatManager.d(TAG, "makeRestartActivityTask 실행 완료")
                 } else {
-                    Log.e(TAG, "ComponentName을 찾을 수 없음")
+                    LogcatManager.e(TAG, "ComponentName을 찾을 수 없음")
                     // Fallback: 기존 방식
                     restartWithPackageManager(activity)
                     return
@@ -670,9 +671,9 @@ class MainActivity : ComponentActivity() {
                     try {
                         com.inik.camcon.CameraNative.closeCamera()
                         com.inik.camcon.CameraNative.closeLogFile()
-                        Log.d(TAG, "시스템 재시작: 네이티브 리소스 정리 완료")
+                        LogcatManager.d(TAG, "시스템 재시작: 네이티브 리소스 정리 완료")
                     } catch (e: Exception) {
-                        Log.w(TAG, "시스템 재시작: 네이티브 리소스 정리 중 오류", e)
+                        LogcatManager.w(TAG, "시스템 재시작: 네이티브 리소스 정리 중 오류", e)
                     }
                 }.start()
 
@@ -680,7 +681,7 @@ class MainActivity : ComponentActivity() {
                 kotlin.system.exitProcess(0)
 
             } catch (e: Exception) {
-                Log.e(TAG, "시스템 재시작 중 오류", e)
+                LogcatManager.e(TAG, "시스템 재시작 중 오류", e)
                 // Fallback: 기존 방식
                 restartWithPackageManager(activity)
             }
@@ -691,7 +692,7 @@ class MainActivity : ComponentActivity() {
          */
         fun instantRestartApp(activity: ComponentActivity) {
             try {
-                Log.d(TAG, "즉시 재시작 시작")
+                LogcatManager.d(TAG, "즉시 재시작 시작")
 
                 // 1. makeRestartActivityTask를 사용한 즉시 재시작
                 val packageManager = activity.packageManager
@@ -701,9 +702,9 @@ class MainActivity : ComponentActivity() {
                 if (componentName != null) {
                     val mainIntent = Intent.makeRestartActivityTask(componentName)
                     activity.startActivity(mainIntent)
-                    Log.d(TAG, "즉시 재시작: makeRestartActivityTask 실행 완료")
+                    LogcatManager.d(TAG, "즉시 재시작: makeRestartActivityTask 실행 완료")
                 } else {
-                    Log.e(TAG, "즉시 재시작: ComponentName을 찾을 수 없음")
+                    LogcatManager.e(TAG, "즉시 재시작: ComponentName을 찾을 수 없음")
                     // Fallback: 기존 방식
                     val restartIntent = Intent(activity, MainActivity::class.java).apply {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -718,9 +719,9 @@ class MainActivity : ComponentActivity() {
                     try {
                         com.inik.camcon.CameraNative.closeCamera()
                         com.inik.camcon.CameraNative.closeLogFile()
-                        Log.d(TAG, "즉시 재시작: 네이티브 리소스 정리 완료")
+                        LogcatManager.d(TAG, "즉시 재시작: 네이티브 리소스 정리 완료")
                     } catch (e: Exception) {
-                        Log.w(TAG, "즉시 재시작: 네이티브 리소스 정리 중 오류", e)
+                        LogcatManager.w(TAG, "즉시 재시작: 네이티브 리소스 정리 중 오류", e)
                     }
                 }.start()
 
@@ -728,7 +729,7 @@ class MainActivity : ComponentActivity() {
                 kotlin.system.exitProcess(0)
 
             } catch (e: Exception) {
-                Log.e(TAG, "즉시 재시작 중 오류", e)
+                LogcatManager.e(TAG, "즉시 재시작 중 오류", e)
                 // Fallback: 기존 방식
                 try {
                     activity.finishAffinity()
@@ -744,13 +745,13 @@ class MainActivity : ComponentActivity() {
          */
         fun restartAppAfterCameraCleanup(activity: ComponentActivity) {
             try {
-                Log.d(TAG, "카메라 정리 후 앱 재시작 시작")
+                LogcatManager.d(TAG, "카메라 정리 후 앱 재시작 시작")
 
                 // 카메라 정리 완료 콜백을 사용한 안전한 재시작
                 com.inik.camcon.CameraNative.closeCameraAsync(
                     object : com.inik.camcon.CameraCleanupCallback {
                         override fun onCleanupComplete(success: Boolean, message: String) {
-                            Log.d(TAG, "카메라 정리 완료: success=$success, message=$message")
+                            LogcatManager.d(TAG, "카메라 정리 완료: success=$success, message=$message")
 
                             // 메인 스레드에서 재시작 실행
                             android.os.Handler(android.os.Looper.getMainLooper()).post {
@@ -766,7 +767,7 @@ class MainActivity : ComponentActivity() {
                                     if (componentName != null) {
                                         val mainIntent = Intent.makeRestartActivityTask(componentName)
                                         activity.startActivity(mainIntent)
-                                        Log.d(TAG, "카메라 정리 후 재시작 실행 완료")
+                                        LogcatManager.d(TAG, "카메라 정리 후 재시작 실행 완료")
                                     } else {
                                         // Fallback
                                         val restartIntent = Intent(activity, MainActivity::class.java).apply {
@@ -782,7 +783,7 @@ class MainActivity : ComponentActivity() {
                                     kotlin.system.exitProcess(0)
 
                                 } catch (e: Exception) {
-                                    Log.e(TAG, "카메라 정리 후 재시작 실행 중 오류", e)
+                                    LogcatManager.e(TAG, "카메라 정리 후 재시작 실행 중 오류", e)
                                     // Fallback: 기존 방식
                                     systemRestartApp(activity)
                                 }
@@ -792,7 +793,7 @@ class MainActivity : ComponentActivity() {
                 )
 
             } catch (e: Exception) {
-                Log.e(TAG, "카메라 정리 후 재시작 중 오류", e)
+                LogcatManager.e(TAG, "카메라 정리 후 재시작 중 오류", e)
                 // Fallback: 기존 방식 사용
                 systemRestartApp(activity)
             }
@@ -809,9 +810,9 @@ class MainActivity : ComponentActivity() {
         try {
             val serviceIntent = Intent(this, BackgroundSyncService::class.java)
             ContextCompat.startForegroundService(this, serviceIntent)
-            Log.d(TAG, "BackgroundSyncService 시작 요청됨")
+            LogcatManager.d(TAG, "BackgroundSyncService 시작 요청됨")
         } catch (e: Exception) {
-            Log.w(TAG, "BackgroundSyncService 시작 실패", e)
+            LogcatManager.w(TAG, "BackgroundSyncService 시작 실패", e)
         }
 
         // 사용자 구독 티어 로그 출력
@@ -820,7 +821,7 @@ class MainActivity : ComponentActivity() {
                 // 상세한 티어 정보를 한 번만 로그에 출력
                 getSubscriptionUseCase.logCurrentTier()
             } catch (e: Exception) {
-                Log.e(TAG, "사용자 티어 정보 로드 실패", e)
+                LogcatManager.e(TAG, "사용자 티어 정보 로드 실패", e)
             }
         }
 
@@ -894,19 +895,19 @@ class MainActivity : ComponentActivity() {
                         intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
                     }
                 device?.let {
-                    Log.d(TAG, "USB 카메라 디바이스가 연결됨: ${it.deviceName}")
-                    Log.d(
+                    LogcatManager.d(TAG, "USB 카메라 디바이스가 연결됨: ${it.deviceName}")
+                    LogcatManager.d(
                         TAG,
                         "제조사ID: 0x${it.vendorId.toString(16)}, 제품ID: 0x${it.productId.toString(16)}"
                     )
 
                     // 즉시 권한 요청
                     if (!isUsbCameraDevice(it)) {
-                        Log.d(TAG, "카메라 디바이스가 아님")
+                        LogcatManager.d(TAG, "카메라 디바이스가 아님")
                         return@withContext
                     }
 
-                    Log.d(TAG, "카메라 디바이스 확인됨, 권한 요청")
+                    LogcatManager.d(TAG, "카메라 디바이스 확인됨, 권한 요청")
 
                     withContext(Dispatchers.Main) {
                         usbCameraManager.requestPermission(it)
@@ -922,7 +923,7 @@ class MainActivity : ComponentActivity() {
                         intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
                     }
                 device?.let {
-                    Log.d(TAG, "USB 디바이스가 분리됨: ${it.deviceName}")
+                    LogcatManager.d(TAG, "USB 디바이스가 분리됨: ${it.deviceName}")
                 }
             }
         }
@@ -945,7 +946,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        Log.d(TAG, " 앱 포그라운드 진입 - 백그라운드 서비스 상태 확인")
+        LogcatManager.d(TAG, " 앱 포그라운드 진입 - 백그라운드 서비스 상태 확인")
 
         // 앱이 다시 활성화될 때 USB 상태만 확인 (디바이스 재검색은 하지 않음)
         lifecycleScope.launch(Dispatchers.IO) {
@@ -955,7 +956,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
-        Log.d(TAG, " 앱 백그라운드 진입 - 백그라운드 서비스 확인")
+        LogcatManager.d(TAG, " 앱 백그라운드 진입 - 백그라운드 서비스 확인")
 
         // 앱이 백그라운드로 이동할 때 백그라운드 서비스가 실행 중인지 확인
         lifecycleScope.launch(Dispatchers.IO) {
@@ -963,15 +964,15 @@ class MainActivity : ComponentActivity() {
                 // 백그라운드 서비스가 실행 중인지 확인
                 val isServiceRunning = isServiceRunning(BackgroundSyncService::class.java)
                 if (!isServiceRunning) {
-                    Log.d(TAG, " 백그라운드 서비스 재시작 필요")
+                    LogcatManager.d(TAG, " 백그라운드 서비스 재시작 필요")
                     withContext(Dispatchers.Main) {
                         BackgroundSyncService.startService(this@MainActivity)
                     }
                 } else {
-                    Log.d(TAG, " 백그라운드 서비스 이미 실행 중")
+                    LogcatManager.d(TAG, " 백그라운드 서비스 이미 실행 중")
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "백그라운드 서비스 상태 확인 실패", e)
+                LogcatManager.w(TAG, "백그라운드 서비스 상태 확인 실패", e)
             }
         }
     }
@@ -984,14 +985,14 @@ class MainActivity : ComponentActivity() {
             val manager = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
             for (service in manager.getRunningServices(Int.MAX_VALUE)) {
                 if (serviceClass.name == service.service.className) {
-                    Log.d(TAG, "서비스 실행 중: ${serviceClass.simpleName}")
+                    LogcatManager.d(TAG, "서비스 실행 중: ${serviceClass.simpleName}")
                     return true
                 }
             }
-            Log.d(TAG, "서비스 실행되지 않음: ${serviceClass.simpleName}")
+            LogcatManager.d(TAG, "서비스 실행되지 않음: ${serviceClass.simpleName}")
             false
         } catch (e: Exception) {
-            Log.w(TAG, "서비스 상태 확인 실패", e)
+            LogcatManager.w(TAG, "서비스 상태 확인 실패", e)
             false
         }
     }
@@ -1002,19 +1003,19 @@ class MainActivity : ComponentActivity() {
             val currentDevice = usbCameraManager.getCurrentDevice()
 
             if (currentDevice != null) {
-                Log.d(TAG, "앱 재개 시 기존 연결된 디바이스 확인: ${currentDevice.deviceName}")
+                LogcatManager.d(TAG, "앱 재개 시 기존 연결된 디바이스 확인: ${currentDevice.deviceName}")
 
                 // 권한 상태만 확인
                 if (!usbCameraManager.hasUsbPermission.value) {
-                    Log.d(TAG, "기존 디바이스의 권한이 없음, 권한 요청: ${currentDevice.deviceName}")
+                    LogcatManager.d(TAG, "기존 디바이스의 권한이 없음, 권한 요청: ${currentDevice.deviceName}")
                     withContext(Dispatchers.Main) {
                         usbCameraManager.requestPermission(currentDevice)
                     }
                 } else {
-                    Log.d(TAG, "기존 디바이스에 권한이 있음: ${currentDevice.deviceName}")
+                    LogcatManager.d(TAG, "기존 디바이스에 권한이 있음: ${currentDevice.deviceName}")
                     // 권한 있음 + 아직 네이티브 연결이 없다면 자동 초기화 트리거
                     if (!usbCameraManager.isNativeCameraConnected.value) {
-                        Log.d(TAG, "네이티브 연결 없음 - 자동 초기화 시작: ${currentDevice.deviceName}")
+                        LogcatManager.d(TAG, "네이티브 연결 없음 - 자동 초기화 시작: ${currentDevice.deviceName}")
                         withContext(Dispatchers.Main) {
                             usbCameraManager.connectToCamera(currentDevice)
                         }
@@ -1025,30 +1026,30 @@ class MainActivity : ComponentActivity() {
                 // 캐시된 목록이 있을 것이므로 빠르게 처리됨
                 val devices = usbCameraManager.getCameraDevices()
                 if (devices.isNotEmpty()) {
-                    Log.d(TAG, "앱 재개 시 캐시된 디바이스 목록 확인: ${devices.size}개")
+                    LogcatManager.d(TAG, "앱 재개 시 캐시된 디바이스 목록 확인: ${devices.size}개")
 
                     val device = devices.first()
                     if (!usbCameraManager.hasUsbPermission.value) {
-                        Log.d(TAG, "권한이 없는 디바이스 발견, 권한 요청: ${device.deviceName}")
+                        LogcatManager.d(TAG, "권한이 없는 디바이스 발견, 권한 요청: ${device.deviceName}")
                         withContext(Dispatchers.Main) {
                             usbCameraManager.requestPermission(device)
                         }
                     } else {
-                        Log.d(TAG, "카메라 디바이스 연결됨")
+                        LogcatManager.d(TAG, "카메라 디바이스 연결됨")
                         // 권한 있음 + 아직 네이티브 연결이 없다면 자동 초기화 트리거
                         if (!usbCameraManager.isNativeCameraConnected.value) {
-                            Log.d(TAG, "네이티브 연결 없음 - 자동 초기화 시작: ${device.deviceName}")
+                            LogcatManager.d(TAG, "네이티브 연결 없음 - 자동 초기화 시작: ${device.deviceName}")
                             withContext(Dispatchers.Main) {
                                 usbCameraManager.connectToCamera(device)
                             }
                         }
                     }
                 } else {
-                    Log.d(TAG, "앱 재개 시 USB 카메라 디바이스 없음")
+                    LogcatManager.d(TAG, "앱 재개 시 USB 카메라 디바이스 없음")
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "USB 권한 상태 확인 중 오류", e)
+            LogcatManager.e(TAG, "USB 권한 상태 확인 중 오류", e)
         }
     }
 
@@ -1080,10 +1081,10 @@ class MainActivity : ComponentActivity() {
         }
 
         if (permissionsToRequest.isNotEmpty()) {
-            Log.d("MainActivity", "저장소 권한 요청: $permissionsToRequest")
+            LogcatManager.d("MainActivity", "저장소 권한 요청: $permissionsToRequest")
             storagePermissionLauncher.launch(permissionsToRequest.toTypedArray())
         } else {
-            Log.d("MainActivity", "저장소 권한이 이미 승인됨")
+            LogcatManager.d("MainActivity", "저장소 권한이 이미 승인됨")
         }
     }
 
@@ -1094,11 +1095,11 @@ class MainActivity : ComponentActivity() {
             // 명시적으로 카메라 세션 종료 - 백그라운드 스레드에서 안전하게 수행
             Thread {
                 try {
-                    Log.d(TAG, "onDestroy - closeCamera 호출")
+                    LogcatManager.d(TAG, "onDestroy - closeCamera 호출")
                     com.inik.camcon.CameraNative.closeCamera()
-                    Log.d(TAG, "카메라 세션 명시적 종료 완료")
+                    LogcatManager.d(TAG, "카메라 세션 명시적 종료 완료")
                 } catch (e: Exception) {
-                    Log.w(TAG, "카메라 세션 종료 중 오류", e)
+                    LogcatManager.w(TAG, "카메라 세션 종료 중 오류", e)
                 }
             }.start()
 
@@ -1109,13 +1110,13 @@ class MainActivity : ComponentActivity() {
             Thread {
                 try {
                     com.inik.camcon.CameraNative.closeLogFile()
-                    Log.d(TAG, "libgphoto2 로그 파일 닫기 완료")
+                    LogcatManager.d(TAG, "libgphoto2 로그 파일 닫기 완료")
                 } catch (e: Exception) {
-                    Log.w(TAG, "로그 파일 닫기 중 오류", e)
+                    LogcatManager.w(TAG, "로그 파일 닫기 중 오류", e)
                 }
             }.start()
         } catch (e: Exception) {
-            Log.w(TAG, "매니저 정리 중 오류", e)
+            LogcatManager.w(TAG, "매니저 정리 중 오류", e)
         }
     }
 
@@ -1159,14 +1160,14 @@ class MainActivity : ComponentActivity() {
             intent.data = Uri.parse("package:$packageName")
             startActivity(intent)
         } catch (e: Exception) {
-            Log.e(TAG, "배터리 최적화 예외 설정 화면 이동 실패", e)
+            LogcatManager.e(TAG, "배터리 최적화 예외 설정 화면 이동 실패", e)
             // 대체 절차: 앱 상세 정보 화면
             try {
                 val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                 intent.data = Uri.parse("package:$packageName")
                 startActivity(intent)
             } catch (ex: Exception) {
-                Log.e(TAG, "APP 상세 정보 화면도 이동 실패", ex)
+                LogcatManager.e(TAG, "APP 상세 정보 화면도 이동 실패", ex)
             }
         }
     }

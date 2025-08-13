@@ -49,6 +49,7 @@ import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.AppVersionUiState
 import com.inik.camcon.presentation.viewmodel.AppVersionViewModel
+import com.inik.camcon.utils.LogcatManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -72,7 +73,7 @@ class SplashActivity : ComponentActivity() {
         // 엣지-투-엣지 설정을 제거하여 시스템 영역(상단바, 하단바)에 배경이 채워지도록 설정 해제
         // WindowCompat.setDecorFitsSystemWindows(window, true)
 
-        Log.i("SplashActivity", "=== 스플래시 화면 시작 ===")
+        LogcatManager.i("SplashActivity", "=== 스플래시 화면 시작 ===")
         
         // 백그라운드에서 라이브러리 로딩 시작
         loadLibrariesInBackground()
@@ -122,36 +123,39 @@ class SplashActivity : ComponentActivity() {
     private fun loadLibrariesInBackground() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                Log.i("SplashActivity", "🚀 라이브러리 로딩 프로세스 시작")
+                LogcatManager.i("SplashActivity", "🚀 라이브러리 로딩 프로세스 시작")
                 withContext(Dispatchers.Main) {
                     libraryLoadingStatus = "라이브러리 로딩 중..."
                 }
                 
                 // 라이브러리 로딩 전 상태 확인
                 val alreadyLoaded = CameraNative.isLibrariesLoaded()
-                Log.d("SplashActivity", "라이브러리 로딩 전 상태: ${if (alreadyLoaded) "이미 로드됨" else "로드되지 않음"}")
+                LogcatManager.d(
+                    "SplashActivity",
+                    "라이브러리 로딩 전 상태: ${if (alreadyLoaded) "이미 로드됨" else "로드되지 않음"}"
+                )
 
                 val startTime = System.currentTimeMillis()
 
                 if (!alreadyLoaded) {
-                    Log.i("SplashActivity", "📦 Libgphoto2 라이브러리 로딩 시작...")
+                    LogcatManager.i("SplashActivity", "📦 Libgphoto2 라이브러리 로딩 시작...")
 
                     // 라이브러리 로딩
                     CameraNative.loadLibraries()
 
                     val loadingTime = System.currentTimeMillis() - startTime
-                    Log.i("SplashActivity", "✅ 라이브러리 로딩 완료! (소요시간: ${loadingTime}ms)")
+                    LogcatManager.i("SplashActivity", "✅ 라이브러리 로딩 완료! (소요시간: ${loadingTime}ms)")
                 } else {
-                    Log.i("SplashActivity", "✅ 라이브러리가 이미 로드되어 있음")
+                    LogcatManager.i("SplashActivity", "✅ 라이브러리가 이미 로드되어 있음")
                 }
 
                 // 라이브러리 로딩 후 환경변수 설정
                 val nativeLibDir = applicationContext.applicationInfo.nativeLibraryDir
-                Log.d("SplashActivity", "네이티브 라이브러리 경로: $nativeLibDir")
+                LogcatManager.d("SplashActivity", "네이티브 라이브러리 경로: $nativeLibDir")
 
                 val envSetupResult = CameraNative.setupEnvironmentPaths(nativeLibDir)
                 if (!envSetupResult) {
-                    Log.e("SplashActivity", "❌ 환경변수 설정 실패")
+                    LogcatManager.e("SplashActivity", "❌ 환경변수 설정 실패")
                     withContext(Dispatchers.Main) {
                         libraryLoadingStatus = "환경변수 설정 실패"
                         isLibraryLoaded = false
@@ -159,10 +163,13 @@ class SplashActivity : ComponentActivity() {
                     return@launch
                 }
 
-                Log.i("SplashActivity", "✅ 환경변수 설정 완료")
+                LogcatManager.i("SplashActivity", "✅ 환경변수 설정 완료")
 
                 val totalTime = System.currentTimeMillis() - startTime
-                Log.d("SplashActivity", "라이브러리 상태 확인: ${CameraNative.isLibrariesLoaded()}")
+                LogcatManager.d(
+                    "SplashActivity",
+                    "라이브러리 상태 확인: ${CameraNative.isLibrariesLoaded()}"
+                )
                 
                 withContext(Dispatchers.Main) {
                     libraryLoadingStatus = "라이브러리 준비 완료 (${totalTime}ms)"
@@ -173,13 +180,13 @@ class SplashActivity : ComponentActivity() {
                 try {
                     delay(100) // 약간의 지연 후 검증
                     val version = CameraNative.getLibGphoto2Version()
-                    Log.i("SplashActivity", "📋 Libgphoto2 버전: $version")
+                    LogcatManager.i("SplashActivity", "📋 Libgphoto2 버전: $version")
                 } catch (e: Exception) {
-                    Log.w("SplashActivity", "⚠️ 라이브러리 버전 확인 실패 (정상적일 수 있음): ${e.message}")
+                    LogcatManager.w("SplashActivity", "⚠️ 라이브러리 버전 확인 실패 (정상적일 수 있음): ${e.message}")
                 }
                 
             } catch (e: Exception) {
-                Log.e("SplashActivity", "❌ 라이브러리 로딩 실패: ${e.message}", e)
+                LogcatManager.e("SplashActivity", "❌ 라이브러리 로딩 실패: ${e.message}", e)
                 withContext(Dispatchers.Main) {
                     libraryLoadingStatus = "라이브러리 로딩 실패: ${e.message}"
                     isLibraryLoaded = false

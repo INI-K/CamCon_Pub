@@ -4,7 +4,7 @@ import android.app.Activity
 import android.content.pm.ActivityInfo
 import android.graphics.ColorSpace
 import android.media.ExifInterface
-import android.util.Log
+import com.inik.camcon.utils.LogcatManager
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
@@ -201,12 +201,15 @@ fun CameraControlScreen(
     // 기존 자동 시작 로직은 CameraConnectionManager로 이동됨
     // 여기서는 연결 상태만 모니터링
     LaunchedEffect(uiState.isConnected, uiState.isNativeCameraConnected) {
-        Log.d("CameraControl", "=== 연결 상태 모니터링 ===")
-        Log.d("CameraControl", "isConnected: ${uiState.isConnected}")
-        Log.d("CameraControl", "isNativeCameraConnected: ${uiState.isNativeCameraConnected}")
+        LogcatManager.d("CameraControl", "=== 연결 상태 모니터링 ===")
+        LogcatManager.d("CameraControl", "isConnected: ${uiState.isConnected}")
+        LogcatManager.d(
+            "CameraControl",
+            "isNativeCameraConnected: ${uiState.isNativeCameraConnected}"
+        )
 
         if (uiState.isConnected && uiState.isNativeCameraConnected) {
-            Log.d("CameraControl", "카메라 완전 연결 완료 - CameraConnectionManager에서 자동 처리됨")
+            LogcatManager.d("CameraControl", "카메라 완전 연결 완료 - CameraConnectionManager에서 자동 처리됨")
             // 탭 전환 시에도 이벤트 리스너가 유지되도록 여기서는 별도 처리하지 않음
             // CameraConnectionManager에서 자동으로 이벤트 리스너를 관리함
         }
@@ -221,7 +224,7 @@ fun CameraControlScreen(
     // UI 상태 변경 로깅을 하나로 통합하고 필요한 것만 로깅
     LaunchedEffect(uiState.isConnected, uiState.isLiveViewActive, uiState.capturedPhotos.size) {
         // 로깅 최소화 - 필요시에만 활성화
-        // Log.d("CameraControl", "상태 변경 - 연결: ${uiState.isConnected}, 라이브뷰: ${uiState.isLiveViewActive}, 사진: ${uiState.capturedPhotos.size}")
+        // LogcatManager.d("CameraControl", "상태 변경 - 연결: ${uiState.isConnected}, 라이브뷰: ${uiState.isLiveViewActive}, 사진: ${uiState.capturedPhotos.size}")
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -241,7 +244,7 @@ fun CameraControlScreen(
             }
         ) {
             if (isFullscreen && (appSettings.isCameraControlsEnabled || uiState.capturedPhotos.isNotEmpty())) {
-                Log.d(
+                LogcatManager.d(
                     "CameraControl",
                     "🌟 전체화면 모드 렌더링 - isFullscreen=$isFullscreen, isCameraControlsEnabled=${appSettings.isCameraControlsEnabled}, capturedPhotos=${uiState.capturedPhotos.size}"
                 )
@@ -256,7 +259,7 @@ fun CameraControlScreen(
                     isLiveViewEnabled = appSettings.isLiveViewEnabled
                 )
             } else {
-                Log.d(
+                LogcatManager.d(
                     "CameraControl",
                     "📱 포트레이트 모드 렌더링 - isFullscreen=$isFullscreen, isCameraControlsEnabled=${appSettings.isCameraControlsEnabled}, capturedPhotos=${uiState.capturedPhotos.size}"
                 )
@@ -268,10 +271,13 @@ fun CameraControlScreen(
                     bottomSheetState = bottomSheetState,
                     onShowTimelapseDialog = { showTimelapseDialog = true },
                     onEnterFullscreen = {
-                        Log.d("CameraControl", "🌟 onEnterFullscreen 호출됨 - 전체화면 모드로 전환")
+                        LogcatManager.d("CameraControl", "🌟 onEnterFullscreen 호출됨 - 전체화면 모드로 전환")
                         isFullscreen = true
                         onFullscreenChange(true)
-                        Log.d("CameraControl", "🌟 전체화면 상태 설정 완료: isFullscreen=$isFullscreen")
+                        LogcatManager.d(
+                            "CameraControl",
+                            "🌟 전체화면 상태 설정 완료: isFullscreen=$isFullscreen"
+                        )
                     },
                     appSettings = appSettings,
                     onPhotoClick = { photo ->
@@ -426,20 +432,23 @@ private fun PortraitCameraLayout(
     }
 
     LaunchedEffect(appSettings) {
-        Log.d(
+        LogcatManager.d(
             "CameraControl",
             "AppSettings - isCameraControlsEnabled: ${appSettings.isCameraControlsEnabled}"
         )
-        Log.d("CameraControl", "AppSettings - isLiveViewEnabled: ${appSettings.isLiveViewEnabled}")
-        Log.d(
+        LogcatManager.d(
+            "CameraControl",
+            "AppSettings - isLiveViewEnabled: ${appSettings.isLiveViewEnabled}"
+        )
+        LogcatManager.d(
             "CameraControl",
             "AppSettings - isAutoStartEventListener: ${appSettings.isAutoStartEventListener}"
         )
-        Log.d(
+        LogcatManager.d(
             "CameraControl",
             "AppSettings - isShowPreviewInCapture: ${appSettings.isShowPreviewInCapture}"
         )
-        Log.d(
+        LogcatManager.d(
             "CameraControl",
             "라이브뷰 UI 표시 조건 (카메라 컨트롤 & 라이브뷰 둘 다 활성화): ${appSettings.isCameraControlsEnabled && appSettings.isLiveViewEnabled}"
         )
@@ -455,7 +464,7 @@ private fun PortraitCameraLayout(
 
     val canEnterFullscreen = remember(uiState.isLiveViewActive, uiState.capturedPhotos.size) {
         val result = uiState.isLiveViewActive || uiState.capturedPhotos.isNotEmpty()
-        Log.d(
+        LogcatManager.d(
             "CameraControl",
             "🔍 canEnterFullscreen 계산: isLiveViewActive=${uiState.isLiveViewActive}, capturedPhotos.size=${uiState.capturedPhotos.size}, result=$result"
         )
@@ -492,24 +501,27 @@ private fun PortraitCameraLayout(
                     }
                 )
             } else {
-                Log.d("CameraControl", "사진 표시 모드 - 수신된 사진 개수: ${uiState.capturedPhotos.size}")
+                LogcatManager.d(
+                    "CameraControl",
+                    "사진 표시 모드 - 수신된 사진 개수: ${uiState.capturedPhotos.size}"
+                )
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .combinedClickable(
                             onClick = {
-                                Log.d("CameraControl", "수신 사진 영역 단일 클릭")
+                                LogcatManager.d("CameraControl", "수신 사진 영역 단일 클릭")
                             },
                             onDoubleClick = {
-                                Log.d(
+                                LogcatManager.d(
                                     "CameraControl",
                                     "수신 사진 영역 더블클릭 감지! canEnterFullscreen=$canEnterFullscreen"
                                 )
                                 if (canEnterFullscreen) {
-                                    Log.d("CameraControl", "전체화면 모드로 전환 시도")
+                                    LogcatManager.d("CameraControl", "전체화면 모드로 전환 시도")
                                     onEnterFullscreen()
                                 } else {
-                                    Log.w("CameraControl", "전체화면 진입 불가 - 조건 미충족")
+                                    LogcatManager.w("CameraControl", "전체화면 진입 불가 - 조건 미충족")
                                 }
                             }
                         )
@@ -1193,7 +1205,7 @@ private fun readExifMetadata(filePath: String): CameraSettings? {
                     "1/$denominator"
                 }
             } catch (e: Exception) {
-                Log.e("CameraControl", "셔터 속도 파싱 실패: $exposureTime")
+                LogcatManager.e("CameraControl", "셔터 속도 파싱 실패: $exposureTime")
                 exposureTime
             }
         } ?: "AUTO"
@@ -1220,7 +1232,7 @@ private fun readExifMetadata(filePath: String): CameraSettings? {
             exposureCompensation = exposureCompensation
         )
     } catch (e: Exception) {
-        Log.e("CameraControl", "EXIF 메타데이터 읽기 실패: ${e.message}")
+        LogcatManager.e("CameraControl", "EXIF 메타데이터 읽기 실패: ${e.message}")
         null
     }
 }
@@ -1328,7 +1340,7 @@ private fun CapturedPhoto.getExifData(): String? {
 
         jsonObject.toString()
     } catch (e: Exception) {
-        Log.e("CameraControl", "EXIF 정보 읽기 실패: ${e.message}", e)
+        LogcatManager.e("CameraControl", "EXIF 정보 읽기 실패: ${e.message}", e)
         null
     }
 }

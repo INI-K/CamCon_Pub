@@ -15,6 +15,7 @@ import androidx.core.app.NotificationCompat
 import com.inik.camcon.R
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.presentation.ui.MainActivity
+import com.inik.camcon.utils.LogcatManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -71,7 +72,7 @@ class BackgroundSyncService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG, "BackgroundSyncService 생성됨 - 백그라운드 이벤트 리스너 관리 포함")
+        LogcatManager.d(TAG, "BackgroundSyncService 생성됨 - 백그라운드 이벤트 리스너 관리 포함")
 
         serviceScope = CoroutineScope(Dispatchers.IO + Job())
         createNotificationChannel()
@@ -81,7 +82,7 @@ class BackgroundSyncService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d(TAG, "BackgroundSyncService 시작됨 - 도즈 모드 대응")
+        LogcatManager.d(TAG, "BackgroundSyncService 시작됨 - 도즈 모드 대응")
 
         try {
             // Foreground Service로 시작
@@ -96,7 +97,7 @@ class BackgroundSyncService : Service() {
                 startForeground(NOTIFICATION_ID, createNotification())
             }
         } catch (e: Exception) {
-            Log.e(TAG, "포그라운드 서비스 시작 실패", e)
+            LogcatManager.e(TAG, "포그라운드 서비스 시작 실패", e)
             stopSelf()
             return START_NOT_STICKY
         }
@@ -115,7 +116,7 @@ class BackgroundSyncService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        Log.d(TAG, "BackgroundSyncService 종료됨")
+        LogcatManager.d(TAG, "BackgroundSyncService 종료됨")
 
         syncJob?.cancel()
         eventListenerJob?.cancel()
@@ -128,12 +129,12 @@ class BackgroundSyncService : Service() {
                 getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.cancel(NOTIFICATION_ID)
         } catch (e: Exception) {
-            Log.w(TAG, "서비스 종료 중 알림 정리 실패", e)
+            LogcatManager.w(TAG, "서비스 종료 중 알림 정리 실패", e)
         }
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        Log.d(TAG, "Task removed - 앱 종료로 서비스 정리")
+        LogcatManager.d(TAG, "Task removed - 앱 종료로 서비스 정리")
         try {
             syncJob?.cancel()
             eventListenerJob?.cancel()
@@ -145,7 +146,7 @@ class BackgroundSyncService : Service() {
                 getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.cancel(NOTIFICATION_ID)
         } catch (e: Exception) {
-            Log.w(TAG, "Task removed 처리 중 정리 실패", e)
+            LogcatManager.w(TAG, "Task removed 처리 중 정리 실패", e)
         } finally {
             stopSelf()
         }
@@ -162,10 +163,10 @@ class BackgroundSyncService : Service() {
                 "CamCon::BackgroundEventListener"
             ).apply {
                 acquire(10 * 60 * 1000L /*10 minutes*/) // 10분 제한 설정
-                Log.d(TAG, " Wake Lock 획득 - 백그라운드 이벤트 리스너 유지")
+                LogcatManager.d(TAG, " Wake Lock 획득 - 백그라운드 이벤트 리스너 유지")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Wake Lock 획득 실패", e)
+            LogcatManager.e(TAG, "Wake Lock 획득 실패", e)
         }
     }
 
@@ -177,12 +178,12 @@ class BackgroundSyncService : Service() {
             wakeLock?.let { lock ->
                 if (lock.isHeld) {
                     lock.release()
-                    Log.d(TAG, " Wake Lock 해제됨")
+                    LogcatManager.d(TAG, " Wake Lock 해제됨")
                 }
             }
             wakeLock = null
         } catch (e: Exception) {
-            Log.e(TAG, "Wake Lock 해제 실패", e)
+            LogcatManager.e(TAG, "Wake Lock 해제 실패", e)
         }
     }
 
@@ -194,11 +195,11 @@ class BackgroundSyncService : Service() {
             wakeLock?.let { lock ->
                 if (!lock.isHeld) {
                     lock.acquire(10 * 60 * 1000L) // 다시 10분 연장
-                    Log.d(TAG, " Wake Lock 갱신됨")
+                    LogcatManager.d(TAG, " Wake Lock 갱신됨")
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Wake Lock 갱신 실패", e)
+            LogcatManager.e(TAG, "Wake Lock 갱신 실패", e)
             // 실패 시 다시 획득 시도
             releaseWakeLock()
             acquireWakeLock()
@@ -257,7 +258,7 @@ class BackgroundSyncService : Service() {
         syncJob?.cancel()
 
         syncJob = serviceScope?.launch {
-            Log.d(TAG, "백그라운드 동기화 작업 시작")
+            LogcatManager.d(TAG, "백그라운드 동기화 작업 시작")
 
             while (true) {
                 try {
@@ -274,7 +275,7 @@ class BackgroundSyncService : Service() {
                     delay(SYNC_INTERVAL)
 
                 } catch (e: Exception) {
-                    Log.w(TAG, "백그라운드 동기화 작업 중 오류", e)
+                    LogcatManager.w(TAG, "백그라운드 동기화 작업 중 오류", e)
                     // 오류 발생 시 1분 대기 후 재시도
                     delay(60_000L)
                 }
@@ -289,7 +290,7 @@ class BackgroundSyncService : Service() {
         eventListenerJob?.cancel()
 
         eventListenerJob = serviceScope?.launch {
-            Log.d(TAG, " 백그라운드 이벤트 리스너 관리자 시작")
+            LogcatManager.d(TAG, " 백그라운드 이벤트 리스너 관리자 시작")
 
             while (true) {
                 try {
@@ -297,30 +298,33 @@ class BackgroundSyncService : Service() {
                     val isConnected = cameraRepository.isCameraConnected().first()
                     val isEventListenerActive = cameraRepository.isEventListenerActive().first()
 
-                    Log.d(TAG, " 카메라 연결 상태: $isConnected, 이벤트 리스너: $isEventListenerActive")
+                    LogcatManager.d(
+                        TAG,
+                        " 카메라 연결 상태: $isConnected, 이벤트 리스너: $isEventListenerActive"
+                    )
 
                     if (isConnected && !isEventListenerActive) {
-                        Log.d(TAG, " 카메라는 연결되어 있으나 이벤트 리스너가 비활성 - 재시작 시도")
+                        LogcatManager.d(TAG, " 카메라는 연결되어 있으나 이벤트 리스너가 비활성 - 재시작 시도")
 
                         try {
                             val result = cameraRepository.startCameraEventListener()
                             if (result.isSuccess) {
-                                Log.d(TAG, " 백그라운드에서 이벤트 리스너 재시작 성공")
+                                LogcatManager.d(TAG, " 백그라운드에서 이벤트 리스너 재시작 성공")
                                 updateNotificationText("카메라 이벤트 리스너 활성 - 사진 수신 대기 중")
                             } else {
-                                Log.w(TAG, " 백그라운드에서 이벤트 리스너 재시작 실패")
+                                LogcatManager.w(TAG, " 백그라운드에서 이벤트 리스너 재시작 실패")
                                 updateNotificationText("카메라 연결 확인 중...")
                             }
                         } catch (e: Exception) {
-                            Log.e(TAG, "백그라운드 이벤트 리스너 시작 중 예외", e)
+                            LogcatManager.e(TAG, "백그라운드 이벤트 리스너 시작 중 예외", e)
                         }
 
                     } else if (isConnected && isEventListenerActive) {
-                        Log.d(TAG, " 카메라 연결 및 이벤트 리스너 정상 작동 중")
+                        LogcatManager.d(TAG, " 카메라 연결 및 이벤트 리스너 정상 작동 중")
                         updateNotificationText("카메라 이벤트 리스너 활성 - 사진 수신 대기 중")
 
                     } else if (!isConnected) {
-                        Log.d(TAG, " 카메라 연결되지 않음")
+                        LogcatManager.d(TAG, " 카메라 연결되지 않음")
                         updateNotificationText("카메라 연결 대기 중...")
                     }
 
@@ -328,7 +332,7 @@ class BackgroundSyncService : Service() {
                     delay(EVENT_LISTENER_CHECK_INTERVAL)
 
                 } catch (e: Exception) {
-                    Log.w(TAG, "백그라운드 이벤트 리스너 관리 중 오류", e)
+                    LogcatManager.w(TAG, "백그라운드 이벤트 리스너 관리 중 오류", e)
                     // 오류 발생 시 30초 대기 후 재시도
                     delay(30_000L)
                 }
@@ -363,7 +367,7 @@ class BackgroundSyncService : Service() {
 
             notificationManager.notify(NOTIFICATION_ID, notification)
         } catch (e: Exception) {
-            Log.w(TAG, "알림 텍스트 업데이트 실패", e)
+            LogcatManager.w(TAG, "알림 텍스트 업데이트 실패", e)
         }
     }
 
@@ -377,22 +381,22 @@ class BackgroundSyncService : Service() {
             val currentUser = firebaseAuth.currentUser
 
             if (currentUser != null) {
-                Log.d(TAG, "Firebase 사용자 인증 유지됨: ${currentUser.uid}")
+                LogcatManager.d(TAG, "Firebase 사용자 인증 유지됨: ${currentUser.uid}")
 
                 // 필요시 토큰 갱신
                 currentUser.getIdToken(false).addOnCompleteListener { task ->
                     if (task.isSuccessful) {
-                        Log.d(TAG, "Firebase 토큰 갱신 성공")
+                        LogcatManager.d(TAG, "Firebase 토큰 갱신 성공")
                     } else {
-                        Log.w(TAG, "Firebase 토큰 갱신 실패", task.exception)
+                        LogcatManager.w(TAG, "Firebase 토큰 갱신 실패", task.exception)
                     }
                 }
             } else {
-                Log.d(TAG, "Firebase 사용자 인증되지 않음")
+                LogcatManager.d(TAG, "Firebase 사용자 인증되지 않음")
             }
 
         } catch (e: Exception) {
-            Log.w(TAG, "Firebase 연결 상태 확인 실패", e)
+            LogcatManager.w(TAG, "Firebase 연결 상태 확인 실패", e)
         }
     }
 
@@ -403,10 +407,10 @@ class BackgroundSyncService : Service() {
         try {
             // 실제 구현에서는 필요한 동기화 작업 수행
             // 예: 대기 중인 업로드 파일 확인, 클라우드 상태 동기화 등
-            Log.d(TAG, "파일 동기화 상태 확인 완료")
+            LogcatManager.d(TAG, "파일 동기화 상태 확인 완료")
 
         } catch (e: Exception) {
-            Log.w(TAG, "파일 동기화 상태 확인 실패", e)
+            LogcatManager.w(TAG, "파일 동기화 상태 확인 실패", e)
         }
     }
 }
