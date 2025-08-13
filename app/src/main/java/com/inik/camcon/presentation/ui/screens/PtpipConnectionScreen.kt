@@ -1,14 +1,18 @@
 package com.inik.camcon.presentation.ui.screens
 
 import android.Manifest
+import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -42,6 +46,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.google.android.gms.common.api.ResolvableApiException
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.LocationSettingsRequest
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.components.ApModeContent
 import com.inik.camcon.presentation.ui.screens.components.StaModeContent
@@ -66,25 +74,70 @@ fun PtpipConnectionScreen(
     val pagerState = rememberPagerState(initialPage = 0) { 2 }
     val tabTitles = listOf("AP 모드", "STA 모드")
 
-    // 위치 권한 상태
-    var hasLocationPermission by remember {
-        mutableStateOf(
+    // Wi‑Fi 스캔 권한 상태 (SDK별로 상이)
+    var hasWifiScanPermission by remember {
+        val hasPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.NEARBY_WIFI_DEVICES
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
             ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.ACCESS_FINE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
-        )
+        }
+
+        Log.d("PtpipConnectionScreen", "초기 Wi-Fi 스캔 권한 상태: $hasPermission")
+        mutableStateOf(hasPermission)
     }
 
     var showPermissionDialog by remember { mutableStateOf(false) }
 
-    // 권한 요청 launcher
-    val permissionLauncher = rememberLauncherForActivityResult(
+    // 단일 권한 런처 (레거시: 위치)
+    val singlePermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
-        hasLocationPermission = isGranted
-        if (!isGranted) {
-            showPermissionDialog = true
+        Log.d("PtpipConnectionScreen", "단일 권한 결과: $isGranted")
+        hasWifiScanPermission = isGranted
+        if (!isGranted) showPermissionDialog = true
+    }
+
+    // 다중 권한 런처 (Android 13+ NEARBY)
+    val multiPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { results ->
+        val granted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            results[Manifest.permission.NEARBY_WIFI_DEVICES] == true
+        } else {
+            results[Manifest.permission.ACCESS_FINE_LOCATION] == true
+        }
+        Log.d("PtpipConnectionScreen", "다중 권한 결과: $results, granted: $granted")
+        hasWifiScanPermission = granted
+        if (!granted) showPermissionDialog = true
+    }
+
+    // Activity Result 런처 추가 (위치 설정용)
+    val locationSettingsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        Log.d("PtpipConnectionScreen", "Google Play Services 위치 설정 결과: ${result.resultCode}")
+        ptpipViewModel.dismissLocationSettingsDialog()
+        // 설정 후 즉시 Wi-Fi 스캔 재시도
+        if (result.resultCode == Activity.RESULT_OK) {
+            Log.d("PtpipConnectionScreen", "위치 설정 성공 - Wi-Fi 스캔 재시도")
+            ptpipViewModel.scanNearbyWifiNetworks()
+        }
+    }
+
+    fun requestWifiScanPermission() {
+        Log.d("PtpipConnectionScreen", "Wi-Fi 스캔 권한 요청 시작, SDK: ${Build.VERSION.SDK_INT}")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Log.d("PtpipConnectionScreen", "Android 13+ NEARBY_WIFI_DEVICES 권한 요청")
+            multiPermissionLauncher.launch(arrayOf(Manifest.permission.NEARBY_WIFI_DEVICES))
+        } else {
+            Log.d("PtpipConnectionScreen", "Android 12 이하 ACCESS_FINE_LOCATION 권한 요청")
+            singlePermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         }
     }
 
@@ -101,6 +154,9 @@ fun PtpipConnectionScreen(
     val isAutoReconnectEnabled by ptpipViewModel.isAutoReconnectEnabled.collectAsState(initial = false)
     val isWifiConnected = ptpipViewModel.isWifiConnected()
     val wifiCapabilities = ptpipViewModel.getWifiCapabilities()
+    val nearbyWifiSSIDs by ptpipViewModel.nearbyWifiSSIDs.collectAsState()
+    val needLocationSettings by ptpipViewModel.needLocationSettings.collectAsState()
+    val needWifiSettings by ptpipViewModel.needWifiSettings.collectAsState()
 
     // 에러 메시지 표시
     LaunchedEffect(errorMessage) {
@@ -114,13 +170,116 @@ fun PtpipConnectionScreen(
     if (showPermissionDialog) {
         AlertDialog(
             onDismissRequest = { showPermissionDialog = false },
-            title = { Text("위치 권한 필요") },
+            title = { Text("권한 필요") },
             text = {
-                Text("Wi-Fi 네트워크 이름을 표시하려면 위치 권한이 필요합니다.\n설정에서 직접 권한을 허용해주세요.")
+                Text("주변 Wi‑Fi 스캔을 위해 권한이 필요합니다. 설정에서 허용해주세요.")
             },
             confirmButton = {
                 TextButton(onClick = { showPermissionDialog = false }) {
                     Text("확인")
+                }
+            }
+        )
+    }
+
+    // 위치 설정 다이얼로그
+    if (needLocationSettings) {
+        AlertDialog(
+            onDismissRequest = { ptpipViewModel.dismissLocationSettingsDialog() },
+            title = { Text("위치 서비스 필요") },
+            text = {
+                Text("Wi-Fi 스캔을 위해 위치 서비스가 필요합니다.\n'허용'을 누르면 설정을 바로 변경할 수 있습니다.")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    // Google Play Services를 통한 위치 설정 확인 및 요청
+                    ptpipViewModel.checkLocationSettings()
+
+                    // WifiNetworkHelper를 통해 위치 설정 요청
+                    val wifiHelper = ptpipViewModel.getWifiHelper()
+                    wifiHelper.checkLocationSettingsForScan()
+                        .addOnSuccessListener {
+                            // 이미 설정되어 있음
+                            Log.d("PtpipConnectionScreen", "위치 설정이 이미 활성화됨")
+                            ptpipViewModel.dismissLocationSettingsDialog()
+                            ptpipViewModel.scanNearbyWifiNetworks()
+                        }
+                        .addOnFailureListener { exception: Exception ->
+                            if (exception is ResolvableApiException) {
+                                try {
+                                    Log.d(
+                                        "PtpipConnectionScreen",
+                                        "Google Play Services 위치 설정 다이얼로그 표시"
+                                    )
+                                    locationSettingsLauncher.launch(
+                                        androidx.activity.result.IntentSenderRequest.Builder(
+                                            exception.resolution
+                                        ).build()
+                                    )
+                                } catch (e: Exception) {
+                                    Log.e("PtpipConnectionScreen", "위치 설정 다이얼로그 표시 실패", e)
+                                    // 폴백: 시스템 설정으로 이동
+                                    val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                                    context.startActivity(intent)
+                                    ptpipViewModel.dismissLocationSettingsDialog()
+                                }
+                            } else {
+                                Log.w("PtpipConnectionScreen", "위치 설정 확인 실패: ${exception.message}")
+                                // 폴백: 시스템 설정으로 이동
+                                val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                                context.startActivity(intent)
+                                ptpipViewModel.dismissLocationSettingsDialog()
+                            }
+                        }
+                }) {
+                    Text("허용")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { ptpipViewModel.dismissLocationSettingsDialog() }) {
+                    Text("취소")
+                }
+            }
+        )
+    }
+
+    // Wi-Fi 설정 다이얼로그 (새로 추가)
+    if (needWifiSettings) {
+        AlertDialog(
+            onDismissRequest = { ptpipViewModel.dismissWifiSettingsDialog() },
+            title = { Text("Wi-Fi 스캔 제한") },
+            text = {
+                Column {
+                    Text("Android의 보안 정책으로 인해 앱에서 직접 Wi-Fi 스캔이 제한됩니다.")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("다음 단계를 따라주세요:")
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("1. 'Wi-Fi 설정 열기' 버튼을 누르세요")
+                    Text("2. 시스템 Wi-Fi 설정에서 주변 네트워크 목록을 확인하세요")
+                    Text("3. 카메라 Wi-Fi(CANON, NIKON 등)를 찾으세요")
+                    Text("4. 설정을 닫고 다시 스캔해보세요")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        try {
+                            Intent(Settings.Panel.ACTION_WIFI)
+                        } catch (e: Exception) {
+                            Intent(Settings.ACTION_WIFI_SETTINGS)
+                        }
+                    } else {
+                        Intent(Settings.ACTION_WIFI_SETTINGS)
+                    }
+                    context.startActivity(intent)
+                    ptpipViewModel.dismissWifiSettingsDialog()
+                }) {
+                    Text("Wi-Fi 설정 열기")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { ptpipViewModel.dismissWifiSettingsDialog() }) {
+                    Text("닫기")
                 }
             }
         )
@@ -139,7 +298,13 @@ fun PtpipConnectionScreen(
                     IconButton(
                         onClick = {
                             when (pagerState.currentPage) {
-                                0 -> ptpipViewModel.discoverCamerasAp()
+                                0 -> if (hasWifiScanPermission) {
+                                    Log.d("PtpipConnectionScreen", "Wi-Fi 스캔 실행")
+                                    ptpipViewModel.scanNearbyWifiNetworks()
+                                } else {
+                                    Log.d("PtpipConnectionScreen", "권한 부족으로 권한 요청 호출")
+                                    requestWifiScanPermission()
+                                }
                                 1 -> ptpipViewModel.discoverCamerasSta()
                                 else -> {}
                             }
@@ -212,12 +377,10 @@ fun PtpipConnectionScreen(
                         wifiCapabilities = wifiCapabilities,
                         wifiNetworkState = wifiNetworkState,
                         isAutoReconnectEnabled = isAutoReconnectEnabled,
-                        hasLocationPermission = hasLocationPermission,
-                        onRequestPermission = {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                                permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-                            }
-                        }
+                        hasLocationPermission = hasWifiScanPermission,
+                        onRequestPermission = { requestWifiScanPermission() },
+                        nearbyWifiSSIDs = nearbyWifiSSIDs,
+                        onConnectToWifi = { ssid -> ptpipViewModel.connectToWifiSsid(ssid) }
                     )
                     1 -> StaModeContent(
                         ptpipViewModel = ptpipViewModel,
@@ -232,12 +395,8 @@ fun PtpipConnectionScreen(
                         wifiCapabilities = wifiCapabilities,
                         wifiNetworkState = wifiNetworkState,
                         isAutoReconnectEnabled = isAutoReconnectEnabled,
-                        hasLocationPermission = hasLocationPermission,
-                        onRequestPermission = {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                                permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-                            }
-                        }
+                        hasLocationPermission = hasWifiScanPermission,
+                        onRequestPermission = { requestWifiScanPermission() }
                     )
                 }
             }
