@@ -516,6 +516,10 @@ class PtpipViewModel @Inject constructor(
                 _selectedCamera.value = null
                 _errorMessage.value = null
 
+                // Wi-Fi 퍼포먼스 락 해제
+                val wifiHelper = ptpipDataSource.getWifiHelper()
+                wifiHelper.releaseWifiLock()
+
                 Log.d(TAG, "카메라 연결 해제 완료")
             } catch (e: Exception) {
                 Log.e(TAG, "카메라 연결 해제 중 오류", e)
@@ -980,6 +984,17 @@ class PtpipViewModel @Inject constructor(
             ptpipDataSource.disconnect()
             ptpipDataSource.cleanup()
             globalManager.cleanup()
+
+            // Wi-Fi 락이 남아있으면 해제
+            try {
+                val wifiHelper = ptpipDataSource.getWifiHelper()
+                if (wifiHelper.isWifiLockHeld()) {
+                    wifiHelper.releaseWifiLock()
+                    Log.d(TAG, "ViewModel 소멸 시 Wi-Fi 락 해제")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "ViewModel 소멸 시 Wi-Fi 락 해제 실패: ${e.message}")
+            }
         }
     }
 }

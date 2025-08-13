@@ -1,6 +1,12 @@
 package com.inik.camcon.data.datasource.ptpip
 
 import android.content.Context
+import android.content.ContentValues
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import android.util.Log
 import com.inik.camcon.CameraNative
 import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
@@ -27,6 +33,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -74,6 +81,10 @@ class PtpipDataSource @Inject constructor(
     companion object {
         private const val TAG = "PtpipDataSource"
         private const val RECONNECT_DELAY_MS = 3000L
+        private const val DUP_WINDOW_MS = 1500L
+        const val ACTION_PHOTO_SAVED = "com.inik.camcon.action.PHOTO_SAVED"
+        const val EXTRA_URI = "uri"
+        const val EXTRA_FILE_NAME = "fileName"
     }
 
     /**
@@ -800,54 +811,45 @@ class PtpipDataSource @Inject constructor(
             try {
                 Log.d(TAG, "자동 다운로드 파일 처리 시작: $fileName")
 
-                // 우선 로컬 경로로 간주하고 존재 여부 확인
-                val localCandidate = java.io.File(filePath)
-                if (localCandidate.exists()) {
-                    val fileSize = localCandidate.length()
-                    Log.i(TAG, "자동 다운로드 완료: $fileName (크기: ${fileSize / 1024}KB)")
-
-                    val fileExtension = fileName.substringAfterLast(".", "").lowercase()
-                    Log.d(TAG, "파일 타입: $fileExtension")
-
-                    if (fileExtension in listOf("jpg", "jpeg", "png", "cr2", "nef", "arw", "dng")) {
-                        Log.d(TAG, "이미지 파일 감지 - 썸네일 생성 시도")
-                    }
-
-                    Log.i(TAG, "✅ 자동 파일 다운로드 성공: $fileName")
+                // 중복 처리 방지: 최근 처리 맵에서 윈도우 내 동일 파일 무시
+                val now = System.currentTimeMillis()
+                if (!recentProcessingGuard.tryMark(filePath, now)) {
+                    Log.d(TAG, "중복 촬영/저장 이벤트 무시: $fileName (@$filePath)")
                     return@launch
                 }
 
-                // 로컬에 없다면 카메라 내부 경로(/store_...)로 판단하여 직접 다운로드 시도
-                Log.w(TAG, "로컬에 파일이 없어 카메라에서 다운로드 시도: $filePath")
-
-                val saveDirPath = getDefaultSaveDirectory()
-                val saveDir = java.io.File(saveDirPath)
-                if (!saveDir.exists()) {
-                    val made = saveDir.mkdirs()
-                    Log.d(TAG, "저장 디렉토리 생성 결과($saveDirPath): $made")
+                // MediaStore에 저장 (공용 DCIM/CamCon)
+                val ext = fileName.substringAfterLast('.', "").lowercase()
+                val mime = when (ext) {
+                    "jpg", "jpeg" -> "image/jpeg"
+                    "png" -> "image/png"
+                    "dng" -> "image/x-adobe-dng"
+                    "nef" -> "image/x-nikon-nef"
+                    "cr2" -> "image/x-canon-cr2"
+                    "arw" -> "image/x-sony-arw"
+                    else -> "application/octet-stream"
                 }
 
-                val destinationFile = java.io.File(saveDir, fileName)
-
-                // 이미 같은 이름의 파일이 존재하면 덮어쓰기 방지용으로 숫자 접미사 부여
-                val finalDest = run {
-                    if (!destinationFile.exists()) destinationFile else {
-                        var index = 1
-                        var candidate: java.io.File
-                        val base = fileName.substringBeforeLast('.', fileName)
-                        val ext = fileName.substringAfterLast('.', "")
-                        while (true) {
-                            val newName =
-                                if (ext.isEmpty()) "${base}(${index})" else "${base}(${index}).${ext}"
-                            candidate = java.io.File(saveDir, newName)
-                            if (!candidate.exists()) break
-                            index++
-                        }
-                        candidate
+                val resolver = context.contentResolver
+                val collection: Uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+                val values = ContentValues().apply {
+                    put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
+                    put(MediaStore.Images.Media.MIME_TYPE, mime)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        put(
+                            MediaStore.Images.Media.RELATIVE_PATH,
+                            Environment.DIRECTORY_DCIM + "/CamCon"
+                        )
+                        put(MediaStore.Images.Media.IS_PENDING, 1)
                     }
                 }
+                val itemUri = resolver.insert(collection, values)
+                if (itemUri == null) {
+                    Log.e(TAG, "❌ MediaStore 항목 생성 실패")
+                    return@launch
+                }
 
-                // 즉시 다운로드가 실패할 수 있어 짧은 재시도(최대 3회)
+                // 카메라에서 바로 다운로드 (재시도 포함)
                 var attempt = 0
                 val maxAttempts = 3
                 var downloaded: ByteArray? = null
@@ -859,37 +861,75 @@ class PtpipDataSource @Inject constructor(
                         Log.w(TAG, "카메라 파일 다운로드 예외 (시도 ${attempt + 1}/$maxAttempts): ${e.message}")
                     }
                     attempt++
-                    // 이벤트 수신이 빠른 경우 파일 준비가 안 되어 있을 수 있음 -> 짧게 대기 후 재시도
-                    kotlinx.coroutines.delay(250L)
+                    delay(250L)
                 }
 
                 if (downloaded == null || downloaded.isEmpty()) {
                     Log.e(TAG, "❌ 카메라에서 파일 다운로드 실패: $filePath")
+                    // 실패 시 항목 정리
+                    try {
+                        resolver.delete(itemUri, null, null)
+                    } catch (_: Exception) {
+                    }
                     return@launch
                 }
 
-                // 파일 저장
+                // MediaStore에 바이트 쓰기
                 try {
-                    finalDest.outputStream().use { it.write(downloaded) }
-                    Log.i(
-                        TAG,
-                        "✅ 카메라 파일 저장 성공: ${finalDest.absolutePath} (크기: ${downloaded.size / 1024}KB)"
-                    )
+                    resolver.openOutputStream(itemUri, "w")!!.use { it.write(downloaded) }
                 } catch (e: Exception) {
-                    Log.e(TAG, "❌ 파일 저장 실패: ${finalDest.absolutePath}", e)
+                    Log.e(TAG, "❌ MediaStore 저장 실패", e)
+                    try {
+                        resolver.delete(itemUri, null, null)
+                    } catch (_: Exception) {
+                    }
                     return@launch
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    ContentValues().apply { put(MediaStore.Images.Media.IS_PENDING, 0) }.also {
+                        resolver.update(itemUri, it, null, null)
+                    }
+                }
+                Log.i(
+                    TAG,
+                    "✅ 공용 저장소(DCIM/CamCon) 저장 완료: $itemUri (크기: ${downloaded.size / 1024}KB)"
+                )
+
+                // 저장 완료 브로드캐스트
+                try {
+                    val intent = Intent(ACTION_PHOTO_SAVED).apply {
+                        putExtra(EXTRA_URI, itemUri.toString())
+                        putExtra(EXTRA_FILE_NAME, fileName)
+                    }
+                    context.sendBroadcast(intent)
+                } catch (e: Exception) {
+                    Log.w(TAG, "저장 완료 브로드캐스트 전송 실패: ${e.message}")
                 }
 
                 // 후처리 로그 및 타입 처리
-                val fileExtension = finalDest.extension.lowercase()
+                val fileExtension = ext
                 Log.d(TAG, "파일 타입: $fileExtension")
                 if (fileExtension in listOf("jpg", "jpeg", "png", "cr2", "nef", "arw", "dng")) {
                     Log.d(TAG, "이미지 파일 감지 - 썸네일 생성 시도")
                 }
-                Log.i(TAG, "✅ 자동 파일 다운로드 및 저장 완료: ${finalDest.name}")
+                Log.i(TAG, "✅ 자동 파일 다운로드 및 저장 완료: $fileName")
 
             } catch (e: Exception) {
                 Log.e(TAG, "자동 다운로드 파일 처리 중 오류", e)
+            }
+        }
+    }
+
+    // 최근 처리 중복 방지 가드
+    private val recentProcessingGuard = object {
+        private val map = ConcurrentHashMap<String, Long>()
+        fun tryMark(key: String, now: Long): Boolean {
+            val last = map[key]
+            return if (last == null || now - last > DUP_WINDOW_MS) {
+                map[key] = now
+                true
+            } else {
+                false
             }
         }
     }
