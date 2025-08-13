@@ -20,6 +20,7 @@ import javax.inject.Singleton
 import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sqrt
+import com.inik.camcon.utils.LogcatManager
 
 /**
  * MKL 색감 전송을 위한 커스텀 GPU 필터
@@ -220,11 +221,11 @@ class ColorTransferProcessor @Inject constructor() {
         return@withContext try {
             val gpu = gpuImage
             if (gpu == null) {
-                android.util.Log.w("ColorTransferProcessor", "⚠️ GPUImage가 초기화되지 않음 - CPU 폴백")
+                LogcatManager.w("ColorTransferProcessor", "⚠️ GPUImage가 초기화되지 않음 - CPU 폴백")
                 return@withContext null
             }
 
-            android.util.Log.d("ColorTransferProcessor", "🎮 MKL GPU 색감 전송 시작")
+            LogcatManager.d("ColorTransferProcessor", "🎮 MKL GPU 색감 전송 시작")
 
             // 참조 이미지 통계 계산
             val referenceStats = withContext(Dispatchers.Default) {
@@ -257,11 +258,11 @@ class ColorTransferProcessor @Inject constructor() {
             gpu.setFilter(mklFilter)
             val result = gpu.getBitmapWithFilterApplied(inputBitmap)
 
-            android.util.Log.d("ColorTransferProcessor", "✅ MKL GPU 색감 전송 완료")
+            LogcatManager.d("ColorTransferProcessor", "✅ MKL GPU 색감 전송 완료")
             result
 
         } catch (e: Exception) {
-            android.util.Log.w("ColorTransferProcessor", "❌ MKL GPU 색감 전송 실패: ${e.message}")
+            LogcatManager.w("ColorTransferProcessor", "❌ MKL GPU 색감 전송 실패: ${e.message}")
             e.printStackTrace()
             null
         }
@@ -282,7 +283,7 @@ class ColorTransferProcessor @Inject constructor() {
         return@withContext try {
             val gpu = gpuImage ?: return@withContext null
 
-            android.util.Log.d("ColorTransferProcessor", "🎮 MKL GPU 색감 전송 시작 (캐시된 통계)")
+            LogcatManager.d("ColorTransferProcessor", "🎮 MKL GPU 색감 전송 시작 (캐시된 통계)")
 
             // 입력 이미지 통계 계산
             val inputStats = withContext(Dispatchers.Default) {
@@ -303,11 +304,11 @@ class ColorTransferProcessor @Inject constructor() {
             gpu.setFilter(mklFilter)
             val result = gpu.getBitmapWithFilterApplied(inputBitmap)
 
-            android.util.Log.d("ColorTransferProcessor", "✅ MKL GPU 색감 전송 완료 (캐시된 통계)")
+            LogcatManager.d("ColorTransferProcessor", "✅ MKL GPU 색감 전송 완료 (캐시된 통계)")
             result
 
         } catch (e: Exception) {
-            android.util.Log.w("ColorTransferProcessor", "❌ MKL GPU 색감 전송 실패: ${e.message}")
+            LogcatManager.w("ColorTransferProcessor", "❌ MKL GPU 색감 전송 실패: ${e.message}")
             e.printStackTrace()
             null
         }

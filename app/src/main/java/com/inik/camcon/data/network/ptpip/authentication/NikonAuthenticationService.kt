@@ -2,7 +2,9 @@ package com.inik.camcon.data.network.ptpip.authentication
 
 import android.util.Log
 import com.inik.camcon.data.constants.PtpipConstants
-import com.inik.camcon.domain.model.PtpipCamera
+import com.inik.camcon.data.model.PtpipCamera
+import com.inik.camcon.data.network.ptpip.connection.PtpipConnectionManager
+import com.inik.camcon.utils.LogcatManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -32,29 +34,29 @@ class NikonAuthenticationService @Inject constructor() {
     suspend fun performStaAuthentication(camera: PtpipCamera): Boolean =
         withContext(Dispatchers.IO) {
             try {
-                Log.i(TAG, "니콘 STA 모드 인증 시퀀스 시작")
+                LogcatManager.i(TAG, "니콘 STA 모드 인증 시퀀스 시작")
 
                 // Phase 1: 승인 요청 임시 연결
                 if (!performPhase1Authentication(camera)) {
-                    Log.e(TAG, "Phase 1 인증 실패")
+                    LogcatManager.e(TAG, "Phase 1 인증 실패")
                     return@withContext false
                 }
 
                 // Phase 1과 2 사이의 대기 (카메라 내부 처리)
-                Log.i(TAG, "카메라 내부 처리 대기 중... (5초)")
+                LogcatManager.i(TAG, "카메라 내부 처리 대기 중... (5초)")
                 delay(5000)
 
                 // Phase 2: 인증된 메인 연결
                 if (!performPhase2Authentication(camera)) {
-                    Log.e(TAG, "Phase 2 인증 실패")
+                    LogcatManager.e(TAG, "Phase 2 인증 실패")
                     return@withContext false
                 }
 
-                Log.i(TAG, "✅ 니콘 STA 모드 인증 완료!")
+                LogcatManager.i(TAG, "✅ 니콘 STA 모드 인증 완료!")
                 return@withContext true
 
             } catch (e: Exception) {
-                Log.e(TAG, "니콘 STA 모드 인증 중 오류: ${e.message}")
+                LogcatManager.e(TAG, "니콘 STA 모드 인증 중 오류: ${e.message}")
                 return@withContext false
             }
         }
@@ -70,15 +72,15 @@ class NikonAuthenticationService @Inject constructor() {
 
             while (retryCount < MAX_RETRIES) {
                 try {
-                    Log.i(TAG, "Phase 1: 승인 요청 임시 연결 시작")
-                    Log.d(TAG, "연결 대상: ${camera.ipAddress}:${camera.port}")
+                    LogcatManager.i(TAG, "Phase 1: 승인 요청 임시 연결 시작")
+                    LogcatManager.d(TAG, "연결 대상: ${camera.ipAddress}:${camera.port}")
 
                     // 연결 전 대기 시간 추가 (기존 연결과의 충돌 방지)
-                    Log.d(TAG, "기존 연결 해제 대기 중... (2초)")
+                    LogcatManager.d(TAG, "기존 연결 해제 대기 중... (2초)")
                     delay(2000)
 
                     // 1-1: Command 소켓 연결 및 초기화
-                    Log.d(TAG, "Step 1-1: Command 소켓 연결 시도")
+                    LogcatManager.d(TAG, "Step 1-1: Command 소켓 연결 시도")
                     commandSocket = Socket()
 
                     try {
@@ -86,94 +88,94 @@ class NikonAuthenticationService @Inject constructor() {
                             InetSocketAddress(camera.ipAddress, camera.port),
                             5000
                         )
-                        Log.d(TAG, "✅ Command 소켓 연결 성공")
+                        LogcatManager.d(TAG, "✅ Command 소켓 연결 성공")
                     } catch (e: Exception) {
-                        Log.e(TAG, "❌ Command 소켓 연결 실패: ${e.message}")
+                        LogcatManager.e(TAG, "❌ Command 소켓 연결 실패: ${e.message}")
                         retryCount++
                         continue
                     }
 
                     val connectionNumber = performCommandInitialization(commandSocket)
                     if (connectionNumber == -1) {
-                        Log.e(TAG, "❌ Command 초기화 실패")
+                        LogcatManager.e(TAG, "❌ Command 초기화 실패")
                         retryCount++
                         continue
                     }
-                    Log.d(TAG, "✅ Command 초기화 성공, Connection Number: $connectionNumber")
+                    LogcatManager.d(TAG, "✅ Command 초기화 성공, Connection Number: $connectionNumber")
 
                     // 1-2: Event 소켓 연결 및 초기화
-                    Log.d(TAG, "Step 1-2: Event 소켓 연결 시도")
+                    LogcatManager.d(TAG, "Step 1-2: Event 소켓 연결 시도")
                     eventSocket = Socket()
 
                     try {
                         eventSocket.connect(InetSocketAddress(camera.ipAddress, camera.port), 5000)
-                        Log.d(TAG, "✅ Event 소켓 연결 성공")
+                        LogcatManager.d(TAG, "✅ Event 소켓 연결 성공")
                     } catch (e: Exception) {
-                        Log.e(TAG, "❌ Event 소켓 연결 실패: ${e.message}")
+                        LogcatManager.e(TAG, "❌ Event 소켓 연결 실패: ${e.message}")
                         retryCount++
                         continue
                     }
 
                     if (!performEventInitialization(eventSocket, connectionNumber)) {
-                        Log.e(TAG, "❌ Event 초기화 실패")
+                        LogcatManager.e(TAG, "❌ Event 초기화 실패")
                         retryCount++
                         continue
                     }
-                    Log.d(TAG, "✅ Event 초기화 성공")
+                    LogcatManager.d(TAG, "✅ Event 초기화 성공")
 
                     // 1-3: GetDeviceInfo
-                    Log.d(TAG, "Step 1-3: GetDeviceInfo 전송")
+                    LogcatManager.d(TAG, "Step 1-3: GetDeviceInfo 전송")
                     if (!sendGetDeviceInfo(commandSocket)) {
-                        Log.w(TAG, "⚠️ GetDeviceInfo 실패하지만 계속 진행")
+                        LogcatManager.w(TAG, "⚠️ GetDeviceInfo 실패하지만 계속 진행")
                     } else {
-                        Log.d(TAG, "✅ GetDeviceInfo 성공")
+                        LogcatManager.d(TAG, "✅ GetDeviceInfo 성공")
                     }
 
                     // 1-4: OpenSession
-                    Log.d(TAG, "Step 1-4: OpenSession 전송")
+                    LogcatManager.d(TAG, "Step 1-4: OpenSession 전송")
                     if (!sendOpenSession(commandSocket)) {
-                        Log.w(TAG, "⚠️ OpenSession 실패하지만 계속 진행")
+                        LogcatManager.w(TAG, "⚠️ OpenSession 실패하지만 계속 진행")
                     } else {
-                        Log.d(TAG, "✅ OpenSession 성공")
+                        LogcatManager.d(TAG, "✅ OpenSession 성공")
                     }
 
                     // 1-5: 니콘 전용 0x952b 명령
-                    Log.d(TAG, "Step 1-5: 니콘 0x952b 명령 전송")
+                    LogcatManager.d(TAG, "Step 1-5: 니콘 0x952b 명령 전송")
                     if (!sendNikon952bCommand(commandSocket)) {
-                        Log.w(TAG, "⚠️ 0x952b 실패하지만 계속 진행")
+                        LogcatManager.w(TAG, "⚠️ 0x952b 실패지만 계속 진행")
                     } else {
-                        Log.d(TAG, "✅ 0x952b 성공")
+                        LogcatManager.d(TAG, "✅ 0x952b 성공")
                     }
 
                     // 1-6: 연결 승인 요청 0x935a
-                    Log.d(TAG, "Step 1-6: 연결 승인 요청 0x935a 전송")
+                    LogcatManager.d(TAG, "Step 1-6: 연결 승인 요청 0x935a 전송")
                     if (!sendNikon935aCommand(commandSocket)) {
-                        Log.w(TAG, "⚠️ 0x935a 실패하지만 계속 진행")
+                        LogcatManager.w(TAG, "⚠️ 0x935a 실패지만 계속 진행")
                     } else {
-                        Log.d(TAG, "✅ 0x935a 성공")
+                        LogcatManager.d(TAG, "✅ 0x935a 성공")
                     }
 
-                    Log.i(TAG, "✅ Phase 1 완료")
+                    LogcatManager.i(TAG, "✅ Phase 1 완료")
                     return@withContext true
 
                 } catch (e: Exception) {
-                    Log.e(TAG, "❌ Phase 1 중 오류: ${e.message}")
-                    Log.e(TAG, "오류 상세: ${e.stackTraceToString()}")
+                    LogcatManager.e(TAG, "❌ Phase 1 중 오류: ${e.message}")
+                    LogcatManager.e(TAG, "오류 상세: ${e.stackTraceToString()}")
                     retryCount++
                 } finally {
                     // 연결 해제
                     try {
-                        Log.d(TAG, "Phase 1 연결 해제 시작")
+                        LogcatManager.d(TAG, "Phase 1 연결 해제 시작")
                         commandSocket?.close()
                         eventSocket?.close()
-                        Log.d(TAG, "Phase 1 연결 해제 완료")
+                        LogcatManager.d(TAG, "Phase 1 연결 해제 완료")
                     } catch (e: Exception) {
-                        Log.w(TAG, "Phase 1 연결 해제 중 오류: ${e.message}")
+                        LogcatManager.w(TAG, "Phase 1 연결 해제 중 오류: ${e.message}")
                     }
                 }
             }
 
-            Log.e(TAG, "Phase 1 인증 실패 (최대 재시도 횟수 초과)")
+            LogcatManager.e(TAG, "Phase 1 인증 실패 (최대 재시도 횟수 초과)")
             return@withContext false
         }
 
@@ -186,7 +188,7 @@ class NikonAuthenticationService @Inject constructor() {
             var eventSocket: Socket? = null
 
             try {
-                Log.i(TAG, "Phase 2: 인증된 메인 연결 시작")
+                LogcatManager.i(TAG, "Phase 2: 인증된 메인 연결 시작")
 
                 // 2-1: Command 소켓 연결 및 초기화
                 commandSocket = Socket()
@@ -205,24 +207,24 @@ class NikonAuthenticationService @Inject constructor() {
 
                 // 2-3: 인증된 상태 GetDeviceInfo
                 if (!sendGetDeviceInfo(commandSocket)) {
-                    Log.w(TAG, "인증된 GetDeviceInfo 실패하지만 계속 진행")
+                    LogcatManager.w(TAG, "인증된 GetDeviceInfo 실패지만 계속 진행")
                 }
 
                 // 2-4: 인증된 OpenSession
                 if (!sendOpenSession(commandSocket)) {
-                    Log.w(TAG, "인증된 OpenSession 실패하지만 계속 진행")
+                    LogcatManager.w(TAG, "인증된 OpenSession 실패지만 계속 진행")
                 }
 
                 // 2-5: 저장소 정보 확인 (인증된 상태에서만 가능)
                 if (!sendGetStorageIDs(commandSocket)) {
-                    Log.w(TAG, "GetStorageIDs 실패하지만 계속 진행")
+                    LogcatManager.w(TAG, "GetStorageIDs 실패지만 계속 진행")
                 }
 
-                Log.i(TAG, "✅ Phase 2 완료 - 인증된 연결 유지")
+                LogcatManager.i(TAG, "✅ Phase 2 완료 - 인증된 연결 유지")
                 return@withContext true
 
             } catch (e: Exception) {
-                Log.e(TAG, "Phase 2 중 오류: ${e.message}")
+                LogcatManager.e(TAG, "Phase 2 중 오류: ${e.message}")
                 return@withContext false
             } finally {
                 // Phase 2에서는 연결을 유지하므로 해제하지 않음
@@ -234,7 +236,7 @@ class NikonAuthenticationService @Inject constructor() {
      */
     private fun sendNikon952bCommand(socket: Socket): Boolean {
         return try {
-            Log.d(TAG, "니콘 0x952b 명령 전송")
+            LogcatManager.d(TAG, "니콘 0x952b 명령 전송")
 
             val output = socket.getOutputStream()
             val packet = createNikon952bPacket()
@@ -248,14 +250,14 @@ class NikonAuthenticationService @Inject constructor() {
             val bytesRead = socket.getInputStream().read(response)
 
             if (bytesRead > 0) {
-                Log.d(TAG, "0x952b 응답 수신: $bytesRead bytes")
+                LogcatManager.d(TAG, "0x952b 응답 수신: $bytesRead bytes")
                 true
             } else {
                 false
             }
 
         } catch (e: Exception) {
-            Log.e(TAG, "0x952b 전송 실패: ${e.message}")
+            LogcatManager.e(TAG, "0x952b 전송 실패: ${e.message}")
             false
         }
     }
@@ -265,7 +267,7 @@ class NikonAuthenticationService @Inject constructor() {
      */
     private fun sendNikon935aCommand(socket: Socket): Boolean {
         return try {
-            Log.d(TAG, "니콘 0x935a 연결 승인 요청")
+            LogcatManager.d(TAG, "니콘 0x935a 연결 승인 요청")
 
             val output = socket.getOutputStream()
             val packet = createNikon935aPacket()
@@ -279,7 +281,7 @@ class NikonAuthenticationService @Inject constructor() {
             val bytesRead = socket.getInputStream().read(response)
 
             if (bytesRead > 0) {
-                Log.d(TAG, "0x935a 응답 수신: $bytesRead bytes")
+                LogcatManager.d(TAG, "0x935a 응답 수신: $bytesRead bytes")
 
                 // 성공 응답 확인
                 if (bytesRead >= 14) {
@@ -292,7 +294,7 @@ class NikonAuthenticationService @Inject constructor() {
                         val transactionId = buffer.int
 
                         if (responseCode == 0x2001 && transactionId == 2) {
-                            Log.i(TAG, "✅ 0x935a 성공 응답 확인")
+                            LogcatManager.i(TAG, "✅ 0x935a 성공 응답 확인")
                             return true
                         }
                     }
@@ -302,7 +304,7 @@ class NikonAuthenticationService @Inject constructor() {
             false
 
         } catch (e: Exception) {
-            Log.e(TAG, "0x935a 전송 실패: ${e.message}")
+            LogcatManager.e(TAG, "0x935a 전송 실패: ${e.message}")
             false
         }
     }
@@ -365,14 +367,14 @@ class NikonAuthenticationService @Inject constructor() {
 
                 if (responseType == PtpipConstants.PTPIP_INIT_COMMAND_ACK) {
                     val connectionNumber = buffer.int
-                    Log.d(TAG, "Command 초기화 성공, Connection Number: $connectionNumber")
+                    LogcatManager.d(TAG, "Command 초기화 성공, Connection Number: $connectionNumber")
                     return connectionNumber
                 }
             }
 
             -1
         } catch (e: Exception) {
-            Log.e(TAG, "Command 초기화 실패: ${e.message}")
+            LogcatManager.e(TAG, "Command 초기화 실패: ${e.message}")
             -1
         }
     }
@@ -401,14 +403,14 @@ class NikonAuthenticationService @Inject constructor() {
                 val responseType = buffer.int
 
                 if (responseType == PtpipConstants.PTPIP_INIT_EVENT_ACK) {
-                    Log.d(TAG, "Event 초기화 성공")
+                    LogcatManager.d(TAG, "Event 초기화 성공")
                     return true
                 }
             }
 
             false
         } catch (e: Exception) {
-            Log.e(TAG, "Event 초기화 실패: ${e.message}")
+            LogcatManager.e(TAG, "Event 초기화 실패: ${e.message}")
             false
         }
     }
@@ -431,7 +433,7 @@ class NikonAuthenticationService @Inject constructor() {
 
             bytesRead > 0
         } catch (e: Exception) {
-            Log.e(TAG, "GetDeviceInfo 실패: ${e.message}")
+            LogcatManager.e(TAG, "GetDeviceInfo 실패: ${e.message}")
             false
         }
     }
@@ -455,7 +457,7 @@ class NikonAuthenticationService @Inject constructor() {
 
             bytesRead > 0
         } catch (e: Exception) {
-            Log.e(TAG, "OpenSession 실패: ${e.message}")
+            LogcatManager.e(TAG, "OpenSession 실패: ${e.message}")
             false
         }
     }
@@ -478,7 +480,7 @@ class NikonAuthenticationService @Inject constructor() {
 
             bytesRead > 0
         } catch (e: Exception) {
-            Log.e(TAG, "GetStorageIDs 실패: ${e.message}")
+            LogcatManager.e(TAG, "GetStorageIDs 실패: ${e.message}")
             false
         }
     }
@@ -550,7 +552,7 @@ class NikonAuthenticationService @Inject constructor() {
      */
     suspend fun testPhase1Authentication(camera: PtpipCamera): Boolean =
         withContext(Dispatchers.IO) {
-            Log.i(TAG, "=== Phase 1 인증 테스트 시작 ===")
+            LogcatManager.i(TAG, "=== Phase 1 인증 테스트 시작 ===")
             return@withContext performPhase1Authentication(camera)
         }
 
@@ -559,7 +561,7 @@ class NikonAuthenticationService @Inject constructor() {
      */
     suspend fun testPhase2Authentication(camera: PtpipCamera): Boolean =
         withContext(Dispatchers.IO) {
-            Log.i(TAG, "=== Phase 2 인증 테스트 시작 ===")
+            LogcatManager.i(TAG, "=== Phase 2 인증 테스트 시작 ===")
             return@withContext performPhase2Authentication(camera)
         }
 
@@ -570,15 +572,15 @@ class NikonAuthenticationService @Inject constructor() {
         withContext(Dispatchers.IO) {
             var socket: Socket? = null
             return@withContext try {
-                Log.i(TAG, "소켓 연결 테스트: ${camera.ipAddress}:${camera.port}")
+                LogcatManager.i(TAG, "소켓 연결 테스트: ${camera.ipAddress}:${camera.port}")
 
                 socket = Socket()
                 socket.connect(InetSocketAddress(camera.ipAddress, camera.port), 5000)
 
-                Log.i(TAG, "✅ 소켓 연결 성공")
+                LogcatManager.i(TAG, "✅ 소켓 연결 성공")
                 true
             } catch (e: Exception) {
-                Log.e(TAG, "❌ 소켓 연결 실패: ${e.message}")
+                LogcatManager.e(TAG, "❌ 소켓 연결 실패: ${e.message}")
                 false
             } finally {
                 socket?.close()
@@ -594,7 +596,7 @@ class NikonAuthenticationService @Inject constructor() {
             var eventSocket: Socket? = null
 
             return@withContext try {
-                Log.i(TAG, "니콘 0x952b 명령 테스트 시작")
+                LogcatManager.i(TAG, "니콘 0x952b 명령 테스트 시작")
 
                 // 기본 연결 설정
                 commandSocket = Socket()
@@ -602,7 +604,7 @@ class NikonAuthenticationService @Inject constructor() {
 
                 val connectionNumber = performCommandInitialization(commandSocket)
                 if (connectionNumber == -1) {
-                    Log.e(TAG, "Command 초기화 실패")
+                    LogcatManager.e(TAG, "Command 초기화 실패")
                     return@withContext false
                 }
 
@@ -610,17 +612,17 @@ class NikonAuthenticationService @Inject constructor() {
                 eventSocket.connect(InetSocketAddress(camera.ipAddress, camera.port), 5000)
 
                 if (!performEventInitialization(eventSocket, connectionNumber)) {
-                    Log.e(TAG, "Event 초기화 실패")
+                    LogcatManager.e(TAG, "Event 초기화 실패")
                     return@withContext false
                 }
 
                 // 0x952b 명령 테스트
                 val success = sendNikon952bCommand(commandSocket)
-                Log.i(TAG, "0x952b 명령 결과: ${if (success) "성공" else "실패"}")
+                LogcatManager.i(TAG, "0x952b 명령 결과: ${if (success) "성공" else "실패"}")
                 success
 
             } catch (e: Exception) {
-                Log.e(TAG, "0x952b 명령 테스트 중 오류: ${e.message}")
+                LogcatManager.e(TAG, "0x952b 명령 테스트 중 오류: ${e.message}")
                 false
             } finally {
                 commandSocket?.close()
@@ -637,7 +639,7 @@ class NikonAuthenticationService @Inject constructor() {
             var eventSocket: Socket? = null
 
             return@withContext try {
-                Log.i(TAG, "니콘 0x935a 명령 테스트 시작")
+                LogcatManager.i(TAG, "니콘 0x935a 명령 테스트 시작")
 
                 // 기본 연결 설정
                 commandSocket = Socket()
@@ -645,7 +647,7 @@ class NikonAuthenticationService @Inject constructor() {
 
                 val connectionNumber = performCommandInitialization(commandSocket)
                 if (connectionNumber == -1) {
-                    Log.e(TAG, "Command 초기화 실패")
+                    LogcatManager.e(TAG, "Command 초기화 실패")
                     return@withContext false
                 }
 
@@ -653,17 +655,17 @@ class NikonAuthenticationService @Inject constructor() {
                 eventSocket.connect(InetSocketAddress(camera.ipAddress, camera.port), 5000)
 
                 if (!performEventInitialization(eventSocket, connectionNumber)) {
-                    Log.e(TAG, "Event 초기화 실패")
+                    LogcatManager.e(TAG, "Event 초기화 실패")
                     return@withContext false
                 }
 
                 // 0x935a 명령 테스트
                 val success = sendNikon935aCommand(commandSocket)
-                Log.i(TAG, "0x935a 명령 결과: ${if (success) "성공" else "실패"}")
+                LogcatManager.i(TAG, "0x935a 명령 결과: ${if (success) "성공" else "실패"}")
                 success
 
             } catch (e: Exception) {
-                Log.e(TAG, "0x935a 명령 테스트 중 오류: ${e.message}")
+                LogcatManager.e(TAG, "0x935a 명령 테스트 중 오류: ${e.message}")
                 false
             } finally {
                 commandSocket?.close()
@@ -680,7 +682,7 @@ class NikonAuthenticationService @Inject constructor() {
             var eventSocket: Socket? = null
 
             return@withContext try {
-                Log.i(TAG, "GetDeviceInfo 명령 테스트 시작")
+                LogcatManager.i(TAG, "GetDeviceInfo 명령 테스트 시작")
 
                 // 기본 연결 설정
                 commandSocket = Socket()
@@ -688,7 +690,7 @@ class NikonAuthenticationService @Inject constructor() {
 
                 val connectionNumber = performCommandInitialization(commandSocket)
                 if (connectionNumber == -1) {
-                    Log.e(TAG, "Command 초기화 실패")
+                    LogcatManager.e(TAG, "Command 초기화 실패")
                     return@withContext false
                 }
 
@@ -696,17 +698,17 @@ class NikonAuthenticationService @Inject constructor() {
                 eventSocket.connect(InetSocketAddress(camera.ipAddress, camera.port), 5000)
 
                 if (!performEventInitialization(eventSocket, connectionNumber)) {
-                    Log.e(TAG, "Event 초기화 실패")
+                    LogcatManager.e(TAG, "Event 초기화 실패")
                     return@withContext false
                 }
 
                 // GetDeviceInfo 명령 테스트
                 val success = sendGetDeviceInfo(commandSocket)
-                Log.i(TAG, "GetDeviceInfo 명령 결과: ${if (success) "성공" else "실패"}")
+                LogcatManager.i(TAG, "GetDeviceInfo 명령 결과: ${if (success) "성공" else "실패"}")
                 success
 
             } catch (e: Exception) {
-                Log.e(TAG, "GetDeviceInfo 명령 테스트 중 오류: ${e.message}")
+                LogcatManager.e(TAG, "GetDeviceInfo 명령 테스트 중 오류: ${e.message}")
                 false
             } finally {
                 commandSocket?.close()
@@ -723,7 +725,7 @@ class NikonAuthenticationService @Inject constructor() {
             var eventSocket: Socket? = null
 
             return@withContext try {
-                Log.i(TAG, "OpenSession 명령 테스트 시작")
+                LogcatManager.i(TAG, "OpenSession 명령 테스트 시작")
 
                 // 기본 연결 설정
                 commandSocket = Socket()
@@ -731,7 +733,7 @@ class NikonAuthenticationService @Inject constructor() {
 
                 val connectionNumber = performCommandInitialization(commandSocket)
                 if (connectionNumber == -1) {
-                    Log.e(TAG, "Command 초기화 실패")
+                    LogcatManager.e(TAG, "Command 초기화 실패")
                     return@withContext false
                 }
 
@@ -739,17 +741,17 @@ class NikonAuthenticationService @Inject constructor() {
                 eventSocket.connect(InetSocketAddress(camera.ipAddress, camera.port), 5000)
 
                 if (!performEventInitialization(eventSocket, connectionNumber)) {
-                    Log.e(TAG, "Event 초기화 실패")
+                    LogcatManager.e(TAG, "Event 초기화 실패")
                     return@withContext false
                 }
 
                 // OpenSession 명령 테스트
                 val success = sendOpenSession(commandSocket)
-                Log.i(TAG, "OpenSession 명령 결과: ${if (success) "성공" else "실패"}")
+                LogcatManager.i(TAG, "OpenSession 명령 결과: ${if (success) "성공" else "실패"}")
                 success
 
             } catch (e: Exception) {
-                Log.e(TAG, "OpenSession 명령 테스트 중 오류: ${e.message}")
+                LogcatManager.e(TAG, "OpenSession 명령 테스트 중 오류: ${e.message}")
                 false
             } finally {
                 commandSocket?.close()
@@ -765,7 +767,7 @@ class NikonAuthenticationService @Inject constructor() {
             val commonPorts = listOf(15740, 80, 443, 8080, 8443, 5000, 5001, 8000, 8001, 9000)
             val openPorts = mutableListOf<Int>()
 
-            Log.i(TAG, "포트 스캔 시작: $ipAddress")
+            LogcatManager.i(TAG, "포트 스캔 시작: $ipAddress")
 
             for (port in commonPorts) {
                 try {
@@ -773,13 +775,13 @@ class NikonAuthenticationService @Inject constructor() {
                     socket.connect(InetSocketAddress(ipAddress, port), 1000)
                     socket.close()
                     openPorts.add(port)
-                    Log.d(TAG, "포트 $port: 열림")
+                    LogcatManager.d(TAG, "포트 $port: 열림")
                 } catch (e: Exception) {
-                    Log.d(TAG, "포트 $port: 닫힘 (${e.message})")
+                    LogcatManager.d(TAG, "포트 $port: 닫힘 (${e.message})")
                 }
             }
 
-            Log.i(TAG, "포트 스캔 완료. 열린 포트: ${openPorts.joinToString(", ")}")
+            LogcatManager.i(TAG, "포트 스캔 완료. 열린 포트: ${openPorts.joinToString(", ")}")
             return@withContext openPorts
         }
 }

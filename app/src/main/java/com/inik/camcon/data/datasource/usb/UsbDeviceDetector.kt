@@ -8,8 +8,8 @@ import android.content.IntentFilter
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
 import android.os.Build
-import android.util.Log
 import androidx.core.content.ContextCompat
+import com.inik.camcon.utils.LogcatManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -128,14 +128,14 @@ class UsbDeviceDetector @Inject constructor(
 
             if (granted) {
                 device?.let {
-                    Log.d(TAG, "USB 권한이 승인되었습니다: ${it.deviceName}")
+                    LogcatManager.d(TAG, "USB 권한이 승인되었습니다: ${it.deviceName}")
                     _hasPermission.value = true
                     currentDevice = it
                     // 권한 승인 시 상위 계층에 알림 (초기화 트리거)
                     permissionGrantedCallback?.invoke(it)
                 }
             } else {
-                Log.d(TAG, "USB 권한이 거부되었습니다: ${device?.deviceName}")
+                LogcatManager.d(TAG, "USB 권한이 거부되었습니다: ${device?.deviceName}")
                 _hasPermission.value = false
             }
         }
@@ -149,10 +149,10 @@ class UsbDeviceDetector @Inject constructor(
             intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
         }
         device?.let {
-            Log.d(TAG, "USB 디바이스가 연결되었습니다: ${it.deviceName}")
+            LogcatManager.d(TAG, "USB 디바이스가 연결되었습니다: ${it.deviceName}")
             if (isCameraDevice(it)) {
                 val hasActualPermission = usbManager.hasPermission(it)
-                Log.d(TAG, "연결된 디바이스의 실제 권한 상태: $hasActualPermission")
+                LogcatManager.d(TAG, "연결된 디바이스의 실제 권한 상태: $hasActualPermission")
 
                 if (hasActualPermission) {
                     _hasPermission.value = true
@@ -175,7 +175,7 @@ class UsbDeviceDetector @Inject constructor(
             intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
         }
         device?.let {
-            Log.d(TAG, "USB 디바이스가 분리되었습니다: ${it.deviceName}")
+            LogcatManager.d(TAG, "USB 디바이스가 분리되었습니다: ${it.deviceName}")
             if (it == currentDevice) {
                 _hasPermission.value = false
                 currentDevice = null
@@ -186,7 +186,7 @@ class UsbDeviceDetector @Inject constructor(
     }
 
     private fun initializeDeviceList() {
-        Log.d(TAG, "USB 디바이스 목록 초기화 시작")
+        LogcatManager.d(TAG, "USB 디바이스 목록 초기화 시작")
         updateDeviceList()
     }
 
@@ -196,7 +196,7 @@ class UsbDeviceDetector @Inject constructor(
         // 캐시된 결과가 있고 아직 유효하면 캐시 반환
         deviceListCache?.let { cached ->
             if (now - lastUpdateTime < CACHE_TIMEOUT) {
-                Log.d(TAG, "캐시된 USB 디바이스 목록 반환: ${cached.size}개")
+                LogcatManager.d(TAG, "캐시된 USB 디바이스 목록 반환: ${cached.size}개")
                 return cached
             }
         }
@@ -211,11 +211,11 @@ class UsbDeviceDetector @Inject constructor(
 
     private fun getUsbDevicesInternal(): List<UsbDevice> {
         val allDevices = usbManager.deviceList.values.toList()
-        Log.d(TAG, "총 USB 디바이스 발견: ${allDevices.size}")
+        LogcatManager.d(TAG, "총 USB 디바이스 발견: ${allDevices.size}")
 
         return allDevices.filter { device ->
             val isCamera = isCameraDevice(device)
-            Log.d(TAG, "디바이스 ${device.deviceName}가 카메라인지: $isCamera")
+            LogcatManager.d(TAG, "디바이스 ${device.deviceName}가 카메라인지: $isCamera")
             isCamera
         }
     }
@@ -224,7 +224,7 @@ class UsbDeviceDetector @Inject constructor(
         deviceListCache = null
         val cameraDevices = getCameraDevices()
         _connectedDevices.value = cameraDevices
-        Log.d(TAG, "카메라 디바이스 목록 업데이트: ${cameraDevices.size}개")
+        LogcatManager.d(TAG, "카메라 디바이스 목록 업데이트: ${cameraDevices.size}개")
     }
 
     private fun isCameraDevice(device: UsbDevice): Boolean {
@@ -254,10 +254,10 @@ class UsbDeviceDetector @Inject constructor(
     }
 
     fun requestPermission(device: UsbDevice) {
-        Log.d(TAG, "USB 권한 요청 시작: ${device.deviceName}")
+        LogcatManager.d(TAG, "USB 권한 요청 시작: ${device.deviceName}")
 
         if (usbManager.hasPermission(device)) {
-            Log.d(TAG, "이미 권한이 있습니다: ${device.deviceName}")
+            LogcatManager.d(TAG, "이미 권한이 있습니다: ${device.deviceName}")
             _hasPermission.value = true
             currentDevice = device
             return
@@ -289,7 +289,7 @@ class UsbDeviceDetector @Inject constructor(
         try {
             context.unregisterReceiver(usbReceiver)
         } catch (e: Exception) {
-            Log.w(TAG, "USB 리시버 등록 해제 실패", e)
+            LogcatManager.w(TAG, "USB 리시버 등록 해제 실패", e)
         }
     }
 }
