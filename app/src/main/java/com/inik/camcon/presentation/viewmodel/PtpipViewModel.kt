@@ -224,6 +224,14 @@ class PtpipViewModel @Inject constructor(
     }
 
     /**
+     * WifiNetworkSpecifier로 SSID 연결 요청 (패스워드 포함)
+     */
+    fun connectToWifiSsidWithPassword(ssid: String, passphrase: String) {
+        Log.d(TAG, "패스워드와 함께 Wi-Fi 연결 시도: $ssid")
+        connectToWifiSsid(ssid, passphrase)
+    }
+
+    /**
      * WifiNetworkSpecifier로 SSID 연결 요청
      */
     fun connectToWifiSsid(ssid: String, passphrase: String? = null) {
@@ -231,12 +239,21 @@ class PtpipViewModel @Inject constructor(
             try {
                 ptpipDataSource.requestWifiSpecifierConnection(
                     ssid = ssid,
-                    passphrase = passphrase
-                ) { ok: Boolean ->
-                    if (!ok) {
-                        _errorMessage.value = "Wi‑Fi 연결 실패: $ssid"
+                    passphrase = passphrase,
+                    onResult = { success: Boolean ->
+                        if (!success) {
+                            _errorMessage.value = "Wi‑Fi 연결 실패: $ssid"
+                        } else {
+                            Log.d(TAG, "Wi-Fi 연결 성공: $ssid - 카메라 검색 시작")
+                            // 연결 성공 시 자동으로 카메라 검색
+                            discoverCameras()
+                        }
+                    },
+                    onError = { errorMsg: String ->
+                        Log.e(TAG, "WifiNetworkSpecifier 상세 오류: $errorMsg")
+                        _errorMessage.value = errorMsg
                     }
-                }
+                )
             } catch (e: Exception) {
                 _errorMessage.value = "Wi‑Fi 연결 요청 중 오류: ${e.message}"
             }

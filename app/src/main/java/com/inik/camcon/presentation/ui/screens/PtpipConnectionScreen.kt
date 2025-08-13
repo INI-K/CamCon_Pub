@@ -40,10 +40,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.material.OutlinedTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.android.gms.common.api.ResolvableApiException
@@ -287,6 +297,88 @@ fun PtpipConnectionScreen(
         )
     }
 
+    // === 추가: Wi-Fi 패스워드 입력 다이얼로그 & 상태 ===
+    var showPasswordDialog by remember { mutableStateOf(false) }
+    var passwordForSsid by remember { mutableStateOf("") }
+    var currentWifiSsid by remember { mutableStateOf<String?>(null) }
+    var passwordVisible by remember { mutableStateOf(false) }
+
+    // 패스워드 입력 콜백
+    val onConnectToWifiWithPassword: (ssid: String) -> Unit = { ssid ->
+        currentWifiSsid = ssid
+        showPasswordDialog = true
+        passwordForSsid = ""
+        passwordVisible = false
+    }
+
+    // Wi-Fi 패스워드 입력 다이얼로그 표시
+    if (showPasswordDialog && currentWifiSsid != null) {
+        AlertDialog(
+            onDismissRequest = {
+                showPasswordDialog = false
+                passwordForSsid = ""
+                currentWifiSsid = null
+            },
+            title = {
+                Text(
+                    text = "${currentWifiSsid ?: ""}에 연결",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+            },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    OutlinedTextField(
+                        value = passwordForSsid,
+                        onValueChange = { passwordForSsid = it },
+                        label = { Text("Wi-Fi 비밀번호") },
+                        visualTransformation =
+                            if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                if (passwordVisible) {
+                                    Icon(Icons.Filled.Visibility, contentDescription = "숨기기")
+                                } else {
+                                    Icon(Icons.Filled.VisibilityOff, contentDescription = "보이기")
+                                }
+                            }
+                        },
+                        singleLine = true,
+                        modifier = Modifier
+                            .padding(vertical = 4.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        // 실제 연결 로직 수행 (ViewModel의 ssid+비번 방식으로)
+                        showPasswordDialog = false
+                        currentWifiSsid?.let { ssid ->
+                            ptpipViewModel.connectToWifiSsidWithPassword(ssid, passwordForSsid)
+                        }
+                        passwordForSsid = ""
+                        currentWifiSsid = null
+                    },
+                    enabled = passwordForSsid.isNotEmpty()
+                ) {
+                    Text("연결")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showPasswordDialog = false
+                    passwordForSsid = ""
+                    currentWifiSsid = null
+                }) {
+                    Text("취소")
+                }
+            }
+        )
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -385,7 +477,7 @@ fun PtpipConnectionScreen(
                             .analyzeWifiScanPermissionStatus().canScan,
                         onRequestPermission = { requestWifiScanPermissions() },
                         nearbyWifiSSIDs = nearbyWifiSSIDs,
-                        onConnectToWifi = { ssid -> ptpipViewModel.connectToWifiSsid(ssid) }
+                        onConnectToWifi = { ssid -> onConnectToWifiWithPassword(ssid) }
                     )
                     1 -> StaModeContent(
                         ptpipViewModel = ptpipViewModel,
