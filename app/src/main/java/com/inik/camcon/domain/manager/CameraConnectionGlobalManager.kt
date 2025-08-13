@@ -78,6 +78,14 @@ class CameraConnectionGlobalManager @Inject constructor(
             }
             .launchIn(scope)
 
+        // AP 모드 강제 플래그 모니터링
+        ptpipDataSource.isApModeForced
+            .onEach { forced ->
+                Log.d(TAG, "AP 모드 강제 플래그 변경: $forced")
+                updateGlobalState()
+            }
+            .launchIn(scope)
+
         // 발견된 카메라 목록 모니터링
         ptpipDataSource.discoveredCameras
             .onEach { cameras ->
@@ -95,13 +103,16 @@ class CameraConnectionGlobalManager @Inject constructor(
         val ptpipState = ptpipDataSource.connectionState.value
         val wifiState = ptpipDataSource.wifiNetworkState.value
         val discoveredCameras = ptpipDataSource.discoveredCameras.value
+        val isApForced = ptpipDataSource.isApModeForced.value
 
         // 활성 연결 타입 결정
         val activeConnection = when {
             usbConnected -> CameraConnectionType.USB
             ptpipState == PtpipConnectionState.CONNECTED -> {
-                // AP 모드 우선 판별: 카메라 AP에 연결되어 있거나, 192.168.1.1 등 카메라 IP 대역인 경우
-                if (wifiState.isConnectedToCameraAP ||
+                // AP 모드 강제 시 AP 모드 우선
+                if (isApForced) {
+                    CameraConnectionType.AP_MODE
+                } else if (wifiState.isConnectedToCameraAP ||
                     wifiState.detectedCameraIP?.startsWith("192.168.1.") == true ||
                     wifiState.detectedCameraIP?.startsWith("192.168.4.") == true
                 ) {
@@ -131,7 +142,8 @@ class CameraConnectionGlobalManager @Inject constructor(
             usbConnected = usbConnected,
             ptpipState = ptpipState,
             wifiState = wifiState,
-            discoveredCameras = discoveredCameras
+            discoveredCameras = discoveredCameras,
+            isApForced = isApForced
         )
 
         // 상태 변경이 있을 때만 업데이트
@@ -169,12 +181,14 @@ class CameraConnectionGlobalManager @Inject constructor(
         usbConnected: Boolean,
         ptpipState: PtpipConnectionState,
         wifiState: com.inik.camcon.domain.model.WifiNetworkState,
-        discoveredCameras: List<com.inik.camcon.domain.model.PtpipCamera>
+        discoveredCameras: List<com.inik.camcon.domain.model.PtpipCamera>,
+        isApForced: Boolean
     ): String {
         return when {
             usbConnected -> "USB 카메라 연결됨"
             ptpipState == PtpipConnectionState.CONNECTED -> {
-                if (wifiState.isConnectedToCameraAP ||
+                if (isApForced ||
+                    wifiState.isConnectedToCameraAP ||
                     wifiState.detectedCameraIP?.startsWith("192.168.1.") == true ||
                     wifiState.detectedCameraIP?.startsWith("192.168.4.") == true
                 ) {

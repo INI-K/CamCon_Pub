@@ -108,7 +108,9 @@ fun StaModeContent(
                 cameraInfo = cameraInfo,
                 isPtpipEnabled = isPtpipEnabled,
                 isWifiConnected = isWifiConnected,
-                isApMode = false
+                isApMode = false,
+                hasLocationPermission = hasLocationPermission,
+                onRequestPermission = onRequestPermission
             )
         }
     }
