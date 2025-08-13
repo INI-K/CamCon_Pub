@@ -958,14 +958,16 @@ class PtpipDataSource @Inject constructor(
     fun requestWifiSpecifierConnection(
         ssid: String,
         passphrase: String? = null,
-        onResult: (Boolean) -> Unit
+        onResult: (Boolean) -> Unit,
+        onError: ((String) -> Unit)? = null
     ) {
         wifiHelper.requestConnectionWithSpecifier(
             ssid = ssid,
             passphrase = passphrase,
             requireNoInternet = true,
             bindProcess = true,
-            onResult = onResult
+            onResult = onResult,
+            onError = onError
         )
     }
 }

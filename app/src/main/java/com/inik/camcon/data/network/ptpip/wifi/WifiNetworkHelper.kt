@@ -805,6 +805,52 @@ class WifiNetworkHelper @Inject constructor(
                 return
             }
 
+            // 연결 전 해당 SSID가 스캔 결과에 있는지 확인
+            Log.d(TAG, "WifiNetworkSpecifier 연결 전 SSID 확인: $ssid")
+            val availableSSIDs = try {
+                wifiManager.scanResults?.map { it.SSID?.removeSurrounding("\"") } ?: emptyList()
+            } catch (e: SecurityException) {
+                Log.w(TAG, "스캔 결과 확인 권한 부족: ${e.message}")
+                emptyList()
+            }
+
+            Log.d(TAG, "현재 스캔 결과에서 발견된 SSID: ${availableSSIDs.size}개")
+            availableSSIDs.forEach { Log.d(TAG, "  - $it") }
+
+            val isSSIDAvailable = availableSSIDs.any { it == ssid || it?.contains(ssid) == true }
+            if (!isSSIDAvailable && availableSSIDs.isNotEmpty()) {
+                val message = "선택한 Wi-Fi '$ssid'가 현재 검색되지 않습니다.\n\n" +
+                        "다음을 확인해주세요:\n" +
+                        "1. 카메라 Wi-Fi가 켜져있는지 확인\n" +
+                        "2. 카메라가 AP 모드로 설정되어 있는지 확인\n" +
+                        "3. 거리가 너무 멀지 않은지 확인\n\n" +
+                        "또는 Wi-Fi 설정에서 수동으로 연결해보세요."
+                Log.w(TAG, "SSID '$ssid'가 스캔 결과에 없음")
+                onError?.invoke(message)
+                onResult(false)
+                return
+            }
+
+            // 보안 타입 확인
+            val securityType = getWifiSecurityType(ssid)
+            val requiresPassword = requiresPassword(ssid)
+            Log.d(TAG, "SSID '$ssid' 보안 정보:")
+            Log.d(TAG, "  - 보안 타입: ${securityType ?: "알 수 없음"}")
+            Log.d(TAG, "  - 패스워드 필요: $requiresPassword")
+            Log.d(TAG, "  - 제공된 패스워드: ${if (passphrase.isNullOrEmpty()) "없음" else "있음"}")
+
+            // 패스워드가 필요한데 제공되지 않은 경우 사용자에게 알림
+            if (requiresPassword && passphrase.isNullOrEmpty()) {
+                val message = "선택한 Wi-Fi '$ssid'는 패스워드가 필요합니다.\n\n" +
+                        "보안 타입: ${securityType ?: "WPA/WPA2"}\n\n" +
+                        "카메라의 Wi-Fi 패스워드를 확인하고 다시 시도하거나,\n" +
+                        "시스템 Wi-Fi 설정에서 수동으로 연결해주세요."
+                Log.w(TAG, "SSID '$ssid'는 패스워드가 필요하지만 제공되지 않음")
+                onError?.invoke(message)
+                onResult(false)
+                return
+            }
+
             val builder = WifiNetworkSpecifier.Builder()
                 .setSsid(ssid)
 
@@ -842,7 +888,15 @@ class WifiNetworkHelper @Inject constructor(
 
                 override fun onUnavailable() {
                     Log.w(TAG, "WifiNetworkSpecifier 연결 불가: $ssid")
-                    val message = "자동 연결에 실패했습니다.\nWi-Fi 설정에서 '$ssid'에 수동으로 연결해주세요."
+                    val message = "자동 연결에 실패했습니다.\n\n" +
+                            "가능한 원인:\n" +
+                            "1. Wi-Fi '$ssid'가 범위를 벗어남\n" +
+                            "2. 패스워드가 필요하거나 잘못됨\n" +
+                            "3. 카메라 Wi-Fi가 꺼짐\n\n" +
+                            "해결 방법:\n" +
+                            "- Wi-Fi 설정에서 '$ssid'에 연결\n" +
+                            "- 카메라 Wi-Fi 상태 확인\n" +
+                            "- 카메라와의 거리 확인"
                     onError?.invoke(message)
                     onResult(false)
                 }
@@ -1397,6 +1451,48 @@ class WifiNetworkHelper @Inject constructor(
         }.apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
+    }
+
+    /**
+     * 특정 SSID의 보안 타입 확인
+     */
+    fun getWifiSecurityType(ssid: String): String? {
+        return try {
+            val scanResults = wifiManager.scanResults
+            val targetNetwork = scanResults?.find {
+                it.SSID?.removeSurrounding("\"") == ssid
+            }
+
+            if (targetNetwork != null) {
+                val capabilities = targetNetwork.capabilities
+                Log.d(TAG, "SSID '$ssid' 보안 정보: $capabilities")
+
+                when {
+                    capabilities.contains("WPA3") -> "WPA3"
+                    capabilities.contains("WPA2") -> "WPA2"
+                    capabilities.contains("WPA") -> "WPA"
+                    capabilities.contains("WEP") -> "WEP"
+                    else -> "OPEN"
+                }
+            } else {
+                Log.w(TAG, "SSID '$ssid'를 스캔 결과에서 찾을 수 없음")
+                null
+            }
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Wi-Fi 보안 타입 확인 권한 오류: ${e.message}")
+            null
+        } catch (e: Exception) {
+            Log.e(TAG, "Wi-Fi 보안 타입 확인 실패: ${e.message}")
+            null
+        }
+    }
+
+    /**
+     * SSID가 패스워드를 요구하는지 확인
+     */
+    fun requiresPassword(ssid: String): Boolean {
+        val securityType = getWifiSecurityType(ssid)
+        return securityType != null && securityType != "OPEN"
     }
 }
 
