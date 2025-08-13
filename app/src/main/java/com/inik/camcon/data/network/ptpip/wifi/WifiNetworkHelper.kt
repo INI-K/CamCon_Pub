@@ -133,6 +133,179 @@ class WifiNetworkHelper @Inject constructor(
     private val connectivityManager =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
+    // Wi-Fi 퍼포먼스 락 관리
+    private var wifiLock: WifiManager.WifiLock? = null
+
+    /**
+     * High performance Wi-Fi lock 획득
+     */
+    fun acquireWifiLock(tag: String = "CamConWifiLock"): Boolean {
+        synchronized(this) {
+            if (wifiLock?.isHeld == true) {
+                Log.d(TAG, "이미 Wi-Fi 락이 획득됨")
+                return true
+            }
+            return try {
+                wifiLock = wifiManager.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, tag)
+                wifiLock?.setReferenceCounted(false)
+                wifiLock?.acquire()
+                Log.d(TAG, "✅ Wi-Fi high performance 락 획득")
+                true
+            } catch (e: Exception) {
+                Log.e(TAG, "Wi-Fi 락 획득 실패: ${e.message}")
+                false
+            }
+        }
+    }
+
+    /**
+     * Wi-Fi 락 해제
+     */
+    fun releaseWifiLock() {
+        synchronized(this) {
+            try {
+                wifiLock?.let {
+                    if (it.isHeld) {
+                        it.release()
+                        Log.d(TAG, "✅ Wi-Fi 락 해제")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Wi-Fi 락 해제 실패: ${e.message}")
+            } finally {
+                wifiLock = null
+            }
+        }
+    }
+
+    /**
+     * Wi-Fi 락 현재 상태 확인
+     */
+    fun isWifiLockHeld(): Boolean {
+        return wifiLock?.isHeld == true
+    }
+
+    /**
+     * 현재 Wi-Fi 연결의 주파수 대역 확인 (2.4GHz/5GHz)
+     */
+    @Suppress("DEPRECATION")
+    fun getCurrentWifiFrequencyInfo(): WifiFrequencyInfo? {
+        return try {
+            Log.d(TAG, "Wi-Fi 주파수 정보 조회 시작...")
+
+            val connectionInfo = wifiManager.connectionInfo
+            if (connectionInfo == null) {
+                Log.w(TAG, "❌ WifiManager.connectionInfo가 null")
+                return null
+            }
+
+            Log.d(TAG, "✅ ConnectionInfo 획득 성공")
+            Log.d(TAG, "  - NetworkId: ${connectionInfo.networkId}")
+            Log.d(TAG, "  - BSSID: ${connectionInfo.bssid}")
+
+            // 연결 정보가 있으면 Wi-Fi에 연결된 것으로 간주
+            val rawSSID = connectionInfo.ssid
+            val ssid = rawSSID?.removeSurrounding("\"")
+
+            Log.d(TAG, "SSID 정보:")
+            Log.d(TAG, "  - Raw SSID: '$rawSSID'")
+            Log.d(TAG, "  - Cleaned SSID: '$ssid'")
+
+            if (ssid.isNullOrEmpty() || ssid == "<unknown ssid>") {
+                Log.w(TAG, "❌ SSID 정보가 유효하지 않음: $ssid")
+                return null
+            }
+
+            // API 21+ 에서 주파수 정보 사용 가능
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                val frequency = connectionInfo.frequency
+                val linkSpeed = connectionInfo.linkSpeed
+                val rssi = connectionInfo.rssi
+
+                Log.d(TAG, "연결 상세 정보:")
+                Log.d(TAG, "  - 주파수: ${frequency}MHz")
+                Log.d(TAG, "  - 링크 속도: ${linkSpeed}Mbps")
+                Log.d(TAG, "  - 신호 강도: ${rssi}dBm")
+
+                if (frequency > 0) {
+                    val band = when {
+                        frequency in 2412..2484 -> "2.4GHz"
+                        frequency in 5170..5825 -> "5GHz"
+                        frequency in 5925..7125 -> "6GHz" // Wi-Fi 6E
+                        else -> "Unknown"
+                    }
+
+                    Log.d(TAG, "✅ 주파수 정보 조회 성공")
+                    Log.d(TAG, "현재 Wi-Fi 주파수 정보:")
+                    Log.d(TAG, "  - SSID: $ssid")
+                    Log.d(TAG, "  - 주파수: ${frequency}MHz ($band)")
+                    Log.d(TAG, "  - 링크 속도: ${linkSpeed}Mbps")
+                    Log.d(TAG, "  - 신호 강도: ${rssi}dBm")
+
+                    return WifiFrequencyInfo(
+                        frequency = frequency,
+                        band = band,
+                        linkSpeed = linkSpeed,
+                        rssi = rssi,
+                        ssid = ssid
+                    )
+                } else {
+                    Log.w(TAG, "❌ 주파수 정보가 유효하지 않음: ${frequency}MHz")
+                }
+            } else {
+                Log.w(TAG, "❌ 주파수 정보는 Android 5.0+ 에서만 사용 가능 (현재: API ${Build.VERSION.SDK_INT})")
+            }
+
+            return null
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Wi-Fi 주파수 정보 조회 실패: ${e.message}", e)
+            return null
+        }
+    }
+
+    /**
+     * 특정 SSID의 주파수 정보를 스캔 결과에서 조회
+     */
+    fun getSSIDFrequencyInfo(ssid: String): WifiFrequencyInfo? {
+        return try {
+            val scanResults = wifiManager.scanResults
+            val targetNetwork = scanResults?.find {
+                it.SSID?.removeSurrounding("\"") == ssid
+            }
+
+            if (targetNetwork != null) {
+                val frequency = targetNetwork.frequency
+                val band = when {
+                    frequency in 2412..2484 -> "2.4GHz"
+                    frequency in 5170..5825 -> "5GHz"
+                    frequency in 5925..7125 -> "6GHz"
+                    else -> "Unknown"
+                }
+
+                Log.d(TAG, "SSID '$ssid' 주파수 정보:")
+                Log.d(TAG, "  - 주파수: ${frequency}MHz ($band)")
+                Log.d(TAG, "  - 신호 강도: ${targetNetwork.level}dBm")
+
+                return WifiFrequencyInfo(
+                    frequency = frequency,
+                    band = band,
+                    linkSpeed = null, // 스캔 결과에서는 링크 속도 정보 없음
+                    rssi = targetNetwork.level,
+                    ssid = ssid
+                )
+            } else {
+                Log.w(TAG, "SSID '$ssid'를 스캔 결과에서 찾을 수 없음")
+                return null
+            }
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Wi-Fi 주파수 정보 조회 권한 오류: ${e.message}")
+            return null
+        } catch (e: Exception) {
+            Log.e(TAG, "Wi-Fi 주파수 정보 조회 실패: ${e.message}")
+            return null
+        }
+    }
+
     companion object {
         private const val TAG = "WifiNetworkHelper"
 
@@ -810,7 +983,7 @@ class WifiNetworkHelper @Inject constructor(
             val availableSSIDs = try {
                 wifiManager.scanResults?.map { it.SSID?.removeSurrounding("\"") } ?: emptyList()
             } catch (e: SecurityException) {
-                Log.w(TAG, "스캔 결과 확인 권한 부족: ${e.message}")
+                Log.w(TAG, "스캔 결과 확인 권한 없음")
                 emptyList()
             }
 
@@ -844,7 +1017,7 @@ class WifiNetworkHelper @Inject constructor(
                 val message = "선택한 Wi-Fi '$ssid'는 패스워드가 필요합니다.\n\n" +
                         "보안 타입: ${securityType ?: "WPA/WPA2"}\n\n" +
                         "카메라의 Wi-Fi 패스워드를 확인하고 다시 시도하거나,\n" +
-                        "시스템 Wi-Fi 설정에서 수동으로 연결해주세요."
+                        "시스템 Wi-Fi 설정에서 '$ssid'에 수동 연결해주세요."
                 Log.w(TAG, "SSID '$ssid'는 패스워드가 필요하지만 제공되지 않음")
                 onError?.invoke(message)
                 onResult(false)
@@ -887,6 +1060,11 @@ class WifiNetworkHelper @Inject constructor(
                             ConnectivityManager.setProcessDefaultNetwork(network)
                             Log.d(TAG, "네트워크 바인딩 성공")
 
+                            // Wi-Fi 퍼포먼스 락 적용
+                            if (acquireWifiLock("PTP_IP_HighPerf")) {
+                                Log.i(TAG, "🚀 Wi-Fi 퍼포먼스 락 활성화 - PTP/IP 최적화")
+                            }
+
                             // 연결 안정화를 위한 짧은 지연
                             Thread.sleep(500)
 
@@ -899,6 +1077,22 @@ class WifiNetworkHelper @Inject constructor(
                                         capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
                                     }"
                                 )
+                            }
+
+                            // 연결된 Wi-Fi 주파수 정보 출력 (추가 지연 후)
+                            Thread.sleep(300) // Wi-Fi 정보 완전 설정 대기
+                            val freqInfo = getCurrentWifiFrequencyInfo()
+                            if (freqInfo != null) {
+                                Log.i(TAG, "📶 현재 Wi-Fi 주파수 정보:")
+                                Log.i(TAG, "    - SSID: ${freqInfo.ssid}")
+                                Log.i(
+                                    TAG,
+                                    "    - 주파수: ${freqInfo.frequency} MHz (${freqInfo.band})"
+                                )
+                                Log.i(TAG, "    - 링크 속도: ${freqInfo.linkSpeed} Mbps")
+                                Log.i(TAG, "    - 신호 강도: ${freqInfo.rssi} dBm")
+                            } else {
+                                Log.w(TAG, "⚠️ Wi-Fi 주파수 정보를 가져올 수 없음")
                             }
 
                         } catch (e: Exception) {
@@ -1596,4 +1790,15 @@ data class WifiScanPermissionStatus(
     val canScan: Boolean,
     val androidVersion: Int,
     val missingPermissions: List<String>
+)
+
+/**
+ * Wi-Fi 주파수 정보 데이터 모델
+ */
+data class WifiFrequencyInfo(
+    val frequency: Int,
+    val band: String,
+    val linkSpeed: Int?,
+    val rssi: Int?,
+    val ssid: String?
 )

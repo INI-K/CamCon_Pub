@@ -142,6 +142,16 @@ object CameraNative {
     external fun getCameraPhotoExif(photoPath: String): String? // EXIF 정보를 JSON 문자열로 반환
     external fun downloadCameraPhoto(photoPath: String): ByteArray?
 
+    // Fast Path: ObjectHandle 기반 다운로드 및 캐시/매핑 API
+    external fun downloadByObjectHandle(handle: Long): ByteArray?
+    external fun setHandlePathMapping(handle: Long, path: String)
+    external fun clearHandlePathMapping()
+    external fun getObjectInfoCached(path: String): String
+
+    // 최근 촬영 경로 조회/초기화 (이벤트 기반 빠른 접근)
+    external fun getRecentCapturedPaths(maxCount: Int): Array<String>?
+    external fun clearRecentCapturedPaths()
+
     // PTP/IP 연결 안정성을 위한 함수들
     external fun clearPtpipSettings(): Boolean // libgphoto2의 ptp2_ip 설정을 모두 삭제하여 새로운 GUID 생성 강제
     external fun resetPtpipGuid(): Boolean // GUID만 특별히 초기화
