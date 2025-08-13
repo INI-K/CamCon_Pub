@@ -1,6 +1,12 @@
 package com.inik.camcon.data.datasource.ptpip
 
 import android.content.Context
+import android.content.ContentValues
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import android.util.Log
 import com.inik.camcon.CameraNative
 import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
@@ -8,6 +14,7 @@ import com.inik.camcon.data.network.ptpip.authentication.NikonAuthenticationServ
 import com.inik.camcon.data.network.ptpip.connection.PtpipConnectionManager
 import com.inik.camcon.data.network.ptpip.discovery.PtpipDiscoveryService
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
+import com.inik.camcon.data.repository.managers.CameraEventManager
 import com.inik.camcon.domain.model.NikonConnectionMode
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.PtpipCameraInfo
@@ -26,6 +33,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -44,7 +52,8 @@ class PtpipDataSource @Inject constructor(
     private val discoveryService: PtpipDiscoveryService,
     private val connectionManager: PtpipConnectionManager,
     private val nikonAuthService: NikonAuthenticationService,
-    private val wifiHelper: WifiNetworkHelper
+    private val wifiHelper: WifiNetworkHelper,
+    private val cameraEventManager: CameraEventManager
 ) {
     private var connectedCamera: PtpipCamera? = null
     private var lastConnectedCamera: PtpipCamera? = null
@@ -65,9 +74,17 @@ class PtpipDataSource @Inject constructor(
     private val _wifiNetworkState = MutableStateFlow(WifiNetworkState(false, false, null, null))
     val wifiNetworkState: StateFlow<WifiNetworkState> = _wifiNetworkState.asStateFlow()
 
+    // AP 모드 강제 여부 (탭 선택 등으로 AP 모드를 명시적으로 사용하는 경우)
+    private val _isApModeForced = MutableStateFlow(false)
+    val isApModeForced: StateFlow<Boolean> = _isApModeForced.asStateFlow()
+
     companion object {
         private const val TAG = "PtpipDataSource"
         private const val RECONNECT_DELAY_MS = 3000L
+        private const val DUP_WINDOW_MS = 1500L
+        const val ACTION_PHOTO_SAVED = "com.inik.camcon.action.PHOTO_SAVED"
+        const val EXTRA_URI = "uri"
+        const val EXTRA_FILE_NAME = "fileName"
     }
 
     /**
@@ -243,10 +260,16 @@ class PtpipDataSource @Inject constructor(
     /**
      * mDNS를 사용하여 PTPIP 지원 카메라 검색
      */
-    suspend fun discoverCameras(): List<PtpipCamera> {
+    suspend fun discoverCameras(forceApMode: Boolean): List<PtpipCamera> {
         return try {
             Log.d(TAG, "카메라 검색 시작")
-            
+
+            // 연결 시도와 검색이 겹치지 않도록 직렬화: 연결 중이면 기존 목록 유지 반환
+            if (_connectionState.value == PtpipConnectionState.CONNECTING) {
+                Log.d(TAG, "연결 진행 중 - 검색 건너뜀 (직렬화 보호)")
+                return _discoveredCameras.value
+            }
+
             // Wi-Fi 연결 상태 확인
             if (!wifiHelper.isWifiConnected()) {
                 Log.w(TAG, "Wi-Fi 네트워크에 연결되어 있지 않음")
@@ -278,7 +301,7 @@ class PtpipDataSource @Inject constructor(
 
             // STA모드에서는 mDNS 검색 사용
             Log.d(TAG, "STA모드 또는 일반 네트워크: mDNS 검색 시작")
-            val cameras = discoveryService.discoverCameras()
+            val cameras = discoveryService.discoverCameras(forceApMode)
             _discoveredCameras.value = cameras
             cameras
         } catch (e: Exception) {
@@ -286,6 +309,9 @@ class PtpipDataSource @Inject constructor(
             emptyList()
         }
     }
+
+    // 호환성용 무파라미터 래퍼
+    suspend fun discoverCameras(): List<PtpipCamera> = discoverCameras(false)
 
     /**
      * 니콘 카메라 연결 모드 감지 (AP/STA/UNKNOWN)
@@ -319,54 +345,96 @@ class PtpipDataSource @Inject constructor(
     /**
      * 스마트 카메라 연결 (하이브리드 방식)
      */
-    suspend fun connectToCamera(camera: PtpipCamera): Boolean = withContext(Dispatchers.IO) {
+    suspend fun connectToCamera(camera: PtpipCamera, forceApMode: Boolean = false): Boolean =
+        withContext(Dispatchers.IO) {
         try {
             Log.i(TAG, "스마트 카메라 연결 시작: ${camera.name}")
             _connectionState.value = PtpipConnectionState.CONNECTING
+
+            // AP 모드 강제 플래그 설정 (전역 표기용)
+            _isApModeForced.value = forceApMode
 
             // 라이브러리가 로드되지 않은 경우 로드
             ensureLibrariesLoaded()
 
             // 이전 연결 정리
-            disconnect()
+            if (_connectionState.value == PtpipConnectionState.CONNECTED &&
+                connectedCamera != null && connectedCamera != camera
+            ) {
+                Log.d(TAG, "다른 카메라 연결됨 - 기존 연결 해제")
+                disconnect()
+            } else if (_connectionState.value == PtpipConnectionState.CONNECTED &&
+                connectedCamera == camera
+            ) {
+                Log.d(TAG, "같은 카메라 이미 연결됨 - 연결 유지")
+                return@withContext true
+            }
 
-            // Wi-Fi 연결 확인
-            if (!wifiHelper.isWifiConnected()) {
-                Log.e(TAG, "Wi-Fi 연결이 해제됨")
-                _connectionState.value = PtpipConnectionState.ERROR
-                return@withContext false
+            // Wi-Fi 연결 확인 생략 - WifiNetworkSpecifier 바인딩 상태에서는 정상적인 체크가 불가능
+            // 연결 시도를 통해 실제 연결 가능 여부 확인
+            Log.d(TAG, "네트워크 바인딩 상태에서 연결 시도 진행")
+
+            // 현재 네트워크 상태 로그
+            try {
+                val isNormalWifiConnected = wifiHelper.isWifiConnected()
+                Log.d(TAG, "일반 Wi-Fi 연결 상태: $isNormalWifiConnected")
+                if (!isNormalWifiConnected) {
+                    Log.d(TAG, "일반 Wi-Fi는 연결되지 않았지만 네트워크 바인딩으로 진행")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Wi-Fi 상태 확인 실패: ${e.message}")
+            }
+
+            // AP 모드 강제: libgphoto2로만 연결 시도 (폴백 없음)
+            if (forceApMode) {
+                // 검색/소켓 테스트와의 간섭 방지를 위한 짧은 안정화 대기
+                kotlinx.coroutines.delay(200)
+                val libDir = context.applicationInfo.nativeLibraryDir
+                val result = try {
+                    Log.i(TAG, "AP모드 강제: libgphoto2 초기화 시도")
+                    CameraNative.initCameraForAPMode(camera.ipAddress, camera.port, libDir)
+                } catch (e: Exception) {
+                    Log.w(TAG, "libgphoto2 초기화 실패: ${e.message}")
+                    null
+                }
+
+                val ok = (result == "OK" || result == "GP_OK" || result?.contains(
+                    "Success",
+                    ignoreCase = true
+                ) == true)
+                if (ok) {
+                    Log.i(TAG, "✅ AP 모드 (강제): libgphoto2 연결 성공!")
+                    _connectionState.value = PtpipConnectionState.CONNECTED
+                    connectedCamera = camera
+                    lastConnectedCamera = camera
+
+                    // AP 모드 성공 시 이벤트 리스너 시작
+                    startAutomaticFileReceiving(camera)
+                    return@withContext true
+                } else {
+                    Log.e(TAG, "❌ AP 모드 (강제): libgphoto2 초기화 실패 - 폴백 없음")
+                    _connectionState.value = PtpipConnectionState.ERROR
+                    return@withContext false
+                }
             }
 
             // 1단계: libgphoto2 PTP/IP 연결 시도 (AP 모드 감지)
             Log.i(TAG, "=== 1단계: libgphoto2 PTP/IP 연결 시도 ===")
             val libDir = context.applicationInfo.nativeLibraryDir
             val ptpipResult = try {
-                // AP모드인지 확인
-                if (wifiHelper.isConnectedToCameraAP()) {
-                    Log.i(TAG, "AP모드 감지: 단순 연결 방식 사용")
-                    CameraNative.initCameraForAPMode(camera.ipAddress, camera.port, libDir)
-                } else {
-                    Log.i(TAG, "STA모드 또는 일반 모드: 복잡한 연결 방식 사용")
-                    CameraNative.initCameraWithPtpip(camera.ipAddress, camera.port, libDir)
-                }
+                Log.i(TAG, "STA모드: 복잡한 연결 방식 사용")
+                CameraNative.initCameraWithPtpip(camera.ipAddress, camera.port, libDir)
             } catch (e: Exception) {
                 Log.w(TAG, "libgphoto2 초기화 실패: ${e.message}")
                 null
             }
 
-            if (ptpipResult == "OK" || ptpipResult == "GP_OK" || 
-                ptpipResult?.contains("Success", ignoreCase = true) == true) {
-                Log.i(TAG, "✅ AP 모드 감지: libgphoto2 연결 성공!")
-                _connectionState.value = PtpipConnectionState.CONNECTED
-                connectedCamera = camera
-                lastConnectedCamera = camera
+            val initOk = (ptpipResult == "OK" || ptpipResult == "GP_OK" || ptpipResult?.contains(
+                "Success",
+                ignoreCase = true
+            ) == true)
 
-                // AP 모드 성공 시 파일 수신 리스너 시작
-                startAutomaticFileReceiving(camera)
-
-                return@withContext true
-            }
-
+            // 비강제 모드(STA/일반)에서는 기존 로직 유지
             // 2단계: 기본 PTPIP 연결로 제조사 확인
             Log.i(TAG, "=== 2단계: 기본 PTPIP 연결로 제조사 확인 ===")
             if (!connectionManager.establishConnection(camera)) {
@@ -425,8 +493,11 @@ class PtpipDataSource @Inject constructor(
                     connectedCamera = camera
                     lastConnectedCamera = camera
 
-                    // STA 모드에서도 파일 수신 리스너 시작
+                    // STA 모드에서도 이벤트 리스너 시작
                     startAutomaticFileReceiving(camera)
+
+                    // STA 경로에서는 AP 강제 표시를 해제
+                    _isApModeForced.value = false
 
                     return@withContext true
                 } else {
@@ -441,12 +512,12 @@ class PtpipDataSource @Inject constructor(
                 lastConnectedCamera = camera
 
                 // 니콘이 아닌 카메라의 경우 libgphoto2 세션 유지 초기화
-                val libDir = context.applicationInfo.nativeLibraryDir
+                val libDir2 = context.applicationInfo.nativeLibraryDir
                 try {
                     val initResult = CameraNative.initCameraWithSessionMaintenance(
                         camera.ipAddress,
                         camera.port,
-                        libDir
+                        libDir2
                     )
                     if (initResult >= 0) {
                         Log.i(TAG, "✅ libgphoto2 세션 유지 초기화 성공!")
@@ -457,8 +528,11 @@ class PtpipDataSource @Inject constructor(
                     Log.w(TAG, "❌ libgphoto2 세션 유지 초기화 실패 (예외): ${e.message}")
                 }
 
-                // 다른 카메라에서도 파일 수신 리스너 시작
+                // 다른 카메라에서도 이벤트 리스너 시작
                 startAutomaticFileReceiving(camera)
+
+                // STA/일반 경로에서는 AP 강제 표시를 해제
+                _isApModeForced.value = false
 
                 return@withContext true
             }
@@ -519,57 +593,88 @@ class PtpipDataSource @Inject constructor(
     }
 
     /**
-     * AP 모드 연결 성공 시 파일 수신 리스너만 시작 (자동 촬영 없음)
+     * AP 모드 연결 성공 시 이벤트 리스너 시작 (CameraEventManager 활용)
      */
     private fun startAutomaticFileReceiving(camera: PtpipCamera) {
-        Log.i(TAG, "파일 수신 리스너 시작: ${camera.name} (자동 촬영 없음)")
+        Log.i(TAG, "PTPIP AP 모드 이벤트 리스너 시작: ${camera.name}")
 
         coroutineScope.launch {
             try {
-                // 파일 수신 전용 리스너 (촬영 명령 없음)
-                val fileReceiveListener = object : CameraCaptureListener {
-                    override fun onFlushComplete() {
-                        Log.d(TAG, "파일 수신: 플러시 완료")
-                    }
-
-                    override fun onPhotoCaptured(filePath: String, fileName: String) {
-                        Log.i(TAG, "파일 수신: 외부 촬영 파일 자동 다운로드 완료 - $fileName")
-                        Log.i(TAG, "파일 경로: $filePath")
-
-                        // 추가 처리 로직 (예: 썸네일 생성, 메타데이터 추출 등)
+                // CameraEventManager를 통해 PTPIP 이벤트 리스너 시작
+                val result = cameraEventManager.startCameraEventListener(
+                    isConnected = true,
+                    isInitializing = false,
+                    saveDirectory = getDefaultSaveDirectory(),
+                    onPhotoCaptured = { filePath, fileName ->
                         handleAutomaticDownload(filePath, fileName)
-                    }
+                    },
+                    onFlushComplete = {
+                        Log.d(TAG, "PTPIP AP 모드 플러시 완료")
+                    },
+                    onCaptureFailed = { errorCode ->
+                        Log.e(TAG, "PTPIP AP 모드 촬영 실패: $errorCode")
+                    },
+                    connectionType = CameraEventManager.ConnectionType.PTPIP
+                )
 
-                    override fun onCaptureFailed(errorCode: Int) {
-                        Log.e(TAG, "파일 수신: 수신 실패 (에러 코드: $errorCode)")
-                    }
-
-                    override fun onUsbDisconnected() {
-                        Log.w(TAG, "USB 분리 이벤트 - PTPIP는 영향받지 않음 (Wi-Fi 연결)")
-                        // PTPIP 연결에서는 USB 분리 이벤트가 관련없으므로 무시
-                    }
+                if (result.isSuccess) {
+                    Log.i(TAG, "✅ PTPIP AP 모드 이벤트 리스너 시작 성공")
+                } else {
+                    Log.e(
+                        TAG,
+                        "❌ PTPIP AP 모드 이벤트 리스너 시작 실패: ${result.exceptionOrNull()?.message}"
+                    )
                 }
-
-                // 파일 수신 리스너만 시작 (촬영 명령 실행 없음)
-                startFileReceiveListener(fileReceiveListener)
-                Log.i(TAG, "파일 수신 리스너 시작됨 - 외부 촬영 파일 자동 다운로드 대기 중")
-
             } catch (e: Exception) {
-                Log.e(TAG, "파일 수신 리스너 시작 중 오류", e)
+                Log.e(TAG, "PTPIP AP 모드 이벤트 리스너 시작 중 오류", e)
+                // 폴백: 기존 방식 사용
+                startFileReceiveListenerFallback(camera)
             }
         }
     }
 
     /**
-     * 파일 수신 전용 리스너 시작 (촬영 명령 없음)
+     * 기본 저장 디렉토리 가져오기
      */
-    private fun startFileReceiveListener(listener: CameraCaptureListener) {
+    private fun getDefaultSaveDirectory(): String {
+        return context.getExternalFilesDir(null)?.absolutePath ?: "/sdcard/CamCon"
+    }
+
+    /**
+     * 기존 방식의 파일 수신 리스너 (폴백용)
+     */
+    private fun startFileReceiveListenerFallback(camera: PtpipCamera) {
+        Log.i(TAG, "기존 방식 파일 수신 리스너 시작: ${camera.name}")
+
         try {
-            // 카메라 이벤트 리스너 시작 (파일 수신 전용)
-            CameraNative.listenCameraEvents(listener)
-            Log.i(TAG, "파일 수신 전용 리스너 활성화됨")
+            // 파일 수신 전용 리스너 (촬영 명령 없음)
+            val fileReceiveListener = object : CameraCaptureListener {
+                override fun onFlushComplete() {
+                    Log.d(TAG, "파일 수신: 플러시 완료")
+                }
+
+                override fun onPhotoCaptured(filePath: String, fileName: String) {
+                    Log.i(TAG, "파일 수신: 외부 촬영 파일 자동 다운로드 완료 - $fileName")
+                    Log.i(TAG, "파일 경로: $filePath")
+                    handleAutomaticDownload(filePath, fileName)
+                }
+
+                override fun onCaptureFailed(errorCode: Int) {
+                    Log.e(TAG, "파일 수신: 수신 실패 (에러 코드: $errorCode)")
+                }
+
+                override fun onUsbDisconnected() {
+                    Log.w(TAG, "USB 분리 이벤트 - PTPIP는 영향받지 않음 (Wi-Fi 연결)")
+                    // PTPIP 연결에서는 USB 분리 이벤트가 관련없으므로 무시
+                }
+            }
+
+            // 기존 방식으로 파일 수신 리스너 시작
+            CameraNative.listenCameraEvents(fileReceiveListener)
+            Log.i(TAG, "기존 방식 파일 수신 리스너 시작됨")
+
         } catch (e: Exception) {
-            Log.e(TAG, "파일 수신 리스너 시작 실패", e)
+            Log.e(TAG, "기존 방식 파일 수신 리스너 시작 실패", e)
         }
     }
 
@@ -621,11 +726,29 @@ class PtpipDataSource @Inject constructor(
     /**
      * 자동 파일 수신 중지
      */
-    private fun stopAutomaticFileReceiving() {
+    private suspend fun stopAutomaticFileReceiving() {
         try {
-            Log.d(TAG, "자동 파일 수신 중지")
-            CameraNative.stopListenCameraEvents()
-            Log.d(TAG, "카메라 이벤트 리스너 중지됨")
+            Log.d(TAG, "PTPIP 자동 파일 수신 중지")
+
+            // CameraEventManager를 통해 이벤트 리스너 중지
+            val result = cameraEventManager.stopCameraEventListener()
+            if (result.isSuccess) {
+                Log.d(TAG, "✅ CameraEventManager 이벤트 리스너 중지 성공")
+            } else {
+                Log.w(
+                    TAG,
+                    "❌ CameraEventManager 이벤트 리스너 중지 실패: ${result.exceptionOrNull()?.message}"
+                )
+            }
+
+            // 기존 방식도 함께 중지 (안전장치)
+            try {
+                CameraNative.stopListenCameraEvents()
+                Log.d(TAG, "기존 방식 카메라 이벤트 리스너도 중지됨")
+            } catch (e: Exception) {
+                Log.w(TAG, "기존 방식 카메라 이벤트 리스너 중지 중 예외: ${e.message}")
+            }
+
         } catch (e: Exception) {
             Log.e(TAG, "자동 파일 수신 중지 중 오류", e)
         }
@@ -642,7 +765,7 @@ class PtpipDataSource @Inject constructor(
             stopAutomaticFileReceiving()
 
             // Discovery 중지
-            discoveryService.stopDiscovery()
+            // discoveryService.stopDiscovery() // 카메라 목록 유지를 위해 주석 처리
 
             // libgphoto2 연결 해제를 백그라운드 스레드에서 실행
             if (!keepSession) {
@@ -667,6 +790,8 @@ class PtpipDataSource @Inject constructor(
                 lastConnectedCamera = null
                 _connectionState.value = PtpipConnectionState.DISCONNECTED
                 _cameraInfo.value = null
+                // 연결 해제 시 AP 강제 표시 해제
+                _isApModeForced.value = false
                 Log.d(TAG, "카메라 연결 해제 완료")
             } else {
                 _connectionState.value = PtpipConnectionState.CONNECTED
@@ -686,31 +811,125 @@ class PtpipDataSource @Inject constructor(
             try {
                 Log.d(TAG, "자동 다운로드 파일 처리 시작: $fileName")
 
-                // 파일 정보 확인
-                val fileInfo = java.io.File(filePath)
-                if (fileInfo.exists()) {
-                    val fileSize = fileInfo.length()
-                    Log.i(TAG, "자동 다운로드 완료: $fileName (크기: ${fileSize / 1024}KB)")
-
-                    // 파일 타입 확인
-                    val fileExtension = fileName.substringAfterLast(".", "").lowercase()
-                    Log.d(TAG, "파일 타입: $fileExtension")
-
-                    // 이미지 파일인 경우 썸네일 생성 시도
-                    if (fileExtension in listOf("jpg", "jpeg", "png", "cr2", "nef", "arw", "dng")) {
-                        Log.d(TAG, "이미지 파일 감지 - 썸네일 생성 시도")
-                        // 썸네일 생성 로직은 추후 구현
-                    }
-
-                    // 파일 다운로드 성공 알림
-                    Log.i(TAG, "✅ 자동 파일 다운로드 성공: $fileName")
-
-                } else {
-                    Log.w(TAG, "❌ 자동 다운로드 파일이 존재하지 않음: $filePath")
+                // 중복 처리 방지: 최근 처리 맵에서 윈도우 내 동일 파일 무시
+                val now = System.currentTimeMillis()
+                if (!recentProcessingGuard.tryMark(filePath, now)) {
+                    Log.d(TAG, "중복 촬영/저장 이벤트 무시: $fileName (@$filePath)")
+                    return@launch
                 }
+
+                // MediaStore에 저장 (공용 DCIM/CamCon)
+                val ext = fileName.substringAfterLast('.', "").lowercase()
+                val mime = when (ext) {
+                    "jpg", "jpeg" -> "image/jpeg"
+                    "png" -> "image/png"
+                    "dng" -> "image/x-adobe-dng"
+                    "nef" -> "image/x-nikon-nef"
+                    "cr2" -> "image/x-canon-cr2"
+                    "arw" -> "image/x-sony-arw"
+                    else -> "application/octet-stream"
+                }
+
+                val resolver = context.contentResolver
+                val collection: Uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+                val values = ContentValues().apply {
+                    put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
+                    put(MediaStore.Images.Media.MIME_TYPE, mime)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        put(
+                            MediaStore.Images.Media.RELATIVE_PATH,
+                            Environment.DIRECTORY_DCIM + "/CamCon"
+                        )
+                        put(MediaStore.Images.Media.IS_PENDING, 1)
+                    }
+                }
+                val itemUri = resolver.insert(collection, values)
+                if (itemUri == null) {
+                    Log.e(TAG, "❌ MediaStore 항목 생성 실패")
+                    return@launch
+                }
+
+                // 카메라에서 바로 다운로드 (재시도 포함)
+                var attempt = 0
+                val maxAttempts = 3
+                var downloaded: ByteArray? = null
+                while (attempt < maxAttempts) {
+                    try {
+                        downloaded = CameraNative.downloadCameraPhoto(filePath)
+                        if (downloaded != null && downloaded.isNotEmpty()) break
+                    } catch (e: Exception) {
+                        Log.w(TAG, "카메라 파일 다운로드 예외 (시도 ${attempt + 1}/$maxAttempts): ${e.message}")
+                    }
+                    attempt++
+                    delay(250L)
+                }
+
+                if (downloaded == null || downloaded.isEmpty()) {
+                    Log.e(TAG, "❌ 카메라에서 파일 다운로드 실패: $filePath")
+                    // 실패 시 항목 정리
+                    try {
+                        resolver.delete(itemUri, null, null)
+                    } catch (_: Exception) {
+                    }
+                    return@launch
+                }
+
+                // MediaStore에 바이트 쓰기
+                try {
+                    resolver.openOutputStream(itemUri, "w")!!.use { it.write(downloaded) }
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ MediaStore 저장 실패", e)
+                    try {
+                        resolver.delete(itemUri, null, null)
+                    } catch (_: Exception) {
+                    }
+                    return@launch
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    ContentValues().apply { put(MediaStore.Images.Media.IS_PENDING, 0) }.also {
+                        resolver.update(itemUri, it, null, null)
+                    }
+                }
+                Log.i(
+                    TAG,
+                    "✅ 공용 저장소(DCIM/CamCon) 저장 완료: $itemUri (크기: ${downloaded.size / 1024}KB)"
+                )
+
+                // 저장 완료 브로드캐스트
+                try {
+                    val intent = Intent(ACTION_PHOTO_SAVED).apply {
+                        putExtra(EXTRA_URI, itemUri.toString())
+                        putExtra(EXTRA_FILE_NAME, fileName)
+                    }
+                    context.sendBroadcast(intent)
+                } catch (e: Exception) {
+                    Log.w(TAG, "저장 완료 브로드캐스트 전송 실패: ${e.message}")
+                }
+
+                // 후처리 로그 및 타입 처리
+                val fileExtension = ext
+                Log.d(TAG, "파일 타입: $fileExtension")
+                if (fileExtension in listOf("jpg", "jpeg", "png", "cr2", "nef", "arw", "dng")) {
+                    Log.d(TAG, "이미지 파일 감지 - 썸네일 생성 시도")
+                }
+                Log.i(TAG, "✅ 자동 파일 다운로드 및 저장 완료: $fileName")
 
             } catch (e: Exception) {
                 Log.e(TAG, "자동 다운로드 파일 처리 중 오류", e)
+            }
+        }
+    }
+
+    // 최근 처리 중복 방지 가드
+    private val recentProcessingGuard = object {
+        private val map = ConcurrentHashMap<String, Long>()
+        fun tryMark(key: String, now: Long): Boolean {
+            val last = map[key]
+            return if (last == null || now - last > DUP_WINDOW_MS) {
+                map[key] = now
+                true
+            } else {
+                false
             }
         }
     }
@@ -793,6 +1012,16 @@ class PtpipDataSource @Inject constructor(
     fun isWifiConnected(): Boolean = wifiHelper.isWifiConnected()
 
     /**
+     * Wi-Fi 활성화 여부 확인
+     */
+    fun isWifiEnabled(): Boolean = wifiHelper.isWifiEnabled()
+
+    /**
+     * 위치 서비스 활성화 여부 확인
+     */
+    fun isLocationEnabled(): Boolean = wifiHelper.isLocationEnabled()
+
+    /**
      * Wi-Fi STA 동시 연결 지원 여부 확인
      */
     fun isStaConcurrencySupported(): Boolean = wifiHelper.isStaConcurrencySupported()
@@ -818,4 +1047,40 @@ class PtpipDataSource @Inject constructor(
      * 디버그용: NikonAuthenticationService 접근
      */
     fun getNikonAuthService() = nikonAuthService
+
+    /**
+     * 디버그용: WifiNetworkHelper 접근
+     */
+    fun getWifiHelper() = wifiHelper
+
+    /**
+     * 주변 Wi‑Fi SSID 스캔
+     */
+    suspend fun scanNearbyWifiSSIDs(): List<String> {
+        return try {
+            wifiHelper.scanNearbyWifiSSIDs()
+        } catch (e: Exception) {
+            Log.e(TAG, "Wi‑Fi 스캔 위임 중 오류", e)
+            emptyList()
+        }
+    }
+
+    /**
+     * WifiNetworkSpecifier 연결 요청
+     */
+    fun requestWifiSpecifierConnection(
+        ssid: String,
+        passphrase: String? = null,
+        onResult: (Boolean) -> Unit,
+        onError: ((String) -> Unit)? = null
+    ) {
+        wifiHelper.requestConnectionWithSpecifier(
+            ssid = ssid,
+            passphrase = passphrase,
+            requireNoInternet = true,
+            bindProcess = true,
+            onResult = onResult,
+            onError = onError
+        )
+    }
 }

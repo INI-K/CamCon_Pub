@@ -84,6 +84,18 @@ class PtpipViewModel @Inject constructor(
     private val _lastDownloadedFile = MutableStateFlow<String?>(null)
     val lastDownloadedFile: StateFlow<String?> = _lastDownloadedFile.asStateFlow()
 
+    // 주변 Wi‑Fi SSID 목록 (스캔 결과)
+    private val _nearbyWifiSSIDs = MutableStateFlow<List<String>>(emptyList())
+    val nearbyWifiSSIDs: StateFlow<List<String>> = _nearbyWifiSSIDs.asStateFlow()
+
+    // 위치 설정 요청 상태
+    private val _needLocationSettings = MutableStateFlow(false)
+    val needLocationSettings: StateFlow<Boolean> = _needLocationSettings.asStateFlow()
+
+    // Wi-Fi 설정 페이지 이동 요청 상태 추가
+    private val _needWifiSettings = MutableStateFlow(false)
+    val needWifiSettings: StateFlow<Boolean> = _needWifiSettings.asStateFlow()
+
     // 종합 상태 (PTPIP 활성화 + Wi-Fi 연결)
     val isPtpipAvailable = combine(
         isPtpipEnabled,
@@ -101,28 +113,6 @@ class PtpipViewModel @Inject constructor(
             }
         }
 
-        // 자동 연결 설정이 활성화된 경우 마지막 연결 카메라로 자동 연결 시도
-        // 자동 연결 기능 비활성화 - 사용자가 직접 연결하도록 변경
-        /*
-        viewModelScope.launch {
-            combine(
-                isAutoConnectEnabled,
-                lastConnectedIp,
-                lastConnectedName
-            ) { autoConnect, ip, name ->
-                if (autoConnect && ip != null && name != null) {
-                    val camera = PtpipCamera(
-                        ipAddress = ip,
-                        port = 15740,
-                        name = name,
-                        isOnline = true
-                    )
-                    connectToCamera(camera)
-                }
-            }
-        }
-        */
-
         // 전역 상태 변화 모니터링
         viewModelScope.launch {
             globalConnectionState.collect { state ->
@@ -131,9 +121,193 @@ class PtpipViewModel @Inject constructor(
                 // AP 모드 연결 상태 변화 시 추가 처리
                 if (state.wifiNetworkState.isConnectedToCameraAP) {
                     Log.d(TAG, "AP 모드 연결 감지됨")
-                    // 자동 검색은 사용자가 직접 실행하도록 변경
-                    // 자동 검색 기능은 추후 개선 예정
                 }
+            }
+        }
+    }
+
+    /**
+     * 주변 Wi‑Fi 스캔 (SSID 리스트)
+     */
+    fun scanNearbyWifiNetworks() {
+        Log.d(TAG, "scanNearbyWifiNetworks 메서드 호출됨")
+
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "Wi-Fi 스캔 시작 - 사전 점검 진행")
+
+                // 사전 점검: Wi‑Fi 활성화 상태
+                val wifiEnabled = ptpipDataSource.isWifiEnabled()
+                Log.d(TAG, "Wi-Fi 활성화 상태: $wifiEnabled")
+
+                if (!wifiEnabled) {
+                    Log.w(TAG, "Wi‑Fi가 꺼져 있음")
+                    _errorMessage.value = "Wi‑Fi가 꺼져 있습니다. Wi‑Fi를 켜주세요."
+                    return@launch
+                }
+
+                // 위치 서비스 확인 - 우선 시도해보고 실패하면 설정 요청
+                val locationEnabled = ptpipDataSource.isLocationEnabled()
+                Log.d(TAG, "위치 서비스 활성화 상태: $locationEnabled")
+
+                if (!locationEnabled) {
+                    Log.w(TAG, "위치 서비스가 꺼져 있음 - Google Play Services 설정 확인 시도")
+                    _needLocationSettings.value = true
+                    _errorMessage.value = "Wi-Fi 스캔을 위해 위치 서비스가 필요합니다."
+                    return@launch
+                }
+
+                Log.d(TAG, "사전 점검 완료 - Wi-Fi 스캔 시작")
+                _isDiscovering.value = true
+                _errorMessage.value = null
+
+                val ssids = ptpipDataSource.scanNearbyWifiSSIDs()
+                Log.d(TAG, "Wi-Fi 스캔 결과: ${ssids.size}개 SSID 발견")
+
+                ssids.forEach { ssid ->
+                    Log.d(TAG, "  발견된 SSID: $ssid")
+                }
+
+                _nearbyWifiSSIDs.value = ssids
+
+                if (ssids.isEmpty()) {
+                    Log.w(TAG, "주변 Wi‑Fi를 찾지 못함 - Android 제한 가능성")
+                    // Android 13+ 제한으로 스캔 실패 시 사용자 안내
+                    _needWifiSettings.value = true
+                    _errorMessage.value = "Android 보안 정책으로 인해 Wi-Fi 스캔이 제한됩니다.\n" +
+                            "시스템 Wi-Fi 설정에서 수동으로 주변 네트워크를 확인한 후 다시 시도해주세요."
+                } else {
+                    Log.i(TAG, "Wi-Fi 스캔 성공: ${ssids.size}개 발견")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Wi-Fi 스캔 중 오류 발생", e)
+                _nearbyWifiSSIDs.value = emptyList()
+                _errorMessage.value = "주변 Wi‑Fi 스캔 중 오류: ${e.message}"
+            } finally {
+                _isDiscovering.value = false
+                Log.d(TAG, "Wi-Fi 스캔 작업 완료")
+            }
+        }
+    }
+
+    /**
+     * 위치 설정 다이얼로그 해제
+     */
+    fun dismissLocationSettingsDialog() {
+        _needLocationSettings.value = false
+    }
+
+    /**
+     * Wi-Fi 설정 다이얼로그 해제
+     */
+    fun dismissWifiSettingsDialog() {
+        _needWifiSettings.value = false
+    }
+
+    /**
+     * Google Play Services를 통한 위치 설정 확인
+     */
+    fun checkLocationSettings() {
+        Log.d(TAG, "Google Play Services 위치 설정 확인 시작")
+        // WifiNetworkHelper의 checkLocationSettingsForScan() 사용
+        ptpipDataSource.getWifiHelper().checkLocationSettingsForScan()
+            .addOnSuccessListener {
+                Log.d(TAG, "위치 설정 확인 성공 - Wi-Fi 스캔 재시도")
+                _needLocationSettings.value = false
+                scanNearbyWifiNetworks()
+            }
+            .addOnFailureListener { exception ->
+                Log.w(TAG, "위치 설정 확인 실패: ${exception.message}")
+                // ResolvableApiException인 경우 UI에서 처리하도록 상태 유지
+                _needLocationSettings.value = true
+            }
+    }
+
+    /**
+     * WifiNetworkSpecifier로 SSID 연결 요청 (패스워드 포함)
+     */
+    fun connectToWifiSsidWithPassword(ssid: String, passphrase: String) {
+        Log.d(TAG, "패스워드와 함께 Wi-Fi 연결 시도: $ssid")
+        connectToWifiSsid(ssid, passphrase)
+    }
+
+    /**
+     * WifiNetworkSpecifier로 SSID 연결 요청
+     */
+    fun connectToWifiSsid(ssid: String, passphrase: String? = null) {
+        Log.d(TAG, "Wi-Fi 연결 시작: ssid='$ssid', 패스워드 제공=${!passphrase.isNullOrEmpty()}")
+
+        viewModelScope.launch {
+            try {
+                ptpipDataSource.requestWifiSpecifierConnection(
+                    ssid = ssid,
+                    passphrase = passphrase,
+                    onResult = { success: Boolean ->
+                        Log.d(TAG, "WifiNetworkSpecifier 결과: success=$success")
+                        if (!success) {
+                            val errorMsg = "Wi‑Fi 자동 연결 실패: $ssid"
+                            Log.e(TAG, errorMsg)
+                            _errorMessage.value = errorMsg
+                        } else {
+                            Log.i(TAG, "Wi-Fi 연결 성공: $ssid - 카메라 정보 직접 생성")
+                            _errorMessage.value = null // 기존 오류 메시지 클리어
+
+                            // 연결 성공 시 카메라 정보 바로 생성 (검색 생략)
+                            createCameraFromConnectedWifi(ssid)
+                        }
+                    },
+                    onError = { errorMsg: String ->
+                        Log.e(TAG, "WifiNetworkSpecifier 상세 오류: $errorMsg")
+                        _errorMessage.value = errorMsg
+                    }
+                )
+            } catch (e: Exception) {
+                val errorMsg = "Wi‑Fi 연결 요청 중 예외 발생: ${e.message}"
+                Log.e(TAG, errorMsg, e)
+                _errorMessage.value = errorMsg
+            }
+        }
+    }
+
+    private fun createCameraFromConnectedWifi(ssid: String) {
+        viewModelScope.launch {
+            try {
+                // 연결 안정화를 위한 대기
+                Log.d(TAG, "Wi-Fi 연결 안정화 대기 중...")
+                delay(1000)
+
+                // 연결된 Wi-Fi의 SSID를 사용하여 카메라 정보 생성
+                val wifiHelper = ptpipDataSource.getWifiHelper()
+                val cameraIP = wifiHelper.detectCameraIPFromCurrentNetwork() ?: "192.168.1.1"
+                val currentPortValue = 15740 // 기본 PTP/IP 포트
+
+                val camera = PtpipCamera(
+                    name = "$ssid (연결됨)",
+                    ipAddress = cameraIP,
+                    port = currentPortValue,
+                    isOnline = true
+                )
+
+                Log.i(
+                    TAG,
+                    "Wi-Fi 연결 성공 후 카메라 정보 생성: ${camera.name} (${camera.ipAddress}:${camera.port})"
+                )
+
+                // 카메라 정보를 선택
+                _selectedCamera.value = camera
+
+                // 연결된 Wi-Fi에서 검색하지 말고 바로 연결 시도
+                Log.i(TAG, "Wi-Fi 연결 성공 후 카메라 연결 시도")
+
+                val connectionSuccess = ptpipDataSource.connectToCamera(camera, forceApMode = true)
+                if (!connectionSuccess) {
+                    Log.e(TAG, "카메라 연결 실패 - 네트워크 상태 재확인")
+                    _errorMessage.value = "카메라 연결에 실패했습니다.\n네트워크 상태를 확인하고 다시 시도해주세요."
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Wi-Fi 연결 후 카메라 연결 과정에서 오류", e)
+                _errorMessage.value = "카메라 연결 과정에서 오류가 발생했습니다: ${e.message}"
             }
         }
     }
@@ -207,7 +381,7 @@ class PtpipViewModel @Inject constructor(
     /**
      * Wi-Fi 네트워크에서 PTPIP 카메라 검색
      */
-    fun discoverCameras() {
+    fun discoverCameras(forceApMode: Boolean = false) {
         if (_isDiscovering.value) {
             Log.w(TAG, "이미 카메라 검색 중입니다")
             return
@@ -238,7 +412,7 @@ class PtpipViewModel @Inject constructor(
                 }
 
                 Log.i(TAG, "Wi-Fi 연결 확인됨, 카메라 검색 시작...")
-                val cameras = ptpipDataSource.discoverCameras()
+                val cameras = ptpipDataSource.discoverCameras(forceApMode)
 
                 Log.i(TAG, "카메라 검색 완료: ${cameras.size}개 발견")
 
@@ -273,17 +447,24 @@ class PtpipViewModel @Inject constructor(
         }
     }
 
+    // 호환성용 무파라미터 오버로드 유지
+    fun discoverCameras() = discoverCameras(false)
+
+    // AP/STA 전용 헬퍼 함수 추가
+    fun discoverCamerasAp() = discoverCameras(true)
+    fun discoverCamerasSta() = discoverCameras(false)
+
     /**
      * 카메라 연결 (AP/STA 모드 지원)
      */
-    fun connectToCamera(camera: PtpipCamera) {
+    fun connectToCamera(camera: PtpipCamera, forceApMode: Boolean = false) {
         viewModelScope.launch {
             try {
                 _isConnecting.value = true
                 _errorMessage.value = null
                 _autoDownloadEnabled.value = false // 연결 시도 중에는 비활성화
 
-                val success = ptpipDataSource.connectToCamera(camera)
+                val success = ptpipDataSource.connectToCamera(camera, forceApMode)
                 if (success) {
                     _isConnecting.value = false
                     _errorMessage.value = null
@@ -314,6 +495,10 @@ class PtpipViewModel @Inject constructor(
         }
     }
 
+    fun connectToCameraAp(camera: PtpipCamera) = connectToCamera(camera, true)
+
+    fun connectToCameraSta(camera: PtpipCamera) = connectToCamera(camera, false)
+
     /**
      * 카메라 연결 해제
      */
@@ -330,6 +515,10 @@ class PtpipViewModel @Inject constructor(
 
                 _selectedCamera.value = null
                 _errorMessage.value = null
+
+                // Wi-Fi 퍼포먼스 락 해제
+                val wifiHelper = ptpipDataSource.getWifiHelper()
+                wifiHelper.releaseWifiLock()
 
                 Log.d(TAG, "카메라 연결 해제 완료")
             } catch (e: Exception) {
@@ -783,6 +972,11 @@ class PtpipViewModel @Inject constructor(
         _lastDownloadedFile.value = null
     }
 
+    /**
+     * 디버그용: WifiNetworkHelper 접근
+     */
+    fun getWifiHelper() = ptpipDataSource.getWifiHelper()
+
     override fun onCleared() {
         super.onCleared()
         // ViewModel이 소멸될 때 연결 정리
@@ -790,6 +984,17 @@ class PtpipViewModel @Inject constructor(
             ptpipDataSource.disconnect()
             ptpipDataSource.cleanup()
             globalManager.cleanup()
+
+            // Wi-Fi 락이 남아있으면 해제
+            try {
+                val wifiHelper = ptpipDataSource.getWifiHelper()
+                if (wifiHelper.isWifiLockHeld()) {
+                    wifiHelper.releaseWifiLock()
+                    Log.d(TAG, "ViewModel 소멸 시 Wi-Fi 락 해제")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "ViewModel 소멸 시 Wi-Fi 락 해제 실패: ${e.message}")
+            }
         }
     }
 }
