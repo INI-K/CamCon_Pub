@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.provider.Settings
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -335,7 +336,9 @@ fun CameraConnectionContent(
     cameraInfo: PtpipCameraInfo?,
     isPtpipEnabled: Boolean,
     isWifiConnected: Boolean,
-    isApMode: Boolean = false
+    isApMode: Boolean = false,
+    hasLocationPermission: Boolean = true,
+    onRequestPermission: () -> Unit = {}
 ) {
     Column {
         // 연결 상태 카드
@@ -365,16 +368,31 @@ fun CameraConnectionContent(
             Button(
                 onClick = {
                     if (isApMode) {
-                        ptpipViewModel.discoverCamerasAp()
+                        Log.d(
+                            "PtpipCommonComponents",
+                            "AP 모드 버튼 클릭, hasLocationPermission: $hasLocationPermission"
+                        )
+                        if (hasLocationPermission) {
+                            Log.d("PtpipCommonComponents", "권한 있음 - Wi-Fi 스캔 실행")
+                            ptpipViewModel.scanNearbyWifiNetworks()
+                        } else {
+                            Log.d("PtpipCommonComponents", "권한 없음 - 권한 요청 콜백 호출")
+                            onRequestPermission()
+                        }
                     } else {
                         ptpipViewModel.discoverCameras()
                     }
                 },
-                enabled = !isDiscovering && isWifiConnected && isPtpipEnabled
+                enabled = if (isApMode) {
+                    !isDiscovering && isPtpipEnabled
+                } else {
+                    !isDiscovering && isWifiConnected && isPtpipEnabled
+                }
             ) {
                 Text(
                     when {
-                        isDiscovering -> "검색 중..."
+                        isDiscovering -> "스캔 중..."
+                        isApMode -> "주변 Wi‑Fi 스캔"
                         discoveredCameras.isEmpty() -> "카메라 찾기"
                         else -> "다시 검색"
                     }
