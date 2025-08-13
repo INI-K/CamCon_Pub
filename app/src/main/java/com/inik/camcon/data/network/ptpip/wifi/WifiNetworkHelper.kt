@@ -881,10 +881,26 @@ class WifiNetworkHelper @Inject constructor(
 
                     if (bindProcess) {
                         try {
+                            // 네트워크 바인딩을 더 강력하게 설정
+                            connectivityManager.bindProcessToNetwork(network)
                             @Suppress("DEPRECATION")
                             ConnectivityManager.setProcessDefaultNetwork(network)
-                            connectivityManager.bindProcessToNetwork(network)
                             Log.d(TAG, "네트워크 바인딩 성공")
+
+                            // 연결 안정화를 위한 짧은 지연
+                            Thread.sleep(500)
+
+                            // 네트워크 상태 재확인
+                            val capabilities = connectivityManager.getNetworkCapabilities(network)
+                            if (capabilities != null) {
+                                Log.d(
+                                    TAG,
+                                    "네트워크 기능 확인: WiFi=${
+                                        capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+                                    }"
+                                )
+                            }
+
                         } catch (e: Exception) {
                             Log.w(TAG, "네트워크 바인딩 실패: ${e.message}")
                         }
@@ -916,7 +932,18 @@ class WifiNetworkHelper @Inject constructor(
                 }
 
                 override fun onLost(network: Network) {
-                    Log.w(TAG, "WifiNetworkSpecifier 연결 손실: $ssid")
+                    Log.w(TAG, "WifiNetworkSpecifier 연결 손실: $ssid (Network: $network)")
+                    // 연결 손실 시 재연결 시도하지 않고 로그만 남김
+                }
+
+                override fun onCapabilitiesChanged(
+                    network: Network,
+                    networkCapabilities: NetworkCapabilities
+                ) {
+                    Log.d(TAG, "네트워크 기능 변화: $ssid")
+                    if (networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                        Log.d(TAG, "  - Wi-Fi 전송 유지됨")
+                    }
                 }
             }
 
