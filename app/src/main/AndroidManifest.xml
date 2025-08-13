@@ -7,12 +7,12 @@
     <!-- Wi-Fi 권한 추가 (PTPIP용) -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <!-- Android 13+ 근처 Wi‑Fi 스캔/연결 권한 -->
     <uses-permission
         android:name="android.permission.NEARBY_WIFI_DEVICES"
-        android:usesPermissionFlags="neverForLocation"
         tools:targetApi="33" />
     <!-- USB 권한 추가 -->
     <uses-permission android:name="android.permission.USB_PERMISSION" />
