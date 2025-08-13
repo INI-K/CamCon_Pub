@@ -359,11 +359,19 @@ class PtpipDataSource @Inject constructor(
                 return@withContext true
             }
 
-            // Wi-Fi 연결 확인
-            if (!wifiHelper.isWifiConnected()) {
-                Log.e(TAG, "Wi-Fi 연결이 해제됨")
-                _connectionState.value = PtpipConnectionState.ERROR
-                return@withContext false
+            // Wi-Fi 연결 확인 생략 - WifiNetworkSpecifier 바인딩 상태에서는 정상적인 체크가 불가능
+            // 연결 시도를 통해 실제 연결 가능 여부 확인
+            Log.d(TAG, "네트워크 바인딩 상태에서 연결 시도 진행")
+
+            // 현재 네트워크 상태 로그
+            try {
+                val isNormalWifiConnected = wifiHelper.isWifiConnected()
+                Log.d(TAG, "일반 Wi-Fi 연결 상태: $isNormalWifiConnected")
+                if (!isNormalWifiConnected) {
+                    Log.d(TAG, "일반 Wi-Fi는 연결되지 않았지만 네트워크 바인딩으로 진행")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Wi-Fi 상태 확인 실패: ${e.message}")
             }
 
             // AP 모드 강제: libgphoto2로만 연결 시도 (폴백 없음)

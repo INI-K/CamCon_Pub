@@ -271,29 +271,44 @@ class PtpipViewModel @Inject constructor(
 
     private fun createCameraFromConnectedWifi(ssid: String) {
         viewModelScope.launch {
-            // 연결된 Wi-Fi의 SSID를 사용하여 카메라 정보 생성
-            val wifiHelper = ptpipDataSource.getWifiHelper()
-            val cameraIP = wifiHelper.detectCameraIPFromCurrentNetwork() ?: "192.168.1.1"
-            val currentPortValue = 15740 // 기본 PTP/IP 포트
+            try {
+                // 연결 안정화를 위한 대기
+                Log.d(TAG, "Wi-Fi 연결 안정화 대기 중...")
+                delay(1000)
 
-            val camera = PtpipCamera(
-                name = "$ssid (연결됨)",
-                ipAddress = cameraIP,
-                port = currentPortValue,
-                isOnline = true
-            )
+                // 연결된 Wi-Fi의 SSID를 사용하여 카메라 정보 생성
+                val wifiHelper = ptpipDataSource.getWifiHelper()
+                val cameraIP = wifiHelper.detectCameraIPFromCurrentNetwork() ?: "192.168.1.1"
+                val currentPortValue = 15740 // 기본 PTP/IP 포트
 
-            Log.i(
-                TAG,
-                "Wi-Fi 연결 성공 후 카메라 정보 생성: ${camera.name} (${camera.ipAddress}:${camera.port})"
-            )
+                val camera = PtpipCamera(
+                    name = "$ssid (연결됨)",
+                    ipAddress = cameraIP,
+                    port = currentPortValue,
+                    isOnline = true
+                )
 
-            // 카메라 정보를 선택
-            _selectedCamera.value = camera
+                Log.i(
+                    TAG,
+                    "Wi-Fi 연결 성공 후 카메라 정보 생성: ${camera.name} (${camera.ipAddress}:${camera.port})"
+                )
 
-            // 연결된 Wi-Fi에서 검색하지 말고 바로 연결 시도
-            Log.i(TAG, "Wi-Fi 연결 성공 후 카메라 연결 시도")
-            connectToCamera(camera)
+                // 카메라 정보를 선택
+                _selectedCamera.value = camera
+
+                // 연결된 Wi-Fi에서 검색하지 말고 바로 연결 시도
+                Log.i(TAG, "Wi-Fi 연결 성공 후 카메라 연결 시도")
+
+                val connectionSuccess = ptpipDataSource.connectToCamera(camera, forceApMode = true)
+                if (!connectionSuccess) {
+                    Log.e(TAG, "카메라 연결 실패 - 네트워크 상태 재확인")
+                    _errorMessage.value = "카메라 연결에 실패했습니다.\n네트워크 상태를 확인하고 다시 시도해주세요."
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Wi-Fi 연결 후 카메라 연결 과정에서 오류", e)
+                _errorMessage.value = "카메라 연결 과정에서 오류가 발생했습니다: ${e.message}"
+            }
         }
     }
 
