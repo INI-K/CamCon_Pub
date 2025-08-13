@@ -800,28 +800,93 @@ class PtpipDataSource @Inject constructor(
             try {
                 Log.d(TAG, "자동 다운로드 파일 처리 시작: $fileName")
 
-                // 파일 정보 확인
-                val fileInfo = java.io.File(filePath)
-                if (fileInfo.exists()) {
-                    val fileSize = fileInfo.length()
+                // 우선 로컬 경로로 간주하고 존재 여부 확인
+                val localCandidate = java.io.File(filePath)
+                if (localCandidate.exists()) {
+                    val fileSize = localCandidate.length()
                     Log.i(TAG, "자동 다운로드 완료: $fileName (크기: ${fileSize / 1024}KB)")
 
-                    // 파일 타입 확인
                     val fileExtension = fileName.substringAfterLast(".", "").lowercase()
                     Log.d(TAG, "파일 타입: $fileExtension")
 
-                    // 이미지 파일인 경우 썸네일 생성 시도
                     if (fileExtension in listOf("jpg", "jpeg", "png", "cr2", "nef", "arw", "dng")) {
                         Log.d(TAG, "이미지 파일 감지 - 썸네일 생성 시도")
-                        // 썸네일 생성 로직은 추후 구현
                     }
 
-                    // 파일 다운로드 성공 알림
                     Log.i(TAG, "✅ 자동 파일 다운로드 성공: $fileName")
-
-                } else {
-                    Log.w(TAG, "❌ 자동 다운로드 파일이 존재하지 않음: $filePath")
+                    return@launch
                 }
+
+                // 로컬에 없다면 카메라 내부 경로(/store_...)로 판단하여 직접 다운로드 시도
+                Log.w(TAG, "로컬에 파일이 없어 카메라에서 다운로드 시도: $filePath")
+
+                val saveDirPath = getDefaultSaveDirectory()
+                val saveDir = java.io.File(saveDirPath)
+                if (!saveDir.exists()) {
+                    val made = saveDir.mkdirs()
+                    Log.d(TAG, "저장 디렉토리 생성 결과($saveDirPath): $made")
+                }
+
+                val destinationFile = java.io.File(saveDir, fileName)
+
+                // 이미 같은 이름의 파일이 존재하면 덮어쓰기 방지용으로 숫자 접미사 부여
+                val finalDest = run {
+                    if (!destinationFile.exists()) destinationFile else {
+                        var index = 1
+                        var candidate: java.io.File
+                        val base = fileName.substringBeforeLast('.', fileName)
+                        val ext = fileName.substringAfterLast('.', "")
+                        while (true) {
+                            val newName =
+                                if (ext.isEmpty()) "${base}(${index})" else "${base}(${index}).${ext}"
+                            candidate = java.io.File(saveDir, newName)
+                            if (!candidate.exists()) break
+                            index++
+                        }
+                        candidate
+                    }
+                }
+
+                // 즉시 다운로드가 실패할 수 있어 짧은 재시도(최대 3회)
+                var attempt = 0
+                val maxAttempts = 3
+                var downloaded: ByteArray? = null
+                while (attempt < maxAttempts) {
+                    try {
+                        downloaded = CameraNative.downloadCameraPhoto(filePath)
+                        if (downloaded != null && downloaded.isNotEmpty()) break
+                    } catch (e: Exception) {
+                        Log.w(TAG, "카메라 파일 다운로드 예외 (시도 ${attempt + 1}/$maxAttempts): ${e.message}")
+                    }
+                    attempt++
+                    // 이벤트 수신이 빠른 경우 파일 준비가 안 되어 있을 수 있음 -> 짧게 대기 후 재시도
+                    kotlinx.coroutines.delay(250L)
+                }
+
+                if (downloaded == null || downloaded.isEmpty()) {
+                    Log.e(TAG, "❌ 카메라에서 파일 다운로드 실패: $filePath")
+                    return@launch
+                }
+
+                // 파일 저장
+                try {
+                    finalDest.outputStream().use { it.write(downloaded) }
+                    Log.i(
+                        TAG,
+                        "✅ 카메라 파일 저장 성공: ${finalDest.absolutePath} (크기: ${downloaded.size / 1024}KB)"
+                    )
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ 파일 저장 실패: ${finalDest.absolutePath}", e)
+                    return@launch
+                }
+
+                // 후처리 로그 및 타입 처리
+                val fileExtension = finalDest.extension.lowercase()
+                Log.d(TAG, "파일 타입: $fileExtension")
+                if (fileExtension in listOf("jpg", "jpeg", "png", "cr2", "nef", "arw", "dng")) {
+                    Log.d(TAG, "이미지 파일 감지 - 썸네일 생성 시도")
+                }
+                Log.i(TAG, "✅ 자동 파일 다운로드 및 저장 완료: ${finalDest.name}")
 
             } catch (e: Exception) {
                 Log.e(TAG, "자동 다운로드 파일 처리 중 오류", e)

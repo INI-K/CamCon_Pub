@@ -476,12 +476,20 @@ class CameraEventManager @Inject constructor(
                                     )
 
                                     // 메인 스레드에서 다이얼로그 표시
-                                    CoroutineScope(Dispatchers.Main).launch {
-                                        onRawFileRestricted?.invoke(
-                                            fileName,
-                                            validationResult.restrictionMessage
-                                                ?: "RAW 파일전송은 지금 준비중입니다."
-                                        )
+                                    try {
+                                        CoroutineScope(Dispatchers.Main).launch {
+                                            try {
+                                                onRawFileRestricted?.invoke(
+                                                    fileName,
+                                                    validationResult.restrictionMessage
+                                                        ?: "RAW 파일전송은 지금 준비중입니다."
+                                                )
+                                            } catch (e: Exception) {
+                                                Log.w("카메라이벤트매니저", "RAW 파일 제한 콜백 호출 중 예외", e)
+                                            }
+                                        }
+                                    } catch (e: Exception) {
+                                        Log.w("카메라이벤트매니저", "RAW 파일 제한 스레드 시작 중 예외", e)
                                     }
 
                                     Log.d(
@@ -494,23 +502,55 @@ class CameraEventManager @Inject constructor(
                                         "카메라이벤트매니저",
                                         "✅ ${connectionType.name} RAW 파일 접근 허용: $fileName"
                                     )
-                                    onPhotoCaptured(filePath, fileName)
+
+                                    // 안전한 콜백 호출
+                                    try {
+                                        onPhotoCaptured(filePath, fileName)
+                                    } catch (e: Exception) {
+                                        Log.e("카메라이벤트매니저", "RAW 파일 처리 중 onPhotoCaptured 콜백 예외", e)
+                                    }
                                 }
                             } catch (e: Exception) {
                                 Log.e("카메라이벤트매니저", "${connectionType.name} RAW 파일 검증 중 오류", e)
                                 // 오류 발생 시 기본적으로 차단
-                                CoroutineScope(Dispatchers.Main).launch {
-                                    onRawFileRestricted?.invoke(fileName, "파일 형식을 확인할 수 없습니다.")
+                                try {
+                                    CoroutineScope(Dispatchers.Main).launch {
+                                        try {
+                                            onRawFileRestricted?.invoke(
+                                                fileName,
+                                                "파일 형식을 확인할 수 없습니다."
+                                            )
+                                        } catch (e: Exception) {
+                                            Log.w("카메라이벤트매니저", "RAW 파일 오류 콜백 호출 중 예외", e)
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    Log.w("카메라이벤트매니저", "RAW 파일 오류 스레드 시작 중 예외", e)
                                 }
                             }
                         }
                     } else {
-                        // 일반 파일은 바로 처리
-                        onPhotoCaptured(filePath, fileName)
+                        // 일반 파일은 바로 처리 - 안전한 콜백 호출
+                        try {
+                            onPhotoCaptured(filePath, fileName)
+                        } catch (e: Exception) {
+                            Log.e("카메라이벤트매니저", "일반 파일 처리 중 onPhotoCaptured 콜백 예외", e)
+                        }
                     }
 
                 } catch (e: Exception) {
-                    Log.w("카메라이벤트매니저", "${connectionType.name} 사진 촬영 콜백 호출 중 예외", e)
+                    Log.e(
+                        "카메라이벤트매니저",
+                        "❌ ${connectionType.name} onPhotoCaptured 전체 처리 중 예외 - 이벤트 리스너 계속 동작",
+                        e
+                    )
+
+                    // 예외 발생 시에도 최소한 파일 정보는 전달 시도
+                    try {
+                        onPhotoCaptured(filePath, fileName)
+                    } catch (e2: Exception) {
+                        Log.e("카메라이벤트매니저", "긴급 콜백 호출도 실패", e2)
+                    }
                 }
             }
 
