@@ -874,11 +874,17 @@ class WifiNetworkHelper @Inject constructor(
             val callback = object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) {
                     Log.i(TAG, "WifiNetworkSpecifier 연결 성공: $ssid")
+                    Log.i(TAG, "네트워크 정보:")
+                    Log.i(TAG, "  - Network ID: $network")
+                    Log.i(TAG, "  - SSID: $ssid")
+                    Log.i(TAG, "  - 프로세스 바인딩: $bindProcess")
+
                     if (bindProcess) {
                         try {
                             @Suppress("DEPRECATION")
                             ConnectivityManager.setProcessDefaultNetwork(network)
                             connectivityManager.bindProcessToNetwork(network)
+                            Log.d(TAG, "네트워크 바인딩 성공")
                         } catch (e: Exception) {
                             Log.w(TAG, "네트워크 바인딩 실패: ${e.message}")
                         }
@@ -888,15 +894,23 @@ class WifiNetworkHelper @Inject constructor(
 
                 override fun onUnavailable() {
                     Log.w(TAG, "WifiNetworkSpecifier 연결 불가: $ssid")
+                    Log.w(TAG, "연결 실패 상세 정보:")
+                    Log.w(TAG, "  - SSID: $ssid")
+                    Log.w(TAG, "  - 패스워드 제공됨: ${!passphrase.isNullOrEmpty()}")
+                    Log.w(TAG, "  - 보안 타입: ${getWifiSecurityType(ssid)}")
+                    Log.w(TAG, "  - 인터넷 제외: $requireNoInternet")
+
                     val message = "자동 연결에 실패했습니다.\n\n" +
                             "가능한 원인:\n" +
                             "1. Wi-Fi '$ssid'가 범위를 벗어남\n" +
-                            "2. 패스워드가 필요하거나 잘못됨\n" +
-                            "3. 카메라 Wi-Fi가 꺼짐\n\n" +
+                            "2. 패스워드가 잘못되었거나 변경됨\n" +
+                            "3. 카메라가 다른 기기와 연결 중\n" +
+                            "4. 카메라 Wi-Fi가 일시적으로 꺼짐\n\n" +
                             "해결 방법:\n" +
-                            "- Wi-Fi 설정에서 '$ssid'에 연결\n" +
-                            "- 카메라 Wi-Fi 상태 확인\n" +
-                            "- 카메라와의 거리 확인"
+                            "- 카메라 Wi-Fi 상태 확인 후 재시도\n" +
+                            "- 시스템 Wi-Fi 설정에서 '$ssid'에 수동 연결\n" +
+                            "- 카메라와의 거리를 가깝게 한 후 재시도"
+                    Log.e(TAG, "사용자에게 표시할 오류 메시지: $message")
                     onError?.invoke(message)
                     onResult(false)
                 }
