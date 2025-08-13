@@ -98,7 +98,7 @@ fun ApModeContent(
 }
 
 /**
- * 주변 Wi‑Fi 스캔 결과 카드 (간단)
+ * 주변 Wi‑Fi 스캔 결과 카드 (전체 목록 표시)
  */
 @Composable
 private fun WifiScanResultsCard(
@@ -113,13 +113,15 @@ private fun WifiScanResultsCard(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "🔎 주변 카메라 Wi‑Fi",
+                text = "🔎 주변 카메라 Wi‑Fi (${ssids.size}개)",
                 style = MaterialTheme.typography.h6,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colors.primary
             )
             Spacer(modifier = Modifier.height(8.dp))
-            ssids.take(10).forEach { ssid ->
+
+            // 모든 SSID를 표시 (10개 제한 제거)
+            ssids.forEach { ssid ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -137,14 +139,6 @@ private fun WifiScanResultsCard(
                         Text("연결")
                     }
                 }
-            }
-            if (ssids.size > 10) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "+${ssids.size - 10}개 더 보기",
-                    style = MaterialTheme.typography.caption,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-                )
             }
         }
     }
