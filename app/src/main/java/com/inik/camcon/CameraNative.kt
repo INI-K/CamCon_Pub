@@ -92,6 +92,12 @@ object CameraNative {
      */
     fun isLibrariesLoaded(): Boolean = librariesLoaded
 
+    /**
+     * libgphoto2 환경변수를 설정합니다.
+     * PTP/IP나 USB 연결 전에 호출해야 합니다.
+     */
+    external fun setupEnvironmentPaths(nativeLibDir: String): Boolean
+
     external fun testLibraryLoad(): String
     external fun getLibGphoto2Version(): String
     external fun getPortInfo(): String
@@ -135,6 +141,16 @@ object CameraNative {
     external fun getCameraThumbnail(photoPath: String): ByteArray?
     external fun getCameraPhotoExif(photoPath: String): String? // EXIF 정보를 JSON 문자열로 반환
     external fun downloadCameraPhoto(photoPath: String): ByteArray?
+
+    // Fast Path: ObjectHandle 기반 다운로드 및 캐시/매핑 API
+    external fun downloadByObjectHandle(handle: Long): ByteArray?
+    external fun setHandlePathMapping(handle: Long, path: String)
+    external fun clearHandlePathMapping()
+    external fun getObjectInfoCached(path: String): String
+
+    // 최근 촬영 경로 조회/초기화 (이벤트 기반 빠른 접근)
+    external fun getRecentCapturedPaths(maxCount: Int): Array<String>?
+    external fun clearRecentCapturedPaths()
 
     // PTP/IP 연결 안정성을 위한 함수들
     external fun clearPtpipSettings(): Boolean // libgphoto2의 ptp2_ip 설정을 모두 삭제하여 새로운 GUID 생성 강제
