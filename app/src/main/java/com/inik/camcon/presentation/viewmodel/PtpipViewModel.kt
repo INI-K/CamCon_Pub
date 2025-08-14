@@ -574,6 +574,24 @@ class PtpipViewModel @Inject constructor(
                             listener?.onPhotoCaptured(filePath, fileName)
                         }
 
+                        override fun onPhotoDownloaded(
+                            filePath: String,
+                            fileName: String,
+                            imageData: ByteArray
+                        ) {
+                            Log.i(TAG, "수동 촬영: Native 다운로드 완료 - $fileName")
+                            Log.i(TAG, "데이터 크기: ${imageData.size / 1024}KB")
+
+                            // UI 상태 업데이트
+                            _lastDownloadedFile.value = fileName
+                            _errorMessage.value = null
+
+                            // 원래 리스너도 호출 (있다면)
+                            if (listener is CameraCaptureListener) {
+                                listener.onPhotoDownloaded(filePath, fileName, imageData)
+                            }
+                        }
+
                         override fun onCaptureFailed(errorCode: Int) {
                             Log.e(TAG, "수동 촬영: 촬영 실패 (에러 코드: $errorCode)")
                             _errorMessage.value = "촬영에 실패했습니다 (에러 코드: $errorCode)"
@@ -597,6 +615,20 @@ class PtpipViewModel @Inject constructor(
                             Log.i(TAG, "수동 촬영: 성공 $fileName -> $filePath")
                             _errorMessage.value = null
                             listener?.onPhotoCaptured(filePath, fileName)
+                        }
+
+                        override fun onPhotoDownloaded(
+                            filePath: String,
+                            fileName: String,
+                            imageData: ByteArray
+                        ) {
+                            Log.i(TAG, "수동 촬영: Native 다운로드 완료 (자동 다운로드 비활성화) - $fileName")
+                            Log.i(TAG, "데이터 크기: ${imageData.size / 1024}KB")
+
+                            // 원래 리스너도 호출 (있다면)
+                            if (listener is CameraCaptureListener) {
+                                listener.onPhotoDownloaded(filePath, fileName, imageData)
+                            }
                         }
 
                         override fun onCaptureFailed(errorCode: Int) {

@@ -711,6 +711,16 @@ class PtpipDataSource @Inject constructor(
                     handleAutomaticDownload(filePath, fileName)
                 }
 
+                override fun onPhotoDownloaded(
+                    filePath: String,
+                    fileName: String,
+                    imageData: ByteArray
+                ) {
+                    Log.i(TAG, "파일 수신: Native 직접 다운로드 완료 - $fileName")
+                    Log.i(TAG, "데이터 크기: ${imageData.size / 1024}KB")
+                    handleAutomaticDownload(filePath, fileName)
+                }
+
                 override fun onCaptureFailed(errorCode: Int) {
                     Log.e(TAG, "파일 수신: 수신 실패 (에러 코드: $errorCode)")
                 }

@@ -119,6 +119,9 @@ class CameraRepositoryImpl @Inject constructor(
             onPhotoCaptured = { fullPath, fileName ->
                 handleExternalPhotoCapture(fullPath, fileName)
             },
+            onPhotoDownloaded = { fullPath, fileName, imageData ->
+                handleNativePhotoDownload(fullPath, fileName, imageData)
+            },
             onFlushComplete = {
                 Log.d("카메라레포지토리", "🎯 카메라 이벤트 플러시 완료 - 초기화 상태 해제")
                 uiStateManager.updateCameraInitialization(false)
@@ -275,6 +278,18 @@ class CameraRepositoryImpl @Inject constructor(
                         }
 
                         continuation.resume(Result.success(photo))
+                    }
+
+                    override fun onPhotoDownloaded(
+                        filePath: String,
+                        fileName: String,
+                        imageData: ByteArray
+                    ) {
+                        Log.d("카메라레포지토리", "✓ Native 사진 다운로드 완료!!!")
+                        Log.d("카메라레포지토리", "파일명: $fileName")
+                        Log.d("카메라레포지토리", "데이터 크기: ${imageData.size / 1024}KB")
+
+                        handleNativePhotoDownload(filePath, fileName, imageData)
                     }
 
                     override fun onCaptureFailed(errorCode: Int) {
@@ -558,6 +573,9 @@ class CameraRepositoryImpl @Inject constructor(
             onPhotoCaptured = { fullPath, fileName ->
                 handleExternalPhotoCapture(fullPath, fileName)
             },
+            onPhotoDownloaded = { fullPath, fileName, imageData ->
+                handleNativePhotoDownload(fullPath, fileName, imageData)
+            },
             onFlushComplete = {
                 Log.d("카메라레포지토리", "🎯 카메라 이벤트 플러시 완료 - 초기화 상태 해제")
                 uiStateManager.updateCameraInitialization(false)
@@ -611,6 +629,58 @@ class CameraRepositoryImpl @Inject constructor(
                 onDownloadFailed = { failedFileName ->
                     updatePhotoDownloadFailed(failedFileName)
                     Log.e("카메라레포지토리", "❌ 외부 셔터 사진 다운로드 실패: $failedFileName")
+                }
+            )
+        }
+    }
+
+    /**
+     * 네이티브 다운로드된 사진 처리 - PhotoDownloadManager 통한 단일 다운로드
+     */
+    private fun handleNativePhotoDownload(
+        fullPath: String,
+        fileName: String,
+        imageData: ByteArray
+    ) {
+        Log.d("카메라레포지토리", "🎯 네이티브 사진 다운로드 처리: $fileName")
+
+        // 파일 확장자 확인
+        val extension = fileName.substringAfterLast(".", "").lowercase()
+        if (extension !in Constants.ImageProcessing.SUPPORTED_IMAGE_EXTENSIONS) {
+            Log.d("카메라레포지토리", "지원하지 않는 파일 무시: $fileName (확장자: $extension)")
+            return
+        }
+
+        val tempPhoto = CapturedPhoto(
+            id = UUID.randomUUID().toString(),
+            filePath = fullPath,
+            thumbnailPath = null,
+            captureTime = System.currentTimeMillis(),
+            cameraModel = connectionManager.cameraCapabilities.value?.model ?: "알 수 없음",
+            settings = _cameraSettings.value,
+            size = 0,
+            width = 0,
+            height = 0,
+            isDownloading = true
+        )
+
+        // PhotoDownloadManager를 통한 단일 다운로드 처리
+        CoroutineScope(Dispatchers.IO).launch {
+            Log.d("카메라레포지토리", "📥 PhotoDownloadManager를 통한 다운로드 시작: $fileName")
+            downloadManager.handlePhotoDownload(
+                photo = tempPhoto,
+                fullPath = fullPath,
+                fileName = fileName,
+                cameraCapabilities = connectionManager.cameraCapabilities.value,
+                cameraSettings = _cameraSettings.value,
+                imageData = imageData,
+                onPhotoDownloaded = { downloadedPhoto ->
+                    updateDownloadedPhoto(downloadedPhoto)
+                    Log.d("카메라레포지토리", "✅ 네이티브 사진 다운로드 완료: $fileName")
+                },
+                onDownloadFailed = { failedFileName ->
+                    updatePhotoDownloadFailed(failedFileName)
+                    Log.e("카메라레포지토리", "❌ 네이티브 사진 다운로드 실패: $failedFileName")
                 }
             )
         }
