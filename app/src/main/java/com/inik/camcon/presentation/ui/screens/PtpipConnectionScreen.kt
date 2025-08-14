@@ -18,11 +18,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.MaterialTheme
 import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Scaffold
 import androidx.compose.material.SnackbarHost
@@ -32,9 +30,19 @@ import androidx.compose.material.TabRow
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
 import androidx.compose.material.TopAppBar
+import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.material.Card
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -50,9 +58,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
@@ -66,6 +71,7 @@ import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.components.ApModeContent
 import com.inik.camcon.presentation.ui.screens.components.StaModeContent
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -398,6 +404,47 @@ fun PtpipConnectionScreen(
             }
         )
     }
+
+    // PTPIP 연결 진행 상황을 위한 상태
+    var showConnectionProgressDialog by remember { mutableStateOf(false) }
+    val connectionProgressMessage by ptpipViewModel.connectionProgressMessage.collectAsState()
+
+    // 연결 상태 변화 감지하여 로딩 다이얼로그 제어
+    LaunchedEffect(isConnecting) {
+        showConnectionProgressDialog = isConnecting
+    }
+
+    // 연결 진행 상황 업데이트 (실제 연결 단계별로 메시지 변경)
+    LaunchedEffect(connectionState, connectionProgressMessage) {
+        when (connectionState) {
+            com.inik.camcon.domain.model.PtpipConnectionState.CONNECTING -> {
+                showConnectionProgressDialog = true
+            }
+            com.inik.camcon.domain.model.PtpipConnectionState.CONNECTED -> {
+                // 연결 완료 후 충분한 시간을 두고 다이얼로그 닫기
+                if (connectionProgressMessage.contains("연결 완료")) {
+                    kotlinx.coroutines.delay(2000) // 2초 대기
+                    showConnectionProgressDialog = false
+                }
+            }
+            com.inik.camcon.domain.model.PtpipConnectionState.DISCONNECTED,
+            com.inik.camcon.domain.model.PtpipConnectionState.ERROR -> {
+                showConnectionProgressDialog = false
+            }
+        }
+    }
+
+    // 연결 완료 시 isConnecting 상태 해제
+    LaunchedEffect(connectionState) {
+        if (connectionState == com.inik.camcon.domain.model.PtpipConnectionState.CONNECTED) {
+            // 연결 완료 후 약간의 지연을 두고 isConnecting 해제
+            kotlinx.coroutines.delay(2500) // 다이얼로그 닫기보다 500ms 더 대기
+            // ViewModel의 isConnecting 상태를 직접 제어할 수 없으므로
+            // PtpipViewModel에서 관리하도록 함
+            ptpipViewModel.setIsConnecting(false)
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -514,6 +561,50 @@ fun PtpipConnectionScreen(
                         hasLocationPermission = ptpipViewModel.getWifiHelper()
                             .analyzeWifiScanPermissionStatus().canScan,
                         onRequestPermission = { requestWifiScanPermissions() }
+                    )
+                }
+            }
+        }
+    }
+
+    // PTPIP 연결 진행 상황 다이얼로그
+    if (showConnectionProgressDialog) {
+        Dialog(
+            onDismissRequest = { /* 연결 중에는 닫을 수 없음 */ },
+            properties = DialogProperties(
+                dismissOnBackPress = false,
+                dismissOnClickOutside = false
+            )
+        ) {
+            androidx.compose.material.Card(
+                shape = MaterialTheme.shapes.medium,
+                elevation = 8.dp,
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(48.dp),
+                        strokeWidth = 4.dp
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = connectionProgressMessage.ifEmpty { "카메라에 연결 중..." },
+                        style = MaterialTheme.typography.body1,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "잠시만 기다려주세요...",
+                        style = MaterialTheme.typography.body2,
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                        textAlign = TextAlign.Center
                     )
                 }
             }

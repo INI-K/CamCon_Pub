@@ -38,6 +38,9 @@ class PtpipViewModel @Inject constructor(
     // PTPIP 연결 상태
     val connectionState = ptpipDataSource.connectionState
 
+    // 연결 진행 메시지 추가
+    val connectionProgressMessage = ptpipDataSource.connectionProgressMessage
+
     // 발견된 카메라 목록
     val discoveredCameras = ptpipDataSource.discoveredCameras
 
@@ -171,11 +174,8 @@ class PtpipViewModel @Inject constructor(
                 _nearbyWifiSSIDs.value = ssids
 
                 if (ssids.isEmpty()) {
-                    Log.w(TAG, "주변 Wi‑Fi를 찾지 못함 - Android 제한 가능성")
-                    // Android 13+ 제한으로 스캔 실패 시 사용자 안내
-                    _needWifiSettings.value = true
-                    _errorMessage.value = "Android 보안 정책으로 인해 Wi-Fi 스캔이 제한됩니다.\n" +
-                            "시스템 Wi-Fi 설정에서 수동으로 주변 네트워크를 확인한 후 다시 시도해주세요."
+                    Log.i(TAG, "주변에 Wi-Fi 네트워크가 없음")
+                    // 단순히 결과가 없는 것으로 처리 (제한 다이얼로그 표시하지 않음)
                 } else {
                     Log.i(TAG, "Wi-Fi 스캔 성공: ${ssids.size}개 발견")
                 }
@@ -237,6 +237,10 @@ class PtpipViewModel @Inject constructor(
     fun connectToWifiSsid(ssid: String, passphrase: String? = null) {
         Log.d(TAG, "Wi-Fi 연결 시작: ssid='$ssid', 패스워드 제공=${!passphrase.isNullOrEmpty()}")
 
+        // 연결 시도 시작 즉시 로딩 상태 활성화
+        _isConnecting.value = true
+        _errorMessage.value = null
+
         viewModelScope.launch {
             try {
                 ptpipDataSource.requestWifiSpecifierConnection(
@@ -248,23 +252,27 @@ class PtpipViewModel @Inject constructor(
                             val errorMsg = "Wi‑Fi 자동 연결 실패: $ssid"
                             Log.e(TAG, errorMsg)
                             _errorMessage.value = errorMsg
+                            _isConnecting.value = false // 실패 시 로딩 해제
                         } else {
                             Log.i(TAG, "Wi-Fi 연결 성공: $ssid - 카메라 정보 직접 생성")
                             _errorMessage.value = null // 기존 오류 메시지 클리어
 
                             // 연결 성공 시 카메라 정보 바로 생성 (검색 생략)
+                            // 이 시점에서는 _isConnecting을 유지하여 로딩 계속 표시
                             createCameraFromConnectedWifi(ssid)
                         }
                     },
                     onError = { errorMsg: String ->
                         Log.e(TAG, "WifiNetworkSpecifier 상세 오류: $errorMsg")
                         _errorMessage.value = errorMsg
+                        _isConnecting.value = false // 오류 시 로딩 해제
                     }
                 )
             } catch (e: Exception) {
                 val errorMsg = "Wi‑Fi 연결 요청 중 예외 발생: ${e.message}"
                 Log.e(TAG, errorMsg, e)
                 _errorMessage.value = errorMsg
+                _isConnecting.value = false // 예외 시 로딩 해제
             }
         }
     }
@@ -303,11 +311,15 @@ class PtpipViewModel @Inject constructor(
                 if (!connectionSuccess) {
                     Log.e(TAG, "카메라 연결 실패 - 네트워크 상태 재확인")
                     _errorMessage.value = "카메라 연결에 실패했습니다.\n네트워크 상태를 확인하고 다시 시도해주세요."
+                    _isConnecting.value = false // 연결 실패 시 로딩 해제
+                } else {
+                    _isConnecting.value = false // 연결 성공 시 로딩 해제
                 }
 
             } catch (e: Exception) {
                 Log.e(TAG, "Wi-Fi 연결 후 카메라 연결 과정에서 오류", e)
                 _errorMessage.value = "카메라 연결 과정에서 오류가 발생했습니다: ${e.message}"
+                _isConnecting.value = false // 예외 시 로딩 해제
             }
         }
     }
@@ -466,7 +478,6 @@ class PtpipViewModel @Inject constructor(
 
                 val success = ptpipDataSource.connectToCamera(camera, forceApMode)
                 if (success) {
-                    _isConnecting.value = false
                     _errorMessage.value = null
                     _selectedCamera.value = camera
 
@@ -481,15 +492,17 @@ class PtpipViewModel @Inject constructor(
                     }
                     // 연결 성공 시 마지막 연결 정보 저장
                     preferencesDataSource.saveLastConnectedCamera(camera.ipAddress, camera.name)
+
+                    // 연결 완료 후 로딩 해제는 PtpipDataSource의 상태 변화에 따라 처리됨
                 } else {
-                    _isConnecting.value = false
                     _errorMessage.value = "카메라 연결에 실패했습니다"
                     _autoDownloadEnabled.value = false
+                    _isConnecting.value = false // 실패 시 로딩 해제
                 }
             } catch (e: Exception) {
-                _isConnecting.value = false
                 _errorMessage.value = "카메라 연결 중 오류가 발생했습니다: ${e.message}"
                 _autoDownloadEnabled.value = false
+                _isConnecting.value = false // 예외 시 로딩 해제
                 Log.e(TAG, "카메라 연결 중 오류", e)
             }
         }
@@ -617,6 +630,13 @@ class PtpipViewModel @Inject constructor(
      */
     fun clearError() {
         _errorMessage.value = null
+    }
+
+    /**
+     * 연결 중 상태 설정
+     */
+    fun setIsConnecting(connecting: Boolean) {
+        _isConnecting.value = connecting
     }
 
     /**
