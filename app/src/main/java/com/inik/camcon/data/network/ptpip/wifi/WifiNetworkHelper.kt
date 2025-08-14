@@ -333,6 +333,78 @@ class WifiNetworkHelper @Inject constructor(
     }
 
     /**
+     * 카메라 관련 네트워크만 필터링
+     */
+    private fun filterCameraNetworks(ssidList: List<String>): List<String> {
+        Log.d(TAG, "=== 카메라 네트워크 필터링 시작 ===")
+
+        val cameraNetworks = ssidList.filter { ssid ->
+            val isCamera = isCameraNetwork(ssid)
+            Log.d(TAG, "네트워크 '$ssid': ${if (isCamera) "카메라 ✅" else "일반 ❌"}")
+            isCamera
+        }
+
+        Log.d(TAG, "필터링 결과: ${cameraNetworks.size}/${ssidList.size}개가 카메라 관련")
+        Log.d(TAG, "=== 카메라 네트워크 필터링 완료 ===")
+
+        return cameraNetworks
+    }
+
+    /**
+     * SSID가 카메라 관련 네트워크인지 판단
+     */
+    private fun isCameraNetwork(ssid: String): Boolean {
+        // 카메라 브랜드 및 모델 패턴 확인 (더 정확한 패턴)
+        val cameraPatterns = listOf(
+            // 주요 카메라 브랜드
+            "CANON", "Canon",
+            "NIKON", "Nikon",
+            "SONY", "Sony",
+            "FUJIFILM", "Fujifilm", "FUJI",
+            "OLYMPUS", "Olympus",
+            "PANASONIC", "Panasonic", "Lumix", "LUMIX",
+            "PENTAX", "Pentax", "RICOH", "Ricoh",
+            "LEICA", "Leica",
+            "HASSELBLAD", "Hasselblad",
+
+            // 액션카메라 및 드론
+            "GoPro", "GOPRO", "Hero",
+            "DJI", "Dji", "Mavic", "Phantom", "Inspire", "Mini",
+            "Insta360", "INSTA360",
+
+            // Canon 모델명
+            "EOS", "PowerShot", "IXUS", "VIXIA",
+
+            // Nikon 모델명  
+            "COOLPIX", "Z5", "Z6", "Z7", "Z8", "Z9", "Z30", "Z50", "Zfc",
+            "D3500", "D5600", "D7500", "D780", "D850", "D500",
+
+            // Sony 모델명
+            "Alpha", "FX30", "FX3", "A7R", "A7S", "A7C", "A7IV", "A9",
+            "RX100", "RX10", "ZV-1", "ZV-E10",
+
+            // Fujifilm 모델명
+            "X-T4", "X-T5", "X-T30", "X-T50", "X-PRO3", "X-E4", "X-S10", "X-S20",
+            "X-A7", "X-H1", "X-H2", "GFX50", "GFX100",
+
+            // Olympus 모델명
+            "OM-D", "E-M1", "E-M5", "E-M10", "PEN", "E-PL", "E-P7",
+
+            // Panasonic 모델명
+            "GH5", "GH6", "GX9", "G9", "G100", "FZ1000", "LX100",
+
+            // 기타 카메라/영상 장비
+            "GODOX", "Godox", "Flashpoint",
+            "Osmo", "OSMO", "Pocket", "Action", "Mobile",
+            "SIGMA", "fp", "TAMRON"
+        )
+
+        return cameraPatterns.any { pattern ->
+            ssid.contains(pattern, ignoreCase = true)
+        }
+    }
+
+    /**
      * Wi-Fi 네트워크 상태 변화를 실시간으로 감지하는 Flow
      */
     val networkStateFlow: Flow<WifiNetworkState> = callbackFlow {
@@ -703,6 +775,7 @@ class WifiNetworkHelper @Inject constructor(
      * 주변 Wi‑Fi 네트워크 SSID 스캔 (Android 10+ 최적화 버전)
      * - Android 10+에서 스캔 빈도 제한 있음
      * - Android 13+에서는 `NEARBY_WIFI_DEVICES` 권한 필요
+     * - 카메라 관련 네트워크만 필터링하여 반환
      */
     suspend fun scanNearbyWifiSSIDs(): List<String> = withContext(Dispatchers.IO) {
         try {
@@ -763,16 +836,22 @@ class WifiNetworkHelper @Inject constructor(
                 }
             }
 
-            // 최종 결과 정리
-            val finalResults = results.distinct()
+            // 카메라 관련 네트워크만 필터링
+            val filteredResults = filterCameraNetworks(results.distinct())
 
             Log.d(TAG, "=== Wi-Fi 스캔 완료 ===")
-            Log.d(TAG, "최종 SSID 수: ${finalResults.size}")
-            finalResults.forEachIndexed { index, ssid ->
+            Log.d(TAG, "전체 발견: ${results.distinct().size}개")
+            Log.d(TAG, "카메라 관련: ${filteredResults.size}개")
+
+            if (filteredResults.size != results.distinct().size) {
+                Log.d(TAG, "필터링된 네트워크: ${results.distinct().size - filteredResults.size}개")
+            }
+
+            filteredResults.forEachIndexed { index, ssid ->
                 Log.d(TAG, "  ${index + 1}. '$ssid'")
             }
 
-            return@withContext finalResults
+            return@withContext filteredResults
 
         } catch (e: Exception) {
             Log.e(TAG, "Wi‑Fi 스캔 중 오류", e)
