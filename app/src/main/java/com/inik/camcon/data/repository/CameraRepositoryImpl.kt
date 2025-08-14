@@ -55,12 +55,18 @@ class CameraRepositoryImpl @Inject constructor(
     private val connectionManager: CameraConnectionManager,
     private val eventManager: CameraEventManager,
     private val downloadManager: PhotoDownloadManager,
-    private val uiStateManager: com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
+    private val uiStateManager: com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager,
+    private val connectionGlobalManager: com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 ) : CameraRepository {
 
     init {
         // GPU 초기화
         colorTransferUseCase.initializeGPU(context)
+
+        // PTPIP 외부 셔터 감지 콜백 설정
+        connectionGlobalManager.setPtpipPhotoCapturedCallback { fullPath, fileName ->
+            handleExternalPhotoCapture(fullPath, fileName)
+        }
     }
 
     private val _capturedPhotos = MutableStateFlow<List<CapturedPhoto>>(emptyList())
@@ -501,7 +507,11 @@ class CameraRepositoryImpl @Inject constructor(
         )
     }
 
-
+    /**
+     * PTPIP 연결 상태
+     */
+    override fun isPtpipConnected(): Flow<Boolean> =
+        connectionManager.isPtpipConnected
 
     /**
      * 이벤트 리스너를 재시도 로직과 함께 시작
@@ -560,9 +570,18 @@ class CameraRepositoryImpl @Inject constructor(
     }
 
     /**
-     * 외부 셔터로 촬영된 사진 처리
+     * 외부 셔터로 촬영된 사진 처리 - PhotoDownloadManager 통한 단일 다운로드
      */
     private fun handleExternalPhotoCapture(fullPath: String, fileName: String) {
+        Log.d("카메라레포지토리", "🎯 외부 셔터 사진 처리: $fileName")
+
+        // 파일 확장자 확인
+        val extension = fileName.substringAfterLast(".", "").lowercase()
+        if (extension !in Constants.ImageProcessing.SUPPORTED_IMAGE_EXTENSIONS) {
+            Log.d("카메라레포지토리", "지원하지 않는 파일 무시: $fileName (확장자: $extension)")
+            return
+        }
+
         val tempPhoto = CapturedPhoto(
             id = UUID.randomUUID().toString(),
             filePath = fullPath,
@@ -576,8 +595,9 @@ class CameraRepositoryImpl @Inject constructor(
             isDownloading = true
         )
 
-        // 백그라운드에서 비동기 다운로드 처리
+        // PhotoDownloadManager를 통한 단일 다운로드 처리
         CoroutineScope(Dispatchers.IO).launch {
+            Log.d("카메라레포지토리", "📥 PhotoDownloadManager를 통한 다운로드 시작: $fileName")
             downloadManager.handlePhotoDownload(
                 photo = tempPhoto,
                 fullPath = fullPath,
@@ -586,9 +606,11 @@ class CameraRepositoryImpl @Inject constructor(
                 cameraSettings = _cameraSettings.value,
                 onPhotoDownloaded = { downloadedPhoto ->
                     updateDownloadedPhoto(downloadedPhoto)
+                    Log.d("카메라레포지토리", "✅ 외부 셔터 사진 다운로드 완료: $fileName")
                 },
                 onDownloadFailed = { failedFileName ->
                     updatePhotoDownloadFailed(failedFileName)
+                    Log.e("카메라레포지토리", "❌ 외부 셔터 사진 다운로드 실패: $failedFileName")
                 }
             )
         }
