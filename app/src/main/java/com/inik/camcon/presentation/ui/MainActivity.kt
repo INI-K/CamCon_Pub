@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -157,6 +158,10 @@ fun MainScreen(
 
     // 전체화면 상태 관리
     var isFullscreen by remember { mutableStateOf(false) }
+
+    // PTPIP 연결 상태 및 경고 다이얼로그 상태
+    val isPtpipConnected by cameraViewModel.isPtpipConnected.collectAsState()
+    var showPtpipWarning by remember { mutableStateOf(false) }
 
     // 전역 연결 상태 모니터링
     val globalConnectionState by globalManager.globalConnectionState.collectAsState()
@@ -403,9 +408,17 @@ fun MainScreen(
                                         contentDescription = stringResource(screen.titleRes)
                                     )
                                 },
-                                label = { Text(stringResource(screen.titleRes)) },
+                                label = {
+                                    Text(stringResource(screen.titleRes))
+                                },
                                 selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
                                 onClick = {
+                                    if (screen == BottomNavItem.PhotoPreview && isPtpipConnected) {
+                                        // PTPIP 연결 시 미리보기 탭 클릭하면 경고 다이얼로그 표시
+                                        showPtpipWarning = true
+                                        return@BottomNavigationItem
+                                    }
+
                                     if (screen.route == "settings") {
                                         onSettingsClick()
                                     } else {
@@ -451,6 +464,62 @@ fun MainScreen(
                 composable(BottomNavItem.ServerPhotos.route) { MyPhotosScreen() }
                 // 설정은 별도 액티비티로 처리하므로 여기서 제외
             }
+        }
+
+        // PTPIP 경고 다이얼로그
+        if (showPtpipWarning) {
+            androidx.compose.material.AlertDialog(
+                onDismissRequest = { showPtpipWarning = false },
+                title = {
+                    Text(
+                        "Wi-Fi 연결 중입니다",
+                        style = MaterialTheme.typography.h6,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        color = MaterialTheme.colors.primary
+                    )
+                },
+                text = {
+                    Column {
+                        Text(
+                            "현재 카메라가 Wi-Fi로 연결되어 있어 사진 미리보기를 사용할 수 없습니다.",
+                            style = MaterialTheme.typography.body1
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            "💡 사진 미리보기를 사용하려면:",
+                            style = MaterialTheme.typography.body2,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            color = MaterialTheme.colors.primary
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            "1️⃣ 카메라의 Wi-Fi 연결을 해제해주세요\n" +
+                                    "2️⃣ USB 케이블로 카메라를 연결해주세요\n" +
+                                    "3️⃣ 카메라를 PC 모드로 설정해주세요",
+                            style = MaterialTheme.typography.body2,
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f)
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            "Wi-Fi 연결에서는 '카메라 제어' 탭을 이용해주세요! 📷",
+                            style = MaterialTheme.typography.caption,
+                            color = MaterialTheme.colors.primary,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                        )
+                    }
+                },
+                confirmButton = {
+                    androidx.compose.material.TextButton(
+                        onClick = { showPtpipWarning = false }
+                    ) {
+                        Text("알겠습니다")
+                    }
+                },
+                properties = androidx.compose.ui.window.DialogProperties(
+                    dismissOnBackPress = true,
+                    dismissOnClickOutside = true
+                )
+            )
         }
 
         // USB 연결 및 초기화 상태에 따른 UI 블로킹 오버레이

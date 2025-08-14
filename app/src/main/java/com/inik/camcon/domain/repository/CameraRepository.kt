@@ -17,6 +17,7 @@ interface CameraRepository {
     suspend fun disconnectCamera(): Result<Boolean>
     fun isCameraConnected(): Flow<Boolean>
     fun isInitializing(): Flow<Boolean>
+    fun isPtpipConnected(): Flow<Boolean>
 
     // 카메라 정보
     suspend fun getCameraInfo(): Result<String>

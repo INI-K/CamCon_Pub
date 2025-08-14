@@ -12,14 +12,18 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.AlertDialog
+import androidx.compose.material.Button
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Scaffold
 import androidx.compose.material.SnackbarHost
 import androidx.compose.material.SnackbarHostState
@@ -46,7 +50,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -320,39 +323,52 @@ fun PtpipConnectionScreen(
             },
             title = {
                 Text(
-                    text = "${currentWifiSsid ?: ""}에 연결",
+                    text = "${currentWifiSsid ?: ""}",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
+                    fontSize = 16.sp
                 )
             },
             text = {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxSize()
-                ) {
+                Column {
+                    Text(
+                        text = "Wi-Fi 비밀번호를 입력하세요",
+                        style = MaterialTheme.typography.body2,
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f),
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
                     OutlinedTextField(
                         value = passwordForSsid,
                         onValueChange = { passwordForSsid = it },
-                        label = { Text("Wi-Fi 비밀번호") },
+                        label = { Text("비밀번호", style = MaterialTheme.typography.caption) },
                         visualTransformation =
                             if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
-                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            IconButton(
+                                onClick = { passwordVisible = !passwordVisible },
+                                modifier = Modifier.size(40.dp)
+                            ) {
                                 if (passwordVisible) {
-                                    Icon(Icons.Filled.Visibility, contentDescription = "숨기기")
+                                    Icon(
+                                        Icons.Filled.Visibility,
+                                        contentDescription = "숨기기",
+                                        modifier = Modifier.size(20.dp)
+                                    )
                                 } else {
-                                    Icon(Icons.Filled.VisibilityOff, contentDescription = "보이기")
+                                    Icon(
+                                        Icons.Filled.VisibilityOff,
+                                        contentDescription = "보이기",
+                                        modifier = Modifier.size(20.dp)
+                                    )
                                 }
                             }
                         },
                         singleLine = true,
-                        modifier = Modifier
-                            .padding(vertical = 4.dp)
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             },
             confirmButton = {
-                TextButton(
+                Button(
                     onClick = {
                         // 실제 연결 로직 수행 (ViewModel의 ssid+비번 방식으로)
                         showPasswordDialog = false
@@ -362,18 +378,22 @@ fun PtpipConnectionScreen(
                         passwordForSsid = ""
                         currentWifiSsid = null
                     },
-                    enabled = passwordForSsid.isNotEmpty()
+                    enabled = passwordForSsid.isNotEmpty(),
+                    modifier = Modifier.height(36.dp)
                 ) {
-                    Text("연결")
+                    Text("연결", style = MaterialTheme.typography.button)
                 }
             },
             dismissButton = {
-                TextButton(onClick = {
-                    showPasswordDialog = false
-                    passwordForSsid = ""
-                    currentWifiSsid = null
-                }) {
-                    Text("취소")
+                TextButton(
+                    onClick = {
+                        showPasswordDialog = false
+                        passwordForSsid = ""
+                        currentWifiSsid = null
+                    },
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    Text("취소", style = MaterialTheme.typography.button)
                 }
             }
         )
