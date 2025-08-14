@@ -61,6 +61,9 @@ class PtpipDataSource @Inject constructor(
     private var networkMonitoringJob: Job? = null
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    // Repository 콜백 저장용
+    private var onPhotoCapturedCallback: ((String, String) -> Unit)? = null
+
     // StateFlow for UI observation
     private val _connectionState = MutableStateFlow(PtpipConnectionState.DISCONNECTED)
     val connectionState: StateFlow<PtpipConnectionState> = _connectionState.asStateFlow()
@@ -606,6 +609,7 @@ class PtpipDataSource @Inject constructor(
                     isInitializing = false,
                     saveDirectory = getDefaultSaveDirectory(),
                     onPhotoCaptured = { filePath, fileName ->
+                        onPhotoCapturedCallback?.invoke(filePath, fileName)
                         handleAutomaticDownload(filePath, fileName)
                     },
                     onFlushComplete = {
@@ -804,118 +808,32 @@ class PtpipDataSource @Inject constructor(
     }
 
     /**
-     * 자동 다운로드된 파일 처리
+     * 자동 다운로드된 파일 처리 - 파일 정보만 Repository로 전달
      */
     private fun handleAutomaticDownload(filePath: String, fileName: String) {
         coroutineScope.launch {
             try {
-                Log.d(TAG, "자동 다운로드 파일 처리 시작: $fileName")
+                Log.d(TAG, "파일 감지 알림: $fileName")
 
                 // 중복 처리 방지: 최근 처리 맵에서 윈도우 내 동일 파일 무시
                 val now = System.currentTimeMillis()
                 if (!recentProcessingGuard.tryMark(filePath, now)) {
-                    Log.d(TAG, "중복 촬영/저장 이벤트 무시: $fileName (@$filePath)")
+                    Log.d(TAG, "중복 파일 감지 이벤트 무시: $fileName (@$filePath)")
                     return@launch
                 }
 
-                // MediaStore에 저장 (공용 DCIM/CamCon)
+                // 파일 정보만 로그 출력 - 실제 다운로드는 Repository에서 처리
                 val ext = fileName.substringAfterLast('.', "").lowercase()
-                val mime = when (ext) {
-                    "jpg", "jpeg" -> "image/jpeg"
-                    "png" -> "image/png"
-                    "dng" -> "image/x-adobe-dng"
-                    "nef" -> "image/x-nikon-nef"
-                    "cr2" -> "image/x-canon-cr2"
-                    "arw" -> "image/x-sony-arw"
-                    else -> "application/octet-stream"
-                }
+                Log.d(TAG, "파일 타입: $ext")
 
-                val resolver = context.contentResolver
-                val collection: Uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-                val values = ContentValues().apply {
-                    put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
-                    put(MediaStore.Images.Media.MIME_TYPE, mime)
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        put(
-                            MediaStore.Images.Media.RELATIVE_PATH,
-                            Environment.DIRECTORY_DCIM + "/CamCon"
-                        )
-                        put(MediaStore.Images.Media.IS_PENDING, 1)
-                    }
-                }
-                val itemUri = resolver.insert(collection, values)
-                if (itemUri == null) {
-                    Log.e(TAG, "❌ MediaStore 항목 생성 실패")
-                    return@launch
-                }
-
-                // 카메라에서 바로 다운로드 (재시도 포함)
-                var attempt = 0
-                val maxAttempts = 3
-                var downloaded: ByteArray? = null
-                while (attempt < maxAttempts) {
-                    try {
-                        downloaded = CameraNative.downloadCameraPhoto(filePath)
-                        if (downloaded != null && downloaded.isNotEmpty()) break
-                    } catch (e: Exception) {
-                        Log.w(TAG, "카메라 파일 다운로드 예외 (시도 ${attempt + 1}/$maxAttempts): ${e.message}")
-                    }
-                    attempt++
-                    delay(250L)
-                }
-
-                if (downloaded == null || downloaded.isEmpty()) {
-                    Log.e(TAG, "❌ 카메라에서 파일 다운로드 실패: $filePath")
-                    // 실패 시 항목 정리
-                    try {
-                        resolver.delete(itemUri, null, null)
-                    } catch (_: Exception) {
-                    }
-                    return@launch
-                }
-
-                // MediaStore에 바이트 쓰기
-                try {
-                    resolver.openOutputStream(itemUri, "w")!!.use { it.write(downloaded) }
-                } catch (e: Exception) {
-                    Log.e(TAG, "❌ MediaStore 저장 실패", e)
-                    try {
-                        resolver.delete(itemUri, null, null)
-                    } catch (_: Exception) {
-                    }
-                    return@launch
-                }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    ContentValues().apply { put(MediaStore.Images.Media.IS_PENDING, 0) }.also {
-                        resolver.update(itemUri, it, null, null)
-                    }
-                }
-                Log.i(
-                    TAG,
-                    "✅ 공용 저장소(DCIM/CamCon) 저장 완료: $itemUri (크기: ${downloaded.size / 1024}KB)"
-                )
-
-                // 저장 완료 브로드캐스트
-                try {
-                    val intent = Intent(ACTION_PHOTO_SAVED).apply {
-                        putExtra(EXTRA_URI, itemUri.toString())
-                        putExtra(EXTRA_FILE_NAME, fileName)
-                    }
-                    context.sendBroadcast(intent)
-                } catch (e: Exception) {
-                    Log.w(TAG, "저장 완료 브로드캐스트 전송 실패: ${e.message}")
-                }
-
-                // 후처리 로그 및 타입 처리
-                val fileExtension = ext
-                Log.d(TAG, "파일 타입: $fileExtension")
-                if (fileExtension in listOf("jpg", "jpeg", "png", "cr2", "nef", "arw", "dng")) {
+                if (ext in listOf("jpg", "jpeg", "png", "cr2", "nef", "arw", "dng")) {
                     Log.d(TAG, "이미지 파일 감지 - 썸네일 생성 시도")
                 }
-                Log.i(TAG, "✅ 자동 파일 다운로드 및 저장 완료: $fileName")
+
+                Log.i(TAG, "✅ 파일 감지 완료 - Repository에서 다운로드 처리: $fileName")
 
             } catch (e: Exception) {
-                Log.e(TAG, "자동 다운로드 파일 처리 중 오류", e)
+                Log.e(TAG, "파일 감지 처리 중 오류", e)
             }
         }
     }
@@ -1053,17 +971,6 @@ class PtpipDataSource @Inject constructor(
      */
     fun getWifiHelper() = wifiHelper
 
-    /**
-     * 주변 Wi‑Fi SSID 스캔
-     */
-    suspend fun scanNearbyWifiSSIDs(): List<String> {
-        return try {
-            wifiHelper.scanNearbyWifiSSIDs()
-        } catch (e: Exception) {
-            Log.e(TAG, "Wi‑Fi 스캔 위임 중 오류", e)
-            emptyList()
-        }
-    }
 
     /**
      * WifiNetworkSpecifier 연결 요청
@@ -1082,5 +989,25 @@ class PtpipDataSource @Inject constructor(
             onResult = onResult,
             onError = onError
         )
+    }
+
+    /**
+     * Repository 콜백 설정 (외부 셔터 감지 시 호출)
+     */
+    fun setPhotoCapturedCallback(callback: (String, String) -> Unit) {
+        onPhotoCapturedCallback = callback
+        Log.d(TAG, "PTPIP 파일 촬영 콜백 설정 완료")
+    }
+
+    /**
+     * 주변 Wi‑Fi SSID 스캔
+     */
+    suspend fun scanNearbyWifiSSIDs(): List<String> {
+        return try {
+            wifiHelper.scanNearbyWifiSSIDs()
+        } catch (e: Exception) {
+            Log.e(TAG, "Wi‑Fi 스캔 위임 중 오류", e)
+            emptyList()
+        }
     }
 }

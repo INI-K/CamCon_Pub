@@ -2,7 +2,7 @@ package com.inik.camcon.data.network.ptpip.authentication
 
 import android.util.Log
 import com.inik.camcon.data.constants.PtpipConstants
-import com.inik.camcon.data.model.PtpipCamera
+import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.data.network.ptpip.connection.PtpipConnectionManager
 import com.inik.camcon.utils.LogcatManager
 import kotlinx.coroutines.Dispatchers
@@ -126,7 +126,7 @@ class NikonAuthenticationService @Inject constructor() {
                     // 1-3: GetDeviceInfo
                     LogcatManager.d(TAG, "Step 1-3: GetDeviceInfo 전송")
                     if (!sendGetDeviceInfo(commandSocket)) {
-                        LogcatManager.w(TAG, "⚠️ GetDeviceInfo 실패하지만 계속 진행")
+                        LogcatManager.w(TAG, "⚠️ GetDeviceInfo 실패지만 계속 진행")
                     } else {
                         LogcatManager.d(TAG, "✅ GetDeviceInfo 성공")
                     }
@@ -134,7 +134,7 @@ class NikonAuthenticationService @Inject constructor() {
                     // 1-4: OpenSession
                     LogcatManager.d(TAG, "Step 1-4: OpenSession 전송")
                     if (!sendOpenSession(commandSocket)) {
-                        LogcatManager.w(TAG, "⚠️ OpenSession 실패하지만 계속 진행")
+                        LogcatManager.w(TAG, "⚠️ OpenSession 실패지만 계속 진행")
                     } else {
                         LogcatManager.d(TAG, "✅ OpenSession 성공")
                     }

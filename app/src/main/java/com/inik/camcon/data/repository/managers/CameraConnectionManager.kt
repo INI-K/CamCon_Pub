@@ -40,6 +40,10 @@ class CameraConnectionManager @Inject constructor(
     private val _isInitializing = MutableStateFlow(false)
     val isInitializing = _isInitializing.asStateFlow()
 
+    // PTPIP 연결 상태 추가
+    private val _isPtpipConnected = MutableStateFlow(false)
+    val isPtpipConnected = _isPtpipConnected.asStateFlow()
+
     private val _cameraCapabilities = MutableStateFlow<CameraCapabilities?>(null)
     val cameraCapabilities = _cameraCapabilities.asStateFlow()
 
@@ -228,6 +232,7 @@ class CameraConnectionManager @Inject constructor(
 
                 withContext(Dispatchers.Main) {
                     _isConnected.value = false
+                    _isPtpipConnected.value = false
                     _cameraFeed.value = emptyList()
                 }
 
@@ -427,5 +432,13 @@ class CameraConnectionManager @Inject constructor(
             Log.e("카메라연결매니저", "CameraCapabilities 파싱 실패", e)
             null
         }
+    }
+
+    /**
+     * PTPIP 연결 상태 업데이트
+     */
+    fun updatePtpipConnectionStatus(isConnected: Boolean) {
+        Log.d("카메라연결매니저", "PTPIP 연결 상태 업데이트: $isConnected")
+        _isPtpipConnected.value = isConnected
     }
 }
