@@ -4,6 +4,7 @@ import android.util.Log
 import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
 import com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
+import com.inik.camcon.data.repository.managers.PhotoDownloadManager
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.utils.Constants
 import com.inik.camcon.utils.LogcatManager
@@ -22,7 +23,8 @@ import javax.inject.Singleton
 class CameraEventManager @Inject constructor(
     private val nativeDataSource: NativeCameraDataSource,
     private val usbCameraManager: UsbCameraManager,
-    private val validateImageFormatUseCase: ValidateImageFormatUseCase
+    private val validateImageFormatUseCase: ValidateImageFormatUseCase,
+    private val photoDownloadManager: PhotoDownloadManager
 ) {
     // 카메라 이벤트 리스너 상태 추적
     private val _isEventListenerActive = MutableStateFlow(false)
@@ -60,6 +62,7 @@ class CameraEventManager @Inject constructor(
         isInitializing: Boolean,
         saveDirectory: String,
         onPhotoCaptured: (String, String) -> Unit,
+        onPhotoDownloaded: ((String, String, ByteArray) -> Unit)? = null,
         onFlushComplete: () -> Unit,
         onCaptureFailed: (Int) -> Unit,
         connectionType: ConnectionType = ConnectionType.USB
@@ -119,6 +122,7 @@ class CameraEventManager @Inject constructor(
                         false,
                         saveDirectory,
                         onPhotoCaptured,
+                        onPhotoDownloaded,
                         onFlushComplete,
                         onCaptureFailed,
                         connectionType
@@ -173,6 +177,7 @@ class CameraEventManager @Inject constructor(
         isInitializing: Boolean,
         saveDirectory: String,
         onPhotoCaptured: (String, String) -> Unit,
+        onPhotoDownloaded: ((String, String, ByteArray) -> Unit)? = null,
         onFlushComplete: () -> Unit,
         onCaptureFailed: (Int) -> Unit,
         connectionType: ConnectionType = ConnectionType.USB
@@ -232,6 +237,7 @@ class CameraEventManager @Inject constructor(
                                 createCameraCaptureListener(
                                     connectionType,
                                     onPhotoCaptured,
+                                    onPhotoDownloaded,
                                     onFlushComplete,
                                     onCaptureFailed
                                 )
@@ -447,6 +453,7 @@ class CameraEventManager @Inject constructor(
     private fun createCameraCaptureListener(
         connectionType: ConnectionType,
         onPhotoCaptured: (String, String) -> Unit,
+        onPhotoDownloaded: ((String, String, ByteArray) -> Unit)? = null,
         onFlushComplete: () -> Unit,
         onCaptureFailed: (Int) -> Unit
     ): CameraCaptureListener {
@@ -607,6 +614,35 @@ class CameraEventManager @Inject constructor(
                     ConnectionType.PTPIP -> {
                         LogcatManager.e("카메라이벤트매니저", "❌ PTPIP 네트워크 연결 끊김 감지됨")
                         handlePtpipDisconnection()
+                    }
+                }
+            }
+
+            override fun onPhotoDownloaded(
+                filePath: String,
+                fileName: String,
+                imageData: ByteArray
+            ) {
+                LogcatManager.d("카메라이벤트매니저", "📦 ${connectionType.name} 네이티브 직접 다운로드 완료: $fileName")
+                LogcatManager.d("카메라이벤트매니저", "   데이터 크기: ${imageData.size / 1024}KB")
+
+                // 이미지 데이터를 PhotoDownloadManager에 전달하여 파일로 저장
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        val capturedPhoto = photoDownloadManager.handleNativePhotoDownload(
+                            filePath,
+                            fileName,
+                            imageData
+                        )
+
+                        if (capturedPhoto != null) {
+                            LogcatManager.d("카메라이벤트매니저", "✅ Native 사진 저장 성공: $fileName")
+                            onPhotoDownloaded?.invoke(filePath, fileName, imageData)
+                        } else {
+                            LogcatManager.e("카메라이벤트매니저", "❌ Native 사진 저장 실패: $fileName")
+                        }
+                    } catch (e: Exception) {
+                        LogcatManager.e("카메라이벤트매니저", "❌ Native 사진 처리 중 예외: $fileName", e)
                     }
                 }
             }
