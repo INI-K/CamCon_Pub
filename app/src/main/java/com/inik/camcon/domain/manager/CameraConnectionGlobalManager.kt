@@ -3,6 +3,7 @@ package com.inik.camcon.domain.manager
 import android.util.Log
 import com.inik.camcon.data.datasource.ptpip.PtpipDataSource
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
+import com.inik.camcon.data.repository.managers.CameraConnectionManager
 import com.inik.camcon.domain.model.CameraConnectionType
 import com.inik.camcon.domain.model.GlobalCameraConnectionState
 import com.inik.camcon.domain.model.PtpipConnectionState
@@ -25,7 +26,8 @@ import javax.inject.Singleton
 @Singleton
 class CameraConnectionGlobalManager @Inject constructor(
     private val ptpipDataSource: PtpipDataSource,
-    private val usbCameraManager: UsbCameraManager
+    private val usbCameraManager: UsbCameraManager,
+    private val cameraConnectionManager: CameraConnectionManager
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -128,11 +130,21 @@ class CameraConnectionGlobalManager @Inject constructor(
         if (activeConnection == CameraConnectionType.AP_MODE) {
             scope.launch {
                 try {
-                    // PTPIP 데이터소스에서 이미 연결된 카메라에 대해 파일 수신 시작
-                    Log.d(TAG, "AP 모드 연결 감지: 자동 파일 수신 대기 시작")
-                    // 파일 수신은 PtpipDataSource.connectToCamera()에서 자동으로 시작됨
+                    // CameraConnectionManager를 통해 PTPIP 연결 상태 업데이트
+                    cameraConnectionManager.updatePtpipConnectionStatus(true)
+                    Log.d(TAG, "AP 모드 연결 감지: CameraConnectionManager를 통해 PTPIP 상태 업데이트")
                 } catch (e: Exception) {
-                    Log.e(TAG, "AP 모드 파일 수신 대기 시작 실패", e)
+                    Log.e(TAG, "AP 모드 CameraConnectionManager PTPIP 상태 업데이트 실패", e)
+                }
+            }
+        } else if (ptpipState != PtpipConnectionState.CONNECTED) {
+            // PTPIP 연결 해제 시 상태 업데이트
+            scope.launch {
+                try {
+                    cameraConnectionManager.updatePtpipConnectionStatus(false)
+                    Log.d(TAG, "PTPIP 연결 해제: CameraConnectionManager를 통해 PTPIP 상태 업데이트")
+                } catch (e: Exception) {
+                    Log.e(TAG, "PTPIP 연결 해제 시 CameraConnectionManager 상태 업데이트 실패", e)
                 }
             }
         }
@@ -248,6 +260,14 @@ class CameraConnectionGlobalManager @Inject constructor(
      */
     fun isUsbConnected(): Boolean {
         return globalConnectionState.value.isUsbConnected
+    }
+
+    /**
+     * PTPIP 외부 셔터 감지 콜백 설정
+     */
+    fun setPtpipPhotoCapturedCallback(callback: (String, String) -> Unit) {
+        ptpipDataSource.setPhotoCapturedCallback(callback)
+        Log.d(TAG, "PTPIP 외부 셔터 감지 콜백 설정 완료")
     }
 
     /**

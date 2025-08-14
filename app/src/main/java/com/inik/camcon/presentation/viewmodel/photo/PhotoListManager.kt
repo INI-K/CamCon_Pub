@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -72,7 +73,7 @@ class PhotoListManager @Inject constructor(
     /**
      * 초기 사진 목록 로드
      */
-    fun loadInitialPhotos(isConnected: Boolean) {
+    fun loadInitialPhotos(isConnected: Boolean, isPtpipConnected: Boolean = false) {
         Log.d(TAG, "=== loadInitialPhotos 호출 ===")
         CoroutineScope(Dispatchers.IO).launch {
             Log.d(TAG, "loadInitialPhotos 코루틴 시작")
@@ -94,6 +95,19 @@ class PhotoListManager @Inject constructor(
                 errorHandlingManager.emitError(
                     ErrorType.CONNECTION,
                     "카메라가 연결되지 않았습니다. 카메라를 연결해주세요.",
+                    null,
+                    ErrorSeverity.MEDIUM
+                )
+                return@launch
+            }
+
+            // PTPIP 연결 상태 확인
+            if (isPtpipConnected) {
+                Log.w(TAG, "PTPIP 연결 상태: 파일 목록 로딩 차단")
+                _isLoading.value = false
+                errorHandlingManager.emitError(
+                    ErrorType.OPERATION,
+                    "PTPIP 연결 시 사진 미리보기는 지원되지 않습니다.\nUSB 케이블 연결을 사용해주세요.",
                     null,
                     ErrorSeverity.MEDIUM
                 )
@@ -144,7 +158,7 @@ class PhotoListManager @Inject constructor(
     /**
      * 다음 페이지 로드
      */
-    fun loadNextPage() {
+    fun loadNextPage(isPtpipConnected: Boolean = false) {
         if (_isLoadingMore.value || !_hasNextPage.value) {
             Log.d(
                 TAG,
@@ -155,6 +169,18 @@ class PhotoListManager @Inject constructor(
 
         if (!isManagerActive) {
             Log.d(TAG, "⛔ loadNextPage 작업 중단됨 (매니저 비활성)")
+            return
+        }
+
+        // PTPIP 연결 상태 체크 (페이징도 차단)
+        if (isPtpipConnected) {
+            Log.w(TAG, "PTPIP 연결 상태: 파일 목록 로딩 차단")
+            errorHandlingManager.emitError(
+                ErrorType.OPERATION,
+                "PTPIP 연결 시 사진 미리보기는 지원되지 않습니다.\nUSB 케이블 연결을 사용해주세요.",
+                null,
+                ErrorSeverity.MEDIUM
+            )
             return
         }
 
@@ -289,7 +315,7 @@ class PhotoListManager @Inject constructor(
     /**
      * 프리로딩 체크 (사용자가 특정 인덱스에 도달했을 때)
      */
-    fun onPhotoIndexReached(currentIndex: Int) {
+    fun onPhotoIndexReached(currentIndex: Int, isPtpipConnected: Boolean = false) {
         val filteredPhotos = _filteredPhotos.value
         val totalFilteredPhotos = filteredPhotos.size
         val currentPage = _currentPage.value
@@ -320,7 +346,7 @@ class PhotoListManager @Inject constructor(
 
         if (shouldPrefetch) {
             Log.d(TAG, "🚀 프리로드 트리거: 현재 인덱스 $currentIndex")
-            prefetchNextPage()
+            prefetchNextPage(isPtpipConnected)
             _prefetchedPage.value = currentPage + 1
         }
     }
@@ -328,9 +354,21 @@ class PhotoListManager @Inject constructor(
     /**
      * 백그라운드에서 다음 페이지를 미리 로드
      */
-    private fun prefetchNextPage() {
+    private fun prefetchNextPage(isPtpipConnected: Boolean = false) {
         if (_isLoadingMore.value || !_hasNextPage.value) {
             Log.d(TAG, "프리로드 건너뛰기")
+            return
+        }
+
+        // PTPIP 연결 상태 체크 (프리로딩도 차단)
+        if (isPtpipConnected) {
+            Log.w(TAG, "PTPIP 연결 상태: 파일 목록 프리로드 차단")
+            errorHandlingManager.emitError(
+                ErrorType.OPERATION,
+                "PTPIP 연결 시 사진 미리보기는 지원되지 않습니다.\nUSB 케이블 연결을 사용해주세요.",
+                null,
+                ErrorSeverity.LOW
+            )
             return
         }
 
@@ -381,10 +419,10 @@ class PhotoListManager @Inject constructor(
     /**
      * 사진 목록 새로고침
      */
-    fun refreshPhotos(isConnected: Boolean) {
+    fun refreshPhotos(isConnected: Boolean, isPtpipConnected: Boolean = false) {
         Log.d(TAG, "사진 목록 새로고침")
         _prefetchedPage.value = 0
-        loadInitialPhotos(isConnected)
+        loadInitialPhotos(isConnected, isPtpipConnected)
     }
 
     /**

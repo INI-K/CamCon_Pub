@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.pm.ActivityInfo
 import android.graphics.ColorSpace
 import android.media.ExifInterface
+import android.util.Log
 import com.inik.camcon.utils.LogcatManager
 import android.view.View
 import android.view.WindowInsets
