@@ -68,6 +68,10 @@ class PtpipDataSource @Inject constructor(
     private val _connectionState = MutableStateFlow(PtpipConnectionState.DISCONNECTED)
     val connectionState: StateFlow<PtpipConnectionState> = _connectionState.asStateFlow()
 
+    // 추가: 연결 진행 메시지 상태 추가
+    private val _connectionProgressMessage = MutableStateFlow("")
+    val connectionProgressMessage: StateFlow<String> = _connectionProgressMessage.asStateFlow()
+
     private val _discoveredCameras = MutableStateFlow<List<PtpipCamera>>(emptyList())
     val discoveredCameras: StateFlow<List<PtpipCamera>> = _discoveredCameras.asStateFlow()
 
@@ -220,12 +224,14 @@ class PtpipDataSource @Inject constructor(
 
             Log.i(TAG, "자동 재연결 시도: ${camera.name} (${camera.ipAddress})")
             _connectionState.value = PtpipConnectionState.CONNECTING
+            _connectionProgressMessage.value = "카메라에 연결 중..."
             
             if (connectToCamera(camera)) {
                 Log.i(TAG, "✅ 자동 재연결 성공")
             } else {
                 Log.w(TAG, "❌ 자동 재연결 실패")
                 _connectionState.value = PtpipConnectionState.ERROR
+                _connectionProgressMessage.value = ""
 
                 // 자동 재연결 활성화 상태에서만 재시도
                 if (isAutoReconnectEnabled) {
@@ -240,6 +246,7 @@ class PtpipDataSource @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "자동 재연결 중 오류", e)
             _connectionState.value = PtpipConnectionState.ERROR
+            _connectionProgressMessage.value = ""
         }
     }
 
@@ -407,12 +414,19 @@ class PtpipDataSource @Inject constructor(
                 ) == true)
                 if (ok) {
                     Log.i(TAG, "✅ AP 모드 (강제): libgphoto2 연결 성공!")
-                    _connectionState.value = PtpipConnectionState.CONNECTED
+                    _connectionProgressMessage.value = "연결 완료, 파일 목록 조회 중..."
                     connectedCamera = camera
                     lastConnectedCamera = camera
 
-                    // AP 모드 성공 시 이벤트 리스너 시작
+                    // AP 모드 성공 시 이벤트 리스너 시작 (비동기로 실행하되 완료까지 대기)
+                    _connectionProgressMessage.value = "이벤트 리스너 시작 중..."
                     startAutomaticFileReceiving(camera)
+
+                    // 모든 과정이 완료된 후 CONNECTED 상태로 변경
+                    delay(2000) // 파일 목록 조회와 이벤트 리스너 시작 완료 대기
+                    _connectionState.value = PtpipConnectionState.CONNECTED
+                    _connectionProgressMessage.value = "연결 완료!"
+
                     return@withContext true
                 } else {
                     Log.e(TAG, "❌ AP 모드 (강제): libgphoto2 초기화 실패 - 폴백 없음")
@@ -492,15 +506,21 @@ class PtpipDataSource @Inject constructor(
                     }
 
                     // 세션 초기화 성공 여부와 관계없이 연결 상태를 성공으로 설정
-                    _connectionState.value = PtpipConnectionState.CONNECTED
+                    _connectionProgressMessage.value = "연결 완료, 파일 목록 조회 중..."
                     connectedCamera = camera
                     lastConnectedCamera = camera
 
                     // STA 모드에서도 이벤트 리스너 시작
+                    _connectionProgressMessage.value = "이벤트 리스너 시작 중..."
                     startAutomaticFileReceiving(camera)
 
                     // STA 경로에서는 AP 강제 표시를 해제
                     _isApModeForced.value = false
+
+                    // 모든 과정이 완료된 후 CONNECTED 상태로 변경
+                    delay(2000) // 파일 목록 조회와 이벤트 리스너 시작 완료 대기
+                    _connectionState.value = PtpipConnectionState.CONNECTED
+                    _connectionProgressMessage.value = "연결 완료!"
 
                     return@withContext true
                 } else {
@@ -510,7 +530,7 @@ class PtpipDataSource @Inject constructor(
                 }
             } else {
                 Log.i(TAG, "니콘이 아닌 카메라 - 기본 PTPIP 연결 유지")
-                _connectionState.value = PtpipConnectionState.CONNECTED
+                _connectionProgressMessage.value = "연결 완료, 파일 목록 조회 중..."
                 connectedCamera = camera
                 lastConnectedCamera = camera
 
@@ -532,10 +552,16 @@ class PtpipDataSource @Inject constructor(
                 }
 
                 // 다른 카메라에서도 이벤트 리스너 시작
+                _connectionProgressMessage.value = "이벤트 리스너 시작 중..."
                 startAutomaticFileReceiving(camera)
 
                 // STA/일반 경로에서는 AP 강제 표시를 해제
                 _isApModeForced.value = false
+
+                // 모든 과정이 완료된 후 CONNECTED 상태로 변경
+                delay(2000) // 파일 목록 조회와 이벤트 리스너 시작 완료 대기
+                _connectionState.value = PtpipConnectionState.CONNECTED
+                _connectionProgressMessage.value = "연결 완료!"
 
                 return@withContext true
             }
@@ -543,6 +569,7 @@ class PtpipDataSource @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "카메라 연결 중 오류", e)
             _connectionState.value = PtpipConnectionState.ERROR
+            _connectionProgressMessage.value = ""
             return@withContext false
         }
     }
@@ -598,42 +625,63 @@ class PtpipDataSource @Inject constructor(
     /**
      * AP 모드 연결 성공 시 이벤트 리스너 시작 (CameraEventManager 활용)
      */
-    private fun startAutomaticFileReceiving(camera: PtpipCamera) {
+    private suspend fun startAutomaticFileReceiving(camera: PtpipCamera) {
         Log.i(TAG, "PTPIP AP 모드 이벤트 리스너 시작: ${camera.name}")
 
-        coroutineScope.launch {
-            try {
-                // CameraEventManager를 통해 PTPIP 이벤트 리스너 시작
-                val result = cameraEventManager.startCameraEventListener(
-                    isConnected = true,
-                    isInitializing = false,
-                    saveDirectory = getDefaultSaveDirectory(),
-                    onPhotoCaptured = { filePath, fileName ->
-                        onPhotoCapturedCallback?.invoke(filePath, fileName)
-                        handleAutomaticDownload(filePath, fileName)
-                    },
-                    onFlushComplete = {
-                        Log.d(TAG, "PTPIP AP 모드 플러시 완료")
-                    },
-                    onCaptureFailed = { errorCode ->
-                        Log.e(TAG, "PTPIP AP 모드 촬영 실패: $errorCode")
-                    },
-                    connectionType = CameraEventManager.ConnectionType.PTPIP
-                )
+        try {
+            // 1단계: 파일 목록 조회 (동기적으로 실행하여 완료 대기)
+            _connectionProgressMessage.value = "파일 목록 조회 중..."
+            Log.i(TAG, "=== PTPIP 연결 후 파일 목록 조회 시작 ===")
 
-                if (result.isSuccess) {
-                    Log.i(TAG, "✅ PTPIP AP 모드 이벤트 리스너 시작 성공")
-                } else {
-                    Log.e(
-                        TAG,
-                        "❌ PTPIP AP 모드 이벤트 리스너 시작 실패: ${result.exceptionOrNull()?.message}"
-                    )
+            withContext(Dispatchers.IO) {
+                try {
+                    val fileListJson = CameraNative.getCameraFileListPaged(0, 50) // 첫 페이지 50개
+                    if (fileListJson.isNotEmpty() && fileListJson != "[]") {
+                        Log.i(TAG, "✅ 파일 목록 조회 성공: ${fileListJson.length} chars")
+                    } else {
+                        Log.i(TAG, "📷 카메라에 파일이 없거나 목록이 비어있음")
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "파일 목록 조회 중 오류 (계속 진행): ${e.message}")
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "PTPIP AP 모드 이벤트 리스너 시작 중 오류", e)
-                // 폴백: 기존 방식 사용
-                startFileReceiveListenerFallback(camera)
             }
+
+            // 2단계: 이벤트 리스너 시작
+            _connectionProgressMessage.value = "이벤트 리스너 시작 중..."
+
+            // CameraEventManager를 통해 PTPIP 이벤트 리스너 시작
+            val result = cameraEventManager.startCameraEventListener(
+                isConnected = true,
+                isInitializing = false,
+                saveDirectory = getDefaultSaveDirectory(),
+                onPhotoCaptured = { filePath, fileName ->
+                    onPhotoCapturedCallback?.invoke(filePath, fileName)
+                    handleAutomaticDownload(filePath, fileName)
+                },
+                onFlushComplete = {
+                    Log.d(TAG, "PTPIP AP 모드 플러시 완료")
+                },
+                onCaptureFailed = { errorCode ->
+                    Log.e(TAG, "PTPIP AP 모드 촬영 실패: $errorCode")
+                },
+                connectionType = CameraEventManager.ConnectionType.PTPIP
+            )
+
+            if (result.isSuccess) {
+                Log.i(TAG, "✅ PTPIP AP 모드 이벤트 리스너 시작 성공")
+                _connectionProgressMessage.value = "초기화 완료 중..."
+            } else {
+                Log.e(
+                    TAG,
+                    "❌ PTPIP AP 모드 이벤트 리스너 시작 실패: ${result.exceptionOrNull()?.message}"
+                )
+                _connectionProgressMessage.value = "이벤트 리스너 오류"
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "PTPIP AP 모드 이벤트 리스너 시작 중 오류", e)
+            _connectionProgressMessage.value = "설정 오류"
+            // 폴백: 기존 방식 사용
+            startFileReceiveListenerFallback(camera)
         }
     }
 
@@ -796,6 +844,7 @@ class PtpipDataSource @Inject constructor(
                 _cameraInfo.value = null
                 // 연결 해제 시 AP 강제 표시 해제
                 _isApModeForced.value = false
+                _connectionProgressMessage.value = ""
                 Log.d(TAG, "카메라 연결 해제 완료")
             } else {
                 _connectionState.value = PtpipConnectionState.CONNECTED
