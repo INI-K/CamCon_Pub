@@ -67,6 +67,14 @@ class CameraViewModel @Inject constructor(
     // 연결 상태 (ConnectionManager에서 관리)
     val isAutoConnecting = connectionManager.isAutoConnecting
 
+    // PTPIP 연결 상태 (사진 미리보기 차단용)
+    val isPtpipConnected: StateFlow<Boolean> = cameraRepository.isPtpipConnected()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
+
     // RAW 파일 제한 스타일링을 위한 현재 Activity 참조
     private var currentActivity: Activity? = null
 
@@ -113,6 +121,26 @@ class CameraViewModel @Inject constructor(
 
         // 기타 상태들 관찰
         observeOtherStates()
+
+        // PTPIP 연결 상태 관찰
+        observePtpipConnection()
+    }
+
+    /**
+     * PTPIP 연결 상태 관찰
+     */
+    private fun observePtpipConnection() {
+        isPtpipConnected
+            .onEach { isConnected ->
+                uiStateManager.updatePtpipConnectionState(isConnected)
+                if (isConnected) {
+                    // PTPIP 연결 상태에 따라 사진 미리보기 탭을 블록합니다.
+                    uiStateManager.blockPreviewTab(true)
+                } else {
+                    uiStateManager.blockPreviewTab(false)
+                }
+            }
+            .launchIn(viewModelScope)
     }
 
     /**
