@@ -149,6 +149,11 @@ class CameraConnectionGlobalManager @Inject constructor(
             }
         }
 
+        // 연결이 완전히 해제된 경우 추가 정리 수행
+        if (!usbConnected && ptpipState != PtpipConnectionState.CONNECTED) {
+            performDisconnectionCleanup()
+        }
+
         // 연결 상태 메시지 생성
         val statusMessage = generateStatusMessage(
             usbConnected = usbConnected,
@@ -268,6 +273,31 @@ class CameraConnectionGlobalManager @Inject constructor(
     fun setPtpipPhotoCapturedCallback(callback: (String, String) -> Unit) {
         ptpipDataSource.setPhotoCapturedCallback(callback)
         Log.d(TAG, "PTPIP 외부 셔터 감지 콜백 설정 완료")
+    }
+
+    /**
+     * 연결 해제 시 정리
+     */
+    private fun performDisconnectionCleanup() {
+        Log.d(TAG, "연결 해제 시 정리 수행")
+
+        scope.launch {
+            try {
+                // CameraConnectionManager를 통한 정리
+                try {
+                    cameraConnectionManager.updatePtpipConnectionStatus(false)
+                    Log.d(TAG, "카메라 연결 매니저 PTPIP 상태 정리 완료")
+                } catch (e: Exception) {
+                    Log.e(TAG, "카메라 연결 매니저 정리 실패", e)
+                }
+
+                // 추가적인 리소스 정리 수행
+                Log.d(TAG, "전역 카메라 연결 상태 정리 완료")
+
+            } catch (e: Exception) {
+                Log.e(TAG, "연결 해제 정리 중 오류", e)
+            }
+        }
     }
 
     /**
