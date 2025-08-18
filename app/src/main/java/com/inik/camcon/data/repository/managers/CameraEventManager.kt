@@ -146,24 +146,11 @@ class CameraEventManager @Inject constructor(
     suspend fun stopCameraEventListener(): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             try {
-                if (!isEventListenerRunning.get()) {
-                    return@withContext Result.success(true)
-                }
-
                 LogcatManager.d("카메라이벤트매니저", "카메라 이벤트 리스너 중지 (public)")
 
-                // 안전한 중지를 위해 네이티브 중지 호출을 try-catch로 보호
-                try {
-                    nativeDataSource.stopListenCameraEvents()
-                } catch (e: Exception) {
-                    LogcatManager.w("카메라이벤트매니저", "네이티브 이벤트 리스너 중지 중 예외", e)
-                }
+                // 완전한 리스너 정리 수행
+                performCompleteCleanup()
 
-                isEventListenerRunning.set(false)
-                CoroutineScope(Dispatchers.Main).launch {
-                    _isEventListenerActive.value = false
-                }
-                LogcatManager.d("카메라이벤트매니저", "✓ 카메라 이벤트 리스너 중지 완료 (public)")
                 Result.success(true)
             } catch (e: Exception) {
                 LogcatManager.e("카메라이벤트매니저", "❌ 카메라 이벤트 리스너 중지 실패 (public)", e)
@@ -295,22 +282,10 @@ class CameraEventManager @Inject constructor(
      * (내부용) 카메라 이벤트 리스너 중지
      */
     fun stopCameraEventListenerInternal() {
-        if (!isEventListenerRunning.get()) {
-            return
-        }
-
         LogcatManager.d("카메라이벤트매니저", "카메라 이벤트 리스너 내부 중지")
-        try {
-            nativeDataSource.stopListenCameraEvents()
-            LogcatManager.d("카메라이벤트매니저", "✓ 카메라 이벤트 리스너 내부 중지 완료")
-        } catch (e: Exception) {
-            LogcatManager.e("카메라이벤트매니저", "❌ 카메라 이벤트 리스너 내부 중지 실패", e)
-        } finally {
-            isEventListenerRunning.set(false)
-            CoroutineScope(Dispatchers.Main).launch {
-                _isEventListenerActive.value = false
-            }
-        }
+
+        // 완전한 정리 수행
+        performCompleteCleanup()
     }
 
     fun isRunning(): Boolean = isEventListenerRunning.get()
@@ -660,16 +635,16 @@ class CameraEventManager @Inject constructor(
         }
 
         try {
-            // 이벤트 리스너 자동 중지
-            isEventListenerRunning.set(false)
-            CoroutineScope(Dispatchers.Main).launch {
-                _isEventListenerActive.value = false
-            }
+            LogcatManager.e("카메라이벤트매니저", "❌ USB 디바이스 분리 감지됨 - 완전한 정리 수행")
+
+            // 완전한 이벤트 리스너 정리 수행
+            performCompleteCleanup()
 
             // UsbCameraManager에 USB 분리 알림
             CoroutineScope(Dispatchers.IO).launch {
                 try {
                     usbCameraManager.handleUsbDisconnection()
+                    LogcatManager.d("카메라이벤트매니저", "USB 카메라 매니저 분리 처리 완료")
                 } catch (e: Exception) {
                     LogcatManager.e("카메라이벤트매니저", "USB 분리 처리 중 오류", e)
                 } finally {
@@ -695,11 +670,8 @@ class CameraEventManager @Inject constructor(
         try {
             LogcatManager.d("카메라이벤트매니저", "PTPIP 네트워크 연결 해제 처리 시작")
 
-            // 이벤트 리스너 자동 중지
-            isEventListenerRunning.set(false)
-            CoroutineScope(Dispatchers.Main).launch {
-                _isEventListenerActive.value = false
-            }
+            // 완전한 이벤트 리스너 정리 수행
+            performCompleteCleanup()
 
             // PTPIP 특화 콜백 (필요시 추가)
             onPtpipDisconnectedCallback?.invoke()
@@ -707,6 +679,58 @@ class CameraEventManager @Inject constructor(
             LogcatManager.d("카메라이벤트매니저", "PTPIP 네트워크 연결 해제 처리 완료")
         } catch (e: Exception) {
             LogcatManager.e("카메라이벤트매니저", "PTPIP 연결 해제 처리 중 예외", e)
+        }
+    }
+
+    /**
+     * 완전한 이벤트 리스너 정리 수행
+     */
+    private fun performCompleteCleanup() {
+        LogcatManager.d("카메라이벤트매니저", "완전한 이벤트 리스너 정리 시작")
+
+        try {
+            // 실행 상태 먼저 정리
+            isEventListenerRunning.set(false)
+            isEventListenerStarting.set(false)
+
+            // UI 상태 업데이트
+            CoroutineScope(Dispatchers.Main).launch {
+                _isEventListenerActive.value = false
+            }
+
+            // 네이티브 이벤트 리스너 중지 시도 (여러 번 시도)
+            var stopAttempts = 0
+            val maxStopAttempts = 3
+
+            while (stopAttempts < maxStopAttempts) {
+                try {
+                    nativeDataSource.stopListenCameraEvents()
+                    LogcatManager.d("카메라이벤트매니저", "네이티브 이벤트 리스너 중지 성공 (시도 ${stopAttempts + 1})")
+                    break
+                } catch (e: Exception) {
+                    stopAttempts++
+                    LogcatManager.w(
+                        "카메라이벤트매니저",
+                        "네이티브 이벤트 리스너 중지 실패 (시도 ${stopAttempts}/$maxStopAttempts)",
+                        e
+                    )
+
+                    if (stopAttempts < maxStopAttempts) {
+                        // 다음 시도 전 잠깐 대기
+                        Thread.sleep(500)
+                    } else {
+                        LogcatManager.e("카메라이벤트매니저", "네이티브 이벤트 리스너 중지 최대 재시도 초과")
+                    }
+                }
+            }
+
+            // USB 분리 처리 상태도 리셋
+            isHandlingUsbDisconnection.set(false)
+
+            LogcatManager.d("카메라이벤트매니저", "✓ 완전한 이벤트 리스너 정리 완료")
+
+        } catch (e: Exception) {
+            LogcatManager.e("카메라이벤트매니저", "❌ 완전한 이벤트 리스너 정리 중 예외", e)
         }
     }
 
