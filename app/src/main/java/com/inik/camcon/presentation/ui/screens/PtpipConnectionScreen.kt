@@ -72,6 +72,8 @@ import com.inik.camcon.presentation.ui.screens.components.ApModeContent
 import com.inik.camcon.presentation.ui.screens.components.StaModeContent
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
 import com.inik.camcon.data.datasource.local.ThemeMode
+import com.inik.camcon.domain.model.SubscriptionTier
+import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -83,15 +85,21 @@ import kotlinx.coroutines.launch
 @Composable
 fun PtpipConnectionScreen(
     onBackClick: () -> Unit,
-    ptpipViewModel: PtpipViewModel = hiltViewModel()
+    ptpipViewModel: PtpipViewModel = hiltViewModel(),
+    getSubscriptionUseCase: GetSubscriptionUseCase = androidx.hilt.navigation.compose.hiltViewModel()
 ) {
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    
-    // 탭 상태 - AP 모드를 먼저 표시 (index 0)
-    val pagerState = rememberPagerState(initialPage = 0) { 2 }
-    val tabTitles = listOf("AP 모드", "STA 모드")
+
+    // 구독 티어 체크 (STA 모드는 ADMIN만 보임)
+    val subscriptionTier by getSubscriptionUseCase.getSubscriptionTier()
+        .collectAsState(initial = SubscriptionTier.FREE)
+    val isAdmin = subscriptionTier == SubscriptionTier.ADMIN
+
+    // 탭 제목과 탭 수를 동적으로 구성
+    val tabTitles = if (isAdmin) listOf("AP 모드", "STA 모드") else listOf("AP 모드")
+    val pagerState = rememberPagerState(initialPage = 0) { tabTitles.size }
 
     // Wi‑Fi 스캔 권한 상태 (WifiNetworkHelper 사용)
     var wifiScanPermissionStatus by remember {
@@ -168,6 +176,7 @@ fun PtpipConnectionScreen(
     val nearbyWifiSSIDs by ptpipViewModel.nearbyWifiSSIDs.collectAsState()
     val needLocationSettings by ptpipViewModel.needLocationSettings.collectAsState()
     val needWifiSettings by ptpipViewModel.needWifiSettings.collectAsState()
+    val connectionLostMessage by ptpipViewModel.connectionLostMessage.collectAsState()
 
     // 에러 메시지 표시
     LaunchedEffect(errorMessage) {
@@ -446,6 +455,45 @@ fun PtpipConnectionScreen(
         }
     }
 
+    // Wi-Fi 연결 끊어짐 알림 표시
+    connectionLostMessage?.let { message ->
+        AlertDialog(
+            onDismissRequest = { ptpipViewModel.clearConnectionLostMessage() },
+            title = { Text("카메라 연결 끊어짐") },
+            text = {
+                Column {
+                    Text(message)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "다음 단계를 수행해주세요:",
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("1. Wi-Fi 연결 상태를 확인하세요")
+                    Text("2. 카메라 Wi-Fi가 켜져있는지 확인하세요")
+                    Text("3. 카메라를 다시 검색하고 연결하세요")
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    ptpipViewModel.clearConnectionLostMessage()
+                    // 자동으로 카메라 검색 시작
+                    when (pagerState.currentPage) {
+                        0 -> ptpipViewModel.discoverCamerasAp()
+                        1 -> ptpipViewModel.discoverCamerasSta()
+                    }
+                }) {
+                    Text("카메라 재검색")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { ptpipViewModel.clearConnectionLostMessage() }) {
+                    Text("확인")
+                }
+            }
+        )
+    }
+
     CamConTheme(themeMode = ThemeMode.LIGHT) {
         Scaffold(
             topBar = {
@@ -470,26 +518,32 @@ fun PtpipConnectionScreen(
                                         requestWifiScanPermissions()
                                     }
 
-                                    1 -> ptpipViewModel.discoverCamerasSta()
+                                    1 -> if (isAdmin) {
+                                        ptpipViewModel.discoverCamerasSta()
+                                    }
                                     else -> {}
                                 }
                             },
-                            enabled = !isDiscovering
+                            enabled = !isDiscovering && (pagerState.currentPage == 0 || isAdmin)
                         ) {
                             Icon(Icons.Filled.Refresh, contentDescription = "새로고침")
                         }
                         IconButton(onClick = {
-                            val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                try {
-                                    Intent(Settings.Panel.ACTION_WIFI)
-                                } catch (e: Exception) {
+                            if (pagerState.currentPage == 0 || isAdmin) {
+                                val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                    try {
+                                        Intent(Settings.Panel.ACTION_WIFI)
+                                    } catch (e: Exception) {
+                                        Intent(Settings.ACTION_WIFI_SETTINGS)
+                                    }
+                                } else {
                                     Intent(Settings.ACTION_WIFI_SETTINGS)
                                 }
-                            } else {
-                                Intent(Settings.ACTION_WIFI_SETTINGS)
+                                context.startActivity(intent)
                             }
-                            context.startActivity(intent)
-                        }) {
+                        },
+                            enabled = pagerState.currentPage == 0 || isAdmin
+                        ) {
                             Icon(Icons.Filled.Settings, contentDescription = "Wi-Fi 설정")
                         }
                     },
@@ -549,23 +603,25 @@ fun PtpipConnectionScreen(
                             onConnectToWifi = { ssid -> onConnectToWifiWithPassword(ssid) }
                         )
 
-                        1 -> StaModeContent(
-                            ptpipViewModel = ptpipViewModel,
-                            connectionState = connectionState,
-                            discoveredCameras = discoveredCameras,
-                            isDiscovering = isDiscovering,
-                            isConnecting = isConnecting,
-                            selectedCamera = selectedCamera,
-                            cameraInfo = cameraInfo,
-                            isPtpipEnabled = isPtpipEnabled,
-                            isWifiConnected = isWifiConnected,
-                            wifiCapabilities = wifiCapabilities,
-                            wifiNetworkState = wifiNetworkState,
-                            isAutoReconnectEnabled = isAutoReconnectEnabled,
-                            hasLocationPermission = ptpipViewModel.getWifiHelper()
-                                .analyzeWifiScanPermissionStatus().canScan,
-                            onRequestPermission = { requestWifiScanPermissions() }
-                        )
+                        1 -> if (isAdmin) {
+                            StaModeContent(
+                                ptpipViewModel = ptpipViewModel,
+                                connectionState = connectionState,
+                                discoveredCameras = discoveredCameras,
+                                isDiscovering = isDiscovering,
+                                isConnecting = isConnecting,
+                                selectedCamera = selectedCamera,
+                                cameraInfo = cameraInfo,
+                                isPtpipEnabled = isPtpipEnabled,
+                                isWifiConnected = isWifiConnected,
+                                wifiCapabilities = wifiCapabilities,
+                                wifiNetworkState = wifiNetworkState,
+                                isAutoReconnectEnabled = isAutoReconnectEnabled,
+                                hasLocationPermission = ptpipViewModel.getWifiHelper()
+                                    .analyzeWifiScanPermissionStatus().canScan,
+                                onRequestPermission = { requestWifiScanPermissions() }
+                            )
+                        }
                     }
                 }
             }

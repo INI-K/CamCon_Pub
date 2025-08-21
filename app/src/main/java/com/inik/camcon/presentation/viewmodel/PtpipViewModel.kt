@@ -50,6 +50,9 @@ class PtpipViewModel @Inject constructor(
     // Wi-Fi 네트워크 상태
     val wifiNetworkState = ptpipDataSource.wifiNetworkState
 
+    // Wi-Fi 연결 끊어짐 알림 상태 추가
+    val connectionLostMessage = ptpipDataSource.connectionLostMessage
+
     // 전역 연결 상태 (새로 추가)
     val globalConnectionState = globalManager.globalConnectionState
     val activeConnectionType = globalManager.activeConnectionType
@@ -124,6 +127,16 @@ class PtpipViewModel @Inject constructor(
                 // AP 모드 연결 상태 변화 시 추가 처리
                 if (state.wifiNetworkState.isConnectedToCameraAP) {
                     Log.d(TAG, "AP 모드 연결 감지됨")
+                }
+            }
+        }
+
+        // 연결 끊어짐 상태 모니터링
+        viewModelScope.launch {
+            connectionLostMessage.collect { message ->
+                if (message != null) {
+                    Log.d(TAG, "연결 끊어짐 상태 감지됨: $message")
+                    // 연결 끊어짐 상태에 대한 추가 처리
                 }
             }
         }
@@ -662,6 +675,13 @@ class PtpipViewModel @Inject constructor(
      */
     fun clearError() {
         _errorMessage.value = null
+    }
+
+    /**
+     * 연결 끊어짐 메시지 클리어
+     */
+    fun clearConnectionLostMessage() {
+        ptpipDataSource.clearConnectionLostMessage()
     }
 
     /**
