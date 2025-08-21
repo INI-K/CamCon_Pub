@@ -46,6 +46,7 @@ import javax.inject.Singleton
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import android.provider.MediaStore
+import com.inik.camcon.CameraNative
 
 @Singleton
 class CameraRepositoryImpl @Inject constructor(
@@ -67,9 +68,27 @@ class CameraRepositoryImpl @Inject constructor(
         // GPU 초기화
         colorTransferUseCase.initializeGPU(context)
 
-        // PTPIP 다운로드 완료 콜백만 설정 (onPhotoCaptured는 제거)
+        // PTPIP 사진 다운로드 콜백 설정
         ptpipDataSource.setPhotoDownloadedCallback { filePath, fileName, imageData ->
-            handleNativePhotoDownloaded(filePath, fileName, imageData)
+            handleNativePhotoDownload(filePath, fileName, imageData)
+        }
+
+        // PTPIP 연결 끊어짐 콜백 설정
+        ptpipDataSource.setConnectionLostCallback {
+            com.inik.camcon.utils.LogcatManager.w("카메라레포지토리", "🚨 PTPIP Wi-Fi 연결이 끊어졌습니다")
+            // 추가 처리: 이벤트 리스너 중지, 상태 초기화 등
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    // 네이티브 이벤트 리스너 중지
+                    CameraNative.stopListenCameraEvents()
+                    com.inik.camcon.utils.LogcatManager.d(
+                        "카메라레포지토리",
+                        "🛑 PTPIP 연결 끊어짐으로 인한 이벤트 리스너 중지 완료"
+                    )
+                } catch (e: Exception) {
+                    com.inik.camcon.utils.LogcatManager.e("카메라레포지토리", "이벤트 리스너 중지 실패", e)
+                }
+            }
         }
     }
 
