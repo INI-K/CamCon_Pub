@@ -37,6 +37,7 @@ import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
+import com.inik.camcon.data.datasource.local.ThemeMode
 
 /**
  * AP 모드 화면 컴포넌트 (심플화)
@@ -484,7 +485,7 @@ private fun CameraAPConnectionCard(
 @Preview(name = "AP Mode Description Card", showBackground = true)
 @Composable
 private fun ApModeDescriptionCardPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         ApModeDescriptionCard()
     }
 }
@@ -492,7 +493,7 @@ private fun ApModeDescriptionCardPreview() {
 @Preview(name = "AP Mode Content", showBackground = true)
 @Composable
 private fun ApModeContentPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         // 미리보기용 더미 데이터
         val dummyWifiCapabilities = WifiCapabilities(
             isConnected = true,
