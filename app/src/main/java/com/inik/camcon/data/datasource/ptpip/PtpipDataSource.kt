@@ -63,6 +63,7 @@ class PtpipDataSource @Inject constructor(
 
     // Repository 콜백 저장용
     private var onPhotoCapturedCallback: ((String, String) -> Unit)? = null
+    private var onPhotoDownloadedCallback: ((String, String, ByteArray) -> Unit)? = null
 
     // StateFlow for UI observation
     private val _connectionState = MutableStateFlow(PtpipConnectionState.DISCONNECTED)
@@ -627,6 +628,12 @@ class PtpipDataSource @Inject constructor(
      */
     private suspend fun startAutomaticFileReceiving(camera: PtpipCamera) {
         Log.i(TAG, "PTPIP AP 모드 이벤트 리스너 시작: ${camera.name}")
+        com.inik.camcon.utils.LogcatManager.d(TAG, "=== PTPIP 자동 파일 수신 시작 ===")
+        com.inik.camcon.utils.LogcatManager.d(TAG, "카메라: ${camera.name}")
+        com.inik.camcon.utils.LogcatManager.d(
+            TAG,
+            "Repository 콜백 설정 상태: ${onPhotoCapturedCallback != null}"
+        )
 
         try {
             // 1단계: 파일 목록 조회 (동기적으로 실행하여 완료 대기)
@@ -638,16 +645,20 @@ class PtpipDataSource @Inject constructor(
                     val fileListJson = CameraNative.getCameraFileListPaged(0, 50) // 첫 페이지 50개
                     if (fileListJson.isNotEmpty() && fileListJson != "[]") {
                         Log.i(TAG, "✅ 파일 목록 조회 성공: ${fileListJson.length} chars")
+                        com.inik.camcon.utils.LogcatManager.d(TAG, "✅ 파일 목록 조회 성공")
                     } else {
                         Log.i(TAG, "📷 카메라에 파일이 없거나 목록이 비어있음")
+                        com.inik.camcon.utils.LogcatManager.d(TAG, "📷 카메라 파일 목록 비어있음")
                     }
                 } catch (e: Exception) {
                     Log.w(TAG, "파일 목록 조회 중 오류 (계속 진행): ${e.message}")
+                    com.inik.camcon.utils.LogcatManager.w(TAG, "파일 목록 조회 실패: ${e.message}")
                 }
             }
 
             // 2단계: 이벤트 리스너 시작
             _connectionProgressMessage.value = "이벤트 리스너 시작 중..."
+            com.inik.camcon.utils.LogcatManager.d(TAG, "🎧 CameraEventManager를 통한 이벤트 리스너 시작")
 
             // CameraEventManager를 통해 PTPIP 이벤트 리스너 시작
             val result = cameraEventManager.startCameraEventListener(
@@ -655,30 +666,59 @@ class PtpipDataSource @Inject constructor(
                 isInitializing = false,
                 saveDirectory = getDefaultSaveDirectory(),
                 onPhotoCaptured = { filePath, fileName ->
-                    onPhotoCapturedCallback?.invoke(filePath, fileName)
+                    com.inik.camcon.utils.LogcatManager.d(
+                        TAG,
+                        "🎯 PTPIP onPhotoCaptured 콜백 호출됨: $fileName"
+                    )
+                    // Repository 콜백 호출 제거
+                    com.inik.camcon.utils.LogcatManager.d(TAG, "📋 파일 감지 알림만 처리: $fileName")
+
+                    // 네이티브 처리 완료 알림만 로그로 기록
                     handleAutomaticDownload(filePath, fileName)
+                },
+                onPhotoDownloaded = { filePath, fileName, imageData ->
+                    com.inik.camcon.utils.LogcatManager.d(
+                        TAG,
+                        "📦 PTPIP onPhotoDownloaded 콜백 호출됨: $fileName (${imageData.size / 1024}KB)"
+                    )
+                    com.inik.camcon.utils.LogcatManager.d(
+                        TAG,
+                        "✅ 네이티브에서 완전한 다운로드 및 저장 처리 완료: $fileName"
+                    )
+                    com.inik.camcon.utils.LogcatManager.d(TAG, "📁 실제 저장된 파일 경로: $filePath")
+
+                    // 실제 저장된 파일 정보로 Repository 업데이트
+                    onPhotoDownloadedCallback?.invoke(filePath, fileName, imageData)
                 },
                 onFlushComplete = {
                     Log.d(TAG, "PTPIP AP 모드 플러시 완료")
+                    com.inik.camcon.utils.LogcatManager.d(TAG, "✅ PTPIP 플러시 완료")
                 },
                 onCaptureFailed = { errorCode ->
                     Log.e(TAG, "PTPIP AP 모드 촬영 실패: $errorCode")
+                    com.inik.camcon.utils.LogcatManager.e(TAG, "❌ PTPIP 촬영 실패: $errorCode")
                 },
                 connectionType = CameraEventManager.ConnectionType.PTPIP
             )
 
             if (result.isSuccess) {
                 Log.i(TAG, "✅ PTPIP AP 모드 이벤트 리스너 시작 성공")
+                com.inik.camcon.utils.LogcatManager.d(TAG, "🎉 PTPIP 이벤트 리스너 시작 성공!")
                 _connectionProgressMessage.value = "초기화 완료 중..."
             } else {
                 Log.e(
                     TAG,
                     "❌ PTPIP AP 모드 이벤트 리스너 시작 실패: ${result.exceptionOrNull()?.message}"
                 )
+                com.inik.camcon.utils.LogcatManager.e(
+                    TAG,
+                    "❌ PTPIP 이벤트 리스너 시작 실패: ${result.exceptionOrNull()?.message}"
+                )
                 _connectionProgressMessage.value = "이벤트 리스너 오류"
             }
         } catch (e: Exception) {
             Log.e(TAG, "PTPIP AP 모드 이벤트 리스너 시작 중 오류", e)
+            com.inik.camcon.utils.LogcatManager.e(TAG, "❌ PTPIP 이벤트 리스너 시작 중 예외: ${e.message}", e)
             _connectionProgressMessage.value = "설정 오류"
             // 폴백: 기존 방식 사용
             startFileReceiveListenerFallback(camera)
@@ -867,32 +907,36 @@ class PtpipDataSource @Inject constructor(
     }
 
     /**
-     * 자동 다운로드된 파일 처리 - 파일 정보만 Repository로 전달
+     * 자동 다운로드된 파일 처리 - 네이티브에서 모든 처리 완료됨
      */
     private fun handleAutomaticDownload(filePath: String, fileName: String) {
         coroutineScope.launch {
             try {
-                Log.d(TAG, "파일 감지 알림: $fileName")
+                Log.d(TAG, "네이티브 파일 처리 완료 알림: $fileName")
+                Log.d(TAG, "   파일명: $fileName")
+                Log.d(TAG, "   경로: $filePath")
 
                 // 중복 처리 방지: 최근 처리 맵에서 윈도우 내 동일 파일 무시
                 val now = System.currentTimeMillis()
                 if (!recentProcessingGuard.tryMark(filePath, now)) {
-                    Log.d(TAG, "중복 파일 감지 이벤트 무시: $fileName (@$filePath)")
+                    Log.d(TAG, "중복 파일 처리 이벤트 무시: $fileName")
                     return@launch
                 }
 
-                // 파일 정보만 로그 출력 - 실제 다운로드는 Repository에서 처리
+                // 파일 정보만 로그 출력 - 네이티브에서 모든 처리(다운로드, 리사이즈, 저장)가 완료됨
                 val ext = fileName.substringAfterLast('.', "").lowercase()
-                Log.d(TAG, "파일 타입: $ext")
+                Log.d(TAG, "   파일 확장자: $ext")
 
                 if (ext in listOf("jpg", "jpeg", "png", "cr2", "nef", "arw", "dng")) {
-                    Log.d(TAG, "이미지 파일 감지 - 썸네일 생성 시도")
+                    Log.d(TAG, "✅ 이미지 파일 - 네이티브에서 처리 완료됨")
+                } else {
+                    Log.d(TAG, "❌ 지원하지 않는 파일 형식: $ext")
                 }
 
-                Log.i(TAG, "✅ 파일 감지 완료 - Repository에서 다운로드 처리: $fileName")
+                Log.i(TAG, "✅ 파일 처리 완료 알림: $fileName (네이티브 처리 완료)")
 
             } catch (e: Exception) {
-                Log.e(TAG, "파일 감지 처리 중 오류", e)
+                Log.e(TAG, "파일 처리 완료 알림 중 오류", e)
             }
         }
     }
@@ -1056,6 +1100,11 @@ class PtpipDataSource @Inject constructor(
     fun setPhotoCapturedCallback(callback: (String, String) -> Unit) {
         onPhotoCapturedCallback = callback
         Log.d(TAG, "PTPIP 파일 촬영 콜백 설정 완료")
+    }
+
+    fun setPhotoDownloadedCallback(callback: (String, String, ByteArray) -> Unit) {
+        onPhotoDownloadedCallback = callback
+        Log.d(TAG, "PTPIP 파일 다운로드 콜백 설정 완료")
     }
 
     /**

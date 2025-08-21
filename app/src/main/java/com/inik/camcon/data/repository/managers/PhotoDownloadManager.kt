@@ -374,6 +374,10 @@ class PhotoDownloadManager @Inject constructor(
                 Log.d(TAG, "   확장자: $extension")
                 Log.d(TAG, "   원본 크기: ${imageData.size / 1024}KB")
 
+                // 카메라 폴더 구조 추출 (예: /store_00010001/DCIM/105KAY_1/KY6_0035.JPG → 105KAY_1)
+                val cameraSubFolder = extractCameraSubFolder(filePath)
+                Log.d(TAG, "   추출된 카메라 서브폴더: $cameraSubFolder")
+
                 // 현재 구독 티어 확인
                 val currentTier = getSubscriptionUseCase.getSubscriptionTier().first()
 
@@ -490,7 +494,12 @@ class PhotoDownloadManager @Inject constructor(
                 }
 
                 // SAF를 사용한 후처리 (Android 10+에서 MediaStore로 이동)
-                val finalPath = postProcessPhoto(processedPath!!, fileName)
+                val fileNameWithFolder = if (cameraSubFolder.isNotEmpty()) {
+                    "$cameraSubFolder/$fileName"
+                } else {
+                    fileName
+                }
+                val finalPath = postProcessPhoto(processedPath!!, fileNameWithFolder)
                 Log.d(TAG, "✅ Native 사진 후처리 완료: $finalPath")
 
                 val capturedPhoto = CapturedPhoto(
@@ -564,6 +573,8 @@ class PhotoDownloadManager @Inject constructor(
         onPhotoDownloaded: (CapturedPhoto) -> Unit,
         onDownloadFailed: (String) -> Unit
     ) {
+        var processedFile: File? = null
+
         try {
             Log.d(TAG, "📥 사진 다운로드 시작: $fileName")
             Log.d(TAG, "   전체 경로: $fullPath")
@@ -634,6 +645,7 @@ class PhotoDownloadManager @Inject constructor(
 
                 try {
                     val resizedFile = File(file.parent, "${file.nameWithoutExtension}_resized.jpg")
+                    processedFile = resizedFile
                     val resizeSuccess =
                         resizeImageForFreeTier(file.absolutePath, resizedFile.absolutePath)
 
@@ -1211,7 +1223,7 @@ class PhotoDownloadManager @Inject constructor(
     }
 
     /**
-     * MediaStore를 사용하여 사진을 외부 저장소에 저장 (덮어쓰기 방식)
+     * MediaStore를 사용하여 사진을 외부 저장소에 저장 (카메라 폴더 구조 유지)
      */
     private fun saveToMediaStore(tempFilePath: String, fileName: String): String {
         return try {
@@ -1221,8 +1233,18 @@ class PhotoDownloadManager @Inject constructor(
                 return tempFilePath
             }
 
+            // 카메라 폴더 구조 분석 (예: 105KAY_1/KY6_0035.JPG)
+            val file = File(fileName)
+            val subFolderPath = file.parent ?: ""
+            val baseFileName = file.name
+
+            Log.d("사진다운로드매니저", "📁 폴더 구조 분석:")
+            Log.d("사진다운로드매니저", "   전체 경로: $fileName")
+            Log.d("사진다운로드매니저", "   서브폴더: $subFolderPath")
+            Log.d("사진다운로드매니저", "   파일명: $baseFileName")
+
             // 파일 확장자에 따른 MIME 타입 결정
-            val extension = fileName.substringAfterLast(".", "").lowercase()
+            val extension = baseFileName.substringAfterLast(".", "").lowercase()
             val mimeType = when (extension) {
                 in Constants.ImageProcessing.JPEG_EXTENSIONS -> Constants.MimeTypes.IMAGE_JPEG
                 "nef" -> Constants.MimeTypes.IMAGE_NEF
@@ -1235,27 +1257,33 @@ class PhotoDownloadManager @Inject constructor(
                 else -> Constants.MimeTypes.IMAGE_JPEG // 기본값
             }
 
+            // MediaStore 저장 폴더: DCIM/CamCon/(카메라서브폴더)
+            val camconRelativeBase = Constants.FilePaths.getMediaStoreRelativePath()
+            val relativePath = if (subFolderPath.isNotEmpty()) {
+                "$camconRelativeBase/$subFolderPath"
+            } else {
+                camconRelativeBase
+            }
+
+            Log.d("사진다운로드매니저", "   MediaStore 경로: $relativePath")
+
             // 기존 파일이 존재하는지 확인하고 삭제
-            val existingUri = findExistingFileInMediaStore(fileName)
+            val existingUri = findExistingFileInMediaStore(baseFileName, relativePath)
             if (existingUri != null) {
-                Log.d("사진다운로드매니저", "기존 파일 발견, 삭제 중: $fileName")
+                Log.d("사진다운로드매니저", "기존 파일 발견, 삭제 중: $relativePath/$baseFileName")
                 val deletedRows = context.contentResolver.delete(existingUri, null, null)
                 if (deletedRows > 0) {
-                    Log.d("사진다운로드매니저", "✅ 기존 파일 삭제 완료: $fileName")
+                    Log.d("사진다운로드매니저", "✅ 기존 파일 삭제 완료: $baseFileName")
                 } else {
-                    Log.w("사진다운로드매니저", "⚠️ 기존 파일 삭제 실패: $fileName")
+                    Log.w("사진다운로드매니저", "⚠️ 기존 파일 삭제 실패: $baseFileName")
                 }
             }
 
-            // MediaStore를 사용하여 DCIM 폴더에 새 파일 저장
+            // MediaStore를 사용하여 DCIM/CamCon/서브폴더에 저장
             val contentValues = ContentValues().apply {
-                put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
+                put(MediaStore.Images.Media.DISPLAY_NAME, baseFileName) // 실제 파일명만
                 put(MediaStore.Images.Media.MIME_TYPE, mimeType)
-                put(
-                    MediaStore.Images.Media.RELATIVE_PATH,
-                    Constants.FilePaths.getMediaStoreRelativePath()
-                )
-                // 덮어쓰기를 위한 추가 설정
+                put(MediaStore.Images.Media.RELATIVE_PATH, relativePath) // 폴더 구조 포함
                 put(MediaStore.Images.Media.IS_PENDING, 1) // 저장 중 상태로 설정
             }
 
@@ -1280,9 +1308,9 @@ class PhotoDownloadManager @Inject constructor(
                 // 임시 파일 삭제
                 tempFile.delete()
 
-                // MediaStore URI를 파일 경로로 변환
-                val savedPath = getPathFromUri(uri) ?: uri.toString()
-                Log.d("사진다운로드매니저", "✅ MediaStore 저장 성공 (덮어쓰기): $savedPath")
+                // 실제 저장된 파일 경로 생성 (폴더 구조 포함)
+                val savedPath = buildActualSavedPath(fileName)
+                Log.d("사진다운로드매니저", "✅ MediaStore 저장 성공 (폴더 구조 유지): $savedPath")
                 savedPath
             } else {
                 Log.e("사진다운로드매니저", "MediaStore URI 생성 실패")
@@ -1297,7 +1325,7 @@ class PhotoDownloadManager @Inject constructor(
     /**
      * MediaStore에서 동일한 파일명의 기존 파일을 찾기
      */
-    private fun findExistingFileInMediaStore(fileName: String): Uri? {
+    private fun findExistingFileInMediaStore(fileName: String, relativePath: String): Uri? {
         return try {
             val projection = arrayOf(
                 MediaStore.Images.Media._ID,
@@ -1306,7 +1334,7 @@ class PhotoDownloadManager @Inject constructor(
             )
             val selection =
                 "${MediaStore.Images.Media.DISPLAY_NAME} = ? AND ${MediaStore.Images.Media.RELATIVE_PATH} = ?"
-            val selectionArgs = arrayOf(fileName, Constants.FilePaths.getMediaStoreRelativePath())
+            val selectionArgs = arrayOf(fileName, relativePath)
 
             context.contentResolver.query(
                 MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
@@ -1356,6 +1384,52 @@ class PhotoDownloadManager @Inject constructor(
         } catch (e: Exception) {
             Log.e("사진다운로드매니저", "URI 경로 변환 실패", e)
             null
+        }
+    }
+
+    /**
+     * 카메라 폴더 구조를 반영한 실제 저장 경로 생성
+     * 예: 105KAY_1/KY6_0035.JPG → /storage/emulated/0/DCIM/CamCon/105KAY_1/KY6_0035.JPG
+     */
+    private fun buildActualSavedPath(fileName: String): String {
+        return try {
+            val camconBase = "/storage/emulated/0/DCIM/CamCon"
+            val file = File(fileName)
+            val subFolderPath = file.parent ?: ""
+            val baseFileName = file.name
+
+            if (subFolderPath.isNotEmpty()) {
+                "$camconBase/$subFolderPath/$baseFileName"
+            } else {
+                "$camconBase/$baseFileName"
+            }
+        } catch (e: Exception) {
+            Log.e("사진다운로드매니저", "파일 경로 생성 실패", e)
+            fileName // 폴백으로 파일명만 반환
+        }
+    }
+
+    /**
+     * 카메라 내부 경로에서 서브폴더를 추출
+     * 예: /store_00010001/DCIM/105KAY_1/KY6_0035.JPG → 105KAY_1
+     */
+    private fun extractCameraSubFolder(filePath: String): String {
+        return try {
+            // DCIM 다음의 첫 번째 폴더를 서브폴더로 사용
+            val pathParts = filePath.split("/")
+            val dcimIndex = pathParts.indexOfFirst { it.equals("DCIM", ignoreCase = true) }
+
+            if (dcimIndex >= 0 && dcimIndex + 1 < pathParts.size) {
+                val subFolder = pathParts[dcimIndex + 1]
+                Log.d(TAG, "카메라 서브폴더 추출: $filePath → $subFolder")
+                subFolder
+            } else {
+                Log.w(TAG, "DCIM 폴더를 찾을 수 없음: $filePath")
+                ""
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "카메라 서브폴더 추출 실패: $filePath", e)
+            ""
         }
     }
 }
