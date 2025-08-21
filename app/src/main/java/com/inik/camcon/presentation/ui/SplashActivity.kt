@@ -50,6 +50,7 @@ import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.AppVersionUiState
 import com.inik.camcon.presentation.viewmodel.AppVersionViewModel
 import com.inik.camcon.utils.LogcatManager
+import com.inik.camcon.data.datasource.local.ThemeMode
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -338,7 +339,7 @@ fun SplashScreen(
 @Preview(showBackground = true)
 @Composable
 fun SplashScreenPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         SplashScreen(
             versionState = AppVersionUiState(),
             libraryLoadingStatus = "라이브러리 로딩 중...",

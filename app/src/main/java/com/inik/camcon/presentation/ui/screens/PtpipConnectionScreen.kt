@@ -71,6 +71,7 @@ import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.components.ApModeContent
 import com.inik.camcon.presentation.ui.screens.components.StaModeContent
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
+import com.inik.camcon.data.datasource.local.ThemeMode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -445,123 +446,127 @@ fun PtpipConnectionScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("카메라 연결") },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "뒤로가기")
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = {
-                            when (pagerState.currentPage) {
-                                0 -> if (ptpipViewModel.getWifiHelper()
-                                        .analyzeWifiScanPermissionStatus().canScan
-                                ) {
-                                    Log.d("PtpipConnectionScreen", "Wi-Fi 스캔 실행")
-                                    ptpipViewModel.scanNearbyWifiNetworks()
-                                } else {
-                                    Log.d("PtpipConnectionScreen", "권한 부족으로 권한 요청 호출")
-                                    requestWifiScanPermissions()
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("카메라 연결") },
+                    navigationIcon = {
+                        IconButton(onClick = onBackClick) {
+                            Icon(Icons.Filled.ArrowBack, contentDescription = "뒤로가기")
+                        }
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = {
+                                when (pagerState.currentPage) {
+                                    0 -> if (ptpipViewModel.getWifiHelper()
+                                            .analyzeWifiScanPermissionStatus().canScan
+                                    ) {
+                                        Log.d("PtpipConnectionScreen", "Wi-Fi 스캔 실행")
+                                        ptpipViewModel.scanNearbyWifiNetworks()
+                                    } else {
+                                        Log.d("PtpipConnectionScreen", "권한 부족으로 권한 요청 호출")
+                                        requestWifiScanPermissions()
+                                    }
+
+                                    1 -> ptpipViewModel.discoverCamerasSta()
+                                    else -> {}
                                 }
-                                1 -> ptpipViewModel.discoverCamerasSta()
-                                else -> {}
-                            }
-                        },
-                        enabled = !isDiscovering
-                    ) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "새로고침")
-                    }
-                    IconButton(onClick = {
-                        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                            try {
-                                Intent(Settings.Panel.ACTION_WIFI)
-                            } catch (e: Exception) {
+                            },
+                            enabled = !isDiscovering
+                        ) {
+                            Icon(Icons.Filled.Refresh, contentDescription = "새로고침")
+                        }
+                        IconButton(onClick = {
+                            val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                try {
+                                    Intent(Settings.Panel.ACTION_WIFI)
+                                } catch (e: Exception) {
+                                    Intent(Settings.ACTION_WIFI_SETTINGS)
+                                }
+                            } else {
                                 Intent(Settings.ACTION_WIFI_SETTINGS)
                             }
-                        } else {
-                            Intent(Settings.ACTION_WIFI_SETTINGS)
+                            context.startActivity(intent)
+                        }) {
+                            Icon(Icons.Filled.Settings, contentDescription = "Wi-Fi 설정")
                         }
-                        context.startActivity(intent)
-                    }) {
-                        Icon(Icons.Filled.Settings, contentDescription = "Wi-Fi 설정")
-                    }
-                },
-                backgroundColor = MaterialTheme.colors.primary,
-                contentColor = MaterialTheme.colors.onPrimary
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            // 탭 행
-            TabRow(
-                selectedTabIndex = pagerState.currentPage,
-                backgroundColor = MaterialTheme.colors.primary,
-                contentColor = MaterialTheme.colors.onPrimary
+                    },
+                    backgroundColor = MaterialTheme.colors.primary,
+                    contentColor = MaterialTheme.colors.onPrimary
+                )
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) }
+        ) { paddingValues ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
             ) {
-                tabTitles.forEachIndexed { index, title ->
-                    Tab(
-                        selected = pagerState.currentPage == index,
-                        onClick = {
-                            scope.launch {
-                                pagerState.animateScrollToPage(index)
-                            }
-                        },
-                        text = { Text(title) }
-                    )
+                // 탭 행
+                TabRow(
+                    selectedTabIndex = pagerState.currentPage,
+                    backgroundColor = MaterialTheme.colors.primary,
+                    contentColor = MaterialTheme.colors.onPrimary
+                ) {
+                    tabTitles.forEachIndexed { index, title ->
+                        Tab(
+                            selected = pagerState.currentPage == index,
+                            onClick = {
+                                scope.launch {
+                                    pagerState.animateScrollToPage(index)
+                                }
+                            },
+                            text = { Text(title) }
+                        )
+                    }
                 }
-            }
 
-            // 탭 내용
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.weight(1f)
-            ) { page ->
-                when (page) {
-                    0 -> ApModeContent(
-                        ptpipViewModel = ptpipViewModel,
-                        connectionState = connectionState,
-                        discoveredCameras = discoveredCameras,
-                        isDiscovering = isDiscovering,
-                        isConnecting = isConnecting,
-                        selectedCamera = selectedCamera,
-                        cameraInfo = cameraInfo,
-                        isPtpipEnabled = isPtpipEnabled,
-                        isWifiConnected = isWifiConnected,
-                        wifiCapabilities = wifiCapabilities,
-                        wifiNetworkState = wifiNetworkState,
-                        isAutoReconnectEnabled = isAutoReconnectEnabled,
-                        hasLocationPermission = ptpipViewModel.getWifiHelper()
-                            .analyzeWifiScanPermissionStatus().canScan,
-                        onRequestPermission = { requestWifiScanPermissions() },
-                        nearbyWifiSSIDs = nearbyWifiSSIDs,
-                        onConnectToWifi = { ssid -> onConnectToWifiWithPassword(ssid) }
-                    )
-                    1 -> StaModeContent(
-                        ptpipViewModel = ptpipViewModel,
-                        connectionState = connectionState,
-                        discoveredCameras = discoveredCameras,
-                        isDiscovering = isDiscovering,
-                        isConnecting = isConnecting,
-                        selectedCamera = selectedCamera,
-                        cameraInfo = cameraInfo,
-                        isPtpipEnabled = isPtpipEnabled,
-                        isWifiConnected = isWifiConnected,
-                        wifiCapabilities = wifiCapabilities,
-                        wifiNetworkState = wifiNetworkState,
-                        isAutoReconnectEnabled = isAutoReconnectEnabled,
-                        hasLocationPermission = ptpipViewModel.getWifiHelper()
-                            .analyzeWifiScanPermissionStatus().canScan,
-                        onRequestPermission = { requestWifiScanPermissions() }
-                    )
+                // 탭 내용
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.weight(1f)
+                ) { page ->
+                    when (page) {
+                        0 -> ApModeContent(
+                            ptpipViewModel = ptpipViewModel,
+                            connectionState = connectionState,
+                            discoveredCameras = discoveredCameras,
+                            isDiscovering = isDiscovering,
+                            isConnecting = isConnecting,
+                            selectedCamera = selectedCamera,
+                            cameraInfo = cameraInfo,
+                            isPtpipEnabled = isPtpipEnabled,
+                            isWifiConnected = isWifiConnected,
+                            wifiCapabilities = wifiCapabilities,
+                            wifiNetworkState = wifiNetworkState,
+                            isAutoReconnectEnabled = isAutoReconnectEnabled,
+                            hasLocationPermission = ptpipViewModel.getWifiHelper()
+                                .analyzeWifiScanPermissionStatus().canScan,
+                            onRequestPermission = { requestWifiScanPermissions() },
+                            nearbyWifiSSIDs = nearbyWifiSSIDs,
+                            onConnectToWifi = { ssid -> onConnectToWifiWithPassword(ssid) }
+                        )
+
+                        1 -> StaModeContent(
+                            ptpipViewModel = ptpipViewModel,
+                            connectionState = connectionState,
+                            discoveredCameras = discoveredCameras,
+                            isDiscovering = isDiscovering,
+                            isConnecting = isConnecting,
+                            selectedCamera = selectedCamera,
+                            cameraInfo = cameraInfo,
+                            isPtpipEnabled = isPtpipEnabled,
+                            isWifiConnected = isWifiConnected,
+                            wifiCapabilities = wifiCapabilities,
+                            wifiNetworkState = wifiNetworkState,
+                            isAutoReconnectEnabled = isAutoReconnectEnabled,
+                            hasLocationPermission = ptpipViewModel.getWifiHelper()
+                                .analyzeWifiScanPermissionStatus().canScan,
+                            onRequestPermission = { requestWifiScanPermissions() }
+                        )
+                    }
                 }
             }
         }
@@ -615,7 +620,7 @@ fun PtpipConnectionScreen(
 @Preview(name = "PTPIP Connection Screen", showBackground = true)
 @Composable
 private fun PtpipConnectionScreenPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         // 프리뷰용 더미 구현
         Column(
             modifier = Modifier

@@ -22,6 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.data.datasource.local.ThemeMode
 
 /**
  * 카메라 연결 문제 해결 도움말 다이얼로그
@@ -127,7 +128,7 @@ private fun CameraBrandInstructions() {
 @Preview(name = "Camera Connection Help Dialog", showBackground = true)
 @Composable
 private fun CameraConnectionHelpDialogPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         CameraConnectionHelpDialog(
             onDismiss = { },
             onRetry = { }

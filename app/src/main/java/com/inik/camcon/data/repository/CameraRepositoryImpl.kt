@@ -6,6 +6,7 @@ import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
 import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
 import com.inik.camcon.data.datasource.nativesource.LiveViewCallback
 import com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource
+import com.inik.camcon.data.datasource.ptpip.PtpipDataSource
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
 import com.inik.camcon.data.repository.managers.CameraConnectionManager
 import com.inik.camcon.data.repository.managers.CameraEventManager
@@ -30,6 +31,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
@@ -43,11 +45,13 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import android.provider.MediaStore
 
 @Singleton
 class CameraRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val nativeDataSource: NativeCameraDataSource,
+    private val ptpipDataSource: PtpipDataSource,
     private val usbCameraManager: UsbCameraManager,
     private val photoCaptureEventManager: PhotoCaptureEventManager,
     private val appPreferencesDataSource: AppPreferencesDataSource,
@@ -63,9 +67,9 @@ class CameraRepositoryImpl @Inject constructor(
         // GPU 초기화
         colorTransferUseCase.initializeGPU(context)
 
-        // PTPIP 외부 셔터 감지 콜백 설정
-        connectionGlobalManager.setPtpipPhotoCapturedCallback { fullPath, fileName ->
-            handleExternalPhotoCapture(fullPath, fileName)
+        // PTPIP 다운로드 완료 콜백만 설정 (onPhotoCaptured는 제거)
+        ptpipDataSource.setPhotoDownloadedCallback { filePath, fileName, imageData ->
+            handleNativePhotoDownloaded(filePath, fileName, imageData)
         }
     }
 
@@ -116,8 +120,8 @@ class CameraRepositoryImpl @Inject constructor(
             isConnected = connectionManager.isConnected.value,
             isInitializing = connectionManager.isInitializing.value,
             saveDirectory = downloadManager.getSaveDirectory(),
-            onPhotoCaptured = { fullPath, fileName ->
-                handleExternalPhotoCapture(fullPath, fileName)
+            onPhotoCaptured = { _, _ ->
+                // handleNativePhotoDownloaded에서만 처리하므로 빈 콜백
             },
             onPhotoDownloaded = { fullPath, fileName, imageData ->
                 handleNativePhotoDownload(fullPath, fileName, imageData)
@@ -294,19 +298,19 @@ class CameraRepositoryImpl @Inject constructor(
 
                     override fun onCaptureFailed(errorCode: Int) {
                         Log.e("카메라레포지토리", "✗ 사진 촬영 실패, 오류 코드: $errorCode")
-                        continuation.resume(Result.failure(Exception("사진 촬영 실패: 오류 코드 $errorCode")))
+                        continuation.resumeWithException(Exception("사진 촬영 실패: 오류 코드 $errorCode"))
                     }
 
                     override fun onUsbDisconnected() {
                         Log.e("카메라레포지토리", "USB 디바이스 분리 감지 - 촬영 실패 처리")
-                        continuation.resume(Result.failure(Exception("USB 디바이스가 분리되어 촬영을 완료할 수 없습니다")))
+                        continuation.resumeWithException(Exception("USB 디바이스가 분리되어 촬영을 완료할 수 없습니다"))
                     }
                 }, saveDir)
 
                 Log.d("카메라레포지토리", "비동기 사진 촬영 호출 완료, 콜백 대기 중...")
             } catch (e: Exception) {
                 Log.e("카메라레포지토리", "사진 촬영 중 예외 발생", e)
-                continuation.resume(Result.failure(e))
+                continuation.resumeWithException(e)
             }
         }
     }
@@ -531,7 +535,7 @@ class CameraRepositoryImpl @Inject constructor(
     /**
      * 이벤트 리스너를 재시도 로직과 함께 시작
      */
-    private suspend fun startEventListenerWithRetry() {
+    private suspend fun startEventListenerWithRetry(): Unit {
         Log.d("카메라레포지토리", "이벤트 리스너 시작 시도")
         startEventListenerInternal()
         Log.d("카메라레포지토리", "이벤트 리스너 시작 후 상태: ${eventManager.isRunning()}")
@@ -570,8 +574,8 @@ class CameraRepositoryImpl @Inject constructor(
             isConnected = connectionManager.isConnected.value,
             isInitializing = connectionManager.isInitializing.value,
             saveDirectory = downloadManager.getSaveDirectory(),
-            onPhotoCaptured = { fullPath, fileName ->
-                handleExternalPhotoCapture(fullPath, fileName)
+            onPhotoCaptured = { _, _ ->
+                // handleNativePhotoDownloaded에서만 처리하므로 빈 콜백
             },
             onPhotoDownloaded = { fullPath, fileName, imageData ->
                 handleNativePhotoDownload(fullPath, fileName, imageData)
@@ -585,53 +589,6 @@ class CameraRepositoryImpl @Inject constructor(
                 Log.e("카메라레포지토리", "외부 셔터 촬영 실패: $errorCode")
             }
         )
-    }
-
-    /**
-     * 외부 셔터로 촬영된 사진 처리 - PhotoDownloadManager 통한 단일 다운로드
-     */
-    private fun handleExternalPhotoCapture(fullPath: String, fileName: String) {
-        Log.d("카메라레포지토리", "🎯 외부 셔터 사진 처리: $fileName")
-
-        // 파일 확장자 확인
-        val extension = fileName.substringAfterLast(".", "").lowercase()
-        if (extension !in Constants.ImageProcessing.SUPPORTED_IMAGE_EXTENSIONS) {
-            Log.d("카메라레포지토리", "지원하지 않는 파일 무시: $fileName (확장자: $extension)")
-            return
-        }
-
-        val tempPhoto = CapturedPhoto(
-            id = UUID.randomUUID().toString(),
-            filePath = fullPath,
-            thumbnailPath = null,
-            captureTime = System.currentTimeMillis(),
-            cameraModel = connectionManager.cameraCapabilities.value?.model ?: "알 수 없음",
-            settings = _cameraSettings.value,
-            size = 0,
-            width = 0,
-            height = 0,
-            isDownloading = true
-        )
-
-        // PhotoDownloadManager를 통한 단일 다운로드 처리
-        CoroutineScope(Dispatchers.IO).launch {
-            Log.d("카메라레포지토리", "📥 PhotoDownloadManager를 통한 다운로드 시작: $fileName")
-            downloadManager.handlePhotoDownload(
-                photo = tempPhoto,
-                fullPath = fullPath,
-                fileName = fileName,
-                cameraCapabilities = connectionManager.cameraCapabilities.value,
-                cameraSettings = _cameraSettings.value,
-                onPhotoDownloaded = { downloadedPhoto ->
-                    updateDownloadedPhoto(downloadedPhoto)
-                    Log.d("카메라레포지토리", "✅ 외부 셔터 사진 다운로드 완료: $fileName")
-                },
-                onDownloadFailed = { failedFileName ->
-                    updatePhotoDownloadFailed(failedFileName)
-                    Log.e("카메라레포지토리", "❌ 외부 셔터 사진 다운로드 실패: $failedFileName")
-                }
-            )
-        }
     }
 
     /**
@@ -687,11 +644,98 @@ class CameraRepositoryImpl @Inject constructor(
     }
 
     /**
+     * 네이티브에서 완전 처리된 사진 정보 업데이트 (실제 저장 경로 기반)
+     */
+    private fun handleNativePhotoDownloaded(
+        filePath: String,
+        fileName: String,
+        imageData: ByteArray
+    ) {
+        com.inik.camcon.utils.LogcatManager.d("카메라레포지토리", "=== 네이티브 사진 다운로드 완료 처리 ===")
+        com.inik.camcon.utils.LogcatManager.d("카메라레포지토리", "카메라 내부 경로: $filePath")
+        com.inik.camcon.utils.LogcatManager.d("카메라레포지토리", "파일명: $fileName")
+        com.inik.camcon.utils.LogcatManager.d("카메라레포지토리", "데이터 크기: ${imageData.size / 1024}KB")
+
+        // 파일 확장자 확인
+        val extension = fileName.substringAfterLast(".", "").lowercase()
+        if (extension !in Constants.ImageProcessing.SUPPORTED_IMAGE_EXTENSIONS) {
+            com.inik.camcon.utils.LogcatManager.d("카메라레포지토리", "❌ 지원하지 않는 파일 확장자: $extension")
+            return
+        }
+
+        // 카메라 폴더 구조 추출하여 실제 저장 경로 생성
+        val cameraSubFolder = extractCameraSubFolder(filePath)
+        val fileNameWithFolder = if (cameraSubFolder.isNotEmpty()) {
+            "$cameraSubFolder/$fileName"
+        } else {
+            fileName
+        }
+
+        // 실제 저장될 경로 생성
+        val actualFilePath = "/storage/emulated/0/DCIM/CamCon/$fileNameWithFolder"
+
+        com.inik.camcon.utils.LogcatManager.d("카메라레포지토리", "✅ 예상 저장 경로: $actualFilePath")
+
+        // 실제 저장된 파일 정보로 CapturedPhoto 생성
+        val photo = CapturedPhoto(
+            id = UUID.randomUUID().toString(),
+            filePath = actualFilePath, // 폴더 구조를 반영한 안드로이드 저장 경로 사용
+            thumbnailPath = null,
+            captureTime = System.currentTimeMillis(),
+            cameraModel = "PTPIP Camera",
+            settings = null,
+            size = imageData.size.toLong(),
+            width = 2000, // FREE 티어 리사이즈 크기
+            height = 1330,
+            isDownloading = false
+        )
+
+        com.inik.camcon.utils.LogcatManager.d("카메라레포지토리", "네이티브 다운로드 완료 사진 객체 생성: ${photo.id}")
+
+        // StateFlow에 추가하여 UI 업데이트
+        updateDownloadedPhoto(photo)
+        Log.d("카메라레포지토리", "✅ 네이티브 다운로드 완료 사진 UI 업데이트 완료: $fileName")
+    }
+
+    /**
+     * 카메라 내부 경로에서 서브폴더를 추출
+     * 예: /store_00010001/DCIM/105KAY_1/KY6_0035.JPG → 105KAY_1
+     */
+    private fun extractCameraSubFolder(cameraFilePath: String): String {
+        return try {
+            // DCIM 다음의 첫 번째 폴더를 서브폴더로 사용
+            val pathParts = cameraFilePath.split("/")
+            val dcimIndex = pathParts.indexOfFirst { it.equals("DCIM", ignoreCase = true) }
+
+            if (dcimIndex >= 0 && dcimIndex + 1 < pathParts.size) {
+                val subFolder = pathParts[dcimIndex + 1]
+                Log.d("카메라레포지토리", "카메라 서브폴더 추출: $cameraFilePath → $subFolder")
+                subFolder
+            } else {
+                Log.w("카메라레포지토리", "DCIM 폴더를 찾을 수 없음: $cameraFilePath")
+                ""
+            }
+        } catch (e: Exception) {
+            Log.e("카메라레포지토리", "카메라 서브폴더 추출 실패: $cameraFilePath", e)
+            ""
+        }
+    }
+
+    /**
      * 다운로드 완료된 사진 정보 업데이트
      */
     private fun updateDownloadedPhoto(downloadedPhoto: CapturedPhoto) {
+        val beforeCount = _capturedPhotos.value.size
         _capturedPhotos.value = _capturedPhotos.value + downloadedPhoto
+        val afterCount = _capturedPhotos.value.size
+
         Log.d("카메라레포지토리", "✓ 사진 다운로드 완료 업데이트. 총 ${_capturedPhotos.value.size}개")
+        com.inik.camcon.utils.LogcatManager.d("카메라레포지토리", "=== 사진 StateFlow 업데이트 ===")
+        com.inik.camcon.utils.LogcatManager.d("카메라레포지토리", "업데이트 전: ${beforeCount}개")
+        com.inik.camcon.utils.LogcatManager.d("카메라레포지토리", "업데이트 후: ${afterCount}개")
+        com.inik.camcon.utils.LogcatManager.d("카메라레포지토리", "추가된 사진 ID: ${downloadedPhoto.id}")
+        com.inik.camcon.utils.LogcatManager.d("카메라레포지토리", "추가된 사진 경로: ${downloadedPhoto.filePath}")
+        com.inik.camcon.utils.LogcatManager.d("카메라레포지토리", "✅ _capturedPhotos StateFlow 업데이트 완료")
     }
 
     /**

@@ -33,6 +33,7 @@ import com.inik.camcon.R
 import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.CameraUiState
+import com.inik.camcon.data.datasource.local.ThemeMode
 
 /**
  * 카메라 연결 상태와 설정 버튼을 표시하는 상단 컨트롤 바
@@ -129,7 +130,7 @@ fun TopControlsBar(
 @Preview(name = "Top Controls - Connected", showBackground = true)
 @Composable
 private fun TopControlsConnectedPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         Surface(color = Color.Black) {
             TopControlsBar(
                 uiState = CameraUiState(

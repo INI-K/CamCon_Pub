@@ -280,16 +280,16 @@ fun MainScreen(
                 title = {
                     Text(
                         "USB 디바이스 분리",
-                        style = androidx.compose.material.MaterialTheme.typography.h6,
+                        style = MaterialTheme.typography.h6,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                        color = androidx.compose.material.MaterialTheme.colors.error
+                        color = MaterialTheme.colors.error
                     )
                 },
                 text = {
                     androidx.compose.foundation.layout.Column {
                         Text(
                             "카메라 USB 연결이 끊어졌습니다.",
-                            style = androidx.compose.material.MaterialTheme.typography.body1
+                            style = MaterialTheme.typography.body1
                         )
                         androidx.compose.foundation.layout.Spacer(
                             modifier = androidx.compose.ui.Modifier.height(
@@ -298,8 +298,8 @@ fun MainScreen(
                         )
                         Text(
                             "• USB 케이블 연결을 확인해주세요\n• 카메라 전원을 확인해주세요\n• 카메라를 PC 모드로 설정해주세요",
-                            style = androidx.compose.material.MaterialTheme.typography.caption,
-                            color = androidx.compose.material.MaterialTheme.colors.onSurface.copy(
+                            style = MaterialTheme.typography.caption,
+                            color = MaterialTheme.colors.onSurface.copy(
                                 alpha = 0.7f
                             )
                         )
@@ -329,23 +329,23 @@ fun MainScreen(
                 title = {
                     Text(
                         "카메라 상태 점검 필요",
-                        style = androidx.compose.material.MaterialTheme.typography.h6,
+                        style = MaterialTheme.typography.h6,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                        color = androidx.compose.material.MaterialTheme.colors.error
+                        color = MaterialTheme.colors.error
                     )
                 },
                 text = {
                     androidx.compose.foundation.layout.Column {
                         Text(
                             "카메라가 정상적으로 동작하지 않습니다.",
-                            style = androidx.compose.material.MaterialTheme.typography.body1
+                            style = MaterialTheme.typography.body1
                         )
                         androidx.compose.foundation.layout.Spacer(
                             modifier = androidx.compose.ui.Modifier.height(12.dp)
                         )
                         Text(
                             "다음 사항을 확인해주세요:",
-                            style = androidx.compose.material.MaterialTheme.typography.body2,
+                            style = MaterialTheme.typography.body2,
                             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                         )
                         androidx.compose.foundation.layout.Spacer(
@@ -357,8 +357,8 @@ fun MainScreen(
                                     "• USB 케이블 연결 상태 확인\n" +
                                     "• 카메라가 PC 연결 모드로 설정되어 있는지 확인\n" +
                                     "• 카메라를 껐다가 다시 켜보세요",
-                            style = androidx.compose.material.MaterialTheme.typography.caption,
-                            color = androidx.compose.material.MaterialTheme.colors.onSurface.copy(
+                            style = MaterialTheme.typography.caption,
+                            color = MaterialTheme.colors.onSurface.copy(
                                 alpha = 0.8f
                             )
                         )
@@ -449,17 +449,11 @@ fun MainScreen(
             ) {
                 composable(BottomNavItem.PhotoPreview.route) { PhotoPreviewScreen() }
                 composable(BottomNavItem.CameraControl.route) {
-                    // AP 모드일 때는 사진 수신 대기 화면, 아니면 카메라 컨트롤 화면
-                    if (activeConnectionType == CameraConnectionType.AP_MODE) {
-                        com.inik.camcon.presentation.ui.screens.ApModePhotoReceiveScreen(
-                            viewModel = cameraViewModel // 전역 ViewModel 전달
-                        )
-                    } else {
-                        CameraControlScreen(
-                            viewModel = cameraViewModel, // 전역 ViewModel 전달
-                            onFullscreenChange = { isFullscreen = it }
-                        )
-                    }
+                    // AP 모드와 USB 모드 모두 동일한 CameraControlScreen 사용
+                    CameraControlScreen(
+                        viewModel = cameraViewModel, // 전역 ViewModel 전달
+                        onFullscreenChange = { isFullscreen = it }
+                    )
                 }
                 composable(BottomNavItem.ServerPhotos.route) { MyPhotosScreen() }
                 // 설정은 별도 액티비티로 처리하므로 여기서 제외
@@ -853,7 +847,7 @@ class MainActivity : ComponentActivity() {
 
                                 } catch (e: Exception) {
                                     LogcatManager.e(TAG, "카메라 정리 후 재시작 실행 중 오류", e)
-                                    // Fallback: 기존 방식
+                                    // Fallback: 기존 방식 사용
                                     systemRestartApp(activity)
                                 }
                             }

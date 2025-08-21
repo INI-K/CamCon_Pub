@@ -26,6 +26,7 @@ import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
+import com.inik.camcon.data.datasource.local.ThemeMode
 
 /**
  * STA 모드 화면 컴포넌트
@@ -298,7 +299,7 @@ private fun AutoReconnectCard(
 @Preview(name = "STA Mode Description Card", showBackground = true)
 @Composable
 private fun StaModeDescriptionCardPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         StaModeDescriptionCard()
     }
 }
@@ -306,7 +307,7 @@ private fun StaModeDescriptionCardPreview() {
 @Preview(name = "STA Mode Content", showBackground = true)
 @Composable
 private fun StaModeContentPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         // 프리뷰는 단순화된 형태로 표시
         LazyColumn(
             modifier = Modifier
