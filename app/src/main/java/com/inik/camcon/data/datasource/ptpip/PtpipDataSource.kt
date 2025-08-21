@@ -64,6 +64,7 @@ class PtpipDataSource @Inject constructor(
     // Repository 콜백 저장용
     private var onPhotoCapturedCallback: ((String, String) -> Unit)? = null
     private var onPhotoDownloadedCallback: ((String, String, ByteArray) -> Unit)? = null
+    private var onConnectionLostCallback: (() -> Unit)? = null // Wi-Fi 연결 끊어짐 알림용
 
     // StateFlow for UI observation
     private val _connectionState = MutableStateFlow(PtpipConnectionState.DISCONNECTED)
@@ -72,6 +73,10 @@ class PtpipDataSource @Inject constructor(
     // 추가: 연결 진행 메시지 상태 추가
     private val _connectionProgressMessage = MutableStateFlow("")
     val connectionProgressMessage: StateFlow<String> = _connectionProgressMessage.asStateFlow()
+
+    // Wi-Fi 연결 끊어짐 알림 상태 추가
+    private val _connectionLostMessage = MutableStateFlow<String?>(null)
+    val connectionLostMessage: StateFlow<String?> = _connectionLostMessage.asStateFlow()
 
     private val _discoveredCameras = MutableStateFlow<List<PtpipCamera>>(emptyList())
     val discoveredCameras: StateFlow<List<PtpipCamera>> = _discoveredCameras.asStateFlow()
@@ -164,6 +169,8 @@ class PtpipDataSource @Inject constructor(
                         Log.i(TAG, "Wi-Fi 연결 해제됨 - 카메라 연결 해제")
                         _connectionState.value = PtpipConnectionState.DISCONNECTED
                         connectedCamera = null
+                        _connectionLostMessage.value = "Wi-Fi 연결이 끊어졌습니다. 다시 연결해 주세요."
+                        onConnectionLostCallback?.invoke()
                     }
                 }
 
@@ -1105,6 +1112,21 @@ class PtpipDataSource @Inject constructor(
     fun setPhotoDownloadedCallback(callback: (String, String, ByteArray) -> Unit) {
         onPhotoDownloadedCallback = callback
         Log.d(TAG, "PTPIP 파일 다운로드 콜백 설정 완료")
+    }
+
+    /**
+     * Wi-Fi 연결 끊어짐 알림 콜백 설정
+     */
+    fun setConnectionLostCallback(callback: () -> Unit) {
+        onConnectionLostCallback = callback
+        Log.d(TAG, "PTPIP 연결 끊어짐 콜백 설정 완료")
+    }
+
+    /**
+     * 연결 끊어짐 메시지 클리어
+     */
+    fun clearConnectionLostMessage() {
+        _connectionLostMessage.value = null
     }
 
     /**
