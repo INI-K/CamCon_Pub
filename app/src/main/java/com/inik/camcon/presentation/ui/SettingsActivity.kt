@@ -109,7 +109,7 @@ class SettingsActivity : ComponentActivity() {
 @Preview(showBackground = true, name = "SettingsScreen Preview")
 @Composable
 fun SettingsScreenPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         // Provide a default onBackClick. ViewModel is not injected in Preview.
         SettingsScreen(
             onBackClick = {},
