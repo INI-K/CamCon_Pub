@@ -9,6 +9,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.data.datasource.local.ThemeMode
 
 /**
  * 타임랩스 촬영 설정을 위한 다이얼로그
@@ -64,7 +65,7 @@ fun TimelapseSettingsDialog(
 @Preview(name = "Timelapse Settings Dialog", showBackground = true)
 @Composable
 private fun TimelapseSettingsDialogPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         TimelapseSettingsDialog(
             onConfirm = { _, _ -> },
             onDismiss = { }

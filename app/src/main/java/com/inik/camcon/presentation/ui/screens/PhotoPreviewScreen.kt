@@ -58,6 +58,7 @@ import com.inik.camcon.presentation.ui.screens.components.UsbInitializationOverl
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import com.inik.camcon.presentation.viewmodel.photo.FileTypeFilter
+import com.inik.camcon.data.datasource.local.ThemeMode
 import kotlinx.coroutines.delay
 import java.io.File
 
@@ -832,7 +833,7 @@ private fun PtpipBlockOverlay() {
 @Preview(showBackground = true)
 @Composable
 private fun ModernHeaderPreview_NoPhotos() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         ModernHeader(
             photoCount = 0,
             currentPage = 0,
@@ -847,7 +848,7 @@ private fun ModernHeaderPreview_NoPhotos() {
 @Preview(showBackground = true)
 @Composable
 private fun ModernHeaderPreview_WithPhotos() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         ModernHeader(
             photoCount = 42,
             currentPage = 1,
@@ -862,7 +863,7 @@ private fun ModernHeaderPreview_WithPhotos() {
 @Preview(showBackground = true)
 @Composable
 private fun LoadingIndicatorPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         LoadingIndicator()
     }
 }
@@ -870,7 +871,7 @@ private fun LoadingIndicatorPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun LoadMoreIndicatorPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         LoadMoreIndicator()
     }
 }
@@ -878,7 +879,7 @@ private fun LoadMoreIndicatorPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun EndOfListMessagePreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         EndOfListMessage(photoCount = 42)
     }
 }
@@ -886,7 +887,7 @@ private fun EndOfListMessagePreview() {
 @Preview(showBackground = true)
 @Composable
 private fun ErrorSnackbarPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         ErrorSnackbar(
             error = "사진을 불러오는 중 오류가 발생했습니다.",
             onRetry = {}
