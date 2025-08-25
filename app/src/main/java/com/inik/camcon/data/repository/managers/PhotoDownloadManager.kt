@@ -32,6 +32,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.util.UUID
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.max
@@ -198,10 +199,8 @@ class PhotoDownloadManager @Inject constructor(
                         val thumbnailData = nativeDataSource.getCameraThumbnail(photoPath)
 
                         if (thumbnailData != null && thumbnailData.isNotEmpty()) {
-                            Log.d("사진다운로드매니저", "썸네일 데이터 반환: ${thumbnailData.size} 바이트")
-                            Log.d("사진다운로드매니저", "카메라 초기화 상태: 초기화됨")
-                            Log.d("사진다운로드매니저", "썸네일 가져오기 성공: ${thumbnailData.size} 바이트")
-                            Log.d("사진다운로드매니저", "썸네일 가져오기 성공: ${thumbnailData.size} bytes")
+                            Log.d("사진다운로드매니저", "네이티브 다운로드 성공: ${thumbnailData.size} bytes")
+
                             return@withContext Result.success(thumbnailData)
                         } else {
                             throw Exception("썸네일 데이터가 비어있음")
@@ -348,6 +347,221 @@ class PhotoDownloadManager @Inject constructor(
     }
 
     /**
+     * Native에서 다운로드된 바이트 배열을 파일로 저장
+     */
+    suspend fun handleNativePhotoDownload(
+        filePath: String,
+        fileName: String,
+        imageData: ByteArray,
+        cameraCapabilities: CameraCapabilities? = null,
+        cameraSettings: CameraSettings? = null
+    ): CapturedPhoto? {
+        return withContext(Dispatchers.IO) {
+            var tempFile: File? = null
+            var processedFile: File? = null
+            var colorTransferredFile: File? = null
+            var transferredBitmap: Bitmap? = null
+            var processedPath: String? = null
+
+            try {
+                Log.d(TAG, "📦 Native 다운로드 데이터 처리 시작: $fileName")
+                Log.d(TAG, "   데이터 크기: ${imageData.size / 1024}KB")
+
+                val startTime = System.currentTimeMillis()
+
+                val extension = fileName.substringAfterLast(".", "").lowercase()
+                Log.d(TAG, "✓ Native 다운로드 데이터 확인: $fileName")
+                Log.d(TAG, "   확장자: $extension")
+                Log.d(TAG, "   원본 크기: ${imageData.size / 1024}KB")
+
+                // 카메라 폴더 구조 추출 (예: /store_00010001/DCIM/105KAY_1/KY6_0035.JPG → 105KAY_1)
+                val cameraSubFolder = extractCameraSubFolder(filePath)
+                Log.d(TAG, "   추출된 카메라 서브폴더: $cameraSubFolder")
+
+                // 현재 구독 티어 확인
+                val currentTier = getSubscriptionUseCase.getSubscriptionTier().first()
+
+                // 색감 전송 적용 확인 (JPEG 파일만)
+                val isColorTransferEnabled = appPreferencesDataSource.isColorTransferEnabled.first()
+                val referenceImagePath =
+                    appPreferencesDataSource.colorTransferReferenceImagePath.first()
+                val colorTransferIntensity = appPreferencesDataSource.colorTransferIntensity.first()
+
+                // 임시 파일 생성하여 이미지 데이터 저장
+                tempFile = File(context.cacheDir, "temp_native_downloads/$fileName")
+                if (!tempFile.parentFile?.exists()!!) {
+                    tempFile.parentFile?.mkdirs()
+                }
+                tempFile.writeBytes(imageData)
+
+                processedPath = tempFile.absolutePath
+
+                // FREE 티어 사용자를 위한 이미지 리사이즈 처리 (JPEG 파일만)
+                if (currentTier == SubscriptionTier.FREE && extension in Constants.ImageProcessing.JPEG_EXTENSIONS) {
+                    Log.d(TAG, "🎯 FREE 티어 - 이미지 리사이즈 적용: $fileName")
+
+                    try {
+                        val resizedFile =
+                            File(tempFile.parent, "${tempFile.nameWithoutExtension}_resized.jpg")
+                        processedFile = resizedFile
+                        val resizeSuccess =
+                            resizeImageForFreeTier(tempFile.absolutePath, resizedFile.absolutePath)
+
+                        if (resizeSuccess) {
+                            processedPath = resizedFile.absolutePath
+                            Log.d(TAG, "✅ FREE 티어 리사이즈 완료: ${resizedFile.name}")
+
+                            // 원본 임시 파일 삭제 (공간 절약)
+                            tempFile.delete()
+                            tempFile = null
+                        } else {
+                            Log.w(TAG, "⚠️ FREE 티어 리사이즈 실패, 원본 이미지 사용")
+                        }
+                    } catch (e: OutOfMemoryError) {
+                        Log.e(TAG, "❌ FREE 티어 리사이즈 중 메모리 부족", e)
+                        // 원본 이미지 사용 
+                    } catch (e: Exception) {
+                        Log.e(TAG, "❌ FREE 티어 리사이즈 처리 중 오류", e)
+                        // 오류 발생 시 원본 이미지 사용
+                    }
+                }
+
+                // 색감 전송 적용 (리사이즈된 이미지 또는 원본에 적용)
+                if (isColorTransferEnabled &&
+                    referenceImagePath != null &&
+                    File(referenceImagePath).exists() &&
+                    extension in Constants.ImageProcessing.JPEG_EXTENSIONS
+                ) {
+                    Log.d(TAG, "🎨 색감 전송 적용 시작: $fileName")
+                    Log.d(TAG, "   색감 전송 강도: $colorTransferIntensity")
+
+                    try {
+                        // 메모리 상태 확인 - 색감 전송 전
+                        val runtime = Runtime.getRuntime()
+                        val freeMemory = runtime.freeMemory()
+                        val totalMemory = runtime.totalMemory()
+                        val maxMemory = runtime.maxMemory()
+                        val usedMemory = totalMemory - freeMemory
+                        val availableMemory = maxMemory - usedMemory
+
+                        // 메모리 부족 시 색감 전송 스킵
+                        if (availableMemory < 50 * 1024 * 1024) { // 50MB 미만
+                            Log.w(TAG, "⚠️ 메모리 부족으로 색감 전송 스킵")
+                        } else {
+                            // 색감 전송 적용
+                            val currentProcessedFile = File(processedPath)
+                            colorTransferredFile = File(
+                                currentProcessedFile.parent,
+                                "${currentProcessedFile.nameWithoutExtension}_color_transferred.jpg"
+                            )
+
+                            transferredBitmap =
+                                colorTransferUseCase.applyColorTransferWithGPUAndSave(
+                                    currentProcessedFile.absolutePath,
+                                referenceImagePath,
+                                colorTransferredFile.absolutePath,
+                                colorTransferIntensity
+                            )
+
+                            if (transferredBitmap != null) {
+                                processedPath = colorTransferredFile.absolutePath
+                                Log.d(TAG, "✅ 색감 전송 적용 완료: ${colorTransferredFile.name}")
+
+                                // 이전 처리된 파일 삭제 (공간 절약)
+                                if (currentProcessedFile.absolutePath != tempFile?.absolutePath) {
+                                    currentProcessedFile.delete()
+                                    processedFile = null
+                                }
+
+                                // 메모리 정리 - 즉시 해제만 
+                                transferredBitmap?.recycle()
+                                transferredBitmap = null
+                            } else {
+                                Log.w(TAG, "⚠️ 색감 전송 실패, 이전 처리된 이미지 사용")
+                            }
+                        }
+                    } catch (e: OutOfMemoryError) {
+                        Log.e(TAG, "❌ 메모리 부족으로 색감 전송 실패", e)
+                        // 메모리 정리 후 원본 반환
+                        transferredBitmap?.recycle()
+                        transferredBitmap = null
+                    } catch (e: Exception) {
+                        Log.e(TAG, "❌ 색감 전송 처리 중 오류", e)
+                        // 오류 발생 시 메모리 정리 
+                        transferredBitmap?.recycle()
+                        transferredBitmap = null
+                    }
+                }
+
+                // SAF를 사용한 후처리 (Android 10+에서 MediaStore로 이동)
+                val fileNameWithFolder = if (cameraSubFolder.isNotEmpty()) {
+                    "$cameraSubFolder/$fileName"
+                } else {
+                    fileName
+                }
+                val finalPath = postProcessPhoto(processedPath!!, fileNameWithFolder)
+                Log.d(TAG, "✅ Native 사진 후처리 완료: $finalPath")
+
+                val capturedPhoto = CapturedPhoto(
+                    id = UUID.randomUUID().toString(),
+                    filePath = finalPath,
+                    thumbnailPath = null,
+                    captureTime = System.currentTimeMillis(),
+                    cameraModel = cameraCapabilities?.model ?: "알 수 없음",
+                    settings = cameraSettings,
+                    size = imageData.size.toLong(),
+                    width = 0,
+                    height = 0,
+                    isDownloading = false,
+                    downloadCompleteTime = System.currentTimeMillis()
+                )
+
+                // 사진 촬영 이벤트 발생
+                photoCaptureEventManager.emitPhotoCaptured()
+
+                val downloadTime = System.currentTimeMillis() - startTime
+                Log.d(TAG, "✅ Native 사진 저장 완료: $fileName (${downloadTime}ms)")
+
+                capturedPhoto
+            } catch (e: OutOfMemoryError) {
+                Log.e(TAG, "❌ Native 사진 저장 중 메모리 부족: $fileName", e)
+                // 메모리 정리만 
+                transferredBitmap?.recycle()
+                null
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Native 사진 저장 실패: $fileName", e)
+                null
+            } finally {
+                // 메모리 정리 - 모든 임시 객체 해제
+                try {
+                    transferredBitmap?.recycle()
+
+                    // 임시 파일들 정리
+                    tempFile?.takeIf { it.exists() }?.delete()
+                    processedFile?.takeIf {
+                        it.exists() && processedPath?.let { path ->
+                            it != File(
+                                path
+                            )
+                        } ?: true
+                    }?.delete()
+                    colorTransferredFile?.takeIf {
+                        it.exists() && processedPath?.let { path ->
+                            it != File(
+                                path
+                            )
+                        } ?: true
+                    }?.delete()
+                } catch (e: Exception) {
+                    Log.w(TAG, "파일 정리 중 오류 (무시): ${e.message}")
+                }
+
+                // GC 호출 제거 - 시스템이 자동으로 관리하도록 함
+            }
+        }
+    }
+
+    /**
      * JPEG 및 RAW 사진 다운로드를 비동기로 처리
      */
     suspend fun handlePhotoDownload(
@@ -359,11 +573,42 @@ class PhotoDownloadManager @Inject constructor(
         onPhotoDownloaded: (CapturedPhoto) -> Unit,
         onDownloadFailed: (String) -> Unit
     ) {
+        var processedFile: File? = null
+
         try {
             Log.d(TAG, "📥 사진 다운로드 시작: $fileName")
+            Log.d(TAG, "   전체 경로: $fullPath")
             val startTime = System.currentTimeMillis()
 
-            // 파일 확인 - 빠른 체크
+            // 카메라 내부 경로인지 확인 (/store_로 시작하거나 DCIM이 포함된 경우)
+            val isCameraInternalPath = fullPath.startsWith("/store_") || fullPath.contains("/DCIM/")
+
+            if (isCameraInternalPath) {
+                Log.d(TAG, "🔄 카메라 내부 경로 감지 - 네이티브 다운로드 사용: $fullPath")
+
+                // 네이티브 데이터소스를 통해 카메라에서 직접 다운로드
+                val downloadResult = downloadPhotoFromCamera(
+                    photoId = fullPath,
+                    cameraCapabilities = cameraCapabilities,
+                    cameraSettings = cameraSettings
+                )
+
+                if (downloadResult.isSuccess) {
+                    val downloadedPhoto = downloadResult.getOrNull()!!
+                    Log.d(TAG, "✅ 카메라에서 직접 다운로드 완료: $fileName")
+                    onPhotoDownloaded(downloadedPhoto)
+
+                    // 사진 촬영 이벤트 발생
+                    photoCaptureEventManager.emitPhotoCaptured()
+                } else {
+                    Log.e(TAG, "❌ 카메라에서 직접 다운로드 실패: $fileName")
+                    onDownloadFailed(fileName)
+                }
+                return
+            }
+
+            // 로컬 파일 시스템 경로인 경우 기존 로직 사용
+            Log.d(TAG, "📁 로컬 파일 시스템 경로 처리: $fullPath")
             val file = File(fullPath)
             if (!file.exists()) {
                 Log.e(TAG, "❌ 사진 파일을 찾을 수 없음: $fullPath")
@@ -372,8 +617,14 @@ class PhotoDownloadManager @Inject constructor(
             }
 
             val fileSize = file.length()
+            if (fileSize == 0L) {
+                Log.e(TAG, "❌ 사진 파일이 비어있음: $fullPath")
+                onDownloadFailed(fileName)
+                return
+            }
+
             val extension = fileName.substringAfterLast(".", "").lowercase()
-            Log.d(TAG, "✓ 사진 파일 확인: $fileName")
+            Log.d(TAG, "✓ 사진 파일 확인 완료: $fileName")
             Log.d(TAG, "   확장자: $extension")
             Log.d(TAG, "   크기: ${fileSize / 1024}KB")
 
@@ -394,6 +645,7 @@ class PhotoDownloadManager @Inject constructor(
 
                 try {
                     val resizedFile = File(file.parent, "${file.nameWithoutExtension}_resized.jpg")
+                    processedFile = resizedFile
                     val resizeSuccess =
                         resizeImageForFreeTier(file.absolutePath, resizedFile.absolutePath)
 
@@ -466,9 +718,6 @@ class PhotoDownloadManager @Inject constructor(
                 } catch (e: OutOfMemoryError) {
                     Log.e(TAG, "❌ 메모리 부족으로 색감 전송 실패", e)
                     // 메모리 부족 시 강제 GC 실행 및 메모리 정리
-                    System.gc()
-                    Thread.sleep(100) // GC 완료 대기
-                    Log.d(TAG, "메모리 정리 완료")
                 } catch (e: Exception) {
                     Log.e(TAG, "❌ 색감 전송 처리 중 오류", e)
                     // 오류 발생 시 이전 처리된 이미지 사용
@@ -500,10 +749,37 @@ class PhotoDownloadManager @Inject constructor(
             // 사진 촬영 이벤트 발생
             photoCaptureEventManager.emitPhotoCaptured()
 
-            // 메모리 정리 - 마지막에 한 번 더 실행
-            System.gc()
         } catch (e: Exception) {
             Log.e(TAG, "❌ 사진 다운로드 실패: $fileName", e)
+            onDownloadFailed(fileName)
+        }
+    }
+
+    /**
+     * 사진 다운로드 처리 - Native 바이트 배열 지원 버전
+     */
+    suspend fun handlePhotoDownload(
+        photo: CapturedPhoto,
+        fullPath: String,
+        fileName: String,
+        cameraCapabilities: CameraCapabilities?,
+        cameraSettings: CameraSettings?,
+        imageData: ByteArray,
+        onPhotoDownloaded: (CapturedPhoto) -> Unit,
+        onDownloadFailed: (String) -> Unit
+    ) {
+        // Native에서 받은 바이트 배열을 사용하여 처리
+        val result = handleNativePhotoDownload(
+            filePath = fullPath,
+            fileName = fileName,
+            imageData = imageData,
+            cameraCapabilities = cameraCapabilities,
+            cameraSettings = cameraSettings
+        )
+
+        if (result != null) {
+            onPhotoDownloaded(result)
+        } else {
             onDownloadFailed(fileName)
         }
     }
@@ -514,8 +790,24 @@ class PhotoDownloadManager @Inject constructor(
      */
     private suspend fun resizeImageForFreeTier(inputPath: String, outputPath: String): Boolean {
         return withContext(Dispatchers.IO) {
+            var originalBitmap: Bitmap? = null
+            var resizedBitmap: Bitmap? = null
+            var rotatedBitmap: Bitmap? = null
+
             try {
                 Log.d(TAG, "🔧 FREE 티어 이미지 리사이즈 시작: $inputPath")
+
+                // 메모리 상태 확인 (간소화)
+                val runtime = Runtime.getRuntime()
+                val availableMemory =
+                    runtime.maxMemory() - (runtime.totalMemory() - runtime.freeMemory())
+
+                // 메모리 부족 시 리사이즈 건너뛰기
+                if (availableMemory < 30 * 1024 * 1024) { // 30MB 미만
+                    Log.w(TAG, "메모리 부족으로 리사이즈 건너뛰기: 사용가능 ${availableMemory / 1024 / 1024}MB")
+                    return@withContext File(inputPath).copyTo(File(outputPath), overwrite = true)
+                        .exists()
+                }
 
                 // 원본 이미지 크기 확인
                 val options = BitmapFactory.Options().apply {
@@ -550,17 +842,25 @@ class PhotoDownloadManager @Inject constructor(
                 options.apply {
                     inJustDecodeBounds = false
                     inSampleSize = sampleSize
-                    inPreferredConfig = Bitmap.Config.ARGB_8888 // 메모리 절약
+                    inPreferredConfig = Bitmap.Config.RGB_565 // 메모리 절약 - ARGB_8888에서 RGB_565로 변경
                 }
 
-                val bitmap = BitmapFactory.decodeFile(inputPath, options) ?: run {
+                originalBitmap = BitmapFactory.decodeFile(inputPath, options)
+                if (originalBitmap == null) {
                     Log.e(TAG, "이미지 디코딩 실패: $inputPath")
                     return@withContext false
                 }
 
                 try {
                     // 정확한 크기로 최종 리사이즈
-                    val resizedBitmap = Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
+                    resizedBitmap =
+                        Bitmap.createScaledBitmap(originalBitmap, newWidth, newHeight, true)
+
+                    // 원본 비트맵 즉시 해제 (메모리 절약)
+                    if (resizedBitmap != originalBitmap) {
+                        originalBitmap.recycle()
+                        originalBitmap = null
+                    }
 
                     // EXIF 정보 읽기 (회전 정보)
                     val originalExif = ExifInterface(inputPath)
@@ -570,18 +870,20 @@ class PhotoDownloadManager @Inject constructor(
                     )
 
                     // 회전 적용
-                    val rotatedBitmap = rotateImageIfRequired(resizedBitmap, orientation)
+                    rotatedBitmap = rotateImageIfRequired(resizedBitmap, orientation)
+
+                    // 리사이즈된 비트맵 즉시 해제 (회전된 것과 다른 경우)
+                    if (rotatedBitmap != resizedBitmap) {
+                        resizedBitmap.recycle()
+                        resizedBitmap = null
+                    }
 
                     // 파일로 저장
                     FileOutputStream(outputPath).use { out ->
-                        rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out) // 85% 품질
+                        val compressFormat = Bitmap.CompressFormat.JPEG
+                        val compressQuality = 92 // 품질을 약간 낮춰서 메모리 절약
+                        rotatedBitmap.compress(compressFormat, compressQuality, out)
                     }
-
-                    // 메모리 정리
-                    if (resizedBitmap != rotatedBitmap) {
-                        resizedBitmap.recycle()
-                    }
-                    rotatedBitmap.recycle()
 
                     // 모든 EXIF 정보를 새 파일에 복사
                     copyAllExifData(inputPath, outputPath, newWidth, newHeight)
@@ -591,17 +893,36 @@ class PhotoDownloadManager @Inject constructor(
                     Log.d(TAG, "✅ FREE 티어 리사이즈 완료 (EXIF 보존) - 최종 크기: ${finalSize / 1024}KB")
 
                     true
+
+                } catch (e: OutOfMemoryError) {
+                    Log.e(TAG, "❌ 리사이즈 중 메모리 부족", e)
+                    // 메모리 정리 
+                    resizedBitmap?.recycle()
+                    rotatedBitmap?.recycle()
+                    false
                 } finally {
-                    bitmap.recycle()
+                    // 메모리 정리
+                    rotatedBitmap?.recycle()
+                    rotatedBitmap = null
                 }
 
             } catch (e: OutOfMemoryError) {
                 Log.e(TAG, "❌ 메모리 부족으로 리사이즈 실패", e)
-                System.gc()
-                false
+                return@withContext false
             } catch (e: Exception) {
                 Log.e(TAG, "❌ 이미지 리사이즈 실패", e)
-                false
+                return@withContext false
+            } finally {
+                // 모든 비트맵 객체 해제
+                try {
+                    originalBitmap?.recycle()
+                    resizedBitmap?.recycle()
+                    rotatedBitmap?.recycle()
+                } catch (e: Exception) {
+                    Log.w(TAG, "비트맵 해제 중 오류 (무시): ${e.message}")
+                }
+
+                // GC 호출 제거 - 시스템이 자동으로 관리
             }
         }
     }
@@ -752,32 +1073,60 @@ class PhotoDownloadManager @Inject constructor(
      */
     private fun rotateImageIfRequired(bitmap: Bitmap, orientation: Int): Bitmap {
         val matrix = Matrix()
+        var rotationApplied = false
 
         when (orientation) {
             ExifInterface.ORIENTATION_ROTATE_90 -> {
-                Log.d("PhotoDownloadManager", "90도 회전 수정: 270도로 변경 (반대 방향 문제 해결)")
+                Log.d(TAG, "90도 회전 수정: 270도로 변경 (반대 방향 문제 해결)")
                 matrix.postRotate(270f) // 90도 대신 270도 적용
+                rotationApplied = true
             }
             ExifInterface.ORIENTATION_ROTATE_180 -> {
-                Log.d("PhotoDownloadManager", "180도 회전 수정: 회전하지 않음 (거꾸로 표시 문제 해결)")
+                Log.d(TAG, "180도 회전 수정: 회전하지 않음 (거꾸로 표시 문제 해결)")
                 return bitmap // 180도 회전 시 회전하지 않음
             }
             ExifInterface.ORIENTATION_ROTATE_270 -> {
-                Log.d("PhotoDownloadManager", "270도 회전 수정: 90도로 변경 (거꾸로 표시 문제 해결)")
+                Log.d(TAG, "270도 회전 수정: 90도로 변경 (거꾸로 표시 문제 해결)")
                 matrix.postRotate(90f) // 270도 대신 90도 적용
+                rotationApplied = true
             }
             else -> return bitmap // 회전 불필요
         }
 
+        if (!rotationApplied) {
+            return bitmap
+        }
+
         return try {
-            val rotatedBitmap =
-                Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+            // 메모리 상태 확인
+            val runtime = Runtime.getRuntime()
+            val availableMemory =
+                runtime.maxMemory() - (runtime.totalMemory() - runtime.freeMemory())
+
+            // 메모리 부족 시 회전 생략
+            if (availableMemory < 20 * 1024 * 1024) { // 20MB 미만
+                Log.w(TAG, "메모리 부족으로 이미지 회전 생략: 사용가능 ${availableMemory / 1024 / 1024}MB")
+                return bitmap
+            }
+
+            val rotatedBitmap = Bitmap.createBitmap(
+                bitmap, 0, 0,
+                bitmap.width, bitmap.height,
+                matrix, true
+            )
+
+            // 원본 비트맵과 다른 경우에만 원본 해제
             if (rotatedBitmap != bitmap) {
                 bitmap.recycle()
             }
+
             rotatedBitmap
         } catch (e: OutOfMemoryError) {
             Log.e(TAG, "이미지 회전 중 메모리 부족", e)
+            // 원본 반환 (GC 호출 제거)
+            bitmap
+        } catch (e: Exception) {
+            Log.e(TAG, "이미지 회전 중 오류", e)
             bitmap // 회전 실패 시 원본 반환
         }
     }
@@ -863,23 +1212,18 @@ class PhotoDownloadManager @Inject constructor(
                     // Android 10+: MediaStore API 사용
                     saveToMediaStore(tempFilePath, fileName)
                 } else {
-                    // Android 9 이하: 이미 ���바른 위치에 저장되어 있음
+                    // Android 9 이하: 이미 올바른 위치에 저장되어 있음
                     tempFilePath
                 }
             } catch (e: Exception) {
                 Log.e("사진다운로드매니저", "사진 후처리 실패", e)
                 tempFilePath // 실패 시 원본 경로 반환
-            } finally {
-                // 메모리 정리를 위한 GC 권장 (큰 이미지 처리 후)
-                if (fileName.endsWith(".jpg", true) || fileName.endsWith(".jpeg", true)) {
-                    System.gc()
-                }
             }
         }
     }
 
     /**
-     * MediaStore를 사용하여 사진을 외부 저장소에 저장
+     * MediaStore를 사용하여 사진을 외부 저장소에 저장 (카메라 폴더 구조 유지)
      */
     private fun saveToMediaStore(tempFilePath: String, fileName: String): String {
         return try {
@@ -889,8 +1233,18 @@ class PhotoDownloadManager @Inject constructor(
                 return tempFilePath
             }
 
+            // 카메라 폴더 구조 분석 (예: 105KAY_1/KY6_0035.JPG)
+            val file = File(fileName)
+            val subFolderPath = file.parent ?: ""
+            val baseFileName = file.name
+
+            Log.d("사진다운로드매니저", "📁 폴더 구조 분석:")
+            Log.d("사진다운로드매니저", "   전체 경로: $fileName")
+            Log.d("사진다운로드매니저", "   서브폴더: $subFolderPath")
+            Log.d("사진다운로드매니저", "   파일명: $baseFileName")
+
             // 파일 확장자에 따른 MIME 타입 결정
-            val extension = fileName.substringAfterLast(".", "").lowercase()
+            val extension = baseFileName.substringAfterLast(".", "").lowercase()
             val mimeType = when (extension) {
                 in Constants.ImageProcessing.JPEG_EXTENSIONS -> Constants.MimeTypes.IMAGE_JPEG
                 "nef" -> Constants.MimeTypes.IMAGE_NEF
@@ -903,20 +1257,41 @@ class PhotoDownloadManager @Inject constructor(
                 else -> Constants.MimeTypes.IMAGE_JPEG // 기본값
             }
 
-            // MediaStore를 사용하여 DCIM 폴더에 저장
+            // MediaStore 저장 폴더: DCIM/CamCon/(카메라서브폴더)
+            val camconRelativeBase = Constants.FilePaths.getMediaStoreRelativePath()
+            val relativePath = if (subFolderPath.isNotEmpty()) {
+                "$camconRelativeBase/$subFolderPath"
+            } else {
+                camconRelativeBase
+            }
+
+            Log.d("사진다운로드매니저", "   MediaStore 경로: $relativePath")
+
+            // 기존 파일이 존재하는지 확인하고 삭제
+            val existingUri = findExistingFileInMediaStore(baseFileName, relativePath)
+            if (existingUri != null) {
+                Log.d("사진다운로드매니저", "기존 파일 발견, 삭제 중: $relativePath/$baseFileName")
+                val deletedRows = context.contentResolver.delete(existingUri, null, null)
+                if (deletedRows > 0) {
+                    Log.d("사진다운로드매니저", "✅ 기존 파일 삭제 완료: $baseFileName")
+                } else {
+                    Log.w("사진다운로드매니저", "⚠️ 기존 파일 삭제 실패: $baseFileName")
+                }
+            }
+
+            // MediaStore를 사용하여 DCIM/CamCon/서브폴더에 저장
             val contentValues = ContentValues().apply {
-                put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
+                put(MediaStore.Images.Media.DISPLAY_NAME, baseFileName) // 실제 파일명만
                 put(MediaStore.Images.Media.MIME_TYPE, mimeType)
-                put(
-                    MediaStore.Images.Media.RELATIVE_PATH,
-                    Constants.FilePaths.getMediaStoreRelativePath()
-                )
+                put(MediaStore.Images.Media.RELATIVE_PATH, relativePath) // 폴더 구조 포함
+                put(MediaStore.Images.Media.IS_PENDING, 1) // 저장 중 상태로 설정
             }
 
             val uri = context.contentResolver.insert(
                 MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                 contentValues
             )
+
             if (uri != null) {
                 context.contentResolver.openOutputStream(uri)?.use { outputStream ->
                     FileInputStream(tempFile).use { inputStream ->
@@ -924,12 +1299,18 @@ class PhotoDownloadManager @Inject constructor(
                     }
                 }
 
+                // 저장 완료 후 IS_PENDING 플래그 제거
+                val updateValues = ContentValues().apply {
+                    put(MediaStore.Images.Media.IS_PENDING, 0)
+                }
+                context.contentResolver.update(uri, updateValues, null, null)
+
                 // 임시 파일 삭제
                 tempFile.delete()
 
-                // MediaStore URI를 파일 경로로 변환
-                val savedPath = getPathFromUri(uri) ?: uri.toString()
-                Log.d("사진다운로드매니저", "✅ MediaStore 저장 성공: $savedPath")
+                // 실제 저장된 파일 경로 생성 (폴더 구조 포함)
+                val savedPath = buildActualSavedPath(fileName)
+                Log.d("사진다운로드매니저", "✅ MediaStore 저장 성공 (폴더 구조 유지): $savedPath")
                 savedPath
             } else {
                 Log.e("사진다운로드매니저", "MediaStore URI 생성 실패")
@@ -938,6 +1319,47 @@ class PhotoDownloadManager @Inject constructor(
         } catch (e: Exception) {
             Log.e("사진다운로드매니저", "MediaStore 저장 실패", e)
             tempFilePath
+        }
+    }
+
+    /**
+     * MediaStore에서 동일한 파일명의 기존 파일을 찾기
+     */
+    private fun findExistingFileInMediaStore(fileName: String, relativePath: String): Uri? {
+        return try {
+            val projection = arrayOf(
+                MediaStore.Images.Media._ID,
+                MediaStore.Images.Media.DISPLAY_NAME,
+                MediaStore.Images.Media.RELATIVE_PATH
+            )
+            val selection =
+                "${MediaStore.Images.Media.DISPLAY_NAME} = ? AND ${MediaStore.Images.Media.RELATIVE_PATH} = ?"
+            val selectionArgs = arrayOf(fileName, relativePath)
+
+            context.contentResolver.query(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                projection,
+                selection,
+                selectionArgs,
+                null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val id =
+                        cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID))
+                    val uri = Uri.withAppendedPath(
+                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                        id.toString()
+                    )
+                    Log.d("사진다운로드매니저", "기존 파일 찾음: $fileName (ID: $id)")
+                    uri
+                } else {
+                    Log.d("사진다운로드매니저", "기존 파일 없음: $fileName")
+                    null
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("사진다운로드매니저", "기존 파일 검색 실패: $fileName", e)
+            null
         }
     }
 
@@ -962,6 +1384,52 @@ class PhotoDownloadManager @Inject constructor(
         } catch (e: Exception) {
             Log.e("사진다운로드매니저", "URI 경로 변환 실패", e)
             null
+        }
+    }
+
+    /**
+     * 카메라 폴더 구조를 반영한 실제 저장 경로 생성
+     * 예: 105KAY_1/KY6_0035.JPG → /storage/emulated/0/DCIM/CamCon/105KAY_1/KY6_0035.JPG
+     */
+    private fun buildActualSavedPath(fileName: String): String {
+        return try {
+            val camconBase = "/storage/emulated/0/DCIM/CamCon"
+            val file = File(fileName)
+            val subFolderPath = file.parent ?: ""
+            val baseFileName = file.name
+
+            if (subFolderPath.isNotEmpty()) {
+                "$camconBase/$subFolderPath/$baseFileName"
+            } else {
+                "$camconBase/$baseFileName"
+            }
+        } catch (e: Exception) {
+            Log.e("사진다운로드매니저", "파일 경로 생성 실패", e)
+            fileName // 폴백으로 파일명만 반환
+        }
+    }
+
+    /**
+     * 카메라 내부 경로에서 서브폴더를 추출
+     * 예: /store_00010001/DCIM/105KAY_1/KY6_0035.JPG → 105KAY_1
+     */
+    private fun extractCameraSubFolder(filePath: String): String {
+        return try {
+            // DCIM 다음의 첫 번째 폴더를 서브폴더로 사용
+            val pathParts = filePath.split("/")
+            val dcimIndex = pathParts.indexOfFirst { it.equals("DCIM", ignoreCase = true) }
+
+            if (dcimIndex >= 0 && dcimIndex + 1 < pathParts.size) {
+                val subFolder = pathParts[dcimIndex + 1]
+                Log.d(TAG, "카메라 서브폴더 추출: $filePath → $subFolder")
+                subFolder
+            } else {
+                Log.w(TAG, "DCIM 폴더를 찾을 수 없음: $filePath")
+                ""
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "카메라 서브폴더 추출 실패: $filePath", e)
+            ""
         }
     }
 }

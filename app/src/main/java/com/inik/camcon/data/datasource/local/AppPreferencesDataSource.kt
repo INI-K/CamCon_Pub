@@ -57,7 +57,7 @@ class AppPreferencesDataSource @Inject constructor(
         }
 
     /**
-     * 라이브뷰 표시 여부 (기본값: false)
+     * 라이브뷰 표시 여부 (기본값: false - ADMIN 티어에서만 활성화 가능)
      */
     val isLiveViewEnabled: Flow<Boolean> = context.appDataStore.data
         .map { preferences ->

@@ -109,7 +109,7 @@ class SettingsActivity : ComponentActivity() {
 @Preview(showBackground = true, name = "SettingsScreen Preview")
 @Composable
 fun SettingsScreenPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         // Provide a default onBackClick. ViewModel is not injected in Preview.
         SettingsScreen(
             onBackClick = {},
@@ -174,6 +174,7 @@ fun SettingsScreen(
     // 앱 설정 상태
     val isCameraControlsEnabled by appSettingsViewModel.isCameraControlsEnabled.collectAsState()
     val isLiveViewEnabled by appSettingsViewModel.isLiveViewEnabled.collectAsState()
+    val isAdminTier by appSettingsViewModel.isAdminTier.collectAsState()
     val currentThemeMode by appSettingsViewModel.themeMode.collectAsState()
     val isAutoStartEventListener by appSettingsViewModel.isAutoStartEventListenerEnabled.collectAsState()
     val isShowLatestPhotoWhenDisabled by appSettingsViewModel.isShowLatestPhotoWhenDisabled.collectAsState()
@@ -263,13 +264,33 @@ fun SettingsScreen(
                         onCheckedChange = { appSettingsViewModel.setCameraControlsEnabled(it) }
                     )
 
-                    if (isCameraControlsEnabled) {
+                    if (isCameraControlsEnabled && isAdminTier) {
                         SettingsItemWithSwitch(
                             icon = Icons.Default.Visibility,
                             title = "라이브뷰 활성화",
-                            subtitle = "실시간 카메라 화면 표시",
+                            subtitle = "실시간 카메라 화면 표시 (ADMIN 전용)",
                             checked = isLiveViewEnabled,
                             onCheckedChange = { appSettingsViewModel.setLiveViewEnabled(it) }
+                        )
+
+                        SettingsItemWithSwitch(
+                            icon = Icons.Default.Settings,
+                            title = "자동 이벤트 수신",
+                            subtitle = "카메라 제어 탭 진입 시 자동으로 이벤트 리스너 시작",
+                            checked = isAutoStartEventListener,
+                            onCheckedChange = {
+                                appSettingsViewModel.setAutoStartEventListenerEnabled(
+                                    it
+                                )
+                            }
+                        )
+                    } else if (isCameraControlsEnabled && !isAdminTier) {
+                        // ADMIN 티어가 아닐 때 라이브뷰 제한 안내
+                        SettingsItem(
+                            icon = Icons.Default.Visibility,
+                            title = "라이브뷰 기능",
+                            subtitle = "ADMIN 티어에서만 사용 가능한 기능입니다",
+                            onClick = { /* 클릭해도 아무 동작 안함 */ }
                         )
 
                         SettingsItemWithSwitch(

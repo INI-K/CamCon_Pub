@@ -31,6 +31,7 @@ import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.CameraUiState
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
+import com.inik.camcon.data.datasource.local.ThemeMode
 
 /**
  * 촬영 관련 컨트롤을 표시하는 컴포넌트
@@ -158,7 +159,7 @@ private fun CaptureControlsContent(
 @Preview(name = "Capture Controls - Portrait", showBackground = true)
 @Composable
 private fun CaptureControlsPortraitPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         Column(
             modifier = Modifier
                 .background(Color.Black)

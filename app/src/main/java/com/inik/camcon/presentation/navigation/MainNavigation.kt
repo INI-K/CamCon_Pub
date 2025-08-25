@@ -27,6 +27,7 @@ import androidx.navigation.compose.rememberNavController
 import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
+import com.inik.camcon.data.datasource.local.ThemeMode
 
 /**
  * 메인 화면의 전체 네비게이션 구조
@@ -198,7 +199,7 @@ private fun getContentDescriptionForDestination(destination: AppDestination): St
 @Preview(showBackground = true)
 @Composable
 fun MainTopAppBarPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         MainTopAppBar(
             onSettingsClick = { },
             onPtpipConnectionClick = { }

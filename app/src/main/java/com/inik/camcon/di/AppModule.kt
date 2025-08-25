@@ -17,6 +17,8 @@ import com.inik.camcon.data.network.ptpip.discovery.PtpipDiscoveryService
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.data.repository.managers.CameraEventManager
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
+import com.inik.camcon.data.repository.managers.CameraConnectionManager
+import com.inik.camcon.data.repository.managers.PhotoDownloadManager
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
 import dagger.Module
@@ -118,12 +120,14 @@ object AppModule {
     fun provideAppPreferencesDataSource(@ApplicationContext context: Context) =
         AppPreferencesDataSource(context)
 
+
     @Provides
     @Singleton
     fun provideCameraConnectionGlobalManager(
         ptpipDataSource: PtpipDataSource,
-        usbCameraManager: UsbCameraManager
-    ) = CameraConnectionGlobalManager(ptpipDataSource, usbCameraManager)
+        usbCameraManager: UsbCameraManager,
+        cameraConnectionManager: CameraConnectionManager
+    ) = CameraConnectionGlobalManager(ptpipDataSource, usbCameraManager, cameraConnectionManager)
 
     @Provides
     @Singleton
@@ -134,7 +138,13 @@ object AppModule {
     fun provideCameraEventManager(
         nativeDataSource: NativeCameraDataSource,
         usbCameraManager: UsbCameraManager,
-        validateImageFormatUseCase: ValidateImageFormatUseCase
+        validateImageFormatUseCase: ValidateImageFormatUseCase,
+        photoDownloadManager: PhotoDownloadManager
     ): CameraEventManager =
-        CameraEventManager(nativeDataSource, usbCameraManager, validateImageFormatUseCase)
+        CameraEventManager(
+            nativeDataSource,
+            usbCameraManager,
+            validateImageFormatUseCase,
+            photoDownloadManager
+        )
 }
