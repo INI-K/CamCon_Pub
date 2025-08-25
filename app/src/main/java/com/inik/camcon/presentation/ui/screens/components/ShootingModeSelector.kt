@@ -21,6 +21,7 @@ import com.inik.camcon.R
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.CameraUiState
+import com.inik.camcon.data.datasource.local.ThemeMode
 
 /**
  * 촬영 모드를 선택하는 컴포넌트
@@ -102,7 +103,7 @@ fun ShootingModeChip(
 @Preview(name = "Shooting Mode Selector", showBackground = true)
 @Composable
 private fun ShootingModeSelectorPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)

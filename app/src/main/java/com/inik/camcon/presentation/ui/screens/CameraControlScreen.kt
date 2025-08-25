@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.pm.ActivityInfo
 import android.graphics.ColorSpace
 import android.media.ExifInterface
+import android.util.Log
 import com.inik.camcon.utils.LogcatManager
 import android.view.View
 import android.view.WindowInsets
@@ -83,6 +84,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.size.Scale
 import com.inik.camcon.R
+import com.inik.camcon.data.datasource.local.ThemeMode
 import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.CameraSettings
@@ -1441,7 +1443,7 @@ private fun RawFileRestrictionNotification(
 @Preview(name = "Camera Control Screen", showBackground = true)
 @Composable
 private fun CameraControlScreenPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -1460,7 +1462,7 @@ private fun CameraControlScreenPreview() {
 @Preview(name = "Camera Settings Sheet", showBackground = true)
 @Composable
 private fun CameraSettingsSheetPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         CameraSettingsSheet(
             settings = CameraSettings(
                 iso = "400",
@@ -1479,7 +1481,7 @@ private fun CameraSettingsSheetPreview() {
 @Preview(name = "Recent Captures Row", showBackground = true)
 @Composable
 private fun RecentCapturesRowPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         RecentCapturesRow(
             photos = listOf(
                 CapturedPhoto(
@@ -1524,7 +1526,7 @@ private fun RecentCapturesRowPreview() {
 @Preview(name = "Fullscreen Control Panel", showBackground = true)
 @Composable
 private fun FullscreenControlPanelPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
