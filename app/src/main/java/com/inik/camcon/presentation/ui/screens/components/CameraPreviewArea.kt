@@ -47,6 +47,7 @@ import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.CameraUiState
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
+import com.inik.camcon.data.datasource.local.ThemeMode
 
 /**
  * 카메라 프리뷰 영역 - 라이브뷰와 연결 상태를 관리
@@ -352,7 +353,7 @@ fun CameraConnectionButtons(
 @Preview(name = "Camera Preview - Connected", showBackground = true)
 @Composable
 private fun CameraPreviewConnectedPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         Box(
             modifier = Modifier
                 .size(300.dp)
