@@ -37,6 +37,20 @@ class UsbCameraManager @Inject constructor(
 
         // 기존 카메라 연결 상태 확인
         checkExistingCameraConnection()
+
+        // USB 권한 승인 시 자동 연결 트리거
+        deviceDetector.setPermissionGrantedCallback { device ->
+            try {
+                Log.d(TAG, "권한 승인 콜백 수신 - 자동 연결 시도: ${device.deviceName}")
+                if (!isNativeCameraConnected.value) {
+                    connectToCamera(device)
+                } else {
+                    Log.d(TAG, "이미 네이티브 카메라 연결됨 - 자동 연결 생략")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "권한 승인 콜백 처리 중 오류", e)
+            }
+        }
     }
 
     private fun setupDisconnectionCallbacks() {
@@ -70,6 +84,14 @@ class UsbCameraManager @Inject constructor(
                 Log.d(TAG, "앱 재개 시 기존 카메라 연결이 유지되고 있음")
             } else {
                 Log.d(TAG, "앱 재개 시 새로운 카메라 초기화 필요")
+
+                // 권한과 디바이스 상태 확인 후 자동 연결 시도
+                val devices = deviceDetector.getCameraDevices()
+                val hasPermission = hasUsbPermission.value
+                if (devices.isNotEmpty() && hasPermission && !isNativeCameraConnected.value) {
+                    Log.d(TAG, "재개 시 자동 연결 조건 충족 - 연결 시도: ${devices.first().deviceName}")
+                    connectToCamera(devices.first())
+                }
             }
         } catch (e: Exception) {
             Log.d(TAG, "기존 카메라 연결 상태 확인 실패: ${e.message}")
