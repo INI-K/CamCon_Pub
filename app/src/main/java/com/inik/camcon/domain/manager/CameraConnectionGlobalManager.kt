@@ -3,6 +3,7 @@ package com.inik.camcon.domain.manager
 import android.util.Log
 import com.inik.camcon.data.datasource.ptpip.PtpipDataSource
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
+import com.inik.camcon.data.repository.managers.CameraConnectionManager
 import com.inik.camcon.domain.model.CameraConnectionType
 import com.inik.camcon.domain.model.GlobalCameraConnectionState
 import com.inik.camcon.domain.model.PtpipConnectionState
@@ -25,7 +26,8 @@ import javax.inject.Singleton
 @Singleton
 class CameraConnectionGlobalManager @Inject constructor(
     private val ptpipDataSource: PtpipDataSource,
-    private val usbCameraManager: UsbCameraManager
+    private val usbCameraManager: UsbCameraManager,
+    private val cameraConnectionManager: CameraConnectionManager
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -78,6 +80,14 @@ class CameraConnectionGlobalManager @Inject constructor(
             }
             .launchIn(scope)
 
+        // AP 모드 강제 플래그 모니터링
+        ptpipDataSource.isApModeForced
+            .onEach { forced ->
+                Log.d(TAG, "AP 모드 강제 플래그 변경: $forced")
+                updateGlobalState()
+            }
+            .launchIn(scope)
+
         // 발견된 카메라 목록 모니터링
         ptpipDataSource.discoveredCameras
             .onEach { cameras ->
@@ -95,18 +105,24 @@ class CameraConnectionGlobalManager @Inject constructor(
         val ptpipState = ptpipDataSource.connectionState.value
         val wifiState = ptpipDataSource.wifiNetworkState.value
         val discoveredCameras = ptpipDataSource.discoveredCameras.value
+        val isApForced = ptpipDataSource.isApModeForced.value
 
         // 활성 연결 타입 결정
         val activeConnection = when {
             usbConnected -> CameraConnectionType.USB
             ptpipState == PtpipConnectionState.CONNECTED -> {
-                if (wifiState.isConnectedToCameraAP) {
+                // AP 모드 강제 시 AP 모드 우선
+                if (isApForced) {
+                    CameraConnectionType.AP_MODE
+                } else if (wifiState.isConnectedToCameraAP ||
+                    wifiState.detectedCameraIP?.startsWith("192.168.1.") == true ||
+                    wifiState.detectedCameraIP?.startsWith("192.168.4.") == true
+                ) {
                     CameraConnectionType.AP_MODE
                 } else {
                     CameraConnectionType.STA_MODE
                 }
             }
-
             else -> null
         }
 
@@ -114,13 +130,28 @@ class CameraConnectionGlobalManager @Inject constructor(
         if (activeConnection == CameraConnectionType.AP_MODE) {
             scope.launch {
                 try {
-                    // PTPIP 데이터소스에서 이미 연결된 카메라에 대해 파일 수신 시작
-                    Log.d(TAG, "AP 모드 연결 감지: 자동 파일 수신 대기 시작")
-                    // 파일 수신은 PtpipDataSource.connectToCamera()에서 자동으로 시작됨
+                    // CameraConnectionManager를 통해 PTPIP 연결 상태 업데이트
+                    cameraConnectionManager.updatePtpipConnectionStatus(true)
+                    Log.d(TAG, "AP 모드 연결 감지: CameraConnectionManager를 통해 PTPIP 상태 업데이트")
                 } catch (e: Exception) {
-                    Log.e(TAG, "AP 모드 파일 수신 대기 시작 실패", e)
+                    Log.e(TAG, "AP 모드 CameraConnectionManager PTPIP 상태 업데이트 실패", e)
                 }
             }
+        } else if (ptpipState != PtpipConnectionState.CONNECTED) {
+            // PTPIP 연결 해제 시 상태 업데이트
+            scope.launch {
+                try {
+                    cameraConnectionManager.updatePtpipConnectionStatus(false)
+                    Log.d(TAG, "PTPIP 연결 해제: CameraConnectionManager를 통해 PTPIP 상태 업데이트")
+                } catch (e: Exception) {
+                    Log.e(TAG, "PTPIP 연결 해제 시 CameraConnectionManager 상태 업데이트 실패", e)
+                }
+            }
+        }
+
+        // 연결이 완전히 해제된 경우 추가 정리 수행
+        if (!usbConnected && ptpipState != PtpipConnectionState.CONNECTED) {
+            performDisconnectionCleanup()
         }
 
         // 연결 상태 메시지 생성
@@ -128,7 +159,8 @@ class CameraConnectionGlobalManager @Inject constructor(
             usbConnected = usbConnected,
             ptpipState = ptpipState,
             wifiState = wifiState,
-            discoveredCameras = discoveredCameras
+            discoveredCameras = discoveredCameras,
+            isApForced = isApForced
         )
 
         // 상태 변경이 있을 때만 업데이트
@@ -166,12 +198,17 @@ class CameraConnectionGlobalManager @Inject constructor(
         usbConnected: Boolean,
         ptpipState: PtpipConnectionState,
         wifiState: com.inik.camcon.domain.model.WifiNetworkState,
-        discoveredCameras: List<com.inik.camcon.domain.model.PtpipCamera>
+        discoveredCameras: List<com.inik.camcon.domain.model.PtpipCamera>,
+        isApForced: Boolean
     ): String {
         return when {
             usbConnected -> "USB 카메라 연결됨"
             ptpipState == PtpipConnectionState.CONNECTED -> {
-                if (wifiState.isConnectedToCameraAP) {
+                if (isApForced ||
+                    wifiState.isConnectedToCameraAP ||
+                    wifiState.detectedCameraIP?.startsWith("192.168.1.") == true ||
+                    wifiState.detectedCameraIP?.startsWith("192.168.4.") == true
+                ) {
                     "AP 모드 연결됨 (${wifiState.ssid})"
                 } else {
                     "STA 모드 연결됨 (${wifiState.ssid})"
@@ -228,6 +265,39 @@ class CameraConnectionGlobalManager @Inject constructor(
      */
     fun isUsbConnected(): Boolean {
         return globalConnectionState.value.isUsbConnected
+    }
+
+    /**
+     * PTPIP 외부 셔터 감지 콜백 설정
+     */
+    fun setPtpipPhotoCapturedCallback(callback: (String, String) -> Unit) {
+        ptpipDataSource.setPhotoCapturedCallback(callback)
+        Log.d(TAG, "PTPIP 외부 셔터 감지 콜백 설정 완료")
+    }
+
+    /**
+     * 연결 해제 시 정리
+     */
+    private fun performDisconnectionCleanup() {
+        Log.d(TAG, "연결 해제 시 정리 수행")
+
+        scope.launch {
+            try {
+                // CameraConnectionManager를 통한 정리
+                try {
+                    cameraConnectionManager.updatePtpipConnectionStatus(false)
+                    Log.d(TAG, "카메라 연결 매니저 PTPIP 상태 정리 완료")
+                } catch (e: Exception) {
+                    Log.e(TAG, "카메라 연결 매니저 정리 실패", e)
+                }
+
+                // 추가적인 리소스 정리 수행
+                Log.d(TAG, "전역 카메라 연결 상태 정리 완료")
+
+            } catch (e: Exception) {
+                Log.e(TAG, "연결 해제 정리 중 오류", e)
+            }
+        }
     }
 
     /**

@@ -17,6 +17,14 @@ interface CameraCaptureListener {
     fun onPhotoCaptured(filePath: String, fileName: String)
 
     /**
+     * 사진 다운로드 완료 시 호출 (Native에서 직접 다운로드)
+     * @param filePath 카메라 내부 파일 경로
+     * @param fileName 파일명
+     * @param imageData 다운로드된 이미지 데이터
+     */
+    fun onPhotoDownloaded(filePath: String, fileName: String, imageData: ByteArray)
+
+    /**
      * 캡처 실패 시 호출
      * @param errorCode 에러 코드
      */
