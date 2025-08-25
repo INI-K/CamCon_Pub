@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -158,6 +159,10 @@ fun MainScreen(
     // 전체화면 상태 관리
     var isFullscreen by remember { mutableStateOf(false) }
 
+    // PTPIP 연결 상태 및 경고 다이얼로그 상태
+    val isPtpipConnected by cameraViewModel.isPtpipConnected.collectAsState()
+    var showPtpipWarning by remember { mutableStateOf(false) }
+
     // 전역 연결 상태 모니터링
     val globalConnectionState by globalManager.globalConnectionState.collectAsState()
     val activeConnectionType by globalManager.activeConnectionType.collectAsState()
@@ -275,16 +280,16 @@ fun MainScreen(
                 title = {
                     Text(
                         "USB 디바이스 분리",
-                        style = androidx.compose.material.MaterialTheme.typography.h6,
+                        style = MaterialTheme.typography.h6,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                        color = androidx.compose.material.MaterialTheme.colors.error
+                        color = MaterialTheme.colors.error
                     )
                 },
                 text = {
                     androidx.compose.foundation.layout.Column {
                         Text(
                             "카메라 USB 연결이 끊어졌습니다.",
-                            style = androidx.compose.material.MaterialTheme.typography.body1
+                            style = MaterialTheme.typography.body1
                         )
                         androidx.compose.foundation.layout.Spacer(
                             modifier = androidx.compose.ui.Modifier.height(
@@ -293,8 +298,8 @@ fun MainScreen(
                         )
                         Text(
                             "• USB 케이블 연결을 확인해주세요\n• 카메라 전원을 확인해주세요\n• 카메라를 PC 모드로 설정해주세요",
-                            style = androidx.compose.material.MaterialTheme.typography.caption,
-                            color = androidx.compose.material.MaterialTheme.colors.onSurface.copy(
+                            style = MaterialTheme.typography.caption,
+                            color = MaterialTheme.colors.onSurface.copy(
                                 alpha = 0.7f
                             )
                         )
@@ -324,23 +329,23 @@ fun MainScreen(
                 title = {
                     Text(
                         "카메라 상태 점검 필요",
-                        style = androidx.compose.material.MaterialTheme.typography.h6,
+                        style = MaterialTheme.typography.h6,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                        color = androidx.compose.material.MaterialTheme.colors.error
+                        color = MaterialTheme.colors.error
                     )
                 },
                 text = {
                     androidx.compose.foundation.layout.Column {
                         Text(
                             "카메라가 정상적으로 동작하지 않습니다.",
-                            style = androidx.compose.material.MaterialTheme.typography.body1
+                            style = MaterialTheme.typography.body1
                         )
                         androidx.compose.foundation.layout.Spacer(
                             modifier = androidx.compose.ui.Modifier.height(12.dp)
                         )
                         Text(
                             "다음 사항을 확인해주세요:",
-                            style = androidx.compose.material.MaterialTheme.typography.body2,
+                            style = MaterialTheme.typography.body2,
                             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                         )
                         androidx.compose.foundation.layout.Spacer(
@@ -352,8 +357,8 @@ fun MainScreen(
                                     "• USB 케이블 연결 상태 확인\n" +
                                     "• 카메라가 PC 연결 모드로 설정되어 있는지 확인\n" +
                                     "• 카메라를 껐다가 다시 켜보세요",
-                            style = androidx.compose.material.MaterialTheme.typography.caption,
-                            color = androidx.compose.material.MaterialTheme.colors.onSurface.copy(
+                            style = MaterialTheme.typography.caption,
+                            color = MaterialTheme.colors.onSurface.copy(
                                 alpha = 0.8f
                             )
                         )
@@ -403,9 +408,17 @@ fun MainScreen(
                                         contentDescription = stringResource(screen.titleRes)
                                     )
                                 },
-                                label = { Text(stringResource(screen.titleRes)) },
+                                label = {
+                                    Text(stringResource(screen.titleRes))
+                                },
                                 selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
                                 onClick = {
+                                    if (screen == BottomNavItem.PhotoPreview && isPtpipConnected) {
+                                        // PTPIP 연결 시 미리보기 탭 클릭하면 경고 다이얼로그 표시
+                                        showPtpipWarning = true
+                                        return@BottomNavigationItem
+                                    }
+
                                     if (screen.route == "settings") {
                                         onSettingsClick()
                                     } else {
@@ -436,21 +449,71 @@ fun MainScreen(
             ) {
                 composable(BottomNavItem.PhotoPreview.route) { PhotoPreviewScreen() }
                 composable(BottomNavItem.CameraControl.route) {
-                    // AP 모드일 때는 사진 수신 대기 화면, 아니면 카메라 컨트롤 화면
-                    if (activeConnectionType == CameraConnectionType.AP_MODE) {
-                        com.inik.camcon.presentation.ui.screens.ApModePhotoReceiveScreen(
-                            viewModel = cameraViewModel // 전역 ViewModel 전달
-                        )
-                    } else {
-                        CameraControlScreen(
-                            viewModel = cameraViewModel, // 전역 ViewModel 전달
-                            onFullscreenChange = { isFullscreen = it }
-                        )
-                    }
+                    // AP 모드와 USB 모드 모두 동일한 CameraControlScreen 사용
+                    CameraControlScreen(
+                        viewModel = cameraViewModel, // 전역 ViewModel 전달
+                        onFullscreenChange = { isFullscreen = it }
+                    )
                 }
                 composable(BottomNavItem.ServerPhotos.route) { MyPhotosScreen() }
                 // 설정은 별도 액티비티로 처리하므로 여기서 제외
             }
+        }
+
+        // PTPIP 경고 다이얼로그
+        if (showPtpipWarning) {
+            androidx.compose.material.AlertDialog(
+                onDismissRequest = { showPtpipWarning = false },
+                title = {
+                    Text(
+                        "Wi-Fi 연결 중입니다",
+                        style = MaterialTheme.typography.h6,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        color = MaterialTheme.colors.primary
+                    )
+                },
+                text = {
+                    Column {
+                        Text(
+                            "현재 카메라가 Wi-Fi로 연결되어 있어 사진 미리보기를 사용할 수 없습니다.",
+                            style = MaterialTheme.typography.body1
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            "💡 사진 미리보기를 사용하려면:",
+                            style = MaterialTheme.typography.body2,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            color = MaterialTheme.colors.primary
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            "1️⃣ 카메라의 Wi-Fi 연결을 해제해주세요\n" +
+                                    "2️⃣ USB 케이블로 카메라를 연결해주세요\n" +
+                                    "3️⃣ 카메라를 PC 모드로 설정해주세요",
+                            style = MaterialTheme.typography.body2,
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f)
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            "Wi-Fi 연결에서는 '카메라 제어' 탭을 이용해주세요! 📷",
+                            style = MaterialTheme.typography.caption,
+                            color = MaterialTheme.colors.primary,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                        )
+                    }
+                },
+                confirmButton = {
+                    androidx.compose.material.TextButton(
+                        onClick = { showPtpipWarning = false }
+                    ) {
+                        Text("알겠습니다")
+                    }
+                },
+                properties = androidx.compose.ui.window.DialogProperties(
+                    dismissOnBackPress = true,
+                    dismissOnClickOutside = true
+                )
+            )
         }
 
         // USB 연결 및 초기화 상태에 따른 UI 블로킹 오버레이
@@ -784,7 +847,7 @@ class MainActivity : ComponentActivity() {
 
                                 } catch (e: Exception) {
                                     LogcatManager.e(TAG, "카메라 정리 후 재시작 실행 중 오류", e)
-                                    // Fallback: 기존 방식
+                                    // Fallback: 기존 방식 사용
                                     systemRestartApp(activity)
                                 }
                             }

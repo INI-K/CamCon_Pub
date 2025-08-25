@@ -12,14 +12,16 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+
 import androidx.compose.material.AlertDialog
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Button
+import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Scaffold
 import androidx.compose.material.SnackbarHost
 import androidx.compose.material.SnackbarHostState
@@ -28,9 +30,19 @@ import androidx.compose.material.TabRow
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
 import androidx.compose.material.TopAppBar
+import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.material.Card
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -46,10 +58,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material.OutlinedTextField
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
@@ -63,6 +71,10 @@ import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.components.ApModeContent
 import com.inik.camcon.presentation.ui.screens.components.StaModeContent
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
+import com.inik.camcon.data.datasource.local.ThemeMode
+import com.inik.camcon.domain.model.SubscriptionTier
+import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -73,15 +85,21 @@ import kotlinx.coroutines.launch
 @Composable
 fun PtpipConnectionScreen(
     onBackClick: () -> Unit,
-    ptpipViewModel: PtpipViewModel = hiltViewModel()
+    ptpipViewModel: PtpipViewModel = hiltViewModel(),
+    getSubscriptionUseCase: GetSubscriptionUseCase = androidx.hilt.navigation.compose.hiltViewModel()
 ) {
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    
-    // 탭 상태 - AP 모드를 먼저 표시 (index 0)
-    val pagerState = rememberPagerState(initialPage = 0) { 2 }
-    val tabTitles = listOf("AP 모드", "STA 모드")
+
+    // 구독 티어 체크 (STA 모드는 ADMIN만 보임)
+    val subscriptionTier by getSubscriptionUseCase.getSubscriptionTier()
+        .collectAsState(initial = SubscriptionTier.FREE)
+    val isAdmin = subscriptionTier == SubscriptionTier.ADMIN
+
+    // 탭 제목과 탭 수를 동적으로 구성
+    val tabTitles = if (isAdmin) listOf("AP 모드", "STA 모드") else listOf("AP 모드")
+    val pagerState = rememberPagerState(initialPage = 0) { tabTitles.size }
 
     // Wi‑Fi 스캔 권한 상태 (WifiNetworkHelper 사용)
     var wifiScanPermissionStatus by remember {
@@ -158,6 +176,7 @@ fun PtpipConnectionScreen(
     val nearbyWifiSSIDs by ptpipViewModel.nearbyWifiSSIDs.collectAsState()
     val needLocationSettings by ptpipViewModel.needLocationSettings.collectAsState()
     val needWifiSettings by ptpipViewModel.needWifiSettings.collectAsState()
+    val connectionLostMessage by ptpipViewModel.connectionLostMessage.collectAsState()
 
     // 에러 메시지 표시
     LaunchedEffect(errorMessage) {
@@ -320,39 +339,52 @@ fun PtpipConnectionScreen(
             },
             title = {
                 Text(
-                    text = "${currentWifiSsid ?: ""}에 연결",
+                    text = "${currentWifiSsid ?: ""}",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
+                    fontSize = 16.sp
                 )
             },
             text = {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxSize()
-                ) {
+                Column {
+                    Text(
+                        text = "Wi-Fi 비밀번호를 입력하세요",
+                        style = MaterialTheme.typography.body2,
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f),
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
                     OutlinedTextField(
                         value = passwordForSsid,
                         onValueChange = { passwordForSsid = it },
-                        label = { Text("Wi-Fi 비밀번호") },
+                        label = { Text("비밀번호", style = MaterialTheme.typography.caption) },
                         visualTransformation =
                             if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
-                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            IconButton(
+                                onClick = { passwordVisible = !passwordVisible },
+                                modifier = Modifier.size(40.dp)
+                            ) {
                                 if (passwordVisible) {
-                                    Icon(Icons.Filled.Visibility, contentDescription = "숨기기")
+                                    Icon(
+                                        Icons.Filled.Visibility,
+                                        contentDescription = "숨기기",
+                                        modifier = Modifier.size(20.dp)
+                                    )
                                 } else {
-                                    Icon(Icons.Filled.VisibilityOff, contentDescription = "보이기")
+                                    Icon(
+                                        Icons.Filled.VisibilityOff,
+                                        contentDescription = "보이기",
+                                        modifier = Modifier.size(20.dp)
+                                    )
                                 }
                             }
                         },
                         singleLine = true,
-                        modifier = Modifier
-                            .padding(vertical = 4.dp)
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             },
             confirmButton = {
-                TextButton(
+                Button(
                     onClick = {
                         // 실제 연결 로직 수행 (ViewModel의 ssid+비번 방식으로)
                         showPasswordDialog = false
@@ -362,138 +394,278 @@ fun PtpipConnectionScreen(
                         passwordForSsid = ""
                         currentWifiSsid = null
                     },
-                    enabled = passwordForSsid.isNotEmpty()
+                    enabled = passwordForSsid.isNotEmpty(),
+                    modifier = Modifier.height(36.dp)
                 ) {
-                    Text("연결")
+                    Text("연결", style = MaterialTheme.typography.button)
                 }
             },
             dismissButton = {
-                TextButton(onClick = {
-                    showPasswordDialog = false
-                    passwordForSsid = ""
-                    currentWifiSsid = null
-                }) {
-                    Text("취소")
+                TextButton(
+                    onClick = {
+                        showPasswordDialog = false
+                        passwordForSsid = ""
+                        currentWifiSsid = null
+                    },
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    Text("취소", style = MaterialTheme.typography.button)
                 }
             }
         )
     }
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("카메라 연결") },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "뒤로가기")
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = {
-                            when (pagerState.currentPage) {
-                                0 -> if (ptpipViewModel.getWifiHelper()
-                                        .analyzeWifiScanPermissionStatus().canScan
-                                ) {
-                                    Log.d("PtpipConnectionScreen", "Wi-Fi 스캔 실행")
-                                    ptpipViewModel.scanNearbyWifiNetworks()
-                                } else {
-                                    Log.d("PtpipConnectionScreen", "권한 부족으로 권한 요청 호출")
-                                    requestWifiScanPermissions()
-                                }
-                                1 -> ptpipViewModel.discoverCamerasSta()
-                                else -> {}
-                            }
-                        },
-                        enabled = !isDiscovering
-                    ) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "새로고침")
-                    }
-                    IconButton(onClick = {
-                        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                            try {
-                                Intent(Settings.Panel.ACTION_WIFI)
-                            } catch (e: Exception) {
-                                Intent(Settings.ACTION_WIFI_SETTINGS)
-                            }
-                        } else {
-                            Intent(Settings.ACTION_WIFI_SETTINGS)
-                        }
-                        context.startActivity(intent)
-                    }) {
-                        Icon(Icons.Filled.Settings, contentDescription = "Wi-Fi 설정")
-                    }
-                },
-                backgroundColor = MaterialTheme.colors.primary,
-                contentColor = MaterialTheme.colors.onPrimary
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            // 탭 행
-            TabRow(
-                selectedTabIndex = pagerState.currentPage,
-                backgroundColor = MaterialTheme.colors.primary,
-                contentColor = MaterialTheme.colors.onPrimary
-            ) {
-                tabTitles.forEachIndexed { index, title ->
-                    Tab(
-                        selected = pagerState.currentPage == index,
-                        onClick = {
-                            scope.launch {
-                                pagerState.animateScrollToPage(index)
-                            }
-                        },
-                        text = { Text(title) }
-                    )
+
+    // PTPIP 연결 진행 상황을 위한 상태
+    var showConnectionProgressDialog by remember { mutableStateOf(false) }
+    val connectionProgressMessage by ptpipViewModel.connectionProgressMessage.collectAsState()
+
+    // 연결 상태 변화 감지하여 로딩 다이얼로그 제어
+    LaunchedEffect(isConnecting) {
+        showConnectionProgressDialog = isConnecting
+    }
+
+    // 연결 진행 상황 업데이트 (실제 연결 단계별로 메시지 변경)
+    LaunchedEffect(connectionState, connectionProgressMessage) {
+        when (connectionState) {
+            com.inik.camcon.domain.model.PtpipConnectionState.CONNECTING -> {
+                showConnectionProgressDialog = true
+            }
+            com.inik.camcon.domain.model.PtpipConnectionState.CONNECTED -> {
+                // 연결 완료 후 충분한 시간을 두고 다이얼로그 닫기
+                if (connectionProgressMessage.contains("연결 완료")) {
+                    kotlinx.coroutines.delay(2000) // 2초 대기
+                    showConnectionProgressDialog = false
                 }
             }
+            com.inik.camcon.domain.model.PtpipConnectionState.DISCONNECTED,
+            com.inik.camcon.domain.model.PtpipConnectionState.ERROR -> {
+                showConnectionProgressDialog = false
+            }
+        }
+    }
 
-            // 탭 내용
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.weight(1f)
-            ) { page ->
-                when (page) {
-                    0 -> ApModeContent(
-                        ptpipViewModel = ptpipViewModel,
-                        connectionState = connectionState,
-                        discoveredCameras = discoveredCameras,
-                        isDiscovering = isDiscovering,
-                        isConnecting = isConnecting,
-                        selectedCamera = selectedCamera,
-                        cameraInfo = cameraInfo,
-                        isPtpipEnabled = isPtpipEnabled,
-                        isWifiConnected = isWifiConnected,
-                        wifiCapabilities = wifiCapabilities,
-                        wifiNetworkState = wifiNetworkState,
-                        isAutoReconnectEnabled = isAutoReconnectEnabled,
-                        hasLocationPermission = ptpipViewModel.getWifiHelper()
-                            .analyzeWifiScanPermissionStatus().canScan,
-                        onRequestPermission = { requestWifiScanPermissions() },
-                        nearbyWifiSSIDs = nearbyWifiSSIDs,
-                        onConnectToWifi = { ssid -> onConnectToWifiWithPassword(ssid) }
+    // 연결 완료 시 isConnecting 상태 해제
+    LaunchedEffect(connectionState) {
+        if (connectionState == com.inik.camcon.domain.model.PtpipConnectionState.CONNECTED) {
+            // 연결 완료 후 약간의 지연을 두고 isConnecting 해제
+            kotlinx.coroutines.delay(2500) // 다이얼로그 닫기보다 500ms 더 대기
+            // ViewModel의 isConnecting 상태를 직접 제어할 수 없으므로
+            // PtpipViewModel에서 관리하도록 함
+            ptpipViewModel.setIsConnecting(false)
+        }
+    }
+
+    // Wi-Fi 연결 끊어짐 알림 표시
+    connectionLostMessage?.let { message ->
+        AlertDialog(
+            onDismissRequest = { ptpipViewModel.clearConnectionLostMessage() },
+            title = { Text("카메라 연결 끊어짐") },
+            text = {
+                Column {
+                    Text(message)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "다음 단계를 수행해주세요:",
+                        fontWeight = FontWeight.Bold
                     )
-                    1 -> StaModeContent(
-                        ptpipViewModel = ptpipViewModel,
-                        connectionState = connectionState,
-                        discoveredCameras = discoveredCameras,
-                        isDiscovering = isDiscovering,
-                        isConnecting = isConnecting,
-                        selectedCamera = selectedCamera,
-                        cameraInfo = cameraInfo,
-                        isPtpipEnabled = isPtpipEnabled,
-                        isWifiConnected = isWifiConnected,
-                        wifiCapabilities = wifiCapabilities,
-                        wifiNetworkState = wifiNetworkState,
-                        isAutoReconnectEnabled = isAutoReconnectEnabled,
-                        hasLocationPermission = ptpipViewModel.getWifiHelper()
-                            .analyzeWifiScanPermissionStatus().canScan,
-                        onRequestPermission = { requestWifiScanPermissions() }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("1. Wi-Fi 연결 상태를 확인하세요")
+                    Text("2. 카메라 Wi-Fi가 켜져있는지 확인하세요")
+                    Text("3. 카메라를 다시 검색하고 연결하세요")
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    ptpipViewModel.clearConnectionLostMessage()
+                    // 자동으로 카메라 검색 시작
+                    when (pagerState.currentPage) {
+                        0 -> ptpipViewModel.discoverCamerasAp()
+                        1 -> ptpipViewModel.discoverCamerasSta()
+                    }
+                }) {
+                    Text("카메라 재검색")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { ptpipViewModel.clearConnectionLostMessage() }) {
+                    Text("확인")
+                }
+            }
+        )
+    }
+
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("카메라 연결") },
+                    navigationIcon = {
+                        IconButton(onClick = onBackClick) {
+                            Icon(Icons.Filled.ArrowBack, contentDescription = "뒤로가기")
+                        }
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = {
+                                when (pagerState.currentPage) {
+                                    0 -> if (ptpipViewModel.getWifiHelper()
+                                            .analyzeWifiScanPermissionStatus().canScan
+                                    ) {
+                                        Log.d("PtpipConnectionScreen", "Wi-Fi 스캔 실행")
+                                        ptpipViewModel.scanNearbyWifiNetworks()
+                                    } else {
+                                        Log.d("PtpipConnectionScreen", "권한 부족으로 권한 요청 호출")
+                                        requestWifiScanPermissions()
+                                    }
+
+                                    1 -> if (isAdmin) {
+                                        ptpipViewModel.discoverCamerasSta()
+                                    }
+                                    else -> {}
+                                }
+                            },
+                            enabled = !isDiscovering && (pagerState.currentPage == 0 || isAdmin)
+                        ) {
+                            Icon(Icons.Filled.Refresh, contentDescription = "새로고침")
+                        }
+                        IconButton(onClick = {
+                            if (pagerState.currentPage == 0 || isAdmin) {
+                                val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                    try {
+                                        Intent(Settings.Panel.ACTION_WIFI)
+                                    } catch (e: Exception) {
+                                        Intent(Settings.ACTION_WIFI_SETTINGS)
+                                    }
+                                } else {
+                                    Intent(Settings.ACTION_WIFI_SETTINGS)
+                                }
+                                context.startActivity(intent)
+                            }
+                        },
+                            enabled = pagerState.currentPage == 0 || isAdmin
+                        ) {
+                            Icon(Icons.Filled.Settings, contentDescription = "Wi-Fi 설정")
+                        }
+                    },
+                    backgroundColor = MaterialTheme.colors.primary,
+                    contentColor = MaterialTheme.colors.onPrimary
+                )
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) }
+        ) { paddingValues ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                // 탭 행
+                TabRow(
+                    selectedTabIndex = pagerState.currentPage,
+                    backgroundColor = MaterialTheme.colors.primary,
+                    contentColor = MaterialTheme.colors.onPrimary
+                ) {
+                    tabTitles.forEachIndexed { index, title ->
+                        Tab(
+                            selected = pagerState.currentPage == index,
+                            onClick = {
+                                scope.launch {
+                                    pagerState.animateScrollToPage(index)
+                                }
+                            },
+                            text = { Text(title) }
+                        )
+                    }
+                }
+
+                // 탭 내용
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.weight(1f)
+                ) { page ->
+                    when (page) {
+                        0 -> ApModeContent(
+                            ptpipViewModel = ptpipViewModel,
+                            connectionState = connectionState,
+                            discoveredCameras = discoveredCameras,
+                            isDiscovering = isDiscovering,
+                            isConnecting = isConnecting,
+                            selectedCamera = selectedCamera,
+                            cameraInfo = cameraInfo,
+                            isPtpipEnabled = isPtpipEnabled,
+                            isWifiConnected = isWifiConnected,
+                            wifiCapabilities = wifiCapabilities,
+                            wifiNetworkState = wifiNetworkState,
+                            isAutoReconnectEnabled = isAutoReconnectEnabled,
+                            hasLocationPermission = ptpipViewModel.getWifiHelper()
+                                .analyzeWifiScanPermissionStatus().canScan,
+                            onRequestPermission = { requestWifiScanPermissions() },
+                            nearbyWifiSSIDs = nearbyWifiSSIDs,
+                            onConnectToWifi = { ssid -> onConnectToWifiWithPassword(ssid) }
+                        )
+
+                        1 -> if (isAdmin) {
+                            StaModeContent(
+                                ptpipViewModel = ptpipViewModel,
+                                connectionState = connectionState,
+                                discoveredCameras = discoveredCameras,
+                                isDiscovering = isDiscovering,
+                                isConnecting = isConnecting,
+                                selectedCamera = selectedCamera,
+                                cameraInfo = cameraInfo,
+                                isPtpipEnabled = isPtpipEnabled,
+                                isWifiConnected = isWifiConnected,
+                                wifiCapabilities = wifiCapabilities,
+                                wifiNetworkState = wifiNetworkState,
+                                isAutoReconnectEnabled = isAutoReconnectEnabled,
+                                hasLocationPermission = ptpipViewModel.getWifiHelper()
+                                    .analyzeWifiScanPermissionStatus().canScan,
+                                onRequestPermission = { requestWifiScanPermissions() }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // PTPIP 연결 진행 상황 다이얼로그
+    if (showConnectionProgressDialog) {
+        Dialog(
+            onDismissRequest = { /* 연결 중에는 닫을 수 없음 */ },
+            properties = DialogProperties(
+                dismissOnBackPress = false,
+                dismissOnClickOutside = false
+            )
+        ) {
+            androidx.compose.material.Card(
+                shape = MaterialTheme.shapes.medium,
+                elevation = 8.dp,
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(48.dp),
+                        strokeWidth = 4.dp
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = connectionProgressMessage.ifEmpty { "카메라에 연결 중..." },
+                        style = MaterialTheme.typography.body1,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "잠시만 기다려주세요...",
+                        style = MaterialTheme.typography.body2,
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                        textAlign = TextAlign.Center
                     )
                 }
             }
@@ -504,7 +676,7 @@ fun PtpipConnectionScreen(
 @Preview(name = "PTPIP Connection Screen", showBackground = true)
 @Composable
 private fun PtpipConnectionScreenPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         // 프리뷰용 더미 구현
         Column(
             modifier = Modifier
