@@ -1,5 +1,6 @@
 package com.inik.camcon
 
+import android.util.Log
 import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
 import com.inik.camcon.data.datasource.nativesource.LiveViewCallback
 
@@ -14,6 +15,8 @@ interface CameraCleanupCallback {
 }
 
 object CameraNative {
+    private const val TAG = "CameraNative"
+
     // libgphoto2 로그 레벨 상수들
     const val GP_LOG_ERROR = 0
     const val GP_LOG_VERBOSE = 1
@@ -21,19 +24,66 @@ object CameraNative {
     const val GP_LOG_DATA = 3
     const val GP_LOG_ALL = GP_LOG_DATA
 
+    // 라이브러리 로딩 상태 추적
+    @Volatile
+    private var librariesLoaded = false
+
     init {
-        System.loadLibrary("gphoto2_port") // Port 라이브러리 먼저
-        System.loadLibrary("gphoto2_port_iolib_disk")
-        System.loadLibrary("gphoto2_port_iolib_usb1") // "lib" prefix와 ".so" 확장자 없이 호출
+        try {
+            loadNativeLibraries()
+            librariesLoaded = true
+            Log.d(TAG, "✅ 모든 네이티브 라이브러리 로딩 완료")
+        } catch (e: Throwable) {
+            Log.e(TAG, "🔴 네이티브 라이브러리 로딩 실패", e)
+            librariesLoaded = false
+            // 라이브러리 로딩 실패를 앱에서 감지할 수 있도록 예외를 다시 던짐
+            throw RuntimeException("네이티브 라이브러리 로딩 실패: ${e.message}", e)
+        }
+    }
 
-        // gphoto2 port 라이브러리 및 I/O 모듈 로드 (순서 중요)
-        // 일반적인 의존성은 port -> iolib -> gphoto2
+    /**
+     * 네이티브 라이브러리들을 안전한 순서로 로딩
+     */
+    private fun loadNativeLibraries() {
+        val libraries = listOf(
+            "gphoto2_port" to "gphoto2 포트 라이브러리",
+            "gphoto2_port_iolib_disk" to "gphoto2 디스크 I/O 라이브러리",
+            "gphoto2_port_iolib_usb1" to "gphoto2 USB1 I/O 라이브러리",
+            "gphoto2" to "gphoto2 메인 라이브러리",
+            "native-lib" to "CamCon JNI 라이브러리"
+        )
 
-        // gphoto2 메인 라이브러리 로드
-        System.loadLibrary("gphoto2")
+        for ((libName, description) in libraries) {
+            try {
+                Log.d(TAG, "📦 $description 로딩 중...")
+                System.loadLibrary(libName)
+                Log.d(TAG, "✅ $description 로딩 완료")
 
-        // 애플리케이션 JNI 라이브러리 로드 (가장 마지막에)
-        System.loadLibrary("native-lib")
+                // 각 라이브러리 로딩 후 약간의 대기 시간 (릴리즈 모드 안정성)
+                Thread.sleep(10)
+
+            } catch (e: UnsatisfiedLinkError) {
+                Log.e(TAG, "🔴 $description 로딩 실패: $libName", e)
+                throw RuntimeException("$description 로딩 실패: ${e.message}", e)
+            } catch (e: SecurityException) {
+                Log.e(TAG, "🔴 $description 로딩 권한 오류: $libName", e)
+                throw RuntimeException("$description 로딩 권한 오류: ${e.message}", e)
+            }
+        }
+    }
+
+    /**
+     * 라이브러리 로딩 상태 확인
+     */
+    fun isLibrariesLoaded(): Boolean = librariesLoaded
+
+    /**
+     * 네이티브 메서드 호출 전 라이브러리 로딩 상태 확인
+     */
+    private fun ensureLibrariesLoaded() {
+        if (!librariesLoaded) {
+            throw IllegalStateException("네이티브 라이브러리가 로딩되지 않았습니다. 앱을 재시작해주세요.")
+        }
     }
 
     external fun testLibraryLoad(): String
@@ -118,4 +168,40 @@ object CameraNative {
 
     // 네이티브 에러 콜백 등록
     external fun setErrorCallback(callback: NativeErrorCallback?)
+
+    // 안전한 네이티브 메서드 호출을 위한 래퍼 함수들
+    fun safeTestLibraryLoad(): String {
+        ensureLibrariesLoaded()
+        return testLibraryLoad()
+    }
+
+    fun safeGetLibGphoto2Version(): String {
+        ensureLibrariesLoaded()
+        return getLibGphoto2Version()
+    }
+
+    fun safeInitCamera(): String {
+        ensureLibrariesLoaded()
+        return initCamera()
+    }
+
+    fun safeInitCameraWithFd(fd: Int, nativeLibDir: String): Int {
+        ensureLibrariesLoaded()
+        return initCameraWithFd(fd, nativeLibDir)
+    }
+
+    fun safeCapturePhoto(): Int {
+        ensureLibrariesLoaded()
+        return capturePhoto()
+    }
+
+    fun safeGetCameraSummary(): String {
+        ensureLibrariesLoaded()
+        return getCameraSummary()
+    }
+
+    fun safeCloseCamera(): String {
+        ensureLibrariesLoaded()
+        return closeCamera()
+    }
 }

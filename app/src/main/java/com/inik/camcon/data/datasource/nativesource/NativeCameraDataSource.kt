@@ -64,10 +64,10 @@ class NativeCameraDataSource @Inject constructor(
     }
 
     // 라이브러리 로딩 테스트
-    fun testLibraryLoad(): String = CameraNative.testLibraryLoad()
+    fun testLibraryLoad(): String = CameraNative.safeTestLibraryLoad()
 
     // LibGphoto2 버전 정보
-    fun getLibGphoto2Version(): String = CameraNative.getLibGphoto2Version()
+    fun getLibGphoto2Version(): String = CameraNative.safeGetLibGphoto2Version()
 
     // 포트 정보 반환
     fun getPortInfo(): String = CameraNative.getPortInfo()
@@ -75,7 +75,7 @@ class NativeCameraDataSource @Inject constructor(
     // 카메라 초기화
     fun initCamera(): String {
         Log.d(TAG, "카메라 초기화 시작")
-        val result = CameraNative.initCamera()
+        val result = CameraNative.safeInitCamera()
         Log.d(TAG, "카메라 초기화 완료: 결과=$result")
         return result
     }
@@ -89,19 +89,19 @@ class NativeCameraDataSource @Inject constructor(
             val correctNativeLibDir = applicationInfo.nativeLibraryDir
             Log.d(TAG, "실제 네이티브 라이브러리 경로: $correctNativeLibDir")
 
-            val result = CameraNative.initCameraWithFd(fd, correctNativeLibDir)
+            val result = CameraNative.safeInitCameraWithFd(fd, correctNativeLibDir)
             Log.d(TAG, "카메라 초기화 (FD 기반) 완료: 결과 코드=$result")
             result
         }
     }
 
     // 동기식 사진 촬영 (성공시 0 이라고 가정)
-    fun capturePhoto(): Boolean = CameraNative.capturePhoto() == 0
+    fun capturePhoto(): Boolean = CameraNative.safeCapturePhoto() == 0
 
     // 카메라 요약 정보를 받아 Domain 모델인 Camera로 변환
     fun getCameraSummary(): Camera {
         // 네이티브에서 카메라 요약 정보 가져오기
-        val summary = CameraNative.getCameraSummary()
+        val summary = CameraNative.safeGetCameraSummary()
         Log.d(TAG, "=== 카메라 요약 정보 ===")
         Log.d(TAG, summary)
         Log.d(TAG, "========================")
@@ -194,7 +194,7 @@ class NativeCameraDataSource @Inject constructor(
         Thread {
             try {
                 Log.d(TAG, "카메라 종료")
-                CameraNative.closeCamera()
+                CameraNative.safeCloseCamera()
                 Log.d(TAG, "카메라 종료 완료")
             } catch (e: Exception) {
                 Log.e(TAG, "카메라 종료 중 오류", e)
@@ -556,7 +556,7 @@ class NativeCameraDataSource @Inject constructor(
     // 카메라 기능 정보를 가져오는 새로운 함수
     fun getCameraCapabilities(): CameraCapabilities? {
         return try {
-            val summaryJson = CameraNative.getCameraSummary()
+            val summaryJson = CameraNative.safeGetCameraSummary()
             val json = JSONObject(summaryJson)
 
             if (json.has("error")) {
