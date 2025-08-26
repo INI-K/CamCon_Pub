@@ -11,8 +11,10 @@ import com.inik.camcon.domain.manager.CameraSettingsManager
 import com.inik.camcon.domain.manager.ErrorHandlingManager
 import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.domain.model.ShootingMode
+import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.usecase.GetCameraFeedUseCase
+import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -34,13 +36,14 @@ class CameraViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val cameraRepository: CameraRepository,
     private val getCameraFeedUseCase: GetCameraFeedUseCase,
+    private val getSubscriptionUseCase: GetSubscriptionUseCase,
+    private val uiStateManager: CameraUiStateManager,
 
     // 매니저 의존성 주입 (단일책임원칙 적용)
     private val connectionManager: CameraConnectionManager,
     private val operationsManager: CameraOperationsManager,
     private val settingsManager: CameraSettingsManager,
-    private val errorHandlingManager: ErrorHandlingManager,
-    private val uiStateManager: CameraUiStateManager
+    private val errorHandlingManager: ErrorHandlingManager
 ) : ViewModel() {
 
     companion object {
@@ -154,6 +157,27 @@ class CameraViewModel @Inject constructor(
                     // 연결되면 설정 로드
                     settingsManager.loadCameraSettings()
                     settingsManager.loadCameraCapabilities()
+                    // 구독 티어 설정 (GetSubscriptionUseCase)
+                    viewModelScope.launch {
+                        try {
+                            getSubscriptionUseCase.getSubscriptionTier()
+                                .collect { tier ->
+                                    when (tier) {
+                                        SubscriptionTier.FREE -> CameraNative.setSubscriptionTier(0)
+                                        SubscriptionTier.BASIC -> CameraNative.setSubscriptionTier(1)
+                                        SubscriptionTier.PRO -> CameraNative.setSubscriptionTier(2)
+                                        SubscriptionTier.REFERRER -> CameraNative.setSubscriptionTier(
+                                            2
+                                        )
+
+                                        SubscriptionTier.ADMIN -> CameraNative.setSubscriptionTier(2)
+                                    }
+                                    Log.d(TAG, "구독 티어 네이티브 전달 완료: $tier")
+                                }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "구독 티어 변환/전달 실패", e)
+                        }
+                    }
                 }
             }
             .launchIn(viewModelScope)
@@ -215,10 +239,14 @@ class CameraViewModel @Inject constructor(
             }
             .launchIn(viewModelScope)
 
-        // 카메라 초기화 상태
+        // 카메라 초기화 상태 - 시작만 감지하고 해제는 onFlushComplete에서 처리
         cameraRepository.isInitializing()
             .onEach { isInitializing ->
-                uiStateManager.updateCameraInitialization(isInitializing)
+                // 초기화 시작만 UI에 반영하고, 해제는 onFlushComplete 콜백에서 처리
+                if (isInitializing) {
+                    uiStateManager.updateCameraInitialization(true)
+                }
+                // 카메라 초기화 완료(false)는 여기서 처리하지 않음 - onFlushComplete에서만 처리
             }
             .launchIn(viewModelScope)
     }
