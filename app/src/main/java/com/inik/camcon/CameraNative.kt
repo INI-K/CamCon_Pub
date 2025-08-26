@@ -190,4 +190,8 @@ object CameraNative {
 
     // 네이티브 에러 콜백 등록
     external fun setErrorCallback(callback: NativeErrorCallback?)
+
+    // 구독 티어 관리 (0: FREE, 1: PREMIUM, 2: PRO)
+    external fun setSubscriptionTier(tier: Int)
+    external fun getSubscriptionTier(): Int
 }
