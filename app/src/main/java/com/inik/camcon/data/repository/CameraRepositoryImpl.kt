@@ -24,6 +24,7 @@ import com.inik.camcon.domain.model.TimelapseSettings
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.usecase.ColorTransferUseCase
 import com.inik.camcon.domain.usecase.camera.PhotoCaptureEventManager
+import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.utils.Constants
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -61,7 +62,8 @@ class CameraRepositoryImpl @Inject constructor(
     private val eventManager: CameraEventManager,
     private val downloadManager: PhotoDownloadManager,
     private val uiStateManager: com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager,
-    private val connectionGlobalManager: com.inik.camcon.domain.manager.CameraConnectionGlobalManager
+    private val connectionGlobalManager: com.inik.camcon.domain.manager.CameraConnectionGlobalManager,
+    private val getSubscriptionUseCase: GetSubscriptionUseCase
 ) : CameraRepository {
 
     init {
@@ -135,6 +137,7 @@ class CameraRepositoryImpl @Inject constructor(
     }
 
     override suspend fun startCameraEventListener(): Result<Boolean> {
+        // val subscriptionTier = getSubscriptionUseCase.getSubscriptionTier().first() // Flow에서 한 번만 가져올 때
         return eventManager.startCameraEventListener(
             isConnected = connectionManager.isConnected.value,
             isInitializing = connectionManager.isInitializing.value,
@@ -153,6 +156,7 @@ class CameraRepositoryImpl @Inject constructor(
             onCaptureFailed = { errorCode ->
                 Log.e("카메라레포지토리", "외부 셔터 촬영 실패: $errorCode")
             }
+            // , subscriptionTier = subscriptionTier
         )
     }
 
