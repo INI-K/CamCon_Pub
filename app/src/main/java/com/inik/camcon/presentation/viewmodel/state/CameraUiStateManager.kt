@@ -358,4 +358,20 @@ class CameraUiStateManager @Inject constructor() {
         }
         Log.d(TAG, "카메라 연결 해제 상태로 업데이트")
     }
+
+    /**
+     * PTPIP 연결 상태 업데이트
+     */
+    fun updatePtpipConnectionState(isConnected: Boolean) {
+        _uiState.update { it.copy(isPtpipConnected = isConnected) }
+        Log.d(TAG, "PTPIP 연결 상태 업데이트: $isConnected")
+    }
+
+    /**
+     * 사진 미리보기 탭 블록 상태 업데이트
+     */
+    fun blockPreviewTab(blocked: Boolean) {
+        _uiState.update { it.copy(isPreviewTabBlocked = blocked) }
+        Log.d(TAG, "사진 미리보기 탭 블록 상태 업데이트: $blocked")
+    }
 }

@@ -1,31 +1,86 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# CamCon - R8/ProGuard rules (lean)
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# 빌드 성능 최적화
+-dontoptimize
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# ---- 로그 최적화 ----
+# 릴리즈 빌드에서 로그 호출을 완전히 제거하여 성능 향상
+# DEBUG 빌드에서는 이 규칙이 적용되지 않습니다
+-assumenosideeffects class android.util.Log {
+    public static boolean isLoggable(java.lang.String, int);
+    public static int v(...);
+    public static int d(...);
+    public static int i(...);
+    public static int w(...);
+    public static int e(...);
+}
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# LogcatManager object의 로그 호출도 제거
+-assumenosideeffects class com.inik.camcon.utils.LogcatManager {
+    public void d(java.lang.String, java.lang.String);
+    public void i(java.lang.String, java.lang.String);
+    public void w(java.lang.String, java.lang.String);
+    public void w(java.lang.String, java.lang.String, java.lang.Throwable);
+    public void e(java.lang.String, java.lang.String);
+    public void e(java.lang.String, java.lang.String, java.lang.Throwable);
+    public void v(java.lang.String, java.lang.String);
+    public void conditionalLog(boolean, java.lang.String, java.lang.String, int);
+    public void perfStart(java.lang.String, java.lang.String);
+    public void perfEnd(java.lang.String, java.lang.String, long);
+    public void printLogSettings();
+}
 
-# ========== CamCon 네이티브 라이브러리 보호 규칙 ==========
+# ---- [선택] 디버깅 편의용 심볼 ----
+# 릴리스 크기/속도가 중요하면 아래 두 줄을 주석 처리하세요.
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
 
-# CameraNative 클래스와 모든 네이티브 메서드 보호
--keep class com.inik.camcon.CameraNative {
+# ---- 리플렉션/직렬화를 위한 메타데이터 ----
+-keepattributes *Annotation*,Signature,RuntimeVisibleAnnotations,AnnotationDefault
+
+# ---- 앱 DTO/도메인 모델 (Gson 반사 사용 시 필수) ----
+-keep class com.inik.camcon.data.model.** { *; }
+-keep class com.inik.camcon.domain.model.** { *; }
+
+# ---- Gson 어댑터/직렬화자 ----
+-keep class * implements com.google.gson.TypeAdapterFactory
+-keep class * implements com.google.gson.JsonSerializer
+-keep class * implements com.google.gson.JsonDeserializer
+
+# ---- Enum 기본 멤버 보존(일반적 안전장치) ----
+-keepclassmembers enum * {
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}
+
+# ---- Native/JNI ----
+-keepclasseswithmembernames class * { native <methods>; }
+
+# CamCon JNI 브리지
+-keep class com.inik.camcon.CameraNative { 
     public static <methods>;
     native <methods>;
+}
+
+# 콜백 인터페이스
+-keep interface com.inik.camcon.NativeErrorCallback { *; }
+-keep interface com.inik.camcon.CameraCleanupCallback { *; }
+-keep interface com.inik.camcon.data.datasource.nativesource.CameraCaptureListener { *; }
+-keep interface com.inik.camcon.data.datasource.nativesource.LiveViewCallback { *; }
+
+# 콜백 구현체의 필수 메서드 시그니처 보존
+-keepclassmembers class ** implements com.inik.camcon.NativeErrorCallback {
+    public void onNativeError(int, java.lang.String);
+}
+-keepclassmembers class ** implements com.inik.camcon.CameraCleanupCallback {
+    public void onCleanupComplete(boolean, java.lang.String);
+}
+-keepclassmembers class ** implements com.inik.camcon.data.datasource.nativesource.CameraCaptureListener {
+    public void onPhotoCaptured(java.lang.String, java.lang.String);
+}
+-keepclassmembers class ** implements com.inik.camcon.data.datasource.nativesource.LiveViewCallback {
+    public void onLiveViewFrame(byte[]);
+    public void onLiveViewError(java.lang.String);
 }
 
 # 네이티브 메서드를 가진 모든 클래스 보호
@@ -33,64 +88,19 @@
     native <methods>;
 }
 
-# JNI 콜백 인터페이스들 보호
--keep class com.inik.camcon.NativeErrorCallback {
-    public <methods>;
-}
-
--keep class com.inik.camcon.CameraCleanupCallback {
-    public <methods>;
-}
-
-# 카메라 관련 콜백 클래스들 보호
--keep class com.inik.camcon.data.datasource.nativesource.CameraCaptureListener {
-    public <methods>;
-}
-
--keep class com.inik.camcon.data.datasource.nativesource.LiveViewCallback {
-    public <methods>;
-}
-
-# 네이티브에서 접근하는 데이터 클래스들 보호
+# 네이티브 데이터소스 DI 관련 보호
 -keep class com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource$** {
     *;
 }
 
-# Hilt 관련 보호 (네이티브 데이터소스 DI)
 -keep class com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource {
     public <init>(...);
     public <methods>;
 }
 
-# 시스템 로드 라이브러리 메서드 보호
--keep class java.lang.System {
-    public static void loadLibrary(java.lang.String);
-    public static void load(java.lang.String);
-}
-
-# 네이티브 라이브러리에서 사용되는 Android API 보호
--keep class android.content.Context {
-    public java.io.File getFilesDir();
-    public android.content.pm.ApplicationInfo getApplicationInfo();
-}
-
 # JSON 파싱 관련 보호 (네이티브에서 JSON 반환)
 -keep class org.json.** {
     public <methods>;
-}
-
-# 바이트 배열 관련 보호 (이미지 데이터 전송)
--keep class ** {
-    public byte[] *(...);
-}
-
-# 로그 관련 보호
--keep class android.util.Log {
-    public static int d(java.lang.String, java.lang.String);
-    public static int e(java.lang.String, java.lang.String);
-    public static int e(java.lang.String, java.lang.String, java.lang.Throwable);
-    public static int w(java.lang.String, java.lang.String);
-    public static int w(java.lang.String, java.lang.String, java.lang.Throwable);
 }
 
 # 스레드 관련 보호 (네이티브 콜백에서 사용)
@@ -110,28 +120,35 @@
     public <methods>;
 }
 
-# 네이티브 라이브러리 빌드 관련 보호
--keep class com.inik.camcon.** {
-    public <init>(...);
-}
-
 # ExceptionInInitializerError 방지를 위한 정적 초기화 블록 보호
 -keepclassmembers class com.inik.camcon.CameraNative {
     <clinit>();
 }
 
-# ========== 릴리즈 빌드 최적화 방지 ==========
+# ---- 경고 무시 ----
+-dontwarn java.lang.invoke.**
+-dontwarn org.conscrypt.**
+-dontwarn org.bouncycastle.**
+-dontwarn org.openjsse.**
 
-# 네이티브 라이브러리 관련 패키지는 최적화하지 않음
--keep,allowobfuscation class com.inik.camcon.data.datasource.nativesource.**
+# ---- [옵션] Google Sign-In/Firebase 이슈 시 최소 보강 ----
+# 대부분의 Google/Firebase 라이브러리는 consumer-rules를 포함하므로 불필요합니다.
+# 특정 런타임 이슈가 있을 때만 필요한 최소 범위만 주석 해제하세요.
+#-keep class com.google.android.gms.common.api.ApiException { *; }
+#-keep class com.google.android.gms.common.api.Status { *; }
+#-keep class com.google.android.gms.auth.api.identity.SignInClient { *; }
+#-keep class com.google.android.gms.tasks.Task { *; }
 
-# 사용하지 않는 것처럼 보이는 메서드들도 보호 (네이티브에서 호출될 수 있음)
--keepclassmembers class * {
-    @javax.inject.Inject <init>(...);
+# ---- 로그 관련 클래스 최적화 ----
+# LogcatManager는 유지하되, 내부 로직은 최적화 허용
+-keep class com.inik.camcon.utils.LogcatManager {
+    # 클래스는 유지하지만 개별 메서드는 위에서 제거 규칙 적용
 }
 
-# 디버그 정보 유지 (릴리즈 모드 디버깅용)
--keepattributes SourceFile,LineNumberTable,*Annotation*
+# Constants.Logging 클래스는 컴파일 타임 상수이므로 유지
+-keep class com.inik.camcon.utils.Constants$Logging {
+    *;
+}
 
 # 내부 클래스 이름 유지 (네이티브 콜백에서 필요)
 -keepattributes InnerClasses,EnclosingMethod
