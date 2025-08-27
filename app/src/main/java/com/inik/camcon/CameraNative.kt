@@ -46,6 +46,7 @@ object CameraNative {
      */
     private fun loadNativeLibraries() {
         val libraries = listOf(
+            // gphoto2 라이브러리들
             "gphoto2_port" to "gphoto2 포트 라이브러리",
             "gphoto2_port_iolib_disk" to "gphoto2 디스크 I/O 라이브러리",
             "gphoto2_port_iolib_usb1" to "gphoto2 USB1 I/O 라이브러리",
@@ -185,6 +186,8 @@ object CameraNative {
     external fun setSubscriptionTier(tier: Int)
     external fun getSubscriptionTier(): Int
 
+    external fun initializeCameraCache() // 카메라 캐시 초기화
+
     // 안전한 네이티브 메서드 호출을 위한 래퍼 함수들
     fun safeTestLibraryLoad(): String {
         ensureLibrariesLoaded()
@@ -203,7 +206,17 @@ object CameraNative {
 
     fun safeInitCameraWithFd(fd: Int, nativeLibDir: String): Int {
         ensureLibrariesLoaded()
-        return initCameraWithFd(fd, nativeLibDir)
+        val result = initCameraWithFd(fd, nativeLibDir)
+        if (result == 0) {
+            // 초기화 성공 시 캐시 초기화
+            try {
+                initializeCameraCache()
+                Log.d(TAG, "카메라 캐시 초기화 완료")
+            } catch (e: Exception) {
+                Log.w(TAG, "카메라 캐시 초기화 실패 (무시)", e)
+            }
+        }
+        return result
     }
 
     fun safeCapturePhoto(): Int {
