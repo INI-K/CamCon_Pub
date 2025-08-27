@@ -9,6 +9,7 @@ import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,10 +17,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -86,6 +90,7 @@ import java.io.FileOutputStream
 class SettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setContent {
             val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
             val themeMode by appSettingsViewModel.themeMode.collectAsState()
@@ -104,7 +109,7 @@ class SettingsActivity : ComponentActivity() {
 @Preview(showBackground = true, name = "SettingsScreen Preview")
 @Composable
 fun SettingsScreenPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         // Provide a default onBackClick. ViewModel is not injected in Preview.
         SettingsScreen(
             onBackClick = {},
@@ -169,6 +174,7 @@ fun SettingsScreen(
     // 앱 설정 상태
     val isCameraControlsEnabled by appSettingsViewModel.isCameraControlsEnabled.collectAsState()
     val isLiveViewEnabled by appSettingsViewModel.isLiveViewEnabled.collectAsState()
+    val isAdminTier by appSettingsViewModel.isAdminTier.collectAsState()
     val currentThemeMode by appSettingsViewModel.themeMode.collectAsState()
     val isAutoStartEventListener by appSettingsViewModel.isAutoStartEventListenerEnabled.collectAsState()
     val isShowLatestPhotoWhenDisabled by appSettingsViewModel.isShowLatestPhotoWhenDisabled.collectAsState()
@@ -224,6 +230,7 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                modifier = Modifier.statusBarsPadding(),
                 title = { Text("설정") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
@@ -233,7 +240,8 @@ fun SettingsScreen(
                 backgroundColor = MaterialTheme.colors.primary,
                 contentColor = MaterialTheme.colors.onPrimary
             )
-        }
+        },
+        contentWindowInsets = WindowInsets.safeDrawing
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -256,13 +264,33 @@ fun SettingsScreen(
                         onCheckedChange = { appSettingsViewModel.setCameraControlsEnabled(it) }
                     )
 
-                    if (isCameraControlsEnabled) {
+                    if (isCameraControlsEnabled && isAdminTier) {
                         SettingsItemWithSwitch(
                             icon = Icons.Default.Visibility,
                             title = "라이브뷰 활성화",
-                            subtitle = "실시간 카메라 화면 표시",
+                            subtitle = "실시간 카메라 화면 표시 (ADMIN 전용)",
                             checked = isLiveViewEnabled,
                             onCheckedChange = { appSettingsViewModel.setLiveViewEnabled(it) }
+                        )
+
+                        SettingsItemWithSwitch(
+                            icon = Icons.Default.Settings,
+                            title = "자동 이벤트 수신",
+                            subtitle = "카메라 제어 탭 진입 시 자동으로 이벤트 리스너 시작",
+                            checked = isAutoStartEventListener,
+                            onCheckedChange = {
+                                appSettingsViewModel.setAutoStartEventListenerEnabled(
+                                    it
+                                )
+                            }
+                        )
+                    } else if (isCameraControlsEnabled && !isAdminTier) {
+                        // ADMIN 티어가 아닐 때 라이브뷰 제한 안내
+                        SettingsItem(
+                            icon = Icons.Default.Visibility,
+                            title = "라이브뷰 기능",
+                            subtitle = "ADMIN 티어에서만 사용 가능한 기능입니다",
+                            onClick = { /* 클릭해도 아무 동작 안함 */ }
                         )
 
                         SettingsItemWithSwitch(

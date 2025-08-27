@@ -65,6 +65,7 @@ import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
 import com.inik.camcon.presentation.viewmodel.ServerPhotosViewModel
+import com.inik.camcon.data.datasource.local.ThemeMode
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -588,7 +589,7 @@ fun MyPhotosMultiSelectActionBar(
 @Preview(showBackground = true)
 @Composable
 fun EmptyMyPhotosStatePreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         EmptyMyPhotosState()
     }
 }
@@ -596,7 +597,7 @@ fun EmptyMyPhotosStatePreview() {
 @Preview(showBackground = true)
 @Composable
 fun CapturedPhotoItemPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         CapturedPhotoItem(
             photo = CapturedPhoto(
                 id = "1",

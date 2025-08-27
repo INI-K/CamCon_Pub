@@ -55,6 +55,7 @@ import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.LoginUiState
 import com.inik.camcon.presentation.viewmodel.LoginViewModel
+import com.inik.camcon.data.datasource.local.ThemeMode
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -130,12 +131,17 @@ class LoginActivity : ComponentActivity() {
             val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestIdToken(getString(R.string.default_web_client_id))
                 .requestEmail()
+                .requestProfile()
                 .build()
 
             val googleSignInClient = GoogleSignIn.getClient(this, gso)
-            val signInIntent = googleSignInClient.signInIntent
-            Log.d("LoginActivity", "Launching Google Sign-In intent")
-            googleSignInLauncher.launch(signInIntent)
+            
+            // 기존 계정이 있으면 먼저 로그아웃
+            googleSignInClient.signOut().addOnCompleteListener {
+                val signInIntent = googleSignInClient.signInIntent
+                Log.d("LoginActivity", "Launching Google Sign-In intent")
+                googleSignInLauncher.launch(signInIntent)
+            }
         } catch (e: Exception) {
             Log.e("LoginActivity", "Error creating Google Sign-In intent", e)
         }
@@ -315,7 +321,7 @@ fun LoginScreen(
 @Preview(showBackground = true)
 @Composable
 fun LoginScreenPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         LoginScreen(
             uiState = LoginUiState(),
             onGoogleSignIn = { _ -> },

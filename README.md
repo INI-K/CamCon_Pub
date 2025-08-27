@@ -32,8 +32,18 @@ DSLR/미러리스 카메라를 안드로이드 기기로 완전히 제어할 수
 - **스마트 메모리 관리**: 대용량 이미지도 안전하게 처리
 - **다양한 포맷 지원**: JPEG, PNG, HEIC 등 주요 이미지 포맷
 
-### 사용법
+### 로그 최적화
 
+- **LogcatManager**: 중앙집중식 로그 관리 시스템
+    - DEBUG 빌드에서만 로그 출력
+    - 컴포넌트별 선택적 로그 활성화/비활성화
+    - 릴리즈 빌드에서 ProGuard를 통한 로그 코드 완전 제거
+- **성능 향상**:
+    - 릴리즈 빌드에서 로그 관련 오버헤드 제거
+    - 앱 크기 최적화
+    - 배터리 사용량 최소화
+
+### 사용법
 1. **카메라 연결**
     - USB OTG 케이블로 카메라와 안드로이드 기기 연결
     - 카메라 전원 ON 및 PC 연결 모드 설정
@@ -476,6 +486,21 @@ flowchart TD
     - 여유 저장 공간 확인
     - 메모리 부족 시 앱 재시작
 
+## 로그 사용법
+
+```kotlin
+// 기본 로그
+LogcatManager.d("TAG", "디버그 메시지")
+LogcatManager.i("TAG", "정보 메시지")
+LogcatManager.w("TAG", "경고 메시지")
+LogcatManager.e("TAG", "에러 메시지")
+
+// 성능 측정
+val startTime = System.currentTimeMillis()
+LogcatManager.perfStart("TAG", "작업명")
+// ... 작업 수행
+LogcatManager.perfEnd("TAG", "작업명", startTime)
+```
 
 ## 라이선스
 
