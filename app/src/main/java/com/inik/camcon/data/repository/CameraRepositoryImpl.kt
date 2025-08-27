@@ -63,7 +63,8 @@ class CameraRepositoryImpl @Inject constructor(
     private val downloadManager: PhotoDownloadManager,
     private val uiStateManager: com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager,
     private val connectionGlobalManager: com.inik.camcon.domain.manager.CameraConnectionGlobalManager,
-    private val getSubscriptionUseCase: GetSubscriptionUseCase
+    private val getSubscriptionUseCase: GetSubscriptionUseCase,
+    private val errorHandlingManager: com.inik.camcon.domain.manager.ErrorHandlingManager
 ) : CameraRepository {
 
     init {
@@ -90,6 +91,14 @@ class CameraRepositoryImpl @Inject constructor(
                 } catch (e: Exception) {
                     com.inik.camcon.utils.LogcatManager.e("카메라레포지토리", "이벤트 리스너 중지 실패", e)
                 }
+            }
+        }
+
+        // ErrorHandlingManager의 USB 분리 이벤트 구독
+        CoroutineScope(Dispatchers.IO).launch {
+            errorHandlingManager.usbDisconnectedEvent.collect {
+                Log.d("카메라레포지토리", "USB 분리 이벤트 감지 - USB 분리 처리 시작")
+                usbCameraManager.handleUsbDisconnection()
             }
         }
     }
