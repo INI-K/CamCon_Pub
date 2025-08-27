@@ -43,7 +43,11 @@ data class CameraUiState(
     // 카메라 상태 점검 다이얼로그 표시 플래그
     val showCameraStatusCheckDialog: Boolean = false,
     // RAW 파일 제한 알림 상태
-    val rawFileRestriction: RawFileRestriction? = null
+    val rawFileRestriction: RawFileRestriction? = null,
+    // PTPIP 연결 상태 (Wi-Fi 카메라)
+    val isPtpipConnected: Boolean = false,
+    // 사진 미리보기 탭 블록 상태 (PTPIP 연결 시 네트워크 부하로 인한 블록)
+    val isPreviewTabBlocked: Boolean = false
 )
 
 /**

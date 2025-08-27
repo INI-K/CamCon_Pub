@@ -5,9 +5,13 @@ import androidx.lifecycle.viewModelScope
 import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
 import com.inik.camcon.data.datasource.local.ThemeMode
 import com.inik.camcon.domain.usecase.ColorTransferUseCase
+import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
+import com.inik.camcon.domain.model.SubscriptionTier
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -15,7 +19,8 @@ import javax.inject.Inject
 @HiltViewModel
 class AppSettingsViewModel @Inject constructor(
     private val appPreferencesDataSource: AppPreferencesDataSource,
-    private val colorTransferUseCase: ColorTransferUseCase
+    private val colorTransferUseCase: ColorTransferUseCase,
+    private val getSubscriptionUseCase: GetSubscriptionUseCase
 ) : ViewModel() {
 
     /**
@@ -30,10 +35,32 @@ class AppSettingsViewModel @Inject constructor(
             )
 
     /**
-     * 라이브뷰 표시 여부
+     * 라이브뷰 표시 여부 - ADMIN 티어에서만 활성화 가능
      * 기본값을 false로 변경하여 USB 연결 시 기본적으로 수신 화면이 표시되도록 수정
      */
-    val isLiveViewEnabled: StateFlow<Boolean> = appPreferencesDataSource.isLiveViewEnabled
+    val isLiveViewEnabled: StateFlow<Boolean> = combine(
+        appPreferencesDataSource.isLiveViewEnabled,
+        getSubscriptionUseCase.getSubscriptionTier()
+    ) { settingEnabled, subscriptionTier ->
+        // ADMIN 티어가 아니면 항상 false
+        if (subscriptionTier != SubscriptionTier.ADMIN) {
+            false
+        } else {
+            settingEnabled
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = false
+    )
+
+    /**
+     * 현재 사용자가 ADMIN 티어인지 확인
+     */
+    val isAdminTier: StateFlow<Boolean> = getSubscriptionUseCase.getSubscriptionTier()
+        .map { tier ->
+            tier == SubscriptionTier.ADMIN
+        }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
