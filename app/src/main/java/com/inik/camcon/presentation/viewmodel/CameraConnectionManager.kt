@@ -133,11 +133,20 @@ class CameraConnectionManager @Inject constructor(
                     }
                     .onFailure { error ->
                         Log.e(TAG, "자동 카메라 연결 실패", error)
-                        uiStateManager.onConnectionFailure(error)
+                        // 에러 메시지와 함께 연결 상태 업데이트
+                        uiStateManager.updateConnectionState(false, error.message)
+                        uiStateManager.updateUsbInitialization(false, null)
+                        // PtpTimeoutException인 경우 재시작 다이얼로그 표시
+                        if (error is com.inik.camcon.data.repository.managers.PtpTimeoutException) {
+                            Log.d(TAG, "PTP 타임아웃 또는 I/O 오류 감지 - 재시작 다이얼로그 표시")
+                            uiStateManager.handlePtpTimeout(error)
+                            uiStateManager.showRestartDialog(true)
+                        }
                     }
             } catch (e: Exception) {
                 Log.e(TAG, "자동 카메라 연결 중 예외 발생", e)
-                uiStateManager.onConnectionFailure(e)
+                uiStateManager.updateConnectionState(false, e.message)
+                uiStateManager.updateUsbInitialization(false, null) // USB 초기화 상태 해제 추가
             } finally {
                 _isAutoConnecting.value = false
                 Log.d(TAG, "자동 카메라 연결 완료")
@@ -222,14 +231,22 @@ class CameraConnectionManager @Inject constructor(
                     }
                     .onFailure { error ->
                         Log.e(TAG, "카메라 연결 실패", error)
-                        uiStateManager.onConnectionFailure(error)
+                        // 에러 메시지와 함께 연결 상태 업데이트
+                        uiStateManager.updateConnectionState(false, error.message)
+                        // PtpTimeoutException인 경우 재시작 다이얼로그 표시
+                        if (error is com.inik.camcon.data.repository.managers.PtpTimeoutException) {
+                            Log.d(TAG, "PTP 타임아웃 또는 I/O 오류 감지 - 재시작 다이얼로그 표시")
+                            uiStateManager.handlePtpTimeout(error)
+                            uiStateManager.showRestartDialog(true)
+                        }
                     }
 
                 uiStateManager.updateLoadingState(false)
             } catch (e: Exception) {
                 Log.e(TAG, "카메라 연결 중 예외 발생", e)
                 uiStateManager.updateLoadingState(false)
-                uiStateManager.onConnectionFailure(e)
+                uiStateManager.updateConnectionState(false, e.message)
+                uiStateManager.updateUsbInitialization(false, null) // USB 초기화 상태 해제 추가
             }
         }
     }
@@ -259,16 +276,58 @@ class CameraConnectionManager @Inject constructor(
     fun refreshUsbDevices(uiStateManager: CameraUiStateManager) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val devices = refreshUsbDevicesUseCase()
-                uiStateManager.updateUsbDeviceState(
-                    devices.size,
-                    usbCameraManager.hasUsbPermission.value
-                )
+                Log.d(TAG, "USB 디바이스 새로고침 시작")
 
-                devices.firstOrNull()?.let { device ->
-                    if (!usbCameraManager.hasUsbPermission.value) {
+                val devices = refreshUsbDevicesUseCase()
+                val hasPermission = usbCameraManager.hasUsbPermission.value
+                val isConnected = usbCameraManager.isNativeCameraConnected.value
+
+                uiStateManager.updateUsbDeviceState(devices.size, hasPermission)
+
+                if (devices.isNotEmpty()) {
+                    val device = devices.first()
+
+                    if (!hasPermission) {
+                        // 권한이 없으면 권한 요청
+                        Log.d(TAG, "USB 권한 없음 - 권한 요청")
                         requestUsbPermissionUseCase(device)
+                        uiStateManager.setError("USB 권한을 요청했습니다. 대화상자에서 승인해주세요.")
+                    } else if (!isConnected) {
+                        // 권한이 있고 연결되지 않은 경우 자동 연결 시도
+                        Log.d(TAG, "USB 권한 있음 & 미연결 상태 - 자동 연결 시도")
+                        uiStateManager.updateUsbInitialization(true, "USB 카메라 연결 시도 중...")
+
+                        // 직접 연결 시도
+                        connectCameraUseCase("auto")
+                            .onSuccess {
+                                Log.d(TAG, "새로고침 후 카메라 연결 성공")
+                                uiStateManager.onConnectionSuccess()
+
+                                // 카메라 전원 상태 확인
+                                checkCameraPowerStateAndTest()
+
+                                // 이벤트 리스너 자동 시작 시도
+                                tryAutoStartEventListener(uiStateManager)
+                            }
+                            .onFailure { error ->
+                                Log.e(TAG, "새로고침 후 카메라 연결 실패", error)
+                                uiStateManager.updateConnectionState(false, error.message)
+                                uiStateManager.updateUsbInitialization(false, null)
+                                // PtpTimeoutException인 경우 재시작 다이얼로그 표시
+                                if (error is com.inik.camcon.data.repository.managers.PtpTimeoutException) {
+                                    Log.d(TAG, "PTP 타임아웃 또는 I/O 오류 감지 - 재시작 다이얼로그 표시")
+                                    uiStateManager.handlePtpTimeout(error)
+                                    uiStateManager.showRestartDialog(true)
+                                }
+                            }
+                    } else {
+                        // 이미 연결되어 있는 경우
+                        Log.d(TAG, "이미 카메라가 연결되어 있음")
+                        uiStateManager.setError("카메라가 이미 연결되어 있습니다")
                     }
+                } else {
+                    Log.d(TAG, "USB 디바이스가 감지되지 않음")
+                    uiStateManager.setError("USB 카메라가 감지되지 않았습니다")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "USB 디바이스 새로고침 실패", e)

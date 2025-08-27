@@ -23,6 +23,7 @@ class ErrorHandlingManager @Inject constructor() {
         // 에러 코드 상수
         const val ERROR_USB_TIMEOUT = -10
         const val ERROR_USB_DETECTION_FAILED = -52
+        const val ERROR_USB_DISCONNECTED = -4  // libusb device disconnected
         const val ERROR_USB_WRITE_FAILED = -35
     }
 
@@ -33,6 +34,10 @@ class ErrorHandlingManager @Inject constructor() {
     // 네이티브 에러 스트림
     private val _nativeErrorEvent = MutableSharedFlow<NativeErrorEvent>()
     val nativeErrorEvent: SharedFlow<NativeErrorEvent> = _nativeErrorEvent.asSharedFlow()
+
+    // USB 분리 이벤트 스트림
+    private val _usbDisconnectedEvent = MutableSharedFlow<Unit>()
+    val usbDisconnectedEvent: SharedFlow<Unit> = _usbDisconnectedEvent.asSharedFlow()
 
     private var isCallbackRegistered = false
 
@@ -82,12 +87,28 @@ class ErrorHandlingManager @Inject constructor() {
             }
 
             ERROR_USB_DETECTION_FAILED -> {
+                // USB 분리 이벤트 발생 (-52도 USB 분리로 처리)
+                _usbDisconnectedEvent.tryEmit(Unit)
+
                 NativeErrorEvent(
                     errorCode = errorCode,
                     originalMessage = errorMessage,
-                    userFriendlyMessage = "USB 카메라를 감지할 수 없습니다. 앱을 재시작해주세요.",
-                    severity = ErrorSeverity.CRITICAL,
-                    actionRequired = ErrorAction.RESTART_APP
+                    userFriendlyMessage = "USB 카메라와 연결이 끊어졌습니다.",
+                    severity = ErrorSeverity.HIGH,
+                    actionRequired = ErrorAction.RECONNECT_CAMERA
+                )
+            }
+
+            ERROR_USB_DISCONNECTED -> {
+                // USB 분리 이벤트 발생
+                _usbDisconnectedEvent.tryEmit(Unit)
+
+                NativeErrorEvent(
+                    errorCode = errorCode,
+                    originalMessage = errorMessage,
+                    userFriendlyMessage = "USB 카메라가 분리되었습니다.",
+                    severity = ErrorSeverity.HIGH,
+                    actionRequired = ErrorAction.RECONNECT_CAMERA
                 )
             }
 

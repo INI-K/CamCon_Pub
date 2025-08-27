@@ -32,14 +32,18 @@ class CameraUiStateManager @Inject constructor() {
     /**
      * 연결 상태 업데이트
      */
-    fun updateConnectionState(isConnected: Boolean) {
+    fun updateConnectionState(isConnected: Boolean, errorMessage: String? = null) {
         _uiState.update {
             it.copy(
                 isConnected = isConnected,
-                error = if (isConnected) null else it.error
+                error = when {
+                    isConnected -> null  // 연결 성공 시 에러 초기화
+                    errorMessage != null -> errorMessage  // 실패 시 제공된 에러 메시지 사용
+                    else -> it.error  // 에러 메시지가 없으면 기존 에러 유지
+                }
             )
         }
-        Log.d(TAG, "연결 상태 업데이트: $isConnected")
+        Log.d(TAG, "연결 상태 업데이트: $isConnected, 에러: $errorMessage")
     }
 
     /**

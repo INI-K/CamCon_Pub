@@ -181,6 +181,19 @@ class CameraConnectionManager @Inject constructor(
                 Result.success(true)
             }
 
+            result == -52 -> {
+                // GP_ERROR_IO_USB_FIND - USB 포트에서 카메라를 찾을 수 없음
+                Log.e("카메라연결매니저", "USB 포트에서 카메라를 찾을 수 없음: $result")
+                withContext(Dispatchers.Main) {
+                    _isConnected.value = false
+                    _isInitializing.value = false
+                }
+                Log.d("카메라연결매니저", "카메라 초기화 상태 변경: false (USB 카메라 인식 실패)")
+                
+                // USB 연결은 유지되므로 재시도 가능함을 알림
+                Result.failure(Exception("USB 카메라 인식 실패\n\n가능한 해결 방법:\n1. 카메라 전원이 켜져있는지 확인\n2. 카메라를 PTP/MTP 모드로 설정\n3. 화면 하단의 '새로고침' 버튼을 눌러 재시도\n\n문제가 지속되면 USB 케이블을 재연결해주세요"))
+            }
+
             result == -7 -> {
                 // I/O 오류 감지 - USB 권한/커널 드라이버 문제로 앱 재시작 필요
                 Log.e("카메라연결매니저", "USB I/O 오류 감지: $result")
