@@ -118,39 +118,36 @@ class SplashActivity : ComponentActivity() {
     }
 
     /**
-     * 백그라운드에서 Libgphoto2 라이브러리들을 미리 로드합니다.
-     * 카메라 연결 시 빠른 초기화를 위해 스플래시 화면에서 수행합니다.
+     * 백그라운드에서 Libgphoto2 라이브러리들의 로딩 상태를 확인합니다.
+     * 라이브러리는 이제 CameraNative의 init 블록에서 자동으로 로드되므로 상태만 확인합니다.
      */
     private fun loadLibrariesInBackground() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                LogcatManager.i("SplashActivity", "🚀 라이브러리 로딩 프로세스 시작")
+                LogcatManager.i("SplashActivity", "🚀 라이브러리 상태 확인 프로세스 시작")
                 withContext(Dispatchers.Main) {
-                    libraryLoadingStatus = "라이브러리 로딩 중..."
+                    libraryLoadingStatus = "라이브러리 상태 확인 중..."
                 }
-                
-                // 라이브러리 로딩 전 상태 확인
-                val alreadyLoaded = CameraNative.isLibrariesLoaded()
+
+                // 라이브러리 로딩 상태 확인
+                val startTime = System.currentTimeMillis()
+                val isLoaded = CameraNative.isLibrariesLoaded()
+
                 LogcatManager.d(
                     "SplashActivity",
-                    "라이브러리 로딩 전 상태: ${if (alreadyLoaded) "이미 로드됨" else "로드되지 않음"}"
+                    "라이브러리 로딩 상태: ${if (isLoaded) "정상 로드됨" else "로드되지 않음"}"
                 )
 
-                val startTime = System.currentTimeMillis()
-
-                if (!alreadyLoaded) {
-                    LogcatManager.i("SplashActivity", "📦 Libgphoto2 라이브러리 로딩 시작...")
-
-                    // 라이브러리 로딩
-                    CameraNative.loadLibraries()
-
-                    val loadingTime = System.currentTimeMillis() - startTime
-                    LogcatManager.i("SplashActivity", "✅ 라이브러리 로딩 완료! (소요시간: ${loadingTime}ms)")
-                } else {
-                    LogcatManager.i("SplashActivity", "✅ 라이브러리가 이미 로드되어 있음")
+                if (!isLoaded) {
+                    LogcatManager.e("SplashActivity", "❌ 라이브러리가 로드되지 않았습니다")
+                    withContext(Dispatchers.Main) {
+                        libraryLoadingStatus = "라이브러리 로드 실패"
+                        isLibraryLoaded = false
+                    }
+                    return@launch
                 }
 
-                // 라이브러리 로딩 후 환경변수 설정
+                // 환경변수 설정
                 val nativeLibDir = applicationContext.applicationInfo.nativeLibraryDir
                 LogcatManager.d("SplashActivity", "네이티브 라이브러리 경로: $nativeLibDir")
 
@@ -167,10 +164,6 @@ class SplashActivity : ComponentActivity() {
                 LogcatManager.i("SplashActivity", "✅ 환경변수 설정 완료")
 
                 val totalTime = System.currentTimeMillis() - startTime
-                LogcatManager.d(
-                    "SplashActivity",
-                    "라이브러리 상태 확인: ${CameraNative.isLibrariesLoaded()}"
-                )
                 
                 withContext(Dispatchers.Main) {
                     libraryLoadingStatus = "라이브러리 준비 완료 (${totalTime}ms)"
@@ -187,9 +180,9 @@ class SplashActivity : ComponentActivity() {
                 }
                 
             } catch (e: Exception) {
-                LogcatManager.e("SplashActivity", "❌ 라이브러리 로딩 실패: ${e.message}", e)
+                LogcatManager.e("SplashActivity", "❌ 라이브러리 상태 확인 실패: ${e.message}", e)
                 withContext(Dispatchers.Main) {
-                    libraryLoadingStatus = "라이브러리 로딩 실패: ${e.message}"
+                    libraryLoadingStatus = "라이브러리 상태 확인 실패: ${e.message}"
                     isLibraryLoaded = false
                 }
             }
