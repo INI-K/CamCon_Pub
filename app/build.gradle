@@ -7,37 +7,69 @@ plugins {
     id 'com.google.gms.google-services'
 }
 
-// Git 태그에서 버전 정보를 가져오는 함수
-def getVersionFromGit() {
+// === 개선된 버전 관리 시스템 ===
+
+// 메이저.마이너.패치 버전 정의 (수동 관리)
+project.ext.majorVersion = 1
+project.ext.minorVersion = 2
+project.ext.patchVersion = 1
+
+// 브랜치별 버전 식별자 생성
+def getBranchVersionSuffix() {
     try {
-        def currentTag = 'git describe --exact-match --tags HEAD'.execute().text.trim()
-        if (currentTag) {
-            return currentTag.startsWith('v') ? currentTag.substring(1) : currentTag
+        def branchName = 'git rev-parse --abbrev-ref HEAD'.execute().text.trim()
+        def shortHash = 'git rev-parse --short HEAD'.execute().text.trim()
+
+        switch (branchName) {
+            case 'main':
+            case 'master':
+                return "" // 메인 브랜치는 순수 버전
+            case { it.startsWith('release/') }:
+                return "-rc" // 릴리즈 후보
+            case { it.startsWith('hotfix/') }:
+                return "-hotfix.${shortHash}"
+            case 'develop':
+                return "-dev.${shortHash}"
+            case { it.startsWith('feature/') }:
+                return "-feature.${shortHash}"
+            default:
+                return "-${branchName.replaceAll('[^a-zA-Z0-9]', '')}.${shortHash}"
         }
     } catch (Exception ignored) {
-        try {
-            def tagInfo = 'git describe --tags --abbrev=0'.execute().text.trim()
-            def commitCount = 'git rev-list --count HEAD'.execute().text.trim()
-            def shortHash = 'git rev-parse --short HEAD'.execute().text.trim()
-            if (tagInfo) {
-                def baseVersion = tagInfo.startsWith('v') ? tagInfo.substring(1) : tagInfo
-                return "${baseVersion}-dev.${commitCount}.${shortHash}"
-            }
-        } catch (Exception e2) {
-            // ignore
-        }
+        return "-unknown"
     }
-    return "1.0"
 }
 
-// Git 커밋 수로 버전 코드 생성 (단조증가 보장 필요)
-def getVersionCodeFromGit() {
+// 빌드 번호 생성 (타임스탬프 기반으로 단조증가 보장)
+def getBuildNumber() {
+    def buildNumber = System.getProperty("BUILD_NUMBER")
+    if (buildNumber) {
+        return buildNumber.toInteger()
+    }
+
     try {
+        // Git 커밋 카운트 사용 (안정적)
         def commitCount = 'git rev-list --count HEAD'.execute().text.trim()
         return commitCount.toInteger()
     } catch (Exception ignored) {
-        return 1
+        // 폴백: 현재 시간 기반 (분 단위)
+        return (System.currentTimeMillis() / 60000).intValue()
     }
+}
+
+// 최종 버전 문자열 생성
+def getAppVersionName() {
+    def baseVersion = "${project.ext.majorVersion}.${project.ext.minorVersion}.${project.ext.patchVersion}"
+    def suffix = getBranchVersionSuffix()
+    return baseVersion + suffix
+}
+
+// 버전 코드 생성 (Play Store용 - 단조증가 보장)
+def getAppVersionCode() {
+    // 메이저(2자리) + 마이너(2자리) + 패치(2자리) + 빌드번호 조합
+    def baseVersionCode = project.ext.majorVersion * 1000000 + project.ext.minorVersion * 10000 + project.ext.patchVersion * 100
+    def buildNumber = getBuildNumber()
+    return baseVersionCode + (buildNumber % 100) // 빌드번호는 99까지만 사용
 }
 
 android {
@@ -67,8 +99,8 @@ android {
         applicationId "com.inik.camcon"
         minSdk 29
         targetSdk 35
-        versionCode getVersionCodeFromGit()
-        versionName getVersionFromGit()
+        versionCode getAppVersionCode()
+        versionName getAppVersionName()
         ndk { abiFilters "arm64-v8a" }
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
@@ -277,6 +309,18 @@ dependencies {
 }
 
 // 커스텀 빌드 태스크들
+task printVersion {
+    description = '현재 앱 버전 정보 출력'
+    doLast {
+        println "=== CamCon 버전 정보 ==="
+        println "Version Name: ${getAppVersionName()}"
+        println "Version Code: ${getAppVersionCode()}"
+        println "Build Number: ${getBuildNumber()}"
+        println "Branch Suffix: ${getBranchVersionSuffix()}"
+        println "========================"
+    }
+}
+
 task buildDebug(type: GradleBuild) {
     description = '디버그 모드로 빌드 및 설치'
     tasks = ['assembleDebug', 'installDebug']
