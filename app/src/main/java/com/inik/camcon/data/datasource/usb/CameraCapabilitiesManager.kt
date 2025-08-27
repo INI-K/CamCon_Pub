@@ -96,6 +96,7 @@ class CameraCapabilitiesManager @Inject constructor(
 
     /**
      * 마스터 카메라 데이터를 가져오는 중앙집중 함수
+     * 지연 로딩: 실제로 필요할 때만 가져옴
      */
     private suspend fun ensureMasterCameraData(): Pair<String, String> =
         withContext(Dispatchers.IO) {
@@ -118,9 +119,12 @@ class CameraCapabilitiesManager @Inject constructor(
                 return@withContext Pair(masterCameraAbilities!!, masterWidgetJson!!)
             }
 
-            // 새로 가져오기
+            // 새로 가져오기 (초기화 직후 자동 실행 방지를 위해 지연 추가)
             isFetchingMasterData = true
             try {
+                // 카메라가 완전히 초기화될 때까지 짧은 지연
+                kotlinx.coroutines.delay(500)
+
                 Log.d(TAG, "마스터 카메라 데이터 새로 가져오는 중...")
                 val abilities = CameraNative.listCameraAbilities()
                 val widgets = CameraNative.buildWidgetJson()

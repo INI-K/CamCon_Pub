@@ -97,6 +97,10 @@ class NativeCameraDataSource @Inject constructor(
 
             val result = CameraNative.safeInitCameraWithFd(fd, correctNativeLibDir)
             Log.d(TAG, "카메라 초기화 (FD 기반) 완료: 결과 코드=$result")
+
+            // 초기화 성공 시에도 여기서는 추가 조회하지 않음
+            // 필요한 정보는 UI에서 요청할 때만 조회
+
             result
         }
     }

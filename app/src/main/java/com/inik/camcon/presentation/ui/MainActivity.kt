@@ -81,6 +81,7 @@ import com.inik.camcon.utils.LogcatManager
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -894,6 +895,10 @@ class MainActivity : ComponentActivity() {
         // USB 디바이스 연결 Intent 처리를 비동기로 수행
         lifecycleScope.launch(Dispatchers.IO) {
             handleUsbIntent(intent)
+
+            // 추가: 앱 시작 시 이미 연결된 USB 디바이스 검색
+            delay(500) // UI 초기화 대기
+            checkAndInitializeUsbDevices()
         }
 
         setContent {
@@ -1113,6 +1118,41 @@ class MainActivity : ComponentActivity() {
             }
         } catch (e: Exception) {
             LogcatManager.e(TAG, "USB 권한 상태 확인 중 오류", e)
+        }
+    }
+
+    private suspend fun checkAndInitializeUsbDevices() = withContext(Dispatchers.IO) {
+        try {
+            // USB 매니저를 사용하여 연결된 디바이스 목록 가져오기
+            val devices = usbCameraManager.getCameraDevices()
+
+            // 연결된 디바이스 목록이 비어 있으면 종료
+            if (devices.isEmpty()) {
+                LogcatManager.d(TAG, "연결된 USB 카메라 디바이스 없음")
+                return@withContext
+            }
+
+            // 연결된 디바이스 중 첫 번째 디바이스를 선택
+            val device = devices.first()
+
+            // 디바이스에 대한 권한이 있는지 확인
+            if (!usbCameraManager.hasUsbPermission.value) {
+                LogcatManager.d(TAG, "디바이스에 대한 권한이 없음, 권한 요청: ${device.deviceName}")
+                withContext(Dispatchers.Main) {
+                    usbCameraManager.requestPermission(device)
+                }
+            } else {
+                LogcatManager.d(TAG, "디바이스에 대한 권한이 있음: ${device.deviceName}")
+                // 권한 있음 + 아직 네이티브 연결이 없다면 자동 초기화 트리거
+                if (!usbCameraManager.isNativeCameraConnected.value) {
+                    LogcatManager.d(TAG, "네이티브 연결 없음 - 자동 초기화 시작: ${device.deviceName}")
+                    withContext(Dispatchers.Main) {
+                        usbCameraManager.connectToCamera(device)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            LogcatManager.e(TAG, "USB 디바이스 초기화 중 오류", e)
         }
     }
 

@@ -598,27 +598,22 @@ class CameraEventManager @Inject constructor(
                 fileName: String,
                 imageData: ByteArray
             ) {
-                LogcatManager.d("카메라이벤트매니저", "📦 ${connectionType.name} 네이티브 직접 다운로드 완료: $fileName")
-                LogcatManager.d("카메라이벤트매니저", "   데이터 크기: ${imageData.size / 1024}KB")
+                Log.d("카메라이벤트매니저", "📦 ${connectionType.name} 네이티브 직접 다운로드 완료: $fileName")
+                Log.d("카메라이벤트매니저", "   데이터 크기: ${imageData.size / 1024}KB")
+                Log.d("카메라이벤트매니저", "🔄 Repository onPhotoDownloaded 콜백 호출: $fileName")
+                Log.d("카메라이벤트매니저", "   onPhotoDownloaded 콜백 null 여부: ${onPhotoDownloaded == null}")
 
-                // 이미지 데이터를 PhotoDownloadManager에 전달하여 파일로 저장
-                CoroutineScope(Dispatchers.IO).launch {
-                    try {
-                        val capturedPhoto = photoDownloadManager.handleNativePhotoDownload(
-                            filePath,
-                            fileName,
-                            imageData
-                        )
-
-                        if (capturedPhoto != null) {
-                            LogcatManager.d("카메라이벤트매니저", "✅ Native 사진 저장 성공: $fileName")
-                            onPhotoDownloaded?.invoke(filePath, fileName, imageData)
-                        } else {
-                            LogcatManager.e("카메라이벤트매니저", "❌ Native 사진 저장 실패: $fileName")
-                        }
-                    } catch (e: Exception) {
-                        LogcatManager.e("카메라이벤트매니저", "❌ Native 사진 처리 중 예외: $fileName", e)
+                // Repository의 콜백을 직접 호출 (PhotoDownloadManager 중복 처리 제거)
+                try {
+                    if (onPhotoDownloaded != null) {
+                        Log.d("카메라이벤트매니저", "🚀 실제 콜백 호출 시작: $fileName")
+                        onPhotoDownloaded.invoke(filePath, fileName, imageData)
+                        Log.d("카메라이벤트매니저", "✅ Repository 콜백 호출 완료: $fileName")
+                    } else {
+                        Log.w("카메라이벤트매니저", "⚠️ onPhotoDownloaded 콜백이 null입니다: $fileName")
                     }
+                } catch (e: Exception) {
+                    Log.e("카메라이벤트매니저", "❌ Repository 콜백 호출 중 예외: $fileName", e)
                 }
             }
         }

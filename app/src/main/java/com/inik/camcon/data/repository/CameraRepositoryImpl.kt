@@ -67,13 +67,38 @@ class CameraRepositoryImpl @Inject constructor(
     private val errorHandlingManager: com.inik.camcon.domain.manager.ErrorHandlingManager
 ) : CameraRepository {
 
+    // 중복 처리 방지를 위한 변수들
+    private val processedFiles = mutableSetOf<String>()
+    private val processedFilesMutex = java.util.concurrent.locks.ReentrantLock()
+
+    private val _capturedPhotos = MutableStateFlow<List<CapturedPhoto>>(emptyList())
+    private val _cameraSettings = MutableStateFlow<CameraSettings?>(null)
+
     init {
         // GPU 초기화
         colorTransferUseCase.initializeGPU(context)
 
         // PTPIP 사진 다운로드 콜백 설정
         ptpipDataSource.setPhotoDownloadedCallback { filePath, fileName, imageData ->
-            handleNativePhotoDownload(filePath, fileName, imageData)
+            Log.d("카메라레포지토리", "PTPIP에서 사진 다운로드 완료: $fileName")
+
+            // 바로 UI에 반영되도록 CapturedPhoto 생성 및 업데이트
+            val capturedPhoto = CapturedPhoto(
+                id = java.util.UUID.randomUUID().toString(),
+                filePath = extractAndBuildActualPath(filePath, fileName),
+                thumbnailPath = null,
+                captureTime = System.currentTimeMillis(),
+                cameraModel = connectionManager.cameraCapabilities.value?.model ?: "PTPIP Camera",
+                settings = _cameraSettings.value,
+                size = imageData.size.toLong(),
+                width = 0, // 실제 크기는 나중에 업데이트
+                height = 0,
+                isDownloading = false
+            )
+
+            // UI 바로 업데이트
+            updateDownloadedPhoto(capturedPhoto)
+            Log.d("카메라레포지토리", "✅ PTPIP 사진 UI 업데이트 완료: $fileName")
         }
 
         // PTPIP 연결 끊어짐 콜백 설정
@@ -102,9 +127,6 @@ class CameraRepositoryImpl @Inject constructor(
             }
         }
     }
-
-    private val _capturedPhotos = MutableStateFlow<List<CapturedPhoto>>(emptyList())
-    private val _cameraSettings = MutableStateFlow<CameraSettings?>(null)
 
     override fun getCameraFeed(): Flow<List<Camera>> =
         connectionManager.cameraFeed
@@ -146,16 +168,41 @@ class CameraRepositoryImpl @Inject constructor(
     }
 
     override suspend fun startCameraEventListener(): Result<Boolean> {
-        // val subscriptionTier = getSubscriptionUseCase.getSubscriptionTier().first() // Flow에서 한 번만 가져올 때
+        Log.d("카메라레포지토리", "🚀 startCameraEventListener 호출됨 (USB 연결용)")
+
         return eventManager.startCameraEventListener(
             isConnected = connectionManager.isConnected.value,
             isInitializing = connectionManager.isInitializing.value,
             saveDirectory = downloadManager.getSaveDirectory(),
             onPhotoCaptured = { _, _ ->
-                // handleNativePhotoDownloaded에서만 처리하므로 빈 콜백
+                // handleNativePhotoDownload에서만 처리하므로 빈 콜백
             },
             onPhotoDownloaded = { fullPath, fileName, imageData ->
-                handleNativePhotoDownload(fullPath, fileName, imageData)
+                Log.d("카메라레포지토리", "🎯 onPhotoDownloaded 콜백 호출됨! $fileName (size=${imageData.size})")
+
+                // 중복 처리 방지를 위한 체크
+                val fileKey = "$fullPath|$fileName|${imageData.size}"
+                var shouldProcess = false
+
+                processedFilesMutex.lock()
+                try {
+                    if (!processedFiles.contains(fileKey)) {
+                        processedFiles.add(fileKey)
+                        shouldProcess = true
+                        Log.d("카메라레포지토리", "🆕 새로운 파일 처리: $fileName (size=${imageData.size})")
+                    } else {
+                        Log.d("카메라레포지토리", "🚫 중복 파일 처리 방지: $fileName")
+                    }
+                } finally {
+                    processedFilesMutex.unlock()
+                }
+
+                if (shouldProcess) {
+                    Log.d("카메라레포지토리", "📥 handleNativePhotoDownload 호출: $fileName")
+                    handleNativePhotoDownload(fullPath, fileName, imageData)
+                } else {
+                    Log.d("카메라레포지토리", "⏭️ 중복으로 인해 처리 건너뜀: $fileName")
+                }
             },
             onFlushComplete = {
                 Log.d("카메라레포지토리", "🎯 카메라 이벤트 플러시 완료 - 초기화 상태 해제")
@@ -602,16 +649,16 @@ class CameraRepositoryImpl @Inject constructor(
      * 내부용 이벤트 리스너 시작
      */
     private suspend fun startEventListenerInternal() {
+        Log.d("카메라레포지토리", "🔧 startEventListenerInternal 호출됨 (내부용 - 중복 방지)")
+
         eventManager.startCameraEventListener(
             isConnected = connectionManager.isConnected.value,
             isInitializing = connectionManager.isInitializing.value,
             saveDirectory = downloadManager.getSaveDirectory(),
             onPhotoCaptured = { _, _ ->
-                // handleNativePhotoDownloaded에서만 처리하므로 빈 콜백
+                // handleNativePhotoDownload에서만 처리하므로 빈 콜백
             },
-            onPhotoDownloaded = { fullPath, fileName, imageData ->
-                handleNativePhotoDownload(fullPath, fileName, imageData)
-            },
+            onPhotoDownloaded = null, // 중복 처리 방지를 위해 null로 설정
             onFlushComplete = {
                 Log.d("카메라레포지토리", "🎯 카메라 이벤트 플러시 완료 - 초기화 상태 해제")
                 uiStateManager.updateCameraInitialization(false)
@@ -631,12 +678,15 @@ class CameraRepositoryImpl @Inject constructor(
         fileName: String,
         imageData: ByteArray
     ) {
-        Log.d("카메라레포지토리", "🎯 네이티브 사진 다운로드 처리: $fileName")
+        Log.d("카메라레포지토리", "🎯 handleNativePhotoDownload 호출됨: $fileName")
+        Log.d("카메라레포지토리", "  📁 fullPath: $fullPath")
+        Log.d("카메라레포지토리", "  📊 imageData size: ${imageData.size} bytes")
+        Log.d("카메라레포지토리", "  🧵 스레드: ${Thread.currentThread().name}")
 
         // 파일 확장자 확인
         val extension = fileName.substringAfterLast(".", "").lowercase()
         if (extension !in Constants.ImageProcessing.SUPPORTED_IMAGE_EXTENSIONS) {
-            Log.d("카메라레포지토리", "지원하지 않는 파일 무시: $fileName (확장자: $extension)")
+            Log.d("카메라레포지토리", "❌ 지원하지 않는 파일 무시: $fileName (확장자: $extension)")
             return
         }
 
@@ -653,9 +703,11 @@ class CameraRepositoryImpl @Inject constructor(
             isDownloading = true
         )
 
+        Log.d("카메라레포지토리", "📷 CapturedPhoto 생성됨: ${tempPhoto.id}")
+
         // PhotoDownloadManager를 통한 단일 다운로드 처리
         CoroutineScope(Dispatchers.IO).launch {
-            Log.d("카메라레포지토리", "📥 PhotoDownloadManager를 통한 다운로드 시작: $fileName")
+            Log.d("카메라레포지토리", "🚀 PhotoDownloadManager 코루틴 시작: $fileName")
             downloadManager.handlePhotoDownload(
                 photo = tempPhoto,
                 fullPath = fullPath,
@@ -664,14 +716,17 @@ class CameraRepositoryImpl @Inject constructor(
                 cameraSettings = _cameraSettings.value,
                 imageData = imageData,
                 onPhotoDownloaded = { downloadedPhoto ->
+                    Log.d("카메라레포지토리", "✅ 다운로드 성공 콜백: ${downloadedPhoto.filePath}")
                     updateDownloadedPhoto(downloadedPhoto)
                     Log.d("카메라레포지토리", "✅ 네이티브 사진 다운로드 완료: $fileName")
                 },
                 onDownloadFailed = { failedFileName ->
+                    Log.e("카메라레포지토리", "❌ 다운로드 실패 콜백: $failedFileName")
                     updatePhotoDownloadFailed(failedFileName)
                     Log.e("카메라레포지토리", "❌ 네이티브 사진 다운로드 실패: $failedFileName")
                 }
             )
+            Log.d("카메라레포지토리", "🏁 PhotoDownloadManager 코루틴 완료: $fileName")
         }
     }
 
@@ -754,14 +809,51 @@ class CameraRepositoryImpl @Inject constructor(
     }
 
     /**
+     * PTPIP에서 다운로드된 사진의 실제 경로를 생성
+     */
+    private fun extractAndBuildActualPath(filePath: String, fileName: String): String {
+        val cameraSubFolder = extractCameraSubFolder(filePath)
+        val fileNameWithFolder = if (cameraSubFolder.isNotEmpty()) {
+            "$cameraSubFolder/$fileName"
+        } else {
+            fileName
+        }
+
+        // 실제 저장될 경로 생성
+        val actualFilePath = "/storage/emulated/0/DCIM/CamCon/$fileNameWithFolder"
+        return actualFilePath
+    }
+
+    /**
      * 다운로드 완료된 사진 정보 업데이트
      */
     private fun updateDownloadedPhoto(downloadedPhoto: CapturedPhoto) {
         val beforeCount = _capturedPhotos.value.size
+
+        Log.d("카메라레포지토리", "🔄 updateDownloadedPhoto 호출됨")
+        Log.d("카메라레포지토리", "  📷 사진 ID: ${downloadedPhoto.id}")
+        Log.d("카메라레포지토리", "  📁 파일 경로: ${downloadedPhoto.filePath}")
+        Log.d("카메라레포지토리", "  📊 파일 크기: ${downloadedPhoto.size} bytes")
+        Log.d("카메라레포지토리", "  📋 현재 StateFlow 크기: $beforeCount 개")
+        Log.d("카메라레포지토리", "  🧵 스레드: ${Thread.currentThread().name}")
+
         _capturedPhotos.value = _capturedPhotos.value + downloadedPhoto
         val afterCount = _capturedPhotos.value.size
 
-        Log.d("카메라레포지토리", "✓ 사진 다운로드 완료 업데이트. 총 ${_capturedPhotos.value.size}개")
+        Log.d("카메라레포지토리", "✅ StateFlow 업데이트 완료: $beforeCount -> $afterCount 개")
+        Log.d("카메라레포지토리", "  🎯 총 사진 개수: ${_capturedPhotos.value.size}개")
+
+        // 중복 확인을 위해 같은 파일명의 사진이 있는지 체크
+        val sameNamePhotos = _capturedPhotos.value.filter {
+            it.filePath.contains(downloadedPhoto.filePath.substringAfterLast("/"))
+        }
+        if (sameNamePhotos.size > 1) {
+            Log.w("카메라레포지토리", "⚠️ 같은 파일명의 사진이 ${sameNamePhotos.size}개 발견됨!")
+            sameNamePhotos.forEachIndexed { index, photo ->
+                Log.w("카메라레포지토리", "    [$index] ID: ${photo.id}, 경로: ${photo.filePath}")
+            }
+        }
+
         com.inik.camcon.utils.LogcatManager.d("카메라레포지토리", "=== 사진 StateFlow 업데이트 ===")
         com.inik.camcon.utils.LogcatManager.d("카메라레포지토리", "업데이트 전: ${beforeCount}개")
         com.inik.camcon.utils.LogcatManager.d("카메라레포지토리", "업데이트 후: ${afterCount}개")
