@@ -6,6 +6,21 @@ package com.inik.camcon.utils
 object Constants {
 
     /**
+     * 로깅 관련 상수
+     */
+    object Logging {
+        // 개발 모드에서만 상세 로그 활성화
+        const val ENABLE_VERBOSE_LOGGING = false
+
+        // 특정 컴포넌트의 로그를 비활성화하고 싶을 때 사용
+        const val ENABLE_CAMERA_EVENT_LOGS = true
+        const val ENABLE_USB_CONNECTION_LOGS = true
+        const val ENABLE_PTPIP_CONNECTION_LOGS = true
+        const val ENABLE_COLOR_TRANSFER_LOGS = true
+        const val ENABLE_BACKGROUND_SERVICE_LOGS = true
+    }
+
+    /**
      * 파일 저장 관련 경로 - 외부 저장소 우선순위 시스템
      */
     object FilePaths {
