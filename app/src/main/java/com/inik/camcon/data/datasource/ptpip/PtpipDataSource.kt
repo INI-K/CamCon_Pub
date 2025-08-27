@@ -101,19 +101,13 @@ class PtpipDataSource @Inject constructor(
     }
 
     /**
-     * 라이브러리가 로드되었는지 확인하고, 로드되지 않은 경우 로드합니다.
-     * 이 함수는 스플래시 화면에서 미리 로드가 실패한 경우의 백업용입니다.
+     * 라이브러리가 로드되었는지 확인합니다.
+     * 라이브러리는 이제 init 블록에서 자동으로 로드되므로 확인만 수행합니다.
      */
     private fun ensureLibrariesLoaded() {
         if (!CameraNative.isLibrariesLoaded()) {
-            Log.w(TAG, "라이브러리가 로드되지 않음 - 백업 로딩 시작")
-            try {
-                CameraNative.loadLibraries()
-                Log.d(TAG, "백업 라이브러리 로딩 완료")
-            } catch (e: Exception) {
-                Log.e(TAG, "백업 라이브러리 로딩 실패", e)
-                throw RuntimeException("카메라 라이브러리 로딩 실패: ${e.message}", e)
-            }
+            Log.e(TAG, "네이티브 라이브러리가 로딩되지 않았습니다. 앱을 재시작해주세요.")
+            throw IllegalStateException("네이티브 라이브러리가 로딩되지 않았습니다. 앱을 재시작해주세요.")
         }
     }
 
