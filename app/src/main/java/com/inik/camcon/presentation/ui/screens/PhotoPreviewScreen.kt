@@ -56,7 +56,9 @@ import com.inik.camcon.presentation.ui.screens.components.FluidPhotoThumbnail
 import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
 import com.inik.camcon.presentation.ui.screens.components.UsbInitializationOverlay
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
+import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import com.inik.camcon.presentation.viewmodel.photo.FileTypeFilter
+import com.inik.camcon.data.datasource.local.ThemeMode
 import kotlinx.coroutines.delay
 import java.io.File
 
@@ -66,7 +68,8 @@ import java.io.File
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun PhotoPreviewScreen(
-    viewModel: PhotoPreviewViewModel = hiltViewModel()
+    viewModel: PhotoPreviewViewModel = hiltViewModel(),
+    cameraViewModel: CameraViewModel = hiltViewModel()
 ) {
     Log.d("PhotoPreviewScreen", "=== PhotoPreviewScreen 컴포저블 시작 ===")
 
@@ -80,6 +83,7 @@ fun PhotoPreviewScreen(
     val totalPages by viewModel.totalPages.collectAsState()
     val isMultiSelectMode by viewModel.isMultiSelectMode.collectAsState()
     val selectedPhotos by viewModel.selectedPhotos.collectAsState()
+    val isPtpipConnected by cameraViewModel.isPtpipConnected.collectAsState()
 
     Log.d("PhotoPreviewScreen", "현재 UI 상태:")
     Log.d("PhotoPreviewScreen", "  - isConnected: ${uiState.isConnected}")
@@ -154,6 +158,11 @@ fun PhotoPreviewScreen(
 
             // 메인 콘텐츠
             when {
+                isPtpipConnected -> {
+                    // PTPIP 연결 시 사진 미리보기 차단
+                    PtpipBlockOverlay()
+                }
+
                 !uiState.isConnected -> {
                     CameraDisconnectedState()
                 }
@@ -758,13 +767,73 @@ private fun MultiSelectActionBar(
 }
 
 /**
+ * PTPIP 모드에서 사진 미리보기를 블록하는 오버레이
+ */
+@Composable
+private fun PtpipBlockOverlay() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "📶",
+                style = MaterialTheme.typography.h2,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+            Text(
+                text = "Wi-Fi 연결 중입니다",
+                style = MaterialTheme.typography.h6,
+                color = MaterialTheme.colors.primary,
+                textAlign = TextAlign.Center,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "현재 카메라가 Wi-Fi로 연결되어 있어\n사진 미리보기를 사용할 수 없습니다.",
+                style = MaterialTheme.typography.body1,
+                color = MaterialTheme.colors.onSurface.copy(alpha = 0.85f),
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "💡 사진 미리보기를 사용하려면",
+                style = MaterialTheme.typography.body2,
+                color = MaterialTheme.colors.primary,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "USB 케이블 연결로 전환해주세요",
+                style = MaterialTheme.typography.body2,
+                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "📷 Wi-Fi 연결에서는 '카메라 제어' 탭을 이용해주세요!",
+                style = MaterialTheme.typography.caption,
+                color = MaterialTheme.colors.primary,
+                textAlign = TextAlign.Center,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+            )
+        }
+    }
+}
+
+/**
  * Previews
  */
 
 @Preview(showBackground = true)
 @Composable
 private fun ModernHeaderPreview_NoPhotos() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         ModernHeader(
             photoCount = 0,
             currentPage = 0,
@@ -779,7 +848,7 @@ private fun ModernHeaderPreview_NoPhotos() {
 @Preview(showBackground = true)
 @Composable
 private fun ModernHeaderPreview_WithPhotos() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         ModernHeader(
             photoCount = 42,
             currentPage = 1,
@@ -794,7 +863,7 @@ private fun ModernHeaderPreview_WithPhotos() {
 @Preview(showBackground = true)
 @Composable
 private fun LoadingIndicatorPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         LoadingIndicator()
     }
 }
@@ -802,7 +871,7 @@ private fun LoadingIndicatorPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun LoadMoreIndicatorPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         LoadMoreIndicator()
     }
 }
@@ -810,7 +879,7 @@ private fun LoadMoreIndicatorPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun EndOfListMessagePreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         EndOfListMessage(photoCount = 42)
     }
 }
@@ -818,7 +887,7 @@ private fun EndOfListMessagePreview() {
 @Preview(showBackground = true)
 @Composable
 private fun ErrorSnackbarPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         ErrorSnackbar(
             error = "사진을 불러오는 중 오류가 발생했습니다.",
             onRetry = {}

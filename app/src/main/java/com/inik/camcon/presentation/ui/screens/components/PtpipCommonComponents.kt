@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.provider.Settings
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,6 +43,7 @@ import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
+import com.inik.camcon.data.datasource.local.ThemeMode
 
 /**
  * Wi-Fi 상태 카드
@@ -334,7 +336,10 @@ fun CameraConnectionContent(
     selectedCamera: PtpipCamera?,
     cameraInfo: PtpipCameraInfo?,
     isPtpipEnabled: Boolean,
-    isWifiConnected: Boolean
+    isWifiConnected: Boolean,
+    isApMode: Boolean = false,
+    hasLocationPermission: Boolean = true,
+    onRequestPermission: () -> Unit = {}
 ) {
     Column {
         // 연결 상태 카드
@@ -362,12 +367,33 @@ fun CameraConnectionContent(
             )
 
             Button(
-                onClick = { ptpipViewModel.discoverCameras() },
-                enabled = !isDiscovering && isWifiConnected && isPtpipEnabled
+                onClick = {
+                    if (isApMode) {
+                        Log.d(
+                            "PtpipCommonComponents",
+                            "AP 모드 버튼 클릭, hasLocationPermission: $hasLocationPermission"
+                        )
+                        if (hasLocationPermission) {
+                            Log.d("PtpipCommonComponents", "권한 있음 - Wi-Fi 스캔 실행")
+                            ptpipViewModel.scanNearbyWifiNetworks()
+                        } else {
+                            Log.d("PtpipCommonComponents", "권한 없음 - 권한 요청 콜백 호출")
+                            onRequestPermission()
+                        }
+                    } else {
+                        ptpipViewModel.discoverCameras()
+                    }
+                },
+                enabled = if (isApMode) {
+                    !isDiscovering && isPtpipEnabled
+                } else {
+                    !isDiscovering && isWifiConnected && isPtpipEnabled
+                }
             ) {
                 Text(
                     when {
-                        isDiscovering -> "검색 중..."
+                        isDiscovering -> "스캔 중..."
+                        isApMode -> "주변 Wi‑Fi 스캔"
                         discoveredCameras.isEmpty() -> "카메라 찾기"
                         else -> "다시 검색"
                     }
@@ -385,7 +411,8 @@ fun CameraConnectionContent(
             selectedCamera = selectedCamera,
             isPtpipEnabled = isPtpipEnabled,
             isWifiConnected = isWifiConnected,
-            ptpipViewModel = ptpipViewModel
+            ptpipViewModel = ptpipViewModel,
+            isApMode = isApMode
         )
     }
 }
@@ -401,7 +428,8 @@ fun CameraListContent(
     selectedCamera: PtpipCamera?,
     isPtpipEnabled: Boolean,
     isWifiConnected: Boolean,
-    ptpipViewModel: PtpipViewModel
+    ptpipViewModel: PtpipViewModel,
+    isApMode: Boolean = false
 ) {
     when {
         !isPtpipEnabled -> {
@@ -438,7 +466,14 @@ fun CameraListContent(
                         camera = camera,
                         isSelected = camera == selectedCamera,
                         isConnecting = isConnecting,
-                        onConnect = { ptpipViewModel.connectToCamera(camera) }
+                        onConnect = {
+                            if (isApMode) {
+                                ptpipViewModel.connectToCameraAp(camera)
+                            } else {
+                                ptpipViewModel.connectToCamera(camera)
+                            }
+                        },
+                        isApMode = isApMode
                     )
                 }
             }
@@ -454,7 +489,8 @@ fun CameraItem(
     camera: PtpipCamera,
     isSelected: Boolean,
     isConnecting: Boolean,
-    onConnect: () -> Unit
+    onConnect: () -> Unit,
+    isApMode: Boolean = false
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -503,7 +539,9 @@ fun CameraItem(
                         color = MaterialTheme.colors.onPrimary
                     )
                 } else {
-                    Text("연결")
+                    Text(
+                        if (isApMode) "AP 연결" else "STA 연결"
+                    )
                 }
             }
         }
@@ -631,7 +669,8 @@ private fun CameraItemOnlinePreview() {
             ),
             isSelected = false,
             isConnecting = false,
-            onConnect = { }
+            onConnect = { },
+            isApMode = false
         )
     }
 }
@@ -649,7 +688,8 @@ private fun CameraItemSelectedPreview() {
             ),
             isSelected = true,
             isConnecting = false,
-            onConnect = { }
+            onConnect = { },
+            isApMode = false
         )
     }
 }
