@@ -33,11 +33,15 @@ KEY/appkey
 # Android NDK/CMake build files
 app/.cxx/
 app/build/
-*.so
-*.o
+#*.so
+#*.o
 
 # Gradle build cache
 .gradle/*/executionHistory/
 .gradle/*/fileHashes/
 .gradle/buildOutputCleanup/
 .gradle/file-system.probe
+
+# 중요: app/src/main/java/com/inik/camcon/data 폴더는 추적해야 함
+!app/src/main/java/com/inik/camcon/data/
+!app/src/main/java/com/inik/camcon/data/**

@@ -59,7 +59,12 @@ class UsbConnectionManager @Inject constructor(
             try {
                 Log.d(TAG, "카메라 연결 시작: ${device.deviceName}")
 
-                // 이미 네이티브 카메라가 연결되어 있으면 중복 연결 방지
+                // 초기화 중이거나 이미 연결되어 있으면 중복 연결 방지
+                if (isInitializingNativeCamera) {
+                    Log.d(TAG, "네이티브 카메라가 이미 초기화 중 - 중복 연결 방지")
+                    return@launch
+                }
+
                 if (_isNativeCameraConnected.value) {
                     Log.d(TAG, "네이티브 카메라가 이미 연결되어 있음 - 중복 연결 방지")
                     return@launch
@@ -127,15 +132,58 @@ class UsbConnectionManager @Inject constructor(
                     }
 
                     -52 -> { // GP_ERROR_IO_USB_FIND
-                        Log.e(TAG, "USB 포트에서 카메라를 찾을 수 없음. 일반 초기화로 대체")
-                        tryGeneralInit()
+                        Log.e(TAG, "USB 포트에서 카메라를 찾을 수 없음 - 카메라 연결 실패")
+                        handleUsbError(result)
+                    }
+
+                    -7 -> { // GP_ERROR_IO
+                        Log.e(TAG, "USB I/O 오류 - 권한 또는 커널 드라이버 문제")
+                        updateConnectionState(false, "USB I/O 오류")
+                        lastInitializedFd = -1
+                        currentConnection?.close()
+                        currentConnection = null
+                        currentDevice = null
+                    }
+
+                    -10 -> { // 타임아웃
+                        Log.e(TAG, "카메라 초기화 타임아웃")
+                        updateConnectionState(false, "카메라 초기화 타임아웃")
+                        lastInitializedFd = -1
+                        currentConnection?.close()
+                        currentConnection = null
+                        currentDevice = null
+                    }
+
+                    -1000 -> { // 앱 재시작 필요
+                        Log.e(TAG, "카메라 초기화 실패 - 앱 재시작 필요")
+                        updateConnectionState(false, "앱 재시작 필요")
+                        lastInitializedFd = -1
+                        currentConnection?.close()
+                        currentConnection = null
+                        currentDevice = null
+                    }
+
+                    -2000 -> { // PTP 타임아웃
+                        Log.e(TAG, "PTP 타임아웃 오류")
+                        updateConnectionState(false, "PTP 타임아웃")
+                        lastInitializedFd = -1
+                        currentConnection?.close()
+                        currentConnection = null
+                        currentDevice = null
                     }
 
                     else -> {
                         Log.e(TAG, "네이티브 카메라 초기화 실패: $result")
-                        updateConnectionState(false, "초기화 실패")
+                        updateConnectionState(false, "초기화 실패 (코드: $result)")
                         lastInitializedFd = -1
-                        tryGeneralInit()
+                        // 기타 에러의 경우에만 일반 초기화 시도
+                        if (result != -52 && result != -7 && result != -10) {
+                            tryGeneralInit()
+                        } else {
+                            currentConnection?.close()
+                            currentConnection = null
+                            currentDevice = null
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -228,6 +276,9 @@ class UsbConnectionManager @Inject constructor(
         Log.e(TAG, "USB 디바이스 분리 이벤트 처리 시작")
 
         try {
+            // 즉시 연결 상태를 false로 업데이트 (UI 반영)
+            updateConnectionState(false, "USB 디바이스 분리됨")
+
             // 카메라 이벤트 리스너 즉시 중지
             try {
                 CameraNative.stopListenCameraEvents()
@@ -245,14 +296,12 @@ class UsbConnectionManager @Inject constructor(
                 }
             }.start()
 
-            // 상태 초기화
-            updateConnectionState(false, "USB 디바이스 분리")
-
             // USB 연결 상태 초기화
             currentDevice = null
             currentConnection?.close()
             currentConnection = null
             lastInitializedFd = -1
+            isInitializingNativeCamera = false
 
             // 분리 콜백 호출
             disconnectionCallback?.invoke()
@@ -267,12 +316,25 @@ class UsbConnectionManager @Inject constructor(
             currentConnection?.close()
             currentConnection = null
             lastInitializedFd = -1
+            isInitializingNativeCamera = false
             disconnectionCallback?.invoke()
         } finally {
             // 처리 완료 후 상태 리셋 (3초 후)
             delay(3000)
             isHandlingDisconnection.set(false)
             Log.d(TAG, "USB 분리 처리 상태 리셋")
+        }
+    }
+
+    /**
+     * -52 에러 감지 시 USB 분리 처리
+     */
+    fun handleUsbError(errorCode: Int) {
+        if (errorCode == -52 || errorCode == -4) { // GP_ERROR_IO_USB_FIND 또는 libusb disconnected
+            Log.e(TAG, "USB 에러 감지 (코드: $errorCode) - USB 분리로 처리")
+            CoroutineScope(Dispatchers.IO).launch {
+                handleUsbDisconnection()
+            }
         }
     }
 

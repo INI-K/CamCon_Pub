@@ -1,5 +1,6 @@
 package com.inik.camcon
 
+import android.util.Log
 import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
 import com.inik.camcon.data.datasource.nativesource.LiveViewCallback
 
@@ -14,6 +15,8 @@ interface CameraCleanupCallback {
 }
 
 object CameraNative {
+    private const val TAG = "CameraNative"
+
     // libgphoto2 로그 레벨 상수들
     const val GP_LOG_ERROR = 0
     const val GP_LOG_VERBOSE = 1
@@ -21,76 +24,68 @@ object CameraNative {
     const val GP_LOG_DATA = 3
     const val GP_LOG_ALL = GP_LOG_DATA
 
-    // 라이브러리 로드 상태 추적
+    // 라이브러리 로딩 상태 추적
     @Volatile
     private var librariesLoaded = false
 
-    /**
-     * Libgphoto2 및 관련 라이브러리를 로드합니다.
-     * 스플래시 화면에서 미리 호출하여 카메라 연결 시 빠른 초기화를 가능하게 합니다.
-     */
-    @Synchronized
-    fun loadLibraries() {
-        if (librariesLoaded) {
-            android.util.Log.d("CameraNative", "라이브러리가 이미 로드됨 - 중복 로딩 방지")
-            return
-        }
-
+    init {
         try {
-            android.util.Log.i("CameraNative", "=== Libgphoto2 라이브러리 로딩 시작 ===")
-
-            // 1단계: gphoto2_port 라이브러리 로드
-            android.util.Log.d("CameraNative", "1/6 gphoto2_port 라이브러리 로딩...")
-            System.loadLibrary("gphoto2_port")
-            android.util.Log.d("CameraNative", "✅ gphoto2_port 로딩 완료")
-
-            // 2단계: gphoto2_port_iolib_disk 라이브러리 로드
-            android.util.Log.d("CameraNative", "2/6 gphoto2_port_iolib_disk 라이브러리 로딩...")
-            System.loadLibrary("gphoto2_port_iolib_disk")
-            android.util.Log.d("CameraNative", "✅ gphoto2_port_iolib_disk 로딩 완료")
-
-            // 3단계: gphoto2_port_iolib_usb1 라이브러리 로드
-            android.util.Log.d("CameraNative", "3/6 gphoto2_port_iolib_usb1 라이브러리 로딩...")
-            System.loadLibrary("gphoto2_port_iolib_usb1")
-            android.util.Log.d("CameraNative", "✅ gphoto2_port_iolib_usb1 로딩 완료")
-
-            // gphoto2 port 라이브러리 및 I/O 모듈 로드 (순서 중요)
-            // 일반적인 의존성은 port -> iolib -> gphoto2
-            android.util.Log.d("CameraNative", "Port 라이브러리 의존성 확인 완료")
-
-            // 4단계: gphoto2 메인 라이브러리 로드
-            android.util.Log.d("CameraNative", "4/6 gphoto2 메인 라이브러리 로딩...")
-            System.loadLibrary("gphoto2")
-            android.util.Log.d("CameraNative", "✅ gphoto2 메인 라이브러리 로딩 완료")
-
-            // 5단계: 애플리케이션 JNI 라이브러리 로드 (가장 마지막에)
-            android.util.Log.d("CameraNative", "5/6 native-lib 라이브러리 로딩...")
-            System.loadLibrary("native-lib")
-            android.util.Log.d("CameraNative", "✅ native-lib 라이브러리 로딩 완료")
-
-            // 6단계: 로딩 완료 확인
+            loadNativeLibraries()
             librariesLoaded = true
-            android.util.Log.i("CameraNative", "🎉 모든 라이브러리 로딩 성공!")
-            android.util.Log.d("CameraNative", "로딩된 라이브러리:")
-            android.util.Log.d("CameraNative", "  - gphoto2_port")
-            android.util.Log.d("CameraNative", "  - gphoto2_port_iolib_disk")
-            android.util.Log.d("CameraNative", "  - gphoto2_port_iolib_usb1")
-            android.util.Log.d("CameraNative", "  - gphoto2")
-            android.util.Log.d("CameraNative", "  - native-lib")
-            android.util.Log.i("CameraNative", "=== 라이브러리 로딩 완료 ===")
-
-        } catch (e: UnsatisfiedLinkError) {
-            android.util.Log.e("CameraNative", "❌ 라이브러리 로딩 실패: ${e.message}")
-            android.util.Log.e("CameraNative", "실패한 라이브러리: ${e.message}")
-            android.util.Log.e("CameraNative", "스택 트레이스:", e)
-            throw RuntimeException("라이브러리 로드 실패: ${e.message}", e)
+            Log.d(TAG, "✅ 모든 네이티브 라이브러리 로딩 완료")
+        } catch (e: Throwable) {
+            Log.e(TAG, "🔴 네이티브 라이브러리 로딩 실패", e)
+            librariesLoaded = false
+            // 라이브러리 로딩 실패를 앱에서 감지할 수 있도록 예외를 다시 던짐
+            throw RuntimeException("네이티브 라이브러리 로딩 실패: ${e.message}", e)
         }
     }
 
     /**
-     * 라이브러리가 로드되었는지 확인합니다.
+     * 네이티브 라이브러리들을 안전한 순서로 로딩
+     */
+    private fun loadNativeLibraries() {
+        val libraries = listOf(
+            // gphoto2 라이브러리들
+            "gphoto2_port" to "gphoto2 포트 라이브러리",
+            "gphoto2_port_iolib_disk" to "gphoto2 디스크 I/O 라이브러리",
+            "gphoto2_port_iolib_usb1" to "gphoto2 USB1 I/O 라이브러리",
+            "gphoto2" to "gphoto2 메인 라이브러리",
+            "native-lib" to "CamCon JNI 라이브러리"
+        )
+
+        for ((libName, description) in libraries) {
+            try {
+                Log.d(TAG, "📦 $description 로딩 중...")
+                System.loadLibrary(libName)
+                Log.d(TAG, "✅ $description 로딩 완료")
+
+                // 각 라이브러리 로딩 후 약간의 대기 시간 (릴리즈 모드 안정성)
+                Thread.sleep(10)
+
+            } catch (e: UnsatisfiedLinkError) {
+                Log.e(TAG, "🔴 $description 로딩 실패: $libName", e)
+                throw RuntimeException("$description 로딩 실패: ${e.message}", e)
+            } catch (e: SecurityException) {
+                Log.e(TAG, "🔴 $description 로딩 권한 오류: $libName", e)
+                throw RuntimeException("$description 로딩 권한 오류: ${e.message}", e)
+            }
+        }
+    }
+
+    /**
+     * 라이브러리 로딩 상태 확인
      */
     fun isLibrariesLoaded(): Boolean = librariesLoaded
+
+    /**
+     * 네이티브 메서드 호출 전 라이브러리 로딩 상태 확인
+     */
+    private fun ensureLibrariesLoaded() {
+        if (!librariesLoaded) {
+            throw IllegalStateException("네이티브 라이브러리가 로딩되지 않았습니다. 앱을 재시작해주세요.")
+        }
+    }
 
     /**
      * libgphoto2 환경변수를 설정합니다.
@@ -164,11 +159,8 @@ object CameraNative {
         serial: String
     ): Int
 
-
     // Connection type detection and session management
     external fun maintainSessionForStaMode(): Int
-
-
 
     // 로그 파일 관련 함수들
     external fun closeLogFile()
@@ -178,7 +170,6 @@ object CameraNative {
     external fun setLogLevel(level: Int): Boolean
     external fun enableVerboseLogging(enabled: Boolean): Boolean
     external fun enableDebugLogging(enabled: Boolean): Boolean
-
 
     // 카메라 초기화 상태 확인
     external fun isCameraInitialized(): Boolean
@@ -190,4 +181,89 @@ object CameraNative {
 
     // 네이티브 에러 콜백 등록
     external fun setErrorCallback(callback: NativeErrorCallback?)
+
+    // 구독 티어 관리 (0: FREE, 1: PREMIUM, 2: PRO)
+    external fun setSubscriptionTier(tier: Int)
+    external fun getSubscriptionTier(): Int
+
+    external fun initializeCameraCache() // 카메라 캐시 초기화
+
+    // ===== 고급 촬영 기능 (새로 추가) =====
+
+    // Trigger Capture - 카메라가 자체적으로 캡처하도록 트리거
+    external fun triggerCapture(): Int
+
+    // Bulb 모드 - 장노출 촬영
+    external fun startBulbCapture(): Int
+    external fun endBulbCapture(): Int
+    external fun bulbCaptureWithDuration(seconds: Int): Int
+
+    // 비디오 녹화
+    external fun startVideoRecording(): Int
+    external fun stopVideoRecording(): Int
+    external fun isVideoRecording(): Boolean
+
+    // 인터벌 촬영 / 타임랩스
+    external fun startIntervalCapture(intervalSeconds: Int, totalFrames: Int): Int
+    external fun stopIntervalCapture(): Int
+    external fun getIntervalCaptureStatus(): IntArray // [isRunning, capturedFrames, totalFrames]
+
+    // 고급 AF 기능
+    external fun setAFMode(mode: String): Int
+    external fun getAFMode(): String?
+    external fun setAFArea(x: Int, y: Int, width: Int, height: Int): Int
+    external fun driveManualFocus(steps: Int): Int
+
+    // Hook 이벤트 콜백 인터페이스
+    interface HookEventCallback {
+        fun onHookEvent(action: String, argument: String)
+    }
+
+    external fun registerHookCallback(callback: HookEventCallback): Int
+    external fun unregisterHookCallback()
+
+    // ===== 카메라별 고급 설정 =====
+
+    // Canon EOS 전용 설정
+    external fun setCanonColorTemperature(kelvin: Int): Int
+    external fun getCanonColorTemperature(): Int // -1 on error
+    external fun setCanonPictureStyle(style: String): Int
+    external fun setCanonWhiteBalanceAdjust(adjustBA: Int, adjustGM: Int): Int
+
+    // Nikon DSLR 전용 설정
+    external fun setNikonActiveSlot(slot: String): Int
+    external fun setNikonVideoMode(enable: Boolean): Int
+    external fun setNikonExposureDelayMode(enable: Boolean): Int
+    external fun getNikonBatteryLevel(): Int // -1 on error
+
+    // Sony Alpha 전용 설정
+    external fun setSonyFocusArea(area: String): Int
+    external fun setSonyLiveViewEffect(enable: Boolean): Int
+    external fun setSonyManualFocusing(steps: Int): Int
+
+    // Fuji X 전용 설정
+    external fun setFujiFilmSimulation(simulation: String): Int
+    external fun setFujiColorSpace(colorSpace: String): Int
+    external fun getFujiShutterCounter(): Int // -1 on error
+
+    // Panasonic Lumix 전용 설정
+    external fun setPanasonicMovieRecording(enable: Boolean): Int
+    external fun setPanasonicManualFocusDrive(steps: Int): Int
+
+    // ===== PTP 1.1 Streaming =====
+    external fun startPTPStreaming(): Int
+    external fun stopPTPStreaming(): Int
+    external fun getPTPStreamFrame(): ByteArray?
+    external fun setPTPStreamingParameters(width: Int, height: Int, fps: Int): Int
+
+    // ===== RAW 파일 특별 처리 =====
+    external fun downloadRawFile(folder: String, filename: String): ByteArray?
+    external fun downloadAllRawFiles(folder: String): Int
+    external fun extractRawMetadata(folder: String, filename: String): String?
+    external fun extractRawThumbnail(folder: String, filename: String): ByteArray?
+    external fun captureDualMode(keepRawOnCard: Boolean, downloadJpeg: Boolean): Int
+    external fun filterRawFiles(folder: String, minSizeMB: Int, maxSizeMB: Int): Array<String>?
+
+    // ===== 라이브러리 상태 관리 =====
+
 }
