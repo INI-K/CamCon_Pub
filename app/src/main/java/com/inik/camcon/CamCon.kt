@@ -17,6 +17,9 @@ class CamCon : Application() {
 
         Log.d(TAG, "앱 초기화 시작")
 
+        // 네이티브 라이브러리 로딩 상태 확인
+        checkNativeLibraryStatus()
+
         try {
             FirebaseApp.initializeApp(this)
             Log.d(TAG, "Firebase 초기화 완료")
@@ -28,6 +31,41 @@ class CamCon : Application() {
         }
 
         Log.d(TAG, "앱 초기화 완료")
+    }
+
+    /**
+     * 네이티브 라이브러리 로딩 상태 확인
+     */
+    private fun checkNativeLibraryStatus() {
+        try {
+            Log.d(TAG, "🔍 네이티브 라이브러리 상태 확인 중...")
+
+            if (CameraNative.isLibrariesLoaded()) {
+                Log.d(TAG, "✅ 네이티브 라이브러리 정상 로딩됨")
+
+                // 라이브러리 로딩 테스트
+                try {
+                    val testResult = CameraNative.testLibraryLoad()
+                    Log.d(TAG, "✅ 네이티브 라이브러리 테스트 성공: $testResult")
+                } catch (e: Exception) {
+                    Log.w(TAG, "⚠️ 네이티브 라이브러리 테스트 실패", e)
+                }
+
+                // libgphoto2 버전 확인
+                try {
+                    val version = CameraNative.getLibGphoto2Version()
+                    Log.d(TAG, "📦 libgphoto2 버전: $version")
+                } catch (e: Exception) {
+                    Log.w(TAG, "⚠️ libgphoto2 버전 확인 실패", e)
+                }
+
+            } else {
+                Log.e(TAG, "🔴 네이티브 라이브러리 로딩 실패 - 앱 기능이 제한될 수 있습니다")
+            }
+
+        } catch (e: Exception) {
+            Log.e(TAG, "🔴 네이티브 라이브러리 상태 확인 실패", e)
+        }
     }
 
     /**
@@ -64,9 +102,13 @@ class CamCon : Application() {
             // 네이티브 카메라 세션 종료를 백그라운드 스레드에서 실행
             Thread {
                 try {
-                    com.inik.camcon.CameraNative.closeCamera()
-                    com.inik.camcon.CameraNative.closeLogFile()
-                    Log.d(TAG, "네이티브 리소스 정리 완료")
+                    if (CameraNative.isLibrariesLoaded()) {
+                        CameraNative.closeCamera()
+                        CameraNative.closeLogFile()
+                        Log.d(TAG, "네이티브 리소스 정리 완료")
+                    } else {
+                        Log.w(TAG, "네이티브 라이브러리가 로딩되지 않아 정리 생략")
+                    }
                 } catch (e: Exception) {
                     Log.w(TAG, "네이티브 리소스 정리 중 오류", e)
                 }

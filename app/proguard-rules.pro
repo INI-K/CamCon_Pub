@@ -57,7 +57,10 @@
 -keepclasseswithmembernames class * { native <methods>; }
 
 # CamCon JNI 브리지
--keep class com.inik.camcon.CameraNative { *; }
+-keep class com.inik.camcon.CameraNative { 
+    public static <methods>;
+    native <methods>;
+}
 
 # 콜백 인터페이스
 -keep interface com.inik.camcon.NativeErrorCallback { *; }
@@ -78,6 +81,48 @@
 -keepclassmembers class ** implements com.inik.camcon.data.datasource.nativesource.LiveViewCallback {
     public void onLiveViewFrame(byte[]);
     public void onLiveViewError(java.lang.String);
+}
+
+# 네이티브 메서드를 가진 모든 클래스 보호
+-keepclasseswithmembernames,includedescriptorclasses class * {
+    native <methods>;
+}
+
+# 네이티브 데이터소스 DI 관련 보호
+-keep class com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource$** {
+    *;
+}
+
+-keep class com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource {
+    public <init>(...);
+    public <methods>;
+}
+
+# JSON 파싱 관련 보호 (네이티브에서 JSON 반환)
+-keep class org.json.** {
+    public <methods>;
+}
+
+# 스레드 관련 보호 (네이티브 콜백에서 사용)
+-keep class java.lang.Thread {
+    public <init>(java.lang.Runnable);
+    public void start();
+    public static void sleep(long);
+}
+
+# 원자적 연산 클래스 보호 (동기화에 사용)
+-keep class java.util.concurrent.atomic.AtomicBoolean {
+    public <methods>;
+}
+
+# 뮤텍스 관련 보호
+-keep class kotlinx.coroutines.sync.Mutex {
+    public <methods>;
+}
+
+# ExceptionInInitializerError 방지를 위한 정적 초기화 블록 보호
+-keepclassmembers class com.inik.camcon.CameraNative {
+    <clinit>();
 }
 
 # ---- 경고 무시 ----
@@ -104,3 +149,6 @@
 -keep class com.inik.camcon.utils.Constants$Logging {
     *;
 }
+
+# 내부 클래스 이름 유지 (네이티브 콜백에서 필요)
+-keepattributes InnerClasses,EnclosingMethod

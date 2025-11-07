@@ -1,6 +1,7 @@
 package com.inik.camcon.presentation.ui.screens
 
 import android.app.Activity
+import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.graphics.ColorSpace
 import android.media.ExifInterface
@@ -359,8 +360,19 @@ fun CameraControlScreen(
             onDismiss = { viewModel.dismissRestartDialog() },
             onRestart = {
                 viewModel.dismissRestartDialog()
-                // 액티비티 재시작 로직
-                (context as? Activity)?.recreate()
+                // 앱을 완전히 재시작
+                (context as? Activity)?.let { activity ->
+                    // 현재 Activity 종료하고 새로 시작
+                    val intent = activity.baseContext.packageManager
+                        .getLaunchIntentForPackage(activity.baseContext.packageName)
+                    intent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+                    activity.startActivity(intent)
+                    activity.finishAffinity() // 모든 Activity 스택 제거
+
+                    // 프로세스 종료 (선택적 - 더 확실한 재시작을 원할 경우)
+                    android.os.Process.killProcess(android.os.Process.myPid())
+                    System.exit(0)
+                }
             }
         )
     }
