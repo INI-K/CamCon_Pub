@@ -45,7 +45,7 @@ class CamCon : Application() {
 
                 // 라이브러리 로딩 테스트
                 try {
-                    val testResult = CameraNative.safeTestLibraryLoad()
+                    val testResult = CameraNative.testLibraryLoad()
                     Log.d(TAG, "✅ 네이티브 라이브러리 테스트 성공: $testResult")
                 } catch (e: Exception) {
                     Log.w(TAG, "⚠️ 네이티브 라이브러리 테스트 실패", e)
@@ -53,7 +53,7 @@ class CamCon : Application() {
 
                 // libgphoto2 버전 확인
                 try {
-                    val version = CameraNative.safeGetLibGphoto2Version()
+                    val version = CameraNative.getLibGphoto2Version()
                     Log.d(TAG, "📦 libgphoto2 버전: $version")
                 } catch (e: Exception) {
                     Log.w(TAG, "⚠️ libgphoto2 버전 확인 실패", e)
@@ -103,7 +103,7 @@ class CamCon : Application() {
             Thread {
                 try {
                     if (CameraNative.isLibrariesLoaded()) {
-                        CameraNative.safeCloseCamera()
+                        CameraNative.closeCamera()
                         CameraNative.closeLogFile()
                         Log.d(TAG, "네이티브 리소스 정리 완료")
                     } else {

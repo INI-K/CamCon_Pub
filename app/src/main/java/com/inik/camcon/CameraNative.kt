@@ -188,49 +188,82 @@ object CameraNative {
 
     external fun initializeCameraCache() // 카메라 캐시 초기화
 
-    // 안전한 네이티브 메서드 호출을 위한 래퍼 함수들
-    fun safeTestLibraryLoad(): String {
-        ensureLibrariesLoaded()
-        return testLibraryLoad()
+    // ===== 고급 촬영 기능 (새로 추가) =====
+
+    // Trigger Capture - 카메라가 자체적으로 캡처하도록 트리거
+    external fun triggerCapture(): Int
+
+    // Bulb 모드 - 장노출 촬영
+    external fun startBulbCapture(): Int
+    external fun endBulbCapture(): Int
+    external fun bulbCaptureWithDuration(seconds: Int): Int
+
+    // 비디오 녹화
+    external fun startVideoRecording(): Int
+    external fun stopVideoRecording(): Int
+    external fun isVideoRecording(): Boolean
+
+    // 인터벌 촬영 / 타임랩스
+    external fun startIntervalCapture(intervalSeconds: Int, totalFrames: Int): Int
+    external fun stopIntervalCapture(): Int
+    external fun getIntervalCaptureStatus(): IntArray // [isRunning, capturedFrames, totalFrames]
+
+    // 고급 AF 기능
+    external fun setAFMode(mode: String): Int
+    external fun getAFMode(): String?
+    external fun setAFArea(x: Int, y: Int, width: Int, height: Int): Int
+    external fun driveManualFocus(steps: Int): Int
+
+    // Hook 이벤트 콜백 인터페이스
+    interface HookEventCallback {
+        fun onHookEvent(action: String, argument: String)
     }
 
-    fun safeGetLibGphoto2Version(): String {
-        ensureLibrariesLoaded()
-        return getLibGphoto2Version()
-    }
+    external fun registerHookCallback(callback: HookEventCallback): Int
+    external fun unregisterHookCallback()
 
-    fun safeInitCamera(): String {
-        ensureLibrariesLoaded()
-        return initCamera()
-    }
+    // ===== 카메라별 고급 설정 =====
 
-    fun safeInitCameraWithFd(fd: Int, nativeLibDir: String): Int {
-        ensureLibrariesLoaded()
-        val result = initCameraWithFd(fd, nativeLibDir)
-        if (result == 0) {
-            // 초기화 성공 시 캐시 초기화
-            try {
-                initializeCameraCache()
-                Log.d(TAG, "카메라 캐시 초기화 완료")
-            } catch (e: Exception) {
-                Log.w(TAG, "카메라 캐시 초기화 실패 (무시)", e)
-            }
-        }
-        return result
-    }
+    // Canon EOS 전용 설정
+    external fun setCanonColorTemperature(kelvin: Int): Int
+    external fun getCanonColorTemperature(): Int // -1 on error
+    external fun setCanonPictureStyle(style: String): Int
+    external fun setCanonWhiteBalanceAdjust(adjustBA: Int, adjustGM: Int): Int
 
-    fun safeCapturePhoto(): Int {
-        ensureLibrariesLoaded()
-        return capturePhoto()
-    }
+    // Nikon DSLR 전용 설정
+    external fun setNikonActiveSlot(slot: String): Int
+    external fun setNikonVideoMode(enable: Boolean): Int
+    external fun setNikonExposureDelayMode(enable: Boolean): Int
+    external fun getNikonBatteryLevel(): Int // -1 on error
 
-    fun safeGetCameraSummary(): String {
-        ensureLibrariesLoaded()
-        return getCameraSummary()
-    }
+    // Sony Alpha 전용 설정
+    external fun setSonyFocusArea(area: String): Int
+    external fun setSonyLiveViewEffect(enable: Boolean): Int
+    external fun setSonyManualFocusing(steps: Int): Int
 
-    fun safeCloseCamera(): String {
-        ensureLibrariesLoaded()
-        return closeCamera()
-    }
+    // Fuji X 전용 설정
+    external fun setFujiFilmSimulation(simulation: String): Int
+    external fun setFujiColorSpace(colorSpace: String): Int
+    external fun getFujiShutterCounter(): Int // -1 on error
+
+    // Panasonic Lumix 전용 설정
+    external fun setPanasonicMovieRecording(enable: Boolean): Int
+    external fun setPanasonicManualFocusDrive(steps: Int): Int
+
+    // ===== PTP 1.1 Streaming =====
+    external fun startPTPStreaming(): Int
+    external fun stopPTPStreaming(): Int
+    external fun getPTPStreamFrame(): ByteArray?
+    external fun setPTPStreamingParameters(width: Int, height: Int, fps: Int): Int
+
+    // ===== RAW 파일 특별 처리 =====
+    external fun downloadRawFile(folder: String, filename: String): ByteArray?
+    external fun downloadAllRawFiles(folder: String): Int
+    external fun extractRawMetadata(folder: String, filename: String): String?
+    external fun extractRawThumbnail(folder: String, filename: String): ByteArray?
+    external fun captureDualMode(keepRawOnCard: Boolean, downloadJpeg: Boolean): Int
+    external fun filterRawFiles(folder: String, minSizeMB: Int, maxSizeMB: Int): Array<String>?
+
+    // ===== 라이브러리 상태 관리 =====
+
 }

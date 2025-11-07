@@ -161,7 +161,10 @@ android {
             } else if (buildType.name == 'releaseDebug') {
                 arguments '-DCMAKE_BUILD_TYPE=RelWithDebInfo'
             } else {
-                arguments '-DCMAKE_BUILD_TYPE=Release'
+                arguments '-DCMAKE_BUILD_TYPE=Release',
+                        '-DCMAKE_CXX_FLAGS_RELEASE=-O3 -flto -ffast-math -funroll-loops',
+                        '-DCMAKE_C_FLAGS_RELEASE=-O3 -flto -ffast-math',
+                        '-DCMAKE_SHARED_LINKER_FLAGS=-s -Wl,--gc-sections -Wl,--strip-all'
             }
             cFlags '-g'
             cppFlags '-g'
@@ -191,6 +194,16 @@ android {
         jniLibs {
             useLegacyPackaging = true
             keepDebugSymbols += ['**/*.so']
+        }
+        resources {
+            excludes += [
+                    'META-INF/DEPENDENCIES',
+                    'META-INF/LICENSE',
+                    'META-INF/LICENSE.txt',
+                    'META-INF/NOTICE',
+                    'META-INF/NOTICE.txt',
+                    'META-INF/*.kotlin_module'
+            ]
         }
     }
 
