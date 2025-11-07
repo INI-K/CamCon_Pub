@@ -76,25 +76,49 @@ class UsbCameraManager @Inject constructor(
      */
     private fun checkExistingCameraConnection() {
         try {
-            // 네이티브 카메라가 이미 초기화되어 있는지 확인
-            val summary = capabilitiesManager.getCachedOrFetchSummary()
-            if (summary.isNotEmpty() && !summary.contains("에러", ignoreCase = true) &&
-                !summary.contains("error", ignoreCase = true)
-            ) {
-                Log.d(TAG, "앱 재개 시 기존 카메라 연결이 유지되고 있음")
-            } else {
-                Log.d(TAG, "앱 재개 시 새로운 카메라 초기화 필요")
+            // USB 디바이스가 연결되어 있는지 확인
+            val devices = deviceDetector.getCameraDevices()
+            val hasPermission = hasUsbPermission.value
 
-                // 권한과 디바이스 상태 확인 후 자동 연결 시도
-                val devices = deviceDetector.getCameraDevices()
-                val hasPermission = hasUsbPermission.value
-                if (devices.isNotEmpty() && hasPermission && !isNativeCameraConnected.value) {
-                    Log.d(TAG, "재개 시 자동 연결 조건 충족 - 연결 시도: ${devices.first().deviceName}")
+            Log.d(
+                TAG,
+                "앱 시작/재개 시 USB 상태 확인: 디바이스=${devices.size}개, 권한=$hasPermission, 연결상태=${isNativeCameraConnected.value}"
+            )
+
+            if (devices.isNotEmpty()) {
+                // USB 디바이스가 연결되어 있음
+                if (!hasPermission) {
+                    // 권한이 없으면 권한 요청
+                    Log.d(TAG, "USB 디바이스 감지됨 - 권한 요청")
+                    requestPermission(devices.first())
+                } else if (!isNativeCameraConnected.value) {
+                    // 권한이 있고 카메라가 연결되지 않았으면 자동 연결 시도
+                    Log.d(TAG, "USB 디바이스 감지됨 & 권한 있음 - 자동 연결 시도")
                     connectToCamera(devices.first())
+                } else {
+                    // 이미 연결되어 있는 경우
+                    Log.d(TAG, "이미 네이티브 카메라가 연결되어 있음")
+
+                    // 연결 상태 확인을 위해 summary 체크
+                    val summary = capabilitiesManager.getCachedOrFetchSummary()
+                    if (summary.isEmpty() || summary.contains("에러", ignoreCase = true) ||
+                        summary.contains("error", ignoreCase = true)
+                    ) {
+                        Log.w(TAG, "카메라 연결 상태 불량 감지 - 재연결 시도")
+                        // 연결 상태가 불량하면 재연결 시도
+                        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO)
+                            .launch {
+                                connectionManager.disconnectCamera()
+                                kotlinx.coroutines.delay(500)
+                                connectToCamera(devices.first())
+                            }
+                    }
                 }
+            } else {
+                Log.d(TAG, "연결된 USB 디바이스 없음")
             }
         } catch (e: Exception) {
-            Log.d(TAG, "기존 카메라 연결 상태 확인 실패: ${e.message}")
+            Log.e(TAG, "기존 카메라 연결 상태 확인 실패", e)
         }
     }
 

@@ -97,24 +97,22 @@ class NativeCameraDataSource @Inject constructor(
 
             val result = CameraNative.initCameraWithFd(fd, correctNativeLibDir)
             Log.d(TAG, "카메라 초기화 (FD 기반) 완료: 결과 코드=$result")
+
+            // 초기화 성공 시에도 여기서는 추가 조회하지 않음
+            // 필요한 정보는 UI에서 요청할 때만 조회
+
             result
         }
     }
 
     /**
-     * 라이브러리가 로드되었는지 확인하고, 로드되지 않은 경우 로드합니다.
-     * 이 함수는 스플래시 화면에서 미리 로드가 실패한 경우의 백업용입니다.
+     * 라이브러리가 로드되었는지 확인합니다.
+     * 라이브러리는 이제 init 블록에서 자동으로 로드되므로 확인만 수행합니다.
      */
     private fun ensureLibrariesLoaded() {
         if (!CameraNative.isLibrariesLoaded()) {
-            Log.w(TAG, "라이브러리가 로드되지 않음 - 백업 로딩 시작")
-            try {
-                CameraNative.loadLibraries()
-                Log.d(TAG, "백업 라이브러리 로딩 완료")
-            } catch (e: Exception) {
-                Log.e(TAG, "백업 라이브러리 로딩 실패", e)
-                throw RuntimeException("카메라 라이브러리 로딩 실패: ${e.message}", e)
-            }
+            Log.e(TAG, "네이티브 라이브러리가 로딩되지 않았습니다. 앱을 재시작해주세요.")
+            throw IllegalStateException("네이티브 라이브러리가 로딩되지 않았습니다. 앱을 재시작해주세요.")
         }
     }
 
