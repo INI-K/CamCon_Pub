@@ -105,15 +105,19 @@ object AppModule {
         connectionManager: PtpipConnectionManager,
         nikonAuthService: NikonAuthenticationService,
         wifiHelper: WifiNetworkHelper,
-        cameraEventManager: CameraEventManager
-    ) = PtpipDataSource(
-        context,
-        discoveryService,
-        connectionManager,
-        nikonAuthService,
-        wifiHelper,
-        cameraEventManager
-    )
+        cameraEventManager: CameraEventManager,
+        uiStateManager: CameraUiStateManager
+    ): PtpipDataSource {
+        return PtpipDataSource(
+            context,
+            discoveryService,
+            connectionManager,
+            nikonAuthService,
+            wifiHelper,
+            cameraEventManager,
+            uiStateManager
+        )
+    }
 
     @Provides
     @Singleton

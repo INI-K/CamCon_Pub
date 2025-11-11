@@ -57,7 +57,8 @@ class PtpipDataSource @Inject constructor(
     private val connectionManager: PtpipConnectionManager,
     private val nikonAuthService: NikonAuthenticationService,
     private val wifiHelper: WifiNetworkHelper,
-    private val cameraEventManager: CameraEventManager
+    private val cameraEventManager: CameraEventManager,
+    private val uiStateManager: com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
 ) {
     private var connectedCamera: PtpipCamera? = null
     private var lastConnectedCamera: PtpipCamera? = null
@@ -507,18 +508,18 @@ class PtpipDataSource @Inject constructor(
             // Step 4: 파일 목록 조회
             // =========================
             _connectionProgressMessage.value = "파일 목록 조회 중..."
-            Log.i(TAG, "=== PTPIP 연결 후 파일 목록 조회 ===")
+            Log.i(TAG, "=== PTPIP 연결 후 파일 목록 조회 시작 ===")
 
             withContext(Dispatchers.IO) {
                 try {
-                    val fileListJson = CameraNative.getCameraFileListPaged(0, 50)
+                    val fileListJson = CameraNative.getCameraFileListPaged(0, 50) // 첫 페이지 50개
                     if (fileListJson.isNotEmpty() && fileListJson != "[]") {
-                        Log.i(TAG, "✅ 파일 목록 조회 성공")
+                        Log.i(TAG, "✅ 파일 목록 조회 성공: ${fileListJson.length} chars")
                     } else {
-                        Log.i(TAG, "📷 카메라에 파일이 없음")
+                        Log.i(TAG, "📷 카메라에 파일이 없거나 목록이 비어있음")
                     }
                 } catch (e: Exception) {
-                    Log.w(TAG, "파일 목록 조회 실패 (계속 진행): ${e.message}")
+                    Log.w(TAG, "파일 목록 조회 중 오류 (계속 진행): ${e.message}")
                 }
             }
 
@@ -646,6 +647,14 @@ class PtpipDataSource @Inject constructor(
             version = deviceInfo.version,
             serialNumber = deviceInfo.serialNumber
         )
+
+        // UI 상태 업데이트 (PTPIP도 동일하게)
+        try {
+            uiStateManager.updateCameraAbilities(abilities)
+            Log.i(TAG, "✅ PTPIP 연결 - UI 상태 업데이트 완료")
+        } catch (e: Exception) {
+            Log.e(TAG, "UI 상태 업데이트 실패", e)
+        }
     }
 
     /**

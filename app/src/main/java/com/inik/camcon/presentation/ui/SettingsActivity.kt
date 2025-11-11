@@ -517,6 +517,34 @@ fun SettingsScreen(
                 // === 배터리 최적화 예외 항목 끝 ===
             }
 
+            if (isAdminTier) {
+                // ADMIN 전용: 가상 카메라 설정
+                SettingsSection(title = "ADMIN 전용 설정") {
+                    SettingsItem(
+                        icon = Icons.Default.CameraAlt,
+                        title = "🧪 가상 카메라 (Mock Camera)",
+                        subtitle = "개발/테스트용 가상 카메라 기능",
+                        onClick = {
+                            context.startActivity(Intent(context, MockCameraActivity::class.java))
+                        }
+                    )
+
+                    SettingsItem(
+                        icon = Icons.Default.Info,
+                        title = "🔍 카메라 기능 정보",
+                        subtitle = "libgphoto2 API 기반 카메라 지원 기능 조회",
+                        onClick = {
+                            context.startActivity(
+                                Intent(
+                                    context,
+                                    CameraAbilitiesActivity::class.java
+                                )
+                            )
+                        }
+                    )
+                }
+            }
+
             if (showThemeDialog) {
                 android.app.AlertDialog.Builder(context)
                     .setTitle("테마 설정")
