@@ -36,6 +36,7 @@ import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
+import java.lang.ref.WeakReference
 
 /**
  * PTPIP (Picture Transfer Protocol over IP) 데이터 소스
@@ -61,10 +62,11 @@ class PtpipDataSource @Inject constructor(
     private var networkMonitoringJob: Job? = null
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    // Repository 콜백 저장용
-    private var onPhotoCapturedCallback: ((String, String) -> Unit)? = null
-    private var onPhotoDownloadedCallback: ((String, String, ByteArray) -> Unit)? = null
-    private var onConnectionLostCallback: (() -> Unit)? = null // Wi-Fi 연결 끊어짐 알림용
+    // Repository 콜백 저장용 - WeakReference로 메모리 누수 방지
+    private var onPhotoCapturedCallback: WeakReference<(String, String) -> Unit>? = null
+    private var onPhotoDownloadedCallback: WeakReference<(String, String, ByteArray) -> Unit>? =
+        null
+    private var onConnectionLostCallback: WeakReference<() -> Unit>? = null // Wi-Fi 연결 끊어짐 알림용
 
     // StateFlow for UI observation
     private val _connectionState = MutableStateFlow(PtpipConnectionState.DISCONNECTED)
@@ -164,7 +166,7 @@ class PtpipDataSource @Inject constructor(
                         _connectionState.value = PtpipConnectionState.DISCONNECTED
                         connectedCamera = null
                         _connectionLostMessage.value = "Wi-Fi 연결이 끊어졌습니다. 다시 연결해 주세요."
-                        onConnectionLostCallback?.invoke()
+                        onConnectionLostCallback?.get()?.invoke()
                     }
                 }
 
@@ -266,7 +268,18 @@ class PtpipDataSource @Inject constructor(
     fun cleanup() {
         networkMonitoringJob?.cancel()
         networkMonitoringJob = null
-        Log.d(TAG, "리소스 정리 완료")
+
+        // 콜백 WeakReference 정리
+        onPhotoCapturedCallback?.clear()
+        onPhotoCapturedCallback = null
+
+        onPhotoDownloadedCallback?.clear()
+        onPhotoDownloadedCallback = null
+
+        onConnectionLostCallback?.clear()
+        onConnectionLostCallback = null
+
+        Log.d(TAG, "리소스 정리 완료 (콜백 포함)")
     }
 
     /**
@@ -689,7 +702,7 @@ class PtpipDataSource @Inject constructor(
                     com.inik.camcon.utils.LogcatManager.d(TAG, "📁 실제 저장된 파일 경로: $filePath")
 
                     // 실제 저장된 파일 정보로 Repository 업데이트
-                    onPhotoDownloadedCallback?.invoke(filePath, fileName, imageData)
+                    onPhotoDownloadedCallback?.get()?.invoke(filePath, fileName, imageData)
                 },
                 onFlushComplete = {
                     Log.d(TAG, "PTPIP AP 모드 플러시 완료")
@@ -1099,12 +1112,12 @@ class PtpipDataSource @Inject constructor(
      * Repository 콜백 설정 (외부 셔터 감지 시 호출)
      */
     fun setPhotoCapturedCallback(callback: (String, String) -> Unit) {
-        onPhotoCapturedCallback = callback
+        onPhotoCapturedCallback = WeakReference(callback)
         Log.d(TAG, "PTPIP 파일 촬영 콜백 설정 완료")
     }
 
     fun setPhotoDownloadedCallback(callback: (String, String, ByteArray) -> Unit) {
-        onPhotoDownloadedCallback = callback
+        onPhotoDownloadedCallback = WeakReference(callback)
         Log.d(TAG, "PTPIP 파일 다운로드 콜백 설정 완료")
     }
 
@@ -1112,7 +1125,7 @@ class PtpipDataSource @Inject constructor(
      * Wi-Fi 연결 끊어짐 알림 콜백 설정
      */
     fun setConnectionLostCallback(callback: () -> Unit) {
-        onConnectionLostCallback = callback
+        onConnectionLostCallback = WeakReference(callback)
         Log.d(TAG, "PTPIP 연결 끊어짐 콜백 설정 완료")
     }
 
