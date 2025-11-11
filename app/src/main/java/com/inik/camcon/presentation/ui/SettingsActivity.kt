@@ -80,6 +80,7 @@ import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.AdminReferralCodeViewModel
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.AuthViewModel
+import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
@@ -123,7 +124,8 @@ fun SettingsScreen(
     ptpipViewModel: PtpipViewModel = hiltViewModel(),
     appSettingsViewModel: AppSettingsViewModel = hiltViewModel(),
     authViewModel: AuthViewModel? = hiltViewModel(),
-    adminReferralCodeViewModel: AdminReferralCodeViewModel = hiltViewModel()
+    adminReferralCodeViewModel: AdminReferralCodeViewModel = hiltViewModel(),
+    cameraViewModel: CameraViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
 
@@ -134,6 +136,11 @@ fun SettingsScreen(
 
     // 관리자 레퍼럴 코드 상태
     val adminReferralState by adminReferralCodeViewModel.uiState.collectAsState()
+
+    // 카메라 상태 정보
+    val cameraUiState by cameraViewModel.uiState.collectAsState()
+    val isUsbConnected = cameraUiState.isNativeCameraConnected
+    val isPtpipConnected = cameraUiState.isPtpipConnected
 
     // 로그아웃 성공 시 LoginActivity로 이동
     LaunchedEffect(authUiState.isSignOutSuccess) {
@@ -411,6 +418,53 @@ fun SettingsScreen(
                             context.startActivity(intent)
                         }
                     )
+                }
+            }
+
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+            // 연결된 카메라 정보 섹션
+            SettingsSection(title = "연결된 카메라 정보") {
+                val connectionType = when {
+                    isUsbConnected -> "USB 연결"
+                    isPtpipConnected -> "Wi-Fi 연결 (PTPIP)"
+                    else -> "연결 안됨"
+                }
+
+                val cameraName = when {
+                    cameraUiState.connectedCameraModel != null && cameraUiState.connectedCameraManufacturer != null ->
+                        "${cameraUiState.connectedCameraManufacturer} ${cameraUiState.connectedCameraModel}"
+
+                    cameraUiState.connectedCameraModel != null ->
+                        cameraUiState.connectedCameraModel
+
+                    else -> "정보 없음"
+                }
+
+                SettingsItem(
+                    icon = Icons.Default.CameraAlt,
+                    title = "연결 상태",
+                    subtitle = connectionType,
+                    onClick = { }
+                )
+
+                if (isUsbConnected || isPtpipConnected) {
+                    SettingsItem(
+                        icon = Icons.Default.Info,
+                        title = "카메라 모델",
+                        subtitle = cameraName ?: "정보 없음",
+                        onClick = { }
+                    )
+
+                    // 기능 제한 안내
+                    cameraUiState.cameraFunctionLimitation?.let { limitation ->
+                        SettingsItem(
+                            icon = Icons.Default.Info,
+                            title = "기능 제한 안내",
+                            subtitle = limitation,
+                            onClick = { }
+                        )
+                    }
                 }
             }
 
