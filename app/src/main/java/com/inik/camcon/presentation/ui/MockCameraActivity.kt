@@ -17,8 +17,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.inik.camcon.data.datasource.local.ThemeMode
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.MockCameraViewModel
@@ -601,6 +603,40 @@ fun MockCameraScreen(
                 ) {
                     CircularProgressIndicator()
                 }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "Mock Camera Screen Preview")
+@Composable
+fun MockCameraScreenPreview() {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
+        // 프리뷰용 간단한 화면 표시
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("🧪 Mock Camera 설정") },
+                    navigationIcon = {
+                        IconButton(onClick = {}) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "뒤로")
+                        }
+                    },
+                    backgroundColor = MaterialTheme.colors.primary,
+                    contentColor = MaterialTheme.colors.onPrimary
+                )
+            }
+        ) { paddingValues ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp)
+            ) {
+                Text(
+                    "Mock Camera 설정 화면 프리뷰",
+                    style = MaterialTheme.typography.h6
+                )
             }
         }
     }
