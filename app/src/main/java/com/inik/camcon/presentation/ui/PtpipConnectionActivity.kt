@@ -3,9 +3,12 @@ package com.inik.camcon.presentation.ui
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.inik.camcon.data.datasource.local.ThemeMode
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.PtpipConnectionScreen
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
@@ -28,5 +31,15 @@ class PtpipConnectionActivity : ComponentActivity() {
                 )
             }
         }
+    }
+}
+
+@Preview(showBackground = true, name = "PTPIP Connection Screen Preview")
+@Composable
+fun PtpipConnectionActivityPreview() {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
+        PtpipConnectionScreen(
+            onBackClick = {}
+        )
     }
 }

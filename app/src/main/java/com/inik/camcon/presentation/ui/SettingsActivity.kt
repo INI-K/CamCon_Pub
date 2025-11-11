@@ -118,6 +118,13 @@ fun SettingsScreenPreview() {
     }
 }
 
+// Activity-level Preview 추가
+@Preview(showBackground = true, name = "SettingsActivity Preview")
+@Composable
+fun SettingsActivityPreview() {
+    SettingsScreenPreview()
+}
+
 @Composable
 fun SettingsScreen(
     onBackClick: () -> Unit,
