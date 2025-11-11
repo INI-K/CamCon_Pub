@@ -54,23 +54,64 @@ object CameraNative {
             "native-lib" to "CamCon JNI 라이브러리"
         )
 
+        val successList = mutableListOf<String>()
+        val failureList = mutableListOf<Pair<String, String>>()
+
         for ((libName, description) in libraries) {
             try {
-                Log.d(TAG, "📦 $description 로딩 중...")
+                Log.d(TAG, "📦 $description 로딩 중... (lib$libName.so)")
                 System.loadLibrary(libName)
+                successList.add(description)
                 Log.d(TAG, "✅ $description 로딩 완료")
 
                 // 각 라이브러리 로딩 후 약간의 대기 시간 (릴리즈 모드 안정성)
                 Thread.sleep(10)
 
             } catch (e: UnsatisfiedLinkError) {
+                val errorMsg = e.message ?: "알 수 없는 오류"
+                failureList.add(description to errorMsg)
                 Log.e(TAG, "🔴 $description 로딩 실패: $libName", e)
-                throw RuntimeException("$description 로딩 실패: ${e.message}", e)
+                Log.e(TAG, "🔴 에러 상세: $errorMsg")
+
+                // 중요한 라이브러리 로딩 실패 시 예외 발생
+                throw RuntimeException(
+                    "$description 로딩 실패\n" +
+                            "라이브러리: lib$libName.so\n" +
+                            "에러: $errorMsg\n" +
+                            "성공: ${successList.joinToString()}\n" +
+                            "실패: $description",
+                    e
+                )
             } catch (e: SecurityException) {
+                val errorMsg = e.message ?: "알 수 없는 보안 오류"
+                failureList.add(description to errorMsg)
                 Log.e(TAG, "🔴 $description 로딩 권한 오류: $libName", e)
-                throw RuntimeException("$description 로딩 권한 오류: ${e.message}", e)
+                Log.e(TAG, "🔴 에러 상세: $errorMsg")
+
+                throw RuntimeException(
+                    "$description 로딩 권한 오류\n" +
+                            "라이브러리: lib$libName.so\n" +
+                            "에러: $errorMsg",
+                    e
+                )
+            } catch (e: Exception) {
+                val errorMsg = e.message ?: "알 수 없는 예외"
+                failureList.add(description to errorMsg)
+                Log.e(TAG, "🔴 $description 로딩 중 예외 발생: $libName", e)
+                Log.e(TAG, "🔴 에러 상세: $errorMsg")
+
+                throw RuntimeException(
+                    "$description 로딩 중 예외 발생\n" +
+                            "라이브러리: lib$libName.so\n" +
+                            "에러: $errorMsg",
+                    e
+                )
             }
         }
+
+        // 모든 라이브러리 로딩 성공 시 로그
+        Log.i(TAG, "✅✅✅ 모든 네이티브 라이브러리 로딩 성공! ✅✅✅")
+        Log.i(TAG, "로딩된 라이브러리: ${successList.joinToString(", ")}")
     }
 
     /**
@@ -174,6 +215,63 @@ object CameraNative {
     // 카메라 초기화 상태 확인
     external fun isCameraInitialized(): Boolean
 
+    // **카메라 Abilities 조회 (libgphoto2 API)**
+    /**
+     * 현재 연결된 카메라의 Abilities 정보를 JSON으로 반환
+     *
+     * @return JSON 문자열: {
+     *   "model": "Canon EOS R5",
+     *   "manufacturer": "Canon Inc.",
+     *   "operations": 127,  // bit mask
+     *   "file_operations": 62,  // bit mask
+     *   "folder_operations": 15,  // bit mask
+     *   "port_type": 4,  // GP_PORT_USB or GP_PORT_PTPIP
+     *   "status": "PRODUCTION",
+     *   "usb_vendor": "0x04a9",
+     *   "usb_product": "0x32f0",
+     *   "supports": {
+     *     "capture_image": true,
+     *     "capture_video": true,
+     *     "capture_preview": true,
+     *     "trigger_capture": true,
+     *     "config": true,
+     *     "liveview": true,
+     *     "delete": true,
+     *     "raw": true,
+     *     "exif": true
+     *   }
+     * }
+     */
+    external fun getCameraAbilities(): String?
+
+    /**
+     * 특정 기능 지원 여부 확인
+     *
+     * @param operation 기능 이름:
+     *   - "capture_image" (GP_OPERATION_CAPTURE_IMAGE)
+     *   - "capture_video" (GP_OPERATION_CAPTURE_VIDEO)
+     *   - "capture_preview" (GP_OPERATION_CAPTURE_PREVIEW)
+     *   - "trigger_capture" (GP_OPERATION_TRIGGER_CAPTURE)
+     *   - "config" (GP_OPERATION_CONFIG)
+     *   - "delete" (GP_FILE_OPERATION_DELETE)
+     *   - "raw" (GP_FILE_OPERATION_RAW)
+     *   - "exif" (GP_FILE_OPERATION_EXIF)
+     * @return 지원 여부
+     */
+    external fun supportsOperation(operation: String): Boolean
+
+    /**
+     * 카메라 제조사 및 모델 정보 조회
+     *
+     * @return JSON 문자열: {
+     *   "manufacturer": "Canon Inc.",
+     *   "model": "Canon EOS R5",
+     *   "version": "3-1.1.2",
+     *   "serial_number": "1234567890"
+     * }
+     */
+    external fun getCameraDeviceInfo(): String?
+
     // **글로벌 작업 중단 제어 함수들**
     external fun cancelAllOperations()      // 모든 네이티브 작업 즉시 중단
     external fun resumeOperations()         // 네이티브 작업 재개
@@ -264,17 +362,35 @@ object CameraNative {
     external fun captureDualMode(keepRawOnCard: Boolean, downloadJpeg: Boolean): Int
     external fun filterRawFiles(folder: String, minSizeMB: Int, maxSizeMB: Int): Array<String>?
 
-    // ===== 라이브러리 상태 관리 =====
-
-    // ===== 고급 최적화 기능 =====
-
-    // 에러 히스토리 관리
+    /**
+     * 에러 핸들러 JNI 함수들
+     */
     external fun getErrorHistory(count: Int): String
     external fun clearErrorHistory()
 
-    // 메모리 풀 상태 확인
+    /**
+     * 메모리 풀 상태 조회 JNI 함수들
+     */
     external fun getCameraFilePoolCount(): Int
     external fun clearCameraFilePool()
     external fun getMemoryPoolStatus(): String
+
+    /**
+     * 🧪 Mock Camera (가상 카메라) JNI 함수들
+     * ADMIN 티어 전용 개발/테스트 기능
+     */
+    external fun enableMockCamera(enable: Boolean): Boolean
+    external fun isMockCameraEnabled(): Boolean
+    external fun setMockCameraModel(manufacturer: String, model: String): Boolean
+    external fun getMockCameraModel(): String
+    external fun setMockCameraImages(imagePaths: Array<String>): Boolean
+    external fun addMockCameraImage(imagePath: String): Boolean
+    external fun clearMockCameraImages(): Boolean
+    external fun getMockCameraImageCount(): Int
+    external fun setMockCameraDelay(delayMs: Int): Boolean
+    external fun getMockCameraDelay(): Int
+    external fun simulateCameraError(errorCode: Int, errorMessage: String): Boolean
+    external fun setMockCameraAutoCapture(enable: Boolean, intervalMs: Int): Boolean
+    external fun getMockCameraInfo(): String
 
 }

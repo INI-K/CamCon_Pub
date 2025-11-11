@@ -1,7 +1,13 @@
 package com.inik.camcon
 
+import android.app.Activity
 import android.app.Application
+import android.os.Build
+import android.os.Bundle
 import android.util.Log
+import android.view.View
+import android.view.WindowManager
+import androidx.core.view.WindowCompat
 import com.google.firebase.FirebaseApp
 import dagger.hilt.android.HiltAndroidApp
 
@@ -17,6 +23,20 @@ class CamCon : Application() {
 
         Log.d(TAG, "앱 초기화 시작")
 
+        // Activity Lifecycle Callbacks 등록 (Edge-to-Edge 전역 설정)
+        registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
+            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
+                setupEdgeToEdge(activity)
+            }
+
+            override fun onActivityStarted(activity: Activity) {}
+            override fun onActivityResumed(activity: Activity) {}
+            override fun onActivityPaused(activity: Activity) {}
+            override fun onActivityStopped(activity: Activity) {}
+            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
+            override fun onActivityDestroyed(activity: Activity) {}
+        })
+
         // 네이티브 라이브러리 로딩 상태 확인
         checkNativeLibraryStatus()
 
@@ -31,6 +51,21 @@ class CamCon : Application() {
         }
 
         Log.d(TAG, "앱 초기화 완료")
+    }
+
+    /**
+     * Edge-to-Edge 전역 설정
+     * Compose Scaffold가 패딩을 자동으로 처리하므로 여기서는 시스템 UI만 투명하게 설정
+     */
+    private fun setupEdgeToEdge(activity: Activity) {
+        try {
+            // WindowCompat을 사용하여 시스템 바를 앱 콘텐츠 위에 표시
+            WindowCompat.setDecorFitsSystemWindows(activity.window, false)
+
+            Log.d(TAG, "Edge-to-Edge 설정 완료: ${activity.javaClass.simpleName}")
+        } catch (e: Exception) {
+            Log.w(TAG, "Edge-to-Edge 설정 실패: ${activity.javaClass.simpleName}", e)
+        }
     }
 
     /**

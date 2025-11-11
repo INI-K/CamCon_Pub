@@ -15,7 +15,10 @@ import com.inik.camcon.data.network.ptpip.connection.PtpipConnectionManager
 import com.inik.camcon.data.network.ptpip.discovery.PtpipDiscoveryService
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.data.repository.managers.CameraEventManager
+import com.inik.camcon.domain.model.CameraAbilitiesInfo
+import com.inik.camcon.domain.model.CameraSupports
 import com.inik.camcon.domain.model.NikonConnectionMode
+import com.inik.camcon.domain.model.PtpDeviceInfo
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.PtpipCameraInfo
 import com.inik.camcon.domain.model.PtpipConnectionState
@@ -368,15 +371,18 @@ class PtpipDataSource @Inject constructor(
         }
 
     /**
-     * 스마트 카메라 연결 (하이브리드 방식)
+     * 스마트 카메라 연결 (libgphoto2 API 기반)
      */
     suspend fun connectToCamera(camera: PtpipCamera, forceApMode: Boolean = false): Boolean =
         withContext(Dispatchers.IO) {
         try {
-            Log.i(TAG, "스마트 카메라 연결 시작: ${camera.name}")
-            _connectionState.value = PtpipConnectionState.CONNECTING
+            Log.i(TAG, "============================================")
+            Log.i(TAG, "=== 스마트 카메라 연결 시작 ===")
+            Log.i(TAG, "카메라: ${camera.name}")
+            Log.i(TAG, "IP: ${camera.ipAddress}:${camera.port}")
+            Log.i(TAG, "============================================")
 
-            // AP 모드 강제 플래그 설정 (전역 표기용)
+            // AP 모드 강제 플래그 설정
             _isApModeForced.value = forceApMode
 
             // 라이브러리가 로드되지 않은 경우 로드
@@ -388,254 +394,283 @@ class PtpipDataSource @Inject constructor(
             ) {
                 Log.d(TAG, "다른 카메라 연결됨 - 기존 연결 해제")
                 disconnect()
-            } else if (_connectionState.value == PtpipConnectionState.CONNECTED &&
-                connectedCamera == camera
-            ) {
-                Log.d(TAG, "같은 카메라 이미 연결됨 - 연결 유지")
-                return@withContext true
             }
 
-            // Wi-Fi 연결 확인 생략 - WifiNetworkSpecifier 바인딩 상태에서는 정상적인 체크가 불가능
-            // 연결 시도를 통해 실제 연결 가능 여부 확인
-            Log.d(TAG, "네트워크 바인딩 상태에서 연결 시도 진행")
+            // Wi-Fi 연결 확인 생략 (네트워크 바인딩 상태에서는 불필요)
+            Log.d(TAG, "네트워크 바인딩 상태에서 연결 시도")
 
-            // 현재 네트워크 상태 로그
-            try {
-                val isNormalWifiConnected = wifiHelper.isWifiConnected()
-                Log.d(TAG, "일반 Wi-Fi 연결 상태: $isNormalWifiConnected")
-                if (!isNormalWifiConnected) {
-                    Log.d(TAG, "일반 Wi-Fi는 연결되지 않았지만 네트워크 바인딩으로 진행")
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Wi-Fi 상태 확인 실패: ${e.message}")
-            }
-
-            // AP 모드 강제: libgphoto2로만 연결 시도 (폴백 없음)
-            if (forceApMode) {
-                // 검색/소켓 테스트와의 간섭 방지를 위한 짧은 안정화 대기
-                kotlinx.coroutines.delay(200)
-                val libDir = context.applicationInfo.nativeLibraryDir
-                val result = try {
-                    Log.i(TAG, "AP모드 강제: libgphoto2 초기화 시도")
-                    CameraNative.initCameraForAPMode(camera.ipAddress, camera.port, libDir)
-                } catch (e: Exception) {
-                    Log.w(TAG, "libgphoto2 초기화 실패: ${e.message}")
-                    null
-                }
-
-                val ok = (result == "OK" || result == "GP_OK" || result?.contains(
-                    "Success",
-                    ignoreCase = true
-                ) == true)
-                if (ok) {
-                    Log.i(TAG, "✅ AP 모드 (강제): libgphoto2 연결 성공!")
-                    _connectionProgressMessage.value = "연결 완료, 파일 목록 조회 중..."
-                    connectedCamera = camera
-                    lastConnectedCamera = camera
-
-                    // AP 모드 성공 시 이벤트 리스너 시작 (비동기로 실행하되 완료까지 대기)
-                    _connectionProgressMessage.value = "이벤트 리스너 시작 중..."
-                    startAutomaticFileReceiving(camera)
-
-                    // 모든 과정이 완료된 후 CONNECTED 상태로 변경
-                    delay(2000) // 파일 목록 조회와 이벤트 리스너 시작 완료 대기
-                    _connectionState.value = PtpipConnectionState.CONNECTED
-                    _connectionProgressMessage.value = "연결 완료!"
-
-                    return@withContext true
-                } else {
-                    Log.e(TAG, "❌ AP 모드 (강제): libgphoto2 초기화 실패 - 폴백 없음")
-                    _connectionState.value = PtpipConnectionState.ERROR
-                    return@withContext false
-                }
-            }
-
-            // 1단계: libgphoto2 PTP/IP 연결 시도 (AP 모드 감지)
-            Log.i(TAG, "=== 1단계: libgphoto2 PTP/IP 연결 시도 ===")
+            // =========================
+            // Step 1: libgphoto2로 연결
+            // =========================
             val libDir = context.applicationInfo.nativeLibraryDir
-            val ptpipResult = try {
-                Log.i(TAG, "STA모드: 복잡한 연결 방식 사용")
+            _connectionProgressMessage.value = "카메라 연결 중..."
+
+            val initResult = if (forceApMode) {
+                Log.i(TAG, "=== AP 모드 강제: libgphoto2 초기화 ===")
+                CameraNative.initCameraForAPMode(camera.ipAddress, camera.port, libDir)
+            } else {
+                Log.i(TAG, "=== 표준 모드: libgphoto2 초기화 ===")
                 CameraNative.initCameraWithPtpip(camera.ipAddress, camera.port, libDir)
+            }
+
+            val initOk = (initResult == "OK" || initResult == "GP_OK" ||
+                    initResult?.contains("Success", ignoreCase = true) == true)
+
+            if (!initOk) {
+                Log.e(TAG, "❌ libgphoto2 초기화 실패: $initResult")
+                _connectionState.value = PtpipConnectionState.ERROR
+                _connectionProgressMessage.value = "연결 실패: $initResult"
+                return@withContext false
+            }
+
+            Log.i(TAG, "✅ libgphoto2 초기화 성공")
+
+            // =========================
+            // Step 2: 카메라 기능 조회 
+            // =========================
+            _connectionProgressMessage.value = "카메라 정보 확인 중..."
+
+            val abilitiesJson = try {
+                CameraNative.getCameraAbilities()
             } catch (e: Exception) {
-                Log.w(TAG, "libgphoto2 초기화 실패: ${e.message}")
+                Log.e(TAG, "Abilities 조회 중 오류", e)
                 null
             }
 
-            val initOk = (ptpipResult == "OK" || ptpipResult == "GP_OK" || ptpipResult?.contains(
-                "Success",
-                ignoreCase = true
-            ) == true)
-
-            // 비강제 모드(STA/일반)에서는 기존 로직 유지
-            // 2단계: 기본 PTPIP 연결로 제조사 확인
-            Log.i(TAG, "=== 2단계: 기본 PTPIP 연결로 제조사 확인 ===")
-            if (!connectionManager.establishConnection(camera)) {
-                Log.e(TAG, "기본 PTPIP 연결 실패")
-                _connectionState.value = PtpipConnectionState.ERROR
-                return@withContext false
+            val deviceInfoJson = try {
+                CameraNative.getCameraDeviceInfo()
+            } catch (e: Exception) {
+                Log.e(TAG, "DeviceInfo 조회 중 오류", e)
+                null
             }
 
-            val deviceInfo = connectionManager.getDeviceInfo()
-            if (deviceInfo == null) {
-                Log.e(TAG, "장치 정보를 가져올 수 없음")
-                connectionManager.closeConnections()
-                _connectionState.value = PtpipConnectionState.ERROR
-                return@withContext false
-            }
-
-            _cameraInfo.value = deviceInfo
-            Log.i(TAG, "카메라 정보 확인: ${deviceInfo.manufacturer} ${deviceInfo.model}")
-
-            // 3단계: 니콘 카메라 STA 모드 인증
-            val isNikonCamera = isNikonCamera(deviceInfo)
-            Log.d(TAG, "니콘 카메라 감지 결과: $isNikonCamera")
-
-            if (isNikonCamera) {
-                Log.i(TAG, "=== 3단계: 니콘 STA 모드 인증 ===")
-
-                // 니콘 STA 모드: 기존 PTPIP 연결을 유지하면서 libgphoto2 세션 연결
-                Log.d(TAG, "니콘 STA 모드: 기존 PTPIP 연결 유지하며 libgphoto2 세션 연결")
-
-                // 니콘 STA 인증 수행 (기존 연결 유지)
-                if (nikonAuthService.performStaAuthentication(camera)) {
-                    Log.i(TAG, "✅ 니콘 STA 모드 인증 성공!")
-
-                    // 기존 PTPIP 연결을 유지하면서 libgphoto2 세션 연결
-                    val libDir = context.applicationInfo.nativeLibraryDir
-                    try {
-                        Log.i(TAG, "=== STA 모드: 세션 유지 초기화 시작 ===")
-                        val initResult = CameraNative.initCameraWithSessionMaintenance(
-                            camera.ipAddress,
-                            camera.port,
-                            libDir
-                        )
-                        if (initResult >= 0) {
-                            Log.i(TAG, "✅ libgphoto2 세션 유지 초기화 성공!")
-                        } else {
-                            Log.w(TAG, "❌ libgphoto2 세션 유지 초기화 실패: $initResult (세션 유지)")
-                            // 세션 유지 실패해도 계속 진행 - 오류로 처리하지 않음
-                        }
-                    } catch (e: Exception) {
-                        Log.w(TAG, "❌ libgphoto2 세션 유지 초기화 실패 (예외): ${e.message}")
-                        // 예외가 발생해도 계속 진행 - 오류로 처리하지 않음
-                    }
-
-                    // 세션 초기화 성공 여부와 관계없이 연결 상태를 성공으로 설정
-                    _connectionProgressMessage.value = "연결 완료, 파일 목록 조회 중..."
-                    connectedCamera = camera
-                    lastConnectedCamera = camera
-
-                    // STA 모드에서도 이벤트 리스너 시작
-                    _connectionProgressMessage.value = "이벤트 리스너 시작 중..."
-                    startAutomaticFileReceiving(camera)
-
-                    // STA 경로에서는 AP 강제 표시를 해제
-                    _isApModeForced.value = false
-
-                    // 모든 과정이 완료된 후 CONNECTED 상태로 변경
-                    delay(2000) // 파일 목록 조회와 이벤트 리스너 시작 완료 대기
-                    _connectionState.value = PtpipConnectionState.CONNECTED
-                    _connectionProgressMessage.value = "연결 완료!"
-
-                    return@withContext true
-                } else {
-                    Log.e(TAG, "❌ 니콘 STA 모드 인증 실패")
-                    _connectionState.value = PtpipConnectionState.ERROR
-                    return@withContext false
-                }
+            if (abilitiesJson == null || deviceInfoJson == null) {
+                Log.w(TAG, "⚠️ 카메라 정보 조회 실패 (하지만 연결은 성공)")
+                // 정보 없어도 계속 진행
             } else {
-                Log.i(TAG, "니콘이 아닌 카메라 - 기본 PTPIP 연결 유지")
-                _connectionProgressMessage.value = "연결 완료, 파일 목록 조회 중..."
-                connectedCamera = camera
-                lastConnectedCamera = camera
+                val abilities = parseAbilities(abilitiesJson)
+                val deviceInfo = parseDeviceInfo(deviceInfoJson)
 
-                // 니콘이 아닌 카메라의 경우 libgphoto2 세션 유지 초기화
-                val libDir2 = context.applicationInfo.nativeLibraryDir
-                try {
-                    val initResult = CameraNative.initCameraWithSessionMaintenance(
-                        camera.ipAddress,
-                        camera.port,
-                        libDir2
-                    )
-                    if (initResult >= 0) {
-                        Log.i(TAG, "✅ libgphoto2 세션 유지 초기화 성공!")
+                Log.i(TAG, "📸 연결된 카메라 정보:")
+                Log.i(TAG, "   제조사: ${deviceInfo.manufacturer}")
+                Log.i(TAG, "   모델: ${deviceInfo.model}")
+                Log.i(TAG, "   드라이버: ${abilities.status}")
+                Log.i(TAG, "   지원 기능:")
+                Log.i(TAG, "     - 원격 촬영: ${abilities.supports.captureImage}")
+                Log.i(TAG, "     - 라이브뷰: ${abilities.supports.capturePreview}")
+                Log.i(TAG, "     - 설정 변경: ${abilities.supports.config}")
+                Log.i(TAG, "     - 트리거: ${abilities.supports.triggerCapture}")
+
+                // 상태 저장
+                storeAbilities(abilities, deviceInfo)
+
+                // =========================
+                // Step 3: 제조사별 특수 처리
+                // =========================
+                val manufacturer = abilities.getManufacturer()
+                Log.i(TAG, "=== 제조사: $manufacturer ===")
+
+                if (manufacturer == "Nikon" && !forceApMode) {
+                    // Nikon STA 모드 감지 및 인증
+                    val nikonMode = detectNikonMode(camera)
+
+                    if (nikonMode == NikonConnectionMode.STA_MODE) {
+                        Log.i(TAG, "🏠 Nikon STA 모드 감지 - 인증 필요")
+                        _connectionProgressMessage.value = "Nikon 카메라 인증 중..."
+
+                        // Nikon STA 인증
+                        if (!nikonAuthService.performStaAuthentication(camera)) {
+                            Log.e(TAG, "❌ Nikon STA 인증 실패")
+                            _connectionState.value = PtpipConnectionState.ERROR
+                            _connectionProgressMessage.value =
+                                "Nikon STA 인증 실패\n카메라에서 '연결 허용'을 눌러주세요"
+                            return@withContext false
+                        }
+
+                        Log.i(TAG, "✅ Nikon STA 인증 성공")
                     } else {
-                        Log.w(TAG, "❌ libgphoto2 세션 유지 초기화 실패: $initResult (세션 유지)")
+                        Log.i(TAG, "📡 Nikon AP 모드 - 인증 불필요")
+                    }
+                } else {
+                    Log.i(TAG, "✅ 별도 인증 불필요 (제조사: $manufacturer)")
+                }
+
+                // 기능 제한 경고
+                if (abilities.supports.isDownloadOnly()) {
+                    Log.w(TAG, "⚠️ 이 카메라는 다운로드만 지원합니다")
+                    Log.w(TAG, "   원격 촬영 및 라이브뷰는 지원되지 않습니다")
+                    _connectionProgressMessage.value = "연결 완료 (기능 제한)"
+                }
+            }
+
+            // =========================
+            // Step 4: 파일 목록 조회
+            // =========================
+            _connectionProgressMessage.value = "파일 목록 조회 중..."
+            Log.i(TAG, "=== PTPIP 연결 후 파일 목록 조회 ===")
+
+            withContext(Dispatchers.IO) {
+                try {
+                    val fileListJson = CameraNative.getCameraFileListPaged(0, 50)
+                    if (fileListJson.isNotEmpty() && fileListJson != "[]") {
+                        Log.i(TAG, "✅ 파일 목록 조회 성공")
+                    } else {
+                        Log.i(TAG, "📷 카메라에 파일이 없음")
                     }
                 } catch (e: Exception) {
-                    Log.w(TAG, "❌ libgphoto2 세션 유지 초기화 실패 (예외): ${e.message}")
+                    Log.w(TAG, "파일 목록 조회 실패 (계속 진행): ${e.message}")
                 }
-
-                // 다른 카메라에서도 이벤트 리스너 시작
-                _connectionProgressMessage.value = "이벤트 리스너 시작 중..."
-                startAutomaticFileReceiving(camera)
-
-                // STA/일반 경로에서는 AP 강제 표시를 해제
-                _isApModeForced.value = false
-
-                // 모든 과정이 완료된 후 CONNECTED 상태로 변경
-                delay(2000) // 파일 목록 조회와 이벤트 리스너 시작 완료 대기
-                _connectionState.value = PtpipConnectionState.CONNECTED
-                _connectionProgressMessage.value = "연결 완료!"
-
-                return@withContext true
             }
+
+            // =========================
+            // Step 5: 이벤트 리스너 시작
+            // =========================
+            _connectionProgressMessage.value = "이벤트 리스너 시작 중..."
+            startAutomaticFileReceiving(camera)
+
+            // =========================
+            // Step 6: 연결 완료
+            // =========================
+            connectedCamera = camera
+            lastConnectedCamera = camera
+
+            delay(2000) // 모든 초기화 완료 대기
+            _connectionState.value = PtpipConnectionState.CONNECTED
+            _connectionProgressMessage.value = "연결 완료!"
+
+            Log.i(TAG, "🎉 카메라 연결 완료!")
+            return@withContext true
 
         } catch (e: Exception) {
             Log.e(TAG, "카메라 연결 중 오류", e)
             _connectionState.value = PtpipConnectionState.ERROR
-            _connectionProgressMessage.value = ""
+            _connectionProgressMessage.value = "연결 오류: ${e.message}"
             return@withContext false
         }
     }
 
-    private fun isNikonCamera(deviceInfo: PtpipCameraInfo): Boolean {
-        // 다양한 방법으로 니콘 카메라 감지
-        val manufacturer = deviceInfo.manufacturer.lowercase()
-        val model = deviceInfo.model.lowercase()
+    /**
+     * Abilities JSON 파싱
+     */
+    private fun parseAbilities(json: String): CameraAbilitiesInfo {
+        try {
+            val obj = org.json.JSONObject(json)
+            val supportsObj = obj.getJSONObject("supports")
 
-        // 1. 정확한 문자열 매칭
-        if (manufacturer.contains("nikon") || model.contains("nikon")) {
-            Log.d(TAG, "니콘 감지: 정확한 문자열 매칭")
-            return true
+            return CameraAbilitiesInfo(
+                model = obj.getString("model"),
+                status = obj.getString("status"),
+                portType = obj.getInt("port_type"),
+                usbVendor = obj.getString("usb_vendor"),
+                usbProduct = obj.getString("usb_product"),
+                usbClass = obj.getInt("usb_class"),
+                operations = obj.getInt("operations"),
+                fileOperations = obj.getInt("file_operations"),
+                folderOperations = obj.getInt("folder_operations"),
+                supports = CameraSupports(
+                    captureImage = supportsObj.getBoolean("capture_image"),
+                    captureVideo = supportsObj.getBoolean("capture_video"),
+                    captureAudio = supportsObj.getBoolean("capture_audio"),
+                    capturePreview = supportsObj.getBoolean("capture_preview"),
+                    triggerCapture = supportsObj.getBoolean("trigger_capture"),
+                    config = supportsObj.getBoolean("config"),
+                    delete = supportsObj.getBoolean("delete"),
+                    preview = supportsObj.getBoolean("preview"),
+                    raw = supportsObj.getBoolean("raw"),
+                    audio = supportsObj.getBoolean("audio"),
+                    exif = supportsObj.getBoolean("exif"),
+                    deleteAll = supportsObj.getBoolean("delete_all"),
+                    putFile = supportsObj.getBoolean("put_file"),
+                    makeDir = supportsObj.getBoolean("make_dir"),
+                    removeDir = supportsObj.getBoolean("remove_dir")
+                )
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Abilities 파싱 실패", e)
+            throw e
         }
-
-        // 2. 부분 문자열 매칭 (깨진 문자 처리)
-        val nikonPatterns = listOf("ikon", "niko", "kon")
-        if (nikonPatterns.any { manufacturer.contains(it) || model.contains(it) }) {
-            Log.d(TAG, "니콘 감지: 부분 문자열 매칭")
-            return true
-        }
-
-        // 3. 니콘 카메라 모델명 패턴 확인
-        val nikonModelPatterns = listOf("z ", "d", "coolpix", "z8", "z9", "z6", "z7", "z5")
-        if (nikonModelPatterns.any { model.contains(it) }) {
-            Log.d(TAG, "니콘 감지: 모델명 패턴 매칭")
-            return true
-        }
-
-        // 4. 바이트 패턴으로 "Nikon" 검사 (UTF-16LE에서 깨진 경우)
-        val originalBytes = deviceInfo.manufacturer.toByteArray()
-        val nikonBytes = "Nikon".toByteArray()
-
-        // 홀수 인덱스 바이트만 비교 (UTF-16LE에서 ASCII 부분)
-        for (i in 0 until originalBytes.size - nikonBytes.size + 1 step 2) {
-            var match = true
-            for (j in nikonBytes.indices) {
-                if (i + j * 2 >= originalBytes.size || originalBytes[i + j * 2] != nikonBytes[j]) {
-                    match = false
-                    break
-                }
-            }
-            if (match) {
-                Log.d(TAG, "니콘 감지: 바이트 패턴 매칭")
-                return true
-            }
-        }
-
-        Log.d(TAG, "니콘 감지 실패: 제조사='$manufacturer', 모델='$model'")
-        return false
     }
+
+    /**
+     * DeviceInfo JSON 파싱
+     */
+    private fun parseDeviceInfo(json: String): PtpDeviceInfo {
+        try {
+            val obj = org.json.JSONObject(json)
+            return PtpDeviceInfo(
+                manufacturer = obj.getString("manufacturer"),
+                model = obj.getString("model"),
+                version = obj.getString("version"),
+                serialNumber = obj.getString("serial_number")
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "DeviceInfo 파싱 실패", e)
+            throw e
+        }
+    }
+
+    /**
+     * Nikon 연결 모드 감지 (간소화)
+     */
+    private suspend fun detectNikonMode(camera: PtpipCamera): NikonConnectionMode {
+        // PtpipConnectionManager를 통한 빠른 연결 테스트
+        if (connectionManager.establishConnection(camera)) {
+            val deviceInfo = connectionManager.getDeviceInfo()
+            connectionManager.closeConnections()
+            delay(300)
+
+            if (deviceInfo != null) {
+                // 즉시 연결 성공 = AP 모드
+                return NikonConnectionMode.AP_MODE
+            }
+        }
+
+        // 연결 실패 = STA 모드 (인증 필요)
+        return NikonConnectionMode.STA_MODE
+    }
+
+    /**
+     * Abilities 및 DeviceInfo 저장
+     */
+    private var currentAbilities: CameraAbilitiesInfo? = null
+    private var currentDeviceInfo: PtpDeviceInfo? = null
+
+    private fun storeAbilities(abilities: CameraAbilitiesInfo, deviceInfo: PtpDeviceInfo) {
+        currentAbilities = abilities
+        currentDeviceInfo = deviceInfo
+
+        // 기존 PtpipCameraInfo도 업데이트
+        _cameraInfo.value = PtpipCameraInfo(
+            manufacturer = deviceInfo.manufacturer,
+            model = deviceInfo.model,
+            version = deviceInfo.version,
+            serialNumber = deviceInfo.serialNumber
+        )
+    }
+
+    /**
+     * 현재 카메라 Abilities 조회
+     */
+    fun getCurrentAbilities(): CameraAbilitiesInfo? = currentAbilities
+
+    /**
+     * 현재 카메라 DeviceInfo 조회
+     */
+    fun getCurrentDeviceInfo(): PtpDeviceInfo? = currentDeviceInfo
+
+    /**
+     * 특정 기능 지원 여부 빠른 확인
+     */
+    fun supportsOperation(operation: String): Boolean {
+        return try {
+            CameraNative.supportsOperation(operation)
+        } catch (e: Exception) {
+            Log.e(TAG, "기능 지원 확인 실패: $operation", e)
+            false
+        }
+    }
+
+    // ... existing code ...
 
     /**
      * AP 모드 연결 성공 시 이벤트 리스너 시작 (CameraEventManager 활용)
