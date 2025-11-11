@@ -28,8 +28,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.inik.camcon.data.datasource.local.ThemeMode
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -258,5 +260,15 @@ fun LicenseItem(license: License) {
                 )
             }
         }
+    }
+}
+
+@Preview(showBackground = true, name = "Open Source Licenses Preview")
+@Composable
+fun OpenSourceLicensesScreenPreview() {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
+        OpenSourceLicensesScreen(
+            onBackClick = {}
+        )
     }
 }

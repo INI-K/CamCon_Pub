@@ -20,7 +20,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.inik.camcon.data.datasource.local.ThemeMode
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.CameraAbilitiesViewModel
@@ -212,6 +214,12 @@ private fun CameraAbilitiesContent(
 
                     InfoRow("제조사 (감지)", abilities.getManufacturer())
                     InfoRow("드라이버 상태", abilities.status)
+                    InfoRow(
+                        "포트 타입", when (abilities.portType) {
+                            1 -> "USB"
+                            else -> "Unknown"
+                        }
+                    )
                 }
             }
         }
@@ -549,3 +557,49 @@ private data class FeatureItem(
     val supported: Boolean,
     val icon: ImageVector
 )
+
+@Preview(showBackground = true, name = "Camera Abilities")
+@Composable
+private fun Preview_CameraAbilitiesScreen() {
+    val dummyAbilities = com.inik.camcon.domain.model.CameraAbilitiesInfo(
+        model = "EOS R5",
+        portType = 1,
+        usbVendor = "0x04A9",
+        usbProduct = "0x3229",
+        usbClass = 6,
+        operations = 0x00000FFF,
+        fileOperations = 0x000003F7,
+        folderOperations = 0x00000007,
+        status = "connected",
+        supports = com.inik.camcon.domain.model.CameraSupports(
+            captureImage = true,
+            captureVideo = true,
+            captureAudio = true,
+            capturePreview = true,
+            triggerCapture = true,
+            delete = true,
+            preview = true,
+            raw = true,
+            audio = true,
+            exif = true,
+            deleteAll = true,
+            putFile = true,
+            makeDir = true,
+            removeDir = true,
+            config = true
+        )
+    )
+    val dummyDeviceInfo = com.inik.camcon.domain.model.PtpDeviceInfo(
+        manufacturer = "Canon",
+        model = "EOS R5",
+        version = "1.3.2",
+        serialNumber = "123456789012",
+    )
+
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
+        CameraAbilitiesContent(
+            abilities = dummyAbilities,
+            deviceInfo = dummyDeviceInfo
+        )
+    }
+}
