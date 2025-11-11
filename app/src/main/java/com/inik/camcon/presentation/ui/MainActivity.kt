@@ -20,12 +20,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material.BottomNavigation
 import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.Icon
@@ -297,7 +295,9 @@ fun MainScreen(
                             )
                         )
                         Text(
-                            "• USB 케이블 연결을 확인해주세요\n• 카메라 전원을 확인해주세요\n• 카메라를 PC 모드로 설정해주세요",
+                            "• USB 케이블 연결을 확인해주세요\n" +
+                                    "• 카메라 전원을 확인해주세요\n" +
+                                    "• 카메라를 PC 모드로 설정해주세요",
                             style = MaterialTheme.typography.caption,
                             color = MaterialTheme.colors.onSurface.copy(
                                 alpha = 0.7f
@@ -389,11 +389,11 @@ fun MainScreen(
         }
 
         Scaffold(
+            modifier = Modifier.fillMaxSize(),
             bottomBar = {
                 // 전체화면 모드가 아닐 때만 하단 탭 표시
                 if (!isFullscreen) {
                     BottomNavigation(
-                        modifier = Modifier.navigationBarsPadding(),
                         backgroundColor = MaterialTheme.colors.surface,
                         contentColor = MaterialTheme.colors.onSurface
                     ) {
@@ -437,15 +437,14 @@ fun MainScreen(
                         }
                     }
                 }
-            },
-            contentWindowInsets = WindowInsets.safeDrawing
+            }
         ) { innerPadding ->
             NavHost(
                 navController,
                 startDestination = BottomNavItem.CameraControl.route,
-                Modifier.padding(
-                    if (isFullscreen) PaddingValues(0.dp) else innerPadding
-                )
+                Modifier
+                    .fillMaxSize()
+                    .padding(if (isFullscreen) PaddingValues(0.dp) else innerPadding)
             ) {
                 composable(BottomNavItem.PhotoPreview.route) { PhotoPreviewScreen() }
                 composable(BottomNavItem.CameraControl.route) {
@@ -516,12 +515,76 @@ fun MainScreen(
             )
         }
 
+        // Wi-Fi 연결 끊김 알림 다이얼로그
+        var showWifiDisconnectedDialog by remember { mutableStateOf(false) }
+        val ptpipConnectionState = globalConnectionState.ptpipConnectionState
+        val wasConnected = remember { mutableStateOf(false) }
+
+        LaunchedEffect(ptpipConnectionState) {
+            when (ptpipConnectionState) {
+                PtpipConnectionState.CONNECTED -> {
+                    wasConnected.value = true
+                }
+
+                PtpipConnectionState.DISCONNECTED -> {
+                    // 이전에 연결되어 있었다면 끊김 알림 표시
+                    if (wasConnected.value && (activeConnectionType == CameraConnectionType.AP_MODE || activeConnectionType == CameraConnectionType.STA_MODE)) {
+                        showWifiDisconnectedDialog = true
+                        wasConnected.value = false
+                    }
+                }
+
+                PtpipConnectionState.ERROR -> {
+                    if (wasConnected.value) {
+                        showWifiDisconnectedDialog = true
+                        wasConnected.value = false
+                    }
+                }
+
+                else -> { /* 다른 상태는 무시 */
+                }
+            }
+        }
+
+        if (showWifiDisconnectedDialog) {
+            androidx.compose.material.AlertDialog(
+                onDismissRequest = { showWifiDisconnectedDialog = false },
+                title = {
+                    Text(
+                        "Wi-Fi 연결이 끊어졌습니다",
+                        style = MaterialTheme.typography.h6,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        color = MaterialTheme.colors.error
+                    )
+                },
+                text = {
+                    androidx.compose.foundation.layout.Column {
+                        Text(
+                            "카메라의 Wi-Fi 연결이 끊어졌습니다. 다시 연결해주세요.",
+                            style = MaterialTheme.typography.body1
+                        )
+                    }
+                },
+                confirmButton = {
+                    androidx.compose.material.TextButton(
+                        onClick = { showWifiDisconnectedDialog = false }
+                    ) {
+                        Text("확인")
+                    }
+                },
+                properties = androidx.compose.ui.window.DialogProperties(
+                    dismissOnBackPress = true,
+                    dismissOnClickOutside = true
+                )
+            )
+        }
+
         // USB 연결 및 초기화 상태에 따른 UI 블로킹 오버레이
         val shouldShowOverlay =
             globalConnectionState.ptpipConnectionState == PtpipConnectionState.CONNECTING ||
-            connectionStatusMessage.contains("초기화 중") ||
-            cameraUiState.isUsbInitializing ||
-                cameraUiState.isCameraInitializing
+                    connectionStatusMessage.contains("초기화 중") ||
+                    cameraUiState.isUsbInitializing ||
+                    cameraUiState.isCameraInitializing
 
         if (shouldShowOverlay) {
             val overlayMessage = when {
