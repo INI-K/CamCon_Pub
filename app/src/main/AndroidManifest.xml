@@ -137,6 +137,12 @@
             android:exported="false"
             android:screenOrientation="fullSensor"
             android:label="Mock Camera 설정" />
+        <activity
+            android:name=".presentation.ui.CameraAbilitiesActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.CamCon"
+            android:label="카메라 기능 정보" />
 
         <!-- FileProvider for sharing photos -->
         <provider
