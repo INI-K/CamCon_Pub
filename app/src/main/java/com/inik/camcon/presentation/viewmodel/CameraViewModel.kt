@@ -573,6 +573,22 @@ class CameraViewModel @Inject constructor(
     fun dismissRestartDialog() = uiStateManager.showRestartDialog(false)
     fun dismissCameraStatusCheckDialog() = uiStateManager.showCameraStatusCheckDialog(false)
 
+    /**
+     * 카메라 기능 제한 안내 닫기
+     */
+    fun clearCameraFunctionLimitation() {
+        uiStateManager.clearCameraFunctionLimitation()
+        Log.d(TAG, "카메라 기능 제한 안내 닫기")
+    }
+
+    /**
+     * Nikon STA 경고 닫기
+     */
+    fun dismissNikonStaWarning() {
+        uiStateManager.dismissNikonStaWarning()
+        Log.d(TAG, "Nikon STA 경고 닫기")
+    }
+
     fun setTabSwitchFlag(isReturning: Boolean) {
         Log.d(TAG, "탭 전환 플래그 설정: $isReturning")
         // UiStateManager에서 관리하도록 변경 가능

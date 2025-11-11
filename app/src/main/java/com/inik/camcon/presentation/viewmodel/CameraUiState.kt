@@ -47,8 +47,43 @@ data class CameraUiState(
     // PTPIP 연결 상태 (Wi-Fi 카메라)
     val isPtpipConnected: Boolean = false,
     // 사진 미리보기 탭 블록 상태 (PTPIP 연결 시 네트워크 부하로 인한 블록)
-    val isPreviewTabBlocked: Boolean = false
-)
+    val isPreviewTabBlocked: Boolean = false,
+
+    // 동적 UI 제어 (카메라 Abilities 기반)
+    val showCaptureButton: Boolean = true,      // 촬영 버튼 표시
+    val showLiveViewTab: Boolean = true,        // 라이브뷰 탭 표시
+    val showVideoButton: Boolean = false,       // 비디오 버튼 표시
+    val showConfigTab: Boolean = true,          // 설정 탭 표시
+    val showDeleteButton: Boolean = true,       // 삭제 버튼 표시
+    val showUploadButton: Boolean = false,      // 업로드 버튼 표시
+    val showBulbMode: Boolean = false,          // Bulb 모드 표시
+    val showIntervalShooting: Boolean = true,   // 인터벌 촬영 표시
+
+    // 기능 제한 안내 메시지
+    val cameraFunctionLimitation: String? = null,  // "이 카메라는 다운로드만 지원합니다" 등
+
+    // 제조사별 특화 안내
+    val showNikonStaWarning: Boolean = false,   // Nikon STA 모드 경고
+
+    // 연결된 카메라 정보
+    val connectedCameraModel: String? = null,    // "Canon EOS R5"
+    val connectedCameraManufacturer: String? = null  // "Canon"
+) {
+    /**
+     * UI가 완전히 활성화 가능한지 (모든 기능 지원)
+     */
+    fun isFullyFunctional(): Boolean {
+        return showCaptureButton && showLiveViewTab && showConfigTab &&
+                cameraFunctionLimitation == null
+    }
+
+    /**
+     * 제한적 기능만 가능한지
+     */
+    fun hasLimitedFunctionality(): Boolean {
+        return cameraFunctionLimitation != null
+    }
+}
 
 /**
  * RAW 파일 제한 알림 정보
