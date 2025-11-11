@@ -4,7 +4,10 @@ import android.content.Context
 import android.util.Log
 import com.inik.camcon.CameraNative
 import com.inik.camcon.domain.model.Camera
+import com.inik.camcon.domain.model.CameraAbilitiesInfo
 import com.inik.camcon.domain.model.CameraCapabilities
+import com.inik.camcon.domain.model.CameraSupports
+import com.inik.camcon.domain.model.PtpDeviceInfo
 import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.runBlocking
@@ -74,8 +77,10 @@ class NativeCameraDataSource @Inject constructor(
 
     // 카메라 초기화
     fun initCamera(): String {
-        // 라이브러리가 로드되지 않은 경우 로드
-        ensureLibrariesLoaded()
+        // 라이브러리 확인
+        if (!CameraNative.isLibrariesLoaded()) {
+            throw IllegalStateException("네이티브 라이브러리가 로딩되지 않았습니다")
+        }
 
         Log.d(TAG, "카메라 초기화 시작")
         val result = CameraNative.initCamera()
@@ -83,13 +88,20 @@ class NativeCameraDataSource @Inject constructor(
         return result
     }
 
-    // 파일 디스크립터 기반 초기화
-    fun initCameraWithFd(fd: Int, nativeLibDir: String): Int = runBlocking {
+    // 파일 디스크립터 기반 초기화 (USB 연결)
+    suspend fun initCameraWithFd(fd: Int, nativeLibDir: String): Int =
         initCameraWithFdMutex.withLock {
-            // 라이브러리가 로드되지 않은 경우 로드
-            ensureLibrariesLoaded()
+            // 라이브러리 확인
+            if (!CameraNative.isLibrariesLoaded()) {
+                throw IllegalStateException("네이티브 라이브러리가 로딩되지 않았습니다")
+            }
 
-            Log.d(TAG, "카메라 초기화 (FD 기반) 시작: fd=$fd, libDir=$nativeLibDir")
+            Log.i(TAG, "============================================")
+            Log.i(TAG, "=== USB 카메라 초기화 시작 ===")
+            Log.i(TAG, "FD: $fd")
+            Log.i(TAG, "LibDir: $nativeLibDir")
+            Log.i(TAG, "============================================")
+
             // 올바른 네이티브 라이브러리 경로 설정
             val applicationInfo = context.applicationInfo
             val correctNativeLibDir = applicationInfo.nativeLibraryDir
@@ -98,26 +110,134 @@ class NativeCameraDataSource @Inject constructor(
             val result = CameraNative.initCameraWithFd(fd, correctNativeLibDir)
             Log.d(TAG, "카메라 초기화 (FD 기반) 완료: 결과 코드=$result")
 
-            // 초기화 성공 시에도 여기서는 추가 조회하지 않음
-            // 필요한 정보는 UI에서 요청할 때만 조회
+            if (result >= 0) {
+                Log.i(TAG, "✅ USB 카메라 초기화 성공")
+
+                // ✨ 카메라 기능 조회
+                try {
+                    Log.i(TAG, "=== USB 카메라 기능 조회 ===")
+
+                    val abilitiesJson = CameraNative.getCameraAbilities()
+                    val deviceInfoJson = CameraNative.getCameraDeviceInfo()
+
+                    if (abilitiesJson != null && deviceInfoJson != null) {
+                        val abilities = parseAbilities(abilitiesJson)
+                        val deviceInfo = parseDeviceInfo(deviceInfoJson)
+
+                        Log.i(TAG, "📸 USB 연결된 카메라:")
+                        Log.i(TAG, "   제조사: ${deviceInfo.manufacturer}")
+                        Log.i(TAG, "   모델: ${deviceInfo.model}")
+                        Log.i(TAG, "   시리얼: ${deviceInfo.serialNumber}")
+                        Log.i(TAG, "   지원 기능:")
+                        Log.i(TAG, "     - 원격 촬영: ${abilities.supports.captureImage}")
+                        Log.i(TAG, "     - 라이브뷰: ${abilities.supports.capturePreview}")
+                        Log.i(TAG, "     - 비디오: ${abilities.supports.captureVideo}")
+                        Log.i(TAG, "     - 설정: ${abilities.supports.config}")
+                        Log.i(TAG, "     - 트리거: ${abilities.supports.triggerCapture}")
+
+                        // UI 상태 업데이트를 위해 기능 정보 저장
+                        storeUsbCameraAbilities(abilities, deviceInfo)
+                    } else {
+                        Log.w(TAG, "⚠️ 카메라 정보 조회 실패 (하지만 연결은 성공)")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "USB 카메라 기능 조회 중 오류", e)
+                }
+            } else {
+                Log.e(TAG, "❌ USB 카메라 초기화 실패: $result")
+        }
 
             result
+    }
+
+    /**
+     * USB 카메라 Abilities 저장
+     */
+    private var usbCameraAbilities: CameraAbilitiesInfo? = null
+    private var usbCameraDeviceInfo: PtpDeviceInfo? = null
+
+    private fun storeUsbCameraAbilities(
+        abilities: CameraAbilitiesInfo,
+        deviceInfo: PtpDeviceInfo
+    ) {
+        usbCameraAbilities = abilities
+        usbCameraDeviceInfo = deviceInfo
+
+        // UI 상태 매니저에 기능 정보 전달
+        uiStateManager.updateCameraAbilities(abilities)
+    }
+
+    /**
+     * 현재 USB 카메라 Abilities 조회
+     */
+    fun getUsbCameraAbilities(): CameraAbilitiesInfo? =
+        usbCameraAbilities
+
+    /**
+     * 현재 USB 카메라 DeviceInfo 조회
+     */
+    fun getUsbCameraDeviceInfo(): PtpDeviceInfo? =
+        usbCameraDeviceInfo
+
+    /**
+     * Abilities JSON 파싱
+     */
+    private fun parseAbilities(json: String): CameraAbilitiesInfo {
+        try {
+            val obj = JSONObject(json)
+            val supportsObj = obj.getJSONObject("supports")
+
+            return CameraAbilitiesInfo(
+                model = obj.getString("model"),
+                status = obj.getString("status"),
+                portType = obj.getInt("port_type"),
+                usbVendor = obj.getString("usb_vendor"),
+                usbProduct = obj.getString("usb_product"),
+                usbClass = obj.getInt("usb_class"),
+                operations = obj.getInt("operations"),
+                fileOperations = obj.getInt("file_operations"),
+                folderOperations = obj.getInt("folder_operations"),
+                supports = CameraSupports(
+                    captureImage = supportsObj.getBoolean("capture_image"),
+                    captureVideo = supportsObj.getBoolean("capture_video"),
+                    captureAudio = supportsObj.getBoolean("capture_audio"),
+                    capturePreview = supportsObj.getBoolean("capture_preview"),
+                    triggerCapture = supportsObj.getBoolean("trigger_capture"),
+                    config = supportsObj.getBoolean("config"),
+                    delete = supportsObj.getBoolean("delete"),
+                    preview = supportsObj.getBoolean("preview"),
+                    raw = supportsObj.getBoolean("raw"),
+                    audio = supportsObj.getBoolean("audio"),
+                    exif = supportsObj.getBoolean("exif"),
+                    deleteAll = supportsObj.getBoolean("delete_all"),
+                    putFile = supportsObj.getBoolean("put_file"),
+                    makeDir = supportsObj.getBoolean("make_dir"),
+                    removeDir = supportsObj.getBoolean("remove_dir")
+                )
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Abilities 파싱 실패", e)
+            throw e
         }
     }
 
     /**
-     * 라이브러리가 로드되었는지 확인합니다.
-     * 라이브러리는 이제 init 블록에서 자동으로 로드되므로 확인만 수행합니다.
+     * DeviceInfo JSON 파싱
      */
-    private fun ensureLibrariesLoaded() {
-        if (!CameraNative.isLibrariesLoaded()) {
-            Log.e(TAG, "네이티브 라이브러리가 로딩되지 않았습니다. 앱을 재시작해주세요.")
-            throw IllegalStateException("네이티브 라이브러리가 로딩되지 않았습니다. 앱을 재시작해주세요.")
+    private fun parseDeviceInfo(json: String): PtpDeviceInfo {
+        try {
+            val obj = JSONObject(json)
+            return PtpDeviceInfo(
+                manufacturer = obj.getString("manufacturer"),
+                model = obj.getString("model"),
+                version = obj.getString("version"),
+                serialNumber = obj.getString("serial_number")
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "DeviceInfo 파싱 실패", e)
+            throw e
         }
     }
-
-    // 동기식 사진 촬영 (성공시 0 이라고 가정)
-    fun capturePhoto(): Boolean = CameraNative.capturePhoto() == 0
 
     // 카메라 요약 정보를 받아 Domain 모델인 Camera로 변환
     fun getCameraSummary(): Camera {
