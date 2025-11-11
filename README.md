@@ -1,626 +1,550 @@
-# CamConT - 전문 카메라 제어 애플리케이션
+# CamCoT - 전문 카메라 제어 애플리케이션
+DSLR/미러리스 카메라를 안드로이드 기기로 완전히 제어할 수 있는 전문가용 카메라 제어 애플리케이션입니다.
 
-[![Android](https://img.shields.io/badge/Platform-Android-green.svg)](https://developer.android.com)
-[![Kotlin](https://img.shields.io/badge/Language-Kotlin-purple.svg)](https://kotlinlang.org)
-[![API](https://img.shields.io/badge/API-29%2B-brightgreen.svg)](https://android-arsenal.com/api?level=29)
-[![Optimized](https://img.shields.io/badge/Code-Optimized-blue.svg)](CODE_OPTIMIZATION_SUMMARY.md)
+### 🚀 최적화
+- **C++ 최적화**: RAII, 메모리 풀, 템플릿
+- **Kotlin 최적화**: Flow, Coroutines, sealed class
+- **빌드 최적화**: ProGuard, R8, 조건부 로깅
+- **성능**: 릴리즈 빌드 +8%, 메모리 안정
 
-> 📋 **[종합 개선 보고서](COMPREHENSIVE_IMPROVEMENTS.md)** - 전체 분석 및 개선 방안 확인
-> 📋 **[적용 완료 내역](IMPROVEMENTS_APPLIED.md)** - 실제 적용된 개선사항 확인
+### 🔒 안정성
+- **메모리 누수 방지**: WeakReference + cleanup
+- **동시성 안전**: ConcurrentHashMap, atomic 연산
+- **에러 처리**: sealed class, Result 타입
 
-DSLR/미러리스 카메라를 안드로이드 기기로 완전히 제어할 수 있는 전문가용 카메라 제어 애플리케이션입니다. libgphoto2를 기반으로 하여 USB 및 Wi-Fi 연결을 통한
-실시간 카메라 제어, 라이브뷰, 원격 촬영, 고급 색감 변환 등의 기능을 제공합니다.
+## 🚀 주요 기능
 
-## 주요 기능
+### 1️⃣ 카메라 연결
+- ✅ **USB OTG**: 직접 케이블 연결로 안정적 제어
+- ✅ **Wi-Fi AP/STA**: 무선 연결 지원
+- ✅ **자동 감지 & 재연결**: 연결 끊김 시 자동 복구
 
-### 카메라 연결 및 제어
+### 2️⃣ 촬영 기능
+- ✅ **원격 촬영**: 앱에서 셔터 제어
+- ✅ **외부 셔터**: 카메라 버튼으로 촬영 → 앱 자동 전송
+- ✅ **라이브뷰**: 실시간 미리보기 (30 FPS)
+- ✅ **Bulb 모드**: 1초~60분 장노출
+- ✅ **인터벌 촬영**: 타임랩스 (1~9999장)
+- ✅ **비디오 녹화**: 시작/중지 제어
 
-- **USB OTG 연결**: 직접 USB 케이블 연결로 안정적인 카메라 제어
-- **Wi-Fi PTP/IP 연결**: 무선으로 카메라 원격 제어 (AP 모드 + STA 모드)
-- **자동 카메라 감지**: 연결된 카메라 자동 인식 및 최적화 설정
-- **실시간 연결 상태**: 연결 상태 실시간 모니터링 및 자동 재연결
+### 3️⃣ 고급 기능
+- ✅ **GPU 색감 전환**: AI 기반 색감 매칭 (3-5배 빠름)
+- ✅ **RAW 파일**: 25가지 포맷 지원 (CR2, NEF, ARW, DNG...)
+- ✅ **RAW 썸네일**: 임베디드 JPEG 빠른 추출
+- ✅ **듀얼 모드**: RAW+JPEG 동시 촬영
 
-### 고급 촬영 기능
+### 4️⃣ 카메라별 전용 설정
 
-- **실시간 라이브뷰**: 고품질 실시간 미리보기 화면
-- **자동초점(AF)**: 터치 자동초점 및 수동 초점 제어
-- **원격 촬영**: 앱을 통한 원격 사진 촬영
-- **외부 셔터 지원**: 카메라 본체 셔터 버튼으로 촬영 시 앱으로 자동 전송
-- **다양한 촬영 모드**: 일반촬영, 연속촬영, 타임랩스 촬영
-- **Trigger Capture**: 카메라 자체 촬영 트리거 (테더 촬영)
-- **Bulb 모드**: 장노출 촬영 (1초~60분)
-- **인터벌 촬영**: 자동 타임랩스 촬영 (간격/프레임 수 설정)
-- **비디오 녹화**: 카메라를 통한 비디오 녹화 시작/중지
-- **고급 AF 설정**: AF 모드, AF 영역, 수동 포커스 드라이브
-- **카메라별 고급 설정**:
-    - **Canon EOS 전용 기능**:
-        - **색온도 조절**: Kelvin 단위 색온도 직접 설정 (2500K~10000K)
-        - **Picture Style**: Standard, Portrait, Landscape, Neutral, Faithful, Monochrome
-        - **화이트밸런스 미세 조정**: Blue-Amber/Green-Magenta 축 조정 (-9~+9)
-        - **컬러 스페이스**: sRGB, Adobe RGB 선택
-    - **Nikon DSLR 전용 기능**:
-        - **메모리 카드 슬롯 선택**: SD, CF, XQD 슬롯 전환
-        - **비디오 모드**: 라이브뷰 비디오 모드 ON/OFF
-        - **노출 지연 모드**: 미러 쇼크 최소화
-        - **배터리 레벨**: 실시간 배터리 잔량 조회
-    - **Sony Alpha 전용 기능**:
-        - **포커스 영역**: Wide, Zone, Center, Flexible Spot 등
-        - **라이브뷰 효과**: 노출/화이트밸런스 효과 미리보기
-        - **수동 포커싱**: 스텝 단위 정밀 포커스 제어
-    - **Fujifilm X 전용 기능**:
-        - **필름 시뮬레이션**: PROVIA, Velvia, ASTIA, Classic Chrome, ACROS 등
-        - **색공간 설정**: sRGB, Adobe RGB 선택
-        - **셔터 카운터**: 카메라 셔터 횟수 조회
-    - **Panasonic Lumix 전용 기능**:
-        - **무비 녹화 제어**: 4K/FHD 비디오 녹화 시작/중지
-        - **수동 포커스 드라이브**: 정밀 포커싱 제어
-- **PTP 1.1 Streaming**:
-    - **고속 프리뷰 스트리밍**: 실시간 고해상도 프리뷰
-    - **스트리밍 파라미터**: 해상도 및 FPS 조정 (최대 1920x1080 @ 30fps)
-    - **저지연 전송**: 라이브뷰보다 빠른 응답 속도
-- **Hook Script 지원 (이벤트 시스템)**:
-    - **이벤트 기반 자동화**: 촬영, 다운로드 등 작업 시 자동 동작 설정
-    - **지원 이벤트**:
-        - `init`: 카메라 초기화 완료
-        - `start`: 작업 시작 (촬영, 비디오 녹화 등)
-        - `capture`: 캡처 완료
-        - `download`: 파일 다운로드 완료
-        - `stop`: 작업 종료
-    - **Android Broadcast Intent**: 다른 앱과 연동 가능
+| 제조사 | 전용 기능 |
+|--------|----------|
+| **Canon EOS** | 색온도, Picture Style, WB 미세조정, 컬러스페이스 |
+| **Nikon** | 카드슬롯 선택, 비디오모드, 노출지연, 배터리레벨 |
+| **Sony Alpha** | 포커스영역, 라이브뷰효과, 수동포커싱 |
+| **Fujifilm X** | 필름시뮬레이션, 색공간, 셔터카운터 |
+| **Panasonic** | 4K녹화, 수동포커스드라이브 |
 
-### 고급 색감 변환 (Color Transfer)
-
-- **AI 기반 색감 매칭**: 참조 이미지의 색감을 타겟 이미지에 적용
-- **실시간 미리보기**: 변환 결과 실시간 확인
-- **고성능 처리**: 네이티브 C++ 구현으로 3-5배 빠른 처리 속도
-- **스마트 메모리 관리**: 대용량 이미지도 안전하게 처리
-- **다양한 포맷 지원**: JPEG, PNG, HEIC 등 주요 이미지 포맷
-
-### RAW 파일 특별 처리
-
-- **25가지 RAW 포맷 지원**: CR2, CR3, NEF, ARW, RAF, ORF, RW2, DNG 등
-- **GP_FILE_TYPE_RAW 최적화**: libgphoto2의 RAW 전용 타입으로 빠른 전송
-- **메타데이터 추출**: 파일 다운로드 없이 크기, 해상도, 포맷 정보 조회
-- **임베디드 썸네일**: RAW 파일 내장 JPEG 프리뷰 빠른 추출 (전체 RAW 다운로드 불필요)
-- **듀얼 모드 캡처**: RAW+JPEG 동시 촬영, 선택적 다운로드 지원
-- **스마트 필터링**: 파일 크기/해상도 기준 RAW 파일 자동 분류
-- **프로 워크플로우**: 현장에서 JPEG 리뷰, 나중에 RAW 편집
-
-### 로그 최적화
-
-- **LogcatManager**: 중앙집중식 로그 관리 시스템
-    - DEBUG 빌드에서만 로그 출력
-    - 컴포넌트별 선택적 로그 활성화/비활성화
-    - 릴리즈 빌드에서 ProGuard를 통한 로그 코드 완전 제거
-- **성능 향상**:
-    - 릴리즈 빌드에서 로그 관련 오버헤드 제거
-    - 앱 크기 최적화
-    - 배터리 사용량 최소화
-
-### 사용법
-1. **카메라 연결**
-    - USB OTG 케이블로 카메라와 안드로이드 기기 연결
-    - 카메라 전원 ON 및 PC 연결 모드 설정
-    - 앱에서 USB 권한 허용
-    - 자동으로 카메라 감지 및 연결
-
-2. **외부 셔터 버튼 활성화**
-    - 설정에서 "외부 셔터 버튼" 활성화
-    - 카메라 셔터 버튼 눌러서 촬영
-    - 앱에 자동으로 사진 전송됨
-
-3. **라이브뷰 사용**
-    - 카메라 제어 화면에서 라이브뷰 시작
-    - 실시간 화면 확인하며 구도 조정
-    - 앱 또는 카메라 버튼으로 촬영
-
-4. **Bulb 모드 (장노출 촬영)**
-    - 촬영 모드에서 "Bulb" 선택
-    - 노출 시간 설정 (1~3600초)
-    - 촬영 시작 - 지정된 시간 동안 자동 노출
-    - 별 궤적, 야경 촬영 등에 활용
-
-5. **인터벌 촬영 / 타임랩스**
-    - 촬영 모드에서 "인터벌" 선택
-    - 촬영 간격 설정 (초 단위)
-    - 총 프레임 수 설정
-    - 촬영 시작 - 자동으로 지정된 간격으로 촬영
-    - 진행 상황 실시간 확인
-    - 언제든지 중단 가능
-
-6. **비디오 녹화**
-    - 촬영 모드에서 "비디오" 선택
-    - 녹화 시작 버튼 클릭
-    - 녹화 중 표시 확인
-    - 중지 버튼으로 녹화 종료
-
-## 기술 스택
-
-### Android Framework
-
-- **언어**: Kotlin 1.9.20 (100%)
-- **최소 SDK**: API 29 (Android 10)
-- **타겟 SDK**: API 35
-- **빌드 도구**: Android Gradle Plugin 8.8.0
-
-### UI Framework
-
-- **Jetpack Compose**: 1.5.4 - 현대적 선언형 UI
-- **Material Design 3**: 1.1.2 - 최신 디자인 시스템
-- **Navigation Compose**: 2.7.7 - 화면 간 네비게이션
-- **Accompanist**: 0.32.0 - 시스템 UI 컨트롤
-
-### 의존성 주입
-
-- **Dagger Hilt**: 2.49 - DI 컨테이너
-- **Hilt Navigation Compose**: 1.2.0
-
-### 비동기 처리
-- **Kotlin Coroutines**: 1.7.3 - 비동기 프로그래밍
-- **StateFlow/Flow**: 반응형 데이터 스트림
-
-### 인증 & 클라우드
-- **Firebase BOM**: 33.4.0
-- **Firebase Auth**: Google Sign-In
-- **Google Play Services**: 21.0.0
-
-### 네이티브 라이브러리
-
-- **libgphoto2**: 2.5.x - 카메라 제어 핵심 라이브러리
-- **libusb**: USB 통신
-- **CMake**: 3.22.1 - 네이티브 빌드 시스템
-- **JNI**: Kotlin C++ 브리지
-
-### 이미지 처리
-
-- **Coil Compose**: 2.5.0 - 이미지 로딩/캐싱
-- **GPUImage**: 2.1.0 - GPU 가속 이미지 처리
-- **ExifInterface**: 1.4.1 - 메타데이터 처리
-
-### 데이터 저장
-- **DataStore Preferences**: 1.0.0 - 설정 저장
-- **내부 저장소**: 촬영 사진 로컬 저장
-
-## 성능 최적화
-
-### 코드 최적화
-
-- **RAII 패턴**: 자동 메모리 관리
-- **통합 캐시 시스템**: 중복 캐시 제거
-- **조건부 로깅**: 릴리즈 빌드 성능 향상
-- **Libgphoto2 표준 준수**: 불필요한 로직 제거
-
-### 빌드 최적화
-
-- **ProGuard**: 코드 난독화 및 최적화
-- **R8**: 추가 바이트코드 최적화
-- **Native 스트리핑**: 디버그 심볼 제거
-- **리소스 최적화**: 사용하지 않는 리소스 자동 제거
-
-## 아키텍처
-
-### Clean Architecture + MVVM 패턴
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Presentation Layer                          │
-│                                                                │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
-│  │   Jetpack   │  │ ViewModels  │  │ Activities/ │             │
-│  │  Compose UI │  │   State     │  │  Screens    │             │
-│  │             │  │ Management  │  │             │             │
-│  └─────────────┘  └─────────────┘  └─────────────┘             │
-│         │                 │                 │                  │
-└─────────────────────────────────────────────────────────────────┘
-          │                 │                 │
-┌─────────────────────────────────────────────────────────────────┐
-│                     Domain Layer                               │
-│                                                                │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
-│  │  Use Cases  │  │ Repository  │  │   Domain    │             │
-│  │ (Business   │  │ Interfaces  │  │   Models    │             │
-│  │   Logic)    │  │             │  │             │             │
-│  └─────────────┘  └─────────────┘  └─────────────┘             │
-│         │                 │                 │                  │
-└─────────────────────────────────────────────────────────────────┘
-          │                 │                 │
-┌─────────────────────────────────────────────────────────────────┐
-│                      Data Layer                                │
-│                                                                │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
-│  │ Repository  │  │    Data     │  │   Native    │             │
-│  │ Impl        │  │   Sources   │  │   C++ Lib   │             │
-│  │             │  │             │  │ (libgphoto2)│             │
-│  └─────────────┘  └─────────────┘  └─────────────┘             │
-│         │                 │                 │                  │
-└─────────────────────────────────────────────────────────────────┘
-          │                 │                 │
-┌─────────────────────────────────────────────────────────────────┐
-│                    External Layer                              │
-│                                                                │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
-│  │  Firebase   │  │    USB      │  │   Wi-Fi     │             │
-│  │  Services   │  │   Camera    │  │   Camera    │             │
-│  │             │  │             │  │   (PTP/IP)  │             │
-│  └─────────────┘  └─────────────┘  └─────────────┘             │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### 데이터 플로우
+## 🛠️ 기술 스택
 
 ```mermaid
 graph TB
-    subgraph "사용자 인터랙션"
-        A[사용자 터치/조작]
-        B[카메라 셔터 버튼]
+    subgraph Frontend["📱 Frontend"]
+        A[Jetpack Compose 1.5.4]
+        B[Material Design 3]
     end
     
-    subgraph "Presentation Layer"
-        C[Compose UI]
-        D[ViewModel]
-        E[UI State]
+    subgraph Architecture["🏗️ Architecture"]
+        C[Clean Architecture]
+        D[MVVM]
+        E[Hilt]
     end
     
-    subgraph "Domain Layer"
-        F[Use Cases]
-        G[Repository Interface]
+    subgraph Native["⚡ Native"]
+        F[libgphoto2 2.5.x]
+        G[CMake]
+        H[C++17]
     end
     
-    subgraph "Data Layer"
-        H[Repository Impl]
-        I[Native Data Source]
-        J[Ptpip Data Source]
-        K[Local Storage]
+    subgraph Cloud["☁️ Cloud"]
+        I[Firebase (Auth, Firestore, Analytics)]
     end
     
-    subgraph "External"
-        L[카메라 하드웨어]
-        M[Firebase]
-        N[로컬 파일 시스템]
+    subgraph ImageProcessing["🎨 Image Processing"]
+        J[Coil 2.7.0]
+        K[GPUImage 2.1.0]
     end
     
     A --> C
-    B --> I
+    B --> C
     C --> D
-    D --> F
+    D --> E
+    E --> F
     F --> G
     G --> H
     H --> I
-    H --> J
-    H --> K
-    I --> L
-    J --> L
-    K --> N
-    H --> M
-    
-    D --> E
-    E --> C
-    
-    style A fill:#e1f5fe
-    style B fill:#fff3e0
-    style C fill:#e8f5e8
-    style L fill:#fce4ec
+    I --> J
+    J --> K
 ```
 
-## 사용자 플로우
+## 🏗️ 아키텍처
 
-### 1. 앱 시작 및 인증 플로우
+### Clean Architecture + MVVM 구조
 
 ```mermaid
-flowchart TD
-    A[앱 실행] --> B{로그인 상태 확인}
-    B -->|로그인됨| C[메인 화면]
-    B -->|미로그인| D[로그인 화면]
+graph TB
+    subgraph Presentation["📱 Presentation Layer"]
+        UI[Compose UI/Screen]
+        VM[ViewModel + Flow]
+        State[UiState sealed class]
+        
+        UI -->|User Action| VM
+        VM -->|State Update| State
+        State -->|Render| UI
+    end
     
-    D --> E{로그인 방식 선택}
-    E -->|Google 로그인| F[Google 인증]
-    E -->|게스트 모드| G[게스트로 계속]
+    subgraph Domain["🎯 Domain Layer"]
+        UC[Use Cases]
+        DM[Domain Models]
+        RI[Repository Interface]
+        
+        UC -->|Uses| RI
+        UC -->|Returns| DM
+    end
     
-    F --> H{인증 성공?}
-    H -->|성공| C
-    H -->|실패| D
+    subgraph Data["💾 Data Layer"]
+        Repo[Repository Impl]
+        DS[DataSource]
+        API[Firebase API]
+        Native[libgphoto2 C++]
+        
+        Repo -->|Accesses| DS
+        DS -->|Remote| API
+        DS -->|Local/USB| Native
+    end
     
-    G --> C
-    C --> I[카메라 연결 선택]
+    subgraph DI["🔧 Dependency Injection"]
+        Hilt[Hilt Modules]
+        AppMod[AppModule]
+        RepoMod[RepositoryModule]
+        
+        Hilt -->|Provides| AppMod
+        Hilt -->|Provides| RepoMod
+    end
     
-    style A fill:#e1f5fe
-    style C fill:#c8e6c9
-    style F fill:#fff3e0
+    VM -->|Calls| UC
+    Repo -.->|Implements| RI
+    Hilt -->|Injects| VM
+    Hilt -->|Injects| Repo
+    
+    style Presentation fill:#e1f5ff
+    style Domain fill:#fff4e1
+    style Data fill:#f0e1ff
+    style DI fill:#e1ffe1
 ```
 
-### 2. 카메라 연결 플로우
+### 주요 컴포넌트 구조
 
 ```mermaid
-flowchart TD
-    A[카메라 연결 선택] --> B{연결 방식}
-    B -->|USB| C[USB 연결 시작]
-    B -->|Wi-Fi| D[Wi-Fi 연결 시작]
+graph LR
+    subgraph App["com.inik.camcon"]
+        subgraph Pres["presentation/"]
+            UI1[MainActivity]
+            UI2[LoginActivity]
+            UI3[SettingsActivity]
+            VM1[CameraViewModel]
+            VM2[PtpipViewModel]
+            VM3[ColorTransferViewModel]
+            Theme[Material Design 3]
+        end
+        
+        subgraph Dom["domain/"]
+            UC1[Camera UseCases]
+            UC2[Auth UseCases]
+            UC3[ColorTransfer UseCase]
+            Models[Domain Models]
+            RepoInt[Repository Interfaces]
+        end
+        
+        subgraph Dat["data/"]
+            RepoImpl[Repository Impl]
+            DataSrc[DataSource]
+            Service[Background Service]
+            FireAPI[Firebase API]
+            DTO[Data Models]
+        end
+        
+        subgraph DIL["di/"]
+            AM[AppModule]
+            RM[RepositoryModule]
+        end
+        
+        subgraph Nat["native/"]
+            JNI[CameraNative JNI]
+            CPP[libgphoto2 C++]
+        end
+        
+        subgraph Utils["utils/"]
+            Const[Constants]
+            Ext[Extensions]
+        end
+    end
     
-    C --> E[USB 권한 요청]
-    E --> F{권한 허용?}
-    F -->|예| G[카메라 감지]
-    F -->|아니오| H[권한 설명]
-    H --> E
+    UI1 --> VM1
+    UI2 --> VM2
+    UI3 --> VM3
+    VM1 --> UC1
+    VM2 --> UC2
+    VM3 --> UC3
+    UC1 --> RepoInt
+    UC2 --> RepoInt
+    UC3 --> RepoInt
+    RepoImpl --> RepoInt
+    RepoImpl --> DataSrc
+    DataSrc --> FireAPI
+    DataSrc --> JNI
+    JNI --> CPP
+    AM --> DIL
+    RM --> DIL
     
-    D --> I{Wi-Fi 연결됨?}
-    I -->|예| J[카메라 검색]
-    I -->|아니오| K[Wi-Fi 설정 안내]
-    K --> L[설정 화면 이동]
-    L --> I
-    
-    G --> M{카메라 발견?}
-    J --> M
-    M -->|예| N[카메라 연결 시도]
-    M -->|아니오| O[연결 실패 안내]
-    
-    N --> P{연결 성공?}
-    P -->|예| Q[카메라 제어 화면]
-    P -->|아니오| O
-    
-    O --> R[다시 시도]
-    R --> A
-    
-    style Q fill:#c8e6c9
-    style O fill:#ffcdd2
+    style Pres fill:#ffebee
+    style Dom fill:#e8f5e9
+    style Dat fill:#e3f2fd
+    style DIL fill:#fff3e0
+    style Nat fill:#f3e5f5
+    style Utils fill:#fce4ec
 ```
 
-### 3. 촬영 플로우
+## 🔄 기능 플로우
+
+### 1️⃣ 카메라 연결 플로우 (USB)
 
 ```mermaid
-flowchart TD
-    A[카메라 제어 화면] --> B{촬영 방식}
-    B -->|앱 내 촬영| C[촬영 버튼 누름]
-    B -->|외부 셔터| D[카메라 셔터 버튼]
-    B -->|라이브뷰| E[라이브뷰 시작]
+sequenceDiagram
+    actor User as 👤 사용자
+    participant UI as 📱 UI
+    participant VM as 🎯 ViewModel
+    participant UC as 🔧 UseCase
+    participant Repo as 💾 Repository
+    participant Native as ⚡ libgphoto2
+
+    User->>UI: USB 카메라 연결
+    UI->>VM: connectCamera()
+    VM->>UC: ConnectCameraUseCase
+    UC->>Repo: connectCamera()
+    Repo->>Native: gp_camera_init()
     
-    C --> F[촬영 명령 전송]
-    D --> G[외부 셔터 이벤트 감지]
-    G --> F
+    Native-->>Repo: SUCCESS
+    Repo-->>UC: Result.Success
+    UC-->>VM: CameraConnected
+    VM-->>UI: State Update
+    UI-->>User: ✅ 연결됨 표시
     
-    E --> H[실시간 미리보기]
-    H --> I{촬영 트리거}
-    I -->|앱 버튼| C
-    I -->|외부 셔터| D
-    I -->|자동초점| J[AF 실행]
-    J --> C
+    VM->>UC: StartLiveViewUseCase
+    UC->>Repo: startLiveView()
+    Repo->>Native: gp_camera_capture_preview()
     
-    F --> K[카메라에서 촬영]
-    K --> L[이미지 데이터 수신]
-    L --> M[로컬 저장]
-    M --> N[갤러리 업데이트]
-    N --> O[촬영 완료 알림]
-    
-    O --> P{계속 촬영?}
-    P -->|예| A
-    P -->|아니오| Q[갤러리 보기]
-    
-    style O fill:#c8e6c9
-    style Q fill:#e1f5fe
+    loop 30 FPS
+        Native-->>Repo: Frame Data
+        Repo-->>UC: Bitmap
+        UC-->>VM: Flow<Bitmap>
+        VM-->>UI: LiveView Update
+        UI-->>User: 📹 실시간 미리보기
+    end
 ```
 
-### 4. 색감 변환 플로우
+### 2️⃣ 사진 촬영 플로우
 
 ```mermaid
-flowchart TD
-    A[갤러리에서 이미지 선택] --> B[색감 변환 메뉴]
-    B --> C[참조 이미지 선택]
-    C --> D{이미지 유효성 검사}
-    D -->|유효| E[실시간 미리보기 시작]
-    D -->|무효| F[오류 메시지]
-    F --> C
+sequenceDiagram
+    actor User as 👤 사용자
+    participant UI as 📱 UI
+    participant VM as 🎯 CameraViewModel
+    participant UC as 🔧 CapturePhotoUseCase
+    participant Repo as 💾 Repository
+    participant Native as ⚡ libgphoto2
+
+    User->>UI: 📸 셔터 버튼 클릭
+    UI->>VM: capturePhoto()
+    VM->>UC: invoke()
     
-    E --> G[네이티브 처리 시작]
-    G --> H[진행률 표시]
-    H --> I{처리 완료?}
-    I -->|진행중| H
-    I -->|완료| J[결과 미리보기]
-    I -->|오류| K[오류 처리]
+    VM-->>UI: State: Capturing
+    UI-->>User: "촬영 중..." 표시
     
-    J --> L{결과 만족?}
-    L -->|예| M[이미지 저장]
-    L -->|아니오| N{다른 참조 이미지?}
-    N -->|예| C
-    N -->|아니오| O[취소]
+    UC->>Repo: capturePhoto()
+    Repo->>Native: gp_camera_capture()
     
-    M --> P[저장 완료 알림]
-    P --> Q[갤러리로 복귀]
+    Native-->>Repo: File Path
+    Repo->>Native: gp_file_get_data()
+    Native-->>Repo: Image Data (RAW/JPEG)
     
-    K --> R[오류 메시지 표시]
-    R --> S{재시도?}
-    S -->|예| E
-    S -->|아니오| O
+    Repo-->>UC: Result.Success(Photo)
+    UC-->>VM: PhotoCaptured
+    VM-->>UI: State: Success
+    UI-->>User: 🖼️ 사진 표시
     
-    O --> Q
-    
-    style P fill:#c8e6c9
-    style K fill:#ffcdd2
-    style R fill:#ffcdd2
+    VM->>UC: SaveToGallery
+    UC->>Repo: savePhoto()
+    Repo-->>VM: Saved
+    VM-->>UI: Show Toast
+    UI-->>User: ✅ "저장 완료"
 ```
 
-### 5. 설정 및 관리 플로우
+### 3️⃣ 색감 전환 플로우 (GPU 가속)
 
 ```mermaid
-flowchart TD
-    A[설정 화면 진입] --> B[설정 카테고리 선택]
-    B --> C{설정 유형}
+sequenceDiagram
+    actor User as 👤 사용자
+    participant UI as 📱 UI
+    participant VM as 🎯 ColorTransferViewModel
+    participant UC as 🔧 ColorTransferUseCase
+    participant GPU as 🎨 GPUImage Processor
+    participant Storage as 💾 Storage
+
+    User->>UI: 원본 이미지 선택
+    UI->>VM: setSourceImage()
+    User->>UI: 참조 이미지 선택
+    UI->>VM: setTargetImage()
     
-    C -->|카메라 설정| D[카메라 관련 설정]
-    C -->|앱 설정| E[앱 일반 설정]
-    C -->|계정 관리| F[사용자 계정]
+    User->>UI: 색감 전환 시작
+    UI->>VM: startColorTransfer()
     
-    D --> G[라이브뷰 활성화]
-    D --> H[Wi-Fi 연결 모드]
-    D --> I[외부 셔터 설정]
+    VM-->>UI: Progress: 0%
     
-    E --> J[언어 설정]
-    E --> K[테마 설정]
-    E --> L[색감 변환 품질]
+    VM->>UC: transferColor(source, target)
     
-    F --> M[로그인 정보]
-    F --> N[저장공간 관리]
-    F --> O[로그아웃]
+    UC->>GPU: extractColorStats(source)
+    GPU-->>UC: Source Stats (mean, std)
+    VM-->>UI: Progress: 25%
     
-    G --> P[설정 저장]
-    H --> P
-    I --> P
-    J --> P
-    K --> P
-    L --> P
+    UC->>GPU: extractColorStats(target)
+    GPU-->>UC: Target Stats (mean, std)
+    VM-->>UI: Progress: 50%
     
-    M --> Q[정보 표시]
-    N --> R[저장공간 정리]
-    O --> S[로그아웃 확인]
+    UC->>GPU: applyColorTransform(source, stats)
+    Note over GPU: GPU 병렬 처리<br/>3-5배 빠름
+    GPU-->>UC: Transformed Image
+    VM-->>UI: Progress: 75%
     
-    P --> T[설정 적용 완료]
-    S --> U{확인?}
-    U -->|예| V[로그인 화면으로]
-    U -->|아니오| F
+    UC->>UC: postProcessing()
+    UC-->>VM: Result.Success(image)
+    VM-->>UI: Progress: 100%
     
-    style T fill:#c8e6c9
-    style V fill:#e1f5fe
+    UI-->>User: 🎨 변환 완료 이미지 표시
+    
+    User->>UI: 저장
+    UI->>VM: saveImage()
+    VM->>Storage: save()
+    Storage-->>VM: Saved
+    VM-->>UI: Success
+    UI-->>User: ✅ "저장 완료"
 ```
 
-## 시작하기
+### 4️⃣ Wi-Fi (PTP/IP) 연결 플로우
 
-### 시스템 요구사항
+```mermaid
+sequenceDiagram
+    actor User as 👤 사용자
+    participant UI as 📱 UI
+    participant VM as 🎯 PtpipViewModel
+    participant Network as 🌐 NetworkService
+    participant Camera as 📷 Camera (PTP/IP)
 
-- **개발 환경**: Android Studio Hedgehog 이상
-- **최소 Android 버전**: Android 10 (API 29)
-- **권장 RAM**: 8GB 이상
-- **저장 공간**: 최소 2GB 여유 공간
-
-### 지원 하드웨어
-- USB OTG 지원 안드로이드 기기
-- Wi-Fi 지원 기기 (무선 연결 시)
-- 카메라: Canon, Nikon, Sony, Fujifilm, Olympus 등 PTP 지원 카메라
-
-## 사용 가이드
-
-### USB 연결 방법
-
-1. USB OTG 케이블로 카메라와 안드로이드 기기 연결
-2. 카메라 전원 ON 및 PC 연결 모드 설정
-3. 앱에서 USB 권한 허용
-4. 자동으로 카메라 감지 및 연결
-
-### Wi-Fi 연결 방법 (AP 모드)
-
-1. 카메라를 Wi-Fi AP 모드로 설정
-2. 안드로이드 기기에서 카메라 Wi-Fi 네트워크 연결
-3. 앱 실행 후 PTP/IP 연결 선택
-4. 자동 카메라 검색 및 연결
-
-### Wi-Fi 연결 방법 (STA 모드)
-
-1. 카메라와 안드로이드 기기를 동일한 Wi-Fi 네트워크에 연결
-2. 카메라를 STA 모드로 설정
-3. 앱에서 네트워크 내 카메라 검색
-4. 감지된 카메라 선택하여 연결
-
-### 색감 변환 사용법
-
-1. 갤러리에서 변환할 이미지 선택
-2. 색감 변환 메뉴 선택
-3. 참조 이미지 선택 (원하는 색감의 이미지)
-4. 실시간 미리보기 확인
-5. 변환 적용 및 저장
-
-## 고급 설정
-
-### 성능 최적화
-
-- 라이브뷰 품질 조정 (설정 > 카메라 > 라이브뷰 품질)
-- 색감 변환 품질 설정 (고품질/표준/빠른 처리)
-- 메모리 사용량 제한 설정
-- 배터리 최적화 설정
-
-## 다국어 지원
-
-현재 지원되는 언어:
-
-- 한국어 (Korean)
-- 영어 (English)
-- 일본어 (Japanese)
-- 독일어 (German)
-- 프랑스어 (French)
-- 이탈리아어 (Italian)
-- 중국어 (Chinese)
-
-## 문제 해결
-
-### 일반적인 문제
-
-1. **카메라가 감지되지 않음**
-    - USB 케이블 및 OTG 어댑터 확인
-    - 카메라 PC 연결 모드 설정 확인
-    - USB 권한 재설정
-
-2. **Wi-Fi 연결 실패**
-    - 네트워크 연결 상태 확인
-    - 카메라 Wi-Fi 설정 재확인
-    - 앱 Wi-Fi 권한 확인
-
-3. **라이브뷰가 느림**
-    - 라이브뷰 품질 조정
-    - Wi-Fi 연결 시 네트워크 속도 확인
-    - 기기 메모리 부족 여부 확인
-
-4. **색감 전환 실패**
-    - 이미지 크기 확인 (권장: 50MP 이하)
-    - 여유 저장 공간 확인
-    - 메모리 부족 시 앱 재시작
-
-## 로그 사용법
-
-```kotlin
-// 기본 로그
-LogcatManager.d("TAG", "디버그 메시지")
-LogcatManager.i("TAG", "정보 메시지")
-LogcatManager.w("TAG", "경고 메시지")
-LogcatManager.e("TAG", "에러 메시지")
-
-// 성능 측정
-val startTime = System.currentTimeMillis()
-LogcatManager.perfStart("TAG", "작업명")
-// ... 작업 수행
-LogcatManager.perfEnd("TAG", "작업명", startTime)
+    User->>UI: 카메라 검색 시작
+    UI->>VM: scanNetwork()
+    VM->>Network: broadcastSearch()
+    
+    Network->>Camera: UDP Broadcast (Port 15740)
+    Camera-->>Network: Camera Info (Name, IP, Model)
+    Network-->>VM: List<CameraDevice>
+    VM-->>UI: Update Camera List
+    UI-->>User: 📋 검색된 카메라 목록 표시
+    
+    User->>UI: 카메라 선택
+    UI->>VM: connectToPtpIp(camera)
+    
+    VM->>Network: connectTCP(ip, port)
+    Network->>Camera: TCP Connect (Port 15740)
+    Camera-->>Network: Init Command Response
+    
+    Network->>Camera: Start Session
+    Camera-->>Network: Session ID
+    
+    Network-->>VM: Connected(sessionId)
+    VM-->>UI: State: Connected
+    UI-->>User: ✅ "연결 완료"
+    
+    VM->>Network: startLiveView()
+    
+    loop 30 FPS
+        Network->>Camera: GetLiveView Command
+        Camera-->>Network: JPEG Frame
+        Network-->>VM: Flow<Bitmap>
+        VM-->>UI: Update LiveView
+        UI-->>User: 📹 라이브뷰 스트림
+    end
 ```
 
-## 라이선스
+### 5️⃣ 인터벌 촬영 플로우 (타임랩스)
 
-이 프로젝트는 MIT 라이선스 하에 배포됩니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
+```mermaid
+sequenceDiagram
+    actor User as 👤 사용자
+    participant UI as 📱 UI
+    participant VM as 🎯 CameraViewModel
+    participant UC as 🔧 TimelapseUseCase
+    participant Timer as ⏰ Timer Service
+    participant Repo as 💾 Repository
 
-## 지원 및 문의
+    User->>UI: 인터벌 설정
+    Note over UI: 간격: 5초<br/>횟수: 100장
+    UI->>VM: setTimelapseConfig(5s, 100)
+    
+    User->>UI: 시작 버튼
+    UI->>VM: startTimelapse()
+    VM->>UC: start(config)
+    UC->>Timer: startInterval(5s)
+    
+    loop 100회 반복
+        Timer-->>UC: Timer Tick
+        UC-->>VM: Shooting (1/100)
+        VM-->>UI: Update Progress
+        UI-->>User: "촬영 1/100"
+        
+        UC->>Repo: capturePhoto()
+        Repo-->>UC: Photo Data
+        UC->>Repo: savePhoto()
+        Repo-->>UC: Saved
+        
+        UC-->>VM: PhotoSaved(1)
+        VM-->>UI: Add Thumbnail
+        UI-->>User: 🖼️ 썸네일 추가
+        
+        Note over Timer: ⏱️ 5초 대기
+        
+        Timer-->>UC: Timer Tick
+        UC-->>VM: Shooting (2/100)
+        VM-->>UI: Update Progress
+        UI-->>User: "촬영 2/100"
+        
+        Note over UC,Repo: ... 반복 ...
+    end
+    
+    UC-->>VM: TimelapseCompleted(100)
+    VM-->>UI: State: Completed
+    UI-->>User: ✅ "완료: 100장"<br/>📂 [갤러리로 이동]
+```
 
-- **이슈 리포트**: [GitHub Issues](https://github.com/yourusername/CamConT/issues)
-- **기능 요청**: [GitHub Discussions](https://github.com/yourusername/CamConT/discussions)
-- **이메일**: ppp5544@gmail.com
+### 6️⃣ 의존성 주입 플로우 (Hilt)
 
----
-**CamConT** - Professional Camera Control & Color Transfer for Android
-*Make Every Shot Perfect*
+```mermaid
+graph TD
+    Start([앱 시작]) --> HiltApp[@HiltAndroidApp<br/>CamCon]
+    
+    HiltApp --> AppModule[AppModule]
+    HiltApp --> RepoModule[RepositoryModule]
+    
+    subgraph Singleton["🔧 Singleton Scope"]
+        AppModule --> Firebase[Firebase]
+        AppModule --> NativeLib[CameraNative]
+        AppModule --> GPUProc[GPUImageProcessor]
+        AppModule --> NetService[NetworkService]
+    end
+    
+    subgraph RepoScope["📦 Repository Scope"]
+        RepoModule --> CameraRepo[CameraRepository]
+        RepoModule --> AuthRepo[AuthRepository]
+        RepoModule --> PhotoRepo[PhotoRepository]
+    end
+    
+    subgraph UseCaseScope["🎯 UseCase Scope"]
+        CameraRepo --> ConnectUC[ConnectCameraUseCase]
+        CameraRepo --> CaptureUC[CapturePhotoUseCase]
+        CameraRepo --> LiveViewUC[StartLiveViewUseCase]
+        AuthRepo --> SignInUC[SignInUseCase]
+        PhotoRepo --> ColorUC[ColorTransferUseCase]
+    end
+    
+    subgraph ViewModelScope["🎬 ViewModel Scope"]
+        ConnectUC --> CameraVM[CameraViewModel]
+        CaptureUC --> CameraVM
+        LiveViewUC --> CameraVM
+        SignInUC --> AuthVM[AuthViewModel]
+        ColorUC --> ColorVM[ColorTransferViewModel]
+    end
+    
+    subgraph UIScope["📱 UI Scope"]
+        CameraVM --> MainActivity[@AndroidEntryPoint<br/>MainActivity]
+        AuthVM --> LoginActivity[@AndroidEntryPoint<br/>LoginActivity]
+        ColorVM --> SettingsActivity[@AndroidEntryPoint<br/>SettingsActivity]
+    end
+    
+    MainActivity --> User([👤 사용자])
+    LoginActivity --> User
+    SettingsActivity --> User
+    
+    style HiltApp fill:#ff6b6b
+    style Singleton fill:#4ecdc4
+    style RepoScope fill:#45b7d1
+    style UseCaseScope fill:#96ceb4
+    style ViewModelScope fill:#ffeaa7
+    style UIScope fill:#dfe6e9
+    style User fill:#74b9ff
+```
 
----
+### 7️⃣ 상태 관리 플로우 (MVVM + Flow)
 
-### 🚀 최적화
-
-- **C++ 최적화**: RAII, 메모리 풀, 템플릿
-- **Kotlin 최적화**: Flow, Coroutines, sealed class
-- **빌드 최적화**: ProGuard, R8, 조건부 로깅
-- **성능**: 릴리즈 빌드 +8%, 메모리 안정
-
-### 🔒 안정성
-
-- **메모리 누수 방지**: WeakReference + cleanup
-- **동시성 안전**: ConcurrentHashMap, atomic 연산
-- **에러 처리**: sealed class, Result 타입
-- **테스트**: 단위/통합 테스트 준비
-
----
+```mermaid
+stateDiagram-v2
+    [*] --> Idle: 앱 시작
+    
+    Idle --> Connecting: connectCamera()
+    Connecting --> Connected: Success
+    Connecting --> Error: Failure
+    Error --> Idle: retry()
+    
+    Connected --> LiveViewStarting: startLiveView()
+    LiveViewStarting --> LiveViewActive: Success
+    LiveViewActive --> Capturing: capturePhoto()
+    
+    Capturing --> Processing: 촬영 완료
+    Processing --> Saving: 이미지 처리 완료
+    Saving --> LiveViewActive: 저장 완료
+    
+    LiveViewActive --> TimelapseStarting: startTimelapse()
+    TimelapseStarting --> TimelapseActive: Success
+    
+    state TimelapseActive {
+        [*] --> WaitingForTick
+        WaitingForTick --> Capturing: Timer Tick
+        Capturing --> Saving: Photo Captured
+        Saving --> WaitingForTick: Photo Saved
+        Saving --> [*]: 완료
+    }
+    
+    TimelapseActive --> LiveViewActive: 타임랩스 종료
+    
+    LiveViewActive --> LiveViewStopping: stopLiveView()
+    LiveViewStopping --> Connected: Success
+    
+    Connected --> Disconnecting: disconnect()
+    Disconnecting --> Idle: Success
+    
+    note right of Connected
+        실시간 설정 변경 가능:
+        - ISO
+        - Shutter Speed
+        - Aperture
+        - White Balance
+    end note
+    
+    note right of TimelapseActive
+        백그라운드 실행:
+        - Foreground Service
+        - Wake Lock
+        - 배터리 최적화
+    end note
+```
 
 ## 📊 성능 지표
-
-### 측정된 성능
 
 ```
 앱 시작 시간: 2.3초 (최적화 후 -8%)
@@ -630,3018 +554,35 @@ LogcatManager.perfEnd("TAG", "작업명", startTime)
 색감 전환: 2-3초 (GPU 가속)
 배터리 소모: 14%/2시간 (최적화 후 -5%)
 ```
-
-### 코드 품질
-
-```
-가독성: 85/100 (+21%)
-유지보수성: 82/100 (+26%)
-테스트 커버리지: 10% (개선 필요)
-안정성: 95/100 (메모리/동시성 안정)
-```
-
----
-
-## 🐛 문제 해결
-
-### 카메라 감지 안됨
-
-```
-✓ USB 케이블 확인
-✓ 카메라 PC 연결 모드 설정
-✓ USB 권한 재부여
-✓ 앱 재시작
-```
-
-### Wi-Fi 연결 실패
-
-```
-✓ 네트워크 연결 상태 확인
-✓ 카메라 Wi-Fi 설정 재확인
-✓ 위치 권한 확인 (Android 10+)
-✓ Wi-Fi 권한 확인
-```
-
-### 라이브뷰 느림
-
-```
-✓ 라이브뷰 품질 조정
-✓ Wi-Fi 신호 강도 확인
-✓ 메모리 부족 여부 확인
-```
-
-### 색감 전환 실패
-
-```
-✓ 이미지 크기 확인 (50MP 이하 권장)
-✓ 저장 공간 확인
-✓ 앱 메모리 정리 (재시작)
-```
-
----
-
-## 📄 문서
-
-- **[종합 개선 보고서](COMPREHENSIVE_IMPROVEMENTS.md)** - 문제점 분석 및 개선 방안
-- **[적용 완료 내역](IMPROVEMENTS_APPLIED.md)** - 실제 적용된 개선사항
-- **[코드 최적화 요약](CODE_OPTIMIZATION_SUMMARY.md)** - C++ 네이티브 최적화
-- **[구현 완료 보고서](IMPLEMENTATION_COMPLETE.md)** - 고급 기능 구현 내역
-
----
-
-## 🤝 기여
-
-### 기여 방법
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m '기능: 놀라운 기능 추가'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
-
-### 코딩 규칙
-
-- Clean Architecture 준수
-- MVVM 패턴 사용
-- Kotlin 코딩 컨벤션
-- 모든 공개 API에 KDoc 주석
-- 테스트 코드 작성 (최소 50%)
-
----
-
-## 📞 지원 및 문의
-
-- **이메일**: ppp5544@gmail.com
-- **이슈**: [GitHub Issues](https://github.com/yourusername/CamConT/issues)
-- **토론**: [GitHub Discussions](https://github.com/yourusername/CamConT/discussions)
-
----
-
-## 🏆 주요 특징
-
-### 🎯 프로페셔널 품질
-
-- ⭐⭐⭐⭐⭐ 기능 완성도 (5/5)
-- ⭐⭐⭐⭐☆ 코드 품질 (4/5)
-- ⭐⭐⭐⭐⭐ 안정성 (5/5)
-- ⭐⭐⭐⭐☆ 유지보수성 (4/5)
-
-### 🚀 최적화
-
-- **C++ 최적화**: RAII, 메모리 풀, 템플릿
-- **Kotlin 최적화**: Flow, Coroutines, sealed class
-- **빌드 최적화**: ProGuard, R8, 조건부 로깅
-- **성능**: 릴리즈 빌드 +8%, 메모리 안정
-
-### 🔒 안정성
-
-- **메모리 누수 방지**: WeakReference + cleanup
-- **동시성 안전**: ConcurrentHashMap, atomic 연산
-- **에러 처리**: sealed class, Result 타입
-- **테스트**: 단위/통합 테스트 준비
-
----
-
-## 🚀 주요 기능
-
-### 1️⃣ 카메라 연결
-
-- ✅ **USB OTG**: 직접 케이블 연결로 안정적 제어
-- ✅ **Wi-Fi AP 모드**: 카메라 직접 연결
-- ✅ **Wi-Fi STA 모드**: 같은 네트워크 내 연결
-- ✅ **자동 감지**: 연결된 카메라 자동 인식
-- ✅ **재연결**: 연결 끊김 시 자동 재연결
-
-### 2️⃣ 촬영 기능
-
-- ✅ **원격 촬영**: 앱에서 셔터 제어
-- ✅ **외부 셔터**: 카메라 버튼 누르면 앱으로 자동 전송
-- ✅ **라이브뷰**: 실시간 미리보기 (28-30 FPS)
-- ✅ **자동초점**: 터치 AF 지원
-- ✅ **Bulb 모드**: 1초~60분 장노출 촬영
-- ✅ **인터벌 촬영**: 타임랩스 (1~9999장)
-- ✅ **비디오 녹화**: 시작/중지 제어
-- ✅ **Trigger Capture**: 테더 촬영
-
-### 3️⃣ 고급 기능
-
-- ✅ **GPU 색감 전환**: AI 기반 색감 매칭 (3-5배 빠름)
-- ✅ **RAW 파일**: 25가지 포맷 지원 (CR2, NEF, ARW, DNG...)
-- ✅ **RAW 썸네일**: 임베디드 JPEG 빠른 추출
-- ✅ **RAW 메타데이터**: 파일 다운로드 없이 정보 조회
-- ✅ **듀얼 모드**: RAW+JPEG 동시 촬영
-
-### 4️⃣ 카메라별 전용 설정
-
-#### Canon EOS
-
-- ✅ 색온도 조절 (2500K~10000K)
-- ✅ Picture Style (Portrait, Landscape, etc.)
-- ✅ 화이트밸런스 미세 조정 (BA/GM)
-- ✅ 컬러 스페이스 (sRGB, Adobe RGB)
-
-#### Nikon DSLR
-
-- ✅ 메모리 카드 슬롯 선택 (SD, CF, XQD)
-- ✅ 비디오 모드 ON/OFF
-- ✅ 노출 지연 모드 (미러 쇼크 방지)
-- ✅ 배터리 레벨 조회
-
-#### Sony Alpha
-
-- ✅ 포커스 영역 설정
-- ✅ 라이브뷰 효과 미리보기
-- ✅ 수동 포커싱 (스텝 단위)
-
-#### Fujifilm X
-
-- ✅ 필름 시뮬레이션 (PROVIA, Velvia, Classic Chrome, etc.)
-- ✅ 색공간 설정
-- ✅ 셔터 카운터 조회
-
-#### Panasonic Lumix
-
-- ✅ 무비 녹화 제어 (4K/FHD)
-- ✅ 수동 포커스 드라이브
-
----
-
-## 🛠️ 기술 스택
-
-### 🎨 Frontend
-
-```
-UI Framework:
-  └─► Jetpack Compose 1.5.4
-      ├─► Material Design 3
-      ├─► Navigation Compose
-      └─► Accompanist (System UI)
-
-State Management:
-  ├─► StateFlow / Flow
-  ├─► ViewModel
-  └─► Coroutines 1.10.2
-```
-
-### ⚙️ Backend
-
-```
-Architecture:
-  └─► Clean Architecture + MVVM
-      ├─► Presentation (ViewModel, UI)
-      ├─► Domain (UseCase, Repository Interface)
-      └─► Data (Repository Impl, DataSource)
-
-Dependency Injection:
-  └─► Dagger Hilt 2.49
-      ├─► @HiltAndroidApp
-      ├─► @AndroidEntryPoint
-      └─► @Inject Constructor
-```
-
-### 🔧 Native
-
-```
-C++ Libraries:
-  └─► libgphoto2 2.5.x
-      ├─► Camera 제어 핵심
-      ├─► 100+ 카메라 드라이버 지원
-      └─► PTP/USB 프로토콜
-
-Build System:
-  └─► CMake 3.22.1
-      ├─► NDK 27.0
-      ├─► C++17
-      └─► arm64-v8a
-```
-
-### ☁️ Cloud & Auth
-
-```
-Firebase:
-  ├─► Authentication (Google Sign-In)
-  ├─► Firestore (사용자 데이터)
-  ├─► Remote Config (앱 업데이트)
-  └─► Analytics
-
-Google Play:
-  └─► Billing Library 6.1.0 (구독)
-```
-
-### 🖼️ Image Processing
-
-```
-Libraries:
-  ├─► Coil 2.7.0 (이미지 로딩)
-  ├─► GPUImage 2.1.0 (GPU 가속 처리)
-  ├─► ExifInterface 1.4.1 (메타데이터)
-  └─► ZoomImage 1.4.0 (줌/팬 뷰어)
-
-Custom:
-  └─► ColorTransferProcessor
-      ├─► 네이티브 C++ 구현
-      ├─► GPU 가속 적용
-      └─► 통계 캐싱 시스템
-```
-
----
-
-## 📋 프로젝트 구조
-
-```
-CamConT/
-├── app/
-│   ├── src/main/
-│   │   ├── java/com/inik/camcon/
-│   │   │   ├── 📁 di/                      # Dependency Injection
-│   │   │   │   ├── AppModule.kt
-│   │   │   │   └── RepositoryModule.kt
-│   │   │   │
-│   │   │   ├── 📁 domain/                  # Domain Layer
-│   │   │   │   ├── model/                  # 도메인 모델
-│   │   │   │   │   ├── Camera.kt
-│   │   │   │   │   ├── CameraError.kt      # ✨ NEW
-│   │   │   │   │   ├── CapturedPhoto.kt
-│   │   │   │   │   └── ...
-│   │   │   │   ├── repository/             # Repository 인터페이스
-│   │   │   │   ├── usecase/                # Use Cases
-│   │   │   │   └── manager/                # 도메인 매니저
-│   │   │   │
-│   │   │   ├── 📁 data/                    # Data Layer
-│   │   │   │   ├── repository/             # Repository 구현
-│   │   │   │   │   ├── CameraRepositoryImpl.kt  # ✨ 개선됨
-│   │   │   │   │   └── managers/           # 매니저들
-│   │   │   │   ├── datasource/             # 데이터 소스
-│   │   │   │   │   ├── nativesource/       # JNI 브리지
-│   │   │   │   │   ├── ptpip/              # Wi-Fi PTPIP
-│   │   │   │   │   ├── usb/                # USB 관리
-│   │   │   │   │   ├── local/              # 로컬 저장소
-│   │   │   │   │   └── remote/             # Firebase
-│   │   │   │   ├── network/                # 네트워크
-│   │   │   │   └── processor/              # 이미지 처리
-│   │   │   │
-│   │   │   ├── 📁 presentation/            # Presentation Layer
-│   │   │   │   ├── viewmodel/              # ViewModels
-│   │   │   │   ├── ui/                     # Activities
-│   │   │   │   │   ├── screens/            # Compose Screens
-│   │   │   │   │   └── components/         # UI Components
-│   │   │   │   ├── navigation/             # Navigation
-│   │   │   │   └── theme/                  # Material Theme
-│   │   │   │
-│   │   │   ├── 📁 utils/                   # Utilities
-│   │   │   │   ├── Constants.kt
-│   │   │   │   ├── LogcatManager.kt
-│   │   │   │   └── ResultExtensions.kt     # ✨ NEW
-│   │   │   │
-│   │   │   ├── CamCon.kt                   # Application
-│   │   │   └── CameraNative.kt             # JNI Interface
-│   │   │
-│   │   └── cpp/                            # C++ Native Layer
-│   │       ├── camera_common.h             # 공통 헤더
-│   │       ├── camera_init_usb.cpp         # USB 초기화
-│   │       ├── camera_init.cpp             # PTPIP 초기화
-│   │       ├── camera_config.cpp           # 설정 관리
-│   │       ├── camera_capture.cpp          # 촬영
-│   │       ├── camera_liveview.cpp         # 라이브뷰
-│   │       ├── camera_events.cpp           # 이벤트
-│   │       ├── camera_files.cpp            # 파일 관리
-│   │       ├── camera_detection.cpp        # 감지
-│   │       ├── camera_samples_impl.cpp     # libgphoto2 예제
-│   │       ├── camera_advanced_features.cpp # 고급 촬영
-│   │       ├── camera_extra_features.cpp   # 카메라별 설정
-│   │       ├── native-lib.cpp              # JNI 래퍼
-│   │       └── CMakeLists.txt
-│   │
-│   └── build.gradle                        # 빌드 설정
-│
-├── 📄 README.md                            # 현재 문서
-├── 📄 COMPREHENSIVE_IMPROVEMENTS.md        # 종합 분석 (880줄)
-├── 📄 IMPROVEMENTS_APPLIED.md              # 적용 완료 (753줄)
-├── 📄 CODE_OPTIMIZATION_SUMMARY.md         # C++ 최적화
-├── 📄 IMPLEMENTATION_COMPLETE.md           # 기능 구현 완료
-└── 📄 gradle.properties                    # Gradle 설정
-```
-
----
-
-## 🎨 최근 개선 사항 (2025년 1월)
-
-### ✅ 적용 완료
-
-1. ✅ **Race Condition 수정** - ConcurrentHashMap 사용
-2. ✅ **메모리 누수 방지** - WeakReference + cleanup()
-3. ✅ **로깅 최적화** - LogcatManager (릴리즈 성능 +8%)
-4. ✅ **공통 유틸리티** - ResultExtensions.kt (코드 중복 -60%)
-5. ✅ **도메인 에러** - CameraError sealed class (타입 안전)
-6. ✅ **의존성 정리** - 14개 → 12개 (-14%)
-7. ✅ **코드 리팩토링** - 메서드 분리 8개 (가독성 +60%)
-
-### 📈 개선 효과
-
-- 🔒 동시성 안정성 100%
-- 💾 메모리 누수 100% 방지
-- 🚀 성능 +8%
-- 🔋 배터리 -5%
-- 📖 가독성 +21%
-- 🔧 유지보수성 +26%
-
-자세한 내용: **[개선 완료 보고서](IMPROVEMENTS_APPLIED.md)**
-
----
 
 ## 🚀 시작하기
 
 ### 시스템 요구사항
-
 - **Android Studio**: Hedgehog 이상
-- **JDK**: 17 이상 ✨ (중요!)
+- **JDK**: 17 이상 ✨
 - **최소 Android**: API 29 (Android 10)
 - **NDK**: 27.0 이상
-- **RAM**: 8GB 이상 권장
-
-### 빌드 방법
-
-```bash
-# 1. Java 17 설정 확인
-java --version  # 17.0 이상 확인
-
-# 2. 의존성 다운로드
-./gradlew --no-daemon build
-
-# 3. Debug APK 빌드
-./gradlew assembleDebug
-
-# 4. Release APK 빌드 (서명 필요)
-./gradlew assembleRelease
-```
-
-### 실행 방법
-
-```bash
-# Debug 앱 설치 및 실행
-./gradlew installDebug
-adb shell am start -n com.inik.camcon/.presentation.ui.SplashActivity
-
-# 또는 Android Studio에서
-Run > Run 'app'
-```
-
----
 
 ## 📖 사용 가이드
 
-### USB 연결 방법
+### USB 연결
+1. USB OTG 케이블로 연결
+2. 카메라 PC 연결 모드 설정
+3. USB 권한 허용
+4. 자동 감지 ✅
 
-1. USB OTG 케이블로 카메라와 안드로이드 연결
-2. 카메라 전원 ON 및 PC 연결 모드 설정
-3. 앱에서 USB 권한 허용
-4. 자동으로 카메라 감지 및 연결 ✅
-
-### Wi-Fi 연결 방법 (AP 모드)
-
-1. 카메라를 Wi-Fi AP 모드로 설정
-2. 안드로이드에서 카메라 Wi-Fi 네트워크 연결
-3. 앱 실행 후 PTP/IP 연결 선택
-4. 자동 카메라 검색 및 연결 ✅
-
-### Wi-Fi 연결 방법 (STA 모드)
-
-1. 카메라와 안드로이드를 같은 Wi-Fi에 연결
-2. 카메라를 STA 모드로 설정
-3. 앱에서 네트워크 내 카메라 검색
-4. 감지된 카메라 선택하여 연결 ✅
-
-### 색감 변환 사용법
-
-1. 갤러리에서 변환할 이미지 선택
-2. 색감 변환 메뉴 선택
-3. 참조 이미지 선택 (원하는 색감의 이미지)
-4. 실시간 미리보기 확인
-5. 변환 적용 및 저장
-
-## 고급 설정
-
-### 성능 최적화
-
-- 라이브뷰 품질 조정 (설정 > 카메라 > 라이브뷰 품질)
-- 색감 변환 품질 설정 (고품질/표준/빠른 처리)
-- 메모리 사용량 제한 설정
-- 배터리 최적화 설정
-
-## 다국어 지원
-
-현재 지원되는 언어:
-
-- 한국어 (Korean)
-- 영어 (English)
-- 일본어 (Japanese)
-- 독일어 (German)
-- 프랑스어 (French)
-- 이탈리아어 (Italian)
-- 중국어 (Chinese)
-
-## 문제 해결
-
-### 일반적인 문제
-
-1. **카메라가 감지되지 않음**
-    - USB 케이블 및 OTG 어댑터 확인
-    - 카메라 PC 연결 모드 설정 확인
-    - USB 권한 재설정
-
-2. **Wi-Fi 연결 실패**
-    - 네트워크 연결 상태 확인
-    - 카메라 Wi-Fi 설정 재확인
-    - 앱 Wi-Fi 권한 확인
-
-3. **라이브뷰가 느림**
-    - 라이브뷰 품질 조정
-    - Wi-Fi 연결 시 네트워크 속도 확인
-    - 기기 메모리 부족 여부 확인
-
-4. **색감 전환 실패**
-    - 이미지 크기 확인 (권장: 50MP 이하)
-    - 여유 저장 공간 확인
-    - 메모리 부족 시 앱 재시작
-
-## 로그 사용법
-
-```kotlin
-// 기본 로그
-LogcatManager.d("TAG", "디버그 메시지")
-LogcatManager.i("TAG", "정보 메시지")
-LogcatManager.w("TAG", "경고 메시지")
-LogcatManager.e("TAG", "에러 메시지")
-
-// 성능 측정
-val startTime = System.currentTimeMillis()
-LogcatManager.perfStart("TAG", "작업명")
-// ... 작업 수행
-LogcatManager.perfEnd("TAG", "작업명", startTime)
-```
-
-## 라이선스
-
-이 프로젝트는 MIT 라이선스 하에 배포됩니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
-
-## 지원 및 문의
-
-- **이슈 리포트**: [GitHub Issues](https://github.com/yourusername/CamConT/issues)
-- **기능 요청**: [GitHub Discussions](https://github.com/yourusername/CamConT/discussions)
-- **이메일**: ppp5544@gmail.com
-
----
-**CamConT** - Professional Camera Control & Color Transfer for Android
-*Make Every Shot Perfect*
-
----
-
-### 🚀 최적화
-
-- **C++ 최적화**: RAII, 메모리 풀, 템플릿
-- **Kotlin 최적화**: Flow, Coroutines, sealed class
-- **빌드 최적화**: ProGuard, R8, 조건부 로깅
-- **성능**: 릴리즈 빌드 +8%, 메모리 안정
-
-### 🔒 안정성
-
-- **메모리 누수 방지**: WeakReference + cleanup
-- **동시성 안전**: ConcurrentHashMap, atomic 연산
-- **에러 처리**: sealed class, Result 타입
-- **테스트**: 단위/통합 테스트 준비
-
----
-
-## 📊 성능 지표
-
-### 측정된 성능
-
-```
-앱 시작 시간: 2.3초 (최적화 후 -8%)
-메모리 사용: 42MB (안정적, 누수 방지)
-촬영 응답: 500ms
-라이브뷰: 30fps
-색감 전환: 2-3초 (GPU 가속)
-배터리 소모: 14%/2시간 (최적화 후 -5%)
-```
-
-### 코드 품질
-
-```
-가독성: 85/100 (+21%)
-유지보수성: 82/100 (+26%)
-테스트 커버리지: 10% (개선 필요)
-안정성: 95/100 (메모리/동시성 안정)
-```
-
----
+### Wi-Fi 연결
+1. 카메라 Wi-Fi AP/STA 모드 설정
+2. 안드로이드에서 연결
+3. 앱에서 카메라 검색
+4. 자동 연결 ✅
 
 ## 🐛 문제 해결
 
-### 카메라 감지 안됨
+| 문제 | 해결 방법 |
+|------|----------|
+| **카메라 감지 안됨** | USB 케이블 확인, PC 모드 설정, USB 권한 재부여 |
+| **Wi-Fi 연결 실패** | 네트워크 상태 확인, 위치권한 확인 |
+| **라이브뷰 느림** | 품질 조정, Wi-Fi 속도 확인 |
+| **색감 전환 실패** | 이미지 크기 확인 (50MP 이하), 저장공간 확인 |
 
-```
-✓ USB 케이블 확인
-✓ 카메라 PC 연결 모드 설정
-✓ USB 권한 재부여
-✓ 앱 재시작
-```
-
-### Wi-Fi 연결 실패
-
-```
-✓ 네트워크 연결 상태 확인
-✓ 카메라 Wi-Fi 설정 재확인
-✓ 위치 권한 확인 (Android 10+)
-✓ Wi-Fi 권한 확인
-```
-
-### 라이브뷰 느림
-
-```
-✓ 라이브뷰 품질 조정
-✓ Wi-Fi 신호 강도 확인
-✓ 메모리 부족 여부 확인
-```
-
-### 색감 전환 실패
-
-```
-✓ 이미지 크기 확인 (50MP 이하 권장)
-✓ 저장 공간 확인
-✓ 앱 메모리 정리 (재시작)
-```
-
----
-
-## 📄 문서
-
-- **[종합 개선 보고서](COMPREHENSIVE_IMPROVEMENTS.md)** - 문제점 분석 및 개선 방안
-- **[적용 완료 내역](IMPROVEMENTS_APPLIED.md)** - 실제 적용된 개선사항
-- **[코드 최적화 요약](CODE_OPTIMIZATION_SUMMARY.md)** - C++ 네이티브 최적화
-- **[구현 완료 보고서](IMPLEMENTATION_COMPLETE.md)** - 고급 기능 구현 내역
-
----
-
-## 🤝 기여
-
-### 기여 방법
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m '기능: 놀라운 기능 추가'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
-
-### 코딩 규칙
-
-- Clean Architecture 준수
-- MVVM 패턴 사용
-- Kotlin 코딩 컨벤션
-- 모든 공개 API에 KDoc 주석
-- 테스트 코드 작성 (최소 50%)
-
----
-
-## 📞 지원 및 문의
-
-- **이메일**: ppp5544@gmail.com
-- **이슈**: [GitHub Issues](https://github.com/yourusername/CamConT/issues)
-- **토론**: [GitHub Discussions](https://github.com/yourusername/CamConT/discussions)
-
----
-
-## 🏆 주요 특징
-
-### 🎯 프로페셔널 품질
-
-- ⭐⭐⭐⭐⭐ 기능 완성도 (5/5)
-- ⭐⭐⭐⭐☆ 코드 품질 (4/5)
-- ⭐⭐⭐⭐⭐ 안정성 (5/5)
-- ⭐⭐⭐⭐☆ 유지보수성 (4/5)
-
-### 🚀 최적화
-
-- **C++ 최적화**: RAII, 메모리 풀, 템플릿
-- **Kotlin 최적화**: Flow, Coroutines, sealed class
-- **빌드 최적화**: ProGuard, R8, 조건부 로깅
-- **성능**: 릴리즈 빌드 +8%, 메모리 안정
-
-### 🔒 안정성
-
-- **메모리 누수 방지**: WeakReference + cleanup
-- **동시성 안전**: ConcurrentHashMap, atomic 연산
-- **에러 처리**: sealed class, Result 타입
-- **테스트**: 단위/통합 테스트 준비
-
----
-
-## 🚀 주요 기능
-
-### 1️⃣ 카메라 연결
-
-- ✅ **USB OTG**: 직접 케이블 연결로 안정적 제어
-- ✅ **Wi-Fi AP 모드**: 카메라 직접 연결
-- ✅ **Wi-Fi STA 모드**: 같은 네트워크 내 연결
-- ✅ **자동 감지**: 연결된 카메라 자동 인식
-- ✅ **재연결**: 연결 끊김 시 자동 재연결
-
-### 2️⃣ 촬영 기능
-
-- ✅ **원격 촬영**: 앱에서 셔터 제어
-- ✅ **외부 셔터**: 카메라 버튼 누르면 앱으로 자동 전송
-- ✅ **라이브뷰**: 실시간 미리보기 (28-30 FPS)
-- ✅ **자동초점**: 터치 AF 지원
-- ✅ **Bulb 모드**: 1초~60분 장노출 촬영
-- ✅ **인터벌 촬영**: 타임랩스 (1~9999장)
-- ✅ **비디오 녹화**: 시작/중지 제어
-- ✅ **Trigger Capture**: 테더 촬영
-
-### 3️⃣ 고급 기능
-
-- ✅ **GPU 색감 전환**: AI 기반 색감 매칭 (3-5배 빠름)
-- ✅ **RAW 파일**: 25가지 포맷 지원 (CR2, NEF, ARW, DNG...)
-- ✅ **RAW 썸네일**: 임베디드 JPEG 빠른 추출
-- ✅ **RAW 메타데이터**: 파일 다운로드 없이 정보 조회
-- ✅ **듀얼 모드**: RAW+JPEG 동시 촬영
-
-### 4️⃣ 카메라별 전용 설정
-
-#### Canon EOS
-
-- ✅ 색온도 조절 (2500K~10000K)
-- ✅ Picture Style (Portrait, Landscape, etc.)
-- ✅ 화이트밸런스 미세 조정 (BA/GM)
-- ✅ 컬러 스페이스 (sRGB, Adobe RGB)
-
-#### Nikon DSLR
-
-- ✅ 메모리 카드 슬롯 선택 (SD, CF, XQD)
-- ✅ 비디오 모드 ON/OFF
-- ✅ 노출 지연 모드 (미러 쇼크 방지)
-- ✅ 배터리 레벨 조회
-
-#### Sony Alpha
-
-- ✅ 포커스 영역 설정
-- ✅ 라이브뷰 효과 미리보기
-- ✅ 수동 포커싱 (스텝 단위)
-
-#### Fujifilm X
-
-- ✅ 필름 시뮬레이션 (PROVIA, Velvia, Classic Chrome, etc.)
-- ✅ 색공간 설정
-- ✅ 셔터 카운터 조회
-
-#### Panasonic Lumix
-
-- ✅ 무비 녹화 제어 (4K/FHD)
-- ✅ 수동 포커스 드라이브
-
----
-
-## 🛠️ 기술 스택
-
-### 🎨 Frontend
-
-```
-UI Framework:
-  └─► Jetpack Compose 1.5.4
-      ├─► Material Design 3
-      ├─► Navigation Compose
-      └─► Accompanist (System UI)
-
-State Management:
-  ├─► StateFlow / Flow
-  ├─► ViewModel
-  └─► Coroutines 1.10.2
-```
-
-### ⚙️ Backend
-
-```
-Architecture:
-  └─► Clean Architecture + MVVM
-      ├─► Presentation (ViewModel, UI)
-      ├─► Domain (UseCase, Repository Interface)
-      └─► Data (Repository Impl, DataSource)
-
-Dependency Injection:
-  └─► Dagger Hilt 2.49
-      ├─► @HiltAndroidApp
-      ├─► @AndroidEntryPoint
-      └─► @Inject Constructor
-```
-
-### 🔧 Native
-
-```
-C++ Libraries:
-  └─► libgphoto2 2.5.x
-      ├─► Camera 제어 핵심
-      ├─► 100+ 카메라 드라이버 지원
-      └─► PTP/USB 프로토콜
-
-Build System:
-  └─► CMake 3.22.1
-      ├─► NDK 27.0
-      ├─► C++17
-      └─► arm64-v8a
-```
-
-### ☁️ Cloud & Auth
-
-```
-Firebase:
-  ├─► Authentication (Google Sign-In)
-  ├─► Firestore (사용자 데이터)
-  ├─► Remote Config (앱 업데이트)
-  └─► Analytics
-
-Google Play:
-  └─► Billing Library 6.1.0 (구독)
-```
-
-### 🖼️ Image Processing
-
-```
-Libraries:
-  ├─► Coil 2.7.0 (이미지 로딩)
-  ├─► GPUImage 2.1.0 (GPU 가속 처리)
-  ├─► ExifInterface 1.4.1 (메타데이터)
-  └─► ZoomImage 1.4.0 (줌/팬 뷰어)
-
-Custom:
-  └─► ColorTransferProcessor
-      ├─► 네이티브 C++ 구현
-      ├─► GPU 가속 적용
-      └─► 통계 캐싱 시스템
-```
-
----
-
-## 📋 프로젝트 구조
-
-```
-CamConT/
-├── app/
-│   ├── src/main/
-│   │   ├── java/com/inik/camcon/
-│   │   │   ├── 📁 di/                      # Dependency Injection
-│   │   │   │   ├── AppModule.kt
-│   │   │   │   └── RepositoryModule.kt
-│   │   │   │
-│   │   │   ├── 📁 domain/                  # Domain Layer
-│   │   │   │   ├── model/                  # 도메인 모델
-│   │   │   │   │   ├── Camera.kt
-│   │   │   │   │   ├── CameraError.kt      # ✨ NEW
-│   │   │   │   │   ├── CapturedPhoto.kt
-│   │   │   │   │   └── ...
-│   │   │   │   ├── repository/             # Repository 인터페이스
-│   │   │   │   ├── usecase/                # Use Cases
-│   │   │   │   └── manager/                # 도메인 매니저
-│   │   │   │
-│   │   │   ├── 📁 data/                    # Data Layer
-│   │   │   │   ├── repository/             # Repository 구현
-│   │   │   │   │   ├── CameraRepositoryImpl.kt  # ✨ 개선됨
-│   │   │   │   │   └── managers/           # 매니저들
-│   │   │   │   ├── datasource/             # 데이터 소스
-│   │   │   │   │   ├── nativesource/       # JNI 브리지
-│   │   │   │   │   ├── ptpip/              # Wi-Fi PTPIP
-│   │   │   │   │   ├── usb/                # USB 관리
-│   │   │   │   │   ├── local/              # 로컬 저장소
-│   │   │   │   │   └── remote/             # Firebase
-│   │   │   │   ├── network/                # 네트워크
-│   │   │   │   └── processor/              # 이미지 처리
-│   │   │   │
-│   │   │   ├── 📁 presentation/            # Presentation Layer
-│   │   │   │   ├── viewmodel/              # ViewModels
-│   │   │   │   ├── ui/                     # Activities
-│   │   │   │   │   ├── screens/            # Compose Screens
-│   │   │   │   │   └── components/         # UI Components
-│   │   │   │   ├── navigation/             # Navigation
-│   │   │   │   └── theme/                  # Material Theme
-│   │   │   │
-│   │   │   ├── 📁 utils/                   # Utilities
-│   │   │   │   ├── Constants.kt
-│   │   │   │   ├── LogcatManager.kt
-│   │   │   │   └── ResultExtensions.kt     # ✨ NEW
-│   │   │   │
-│   │   │   ├── CamCon.kt                   # Application
-│   │   │   └── CameraNative.kt             # JNI Interface
-│   │   │
-│   │   └── cpp/                            # C++ Native Layer
-│   │       ├── camera_common.h             # 공통 헤더
-│   │       ├── camera_init_usb.cpp         # USB 초기화
-│   │       ├── camera_init.cpp             # PTPIP 초기화
-│   │       ├── camera_config.cpp           # 설정 관리
-│   │       ├── camera_capture.cpp          # 촬영
-│   │       ├── camera_liveview.cpp         # 라이브뷰
-│   │       ├── camera_events.cpp           # 이벤트
-│   │       ├── camera_files.cpp            # 파일 관리
-│   │       ├── camera_detection.cpp        # 감지
-│   │       ├── camera_samples_impl.cpp     # libgphoto2 예제
-│   │       ├── camera_advanced_features.cpp # 고급 촬영
-│   │       ├── camera_extra_features.cpp   # 카메라별 설정
-│   │       ├── native-lib.cpp              # JNI 래퍼
-│   │       └── CMakeLists.txt
-│   │
-│   └── build.gradle                        # 빌드 설정
-│
-├── 📄 README.md                            # 현재 문서
-├── 📄 COMPREHENSIVE_IMPROVEMENTS.md        # 종합 분석 (880줄)
-├── 📄 IMPROVEMENTS_APPLIED.md              # 적용 완료 (753줄)
-├── 📄 CODE_OPTIMIZATION_SUMMARY.md         # C++ 최적화
-├── 📄 IMPLEMENTATION_COMPLETE.md           # 기능 구현 완료
-└── 📄 gradle.properties                    # Gradle 설정
-```
-
----
-
-## 🎨 최근 개선 사항 (2025년 1월)
-
-### ✅ 적용 완료
-
-1. ✅ **Race Condition 수정** - ConcurrentHashMap 사용
-2. ✅ **메모리 누수 방지** - WeakReference + cleanup()
-3. ✅ **로깅 최적화** - LogcatManager (릴리즈 성능 +8%)
-4. ✅ **공통 유틸리티** - ResultExtensions.kt (코드 중복 -60%)
-5. ✅ **도메인 에러** - CameraError sealed class (타입 안전)
-6. ✅ **의존성 정리** - 14개 → 12개 (-14%)
-7. ✅ **코드 리팩토링** - 메서드 분리 8개 (가독성 +60%)
-
-### 📈 개선 효과
-
-- 🔒 동시성 안정성 100%
-- 💾 메모리 누수 100% 방지
-- 🚀 성능 +8%
-- 🔋 배터리 -5%
-- 📖 가독성 +21%
-- 🔧 유지보수성 +26%
-
-자세한 내용: **[개선 완료 보고서](IMPROVEMENTS_APPLIED.md)**
-
----
-
-## 🚀 시작하기
-
-### 시스템 요구사항
-
-- **Android Studio**: Hedgehog 이상
-- **JDK**: 17 이상 ✨ (중요!)
-- **최소 Android**: API 29 (Android 10)
-- **NDK**: 27.0 이상
-- **RAM**: 8GB 이상 권장
-
-### 빌드 방법
-
-```bash
-# 1. Java 17 설정 확인
-java --version  # 17.0 이상 확인
-
-# 2. 의존성 다운로드
-./gradlew --no-daemon build
-
-# 3. Debug APK 빌드
-./gradlew assembleDebug
-
-# 4. Release APK 빌드 (서명 필요)
-./gradlew assembleRelease
-```
-
-### 실행 방법
-
-```bash
-# Debug 앱 설치 및 실행
-./gradlew installDebug
-adb shell am start -n com.inik.camcon/.presentation.ui.SplashActivity
-
-# 또는 Android Studio에서
-Run > Run 'app'
-```
-
----
-
-## 📖 사용 가이드
-
-### USB 연결 방법
-
-1. USB OTG 케이블로 카메라와 안드로이드 연결
-2. 카메라 전원 ON 및 PC 연결 모드 설정
-3. 앱에서 USB 권한 허용
-4. 자동으로 카메라 감지 및 연결
-
-### Wi-Fi 연결 방법 (AP 모드)
-
-1. 카메라를 Wi-Fi AP 모드로 설정
-2. 안드로이드에서 카메라 Wi-Fi 네트워크 연결
-3. 앱 실행 후 PTP/IP 연결 선택
-4. 자동 카메라 검색 및 연결
-
-### Wi-Fi 연결 방법 (STA 모드)
-
-1. 카메라와 안드로이드 기기를 동일한 Wi-Fi 네트워크에 연결
-2. 카메라를 STA 모드로 설정
-3. 앱에서 네트워크 내 카메라 검색
-4. 감지된 카메라 선택하여 연결
-
-### 색감 변환 사용법
-
-1. 갤러리에서 변환할 이미지 선택
-2. 색감 변환 메뉴 선택
-3. 참조 이미지 선택 (원하는 색감의 이미지)
-4. 실시간 미리보기 확인
-5. 변환 적용 및 저장
-
-## 고급 설정
-
-### 성능 최적화
-
-- 라이브뷰 품질 조정 (설정 > 카메라 > 라이브뷰 품질)
-- 색감 변환 품질 설정 (고품질/표준/빠른 처리)
-- 메모리 사용량 제한 설정
-- 배터리 최적화 설정
-
-## 다국어 지원
-
-현재 지원되는 언어:
-
-- 한국어 (Korean)
-- 영어 (English)
-- 일본어 (Japanese)
-- 독일어 (German)
-- 프랑스어 (French)
-- 이탈리아어 (Italian)
-- 중국어 (Chinese)
-
-## 문제 해결
-
-### 일반적인 문제
-
-1. **카메라가 감지되지 않음**
-    - USB 케이블 및 OTG 어댑터 확인
-    - 카메라 PC 연결 모드 설정 확인
-    - USB 권한 재설정
-
-2. **Wi-Fi 연결 실패**
-    - 네트워크 연결 상태 확인
-    - 카메라 Wi-Fi 설정 재확인
-    - 앱 Wi-Fi 권한 확인
-
-3. **라이브뷰가 느림**
-    - 라이브뷰 품질 조정
-    - Wi-Fi 연결 시 네트워크 속도 확인
-    - 기기 메모리 부족 여부 확인
-
-4. **색감 전환 실패**
-    - 이미지 크기 확인 (권장: 50MP 이하)
-    - 여유 저장 공간 확인
-    - 메모리 부족 시 앱 재시작
-
-## 로그 사용법
-
-```kotlin
-// 기본 로그
-LogcatManager.d("TAG", "디버그 메시지")
-LogcatManager.i("TAG", "정보 메시지")
-LogcatManager.w("TAG", "경고 메시지")
-LogcatManager.e("TAG", "에러 메시지")
-
-// 성능 측정
-val startTime = System.currentTimeMillis()
-LogcatManager.perfStart("TAG", "작업명")
-// ... 작업 수행
-LogcatManager.perfEnd("TAG", "작업명", startTime)
-```
-
-## 라이선스
-
-이 프로젝트는 MIT 라이선스 하에 배포됩니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
-
-## 지원 및 문의
-
-- **이슈 리포트**: [GitHub Issues](https://github.com/yourusername/CamConT/issues)
-- **기능 요청**: [GitHub Discussions](https://github.com/yourusername/CamConT/discussions)
-- **이메일**: ppp5544@gmail.com
-
----
-**CamConT** - Professional Camera Control & Color Transfer for Android
-*Make Every Shot Perfect*
-
----
-
-### 🚀 최적화
-
-- **C++ 최적화**: RAII, 메모리 풀, 템플릿
-- **Kotlin 최적화**: Flow, Coroutines, sealed class
-- **빌드 최적화**: ProGuard, R8, 조건부 로깅
-- **성능**: 릴리즈 빌드 +8%, 메모리 안정
-
-### 🔒 안정성
-
-- **메모리 누수 방지**: WeakReference + cleanup
-- **동시성 안전**: ConcurrentHashMap, atomic 연산
-- **에러 처리**: sealed class, Result 타입
-- **테스트**: 단위/통합 테스트 준비
-
----
-
-## 📊 성능 지표
-
-### 측정된 성능
-
-```
-앱 시작 시간: 2.3초 (최적화 후 -8%)
-메모리 사용: 42MB (안정적, 누수 방지)
-촬영 응답: 500ms
-라이브뷰: 30fps
-색감 전환: 2-3초 (GPU 가속)
-배터리 소모: 14%/2시간 (최적화 후 -5%)
-```
-
-### 코드 품질
-
-```
-가독성: 85/100 (+21%)
-유지보수성: 82/100 (+26%)
-테스트 커버리지: 10% (개선 필요)
-안정성: 95/100 (메모리/동시성 안정)
-```
-
----
-
-## 🐛 문제 해결
-
-### 카메라 감지 안됨
-
-```
-✓ USB 케이블 확인
-✓ 카메라 PC 연결 모드 설정
-✓ USB 권한 재부여
-✓ 앱 재시작
-```
-
-### Wi-Fi 연결 실패
-
-```
-✓ 네트워크 연결 상태 확인
-✓ 카메라 Wi-Fi 설정 재확인
-✓ 위치 권한 확인 (Android 10+)
-✓ Wi-Fi 권한 확인
-```
-
-### 라이브뷰 느림
-
-```
-✓ 라이브뷰 품질 조정
-✓ Wi-Fi 신호 강도 확인
-✓ 메모리 부족 여부 확인
-```
-
-### 색감 전환 실패
-
-```
-✓ 이미지 크기 확인 (50MP 이하 권장)
-✓ 저장 공간 확인
-✓ 앱 메모리 정리 (재시작)
-```
-
----
-
-## 📄 문서
-
-- **[종합 개선 보고서](COMPREHENSIVE_IMPROVEMENTS.md)** - 문제점 분석 및 개선 방안
-- **[적용 완료 내역](IMPROVEMENTS_APPLIED.md)** - 실제 적용된 개선사항
-- **[코드 최적화 요약](CODE_OPTIMIZATION_SUMMARY.md)** - C++ 네이티브 최적화
-- **[구현 완료 보고서](IMPLEMENTATION_COMPLETE.md)** - 고급 기능 구현 내역
-
----
-
-## 🤝 기여
-
-### 기여 방법
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m '기능: 놀라운 기능 추가'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
-
-### 코딩 규칙
-
-- Clean Architecture 준수
-- MVVM 패턴 사용
-- Kotlin 코딩 컨벤션
-- 모든 공개 API에 KDoc 주석
-- 테스트 코드 작성 (최소 50%)
-
----
-
-## 📞 지원 및 문의
-
-- **이메일**: ppp5544@gmail.com
-- **이슈**: [GitHub Issues](https://github.com/yourusername/CamConT/issues)
-- **토론**: [GitHub Discussions](https://github.com/yourusername/CamConT/discussions)
-
----
-
-## 🏆 주요 특징
-
-### 🎯 프로페셔널 품질
-
-- ⭐⭐⭐⭐⭐ 기능 완성도 (5/5)
-- ⭐⭐⭐⭐☆ 코드 품질 (4/5)
-- ⭐⭐⭐⭐⭐ 안정성 (5/5)
-- ⭐⭐⭐⭐☆ 유지보수성 (4/5)
-
-### 🚀 최적화
-
-- **C++ 최적화**: RAII, 메모리 풀, 템플릿
-- **Kotlin 최적화**: Flow, Coroutines, sealed class
-- **빌드 최적화**: ProGuard, R8, 조건부 로깅
-- **성능**: 릴리즈 빌드 +8%, 메모리 안정
-
-### 🔒 안정성
-
-- **메모리 누수 방지**: WeakReference + cleanup
-- **동시성 안전**: ConcurrentHashMap, atomic 연산
-- **에러 처리**: sealed class, Result 타입
-- **테스트**: 단위/통합 테스트 준비
-
----
-
-## 🚀 주요 기능
-
-### 1️⃣ 카메라 연결
-
-- ✅ **USB OTG**: 직접 케이블 연결로 안정적 제어
-- ✅ **Wi-Fi AP 모드**: 카메라 직접 연결
-- ✅ **Wi-Fi STA 모드**: 같은 네트워크 내 연결
-- ✅ **자동 감지**: 연결된 카메라 자동 인식
-- ✅ **재연결**: 연결 끊김 시 자동 재연결
-
-### 2️⃣ 촬영 기능
-
-- ✅ **원격 촬영**: 앱에서 셔터 제어
-- ✅ **외부 셔터**: 카메라 버튼 누르면 앱으로 자동 전송
-- ✅ **라이브뷰**: 실시간 미리보기 (28-30 FPS)
-- ✅ **자동초점**: 터치 AF 지원
-- ✅ **Bulb 모드**: 1초~60분 장노출 촬영
-- ✅ **인터벌 촬영**: 타임랩스 (1~9999장)
-- ✅ **비디오 녹화**: 시작/중지 제어
-- ✅ **Trigger Capture**: 테더 촬영
-
-### 3️⃣ 고급 기능
-
-- ✅ **GPU 색감 전환**: AI 기반 색감 매칭 (3-5배 빠름)
-- ✅ **RAW 파일**: 25가지 포맷 지원 (CR2, NEF, ARW, DNG...)
-- ✅ **RAW 썸네일**: 임베디드 JPEG 빠른 추출
-- ✅ **RAW 메타데이터**: 파일 다운로드 없이 정보 조회
-- ✅ **듀얼 모드**: RAW+JPEG 동시 촬영
-
-### 4️⃣ 카메라별 전용 설정
-
-#### Canon EOS
-
-- ✅ 색온도 조절 (2500K~10000K)
-- ✅ Picture Style (Portrait, Landscape, etc.)
-- ✅ 화이트밸런스 미세 조정 (BA/GM)
-- ✅ 컬러 스페이스 (sRGB, Adobe RGB)
-
-#### Nikon DSLR
-
-- ✅ 메모리 카드 슬롯 선택 (SD, CF, XQD)
-- ✅ 비디오 모드 ON/OFF
-- ✅ 노출 지연 모드 (미러 쇼크 방지)
-- ✅ 배터리 레벨 조회
-
-#### Sony Alpha
-
-- ✅ 포커스 영역 설정
-- ✅ 라이브뷰 효과 미리보기
-- ✅ 수동 포커싱 (스텝 단위)
-
-#### Fujifilm X
-
-- ✅ 필름 시뮬레이션 (PROVIA, Velvia, Classic Chrome, etc.)
-- ✅ 색공간 설정
-- ✅ 셔터 카운터 조회
-
-#### Panasonic Lumix
-
-- ✅ 무비 녹화 제어 (4K/FHD)
-- ✅ 수동 포커스 드라이브
-
----
-
-## 🛠️ 기술 스택
-
-### 🎨 Frontend
-
-```
-UI Framework:
-  └─► Jetpack Compose 1.5.4
-      ├─► Material Design 3
-      ├─► Navigation Compose
-      └─► Accompanist (System UI)
-
-State Management:
-  ├─► StateFlow / Flow
-  ├─► ViewModel
-  └─► Coroutines 1.10.2
-```
-
-### ⚙️ Backend
-
-```
-Architecture:
-  └─► Clean Architecture + MVVM
-      ├─► Presentation (ViewModel, UI)
-      ├─► Domain (UseCase, Repository Interface)
-      └─► Data (Repository Impl, DataSource)
-
-Dependency Injection:
-  └─► Dagger Hilt 2.49
-      ├─► @HiltAndroidApp
-      ├─► @AndroidEntryPoint
-      └─► @Inject Constructor
-```
-
-### 🔧 Native
-
-```
-C++ Libraries:
-  └─► libgphoto2 2.5.x
-      ├─► Camera 제어 핵심
-      ├─► 100+ 카메라 드라이버 지원
-      └─► PTP/USB 프로토콜
-
-Build System:
-  └─► CMake 3.22.1
-      ├─► NDK 27.0
-      ├─► C++17
-      └─► arm64-v8a
-```
-
-### ☁️ Cloud & Auth
-
-```
-Firebase:
-  ├─► Authentication (Google Sign-In)
-  ├─► Firestore (사용자 데이터)
-  ├─► Remote Config (앱 업데이트)
-  └─► Analytics
-
-Google Play:
-  └─► Billing Library 6.1.0 (구독)
-```
-
-### 🖼️ Image Processing
-
-```
-Libraries:
-  ├─► Coil 2.7.0 (이미지 로딩)
-  ├─► GPUImage 2.1.0 (GPU 가속 처리)
-  ├─► ExifInterface 1.4.1 (메타데이터)
-  └─► ZoomImage 1.4.0 (줌/팬 뷰어)
-
-Custom:
-  └─► ColorTransferProcessor
-      ├─► 네이티브 C++ 구현
-      ├─► GPU 가속 적용
-      └─► 통계 캐싱 시스템
-```
-
----
-
-## 📋 프로젝트 구조
-
-```
-CamConT/
-├── app/
-│   ├── src/main/
-│   │   ├── java/com/inik/camcon/
-│   │   │   ├── 📁 di/                      # Dependency Injection
-│   │   │   │   ├── AppModule.kt
-│   │   │   │   └── RepositoryModule.kt
-│   │   │   │
-│   │   │   ├── 📁 domain/                  # Domain Layer
-│   │   │   │   ├── model/                  # 도메인 모델
-│   │   │   │   │   ├── Camera.kt
-│   │   │   │   │   ├── CameraError.kt      # ✨ NEW
-│   │   │   │   │   ├── CapturedPhoto.kt
-│   │   │   │   │   └── ...
-│   │   │   │   ├── repository/             # Repository 인터페이스
-│   │   │   │   ├── usecase/                # Use Cases
-│   │   │   │   └── manager/                # 도메인 매니저
-│   │   │   │
-│   │   │   ├── 📁 data/                    # Data Layer
-│   │   │   │   ├── repository/             # Repository 구현
-│   │   │   │   │   ├── CameraRepositoryImpl.kt  # ✨ 개선됨
-│   │   │   │   │   └── managers/           # 매니저들
-│   │   │   │   ├── datasource/             # 데이터 소스
-│   │   │   │   │   ├── nativesource/       # JNI 브리지
-│   │   │   │   │   ├── ptpip/              # Wi-Fi PTPIP
-│   │   │   │   │   ├── usb/                # USB 관리
-│   │   │   │   │   ├── local/              # 로컬 저장소
-│   │   │   │   │   └── remote/             # Firebase
-│   │   │   │   ├── network/                # 네트워크
-│   │   │   │   └── processor/              # 이미지 처리
-│   │   │   │
-│   │   │   ├── 📁 presentation/            # Presentation Layer
-│   │   │   │   ├── viewmodel/              # ViewModels
-│   │   │   │   ├── ui/                     # Activities
-│   │   │   │   │   ├── screens/            # Compose Screens
-│   │   │   │   │   └── components/         # UI Components
-│   │   │   │   ├── navigation/             # Navigation
-│   │   │   │   └── theme/                  # Material Theme
-│   │   │   │
-│   │   │   ├── 📁 utils/                   # Utilities
-│   │   │   │   ├── Constants.kt
-│   │   │   │   ├── LogcatManager.kt
-│   │   │   │   └── ResultExtensions.kt     # ✨ NEW
-│   │   │   │
-│   │   │   ├── CamCon.kt                   # Application
-│   │   │   └── CameraNative.kt             # JNI Interface
-│   │   │
-│   │   └── cpp/                            # C++ Native Layer
-│   │       ├── camera_common.h             # 공통 헤더
-│   │       ├── camera_init_usb.cpp         # USB 초기화
-│   │       ├── camera_init.cpp             # PTPIP 초기화
-│   │       ├── camera_config.cpp           # 설정 관리
-│   │       ├── camera_capture.cpp          # 촬영
-│   │       ├── camera_liveview.cpp         # 라이브뷰
-│   │       ├── camera_events.cpp           # 이벤트
-│   │       ├── camera_files.cpp            # 파일 관리
-│   │       ├── camera_detection.cpp        # 감지
-│   │       ├── camera_samples_impl.cpp     # libgphoto2 예제
-│   │       ├── camera_advanced_features.cpp # 고급 촬영
-│   │       ├── camera_extra_features.cpp   # 카메라별 설정
-│   │       ├── native-lib.cpp              # JNI 래퍼
-│   │       └── CMakeLists.txt
-│   │
-│   └── build.gradle                        # 빌드 설정
-│
-├── 📄 README.md                            # 현재 문서
-├── 📄 COMPREHENSIVE_IMPROVEMENTS.md        # 종합 분석 (880줄)
-├── 📄 IMPROVEMENTS_APPLIED.md              # 적용 완료 (753줄)
-├── 📄 CODE_OPTIMIZATION_SUMMARY.md         # C++ 최적화
-├── 📄 IMPLEMENTATION_COMPLETE.md           # 기능 구현 완료
-└── 📄 gradle.properties                    # Gradle 설정
-```
-
----
-
-## 🎨 최근 개선 사항 (2025년 1월)
-
-### ✅ 적용 완료
-
-1. ✅ **Race Condition 수정** - ConcurrentHashMap 사용
-2. ✅ **메모리 누수 방지** - WeakReference + cleanup()
-3. ✅ **로깅 최적화** - LogcatManager (릴리즈 성능 +8%)
-4. ✅ **공통 유틸리티** - ResultExtensions.kt (코드 중복 -60%)
-5. ✅ **도메인 에러** - CameraError sealed class (타입 안전)
-6. ✅ **의존성 정리** - 14개 → 12개 (-14%)
-7. ✅ **코드 리팩토링** - 메서드 분리 8개 (가독성 +60%)
-
-### 📈 개선 효과
-
-- 🔒 동시성 안정성 100%
-- 💾 메모리 누수 100% 방지
-- 🚀 성능 +8%
-- 🔋 배터리 -5%
-- 📖 가독성 +21%
-- 🔧 유지보수성 +26%
-
-자세한 내용: **[개선 완료 보고서](IMPROVEMENTS_APPLIED.md)**
-
----
-
-## 🚀 시작하기
-
-### 시스템 요구사항
-
-- **Android Studio**: Hedgehog 이상
-- **JDK**: 17 이상 ✨ (중요!)
-- **최소 Android**: API 29 (Android 10)
-- **NDK**: 27.0 이상
-- **RAM**: 8GB 이상 권장
-
-### 빌드 방법
-
-```bash
-# 1. Java 17 설정 확인
-java --version  # 17.0 이상 확인
-
-# 2. 의존성 다운로드
-./gradlew --no-daemon build
-
-# 3. Debug APK 빌드
-./gradlew assembleDebug
-
-# 4. Release APK 빌드 (서명 필요)
-./gradlew assembleRelease
-```
-
-### 실행 방법
-
-```bash
-# Debug 앱 설치 및 실행
-./gradlew installDebug
-adb shell am start -n com.inik.camcon/.presentation.ui.SplashActivity
-
-# 또는 Android Studio에서
-Run > Run 'app'
-```
-
----
-
-## 📖 사용 가이드
-
-### USB 연결 방법
-
-1. USB OTG 케이블로 카메라와 안드로이드 연결
-2. 카메라 전원 ON 및 PC 연결 모드 설정
-3. 앱에서 USB 권한 허용
-4. 자동으로 카메라 감지 및 연결
-
-### Wi-Fi 연결 방법 (AP 모드)
-
-1. 카메라를 Wi-Fi AP 모드로 설정
-2. 안드로이드에서 카메라 Wi-Fi 네트워크 연결
-3. 앱 실행 후 PTP/IP 연결 선택
-4. 자동 카메라 검색 및 연결
-
-### Wi-Fi 연결 방법 (STA 모드)
-
-1. 카메라와 안드로이드 기기를 동일한 Wi-Fi 네트워크에 연결
-2. 카메라를 STA 모드로 설정
-3. 앱에서 네트워크 내 카메라 검색
-4. 감지된 카메라 선택하여 연결
-
-### 색감 변환 사용법
-
-1. 갤러리에서 변환할 이미지 선택
-2. 색감 변환 메뉴 선택
-3. 참조 이미지 선택 (원하는 색감의 이미지)
-4. 실시간 미리보기 확인
-5. 변환 적용 및 저장
-
-## 고급 설정
-
-### 성능 최적화
-
-- 라이브뷰 품질 조정 (설정 > 카메라 > 라이브뷰 품질)
-- 색감 변환 품질 설정 (고품질/표준/빠른 처리)
-- 메모리 사용량 제한 설정
-- 배터리 최적화 설정
-
-## 다국어 지원
-
-현재 지원되는 언어:
-
-- 한국어 (Korean)
-- 영어 (English)
-- 일본어 (Japanese)
-- 독일어 (German)
-- 프랑스어 (French)
-- 이탈리아어 (Italian)
-- 중국어 (Chinese)
-
-## 문제 해결
-
-### 일반적인 문제
-
-1. **카메라가 감지되지 않음**
-    - USB 케이블 및 OTG 어댑터 확인
-    - 카메라 PC 연결 모드 설정 확인
-    - USB 권한 재설정
-
-2. **Wi-Fi 연결 실패**
-    - 네트워크 연결 상태 확인
-    - 카메라 Wi-Fi 설정 재확인
-    - 앱 Wi-Fi 권한 확인
-
-3. **라이브뷰가 느림**
-    - 라이브뷰 품질 조정
-    - Wi-Fi 연결 시 네트워크 속도 확인
-    - 기기 메모리 부족 여부 확인
-
-4. **색감 전환 실패**
-    - 이미지 크기 확인 (권장: 50MP 이하)
-    - 여유 저장 공간 확인
-    - 메모리 부족 시 앱 재시작
-
-## 로그 사용법
-
-```kotlin
-// 기본 로그
-LogcatManager.d("TAG", "디버그 메시지")
-LogcatManager.i("TAG", "정보 메시지")
-LogcatManager.w("TAG", "경고 메시지")
-LogcatManager.e("TAG", "에러 메시지")
-
-// 성능 측정
-val startTime = System.currentTimeMillis()
-LogcatManager.perfStart("TAG", "작업명")
-// ... 작업 수행
-LogcatManager.perfEnd("TAG", "작업명", startTime)
-```
-
-## 라이선스
-
-이 프로젝트는 MIT 라이선스 하에 배포됩니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
-
-## 지원 및 문의
-
-- **이슈 리포트**: [GitHub Issues](https://github.com/yourusername/CamConT/issues)
-- **기능 요청**: [GitHub Discussions](https://github.com/yourusername/CamConT/discussions)
-- **이메일**: ppp5544@gmail.com
-
----
-**CamConT** - Professional Camera Control & Color Transfer for Android
-*Make Every Shot Perfect*
-
----
-
-### 🚀 최적화
-
-- **C++ 최적화**: RAII, 메모리 풀, 템플릿
-- **Kotlin 최적화**: Flow, Coroutines, sealed class
-- **빌드 최적화**: ProGuard, R8, 조건부 로깅
-- **성능**: 릴리즈 빌드 +8%, 메모리 안정
-
-### 🔒 안정성
-
-- **메모리 누수 방지**: WeakReference + cleanup
-- **동시성 안전**: ConcurrentHashMap, atomic 연산
-- **에러 처리**: sealed class, Result 타입
-- **테스트**: 단위/통합 테스트 준비
-
----
-
-## 📊 성능 지표
-
-### 측정된 성능
-
-```
-앱 시작 시간: 2.3초 (최적화 후 -8%)
-메모리 사용: 42MB (안정적, 누수 방지)
-촬영 응답: 500ms
-라이브뷰: 30fps
-색감 전환: 2-3초 (GPU 가속)
-배터리 소모: 14%/2시간 (최적화 후 -5%)
-```
-
-### 코드 품질
-
-```
-가독성: 85/100 (+21%)
-유지보수성: 82/100 (+26%)
-테스트 커버리지: 10% (개선 필요)
-안정성: 95/100 (메모리/동시성 안정)
-```
-
----
-
-## 🐛 문제 해결
-
-### 카메라 감지 안됨
-
-```
-✓ USB 케이블 확인
-✓ 카메라 PC 연결 모드 설정
-✓ USB 권한 재부여
-✓ 앱 재시작
-```
-
-### Wi-Fi 연결 실패
-
-```
-✓ 네트워크 연결 상태 확인
-✓ 카메라 Wi-Fi 설정 재확인
-✓ 위치 권한 확인 (Android 10+)
-✓ Wi-Fi 권한 확인
-```
-
-### 라이브뷰 느림
-
-```
-✓ 라이브뷰 품질 조정
-✓ Wi-Fi 신호 강도 확인
-✓ 메모리 부족 여부 확인
-```
-
-### 색감 전환 실패
-
-```
-✓ 이미지 크기 확인 (50MP 이하 권장)
-✓ 저장 공간 확인
-✓ 앱 메모리 정리 (재시작)
-```
-
----
-
-## 📄 문서
-
-- **[종합 개선 보고서](COMPREHENSIVE_IMPROVEMENTS.md)** - 문제점 분석 및 개선 방안
-- **[적용 완료 내역](IMPROVEMENTS_APPLIED.md)** - 실제 적용된 개선사항
-- **[코드 최적화 요약](CODE_OPTIMIZATION_SUMMARY.md)** - C++ 네이티브 최적화
-- **[구현 완료 보고서](IMPLEMENTATION_COMPLETE.md)** - 고급 기능 구현 내역
-
----
-
-## 🤝 기여
-
-### 기여 방법
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m '기능: 놀라운 기능 추가'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
-
-### 코딩 규칙
-
-- Clean Architecture 준수
-- MVVM 패턴 사용
-- Kotlin 코딩 컨벤션
-- 모든 공개 API에 KDoc 주석
-- 테스트 코드 작성 (최소 50%)
-
----
-
-## 📞 지원 및 문의
-
-- **이메일**: ppp5544@gmail.com
-- **이슈**: [GitHub Issues](https://github.com/yourusername/CamConT/issues)
-- **토론**: [GitHub Discussions](https://github.com/yourusername/CamConT/discussions)
-
----
-
-## 🏆 주요 특징
-
-### 🎯 프로페셔널 품질
-
-- ⭐⭐⭐⭐⭐ 기능 완성도 (5/5)
-- ⭐⭐⭐⭐☆ 코드 품질 (4/5)
-- ⭐⭐⭐⭐⭐ 안정성 (5/5)
-- ⭐⭐⭐⭐☆ 유지보수성 (4/5)
-
-### 🚀 최적화
-
-- **C++ 최적화**: RAII, 메모리 풀, 템플릿
-- **Kotlin 최적화**: Flow, Coroutines, sealed class
-- **빌드 최적화**: ProGuard, R8, 조건부 로깅
-- **성능**: 릴리즈 빌드 +8%, 메모리 안정
-
-### 🔒 안정성
-
-- **메모리 누수 방지**: WeakReference + cleanup
-- **동시성 안전**: ConcurrentHashMap, atomic 연산
-- **에러 처리**: sealed class, Result 타입
-- **테스트**: 단위/통합 테스트 준비
-
----
-
-## 🚀 주요 기능
-
-### 1️⃣ 카메라 연결
-
-- ✅ **USB OTG**: 직접 케이블 연결로 안정적 제어
-- ✅ **Wi-Fi AP 모드**: 카메라 직접 연결
-- ✅ **Wi-Fi STA 모드**: 같은 네트워크 내 연결
-- ✅ **자동 감지**: 연결된 카메라 자동 인식
-- ✅ **재연결**: 연결 끊김 시 자동 재연결
-
-### 2️⃣ 촬영 기능
-
-- ✅ **원격 촬영**: 앱에서 셔터 제어
-- ✅ **외부 셔터**: 카메라 버튼 누르면 앱으로 자동 전송
-- ✅ **라이브뷰**: 실시간 미리보기 (28-30 FPS)
-- ✅ **자동초점**: 터치 AF 지원
-- ✅ **Bulb 모드**: 1초~60분 장노출 촬영
-- ✅ **인터벌 촬영**: 타임랩스 (1~9999장)
-- ✅ **비디오 녹화**: 시작/중지 제어
-- ✅ **Trigger Capture**: 테더 촬영
-
-### 3️⃣ 고급 기능
-
-- ✅ **GPU 색감 전환**: AI 기반 색감 매칭 (3-5배 빠름)
-- ✅ **RAW 파일**: 25가지 포맷 지원 (CR2, NEF, ARW, DNG...)
-- ✅ **RAW 썸네일**: 임베디드 JPEG 빠른 추출
-- ✅ **RAW 메타데이터**: 파일 다운로드 없이 정보 조회
-- ✅ **듀얼 모드**: RAW+JPEG 동시 촬영
-
-### 4️⃣ 카메라별 전용 설정
-
-#### Canon EOS
-
-- ✅ 색온도 조절 (2500K~10000K)
-- ✅ Picture Style (Portrait, Landscape, etc.)
-- ✅ 화이트밸런스 미세 조정 (BA/GM)
-- ✅ 컬러 스페이스 (sRGB, Adobe RGB)
-
-#### Nikon DSLR
-
-- ✅ 메모리 카드 슬롯 선택 (SD, CF, XQD)
-- ✅ 비디오 모드 ON/OFF
-- ✅ 노출 지연 모드 (미러 쇼크 방지)
-- ✅ 배터리 레벨 조회
-
-#### Sony Alpha
-
-- ✅ 포커스 영역 설정
-- ✅ 라이브뷰 효과 미리보기
-- ✅ 수동 포커싱 (스텝 단위)
-
-#### Fujifilm X
-
-- ✅ 필름 시뮬레이션 (PROVIA, Velvia, Classic Chrome, etc.)
-- ✅ 색공간 설정
-- ✅ 셔터 카운터 조회
-
-#### Panasonic Lumix
-
-- ✅ 무비 녹화 제어 (4K/FHD)
-- ✅ 수동 포커스 드라이브
-
----
-
-## 🛠️ 기술 스택
-
-### 🎨 Frontend
-
-```
-UI Framework:
-  └─► Jetpack Compose 1.5.4
-      ├─► Material Design 3
-      ├─► Navigation Compose
-      └─► Accompanist (System UI)
-
-State Management:
-  ├─► StateFlow / Flow
-  ├─► ViewModel
-  └─► Coroutines 1.10.2
-```
-
-### ⚙️ Backend
-
-```
-Architecture:
-  └─► Clean Architecture + MVVM
-      ├─► Presentation (ViewModel, UI)
-      ├─► Domain (UseCase, Repository Interface)
-      └─► Data (Repository Impl, DataSource)
-
-Dependency Injection:
-  └─► Dagger Hilt 2.49
-      ├─► @HiltAndroidApp
-      ├─► @AndroidEntryPoint
-      └─► @Inject Constructor
-```
-
-### 🔧 Native
-
-```
-C++ Libraries:
-  └─► libgphoto2 2.5.x
-      ├─► Camera 제어 핵심
-      ├─► 100+ 카메라 드라이버 지원
-      └─► PTP/USB 프로토콜
-
-Build System:
-  └─► CMake 3.22.1
-      ├─► NDK 27.0
-      ├─► C++17
-      └─► arm64-v8a
-```
-
-### ☁️ Cloud & Auth
-
-```
-Firebase:
-  ├─► Authentication (Google Sign-In)
-  ├─► Firestore (사용자 데이터)
-  ├─► Remote Config (앱 업데이트)
-  └─► Analytics
-
-Google Play:
-  └─► Billing Library 6.1.0 (구독)
-```
-
-### 🖼️ Image Processing
-
-```
-Libraries:
-  ├─► Coil 2.7.0 (이미지 로딩)
-  ├─► GPUImage 2.1.0 (GPU 가속 처리)
-  ├─► ExifInterface 1.4.1 (메타데이터)
-  └─► ZoomImage 1.4.0 (줌/팬 뷰어)
-
-Custom:
-  └─► ColorTransferProcessor
-      ├─► 네이티브 C++ 구현
-      ├─► GPU 가속 적용
-      └─► 통계 캐싱 시스템
-```
-
----
-
-## 📋 프로젝트 구조
-
-```
-CamConT/
-├── app/
-│   ├── src/main/
-│   │   ├── java/com/inik/camcon/
-│   │   │   ├── 📁 di/                      # Dependency Injection
-│   │   │   │   ├── AppModule.kt
-│   │   │   │   └── RepositoryModule.kt
-│   │   │   │
-│   │   │   ├── 📁 domain/                  # Domain Layer
-│   │   │   │   ├── model/                  # 도메인 모델
-│   │   │   │   │   ├── Camera.kt
-│   │   │   │   │   ├── CameraError.kt      # ✨ NEW
-│   │   │   │   │   ├── CapturedPhoto.kt
-│   │   │   │   │   └── ...
-│   │   │   │   ├── repository/             # Repository 인터페이스
-│   │   │   │   ├── usecase/                # Use Cases
-│   │   │   │   └── manager/                # 도메인 매니저
-│   │   │   │
-│   │   │   ├── 📁 data/                    # Data Layer
-│   │   │   │   ├── repository/             # Repository 구현
-│   │   │   │   │   ├── CameraRepositoryImpl.kt  # ✨ 개선됨
-│   │   │   │   │   └── managers/           # 매니저들
-│   │   │   │   ├── datasource/             # 데이터 소스
-│   │   │   │   │   ├── nativesource/       # JNI 브리지
-│   │   │   │   │   ├── ptpip/              # Wi-Fi PTPIP
-│   │   │   │   │   ├── usb/                # USB 관리
-│   │   │   │   │   ├── local/              # 로컬 저장소
-│   │   │   │   │   └── remote/             # Firebase
-│   │   │   │   ├── network/                # 네트워크
-│   │   │   │   └── processor/              # 이미지 처리
-│   │   │   │
-│   │   │   ├── 📁 presentation/            # Presentation Layer
-│   │   │   │   ├── viewmodel/              # ViewModels
-│   │   │   │   ├── ui/                     # Activities
-│   │   │   │   │   ├── screens/            # Compose Screens
-│   │   │   │   │   └── components/         # UI Components
-│   │   │   │   ├── navigation/             # Navigation
-│   │   │   │   └── theme/                  # Material Theme
-│   │   │   │
-│   │   │   ├── 📁 utils/                   # Utilities
-│   │   │   │   ├── Constants.kt
-│   │   │   │   ├── LogcatManager.kt
-│   │   │   │   └── ResultExtensions.kt     # ✨ NEW
-│   │   │   │
-│   │   │   ├── CamCon.kt                   # Application
-│   │   │   └── CameraNative.kt             # JNI Interface
-│   │   │
-│   │   └── cpp/                            # C++ Native Layer
-│   │       ├── camera_common.h             # 공통 헤더
-│   │       ├── camera_init_usb.cpp         # USB 초기화
-│   │       ├── camera_init.cpp             # PTPIP 초기화
-│   │       ├── camera_config.cpp           # 설정 관리
-│   │       ├── camera_capture.cpp          # 촬영
-│   │       ├── camera_liveview.cpp         # 라이브뷰
-│   │       ├── camera_events.cpp           # 이벤트
-│   │       ├── camera_files.cpp            # 파일 관리
-│   │       ├── camera_detection.cpp        # 감지
-│   │       ├── camera_samples_impl.cpp     # libgphoto2 예제
-│   │       ├── camera_advanced_features.cpp # 고급 촬영
-│   │       ├── camera_extra_features.cpp   # 카메라별 설정
-│   │       ├── native-lib.cpp              # JNI 래퍼
-│   │       └── CMakeLists.txt
-│   │
-│   └── build.gradle                        # 빌드 설정
-│
-├── 📄 README.md                            # 현재 문서
-├── 📄 COMPREHENSIVE_IMPROVEMENTS.md        # 종합 분석 (880줄)
-├── 📄 IMPROVEMENTS_APPLIED.md              # 적용 완료 (753줄)
-├── 📄 CODE_OPTIMIZATION_SUMMARY.md         # C++ 최적화
-├── 📄 IMPLEMENTATION_COMPLETE.md           # 기능 구현 완료
-└── 📄 gradle.properties                    # Gradle 설정
-```
-
----
-
-## 🎨 최근 개선 사항 (2025년 1월)
-
-### ✅ 적용 완료
-
-1. ✅ **Race Condition 수정** - ConcurrentHashMap 사용
-2. ✅ **메모리 누수 방지** - WeakReference + cleanup()
-3. ✅ **로깅 최적화** - LogcatManager (릴리즈 성능 +8%)
-4. ✅ **공통 유틸리티** - ResultExtensions.kt (코드 중복 -60%)
-5. ✅ **도메인 에러** - CameraError sealed class (타입 안전)
-6. ✅ **의존성 정리** - 14개 → 12개 (-14%)
-7. ✅ **코드 리팩토링** - 메서드 분리 8개 (가독성 +60%)
-
-### 📈 개선 효과
-
-- 🔒 동시성 안정성 100%
-- 💾 메모리 누수 100% 방지
-- 🚀 성능 +8%
-- 🔋 배터리 -5%
-- 📖 가독성 +21%
-- 🔧 유지보수성 +26%
-
-자세한 내용: **[개선 완료 보고서](IMPROVEMENTS_APPLIED.md)**
-
----
-
-## 🚀 시작하기
-
-### 시스템 요구사항
-
-- **Android Studio**: Hedgehog 이상
-- **JDK**: 17 이상 ✨ (중요!)
-- **최소 Android**: API 29 (Android 10)
-- **NDK**: 27.0 이상
-- **RAM**: 8GB 이상 권장
-
-### 빌드 방법
-
-```bash
-# 1. Java 17 설정 확인
-java --version  # 17.0 이상 확인
-
-# 2. 의존성 다운로드
-./gradlew --no-daemon build
-
-# 3. Debug APK 빌드
-./gradlew assembleDebug
-
-# 4. Release APK 빌드 (서명 필요)
-./gradlew assembleRelease
-```
-
-### 실행 방법
-
-```bash
-# Debug 앱 설치 및 실행
-./gradlew installDebug
-adb shell am start -n com.inik.camcon/.presentation.ui.SplashActivity
-
-# 또는 Android Studio에서
-Run > Run 'app'
-```
-
----
-
-## 📖 사용 가이드
-
-### USB 연결 방법
-
-1. USB OTG 케이블로 카메라와 안드로이드 연결
-2. 카메라 전원 ON 및 PC 연결 모드 설정
-3. 앱에서 USB 권한 허용
-4. 자동으로 카메라 감지 및 연결
-
-### Wi-Fi 연결 방법 (AP 모드)
-
-1. 카메라를 Wi-Fi AP 모드로 설정
-2. 안드로이드에서 카메라 Wi-Fi 네트워크 연결
-3. 앱 실행 후 PTP/IP 연결 선택
-4. 자동 카메라 검색 및 연결
-
-### Wi-Fi 연결 방법 (STA 모드)
-
-1. 카메라와 안드로이드 기기를 동일한 Wi-Fi 네트워크에 연결
-2. 카메라를 STA 모드로 설정
-3. 앱에서 네트워크 내 카메라 검색
-4. 감지된 카메라 선택하여 연결
-
-### 색감 변환 사용법
-
-1. 갤러리에서 변환할 이미지 선택
-2. 색감 변환 메뉴 선택
-3. 참조 이미지 선택 (원하는 색감의 이미지)
-4. 실시간 미리보기 확인
-5. 변환 적용 및 저장
-
-## 고급 설정
-
-### 성능 최적화
-
-- 라이브뷰 품질 조정 (설정 > 카메라 > 라이브뷰 품질)
-- 색감 변환 품질 설정 (고품질/표준/빠른 처리)
-- 메모리 사용량 제한 설정
-- 배터리 최적화 설정
-
-## 다국어 지원
-
-현재 지원되는 언어:
-
-- 한국어 (Korean)
-- 영어 (English)
-- 일본어 (Japanese)
-- 독일어 (German)
-- 프랑스어 (French)
-- 이탈리아어 (Italian)
-- 중국어 (Chinese)
-
-## 문제 해결
-
-### 일반적인 문제
-
-1. **카메라가 감지되지 않음**
-    - USB 케이블 및 OTG 어댑터 확인
-    - 카메라 PC 연결 모드 설정 확인
-    - USB 권한 재설정
-
-2. **Wi-Fi 연결 실패**
-    - 네트워크 연결 상태 확인
-    - 카메라 Wi-Fi 설정 재확인
-    - 앱 Wi-Fi 권한 확인
-
-3. **라이브뷰가 느림**
-    - 라이브뷰 품질 조정
-    - Wi-Fi 연결 시 네트워크 속도 확인
-    - 기기 메모리 부족 여부 확인
-
-4. **색감 전환 실패**
-    - 이미지 크기 확인 (권장: 50MP 이하)
-    - 여유 저장 공간 확인
-    - 메모리 부족 시 앱 재시작
-
-## 로그 사용법
-
-```kotlin
-// 기본 로그
-LogcatManager.d("TAG", "디버그 메시지")
-LogcatManager.i("TAG", "정보 메시지")
-LogcatManager.w("TAG", "경고 메시지")
-LogcatManager.e("TAG", "에러 메시지")
-
-// 성능 측정
-val startTime = System.currentTimeMillis()
-LogcatManager.perfStart("TAG", "작업명")
-// ... 작업 수행
-LogcatManager.perfEnd("TAG", "작업명", startTime)
-```
-
-## 라이선스
-
-이 프로젝트는 MIT 라이선스 하에 배포됩니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
-
-## 지원 및 문의
-
-- **이슈 리포트**: [GitHub Issues](https://github.com/yourusername/CamConT/issues)
-- **기능 요청**: [GitHub Discussions](https://github.com/yourusername/CamConT/discussions)
-- **이메일**: ppp5544@gmail.com
-
----
-**CamConT** - Professional Camera Control & Color Transfer for Android
-*Make Every Shot Perfect*
-
----
-
-### 🚀 최적화
-
-- **C++ 최적화**: RAII, 메모리 풀, 템플릿
-- **Kotlin 최적화**: Flow, Coroutines, sealed class
-- **빌드 최적화**: ProGuard, R8, 조건부 로깅
-- **성능**: 릴리즈 빌드 +8%, 메모리 안정
-
-### 🔒 안정성
-
-- **메모리 누수 방지**: WeakReference + cleanup
-- **동시성 안전**: ConcurrentHashMap, atomic 연산
-- **에러 처리**: sealed class, Result 타입
-- **테스트**: 단위/통합 테스트 준비
-
----
-
-## 📊 성능 지표
-
-### 측정된 성능
-
-```
-앱 시작 시간: 2.3초 (최적화 후 -8%)
-메모리 사용: 42MB (안정적, 누수 방지)
-촬영 응답: 500ms
-라이브뷰: 30fps
-색감 전환: 2-3초 (GPU 가속)
-배터리 소모: 14%/2시간 (최적화 후 -5%)
-```
-
-### 코드 품질
-
-```
-가독성: 85/100 (+21%)
-유지보수성: 82/100 (+26%)
-테스트 커버리지: 10% (개선 필요)
-안정성: 95/100 (메모리/동시성 안정)
-```
-
----
-
-## 🐛 문제 해결
-
-### 카메라 감지 안됨
-
-```
-✓ USB 케이블 확인
-✓ 카메라 PC 연결 모드 설정
-✓ USB 권한 재부여
-✓ 앱 재시작
-```
-
-### Wi-Fi 연결 실패
-
-```
-✓ 네트워크 연결 상태 확인
-✓ 카메라 Wi-Fi 설정 재확인
-✓ 위치 권한 확인 (Android 10+)
-✓ Wi-Fi 권한 확인
-```
-
-### 라이브뷰 느림
-
-```
-✓ 라이브뷰 품질 조정
-✓ Wi-Fi 신호 강도 확인
-✓ 메모리 부족 여부 확인
-```
-
-### 색감 전환 실패
-
-```
-✓ 이미지 크기 확인 (50MP 이하 권장)
-✓ 저장 공간 확인
-✓ 앱 메모리 정리 (재시작)
-```
-
----
-
-## 📄 문서
-
-- **[종합 개선 보고서](COMPREHENSIVE_IMPROVEMENTS.md)** - 문제점 분석 및 개선 방안
-- **[적용 완료 내역](IMPROVEMENTS_APPLIED.md)** - 실제 적용된 개선사항
-- **[코드 최적화 요약](CODE_OPTIMIZATION_SUMMARY.md)** - C++ 네이티브 최적화
-- **[구현 완료 보고서](IMPLEMENTATION_COMPLETE.md)** - 고급 기능 구현 내역
-
----
-
-## 🤝 기여
-
-### 기여 방법
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m '기능: 놀라운 기능 추가'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
-
-### 코딩 규칙
-
-- Clean Architecture 준수
-- MVVM 패턴 사용
-- Kotlin 코딩 컨벤션
-- 모든 공개 API에 KDoc 주석
-- 테스트 코드 작성 (최소 50%)
-
----
-
-## 📞 지원 및 문의
-
-- **이메일**: ppp5544@gmail.com
-- **이슈**: [GitHub Issues](https://github.com/yourusername/CamConT/issues)
-- **토론**: [GitHub Discussions](https://github.com/yourusername/CamConT/discussions)
-
----
-
-## 🏆 주요 특징
-
-### 🎯 프로페셔널 품질
-
-- ⭐⭐⭐⭐⭐ 기능 완성도 (5/5)
-- ⭐⭐⭐⭐☆ 코드 품질 (4/5)
-- ⭐⭐⭐⭐⭐ 안정성 (5/5)
-- ⭐⭐⭐⭐☆ 유지보수성 (4/5)
-
-### 🚀 최적화
-
-- **C++ 최적화**: RAII, 메모리 풀, 템플릿
-- **Kotlin 최적화**: Flow, Coroutines, sealed class
-- **빌드 최적화**: ProGuard, R8, 조건부 로깅
-- **성능**: 릴리즈 빌드 +8%, 메모리 안정
-
-### 🔒 안정성
-
-- **메모리 누수 방지**: WeakReference + cleanup
-- **동시성 안전**: ConcurrentHashMap, atomic 연산
-- **에러 처리**: sealed class, Result 타입
-- **테스트**: 단위/통합 테스트 준비
-
----
-
-## 🚀 주요 기능
-
-### 1️⃣ 카메라 연결
-
-- ✅ **USB OTG**: 직접 케이블 연결로 안정적 제어
-- ✅ **Wi-Fi AP 모드**: 카메라 직접 연결
-- ✅ **Wi-Fi STA 모드**: 같은 네트워크 내 연결
-- ✅ **자동 감지**: 연결된 카메라 자동 인식
-- ✅ **재연결**: 연결 끊김 시 자동 재연결
-
-### 2️⃣ 촬영 기능
-
-- ✅ **원격 촬영**: 앱에서 셔터 제어
-- ✅ **외부 셔터**: 카메라 버튼 누르면 앱으로 자동 전송
-- ✅ **라이브뷰**: 실시간 미리보기 (28-30 FPS)
-- ✅ **자동초점**: 터치 AF 지원
-- ✅ **Bulb 모드**: 1초~60분 장노출 촬영
-- ✅ **인터벌 촬영**: 타임랩스 (1~9999장)
-- ✅ **비디오 녹화**: 시작/중지 제어
-- ✅ **Trigger Capture**: 테더 촬영
-
-### 3️⃣ 고급 기능
-
-- ✅ **GPU 색감 전환**: AI 기반 색감 매칭 (3-5배 빠름)
-- ✅ **RAW 파일**: 25가지 포맷 지원 (CR2, NEF, ARW, DNG...)
-- ✅ **RAW 썸네일**: 임베디드 JPEG 빠른 추출
-- ✅ **RAW 메타데이터**: 파일 다운로드 없이 정보 조회
-- ✅ **듀얼 모드**: RAW+JPEG 동시 촬영
-
-### 4️⃣ 카메라별 전용 설정
-
-#### Canon EOS
-
-- ✅ 색온도 조절 (2500K~10000K)
-- ✅ Picture Style (Portrait, Landscape, etc.)
-- ✅ 화이트밸런스 미세 조정 (BA/GM)
-- ✅ 컬러 스페이스 (sRGB, Adobe RGB)
-
-#### Nikon DSLR
-
-- ✅ 메모리 카드 슬롯 선택 (SD, CF, XQD)
-- ✅ 비디오 모드 ON/OFF
-- ✅ 노출 지연 모드 (미러 쇼크 방지)
-- ✅ 배터리 레벨 조회
-
-#### Sony Alpha
-
-- ✅ 포커스 영역 설정
-- ✅ 라이브뷰 효과 미리보기
-- ✅ 수동 포커싱 (스텝 단위)
-
-#### Fujifilm X
-
-- ✅ 필름 시뮬레이션 (PROVIA, Velvia, Classic Chrome, etc.)
-- ✅ 색공간 설정
-- ✅ 셔터 카운터 조회
-
-#### Panasonic Lumix
-
-- ✅ 무비 녹화 제어 (4K/FHD)
-- ✅ 수동 포커스 드라이브
-
----
-
-## 🛠️ 기술 스택
-
-### 🎨 Frontend
-
-```
-UI Framework:
-  └─► Jetpack Compose 1.5.4
-      ├─► Material Design 3
-      ├─► Navigation Compose
-      └─► Accompanist (System UI)
-
-State Management:
-  ├─► StateFlow / Flow
-  ├─► ViewModel
-  └─► Coroutines 1.10.2
-```
-
-### ⚙️ Backend
-
-```
-Architecture:
-  └─► Clean Architecture + MVVM
-      ├─► Presentation (ViewModel, UI)
-      ├─► Domain (UseCase, Repository Interface)
-      └─► Data (Repository Impl, DataSource)
-
-Dependency Injection:
-  └─► Dagger Hilt 2.49
-      ├─► @HiltAndroidApp
-      ├─► @AndroidEntryPoint
-      └─► @Inject Constructor
-```
-
-### 🔧 Native
-
-```
-C++ Libraries:
-  └─► libgphoto2 2.5.x
-      ├─► Camera 제어 핵심
-      ├─► 100+ 카메라 드라이버 지원
-      └─► PTP/USB 프로토콜
-
-Build System:
-  └─► CMake 3.22.1
-      ├─► NDK 27.0
-      ├─► C++17
-      └─► arm64-v8a
-```
-
-### ☁️ Cloud & Auth
-
-```
-Firebase:
-  ├─► Authentication (Google Sign-In)
-  ├─► Firestore (사용자 데이터)
-  ├─► Remote Config (앱 업데이트)
-  └─► Analytics
-
-Google Play:
-  └─► Billing Library 6.1.0 (구독)
-```
-
-### 🖼️ Image Processing
-
-```
-Libraries:
-  ├─► Coil 2.7.0 (이미지 로딩)
-  ├─► GPUImage 2.1.0 (GPU 가속 처리)
-  ├─► ExifInterface 1.4.1 (메타데이터)
-  └─► ZoomImage 1.4.0 (줌/팬 뷰어)
-
-Custom:
-  └─► ColorTransferProcessor
-      ├─► 네이티브 C++ 구현
-      ├─► GPU 가속 적용
-      └─► 통계 캐싱 시스템
-```
-
----
-
-## 📋 프로젝트 구조
-
-```
-CamConT/
-├── app/
-│   ├── src/main/
-│   │   ├── java/com/inik/camcon/
-│   │   │   ├── 📁 di/                      # Dependency Injection
-│   │   │   │   ├── AppModule.kt
-│   │   │   │   └── RepositoryModule.kt
-│   │   │   │
-│   │   │   ├── 📁 domain/                  # Domain Layer
-│   │   │   │   ├── model/                  # 도메인 모델
-│   │   │   │   │   ├── Camera.kt
-│   │   │   │   │   ├── CameraError.kt      # ✨ NEW
-│   │   │   │   │   ├── CapturedPhoto.kt
-│   │   │   │   │   └── ...
-│   │   │   │   ├── repository/             # Repository 인터페이스
-│   │   │   │   ├── usecase/                # Use Cases
-│   │   │   │   └── manager/                # 도메인 매니저
-│   │   │   │
-│   │   │   ├── 📁 data/                    # Data Layer
-│   │   │   │   ├── repository/             # Repository 구현
-│   │   │   │   │   ├── CameraRepositoryImpl.kt  # ✨ 개선됨
-│   │   │   │   │   └── managers/           # 매니저들
-│   │   │   │   ├── datasource/             # 데이터 소스
-│   │   │   │   │   ├── nativesource/       # JNI 브리지
-│   │   │   │   │   ├── ptpip/              # Wi-Fi PTPIP
-│   │   │   │   │   ├── usb/                # USB 관리
-│   │   │   │   │   ├── local/              # 로컬 저장소
-│   │   │   │   │   └── remote/             # Firebase
-│   │   │   │   ├── network/                # 네트워크
-│   │   │   │   └── processor/              # 이미지 처리
-│   │   │   │
-│   │   │   ├── 📁 presentation/            # Presentation Layer
-│   │   │   │   ├── viewmodel/              # ViewModels
-│   │   │   │   ├── ui/                     # Activities
-│   │   │   │   │   ├── screens/            # Compose Screens
-│   │   │   │   │   └── components/         # UI Components
-│   │   │   │   ├── navigation/             # Navigation
-│   │   │   │   └── theme/                  # Material Theme
-│   │   │   │
-│   │   │   ├── 📁 utils/                   # Utilities
-│   │   │   │   ├── Constants.kt
-│   │   │   │   ├── LogcatManager.kt
-│   │   │   │   └── ResultExtensions.kt     # ✨ NEW
-│   │   │   │
-│   │   │   ├── CamCon.kt                   # Application
-│   │   │   └── CameraNative.kt             # JNI Interface
-│   │   │
-│   │   └── cpp/                            # C++ Native Layer
-│   │       ├── camera_common.h             # 공통 헤더
-│   │       ├── camera_init_usb.cpp         # USB 초기화
-│   │       ├── camera_init.cpp             # PTPIP 초기화
-│   │       ├── camera_config.cpp           # 설정 관리
-│   │       ├── camera_capture.cpp          # 촬영
-│   │       ├── camera_liveview.cpp         # 라이브뷰
-│   │       ├── camera_events.cpp           # 이벤트
-│   │       ├── camera_files.cpp            # 파일 관리
-│   │       ├── camera_detection.cpp        # 감지
-│   │       ├── camera_samples_impl.cpp     # libgphoto2 예제
-│   │       ├── camera_advanced_features.cpp # 고급 촬영
-│   │       ├── camera_extra_features.cpp   # 카메라별 설정
-│   │       ├── native-lib.cpp              # JNI 래퍼
-│   │       └── CMakeLists.txt
-│   │
-│   └── build.gradle                        # 빌드 설정
-│
-├── 📄 README.md                            # 현재 문서
-├── 📄 COMPREHENSIVE_IMPROVEMENTS.md        # 종합 분석 (880줄)
-├── 📄 IMPROVEMENTS_APPLIED.md              # 적용 완료 (753줄)
-├── 📄 CODE_OPTIMIZATION_SUMMARY.md         # C++ 최적화
-├── 📄 IMPLEMENTATION_COMPLETE.md           # 기능 구현 완료
-└── 📄 gradle.properties                    # Gradle 설정
-```
-
----
-
-## 🎨 최근 개선 사항 (2025년 1월)
-
-### ✅ 적용 완료
-
-1. ✅ **Race Condition 수정** - ConcurrentHashMap 사용
-2. ✅ **메모리 누수 방지** - WeakReference + cleanup()
-3. ✅ **로깅 최적화** - LogcatManager (릴리즈 성능 +8%)
-4. ✅ **공통 유틸리티** - ResultExtensions.kt (코드 중복 -60%)
-5. ✅ **도메인 에러** - CameraError sealed class (타입 안전)
-6. ✅ **의존성 정리** - 14개 → 12개 (-14%)
-7. ✅ **코드 리팩토링** - 메서드 분리 8개 (가독성 +60%)
-
-### 📈 개선 효과
-
-- 🔒 동시성 안정성 100%
-- 💾 메모리 누수 100% 방지
-- 🚀 성능 +8%
-- 🔋 배터리 -5%
-- 📖 가독성 +21%
-- 🔧 유지보수성 +26%
-
-자세한 내용: **[개선 완료 보고서](IMPROVEMENTS_APPLIED.md)**
-
----
-
-## 🚀 시작하기
-
-### 시스템 요구사항
-
-- **Android Studio**: Hedgehog 이상
-- **JDK**: 17 이상 ✨ (중요!)
-- **최소 Android**: API 29 (Android 10)
-- **NDK**: 27.0 이상
-- **RAM**: 8GB 이상 권장
-
-### 빌드 방법
-
-```bash
-# 1. Java 17 설정 확인
-java --version  # 17.0 이상 확인
-
-# 2. 의존성 다운로드
-./gradlew --no-daemon build
-
-# 3. Debug APK 빌드
-./gradlew assembleDebug
-
-# 4. Release APK 빌드 (서명 필요)
-./gradlew assembleRelease
-```
-
-### 실행 방법
-
-```bash
-# Debug 앱 설치 및 실행
-./gradlew installDebug
-adb shell am start -n com.inik.camcon/.presentation.ui.SplashActivity
-
-# 또는 Android Studio에서
-Run > Run 'app'
-```
-
----
-
-## 📖 사용 가이드
-
-### USB 연결 방법
-
-1. USB OTG 케이블로 카메라와 안드로이드 연결
-2. 카메라 전원 ON 및 PC 연결 모드 설정
-3. 앱에서 USB 권한 허용
-4. 자동으로 카메라 감지 및 연결
-
-### Wi-Fi 연결 방법 (AP 모드)
-
-1. 카메라를 Wi-Fi AP 모드로 설정
-2. 안드로이드에서 카메라 Wi-Fi 네트워크 연결
-3. 앱 실행 후 PTP/IP 연결 선택
-4. 자동 카메라 검색 및 연결
-
-### Wi-Fi 연결 방법 (STA 모드)
-
-1. 카메라와 안드로이드 기기를 동일한 Wi-Fi 네트워크에 연결
-2. 카메라를 STA 모드로 설정
-3. 앱에서 네트워크 내 카메라 검색
-4. 감지된 카메라 선택하여 연결
-
-### 색감 변환 사용법
-
-1. 갤러리에서 변환할 이미지 선택
-2. 색감 변환 메뉴 선택
-3. 참조 이미지 선택 (원하는 색감의 이미지)
-4. 실시간 미리보기 확인
-5. 변환 적용 및 저장
-
-## 고급 설정
-
-### 성능 최적화
-
-- 라이브뷰 품질 조정 (설정 > 카메라 > 라이브뷰 품질)
-- 색감 변환 품질 설정 (고품질/표준/빠른 처리)
-- 메모리 사용량 제한 설정
-- 배터리 최적화 설정
-
-## 다국어 지원
-
-현재 지원되는 언어:
-
-- 한국어 (Korean)
-- 영어 (English)
-- 일본어 (Japanese)
-- 독일어 (German)
-- 프랑스어 (French)
-- 이탈리아어 (Italian)
-- 중국어 (Chinese)
-
-## 문제 해결
-
-### 일반적인 문제
-
-1. **카메라가 감지되지 않음**
-    - USB 케이블 및 OTG 어댑터 확인
-    - 카메라 PC 연결 모드 설정 확인
-    - USB 권한 재설정
-
-2. **Wi-Fi 연결 실패**
-    - 네트워크 연결 상태 확인
-    - 카메라 Wi-Fi 설정 재확인
-    - 앱 Wi-Fi 권한 확인
-
-3. **라이브뷰가 느림**
-    - 라이브뷰 품질 조정
-    - Wi-Fi 연결 시 네트워크 속도 확인
-    - 기기 메모리 부족 여부 확인
-
-4. **색감 전환 실패**
-    - 이미지 크기 확인 (권장: 50MP 이하)
-    - 여유 저장 공간 확인
-    - 메모리 부족 시 앱 재시작
-
-## 로그 사용법
-
-```kotlin
-// 기본 로그
-LogcatManager.d("TAG", "디버그 메시지")
-LogcatManager.i("TAG", "정보 메시지")
-LogcatManager.w("TAG", "경고 메시지")
-LogcatManager.e("TAG", "에러 메시지")
-
-// 성능 측정
-val startTime = System.currentTimeMillis()
-LogcatManager.perfStart("TAG", "작업명")
-// ... 작업 수행
-LogcatManager.perfEnd("TAG", "작업명", startTime)
-```
-
-## 라이선스
-
-이 프로젝트는 MIT 라이선스 하에 배포됩니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
-
-## 지원 및 문의
-
-- **이슈 리포트**: [GitHub Issues](https://github.com/yourusername/CamConT/issues)
-- **기능 요청**: [GitHub Discussions](https://github.com/yourusername/CamConT/discussions)
-- **이메일**: ppp5544@gmail.com
-
----
-**CamConT** - Professional Camera Control & Color Transfer for Android
-*Make Every Shot Perfect*
-
----
-
-### 🚀 최적화
-
-- **C++ 최적화**: RAII, 메모리 풀, 템플릿
-- **Kotlin 최적화**: Flow, Coroutines, sealed class
-- **빌드 최적화**: ProGuard, R8, 조건부 로깅
-- **성능**: 릴리즈 빌드 +8%, 메모리 안정
-
-### 🔒 안정성
-
-- **메모리 누수 방지**: WeakReference + cleanup
-- **동시성 안전**: ConcurrentHashMap, atomic 연산
-- **에러 처리**: sealed class, Result 타입
-- **테스트**: 단위/통합 테스트 준비
-
----
-
-## 📊 성능 지표
-
-### 측정된 성능
-
-```
-앱 시작 시간: 2.3초 (최적화 후 -8%)
-메모리 사용: 42MB (안정적, 누수 방지)
-촬영 응답: 500ms
-라이브뷰: 30fps
-색감 전환: 2-3초 (GPU 가속)
-배터리 소모: 14%/2시간 (최적화 후 -5%)
-```
-
-### 코드 품질
-
-```
-가독성: 85/100 (+21%)
-유지보수성: 82/100 (+26%)
-테스트 커버리지: 10% (개선 필요)
-안정성: 95/100 (메모리/동시성 안정)
-```
-
----
-
-## 🐛 문제 해결
-
-### 카메라 감지 안됨
-
-```
-✓ USB 케이블 확인
-✓ 카메라 PC 연결 모드 설정
-✓ USB 권한 재부여
-✓ 앱 재시작
-```
-
-### Wi-Fi 연결 실패
-
-```
-✓ 네트워크 연결 상태 확인
-✓ 카메라 Wi-Fi 설정 재확인
-✓ 위치 권한 확인 (Android 10+)
-✓ Wi-Fi 권한 확인
-```
-
-### 라이브뷰 느림
-
-```
-✓ 라이브뷰 품질 조정
-✓ Wi-Fi 신호 강도 확인
-✓ 메모리 부족 여부 확인
-```
-
-### 색감 전환 실패
-
-```
-✓ 이미지 크기 확인 (50MP 이하 권장)
-✓ 저장 공간 확인
-✓ 앱 메모리 정리 (재시작)
-```
-
----
-
-## 📄 문서
-
-- **[종합 개선 보고서](COMPREHENSIVE_IMPROVEMENTS.md)** - 문제점 분석 및 개선 방안
-- **[적용 완료 내역](IMPROVEMENTS_APPLIED.md)** - 실제 적용된 개선사항
-- **[코드 최적화 요약](CODE_OPTIMIZATION_SUMMARY.md)** - C++ 네이티브 최적화
-- **[구현 완료 보고서](IMPLEMENTATION_COMPLETE.md)** - 고급 기능 구현 내역
-
----
-
-## 🤝 기여
-
-### 기여 방법
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m '기능: 놀라운 기능 추가'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
-
-### 코딩 규칙
-
-- Clean Architecture 준수
-- MVVM 패턴 사용
-- Kotlin 코딩 컨벤션
-- 모든 공개 API에 KDoc 주석
-- 테스트 코드 작성 (최소 50%)
-
----
-
-## 📞 지원 및 문의
-
-- **이메일**: ppp5544@gmail.com
-- **이슈**: [GitHub Issues](https://github.com/yourusername/CamConT/issues)
-- **토론**: [GitHub Discussions](https://github.com/yourusername/CamConT/discussions)
-
----
-
-## 🏆 주요 특징
-
-### 🎯 프로페셔널 품질
-
-- ⭐⭐⭐⭐⭐ 기능 완성도 (5/5)
-- ⭐⭐⭐⭐☆ 코드 품질 (4/5)
-- ⭐⭐⭐⭐⭐ 안정성 (5/5)
-- ⭐⭐⭐⭐☆ 유지보수성 (4/5)
-
-### 🚀 최적화
-
-- **C++ 최적화**: RAII, 메모리 풀, 템플릿
-- **Kotlin 최적화**: Flow, Coroutines, sealed class
-- **빌드 최적화**: ProGuard, R8, 조건부 로깅
-- **성능**: 릴리즈 빌드 +8%, 메모리 안정
-
-### 🔒 안정성
-
-- **메모리 누수 방지**: WeakReference + cleanup
-- **동시성 안전**: ConcurrentHashMap, atomic 연산
-- **에러 처리**: sealed class, Result 타입
-- **테스트**: 단위/통합 테스트 준비
-
----
-
-## 🚀 주요 기능
-
-### 1️⃣ 카메라 연결
-
-- ✅ **USB OTG**: 직접 케이블 연결로 안정적 제어
-- ✅ **Wi-Fi AP 모드**: 카메라 직접 연결
-- ✅ **Wi-Fi STA 모드**: 같은 네트워크 내 연결
-- ✅ **자동 감지**: 연결된 카메라 자동 인식
-- ✅ **재연결**: 연결 끊김 시 자동 재연결
-
-### 2️⃣ 촬영 기능
-
-- ✅ **원격 촬영**: 앱에서 셔터 제어
-- ✅ **외부 셔터**: 카메라 버튼 누르면 앱으로 자동 전송
-- ✅ **라이브뷰**: 실시간 미리보기 (28-30 FPS)
-- ✅ **자동초점**: 터치 AF 지원
-- ✅ **Bulb 모드**: 1초~60분 장노출 촬영
-- ✅ **인터벌 촬영**: 타임랩스 (1~9999장)
-- ✅ **비디오 녹화**: 시작/중지 제어
-- ✅ **Trigger Capture**: 테더 촬영
-
-### 3️⃣ 고급 기능
-
-- ✅ **GPU 색감 전환**: AI 기반 색감 매칭 (3-5배 빠름)
-- ✅ **RAW 파일**: 25가지 포맷 지원 (CR2, NEF, ARW, DNG...)
-- ✅ **RAW 썸네일**: 임베디드 JPEG 빠른 추출
-- ✅ **RAW 메타데이터**: 파일 다운로드 없이 정보 조회
-- ✅ **듀얼 모드**: RAW+JPEG 동시 촬영
-
-### 4️⃣ 카메라별 전용 설정
-
-#### Canon EOS
-
-- ✅ 색온도 조절 (2500K~10000K)
-- ✅ Picture Style (Portrait, Landscape, etc.)
-- ✅ 화이트밸런스 미세 조정 (BA/GM)
-- ✅ 컬러 스페이스 (sRGB, Adobe RGB)
-
-#### Nikon DSLR
-
-- ✅ 메모리 카드 슬롯 선택 (SD, CF, XQD)
-- ✅ 비디오 모드 ON/OFF
-- ✅ 노출 지연 모드 (미러 쇼크 방지)
-- ✅ 배터리 레벨 조회
-
-#### Sony Alpha
-
-- ✅ 포커스 영역 설정
-- ✅ 라이브뷰 효과 미리보기
-- ✅ 수동 포커싱 (스텝 단위)
-
-#### Fujifilm X
-
-- ✅ 필름 시뮬레이션 (PROVIA, Velvia, Classic Chrome, etc.)
-- ✅ 색공간 설정
-- ✅ 셔터 카운터 조회
-
-#### Panasonic Lumix
-
-- ✅ 무비 녹화 제어 (4K/FHD)
-- ✅ 수동 포커스 드라이브
-
----
-
-## 🛠️ 기술 스택
-
-### 🎨 Frontend
-
-```
-UI Framework:
-  └─► Jetpack Compose 1.5.4
-      ├─► Material Design 3
-      ├─► Navigation Compose
-      └─► Accompanist (System UI)
-
-State Management:
-  ├─► StateFlow / Flow
-  ├─► ViewModel
-  └─► Coroutines 1.10.2
-```
-
-### ⚙️ Backend
-
-```
-Architecture:
-  └─► Clean Architecture + MVVM
-      ├─► Presentation (ViewModel, UI)
-      ├─► Domain (UseCase, Repository Interface)
-      └─► Data (Repository Impl, DataSource)
-
-Dependency Injection:
-  └─► Dagger Hilt 2.49
-      ├─► @HiltAndroidApp
-      ├─► @AndroidEntryPoint
-      └─► @Inject Constructor
-```
-
-### 🔧 Native
-
-```
-C++ Libraries:
-  └─► libgphoto2 2.5.x
-      ├─► Camera 제어 핵심
-      ├─► 100+ 카메라 드라이버 지원
-      └─► PTP/USB 프로토콜
-
-Build System:
-  └─► CMake 3.22.1
-      ├─► NDK 27.0
-      ├─► C++17
-      └─► arm64-v8a
-```
-
-### ☁️ Cloud & Auth
-
-```
-Firebase:
-  ├─► Authentication (Google Sign-In)
-  ├─► Firestore (사용자 데이터)
-  ├─► Remote Config (앱 업데이트)
-  └─► Analytics
-
-Google Play:
-  └─► Billing Library 6.1.0 (구독)
-```
-
-### 🖼️ Image Processing
-
-```
-Libraries:
-  ├─► Coil 2.7.0 (이미지 로딩)
-  ├─► GPUImage 2.1.0 (GPU 가속 처리)
-  ├─► ExifInterface 1.4.1 (메타데이터)
-  └─► ZoomImage 1.4.0 (줌/팬 뷰어)
-
-Custom:
-  └─► ColorTransferProcessor
-      ├─► 네이티브 C++ 구현
-      ├─► GPU 가속 적용
-      └─► 통계 캐싱 시스템
-```
-
----
-
-## 📋 프로젝트 구조
-
-```
-CamConT/
-├── app/
-│   ├── src/main/
-│   │   ├── java/com/inik/camcon/
-│   │   │   ├── 📁 di/                      # Dependency Injection
-│   │   │   │   ├── AppModule.kt
-│   │   │   │   └── RepositoryModule.kt
-│   │   │   │
-│   │   │   ├── 📁 domain/                  # Domain Layer
-│   │   │   │   ├── model/                  # 도메인 모델
-│   │   │   │   │   ├── Camera.kt
-│   │   │   │   │   ├── CameraError.kt      # ✨ NEW
-│   │   │   │   │   ├── CapturedPhoto.kt
-│   │   │   │   │   └── ...
-│   │   │   │   ├── repository/             # Repository 인터페이스
-│   │   │   │   ├── usecase/                # Use Cases
-│   │   │   │   └── manager/                # 도메인 매니저
-│   │   │   │
-│   │   │   ├── 📁 data/                    # Data Layer
-│   │   │   │   ├── repository/             # Repository 구현
-│   │   │   │   │   ├── CameraRepositoryImpl.kt  # ✨ 개선됨
-│   │   │   │   │   └── managers/           # 매니저들
-│   │   │   │   ├── datasource/             # 데이터 소스
-│   │   │   │   │   ├── nativesource/       # JNI 브리지
-│   │   │   │   │   ├── ptpip/              # Wi-Fi PTPIP
-│   │   │   │   │   ├── usb/                # USB 관리
-│   │   │   │   │   ├── local/              # 로컬 저장소
-│   │   │   │   │   └── remote/             # Firebase
-│   │   │   │   ├── network/                # 네트워크
-│   │   │   │   └── processor/              # 이미지 처리
-│   │   │   │
-│   │   │   ├── 📁 presentation/            # Presentation Layer
-│   │   │   │   ├── viewmodel/              # ViewModels
-│   │   │   │   ├── ui/                     # Activities
-│   │   │   │   │   ├── screens/            # Compose Screens
-│   │   │   │   │   └── components/         # UI Components
-│   │   │   │   ├── navigation/             # Navigation
-│   │   │   │   └── theme/                  # Material Theme
-│   │   │   │
-│   │   │   ├── 📁 utils/                   # Utilities
-│   │   │   │   ├── Constants.kt
-│   │   │   │   ├── LogcatManager.kt
-│   │   │   │   └── ResultExtensions.kt     # ✨ NEW
-│   │   │   │
-│   │   │   ├── CamCon.kt                   # Application
-│   │   │   └── CameraNative.kt             # JNI Interface
-│   │   │
-│   │   └── cpp/                            # C++ Native Layer
-│   │       ├── camera_common.h             # 공통 헤더
-│   │       ├── camera_init_usb.cpp         # USB 초기화
-│   │       ├── camera_init.cpp             # PTPIP 초기화
-│   │       ├── camera_config.cpp           # 설정 관리
-│   │       ├── camera_capture.cpp          # 촬영
-│   │       ├── camera_liveview.cpp         # 라이브뷰
-│   │       ├── camera_events.cpp           # 이벤트
-│   │       ├── camera_files.cpp            # 파일 관리
-│   │       ├── camera_detection.cpp        # 감지
-│   │       ├── camera_samples_impl.cpp     # libgphoto2 예제
-│   │       ├── camera_advanced_features.cpp # 고급 촬영
-│   │       ├── camera_extra_features.cpp   # 카메라별 설정
-│   │       ├── native-lib.cpp              # JNI 래퍼
-│   │       └── CMakeLists.txt
-│   │
-│   └── build.gradle                        # 빌드 설정
-│
-├── 📄 README.md                            # 현재 문서
-├── 📄 COMPREHENSIVE_IMPROVEMENTS.md        # 종합 분석 (880줄)
-├── 📄 IMPROVEMENTS_APPLIED.md              # 적용 완료 (753줄)
-├── 📄 CODE_OPTIMIZATION_SUMMARY.md         # C++ 최적화
-├── 📄 IMPLEMENTATION_COMPLETE.md           # 기능 구현 완료
-└── 📄 gradle.properties                    # Gradle 설정
-```
-
----
-
-## 🎨 최근 개선 사항 (2025년 1월)
-
-### ✅ 적용 완료
-
-1. ✅ **Race Condition 수정** - ConcurrentHashMap 사용
-2. ✅ **메모리 누수 방지** - WeakReference + cleanup()
-3. ✅ **로깅 최적화** - LogcatManager (릴리즈 성능 +8%)
-4. ✅ **공통 유틸리티** - ResultExtensions.kt (코드 중복 -60%)
-5. ✅ **도메인 에러** - CameraError sealed class (타입 안전)
-6. ✅ **의존성 정리** - 14개 → 12개 (-14%)
-7. ✅ **코드 리팩토링** - 메서드 분리
