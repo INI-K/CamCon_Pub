@@ -2,6 +2,7 @@ package com.inik.camcon.presentation.viewmodel.state
 
 import android.util.Log
 import com.inik.camcon.data.repository.managers.PtpTimeoutException
+import com.inik.camcon.domain.model.CameraAbilitiesInfo
 import com.inik.camcon.domain.model.CameraCapabilities
 import com.inik.camcon.domain.model.CameraSettings
 import com.inik.camcon.domain.model.CapturedPhoto
@@ -377,5 +378,99 @@ class CameraUiStateManager @Inject constructor() {
     fun blockPreviewTab(blocked: Boolean) {
         _uiState.update { it.copy(isPreviewTabBlocked = blocked) }
         Log.d(TAG, "사진 미리보기 탭 블록 상태 업데이트: $blocked")
+    }
+
+    /**
+     * 카메라 기능 제한 안내 닫기
+     */
+    fun clearCameraFunctionLimitation() {
+        _uiState.update { it.copy(cameraFunctionLimitation = null) }
+        Log.d(TAG, "카메라 기능 제한 안내 초기화")
+    }
+
+    /**
+     * Nikon STA 경고 닫기
+     */
+    fun dismissNikonStaWarning() {
+        _uiState.update { it.copy(showNikonStaWarning = false) }
+        Log.d(TAG, "Nikon STA 경고 닫기")
+    }
+
+    /**
+     * 카메라 Abilities 기반 UI 업데이트
+     *
+     * libgphoto2 API로 조회한 카메라 기능에 따라 UI를 동적으로 제어합니다.
+     * - 지원하지 않는 기능의 버튼/탭은 숨김
+     * - 기능 제한이 있는 경우 안내 메시지 표시
+     * - 제조사별 특화 경고 표시 (Nikon STA 등)
+     */
+    fun updateCameraAbilities(abilities: CameraAbilitiesInfo) {
+        Log.i(TAG, "=== 카메라 Abilities 기반 UI 업데이트 ===")
+        Log.i(TAG, "모델: ${abilities.model}")
+        Log.i(TAG, "제조사: ${abilities.getManufacturer()}")
+        Log.i(TAG, "드라이버 상태: ${abilities.status}")
+
+        _uiState.update { currentState ->
+            currentState.copy(
+                // 기능별 UI 가시성 제어
+                showCaptureButton = abilities.supports.captureImage ||
+                        abilities.supports.triggerCapture,
+                showLiveViewTab = abilities.supports.capturePreview,
+                showVideoButton = abilities.supports.captureVideo,
+                showConfigTab = abilities.supports.config,
+                showDeleteButton = abilities.supports.delete,
+                showUploadButton = abilities.supports.putFile,
+
+                // 고급 기능
+                showBulbMode = abilities.supports.captureImage,
+                showIntervalShooting = abilities.supports.captureImage &&
+                        abilities.supports.triggerCapture,
+
+                // 기능 제한 안내 메시지
+                cameraFunctionLimitation = when {
+                    abilities.supports.isFullyControllable() -> {
+                        Log.i(TAG, " 완전한 원격 제어 가능")
+                        null
+                    }
+
+                    abilities.supports.isDownloadOnly() -> {
+                        Log.w(TAG, " 다운로드만 가능 (원격 제어 불가)")
+                        "이 카메라는 파일 다운로드만 지원합니다\n" +
+                                "원격 촬영 및 라이브뷰는 사용할 수 없습니다\n\n" +
+                                "제조사: ${abilities.getManufacturer()}\n" +
+                                "모델: ${abilities.model}"
+                    }
+
+                    !abilities.supports.capturePreview -> {
+                        Log.w(TAG, " 라이브뷰 미지원")
+                        "이 카메라는 라이브뷰를 지원하지 않습니다\n" +
+                                "촬영은 가능하지만 실시간 미리보기는 불가능합니다"
+                    }
+
+                    !abilities.supports.config -> {
+                        Log.w(TAG, " 설정 변경 미지원")
+                        "이 카메라는 설정 변경을 지원하지 않습니다\n" +
+                                "촬영은 가능하지만 ISO, 셔터속도 등 설정은 카메라에서 직접 조정해주세요"
+                    }
+
+                    else -> null
+                },
+
+                // 제조사 특화 안내
+                showNikonStaWarning = abilities.needsStaAuthentication(),
+
+                // 연결된 카메라 정보
+                connectedCameraModel = abilities.model,
+                connectedCameraManufacturer = abilities.getManufacturer()
+            )
+        }
+
+        Log.i(TAG, " UI 상태 업데이트 완료:")
+        Log.i(TAG, "   촬영 버튼: ${abilities.supports.captureImage}")
+        Log.i(TAG, "   라이브뷰 탭: ${abilities.supports.capturePreview}")
+        Log.i(TAG, "   비디오 버튼: ${abilities.supports.captureVideo}")
+        Log.i(TAG, "   설정 탭: ${abilities.supports.config}")
+        Log.i(TAG, "   삭제 버튼: ${abilities.supports.delete}")
+        Log.i(TAG, "   기능 제한: ${_uiState.value.cameraFunctionLimitation != null}")
     }
 }
