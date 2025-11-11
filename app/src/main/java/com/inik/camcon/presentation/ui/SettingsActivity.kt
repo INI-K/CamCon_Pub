@@ -9,7 +9,6 @@ import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,7 +16,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -25,6 +23,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -85,12 +84,12 @@ import com.inik.camcon.presentation.viewmodel.PtpipViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
 import java.io.FileOutputStream
+import kotlin.jvm.java
 
 @AndroidEntryPoint
 class SettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
             val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
             val themeMode by appSettingsViewModel.themeMode.collectAsState()
@@ -565,8 +564,22 @@ fun SettingsScreen(
 
             Divider(modifier = Modifier.padding(vertical = 8.dp))
 
-            // 관리자용 레퍼럴 코드 관리 섹션 - 관리자만 표시 (최하단으로 이동)
-            if (adminReferralState.isAdmin) {
+            // 🧪 Mock Camera 섹션 - 개발 버전에서 표시
+            if (BuildConfig.SHOW_DEVELOPER_FEATURES) {
+                SettingsSection(title = "🧪 가상 카메라 (개발 전용)") {
+                    SettingsItemWithNavigation(
+                        icon = Icons.Default.CameraAlt,
+                        title = "Mock Camera 설정",
+                        subtitle = "실제 카메라 없이 테스트할 수 있는 가상 카메라",
+                        onClick = {
+                            val intent = Intent(context, MockCameraActivity::class.java)
+                            context.startActivity(intent)
+                        }
+                    )
+                }
+
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
+
                 SettingsSection(title = "관리자 레퍼럴 코드 관리") {
                     // 통계 정보
                     val totalCodes = adminReferralState.statistics["totalCodes"] as? Int ?: 0

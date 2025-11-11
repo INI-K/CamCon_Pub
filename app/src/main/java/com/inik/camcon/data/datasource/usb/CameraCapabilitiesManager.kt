@@ -70,14 +70,23 @@ class CameraCapabilitiesManager @Inject constructor(
 
         isFetchingCapabilities = true
         try {
-            Log.d(TAG, "카메라 기능 정보 가져오기 시작")
+            Log.d(TAG, "카메라 기능 정보 가져오기 시작 (libgphoto2 API 사용)")
 
-            // 마스터 데이터 사용
-            val (abilitiesJson, widgetJson) = ensureMasterCameraData()
-            Log.d(TAG, "마스터 데이터에서 카메라 기능 정보 파싱")
+            // libgphoto2 API로 Abilities 직접 조회
+            val abilitiesJson = CameraNative.getCameraAbilities()
+            if (abilitiesJson == null) {
+                Log.w(TAG, "Abilities 조회 실패 - 레거시 방식으로 폴백")
+                // 레거시 방식으로 폴백
+                val (legacyAbilities, widgetJson) = ensureMasterCameraData()
+                val capabilities = parseCameraCapabilities(legacyAbilities, widgetJson)
+                cachedCapabilities = capabilities
+                lastCapabilitiesFetch = System.currentTimeMillis()
+                _cameraCapabilities.value = capabilities
+                return@withContext
+            }
 
-            // JSON 파싱하여 CameraCapabilities 객체 생성
-            val capabilities = parseCameraCapabilities(abilitiesJson, widgetJson)
+            // libgphoto2 Abilities 파싱
+            val capabilities = parseCameraAbilitiesFromApi(abilitiesJson)
 
             // 캐시 갱신
             cachedCapabilities = capabilities
@@ -91,6 +100,59 @@ class CameraCapabilitiesManager @Inject constructor(
             _cameraCapabilities.value = null
         } finally {
             isFetchingCapabilities = false
+        }
+    }
+
+    /**
+     * libgphoto2 API Abilities를 CameraCapabilities로 변환
+     */
+    private fun parseCameraAbilitiesFromApi(abilitiesJson: String): CameraCapabilities {
+        try {
+            val obj = JSONObject(abilitiesJson)
+            val supportsObj = obj.getJSONObject("supports")
+
+            return CameraCapabilities(
+                model = obj.getString("model"),
+
+                // libgphoto2 Abilities 기반
+                canCapturePhoto = supportsObj.getBoolean("capture_image"),
+                canCaptureVideo = supportsObj.getBoolean("capture_video"),
+                canLiveView = supportsObj.getBoolean("capture_preview"),
+                canTriggerCapture = supportsObj.getBoolean("trigger_capture"),
+
+                // 고급 기능 (조합으로 판단)
+                supportsBurstMode = supportsObj.getBoolean("capture_image") &&
+                        supportsObj.getBoolean("trigger_capture"),
+                supportsTimelapse = supportsObj.getBoolean("capture_image") &&
+                        supportsObj.getBoolean("trigger_capture"),
+                supportsBracketing = supportsObj.getBoolean("capture_image") &&
+                        supportsObj.getBoolean("config"),
+                supportsBulbMode = supportsObj.getBoolean("capture_image"),
+
+                // 초점 (config 지원하면 대부분 가능)
+                supportsAutofocus = supportsObj.getBoolean("config"),
+                supportsManualFocus = supportsObj.getBoolean("config"),
+                supportsFocusPoint = supportsObj.getBoolean("config"),
+
+                // 파일 관리
+                canDownloadFiles = true,  // 기본적으로 가능
+                canDeleteFiles = supportsObj.getBoolean("delete"),
+                canPreviewFiles = supportsObj.getBoolean("preview"),
+
+                // 설정
+                availableIsoSettings = emptyList(),  // 상세는 위젯에서
+                availableShutterSpeeds = emptyList(),
+                availableApertures = emptyList(),
+                availableWhiteBalanceSettings = emptyList(),
+
+                // 기타
+                supportsRemoteControl = supportsObj.getBoolean("config"),
+                supportsConfigChange = supportsObj.getBoolean("config"),
+                batteryLevel = null
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "libgphoto2 Abilities 파싱 실패", e)
+            throw e
         }
     }
 
@@ -598,7 +660,7 @@ class CameraCapabilitiesManager @Inject constructor(
     }
 
     /**
-     * 현재 연���된 카메라의 기능 정보를 새로고침합니다.
+     * 현재 연결된 카메라의 기능 정보를 새로고침합니다.
      */
     suspend fun refreshCameraCapabilities() {
         // 강제 새로고침을 위해 캐시 무효화
