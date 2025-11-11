@@ -266,4 +266,15 @@ object CameraNative {
 
     // ===== 라이브러리 상태 관리 =====
 
+    // ===== 고급 최적화 기능 =====
+
+    // 에러 히스토리 관리
+    external fun getErrorHistory(count: Int): String
+    external fun clearErrorHistory()
+
+    // 메모리 풀 상태 확인
+    external fun getCameraFilePoolCount(): Int
+    external fun clearCameraFilePool()
+    external fun getMemoryPoolStatus(): String
+
 }

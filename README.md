@@ -3,6 +3,9 @@
 [![Android](https://img.shields.io/badge/Platform-Android-green.svg)](https://developer.android.com)
 [![Kotlin](https://img.shields.io/badge/Language-Kotlin-purple.svg)](https://kotlinlang.org)
 [![API](https://img.shields.io/badge/API-29%2B-brightgreen.svg)](https://android-arsenal.com/api?level=29)
+[![Optimized](https://img.shields.io/badge/Code-Optimized-blue.svg)](CODE_OPTIMIZATION_SUMMARY.md)
+
+> 📋 **[종합 개선 보고서](COMPREHENSIVE_IMPROVEMENTS.md)** - 전체 분석 및 개선 방안 확인
 
 DSLR/미러리스 카메라를 안드로이드 기기로 완전히 제어할 수 있는 전문가용 카메라 제어 애플리케이션입니다. libgphoto2를 기반으로 하여 USB 및 Wi-Fi 연결을 통한
 실시간 카메라 제어, 라이브뷰, 원격 촬영, 고급 색감 변환 등의 기능을 제공합니다.
@@ -161,7 +164,8 @@ DSLR/미러리스 카메라를 안드로이드 기기로 완전히 제어할 수
 - **Google Play Services**: 21.0.0
 
 ### 네이티브 라이브러리
-- **libgphoto2**: 카메라 제어 핵심 라이브러리
+
+- **libgphoto2**: 2.5.x - 카메라 제어 핵심 라이브러리
 - **libusb**: USB 통신
 - **CMake**: 3.22.1 - 네이티브 빌드 시스템
 - **JNI**: Kotlin C++ 브리지
@@ -175,6 +179,22 @@ DSLR/미러리스 카메라를 안드로이드 기기로 완전히 제어할 수
 ### 데이터 저장
 - **DataStore Preferences**: 1.0.0 - 설정 저장
 - **내부 저장소**: 촬영 사진 로컬 저장
+
+## 성능 최적화
+
+### 코드 최적화
+
+- **RAII 패턴**: 자동 메모리 관리
+- **통합 캐시 시스템**: 중복 캐시 제거
+- **조건부 로깅**: 릴리즈 빌드 성능 향상
+- **Libgphoto2 표준 준수**: 불필요한 로직 제거
+
+### 빌드 최적화
+
+- **ProGuard**: 코드 난독화 및 최적화
+- **R8**: 추가 바이트코드 최적화
+- **Native 스트리핑**: 디버그 심볼 제거
+- **리소스 최적화**: 사용하지 않는 리소스 자동 제거
 
 ## 아키텍처
 
@@ -579,3 +599,4 @@ LogcatManager.perfEnd("TAG", "작업명", startTime)
 ---
 **CamConT** - Professional Camera Control & Color Transfer for Android
 *Make Every Shot Perfect*
+

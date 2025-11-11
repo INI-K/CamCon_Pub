@@ -13,7 +13,6 @@ import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.repository.CameraRepository
-import com.inik.camcon.domain.usecase.GetCameraFeedUseCase
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,7 +34,6 @@ import javax.inject.Inject
 class CameraViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val cameraRepository: CameraRepository,
-    private val getCameraFeedUseCase: GetCameraFeedUseCase,
     private val getSubscriptionUseCase: GetSubscriptionUseCase,
     private val uiStateManager: CameraUiStateManager,
 
@@ -53,8 +51,8 @@ class CameraViewModel @Inject constructor(
     // UI 상태는 StateManager에 위임
     val uiState: StateFlow<CameraUiState> = uiStateManager.uiState
 
-    // 카메라 피드 (Domain UseCase 직접 사용)
-    val cameraFeed: StateFlow<List<Camera>> = getCameraFeedUseCase()
+    // 카메라 피드 (Repository에서 직접 가져오기 - 단순 위임 UseCase 제거)
+    val cameraFeed: StateFlow<List<Camera>> = cameraRepository.getCameraFeed()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
