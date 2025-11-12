@@ -15,6 +15,7 @@ import com.inik.camcon.data.network.ptpip.connection.PtpipConnectionManager
 import com.inik.camcon.data.network.ptpip.discovery.PtpipDiscoveryService
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.data.repository.managers.CameraEventManager
+import com.inik.camcon.data.repository.managers.PhotoDownloadManager
 import com.inik.camcon.domain.model.CameraAbilitiesInfo
 import com.inik.camcon.domain.model.CameraSupports
 import com.inik.camcon.domain.model.NikonConnectionMode
@@ -28,6 +29,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -39,7 +41,6 @@ import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
-import java.lang.ref.WeakReference
 
 /**
  * PTPIP (Picture Transfer Protocol over IP) 데이터 소스
@@ -58,7 +59,8 @@ class PtpipDataSource @Inject constructor(
     private val nikonAuthService: NikonAuthenticationService,
     private val wifiHelper: WifiNetworkHelper,
     private val cameraEventManager: CameraEventManager,
-    private val uiStateManager: com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
+    private val uiStateManager: com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager,
+    private val photoDownloadManager: com.inik.camcon.data.repository.managers.PhotoDownloadManager
 ) {
     private var connectedCamera: PtpipCamera? = null
     private var lastConnectedCamera: PtpipCamera? = null
@@ -66,11 +68,13 @@ class PtpipDataSource @Inject constructor(
     private var networkMonitoringJob: Job? = null
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    // Repository 콜백 저장용 - WeakReference로 메모리 누수 방지
-    private var onPhotoCapturedCallback: WeakReference<(String, String) -> Unit>? = null
-    private var onPhotoDownloadedCallback: WeakReference<(String, String, ByteArray) -> Unit>? =
-        null
-    private var onConnectionLostCallback: WeakReference<() -> Unit>? = null // Wi-Fi 연결 끊어짐 알림용
+    // 초기 플러시 완료 플래그
+    private var isInitialFlushCompleted = false
+
+    // Repository 콜백 저장용 - Singleton이므로 일반 참조 사용 (메모리 누수 방지 불필요)
+    private var onPhotoCapturedCallback: ((String, String) -> Unit)? = null
+    private var onPhotoDownloadedCallback: ((String, String, ByteArray) -> Unit)? = null
+    private var onConnectionLostCallback: (() -> Unit)? = null // Wi-Fi 연결 끊어짐 알림용
 
     // StateFlow for UI observation
     private val _connectionState = MutableStateFlow(PtpipConnectionState.DISCONNECTED)
@@ -170,7 +174,7 @@ class PtpipDataSource @Inject constructor(
                         _connectionState.value = PtpipConnectionState.DISCONNECTED
                         connectedCamera = null
                         _connectionLostMessage.value = "Wi-Fi 연결이 끊어졌습니다. 다시 연결해 주세요."
-                        onConnectionLostCallback?.get()?.invoke()
+                        onConnectionLostCallback?.invoke()
                     }
                 }
 
@@ -273,14 +277,11 @@ class PtpipDataSource @Inject constructor(
         networkMonitoringJob?.cancel()
         networkMonitoringJob = null
 
-        // 콜백 WeakReference 정리
-        onPhotoCapturedCallback?.clear()
+        // 콜백 초기화
         onPhotoCapturedCallback = null
 
-        onPhotoDownloadedCallback?.clear()
         onPhotoDownloadedCallback = null
 
-        onConnectionLostCallback?.clear()
         onConnectionLostCallback = null
 
         Log.d(TAG, "리소스 정리 완료 (콜백 포함)")
@@ -373,15 +374,22 @@ class PtpipDataSource @Inject constructor(
 
     /**
      * 스마트 카메라 연결 (libgphoto2 API 기반)
+     * Activity 생명주기와 독립적으로 실행됩니다
      */
     suspend fun connectToCamera(camera: PtpipCamera, forceApMode: Boolean = false): Boolean =
-        withContext(Dispatchers.IO) {
+        // Activity와 독립적인 coroutineScope 사용
+        coroutineScope.async(Dispatchers.IO) {
         try {
             Log.i(TAG, "============================================")
-            Log.i(TAG, "=== 스마트 카메라 연결 시작 ===")
+            Log.i(TAG, "=== 스마트 카메라 연결 시작 (독립 스코프) ===")
             Log.i(TAG, "카메라: ${camera.name}")
             Log.i(TAG, "IP: ${camera.ipAddress}:${camera.port}")
             Log.i(TAG, "============================================")
+
+            // 연결 시작 시 상태를 CONNECTING으로 변경
+            _connectionState.value = PtpipConnectionState.CONNECTING
+            _connectionProgressMessage.value = "카메라 연결 시작..."
+            Log.d(TAG, "PTPIP 연결 상태 변경: CONNECTING")
 
             // AP 모드 강제 플래그 설정
             _isApModeForced.value = forceApMode
@@ -421,7 +429,7 @@ class PtpipDataSource @Inject constructor(
                 Log.e(TAG, "❌ libgphoto2 초기화 실패: $initResult")
                 _connectionState.value = PtpipConnectionState.ERROR
                 _connectionProgressMessage.value = "연결 실패: $initResult"
-                return@withContext false
+                return@async false
             }
 
             Log.i(TAG, "✅ libgphoto2 초기화 성공")
@@ -485,7 +493,7 @@ class PtpipDataSource @Inject constructor(
                             _connectionState.value = PtpipConnectionState.ERROR
                             _connectionProgressMessage.value =
                                 "Nikon STA 인증 실패\n카메라에서 '연결 허용'을 눌러주세요"
-                            return@withContext false
+                            return@async false
                         }
 
                         Log.i(TAG, "✅ Nikon STA 인증 성공")
@@ -505,50 +513,27 @@ class PtpipDataSource @Inject constructor(
             }
 
             // =========================
-            // Step 4: 파일 목록 조회
-            // =========================
-            _connectionProgressMessage.value = "파일 목록 조회 중..."
-            Log.i(TAG, "=== PTPIP 연결 후 파일 목록 조회 시작 ===")
-
-            withContext(Dispatchers.IO) {
-                try {
-                    val fileListJson = CameraNative.getCameraFileListPaged(0, 50) // 첫 페이지 50개
-                    if (fileListJson.isNotEmpty() && fileListJson != "[]") {
-                        Log.i(TAG, "✅ 파일 목록 조회 성공: ${fileListJson.length} chars")
-                    } else {
-                        Log.i(TAG, "📷 카메라에 파일이 없거나 목록이 비어있음")
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "파일 목록 조회 중 오류 (계속 진행): ${e.message}")
-                }
-            }
-
-            // =========================
-            // Step 5: 이벤트 리스너 시작
+            // Step 4: 이벤트 리스너 시작
             // =========================
             _connectionProgressMessage.value = "이벤트 리스너 시작 중..."
             startAutomaticFileReceiving(camera)
 
             // =========================
-            // Step 6: 연결 완료
+            // Step 5: 연결 정보 저장 (상태는 플러시 완료 후 변경)
             // =========================
             connectedCamera = camera
             lastConnectedCamera = camera
 
-            delay(2000) // 모든 초기화 완료 대기
-            _connectionState.value = PtpipConnectionState.CONNECTED
-            _connectionProgressMessage.value = "연결 완료!"
-
-            Log.i(TAG, "🎉 카메라 연결 완료!")
-            return@withContext true
+            Log.i(TAG, "🎉 카메라 연결 설정 완료! 초기 플러시 대기 중...")
+            return@async true
 
         } catch (e: Exception) {
             Log.e(TAG, "카메라 연결 중 오류", e)
             _connectionState.value = PtpipConnectionState.ERROR
             _connectionProgressMessage.value = "연결 오류: ${e.message}"
-            return@withContext false
+            return@async false
         }
-    }
+        }.await() // async의 결과를 기다림
 
     /**
      * Abilities JSON 파싱
@@ -693,6 +678,9 @@ class PtpipDataSource @Inject constructor(
             "Repository 콜백 설정 상태: ${onPhotoCapturedCallback != null}"
         )
 
+        // 초기 플러시 플래그 초기화
+        isInitialFlushCompleted = false
+
         try {
             // 1단계: 파일 목록 조회 (동기적으로 실행하여 완료 대기)
             _connectionProgressMessage.value = "파일 목록 조회 중..."
@@ -722,7 +710,7 @@ class PtpipDataSource @Inject constructor(
             val result = cameraEventManager.startCameraEventListener(
                 isConnected = true,
                 isInitializing = false,
-                saveDirectory = getDefaultSaveDirectory(),
+                saveDirectory = photoDownloadManager.getSaveDirectory(),
                 onPhotoCaptured = { filePath, fileName ->
                     com.inik.camcon.utils.LogcatManager.d(
                         TAG,
@@ -745,12 +733,34 @@ class PtpipDataSource @Inject constructor(
                     )
                     com.inik.camcon.utils.LogcatManager.d(TAG, "📁 실제 저장된 파일 경로: $filePath")
 
-                    // 실제 저장된 파일 정보로 Repository 업데이트
-                    onPhotoDownloadedCallback?.get()?.invoke(filePath, fileName, imageData)
+                    // Repository 콜백 호출 (단일 경로)
+                    com.inik.camcon.utils.LogcatManager.d(TAG, "🔔 Repository 콜백 호출 시작: $fileName")
+                    onPhotoDownloadedCallback?.invoke(filePath, fileName, imageData)
+                    com.inik.camcon.utils.LogcatManager.d(TAG, "✅ Repository 콜백 호출 완료: $fileName")
                 },
                 onFlushComplete = {
                     Log.d(TAG, "PTPIP AP 모드 플러시 완료")
                     com.inik.camcon.utils.LogcatManager.d(TAG, "✅ PTPIP 플러시 완료")
+
+                    // 초기 플러시가 아직 완료되지 않은 경우에만 상태 변경
+                    if (!isInitialFlushCompleted) {
+                        isInitialFlushCompleted = true
+                        com.inik.camcon.utils.LogcatManager.d(
+                            TAG,
+                            "✅ 초기 플러시 완료 콜백 호출 성공 - UI 블록 해제"
+                        )
+
+                        // 초기 플러시 완료 시 연결 완료 상태로 변경
+                        _connectionState.value = PtpipConnectionState.CONNECTED
+                        _connectionProgressMessage.value = "연결 완료!"
+                        Log.d(TAG, "PTPIP 연결 상태 변경: CONNECTED")
+
+                        // 네트워크 바인딩은 유지 (카메라 연결 유지)
+                        // Firebase는 getCellularNetwork()를 통해 별도로 셀룰러 데이터 사용 가능
+                        Log.i(TAG, "✅ 카메라 Wi-Fi 바인딩 유지 - Firebase는 셀룰러 데이터 사용 가능")
+                    } else {
+                        Log.d(TAG, "중복 플러시 완료 콜백 무시 (이미 초기 플러시 완료됨)")
+                    }
                 },
                 onCaptureFailed = { errorCode ->
                     Log.e(TAG, "PTPIP AP 모드 촬영 실패: $errorCode")
@@ -787,7 +797,7 @@ class PtpipDataSource @Inject constructor(
      * 기본 저장 디렉토리 가져오기
      */
     private fun getDefaultSaveDirectory(): String {
-        return context.getExternalFilesDir(null)?.absolutePath ?: "/sdcard/CamCon"
+        return photoDownloadManager.getSaveDirectory()
     }
 
     /**
@@ -953,6 +963,7 @@ class PtpipDataSource @Inject constructor(
                 // 연결 해제 시 AP 강제 표시 해제
                 _isApModeForced.value = false
                 _connectionProgressMessage.value = ""
+                isInitialFlushCompleted = false
                 Log.d(TAG, "카메라 연결 해제 완료")
             } else {
                 _connectionState.value = PtpipConnectionState.CONNECTED
@@ -987,6 +998,10 @@ class PtpipDataSource @Inject constructor(
 
                 if (ext in listOf("jpg", "jpeg", "png", "cr2", "nef", "arw", "dng")) {
                     Log.d(TAG, "✅ 이미지 파일 - 네이티브에서 처리 완료됨")
+
+                    // Repository에 촬영 완료 알림 - 네이티브가 이미 저장 완료함
+                    Log.d(TAG, "🔔 Repository에 촬영 완료 알림: $fileName")
+                    onPhotoCapturedCallback?.invoke(filePath, fileName)
                 } else {
                     Log.d(TAG, "❌ 지원하지 않는 파일 형식: $ext")
                 }
@@ -1156,12 +1171,12 @@ class PtpipDataSource @Inject constructor(
      * Repository 콜백 설정 (외부 셔터 감지 시 호출)
      */
     fun setPhotoCapturedCallback(callback: (String, String) -> Unit) {
-        onPhotoCapturedCallback = WeakReference(callback)
+        onPhotoCapturedCallback = callback
         Log.d(TAG, "PTPIP 파일 촬영 콜백 설정 완료")
     }
 
     fun setPhotoDownloadedCallback(callback: (String, String, ByteArray) -> Unit) {
-        onPhotoDownloadedCallback = WeakReference(callback)
+        onPhotoDownloadedCallback = callback
         Log.d(TAG, "PTPIP 파일 다운로드 콜백 설정 완료")
     }
 
@@ -1169,7 +1184,7 @@ class PtpipDataSource @Inject constructor(
      * Wi-Fi 연결 끊어짐 알림 콜백 설정
      */
     fun setConnectionLostCallback(callback: () -> Unit) {
-        onConnectionLostCallback = WeakReference(callback)
+        onConnectionLostCallback = callback
         Log.d(TAG, "PTPIP 연결 끊어짐 콜백 설정 완료")
     }
 

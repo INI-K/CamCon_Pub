@@ -114,22 +114,31 @@ class CameraRepositoryImpl @Inject constructor(
         // PTPIP 사진 다운로드 콜백 설정
         ptpipDataSource.setPhotoDownloadedCallback { filePath, fileName, imageData ->
             com.inik.camcon.utils.LogcatManager.d(TAG, "PTPIP에서 사진 다운로드 완료: $fileName")
+            com.inik.camcon.utils.LogcatManager.d(TAG, "  📁 카메라 경로: $filePath")
+            com.inik.camcon.utils.LogcatManager.d(TAG, "  📊 데이터 크기: ${imageData.size / 1024}KB")
 
-            val capturedPhoto = CapturedPhoto(
-                id = UUID.randomUUID().toString(),
-                filePath = extractAndBuildActualPath(filePath, fileName),
-                thumbnailPath = null,
-                captureTime = System.currentTimeMillis(),
-                cameraModel = connectionManager.cameraCapabilities.value?.model ?: "PTPIP Camera",
-                settings = _cameraSettings.value,
-                size = imageData.size.toLong(),
-                width = 0,
-                height = 0,
-                isDownloading = false
-            )
+            // PhotoDownloadManager를 통해 실제 파일 저장 및 MediaStore 등록
+            CoroutineScope(Dispatchers.IO).launch {
+                com.inik.camcon.utils.LogcatManager.d(TAG, "🚀 PTPIP - handleNativePhotoDownload 호출")
 
-            updateDownloadedPhoto(capturedPhoto)
-            com.inik.camcon.utils.LogcatManager.d(TAG, "✅ PTPIP 사진 UI 업데이트 완료: $fileName")
+                val capturedPhoto = downloadManager.handleNativePhotoDownload(
+                    filePath = filePath,
+                    fileName = fileName,
+                    imageData = imageData,
+                    cameraCapabilities = connectionManager.cameraCapabilities.value,
+                    cameraSettings = _cameraSettings.value
+                )
+
+                if (capturedPhoto != null) {
+                    com.inik.camcon.utils.LogcatManager.d(
+                        TAG,
+                        "✅ PTPIP 사진 저장 성공: ${capturedPhoto.filePath}"
+                    )
+                    updateDownloadedPhoto(capturedPhoto)
+                } else {
+                    Log.e(TAG, "❌ PTPIP 사진 저장 실패: $fileName")
+                }
+            }
         }
 
         // PTPIP 연결 끊어짐 콜백 설정
@@ -820,46 +829,36 @@ class CameraRepositoryImpl @Inject constructor(
             return
         }
 
-        val tempPhoto = CapturedPhoto(
-            id = UUID.randomUUID().toString(),
-            filePath = fullPath,
-            thumbnailPath = null,
-            captureTime = System.currentTimeMillis(),
-            cameraModel = connectionManager.cameraCapabilities.value?.model ?: "알 수 없음",
-            settings = _cameraSettings.value,
-            size = 0,
-            width = 0,
-            height = 0,
-            isDownloading = true
-        )
-
-        com.inik.camcon.utils.LogcatManager.d(TAG, "📷 CapturedPhoto 생성됨: ${tempPhoto.id}")
-
-        // PhotoDownloadManager를 통한 단일 다운로드 처리
+        // PhotoDownloadManager의 handleNativePhotoDownload를 직접 호출
         CoroutineScope(Dispatchers.IO).launch {
-            com.inik.camcon.utils.LogcatManager.d(TAG, "🚀 PhotoDownloadManager 코루틴 시작: $fileName")
-            downloadManager.handlePhotoDownload(
-                photo = tempPhoto,
-                fullPath = fullPath,
-                fileName = fileName,
-                cameraCapabilities = connectionManager.cameraCapabilities.value,
-                cameraSettings = _cameraSettings.value,
-                imageData = imageData,
-                onPhotoDownloaded = { downloadedPhoto ->
-                    com.inik.camcon.utils.LogcatManager.d(
-                        TAG,
-                        "✅ 다운로드 성공 콜백: ${downloadedPhoto.filePath}"
-                    )
-                    updateDownloadedPhoto(downloadedPhoto)
-                    com.inik.camcon.utils.LogcatManager.d(TAG, "✅ 네이티브 사진 다운로드 완료: $fileName")
-                },
-                onDownloadFailed = { failedFileName ->
-                    Log.e(TAG, "❌ 다운로드 실패 콜백: $failedFileName")
-                    updatePhotoDownloadFailed(failedFileName)
-                    Log.e(TAG, "❌ 네이티브 사진 다운로드 실패: $failedFileName")
-                }
+            com.inik.camcon.utils.LogcatManager.d(
+                TAG,
+                "🚀 PhotoDownloadManager.handleNativePhotoDownload 시작: $fileName"
             )
-            com.inik.camcon.utils.LogcatManager.d(TAG, "🏁 PhotoDownloadManager 코루틴 완료: $fileName")
+
+            val capturedPhoto = downloadManager.handleNativePhotoDownload(
+                filePath = fullPath,
+                fileName = fileName,
+                imageData = imageData,
+                cameraCapabilities = connectionManager.cameraCapabilities.value,
+                cameraSettings = _cameraSettings.value
+            )
+
+            if (capturedPhoto != null) {
+                com.inik.camcon.utils.LogcatManager.d(
+                    TAG,
+                    "✅ 네이티브 사진 저장 성공: ${capturedPhoto.filePath}"
+                )
+                updateDownloadedPhoto(capturedPhoto)
+            } else {
+                Log.e(TAG, "❌ 네이티브 사진 저장 실패: $fileName")
+                updatePhotoDownloadFailed(fileName)
+            }
+
+            com.inik.camcon.utils.LogcatManager.d(
+                TAG,
+                "🏁 PhotoDownloadManager.handleNativePhotoDownload 완료: $fileName"
+            )
         }
     }
 

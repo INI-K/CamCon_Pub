@@ -115,11 +115,10 @@ class CamCon : Application() {
             try {
                 val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
                 val settings = com.google.firebase.firestore.FirebaseFirestoreSettings.Builder()
-                    .setPersistenceEnabled(true) // 오프라인 지속성 활성화
-                    .setCacheSizeBytes(com.google.firebase.firestore.FirebaseFirestoreSettings.CACHE_SIZE_UNLIMITED)
+                    .setPersistenceEnabled(false) // 오프라인 캐시 비활성화 - 항상 서버에서 최신 데이터 가져오기
                     .build()
                 firestore.firestoreSettings = settings
-                Log.d(TAG, "Firestore 오프라인 지속성 활성화됨")
+                Log.d(TAG, "Firestore 오프라인 캐시 비활성화됨 (항상 서버에서 최신 데이터 조회)")
             } catch (e: Exception) {
                 Log.w(TAG, "Firestore 설정 실패: ${e.message}")
             }
