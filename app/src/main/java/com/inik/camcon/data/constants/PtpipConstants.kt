@@ -14,8 +14,16 @@ object PtpipConstants {
     const val PTPIP_INIT_COMMAND_ACK = 2
     const val PTPIP_INIT_EVENT_REQUEST = 3
     const val PTPIP_INIT_EVENT_ACK = 4
+    const val PTPIP_INIT_FAIL = 5
     const val PTPIP_OPERATION_REQUEST = 6
     const val PTPIP_OPERATION_RESPONSE = 7
+    const val PTPIP_EVENT = 8
+    const val PTPIP_START_DATA = 9
+    const val PTPIP_DATA = 10
+    const val PTPIP_CANCEL = 11
+    const val PTPIP_END_DATA = 12
+    const val PTPIP_PROBE_REQUEST = 13
+    const val PTPIP_PROBE_RESPONSE = 14
 
     // PTP 오퍼레이션 코드
     const val PTP_OC_GetDeviceInfo = 0x1001

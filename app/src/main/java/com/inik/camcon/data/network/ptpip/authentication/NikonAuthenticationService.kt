@@ -215,7 +215,23 @@ class NikonAuthenticationService @Inject constructor() {
                     LogcatManager.w(TAG, "인증된 OpenSession 실패지만 계속 진행")
                 }
 
-                // 2-5: 저장소 정보 확인 (인증된 상태에서만 가능)
+                // 2-5: GetVendorPropCodes 호출 (중요! Nikon Z6 촬영 기능 활성화)
+                LogcatManager.i(TAG, "Step 2-5: GetVendorPropCodes (0x90CA) 호출하여 추가 기능 활성화")
+                if (!sendGetVendorPropCodes(commandSocket)) {
+                    LogcatManager.w(TAG, "⚠️ GetVendorPropCodes 실패 - 일부 기능이 제한될 수 있음")
+                } else {
+                    LogcatManager.i(TAG, "✅ GetVendorPropCodes 성공 - 촬영 기능 활성화됨")
+                }
+
+                // 2-6: 업데이트된 DeviceInfo 다시 가져오기
+                LogcatManager.i(TAG, "Step 2-6: 업데이트된 DeviceInfo 재조회")
+                if (!sendGetDeviceInfo(commandSocket)) {
+                    LogcatManager.w(TAG, "DeviceInfo 재조회 실패지만 계속 진행")
+                } else {
+                    LogcatManager.i(TAG, "✅ DeviceInfo 재조회 성공 - 업데이트된 capabilities 확인")
+                }
+
+                // 2-7: 저장소 정보 확인 (인증된 상태에서만 가능)
                 if (!sendGetStorageIDs(commandSocket)) {
                     LogcatManager.w(TAG, "GetStorageIDs 실패지만 계속 진행")
                 }
@@ -481,6 +497,53 @@ class NikonAuthenticationService @Inject constructor() {
             bytesRead > 0
         } catch (e: Exception) {
             LogcatManager.e(TAG, "GetStorageIDs 실패: ${e.message}")
+            false
+        }
+    }
+
+    /**
+     * GetVendorPropCodes (0x90CA) 전송
+     * Nikon 카메라의 추가 기능 정보를 가져옴
+     */
+    private fun sendGetVendorPropCodes(socket: Socket): Boolean {
+        return try {
+            LogcatManager.d(TAG, "GetVendorPropCodes (0x90CA) 전송")
+
+            val output = socket.getOutputStream()
+            val packet = createOperationRequest(0x90CA, 3) // 0x90CA = GetVendorPropCodes
+
+            output.write(packet)
+            output.flush()
+
+            // 응답 수신
+            socket.soTimeout = 10000
+            val response = ByteArray(4096)
+            val bytesRead = socket.getInputStream().read(response)
+
+            if (bytesRead > 0) {
+                LogcatManager.d(TAG, "GetVendorPropCodes 응답 수신: $bytesRead bytes")
+
+                // 응답 내용 분석 (추가 prop 코드가 포함됨)
+                if (bytesRead >= 20) {
+                    val buffer = ByteBuffer.wrap(response).order(ByteOrder.LITTLE_ENDIAN)
+                    buffer.position(4)
+                    val packetType = buffer.int
+
+                    if (packetType == PtpipConstants.PTPIP_START_DATA ||
+                        packetType == PtpipConstants.PTPIP_DATA
+                    ) {
+                        LogcatManager.i(TAG, "✅ Vendor Prop Codes 데이터 수신 성공")
+                        return true
+                    }
+                }
+
+                true
+            } else {
+                false
+            }
+
+        } catch (e: Exception) {
+            LogcatManager.e(TAG, "GetVendorPropCodes 전송 실패: ${e.message}")
             false
         }
     }

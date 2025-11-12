@@ -8,6 +8,7 @@
 4. [개선 사항](#개선-사항)
 5. [디버깅 방법](#디버깅-방법)
 6. [참고 문서](#참고-문서)
+7. [Nikon Z6 GetVendorPropCodes 문제 해결](#nikon-z6-getvendorpropcodes-문제-해결)
 
 ---
 
@@ -139,7 +140,7 @@ gp_setting_set("ptp2_ip", "timeout", "10000");  // 10초
 **해결:**
 
 - 에러 코드별 상세 분석 추가
-- 문�� 해결 제안 메시지 추가
+- 문제 해결 제안 메시지 추가
 
 ```cpp
 switch (ret) {
@@ -334,7 +335,7 @@ app/src/main/java/com/inik/camcon/
 - [ ] 카메라가 PTP/IP 모드로 설정되어 있는가?
 - [ ] Wi-Fi 네트워크에 정상 연결되어 있는가?
 - [ ] 카메라 IP 주소가 정확한가?
-- [ ] 포트 15740이 열려 있는��?
+- [ ] 포트 15740이 열려 있는가?
 - [ ] 카메라 펌웨어가 최신인가?
 - [ ] libgphoto2가 카메라를 지원하는가?
 
@@ -379,6 +380,295 @@ app/src/main/java/com/inik/camcon/
 
 ---
 
-**마지막 업데이트**: 2025-01-22  
-**작성자**: AI Assistant  
-**버전**: 1.0
+## Nikon Z6 GetVendorPropCodes 문제 해결
+
+###  
+
+- PTP/IP 연결은 성공
+- 인증도 완료됨
+- 하지만 `Device Capabilities`에서 `No Image Capture`로 표시
+- 촬영 시도 시 `Unsupported operation` 오류 (에러 코드 -6)
+- `gp_camera_capture` 실행 시 "Sorry, your camera does not support generic capture" 메시지
+
+#### 원인 분석
+
+Nikon Z6와 같은 최신 Nikon 카메라는 PTP/IP 연결 시 보안을 위해 **초기 `GetDeviceInfo`에서 제한된 capabilities만 반환**합니다.
+
+**libgphoto2 로그 비교:**
+
+**인증 전 (제한된 capabilities):**
+
+```
+Device Capabilities:
+  File Download, No File Deletion, No File Upload
+  No Image Capture, No Open Capture, No vendor specific capture
+
+Supported operations:
+  0x1001 (Get device info)
+  0x1002 (Open session)
+  0x1003 (Close session)
+  0x1004 (Get storage IDs)
+  ... (기본 PTP 명령만)
+```
+
+**인증 + GetVendorPropCodes 후 (전체 capabilities):**
+
+```
+Device Capabilities:
+  File Download, File Deletion, File Upload
+  Image Capture, Open Capture, Vendor specific capture
+
+Supported operations:
+  0x1001 (Get device info)
+  0x1002 (Open session)
+  ...
+  0x90CA (GetVendorPropCodes) 
+  0x9207 (InitiateCaptureRecInMedia) 
+  0x9201 (StartLiveView) 
+  0x9203 (GetLiveViewImg) 
+```
+
+**핵심:** 인증 후 `GetVendorPropCodes` (0x90CA)를 호출해야 추가 104개의 vendor property 코드와 operation 코드가 로드됩니다.
+
+#### 해결 방법
+
+##### 1. C++ 네이티브 레벨 수정 (권장)
+
+`app/src/main/cpp/camera_ptpip_commands.cpp` 파일 수정:
+
+```cpp
+// 니콘 STA 모드 인증 함수
+int performNikonStaAuthentication(Camera *camera) {
+    if (!camera) {
+        LOGE("카메라가 초기화되지 않음");
+        return -1;
+    }
+
+    LOGI("=== 니콘 STA 모드 인증 시작 ===");
+
+    try {
+        // Step 1-5: 기존 인증 프로세스
+        // ... (OpenSession, 0x952b, 0x935a 등)
+
+        // Step 6: GetVendorPropCodes로 추가 기능 정보 가져오기 (중요!)
+        LOGI("Step 6: GetVendorPropCodes (0x90CA) 호출");
+        ret = sendPtpOperationReal(camera, PTP_OC_NIKON_GetVendorPropCodes, 0, 0, 0);
+        if (ret != 0) {
+            LOGW(" GetVendorPropCodes 실패 - 일부 기능 제한됨");
+        } else {
+            LOGI(" GetVendorPropCodes 성공 - 추가 기능 로드됨");
+        }
+
+        // Step 7: 인증 후 GetDeviceInfo로 업데이트된 기능 정보 가져오기
+        LOGI("Step 7: 업데이트된 DeviceInfo 재조회");
+        ret = sendPtpOperationReal(camera, PTP_OC_GetDeviceInfo, 0, 0, 0);
+        if (ret != 0) {
+            LOGW("DeviceInfo 재조회 실패");
+        } else {
+            LOGI("DeviceInfo 재조회 성공 - 업데이트된 capabilities 확인");
+        }
+
+        // Step 8: gp_camera_init를 다시 호출하여 libgphoto2가 새로운 capabilities 인식
+        LOGI("Step 8: gp_camera_exit + gp_camera_init으로 재초기화");
+        ret = gp_camera_exit(camera, context);
+        if (ret  0) {
+            LOGW(" gp_camera_exit 실패: %s (계속 진행)", gp_result_as_string(ret));
+        }
+        
+        // 카메라 재초기화
+        ret = gp_camera_init(camera, context);
+        if (ret  0) {
+            LOGE(" gp_camera_init 재초기화 실패: %s", gp_result_as_string(ret));
+            return -1;
+        }
+        
+        LOGI(" 카메라 재초기화 성공 - 인증된 capabilities 로드 완료");
+
+        LOGI(" 니콘 STA 모드 인증 완료");
+        return 0;
+
+    } catch (...) {
+        LOGE("니콘 STA 모드 인증 중 예외 발생");
+        return -1;
+    }
+}
+```
+
+##### 2. Kotlin/Android 레벨 수정
+
+`app/src/main/java/com/inik/camcon/data/network/ptpip/authentication/NikonAuthenticationService.kt`:
+
+```kotlin
+private suspend fun performPhase2Authentication(camera: PtpipCamera): Boolean =
+    withContext(Dispatchers.IO) {
+        // ... 기존 인증 코드 ...
+        
+        // Step 2-5: GetVendorPropCodes 호출 (중요!)
+        LogcatManager.i(TAG, "Step 2-5: GetVendorPropCodes (0x90CA) 호출")
+        if (!sendGetVendorPropCodes(commandSocket)) {
+            LogcatManager.w(TAG, " GetVendorPropCodes 실패 - 일부 기능 제한됨")
+        } else {
+            LogcatManager.i(TAG, " GetVendorPropCodes 성공 - 촬영 기능 활성화")
+        }
+        
+        // Step 2-6: 업데이트된 DeviceInfo 다시 가져오기
+        LogcatManager.i(TAG, "Step 2-6: 업데이트된 DeviceInfo 재조회")
+        sendGetDeviceInfo(commandSocket)
+        
+        return@withContext true
+    }
+
+/**
+ * GetVendorPropCodes (0x90CA) 전송
+ */
+private fun sendGetVendorPropCodes(socket: Socket): Boolean {
+    return try {
+        LogcatManager.d(TAG, "GetVendorPropCodes (0x90CA) 전송")
+
+        val output = socket.getOutputStream()
+        val packet = createOperationRequest(0x90CA, transactionId)
+
+        output.write(packet)
+        output.flush()
+
+        // 응답 수신
+        socket.soTimeout = 10000
+        val response = ByteArray(4096)
+        val bytesRead = socket.getInputStream().read(response)
+
+        if (bytesRead > 0) {
+            LogcatManager.d(TAG, "GetVendorPropCodes 응답: $bytesRead bytes")
+            
+            // 응답 타입 확인
+            val buffer = ByteBuffer.wrap(response).order(ByteOrder.LITTLE_ENDIAN)
+            buffer.position(4)
+            val packetType = buffer.int
+            
+            if (packetType == PtpipConstants.PTPIP_START_DATA || 
+                packetType == PtpipConstants.PTPIP_DATA) {
+                LogcatManager.i(TAG, " Vendor Prop Codes 데이터 수신 성공")
+                return true
+            }
+        }
+        
+        false
+    } catch (e: Exception) {
+        LogcatManager.e(TAG, "GetVendorPropCodes 실패: ${e.message}")
+        false
+    }
+}
+```
+
+#### 중요 포인트
+
+1. **순서가 중요합니다:**
+    - 인증 완료 → GetVendorPropCodes → GetDeviceInfo 재조회 → 카메라 재초기화
+
+2. **GetVendorPropCodes는 인증 후에만 호출 가능**
+    - 인증 전 호출 시 `Access Denied` 또는 `Not Supported` 에러 발생
+
+3. **응답에는 104개의 추가 property 코드 포함:**
+   ```
+   0xd015 (Reset Bank 0)
+   0xd017 (Auto White Balance Bias)
+   0xd018 (Tungsten White Balance Bias)
+   ... (총 104개)
+   ```
+
+4. **libgphoto2를 사용하는 경우 재초기화 필수:**
+    - `gp_camera_exit()` → `gp_camera_init()`
+    - 이렇게 해야 libgphoto2가 새로운 capabilities를 인식함
+
+#### 검증 방법
+
+##### 로그 확인:
+
+```bash
+# Android 로그
+adb logcat -s NikonAuthService:*
+
+# 확인할 내용:
+ GetVendorPropCodes (0x90CA) 호출
+ Vendor Prop Codes 데이터 수신 성공  
+ DeviceInfo 재조회 성공
+ 카메라 재초기화 성공
+```
+
+##### libgphoto2 디버그 로그:
+
+```bash
+gphoto2 --port ptpip:192.168.1.100 --debug --debug-logfile=debug.log --summary
+
+# 로그에서 확인:
+ptp_usb_sendreq (2): Sending PTP_OC 0x90ca (GetVendorPropCodes) request...
+ptp_usb_getdata (2): Reading PTP_OC 0x90ca data...
+# ... 104개의 prop 코드 수신 ...
+
+# Device Capabilities 확인:
+Device Capabilities:
+  File Download, File Deletion, File Upload
+  Image Capture, Open Capture, Vendor specific capture 
+```
+
+##### 촬영 테스트:
+
+```kotlin
+// 이제 촬영이 작동해야 함
+val result = CameraNative.requestCapture()
+// "OK" 또는 성공 메시지 반환
+```
+
+#### 참고 문헌
+
+- **libgphoto2 GitHub Issue #976**: "Nikon Z6ii build in wifi - Access Denied"
+    - https://github.com/gphoto/libgphoto2/issues/976
+
+- **libgphoto2 GitHub Issue #1135**: "Nikon PTP/IP connection - limited capabilities"
+    - https://github.com/gphoto/libgphoto2/issues/1135
+
+- **libgphoto2 소스코드**: `camlibs/ptp2/library.c`
+    - GetVendorPropCodes 구현 및 Nikon Z6 특화 로직
+
+- **gphoto2 Issue #521**: "Can't detect Nikon Z50"
+    - https://github.com/gphoto/gphoto2/issues/521
+    - 유사한 문제 및 해결 과정
+
+#### 추가 디버깅 팁
+
+##### 1. GetVendorPropCodes 응답 분석:
+
+```cpp
+// 응답 파싱 예제 (참고용)
+void parseVendorPropCodes(uint8_t* data, int length) {
+    // PTP Array 구조:
+    // [4 bytes] Array length
+    // [2 bytes each] Property codes
+    
+    uint32_t count = *(uint32_t*)data;
+    LOGI("Vendor Prop Codes 개수: %u", count);
+    
+    uint16_t* codes = (uint16_t*)(data + 4);
+    for (uint32_t i = 0; i  count; i++) {
+        LOGI("  Prop[%u]: 0x%04x", i, codes[i]);
+    }
+}
+```
+
+##### 2. 촬영 명령 순서:
+
+```
+1. GetVendorPropCodes (0x90CA) 
+2. DeviceInfo 재조회 
+3. SetControlMode (0x90C2) 
+4. InitiateCaptureRecInMedia (0x9207) 
+```
+
+##### 3. 문제 지속 시 확인 사항:
+
+- [ ] 카메라 펌웨어가 최신인가?
+- [ ] Wi-Fi 연결이 안정적인가?
+- [ ] 인증이 정상 완료되었는가?
+- [ ] GetVendorPropCodes가 성공했는가?
+- [ ] 카메라 재초기화가 성공했는가?
+
+---

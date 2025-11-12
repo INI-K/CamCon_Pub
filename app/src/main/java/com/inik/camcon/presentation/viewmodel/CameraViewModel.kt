@@ -19,6 +19,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
@@ -81,6 +82,7 @@ class CameraViewModel @Inject constructor(
 
     init {
         initializeViewModel()
+        loadSubscriptionTierAtStartup()
     }
 
     /**
@@ -102,6 +104,36 @@ class CameraViewModel @Inject constructor(
         registerRawLimitCallback()
 
         Log.d(TAG, "ViewModel 초기화 완료")
+    }
+
+    /**
+     * 앱 시작 시 구독 티어 미리 로드
+     */
+    private fun loadSubscriptionTierAtStartup() {
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "🔑 앱 시작 시 구독 티어 로드 시작")
+
+                // 첫 번째 값을 가져와서 네이티브로 전달
+                val tier = getSubscriptionUseCase.getSubscriptionTier().first()
+
+                val tierInt = when (tier) {
+                    SubscriptionTier.FREE -> 0
+                    SubscriptionTier.BASIC -> 1
+                    SubscriptionTier.PRO -> 2
+                    SubscriptionTier.REFERRER -> 2
+                    SubscriptionTier.ADMIN -> 2
+                }
+
+                CameraNative.setSubscriptionTier(tierInt)
+                Log.d(TAG, "✅ 앱 시작 시 구독 티어 설정 완료: $tier (네이티브: $tierInt)")
+
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ 앱 시작 시 구독 티어 로드 실패", e)
+                // 실패 시 기본값(FREE) 설정
+                CameraNative.setSubscriptionTier(0)
+            }
+        }
     }
 
     /**
@@ -152,28 +184,29 @@ class CameraViewModel @Inject constructor(
             .onEach { isConnected ->
                 uiStateManager.updateConnectionState(isConnected)
                 if (isConnected) {
-                    // 연결되면 설정 로드
-                    settingsManager.loadCameraSettings()
-                    settingsManager.loadCameraCapabilities()
-                    // 구독 티어 설정 (GetSubscriptionUseCase)
+                    // 연결 시 설정 로딩을 생략하여 연결 속도 향상 (15초 단축)
+                    // 설정은 사용자가 설정 탭을 열 때 로드됨
+                    // settingsManager.loadCameraSettings()
+                    // settingsManager.loadCameraCapabilities()
+
+                    // 구독 티어는 이미 앱 시작 시 로드되었으므로 
+                    // 여기서는 변경사항 감지만 수행 (백그라운드)
                     viewModelScope.launch {
                         try {
                             getSubscriptionUseCase.getSubscriptionTier()
                                 .collect { tier ->
-                                    when (tier) {
-                                        SubscriptionTier.FREE -> CameraNative.setSubscriptionTier(0)
-                                        SubscriptionTier.BASIC -> CameraNative.setSubscriptionTier(1)
-                                        SubscriptionTier.PRO -> CameraNative.setSubscriptionTier(2)
-                                        SubscriptionTier.REFERRER -> CameraNative.setSubscriptionTier(
-                                            2
-                                        )
-
-                                        SubscriptionTier.ADMIN -> CameraNative.setSubscriptionTier(2)
+                                    val tierInt = when (tier) {
+                                        SubscriptionTier.FREE -> 0
+                                        SubscriptionTier.BASIC -> 1
+                                        SubscriptionTier.PRO -> 2
+                                        SubscriptionTier.REFERRER -> 2
+                                        SubscriptionTier.ADMIN -> 2
                                     }
-                                    Log.d(TAG, "구독 티어 네이티브 전달 완료: $tier")
+                                    CameraNative.setSubscriptionTier(tierInt)
+                                    Log.d(TAG, "🔄 구독 티어 업데이트: $tier (네이티브: $tierInt)")
                                 }
                         } catch (e: Exception) {
-                            Log.e(TAG, "구독 티어 변환/전달 실패", e)
+                            Log.e(TAG, "구독 티어 업데이트 실패 (이미 로드된 값 사용)", e)
                         }
                     }
                 }
@@ -601,6 +634,14 @@ class CameraViewModel @Inject constructor(
     }
 
     fun refreshCameraCapabilities() {
+        settingsManager.loadCameraCapabilities()
+    }
+
+    /**
+     * 카메라 설정 수동 로드 (설정 탭을 열 때 호출)
+     */
+    fun loadCameraSettingsManually() {
+        settingsManager.loadCameraSettings()
         settingsManager.loadCameraCapabilities()
     }
 

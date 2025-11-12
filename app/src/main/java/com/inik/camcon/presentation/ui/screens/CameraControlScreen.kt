@@ -8,9 +8,12 @@ import android.media.ExifInterface
 import android.util.Log
 import com.inik.camcon.utils.LogcatManager
 import android.view.View
-import android.view.WindowInsets
 import android.view.WindowInsetsController
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -438,7 +441,7 @@ private fun PortraitCameraLayout(
             activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                 activity.window.setDecorFitsSystemWindows(true)
-                activity.window.insetsController?.show(WindowInsets.Type.systemBars())
+                activity.window.insetsController?.show(android.view.WindowInsets.Type.systemBars())
             } else {
                 activity.window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
             }
@@ -489,6 +492,8 @@ private fun PortraitCameraLayout(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
+            .statusBarsPadding() // 상태바 패딩 추가
+            .imePadding() // 키보드 패딩 추가
     ) {
         TopControlsBar(
             uiState = uiState,
@@ -633,9 +638,9 @@ private fun FullscreenCameraLayout(
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                 activity.window.setDecorFitsSystemWindows(false)
                 activity.window.insetsController?.let { controller ->
-                    controller.hide(WindowInsets.Type.systemBars())
+                    controller.hide(android.view.WindowInsets.Type.systemBars())
                     controller.systemBarsBehavior =
-                        WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                        android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
                 }
             } else {
                 @Suppress("DEPRECATION")

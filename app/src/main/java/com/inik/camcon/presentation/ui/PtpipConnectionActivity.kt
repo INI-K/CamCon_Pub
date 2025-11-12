@@ -1,5 +1,6 @@
 package com.inik.camcon.presentation.ui
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,6 +20,12 @@ import dagger.hilt.android.AndroidEntryPoint
  */
 @AndroidEntryPoint
 class PtpipConnectionActivity : ComponentActivity() {
+
+    companion object {
+        const val EXTRA_NAVIGATE_TO_TAB = "extra_navigate_to_tab"
+        const val TAB_CAMERA_CONTROL = 1
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -27,7 +34,16 @@ class PtpipConnectionActivity : ComponentActivity() {
 
             CamConTheme(themeMode = themeMode) {
                 PtpipConnectionScreen(
-                    onBackClick = { finish() }
+                    onBackClick = {
+                        // 연결 완료 시 MainActivity로 돌아가면서 카메라 컨트롤 탭 선택
+                        val intent = Intent(this, MainActivity::class.java).apply {
+                            flags =
+                                Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            putExtra(EXTRA_NAVIGATE_TO_TAB, TAB_CAMERA_CONTROL)
+                        }
+                        startActivity(intent)
+                        finish()
+                    }
                 )
             }
         }
