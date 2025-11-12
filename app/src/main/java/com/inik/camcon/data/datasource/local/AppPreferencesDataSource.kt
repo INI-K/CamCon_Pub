@@ -46,6 +46,7 @@ class AppPreferencesDataSource @Inject constructor(
         private val COLOR_TRANSFER_TARGET_IMAGE_PATH =
             stringPreferencesKey("color_transfer_target_image_path")
         private val COLOR_TRANSFER_INTENSITY = floatPreferencesKey("color_transfer_intensity")
+        private val RAW_FILE_DOWNLOAD_ENABLED = booleanPreferencesKey("raw_file_download_enabled")
     }
 
     /**
@@ -134,6 +135,14 @@ class AppPreferencesDataSource @Inject constructor(
         }
 
     /**
+     * RAW 파일 다운로드 활성화 여부 (기본값: true)
+     */
+    val isRawFileDownloadEnabled: Flow<Boolean> = context.appDataStore.data
+        .map { preferences ->
+            preferences[RAW_FILE_DOWNLOAD_ENABLED] ?: true
+        }
+
+    /**
      * 카메라 컨트롤 표시 여부 설정
      */
     suspend fun setCameraControlsEnabled(enabled: Boolean) {
@@ -218,6 +227,15 @@ class AppPreferencesDataSource @Inject constructor(
     suspend fun setColorTransferIntensity(intensity: Float) {
         context.appDataStore.edit { preferences ->
             preferences[COLOR_TRANSFER_INTENSITY] = intensity.coerceIn(0.0f, 1.0f)
+        }
+    }
+
+    /**
+     * RAW 파일 다운로드 활성화/비활성화
+     */
+    suspend fun setRawFileDownloadEnabled(enabled: Boolean) {
+        context.appDataStore.edit { preferences ->
+            preferences[RAW_FILE_DOWNLOAD_ENABLED] = enabled
         }
     }
 

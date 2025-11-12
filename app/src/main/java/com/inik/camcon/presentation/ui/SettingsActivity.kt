@@ -195,6 +195,7 @@ fun SettingsScreen(
     // 색감 전송 설정 상태
     val isColorTransferEnabled by appSettingsViewModel.isColorTransferEnabled.collectAsState()
     val colorTransferReferenceImagePath by appSettingsViewModel.colorTransferReferenceImagePath.collectAsState()
+    val isRawFileDownloadEnabled by appSettingsViewModel.isRawFileDownloadEnabled.collectAsState()
 
     // 색감 전송 이미지 선택 런처
     val referenceImagePickerLauncher = rememberLauncherForActivityResult(
@@ -426,6 +427,17 @@ fun SettingsScreen(
                         }
                     )
                 }
+            }
+
+            // RAW 파일 다운로드 설정 섹션
+            SettingsSection(title = "RAW 파일 다운로드 설정") {
+                SettingsItemWithSwitch(
+                    icon = Icons.Default.Photo,
+                    title = "RAW 파일 다운로드",
+                    subtitle = if (isRawFileDownloadEnabled) "활성화됨" else "비활성화됨",
+                    checked = isRawFileDownloadEnabled,
+                    onCheckedChange = { appSettingsViewModel.setRawFileDownloadEnabled(it) }
+                )
             }
 
             Divider(modifier = Modifier.padding(vertical = 8.dp))
