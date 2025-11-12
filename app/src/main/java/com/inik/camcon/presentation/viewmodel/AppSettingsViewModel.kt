@@ -142,6 +142,17 @@ class AppSettingsViewModel @Inject constructor(
             )
 
     /**
+     * RAW 파일 다운로드 활성화 여부
+     */
+    val isRawFileDownloadEnabled: StateFlow<Boolean> =
+        appPreferencesDataSource.isRawFileDownloadEnabled
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = true
+            )
+
+    /**
      * 테마 모드 설정
      */
     val themeMode: StateFlow<ThemeMode> = appPreferencesDataSource.themeMode
@@ -230,6 +241,15 @@ class AppSettingsViewModel @Inject constructor(
     fun setColorTransferTargetImagePath(path: String?) {
         viewModelScope.launch {
             appPreferencesDataSource.setColorTransferTargetImagePath(path)
+        }
+    }
+
+    /**
+     * RAW 파일 다운로드 활성화 여부 설정
+     */
+    fun setRawFileDownloadEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            appPreferencesDataSource.setRawFileDownloadEnabled(enabled)
         }
     }
 
