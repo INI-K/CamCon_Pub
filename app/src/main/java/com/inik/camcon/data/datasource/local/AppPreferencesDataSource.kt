@@ -47,6 +47,7 @@ class AppPreferencesDataSource @Inject constructor(
             stringPreferencesKey("color_transfer_target_image_path")
         private val COLOR_TRANSFER_INTENSITY = floatPreferencesKey("color_transfer_intensity")
         private val RAW_FILE_DOWNLOAD_ENABLED = booleanPreferencesKey("raw_file_download_enabled")
+        private val SUBSCRIPTION_TIER = stringPreferencesKey("subscription_tier")
     }
 
     /**
@@ -140,6 +141,30 @@ class AppPreferencesDataSource @Inject constructor(
     val isRawFileDownloadEnabled: Flow<Boolean> = context.appDataStore.data
         .map { preferences ->
             preferences[RAW_FILE_DOWNLOAD_ENABLED] ?: true
+        }
+
+    /**
+     * 구독 티어 (기본값: null)
+     */
+    val subscriptionTier: Flow<String?> = context.appDataStore.data
+        .map { preferences ->
+            preferences[SUBSCRIPTION_TIER]
+        }
+
+    /**
+     * 구독 티어 (SubscriptionTier enum으로 변환, 기본값: FREE)
+     */
+    val subscriptionTierEnum: Flow<com.inik.camcon.domain.model.SubscriptionTier> = subscriptionTier
+        .map { tierName ->
+            if (tierName != null) {
+                try {
+                    com.inik.camcon.domain.model.SubscriptionTier.valueOf(tierName)
+                } catch (e: IllegalArgumentException) {
+                    com.inik.camcon.domain.model.SubscriptionTier.FREE
+                }
+            } else {
+                com.inik.camcon.domain.model.SubscriptionTier.FREE
+            }
         }
 
     /**
@@ -246,6 +271,26 @@ class AppPreferencesDataSource @Inject constructor(
         context.appDataStore.edit { preferences ->
             preferences[THEME_MODE] = mode.value
         }
+    }
+
+    /**
+     * 구독 티어 설정 (String)
+     */
+    suspend fun setSubscriptionTier(tier: String?) {
+        context.appDataStore.edit { preferences ->
+            if (tier != null) {
+                preferences[SUBSCRIPTION_TIER] = tier
+            } else {
+                preferences.remove(SUBSCRIPTION_TIER)
+            }
+        }
+    }
+
+    /**
+     * SubscriptionTier enum으로 구독 티어 저장 (헬퍼 메서드)
+     */
+    suspend fun saveSubscriptionTier(tier: com.inik.camcon.domain.model.SubscriptionTier?) {
+        setSubscriptionTier(tier?.name)
     }
 
     /**

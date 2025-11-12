@@ -71,6 +71,9 @@ class SplashActivity : ComponentActivity() {
     @Inject
     lateinit var getSubscriptionUseCase: GetSubscriptionUseCase
 
+    @Inject
+    lateinit var appPreferencesDataSource: com.inik.camcon.data.datasource.local.AppPreferencesDataSource
+
     private var libraryLoadingStatus by mutableStateOf("초기화 중...")
     private var isLibraryLoaded by mutableStateOf(false)
     private var subscriptionTier: SubscriptionTier? = null
@@ -204,6 +207,7 @@ class SplashActivity : ComponentActivity() {
                 val tier = getSubscriptionUseCase.getSubscriptionTier().first()
                 withContext(Dispatchers.Main) {
                     subscriptionTier = tier
+                    appPreferencesDataSource.saveSubscriptionTier(tier)
                 }
             } catch (e: Exception) {
                 LogcatManager.e("SplashActivity", "❌ 구독 정보 로드 실패: ${e.message}", e)
