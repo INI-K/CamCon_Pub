@@ -385,6 +385,13 @@ class BackgroundSyncService : Service() {
      */
     private suspend fun checkFirebaseConnection() {
         try {
+            // 카메라 AP 모드로 연결 시 인터넷이 끊기므로 Firebase 연결 시도 생략
+            val globalState = globalConnectionManager.globalConnectionState.first()
+            if (globalState.activeConnectionType == com.inik.camcon.domain.model.CameraConnectionType.AP_MODE) {
+                LogcatManager.d(TAG, "카메라 AP 모드 연결 중 - Firebase 연결 시도 생략")
+                return
+            }
+
             // Firebase Auth 연결 상태 확인
             val firebaseAuth = com.google.firebase.auth.FirebaseAuth.getInstance()
             val currentUser = firebaseAuth.currentUser

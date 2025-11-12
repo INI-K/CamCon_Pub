@@ -266,6 +266,11 @@ class PtpipViewModel @Inject constructor(
                             Log.e(TAG, errorMsg)
                             _errorMessage.value = errorMsg
                             _isConnecting.value = false // 실패 시 로딩 해제
+
+                            // 연결 상태 정리 (다이얼로그 닫기)
+                            viewModelScope.launch {
+                                ptpipDataSource.disconnect()
+                            }
                         } else {
                             Log.i(TAG, "Wi-Fi 연결 성공: $ssid - 카메라 정보 직접 생성")
                             _errorMessage.value = null // 기존 오류 메시지 클리어
@@ -279,6 +284,11 @@ class PtpipViewModel @Inject constructor(
                         Log.e(TAG, "WifiNetworkSpecifier 상세 오류: $errorMsg")
                         _errorMessage.value = errorMsg
                         _isConnecting.value = false // 오류 시 로딩 해제
+
+                        // 연결 상태 정리 (다이얼로그 닫기)
+                        viewModelScope.launch {
+                            ptpipDataSource.disconnect()
+                        }
                     }
                 )
             } catch (e: Exception) {
@@ -286,6 +296,11 @@ class PtpipViewModel @Inject constructor(
                 Log.e(TAG, errorMsg, e)
                 _errorMessage.value = errorMsg
                 _isConnecting.value = false // 예외 시 로딩 해제
+
+                // 연결 상태 정리 (다이얼로그 닫기)
+                viewModelScope.launch {
+                    ptpipDataSource.disconnect()
+                }
             }
         }
     }
@@ -607,7 +622,26 @@ class PtpipViewModel @Inject constructor(
 
                         override fun onCaptureFailed(errorCode: Int) {
                             Log.e(TAG, "수동 촬영: 촬영 실패 (에러 코드: $errorCode)")
-                            _errorMessage.value = "촬영에 실패했습니다 (에러 코드: $errorCode)"
+                            val errorMsg = when (errorCode) {
+                                -6 -> {
+                                    """
+                                    카메라가 원격 촬영을 지원하지 않습니다
+                                    
+                                    🔸 Nikon 카메라는 Wi-Fi 연결 시 원격 촬영이 제한됩니다.
+                                    
+                                    📸 대안 방법:
+                                    1. 카메라 본체의 셔터 버튼을 눌러 촬영하세요
+                                    2. 촬영된 사진은 자동으로 앱에 전송됩니다
+                                    3. USB 케이블 연결 시 완전한 원격 제어가 가능합니다
+                                    
+                                    💡 일부 Nikon 카메라는 '리모트 촬영' 기능이 필요할 수 있습니다.
+                                    카메라 메뉴에서 Wi-Fi 설정을 확인해주세요.
+                                    """.trimIndent()
+                                }
+
+                                else -> "촬영에 실패했습니다 (에러 코드: $errorCode)"
+                            }
+                            _errorMessage.value = errorMsg
                             listener?.onCaptureFailed(errorCode)
                         }
 
@@ -646,7 +680,26 @@ class PtpipViewModel @Inject constructor(
 
                         override fun onCaptureFailed(errorCode: Int) {
                             Log.e(TAG, "수동 촬영: 실패 에러 코드 $errorCode")
-                            _errorMessage.value = "촬영에 실패했습니다 (에러 코드: $errorCode)"
+                            val errorMsg = when (errorCode) {
+                                -6 -> {
+                                    """
+                                    카메라가 원격 촬영을 지원하지 않습니다
+                                    
+                                    🔸 Nikon 카메라는 Wi-Fi 연결 시 원격 촬영이 제한됩니다.
+                                    
+                                    📸 대안 방법:
+                                    1. 카메라 본체의 셔터 버튼을 눌러 촬영하세요
+                                    2. 촬영된 사진은 자동으로 앱에 전송됩니다
+                                    3. USB 케이블 연결 시 완전한 원격 제어가 가능합니다
+                                    
+                                    💡 일부 Nikon 카메라는 '리모트 촬영' 기능이 필요할 수 있습니다.
+                                    카메라 메뉴에서 Wi-Fi 설정을 확인해주세요.
+                                    """.trimIndent()
+                                }
+
+                                else -> "촬영에 실패했습니다 (에러 코드: $errorCode)"
+                            }
+                            _errorMessage.value = errorMsg
                             listener?.onCaptureFailed(errorCode)
                         }
 

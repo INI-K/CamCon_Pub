@@ -24,6 +24,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.material.BottomNavigation
 import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.Icon
@@ -144,7 +147,8 @@ fun CameraConnectionOptimizationDialog(
 fun MainScreen(
     onSettingsClick: () -> Unit,
     globalManager: CameraConnectionGlobalManager,
-    cameraViewModel: CameraViewModel = hiltViewModel()
+    cameraViewModel: CameraViewModel = hiltViewModel(),
+    navigateToCameraControl: Boolean = false
 ) {
     val navController = rememberNavController()
     val items = listOf(
@@ -177,12 +181,30 @@ fun MainScreen(
         LogcatManager.d("MainScreen", "전역 연결 상태 변화: $connectionStatusMessage")
     }
 
+    // navigateToCameraControl 플래그가 true이면 카메라 컨트롤 탭으로 자동 이동
+    LaunchedEffect(navigateToCameraControl) {
+        if (navigateToCameraControl) {
+            LogcatManager.d("MainScreen", "🚀 카메라 컨트롤 탭으로 자동 이동")
+            navController.navigate(BottomNavItem.CameraControl.route) {
+                popUpTo(navController.graph.findStartDestination().id) {
+                    saveState = true
+                }
+                launchSingleTop = true
+                restoreState = true
+            }
+        }
+    }
+
     // 테마 모드 상태
     val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
     val themeMode by appSettingsViewModel.themeMode.collectAsState()
 
+    // 시스템 바 인셋 계산 - 기종별 대응
+    val systemBarsPadding = WindowInsets.systemBars.asPaddingValues()
+
     Box(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
     ) {
 
         // --- PTP 타임아웃 다이얼로그 모니터링 및 표시 ---
@@ -377,9 +399,7 @@ fun MainScreen(
                             cameraViewModel.dismissCameraStatusCheckDialog()
                             cameraViewModel.refreshUsbDevices()
                         }
-                    ) {
-                        Text("다시 연결")
-                    }
+                    ) { Text("다시 연결") }
                 },
                 properties = androidx.compose.ui.window.DialogProperties(
                     dismissOnBackPress = true,
@@ -389,13 +409,15 @@ fun MainScreen(
         }
 
         Scaffold(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize(),
             bottomBar = {
                 // 전체화면 모드가 아닐 때만 하단 탭 표시
                 if (!isFullscreen) {
                     BottomNavigation(
                         backgroundColor = MaterialTheme.colors.surface,
-                        contentColor = MaterialTheme.colors.onSurface
+                        contentColor = MaterialTheme.colors.onSurface,
+                        modifier = Modifier.navigationBarsPadding() // 네비게이션 바 패딩 추가
                     ) {
                         val navBackStackEntry by navController.currentBackStackEntryAsState()
                         val currentDestination = navBackStackEntry?.destination
@@ -929,6 +951,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val intent = intent
+        val navigateToCameraControl = intent.getBooleanExtra("navigate_to_camera_control", false)
+
+        // 엣지투엣지 활성화 - 모든 기종에서 일관된 동작 보장
+        setupEdgeToEdge()
+
         // 백그라운드 서비스(이벤트 리스너 유지) 시작
         try {
             val serviceIntent = Intent(this, BackgroundSyncService::class.java)
@@ -995,7 +1023,8 @@ class MainActivity : ComponentActivity() {
                         onSettingsClick = {
                             startActivity(Intent(this, SettingsActivity::class.java))
                         },
-                        globalManager = globalManager
+                        globalManager = globalManager,
+                        navigateToCameraControl = navigateToCameraControl
                     )
                 }
             }
@@ -1283,6 +1312,24 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
+     * 엣지투엣지 레이아웃 설정
+     */
+    private fun setupEdgeToEdge() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Android 11 이상: WindowInsetsController 사용
+            window.setDecorFitsSystemWindows(false)
+        } else {
+            // Android 10 이하: 레거시 플래그 사용
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility = (
+                    android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                            or android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                            or android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    )
+        }
+    }
+
+    /**
      * 카메라 연결 최적화 다이얼로그 표시 여부 확인
      */
     private fun shouldShowCameraConnectionOptimizationDialog(): Boolean {
@@ -1333,6 +1380,7 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
 }
 
 /**

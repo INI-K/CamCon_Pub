@@ -106,7 +106,8 @@ object AppModule {
         nikonAuthService: NikonAuthenticationService,
         wifiHelper: WifiNetworkHelper,
         cameraEventManager: CameraEventManager,
-        uiStateManager: CameraUiStateManager
+        uiStateManager: CameraUiStateManager,
+        photoDownloadManager: PhotoDownloadManager
     ): PtpipDataSource {
         return PtpipDataSource(
             context,
@@ -115,7 +116,8 @@ object AppModule {
             nikonAuthService,
             wifiHelper,
             cameraEventManager,
-            uiStateManager
+            uiStateManager,
+            photoDownloadManager
         )
     }
 

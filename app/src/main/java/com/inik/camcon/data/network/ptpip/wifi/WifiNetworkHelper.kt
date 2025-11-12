@@ -376,7 +376,7 @@ class WifiNetworkHelper @Inject constructor(
             "EOS", "PowerShot", "IXUS", "VIXIA",
 
             // Nikon 모델명  
-            "COOLPIX", "Z5", "Z6", "Z7", "Z8", "Z9", "Z30", "Z50", "Zfc",
+            "COOLPIX", "Z_5", "Z_6", "Z_7", "Z8", "Z9", "Z30", "Z50", "Zfc",
             "D3500", "D5600", "D7500", "D780", "D850", "D500",
 
             // Sony 모델명
@@ -1033,6 +1033,57 @@ class WifiNetworkHelper @Inject constructor(
         }
     }
 
+    private var currentNetwork: Network? = null // 현재 바인딩된 네트워크 추적용
+
+    /**
+     * 현재 바인딩된 카메라 네트워크 가져오기
+     */
+    fun getCurrentCameraNetwork(): Network? = currentNetwork
+
+    /**
+     * 네트워크 바인딩 해제
+     */
+    fun unbindNetwork() {
+        try {
+            connectivityManager.bindProcessToNetwork(null)
+            currentNetwork = null
+            Log.i(TAG, "네트워크 바인딩 해제됨")
+        } catch (e: Exception) {
+            Log.e(TAG, "네트워크 바인딩 해제 실패", e)
+        }
+    }
+
+    /**
+     * 셀룰러 네트워크 객체 가져오기 (Firebase 등에서 사용)
+     * bindProcessToNetwork로 Wi-Fi에 바인딩된 상태에서도
+     * 특정 요청을 셀룰러로 보낼 수 있도록 합니다
+     */
+    fun getCellularNetwork(): Network? {
+        try {
+            val networks = connectivityManager.allNetworks
+            for (network in networks) {
+                val capabilities = connectivityManager.getNetworkCapabilities(network)
+                if (capabilities != null &&
+                    capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) &&
+                    capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                ) {
+                    Log.i(TAG, "✅ 셀룰러 네트워크 발견: $network")
+                    return network
+                }
+            }
+            Log.w(TAG, "셀룰러 네트워크를 찾을 수 없음")
+            return null
+        } catch (e: Exception) {
+            Log.e(TAG, "셀룰러 네트워크 조회 실패", e)
+            return null
+        }
+    }
+
+    /**
+     * 현재 바인딩된 네트워크 반환
+     */
+    fun getBoundNetwork(): Network? = currentNetwork
+
     /**
      * WifiNetworkSpecifier로 로컬 전용 연결 요청
      * - 시스템 승인이 필요하며, 포그라운드에서 호출되어야 함
@@ -1133,10 +1184,10 @@ class WifiNetworkHelper @Inject constructor(
 
                     if (bindProcess) {
                         try {
-                            // 네트워크 바인딩을 더 강력하게 설정
+                            // 프로세스를 카메라 Wi-Fi에 바인딩
+                            // 이렇게 하면 libgphoto2가 카메라에 연결할 수 있습니다
                             connectivityManager.bindProcessToNetwork(network)
-                            @Suppress("DEPRECATION")
-                            ConnectivityManager.setProcessDefaultNetwork(network)
+                            currentNetwork = network
                             Log.d(TAG, "네트워크 바인딩 성공")
 
                             // Wi-Fi 퍼포먼스 락 적용

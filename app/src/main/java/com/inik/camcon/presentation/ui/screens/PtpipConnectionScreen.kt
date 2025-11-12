@@ -16,6 +16,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 
@@ -71,9 +74,8 @@ import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.components.ApModeContent
 import com.inik.camcon.presentation.ui.screens.components.StaModeContent
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
+import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.data.datasource.local.ThemeMode
-import com.inik.camcon.domain.model.SubscriptionTier
-import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -86,17 +88,14 @@ import kotlinx.coroutines.launch
 fun PtpipConnectionScreen(
     onBackClick: () -> Unit,
     ptpipViewModel: PtpipViewModel = hiltViewModel(),
-    getSubscriptionUseCase: GetSubscriptionUseCase = androidx.hilt.navigation.compose.hiltViewModel()
+    appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
     // 구독 티어 체크 (STA 모드는 ADMIN만 보임)
-    val subscriptionTier by getSubscriptionUseCase.getSubscriptionTier()
-        .collectAsState(initial = SubscriptionTier.FREE)
-    val isAdmin = subscriptionTier == SubscriptionTier.ADMIN
-
+    val isAdmin by appSettingsViewModel.isAdminTier.collectAsState()
     // 탭 제목과 탭 수를 동적으로 구성
     val tabTitles = if (isAdmin) listOf("AP 모드", "STA 모드") else listOf("AP 모드")
     val pagerState = rememberPagerState(initialPage = 0) { tabTitles.size }
@@ -177,6 +176,24 @@ fun PtpipConnectionScreen(
     val needLocationSettings by ptpipViewModel.needLocationSettings.collectAsState()
     val needWifiSettings by ptpipViewModel.needWifiSettings.collectAsState()
     val connectionLostMessage by ptpipViewModel.connectionLostMessage.collectAsState()
+
+    // PTPIP 연결 진행 상황을 위한 상태
+    var showConnectionProgressDialog by remember { mutableStateOf(false) }
+    val connectionProgressMessage by ptpipViewModel.connectionProgressMessage.collectAsState()
+
+    // === 추가: Wi-Fi 패스워드 입력 다이얼로그 & 상태 ===
+    var showPasswordDialog by remember { mutableStateOf(false) }
+    var passwordForSsid by remember { mutableStateOf("") }
+    var currentWifiSsid by remember { mutableStateOf<String?>(null) }
+    var passwordVisible by remember { mutableStateOf(false) }
+
+    // 패스워드 입력 콜백
+    val onConnectToWifiWithPassword: (ssid: String) -> Unit = { ssid ->
+        currentWifiSsid = ssid
+        showPasswordDialog = true
+        passwordForSsid = ""
+        passwordVisible = false
+    }
 
     // 에러 메시지 표시
     LaunchedEffect(errorMessage) {
@@ -315,20 +332,6 @@ fun PtpipConnectionScreen(
         )
     }
 
-    // === 추가: Wi-Fi 패스워드 입력 다이얼로그 & 상태 ===
-    var showPasswordDialog by remember { mutableStateOf(false) }
-    var passwordForSsid by remember { mutableStateOf("") }
-    var currentWifiSsid by remember { mutableStateOf<String?>(null) }
-    var passwordVisible by remember { mutableStateOf(false) }
-
-    // 패스워드 입력 콜백
-    val onConnectToWifiWithPassword: (ssid: String) -> Unit = { ssid ->
-        currentWifiSsid = ssid
-        showPasswordDialog = true
-        passwordForSsid = ""
-        passwordVisible = false
-    }
-
     // Wi-Fi 패스워드 입력 다이얼로그 표시
     if (showPasswordDialog && currentWifiSsid != null) {
         AlertDialog(
@@ -386,13 +389,32 @@ fun PtpipConnectionScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        // 실제 연결 로직 수행 (ViewModel의 ssid+비번 방식으로)
+                        Log.d("PtpipConnectionScreen", "🚀 Wi-Fi 연결 버튼 클릭 - 즉시 로딩 다이얼로그 표시")
+
+                        // 1. 즉시 로딩 다이얼로그 표시
+                        showConnectionProgressDialog = true
+                        Log.d(
+                            "PtpipConnectionScreen",
+                            "   ✅ showConnectionProgressDialog = true 설정 완료"
+                        )
+
+                        // 2. 다이얼로그 닫기
                         showPasswordDialog = false
+                        Log.d("PtpipConnectionScreen", "   ✅ 비밀번호 다이얼로그 닫힘")
+
+                        // 3. 실제 Wi-Fi 연결 시작
                         currentWifiSsid?.let { ssid ->
+                            Log.d(
+                                "PtpipConnectionScreen",
+                                "   🌐 ViewModel.connectToWifiSsidWithPassword 호출: $ssid"
+                            )
                             ptpipViewModel.connectToWifiSsidWithPassword(ssid, passwordForSsid)
                         }
+
+                        // 4. 상태 초기화
                         passwordForSsid = ""
                         currentWifiSsid = null
+                        Log.d("PtpipConnectionScreen", "   ✅ 상태 초기화 완료")
                     },
                     enabled = passwordForSsid.isNotEmpty(),
                     modifier = Modifier.height(36.dp)
@@ -415,45 +437,44 @@ fun PtpipConnectionScreen(
         )
     }
 
-    // PTPIP 연결 진행 상황을 위한 상태
-    var showConnectionProgressDialog by remember { mutableStateOf(false) }
-    val connectionProgressMessage by ptpipViewModel.connectionProgressMessage.collectAsState()
-
-    // 연결 상태 변화 감지하여 로딩 다이얼로그 제어
-    LaunchedEffect(isConnecting) {
-        showConnectionProgressDialog = isConnecting
-    }
-
-    // 연결 진행 상황 업데이트 (실제 연결 단계별로 메시지 변경)
+    // 연결 진행 상황 업데이트 (connectionState와 connectionProgressMessage로만 제어)
     LaunchedEffect(connectionState, connectionProgressMessage) {
+        Log.d("PtpipConnectionScreen", " 다이얼로그 상태 체크:")
+        Log.d("PtpipConnectionScreen", "   - connectionState: $connectionState")
+        Log.d("PtpipConnectionScreen", "   - connectionProgressMessage: $connectionProgressMessage")
+        Log.d("PtpipConnectionScreen", "   - 현재 다이얼로그 상태: $showConnectionProgressDialog")
+
         when (connectionState) {
             com.inik.camcon.domain.model.PtpipConnectionState.CONNECTING -> {
+                Log.d("PtpipConnectionScreen", "   ✅ CONNECTING 상태 - 다이얼로그 열기")
                 showConnectionProgressDialog = true
             }
             com.inik.camcon.domain.model.PtpipConnectionState.CONNECTED -> {
-                // 연결 완료 후 충분한 시간을 두고 다이얼로그 닫기
-                if (connectionProgressMessage.contains("연결 완료")) {
+                Log.d("PtpipConnectionScreen", "   ⏸️ CONNECTED 상태 - 메시지 확인 중")
+                // "연결 완료!" 메시지일 때만 다이얼로그 닫기
+                if (connectionProgressMessage == "연결 완료!") {
+                    Log.d("PtpipConnectionScreen", "   🎉 '연결 완료!' 메시지 확인 - 2초 후 다이얼로그 닫기")
                     kotlinx.coroutines.delay(2000) // 2초 대기
                     showConnectionProgressDialog = false
+                    Log.d("PtpipConnectionScreen", "   ✅ 다이얼로그 닫힘")
+
+                    // 1초 더 대기 후 카메라 컨트롤 화면으로 이동
+                    Log.d("PtpipConnectionScreen", "   🚀 1초 후 카메라 컨트롤 화면으로 이동")
+                    kotlinx.coroutines.delay(1000)
+                    Log.d("PtpipConnectionScreen", "   ✅ 카메라 컨트롤 화면으로 이동")
+                    onBackClick()
+                } else {
+                    Log.d("PtpipConnectionScreen", "   ⏳ 아직 '연결 완료!' 아님 - 다이얼로그 유지")
                 }
             }
             com.inik.camcon.domain.model.PtpipConnectionState.DISCONNECTED,
             com.inik.camcon.domain.model.PtpipConnectionState.ERROR -> {
+                Log.d("PtpipConnectionScreen", "   ❌ DISCONNECTED/ERROR 상태 - 다이얼로그 즉시 닫기")
                 showConnectionProgressDialog = false
             }
         }
     }
 
-    // 연결 완료 시 isConnecting 상태 해제
-    LaunchedEffect(connectionState) {
-        if (connectionState == com.inik.camcon.domain.model.PtpipConnectionState.CONNECTED) {
-            // 연결 완료 후 약간의 지연을 두고 isConnecting 해제
-            kotlinx.coroutines.delay(2500) // 다이얼로그 닫기보다 500ms 더 대기
-            // ViewModel의 isConnecting 상태를 직접 제어할 수 없으므로
-            // PtpipViewModel에서 관리하도록 함
-            ptpipViewModel.setIsConnecting(false)
-        }
-    }
 
     // Wi-Fi 연결 끊어짐 알림 표시
     connectionLostMessage?.let { message ->
@@ -551,7 +572,8 @@ fun PtpipConnectionScreen(
                     contentColor = MaterialTheme.colors.onPrimary
                 )
             },
-            snackbarHost = { SnackbarHost(snackbarHostState) }
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            contentWindowInsets = WindowInsets.systemBars
         ) { paddingValues ->
             Column(
                 modifier = Modifier

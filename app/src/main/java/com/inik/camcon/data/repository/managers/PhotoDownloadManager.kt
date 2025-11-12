@@ -499,6 +499,12 @@ class PhotoDownloadManager @Inject constructor(
                 } else {
                     fileName
                 }
+                Log.d(TAG, "📂 후처리 전 파일명 정보:")
+                Log.d(TAG, "   원본 파일명: $fileName")
+                Log.d(TAG, "   카메라 서브폴더: $cameraSubFolder")
+                Log.d(TAG, "   폴더 포함 파일명: $fileNameWithFolder")
+                Log.d(TAG, "   임시 파일 경로: $processedPath")
+
                 val finalPath = postProcessPhoto(processedPath!!, fileNameWithFolder)
                 Log.d(TAG, "✅ Native 사진 후처리 완료: $finalPath")
 
@@ -1208,15 +1214,24 @@ class PhotoDownloadManager @Inject constructor(
     private suspend fun postProcessPhoto(tempFilePath: String, fileName: String): String {
         return withContext(Dispatchers.IO) {
             try {
+                Log.d(TAG, "📝 postProcessPhoto 시작")
+                Log.d(TAG, "   임시 파일: $tempFilePath")
+                Log.d(TAG, "   파일명: $fileName")
+                Log.d(TAG, "   Android SDK: ${Build.VERSION.SDK_INT}")
+
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     // Android 10+: MediaStore API 사용
-                    saveToMediaStore(tempFilePath, fileName)
+                    Log.d(TAG, "   → Android 10+ MediaStore 경로 사용")
+                    val result = saveToMediaStore(tempFilePath, fileName)
+                    Log.d(TAG, "   ✅ MediaStore 저장 결과: $result")
+                    result
                 } else {
                     // Android 9 이하: 이미 올바른 위치에 저장되어 있음
+                    Log.d(TAG, "   → Android 9 이하 - 기존 경로 사용")
                     tempFilePath
                 }
             } catch (e: Exception) {
-                Log.e("사진다운로드매니저", "사진 후처리 실패", e)
+                Log.e(TAG, "사진 후처리 실패", e)
                 tempFilePath // 실패 시 원본 경로 반환
             }
         }
@@ -1227,21 +1242,27 @@ class PhotoDownloadManager @Inject constructor(
      */
     private fun saveToMediaStore(tempFilePath: String, fileName: String): String {
         return try {
+            Log.d(TAG, "💾 saveToMediaStore 시작")
+            Log.d(TAG, "   임시 파일: $tempFilePath")
+            Log.d(TAG, "   파일명: $fileName")
+
             val tempFile = File(tempFilePath)
             if (!tempFile.exists()) {
-                Log.e("사진다운로드매니저", "임시 파일이 존재하지 않음: $tempFilePath")
+                Log.e(TAG, "❌ 임시 파일이 존재하지 않음: $tempFilePath")
                 return tempFilePath
             }
+
+            Log.d(TAG, "   ✅ 임시 파일 존재 확인: ${tempFile.length()} bytes")
 
             // 카메라 폴더 구조 분석 (예: 105KAY_1/KY6_0035.JPG)
             val file = File(fileName)
             val subFolderPath = file.parent ?: ""
             val baseFileName = file.name
 
-            Log.d("사진다운로드매니저", "📁 폴더 구조 분석:")
-            Log.d("사진다운로드매니저", "   전체 경로: $fileName")
-            Log.d("사진다운로드매니저", "   서브폴더: $subFolderPath")
-            Log.d("사진다운로드매니저", "   파일명: $baseFileName")
+            Log.d(TAG, "📁 폴더 구조 분석:")
+            Log.d(TAG, "   전체 경로: $fileName")
+            Log.d(TAG, "   서브폴더: $subFolderPath")
+            Log.d(TAG, "   파일명: $baseFileName")
 
             // 파일 확장자에 따른 MIME 타입 결정
             val extension = baseFileName.substringAfterLast(".", "").lowercase()
@@ -1265,17 +1286,17 @@ class PhotoDownloadManager @Inject constructor(
                 camconRelativeBase
             }
 
-            Log.d("사진다운로드매니저", "   MediaStore 경로: $relativePath")
+            Log.d(TAG, "   MediaStore 경로: $relativePath")
 
             // 기존 파일이 존재하는지 확인하고 삭제
             val existingUri = findExistingFileInMediaStore(baseFileName, relativePath)
             if (existingUri != null) {
-                Log.d("사진다운로드매니저", "기존 파일 발견, 삭제 중: $relativePath/$baseFileName")
+                Log.d(TAG, "기존 파일 발견, 삭제 중: $relativePath/$baseFileName")
                 val deletedRows = context.contentResolver.delete(existingUri, null, null)
                 if (deletedRows > 0) {
-                    Log.d("사진다운로드매니저", "✅ 기존 파일 삭제 완료: $baseFileName")
+                    Log.d(TAG, "✅ 기존 파일 삭제 완료: $baseFileName")
                 } else {
-                    Log.w("사진다운로드매니저", "⚠️ 기존 파일 삭제 실패: $baseFileName")
+                    Log.w(TAG, "⚠️ 기존 파일 삭제 실패: $baseFileName")
                 }
             }
 
@@ -1310,14 +1331,14 @@ class PhotoDownloadManager @Inject constructor(
 
                 // 실제 저장된 파일 경로 생성 (폴더 구조 포함)
                 val savedPath = buildActualSavedPath(fileName)
-                Log.d("사진다운로드매니저", "✅ MediaStore 저장 성공 (폴더 구조 유지): $savedPath")
+                Log.d(TAG, "✅ MediaStore 저장 성공 (폴더 구조 유지): $savedPath")
                 savedPath
             } else {
-                Log.e("사진다운로드매니저", "MediaStore URI 생성 실패")
+                Log.e(TAG, "MediaStore URI 생성 실패")
                 tempFilePath
             }
         } catch (e: Exception) {
-            Log.e("사진다운로드매니저", "MediaStore 저장 실패", e)
+            Log.e(TAG, "MediaStore 저장 실패", e)
             tempFilePath
         }
     }
@@ -1350,15 +1371,15 @@ class PhotoDownloadManager @Inject constructor(
                         MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                         id.toString()
                     )
-                    Log.d("사진다운로드매니저", "기존 파일 찾음: $fileName (ID: $id)")
+                    Log.d(TAG, "기존 파일 찾음: $fileName (ID: $id)")
                     uri
                 } else {
-                    Log.d("사진다운로드매니저", "기존 파일 없음: $fileName")
+                    Log.d(TAG, "기존 파일 없음: $fileName")
                     null
                 }
             }
         } catch (e: Exception) {
-            Log.e("사진다운로드매니저", "기존 파일 검색 실패: $fileName", e)
+            Log.e(TAG, "기존 파일 검색 실패: $fileName", e)
             null
         }
     }
@@ -1382,7 +1403,7 @@ class PhotoDownloadManager @Inject constructor(
                 } else null
             }
         } catch (e: Exception) {
-            Log.e("사진다운로드매니저", "URI 경로 변환 실패", e)
+            Log.e(TAG, "URI 경로 변환 실패", e)
             null
         }
     }
@@ -1404,7 +1425,7 @@ class PhotoDownloadManager @Inject constructor(
                 "$camconBase/$baseFileName"
             }
         } catch (e: Exception) {
-            Log.e("사진다운로드매니저", "파일 경로 생성 실패", e)
+            Log.e(TAG, "파일 경로 생성 실패", e)
             fileName // 폴백으로 파일명만 반환
         }
     }

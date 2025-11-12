@@ -51,10 +51,13 @@ import com.inik.camcon.presentation.viewmodel.AppVersionUiState
 import com.inik.camcon.presentation.viewmodel.AppVersionViewModel
 import com.inik.camcon.utils.LogcatManager
 import com.inik.camcon.data.datasource.local.ThemeMode
+import com.inik.camcon.domain.model.SubscriptionTier
+import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -65,8 +68,12 @@ class SplashActivity : ComponentActivity() {
     @Inject
     lateinit var firebaseAuth: FirebaseAuth
 
+    @Inject
+    lateinit var getSubscriptionUseCase: GetSubscriptionUseCase
+
     private var libraryLoadingStatus by mutableStateOf("초기화 중...")
     private var isLibraryLoaded by mutableStateOf(false)
+    private var subscriptionTier: SubscriptionTier? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -75,9 +82,10 @@ class SplashActivity : ComponentActivity() {
         // WindowCompat.setDecorFitsSystemWindows(window, true)
 
         LogcatManager.i("SplashActivity", "=== 스플래시 화면 시작 ===")
-        
-        // 백그라운드에서 라이브러리 로딩 시작
+
+        // 백그라운드에서 라이브러리 로딩 및 구독 정보 로드 시작
         loadLibrariesInBackground()
+        loadSubscriptionTierInBackground()
 
         setContent {
             val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
@@ -96,6 +104,7 @@ class SplashActivity : ComponentActivity() {
                     versionState = versionState,
                     libraryLoadingStatus = libraryLoadingStatus,
                     isLibraryLoaded = isLibraryLoaded,
+                    subscriptionTier = subscriptionTier,
                     onUpdateApp = { appVersionViewModel.startUpdate() },
                     onDismissUpdateDialog = {
                         // 강제 업데이트인 경우 앱 종료
@@ -189,6 +198,19 @@ class SplashActivity : ComponentActivity() {
         }
     }
 
+    private fun loadSubscriptionTierInBackground() {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val tier = getSubscriptionUseCase.getSubscriptionTier().first()
+                withContext(Dispatchers.Main) {
+                    subscriptionTier = tier
+                }
+            } catch (e: Exception) {
+                LogcatManager.e("SplashActivity", "❌ 구독 정보 로드 실패: ${e.message}", e)
+            }
+        }
+    }
+
     private fun navigateToNextScreen() {
         // 자동 로그인 확인
         if (firebaseAuth.currentUser != null) {
@@ -208,6 +230,7 @@ fun SplashScreen(
     versionState: com.inik.camcon.presentation.viewmodel.AppVersionUiState,
     libraryLoadingStatus: String,
     isLibraryLoaded: Boolean,
+    subscriptionTier: SubscriptionTier?,
     onUpdateApp: () -> Unit,
     onDismissUpdateDialog: () -> Unit,
     navigateToNext: () -> Unit
@@ -266,6 +289,15 @@ fun SplashScreen(
                 fontSize = 14.sp,
                 color = Color.White.copy(alpha = 0.8f)
             )
+
+            // 구독 정보 표시
+            if (subscriptionTier != null) {
+                Text(
+                    text = "구독 티어: ${subscriptionTier.name}",
+                    fontSize = 14.sp,
+                    color = Color.White.copy(alpha = 0.8f)
+                )
+            }
 
             // 버전 체크 로딩 상태 표시
             if (versionState.isLoading) {
@@ -337,6 +369,7 @@ fun SplashScreenPreview() {
             versionState = AppVersionUiState(),
             libraryLoadingStatus = "라이브러리 로딩 중...",
             isLibraryLoaded = false,
+            subscriptionTier = null,
             onUpdateApp = {},
             onDismissUpdateDialog = {},
             navigateToNext = {}
