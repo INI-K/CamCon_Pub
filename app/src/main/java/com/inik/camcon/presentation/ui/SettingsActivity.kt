@@ -22,8 +22,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -196,6 +196,9 @@ fun SettingsScreen(
     val isColorTransferEnabled by appSettingsViewModel.isColorTransferEnabled.collectAsState()
     val colorTransferReferenceImagePath by appSettingsViewModel.colorTransferReferenceImagePath.collectAsState()
     val isRawFileDownloadEnabled by appSettingsViewModel.isRawFileDownloadEnabled.collectAsState()
+
+    // 구독 티어 상태
+    val subscriptionTier by appSettingsViewModel.subscriptionTier.collectAsState()
 
     // 색감 전송 이미지 선택 런처
     val referenceImagePickerLauncher = rememberLauncherForActivityResult(
@@ -431,13 +434,25 @@ fun SettingsScreen(
 
             // RAW 파일 다운로드 설정 섹션
             SettingsSection(title = "RAW 파일 다운로드 설정") {
-                SettingsItemWithSwitch(
-                    icon = Icons.Default.Photo,
-                    title = "RAW 파일 다운로드",
-                    subtitle = if (isRawFileDownloadEnabled) "활성화됨" else "비활성화됨",
-                    checked = isRawFileDownloadEnabled,
-                    onCheckedChange = { appSettingsViewModel.setRawFileDownloadEnabled(it) }
-                )
+                if (subscriptionTier == com.inik.camcon.domain.model.SubscriptionTier.PRO ||
+                    subscriptionTier == com.inik.camcon.domain.model.SubscriptionTier.ADMIN ||
+                    subscriptionTier == com.inik.camcon.domain.model.SubscriptionTier.REFERRER
+                ) {
+                    SettingsItemWithSwitch(
+                        icon = Icons.Default.Photo,
+                        title = "RAW 파일 다운로드",
+                        subtitle = if (isRawFileDownloadEnabled) "활성화됨" else "비활성화됨",
+                        checked = isRawFileDownloadEnabled,
+                        onCheckedChange = { appSettingsViewModel.setRawFileDownloadEnabled(it) }
+                    )
+                } else {
+                    SettingsItem(
+                        icon = Icons.Default.Photo,
+                        title = "RAW 파일 다운로드",
+                        subtitle = "PRO, ADMIN, REFERRER 티어에서만 사용 가능한 기능입니다",
+                        onClick = { /* 클릭해도 아무 동작 안함 */ }
+                    )
+                }
             }
 
             Divider(modifier = Modifier.padding(vertical = 8.dp))
