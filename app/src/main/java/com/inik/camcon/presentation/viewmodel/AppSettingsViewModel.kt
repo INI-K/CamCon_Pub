@@ -153,15 +153,25 @@ class AppSettingsViewModel @Inject constructor(
             )
 
     /**
-     * 현재 구독 티어
+     * 현재 구독 티어 - Preferences에 저장된 값 우선, 없으면 Firebase에서 가져옴
      */
     val subscriptionTier: StateFlow<com.inik.camcon.domain.model.SubscriptionTier> =
-        getSubscriptionUseCase.getSubscriptionTier()
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5000),
-                initialValue = com.inik.camcon.domain.model.SubscriptionTier.FREE
-            )
+        combine(
+            appPreferencesDataSource.subscriptionTierEnum,
+            getSubscriptionUseCase.getSubscriptionTier()
+        ) { prefTier, firebaseTier ->
+            // Preferences에 저장된 티어가 FREE가 아니면 우선 사용
+            // FREE인 경우는 초기값일 수 있으므로 Firebase 값 확인
+            if (prefTier != SubscriptionTier.FREE) {
+                prefTier
+            } else {
+                firebaseTier ?: SubscriptionTier.FREE
+            }
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = com.inik.camcon.domain.model.SubscriptionTier.FREE
+        )
 
     /**
      * 테마 모드 설정
