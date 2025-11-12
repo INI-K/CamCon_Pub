@@ -153,6 +153,17 @@ class AppSettingsViewModel @Inject constructor(
             )
 
     /**
+     * 현재 구독 티어
+     */
+    val subscriptionTier: StateFlow<com.inik.camcon.domain.model.SubscriptionTier> =
+        getSubscriptionUseCase.getSubscriptionTier()
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = com.inik.camcon.domain.model.SubscriptionTier.FREE
+            )
+
+    /**
      * 테마 모드 설정
      */
     val themeMode: StateFlow<ThemeMode> = appPreferencesDataSource.themeMode
