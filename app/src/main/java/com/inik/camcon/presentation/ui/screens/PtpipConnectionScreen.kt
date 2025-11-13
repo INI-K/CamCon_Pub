@@ -19,23 +19,25 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 
-import androidx.compose.material.AlertDialog
-import androidx.compose.material.Button
-import androidx.compose.material.OutlinedTextField
-import androidx.compose.material.Scaffold
-import androidx.compose.material.SnackbarHost
-import androidx.compose.material.SnackbarHostState
-import androidx.compose.material.Tab
-import androidx.compose.material.TabRow
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
-import androidx.compose.material.TopAppBar
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.MaterialTheme
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
@@ -44,8 +46,9 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.Card
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -351,14 +354,14 @@ fun PtpipConnectionScreen(
                 Column {
                     Text(
                         text = "Wi-Fi 비밀번호를 입력하세요",
-                        style = MaterialTheme.typography.body2,
-                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
                     OutlinedTextField(
                         value = passwordForSsid,
                         onValueChange = { passwordForSsid = it },
-                        label = { Text("비밀번호", style = MaterialTheme.typography.caption) },
+                        label = { Text("비밀번호", style = MaterialTheme.typography.bodySmall) },
                         visualTransformation =
                             if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
@@ -419,7 +422,7 @@ fun PtpipConnectionScreen(
                     enabled = passwordForSsid.isNotEmpty(),
                     modifier = Modifier.height(36.dp)
                 ) {
-                    Text("연결", style = MaterialTheme.typography.button)
+                    Text("연결", style = MaterialTheme.typography.labelLarge)
                 }
             },
             dismissButton = {
@@ -431,7 +434,7 @@ fun PtpipConnectionScreen(
                     },
                     modifier = Modifier.height(36.dp)
                 ) {
-                    Text("취소", style = MaterialTheme.typography.button)
+                    Text("취소", style = MaterialTheme.typography.labelLarge)
                 }
             }
         )
@@ -515,10 +518,14 @@ fun PtpipConnectionScreen(
         )
     }
 
-    CamConTheme(themeMode = ThemeMode.LIGHT) {
+    // 테마 모드 가져오기
+    val themeMode by appSettingsViewModel.themeMode.collectAsState()
+
+    CamConTheme(themeMode = themeMode) {
         Scaffold(
             topBar = {
                 TopAppBar(
+                    modifier = Modifier.statusBarsPadding(),
                     title = { Text("카메라 연결") },
                     navigationIcon = {
                         IconButton(onClick = onBackClick) {
@@ -568,8 +575,12 @@ fun PtpipConnectionScreen(
                             Icon(Icons.Filled.Settings, contentDescription = "Wi-Fi 설정")
                         }
                     },
-                    backgroundColor = MaterialTheme.colors.primary,
-                    contentColor = MaterialTheme.colors.onPrimary
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                        actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 )
             },
             snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -583,8 +594,8 @@ fun PtpipConnectionScreen(
                 // 탭 행
                 TabRow(
                     selectedTabIndex = pagerState.currentPage,
-                    backgroundColor = MaterialTheme.colors.primary,
-                    contentColor = MaterialTheme.colors.onPrimary
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 ) {
                     tabTitles.forEachIndexed { index, title ->
                         Tab(
@@ -659,9 +670,9 @@ fun PtpipConnectionScreen(
                 dismissOnClickOutside = false
             )
         ) {
-            androidx.compose.material.Card(
+            Card(
                 shape = MaterialTheme.shapes.medium,
-                elevation = 8.dp,
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                 modifier = Modifier.padding(16.dp)
             ) {
                 Column(
@@ -677,7 +688,7 @@ fun PtpipConnectionScreen(
 
                     Text(
                         text = connectionProgressMessage.ifEmpty { "카메라에 연결 중..." },
-                        style = MaterialTheme.typography.body1,
+                        style = MaterialTheme.typography.bodyLarge,
                         textAlign = TextAlign.Center
                     )
 
@@ -685,8 +696,8 @@ fun PtpipConnectionScreen(
 
                     Text(
                         text = "잠시만 기다려주세요...",
-                        style = MaterialTheme.typography.body2,
-                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                         textAlign = TextAlign.Center
                     )
                 }
@@ -705,13 +716,13 @@ private fun PtpipConnectionScreenPreview() {
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            Text("카메라 연결 화면 프리뷰", style = MaterialTheme.typography.h6)
+            Text("카메라 연결 화면 프리뷰", style = MaterialTheme.typography.titleLarge)
 
             // 탭 영역 표시
             TabRow(
                 selectedTabIndex = 0,
-                backgroundColor = MaterialTheme.colors.primary,
-                contentColor = MaterialTheme.colors.onPrimary
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
                 Tab(
                     selected = true,
@@ -727,7 +738,7 @@ private fun PtpipConnectionScreenPreview() {
 
             Text(
                 "탭 컨텐츠 영역",
-                style = MaterialTheme.typography.body1,
+                style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(16.dp)
             )
         }

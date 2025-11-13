@@ -67,4 +67,5 @@ interface CameraRepository {
     suspend fun getCameraThumbnail(photoPath: String): Result<ByteArray>
     suspend fun deletePhoto(photoId: String): Result<Boolean>
     suspend fun downloadPhotoFromCamera(photoId: String): Result<CapturedPhoto>
+    fun setRawFileRestrictionCallback(callback: ((fileName: String, restrictionMessage: String) -> Unit)?)
 }

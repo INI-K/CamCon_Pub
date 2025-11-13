@@ -15,20 +15,26 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Button
-import androidx.compose.material.ButtonDefaults
-import androidx.compose.material.Card
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.Icon
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Snackbar
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -160,8 +166,11 @@ fun LoginScreen(
     var recommendCode by remember { mutableStateOf("") }
 
     Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colors.background
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .navigationBarsPadding(),
+        color = MaterialTheme.colorScheme.background
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
@@ -175,7 +184,7 @@ fun LoginScreen(
                 Card(
                     modifier = Modifier.size(120.dp),
                     shape = RoundedCornerShape(24.dp),
-                    elevation = 8.dp
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                 ) {
                     Box(
                         contentAlignment = Alignment.Center,
@@ -185,7 +194,7 @@ fun LoginScreen(
                             painter = painterResource(id = R.drawable.ic_camera),
                             contentDescription = "Logo",
                             modifier = Modifier.size(60.dp),
-                            tint = MaterialTheme.colors.primary
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -196,13 +205,13 @@ fun LoginScreen(
                     text = stringResource(R.string.app_name),
                     fontSize = 40.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colors.primary
+                    color = MaterialTheme.colorScheme.primary
                 )
 
                 Text(
                     text = stringResource(R.string.app_description),
                     fontSize = 16.sp,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
 
                 Spacer(modifier = Modifier.height(48.dp))
@@ -210,7 +219,7 @@ fun LoginScreen(
                 Text(
                     text = stringResource(R.string.welcome_message),
                     fontSize = 14.sp,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                     textAlign = TextAlign.Center
                 )
 
@@ -241,11 +250,11 @@ fun LoginScreen(
                         .fillMaxWidth()
                         .height(56.dp),
                     colors = ButtonDefaults.buttonColors(
-                        backgroundColor = Color.White,
+                        containerColor = Color.White,
                         contentColor = Color(0xFF4285F4)
                     ),
                     shape = RoundedCornerShape(8.dp),
-                    elevation = ButtonDefaults.elevation(
+                    elevation = ButtonDefaults.elevatedButtonElevation(
                         defaultElevation = 4.dp,
                         pressedElevation = 8.dp
                     ),
@@ -281,7 +290,7 @@ fun LoginScreen(
                 Text(
                     text = stringResource(R.string.terms_agreement),
                     fontSize = 12.sp,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.5f),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     textAlign = TextAlign.Center,
                     lineHeight = 18.sp
                 )

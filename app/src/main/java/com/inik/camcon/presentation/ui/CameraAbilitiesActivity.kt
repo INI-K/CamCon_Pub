@@ -69,6 +69,7 @@ fun CameraAbilitiesScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                modifier = Modifier.statusBarsPadding(),
                 title = { Text("카메라 기능 정보") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {

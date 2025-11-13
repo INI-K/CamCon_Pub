@@ -19,12 +19,12 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material.AlertDialog
-import androidx.compose.material.Button
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -57,7 +57,8 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -204,13 +205,24 @@ class SplashActivity : ComponentActivity() {
     private fun loadSubscriptionTierInBackground() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val tier = getSubscriptionUseCase.getSubscriptionTier().first()
-                withContext(Dispatchers.Main) {
-                    subscriptionTier = tier
-                    appPreferencesDataSource.saveSubscriptionTier(tier)
-                }
+                // StateFlow의 초기값(FREE)을 건너뛰고 실제 Firebase 값만 수신
+                getSubscriptionUseCase.getSubscriptionTier()
+                    .drop(1) // 첫 번째 초기값(FREE) 건너뛰기
+                    .collect { tier ->
+                        withContext(Dispatchers.Main) {
+                            subscriptionTier = tier
+                            appPreferencesDataSource.saveSubscriptionTier(tier)
+                            LogcatManager.d("SplashActivity", "📱 구독 티어 로드 완료: $tier")
+                        }
+                        // 첫 번째 실제 값만 받고 collect 종료
+                        return@collect
+                    }
             } catch (e: Exception) {
                 LogcatManager.e("SplashActivity", "❌ 구독 정보 로드 실패: ${e.message}", e)
+                // 에러 발생 시 FREE로 폴백
+                withContext(Dispatchers.Main) {
+                    subscriptionTier = SubscriptionTier.FREE
+                }
             }
         }
     }
@@ -262,7 +274,7 @@ fun SplashScreen(
         modifier = Modifier
             .fillMaxSize()
             .systemBarsPadding()
-            .background(MaterialTheme.colors.primary),
+            .background(MaterialTheme.colorScheme.primary),
         contentAlignment = Alignment.Center
     ) {
         Column(
