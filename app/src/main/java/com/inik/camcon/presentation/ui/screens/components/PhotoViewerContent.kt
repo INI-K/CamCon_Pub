@@ -16,8 +16,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.inik.camcon.domain.model.CameraPhoto
+import androidx.compose.material.MaterialTheme
 
 /**
  * 사진 뷰어의 메인 이미지 콘텐츠
@@ -199,5 +201,49 @@ fun PhotoViewerContent(
                     )
             )
         }
+    }
+}
+
+/**
+ * Photo Viewer Content 프리뷰
+ */
+@Preview(name = "Photo Viewer Content", showBackground = true)
+@Composable
+private fun PhotoViewerContentPreview() {
+    val samplePhotos = listOf(
+        CameraPhoto(
+            name = "IMG_0001.JPG",
+            path = "/sdcard/DCIM/Camera/IMG_0001.JPG",
+            size = 2048576,
+            date = System.currentTimeMillis() / 1000,
+            width = 4032,
+            height = 3024
+        ),
+        CameraPhoto(
+            name = "IMG_0002.JPG",
+            path = "/sdcard/DCIM/Camera/IMG_0002.JPG",
+            size = 3145728,
+            date = System.currentTimeMillis() / 1000,
+            width = 4032,
+            height = 3024
+        )
+    )
+
+    MaterialTheme {
+        PhotoViewerContent(
+            photo = samplePhotos[0],
+            photos = samplePhotos,
+            thumbnailData = null,
+            fullImageData = null,
+            currentPhotoIndex = 0,
+            scale = 1f,
+            offsetX = 0f,
+            offsetY = 0f,
+            onScaleChange = {},
+            onOffsetChange = { _, _ -> },
+            onAnimateScale = {},
+            onAnimateOffset = { _, _ -> },
+            onPhotoChanged = {}
+        )
     }
 }
