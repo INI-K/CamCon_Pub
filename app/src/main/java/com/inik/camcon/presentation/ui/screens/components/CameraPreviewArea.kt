@@ -17,11 +17,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.Button
-import androidx.compose.material.ButtonDefaults
-import androidx.compose.material.Icon
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
@@ -119,7 +120,7 @@ fun CameraPreviewArea(
                         .align(Alignment.BottomCenter)
                         .padding(16.dp),
                     colors = ButtonDefaults.buttonColors(
-                        backgroundColor = Color.Red.copy(alpha = 0.8f)
+                        containerColor = Color.Red.copy(alpha = 0.8f)
                     )
                 ) {
                     Icon(
@@ -238,11 +239,10 @@ fun CameraConnectedState(
                 },
                 enabled = uiState.isConnected,
                 colors = ButtonDefaults.buttonColors(
-                    backgroundColor = if (uiState.isConnected)
-                        MaterialTheme.colors.primary
+                    containerColor = if (uiState.isConnected)
+                        MaterialTheme.colorScheme.primary
                     else
-                        Color.Gray.copy(alpha = 0.5f),
-                    disabledBackgroundColor = Color.Gray.copy(alpha = 0.5f)
+                        Color.Gray.copy(alpha = 0.5f)
                 )
             ) {
                 Text(
@@ -304,7 +304,7 @@ fun CameraConnectionButtons(
                 }
             },
             colors = ButtonDefaults.buttonColors(
-                backgroundColor = MaterialTheme.colors.primary
+                containerColor = MaterialTheme.colorScheme.primary
             )
         ) {
             Text(stringResource(R.string.retry_connection))
@@ -314,7 +314,7 @@ fun CameraConnectionButtons(
         Button(
             onClick = { viewModel.refreshUsbDevices() },
             colors = ButtonDefaults.buttonColors(
-                backgroundColor = MaterialTheme.colors.secondary
+                containerColor = MaterialTheme.colorScheme.secondary
             )
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -333,7 +333,7 @@ fun CameraConnectionButtons(
             Button(
                 onClick = { viewModel.requestUsbPermission() },
                 colors = ButtonDefaults.buttonColors(
-                    backgroundColor = Color(0xFFFF6B35)
+                    containerColor = Color(0xFFFF6B35)
                 )
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

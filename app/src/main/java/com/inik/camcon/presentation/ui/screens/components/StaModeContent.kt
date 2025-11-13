@@ -9,10 +9,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.Card
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Switch
-import androidx.compose.material.Text
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -124,25 +125,29 @@ fun StaModeContent(
 private fun StaModeDescriptionCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = 4.dp,
-        backgroundColor = MaterialTheme.colors.secondary.copy(alpha = 0.1f)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondary.copy(
+                alpha = 0.1f
+            )
+        )
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
                 text = "🏠 STA 모드 (스테이션)",
-                style = MaterialTheme.typography.h6,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colors.secondary
+                color = MaterialTheme.colorScheme.secondary
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = "카메라와 스마트폰이 동일한 Wi-Fi 네트워크에 연결하는 방식입니다.",
-                style = MaterialTheme.typography.body2,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f)
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -158,8 +163,8 @@ private fun StaModeDescriptionCard() {
             staModeSteps.forEach { step ->
                 Text(
                     text = step,
-                    style = MaterialTheme.typography.caption,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     modifier = Modifier.padding(vertical = 1.dp)
                 )
             }
@@ -168,15 +173,15 @@ private fun StaModeDescriptionCard() {
 
             Text(
                 text = "💡 장점: 카메라와 스마트폰 모두 인터넷에 연결된 상태를 유지할 수 있습니다.",
-                style = MaterialTheme.typography.caption,
-                color = MaterialTheme.colors.secondary,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.secondary,
                 fontWeight = FontWeight.Medium
             )
 
             Text(
                 text = "⚠️ 단점: 네트워크 설정이 복잡할 수 있습니다.",
-                style = MaterialTheme.typography.caption,
-                color = MaterialTheme.colors.error,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
                 fontWeight = FontWeight.Medium
             )
         }
@@ -193,32 +198,34 @@ private fun NetworkStatusCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = 4.dp,
-        backgroundColor = if (wifiNetworkState.isConnected) {
-            MaterialTheme.colors.secondary.copy(alpha = 0.1f)
-        } else {
-            MaterialTheme.colors.error.copy(alpha = 0.1f)
-        }
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (wifiNetworkState.isConnected) {
+                MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)
+            } else {
+                MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
+            }
+        )
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
                 text = "📶 실시간 네트워크 상태",
-                style = MaterialTheme.typography.h6,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colors.secondary
+                color = MaterialTheme.colorScheme.secondary
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = ptpipViewModel.getNetworkStatusMessage(),
-                style = MaterialTheme.typography.body2,
+                style = MaterialTheme.typography.bodyMedium,
                 color = if (wifiNetworkState.isConnected) {
-                    MaterialTheme.colors.secondary
+                    MaterialTheme.colorScheme.secondary
                 } else {
-                    MaterialTheme.colors.error
+                    MaterialTheme.colorScheme.error
                 },
                 fontWeight = FontWeight.Medium
             )
@@ -227,8 +234,8 @@ private fun NetworkStatusCard(
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "일반 Wi-Fi 네트워크에 연결되어 mDNS 검색 가능",
-                    style = MaterialTheme.typography.caption,
-                    color = MaterialTheme.colors.secondary
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.secondary
                 )
             }
 
@@ -236,8 +243,8 @@ private fun NetworkStatusCard(
 
             Text(
                 text = ptpipViewModel.getComprehensiveStatusMessage(),
-                style = MaterialTheme.typography.caption,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
             )
         }
     }
@@ -253,7 +260,7 @@ private fun AutoReconnectCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = 4.dp
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -267,9 +274,9 @@ private fun AutoReconnectCard(
                 ) {
                     Text(
                         text = "🔄 자동 재연결",
-                        style = MaterialTheme.typography.h6,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colors.secondary
+                        color = MaterialTheme.colorScheme.secondary
                     )
 
                     Spacer(modifier = Modifier.height(4.dp))
@@ -280,8 +287,8 @@ private fun AutoReconnectCard(
                         } else {
                             "수동으로 카메라 연결 관리"
                         },
-                        style = MaterialTheme.typography.body2,
-                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
                 }
 
@@ -322,7 +329,7 @@ private fun StaModeContentPreview() {
             item {
                 Text(
                     text = "Wi-Fi 기능 정보 카드 영역",
-                    style = MaterialTheme.typography.h6,
+                    style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(16.dp)
                 )
             }
@@ -330,7 +337,7 @@ private fun StaModeContentPreview() {
             item {
                 Text(
                     text = "카메라 연결 UI 영역",
-                    style = MaterialTheme.typography.h6,
+                    style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(16.dp)
                 )
             }
