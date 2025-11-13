@@ -284,6 +284,9 @@ object CameraNative {
     external fun setSubscriptionTier(tier: Int)
     external fun getSubscriptionTier(): Int
 
+    external fun setRawFileDownloadEnabled(enabled: Boolean)
+    external fun isRawFileDownloadEnabled(): Boolean
+
     external fun initializeCameraCache() // 카메라 캐시 초기화
 
     // ===== 고급 촬영 기능 (새로 추가) =====

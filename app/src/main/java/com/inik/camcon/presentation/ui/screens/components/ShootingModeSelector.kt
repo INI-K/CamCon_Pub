@@ -8,8 +8,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.Chip
 import androidx.compose.material.ChipDefaults
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -88,12 +88,12 @@ fun ShootingModeChip(
         enabled = isEnabled,
         modifier = modifier,
         colors = ChipDefaults.chipColors(
-            backgroundColor = if (isSelected && isEnabled) MaterialTheme.colors.primary
+            backgroundColor = if (isSelected && isEnabled) MaterialTheme.colorScheme.primary
             else if (isEnabled) Color.Gray.copy(alpha = 0.3f)
             else Color.Gray.copy(alpha = 0.1f),
-            contentColor = if (isEnabled) Color.White else Color.Gray,
-            disabledBackgroundColor = Color.Gray.copy(alpha = 0.1f),
-            disabledContentColor = Color.Gray
+            contentColor = if (isSelected && isEnabled) MaterialTheme.colorScheme.onPrimary
+            else if (isEnabled) Color.Black
+            else Color.Gray
         )
     ) {
         Text(displayName, fontSize = 14.sp)

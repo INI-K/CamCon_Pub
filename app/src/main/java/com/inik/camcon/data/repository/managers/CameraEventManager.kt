@@ -1,6 +1,7 @@
 package com.inik.camcon.data.repository.managers
 
 import android.util.Log
+import com.inik.camcon.CameraNative
 import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
 import com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
@@ -19,6 +20,16 @@ import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * 카메라 이벤트 관리자
+ *
+ * 네이티브 레벨 크래시 방지를 위한 안전성 강화:
+ * 1. 카메라 연결 및 초기화 상태를 다단계로 검증
+ * 2. 이벤트 리스너 시작 전 안정화 대기 시간 추가
+ * 3. CancellationException을 정상 종료로 처리
+ * 4. 네이티브 카메라 상태 변경 시 즉시 중단하여 gp_camera_wait_for_event 크래시 방지
+ * 5. 중복 실행 방지를 위한 AtomicBoolean 사용
+ */
 @Singleton
 class CameraEventManager @Inject constructor(
     private val nativeDataSource: NativeCameraDataSource,
@@ -209,18 +220,35 @@ class CameraEventManager @Inject constructor(
                         return@launch
                     }
 
+                    // 추가 안전성 검증: 네이티브 카메라가 초기화되어 있는지 확인
+                    if (!CameraNative.isCameraInitialized()) {
+                        LogcatManager.e(
+                            "카메라이벤트매니저",
+                            "${connectionType.name} 네이티브 카메라가 초기화되지 않음 - 이벤트 리스너 시작 중단"
+                        )
+                        isEventListenerRunning.set(false)
+                        return@launch
+                    }
+
                     var retryCount = 0
                     val maxRetries = 1
 
-                    while (retryCount < maxRetries && isConnected) {
+                    while (retryCount < maxRetries && isConnected && isEventListenerRunning.get()) {
                         try {
                             LogcatManager.d(
                                 "카메라이벤트매니저",
                                 "${connectionType.name} CameraNative.listenCameraEvents 호출 시작 (시도 ${retryCount + 1}/$maxRetries)"
                             )
 
+                            // 네이티브 이벤트 리스너 시작 전 마지막 검증
+                            if (!CameraNative.isCameraConnected()) {
+                                LogcatManager.e("카메라이벤트매니저", "네이티브 카메라 연결이 끊어짐 - 이벤트 리스너 시작 중단")
+                                isEventListenerRunning.set(false)
+                                break
+                            }
+
                             // 네이티브 이벤트 리스너 시작 (USB/PTPIP 공통)
-                            nativeDataSource.listenCameraEvents(
+                            CameraNative.listenCameraEvents(
                                 createCameraCaptureListener(
                                     connectionType,
                                     onPhotoCaptured,
@@ -235,6 +263,15 @@ class CameraEventManager @Inject constructor(
                                 "✓ ${connectionType.name} 카메라 이벤트 리스너 설정 완료"
                             )
                             break // 성공적으로 시작되었으므로 반복 종료
+
+                        } catch (e: IllegalStateException) {
+                            LogcatManager.e(
+                                "카메라이벤트매니저",
+                                "❌ ${connectionType.name} 카메라 상태 오류 - 이벤트 리스너 시작 중단",
+                                e
+                            )
+                            isEventListenerRunning.set(false)
+                            break // IllegalStateException은 재시도하지 않음
 
                         } catch (e: Exception) {
                             LogcatManager.e(
@@ -258,6 +295,13 @@ class CameraEventManager @Inject constructor(
                                 }
                             }
                         }
+                    }
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    // 코루틴 취소는 정상적인 종료이므로 로그만 남김
+                    LogcatManager.d("카메라이벤트매니저", "${connectionType.name} 이벤트 리스너 코루틴이 취소됨")
+                    isEventListenerRunning.set(false)
+                    CoroutineScope(Dispatchers.Main).launch {
+                        _isEventListenerActive.value = false
                     }
                 } catch (e: Exception) {
                     LogcatManager.e("카메라이벤트매니저", "❌ ${connectionType.name} 이벤트 리스너 스레드 실행 중 예외", e)
@@ -300,34 +344,18 @@ class CameraEventManager @Inject constructor(
 
         var isCameraInitialized = false
         var waitTime = 0
-        val maxWaitTime = 15000 // 최대 15초 대기
+        val maxWaitTime = 10000 // USB는 최대 10초 대기
 
         while (!isCameraInitialized && waitTime < maxWaitTime) {
             try {
                 // USB 카메라 초기화 상태 체크
-                isCameraInitialized = nativeDataSource.isCameraInitialized()
+                isCameraInitialized = CameraNative.isCameraInitialized()
 
                 if (isCameraInitialized) {
                     LogcatManager.d("카메라이벤트매니저", "USB 네이티브 카메라 초기화 완료 확인됨")
-
-                    // 추가 검증: 카메라 요약 정보도 가져올 수 있는지 확인
-                    try {
-                        val summary = nativeDataSource.getCameraSummary()
-                        if (summary.name.isNotEmpty() && !summary.name.contains(
-                                "error",
-                                ignoreCase = true
-                            )
-                        ) {
-                            LogcatManager.d("카메라이벤트매니저", "USB 카메라 요약 정보 확인 완료: ${summary.name}")
-                            break
-                        } else {
-                            LogcatManager.w("카메라이벤트매니저", "USB 카메라 요약 정보에 오류 포함: ${summary.name}")
-                            isCameraInitialized = false
-                        }
-                    } catch (e: Exception) {
-                        LogcatManager.w("카메라이벤트매니저", "USB 카메라 요약 정보 확인 실패: ${e.message}")
-                        isCameraInitialized = false
-                    }
+                    // USB도 초기화만 확인하면 충분
+                    // getCameraSummary()는 일부 카메라에서 warning 수준의 에러를 포함할 수 있으므로 생략
+                    break
                 }
 
                 if (!isCameraInitialized) {
@@ -368,34 +396,18 @@ class CameraEventManager @Inject constructor(
 
         var isCameraInitialized = false
         var waitTime = 0
-        val maxWaitTime = 10000 // PTPIP는 더 빠르게 초기화되므로 10초 대기
+        val maxWaitTime = 5000 // PTPIP는 5초만 대기 (빠른 연결)
 
         while (!isCameraInitialized && waitTime < maxWaitTime) {
             try {
                 // PTPIP 카메라 초기화 상태 체크
-                isCameraInitialized = nativeDataSource.isCameraInitialized()
+                isCameraInitialized = CameraNative.isCameraInitialized()
 
                 if (isCameraInitialized) {
                     LogcatManager.d("카메라이벤트매니저", "PTPIP 네이티브 카메라 초기화 완료 확인됨")
-
-                    // PTPIP용 추가 검증
-                    try {
-                        val summary = nativeDataSource.getCameraSummary()
-                        if (summary.name.isNotEmpty() && !summary.name.contains(
-                                "error",
-                                ignoreCase = true
-                            )
-                        ) {
-                            LogcatManager.d("카메라이벤트매니저", "PTPIP 카메라 요약 정보 확인 완료: ${summary.name}")
-                            break
-                        } else {
-                            LogcatManager.w("카메라이벤트매니저", "PTPIP 카메라 요약 정보에 오류 포함: ${summary.name}")
-                            isCameraInitialized = false
-                        }
-                    } catch (e: Exception) {
-                        LogcatManager.w("카메라이벤트매니저", "PTPIP 카메라 요약 정보 확인 실패: ${e.message}")
-                        isCameraInitialized = false
-                    }
+                    // PTPIP는 초기화만 확인하면 충분
+                    // getCameraSummary()는 일부 카메라에서 warning 수준의 에러를 포함할 수 있으므로 생략
+                    break
                 }
 
                 if (!isCameraInitialized) {
@@ -699,7 +711,7 @@ class CameraEventManager @Inject constructor(
 
             while (stopAttempts < maxStopAttempts) {
                 try {
-                    nativeDataSource.stopListenCameraEvents()
+                    CameraNative.stopListenCameraEvents()
                     LogcatManager.d("카메라이벤트매니저", "네이티브 이벤트 리스너 중지 성공 (시도 ${stopAttempts + 1})")
                     break
                 } catch (e: Exception) {

@@ -16,24 +16,28 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.Card
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.OutlinedButton
-import androidx.compose.material.Scaffold
-import androidx.compose.material.Slider
-import androidx.compose.material.SliderDefaults
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
-import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Photo
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -174,14 +178,18 @@ fun ColorTransferSettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                modifier = Modifier.statusBarsPadding(),
                 title = { Text("색감 전송 상세 설정") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "뒤로가기")
                     }
                 },
-                backgroundColor = MaterialTheme.colors.primary,
-                contentColor = MaterialTheme.colors.onPrimary
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         }
     ) { paddingValues ->
@@ -197,21 +205,23 @@ fun ColorTransferSettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    backgroundColor = MaterialTheme.colors.surface
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp)
                     ) {
                         Text(
                             text = "⚠️ 색감 전송 기능이 비활성화됨",
-                            style = MaterialTheme.typography.h6,
+                            style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "설정에서 색감 전송 기능을 먼저 활성화해주세요",
-                            style = MaterialTheme.typography.body2,
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         )
                     }
                 }
@@ -223,14 +233,14 @@ fun ColorTransferSettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    elevation = 4.dp
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp)
                     ) {
                         Text(
                             text = "실시간 미리보기",
-                            style = MaterialTheme.typography.h6,
+                            style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(12.dp))
@@ -248,7 +258,7 @@ fun ColorTransferSettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
-                    elevation = 2.dp
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     // 로컬 상태로 즉시 반응
                     var localIntensity by remember { mutableStateOf(colorTransferIntensity) }
@@ -277,13 +287,13 @@ fun ColorTransferSettingsScreen(
                         ) {
                             Text(
                                 text = "색감 전송 강도",
-                                style = MaterialTheme.typography.h6,
+                                style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
                                 text = "${(localIntensity * 100).toInt()}%",
-                                style = MaterialTheme.typography.h5,
-                                color = MaterialTheme.colors.primary,
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -298,10 +308,10 @@ fun ColorTransferSettingsScreen(
                             },
                             valueRange = 0.01f..1.0f,
                             colors = SliderDefaults.colors(
-                                thumbColor = MaterialTheme.colors.primary,
-                                activeTrackColor = MaterialTheme.colors.primary,
-                                activeTickColor = MaterialTheme.colors.primary,
-                                inactiveTrackColor = MaterialTheme.colors.onSurface.copy(alpha = 0.24f)
+                                thumbColor = MaterialTheme.colorScheme.primary,
+                                activeTrackColor = MaterialTheme.colorScheme.primary,
+                                activeTickColor = MaterialTheme.colorScheme.primary,
+                                inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.24f)
                             ),
                             modifier = Modifier.height(48.dp)
                         )
@@ -314,13 +324,13 @@ fun ColorTransferSettingsScreen(
                         ) {
                             Text(
                                 text = "약함 (1%)",
-                                style = MaterialTheme.typography.caption,
-                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
                             Text(
                                 text = "강함 (100%)",
-                                style = MaterialTheme.typography.caption,
-                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
                         }
 
@@ -334,13 +344,13 @@ fun ColorTransferSettingsScreen(
                             Icon(
                                 imageVector = Icons.Default.Photo,
                                 contentDescription = null,
-                                tint = MaterialTheme.colors.primary.copy(alpha = 0.7f),
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
                                 modifier = Modifier.padding(end = 4.dp)
                             )
                             Text(
                                 text = "권장: 3-10%",
-                                style = MaterialTheme.typography.body2,
-                                color = MaterialTheme.colors.primary.copy(alpha = 0.8f),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
                                 fontWeight = FontWeight.Medium
                             )
                         }
@@ -352,14 +362,14 @@ fun ColorTransferSettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
-                    elevation = 2.dp
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp)
                     ) {
                         Text(
                             text = "이미지 관리",
-                            style = MaterialTheme.typography.subtitle1,
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(12.dp))
@@ -425,21 +435,23 @@ fun ColorTransferSettingsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp),
-                        backgroundColor = MaterialTheme.colors.primary.copy(alpha = 0.1f),
-                        elevation = 1.dp
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                     ) {
                         Row(
                             modifier = Modifier.padding(12.dp)
                         ) {
                             Text(
                                 text = "⚡",
-                                style = MaterialTheme.typography.body1,
+                                style = MaterialTheme.typography.bodyLarge,
                                 modifier = Modifier.padding(end = 8.dp)
                             )
                             Text(
                                 text = info,
-                                style = MaterialTheme.typography.body2,
-                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                             )
                         }
                     }
@@ -451,8 +463,10 @@ fun ColorTransferSettingsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp),
-                        backgroundColor = MaterialTheme.colors.error.copy(alpha = 0.1f),
-                        elevation = 2.dp
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
                         Column(
                             modifier = Modifier.padding(16.dp)
@@ -460,21 +474,21 @@ fun ColorTransferSettingsScreen(
                             Row {
                                 Text(
                                     text = "⚠️",
-                                    style = MaterialTheme.typography.h6,
+                                    style = MaterialTheme.typography.titleLarge,
                                     modifier = Modifier.padding(end = 8.dp)
                                 )
                                 Text(
                                     text = "오류 발생",
-                                    style = MaterialTheme.typography.subtitle1,
+                                    style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colors.error
+                                    color = MaterialTheme.colorScheme.error
                                 )
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 text = error,
-                                style = MaterialTheme.typography.body2,
-                                color = MaterialTheme.colors.error
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.error
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             TextButton(
@@ -498,6 +512,7 @@ fun ColorTransferSettingsScreen(
 /**
  * 프리뷰용 간단한 화면 구성
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ColorTransferSettingsScreenPreview(
     isColorTransferEnabled: Boolean,
@@ -508,14 +523,18 @@ private fun ColorTransferSettingsScreenPreview(
     Scaffold(
         topBar = {
             TopAppBar(
+                modifier = Modifier.statusBarsPadding(),
                 title = { Text("색감 전송 상세 설정") },
                 navigationIcon = {
                     IconButton(onClick = {}) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "뒤로가기")
                     }
                 },
-                backgroundColor = MaterialTheme.colors.primary,
-                contentColor = MaterialTheme.colors.onPrimary
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         }
     ) { paddingValues ->
@@ -530,21 +549,23 @@ private fun ColorTransferSettingsScreenPreview(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    backgroundColor = MaterialTheme.colors.surface
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp)
                     ) {
                         Text(
                             text = "⚠️ 색감 전송 기능이 비활성화됨",
-                            style = MaterialTheme.typography.h6,
+                            style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "설정에서 색감 전송 기능을 먼저 활성화해주세요",
-                            style = MaterialTheme.typography.body2,
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         )
                     }
                 }
@@ -556,14 +577,14 @@ private fun ColorTransferSettingsScreenPreview(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    elevation = 4.dp
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp)
                     ) {
                         Text(
                             text = "실시간 미리보기",
-                            style = MaterialTheme.typography.h6,
+                            style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(12.dp))
@@ -573,7 +594,7 @@ private fun ColorTransferSettingsScreenPreview(
                                 .fillMaxWidth()
                                 .height(250.dp)
                                 .background(
-                                    MaterialTheme.colors.onSurface.copy(alpha = 0.1f),
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
                                     RoundedCornerShape(8.dp)
                                 ),
                             contentAlignment = Alignment.Center
@@ -585,18 +606,18 @@ private fun ColorTransferSettingsScreenPreview(
                                     imageVector = Icons.Default.Photo,
                                     contentDescription = null,
                                     modifier = Modifier.size(64.dp),
-                                    tint = MaterialTheme.colors.onSurface.copy(alpha = 0.3f)
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
                                     text = "미리보기 영역",
-                                    style = MaterialTheme.typography.subtitle1,
-                                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.5f)
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                                 )
                                 Text(
                                     text = "강도: ${(colorTransferIntensity * 100).toInt()}%",
-                                    style = MaterialTheme.typography.body2,
-                                    color = MaterialTheme.colors.primary.copy(alpha = 0.7f)
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
                                 )
                             }
                         }
@@ -608,7 +629,7 @@ private fun ColorTransferSettingsScreenPreview(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
-                    elevation = 2.dp
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Column(
                         modifier = Modifier.padding(20.dp)
@@ -619,13 +640,13 @@ private fun ColorTransferSettingsScreenPreview(
                         ) {
                             Text(
                                 text = "색감 전송 강도",
-                                style = MaterialTheme.typography.h6,
+                                style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
                                 text = "${(colorTransferIntensity * 100).toInt()}%",
-                                style = MaterialTheme.typography.h5,
-                                color = MaterialTheme.colors.primary,
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -637,10 +658,10 @@ private fun ColorTransferSettingsScreenPreview(
                             onValueChange = {},
                             valueRange = 0.01f..1.0f,
                             colors = SliderDefaults.colors(
-                                thumbColor = MaterialTheme.colors.primary,
-                                activeTrackColor = MaterialTheme.colors.primary,
-                                activeTickColor = MaterialTheme.colors.primary,
-                                inactiveTrackColor = MaterialTheme.colors.onSurface.copy(alpha = 0.24f)
+                                thumbColor = MaterialTheme.colorScheme.primary,
+                                activeTrackColor = MaterialTheme.colorScheme.primary,
+                                activeTickColor = MaterialTheme.colorScheme.primary,
+                                inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.24f)
                             ),
                             modifier = Modifier.height(48.dp)
                         )
@@ -653,13 +674,13 @@ private fun ColorTransferSettingsScreenPreview(
                         ) {
                             Text(
                                 text = "약함 (1%)",
-                                style = MaterialTheme.typography.caption,
-                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
                             Text(
                                 text = "강함 (100%)",
-                                style = MaterialTheme.typography.caption,
-                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
                         }
 
@@ -672,13 +693,13 @@ private fun ColorTransferSettingsScreenPreview(
                             Icon(
                                 imageVector = Icons.Default.Photo,
                                 contentDescription = null,
-                                tint = MaterialTheme.colors.primary.copy(alpha = 0.7f),
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
                                 modifier = Modifier.padding(end = 4.dp)
                             )
                             Text(
                                 text = "권장: 3-10%",
-                                style = MaterialTheme.typography.body2,
-                                color = MaterialTheme.colors.primary.copy(alpha = 0.8f),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
                                 fontWeight = FontWeight.Medium
                             )
                         }
@@ -690,14 +711,14 @@ private fun ColorTransferSettingsScreenPreview(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
-                    elevation = 2.dp
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp)
                     ) {
                         Text(
                             text = "이미지 관리",
-                            style = MaterialTheme.typography.subtitle1,
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(12.dp))
@@ -753,21 +774,23 @@ private fun ColorTransferSettingsScreenPreview(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp),
-                        backgroundColor = MaterialTheme.colors.primary.copy(alpha = 0.1f),
-                        elevation = 1.dp
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                     ) {
                         Row(
                             modifier = Modifier.padding(12.dp)
                         ) {
                             Text(
                                 text = "⚡",
-                                style = MaterialTheme.typography.body1,
+                                style = MaterialTheme.typography.bodyLarge,
                                 modifier = Modifier.padding(end = 8.dp)
                             )
                             Text(
                                 text = info,
-                                style = MaterialTheme.typography.body2,
-                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                             )
                         }
                     }
@@ -779,8 +802,10 @@ private fun ColorTransferSettingsScreenPreview(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp),
-                        backgroundColor = MaterialTheme.colors.error.copy(alpha = 0.1f),
-                        elevation = 2.dp
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
                         Column(
                             modifier = Modifier.padding(16.dp)
@@ -788,21 +813,21 @@ private fun ColorTransferSettingsScreenPreview(
                             Row {
                                 Text(
                                     text = "⚠️",
-                                    style = MaterialTheme.typography.h6,
+                                    style = MaterialTheme.typography.titleLarge,
                                     modifier = Modifier.padding(end = 8.dp)
                                 )
                                 Text(
                                     text = "오류 발생",
-                                    style = MaterialTheme.typography.subtitle1,
+                                    style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colors.error
+                                    color = MaterialTheme.colorScheme.error
                                 )
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 text = error,
-                                style = MaterialTheme.typography.body2,
-                                color = MaterialTheme.colors.error
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.error
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             TextButton(

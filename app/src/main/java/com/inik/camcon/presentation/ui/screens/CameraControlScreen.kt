@@ -40,24 +40,25 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.AlertDialog
-import androidx.compose.material.Button
-import androidx.compose.material.Card
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.ModalBottomSheetLayout
-import androidx.compose.material.ModalBottomSheetState
-import androidx.compose.material.ModalBottomSheetValue
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetState
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.RotateRight
-import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -115,7 +116,7 @@ import java.io.File
  * 메인 카메라 컨트롤 스크린 - 컴포넌트들로 분리됨
  * 분리된 컴포넌트들을 조합하여 화면을 구성
  */
-@OptIn(ExperimentalMaterialApi::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun CameraControlScreen(
     viewModel: CameraViewModel,
@@ -224,8 +225,9 @@ fun CameraControlScreen(
     // 상태 변화들을 remember로 캐싱하여 불필요한 리컴포지션 방지
     var isFullscreen by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    val bottomSheetState = rememberModalBottomSheetState(ModalBottomSheetValue.Hidden)
+    val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showTimelapseDialog by remember { mutableStateOf(false) }
+    var showBottomSheet by remember { mutableStateOf(false) }
 
     // UI 상태 변경 로깅을 하나로 통합하고 필요한 것만 로깅
     LaunchedEffect(uiState.isConnected, uiState.isLiveViewActive, uiState.capturedPhotos.size) {
@@ -234,10 +236,12 @@ fun CameraControlScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        ModalBottomSheetLayout(
-            sheetState = bottomSheetState,
-            sheetShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-            sheetContent = {
+        if (showBottomSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { scope.launch { bottomSheetState.hide() } },
+                sheetState = bottomSheetState,
+                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+            ) {
                 CameraSettingsSheet(
                     settings = uiState.cameraSettings,
                     onSettingChange = { key, value ->
@@ -248,85 +252,84 @@ fun CameraControlScreen(
                     }
                 )
             }
-        ) {
-            if (isFullscreen && (appSettings.isCameraControlsEnabled || uiState.capturedPhotos.isNotEmpty())) {
-                LogcatManager.d(
-                    "CameraControl",
-                    "🌟 전체화면 모드 렌더링 - isFullscreen=$isFullscreen, isCameraControlsEnabled=${appSettings.isCameraControlsEnabled}, capturedPhotos=${uiState.capturedPhotos.size}"
-                )
-                FullscreenCameraLayout(
-                    uiState = uiState,
-                    cameraFeed = cameraFeed,
-                    viewModel = viewModel,
-                    onExitFullscreen = {
-                        isFullscreen = false
-                        onFullscreenChange(false)
-                    },
-                    isLiveViewEnabled = appSettings.isLiveViewEnabled
-                )
-            } else {
-                LogcatManager.d(
-                    "CameraControl",
-                    "📱 포트레이트 모드 렌더링 - isFullscreen=$isFullscreen, isCameraControlsEnabled=${appSettings.isCameraControlsEnabled}, capturedPhotos=${uiState.capturedPhotos.size}"
-                )
-                PortraitCameraLayout(
-                    uiState = uiState,
-                    cameraFeed = cameraFeed,
-                    viewModel = viewModel,
-                    scope = scope,
-                    bottomSheetState = bottomSheetState,
-                    onShowTimelapseDialog = { showTimelapseDialog = true },
-                    onEnterFullscreen = {
-                        LogcatManager.d("CameraControl", "🌟 onEnterFullscreen 호출됨 - 전체화면 모드로 전환")
-                        isFullscreen = true
-                        onFullscreenChange(true)
-                        LogcatManager.d(
-                            "CameraControl",
-                            "🌟 전체화면 상태 설정 완료: isFullscreen=$isFullscreen"
-                        )
-                    },
-                    appSettings = appSettings,
-                    onPhotoClick = { photo ->
-                        selectedPhoto = photo
-                        showFullScreenViewer = true
-                    }
-                )
-            }
         }
-
-        if (uiState.isUsbInitializing) {
-            UsbInitializationOverlay(
-                message = uiState.usbInitializationMessage ?: "USB 카메라 초기화 중..."
+        if (isFullscreen && (appSettings.isCameraControlsEnabled || uiState.capturedPhotos.isNotEmpty())) {
+            LogcatManager.d(
+                "CameraControl",
+                "🌟 전체화면 모드 렌더링 - isFullscreen=$isFullscreen, isCameraControlsEnabled=${appSettings.isCameraControlsEnabled}, capturedPhotos=${uiState.capturedPhotos.size}"
             )
-        }
-
-        // RAW 파일 제한 알림 표시
-        uiState.rawFileRestriction?.let { restriction ->
-            RawFileRestrictionNotification(
-                restriction = restriction,
-                onDismiss = { viewModel.clearRawFileRestriction() }
-            )
-        }
-
-        // FullScreenPhotoViewer 표시
-        if (showFullScreenViewer && selectedPhoto != null) {
-            FullScreenPhotoViewer(
-                photo = selectedPhoto!!.toCameraPhoto(),
-                onDismiss = {
-                    showFullScreenViewer = false
-                    selectedPhoto = null
+            FullscreenCameraLayout(
+                uiState = uiState,
+                cameraFeed = cameraFeed,
+                viewModel = viewModel,
+                onExitFullscreen = {
+                    isFullscreen = false
+                    onFullscreenChange(false)
                 },
-                onPhotoChanged = { /* 단일 사진이므로 변경 없음 */ },
-                thumbnailData = selectedPhoto!!.getThumbnailData(),
-                fullImageData = selectedPhoto!!.getImageData(),
-                isDownloadingFullImage = false,
-                onDownload = { /* 이미 다운로드됨, 아무 동작 안함 */ },
-                viewModel = null, // PhotoPreviewViewModel 없이 사용
-                hideDownloadButton = true // 다운로드 버튼 숨김
+                isLiveViewEnabled = appSettings.isLiveViewEnabled
+            )
+        } else {
+            LogcatManager.d(
+                "CameraControl",
+                "📱 포트레이트 모드 렌더링 - isFullscreen=$isFullscreen, isCameraControlsEnabled=${appSettings.isCameraControlsEnabled}, capturedPhotos=${uiState.capturedPhotos.size}"
+            )
+            PortraitCameraLayout(
+                uiState = uiState,
+                cameraFeed = cameraFeed,
+                viewModel = viewModel,
+                scope = scope,
+                bottomSheetState = bottomSheetState,
+                onShowTimelapseDialog = { showTimelapseDialog = true },
+                onEnterFullscreen = {
+                    LogcatManager.d("CameraControl", "🌟 onEnterFullscreen 호출됨 - 전체화면 모드로 전환")
+                    isFullscreen = true
+                    onFullscreenChange(true)
+                    LogcatManager.d(
+                        "CameraControl",
+                        "🌟 전체화면 상태 설정 완료: isFullscreen=$isFullscreen"
+                    )
+                },
+                appSettings = appSettings,
+                onPhotoClick = { photo ->
+                    selectedPhoto = photo
+                    showFullScreenViewer = true
+                },
+                onShowBottomSheet = { showBottomSheet = true }
             )
         }
     }
 
+    if (uiState.isUsbInitializing) {
+        UsbInitializationOverlay(
+            message = uiState.usbInitializationMessage ?: "USB 카메라 초기화 중..."
+        )
+    }
+
+    // RAW 파일 제한 알림 표시
+    uiState.rawFileRestriction?.let { restriction ->
+        RawFileRestrictionNotification(
+            restriction = restriction,
+            onDismiss = { viewModel.clearRawFileRestriction() }
+        )
+    }
+
+    // FullScreenPhotoViewer 표시
+    if (showFullScreenViewer && selectedPhoto != null) {
+        FullScreenPhotoViewer(
+            photo = selectedPhoto!!.toCameraPhoto(),
+            onDismiss = {
+                showFullScreenViewer = false
+                selectedPhoto = null
+            },
+            onPhotoChanged = { /* 단일 사진이므로 변경 없음 */ },
+            thumbnailData = selectedPhoto!!.getThumbnailData(),
+            fullImageData = selectedPhoto!!.getImageData(),
+            isDownloadingFullImage = false,
+            onDownload = { /* 이미 다운로드됨, 아무 동작 안함 */ },
+            viewModel = null, // PhotoPreviewViewModel 없이 사용
+            hideDownloadButton = true // 다운로드 버튼 숨김
+        )
+    }
     if (showTimelapseDialog) {
         TimelapseSettingsDialog(
             onConfirm = { interval, shots ->
@@ -410,7 +413,7 @@ private fun AppRestartDialog(
     )
 }
 
-@Stable
+@androidx.compose.runtime.Stable
 private data class AppSettings(
     val isCameraControlsEnabled: Boolean,
     val isLiveViewEnabled: Boolean,
@@ -421,18 +424,19 @@ private data class AppSettings(
 /**
  * 포트레이트 모드 레이아웃 - 분리된 컴포넌트들 사용
  */
-@OptIn(ExperimentalMaterialApi::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 private fun PortraitCameraLayout(
     uiState: CameraUiState,
     cameraFeed: List<Camera>,
     viewModel: CameraViewModel,
     scope: kotlinx.coroutines.CoroutineScope,
-    bottomSheetState: ModalBottomSheetState,
+    bottomSheetState: SheetState,
     onShowTimelapseDialog: () -> Unit,
     onEnterFullscreen: () -> Unit,
     appSettings: AppSettings,
-    onPhotoClick: (CapturedPhoto) -> Unit = {}
+    onPhotoClick: (CapturedPhoto) -> Unit = {},
+    onShowBottomSheet: () -> Unit
 ) {
     val context = LocalContext.current
 
@@ -440,10 +444,19 @@ private fun PortraitCameraLayout(
         (context as? Activity)?.let { activity ->
             activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                activity.window.setDecorFitsSystemWindows(true)
-                activity.window.insetsController?.show(android.view.WindowInsets.Type.systemBars())
+                activity.window.setDecorFitsSystemWindows(false)
+                activity.window.insetsController?.let { controller ->
+                    controller.show(android.view.WindowInsets.Type.systemBars())
+                    controller.systemBarsBehavior =
+                        android.view.WindowInsetsController.BEHAVIOR_SHOW_BARS_BY_SWIPE
+                }
             } else {
-                activity.window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
+                @Suppress("DEPRECATION")
+                activity.window.decorView.systemUiVisibility = (
+                        View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+                                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
+                                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                        )
             }
         }
     }
@@ -498,7 +511,7 @@ private fun PortraitCameraLayout(
         TopControlsBar(
             uiState = uiState,
             cameraFeed = cameraFeed,
-            onSettingsClick = { scope.launch { bottomSheetState.show() } }
+            onSettingsClick = { onShowBottomSheet() }
         )
 
         Box(
@@ -578,7 +591,9 @@ private fun PortraitCameraLayout(
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            backgroundColor = Color.Black.copy(alpha = 0.9f),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.Black.copy(alpha = 0.9f)
+            ),
             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
         ) {
             Column {
@@ -619,7 +634,7 @@ private fun PortraitCameraLayout(
 /**
  * 전체화면 모드 레이아웃 - 분리된 컴포넌트들 사용
  */
-@OptIn(ExperimentalMaterialApi::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 private fun FullscreenCameraLayout(
     uiState: CameraUiState,
@@ -912,7 +927,7 @@ private fun RecentCaptureItem(
             .size(100.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
-        elevation = 4.dp
+        elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Box(
             modifier = Modifier
@@ -1159,7 +1174,7 @@ private fun CameraSettingsSheet(
         ) {
             Text(
                 stringResource(R.string.camera_settings),
-                style = MaterialTheme.typography.h6
+                style = MaterialTheme.typography.titleLarge
             )
             IconButton(onClick = onClose) {
                 Icon(
@@ -1396,9 +1411,9 @@ private fun RawFileRestrictionNotification(
                 .padding(top = 36.dp, start = 16.dp, end = 16.dp)
         ) {
             Card(
-                backgroundColor = Color(0xFFFF6B6B),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFF6B6B)),
                 shape = RoundedCornerShape(12.dp),
-                elevation = 8.dp,
+                elevation = CardDefaults.cardElevation(8.dp),
                 modifier = Modifier.align(Alignment.TopCenter)
             ) {
                 Column(
@@ -1420,7 +1435,7 @@ private fun RawFileRestrictionNotification(
                             text = "RAW 파일 제한",
                             color = Color.White,
                             fontSize = 16.sp,
-                            style = MaterialTheme.typography.h6
+                            style = MaterialTheme.typography.titleLarge
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         IconButton(onClick = onDismiss) {
@@ -1439,7 +1454,7 @@ private fun RawFileRestrictionNotification(
                         text = "${restriction.fileName}",
                         color = Color.White,
                         fontSize = 14.sp,
-                        style = MaterialTheme.typography.body2
+                        style = MaterialTheme.typography.bodyMedium
                     )
 
                     Spacer(modifier = Modifier.height(4.dp))
@@ -1448,7 +1463,7 @@ private fun RawFileRestrictionNotification(
                         text = restriction.message,
                         color = Color.White.copy(alpha = 0.9f),
                         fontSize = 13.sp,
-                        style = MaterialTheme.typography.body2
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
             }

@@ -10,7 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.*
+import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
@@ -56,6 +56,7 @@ class MockCameraActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MockCameraScreen(
     onBackClick: () -> Unit,
@@ -142,8 +143,11 @@ fun MockCameraScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = "뒤로")
                     }
                 },
-                backgroundColor = MaterialTheme.colors.primary,
-                contentColor = MaterialTheme.colors.onPrimary
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         }
     ) { paddingValues ->
@@ -157,7 +161,7 @@ fun MockCameraScreen(
             // 활성화 카드
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                elevation = 4.dp
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(
@@ -168,7 +172,7 @@ fun MockCameraScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "Mock Camera 활성화",
-                                style = MaterialTheme.typography.h6
+                                style = MaterialTheme.typography.titleLarge
                             )
                             Text(
                                 text = if (uiState.isEnabled) {
@@ -176,16 +180,13 @@ fun MockCameraScreen(
                                 } else {
                                     "실제 카메라 대신 미리 설정된 이미지 사용"
                                 },
-                                style = MaterialTheme.typography.caption,
-                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
                         }
                         Switch(
                             checked = uiState.isEnabled,
-                            onCheckedChange = { mockCameraViewModel.enableMockCamera(it) },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = MaterialTheme.colors.primary
-                            )
+                            onCheckedChange = { mockCameraViewModel.enableMockCamera(it) }
                         )
                     }
                 }
@@ -196,12 +197,12 @@ fun MockCameraScreen(
             // 카메라 모델 선택 카드
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                elevation = 4.dp
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = "카메라 모델 선택",
-                        style = MaterialTheme.typography.h6
+                        style = MaterialTheme.typography.titleLarge
                     )
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -225,8 +226,8 @@ fun MockCameraScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "선택된 모델: ${uiState.manufacturer} - ${uiState.cameraModel}",
-                            style = MaterialTheme.typography.body2,
-                            color = MaterialTheme.colors.primary
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
 
@@ -237,7 +238,7 @@ fun MockCameraScreen(
                             title = { Text("카메라 모델 선택") },
                             text = {
                                 Column {
-                                    Text("제조사 선택", style = MaterialTheme.typography.subtitle1)
+                                    Text("제조사 선택", style = MaterialTheme.typography.titleMedium)
                                     Spacer(modifier = Modifier.height(4.dp))
                                     cameraManufacturers.forEach { manufacturer ->
                                         Row(
@@ -259,7 +260,7 @@ fun MockCameraScreen(
                                     }
                                     Spacer(modifier = Modifier.height(12.dp))
                                     if (uiState.manufacturer.isNotEmpty()) {
-                                        Text("모델 선택", style = MaterialTheme.typography.subtitle1)
+                                        Text("모델 선택", style = MaterialTheme.typography.titleMedium)
                                         Spacer(modifier = Modifier.height(4.dp))
                                         val models =
                                             cameraModels[uiState.manufacturer].orEmpty()
@@ -308,19 +309,19 @@ fun MockCameraScreen(
             // 이미지 관리 카드
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                elevation = 4.dp
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = "Mock 이미지 관리",
-                        style = MaterialTheme.typography.h6
+                        style = MaterialTheme.typography.titleLarge
                     )
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
                         text = "등록된 이미지: ${uiState.imageCount}개",
-                        style = MaterialTheme.typography.body2,
-                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -355,19 +356,19 @@ fun MockCameraScreen(
             // 딜레이 설정 카드
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                elevation = 4.dp
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = "캡처 딜레이 설정",
-                        style = MaterialTheme.typography.h6
+                        style = MaterialTheme.typography.titleLarge
                     )
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
                         text = "현재 딜레이: ${uiState.delayMs}ms",
-                        style = MaterialTheme.typography.body2,
-                        color = MaterialTheme.colors.primary
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -379,19 +380,15 @@ fun MockCameraScreen(
                             mockCameraViewModel.setDelay(delaySliderValue.toInt())
                         },
                         valueRange = 0f..5000f,
-                        steps = 49, // 100ms 단위
-                        colors = SliderDefaults.colors(
-                            thumbColor = MaterialTheme.colors.primary,
-                            activeTrackColor = MaterialTheme.colors.primary
-                        )
+                        steps = 49 // 100ms 단위
                     )
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("0ms", style = MaterialTheme.typography.caption)
-                        Text("5000ms", style = MaterialTheme.typography.caption)
+                        Text("0ms", style = MaterialTheme.typography.bodySmall)
+                        Text("5000ms", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
@@ -401,7 +398,7 @@ fun MockCameraScreen(
             // 자동 캡처 설정 카드
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                elevation = 4.dp
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(
@@ -412,7 +409,7 @@ fun MockCameraScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "자동 캡처",
-                                style = MaterialTheme.typography.h6
+                                style = MaterialTheme.typography.titleLarge
                             )
                             Text(
                                 text = if (uiState.autoCapture) {
@@ -420,8 +417,8 @@ fun MockCameraScreen(
                                 } else {
                                     "정기적으로 자동 캡처 실행"
                                 },
-                                style = MaterialTheme.typography.caption,
-                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
                         }
                         Switch(
@@ -431,10 +428,7 @@ fun MockCameraScreen(
                                     it,
                                     uiState.autoCaptureInterval
                                 )
-                            },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = MaterialTheme.colors.primary
-                            )
+                            }
                         )
                     }
 
@@ -443,8 +437,8 @@ fun MockCameraScreen(
 
                         Text(
                             text = "캡처 간격: ${uiState.autoCaptureInterval}ms",
-                            style = MaterialTheme.typography.body2,
-                            color = MaterialTheme.colors.primary
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -459,19 +453,15 @@ fun MockCameraScreen(
                                 )
                             },
                             valueRange = 1000f..10000f,
-                            steps = 17, // 500ms 단위
-                            colors = SliderDefaults.colors(
-                                thumbColor = MaterialTheme.colors.primary,
-                                activeTrackColor = MaterialTheme.colors.primary
-                            )
+                            steps = 17 // 500ms 단위
                         )
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("1초", style = MaterialTheme.typography.caption)
-                            Text("10초", style = MaterialTheme.typography.caption)
+                            Text("1초", style = MaterialTheme.typography.bodySmall)
+                            Text("10초", style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
@@ -482,19 +472,19 @@ fun MockCameraScreen(
             // 에러 시뮬레이션 카드
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                elevation = 4.dp
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = "에러 시뮬레이션",
-                        style = MaterialTheme.typography.h6
+                        style = MaterialTheme.typography.titleLarge
                     )
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
                         text = "테스트용 에러를 시뮬레이션합니다",
-                        style = MaterialTheme.typography.caption,
-                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -505,7 +495,7 @@ fun MockCameraScreen(
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
-                            backgroundColor = MaterialTheme.colors.error
+                            containerColor = MaterialTheme.colorScheme.error
                         )
                     ) {
                         Icon(Icons.Default.Warning, contentDescription = null)
@@ -521,7 +511,7 @@ fun MockCameraScreen(
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
-                            backgroundColor = MaterialTheme.colors.error
+                            containerColor = MaterialTheme.colorScheme.error
                         )
                     ) {
                         Icon(Icons.Default.Warning, contentDescription = null)
@@ -608,11 +598,11 @@ fun MockCameraScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true, name = "Mock Camera Screen Preview")
 @Composable
 fun MockCameraScreenPreview() {
     CamConTheme(themeMode = ThemeMode.LIGHT) {
-        // 프리뷰용 간단한 화면 표시
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -622,8 +612,11 @@ fun MockCameraScreenPreview() {
                             Icon(Icons.Default.ArrowBack, contentDescription = "뒤로")
                         }
                     },
-                    backgroundColor = MaterialTheme.colors.primary,
-                    contentColor = MaterialTheme.colors.onPrimary
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 )
             }
         ) { paddingValues ->
@@ -631,12 +624,110 @@ fun MockCameraScreenPreview() {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
+                    .verticalScroll(rememberScrollState())
                     .padding(16.dp)
             ) {
-                Text(
-                    "Mock Camera 설정 화면 프리뷰",
-                    style = MaterialTheme.typography.h6
-                )
+                // 활성화 카드 프리뷰
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Mock Camera 활성화",
+                                    style = MaterialTheme.typography.titleLarge
+                                )
+                                Text(
+                                    text = "실제 카메라 대신 미리 설정된 이미지 사용",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                            }
+                            Switch(
+                                checked = false,
+                                onCheckedChange = {}
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 이미지 관리 카드 프리뷰
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Mock 이미지 관리",
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "등록된 이미지: 0개",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Button(
+                            onClick = {},
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.AddAPhoto, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("이미지 추가")
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 딜레이 설정 카드 프리뷰
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "캡처 딜레이 설정",
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "현재 딜레이: 1000ms",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Slider(
+                            value = 1000f,
+                            onValueChange = {},
+                            valueRange = 0f..5000f,
+                            steps = 49
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("0ms", style = MaterialTheme.typography.bodySmall)
+                            Text("5000ms", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
             }
         }
     }

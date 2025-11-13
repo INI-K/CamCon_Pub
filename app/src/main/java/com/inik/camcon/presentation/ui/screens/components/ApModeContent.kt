@@ -10,15 +10,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.Badge
-import androidx.compose.material.BadgedBox
-import androidx.compose.material.Button
-import androidx.compose.material.Card
-import androidx.compose.material.Icon
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Switch
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.GetApp
@@ -128,25 +129,25 @@ private fun WifiScanResultsCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = 4.dp
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
                 text = "🔎 주변 카메라 Wi‑Fi (${ssids.size}개)",
-                style = MaterialTheme.typography.h6,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colors.primary
+                color = MaterialTheme.colorScheme.primary
             )
 
             if (cameraSsids.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "📷 카메라 네트워크 (${cameraSsids.size}개)",
-                    style = MaterialTheme.typography.subtitle2,
+                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colors.primary
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
 
@@ -162,8 +163,12 @@ private fun WifiScanResultsCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 2.dp),
-                    elevation = 2.dp,
-                    backgroundColor = MaterialTheme.colors.primary.copy(alpha = 0.1f)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primary.copy(
+                            alpha = 0.1f
+                        )
+                    )
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -176,15 +181,15 @@ private fun WifiScanResultsCard(
                         ) {
                             Text(
                                 text = ssid,
-                                style = MaterialTheme.typography.body1,
+                                style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colors.primary
+                                color = MaterialTheme.colorScheme.primary
                             )
                             if (detectedManufacturer != null) {
                                 Text(
                                     text = "📷 $detectedManufacturer 카메라",
-                                    style = MaterialTheme.typography.caption,
-                                    color = MaterialTheme.colors.primary.copy(alpha = 0.8f)
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
                                 )
                             }
                         }
@@ -195,7 +200,7 @@ private fun WifiScanResultsCard(
                         ) {
                             Text(
                                 "연결",
-                                style = MaterialTheme.typography.caption
+                                style = MaterialTheme.typography.bodySmall
                             )
                         }
                     }
@@ -207,9 +212,9 @@ private fun WifiScanResultsCard(
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "📡 기타 네트워크 (${otherSsids.size}개)",
-                    style = MaterialTheme.typography.subtitle2,
+                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
                 Spacer(modifier = Modifier.height(4.dp))
 
@@ -222,8 +227,8 @@ private fun WifiScanResultsCard(
                     ) {
                         Text(
                             text = ssid,
-                            style = MaterialTheme.typography.body2,
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.9f),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f),
                             modifier = Modifier.weight(1f)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -246,25 +251,29 @@ private fun WifiScanResultsCard(
 private fun ApModeDescriptionCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = 4.dp,
-        backgroundColor = MaterialTheme.colors.primary.copy(alpha = 0.1f)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primary.copy(
+                alpha = 0.1f
+            )
+        )
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
                 text = "📡 AP 모드 (액세스 포인트)",
-                style = MaterialTheme.typography.h6,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colors.primary
+                color = MaterialTheme.colorScheme.primary
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = "카메라가 Wi-Fi 핫스팟을 생성하여 스마트폰이 직접 연결하는 방식입니다.",
-                style = MaterialTheme.typography.body2,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f)
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -280,8 +289,8 @@ private fun ApModeDescriptionCard() {
             apModeSteps.forEach { step ->
                 Text(
                     text = step,
-                    style = MaterialTheme.typography.caption,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     modifier = Modifier.padding(vertical = 1.dp)
                 )
             }
@@ -290,15 +299,15 @@ private fun ApModeDescriptionCard() {
 
             Text(
                 text = "💡 장점: 설정이 간단하고 빠른 연결이 가능합니다.",
-                style = MaterialTheme.typography.caption,
-                color = MaterialTheme.colors.primary,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Medium
             )
 
             Text(
                 text = "⚠️ 단점: 스마트폰이 인터넷에 연결되지 않습니다.",
-                style = MaterialTheme.typography.caption,
-                color = MaterialTheme.colors.error,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
                 fontWeight = FontWeight.Medium
             )
         }
@@ -315,32 +324,33 @@ private fun NetworkStatusCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = 4.dp,
-        backgroundColor = if (wifiNetworkState.isConnected) {
-            MaterialTheme.colors.primary.copy(alpha = 0.1f)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = if (wifiNetworkState.isConnected) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
         } else {
-            MaterialTheme.colors.error.copy(alpha = 0.1f)
+            MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
         }
+        )
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
                 text = "📶 실시간 네트워크 상태",
-                style = MaterialTheme.typography.h6,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colors.primary
+                color = MaterialTheme.colorScheme.primary
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = ptpipViewModel.getNetworkStatusMessage(),
-                style = MaterialTheme.typography.body2,
+                style = MaterialTheme.typography.bodyMedium,
                 color = if (wifiNetworkState.isConnected) {
-                    MaterialTheme.colors.primary
+                    MaterialTheme.colorScheme.primary
                 } else {
-                    MaterialTheme.colors.error
+                    MaterialTheme.colorScheme.error
                 },
                 fontWeight = FontWeight.Medium
             )
@@ -349,8 +359,8 @@ private fun NetworkStatusCard(
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "감지된 카메라 IP: ${wifiNetworkState.detectedCameraIP}",
-                    style = MaterialTheme.typography.caption,
-                    color = MaterialTheme.colors.primary
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
 
@@ -358,8 +368,8 @@ private fun NetworkStatusCard(
 
             Text(
                 text = ptpipViewModel.getComprehensiveStatusMessage(),
-                style = MaterialTheme.typography.caption,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
             )
         }
     }
@@ -375,7 +385,7 @@ private fun AutoReconnectCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = 4.dp
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -389,9 +399,9 @@ private fun AutoReconnectCard(
                 ) {
                     Text(
                         text = "🔄 자동 재연결",
-                        style = MaterialTheme.typography.h6,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colors.primary
+                        color = MaterialTheme.colorScheme.primary
                     )
 
                     Spacer(modifier = Modifier.height(4.dp))
@@ -402,8 +412,8 @@ private fun AutoReconnectCard(
                         } else {
                             "수동으로 카메라 연결 관리"
                         },
-                        style = MaterialTheme.typography.body2,
-                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
                 }
 
@@ -427,12 +437,13 @@ private fun CameraAPConnectionCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = 4.dp,
-        backgroundColor = if (wifiCapabilities.isConnectedToCameraAP) {
-            MaterialTheme.colors.primary.copy(alpha = 0.1f)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = if (wifiCapabilities.isConnectedToCameraAP) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
         } else {
-            MaterialTheme.colors.error.copy(alpha = 0.1f)
+            MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
         }
+        )
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -443,12 +454,12 @@ private fun CameraAPConnectionCard(
                 } else {
                     "❌ 카메라 AP에 연결되지 않음"
                 },
-                style = MaterialTheme.typography.h6,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = if (wifiCapabilities.isConnectedToCameraAP) {
-                    MaterialTheme.colors.primary
+                    MaterialTheme.colorScheme.primary
                 } else {
-                    MaterialTheme.colors.error
+                    MaterialTheme.colorScheme.error
                 }
             )
 
@@ -458,24 +469,24 @@ private fun CameraAPConnectionCard(
                 wifiCapabilities.networkName?.let { networkName ->
                     Text(
                         text = "연결된 네트워크: $networkName",
-                        style = MaterialTheme.typography.body2,
-                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f)
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                     )
                 }
 
                 wifiCapabilities.detectedCameraIP?.let { cameraIP ->
                     Text(
                         text = "감지된 카메라 IP: $cameraIP",
-                        style = MaterialTheme.typography.body2,
-                        color = MaterialTheme.colors.primary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Medium
                     )
                 }
             } else {
                 Text(
                     text = "카메라 Wi-Fi 핫스팟에 연결 후 카메라 검색을 시작할 수 있습니다.",
-                    style = MaterialTheme.typography.body2,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f)
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                 )
             }
         }
@@ -528,7 +539,7 @@ private fun ApModeContentPreview() {
             item {
                 Text(
                     text = "카메라 연결 UI 영역",
-                    style = MaterialTheme.typography.h6,
+                    style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(16.dp)
                 )
             }
