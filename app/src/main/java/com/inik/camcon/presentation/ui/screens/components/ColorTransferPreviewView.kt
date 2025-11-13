@@ -17,13 +17,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.ButtonDefaults
-import androidx.compose.material.Card
-import androidx.compose.material.Divider
-import androidx.compose.material.Icon
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.OutlinedButton
-import androidx.compose.material.Text
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDownward
@@ -36,6 +38,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
@@ -57,7 +60,7 @@ fun ColorTransferPreviewView(
         modifier = modifier
             .fillMaxWidth()
             .height(420.dp),
-        elevation = 4.dp,
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(
@@ -69,8 +72,8 @@ fun ColorTransferPreviewView(
                     .fillMaxWidth()
                     .weight(1f)
                     .background(
-                        if (enabled) MaterialTheme.colors.surface
-                        else MaterialTheme.colors.surface.copy(alpha = 0.6f)
+                        if (enabled) MaterialTheme.colorScheme.surface
+                        else MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
                     )
             ) {
                 val referenceClick = if (enabled) onReferenceImageClick else ({})
@@ -90,7 +93,7 @@ fun ColorTransferPreviewView(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(40.dp)
-                    .background(MaterialTheme.colors.primary.copy(alpha = 0.1f)),
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
                 Row(
@@ -99,21 +102,21 @@ fun ColorTransferPreviewView(
                     Icon(
                         imageVector = Icons.Default.ArrowDownward,
                         contentDescription = null,
-                        tint = MaterialTheme.colors.primary,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "색감 전송",
-                        style = MaterialTheme.typography.caption,
+                        style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colors.primary
+                        color = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Icon(
                         imageVector = Icons.Default.ArrowDownward,
                         contentDescription = null,
-                        tint = MaterialTheme.colors.primary,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -121,7 +124,7 @@ fun ColorTransferPreviewView(
 
             // 구분선
             Divider(
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.2f),
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
                 thickness = 1.dp
             )
 
@@ -131,8 +134,8 @@ fun ColorTransferPreviewView(
                     .fillMaxWidth()
                     .weight(1f)
                     .background(
-                        if (enabled) MaterialTheme.colors.surface
-                        else MaterialTheme.colors.surface.copy(alpha = 0.6f)
+                        if (enabled) MaterialTheme.colorScheme.surface
+                        else MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
                     )
             ) {
                 val targetClick = if (enabled) onTargetImageClick else ({})
@@ -182,8 +185,8 @@ private fun ColorTransferImageSection(
                         .clip(RoundedCornerShape(8.dp))
                         .border(
                             1.dp,
-                            if (enabled) MaterialTheme.colors.onSurface.copy(alpha = 0.2f)
-                            else MaterialTheme.colors.onSurface.copy(alpha = 0.1f),
+                            if (enabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
                             RoundedCornerShape(8.dp)
                         )
                 ) {
@@ -217,19 +220,19 @@ private fun ColorTransferImageSection(
                 ) {
                     Text(
                         text = title,
-                        style = MaterialTheme.typography.subtitle1,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = if (enabled) MaterialTheme.colors.onSurface 
-                                else MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                        color = if (enabled) MaterialTheme.colorScheme.onSurface 
+                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                     
                     Spacer(modifier = Modifier.height(4.dp))
                     
                     Text(
                         text = subtitle,
-                        style = MaterialTheme.typography.body2,
-                        color = if (enabled) MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-                                else MaterialTheme.colors.onSurface.copy(alpha = 0.4f)
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (enabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                     )
                     
                     Spacer(modifier = Modifier.height(8.dp))
@@ -237,24 +240,24 @@ private fun ColorTransferImageSection(
                     val file = File(imagePath)
                     Text(
                         text = "파일명: ${file.name}",
-                        style = MaterialTheme.typography.caption,
-                        color = if (enabled) MaterialTheme.colors.onSurface.copy(alpha = 0.5f)
-                                else MaterialTheme.colors.onSurface.copy(alpha = 0.3f)
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (enabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                     )
                     
                     Text(
                         text = "크기: ${file.length() / 1024} KB",
-                        style = MaterialTheme.typography.caption,
-                        color = if (enabled) MaterialTheme.colors.onSurface.copy(alpha = 0.5f)
-                                else MaterialTheme.colors.onSurface.copy(alpha = 0.3f)
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (enabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                     )
                     
                     if (enabled) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "탭하여 다른 이미지 선택",
-                            style = MaterialTheme.typography.caption,
-                            color = MaterialTheme.colors.primary.copy(alpha = 0.8f)
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
                         )
                     }
                 }
@@ -269,18 +272,18 @@ private fun ColorTransferImageSection(
                     imageVector = if (enabled) Icons.Default.Add else Icons.Default.Image,
                     contentDescription = null,
                     modifier = Modifier.size(48.dp),
-                    tint = if (enabled) MaterialTheme.colors.primary.copy(alpha = 0.7f)
-                           else MaterialTheme.colors.onSurface.copy(alpha = 0.3f)
+                    tint = if (enabled) MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                           else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                 )
                 
                 Spacer(modifier = Modifier.height(12.dp))
                 
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.subtitle1,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = if (enabled) MaterialTheme.colors.onSurface 
-                            else MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                    color = if (enabled) MaterialTheme.colorScheme.onSurface 
+                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     textAlign = TextAlign.Center
                 )
                 
@@ -288,9 +291,9 @@ private fun ColorTransferImageSection(
                 
                 Text(
                     text = placeholder,
-                    style = MaterialTheme.typography.body2,
-                    color = if (enabled) MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-                            else MaterialTheme.colors.onSurface.copy(alpha = 0.4f),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (enabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                     textAlign = TextAlign.Center
                 )
                 
@@ -300,7 +303,7 @@ private fun ColorTransferImageSection(
                     OutlinedButton(
                         onClick = onClick,
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colors.primary
+                            contentColor = MaterialTheme.colorScheme.primary
                         )
                     ) {
                         Icon(
@@ -313,6 +316,44 @@ private fun ColorTransferImageSection(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Color Transfer Preview View - 빈 상태 프리뷰
+ */
+@Preview(name = "Color Transfer Preview - Empty", showBackground = true)
+@Composable
+private fun ColorTransferPreviewViewEmptyPreview() {
+    MaterialTheme {
+        Box(modifier = Modifier.padding(16.dp)) {
+            ColorTransferPreviewView(
+                referenceImagePath = null,
+                targetImagePath = null,
+                onReferenceImageClick = {},
+                onTargetImageClick = {},
+                enabled = true
+            )
+        }
+    }
+}
+
+/**
+ * Color Transfer Preview View - 비활성화 상태 프리뷰
+ */
+@Preview(name = "Color Transfer Preview - Disabled", showBackground = true)
+@Composable
+private fun ColorTransferPreviewViewDisabledPreview() {
+    MaterialTheme {
+        Box(modifier = Modifier.padding(16.dp)) {
+            ColorTransferPreviewView(
+                referenceImagePath = null,
+                targetImagePath = null,
+                onReferenceImageClick = {},
+                onTargetImageClick = {},
+                enabled = false
+            )
         }
     }
 }
