@@ -19,10 +19,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Card
-import androidx.compose.material.Icon
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.runtime.Composable
@@ -88,8 +89,8 @@ fun PhotoThumbnail(
                 onClick = onClick,
                 onLongClick = onLongClick
             ),
-        elevation = 6.dp,
-        backgroundColor = MaterialTheme.colors.surface
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Box {
             // 선택된 상태일 때 오버레이 추가
@@ -203,7 +204,7 @@ fun PhotoThumbnail(
                 Text(
                     text = photo.name,
                     color = Color.White,
-                    style = MaterialTheme.typography.caption,
+                    style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -225,7 +226,7 @@ fun PhotoThumbnail(
                     Text(
                         text = formatFileSize(photo.size),
                         color = Color.White,
-                        style = MaterialTheme.typography.caption,
+                        style = MaterialTheme.typography.bodySmall,
                         fontSize = 8.sp
                     )
                 }
@@ -532,22 +533,22 @@ private fun ThumbnailPlaceholder() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colors.onSurface.copy(alpha = 0.1f)),
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             androidx.compose.material.CircularProgressIndicator(
-                color = MaterialTheme.colors.primary,
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp),
                 strokeWidth = 2.dp
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "로딩 중...",
-                style = MaterialTheme.typography.caption,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                 fontSize = 9.sp
             )
         }
@@ -621,8 +622,8 @@ fun FluidPhotoThumbnail(
                 onClick = onClick,
                 onLongClick = onLongClick
             ),
-        elevation = 6.dp,
-        backgroundColor = MaterialTheme.colors.surface
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Box {
             // 선택된 상태일 때 오버레이 추가
@@ -736,7 +737,7 @@ fun FluidPhotoThumbnail(
                 Text(
                     text = photo.name,
                     color = Color.White,
-                    style = MaterialTheme.typography.caption,
+                    style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -758,7 +759,7 @@ fun FluidPhotoThumbnail(
                     Text(
                         text = formatFileSize(photo.size),
                         color = Color.White,
-                        style = MaterialTheme.typography.caption,
+                        style = MaterialTheme.typography.bodySmall,
                         fontSize = 8.sp
                     )
                 }

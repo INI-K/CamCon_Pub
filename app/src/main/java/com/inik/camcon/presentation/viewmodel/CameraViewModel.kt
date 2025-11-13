@@ -6,7 +6,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.CameraNative
-import com.inik.camcon.data.repository.CameraRepositoryImpl
+import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
 import com.inik.camcon.domain.manager.CameraSettingsManager
 import com.inik.camcon.domain.manager.ErrorHandlingManager
 import com.inik.camcon.domain.model.Camera
@@ -42,7 +42,8 @@ class CameraViewModel @Inject constructor(
     private val connectionManager: CameraConnectionManager,
     private val operationsManager: CameraOperationsManager,
     private val settingsManager: CameraSettingsManager,
-    private val errorHandlingManager: ErrorHandlingManager
+    private val errorHandlingManager: ErrorHandlingManager,
+    private val appPreferencesDataSource: AppPreferencesDataSource
 ) : ViewModel() {
 
     companion object {
@@ -83,6 +84,7 @@ class CameraViewModel @Inject constructor(
     init {
         initializeViewModel()
         loadSubscriptionTierAtStartup()
+        observeRawDownloadSetting()
     }
 
     /**
@@ -128,12 +130,30 @@ class CameraViewModel @Inject constructor(
                 CameraNative.setSubscriptionTier(tierInt)
                 Log.d(TAG, "✅ 앱 시작 시 구독 티어 설정 완료: $tier (네이티브: $tierInt)")
 
+                // RAW 파일 다운로드 설정도 함께 로드
+                val isRawDownloadEnabled = appPreferencesDataSource.isRawFileDownloadEnabled.first()
+                CameraNative.setRawFileDownloadEnabled(isRawDownloadEnabled)
+                Log.d(TAG, "✅ 앱 시작 시 RAW 파일 다운로드 설정 완료: $isRawDownloadEnabled")
+
             } catch (e: Exception) {
                 Log.e(TAG, "❌ 앱 시작 시 구독 티어 로드 실패", e)
                 // 실패 시 기본값(FREE) 설정
                 CameraNative.setSubscriptionTier(0)
+                CameraNative.setRawFileDownloadEnabled(true) // 기본값: 활성화
             }
         }
+    }
+
+    /**
+     * RAW 파일 다운로드 설정 관찰
+     */
+    private fun observeRawDownloadSetting() {
+        appPreferencesDataSource.isRawFileDownloadEnabled
+            .onEach { enabled ->
+                CameraNative.setRawFileDownloadEnabled(enabled)
+                Log.d(TAG, "🎯 RAW 파일 다운로드 설정 업데이트: $enabled")
+            }
+            .launchIn(viewModelScope)
     }
 
     /**
@@ -309,13 +329,11 @@ class CameraViewModel @Inject constructor(
      */
     private fun registerRawLimitCallback() {
         try {
-            if (cameraRepository is CameraRepositoryImpl) {
-                cameraRepository.setRawFileRestrictionCallback { fileName, restrictionMessage ->
-                    Log.d(TAG, "RAW 파일 제한: $fileName - $restrictionMessage")
-                    uiStateManager.setRawFileRestriction(fileName, restrictionMessage)
-                }
-                Log.d(TAG, "RAW 파일 제한 콜백 등록 완료")
+            cameraRepository.setRawFileRestrictionCallback { fileName, restrictionMessage ->
+                Log.d(TAG, "RAW 파일 제한: $fileName - $restrictionMessage")
+                uiStateManager.setRawFileRestriction(fileName, restrictionMessage)
             }
+            Log.d(TAG, "RAW 파일 제한 콜백 등록 완료")
         } catch (e: Exception) {
             Log.e(TAG, "RAW 파일 제한 콜백 등록 실패", e)
         }
@@ -655,9 +673,7 @@ class CameraViewModel @Inject constructor(
         errorHandlingManager.cleanup()
 
         // RAW 제한 콜백 해제
-        if (cameraRepository is CameraRepositoryImpl) {
-            cameraRepository.setRawFileRestrictionCallback { _, _ -> }
-        }
+        cameraRepository.setRawFileRestrictionCallback(null)
 
         Log.d(TAG, "ViewModel 정리 완료")
     }
