@@ -22,15 +22,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Card
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.OutlinedButton
-import androidx.compose.material.Scaffold
-import androidx.compose.material.Text
-import androidx.compose.material.TopAppBar
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
@@ -105,7 +107,7 @@ fun ColorTransferImagePickerScreen(
                     if (selectedLocalPath != null) {
                         IconButton(
                             onClick = {
-                            selectedLocalPath?.let { path ->
+                                selectedLocalPath?.let { path ->
                                     onImageSelected(path)
                                 }
                             }
@@ -114,8 +116,12 @@ fun ColorTransferImagePickerScreen(
                         }
                     }
                 },
-                backgroundColor = MaterialTheme.colors.primary,
-                contentColor = MaterialTheme.colors.onPrimary
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         }
     ) { paddingValues ->
@@ -129,21 +135,21 @@ fun ColorTransferImagePickerScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                backgroundColor = MaterialTheme.colors.surface
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
                         text = "색감 전송용 참조 이미지 선택",
-                        style = MaterialTheme.typography.h6,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "카메라에서 받은 사진에 적용할 색감의 참조 이미지를 선택하세요. 선택한 이미지의 색감이 촬영된 사진에 자동으로 적용됩니다.",
-                        style = MaterialTheme.typography.body2,
-                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
                 }
             }
@@ -169,7 +175,7 @@ fun ColorTransferImagePickerScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
-                    backgroundColor = Color.Red.copy(alpha = 0.1f)
+                    colors = CardDefaults.cardColors(containerColor = Color.Red.copy(alpha = 0.1f))
                 ) {
                     Text(
                         text = message,
@@ -201,19 +207,19 @@ fun ColorTransferImagePickerScreen(
                             Icons.Default.Photo,
                             contentDescription = null,
                             modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colors.onSurface.copy(alpha = 0.4f)
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = "사용 가능한 이미지가 없습니다",
-                            style = MaterialTheme.typography.body1,
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "갤러리에서 이미지를 추가해보세요",
-                            style = MaterialTheme.typography.body2,
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.4f)
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                         )
                     }
                 }
@@ -249,7 +255,7 @@ private fun ImageItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onImageClick() },
-        elevation = if (isSelected) 8.dp else 2.dp,
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 8.dp else 2.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
         Row(
@@ -263,7 +269,7 @@ private fun ImageItem(
                 modifier = Modifier
                     .size(80.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colors.surface)
+                    .background(MaterialTheme.colorScheme.surface)
             ) {
                 Image(
                     painter = rememberAsyncImagePainter(
@@ -290,7 +296,7 @@ private fun ImageItem(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(
-                                MaterialTheme.colors.primary.copy(alpha = 0.3f),
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
                                 RoundedCornerShape(8.dp)
                             ),
                         contentAlignment = Alignment.Center
@@ -298,7 +304,7 @@ private fun ImageItem(
                         Icon(
                             Icons.Default.Check,
                             contentDescription = "선택됨",
-                            tint = MaterialTheme.colors.primary,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(32.dp)
                         )
                     }
@@ -313,7 +319,7 @@ private fun ImageItem(
             ) {
                 Text(
                     text = fileName,
-                    style = MaterialTheme.typography.body1,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                 )
 
@@ -321,8 +327,8 @@ private fun ImageItem(
 
                 Text(
                     text = "크기: ${file.length() / 1024} KB",
-                    style = MaterialTheme.typography.caption,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
             }
         }
