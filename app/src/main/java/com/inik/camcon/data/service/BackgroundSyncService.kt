@@ -263,27 +263,38 @@ class BackgroundSyncService : Service() {
         syncJob?.cancel()
 
         syncJob = serviceScope?.launch {
-            LogcatManager.d(TAG, "백그라운드 동기화 작업 시작")
+            try {
+                LogcatManager.d(TAG, "백그라운드 동기화 작업 시작")
 
-            while (true) {
-                try {
-                    // Firebase 연결 상태 확인 및 유지
-                    checkFirebaseConnection()
+                while (true) {
+                    try {
+                        // Firebase 연결 상태 확인 및 유지
+                        checkFirebaseConnection()
 
-                    // 필요시 파일 동기화 상태 확인
-                    checkFileSyncStatus()
+                        // 필요시 파일 동기화 상태 확인
+                        checkFileSyncStatus()
 
-                    // Wake Lock 갱신 (10분마다)
-                    renewWakeLock()
+                        // Wake Lock 갱신 (10분마다)
+                        renewWakeLock()
 
-                    // 30초 대기
-                    delay(SYNC_INTERVAL)
+                        // 30초 대기
+                        delay(SYNC_INTERVAL)
 
-                } catch (e: Exception) {
-                    LogcatManager.w(TAG, "백그라운드 동기화 작업 중 오류", e)
-                    // 오류 발생 시 1분 대기 후 재시도
-                    delay(60_000L)
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        // 코루틴 취소는 정상 종료
+                        LogcatManager.d(TAG, "백그라운드 동기화 작업이 정상적으로 취소됨")
+                        throw e // CancellationException은 다시 throw해야 함
+                    } catch (e: Exception) {
+                        LogcatManager.w(TAG, "백그라운드 동기화 작업 중 오류", e)
+                        // 오류 발생 시 1분 대기 후 재시도
+                        delay(60_000L)
+                    }
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                LogcatManager.d(TAG, "백그라운드 동기화 작업 종료")
+                // CancellationException은 정상 종료이므로 아무것도 하지 않음
+            } catch (e: Exception) {
+                LogcatManager.e(TAG, "백그라운드 동기화 작업 중 치명적 오류", e)
             }
         }
     }
@@ -295,56 +306,69 @@ class BackgroundSyncService : Service() {
         eventListenerJob?.cancel()
 
         eventListenerJob = serviceScope?.launch {
-            LogcatManager.d(TAG, " 백그라운드 이벤트 리스너 관리자 시작")
+            try {
+                LogcatManager.d(TAG, " 백그라운드 이벤트 리스너 관리자 시작")
 
-            globalConnectionManager.globalConnectionState.collect { state ->
-                if (state.isAnyConnectionActive) {
-                    // 카메라 연결된 경우 - 이벤트 리스너 상태 확인
-                    val isEventListenerActive = cameraRepository.isEventListenerActive().first()
+                globalConnectionManager.globalConnectionState.collect { state ->
+                    if (state.isAnyConnectionActive) {
+                        // 카메라 연결된 경우 - 이벤트 리스너 상태 확인
+                        val isEventListenerActive = cameraRepository.isEventListenerActive().first()
 
-                    LogcatManager.d(
-                        TAG,
-                        " 카메라 연결됨: ${state.activeConnectionType}, 이벤트 리스너: $isEventListenerActive"
-                    )
+                        LogcatManager.d(
+                            TAG,
+                            " 카메라 연결됨: ${state.activeConnectionType}, 이벤트 리스너: $isEventListenerActive"
+                        )
 
-                    if (!isEventListenerActive) {
-                        LogcatManager.d(TAG, " 카메라는 연결되어 있으나 이벤트 리스너가 비활성 - 재시작 시도")
+                        if (!isEventListenerActive) {
+                            LogcatManager.d(TAG, " 카메라는 연결되어 있으나 이벤트 리스너가 비활성 - 재시작 시도")
 
-                        try {
-                            val result = cameraRepository.startCameraEventListener()
-                            if (result.isSuccess) {
-                                LogcatManager.d(TAG, " 백그라운드에서 이벤트 리스너 재시작 성공")
-                                updateNotificationText("카메라 이벤트 리스너 활성 - 사진 수신 대기 중")
-                            } else {
-                                LogcatManager.w(TAG, " 백그라운드에서 이벤트 리스너 재시작 실패")
-                                updateNotificationText("카메라 연결 확인 중...")
+                            try {
+                                val result = cameraRepository.startCameraEventListener()
+                                if (result.isSuccess) {
+                                    LogcatManager.d(TAG, " 백그라운드에서 이벤트 리스너 재시작 성공")
+                                    updateNotificationText("카메라 이벤트 리스너 활성 - 사진 수신 대기 중")
+                                } else {
+                                    LogcatManager.w(TAG, " 백그라운드에서 이벤트 리스너 재시작 실패")
+                                    updateNotificationText("카메라 연결 확인 중...")
+                                }
+                            } catch (e: kotlinx.coroutines.CancellationException) {
+                                LogcatManager.d(TAG, "이벤트 리스너 재시작 작업이 취소됨")
+                                throw e
+                            } catch (e: Exception) {
+                                LogcatManager.e(TAG, "백그라운드 이벤트 리스너 시작 중 예외", e)
                             }
+
+                        } else if (isEventListenerActive) {
+                            LogcatManager.d(TAG, " 카메라 연결 및 이벤트 리스너 정상 작동 중")
+                            updateNotificationText("카메라 이벤트 리스너 활성 - 사진 수신 대기 중")
+                        }
+                    } else {
+                        // 카메라 연결이 끊어지면 모든 이벤트 리스너 완전 정리
+                        try {
+                            val stopResult = cameraRepository.stopCameraEventListener()
+                            if (stopResult.isSuccess) {
+                                LogcatManager.d(TAG, " 백그라운드에서 이벤트 리스너 정리 성공")
+                            } else {
+                                LogcatManager.w(TAG, " 백그라운드에서 이벤트 리스너 정리 실패")
+                            }
+                        } catch (e: kotlinx.coroutines.CancellationException) {
+                            LogcatManager.d(TAG, "이벤트 리스너 정리 작업이 취소됨")
+                            throw e
                         } catch (e: Exception) {
-                            LogcatManager.e(TAG, "백그라운드 이벤트 리스너 시작 중 예외", e)
+                            LogcatManager.e(TAG, "백그라운드 이벤트 리스너 정리 중 예외", e)
                         }
 
-                    } else if (isEventListenerActive) {
-                        LogcatManager.d(TAG, " 카메라 연결 및 이벤트 리스너 정상 작동 중")
-                        updateNotificationText("카메라 이벤트 리스너 활성 - 사진 수신 대기 중")
-                    }
-                } else {
-                    // 카메라 연결이 끊어지면 모든 이벤트 리스너 완전 정리
-                    try {
-                        val stopResult = cameraRepository.stopCameraEventListener()
-                        if (stopResult.isSuccess) {
-                            LogcatManager.d(TAG, " 백그라운드에서 이벤트 리스너 정리 성공")
-                        } else {
-                            LogcatManager.w(TAG, " 백그라운드에서 이벤트 리스너 정리 실패")
-                        }
-                    } catch (e: Exception) {
-                        LogcatManager.e(TAG, "백그라운드 이벤트 리스너 정리 중 예외", e)
-                    }
+                        updateNotificationText("카메라 연결 대기 중...")
 
-                    updateNotificationText("카메라 연결 대기 중...")
-
-                    // 카메라 연결이 끊어지면 리스너 관리 루프 중지하고 대기 모드로 전환
-                    LogcatManager.d(TAG, " 카메라 연결 끊김 - 이벤트 리스너 관리 대기 모드로 전환")
+                        // 카메라 연결이 끊어지면 리스너 관리 루프 중지하고 대기 모드로 전환
+                        LogcatManager.d(TAG, " 카메라 연결 끊김 - 이벤트 리스너 관리 대기 모드로 전환")
+                    }
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                LogcatManager.d(TAG, "백그라운드 이벤트 리스너 관리자가 정상적으로 종료됨")
+                // CancellationException은 정상 종료이므로 아무것도 하지 않음
+            } catch (e: Exception) {
+                LogcatManager.e(TAG, "백그라운드 이벤트 리스너 관리자 중 치명적 오류", e)
             }
         }
     }

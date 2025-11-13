@@ -16,13 +16,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.Button
-import androidx.compose.material.Card
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.Icon
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.OutlinedButton
-import androidx.compose.material.Text
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Settings
@@ -58,7 +59,7 @@ fun WifiStatusCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = 4.dp
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -76,7 +77,7 @@ fun WifiStatusCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = if (isWifiConnected) "Wi-Fi 연결됨" else "Wi-Fi 연결 안됨",
-                        style = MaterialTheme.typography.h6,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
@@ -89,8 +90,8 @@ fun WifiStatusCard(
                         } else {
                             "PTPIP 기능을 활성화하세요"
                         },
-                        style = MaterialTheme.typography.body2,
-                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
                 }
 
@@ -145,16 +146,16 @@ fun WifiCapabilitiesCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = 4.dp
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
                 text = "Wi-Fi 기능 정보",
-                style = MaterialTheme.typography.h6,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colors.primary
+                color = MaterialTheme.colorScheme.primary
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -214,8 +215,8 @@ fun WifiCapabilitiesCard(
 
                 Text(
                     text = "💡 Wi-Fi 네트워크 이름을 확인하려면 위치 권한이 필요합니다.",
-                    style = MaterialTheme.typography.caption,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -232,8 +233,8 @@ fun WifiCapabilitiesCard(
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "💡 STA 동시 연결 기능은 Android 10 (API 29) 이상에서 지원됩니다.",
-                    style = MaterialTheme.typography.caption,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
             }
         }
@@ -253,7 +254,7 @@ fun ConnectionStatusCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = 4.dp
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -276,7 +277,7 @@ fun ConnectionStatusCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = selectedCamera?.name ?: "카메라",
-                        style = MaterialTheme.typography.h6,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
@@ -286,8 +287,8 @@ fun ConnectionStatusCard(
                             PtpipConnectionState.ERROR -> "연결 오류"
                             else -> "연결 안됨"
                         },
-                        style = MaterialTheme.typography.body2,
-                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
                 }
             }
@@ -296,7 +297,7 @@ fun ConnectionStatusCard(
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "${cameraInfo.manufacturer} ${cameraInfo.model}",
-                    style = MaterialTheme.typography.caption
+                    style = MaterialTheme.typography.bodySmall
                 )
             }
 
@@ -362,7 +363,7 @@ fun CameraConnectionContent(
         ) {
             Text(
                 text = if (isDiscovering) "카메라 검색 중..." else "발견된 카메라 (${discoveredCameras.size})",
-                style = MaterialTheme.typography.h6,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
 
@@ -494,12 +495,14 @@ fun CameraItem(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = if (isSelected) 8.dp else 2.dp,
-        backgroundColor = if (isSelected) {
-            MaterialTheme.colors.primary.copy(alpha = 0.1f)
-        } else {
-            MaterialTheme.colors.surface
-        }
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 8.dp else 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+            } else {
+                MaterialTheme.colorScheme.surface
+            }
+        )
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -515,17 +518,17 @@ fun CameraItem(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = camera.name,
-                    style = MaterialTheme.typography.subtitle1,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = "${camera.ipAddress}:${camera.port}",
-                    style = MaterialTheme.typography.body2,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
                 Text(
                     text = if (camera.isOnline) "온라인" else "오프라인",
-                    style = MaterialTheme.typography.caption,
+                    style = MaterialTheme.typography.bodySmall,
                     color = if (camera.isOnline) Color.Green else Color.Red
                 )
             }
@@ -536,7 +539,7 @@ fun CameraItem(
                 if (isConnecting && isSelected) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(16.dp),
-                        color = MaterialTheme.colors.onPrimary
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
                     Text(
@@ -555,7 +558,7 @@ fun CameraItem(
 private fun InfoRow(
     label: String,
     value: String,
-    valueColor: Color = MaterialTheme.colors.onSurface
+    valueColor: Color = MaterialTheme.colorScheme.onSurface
 ) {
     Row(
         modifier = Modifier
@@ -565,12 +568,12 @@ private fun InfoRow(
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.body2,
-            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.body2,
+            style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
             color = valueColor
         )
@@ -598,13 +601,13 @@ private fun EmptyStateCard(
                 imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier.size(48.dp),
-                tint = MaterialTheme.colors.onSurface.copy(alpha = 0.5f)
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = message,
-                style = MaterialTheme.typography.body2,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
             )
         }
     }
@@ -635,7 +638,7 @@ private fun LoadingStateCard(message: String) {
 @Preview(name = "Wi-Fi Status Card - Connected", showBackground = true)
 @Composable
 private fun WifiStatusCardConnectedPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         WifiStatusCard(
             isWifiConnected = true,
             isPtpipEnabled = true,
@@ -647,7 +650,7 @@ private fun WifiStatusCardConnectedPreview() {
 @Preview(name = "Wi-Fi Status Card - Disconnected", showBackground = true)
 @Composable
 private fun WifiStatusCardDisconnectedPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         WifiStatusCard(
             isWifiConnected = false,
             isPtpipEnabled = false,
@@ -659,7 +662,7 @@ private fun WifiStatusCardDisconnectedPreview() {
 @Preview(name = "Camera Item - Online", showBackground = true)
 @Composable
 private fun CameraItemOnlinePreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         CameraItem(
             camera = PtpipCamera(
                 ipAddress = "192.168.1.100",
@@ -678,7 +681,7 @@ private fun CameraItemOnlinePreview() {
 @Preview(name = "Camera Item - Selected", showBackground = true)
 @Composable
 private fun CameraItemSelectedPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         CameraItem(
             camera = PtpipCamera(
                 ipAddress = "192.168.1.100",

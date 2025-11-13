@@ -8,6 +8,7 @@ import android.util.Log
 import android.view.View
 import android.view.WindowManager
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.google.firebase.FirebaseApp
 import dagger.hilt.android.HiltAndroidApp
 
@@ -55,16 +56,23 @@ class CamCon : Application() {
 
     /**
      * Edge-to-Edge 전역 설정
-     * Compose Scaffold가 패딩을 자동으로 처리하므로 여기서는 시스템 UI만 투명하게 설정
+     * 모든 액티비티에서 일관된 시스템 바 처리를 보장
      */
     private fun setupEdgeToEdge(activity: Activity) {
         try {
-            // WindowCompat을 사용하여 시스템 바를 앱 콘텐츠 위에 표시
+            // 1. WindowCompat을 사용하여 시스템 바를 앱 콘텐츠 위에 표시
             WindowCompat.setDecorFitsSystemWindows(activity.window, false)
 
-            Log.d(TAG, "Edge-to-Edge 설정 완료: ${activity.javaClass.simpleName}")
+            // 2. 시스템 바 투명 설정
+            activity.window.statusBarColor = android.graphics.Color.TRANSPARENT
+            activity.window.navigationBarColor = android.graphics.Color.TRANSPARENT
+
+            // 3. 시스템 바 아이콘 색상은 Compose Theme의 SideEffect에서 자동으로 조정됨
+            // 여기서는 아무것도 설정하지 않음
+
+            Log.d(TAG, "✅ Edge-to-Edge 설정 완료: ${activity.javaClass.simpleName}")
         } catch (e: Exception) {
-            Log.w(TAG, "Edge-to-Edge 설정 실패: ${activity.javaClass.simpleName}", e)
+            Log.w(TAG, "⚠️ Edge-to-Edge 설정 실패: ${activity.javaClass.simpleName}", e)
         }
     }
 
