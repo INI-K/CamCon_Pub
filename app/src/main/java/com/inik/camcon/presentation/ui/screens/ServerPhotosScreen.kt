@@ -26,14 +26,15 @@ import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Card
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Snackbar
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
@@ -209,19 +210,20 @@ fun MyPhotosScreen(
         ) {
             Snackbar(
                 modifier = Modifier.padding(16.dp),
-                backgroundColor = MaterialTheme.colors.error,
+                containerColor = MaterialTheme.colorScheme.error,
+                contentColor = MaterialTheme.colorScheme.onError,
                 action = {
                     TextButton(onClick = { viewModel.clearError() }) {
                         Text(
                             text = "확인",
-                            color = MaterialTheme.colors.onError
+                            color = MaterialTheme.colorScheme.onError
                         )
                     }
                 }
             ) {
                 Text(
                     text = error,
-                    color = MaterialTheme.colors.onError
+                    color = MaterialTheme.colorScheme.onError
                 )
             }
         }
@@ -243,14 +245,14 @@ private fun ModernMyPhotosHeader(
         Column {
             Text(
                 text = "내 사진",
-                style = MaterialTheme.typography.h5,
+                style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
             if (photoCount > 0) {
                 Text(
                     text = "${photoCount}장의 사진",
-                    style = MaterialTheme.typography.caption,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
             }
         }
@@ -259,7 +261,7 @@ private fun ModernMyPhotosHeader(
             Icon(
                 Icons.Default.Refresh,
                 contentDescription = "새로고침",
-                tint = MaterialTheme.colors.onSurface
+                tint = MaterialTheme.colorScheme.onSurface
             )
         }
     }
@@ -331,9 +333,9 @@ private fun FluidPhotoGridItem(
                 onClick = { onClick() },
                 onLongClick = { onLongClick() }
             ),
-        elevation = 2.dp,
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(6.dp),
-        backgroundColor = if (isSelected) Color.LightGray else MaterialTheme.colors.surface
+        colors = CardDefaults.cardColors(containerColor = if (isSelected) Color.LightGray else MaterialTheme.colorScheme.surface)
     ) {
         Box {
             // 사진 이미지 - 개선된 로딩
@@ -368,12 +370,12 @@ private fun FluidPhotoGridItem(
                 Box(
                     modifier = Modifier
                         .matchParentSize()
-                        .background(MaterialTheme.colors.surface.copy(alpha = 0.7f)),
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colors.primary
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -415,14 +417,14 @@ private fun LoadingIndicator() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             CircularProgressIndicator(
-                color = MaterialTheme.colors.primary,
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(48.dp)
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = "내 사진을 불러오는 중...",
-                style = MaterialTheme.typography.body2,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
         }
     }
@@ -442,20 +444,20 @@ fun EmptyMyPhotosState() {
                 imageVector = Icons.Default.PhotoCamera,
                 contentDescription = null,
                 modifier = Modifier.size(80.dp),
-                tint = MaterialTheme.colors.onSurface.copy(alpha = 0.3f)
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
             )
             Spacer(modifier = Modifier.height(24.dp))
             Text(
                 text = "저장된 사진이 없습니다",
-                style = MaterialTheme.typography.h6,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "카메라에서 촬영하면\n이곳에 저장됩니다",
-                style = MaterialTheme.typography.body2,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.4f),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                 textAlign = TextAlign.Center
             )
         }
@@ -472,7 +474,7 @@ fun CapturedPhotoItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { /* TODO: 사진 상세 보기 */ },
-        elevation = 2.dp
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -512,7 +514,7 @@ fun CapturedPhotoItem(
             ) {
                 Text(
                     text = File(photo.filePath).name,
-                    style = MaterialTheme.typography.body1,
+                    style = MaterialTheme.typography.bodyLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -520,7 +522,7 @@ fun CapturedPhotoItem(
                 val dateFormat = SimpleDateFormat("yyyy.MM.dd HH:mm", Locale.getDefault())
                 Text(
                     text = dateFormat.format(Date(photo.captureTime)),
-                    style = MaterialTheme.typography.caption,
+                    style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )
 
@@ -532,7 +534,7 @@ fun CapturedPhotoItem(
                 }
                 Text(
                     text = sizeText,
-                    style = MaterialTheme.typography.caption,
+                    style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )
             }
@@ -566,7 +568,7 @@ fun MyPhotosMultiSelectActionBar(
     ) {
         Text(
             text = "$selectedCount 개의 항목 선택됨",
-            style = MaterialTheme.typography.body1
+            style = MaterialTheme.typography.bodyLarge
         )
 
         Row {

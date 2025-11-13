@@ -16,6 +16,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -53,6 +55,7 @@ class CameraConnectionManager @Inject constructor(
     private val _isAutoConnecting = MutableStateFlow(false)
     val isAutoConnecting: StateFlow<Boolean> = _isAutoConnecting.asStateFlow()
 
+    private val managerScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var connectionJob: Job? = null
 
     /**
@@ -115,7 +118,7 @@ class CameraConnectionManager @Inject constructor(
 
         _isAutoConnecting.value = true
 
-        connectionJob = CoroutineScope(Dispatchers.IO).launch {
+        connectionJob = managerScope.launch {
             try {
                 Log.d(TAG, "자동 카메라 연결 시작")
                 uiStateManager.updateUsbInitialization(true, "USB 카메라 초기화 중...")
@@ -158,7 +161,7 @@ class CameraConnectionManager @Inject constructor(
      * 자동 연결 완료 후 이벤트 리스너 자동 시작 시도
      */
     private fun tryAutoStartEventListener(uiStateManager: CameraUiStateManager) {
-        CoroutineScope(Dispatchers.IO).launch {
+        managerScope.launch {
             try {
                 // 자동 시작 설정 확인
                 val isAutoStartEnabled =
@@ -219,7 +222,7 @@ class CameraConnectionManager @Inject constructor(
      * 수동 카메라 연결
      */
     fun connectCamera(cameraId: String, uiStateManager: CameraUiStateManager) {
-        connectionJob = CoroutineScope(Dispatchers.IO).launch {
+        connectionJob = managerScope.launch {
             try {
                 uiStateManager.updateLoadingState(true)
                 uiStateManager.clearError()
@@ -258,7 +261,7 @@ class CameraConnectionManager @Inject constructor(
         Log.d(TAG, "카메라 연결 해제 요청")
         connectionJob?.cancel()
 
-        CoroutineScope(Dispatchers.IO).launch {
+        managerScope.launch {
             try {
                 disconnectCameraUseCase()
                 uiStateManager.onCameraDisconnected()
@@ -274,7 +277,7 @@ class CameraConnectionManager @Inject constructor(
      * USB 디바이스 새로고침
      */
     fun refreshUsbDevices(uiStateManager: CameraUiStateManager) {
-        CoroutineScope(Dispatchers.IO).launch {
+        managerScope.launch {
             try {
                 Log.d(TAG, "USB 디바이스 새로고침 시작")
 
@@ -340,7 +343,7 @@ class CameraConnectionManager @Inject constructor(
      * USB 권한 요청
      */
     fun requestUsbPermission(uiStateManager: CameraUiStateManager? = null) {
-        CoroutineScope(Dispatchers.IO).launch {
+        managerScope.launch {
             try {
                 uiStateManager?.updateUsbInitialization(true, "USB 권한 요청 중...")
 
@@ -366,7 +369,7 @@ class CameraConnectionManager @Inject constructor(
      * 카메라 전원 상태 확인 및 테스트
      */
     private fun checkCameraPowerStateAndTest() {
-        CoroutineScope(Dispatchers.IO).launch {
+        managerScope.launch {
             try {
                 Log.d(TAG, "자동 연결 완료 후 카메라 전원 상태 확인 중...")
                 usbCameraManager.checkPowerStateAndTest()
@@ -382,5 +385,6 @@ class CameraConnectionManager @Inject constructor(
     fun cleanup() {
         connectionJob?.cancel()
         _isAutoConnecting.value = false
+        managerScope.coroutineContext.cancelChildren()
     }
 }

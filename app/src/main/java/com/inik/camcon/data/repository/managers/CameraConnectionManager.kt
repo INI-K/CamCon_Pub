@@ -10,6 +10,7 @@ import com.inik.camcon.domain.model.CameraCapabilities
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -46,6 +47,8 @@ class CameraConnectionManager @Inject constructor(
 
     private val _cameraCapabilities = MutableStateFlow<CameraCapabilities?>(null)
     val cameraCapabilities = _cameraCapabilities.asStateFlow()
+
+    private val managerScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     init {
         // USB 카메라 매니저의 네이티브 카메라 연결 상태를 관찰
@@ -314,7 +317,7 @@ class CameraConnectionManager @Inject constructor(
     }
 
     private fun observeNativeCameraConnection() {
-        CoroutineScope(Dispatchers.IO).launch {
+        managerScope.launch {
             usbCameraManager.isNativeCameraConnected.collect { isConnected ->
                 Log.d("카메라연결매니저", "네이티브 카메라 연결 상태 변경: $isConnected")
 

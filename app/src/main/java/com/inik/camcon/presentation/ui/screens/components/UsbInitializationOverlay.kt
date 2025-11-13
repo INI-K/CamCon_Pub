@@ -13,14 +13,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.AlertDialog
-import androidx.compose.material.Button
-import androidx.compose.material.Card
-import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,8 +48,8 @@ fun LoadingOverlay(
     ) {
         Card(
             shape = RoundedCornerShape(12.dp),
-            backgroundColor = MaterialTheme.colors.surface,
-            elevation = 6.dp,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
             modifier = Modifier.padding(24.dp)
         ) {
             Column(
@@ -60,13 +61,13 @@ fun LoadingOverlay(
                     CircularProgressIndicator(
                         progress = progress,
                         modifier = Modifier.size(48.dp),
-                        color = MaterialTheme.colors.primary,
+                        color = MaterialTheme.colorScheme.primary,
                         strokeWidth = 3.dp
                     )
                 } else {
                     CircularProgressIndicator(
                         modifier = Modifier.size(48.dp),
-                        color = MaterialTheme.colors.primary,
+                        color = MaterialTheme.colorScheme.primary,
                         strokeWidth = 3.dp
                     )
                 }
@@ -75,8 +76,8 @@ fun LoadingOverlay(
 
                 Text(
                     text = message,
-                    style = MaterialTheme.typography.body2,
-                    color = MaterialTheme.colors.onSurface,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center
                 )
             }
@@ -100,8 +101,8 @@ fun UsbInitializationOverlay(
     ) {
         Card(
             shape = RoundedCornerShape(16.dp),
-            backgroundColor = MaterialTheme.colors.surface,
-            elevation = 8.dp,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
             modifier = Modifier
                 .padding(32.dp)
                 .width(300.dp)
@@ -116,13 +117,13 @@ fun UsbInitializationOverlay(
                     CircularProgressIndicator(
                         progress = progress,
                         modifier = Modifier.size(60.dp),
-                        color = MaterialTheme.colors.primary,
+                        color = MaterialTheme.colorScheme.primary,
                         strokeWidth = 4.dp
                     )
                 } else {
                     CircularProgressIndicator(
                         modifier = Modifier.size(60.dp),
-                        color = MaterialTheme.colors.primary,
+                        color = MaterialTheme.colorScheme.primary,
                         strokeWidth = 4.dp
                     )
                 }
@@ -131,8 +132,8 @@ fun UsbInitializationOverlay(
 
                 Text(
                     text = message,
-                    style = MaterialTheme.typography.body1,
-                    color = MaterialTheme.colors.onSurface,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center,
                     fontWeight = FontWeight.Medium
                 )
@@ -141,8 +142,8 @@ fun UsbInitializationOverlay(
 
                 Text(
                     text = "잠시만 기다려주세요...",
-                    style = MaterialTheme.typography.caption,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center
                 )
             }
@@ -163,29 +164,29 @@ fun PtpTimeoutDialog(
         title = {
             Text(
                 text = "카메라 연결 오류",
-                style = MaterialTheme.typography.h6,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colors.error
+                color = MaterialTheme.colorScheme.error
             )
         },
         text = {
             Column {
                 Text(
                     text = "카메라 연결 중 타임아웃이 발생했습니다.",
-                    style = MaterialTheme.typography.body1,
-                    color = MaterialTheme.colors.onSurface
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "앱을 재시작하면 문제가 해결됩니다.",
-                    style = MaterialTheme.typography.body2,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f)
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "• 카메라 USB 케이블을 확인해주세요\n• 카메라가 PC 모드로 설정되어 있는지 확인해주세요",
-                    style = MaterialTheme.typography.caption,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     fontSize = 12.sp
                 )
             }
