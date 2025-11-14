@@ -1,8 +1,10 @@
 package com.inik.camcon.presentation.ui
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
@@ -197,8 +199,22 @@ fun SettingsScreen(
     val colorTransferReferenceImagePath by appSettingsViewModel.colorTransferReferenceImagePath.collectAsState()
     val isRawFileDownloadEnabled by appSettingsViewModel.isRawFileDownloadEnabled.collectAsState()
 
-    // 구독 티어 상태
     val subscriptionTier by appSettingsViewModel.subscriptionTier.collectAsState()
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        val message = if (isGranted) {
+            "알림 권한이 허용되었습니다."
+        } else {
+            "알림 권한이 거부되었습니다."
+        }
+        android.widget.Toast.makeText(
+            context,
+            message,
+            android.widget.Toast.LENGTH_LONG
+        ).show()
+    }
 
     // 색감 전송 이미지 선택 런처
     val referenceImagePickerLauncher = rememberLauncherForActivityResult(
@@ -380,7 +396,31 @@ fun SettingsScreen(
                             title = "자동 연결",
                             subtitle = "마지막 연결된 카메라에 자동 연결",
                             checked = isAutoConnectEnabled,
-                            onCheckedChange = { ptpipViewModel.setAutoConnectEnabled(it) }
+                            onCheckedChange = { enabled ->
+                                ptpipViewModel.updateAutoConnectEnabled(
+                                    enabled = enabled,
+                                    onResult = { _, message ->
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            message,
+                                            android.widget.Toast.LENGTH_LONG
+                                        ).show()
+                                    },
+                                    onRequestNotificationPermission = {
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                            notificationPermissionLauncher.launch(
+                                                Manifest.permission.POST_NOTIFICATIONS
+                                            )
+                                        } else {
+                                            android.widget.Toast.makeText(
+                                                context,
+                                                "현재 기기에서 알림 권한 요청이 필요하지 않습니다.",
+                                                android.widget.Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                    }
+                                )
+                            }
                         )
 
                         SettingsItemWithNavigation(

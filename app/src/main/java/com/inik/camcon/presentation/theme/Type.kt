@@ -1,5 +1,6 @@
 package com.inik.camcon.presentation.theme
 
+import androidx.compose.material.Typography as MaterialTypography
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -102,3 +103,5 @@ val Typography = Typography(
         lineHeight = 16.sp
     )
 )
+
+val TypographyLegacy = MaterialTypography()

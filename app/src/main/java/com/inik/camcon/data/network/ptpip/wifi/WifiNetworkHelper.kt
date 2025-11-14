@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
+import android.net.MacAddress
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
@@ -12,6 +13,7 @@ import android.net.wifi.WifiNetworkSpecifier
 import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
+import com.inik.camcon.domain.model.AutoConnectNetworkConfig
 import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
 import com.google.android.gms.common.api.ResolvableApiException
@@ -29,6 +31,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import android.location.LocationManager
+import android.net.wifi.WifiNetworkSuggestion
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -308,6 +311,15 @@ class WifiNetworkHelper @Inject constructor(
 
     companion object {
         private const val TAG = "WifiNetworkHelper"
+        const val ACTION_AUTO_CONNECT_TRIGGER = "com.inik.camcon.action.AUTO_CONNECT_TRIGGER"
+        const val ACTION_AUTO_CONNECT_SUCCESS = "com.inik.camcon.action.AUTO_CONNECT_SUCCESS"
+        const val EXTRA_AUTO_CONNECT_SSID = "extra_auto_connect_ssid"
+        const val EXTRA_CAMERA_IP = "extra_camera_ip"
+
+        data class SuggestionResult(
+            val success: Boolean,
+            val message: String
+        )
 
         // AP모드에서 일반적으로 사용되는 카메라 IP 주소들
         private val COMMON_CAMERA_AP_IPS = listOf(
@@ -330,6 +342,33 @@ class WifiNetworkHelper @Inject constructor(
             "PENTAX",
             "LEICA"
         )
+    }
+
+    /**
+     * Send a broadcast for auto connect suggestion trigger for a given SSID. (For API 26+)
+     */
+    fun sendAutoConnectBroadcast(ssid: String) {
+        val intent = Intent(ACTION_AUTO_CONNECT_TRIGGER).apply {
+            putExtra(EXTRA_AUTO_CONNECT_SSID, ssid)
+            setPackage(context.packageName)
+        }
+
+        Log.d(TAG, "자동 연결 브로드캐스트 전송 요청: ssid=$ssid")
+        context.sendBroadcast(intent)
+    }
+
+    /**
+     * 자동 연결 성공 시 브로드캐스트 전송
+     */
+    fun sendAutoConnectSuccessBroadcast(ssid: String, cameraIp: String) {
+        val intent = Intent(ACTION_AUTO_CONNECT_SUCCESS).apply {
+            putExtra(EXTRA_AUTO_CONNECT_SSID, ssid)
+            putExtra(EXTRA_CAMERA_IP, cameraIp)
+            setPackage(context.packageName)
+        }
+
+        Log.d(TAG, "✅ 자동 연결 성공 브로드캐스트 전송: ssid=$ssid, ip=$cameraIp")
+        context.sendBroadcast(intent)
     }
 
     /**
@@ -489,12 +528,112 @@ class WifiNetworkHelper @Inject constructor(
     }
 
     /**
+     * 현재 WiFi 네트워크에 프로세스 바인딩
+     * 자동 연결 등에서 카메라 통신을 위해 사용
+     */
+    fun bindToCurrentNetwork(): Boolean {
+        try {
+            // 1. activeNetwork 확인
+            val activeNetwork = connectivityManager.activeNetwork
+            if (activeNetwork != null) {
+                val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
+                if (capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true) {
+                    Log.d(TAG, "현재 WiFi 네트워크에 바인딩: $activeNetwork")
+                    return connectivityManager.bindProcessToNetwork(activeNetwork)
+                }
+            }
+
+            // 2. allNetworks에서 WiFi 찾기
+            val allNetworks = connectivityManager.allNetworks
+            for (network in allNetworks) {
+                val capabilities = connectivityManager.getNetworkCapabilities(network)
+                if (capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true) {
+                    Log.d(TAG, "WiFi 네트워크 발견 및 바인딩: $network")
+                    return connectivityManager.bindProcessToNetwork(network)
+                }
+            }
+
+            Log.w(TAG, "바인딩할 WiFi 네트워크를 찾을 수 없음")
+            return false
+        } catch (e: Exception) {
+            Log.e(TAG, "네트워크 바인딩 중 오류", e)
+            return false
+        }
+    }
+
+    /**
+     * 네트워크 바인딩 해제
+     */
+    fun unbindFromCurrentNetwork() {
+        try {
+            connectivityManager.bindProcessToNetwork(null)
+            Log.d(TAG, "네트워크 바인딩 해제 완료")
+        } catch (e: Exception) {
+            Log.e(TAG, "네트워크 바인딩 해제 중 오류", e)
+        }
+    }
+
+    /**
      * 현재 Wi-Fi 연결 상태 확인
+     * 인터넷이 없는 WiFi(카메라 AP)도 감지합니다.
      */
     fun isWifiConnected(): Boolean {
-        val network = connectivityManager.activeNetwork ?: return false
-        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
-        return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+        // 1. activeNetwork 확인 (인터넷이 있는 네트워크)
+        val network = connectivityManager.activeNetwork
+        if (network != null) {
+            val capabilities = connectivityManager.getNetworkCapabilities(network)
+            if (capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true) {
+//                Log.d(TAG, "WiFi 연결됨 (activeNetwork)")
+                return true
+            }
+        }
+
+        // 2. activeNetwork가 없거나 WiFi가 아닌 경우, allNetworks에서 WiFi 찾기
+        // (인터넷 없는 WiFi는 activeNetwork에 포함되지 않을 수 있음)
+        try {
+            val allNetworks = connectivityManager.allNetworks
+            for (net in allNetworks) {
+                val cap = connectivityManager.getNetworkCapabilities(net)
+                if (cap?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true) {
+//                    Log.d(TAG, "WiFi 연결됨 (allNetworks): $net")
+                    return true
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "allNetworks 확인 실패: ${e.message}")
+        }
+
+        // 3. WifiManager의 connectionInfo 확인 (최우선)
+        // networkId가 -1이어도 SSID가 유효하면 연결된 것으로 판단
+        try {
+            val connectionInfo = wifiManager.connectionInfo
+            if (connectionInfo != null) {
+                val ssid = connectionInfo.ssid
+                val networkId = connectionInfo.networkId
+
+//                Log.d(TAG, "WifiManager connectionInfo 확인:")
+//                Log.d(TAG, "  - SSID: $ssid")
+//                Log.d(TAG, "  - NetworkId: $networkId")
+//                Log.d(TAG, "  - BSSID: ${connectionInfo.bssid}")
+
+                // SSID가 유효하면 연결된 것으로 판단 (networkId 무시)
+                if (ssid != null && ssid != "<unknown ssid>" && ssid != "\"<unknown ssid>\"") {
+//                    Log.d(TAG, "WiFi 연결됨 (connectionInfo - SSID 기반)")
+                    return true
+                }
+
+                // SSID는 못 가져오지만 networkId가 유효한 경우
+                if (networkId != -1) {
+//                    Log.d(TAG, "WiFi 연결됨 (connectionInfo - NetworkId 기반)")
+                    return true
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "connectionInfo 확인 실패: ${e.message}")
+        }
+
+//        Log.d(TAG, "WiFi 연결 안 됨")
+        return false
     }
 
     // 카메라 AP 연결 상태 캐싱
@@ -518,16 +657,43 @@ class WifiNetworkHelper @Inject constructor(
             return cachedIsConnectedToCameraAP!!
         }
 
-        if (ssid == null) {
+        // SSID를 가져올 수 없는 경우 (<unknown ssid>)
+        // 하지만 WiFi는 연결되어 있으므로 추가 확인
+        if (ssid == null || ssid == "<unknown ssid>") {
+            // 게이트웨이 IP가 카메라 IP 패턴인지 확인 (무한 재귀 방지)
+            try {
+                val connectionInfo = wifiManager.connectionInfo
+                val dhcpInfo = wifiManager.dhcpInfo
+                val gatewayIP = dhcpInfo?.gateway
+
+                if (gatewayIP != null && gatewayIP != 0) {
+                    val gatewayIpStr = String.format(
+                        "%d.%d.%d.%d",
+                        gatewayIP and 0xff,
+                        gatewayIP shr 8 and 0xff,
+                        gatewayIP shr 16 and 0xff,
+                        gatewayIP shr 24 and 0xff
+                    )
+                    if (isValidCameraAPIP(gatewayIpStr)) {
+                        Log.d(TAG, "SSID를 알 수 없지만 게이트웨이가 카메라 IP 패턴: $gatewayIpStr")
+                        cachedIsConnectedToCameraAP = true
+                        lastCheckedSSID = ssid
+                        return true
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "게이트웨이 IP 확인 실패: ${e.message}")
+            }
+
             cachedIsConnectedToCameraAP = false
             lastCheckedSSID = null
             return false
         }
 
-        // 카메라 AP 패턴 매칭
+        // 카메라 AP 패턴 매칭 (Nikon Z_ 모델 대응)
         val isMatch = CAMERA_AP_PATTERNS.any { pattern ->
             ssid.contains(pattern, ignoreCase = true)
-        }
+        } || ssid.startsWith("Z_", ignoreCase = true) // Nikon 카메라 패턴 추가
 
         // 결과 캐싱
         cachedIsConnectedToCameraAP = isMatch
@@ -543,6 +709,58 @@ class WifiNetworkHelper @Inject constructor(
         return if (isWifiConnected()) {
             wifiManager.connectionInfo?.ssid?.removeSurrounding("\"")
         } else null
+    }
+
+    /**
+     * Network 객체로부터 SSID 추출 (Android 보안 정책 우회)
+     * WiFi Suggestion으로 연결된 네트워크는 이 방법으로만 SSID를 가져올 수 있습니다.
+     */
+    fun getSSIDFromNetwork(network: Network): String? {
+        return try {
+            val networkCapabilities = connectivityManager.getNetworkCapabilities(network)
+            if (networkCapabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true) {
+                val transportInfo = networkCapabilities.transportInfo
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && transportInfo is android.net.wifi.WifiInfo) {
+                    val rawSSID = transportInfo.ssid
+                    val ssid = rawSSID?.trim('"')
+
+                    // <unknown ssid>가 아니고 유효한 경우에만 반환
+                    if (!ssid.isNullOrEmpty() && ssid != "<unknown ssid>") {
+                        Log.d(TAG, "Network에서 SSID 추출 성공: $ssid")
+                        return ssid
+                    } else {
+                        Log.w(TAG, "Network에서 SSID가 <unknown ssid> 또는 null: $rawSSID")
+                    }
+                }
+            }
+            null
+        } catch (e: Exception) {
+            Log.e(TAG, "Network에서 SSID 추출 실패: ${e.message}")
+            null
+        }
+    }
+
+    /**
+     * 현재 연결된 네트워크의 BSSID 반환 (유효하지 않은 기본값은 제거)
+     */
+    fun getCurrentBssid(): String? {
+        return try {
+            if (!isWifiConnected()) {
+                return null
+            }
+            val bssid = wifiManager.connectionInfo?.bssid
+            if (bssid.isNullOrBlank() || bssid == "02:00:00:00:00:00") {
+                null
+            } else {
+                bssid.lowercase()
+            }
+        } catch (error: SecurityException) {
+            Log.w(TAG, "BSSID 조회 권한 부족: ${error.message}")
+            null
+        } catch (error: Exception) {
+            Log.w(TAG, "BSSID 조회 실패: ${error.message}")
+            null
+        }
     }
 
     /**
@@ -1298,6 +1516,307 @@ class WifiNetworkHelper @Inject constructor(
             Log.e(TAG, "WifiNetworkSpecifier 요청 중 오류", e)
             onError?.invoke(message)
             onResult(false)
+        }
+    }
+
+    /**
+     * WifiNetworkSuggestion 지원 여부 확인
+     */
+    fun isNetworkSuggestionSupported(): Boolean {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+    }
+
+    /**
+     * WifiNetworkSuggestion 등록
+     */
+    fun registerNetworkSuggestion(config: AutoConnectNetworkConfig): SuggestionResult {
+        if (!isNetworkSuggestionSupported()) {
+            return SuggestionResult(
+                success = false,
+                message = "Android 10 이상에서만 자동 Wi-Fi 연결을 지원합니다."
+            )
+        }
+
+        return try {
+            Log.d(TAG, "========================================")
+            Log.d(TAG, "🔧 WiFi Suggestion 등록 시작")
+            Log.d(
+                TAG,
+                "  - SSID: ${config.ssid}"
+            )
+            Log.d(TAG, "  - Hidden: ${config.isHidden}")
+            Log.d(TAG, "  - BSSID: ${config.bssid}")
+            Log.d(TAG, "  - Security: ${config.securityType}")
+            Log.d(TAG, "  - Password 제공: ${!config.passphrase.isNullOrEmpty()}")
+            Log.d(TAG, "========================================")
+
+            val suggestion = buildWifiNetworkSuggestion(config) ?: return SuggestionResult(
+                success = false,
+                message = "지원되지 않는 보안 방식으로 인해 자동 연결을 설정할 수 없습니다."
+            )
+
+            Log.d(TAG, "✅ WifiNetworkSuggestion 빌드 완료")
+            Log.d(TAG, "🔄 시스템에 suggestion 등록 중...")
+
+            val status = wifiManager.addNetworkSuggestions(listOf(suggestion))
+            Log.d(TAG, "📊 addNetworkSuggestions 결과 코드: $status")
+
+            when (status) {
+                WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS -> {
+                    Log.d(TAG, "✅✅✅ WiFi Suggestion 등록 성공! ✅✅✅")
+                    SuggestionResult(true, "카메라 Wi-Fi 자동 연결이 설정되었습니다.")
+                }
+
+                WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_ADD_EXCEEDS_MAX_PER_APP -> {
+                    Log.w(TAG, "❌ 등록 실패: 최대 개수 초과")
+                    SuggestionResult(false, "자동 연결 가능한 네트워크 수를 초과했습니다. 다른 제안을 제거한 뒤 다시 시도해주세요.")
+                }
+
+                WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_ADD_DUPLICATE -> {
+                    Log.w(TAG, "⚠️ 중복: 이미 등록된 suggestion")
+                    SuggestionResult(true, "이미 카메라 자동 연결이 등록되어 있습니다.")
+                }
+
+                WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_INTERNAL -> {
+                    Log.e(TAG, "❌ 등록 실패: 시스템 내부 오류")
+                    SuggestionResult(false, "시스템 내부 오류로 자동 연결을 등록하지 못했습니다.")
+                }
+
+                WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_APP_DISALLOWED -> {
+                    Log.e(TAG, "❌ 등록 실패: 앱 권한 거부")
+                    SuggestionResult(false, "시스템에서 자동 연결 권한을 거부했습니다. 설정 앱에서 권한을 다시 허용해주세요.")
+                }
+
+                WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_ADD_NOT_ALLOWED -> {
+                    Log.e(TAG, "❌ 등록 실패: 현재 상태에서 등록 불가")
+                    SuggestionResult(false, "현재 상태에서는 자동 연결 제안을 추가할 수 없습니다. 잠시 후 다시 시도해주세요.")
+                }
+
+                else -> {
+                    Log.e(TAG, "❌ 등록 실패: 알 수 없는 오류 (코드: $status)")
+                    SuggestionResult(false, "알 수 없는 이유로 자동 연결 등록에 실패했습니다. (코드: $status)")
+                }
+            }
+        } catch (e: SecurityException) {
+            Log.e(TAG, "❌ 등록 실패: 권한 부족", e)
+            SuggestionResult(false, "자동 연결 등록에 필요한 권한이 부족합니다.")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ WifiNetworkSuggestion 등록 실패", e)
+            SuggestionResult(false, "자동 연결 등록 중 오류가 발생했습니다: ${e.message}")
+        }
+    }
+
+    /**
+     * WifiNetworkSuggestion 제거
+     */
+    fun removeNetworkSuggestion(config: AutoConnectNetworkConfig): SuggestionResult {
+        if (!isNetworkSuggestionSupported()) {
+            return SuggestionResult(false, "Android 10 이상에서만 자동 연결을 지원합니다.")
+        }
+
+        return try {
+            Log.d(
+                TAG,
+                "자동 연결 제안 제거 시도: ssid=${config.ssid}, bssid=${config.bssid}, security=${config.securityType}"
+            )
+            val suggestion = buildWifiNetworkSuggestion(config) ?: return SuggestionResult(
+                true,
+                "자동 연결 정보가 없어도 이미 해제되었습니다."
+            )
+            val status = wifiManager.removeNetworkSuggestions(listOf(suggestion))
+            Log.d(TAG, "removeNetworkSuggestions 결과 코드: $status")
+            when (status) {
+                WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS -> SuggestionResult(
+                    true,
+                    "카메라 자동 연결이 해제되었습니다."
+                )
+
+                WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_INTERNAL -> SuggestionResult(
+                    false,
+                    "시스템 오류로 자동 연결 해제에 실패했습니다."
+                )
+
+                else -> SuggestionResult(false, "자동 연결 해제 중 알 수 없는 오류가 발생했습니다. (코드: $status)")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "WifiNetworkSuggestion 제거 실패", e)
+            SuggestionResult(false, "자동 연결 해제 중 오류가 발생했습니다: ${e.message}")
+        }
+    }
+
+    /**
+     * 현재 등록된 제안 모두 제거
+     */
+    fun clearAllNetworkSuggestions(): SuggestionResult {
+        if (!isNetworkSuggestionSupported()) {
+            return SuggestionResult(false, "Android 10 이상에서만 자동 연결을 지원합니다.")
+        }
+
+        return try {
+            Log.d(TAG, "모든 자동 연결 제안 초기화 시도")
+            val status = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val suggestions = wifiManager.networkSuggestions
+                Log.d(TAG, "현재 등록된 제안 수: ${suggestions.size}")
+                wifiManager.removeNetworkSuggestions(suggestions)
+            } else {
+                wifiManager.removeNetworkSuggestions(emptyList())
+            }
+            Log.d(TAG, "clearAllNetworkSuggestions 결과 코드: $status")
+            when (status) {
+                WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS -> SuggestionResult(
+                    true,
+                    "자동 연결 제안을 모두 초기화했습니다."
+                )
+
+                else -> SuggestionResult(false, "자동 연결 초기화 중 오류가 발생했습니다. (코드: $status)")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "WifiNetworkSuggestion 전체 초기화 실패", e)
+            SuggestionResult(false, "자동 연결 초기화 중 오류가 발생했습니다: ${e.message}")
+        }
+    }
+
+    private fun buildWifiNetworkSuggestion(config: AutoConnectNetworkConfig): WifiNetworkSuggestion? {
+        val builder = WifiNetworkSuggestion.Builder()
+            .setSsid(config.ssid)
+            .setIsHiddenSsid(config.isHidden)
+            .setIsAppInteractionRequired(false)  // false로 변경: 사용자 상호작용 없이 자동 연결
+            .setPriority(Int.MAX_VALUE)  // 최고 우선순위로 자동 연결 유도
+
+        // 브로드캐스트 트리거: 사용자 상호작용 없이 연결되도록 명시적으로 설정 (API 29+)
+        try {
+            val interactionMethod = builder.javaClass.getMethod(
+                "setIsUserInteractionRequired",
+                Boolean::class.javaPrimitiveType
+            )
+            interactionMethod.invoke(builder, false)
+            Log.d(TAG, "setIsUserInteractionRequired(false) 적용됨 (브로드캐스트 트리거 조건)")
+        } catch (e: Exception) {
+            Log.w(TAG, "setIsUserInteractionRequired 메서드 적용 실패: ${e.message}")
+        }
+
+        if (!config.bssid.isNullOrBlank() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                val macAddress = MacAddress.fromString(config.bssid)
+                builder.setBssid(macAddress)
+            } catch (error: IllegalArgumentException) {
+                Log.w(TAG, "잘못된 BSSID 형식으로 인해 설정할 수 없습니다: ${config.bssid}")
+            }
+        }
+
+        // 보안 설정 먼저 적용
+        if (!applySecurityToSuggestion(builder, config)) {
+            return null
+        }
+
+        // Android 버전별 추가 설정 및 브로드캐스트 트리거 관련 로깅
+        when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> {
+                // Android 13+ (API 33)
+                try {
+                    builder.setIsMetered(false)
+                    builder.setCredentialSharedWithUser(true)
+                    // Android 13+에서는 POST_CONNECTION 브로드캐스트가 제한적일 수 있음
+                    Log.d(TAG, "Android 13+ (TIRAMISU): Credential 공유 + non-metered 설정 완료")
+                    Log.d(TAG, "⚠️ Android 13+에서는 시스템 브로드캐스트가 제한될 수 있습니다")
+                } catch (error: Throwable) {
+                    Log.w(TAG, "Android 13+ 설정 중 예외 발생: ${error.message}")
+                }
+            }
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+                // Android 12/12L (API 31-32)
+                try {
+                    builder.setIsMetered(false)
+                    builder.setCredentialSharedWithUser(true)
+                    Log.d(TAG, "Android 12+ (S): Credential 공유 + non-metered 설정 완료")
+                } catch (error: Throwable) {
+                    Log.w(TAG, "Android 12+ 설정 중 예외 발생: ${error.message}")
+                }
+            }
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
+                // Android 11 (API 30)
+                try {
+                    builder.setIsMetered(false)
+                    builder.setCredentialSharedWithUser(true)
+                    Log.d(TAG, "Android 11 (R): Credential 공유 + non-metered 설정 완료")
+                } catch (error: Throwable) {
+                    Log.w(TAG, "Android 11 설정 중 예외 발생: ${error.message}")
+                }
+            }
+
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
+                // Android 10 (API 29)
+                try {
+                    val method = builder.javaClass.getMethod(
+                        "setIsInternetRequired",
+                        Boolean::class.javaPrimitiveType
+                    )
+                    method.invoke(builder, false)
+                    Log.d(TAG, "Android 10 (Q): 인터넷 검증 제외 플래그 설정 완료")
+                } catch (error: NoSuchMethodException) {
+                    Log.w(TAG, "setIsInternetRequired 메서드를 사용할 수 없습니다: ${error.message}")
+                } catch (error: Throwable) {
+                    Log.w(TAG, "Android 10 설정 중 예외 발생: ${error.message}")
+                }
+            }
+
+            else -> {
+                Log.w(
+                    TAG,
+                    "Android 10 미만에서는 WiFi Suggestion이 지원되지 않습니다 (현재: API ${Build.VERSION.SDK_INT})"
+                )
+                return null
+            }
+        }
+
+        return try {
+            val suggestion = builder.build()
+            Log.d(TAG, "✅ WifiNetworkSuggestion 빌드 성공")
+            Log.d(TAG, "  - SSID: ${config.ssid}")
+            Log.d(TAG, "  - Priority: ${Int.MAX_VALUE}")
+            Log.d(TAG, "  - AppInteractionRequired: false")
+            Log.d(TAG, "  - UserInteractionRequired: false (브로드캐스트 트리거 조건)")
+            Log.d(TAG, "  - Android Version: ${Build.VERSION.SDK_INT}")
+            suggestion
+        } catch (e: IllegalStateException) {
+            Log.e(TAG, "❌ WifiNetworkSuggestion 빌드 실패: ${e.message}", e)
+            null
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ WifiNetworkSuggestion 빌드 중 예외: ${e.message}", e)
+            null
+        }
+    }
+
+    private fun applySecurityToSuggestion(
+        builder: WifiNetworkSuggestion.Builder,
+        config: AutoConnectNetworkConfig
+    ): Boolean {
+        return when {
+            config.passphrase.isNullOrEmpty() -> {
+                builder.setIsEnhancedOpen(false)
+                true
+            }
+
+            config.securityType?.contains(
+                "WPA3",
+                ignoreCase = true
+            ) == true && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+                builder.setWpa3Passphrase(config.passphrase)
+                true
+            }
+
+            config.securityType?.contains(
+                "WPA2",
+                ignoreCase = true
+            ) == true || config.securityType?.contains("WPA", ignoreCase = true) == true -> {
+                builder.setWpa2Passphrase(config.passphrase)
+                true
+            }
+
+            else -> {
+                Log.w(TAG, "지원되지 않는 보안 방식으로 제안 생성 실패: ${config.securityType}")
+                false
+            }
         }
     }
 

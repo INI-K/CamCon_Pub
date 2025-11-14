@@ -241,7 +241,7 @@ class CameraEventManager @Inject constructor(
                             )
 
                             // 네이티브 이벤트 리스너 시작 전 마지막 검증
-                            if (!CameraNative.isCameraConnected()) {
+                            if (connectionType == ConnectionType.USB && !CameraNative.isCameraConnected()) {
                                 LogcatManager.e("카메라이벤트매니저", "네이티브 카메라 연결이 끊어짐 - 이벤트 리스너 시작 중단")
                                 isEventListenerRunning.set(false)
                                 break

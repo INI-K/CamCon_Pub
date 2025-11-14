@@ -59,6 +59,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -205,18 +206,17 @@ class SplashActivity : ComponentActivity() {
     private fun loadSubscriptionTierInBackground() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // StateFlow의 초기값(FREE)을 건너뛰고 실제 Firebase 값만 수신
-                getSubscriptionUseCase.getSubscriptionTier()
+                val tier = getSubscriptionUseCase.getSubscriptionTier()
                     .drop(1) // 첫 번째 초기값(FREE) 건너뛰기
-                    .collect { tier ->
-                        withContext(Dispatchers.Main) {
-                            subscriptionTier = tier
-                            appPreferencesDataSource.saveSubscriptionTier(tier)
-                            LogcatManager.d("SplashActivity", "📱 구독 티어 로드 완료: $tier")
-                        }
-                        // 첫 번째 실제 값만 받고 collect 종료
-                        return@collect
+                    .firstOrNull()
+
+                if (tier != null) {
+                    withContext(Dispatchers.Main) {
+                        subscriptionTier = tier
+                        appPreferencesDataSource.saveSubscriptionTier(tier)
+                        LogcatManager.d("SplashActivity", "📱 구독 티어 로드 완료: $tier")
                     }
+                }
             } catch (e: Exception) {
                 LogcatManager.e("SplashActivity", "❌ 구독 정보 로드 실패: ${e.message}", e)
                 // 에러 발생 시 FREE로 폴백

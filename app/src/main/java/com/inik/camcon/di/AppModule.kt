@@ -21,6 +21,9 @@ import com.inik.camcon.data.repository.managers.CameraConnectionManager
 import com.inik.camcon.data.repository.managers.PhotoDownloadManager
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
+import com.inik.camcon.data.service.AutoConnectManager
+import com.inik.camcon.data.service.AutoConnectTaskRunner
+import dagger.Lazy
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -106,7 +109,9 @@ object AppModule {
         wifiHelper: WifiNetworkHelper,
         cameraEventManager: CameraEventManager,
         uiStateManager: CameraUiStateManager,
-        photoDownloadManager: PhotoDownloadManager
+        photoDownloadManager: PhotoDownloadManager,
+        autoConnectManager: AutoConnectManager,
+        autoConnectTaskRunner: Lazy<AutoConnectTaskRunner>
     ): PtpipDataSource {
         return PtpipDataSource(
             context,
@@ -116,7 +121,9 @@ object AppModule {
             wifiHelper,
             cameraEventManager,
             uiStateManager,
-            photoDownloadManager
+            photoDownloadManager,
+            autoConnectManager,
+            autoConnectTaskRunner
         )
     }
 
@@ -149,4 +156,21 @@ object AppModule {
             validateImageFormatUseCase,
             photoDownloadManager
         )
+
+    @Provides
+    @Singleton
+    fun provideAutoConnectManager(
+        ptpipPreferencesDataSource: PtpipPreferencesDataSource,
+        wifiNetworkHelper: WifiNetworkHelper
+    ): AutoConnectManager =
+        AutoConnectManager(ptpipPreferencesDataSource, wifiNetworkHelper)
+
+    @Provides
+    @Singleton
+    fun provideAutoConnectTaskRunner(
+        ptpipDataSource: PtpipDataSource,
+        autoConnectManager: AutoConnectManager,
+        wifiNetworkHelper: WifiNetworkHelper
+    ): AutoConnectTaskRunner =
+        AutoConnectTaskRunner(ptpipDataSource, autoConnectManager, wifiNetworkHelper)
 }

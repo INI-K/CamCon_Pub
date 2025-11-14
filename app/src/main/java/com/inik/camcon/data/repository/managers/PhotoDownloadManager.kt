@@ -365,18 +365,18 @@ class PhotoDownloadManager @Inject constructor(
 
             try {
                 Log.d(TAG, "📦 Native 다운로드 데이터 처리 시작: $fileName")
-                Log.d(TAG, "   데이터 크기: ${imageData.size / 1024}KB")
+                // Log.d(TAG, "   데이터 크기: ${imageData.size / 1024}KB")
 
                 val startTime = System.currentTimeMillis()
 
                 val extension = fileName.substringAfterLast(".", "").lowercase()
                 Log.d(TAG, "✓ Native 다운로드 데이터 확인: $fileName")
-                Log.d(TAG, "   확장자: $extension")
-                Log.d(TAG, "   원본 크기: ${imageData.size / 1024}KB")
+                // Log.d(TAG, "   확장자: $extension")
+                // Log.d(TAG, "   원본 크기: ${imageData.size / 1024}KB")
 
                 // 카메라 폴더 구조 추출 (예: /store_00010001/DCIM/105KAY_1/KY6_0035.JPG → 105KAY_1)
                 val cameraSubFolder = extractCameraSubFolder(filePath)
-                Log.d(TAG, "   추출된 카메라 서브폴더: $cameraSubFolder")
+                // Log.d(TAG, "   추출된 카메라 서브폴더: $cameraSubFolder")
 
                 // 현재 구독 티어 확인
                 val currentTier = getSubscriptionUseCase.getSubscriptionTier().first()
@@ -499,11 +499,11 @@ class PhotoDownloadManager @Inject constructor(
                 } else {
                     fileName
                 }
-                Log.d(TAG, "📂 후처리 전 파일명 정보:")
-                Log.d(TAG, "   원본 파일명: $fileName")
-                Log.d(TAG, "   카메라 서브폴더: $cameraSubFolder")
-                Log.d(TAG, "   폴더 포함 파일명: $fileNameWithFolder")
-                Log.d(TAG, "   임시 파일 경로: $processedPath")
+                // Log.d(TAG, "📂 후처리 전 파일명 정보:")
+                // Log.d(TAG, "   원본 파일명: $fileName")
+                // Log.d(TAG, "   카메라 서브폴더: $cameraSubFolder")
+                // Log.d(TAG, "   폴더 포함 파일명: $fileNameWithFolder")
+                // Log.d(TAG, "   임시 파일 경로: $processedPath")
 
                 val finalPath = postProcessPhoto(processedPath!!, fileNameWithFolder)
                 Log.d(TAG, "✅ Native 사진 후처리 완료: $finalPath")
