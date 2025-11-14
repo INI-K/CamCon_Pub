@@ -191,7 +191,10 @@
 
     <!-- Wi-Fi Connection -->
     <string name="wifi_camera_connection">Wi-Fi Camera Connection</string>
-    <string name="color_transfer_settings">Color Transfer Settings</string>
+    <string name="color_transfer_settings">색감 전송 설정</string>
+    <string name="color_transfer_reference_image">색감 참조 이미지</string>
+    <string name="color_transfer_target_image">적용 대상 이미지</string>
+    <string name="color_transfer_intensity">색감 전송 강도</string>
     <string name="not_connected_to_camera_ap">Not connected to camera AP</string>
     <string name="connected_network">Connected network: %s</string>
     <string name="detected_camera_ip">Detected camera IP: %s</string>
@@ -201,6 +204,13 @@
     <string name="auto_reconnect_description">Automatically reconnect to camera when Wi-Fi network changes</string>
     <string name="manual_connection_management">Manage camera connection manually</string>
     <string name="wifi_feature_info_area">Wi-Fi Feature Info Card Area</string>
+    <string name="auto_connect_enabled_message">카메라 자동 연결이 설정되었습니다.</string>
+    <string name="auto_connect_disabled_message">카메라 자동 연결이 해제되었습니다.</string>
+    <string name="auto_connect_requires_setup">자동 연결을 사용하려면 먼저 카메라 Wi-Fi에 수동으로 연결해 주세요.</string>
+    <string name="auto_connect_notification_permission_title">자동 연결 알림 권한 필요</string>
+    <string name="auto_connect_notification_permission_message">카메라 자동 연결 기능은 알림을 표시해야 백그라운드에서 안정적으로 동작할 수 있습니다.
+
+알림 권한을 허용해 주세요.</string>
 
     <!-- Photo Info -->
     <string name="resolution">Resolution</string>

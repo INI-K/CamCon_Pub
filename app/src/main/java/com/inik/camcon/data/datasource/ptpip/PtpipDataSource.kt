@@ -1,14 +1,17 @@
 package com.inik.camcon.data.datasource.ptpip
 
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.ContentValues
 import android.content.Intent
+import android.content.IntentFilter
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import com.inik.camcon.CameraNative
+import com.inik.camcon.EventListenerStopCallback
 import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
 import com.inik.camcon.data.network.ptpip.authentication.NikonAuthenticationService
 import com.inik.camcon.data.network.ptpip.connection.PtpipConnectionManager
@@ -16,6 +19,8 @@ import com.inik.camcon.data.network.ptpip.discovery.PtpipDiscoveryService
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.data.repository.managers.CameraEventManager
 import com.inik.camcon.data.repository.managers.PhotoDownloadManager
+import com.inik.camcon.data.service.AutoConnectManager
+import com.inik.camcon.data.service.AutoConnectTaskRunner
 import com.inik.camcon.domain.model.CameraAbilitiesInfo
 import com.inik.camcon.domain.model.CameraSupports
 import com.inik.camcon.domain.model.NikonConnectionMode
@@ -25,6 +30,7 @@ import com.inik.camcon.domain.model.PtpipCameraInfo
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
+import dagger.Lazy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -60,7 +66,9 @@ class PtpipDataSource @Inject constructor(
     private val wifiHelper: WifiNetworkHelper,
     private val cameraEventManager: CameraEventManager,
     private val uiStateManager: com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager,
-    private val photoDownloadManager: com.inik.camcon.data.repository.managers.PhotoDownloadManager
+    private val photoDownloadManager: com.inik.camcon.data.repository.managers.PhotoDownloadManager,
+    private val autoConnectManager: AutoConnectManager,
+    private val autoConnectTaskRunnerProvider: Lazy<AutoConnectTaskRunner>
 ) {
     private var connectedCamera: PtpipCamera? = null
     private var lastConnectedCamera: PtpipCamera? = null
@@ -101,6 +109,9 @@ class PtpipDataSource @Inject constructor(
     private val _isApModeForced = MutableStateFlow(false)
     val isApModeForced: StateFlow<Boolean> = _isApModeForced.asStateFlow()
 
+    private var lastAutoConnectBroadcastSsid: String? = null
+    private var lastAutoConnectBroadcastBssid: String? = null
+
     companion object {
         private const val TAG = "PtpipDataSource"
         private const val RECONNECT_DELAY_MS = 3000L
@@ -123,6 +134,7 @@ class PtpipDataSource @Inject constructor(
 
     init {
         startNetworkMonitoring()
+        registerAutoConnectReceiver()
 
         // libgphoto2 디버그 로그 활성화
         try {
@@ -151,6 +163,7 @@ class PtpipDataSource @Inject constructor(
             .onEach { networkState ->
                 Log.d(TAG, "네트워크 상태 변화: $networkState")
                 _wifiNetworkState.value = networkState
+                maybeTriggerAutoConnect(networkState)
                 
                 if (isAutoReconnectEnabled) {
                     handleNetworkStateChange(networkState)
@@ -223,6 +236,78 @@ class PtpipDataSource @Inject constructor(
         }
     }
 
+    private fun maybeTriggerAutoConnect(networkState: WifiNetworkState) {
+        if (!networkState.isConnected) {
+            resetAutoConnectBroadcastState()
+            return
+        }
+
+        if (networkState.ssid.isNullOrBlank()) {
+            resetAutoConnectBroadcastState()
+            return
+        }
+
+        coroutineScope.launch {
+            try {
+                val isAutoConnectEnabled = autoConnectManager.isEnabled()
+                if (!isAutoConnectEnabled) {
+                    Log.d(TAG, "자동 연결 비활성화 상태 - 브로드캐스트 건너뜀")
+                    resetAutoConnectBroadcastState()
+                    return@launch
+                }
+
+                val storedConfig = autoConnectManager.getStoredConfig()
+                if (storedConfig == null) {
+                    Log.d(TAG, "자동 연결 설정이 없어 브로드캐스트 건너뜀")
+                    resetAutoConnectBroadcastState()
+                    return@launch
+                }
+
+                val ssidMatches = networkState.ssid.equals(storedConfig.ssid, ignoreCase = true)
+                val currentBssid = wifiHelper.getCurrentBssid()
+                val bssidMatches = storedConfig.bssid.isNullOrBlank() ||
+                        currentBssid.equals(storedConfig.bssid, ignoreCase = true)
+
+                if (!ssidMatches || !bssidMatches) {
+                    Log.d(TAG, "자동 연결 대상 SSID/BSSID 불일치 - 브로드캐스트 생략")
+                    resetAutoConnectBroadcastState()
+                    return@launch
+                }
+
+                val alreadySentForSsid = lastAutoConnectBroadcastSsid.equals(
+                    networkState.ssid,
+                    ignoreCase = true
+                )
+                val alreadySentForBssid = when {
+                    currentBssid == null -> storedConfig.bssid.isNullOrBlank() &&
+                            lastAutoConnectBroadcastBssid.isNullOrBlank()
+
+                    else -> currentBssid.equals(lastAutoConnectBroadcastBssid, ignoreCase = true)
+                }
+
+                if (alreadySentForSsid && alreadySentForBssid) {
+                    Log.d(TAG, "같은 SSID/BSSID에 대해 이미 자동 연결 브로드캐스트 발송됨")
+                    return@launch
+                }
+
+                Log.i(TAG, "네트워크 상태 감지 기반 자동 연결 브로드캐스트 발송: ${networkState.ssid}")
+                wifiHelper.sendAutoConnectBroadcast(storedConfig.ssid)
+                lastAutoConnectBroadcastSsid = networkState.ssid
+                lastAutoConnectBroadcastBssid = currentBssid ?: storedConfig.bssid
+            } catch (error: Exception) {
+                Log.e(TAG, "자동 연결 브로드캐스트 발송 중 오류", error)
+            }
+        }
+    }
+
+    private fun resetAutoConnectBroadcastState() {
+        if (lastAutoConnectBroadcastSsid != null || lastAutoConnectBroadcastBssid != null) {
+            Log.d(TAG, "자동 연결 브로드캐스트 상태 초기화")
+        }
+        lastAutoConnectBroadcastSsid = null
+        lastAutoConnectBroadcastBssid = null
+    }
+
     /**
      * 자동 재연결 시도
      */
@@ -283,6 +368,11 @@ class PtpipDataSource @Inject constructor(
         onPhotoDownloadedCallback = null
 
         onConnectionLostCallback = null
+
+        if (autoConnectReceiverRegistered) {
+            context.unregisterReceiver(autoConnectReceiver)
+            autoConnectReceiverRegistered = false
+        }
 
         Log.d(TAG, "리소스 정리 완료 (콜백 포함)")
     }
@@ -414,13 +504,26 @@ class PtpipDataSource @Inject constructor(
             val libDir = context.applicationInfo.nativeLibraryDir
             _connectionProgressMessage.value = "카메라 연결 중..."
 
+            // 환경 변수 설정 (중요!)
+            Log.i(TAG, "=== libgphoto2 환경 변수 설정 ===")
+            try {
+                val envSetupResult = CameraNative.setupEnvironmentPaths(libDir)
+                if (envSetupResult) {
+                    Log.i(TAG, "✅ 환경 변수 설정 완료")
+                } else {
+                    Log.w(TAG, "⚠️ 환경 변수 설정 실패 (계속 진행)")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "⚠️ 환경 변수 설정 중 오류 (계속 진행): ${e.message}")
+            }
+
             val initResult = if (forceApMode) {
                 Log.i(TAG, "=== AP 모드 강제: libgphoto2 초기화 ===")
                 CameraNative.initCameraForAPMode(camera.ipAddress, camera.port, libDir)
             } else {
                 Log.i(TAG, "=== 표준 모드: libgphoto2 초기화 ===")
-                CameraNative.initCameraWithPtpip(camera.ipAddress, camera.port, libDir)
-            }
+            CameraNative.initCameraWithPtpip(camera.ipAddress, camera.port, libDir)
+        }
 
             val initOk = (initResult == "OK" || initResult == "GP_OK" ||
                     initResult?.contains("Success", ignoreCase = true) == true)
@@ -725,18 +828,44 @@ class PtpipDataSource @Inject constructor(
                 onPhotoDownloaded = { filePath, fileName, imageData ->
                     com.inik.camcon.utils.LogcatManager.d(
                         TAG,
-                        "📦 PTPIP onPhotoDownloaded 콜백 호출됨: $fileName (${imageData.size / 1024}KB)"
-                    )
-                    com.inik.camcon.utils.LogcatManager.d(
-                        TAG,
                         "✅ 네이티브에서 완전한 다운로드 및 저장 처리 완료: $fileName"
                     )
-                    com.inik.camcon.utils.LogcatManager.d(TAG, "📁 실제 저장된 파일 경로: $filePath")
+                    // com.inik.camcon.utils.LogcatManager.d(TAG, "📁 카메라 내부 경로: $filePath")
 
-                    // Repository 콜백 호출 (단일 경로)
-                    com.inik.camcon.utils.LogcatManager.d(TAG, "🔔 Repository 콜백 호출 시작: $fileName")
-                    onPhotoDownloadedCallback?.invoke(filePath, fileName, imageData)
-                    com.inik.camcon.utils.LogcatManager.d(TAG, "✅ Repository 콜백 호출 완료: $fileName")
+                    // ByteArray를 MediaStore에 저장하고 실제 안드로이드 경로 얻기
+                    coroutineScope.launch {
+                        try {
+                            val savedPhoto = photoDownloadManager.handleNativePhotoDownload(
+                                filePath = filePath,
+                                fileName = fileName,
+                                imageData = imageData,
+                                cameraCapabilities = null, // 카메라 정보는 옵션
+                                cameraSettings = null
+                            )
+
+                            if (savedPhoto != null) {
+                                val realPath = savedPhoto.filePath
+                                com.inik.camcon.utils.LogcatManager.d(
+                                    TAG,
+                                    "📁 실제 저장된 파일 경로: $realPath"
+                                )
+
+                                // Repository 콜백 호출 (안드로이드 저장소 경로)
+                                onPhotoDownloadedCallback?.invoke(realPath, fileName, imageData)
+                            } else {
+                                com.inik.camcon.utils.LogcatManager.e(
+                                    TAG,
+                                    "❌ MediaStore 저장 실패: $fileName"
+                                )
+                            }
+                        } catch (e: Exception) {
+                            com.inik.camcon.utils.LogcatManager.e(
+                                TAG,
+                                "MediaStore 저장 중 오류: ${e.message}",
+                                e
+                            )
+                        }
+                    }
                 },
                 onFlushComplete = {
                     Log.d(TAG, "PTPIP AP 모드 플러시 완료")
@@ -911,13 +1040,66 @@ class PtpipDataSource @Inject constructor(
                 )
             }
 
-            // 기존 방식도 함께 중지 (안전장치)
+            // CameraEventManager 정리 대기
+            delay(200)
+
+            // 네이티브 이벤트 리스너 중지 (콜백으로 대기)
             try {
-                CameraNative.stopListenCameraEvents()
-                Log.d(TAG, "기존 방식 카메라 이벤트 리스너도 중지됨")
+                Log.d(TAG, "네이티브 이벤트 리스너 중지 요청...")
+
+                // 타임아웃 설정 (최대 5초)
+                val stopped = kotlinx.coroutines.withTimeoutOrNull(5000) {
+                    kotlinx.coroutines.suspendCancellableCoroutine<Unit> { continuation ->
+                        try {
+                            // 비동기 버전 시도
+                            CameraNative.stopListenCameraEventsAsync(object :
+                                EventListenerStopCallback {
+                                override fun onStopped() {
+                                    Log.d(TAG, "✅ 네이티브 이벤트 리스너 스레드 종료 완료 (비동기)")
+                                    if (continuation.isActive) {
+                                        continuation.resume(Unit) {}
+                                    }
+                                }
+                            })
+                        } catch (e: UnsatisfiedLinkError) {
+                            // 네이티브 메서드가 아직 구현되지 않은 경우
+                            Log.w(TAG, "stopListenCameraEventsAsync 미구현 - 동기 방식 사용")
+                            try {
+                                CameraNative.stopListenCameraEvents()
+                                // 고정 대기 시간 사용 (동기 방식)
+                                coroutineScope.launch(Dispatchers.IO) {
+                                    delay(1000) // 1초 대기
+                                    if (continuation.isActive) {
+                                        continuation.resume(Unit) {}
+                                    }
+                                }
+                            } catch (e2: Exception) {
+                                if (continuation.isActive) {
+                                    continuation.resume(Unit) {}
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.w(TAG, "네이티브 리스너 중지 중 예외: ${e.message}")
+                            if (continuation.isActive) {
+                                continuation.resume(Unit) {}
+                            }
+                        }
+                    }
+                }
+
+                if (stopped != null) {
+                    Log.d(TAG, "✅ 네이티브 이벤트 리스너 종료 대기 완료")
+                } else {
+                    Log.w(TAG, "⚠️ 네이티브 이벤트 리스너 종료 타임아웃 (5초)")
+                }
+
             } catch (e: Exception) {
-                Log.w(TAG, "기존 방식 카메라 이벤트 리스너 중지 중 예외: ${e.message}")
+                Log.w(TAG, "네이티브 이벤트 리스너 중지 중 예외: ${e.message}")
             }
+
+            // 추가 안전 대기 (이벤트 리스너가 완전히 종료될 때까지)
+            Log.d(TAG, "이벤트 리스너 완전 종료 대기 중...")
+            delay(1000) // 1초 추가 대기
 
         } catch (e: Exception) {
             Log.e(TAG, "자동 파일 수신 중지 중 오류", e)
@@ -931,7 +1113,7 @@ class PtpipDataSource @Inject constructor(
         try {
             Log.d(TAG, "카메라 연결 해제 시작 (keepSession: $keepSession)")
 
-            // 자동 파일 수신 중지
+            // 자동 파일 수신 중지 (내부에서 완전한 대기 처리됨)
             stopAutomaticFileReceiving()
 
             // Discovery 중지
@@ -941,6 +1123,9 @@ class PtpipDataSource @Inject constructor(
             if (!keepSession) {
                 withContext(Dispatchers.Default) {
                     try {
+                        Log.d(TAG, "libgphoto2 연결 해제 중...")
+                        // 추가 안전 대기: 네이티브 스레드가 완전히 멈출 때까지
+                        delay(300)
                         CameraNative.closeCamera()
                         Log.d(TAG, "libgphoto2 연결 해제 완료")
                     } catch (e: Exception) {
@@ -982,9 +1167,6 @@ class PtpipDataSource @Inject constructor(
         coroutineScope.launch {
             try {
                 Log.d(TAG, "네이티브 파일 처리 완료 알림: $fileName")
-                Log.d(TAG, "   파일명: $fileName")
-                Log.d(TAG, "   경로: $filePath")
-
                 // 중복 처리 방지: 최근 처리 맵에서 윈도우 내 동일 파일 무시
                 val now = System.currentTimeMillis()
                 if (!recentProcessingGuard.tryMark(filePath, now)) {
@@ -1205,5 +1387,31 @@ class PtpipDataSource @Inject constructor(
             Log.e(TAG, "Wi‑Fi 스캔 위임 중 오류", e)
             emptyList()
         }
+    }
+
+    private val autoConnectReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == WifiNetworkHelper.ACTION_AUTO_CONNECT_TRIGGER) {
+                val targetSsid = intent.getStringExtra(WifiNetworkHelper.EXTRA_AUTO_CONNECT_SSID)
+                    ?: return
+
+                coroutineScope.launch {
+                    try {
+                        autoConnectTaskRunnerProvider.get().handlePostConnection(targetSsid)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "자동 연결 처리 중 오류", e)
+                    }
+                }
+            }
+        }
+    }
+
+    private var autoConnectReceiverRegistered = false
+
+    private fun registerAutoConnectReceiver() {
+        if (autoConnectReceiverRegistered) return
+        val filter = IntentFilter(WifiNetworkHelper.ACTION_AUTO_CONNECT_TRIGGER)
+        context.registerReceiver(autoConnectReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        autoConnectReceiverRegistered = true
     }
 }
