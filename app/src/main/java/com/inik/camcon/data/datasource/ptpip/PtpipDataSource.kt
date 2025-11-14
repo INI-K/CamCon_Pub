@@ -832,6 +832,17 @@ class PtpipDataSource @Inject constructor(
                     )
                     // com.inik.camcon.utils.LogcatManager.d(TAG, "📁 카메라 내부 경로: $filePath")
 
+                    // 백그라운드 알림 업데이트 - 파일 전송 중
+                    try {
+                        com.inik.camcon.data.service.AutoConnectForegroundService.updateNotification(
+                            context,
+                            "파일 전송 중",
+                            "저장 중: $fileName"
+                        )
+                    } catch (e: Exception) {
+                        // 알림 업데이트 실패해도 무시 (파일 처리는 계속)
+                    }
+
                     // ByteArray를 MediaStore에 저장하고 실제 안드로이드 경로 얻기
                     coroutineScope.launch {
                         try {
@@ -849,6 +860,17 @@ class PtpipDataSource @Inject constructor(
                                     TAG,
                                     "📁 실제 저장된 파일 경로: $realPath"
                                 )
+
+                                // 파일 저장 완료 후 알림 업데이트
+                                try {
+                                    com.inik.camcon.data.service.AutoConnectForegroundService.updateNotification(
+                                        context,
+                                        "카메라 연결 완료",
+                                        "이벤트 리스너가 준비되었습니다"
+                                    )
+                                } catch (e: Exception) {
+                                    // 알림 업데이트 실패해도 무시
+                                }
 
                                 // Repository 콜백 호출 (안드로이드 저장소 경로)
                                 onPhotoDownloadedCallback?.invoke(realPath, fileName, imageData)
