@@ -39,21 +39,11 @@ class AutoConnectForegroundService : Service() {
             ACTION_UPDATE_NOTIFICATION -> {
                 val title = intent.getStringExtra(EXTRA_NOTIFICATION_TITLE)
                 val message = intent.getStringExtra(EXTRA_NOTIFICATION_MESSAGE)
-                // startForegroundService()로 시작된 경우 반드시 startForeground() 호출 필요
+                // 이미 실행 중인 서비스의 알림만 업데이트
                 val notification = buildNotification(title, message)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                    startForeground(
-                        NOTIFICATION_ID,
-                        notification,
-                        android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
-                    )
-                } else {
-                    startForeground(NOTIFICATION_ID, notification)
-                }
+                notificationManager?.notify(NOTIFICATION_ID, notification)
                 Log.d(TAG, "알림 업데이트: $title - $message")
-                // 알림 업데이트만 하고 바로 종료
-                stopSelf()
-                return START_NOT_STICKY
+                return START_STICKY
             }
 
             else -> {
@@ -104,7 +94,7 @@ class AutoConnectForegroundService : Service() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_camera_24)
+            .setSmallIcon(R.drawable.ic_camera)
             .setContentTitle(title ?: "카메라 자동 연결 준비")
             .setContentText(message ?: "카메라 이벤트 리스너를 준비하는 중입니다")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -164,10 +154,11 @@ class AutoConnectForegroundService : Service() {
                 putExtra(EXTRA_NOTIFICATION_TITLE, title)
                 putExtra(EXTRA_NOTIFICATION_MESSAGE, message)
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
+            // 이미 실행 중인 서비스의 알림만 업데이트하므로 startService 사용
+            try {
                 context.startService(intent)
+            } catch (e: Exception) {
+                Log.w(TAG, "알림 업데이트 실패 (서비스가 실행 중이 아님): ${e.message}")
             }
         }
     }
