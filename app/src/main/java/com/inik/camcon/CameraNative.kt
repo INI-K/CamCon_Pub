@@ -14,6 +14,11 @@ interface CameraCleanupCallback {
     fun onCleanupComplete(success: Boolean, message: String)
 }
 
+// 이벤트 리스너 종료 콜백 인터페이스
+interface EventListenerStopCallback {
+    fun onStopped()
+}
+
 object CameraNative {
     private const val TAG = "CameraNative"
 
@@ -153,6 +158,7 @@ object CameraNative {
     external fun listCameraAbilities(): String
     external fun requestCapture()
     external fun stopListenCameraEvents()
+    external fun stopListenCameraEventsAsync(callback: EventListenerStopCallback)
     external fun cameraAutoDetect(): String
     external fun buildWidgetJson(): String
     external fun queryConfig()

@@ -2,18 +2,36 @@ package com.inik.camcon
 
 import android.app.Activity
 import android.app.Application
-import android.os.Build
+import android.content.Context
 import android.os.Bundle
 import android.util.Log
-import android.view.View
-import android.view.WindowManager
 import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import com.google.firebase.FirebaseApp
+import com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource
+import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
+import com.inik.camcon.data.service.WifiMonitoringService
 import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @HiltAndroidApp
 class CamCon : Application() {
+
+    // WifiNetworkHelper를 public으로 노출 (BroadcastReceiver에서 사용)
+    @Inject
+    lateinit var wifiNetworkHelper: WifiNetworkHelper
+
+    @Inject
+    lateinit var preferencesDataSource: PtpipPreferencesDataSource
+
+    // 현재 활성 Activity 추적 (포그라운드 상태 확인용)
+    private var activeActivityCount = 0
+
+    // Application 레벨 CoroutineScope
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     companion object {
         private const val TAG = "CamCon"
@@ -24,16 +42,23 @@ class CamCon : Application() {
 
         Log.d(TAG, "앱 초기화 시작")
 
-        // Activity Lifecycle Callbacks 등록 (Edge-to-Edge 전역 설정)
+        // Activity Lifecycle Callbacks 등록 (Edge-to-Edge 전역 설정 + 포그라운드 상태 추적)
         registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
                 setupEdgeToEdge(activity)
             }
 
-            override fun onActivityStarted(activity: Activity) {}
+            override fun onActivityStarted(activity: Activity) {
+                activeActivityCount++
+            }
+
             override fun onActivityResumed(activity: Activity) {}
             override fun onActivityPaused(activity: Activity) {}
-            override fun onActivityStopped(activity: Activity) {}
+
+            override fun onActivityStopped(activity: Activity) {
+                activeActivityCount--
+            }
+
             override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
             override fun onActivityDestroyed(activity: Activity) {}
         })
@@ -50,6 +75,9 @@ class CamCon : Application() {
         } catch (e: Exception) {
             Log.e(TAG, "Firebase 초기화 실패", e)
         }
+
+        // WiFi 자동 연결 모니터링 Service 시작 (자동 연결이 켜져있으면)
+        startWifiMonitoringServiceIfEnabled()
 
         Log.d(TAG, "앱 초기화 완료")
     }
@@ -135,6 +163,46 @@ class CamCon : Application() {
         } catch (e: Exception) {
             Log.w(TAG, "Firebase 지속성 설정 실패", e)
         }
+    }
+
+    /**
+     * WiFi 자동 연결 모니터링 Service 시작 (조건부)
+     *
+     * 자동 연결이 활성화되어 있으면 WifiMonitoringService를 시작합니다.
+     * 이 Service는 앱이 종료된 상태에서도 WiFi 연결을 감지할 수 있습니다.
+     */
+    private fun startWifiMonitoringServiceIfEnabled() {
+        applicationScope.launch {
+            try {
+                val isAutoConnectEnabled = preferencesDataSource.isAutoConnectEnabledNow()
+                Log.d(TAG, "========================================")
+                Log.d(TAG, "🔍 WiFi 모니터링 Service 시작 확인")
+                Log.d(TAG, "  - 자동 연결 활성화: $isAutoConnectEnabled")
+
+                if (isAutoConnectEnabled) {
+                    val autoConnectConfig = preferencesDataSource.getAutoConnectNetworkConfig()
+                    if (autoConnectConfig != null) {
+                        Log.d(TAG, "  - 저장된 네트워크: ${autoConnectConfig.ssid}")
+                        Log.d(TAG, "✅ WifiMonitoringService 시작")
+                        WifiMonitoringService.start(applicationContext)
+                    } else {
+                        Log.w(TAG, "⚠️ 자동 연결이 켜져있지만 네트워크 설정이 없음")
+                    }
+                } else {
+                    Log.d(TAG, "❌ 자동 연결이 비활성화되어 있음 - Service 시작 안 함")
+                }
+                Log.d(TAG, "========================================")
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ WiFi 모니터링 Service 시작 확인 중 오류", e)
+            }
+        }
+    }
+
+    /**
+     * 앱이 현재 포그라운드에 있는지 확인
+     */
+    fun isAppInForeground(): Boolean {
+        return activeActivityCount > 0
     }
 
     override fun onTerminate() {

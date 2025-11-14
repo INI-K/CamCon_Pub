@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -290,7 +291,20 @@ class AppPreferencesDataSource @Inject constructor(
      * SubscriptionTier enum으로 구독 티어 저장 (헬퍼 메서드)
      */
     suspend fun saveSubscriptionTier(tier: com.inik.camcon.domain.model.SubscriptionTier?) {
-        setSubscriptionTier(tier?.name)
+        if (tier == null) {
+            setSubscriptionTier(null)
+            return
+        }
+
+        val currentTier = subscriptionTierEnum.first()
+        if (tier == com.inik.camcon.domain.model.SubscriptionTier.FREE &&
+            currentTier != com.inik.camcon.domain.model.SubscriptionTier.FREE
+        ) {
+            // 유지 중인 상위 티어를 오프라인 FREE 폴백으로 덮어쓰지 않음
+            return
+        }
+
+        setSubscriptionTier(tier.name)
     }
 
     /**

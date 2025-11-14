@@ -14,6 +14,10 @@
     <uses-permission
         android:name="android.permission.NEARBY_WIFI_DEVICES"
         tools:targetApi="33" />
+    <!-- Android 13+ 알림 권한 -->
+    <uses-permission
+        android:name="android.permission.POST_NOTIFICATIONS"
+        tools:targetApi="33" />
     <!-- USB 권한 추가 -->
     <uses-permission android:name="android.permission.USB_PERMISSION" />
     <uses-permission
@@ -25,6 +29,8 @@
     <!-- 화면이 꺼져도 작동하기 위한 권한 -->
     <uses-permission android:name="android.permission.PARTIAL_WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <!-- 재부팅 시 자동 시작 -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- 파일 시스템 접근 권한 -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
@@ -154,6 +160,48 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <!-- Wi-Fi 자동 연결 콜백 수신 -->
+        <receiver
+            android:name=".data.receiver.WifiSuggestionBroadcastReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <!-- WiFi Suggestion 연결 후 (시스템 브로드캐스트) -->
+                <action android:name="android.net.wifi.action.WIFI_NETWORK_SUGGESTION_POST_CONNECTION" />
+                <!-- 커스텀 브로드캐스트 -->
+                <action android:name="com.inik.camcon.action.AUTO_CONNECT_TRIGGER" />
+                <action android:name="com.inik.camcon.action.AUTO_CONNECT_SUCCESS" />
+                <!-- WiFi 상태 변화 (Android 10+ 에서도 작동) -->
+                <action android:name="android.net.wifi.STATE_CHANGE" />
+                <action android:name="android.net.wifi.supplicant.CONNECTION_CHANGE" />
+            </intent-filter>
+        </receiver>
+
+        <!-- 재부팅 시 자동 시작 -->
+        <receiver
+            android:name=".data.receiver.BootCompletedReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- 자동 연결용 Foreground Service -->
+        <service
+            android:name=".data.service.AutoConnectForegroundService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
+
+        <!-- WiFi 모니터링 Foreground Service (자동 연결 토글 ON 시 상시 실행) -->
+        <service
+            android:name=".data.service.WifiMonitoringService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice"
+            android:stopWithTask="false" />
 
         <!-- 백그라운드 동기화 서비스 -->
         <service
