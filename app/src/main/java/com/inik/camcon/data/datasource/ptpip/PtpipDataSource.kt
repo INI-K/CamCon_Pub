@@ -884,6 +884,18 @@ class PtpipDataSource @Inject constructor(
                         _connectionProgressMessage.value = "연결 완료!"
                         Log.d(TAG, "PTPIP 연결 상태 변경: CONNECTED")
 
+                        // 백그라운드 알림 업데이트 (앱이 백그라운드일 때)
+                        try {
+                            com.inik.camcon.data.service.AutoConnectForegroundService.updateNotification(
+                                context,
+                                "카메라 연결 완료",
+                                "이벤트 리스너가 준비되었습니다"
+                            )
+                            Log.d(TAG, "✅ 백그라운드 알림 업데이트 완료")
+                        } catch (e: Exception) {
+                            Log.w(TAG, "백그라운드 알림 업데이트 실패 (무시): ${e.message}")
+                        }
+
                         // 네트워크 바인딩은 유지 (카메라 연결 유지)
                         // Firebase는 getCellularNetwork()를 통해 별도로 셀룰러 데이터 사용 가능
                         Log.i(TAG, "✅ 카메라 Wi-Fi 바인딩 유지 - Firebase는 셀룰러 데이터 사용 가능")
