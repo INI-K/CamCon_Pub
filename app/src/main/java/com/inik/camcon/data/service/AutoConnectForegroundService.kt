@@ -28,17 +28,31 @@ class AutoConnectForegroundService : Service() {
     lateinit var autoConnectTaskRunner: AutoConnectTaskRunner
 
     private val serviceScope = CoroutineScope(Dispatchers.Default + Job())
+    private var notificationManager: NotificationManager? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForegroundService()
-        val ssid = intent?.getStringExtra(AutoConnectTaskRunner.EXTRA_SSID)
-        serviceScope.launch {
-            autoConnectTaskRunner.handlePostConnection(ssid)
-            stopSelf()
+        notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        when (intent?.action) {
+            ACTION_UPDATE_NOTIFICATION -> {
+                val title = intent.getStringExtra(EXTRA_NOTIFICATION_TITLE)
+                val message = intent.getStringExtra(EXTRA_NOTIFICATION_MESSAGE)
+                updateNotification(title, message)
+                return START_NOT_STICKY
+            }
+
+            else -> {
+                startForegroundService()
+                val ssid = intent?.getStringExtra(AutoConnectTaskRunner.EXTRA_SSID)
+                serviceScope.launch {
+                    autoConnectTaskRunner.handlePostConnection(ssid)
+                    stopSelf()
+                }
+                return START_NOT_STICKY
+            }
         }
-        return START_NOT_STICKY
     }
 
     override fun onDestroy() {
@@ -49,7 +63,10 @@ class AutoConnectForegroundService : Service() {
 
     private fun startForegroundService() {
         createNotificationChannel()
-        val notification = buildNotification()
+        val notification = buildNotification(
+            "카메라 자동 연결 준비",
+            "카메라 이벤트 리스너를 준비하는 중입니다"
+        )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(
                 NOTIFICATION_ID,
@@ -61,7 +78,10 @@ class AutoConnectForegroundService : Service() {
         }
     }
 
-    private fun buildNotification(): Notification {
+    private fun buildNotification(
+        title: String? = null,
+        message: String? = null
+    ): Notification {
         val intent = Intent(this, MainActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
             this,
@@ -72,14 +92,20 @@ class AutoConnectForegroundService : Service() {
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_camera_24)
-            .setContentTitle("카메라 자동 연결 준비")
-            .setContentText("카메라 이벤트 리스너를 준비하는 중입니다")
+            .setContentTitle(title ?: "카메라 자동 연결 준비")
+            .setContentText(message ?: "카메라 이벤트 리스너를 준비하는 중입니다")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setContentIntent(pendingIntent)
             .setAutoCancel(false)
             .setOngoing(true)
             .build()
+    }
+
+    private fun updateNotification(title: String?, message: String?) {
+        val notification = buildNotification(title, message)
+        notificationManager?.notify(NOTIFICATION_ID, notification)
+        Log.d(TAG, "알림 업데이트: $title - $message")
     }
 
     private fun createNotificationChannel() {
@@ -102,9 +128,29 @@ class AutoConnectForegroundService : Service() {
         private const val NOTIFICATION_ID = 2001
         private const val TAG = "AutoConnectFGService"
 
+        private const val ACTION_UPDATE_NOTIFICATION = "com.inik.camcon.ACTION_UPDATE_NOTIFICATION"
+        private const val EXTRA_NOTIFICATION_TITLE = "extra_notification_title"
+        private const val EXTRA_NOTIFICATION_MESSAGE = "extra_notification_message"
+
         fun start(context: Context, ssid: String?) {
             val intent = Intent(context, AutoConnectForegroundService::class.java)
             intent.putExtra(AutoConnectTaskRunner.EXTRA_SSID, ssid)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+        }
+
+        /**
+         * 알림 텍스트 업데이트
+         */
+        fun updateNotification(context: Context, title: String, message: String) {
+            val intent = Intent(context, AutoConnectForegroundService::class.java).apply {
+                action = ACTION_UPDATE_NOTIFICATION
+                putExtra(EXTRA_NOTIFICATION_TITLE, title)
+                putExtra(EXTRA_NOTIFICATION_MESSAGE, message)
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
             } else {
