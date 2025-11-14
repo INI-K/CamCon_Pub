@@ -39,7 +39,20 @@ class AutoConnectForegroundService : Service() {
             ACTION_UPDATE_NOTIFICATION -> {
                 val title = intent.getStringExtra(EXTRA_NOTIFICATION_TITLE)
                 val message = intent.getStringExtra(EXTRA_NOTIFICATION_MESSAGE)
-                updateNotification(title, message)
+                // startForegroundService()로 시작된 경우 반드시 startForeground() 호출 필요
+                val notification = buildNotification(title, message)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    startForeground(
+                        NOTIFICATION_ID,
+                        notification,
+                        android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+                    )
+                } else {
+                    startForeground(NOTIFICATION_ID, notification)
+                }
+                Log.d(TAG, "알림 업데이트: $title - $message")
+                // 알림 업데이트만 하고 바로 종료
+                stopSelf()
                 return START_NOT_STICKY
             }
 
