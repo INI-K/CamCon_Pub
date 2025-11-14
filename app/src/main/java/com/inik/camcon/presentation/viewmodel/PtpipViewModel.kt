@@ -1,17 +1,24 @@
 package com.inik.camcon.presentation.viewmodel
 
+import android.content.Context
 import android.util.Log
+import android.Manifest
+import android.os.Build
+import androidx.core.app.ActivityCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.inik.camcon.R
 import com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource
 import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
 import com.inik.camcon.data.datasource.ptpip.PtpipDataSource
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
+import com.inik.camcon.domain.model.AutoConnectNetworkConfig
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,6 +33,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class PtpipViewModel @Inject constructor(
+    @ApplicationContext private val appContext: Context,
     private val ptpipDataSource: PtpipDataSource,
     private val preferencesDataSource: PtpipPreferencesDataSource,
     private val globalManager: CameraConnectionGlobalManager
@@ -62,6 +70,7 @@ class PtpipViewModel @Inject constructor(
     val isPtpipEnabled = preferencesDataSource.isPtpipEnabled
     val isAutoDiscoveryEnabled = preferencesDataSource.isAutoDiscoveryEnabled
     val isAutoConnectEnabled = preferencesDataSource.isAutoConnectEnabled
+    val autoConnectNetworkConfig = preferencesDataSource.autoConnectNetworkConfig
     val isWifiConnectionModeEnabled = preferencesDataSource.isWifiConnectionModeEnabled
     val isAutoReconnectEnabled = preferencesDataSource.isAutoReconnectEnabled
     val lastConnectedIp = preferencesDataSource.lastConnectedIp
@@ -111,11 +120,22 @@ class PtpipViewModel @Inject constructor(
         enabled && wifiEnabled && networkState.isConnected
     }
 
+    private var lastConnectedWifiConfig: AutoConnectNetworkConfig? = null
+
     init {
         // 자동 재연결 설정 감지 및 적용
         viewModelScope.launch {
             isAutoReconnectEnabled.collect { enabled ->
                 ptpipDataSource.setAutoReconnectEnabled(enabled)
+            }
+        }
+
+        // 저장된 자동 연결 설정 로드
+        viewModelScope.launch {
+            preferencesDataSource.autoConnectNetworkConfig.collect { config ->
+                if (config != null) {
+                    lastConnectedWifiConfig = config
+                }
             }
         }
 
@@ -256,6 +276,17 @@ class PtpipViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
+                val wifiHelper = ptpipDataSource.getWifiHelper()
+                val securityType = wifiHelper.getWifiSecurityType(ssid)
+                val currentBssid = wifiHelper.getCurrentBssid()
+                val candidateConfig = AutoConnectNetworkConfig(
+                    ssid = ssid,
+                    passphrase = passphrase,
+                    securityType = securityType,
+                    isHidden = false,
+                    bssid = currentBssid
+                )
+
                 ptpipDataSource.requestWifiSpecifierConnection(
                     ssid = ssid,
                     passphrase = passphrase,
@@ -274,6 +305,22 @@ class PtpipViewModel @Inject constructor(
                         } else {
                             Log.i(TAG, "Wi-Fi 연결 성공: $ssid - 카메라 정보 직접 생성")
                             _errorMessage.value = null // 기존 오류 메시지 클리어
+
+                            val nextBssid = wifiHelper.getCurrentBssid() ?: candidateConfig.bssid
+                            val updatedConfig =
+                                candidateConfig.copy(
+                                    lastUpdatedEpochMillis = System.currentTimeMillis(),
+                                    bssid = nextBssid
+                                )
+                            lastConnectedWifiConfig = updatedConfig
+                            viewModelScope.launch {
+                                preferencesDataSource.saveAutoConnectNetworkConfig(updatedConfig)
+                                val autoConnectEnabled =
+                                    preferencesDataSource.isAutoConnectEnabledNow()
+                                if (autoConnectEnabled) {
+                                    wifiHelper.sendAutoConnectBroadcast(ssid)
+                                }
+                            }
 
                             // 연결 성공 시 카메라 정보 바로 생성 (검색 생략)
                             // 이 시점에서는 _isConnecting을 유지하여 로딩 계속 표시
@@ -392,6 +439,92 @@ class PtpipViewModel @Inject constructor(
     }
 
     /**
+     * 자동 연결 활성화/비활성화 with network config
+     */
+    fun updateAutoConnectEnabled(
+        enabled: Boolean,
+        onResult: (Boolean, String) -> Unit,
+        onRequestNotificationPermission: (() -> Unit)? = null
+    ) {
+        viewModelScope.launch {
+            if (enabled) {
+                val storedConfig = preferencesDataSource.getAutoConnectNetworkConfig()
+                val networkConfig = storedConfig ?: lastConnectedWifiConfig
+                if (networkConfig == null) {
+                    onResult(
+                        false,
+                        appContext.getString(R.string.auto_connect_requires_setup)
+                    )
+                    return@launch
+                }
+
+                val requiresNotificationPermission =
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                            !isNotificationPermissionGranted()
+
+                if (requiresNotificationPermission) {
+                    onRequestNotificationPermission?.invoke()
+                    return@launch
+                }
+
+                val suggestionResult =
+                    ptpipDataSource.getWifiHelper().registerNetworkSuggestion(networkConfig)
+                if (suggestionResult.success) {
+                    val latestBssid = ptpipDataSource.getWifiHelper().getCurrentBssid()
+                    val updatedConfig =
+                        networkConfig.copy(
+                            lastUpdatedEpochMillis = System.currentTimeMillis(),
+                            bssid = latestBssid ?: networkConfig.bssid
+                        )
+                    preferencesDataSource.saveAutoConnectNetworkConfig(updatedConfig)
+                    preferencesDataSource.updateAutoConnectNetworkTimestamp()
+                    preferencesDataSource.setAutoConnectEnabled(true)
+                    lastConnectedWifiConfig = updatedConfig
+
+                    // WifiMonitoringService 시작 (앱 종료 후에도 WiFi 감지)
+                    com.inik.camcon.data.service.WifiMonitoringService.start(appContext)
+                    Log.d(TAG, "✅ WifiMonitoringService 시작됨")
+
+                    onResult(true, suggestionResult.message)
+                } else {
+                    onResult(false, suggestionResult.message)
+                }
+            } else {
+                val existingConfig = preferencesDataSource.getAutoConnectNetworkConfig()
+                if (existingConfig != null) {
+                    val removalResult =
+                        ptpipDataSource.getWifiHelper().removeNetworkSuggestion(existingConfig)
+                    if (!removalResult.success) {
+                        onResult(false, removalResult.message)
+                        return@launch
+                    }
+                }
+                preferencesDataSource.setAutoConnectEnabled(false)
+
+                // WifiMonitoringService 중지
+                com.inik.camcon.data.service.WifiMonitoringService.stop(appContext)
+                Log.d(TAG, "✅ WifiMonitoringService 중지됨")
+
+                onResult(
+                    true,
+                    appContext.getString(R.string.auto_connect_disabled_message)
+                )
+            }
+        }
+    }
+
+    private fun isNotificationPermissionGranted(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ActivityCompat.checkSelfPermission(
+                appContext,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+    }
+
+    /**
      * 연결 타임아웃 설정
      */
     fun setConnectionTimeout(timeout: Int) {
@@ -445,7 +578,7 @@ class PtpipViewModel @Inject constructor(
                 // 네트워크 상태 확인
                 val networkState = ptpipDataSource.getCurrentWifiNetworkState()
                 if (networkState.isConnectedToCameraAP) {
-                    Log.i(TAG, "✅ AP 모드 연결 감지됨: ${networkState.ssid}")
+                    Log.i(TAG, "AP 모드 연결 감지됨: ${networkState.ssid}")
                     Log.i(TAG, "카메라 IP: ${networkState.detectedCameraIP}")
                 } else {
                     Log.i(TAG, "STA 모드 또는 일반 네트워크 연결")
@@ -466,7 +599,7 @@ class PtpipViewModel @Inject constructor(
                     Log.w(TAG, errorMsg)
                     _errorMessage.value = errorMsg
                 } else {
-                    Log.i(TAG, "✅ 카메라 검색 성공:")
+                    Log.i(TAG, "카메라 검색 성공:")
                     cameras.forEachIndexed { index, camera ->
                         Log.i(
                             TAG,
@@ -627,14 +760,14 @@ class PtpipViewModel @Inject constructor(
                                     """
                                     카메라가 원격 촬영을 지원하지 않습니다
                                     
-                                    🔸 Nikon 카메라는 Wi-Fi 연결 시 원격 촬영이 제한됩니다.
+                                    Nikon 카메라는 Wi-Fi 연결 시 원격 촬영이 제한됩니다.
                                     
-                                    📸 대안 방법:
+                                    대안 방법:
                                     1. 카메라 본체의 셔터 버튼을 눌러 촬영하세요
                                     2. 촬영된 사진은 자동으로 앱에 전송됩니다
                                     3. USB 케이블 연결 시 완전한 원격 제어가 가능합니다
                                     
-                                    💡 일부 Nikon 카메라는 '리모트 촬영' 기능이 필요할 수 있습니다.
+                                    일부 Nikon 카메라는 '리모트 촬영' 기능이 필요할 수 있습니다.
                                     카메라 메뉴에서 Wi-Fi 설정을 확인해주세요.
                                     """.trimIndent()
                                 }
@@ -685,14 +818,14 @@ class PtpipViewModel @Inject constructor(
                                     """
                                     카메라가 원격 촬영을 지원하지 않습니다
                                     
-                                    🔸 Nikon 카메라는 Wi-Fi 연결 시 원격 촬영이 제한됩니다.
+                                    Nikon 카메라는 Wi-Fi 연결 시 원격 촬영이 제한됩니다.
                                     
-                                    📸 대안 방법:
+                                    대안 방법:
                                     1. 카메라 본체의 셔터 버튼을 눌러 촬영하세요
                                     2. 촬영된 사진은 자동으로 앱에 전송됩니다
                                     3. USB 케이블 연결 시 완전한 원격 제어가 가능합니다
                                     
-                                    💡 일부 Nikon 카메라는 '리모트 촬영' 기능이 필요할 수 있습니다.
+                                    일부 Nikon 카메라는 '리모트 촬영' 기능이 필요할 수 있습니다.
                                     카메라 메뉴에서 Wi-Fi 설정을 확인해주세요.
                                     """.trimIndent()
                                 }
@@ -813,7 +946,7 @@ class PtpipViewModel @Inject constructor(
                 val success = connectionManager.establishConnection(camera)
                 
                 if (success) {
-                    Log.i(TAG, "✅ 기본 PTPIP 연결 성공")
+                    Log.i(TAG, "기본 PTPIP 연결 성공")
 
                     // 연결 후 잠시 대기 (카메라와의 통신 안정화)
                     delay(500)
@@ -821,22 +954,22 @@ class PtpipViewModel @Inject constructor(
                     // 디바이스 정보 가져오기
                     val deviceInfo = connectionManager.getDeviceInfo()
                     if (deviceInfo != null) {
-                        Log.i(TAG, "✅ 디바이스 정보 획득 성공: ${deviceInfo.manufacturer} ${deviceInfo.model}")
+                        Log.i(TAG, "디바이스 정보 획득 성공: ${deviceInfo.manufacturer} ${deviceInfo.model}")
                         _errorMessage.value = "기본 연결 성공: ${deviceInfo.manufacturer} ${deviceInfo.model}"
 
                         // 정보 획득 후 잠시 대기 (카메라에게 처리 시간 제공)
                         delay(1000)
                     } else {
-                        Log.w(TAG, "⚠️ 디바이스 정보 획득 실패")
+                        Log.w(TAG, "디바이스 정보 획득 실패")
                         _errorMessage.value = "기본 연결 성공하지만 디바이스 정보 없음"
                     }
 
-                    // ⚠️ 중요: 연결 해제하지 않음 (카메라 Wi-Fi 종료 방지)
+                    // 연결 해제하지 않음 (카메라 Wi-Fi 종료 방지)
                     // 실제 사용에서는 니콘 카메라 확인 후 STA 모드로 전환하므로
                     // 연결을 유지해야 함
-                    Log.d(TAG, "✅ 연결 유지 (카메라 Wi-Fi 종료 방지)")
+                    Log.d(TAG, "연결 유지 (카메라 Wi-Fi 종료 방지)")
                 } else {
-                    Log.e(TAG, "❌ 기본 PTPIP 연결 실패")
+                    Log.e(TAG, "기본 PTPIP 연결 실패")
                     _errorMessage.value = "기본 PTPIP 연결 실패"
                 }
                 
@@ -865,10 +998,10 @@ class PtpipViewModel @Inject constructor(
                 val success = authService.testPhase1Authentication(camera)
                 
                 if (success) {
-                    Log.i(TAG, "✅ 니콘 Phase 1 인증 성공")
+                    Log.i(TAG, "니콘 Phase 1 인증 성공")
                     _errorMessage.value = "Phase 1 인증 성공"
                 } else {
-                    Log.e(TAG, "❌ 니콘 Phase 1 인증 실패")
+                    Log.e(TAG, "니콘 Phase 1 인증 실패")
                     _errorMessage.value = "Phase 1 인증 실패"
                 }
                 
@@ -897,10 +1030,10 @@ class PtpipViewModel @Inject constructor(
                 val success = authService.testPhase2Authentication(camera)
                 
                 if (success) {
-                    Log.i(TAG, "✅ 니콘 Phase 2 인증 성공")
+                    Log.i(TAG, "니콘 Phase 2 인증 성공")
                     _errorMessage.value = "Phase 2 인증 성공"
                 } else {
-                    Log.e(TAG, "❌ 니콘 Phase 2 인증 실패")
+                    Log.e(TAG, "니콘 Phase 2 인증 실패")
                     _errorMessage.value = "Phase 2 인증 실패"
                 }
                 
@@ -934,10 +1067,10 @@ class PtpipViewModel @Inject constructor(
                 }
                 
                 if (success) {
-                    Log.i(TAG, "✅ 니콘 명령 ($command) 성공")
+                    Log.i(TAG, "니콘 명령 ($command) 성공")
                     _errorMessage.value = "$command 명령 성공"
                 } else {
-                    Log.e(TAG, "❌ 니콘 명령 ($command) 실패")
+                    Log.e(TAG, "니콘 명령 ($command) 실패")
                     _errorMessage.value = "$command 명령 실패"
                 }
                 
@@ -965,10 +1098,10 @@ class PtpipViewModel @Inject constructor(
                 val success = authService.testSocketConnection(camera)
                 
                 if (success) {
-                    Log.i(TAG, "✅ 소켓 연결 성공")
+                    Log.i(TAG, "소켓 연결 성공")
                     _errorMessage.value = "소켓 연결 성공"
                 } else {
-                    Log.e(TAG, "❌ 소켓 연결 실패")
+                    Log.e(TAG, "소켓 연결 실패")
                     _errorMessage.value = "소켓 연결 실패"
                 }
                 
@@ -996,10 +1129,10 @@ class PtpipViewModel @Inject constructor(
                 val openPorts = authService.scanPorts(ipAddress)
                 
                 if (openPorts.isNotEmpty()) {
-                    Log.i(TAG, "✅ 열린 포트 발견: ${openPorts.joinToString(", ")}")
+                    Log.i(TAG, "열린 포트 발견: ${openPorts.joinToString(", ")}")
                     _errorMessage.value = "열린 포트: ${openPorts.joinToString(", ")}"
                 } else {
-                    Log.w(TAG, "⚠️ 열린 포트 없음")
+                    Log.w(TAG, "열린 포트 없음")
                     _errorMessage.value = "열린 포트 없음"
                 }
                 

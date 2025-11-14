@@ -1,6 +1,9 @@
 package com.inik.camcon.presentation.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material.MaterialTheme as MaterialTheme2
+import androidx.compose.material.darkColors as darkColors2
+import androidx.compose.material.lightColors as lightColors2
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -128,6 +131,38 @@ fun CamConTheme(
         LightColorScheme
     }
 
+    val material2Colors = if (darkTheme) {
+        darkColors2(
+            primary = colorScheme.primary,
+            primaryVariant = colorScheme.primaryContainer,
+            secondary = colorScheme.secondary,
+            secondaryVariant = colorScheme.secondaryContainer,
+            background = colorScheme.background,
+            surface = colorScheme.surface,
+            error = colorScheme.error,
+            onPrimary = colorScheme.onPrimary,
+            onSecondary = colorScheme.onSecondary,
+            onBackground = colorScheme.onBackground,
+            onSurface = colorScheme.onSurface,
+            onError = colorScheme.onError
+        )
+    } else {
+        lightColors2(
+            primary = colorScheme.primary,
+            primaryVariant = colorScheme.primaryContainer,
+            secondary = colorScheme.secondary,
+            secondaryVariant = colorScheme.secondaryContainer,
+            background = colorScheme.background,
+            surface = colorScheme.surface,
+            error = colorScheme.error,
+            onPrimary = colorScheme.onPrimary,
+            onSecondary = colorScheme.onSecondary,
+            onBackground = colorScheme.onBackground,
+            onSurface = colorScheme.onSurface,
+            onError = colorScheme.onError
+        )
+    }
+
     // 시스템 바 아이콘 색상 조정
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -145,7 +180,13 @@ fun CamConTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
-        shapes = Shapes,
-        content = content
-    )
+        shapes = Shapes
+    ) {
+        MaterialTheme2(
+            colors = material2Colors,
+            typography = TypographyLegacy,
+            shapes = ShapesLegacy,
+            content = content
+        )
+    }
 }
