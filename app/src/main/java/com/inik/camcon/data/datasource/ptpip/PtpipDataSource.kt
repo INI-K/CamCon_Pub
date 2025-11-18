@@ -785,24 +785,35 @@ class PtpipDataSource @Inject constructor(
         isInitialFlushCompleted = false
 
         try {
-            // 1단계: 파일 목록 조회 (동기적으로 실행하여 완료 대기)
+            // 1단계: 파일 목록 조회 (타임아웃 적용 - 선택적)
             _connectionProgressMessage.value = "파일 목록 조회 중..."
-            Log.i(TAG, "=== PTPIP 연결 후 파일 목록 조회 시작 ===")
+            Log.i(TAG, "=== PTPIP 연결 후 파일 목록 조회 시작 (타임아웃: 5초) ===")
 
-            withContext(Dispatchers.IO) {
-                try {
-                    val fileListJson = CameraNative.getCameraFileListPaged(0, 50) // 첫 페이지 50개
-                    if (fileListJson.isNotEmpty() && fileListJson != "[]") {
-                        Log.i(TAG, "✅ 파일 목록 조회 성공: ${fileListJson.length} chars")
-                        com.inik.camcon.utils.LogcatManager.d(TAG, "✅ 파일 목록 조회 성공")
-                    } else {
-                        Log.i(TAG, "📷 카메라에 파일이 없거나 목록이 비어있음")
-                        com.inik.camcon.utils.LogcatManager.d(TAG, "📷 카메라 파일 목록 비어있음")
+            // 타임아웃을 적용하여 파일 목록 조회가 멈추는 것을 방지
+            val fileListResult = withContext(Dispatchers.IO) {
+                kotlinx.coroutines.withTimeoutOrNull(5000) { // 5초 타임아웃
+                    try {
+                        val fileListJson = CameraNative.getCameraFileListPaged(0, 50) // 첫 페이지 50개
+                        if (fileListJson.isNotEmpty() && fileListJson != "[]") {
+                            Log.i(TAG, "✅ 파일 목록 조회 성공: ${fileListJson.length} chars")
+                            com.inik.camcon.utils.LogcatManager.d(TAG, "✅ 파일 목록 조회 성공")
+                            true
+                        } else {
+                            Log.i(TAG, "📷 카메라에 파일이 없거나 목록이 비어있음")
+                            com.inik.camcon.utils.LogcatManager.d(TAG, "📷 카메라 파일 목록 비어있음")
+                            true
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "파일 목록 조회 중 오류 (계속 진행): ${e.message}")
+                        com.inik.camcon.utils.LogcatManager.w(TAG, "파일 목록 조회 실패: ${e.message}")
+                        false
                     }
-                } catch (e: Exception) {
-                    Log.w(TAG, "파일 목록 조회 중 오류 (계속 진행): ${e.message}")
-                    com.inik.camcon.utils.LogcatManager.w(TAG, "파일 목록 조회 실패: ${e.message}")
                 }
+            }
+
+            if (fileListResult == null) {
+                Log.w(TAG, "⚠️ 파일 목록 조회 타임아웃 (5초) - 건너뜀")
+                com.inik.camcon.utils.LogcatManager.w(TAG, "⚠️ 파일 목록 조회 타임아웃")
             }
 
             // 2단계: 이벤트 리스너 시작

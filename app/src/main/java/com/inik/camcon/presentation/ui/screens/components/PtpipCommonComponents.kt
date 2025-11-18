@@ -325,7 +325,7 @@ fun ConnectionStatusCard(
 }
 
 /**
- * 카메라 연결 및 검색 UI
+ * 카메라 연결 및 검색 UI (WiFi Specification 기반)
  */
 @Composable
 fun CameraConnectionContent(
@@ -340,7 +340,8 @@ fun CameraConnectionContent(
     isWifiConnected: Boolean,
     isApMode: Boolean = false,
     hasLocationPermission: Boolean = true,
-    onRequestPermission: () -> Unit = {}
+    onRequestPermission: () -> Unit = {},
+    nearbyWifiSSIDs: List<String> = emptyList()
 ) {
     Column {
         // 연결 상태 카드
@@ -362,41 +363,38 @@ fun CameraConnectionContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = if (isDiscovering) "카메라 검색 중..." else "발견된 카메라 (${discoveredCameras.size})",
+                text = if (isDiscovering) {
+                    "Wi-Fi 스캔 중..."
+                } else if (nearbyWifiSSIDs.isEmpty()) {
+                    "Wi-Fi 네트워크"
+                } else {
+                    "Wi-Fi 네트워크 (${nearbyWifiSSIDs.size}개)"
+                },
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
 
             Button(
                 onClick = {
-                    if (isApMode) {
-                        Log.d(
-                            "PtpipCommonComponents",
-                            "AP 모드 버튼 클릭, hasLocationPermission: $hasLocationPermission"
-                        )
-                        if (hasLocationPermission) {
-                            Log.d("PtpipCommonComponents", "권한 있음 - Wi-Fi 스캔 실행")
-                            ptpipViewModel.scanNearbyWifiNetworks()
-                        } else {
-                            Log.d("PtpipCommonComponents", "권한 없음 - 권한 요청 콜백 호출")
-                            onRequestPermission()
-                        }
+                    Log.d(
+                        "PtpipCommonComponents",
+                        "버튼 클릭 - isApMode: $isApMode, hasLocationPermission: $hasLocationPermission"
+                    )
+                    if (hasLocationPermission) {
+                        Log.d("PtpipCommonComponents", "권한 있음 - Wi-Fi 스캔 실행")
+                        ptpipViewModel.scanNearbyWifiNetworks()
                     } else {
-                        ptpipViewModel.discoverCameras()
+                        Log.d("PtpipCommonComponents", "권한 없음 - 권한 요청 콜백 호출")
+                        onRequestPermission()
                     }
                 },
-                enabled = if (isApMode) {
-                    !isDiscovering && isPtpipEnabled
-                } else {
-                    !isDiscovering && isWifiConnected && isPtpipEnabled
-                }
+                enabled = !isDiscovering && isPtpipEnabled
             ) {
                 Text(
                     when {
                         isDiscovering -> "스캔 중..."
-                        isApMode -> "주변 Wi‑Fi 스캔"
-                        discoveredCameras.isEmpty() -> "카메라 찾기"
-                        else -> "다시 검색"
+                        nearbyWifiSSIDs.isEmpty() -> "주변 Wi-Fi 스캔"
+                        else -> "다시 스캔"
                     }
                 )
             }
@@ -413,13 +411,14 @@ fun CameraConnectionContent(
             isPtpipEnabled = isPtpipEnabled,
             isWifiConnected = isWifiConnected,
             ptpipViewModel = ptpipViewModel,
-            isApMode = isApMode
+            isApMode = isApMode,
+            nearbyWifiSSIDs = nearbyWifiSSIDs
         )
     }
 }
 
 /**
- * 카메라 목록 내용
+ * 카메라 목록 내용 (WiFi Specification 기반)
  */
 @Composable
 fun CameraListContent(
@@ -430,7 +429,8 @@ fun CameraListContent(
     isPtpipEnabled: Boolean,
     isWifiConnected: Boolean,
     ptpipViewModel: PtpipViewModel,
-    isApMode: Boolean = false
+    isApMode: Boolean = false,
+    nearbyWifiSSIDs: List<String> = emptyList()
 ) {
     when {
         !isPtpipEnabled -> {
@@ -440,44 +440,23 @@ fun CameraListContent(
             )
         }
 
-        !isWifiConnected -> {
+        isDiscovering -> {
+            LoadingStateCard(message = "주변 Wi-Fi 네트워크를 찾고 있습니다...")
+        }
+
+        nearbyWifiSSIDs.isEmpty() -> {
             EmptyStateCard(
                 icon = Icons.Filled.WifiOff,
-                message = "카메라와 Wi-Fi 네트워크에 연결하세요."
-            )
-        }
-
-        isDiscovering -> {
-            LoadingStateCard(message = "네트워크에서 카메라를 찾고 있습니다...")
-        }
-
-        discoveredCameras.isEmpty() -> {
-            EmptyStateCard(
-                icon = Icons.Filled.CameraAlt,
-                message = "네트워크에서 카메라를 찾을 수 없습니다."
+                message = "주변 Wi-Fi 스캔 버튼을 눌러 카메라 네트워크를 찾으세요."
             )
         }
 
         else -> {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                discoveredCameras.forEach { camera ->
-                    CameraItem(
-                        camera = camera,
-                        isSelected = camera == selectedCamera,
-                        isConnecting = isConnecting,
-                        onConnect = {
-                            if (isApMode) {
-                                ptpipViewModel.connectToCameraAp(camera)
-                            } else {
-                                ptpipViewModel.connectToCamera(camera)
-                            }
-                        },
-                        isApMode = isApMode
-                    )
-                }
-            }
+            // WiFi 스캔 결과가 있으면 메시지만 표시 (실제 목록은 WifiScanResultsCard에서 표시)
+            EmptyStateCard(
+                icon = Icons.Filled.Wifi,
+                message = "위의 Wi-Fi 목록에서 카메라 네트워크를 선택하고 연결하세요."
+            )
         }
     }
 }
