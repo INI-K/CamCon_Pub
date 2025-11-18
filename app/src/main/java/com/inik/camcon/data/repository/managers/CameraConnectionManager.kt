@@ -26,7 +26,8 @@ class PtpTimeoutException(message: String) : Exception(message)
 class CameraConnectionManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val nativeDataSource: NativeCameraDataSource,
-    private val usbCameraManager: UsbCameraManager
+    private val usbCameraManager: UsbCameraManager,
+    private val uiStateManager: com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
 ) {
     // Mutex 동기화 추가(중복 connectCamera 방지)
     private val connectCameraMutex = Mutex()
@@ -365,27 +366,38 @@ class CameraConnectionManager @Inject constructor(
     private suspend fun updateCameraCapabilities() = withContext(Dispatchers.IO) {
         try {
             Log.d("카메라연결매니저", "카메라 기능 정보 업데이트")
+            Log.d("카메라연결매니저", "  - USB 연결: ${usbCameraManager.isNativeCameraConnected.value}")
+            Log.d("카메라연결매니저", "  - PTPIP 연결: ${_isPtpipConnected.value}")
 
-            // 마스터 데이터 사용 여부 결정
-            val capabilities = if (usbCameraManager.isNativeCameraConnected.value) {
-                Log.d("카메라연결매니저", "USB 카메라 연결됨 - 마스터 데이터로 기능 정보 생성")
+            // 마스터 데이터 사용 여부 결정 (USB 또는 PTPIP 연결 시)
+            val capabilities =
+                if (usbCameraManager.isNativeCameraConnected.value || _isPtpipConnected.value) {
+                    Log.d("카메라연결매니저", "카메라 연결됨 - 네이티브에서 직접 기능 정보 가져오기")
 
-                // 마스터 데이터에서 정보 가져오기
-                val abilitiesJson = usbCameraManager.getCameraAbilitiesFromMaster()
-                val widgetJson = usbCameraManager.buildWidgetJsonFromMaster()
-
-                // CameraCapabilities 생성 로직을 직접 처리
-                parseCameraCapabilitiesFromJson(abilitiesJson, widgetJson)
-            } else {
-                Log.d("카메라연결매니저", "USB 카메라 미연결 - 직접 네이티브 호출")
-                nativeDataSource.getCameraCapabilities()
+                    // 네이티브에서 직접 CameraCapabilities 가져오기
+                    nativeDataSource.getCameraCapabilities()
+                } else {
+                    Log.d("카메라연결매니저", "카메라 미연결 - 기능 정보 없음")
+                    null
             }
 
-            capabilities?.let {
+            if (capabilities != null) {
+                Log.d("카메라연결매니저", "카메라 기능 정보 업데이트 완료: ${capabilities.model}")
+                Log.d("카메라연결매니저", "  🎯 라이브뷰 지원: ${capabilities.canLiveView}")
+
                 withContext(Dispatchers.Main) {
-                    _cameraCapabilities.value = it
+                    try {
+                        _cameraCapabilities.value = capabilities
+                        Log.d("카메라연결매니저", "  📝 _cameraCapabilities 업데이트 완료")
+
+                        uiStateManager.updateCameraCapabilities(capabilities)
+                        Log.d("카메라연결매니저", "  ✅ UiStateManager 업데이트 완료")
+                    } catch (e: Exception) {
+                        Log.e("카메라연결매니저", "  ❌ UI 업데이트 실패", e)
+                    }
                 }
-                Log.d("카메라연결매니저", "카메라 기능 정보 업데이트 완료: ${it.model}")
+            } else {
+                Log.w("카메라연결매니저", "❌ 카메라 기능 정보가 null입니다")
             }
         } catch (e: Exception) {
             Log.e("카메라연결매니저", "카메라 기능 정보 업데이트 실패", e)
@@ -413,9 +425,19 @@ class CameraConnectionManager @Inject constructor(
             // 모델명 추출
             val model = abilities.optString("model", "알 수 없음")
 
-            // 라이브뷰 지원 확인
-            val supportsLiveView = widgetJson.contains("liveviewsize", ignoreCase = true) ||
-                    widgetJson.contains("liveview", ignoreCase = true)
+            // 라이브뷰 지원 확인 (abilities와 위젯 모두 체크)
+            val supportsLiveViewFromAbilities = abilities.optBoolean("capturePreview", false)
+            val supportsLiveViewFromWidget =
+                widgetJson.contains("liveviewsize", ignoreCase = true) ||
+                        widgetJson.contains("liveview", ignoreCase = true) ||
+                        widgetJson.contains("viewfinder", ignoreCase = true)
+            val supportsLiveView = supportsLiveViewFromAbilities || supportsLiveViewFromWidget
+
+            Log.d("카메라연결매니저", "=== 라이브뷰 지원 확인 ===")
+            Log.d("카메라연결매니저", "  - abilities.capturePreview: $supportsLiveViewFromAbilities")
+            Log.d("카메라연결매니저", "  - 위젯 검색 결과: $supportsLiveViewFromWidget")
+            Log.d("카메라연결매니저", "  - 최종 결과: $supportsLiveView")
+            Log.d("카메라연결매니저", "==========================")
 
             val capabilities = CameraCapabilities(
                 model = model,
@@ -456,5 +478,14 @@ class CameraConnectionManager @Inject constructor(
     fun updatePtpipConnectionStatus(isConnected: Boolean) {
         Log.d("카메라연결매니저", "PTPIP 연결 상태 업데이트: $isConnected")
         _isPtpipConnected.value = isConnected
+
+        // PTPIP 연결 시에도 카메라 기능 정보 업데이트
+        if (isConnected) {
+            Log.d("카메라연결매니저", "PTPIP 연결됨 - 카메라 기능 정보 업데이트 시작")
+            managerScope.launch {
+                kotlinx.coroutines.delay(500) // 연결 안정화 대기
+                updateCameraCapabilities()
+            }
+        }
     }
 }

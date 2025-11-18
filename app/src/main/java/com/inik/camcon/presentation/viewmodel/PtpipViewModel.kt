@@ -19,6 +19,7 @@ import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -143,7 +144,7 @@ class PtpipViewModel @Inject constructor(
         viewModelScope.launch {
             globalConnectionState.collect { state ->
                 Log.d(TAG, "전역 상태 변화 감지: activeType=${state.activeConnectionType}")
-                
+
                 // AP 모드 연결 상태 변화 시 추가 처리
                 if (state.wifiNetworkState.isConnectedToCameraAP) {
                     Log.d(TAG, "AP 모드 연결 감지됨")
@@ -274,7 +275,18 @@ class PtpipViewModel @Inject constructor(
         _isConnecting.value = true
         _errorMessage.value = null
 
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
+            // 1. 연결 전에 기존 libgphoto2 설정 삭제 (중요!)
+            try {
+                Log.i(TAG, "=== libgphoto2 설정 초기화 시작 ===")
+                val deleteResult = com.inik.camcon.CameraNative.deleteGphotoSettings()
+                Log.i(TAG, "설정 삭제 결과:\n$deleteResult")
+                delay(500) // 설정 삭제 후 안정화 대기
+                Log.i(TAG, "=== libgphoto2 설정 초기화 완료 ===")
+            } catch (e: Exception) {
+                Log.w(TAG, "설정 삭제 중 오류 (계속 진행): ${e.message}")
+            }
+
             try {
                 val wifiHelper = ptpipDataSource.getWifiHelper()
                 val securityType = wifiHelper.getWifiSecurityType(ssid)
@@ -287,54 +299,64 @@ class PtpipViewModel @Inject constructor(
                     bssid = currentBssid
                 )
 
+                // WifiNetworkSpecifier로 직접 연결 시도
                 ptpipDataSource.requestWifiSpecifierConnection(
                     ssid = ssid,
                     passphrase = passphrase,
                     onResult = { success: Boolean ->
-                        Log.d(TAG, "WifiNetworkSpecifier 결과: success=$success")
-                        if (!success) {
-                            val errorMsg = "Wi‑Fi 자동 연결 실패: $ssid"
-                            Log.e(TAG, errorMsg)
-                            _errorMessage.value = errorMsg
-                            _isConnecting.value = false // 실패 시 로딩 해제
+                        viewModelScope.launch {
+                            Log.d(TAG, "WifiNetworkSpecifier 결과: success=$success")
+                            if (!success) {
+                                val errorMsg = "Wi‑Fi 자동 연결 실패: $ssid"
+                                Log.e(TAG, errorMsg)
+                                _errorMessage.value = errorMsg
+                                _isConnecting.value = false
+                                Log.d(TAG, "로딩 다이얼로그 해제: _isConnecting = false")
 
-                            // 연결 상태 정리 (다이얼로그 닫기)
-                            viewModelScope.launch {
-                                ptpipDataSource.disconnect()
-                            }
-                        } else {
-                            Log.i(TAG, "Wi-Fi 연결 성공: $ssid - 카메라 정보 직접 생성")
-                            _errorMessage.value = null // 기존 오류 메시지 클리어
+                                // 연결 상태 정리 (다이얼로그 닫기)
+                                try {
+                                    ptpipDataSource.disconnect()
+                                } catch (e: Exception) {
+                                    Log.w(TAG, "연결 정리 중 오류: ${e.message}")
+                                }
+                            } else {
+                                Log.i(TAG, "Wi-Fi 연결 성공: $ssid - 카메라 정보 직접 생성")
+                                _errorMessage.value = null
 
-                            val nextBssid = wifiHelper.getCurrentBssid() ?: candidateConfig.bssid
-                            val updatedConfig =
-                                candidateConfig.copy(
-                                    lastUpdatedEpochMillis = System.currentTimeMillis(),
-                                    bssid = nextBssid
-                                )
-                            lastConnectedWifiConfig = updatedConfig
-                            viewModelScope.launch {
+                                val nextBssid =
+                                    wifiHelper.getCurrentBssid() ?: candidateConfig.bssid
+                                val updatedConfig =
+                                    candidateConfig.copy(
+                                        lastUpdatedEpochMillis = System.currentTimeMillis(),
+                                        bssid = nextBssid
+                                    )
+                                lastConnectedWifiConfig = updatedConfig
+
                                 preferencesDataSource.saveAutoConnectNetworkConfig(updatedConfig)
                                 val autoConnectEnabled =
                                     preferencesDataSource.isAutoConnectEnabledNow()
                                 if (autoConnectEnabled) {
                                     wifiHelper.sendAutoConnectBroadcast(ssid)
                                 }
-                            }
 
-                            // 연결 성공 시 카메라 정보 바로 생성 (검색 생략)
-                            // 이 시점에서는 _isConnecting을 유지하여 로딩 계속 표시
-                            createCameraFromConnectedWifi(ssid)
+                                // 연결 성공 시 카메라 정보 바로 생성 (검색 생략)
+                                createCameraFromConnectedWifi(ssid)
+                            }
                         }
                     },
                     onError = { errorMsg: String ->
-                        Log.e(TAG, "WifiNetworkSpecifier 상세 오류: $errorMsg")
-                        _errorMessage.value = errorMsg
-                        _isConnecting.value = false // 오류 시 로딩 해제
-
-                        // 연결 상태 정리 (다이얼로그 닫기)
                         viewModelScope.launch {
-                            ptpipDataSource.disconnect()
+                            Log.e(TAG, "WifiNetworkSpecifier 상세 오류: $errorMsg")
+                            _errorMessage.value = errorMsg
+                            _isConnecting.value = false
+                            Log.d(TAG, "로딩 다이얼로그 해제: _isConnecting = false (오류)")
+
+                            // 연결 상태 정리 (다이얼로그 닫기)
+                            try {
+                                ptpipDataSource.disconnect()
+                            } catch (e: Exception) {
+                                Log.w(TAG, "연결 정리 중 오류: ${e.message}")
+                            }
                         }
                     }
                 )
@@ -342,11 +364,14 @@ class PtpipViewModel @Inject constructor(
                 val errorMsg = "Wi‑Fi 연결 요청 중 예외 발생: ${e.message}"
                 Log.e(TAG, errorMsg, e)
                 _errorMessage.value = errorMsg
-                _isConnecting.value = false // 예외 시 로딩 해제
+                _isConnecting.value = false
+                Log.d(TAG, "로딩 다이얼로그 해제: _isConnecting = false (예외)")
 
                 // 연결 상태 정리 (다이얼로그 닫기)
-                viewModelScope.launch {
+                try {
                     ptpipDataSource.disconnect()
+                } catch (disconnectError: Exception) {
+                    Log.w(TAG, "연결 정리 중 오류: ${disconnectError.message}")
                 }
             }
         }
@@ -607,6 +632,34 @@ class PtpipViewModel @Inject constructor(
                         )
                     }
                     _errorMessage.value = null
+
+                    // 첫 번째 카메라 자동 선택 및 연결
+                    val firstCamera = cameras.first()
+                    Log.i(
+                        TAG,
+                        "첫 번째 카메라 자동 선택: ${firstCamera.name} (${firstCamera.ipAddress}:${firstCamera.port})"
+                    )
+                    _selectedCamera.value = firstCamera
+
+                    // libgphoto2 초기화 및 연결
+                    Log.i(TAG, "=== libgphoto2 초기화 및 카메라 연결 시작 ===")
+                    _isConnecting.value = true
+
+                    // 검색 완료 후 연결 시작까지 약간의 대기
+                    delay(500)
+
+                    val connectionSuccess =
+                        ptpipDataSource.connectToCamera(firstCamera, forceApMode)
+
+                    if (connectionSuccess) {
+                        Log.i(TAG, "✅ 카메라 연결 성공!")
+                        _errorMessage.value = null
+                        // 연결 성공 시 isConnecting은 PtpipDataSource의 상태 변화로 자동 해제됨
+                    } else {
+                        Log.e(TAG, "❌ 카메라 연결 실패")
+                        _errorMessage.value = "카메라 연결에 실패했습니다"
+                        _isConnecting.value = false
+                    }
                 }
 
             } catch (e: Exception) {

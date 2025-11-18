@@ -697,8 +697,18 @@ class NativeCameraDataSource @Inject constructor(
     // 카메라 기능 정보를 가져오는 새로운 함수
     fun getCameraCapabilities(): CameraCapabilities? {
         return try {
-            val summaryJson = CameraNative.getCameraSummary()
-            val json = JSONObject(summaryJson)
+            Log.d(TAG, "=== 카메라 기능 정보 가져오기 시작 ===")
+
+            // getCameraAbilities()를 사용하여 정확한 정보 가져오기
+            val abilitiesJson = CameraNative.getCameraAbilities()
+            if (abilitiesJson == null) {
+                Log.e(TAG, "getCameraAbilities() 반환값이 null")
+                return null
+            }
+
+            Log.d(TAG, "Abilities JSON 길이: ${abilitiesJson.length}")
+
+            val json = JSONObject(abilitiesJson)
 
             if (json.has("error")) {
                 Log.e(TAG, "카메라 기능 정보 가져오기 오류: ${json.getString("error")}")
@@ -706,42 +716,58 @@ class NativeCameraDataSource @Inject constructor(
             }
 
             val model = json.optString("model", "알 수 없음")
-            val supportsLiveView = json.optBoolean("supportsLiveView", false)
-            val canTriggerCapture = json.optBoolean("canTriggerCapture", true)
+            val supportsObj = json.optJSONObject("supports")
 
-            // 추가 기능 정보를 가져오기 위해 abilities 조회
-            val abilitiesJson = CameraNative.listCameraAbilities()
-            val abilities = try {
-                JSONObject(abilitiesJson)
-            } catch (e: Exception) {
-                Log.e(TAG, "기능 정보 파싱 실패: $abilitiesJson", e)
-                JSONObject()
+            if (supportsObj == null) {
+                Log.e(TAG, "supports 객체가 없음")
+                return null
             }
 
-            CameraCapabilities(
+            // supports 객체에서 기능 정보 추출
+            val canCaptureImage = supportsObj.optBoolean("capture_image", false)
+            val canCaptureVideo = supportsObj.optBoolean("capture_video", false)
+            val canLiveView = supportsObj.optBoolean("capture_preview", false)
+            val canConfig = supportsObj.optBoolean("config", false)
+            val canTriggerCapture = supportsObj.optBoolean("trigger_capture", false)
+            val canDelete = supportsObj.optBoolean("delete", false)
+            val canPreview = supportsObj.optBoolean("preview", false)
+
+            Log.d(TAG, "=== 파싱된 카메라 기능 정보 ===")
+            Log.d(TAG, "  모델: $model")
+            Log.d(TAG, "  사진 촬영: $canCaptureImage")
+            Log.d(TAG, "  비디오 촬영: $canCaptureVideo")
+            Log.d(TAG, "  라이브뷰: $canLiveView  ✅")
+            Log.d(TAG, "  설정 변경: $canConfig")
+            Log.d(TAG, "  트리거: $canTriggerCapture")
+            Log.d(TAG, "==============================")
+
+            val capabilities = CameraCapabilities(
                 model = model,
-                canCapturePhoto = canTriggerCapture,
-                canCaptureVideo = abilities.optBoolean("captureVideo", false),
-                canLiveView = supportsLiveView,
+                canCapturePhoto = canCaptureImage,
+                canCaptureVideo = canCaptureVideo,
+                canLiveView = canLiveView,
                 canTriggerCapture = canTriggerCapture,
-                supportsAutofocus = true, // TODO: 실제 값으로 대체 필요
-                supportsManualFocus = abilities.optBoolean("config", false),
-                supportsFocusPoint = false, // TODO: 위젯에서 확인 필요
-                supportsBurstMode = abilities.optBoolean("burstMode", false),
-                supportsTimelapse = abilities.optBoolean("timelapse", false),
-                supportsBracketing = false, // TODO: 위젯에서 확인 필요
-                supportsBulbMode = abilities.optBoolean("bulbMode", false),
-                canDownloadFiles = abilities.optBoolean("fileDownload", true),
-                canDeleteFiles = abilities.optBoolean("fileDelete", false),
-                canPreviewFiles = abilities.optBoolean("filePreview", false),
+                supportsAutofocus = canConfig,
+                supportsManualFocus = canConfig,
+                supportsFocusPoint = canConfig,
+                supportsBurstMode = canCaptureImage && canTriggerCapture,
+                supportsTimelapse = canCaptureImage && canTriggerCapture,
+                supportsBracketing = canCaptureImage && canConfig,
+                supportsBulbMode = canCaptureImage,
+                canDownloadFiles = true,  // 기본적으로 가능
+                canDeleteFiles = canDelete,
+                canPreviewFiles = canPreview,
                 availableIsoSettings = emptyList(), // TODO: 위젯에서 파싱 필요
                 availableShutterSpeeds = emptyList(), // TODO: 위젯에서 파싱 필요
                 availableApertures = emptyList(), // TODO: 위젯에서 파싱 필요
                 availableWhiteBalanceSettings = emptyList(), // TODO: 위젯에서 파싱 필요
-                supportsRemoteControl = abilities.optBoolean("remoteControl", false),
-                supportsConfigChange = abilities.optBoolean("configChange", false),
+                supportsRemoteControl = canConfig,
+                supportsConfigChange = canConfig,
                 batteryLevel = null
             )
+
+            Log.d(TAG, "✅ 카메라 기능 정보 파싱 완료")
+            capabilities
         } catch (e: Exception) {
             Log.e(TAG, "카메라 기능 정보 가져오기 실패", e)
             null

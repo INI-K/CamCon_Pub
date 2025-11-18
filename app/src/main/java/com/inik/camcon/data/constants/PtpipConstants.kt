@@ -5,9 +5,30 @@ package com.inik.camcon.data.constants
  */
 object PtpipConstants {
     // 네트워크 설정
-    const val DISCOVERY_TIMEOUT = 10000L // 10초
+    const val DISCOVERY_TIMEOUT = 5000L // 5초 (빠른 검색)
     const val CONNECTION_TIMEOUT = 10000 // 10초
-    const val SERVICE_TYPE = "_ptp._tcp"
+
+    // mDNS 서비스 타입 (여러 타입 지원)
+    const val SERVICE_TYPE = "_ptp._tcp" // 기본 PTP 서비스
+    val SERVICE_TYPES = listOf(
+        "_ptp._tcp",           // 표준 PTP over IP
+        "_ptpip._tcp",         // PTP/IP (일부 카메라)
+        "_axis-video._tcp",    // Axis 네트워크 카메라
+        "_ipp._tcp",           // 일부 Canon 카메라
+        "_pdl-datastream._tcp" // 일부 카메라가 사용
+    )
+
+    // 캐시된 IP 시도를 위한 타임아웃 (매우 빠름)
+    const val CACHED_IP_TIMEOUT = 1000L // 1초
+
+    // 일반적인 카메라 기본 IP 주소들
+    val DEFAULT_CAMERA_IPS = listOf(
+        "192.168.1.1",   // Nikon 기본값
+        "192.168.0.1",   // 일부 카메라
+        "192.168.1.2",   // Canon 기본값
+        "192.168.10.1",  // 일부 카메라
+        "192.168.100.1"  // 일부 카메라
+    )
 
     // PTPIP 패킷 타입
     const val PTPIP_INIT_COMMAND_REQUEST = 1

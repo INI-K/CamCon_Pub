@@ -1326,6 +1326,30 @@ class WifiNetworkHelper @Inject constructor(
                 return
             }
 
+            // WiFi가 켜져 있는지 확인
+            if (!wifiManager.isWifiEnabled) {
+                Log.w(TAG, "WiFi가 꺼져 있음 - 사용자에게 안내")
+                val message = "WiFi가 꺼져 있습니다.\n\nWiFi를 켜고 다시 시도해주세요."
+                onError?.invoke(message)
+                onResult(false)
+                return
+            }
+
+            // 현재 연결 상태 확인 및 로깅
+            val currentSSID = getCurrentSSID()
+            val currentlyConnected = isWifiConnected()
+            Log.d(TAG, "현재 WiFi 상태:")
+            Log.d(TAG, "  - WiFi 활성화: ${wifiManager.isWifiEnabled}")
+            Log.d(TAG, "  - WiFi 연결됨: $currentlyConnected")
+            Log.d(TAG, "  - 현재 SSID: $currentSSID")
+
+            // 이미 목표 네트워크에 연결되어 있는지 확인
+            if (currentSSID == ssid) {
+                Log.i(TAG, "이미 '$ssid'에 연결되어 있음 - 즉시 성공 처리")
+                onResult(true)
+                return
+            }
+
             // 연결 전 해당 SSID가 스캔 결과에 있는지 확인
             Log.d(TAG, "WifiNetworkSpecifier 연결 전 SSID 확인: $ssid")
             val availableSSIDs = try {
@@ -1355,7 +1379,7 @@ class WifiNetworkHelper @Inject constructor(
             // 보안 타입 확인
             val securityType = getWifiSecurityType(ssid)
             val requiresPassword = requiresPassword(ssid)
-            Log.d(TAG, "SSID '$ssid' 보안 정보:")
+            Log.d(TAG, "SSID '$ssid' 보안 정보: $securityType")
             Log.d(TAG, "  - 보안 타입: ${securityType ?: "알 수 없음"}")
             Log.d(TAG, "  - 패스워드 필요: $requiresPassword")
             Log.d(TAG, "  - 제공된 패스워드: ${if (passphrase.isNullOrEmpty()) "없음" else "있음"}")
@@ -1372,12 +1396,75 @@ class WifiNetworkHelper @Inject constructor(
                 return
             }
 
+            Log.d(TAG, "========================================")
+            Log.d(TAG, "🔌 WifiNetworkSpecifier 연결 시도")
+            Log.d(TAG, "  - SSID: $ssid")
+            Log.d(TAG, "  - 보안: ${securityType ?: "OPEN"}")
+            Log.d(TAG, "  - 패스워드 길이: ${passphrase?.length ?: 0}자")
+            Log.d(TAG, "  - 인터넷 제외: $requireNoInternet")
+            Log.d(TAG, "========================================")
+
+            // BSSID 가져오기 (더 정확한 네트워크 지정)
+            val targetBssid = try {
+                wifiManager.scanResults?.find {
+                    it.SSID?.removeSurrounding("\"") == ssid
+                }?.BSSID
+            } catch (e: Exception) {
+                null
+            }
+
+            if (targetBssid != null) {
+                Log.d(TAG, "  - Target BSSID: $targetBssid (더 정확한 네트워크 지정)")
+            }
+
             val builder = WifiNetworkSpecifier.Builder()
                 .setSsid(ssid)
 
+            // BSSID가 있으면 추가 (더 정확한 연결)
+            if (targetBssid != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                try {
+                    val macAddress = MacAddress.fromString(targetBssid)
+                    builder.setBssid(macAddress)
+                    Log.d(TAG, "  - BSSID 지정 완료: $targetBssid")
+                } catch (e: Exception) {
+                    Log.w(TAG, "  - BSSID 지정 실패: ${e.message}")
+                }
+            }
+
             if (!passphrase.isNullOrEmpty()) {
-                // WPA2 기본, 필요 시 WPA3로 변경 가능
-                builder.setWpa2Passphrase(passphrase)
+                // 보안 타입에 따라 다른 메서드 사용
+                when {
+                    securityType?.contains("WPA3", ignoreCase = true) == true &&
+                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
+                        // WPA3-SAE 보안 사용 (WPA3의 기본 모드)
+                        builder.setWpa3Passphrase(passphrase)
+                        Log.d(TAG, "  - WPA3 패스워드 설정")
+                    }
+
+                    securityType?.contains("SAE", ignoreCase = true) == true &&
+                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
+                        // SAE (Simultaneous Authentication of Equals) = WPA3
+                        builder.setWpa3Passphrase(passphrase)
+                        Log.d(TAG, "  - WPA3-SAE 패스워드 설정")
+                    }
+
+                    securityType?.contains("WPA2", ignoreCase = true) == true -> {
+                        builder.setWpa2Passphrase(passphrase)
+                        Log.d(TAG, "  - WPA2 패스워드 설정")
+                    }
+
+                    securityType?.contains("WPA", ignoreCase = true) == true -> {
+                        // WPA2/WPA3 혼합 모드인 경우 WPA2로 연결 시도
+                        builder.setWpa2Passphrase(passphrase)
+                        Log.d(TAG, "  - WPA/WPA2 패스워드 설정")
+                    }
+
+                    else -> {
+                        // 보안 타입을 알 수 없는 경우 WPA2로 시도 (가장 일반적)
+                        builder.setWpa2Passphrase(passphrase)
+                        Log.d(TAG, "  - 기본 WPA2 패스워드 설정")
+                    }
+                }
             }
 
             val specifier = builder.build()
@@ -1388,13 +1475,22 @@ class WifiNetworkHelper @Inject constructor(
 
             if (requireNoInternet) {
                 requestBuilder.removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                Log.d(TAG, "  - 인터넷 검증 제외")
             }
 
             val request = requestBuilder.build()
 
+            // 타임아웃 설정 (30초)
+            val timeoutHandler = android.os.Handler(android.os.Looper.getMainLooper())
+            var isCallbackInvoked = false
+
             val callback = object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) {
-                    Log.i(TAG, "WifiNetworkSpecifier 연결 성공: $ssid")
+                    if (isCallbackInvoked) return
+                    isCallbackInvoked = true
+                    timeoutHandler.removeCallbacksAndMessages(null)
+
+                    Log.i(TAG, "✅ WifiNetworkSpecifier 연결 성공: $ssid")
                     Log.i(TAG, "네트워크 정보:")
                     Log.i(TAG, "  - Network ID: $network")
                     Log.i(TAG, "  - SSID: $ssid")
@@ -1406,7 +1502,7 @@ class WifiNetworkHelper @Inject constructor(
                             // 이렇게 하면 libgphoto2가 카메라에 연결할 수 있습니다
                             connectivityManager.bindProcessToNetwork(network)
                             currentNetwork = network
-                            Log.d(TAG, "네트워크 바인딩 성공")
+                            Log.d(TAG, "✅ 네트워크 바인딩 성공")
 
                             // Wi-Fi 퍼포먼스 락 적용
                             if (acquireWifiLock("PTP_IP_HighPerf")) {
@@ -1414,7 +1510,7 @@ class WifiNetworkHelper @Inject constructor(
                             }
 
                             // 연결 안정화를 위한 짧은 지연
-                            Thread.sleep(500)
+                            Thread.sleep(800)
 
                             // 네트워크 상태 재확인
                             val capabilities = connectivityManager.getNetworkCapabilities(network)
@@ -1428,7 +1524,7 @@ class WifiNetworkHelper @Inject constructor(
                             }
 
                             // 연결된 Wi-Fi 주파수 정보 출력 (추가 지연 후)
-                            Thread.sleep(300) // Wi-Fi 정보 완전 설정 대기
+                            Thread.sleep(500) // Wi-Fi 정보 완전 설정 대기
                             val freqInfo = getCurrentWifiFrequencyInfo()
                             if (freqInfo != null) {
                                 Log.i(TAG, "📶 현재 Wi-Fi 주파수 정보:")
@@ -1451,30 +1547,49 @@ class WifiNetworkHelper @Inject constructor(
                 }
 
                 override fun onUnavailable() {
-                    Log.w(TAG, "WifiNetworkSpecifier 연결 불가: $ssid")
+                    if (isCallbackInvoked) return
+                    isCallbackInvoked = true
+                    timeoutHandler.removeCallbacksAndMessages(null)
+
+                    Log.w(TAG, "❌ WifiNetworkSpecifier 연결 불가: $ssid")
                     Log.w(TAG, "연결 실패 상세 정보:")
                     Log.w(TAG, "  - SSID: $ssid")
                     Log.w(TAG, "  - 패스워드 제공됨: ${!passphrase.isNullOrEmpty()}")
-                    Log.w(TAG, "  - 보안 타입: ${getWifiSecurityType(ssid)}")
+                    val detectedSecurity = getWifiSecurityType(ssid)
+                    Log.d(TAG, "SSID '$ssid' 보안 정보: $detectedSecurity")
+                    Log.w(TAG, "  - 보안 타입: $detectedSecurity")
                     Log.w(TAG, "  - 인터넷 제외: $requireNoInternet")
 
-                    val message = "자동 연결에 실패했습니다.\n\n" +
-                            "가능한 원인:\n" +
-                            "1. Wi-Fi '$ssid'가 범위를 벗어남\n" +
-                            "2. 패스워드가 잘못되었거나 변경됨\n" +
-                            "3. 카메라가 다른 기기와 연결 중\n" +
-                            "4. 카메라 Wi-Fi가 일시적으로 꺼짐\n\n" +
-                            "해결 방법:\n" +
-                            "- 카메라 Wi-Fi 상태 확인 후 재시도\n" +
-                            "- 시스템 Wi-Fi 설정에서 '$ssid'에 수동 연결\n" +
-                            "- 카메라와의 거리를 가깝게 한 후 재시도"
+                    val message = buildString {
+                        appendLine("자동 연결에 실패했습니다.")
+                        appendLine()
+                        appendLine("가능한 원인:")
+                        appendLine("1. Wi-Fi '$ssid'가 범위를 벗어남")
+                        appendLine("2. 패스워드가 잘못되었거나 변경됨")
+
+                        // 패스워드 힌트 제공
+                        if (!passphrase.isNullOrEmpty()) {
+                            appendLine("   (입력한 패스워드 길이: ${passphrase.length}자)")
+                        }
+
+                        appendLine("3. 카메라가 이미 다른 기기와 연결 중")
+                        appendLine("   → 카메라 Wi-Fi를 끄고 다시 켜보세요")
+                        appendLine("4. 카메라 Wi-Fi가 일시적으로 꺼짐")
+                        appendLine()
+                        appendLine("해결 방법:")
+                        appendLine("• 카메라 Wi-Fi 상태 확인 후 재시도")
+                        appendLine("• 시스템 Wi-Fi 설정에서 '$ssid'에 수동 연결")
+                        appendLine("• 카메라와의 거리를 가깝게 한 후 재시도")
+                        appendLine("• 카메라의 Wi-Fi 패스워드를 다시 확인")
+                    }
+
                     Log.e(TAG, "사용자에게 표시할 오류 메시지: $message")
                     onError?.invoke(message)
                     onResult(false)
                 }
 
                 override fun onLost(network: Network) {
-                    Log.w(TAG, "WifiNetworkSpecifier 연결 손실: $ssid (Network: $network)")
+                    Log.w(TAG, "⚠️ WifiNetworkSpecifier 연결 손실: $ssid (Network: $network)")
                     // 연결 손실 시 재연결 시도하지 않고 로그만 남김
                 }
 
@@ -1482,15 +1597,48 @@ class WifiNetworkHelper @Inject constructor(
                     network: Network,
                     networkCapabilities: NetworkCapabilities
                 ) {
-                    Log.d(TAG, "네트워크 기능 변화: $ssid")
+                    Log.d(TAG, "🔄 네트워크 기능 변화: $ssid")
                     if (networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
                         Log.d(TAG, "  - Wi-Fi 전송 유지됨")
                     }
                 }
             }
 
+            // 45초 타임아웃 설정 (카메라 연결은 시간이 더 걸릴 수 있음)
+            timeoutHandler.postDelayed({
+                if (!isCallbackInvoked) {
+                    isCallbackInvoked = true
+                    Log.w(TAG, "⏱️ WifiNetworkSpecifier 연결 타임아웃 (45초)")
+
+                    val message = buildString {
+                        appendLine("연결 시도가 45초 동안 응답이 없어 종료되었습니다.")
+                        appendLine()
+                        appendLine("이 문제는 다음 원인일 수 있습니다:")
+                        appendLine("1. Android 시스템이 '$ssid'에 연결을 허용하지 않음")
+                        appendLine("2. 카메라 WiFi 보안 설정이 Android와 호환되지 않음")
+                        appendLine("3. 카메라가 이미 다른 기기와 연결 중")
+                        appendLine()
+                        appendLine("해결 방법:")
+                        appendLine("• 시스템 WiFi 설정에서 '$ssid'에 수동으로 연결해보세요")
+                        appendLine("• 카메라 WiFi를 끄고 다시 켜보세요")
+                        appendLine("• 카메라 WiFi 보안 설정을 WPA2로 변경해보세요")
+                        appendLine("• 스마트폰을 재시작해보세요")
+                    }
+
+                    onError?.invoke(message)
+                    onResult(false)
+
+                    try {
+                        connectivityManager.unregisterNetworkCallback(callback)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "콜백 등록 해제 실패: ${e.message}")
+                    }
+                }
+            }, 45000) // 45초
+
             connectivityManager.requestNetwork(request, callback)
-            Log.d(TAG, "WifiNetworkSpecifier 요청 전송: $ssid")
+            Log.d(TAG, "✅ WifiNetworkSpecifier 요청 전송 완료")
+            Log.d(TAG, "========================================")
 
         } catch (e: SecurityException) {
             val message = when {
@@ -1793,29 +1941,47 @@ class WifiNetworkHelper @Inject constructor(
     ): Boolean {
         return when {
             config.passphrase.isNullOrEmpty() -> {
+                // 개방형 네트워크
                 builder.setIsEnhancedOpen(false)
+                Log.d(TAG, "WifiSuggestion: 개방형 네트워크 설정")
                 true
             }
 
-            config.securityType?.contains(
-                "WPA3",
-                ignoreCase = true
-            ) == true && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-                builder.setWpa3Passphrase(config.passphrase)
-                true
+            config.securityType?.contains("WPA3", ignoreCase = true) == true ||
+                    config.securityType?.contains("SAE", ignoreCase = true) == true -> {
+                // WPA3 또는 WPA3-SAE 보안
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    builder.setWpa3Passphrase(config.passphrase)
+                    Log.d(TAG, "WifiSuggestion: WPA3-SAE 패스워드 설정")
+                    true
+                } else {
+                    Log.w(TAG, "WPA3는 Android 10 이상에서만 지원됨")
+                    // Android 10 미만에서는 WPA2로 폴백
+                    builder.setWpa2Passphrase(config.passphrase)
+                    Log.d(TAG, "WifiSuggestion: WPA2로 폴백")
+                    true
+                }
             }
 
-            config.securityType?.contains(
-                "WPA2",
-                ignoreCase = true
-            ) == true || config.securityType?.contains("WPA", ignoreCase = true) == true -> {
+            config.securityType?.contains("WPA2", ignoreCase = true) == true -> {
+                // WPA2 보안
                 builder.setWpa2Passphrase(config.passphrase)
+                Log.d(TAG, "WifiSuggestion: WPA2 패스워드 설정")
+                true
+            }
+
+            config.securityType?.contains("WPA", ignoreCase = true) == true -> {
+                // WPA 또는 WPA/WPA2 혼합 모드
+                builder.setWpa2Passphrase(config.passphrase)
+                Log.d(TAG, "WifiSuggestion: WPA/WPA2 패스워드 설정")
                 true
             }
 
             else -> {
-                Log.w(TAG, "지원되지 않는 보안 방식으로 제안 생성 실패: ${config.securityType}")
-                false
+                // 보안 타입을 알 수 없는 경우 WPA2로 시도
+                Log.w(TAG, "알 수 없는 보안 타입: ${config.securityType}, WPA2로 시도")
+                builder.setWpa2Passphrase(config.passphrase)
+                true
             }
         }
     }
@@ -2339,6 +2505,7 @@ class WifiNetworkHelper @Inject constructor(
 
     /**
      * 특정 SSID의 보안 타입 확인
+     * WPA2/WPA3 혼합 모드인 경우 WPA2를 반환 (호환성 우선)
      */
     fun getWifiSecurityType(ssid: String): String? {
         return try {
@@ -2351,11 +2518,25 @@ class WifiNetworkHelper @Inject constructor(
                 val capabilities = targetNetwork.capabilities
                 Log.d(TAG, "SSID '$ssid' 보안 정보: $capabilities")
 
+                // WPA2/WPA3 혼합 모드 감지
+                val hasWPA2 = capabilities.contains("WPA2", ignoreCase = true) ||
+                        capabilities.contains("PSK", ignoreCase = true)
+                val hasWPA3 = capabilities.contains("WPA3", ignoreCase = true) ||
+                        capabilities.contains("SAE", ignoreCase = true)
+
+                // 우선순위: WPA2/WPA3 혼합 > WPA2 > WPA3 > WPA > WEP > OPEN
+                // 혼합 모드인 경우 호환성을 위해 WPA2로 연결
                 when {
-                    capabilities.contains("WPA3") -> "WPA3"
-                    capabilities.contains("WPA2") -> "WPA2"
-                    capabilities.contains("WPA") -> "WPA"
-                    capabilities.contains("WEP") -> "WEP"
+                    hasWPA2 && hasWPA3 -> {
+                        Log.d(TAG, "WPA2/WPA3 혼합 모드 감지 - WPA2로 연결 시도 (호환성 우선)")
+                        "WPA2"
+                    }
+
+                    capabilities.contains("WPA2", ignoreCase = true) -> "WPA2"
+                    capabilities.contains("WPA3", ignoreCase = true) -> "WPA3"
+                    capabilities.contains("SAE", ignoreCase = true) -> "WPA3-SAE"
+                    capabilities.contains("WPA", ignoreCase = true) -> "WPA"
+                    capabilities.contains("WEP", ignoreCase = true) -> "WEP"
                     else -> "OPEN"
                 }
             } else {

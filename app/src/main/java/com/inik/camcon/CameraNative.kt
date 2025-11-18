@@ -213,6 +213,10 @@ object CameraNative {
     external fun closeLogFile()
     external fun getLogFilePath(): String
 
+    // libgphoto2 설정 파일 관리 함수들
+    external fun readGphotoSettings(): String   // 설정 파일 내용 읽기
+    external fun deleteGphotoSettings(): String  // 설정 파일 삭제 (카메라별 독립 설정을 위해)
+
     // libgphoto2 로그 레벨 설정 함수 추가
     external fun setLogLevel(level: Int): Boolean
     external fun enableVerboseLogging(enabled: Boolean): Boolean
