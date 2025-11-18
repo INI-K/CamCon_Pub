@@ -9,8 +9,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -30,7 +32,7 @@ import com.inik.camcon.presentation.viewmodel.PtpipViewModel
 import com.inik.camcon.data.datasource.local.ThemeMode
 
 /**
- * STA 모드 화면 컴포넌트
+ * STA 모드 화면 컴포넌트 (WiFi Specification 기반)
  */
 @Composable
 fun StaModeContent(
@@ -48,6 +50,8 @@ fun StaModeContent(
     isAutoReconnectEnabled: Boolean,
     hasLocationPermission: Boolean,
     onRequestPermission: () -> Unit,
+    nearbyWifiSSIDs: List<String>,
+    onConnectToWifi: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -55,11 +59,6 @@ fun StaModeContent(
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        item {
-            StaModeDescriptionCard()
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
         // 실시간 네트워크 상태 카드
         item {
             NetworkStatusCard(
@@ -98,6 +97,27 @@ fun StaModeContent(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
+        // 주변 Wi‑Fi 스캔 결과 표시
+        item {
+            if (nearbyWifiSSIDs.isNotEmpty()) {
+                WifiScanResultsCard(
+                    ssids = nearbyWifiSSIDs,
+                    onConnectToWifi = onConnectToWifi,
+                    isStaMode = true
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+
+        // mDNS 검색 카드 추가
+        item {
+            MdnsSearchCard(
+                isDiscovering = isDiscovering,
+                onSearchClick = { ptpipViewModel.discoverCamerasSta() }
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
         // 공통 카메라 연결 및 검색 UI
         item {
             CameraConnectionContent(
@@ -112,7 +132,8 @@ fun StaModeContent(
                 isWifiConnected = isWifiConnected,
                 isApMode = false,
                 hasLocationPermission = hasLocationPermission,
-                onRequestPermission = onRequestPermission
+                onRequestPermission = onRequestPermission,
+                nearbyWifiSSIDs = nearbyWifiSSIDs
             )
         }
     }
@@ -153,11 +174,11 @@ private fun StaModeDescriptionCard() {
             Spacer(modifier = Modifier.height(4.dp))
 
             val staModeSteps = listOf(
-                "1. 카메라와 스마트폰을 동일한 Wi-Fi 네트워크에 연결하세요",
-                "2. 카메라에서 Wi-Fi 기능을 활성화하고 'STA 모드'를 선택하세요",
-                "3. 카메라 메뉴에서 집 또는 사무실 Wi-Fi 네트워크를 선택하세요",
-                "4. 네트워크 비밀번호를 입력하여 연결하세요",
-                "5. 연결 후 아래 '카메라 찾기' 버튼을 눌러 검색하세요"
+                "1. 카메라에서 Wi-Fi 기능을 켜고 'STA 모드'를 선택하세요",
+                "2. 카메라 메뉴에서 집 또는 사무실 Wi-Fi 네트워크를 선택하세요",
+                "3. 카메라에 네트워크 비밀번호를 입력하여 연결하세요",
+                "4. 아래 '주변 Wi-Fi 스캔' 버튼을 눌러 동일한 네트워크를 찾으세요",
+                "5. 검색된 네트워크를 선택하고 비밀번호를 입력하세요"
             )
 
             staModeSteps.forEach { step ->
@@ -299,6 +320,97 @@ private fun AutoReconnectCard(
                     onCheckedChange = onToggleAutoReconnect
                 )
             }
+        }
+    }
+}
+
+/**
+ * mDNS 검색 카드 (STA 모드 전용)
+ */
+@Composable
+private fun MdnsSearchCard(
+    isDiscovering: Boolean,
+    onSearchClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = "🔍 mDNS 카메라 검색",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "같은 네트워크에 연결된 카메라를 자동으로 검색합니다.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "📋 검색 순서:",
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+
+            val searchSteps = listOf(
+                "1. 캐시된 IP 확인 (0.5초)",
+                "2. mDNS 검색 (2-5초)",
+                "3. 기본 IP 시도 (192.168.1.1)"
+            )
+
+            searchSteps.forEach { step ->
+                Text(
+                    text = step,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(vertical = 1.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = onSearchClick,
+                enabled = !isDiscovering,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (isDiscovering) {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .height(24.dp)
+                            .width(24.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("검색 중...")
+                } else {
+                    Text("카메라 검색 시작")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "💡 팁: 카메라가 같은 Wi-Fi 네트워크에 연결되어 있는지 확인하세요.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f),
+                fontWeight = FontWeight.Medium
+            )
         }
     }
 }
