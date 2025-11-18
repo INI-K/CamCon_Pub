@@ -440,12 +440,25 @@ fun PtpipConnectionScreen(
         )
     }
 
-    // 연결 진행 상황 업데이트 (connectionState와 connectionProgressMessage로만 제어)
-    LaunchedEffect(connectionState, connectionProgressMessage) {
-        Log.d("PtpipConnectionScreen", " 다이얼로그 상태 체크:")
+    // 연결 진행 상황 업데이트 (isConnecting, connectionState, connectionProgressMessage로 제어)
+    LaunchedEffect(isConnecting, connectionState, connectionProgressMessage) {
+        Log.d("PtpipConnectionScreen", "🔍 다이얼로그 상태 체크:")
+        Log.d("PtpipConnectionScreen", "   - isConnecting: $isConnecting")
         Log.d("PtpipConnectionScreen", "   - connectionState: $connectionState")
         Log.d("PtpipConnectionScreen", "   - connectionProgressMessage: $connectionProgressMessage")
         Log.d("PtpipConnectionScreen", "   - 현재 다이얼로그 상태: $showConnectionProgressDialog")
+
+        // isConnecting이 false면 무조건 다이얼로그 닫기 (Wi-Fi 연결 실패 포함)
+        if (!isConnecting) {
+            if (connectionState != com.inik.camcon.domain.model.PtpipConnectionState.CONNECTED) {
+                Log.d(
+                    "PtpipConnectionScreen",
+                    "   ❌ isConnecting=false & NOT CONNECTED - 다이얼로그 즉시 닫기"
+                )
+                showConnectionProgressDialog = false
+                return@LaunchedEffect
+            }
+        }
 
         when (connectionState) {
             com.inik.camcon.domain.model.PtpipConnectionState.CONNECTING -> {
@@ -472,8 +485,27 @@ fun PtpipConnectionScreen(
             }
             com.inik.camcon.domain.model.PtpipConnectionState.DISCONNECTED,
             com.inik.camcon.domain.model.PtpipConnectionState.ERROR -> {
-                Log.d("PtpipConnectionScreen", "   ❌ DISCONNECTED/ERROR 상태 - 다이얼로그 즉시 닫기")
-                showConnectionProgressDialog = false
+                // Wi-Fi 연결 직후 짧은 DISCONNECTED 상태 방지 - isConnecting 체크
+                if (isConnecting) {
+                    Log.d(
+                        "PtpipConnectionScreen",
+                        "   ⏳ DISCONNECTED/ERROR 상태지만 isConnecting=true - 다이얼로그 유지 (Wi-Fi 연결 중)"
+                    )
+                    // 다이얼로그 유지 - 아무것도 하지 않음
+                } else {
+                    Log.d(
+                        "PtpipConnectionScreen",
+                        "   ❌ DISCONNECTED/ERROR 상태 & isConnecting=false - 0.5초 후 다이얼로그 닫기"
+                    )
+                    kotlinx.coroutines.delay(500) // 짧은 대기로 순간적인 상태 변화 방지
+                    // 다시 한번 체크
+                    if (!isConnecting && connectionState != com.inik.camcon.domain.model.PtpipConnectionState.CONNECTING) {
+                        Log.d("PtpipConnectionScreen", "   ✅ 진짜 DISCONNECTED/ERROR 확인 - 다이얼로그 닫기")
+                        showConnectionProgressDialog = false
+                    } else {
+                        Log.d("PtpipConnectionScreen", "   ⏳ 상태가 변경됨 - 다이얼로그 유지")
+                    }
+                }
             }
         }
     }
@@ -652,7 +684,9 @@ fun PtpipConnectionScreen(
                                 isAutoReconnectEnabled = isAutoReconnectEnabled,
                                 hasLocationPermission = ptpipViewModel.getWifiHelper()
                                     .analyzeWifiScanPermissionStatus().canScan,
-                                onRequestPermission = { requestWifiScanPermissions() }
+                                onRequestPermission = { requestWifiScanPermissions() },
+                                nearbyWifiSSIDs = nearbyWifiSSIDs,
+                                onConnectToWifi = { ssid -> onConnectToWifiWithPassword(ssid) }
                             )
                         }
                     }

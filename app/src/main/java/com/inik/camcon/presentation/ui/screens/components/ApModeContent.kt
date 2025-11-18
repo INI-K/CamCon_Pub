@@ -41,7 +41,7 @@ import com.inik.camcon.presentation.viewmodel.PtpipViewModel
 import com.inik.camcon.data.datasource.local.ThemeMode
 
 /**
- * AP 모드 화면 컴포넌트 (심플화)
+ * AP 모드 화면 컴포넌트 (WiFi Specification 기반)
  */
 @Composable
 fun ApModeContent(
@@ -68,7 +68,36 @@ fun ApModeContent(
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // 주변 Wi‑Fi 스캔 결과만 표시
+        // 실시간 네트워크 상태 카드
+        item {
+            NetworkStatusCard(
+                wifiNetworkState = wifiNetworkState,
+                ptpipViewModel = ptpipViewModel
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // Wi-Fi 기능 정보 카드
+        item {
+            WifiCapabilitiesCard(
+                wifiCapabilities = wifiCapabilities,
+                hasLocationPermission = hasLocationPermission,
+                onRequestPermission = onRequestPermission
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // 공통 Wi-Fi 상태 카드
+        item {
+            WifiStatusCard(
+                isWifiConnected = isWifiConnected,
+                isPtpipEnabled = isPtpipEnabled,
+                onEnablePtpip = { ptpipViewModel.setPtpipEnabled(true) }
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // 주변 Wi‑Fi 스캔 결과 표시
         item {
             if (nearbyWifiSSIDs.isNotEmpty()) {
                 WifiScanResultsCard(
@@ -79,7 +108,7 @@ fun ApModeContent(
             }
         }
 
-        // 카메라 연결 및 검색 UI (버튼 통합: 주변 Wi‑Fi 스캔)
+        // 공통 카메라 연결 및 검색 UI
         item {
             CameraConnectionContent(
                 ptpipViewModel = ptpipViewModel,
@@ -93,156 +122,14 @@ fun ApModeContent(
                 isWifiConnected = isWifiConnected,
                 isApMode = true,
                 hasLocationPermission = hasLocationPermission,
-                onRequestPermission = onRequestPermission
+                onRequestPermission = onRequestPermission,
+                nearbyWifiSSIDs = nearbyWifiSSIDs
             )
         }
     }
 }
 
-/**
- * 주변 Wi‑Fi 스캔 결과 카드 (전체 목록 표시)
- */
-@Composable
-private fun WifiScanResultsCard(
-    ssids: List<String>,
-    onConnectToWifi: (String) -> Unit
-) {
-    // 카메라 제조사 패턴 목록
-    val cameraManufacturers = listOf(
-        "CANON",
-        "NIKON",
-        "SONY",
-        "FUJIFILM",
-        "OLYMPUS",
-        "PANASONIC",
-        "PENTAX",
-        "LEICA",
-        "LUMIX"
-    )
 
-    // SSID를 카메라 제조사 포함 여부로 분류
-    val (cameraSsids, otherSsids) = ssids.partition { ssid ->
-        cameraManufacturers.any { manufacturer ->
-            ssid.contains(manufacturer, ignoreCase = true)
-        }
-    }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = "🔎 주변 카메라 Wi‑Fi (${ssids.size}개)",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            if (cameraSsids.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "📷 카메라 네트워크 (${cameraSsids.size}개)",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // 카메라 제조사가 포함된 SSID 먼저 표시
-            cameraSsids.forEach { ssid ->
-                val detectedManufacturer = cameraManufacturers.find { manufacturer ->
-                    ssid.contains(manufacturer, ignoreCase = true)
-                }
-
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 2.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primary.copy(
-                            alpha = 0.1f
-                        )
-                    )
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                text = ssid,
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            if (detectedManufacturer != null) {
-                                Text(
-                                    text = "📷 $detectedManufacturer 카메라",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Button(
-                            onClick = { onConnectToWifi(ssid) },
-                            modifier = Modifier.size(width = 60.dp, height = 36.dp)
-                        ) {
-                            Text(
-                                "연결",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    }
-                }
-            }
-
-            // 일반 Wi-Fi 네트워크
-            if (otherSsids.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "📡 기타 네트워크 (${otherSsids.size}개)",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-
-                otherSsids.forEach { ssid ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = ssid,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f),
-                            modifier = Modifier.weight(1f)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        TextButton(onClick = { onConnectToWifi(ssid) }) {
-                            Text("연결")
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-// ... 기존 보조 컴포넌트 정의는 유지 (미사용)
 
 /**
  * AP 모드 설명 카드
@@ -282,8 +169,8 @@ private fun ApModeDescriptionCard() {
                 "1. 카메라에서 Wi-Fi 기능을 켜세요",
                 "2. 카메라 메뉴에서 'AP 모드' 또는 '액세스 포인트 모드'를 선택하세요",
                 "3. 카메라가 Wi-Fi 핫스팟을 생성합니다",
-                "4. 스마트폰 Wi-Fi 설정에서 카메라 네트워크를 선택하세요",
-                "5. 연결 후 아래 'Wi‑Fi 스캔' 버튼을 눌러 검색하세요"
+                "4. 아래 '주변 Wi-Fi 스캔' 버튼을 눌러 카메라 네트워크를 찾으세요",
+                "5. 검색된 카메라 네트워크를 선택하고 비밀번호를 입력하세요"
             )
 
             apModeSteps.forEach { step ->
@@ -315,7 +202,7 @@ private fun ApModeDescriptionCard() {
 }
 
 /**
- * 실시간 네트워크 상태 카드
+ * 실시간 네트워크 상태 카드 (AP 모드용)
  */
 @Composable
 private fun NetworkStatusCard(
@@ -325,11 +212,12 @@ private fun NetworkStatusCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = if (wifiNetworkState.isConnected) {
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-        } else {
-            MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
-        }
+        colors = CardDefaults.cardColors(
+            containerColor = if (wifiNetworkState.isConnected) {
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+            } else {
+                MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
+            }
         )
     ) {
         Column(
@@ -359,6 +247,15 @@ private fun NetworkStatusCard(
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "감지된 카메라 IP: ${wifiNetworkState.detectedCameraIP}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            if (wifiNetworkState.isConnected && wifiNetworkState.isConnectedToCameraAP) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "카메라 AP에 직접 연결 (Direct Connection)",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary
                 )

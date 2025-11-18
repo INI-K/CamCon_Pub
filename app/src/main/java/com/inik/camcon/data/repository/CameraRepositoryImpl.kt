@@ -549,15 +549,24 @@ class CameraRepositoryImpl @Inject constructor(
         com.inik.camcon.utils.LogcatManager.d(TAG, "=== 라이브뷰 시작 (Repository) ===")
         com.inik.camcon.utils.LogcatManager.d(
             TAG,
-            "카메라 연결 상태: ${connectionManager.isConnected.value}"
+            "USB 연결 상태: ${connectionManager.isConnected.value}"
+        )
+        com.inik.camcon.utils.LogcatManager.d(
+            TAG,
+            "PTPIP 연결 상태: ${connectionManager.isPtpipConnected.value}"
         )
 
-        // 연결 상태 확인
-        if (!connectionManager.isConnected.value) {
+        // 연결 상태 확인 (USB 또는 PTPIP 연결)
+        val isAnyConnectionActive = connectionManager.isConnected.value ||
+                connectionManager.isPtpipConnected.value
+
+        if (!isAnyConnectionActive) {
             Log.e(TAG, "카메라가 연결되지 않은 상태에서 라이브뷰 시작 불가")
             close(IllegalStateException("카메라가 연결되지 않음"))
             return@callbackFlow
         }
+
+        com.inik.camcon.utils.LogcatManager.d(TAG, "✅ 카메라 연결 확인 완료 - 라이브뷰 시작")
 
         try {
             com.inik.camcon.utils.LogcatManager.d(TAG, "네이티브 startLiveView 호출 시작 (자동초점 생략)")
