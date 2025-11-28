@@ -26,7 +26,8 @@ data class PtpipCamera(
     val ipAddress: String,
     val port: Int,
     val name: String,
-    val isOnline: Boolean = true
+    val isOnline: Boolean = true,
+    val discoveredServiceType: String? = null  // mDNS 서비스 타입: "_ptp._tcp" 또는 "_ptpip._tcp"
 )
 
 /**

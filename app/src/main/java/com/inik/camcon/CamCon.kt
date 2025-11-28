@@ -63,6 +63,9 @@ class CamCon : Application() {
             override fun onActivityDestroyed(activity: Activity) {}
         })
 
+        // libgphoto2 플러그인 디렉토리 구조 생성
+        createLibgphoto2PluginDirs()
+
         // 네이티브 라이브러리 로딩 상태 확인
         checkNativeLibraryStatus()
 
@@ -80,6 +83,81 @@ class CamCon : Application() {
         startWifiMonitoringServiceIfEnabled()
 
         Log.d(TAG, "앱 초기화 완료")
+    }
+
+    /**
+     * libgphoto2 플러그인 디렉토리 구조 생성
+     *
+     * libgphoto2는 런타임에 특정 경로에서 플러그인을 로드합니다.
+     * APK 빌드 시 하위 디렉토리는 포함되지 않으므로 런타임에 생성합니다.
+     * nativeLibDir는 read-only이므로 앱의 private 디렉토리에 복사합니다.
+     */
+    private fun createLibgphoto2PluginDirs() {
+        try {
+            // 앱의 private 디렉토리에 플러그인 저장
+            val gphoto2BaseDir = getDir("gphoto2_plugins", Context.MODE_PRIVATE)
+            Log.d(TAG, "🔧 libgphoto2 플러그인 디렉토리 생성: ${gphoto2BaseDir.absolutePath}")
+
+            val gphoto2VersionDir = java.io.File(gphoto2BaseDir, "libgphoto2/2.5.33.1")
+            val portVersionDir = java.io.File(gphoto2BaseDir, "libgphoto2_port/0.12.2")
+
+            gphoto2VersionDir.mkdirs()
+            portVersionDir.mkdirs()
+
+            var iolibCount = 0
+            var camlibCount = 0
+
+            // APK의 lib/arm64-v8a 경로에서 라이브러리 목록 조회
+            val apkFile = java.util.zip.ZipFile(applicationInfo.sourceDir)
+            try {
+                val entries = apkFile.entries()
+                while (entries.hasMoreElements()) {
+                    val entry = entries.nextElement()
+                    val entryName = entry.name
+
+                    // lib/arm64-v8a/ 하위의 .so 파일만 처리
+                    if (!entryName.startsWith("lib/arm64-v8a/") || !entryName.endsWith(".so")) {
+                        continue
+                    }
+
+                    val fileName = entryName.substringAfterLast("/")
+
+                    when {
+                        fileName.startsWith("libgphoto2_port_iolib_") -> {
+                            val targetName = fileName.replace("libgphoto2_port_iolib_", "")
+                            val targetFile = java.io.File(portVersionDir, targetName)
+                            if (!targetFile.exists()) {
+                                apkFile.getInputStream(entry).use { input ->
+                                    targetFile.outputStream().use { output ->
+                                        input.copyTo(output)
+                                    }
+                                }
+                                iolibCount++
+                            }
+                        }
+
+                        fileName.startsWith("libgphoto2_camlib_") -> {
+                            val targetName = fileName.replace("libgphoto2_camlib_", "")
+                            val targetFile = java.io.File(gphoto2VersionDir, targetName)
+                            if (!targetFile.exists()) {
+                                apkFile.getInputStream(entry).use { input ->
+                                    targetFile.outputStream().use { output ->
+                                        input.copyTo(output)
+                                    }
+                                }
+                                camlibCount++
+                            }
+                        }
+                    }
+                }
+            } finally {
+                apkFile.close()
+            }
+
+            Log.d(TAG, "✅ 플러그인 복사 완료: I/O=$iolibCount, Camera=$camlibCount")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ 플러그인 디렉토리 생성 실패", e)
+        }
     }
 
     /**
