@@ -162,10 +162,12 @@ class SplashActivity : ComponentActivity() {
                 }
 
                 // 환경변수 설정
-                val nativeLibDir = applicationContext.applicationInfo.nativeLibraryDir
-                LogcatManager.d("SplashActivity", "네이티브 라이브러리 경로: $nativeLibDir")
+                // 플러그인 디렉토리 경로 사용 (CamCon.kt에서 생성한 경로)
+                val pluginDir =
+                    applicationContext.getDir("gphoto2_plugins", MODE_PRIVATE).absolutePath
+                LogcatManager.d("SplashActivity", "플러그인 디렉토리 경로: $pluginDir")
 
-                val envSetupResult = CameraNative.setupEnvironmentPaths(nativeLibDir)
+                val envSetupResult = CameraNative.setupEnvironmentPaths(pluginDir)
                 if (!envSetupResult) {
                     LogcatManager.e("SplashActivity", "❌ 환경변수 설정 실패")
                     withContext(Dispatchers.Main) {

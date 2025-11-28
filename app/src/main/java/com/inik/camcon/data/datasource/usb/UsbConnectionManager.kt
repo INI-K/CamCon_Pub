@@ -52,6 +52,123 @@ class UsbConnectionManager @Inject constructor(
     }
 
     /**
+     * libgphoto2 플러그인 디렉토리 존재 확인 및 생성
+     *
+     * nativeLibDir는 read-only이므로, 앱의 private 디렉토리에 복사합니다.
+     */
+    private fun ensureLibgphoto2PluginDirs(nativeLibDir: String): String {
+        try {
+            // 앱의 private 디렉토리에 플러그인 저장
+            val gphoto2BaseDir = context.getDir("gphoto2_plugins", Context.MODE_PRIVATE)
+            val gphoto2VersionDir = java.io.File(gphoto2BaseDir, "libgphoto2/2.5.33.1")
+            val portVersionDir = java.io.File(gphoto2BaseDir, "libgphoto2_port/0.12.2")
+
+            // 이미 디렉토리가 있고 파일도 있으면 스킵
+            if (gphoto2VersionDir.exists() && portVersionDir.exists()) {
+                val camlibExists = gphoto2VersionDir.listFiles()?.isNotEmpty() == true
+                val iolibExists = portVersionDir.listFiles()?.isNotEmpty() == true
+                if (camlibExists && iolibExists) {
+                    Log.d(TAG, "✅ libgphoto2 플러그인 디렉토리 이미 존재: ${gphoto2BaseDir.absolutePath}")
+
+                    // 🔍 실제 파일 구조 확인 로그 (디버깅용)
+                    Log.d(TAG, "📂 기존 플러그인 디렉토리 구조 확인:")
+                    Log.d(TAG, "  베이스: ${gphoto2BaseDir.absolutePath}")
+                    Log.d(TAG, "  IOLIB: ${portVersionDir.absolutePath}")
+                    portVersionDir.listFiles()?.forEach { file ->
+                        Log.d(TAG, "    - ${file.name} (${file.length()} bytes)")
+                    }
+                    Log.d(TAG, "  CAMLIB: ${gphoto2VersionDir.absolutePath}")
+                    gphoto2VersionDir.listFiles()?.take(5)?.forEach { file ->
+                        Log.d(TAG, "    - ${file.name} (${file.length()} bytes)")
+                    }
+
+                    // libgphoto2에 버전 디렉토리를 직접 전달 (세미콜론 구분)
+                    return "${portVersionDir.absolutePath}:${gphoto2VersionDir.absolutePath}"
+                }
+            }
+
+            Log.d(TAG, "🔧 libgphoto2 플러그인 디렉토리 생성: ${gphoto2BaseDir.absolutePath}")
+
+            gphoto2VersionDir.mkdirs()
+            portVersionDir.mkdirs()
+
+            var iolibCount = 0
+            var camlibCount = 0
+
+            // APK의 lib/arm64-v8a 경로에서 라이브러리 목록 조회
+            val apkFile = java.util.zip.ZipFile(context.applicationInfo.sourceDir)
+            try {
+                val entries = apkFile.entries()
+                while (entries.hasMoreElements()) {
+                    val entry = entries.nextElement()
+                    val entryName = entry.name
+
+                    // lib/arm64-v8a/ 하위의 .so 파일만 처리
+                    if (!entryName.startsWith("lib/arm64-v8a/") || !entryName.endsWith(".so")) {
+                        continue
+                    }
+
+                    val fileName = entryName.substringAfterLast("/")
+
+                    when {
+                        fileName.startsWith("libgphoto2_port_iolib_") -> {
+                            val targetName = fileName.replace("libgphoto2_port_iolib_", "")
+                            val targetFile = java.io.File(portVersionDir, targetName)
+                            if (!targetFile.exists()) {
+                                // 부모 디렉토리 생성 확인
+                                targetFile.parentFile?.mkdirs()
+                                apkFile.getInputStream(entry).use { input ->
+                                    targetFile.outputStream().use { output ->
+                                        input.copyTo(output)
+                                    }
+                                }
+                                iolibCount++
+                            }
+                        }
+
+                        fileName.startsWith("libgphoto2_camlib_") -> {
+                            val targetName = fileName.replace("libgphoto2_camlib_", "")
+                            val targetFile = java.io.File(gphoto2VersionDir, targetName)
+                            if (!targetFile.exists()) {
+                                // 부모 디렉토리 생성 확인
+                                targetFile.parentFile?.mkdirs()
+                                apkFile.getInputStream(entry).use { input ->
+                                    targetFile.outputStream().use { output ->
+                                        input.copyTo(output)
+                                    }
+                                }
+                                camlibCount++
+                            }
+                        }
+                    }
+                }
+            } finally {
+                apkFile.close()
+            }
+
+            Log.d(TAG, "✅ 플러그인 복사 완료: I/O=$iolibCount, Camera=$camlibCount")
+
+            // 실제 파일 구조 확인 로그
+            Log.d(TAG, "📂 플러그인 디렉토리 구조 확인:")
+            Log.d(TAG, "  베이스: ${gphoto2BaseDir.absolutePath}")
+            Log.d(TAG, "  IOLIB: ${portVersionDir.absolutePath}")
+            portVersionDir.listFiles()?.forEach { file ->
+                Log.d(TAG, "    - ${file.name} (${file.length()} bytes)")
+            }
+            Log.d(TAG, "  CAMLIB: ${gphoto2VersionDir.absolutePath}")
+            gphoto2VersionDir.listFiles()?.take(5)?.forEach { file ->
+                Log.d(TAG, "    - ${file.name} (${file.length()} bytes)")
+            }
+
+            // libgphoto2에 버전 디렉토리를 직접 전달 (세미콜론 구분)
+            return "${portVersionDir.absolutePath}:${gphoto2VersionDir.absolutePath}"
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ 플러그인 디렉토리 생성 실패", e)
+            return nativeLibDir
+        }
+    }
+
+    /**
      * USB 디바이스에 연결하고 네이티브 카메라를 초기화합니다.
      */
     fun connectToCamera(device: UsbDevice) {
@@ -117,12 +234,14 @@ class UsbConnectionManager @Inject constructor(
                 isInitializingNativeCamera = true
                 lastInitializedFd = fd
 
-                val nativeLibDir = context.applicationInfo.nativeLibraryDir
+                // libgphoto2 플러그인 디렉토리 확인 및 생성 (앱 private 디렉토리에)
+                // ⚠️ nativeLibraryDir가 아닌 플러그인 디렉토리를 사용해야 함!
+                val pluginDir = ensureLibgphoto2PluginDirs("")
 
                 // USB 연결 안정화를 위한 짧은 지연
                 delay(500)
 
-                val result = CameraNative.initCameraWithFd(fd, nativeLibDir)
+                val result = CameraNative.initCameraWithFd(fd, pluginDir)
                 Log.d(TAG, "네이티브 카메라 초기화 결과: $result")
 
                 when (result) {

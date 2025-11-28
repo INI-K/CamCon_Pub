@@ -151,7 +151,8 @@ class PtpipDiscoveryService @Inject constructor(
                                 ipAddress = hostAddress,
                                 port = port,
                                 name = cameraName,
-                                isOnline = true
+                                isOnline = true,
+                                discoveredServiceType = serviceInfo.serviceType  // mDNS 서비스 타입 저장
                             )
                             cameras.add(camera)
 
@@ -169,24 +170,10 @@ class PtpipDiscoveryService @Inject constructor(
                     }
                 }
 
-                // 4단계: mDNS 실패 시 기본 IP들 시도
+                // 4단계: mDNS 실패 시 기본 IP들 시도 - 비활성화 (시간 소모 방지)
                 if (cameras.isEmpty()) {
-                    Log.d(TAG, "4단계: mDNS 실패 - 기본 IP 주소들 시도")
-                    for (ip in PtpipConstants.DEFAULT_CAMERA_IPS) {
-                        if (testPtpipConnection(ip, 15740)) {
-                            Log.i(TAG, "✅ 기본 IP PTP-IP 연결 성공: $ip")
-
-                            val camera = PtpipCamera(
-                                ipAddress = ip,
-                                port = 15740,
-                                name = "PTPIP Camera ($ip)",
-                                isOnline = true
-                            )
-                            cameras.add(camera)
-                            saveCachedIP(ip, camera.name)
-                            break
-                        }
-                    }
+                    Log.d(TAG, "4단계: mDNS 실패 - 기본 IP 시도 건너뜀 (시간 절약)")
+                    // 기본 IP 시도 비활성화 - 불필요한 타임아웃 방지
                 }
 
                 Log.i(TAG, "========================================")
@@ -456,34 +443,12 @@ class PtpipDiscoveryService @Inject constructor(
 
     /**
      * 서비스 이름에서 카메라 이름 추출
+     * 원본 mDNS 이름을 그대로 유지 (Nikon STA 인증에 필요)
      */
     private fun extractCameraName(serviceName: String, ipAddress: String): String {
-        return when {
-            serviceName.contains("Z_8", ignoreCase = true) -> {
-                val match = Regex("Z_8[_\\s]*([0-9]+)").find(serviceName)
-                val serialNumber = match?.groupValues?.get(1) ?: ""
-                "Nikon Z8${if (serialNumber.isNotEmpty()) " ($serialNumber)" else ""}"
-            }
-
-            serviceName.contains("NIKON", ignoreCase = true) -> {
-                val modelMatch = Regex("NIKON[_\\s]*([A-Z]+[_\\s]*\\d+)", RegexOption.IGNORE_CASE)
-                    .find(serviceName)?.groupValues?.get(1)?.replace("_", " ")
-                "Nikon ${modelMatch ?: "Camera"}"
-            }
-
-            serviceName.contains("CANON", ignoreCase = true) -> {
-                val modelMatch = Regex("CANON[_\\s]*([A-Z]+[_\\s]*\\d+)", RegexOption.IGNORE_CASE)
-                    .find(serviceName)?.groupValues?.get(1)?.replace("_", " ")
-                "Canon ${modelMatch ?: "Camera"}"
-            }
-
-            serviceName.contains("SONY", ignoreCase = true) -> "Sony Camera"
-            serviceName.contains("FUJI", ignoreCase = true) -> "Fujifilm Camera"
-            serviceName.contains("PANASONIC", ignoreCase = true) -> "Panasonic Camera"
-            serviceName.contains("OLYMPUS", ignoreCase = true) -> "Olympus Camera"
-            serviceName.contains("LEICA", ignoreCase = true) -> "Leica Camera"
-            else -> "PTPIP Camera ($ipAddress)"
-        }
+        // mDNS 서비스 이름을 그대로 반환 (예: Z_6_5000784)
+        // Nikon 카메라 감지를 위해 원본 이름 유지
+        return serviceName
     }
 
     /**
