@@ -499,15 +499,45 @@ class PtpipDataSource @Inject constructor(
             Log.d(TAG, "네트워크 바인딩 상태에서 연결 시도")
 
             // =========================
+            // Step 0: Nikon 카메라 사전 인증 (STA 모드)
+            // =========================
+            // mDNS 서비스 이름으로 Nikon 카메라 감지
+            // Z_6_... , D_850_... , Nikon_Z8 등의 형식
+            val isNikonCamera = camera.name.contains("Nikon", ignoreCase = true) ||
+                    camera.name.startsWith("Z_", ignoreCase = true) ||
+                    camera.name.startsWith("D_", ignoreCase = true)
+
+            if (isNikonCamera && !forceApMode) {
+                Log.i(TAG, "=== Nikon 카메라 감지 (${camera.name}) - STA 인증 시도 ===")
+                _connectionProgressMessage.value = "Nikon 카메라 인증 중..."
+
+                // STA 인증 시도
+                if (!nikonAuthService.performStaAuthentication(camera)) {
+                    Log.w(TAG, "⚠️ Nikon STA 인증 실패 - AP 모드로 계속 진행")
+                    // 인증 실패해도 계속 진행 (AP 모드일 수 있음)
+                } else {
+                    Log.i(TAG, "✅ Nikon STA 인증 성공 - 카메라에서 '연결 허용' 승인됨")
+                }
+            }
+
+            // =========================
             // Step 1: libgphoto2로 연결
             // =========================
-            val libDir = context.applicationInfo.nativeLibraryDir
+            // 플러그인 디렉토리 사용 (USB와 동일한 방식 - 버전 디렉토리까지 포함)
+            val gphoto2BaseDir = context.getDir("gphoto2_plugins", Context.MODE_PRIVATE)
+            val gphoto2VersionDir = java.io.File(gphoto2BaseDir, "libgphoto2/2.5.33.1")
+            val portVersionDir = java.io.File(gphoto2BaseDir, "libgphoto2_port/0.12.2")
+
+            // 버전 디렉토리를 콜론(:)으로 구분하여 전달
+            val pluginDir = "${portVersionDir.absolutePath}:${gphoto2VersionDir.absolutePath}"
+            Log.i(TAG, "플러그인 디렉토리: $pluginDir")
+
             _connectionProgressMessage.value = "카메라 연결 중..."
 
             // 환경 변수 설정 (중요!)
             Log.i(TAG, "=== libgphoto2 환경 변수 설정 ===")
             try {
-                val envSetupResult = CameraNative.setupEnvironmentPaths(libDir)
+                val envSetupResult = CameraNative.setupEnvironmentPaths(pluginDir)
                 if (envSetupResult) {
                     Log.i(TAG, "✅ 환경 변수 설정 완료")
                 } else {
@@ -519,11 +549,11 @@ class PtpipDataSource @Inject constructor(
 
             val initResult = if (forceApMode) {
                 Log.i(TAG, "=== AP 모드 강제: libgphoto2 초기화 ===")
-                CameraNative.initCameraForAPMode(camera.ipAddress, camera.port, libDir)
+                CameraNative.initCameraForAPMode(camera.ipAddress, camera.port, pluginDir)
             } else {
                 Log.i(TAG, "=== 표준 모드: libgphoto2 초기화 ===")
-            CameraNative.initCameraWithPtpip(camera.ipAddress, camera.port, libDir)
-        }
+                CameraNative.initCameraWithPtpip(camera.ipAddress, camera.port, pluginDir)
+            }
 
             val initOk = (initResult == "OK" || initResult == "GP_OK" ||
                     initResult?.contains("Success", ignoreCase = true) == true)
@@ -576,36 +606,8 @@ class PtpipDataSource @Inject constructor(
                 // 상태 저장
                 storeAbilities(abilities, deviceInfo)
 
-                // =========================
-                // Step 3: 제조사별 특수 처리
-                // =========================
-                val manufacturer = abilities.getManufacturer()
-                Log.i(TAG, "=== 제조사: $manufacturer ===")
-
-                if (manufacturer == "Nikon" && !forceApMode) {
-                    // Nikon STA 모드 감지 및 인증
-                    val nikonMode = detectNikonMode(camera)
-
-                    if (nikonMode == NikonConnectionMode.STA_MODE) {
-                        Log.i(TAG, "🏠 Nikon STA 모드 감지 - 인증 필요")
-                        _connectionProgressMessage.value = "Nikon 카메라 인증 중..."
-
-                        // Nikon STA 인증
-                        if (!nikonAuthService.performStaAuthentication(camera)) {
-                            Log.e(TAG, "❌ Nikon STA 인증 실패")
-                            _connectionState.value = PtpipConnectionState.ERROR
-                            _connectionProgressMessage.value =
-                                "Nikon STA 인증 실패\n카메라에서 '연결 허용'을 눌러주세요"
-                            return@async false
-                        }
-
-                        Log.i(TAG, "✅ Nikon STA 인증 성공")
-                    } else {
-                        Log.i(TAG, "📡 Nikon AP 모드 - 인증 불필요")
-                    }
-                } else {
-                    Log.i(TAG, "✅ 별도 인증 불필요 (제조사: $manufacturer)")
-                }
+                // DeviceInfo에서 제조사 정보 로그 출력 (검증용)
+                Log.i(TAG, "=== 제조사: ${deviceInfo.manufacturer} (DeviceInfo 확인) ===")
 
                 // 기능 제한 경고
                 if (abilities.supports.isDownloadOnly()) {
@@ -785,38 +787,11 @@ class PtpipDataSource @Inject constructor(
         isInitialFlushCompleted = false
 
         try {
-            // 1단계: 파일 목록 조회 (타임아웃 적용 - 선택적)
-            _connectionProgressMessage.value = "파일 목록 조회 중..."
-            Log.i(TAG, "=== PTPIP 연결 후 파일 목록 조회 시작 (타임아웃: 5초) ===")
+            // 파일 목록 조회 생략 - 사진이 많으면 스캔 중 연결 끊김 방지
+            Log.i(TAG, "=== PTPIP 연결 후 파일 목록 조회 생략 (성능 최적화) ===")
+            com.inik.camcon.utils.LogcatManager.d(TAG, "⚡ 파일 목록 조회 건너뜀 - 이벤트 리스너만 시작")
 
-            // 타임아웃을 적용하여 파일 목록 조회가 멈추는 것을 방지
-            val fileListResult = withContext(Dispatchers.IO) {
-                kotlinx.coroutines.withTimeoutOrNull(5000) { // 5초 타임아웃
-                    try {
-                        val fileListJson = CameraNative.getCameraFileListPaged(0, 50) // 첫 페이지 50개
-                        if (fileListJson.isNotEmpty() && fileListJson != "[]") {
-                            Log.i(TAG, "✅ 파일 목록 조회 성공: ${fileListJson.length} chars")
-                            com.inik.camcon.utils.LogcatManager.d(TAG, "✅ 파일 목록 조회 성공")
-                            true
-                        } else {
-                            Log.i(TAG, "📷 카메라에 파일이 없거나 목록이 비어있음")
-                            com.inik.camcon.utils.LogcatManager.d(TAG, "📷 카메라 파일 목록 비어있음")
-                            true
-                        }
-                    } catch (e: Exception) {
-                        Log.w(TAG, "파일 목록 조회 중 오류 (계속 진행): ${e.message}")
-                        com.inik.camcon.utils.LogcatManager.w(TAG, "파일 목록 조회 실패: ${e.message}")
-                        false
-                    }
-                }
-            }
-
-            if (fileListResult == null) {
-                Log.w(TAG, "⚠️ 파일 목록 조회 타임아웃 (5초) - 건너뜀")
-                com.inik.camcon.utils.LogcatManager.w(TAG, "⚠️ 파일 목록 조회 타임아웃")
-            }
-
-            // 2단계: 이벤트 리스너 시작
+            // 이벤트 리스너 시작
             _connectionProgressMessage.value = "이벤트 리스너 시작 중..."
             com.inik.camcon.utils.LogcatManager.d(TAG, "🎧 CameraEventManager를 통한 이벤트 리스너 시작")
 

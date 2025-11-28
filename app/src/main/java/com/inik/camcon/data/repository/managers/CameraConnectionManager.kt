@@ -335,12 +335,14 @@ class CameraConnectionManager @Inject constructor(
 
                 if (isConnected && !currentConnected) {
                     // 연결 상태가 false -> true로 변경된 경우에만 업데이트
-                    Log.d("카메라연결매니저", "새로운 연결 감지 - 목록 및 기능 정보 업데이트")
+                    Log.d("카메라연결매니저", "새로운 연결 감지 - 기능 정보 업데이트")
 
                     // 연결 안정화를 위한 짧은 지연 후 업데이트
                     kotlinx.coroutines.delay(500)
 
-                    updateCameraList()
+                    // 카메라 목록 업데이트는 생략 (detectCamera가 느리므로)
+                    // 이미 카메라가 초기화되어 있으므로 목록 조회 불필요
+                    Log.d("카메라연결매니저", "⚡ 카메라 목록 업데이트 건너뜀 (성능 최적화)")
 
                     // 카메라 기능 정보는 연결 완료 후 한 번만 업데이트
                     if (_cameraCapabilities.value == null) {
