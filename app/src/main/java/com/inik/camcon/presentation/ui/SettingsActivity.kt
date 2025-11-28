@@ -646,7 +646,9 @@ fun SettingsScreen(
             }
 
             if (isAdminTier) {
-                // ADMIN 전용: 가상 카메라 설정
+                // ADMIN 전용: 가상 카메라 설정 및 네이티브 로그
+                val isNativeLogCaptureEnabled by appSettingsViewModel.isNativeLogCaptureEnabled.collectAsState()
+
                 SettingsSection(title = "ADMIN 전용 설정") {
                     SettingsItem(
                         icon = Icons.Default.CameraAlt,
@@ -670,7 +672,79 @@ fun SettingsScreen(
                             )
                         }
                     )
+
+                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+                    // 네이티브 로그 캡처 설정
+                    SettingsItemWithSwitch(
+                        icon = Icons.Default.Info,
+                        title = "📝 네이티브 로그 캡처",
+                        subtitle = if (isNativeLogCaptureEnabled) {
+                            "활성화됨 - libgphoto2 로그를 TXT 파일로 저장 중"
+                        } else {
+                            "PTP/IP 디버깅을 위한 상세 로그 기록"
+                        },
+                        checked = isNativeLogCaptureEnabled,
+                        onCheckedChange = {
+                            appSettingsViewModel.setNativeLogCaptureEnabled(it)
+                            val message = if (it) {
+                                "네이티브 로그 캡처를 시작합니다.\n카메라 초기화 시 상세 로그가 기록됩니다."
+                            } else {
+                                "네이티브 로그 캡처를 중지했습니다."
+                            }
+                            android.widget.Toast.makeText(
+                                context,
+                                message,
+                                android.widget.Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    )
+
+                    if (isNativeLogCaptureEnabled) {
+                        SettingsItem(
+                            icon = Icons.Default.Storage,
+                            title = "로그 파일 보기",
+                            subtitle = "저장된 네이티브 로그 파일 확인 및 내보내기",
+                            onClick = {
+                                // 로그 파일 목록 표시
+                                val logFiles = appSettingsViewModel.getLogFiles()
+                                if (logFiles.isEmpty()) {
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        "저장된 로그 파일이 없습니다.",
+                                        android.widget.Toast.LENGTH_SHORT
+                                    ).show()
+                                } else {
+                                    // 최신 로그 파일 내용 표시
+                                    val logContent = appSettingsViewModel.getLogFileContent()
+
+                                    // 간단한 다이얼로그로 로그 표시
+                                    android.app.AlertDialog.Builder(context)
+                                        .setTitle("네이티브 로그")
+                                        .setMessage(logContent.takeLast(3000)) // 마지막 3000자만 표시
+                                        .setPositiveButton("확인", null)
+                                        .setNeutralButton("전체 복사") { _, _ ->
+                                            val clipboard =
+                                                context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                            val clip = android.content.ClipData.newPlainText(
+                                                "native_log",
+                                                logContent
+                                            )
+                                            clipboard.setPrimaryClip(clip)
+                                            android.widget.Toast.makeText(
+                                                context,
+                                                "로그가 클립보드에 복사되었습니다",
+                                                android.widget.Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                        .show()
+                                }
+                            }
+                        )
+                    }
                 }
+
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
             if (showThemeDialog) {

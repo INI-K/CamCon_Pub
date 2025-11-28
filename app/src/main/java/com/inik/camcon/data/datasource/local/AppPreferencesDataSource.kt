@@ -51,6 +51,8 @@ class AppPreferencesDataSource @Inject constructor(
         private val SUBSCRIPTION_TIER = stringPreferencesKey("subscription_tier")
         private val ADMIN_NATIVE_LOG_STREAM_ENABLED =
             booleanPreferencesKey("admin_native_log_stream_enabled")
+        private val NATIVE_LOG_CAPTURE_ENABLED =
+            booleanPreferencesKey("native_log_capture_enabled")
     }
 
     /**
@@ -160,6 +162,14 @@ class AppPreferencesDataSource @Inject constructor(
     val isAdminNativeLogStreamingEnabled: Flow<Boolean> = context.appDataStore.data
         .map { preferences ->
             preferences[ADMIN_NATIVE_LOG_STREAM_ENABLED] ?: false
+        }
+
+    /**
+     * 네이티브 로그 캡처 활성화 여부 (기본값: false)
+     */
+    val isNativeLogCaptureEnabled: Flow<Boolean> = context.appDataStore.data
+        .map { preferences ->
+            preferences[NATIVE_LOG_CAPTURE_ENABLED] ?: false
         }
 
     /**
@@ -281,6 +291,15 @@ class AppPreferencesDataSource @Inject constructor(
     suspend fun setAdminNativeLogStreamingEnabled(enabled: Boolean) {
         context.appDataStore.edit { preferences ->
             preferences[ADMIN_NATIVE_LOG_STREAM_ENABLED] = enabled
+        }
+    }
+
+    /**
+     * 네이티브 로그 캡처 활성화/비활성화
+     */
+    suspend fun setNativeLogCaptureEnabled(enabled: Boolean) {
+        context.appDataStore.edit { preferences ->
+            preferences[NATIVE_LOG_CAPTURE_ENABLED] = enabled
         }
     }
 

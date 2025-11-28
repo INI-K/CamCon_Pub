@@ -1,13 +1,17 @@
 package com.inik.camcon.presentation.viewmodel
 
+import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.inik.camcon.CameraNative
 import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
 import com.inik.camcon.data.datasource.local.ThemeMode
 import com.inik.camcon.domain.usecase.ColorTransferUseCase
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.domain.model.SubscriptionTier
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -18,10 +22,15 @@ import javax.inject.Inject
 
 @HiltViewModel
 class AppSettingsViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val appPreferencesDataSource: AppPreferencesDataSource,
     private val colorTransferUseCase: ColorTransferUseCase,
     private val getSubscriptionUseCase: GetSubscriptionUseCase
 ) : ViewModel() {
+
+    companion object {
+        private const val TAG = "AppSettingsViewModel"
+    }
 
     /**
      * 카메라 컨트롤 표시 여부
@@ -184,6 +193,23 @@ class AppSettingsViewModel @Inject constructor(
         )
 
     /**
+     * 네이티브 로그 캡처 활성화 여부
+     */
+    val isNativeLogCaptureEnabled: StateFlow<Boolean> =
+        appPreferencesDataSource.isNativeLogCaptureEnabled
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = false
+            )
+
+    // 로그 파일 경로 생성
+    private fun getLogFilePath(): String {
+        val logDir = context.filesDir
+        return "${logDir}/libgphoto2_debug_${System.currentTimeMillis()}.txt"
+    }
+
+    /**
      * 카메라 컨트롤 표시 여부 설정
      */
     fun setCameraControlsEnabled(enabled: Boolean) {
@@ -280,6 +306,73 @@ class AppSettingsViewModel @Inject constructor(
     fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch {
             appPreferencesDataSource.setThemeMode(mode)
+        }
+    }
+
+    /**
+     * 네이티브 로그 캡처 활성화/비활성화
+     */
+    fun setNativeLogCaptureEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            appPreferencesDataSource.setNativeLogCaptureEnabled(enabled)
+
+            if (enabled) {
+                // 로그 캡처 시작
+                val logPath = getLogFilePath()
+                val result = CameraNative.startLogFile(logPath)
+
+                if (result) {
+                    // GP_LOG_DATA 레벨로 설정 (DEBUG + DATA 포함)
+                    CameraNative.setLogLevel(CameraNative.GP_LOG_DATA)
+                    Log.i(TAG, "네이티브 로그 캡처 시작: $logPath")
+                } else {
+                    Log.e(TAG, "네이티브 로그 파일 시작 실패")
+                    // 실패 시 설정 원복
+                    appPreferencesDataSource.setNativeLogCaptureEnabled(false)
+                }
+            } else {
+                // 로그 캡처 중지
+                CameraNative.stopLogFile()
+                Log.i(TAG, "네이티브 로그 캡처 중지")
+            }
+        }
+    }
+
+    /**
+     * 로그 파일 내용 가져오기
+     */
+    fun getLogFileContent(): String {
+        return try {
+            val logFiles = context.filesDir.listFiles { file ->
+                file.name.startsWith("libgphoto2_debug_") && file.name.endsWith(".txt")
+            }
+
+            val latestLog = logFiles?.maxByOrNull { it.lastModified() }
+
+            if (latestLog != null) {
+                CameraNative.getLogFileContent(latestLog.absolutePath)
+            } else {
+                "로그 파일이 없습니다."
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "로그 파일 읽기 실패", e)
+            "로그 파일 읽기 실패: ${e.message}"
+        }
+    }
+
+    /**
+     * 로그 파일 목록 가져오기
+     */
+    fun getLogFiles(): List<String> {
+        return try {
+            val logFiles = context.filesDir.listFiles { file ->
+                file.name.startsWith("libgphoto2_debug_") && file.name.endsWith(".txt")
+            }
+
+            logFiles?.map { it.absolutePath }?.sortedDescending() ?: emptyList()
+        } catch (e: Exception) {
+            Log.e(TAG, "로그 파일 목록 조회 실패", e)
+            emptyList()
         }
     }
 
