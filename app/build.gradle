@@ -101,7 +101,9 @@ android {
         targetSdk 36
         versionCode getAppVersionCode()
         versionName getAppVersionName()
-        ndk { abiFilters "arm64-v8a" }
+        ndk {
+            abiFilters "arm64-v8a"  // 16KB 페이지 크기 지원 (Android 15+)
+        }
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         // 지원하는 언어 설정
@@ -156,15 +158,23 @@ android {
     // CMake 빌드 타입 스위치
     android.buildTypes.all { buildType ->
         externalNativeBuild.cmake {
+            // 16KB 페이지 크기 지원 (Android 15+ 필수)
+            def link16KbFlags = '-Wl,-z,max-page-size=16384'
+
             if (buildType.name == 'debug') {
-                arguments '-DCMAKE_BUILD_TYPE=Debug'
+                arguments '-DCMAKE_BUILD_TYPE=Debug',
+                        "-DCMAKE_SHARED_LINKER_FLAGS=${link16KbFlags}",
+                        "-DCMAKE_EXE_LINKER_FLAGS=${link16KbFlags}"
             } else if (buildType.name == 'releaseDebug') {
-                arguments '-DCMAKE_BUILD_TYPE=RelWithDebInfo'
+                arguments '-DCMAKE_BUILD_TYPE=RelWithDebInfo',
+                        "-DCMAKE_SHARED_LINKER_FLAGS=${link16KbFlags}",
+                        "-DCMAKE_EXE_LINKER_FLAGS=${link16KbFlags}"
             } else {
                 arguments '-DCMAKE_BUILD_TYPE=Release',
                         '-DCMAKE_CXX_FLAGS_RELEASE=-O3 -flto -ffast-math -funroll-loops',
                         '-DCMAKE_C_FLAGS_RELEASE=-O3 -flto -ffast-math',
-                        '-DCMAKE_SHARED_LINKER_FLAGS=-s -Wl,--gc-sections -Wl,--strip-all'
+                        "-DCMAKE_SHARED_LINKER_FLAGS=-s -Wl,--gc-sections -Wl,--strip-all ${link16KbFlags}",
+                        "-DCMAKE_EXE_LINKER_FLAGS=${link16KbFlags}"
             }
             cFlags '-g'
             cppFlags '-g'
@@ -174,6 +184,11 @@ android {
     sourceSets {
         main { jniLibs.srcDirs = ['src/main/jniLibs'] }
     }
+
+    // ⚠️ Android APK는 jniLibs의 하위 디렉토리를 flat하게 펴버립니다.
+    // 따라서 Gradle로 디렉토리 구조를 만들어도 APK에는 포함되지 않습니다.
+    // 대신 런타임에 APK에서 직접 읽어서 디렉토리 구조를 생성합니다.
+    // (CamCon.kt 및 UsbConnectionManager.kt의 createLibgphoto2PluginDirs() 참고)
 
     buildFeatures {
         viewBinding true
@@ -192,8 +207,10 @@ android {
 
     packaging {
         jniLibs {
-            useLegacyPackaging = true
+            useLegacyPackaging = false  // 16KB 정렬을 위해 false로 변경
             keepDebugSymbols += ['**/*.so']
+            // 16KB 페이지 크기 정렬 활성화 (Android 15+ 필수)
+            pickFirsts += ['**/*.so']
         }
         resources {
             excludes += [
@@ -319,6 +336,80 @@ dependencies {
     implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'com.squareup.okhttp3:logging-interceptor:4.12.0'
+}
+
+// 16KB 정렬 태스크 (libyuv-decoder.so용)
+tasks.register('align16KbLibraries') {
+    description = 'libyuv-decoder.so를 16KB로 정렬'
+
+    doLast {
+        def abiDirs = ['arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64']
+        def libName = 'libyuv-decoder.so'
+        def aligned = false
+
+        // merged_native_libs에서 처리
+        def baseDir = file("${buildDir}/intermediates/merged_native_libs")
+
+        abiDirs.each { abi ->
+            def libFile = fileTree(baseDir).matching {
+                include "**/${abi}/${libName}"
+            }.singleFile
+
+            if (libFile?.exists()) {
+                println "🔧 16KB 정렬 처리 중: ${libFile.path}"
+
+                try {
+                    // objcopy로 16KB 정렬
+                    def ndkDir = android.ndkDirectory
+                    def objcopy = "${ndkDir}/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-objcopy"
+
+                    if (!file(objcopy).exists()) {
+                        // 대체 경로 시도 (Linux)
+                        objcopy = "${ndkDir}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-objcopy"
+                    }
+
+                    if (file(objcopy).exists()) {
+                        def tempFile = new File(libFile.parent, "${libName}.tmp")
+
+                        exec {
+                            commandLine objcopy,
+                                    '--set-section-alignment', '.text=16384',
+                                    '--set-section-alignment', '.data=16384',
+                                    '--set-section-alignment', '.rodata=16384',
+                                    '--set-section-alignment', '.bss=16384',
+                                    libFile.path,
+                                    tempFile.path
+                        }
+
+                        // 원본을 백업하고 정렬된 파일로 교체
+                        libFile.delete()
+                        tempFile.renameTo(libFile)
+
+                        println "✅ 16KB 정렬 완료: ${abi}/${libName}"
+                        aligned = true
+                    } else {
+                        println "⚠️ llvm-objcopy를 찾을 수 없음. 정렬 건너뜀."
+                    }
+                } catch (Exception e) {
+                    println "⚠️ 16KB 정렬 실패 (무시 가능): ${e.message}"
+                }
+            }
+        }
+
+        if (!aligned) {
+            println "ℹ️ libyuv-decoder.so를 찾을 수 없거나 정렬하지 않음"
+            println "   → 16KB 경고는 2025년 11월까지 Play Store에서 허용됨"
+        }
+    }
+}
+
+// 빌드 태스크에 16KB 정렬 자동 추가
+android.applicationVariants.all { variant ->
+    def mergeNativeLibsTask = tasks.findByName("merge${variant.name.capitalize()}NativeLibs")
+    if (mergeNativeLibsTask) {
+        def alignTask = tasks.named('align16KbLibraries').get()
+        mergeNativeLibsTask.finalizedBy(alignTask)
+    }
 }
 
 // 커스텀 빌드 태스크들
