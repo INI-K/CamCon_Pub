@@ -25,6 +25,7 @@ class NikonAuthenticationService @Inject constructor() {
         private const val TAG = "NikonAuthService"
         private const val NIKON_952B_COMMAND = 0x952b
         private const val NIKON_935A_COMMAND = 0x935a
+        private const val NIKON_935B_COMMAND = 0x935b  // Pairing code 전송
         private const val MAX_RETRIES = 3
     }
 
@@ -42,17 +43,12 @@ class NikonAuthenticationService @Inject constructor() {
                     return@withContext false
                 }
 
-                // Phase 1과 2 사이의 대기 (카메라 내부 처리)
-                LogcatManager.i(TAG, "카메라 내부 처리 대기 중... (5초)")
-                delay(5000)
-
-                // Phase 2: 인증된 메인 연결
-                if (!performPhase2Authentication(camera)) {
-                    LogcatManager.e(TAG, "Phase 2 인증 실패")
-                    return@withContext false
-                }
+                // Phase 1 완료 후 libgphoto2 연결 준비 대기
+                LogcatManager.i(TAG, "libgphoto2 연결 준비 대기 중... (5초)")
+                delay(5000)  // 카메라가 준비될 시간 필요
 
                 LogcatManager.i(TAG, "✅ 니콘 STA 모드 인증 완료!")
+                LogcatManager.i(TAG, "→ 카메라가 인증된 상태로 libgphoto2 연결 대기 중")
                 return@withContext true
 
             } catch (e: Exception) {
@@ -149,28 +145,52 @@ class NikonAuthenticationService @Inject constructor() {
 
                     // 1-6: 연결 승인 요청 0x935a
                     LogcatManager.d(TAG, "Step 1-6: 연결 승인 요청 0x935a 전송")
-                    if (!sendNikon935aCommand(commandSocket)) {
-                        LogcatManager.w(TAG, "⚠️ 0x935a 실패지만 계속 진행")
+                    val (success, needsPairingCode) = sendNikon935aCommand(commandSocket,
+                        eventSocket)
+
+                    if (success) {
+                        LogcatManager.i(TAG, "✅ 0x935a 자동 승인 성공")
+                    } else if (needsPairingCode) {
+                        LogcatManager.w(TAG, "⚠️ Pairing Code 필요")
+
+                        // Pairing code 자동 전송 시도
+                        // 카메라 화면의 코드를 앱에서 입력하는 기능은 추후 구현
+                        // 현재는 사용자가 카메라에서 OK를 누를 때까지 대기
+                        LogcatManager.i(TAG, "⏳ 카메라 화면에서 OK 버튼을 눌러주세요 (30초)")
+                        delay(30000)  // 30초 대기
                     } else {
-                        LogcatManager.d(TAG, "✅ 0x935a 성공")
+                        LogcatManager.w(TAG, "⚠️ 0x935a 알 수 없는 응답 - 계속 진행")
                     }
 
                     LogcatManager.i(TAG, "✅ Phase 1 완료")
+
+                    // 소켓을 닫지 않고 일정 시간 유지 (카메라가 세션을 열어둠)
+                    LogcatManager.i(TAG, "⏳ 세션 유지 대기 중... (카메라 내부 처리)")
+                    delay(2000) // 2초 대기
+
+                    // 이제 소켓을 닫아도 카메라는 인증 상태를 유지
+                    LogcatManager.d(TAG, "Phase 1 소켓 정리 시작 (인증 상태는 유지됨)")
+                    try {
+                        commandSocket?.close()
+                        eventSocket?.close()
+                        LogcatManager.d(TAG, "Phase 1 소켓 정리 완료")
+                    } catch (e: Exception) {
+                        LogcatManager.w(TAG, "소켓 정리 중 오류: ${e.message}")
+                    }
+
                     return@withContext true
 
                 } catch (e: Exception) {
                     LogcatManager.e(TAG, "❌ Phase 1 중 오류: ${e.message}")
                     LogcatManager.e(TAG, "오류 상세: ${e.stackTraceToString()}")
                     retryCount++
-                } finally {
-                    // 연결 해제
+
+                    // 오류 시에만 즉시 소켓 정리
                     try {
-                        LogcatManager.d(TAG, "Phase 1 연결 해제 시작")
                         commandSocket?.close()
                         eventSocket?.close()
-                        LogcatManager.d(TAG, "Phase 1 연결 해제 완료")
-                    } catch (e: Exception) {
-                        LogcatManager.w(TAG, "Phase 1 연결 해제 중 오류: ${e.message}")
+                    } catch (e2: Exception) {
+                        // 무시
                     }
                 }
             }
@@ -267,6 +287,21 @@ class NikonAuthenticationService @Inject constructor() {
 
             if (bytesRead > 0) {
                 LogcatManager.d(TAG, "0x952b 응답 수신: $bytesRead bytes")
+
+                // 응답 내용 로깅 (디버깅용)
+                if (bytesRead > 14) {
+                    val hexDump = response.take(bytesRead).joinToString(" ") {
+                        "%02x".format(it)
+                    }
+                    LogcatManager.d(TAG, "0x952b 응답 내용: $hexDump")
+
+                    // Pairing code 추출 시도
+                    val pairingCode = extractPairingCode(response, bytesRead)
+                    if (pairingCode != null) {
+                        LogcatManager.i(TAG, "⚠️ 0x952b에서 Pairing Code 감지: $pairingCode")
+                    }
+                }
+
                 true
             } else {
                 false
@@ -280,48 +315,210 @@ class NikonAuthenticationService @Inject constructor() {
 
     /**
      * 니콘 0x935a 연결 승인 요청
+     * @return Pair<Boolean, Boolean> - (성공 여부, pairing code 필요 여부)
      */
-    private fun sendNikon935aCommand(socket: Socket): Boolean {
+    private fun sendNikon935aCommand(
+        commandSocket: Socket,
+        eventSocket: Socket?
+    ): Pair<Boolean, Boolean> {
         return try {
             LogcatManager.d(TAG, "니콘 0x935a 연결 승인 요청")
 
-            val output = socket.getOutputStream()
+            val output = commandSocket.getOutputStream()
             val packet = createNikon935aPacket()
 
             output.write(packet)
             output.flush()
 
-            // 응답 수신
-            socket.soTimeout = 10000
+            // Command 소켓 응답 수신 (여러 번 read 가능)
+            commandSocket.soTimeout = 5000
             val response = ByteArray(1024)
-            val bytesRead = socket.getInputStream().read(response)
+            var totalBytesRead = 0
 
+            // 첫 번째 read
+            var bytesRead = commandSocket.getInputStream().read(response)
             if (bytesRead > 0) {
-                LogcatManager.d(TAG, "0x935a 응답 수신: $bytesRead bytes")
+                totalBytesRead = bytesRead
+                LogcatManager.d(TAG, "0x935a Command 응답 수신 (1차): $bytesRead bytes")
+
+                // OPERATION_RESPONSE가 없으면 추가로 read 시도
+                val hasOperationResponse = checkForOperationResponse(response, bytesRead)
+                if (!hasOperationResponse) {
+                    LogcatManager.d(TAG, "OPERATION_RESPONSE 없음 - 추가 read 시도")
+                    try {
+                        commandSocket.soTimeout = 1000  // 1초만 대기
+                        val additionalBytes = commandSocket.getInputStream()
+                            .read(response, bytesRead, response.size - bytesRead)
+                        if (additionalBytes > 0) {
+                            totalBytesRead += additionalBytes
+                            LogcatManager.d(
+                                TAG,
+                                "0x935a Command 응답 수신 (2차): $additionalBytes bytes"
+                            )
+                        }
+                    } catch (e: java.net.SocketTimeoutException) {
+                        LogcatManager.d(TAG, "추가 응답 없음 (정상)")
+                    }
+                }
+
+                // 전체 응답 로깅
+                val hexDump = response.take(totalBytesRead).joinToString(" ") {
+                    "%02x".format(it)
+                }
+                LogcatManager.d(TAG, "0x935a 전체 응답 ($totalBytesRead bytes): $hexDump")
+
+                // Pairing code 확인
+                val pairingCode = extractPairingCode(response, totalBytesRead)
+                if (pairingCode != null) {
+                    LogcatManager.i(TAG, "⚠️ Pairing Code 감지: $pairingCode")
+                    return Pair(false, true)
+                }
 
                 // 성공 응답 확인
-                if (bytesRead >= 14) {
-                    val buffer = ByteBuffer.wrap(response).order(ByteOrder.LITTLE_ENDIAN)
-                    buffer.position(4)
-                    val packetType = buffer.int
-
-                    if (packetType == PtpipConstants.PTPIP_OPERATION_RESPONSE) {
-                        val responseCode = buffer.short.toInt() and 0xFFFF
-                        val transactionId = buffer.int
-
-                        if (responseCode == 0x2001 && transactionId == 2) {
-                            LogcatManager.i(TAG, "✅ 0x935a 성공 응답 확인")
-                            return true
-                        }
-                    }
+                val responseCode = findResponseCode(response, totalBytesRead)
+                if (responseCode == 0x2001) {
+                    LogcatManager.i(TAG, "✅ 0x935a 자동 승인 성공")
+                    return Pair(true, false)
+                } else if (responseCode == 0x2019) {
+                    LogcatManager.i(TAG, "⏳ 카메라가 pairing code 입력 대기 중")
+                    return Pair(false, true)
                 }
             }
 
-            false
+            LogcatManager.w(TAG, "⚠️ 0x935a 응답 분석 실패 - pairing code 필요 가능성 있음")
+            Pair(false, true)  // 실패 시 pairing code 필요하다고 가정
 
         } catch (e: Exception) {
             LogcatManager.e(TAG, "0x935a 전송 실패: ${e.message}")
-            false
+            Pair(false, false)
+        }
+    }
+
+    /**
+     * 응답에 OPERATION_RESPONSE 패킷이 있는지 확인
+     */
+    private fun checkForOperationResponse(data: ByteArray, length: Int): Boolean {
+        var offset = 0
+        while (offset + 8 <= length) {
+            val buffer = ByteBuffer.wrap(data, offset, length - offset)
+                .order(ByteOrder.LITTLE_ENDIAN)
+            val packetLength = buffer.int
+            val packetType = buffer.int
+
+            if (packetType == PtpipConstants.PTPIP_OPERATION_RESPONSE) {
+                return true
+            }
+
+            offset += packetLength
+        }
+        return false
+    }
+
+    /**
+     * 응답에서 ResponseCode 찾기
+     */
+    private fun findResponseCode(data: ByteArray, length: Int): Int {
+        var offset = 0
+        while (offset + 14 <= length) {
+            val buffer = ByteBuffer.wrap(data, offset, length - offset)
+                .order(ByteOrder.LITTLE_ENDIAN)
+            val packetLength = buffer.int
+            val packetType = buffer.int
+
+            if (packetType == PtpipConstants.PTPIP_OPERATION_RESPONSE) {
+                val responseCode = buffer.short.toInt() and 0xFFFF
+                val transactionId = buffer.int
+                LogcatManager.d(
+                    TAG,
+                    "응답 코드: 0x${"%04x".format(responseCode)}, Transaction ID: $transactionId"
+                )
+                return responseCode
+            }
+
+            offset += packetLength
+        }
+        return 0
+    }
+
+    /**
+     * Command 소켓 응답에서 Pairing Code 추출 (다중 패킷 처리)
+     */
+    private fun extractPairingCode(data: ByteArray, length: Int): String? {
+        return try {
+            if (length < 12) return null
+
+            var offset = 0
+            val buffer = ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN)
+
+            // 여러 패킷을 순회하면서 pairing code 찾기
+            while (offset + 8 <= length) {
+                buffer.position(offset)
+                val packetLength = buffer.int
+                val packetType = buffer.int
+
+                LogcatManager.d(
+                    TAG,
+                    "패킷 [$offset]: 길이=$packetLength, 타입=0x${"%08x".format(packetType)}"
+                )
+
+                // PTPIP_DATA (0x0c)에 pairing code가 들어있음
+                if (packetType == 0x0000000c && packetLength >= 16) {
+                    // 다음 4 bytes: Transaction ID (건너뜀)
+                    buffer.int
+
+                    // 다음 4 bytes: 데이터 길이
+                    val dataLength = buffer.int
+                    LogcatManager.d(TAG, "데이터 길이: $dataLength bytes")
+
+                    if (dataLength >= 3 && buffer.position() + dataLength <= length) {
+                        // Pairing code 읽기 (BCD 형식)
+                        val pairingBytes = ByteArray(dataLength)
+                        buffer.get(pairingBytes)
+
+                        val hexDump = pairingBytes.joinToString(" ") { "%02x".format(it) }
+                        LogcatManager.i(TAG, "Pairing code 바이트: $hexDump")
+
+                        // 각 바이트가 1자리 숫자를 나타냄 (4자리 또는 6자리)
+                        // 예: 00 09 08 06 → "0986" (4자리)
+                        val code1 = pairingBytes.joinToString("") {
+                            "%d".format(it.toInt() and 0xFF)
+                        }
+
+                        if ((code1.length == 4 || code1.length == 6) && code1.all { it.isDigit() }) {
+                            LogcatManager.i(TAG, "✅ Pairing Code 추출 성공: $code1")
+                            return code1
+                        }
+
+                        // 대안: 역순으로 시도
+                        val code2 = pairingBytes.reversed().joinToString("") {
+                            "%d".format(it.toInt() and 0xFF)
+                        }
+
+                        if ((code2.length == 4 || code2.length == 6) && code2.all { it.isDigit() }) {
+                            LogcatManager.i(TAG, "✅ Pairing Code 추출 성공 (역순): $code2")
+                            return code2
+                        }
+
+                        // 0을 제거한 버전도 시도
+                        val code3 = pairingBytes.filter { it != 0.toByte() }
+                            .joinToString("") { "%d".format(it.toInt() and 0xFF) }
+
+                        if ((code3.length == 4 || code3.length == 6) && code3.all { it.isDigit() }) {
+                            LogcatManager.i(TAG, "✅ Pairing Code 추출 성공 (0 제거): $code3")
+                            return code3
+                        }
+                    }
+                }
+
+                // 다음 패킷으로 이동
+                offset += packetLength
+            }
+
+            null
+        } catch (e: Exception) {
+            LogcatManager.e(TAG, "Pairing code 추출 실패: ${e.message}")
+            LogcatManager.e(TAG, "스택 트레이스: ${e.stackTraceToString()}")
+            null
         }
     }
 
@@ -723,8 +920,8 @@ class NikonAuthenticationService @Inject constructor() {
                 }
 
                 // 0x935a 명령 테스트
-                val success = sendNikon935aCommand(commandSocket)
-                LogcatManager.i(TAG, "0x935a 명령 결과: ${if (success) "성공" else "실패"}")
+                val (success, needsPairingCode) = sendNikon935aCommand(commandSocket, eventSocket)
+                LogcatManager.i(TAG, "0x935a 명령 결과: 성공=$success, pairing code 필요=$needsPairingCode")
                 success
 
             } catch (e: Exception) {

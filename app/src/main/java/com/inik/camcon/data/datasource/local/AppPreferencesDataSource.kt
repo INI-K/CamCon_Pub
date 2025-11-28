@@ -49,6 +49,8 @@ class AppPreferencesDataSource @Inject constructor(
         private val COLOR_TRANSFER_INTENSITY = floatPreferencesKey("color_transfer_intensity")
         private val RAW_FILE_DOWNLOAD_ENABLED = booleanPreferencesKey("raw_file_download_enabled")
         private val SUBSCRIPTION_TIER = stringPreferencesKey("subscription_tier")
+        private val ADMIN_NATIVE_LOG_STREAM_ENABLED =
+            booleanPreferencesKey("admin_native_log_stream_enabled")
     }
 
     /**
@@ -150,6 +152,14 @@ class AppPreferencesDataSource @Inject constructor(
     val subscriptionTier: Flow<String?> = context.appDataStore.data
         .map { preferences ->
             preferences[SUBSCRIPTION_TIER]
+        }
+
+    /**
+     * ADMIN 네이티브 로그 스트리밍 활성화 여부 (기본값: false)
+     */
+    val isAdminNativeLogStreamingEnabled: Flow<Boolean> = context.appDataStore.data
+        .map { preferences ->
+            preferences[ADMIN_NATIVE_LOG_STREAM_ENABLED] ?: false
         }
 
     /**
@@ -262,6 +272,15 @@ class AppPreferencesDataSource @Inject constructor(
     suspend fun setRawFileDownloadEnabled(enabled: Boolean) {
         context.appDataStore.edit { preferences ->
             preferences[RAW_FILE_DOWNLOAD_ENABLED] = enabled
+        }
+    }
+
+    /**
+     * ADMIN 네이티브 로그 스트리밍 활성화/비활성화
+     */
+    suspend fun setAdminNativeLogStreamingEnabled(enabled: Boolean) {
+        context.appDataStore.edit { preferences ->
+            preferences[ADMIN_NATIVE_LOG_STREAM_ENABLED] = enabled
         }
     }
 
