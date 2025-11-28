@@ -642,7 +642,8 @@ class PtpipViewModel @Inject constructor(
                     _selectedCamera.value = firstCamera
 
                     // libgphoto2 초기화 및 연결
-                    Log.i(TAG, "=== libgphoto2 초기화 및 카메라 연결 시작 ===")
+                    val modeText = if (forceApMode) "AP 모드" else "STA 모드"
+                    Log.i(TAG, "=== libgphoto2 초기화 및 카메라 연결 시작 ($modeText) ===")
                     _isConnecting.value = true
 
                     // 검색 완료 후 연결 시작까지 약간의 대기
@@ -652,11 +653,11 @@ class PtpipViewModel @Inject constructor(
                         ptpipDataSource.connectToCamera(firstCamera, forceApMode)
 
                     if (connectionSuccess) {
-                        Log.i(TAG, "✅ 카메라 연결 성공!")
+                        Log.i(TAG, "✅ 카메라 연결 성공! ($modeText)")
                         _errorMessage.value = null
                         // 연결 성공 시 isConnecting은 PtpipDataSource의 상태 변화로 자동 해제됨
                     } else {
-                        Log.e(TAG, "❌ 카메라 연결 실패")
+                        Log.e(TAG, "❌ 카메라 연결 실패 ($modeText)")
                         _errorMessage.value = "카메라 연결에 실패했습니다"
                         _isConnecting.value = false
                     }
