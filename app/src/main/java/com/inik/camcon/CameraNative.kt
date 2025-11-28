@@ -222,6 +222,12 @@ object CameraNative {
     external fun enableVerboseLogging(enabled: Boolean): Boolean
     external fun enableDebugLogging(enabled: Boolean): Boolean
 
+    // 로그 파일 제어 함수들
+    external fun startLogFile(filePath: String): Boolean
+    external fun stopLogFile(): Boolean
+    external fun getLogFileContent(filePath: String): String
+    external fun isLogFileActive(): Boolean
+
     // 카메라 초기화 상태 확인
     external fun isCameraInitialized(): Boolean
 
