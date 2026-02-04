@@ -25,16 +25,25 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
-import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Snackbar
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
@@ -50,6 +59,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -58,6 +68,7 @@ import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.components.EmptyPhotoState
 import com.inik.camcon.presentation.ui.screens.components.FluidPhotoThumbnail
+import com.inik.camcon.presentation.ui.screens.components.FeaturedPhotoThumbnail
 import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
 import com.inik.camcon.presentation.ui.screens.components.UsbInitializationOverlay
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
@@ -200,8 +211,8 @@ fun PhotoPreviewScreen(
             refreshing = isLoadingPhotos,
             state = pullRefreshState,
             modifier = Modifier.align(Alignment.TopCenter),
-            backgroundColor = MaterialTheme.colors.surface,
-            contentColor = MaterialTheme.colors.primary
+            backgroundColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.primary
         )
     }
 
@@ -328,20 +339,20 @@ private fun CameraDisconnectedState() {
         ) {
             Text(
                 text = "📷",
-                style = MaterialTheme.typography.h2,
+                style = MaterialTheme.typography.displayMedium,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
             Text(
                 text = "카메라가 연결되지 않았습니다",
-                style = MaterialTheme.typography.h6,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "USB 케이블을 연결하고 카메라를 켜주세요",
-                style = MaterialTheme.typography.body2,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                 textAlign = TextAlign.Center
             )
         }
@@ -382,16 +393,16 @@ private fun ModernHeader(
             ) {
                 Text(
                     text = stringResource(R.string.camera_photo_list),
-                    color = MaterialTheme.colors.onSurface,
-                    style = MaterialTheme.typography.h6,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.titleMedium,
                     textAlign = TextAlign.Center
                 )
                 if (photoCount > 0) {
                     Text(
                         text = "${photoCount}장의 사진" +
                                 if (totalPages > 0) " (페이지 ${currentPage + 1}/${totalPages})" else "",
-                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
-                        style = MaterialTheme.typography.caption,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        style = MaterialTheme.typography.bodySmall,
                         textAlign = TextAlign.Center
                     )
                 }
@@ -416,7 +427,7 @@ private fun ModernHeader(
                 Icon(
                     Icons.Default.Refresh,
                     contentDescription = "새로고침",
-                    tint = MaterialTheme.colors.onSurface
+                    tint = MaterialTheme.colorScheme.onSurface
                 )
             }
         }
@@ -431,8 +442,8 @@ private fun ModernHeader(
         ) {
             Text(
                 text = "필터:",
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f),
-                style = MaterialTheme.typography.body2,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(end = 8.dp)
             )
 
@@ -443,10 +454,10 @@ private fun ModernHeader(
                 Text(
                     text = "ALL",
                     color = if (fileTypeFilter == FileTypeFilter.ALL)
-                        MaterialTheme.colors.primary
+                        MaterialTheme.colorScheme.primary
                     else
-                        MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
-                    style = MaterialTheme.typography.button
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    style = MaterialTheme.typography.labelLarge
                 )
             }
 
@@ -479,12 +490,12 @@ private fun ModernHeader(
                 Text(
                     text = "RAW${if (!canAccessRaw) " 🔒" else ""}",
                     color = if (fileTypeFilter == FileTypeFilter.RAW)
-                        MaterialTheme.colors.primary
+                        MaterialTheme.colorScheme.primary
                     else if (!canAccessRaw)
-                        MaterialTheme.colors.onSurface.copy(alpha = 0.4f)
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                     else
-                        MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
-                    style = MaterialTheme.typography.button
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    style = MaterialTheme.typography.labelLarge
                 )
             }
 
@@ -495,10 +506,10 @@ private fun ModernHeader(
                 Text(
                     text = "JPG",
                     color = if (fileTypeFilter == FileTypeFilter.JPG)
-                        MaterialTheme.colors.primary
+                        MaterialTheme.colorScheme.primary
                     else
-                        MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
-                    style = MaterialTheme.typography.button
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    style = MaterialTheme.typography.labelLarge
                 )
             }
         }
@@ -514,20 +525,20 @@ private fun LoadingIndicator() {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            CircularProgressIndicator(
-                color = MaterialTheme.colors.primary,
-                modifier = Modifier.size(48.dp)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "카메라에서 사진을 불러오는 중...",
-                style = MaterialTheme.typography.body2,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-            )
-        }
+                    Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CircularProgressIndicator(
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(48.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "카메라에서 사진을 불러오는 중...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            }
     }
 }
 
@@ -569,16 +580,32 @@ private fun PhotoGrid(
     }
 
     LazyVerticalStaggeredGrid(
-        columns = StaggeredGridCells.Adaptive(120.dp),
+        columns = StaggeredGridCells.Fixed(2), // Pinterest 스타일: 2열 고정
         state = lazyGridState,
         contentPadding = PaddingValues(12.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalItemSpacing = 8.dp,
         modifier = Modifier.fillMaxSize()
     ) {
+        // 첫 번째 아이템을 특별하게 표시 (전체 너비)
+        photos.firstOrNull()?.let { firstPhoto ->
+            if (!isMultiSelectMode) { // 멀티선택 모드가 아닐 때만 특별 표시
+                item(span = StaggeredGridItemSpan.FullLine) {
+                    FeaturedPhotoThumbnail(
+                        photo = firstPhoto,
+                        thumbnailData = viewModel.getThumbnail(firstPhoto.path),
+                        fullImageCache = fullImageCache,
+                        onClick = { viewModel.selectPhoto(firstPhoto) }
+                    )
+                }
+            }
+        }
+
+        // 나머지 아이템들 (2열 레이아웃)
         items(
-            items = photos,
-            key = { photo -> photo.path }
+            items = if (isMultiSelectMode) photos else photos.drop(1),
+            key = { photo -> photo.path },
+            contentType = { "photo_thumbnail" }
         ) { photo ->
             FluidPhotoThumbnail(
                 photo = photo,
@@ -648,14 +675,14 @@ private fun LoadMoreIndicator() {
             horizontalArrangement = Arrangement.Center
         ) {
             CircularProgressIndicator(
-                color = MaterialTheme.colors.primary,
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = "더 많은 사진 불러오는 중...",
-                style = MaterialTheme.typography.caption,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
         }
     }
@@ -674,8 +701,8 @@ private fun EndOfListMessage(photoCount: Int) {
     ) {
         Text(
             text = "모든 사진을 불러왔습니다 (총 ${photoCount}개)",
-            style = MaterialTheme.typography.caption,
-            color = MaterialTheme.colors.onSurface.copy(alpha = 0.5f),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
             textAlign = TextAlign.Center
         )
     }
@@ -695,19 +722,20 @@ private fun ErrorSnackbar(
     ) {
         Snackbar(
             modifier = Modifier.padding(16.dp),
-            backgroundColor = MaterialTheme.colors.error,
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer,
             action = {
                 TextButton(onClick = onRetry) {
                     Text(
                         text = "재시도",
-                        color = MaterialTheme.colors.onError
+                        color = MaterialTheme.colorScheme.onErrorContainer
                     )
                 }
             }
         ) {
             Text(
                 text = error,
-                color = MaterialTheme.colors.onError
+                color = MaterialTheme.colorScheme.onErrorContainer
             )
         }
     }
@@ -724,49 +752,106 @@ private fun MultiSelectActionBar(
     onDownload: () -> Unit,
     onCancel: () -> Unit
 ) {
-    Column {
+    Column(
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
         // 첫 번째 행: 선택된 개수와 취소 버튼
-        Box(
-            modifier = Modifier.fillMaxWidth()
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // 중앙 정렬된 선택된 개수
-            Text(
-                text = "${selectedCount}개 선택됨",
-                color = MaterialTheme.colors.primary,
-                style = MaterialTheme.typography.h6,
-                modifier = Modifier.align(Alignment.Center)
-            )
+            // 선택된 개수 표시 (칩 스타일)
+            Surface(
+                color = MaterialTheme.colorScheme.primaryContainer,
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Text(
+                    text = "$selectedCount 개 선택됨",
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
 
-            // 우측 취소 버튼
+            // 취소 버튼 (텍스트 버튼)
             TextButton(
                 onClick = onCancel,
-                modifier = Modifier.align(Alignment.CenterEnd)
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             ) {
                 Text(
                     text = "취소",
-                    color = MaterialTheme.colors.onSurface
+                    style = MaterialTheme.typography.labelLarge
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // 두 번째 행: 액션 버튼들
+        // 두 번째 행: 액션 버튼들 (OutlinedButton with icons)
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(onClick = onSelectAll) {
-                Text("전체 선택")
+            // 전체 선택 버튼
+            OutlinedButton(
+                onClick = onSelectAll,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.SelectAll,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "전체 선택",
+                    style = MaterialTheme.typography.labelMedium
+                )
             }
 
-            TextButton(onClick = onDeselectAll) {
-                Text("전체 해제")
+            // 전체 해제 버튼
+            OutlinedButton(
+                onClick = onDeselectAll,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "전체 해제",
+                    style = MaterialTheme.typography.labelMedium
+                )
             }
 
-            TextButton(onClick = onDownload) {
-                Text("다운로드")
+            // 다운로드 버튼 (FilledTonalButton로 강조)
+            FilledTonalButton(
+                onClick = onDownload,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Download,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "다운로드",
+                    style = MaterialTheme.typography.labelMedium
+                )
             }
         }
     }
@@ -788,43 +873,43 @@ private fun PtpipBlockOverlay() {
         ) {
             Text(
                 text = "📶",
-                style = MaterialTheme.typography.h2,
+                style = MaterialTheme.typography.displaySmall,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
             Text(
                 text = "Wi-Fi 연결 중입니다",
-                style = MaterialTheme.typography.h6,
-                color = MaterialTheme.colors.primary,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
                 textAlign = TextAlign.Center,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "현재 카메라가 Wi-Fi로 연결되어 있어\n사진 미리보기를 사용할 수 없습니다.",
-                style = MaterialTheme.typography.body1,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.85f),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "💡 사진 미리보기를 사용하려면",
-                style = MaterialTheme.typography.body2,
-                color = MaterialTheme.colors.primary,
+                text = "사진 미리보기를 사용하려면",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "USB 케이블 연결로 전환해주세요",
-                style = MaterialTheme.typography.body2,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = "📷 Wi-Fi 연결에서는 '카메라 제어' 탭을 이용해주세요!",
-                style = MaterialTheme.typography.caption,
-                color = MaterialTheme.colors.primary,
+                text = "Wi-Fi 연결에서는 '카메라 제어' 탭을 이용해주세요!",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
                 textAlign = TextAlign.Center,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
             )
