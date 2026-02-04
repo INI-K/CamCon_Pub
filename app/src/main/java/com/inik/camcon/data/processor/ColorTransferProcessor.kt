@@ -20,6 +20,7 @@ import javax.inject.Singleton
 import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sqrt
+import com.inik.camcon.utils.Constants
 import com.inik.camcon.utils.LogcatManager
 
 /**
@@ -317,18 +318,24 @@ class ColorTransferProcessor @Inject constructor() {
     // GPUImage 인스턴스 (지연 초기화)
     private var gpuImage: GPUImage? = null
 
-    // Context를 저장하기 위한 변수
-    private var context: Context? = null
-
     /**
      * GPUImage를 초기화합니다.
-     * @param context Android Context
+     * @param context Android Context (ApplicationContext 권장)
      */
     fun initializeGPUImage(context: Context) {
-        this.context = context
         if (gpuImage == null) {
-            gpuImage = GPUImage(context)
+            // ApplicationContext를 사용하여 메모리 누수 방지
+            gpuImage = GPUImage(context.applicationContext)
         }
+    }
+
+    /**
+     * GPUImage 리소스를 정리합니다.
+     * ViewModel.onCleared()에서 호출해야 합니다.
+     */
+    fun cleanup() {
+        gpuImage?.deleteImage()
+        gpuImage = null
     }
 
     companion object {
@@ -336,8 +343,7 @@ class ColorTransferProcessor @Inject constructor() {
         private const val STATS_MAX_SIZE = 800 // 통계 계산용 샘플 크기를 줄여 성능 향상
         // 병렬 처리를 위한 청크 크기
         private const val CHUNK_SIZE = 5000 // 더 큰 청크 크기로 오버헤드 감소
-        // 캐시 크기 제한
-        private const val MAX_CACHE_SIZE = 10
+        // 캐시 크기 제한은 Constants.Cache.MAX_COLOR_TRANSFER_STATS_CACHE_SIZE 사용
     }
 
     // 네이티브 함수 선언
@@ -423,7 +429,7 @@ class ColorTransferProcessor @Inject constructor() {
         } catch (e: OutOfMemoryError) {
             // 메모리 부족 시 폴백 처리
             System.gc()
-            Thread.sleep(100)
+            kotlinx.coroutines.delay(100)
             handleOutOfMemoryFallback(inputBitmap, referenceBitmap, intensity)
         }
     }
@@ -510,7 +516,7 @@ class ColorTransferProcessor @Inject constructor() {
         } catch (e: OutOfMemoryError) {
             // 메모리 부족 시 폴백 처리
             System.gc()
-            Thread.sleep(100)
+            kotlinx.coroutines.delay(100)
             handleOutOfMemoryFallback(inputBitmap, referenceBitmap, intensity)
         }
     }
@@ -688,7 +694,7 @@ class ColorTransferProcessor @Inject constructor() {
                     // 캐시에 저장 (LRU 관리)
                     synchronized(cacheAccessOrder) {
                         // 캐시 크기 제한
-                        while (referenceStatsCache.size >= MAX_CACHE_SIZE) {
+                        while (referenceStatsCache.size >= Constants.Cache.MAX_COLOR_TRANSFER_STATS_CACHE_SIZE) {
                             val oldestKey = cacheAccessOrder.removeAt(0)
                             referenceStatsCache.remove(oldestKey)
                         }
@@ -1042,7 +1048,7 @@ class ColorTransferProcessor @Inject constructor() {
         } catch (e2: OutOfMemoryError) {
             // 두 번째 폴백: 더 작은 크기로 처리
             System.gc()
-            Thread.sleep(100)
+            kotlinx.coroutines.delay(100)
 
             val verySmallSize = 720 // 아주 작은 크기
             val verySmallInput = scaleDownBitmap(inputBitmap, verySmallSize)
@@ -1119,7 +1125,7 @@ class ColorTransferProcessor @Inject constructor() {
         } catch (e2: OutOfMemoryError) {
             // 두 번째 폴백: 더 작은 크기로 처리
             System.gc()
-            Thread.sleep(100)
+            kotlinx.coroutines.delay(100)
 
             val verySmallSize = 720 // 아주 작은 크기
             val verySmallInput = scaleDownBitmap(inputBitmap, verySmallSize)

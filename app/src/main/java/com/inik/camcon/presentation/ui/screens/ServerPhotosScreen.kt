@@ -1,7 +1,7 @@
 package com.inik.camcon.presentation.ui.screens
 
-import android.graphics.ColorSpace
 import android.util.Log
+import android.util.LruCache
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -43,6 +43,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,8 +62,19 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
+import android.content.ContentUris
+import android.graphics.Bitmap
+import android.os.Build
+import android.os.CancellationSignal
+import android.provider.MediaStore
+import android.util.Size
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.exifinterface.media.ExifInterface
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.CapturedPhoto
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
 import com.inik.camcon.presentation.viewmodel.ServerPhotosViewModel
@@ -284,7 +296,15 @@ private fun FluidPhotoGrid(
         verticalItemSpacing = 4.dp,
         modifier = Modifier.fillMaxSize()
     ) {
-        items(photos) { photo ->
+        items(
+            items = photos,
+            key = { it.id }  // key 추가: 아이템 안정성 보장
+        ) { photo ->
+            // 선택 상태를 derivedStateOf로 최적화
+            val isSelected by remember(photo.id) {
+                derivedStateOf { selectedPhotos.contains(photo.id) }
+            }
+            
             FluidPhotoGridItem(
                 photo = photo,
                 onClick = {
@@ -296,12 +316,29 @@ private fun FluidPhotoGrid(
                 },
                 onDelete = { onDeleteClick(photo) },
                 onLongClick = { onPhotoLongClick(photo) },
-                isSelected = selectedPhotos.contains(photo.id),
+                isSelected = isSelected,
                 isMultiSelectMode = isMultiSelectMode
             )
         }
     }
 }
+
+// RAW 파일 확장자 목록
+private val RAW_EXTENSIONS = setOf("nef", "cr2", "cr3", "arw", "dng", "orf", "rw2", "raf", "raw")
+
+// 썸네일 LRU 캐시 (메모리의 1/8 사용, 최대 64MB)
+private val thumbnailCache: LruCache<String, Bitmap> by lazy {
+    val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
+    val cacheSize = minOf(maxMemory / 8, 64 * 1024)  // 최대 64MB
+    object : LruCache<String, Bitmap>(cacheSize) {
+        override fun sizeOf(key: String, bitmap: Bitmap): Int {
+            return bitmap.byteCount / 1024
+        }
+    }
+}
+
+// 동시 썸네일 로드 수 제한 (최대 4개)
+private val thumbnailLoadSemaphore = kotlinx.coroutines.sync.Semaphore(4)
 
 @Composable
 private fun FluidPhotoGridItem(
@@ -314,15 +351,19 @@ private fun FluidPhotoGridItem(
 ) {
     // 원본 비율에 관계없이 썸네일은 세로 비율로 강제 설정
     val aspectRatio = remember(photo.id) {
-        // photo.id를 기반으로 고정된 비율 생성 (무한 호출 방지)
         val hashCode = photo.id.hashCode()
         when (hashCode % 5) {
-            0 -> 1f        // 정사각형
-            1 -> 0.75f     // 3:4 세로형
-            2 -> 0.6f      // 긴 세로형
-            3 -> 0.8f      // 4:5 세로형  
-            else -> 0.65f  // 중간 세로형
+            0 -> 1f
+            1 -> 0.75f
+            2 -> 0.6f
+            3 -> 0.8f
+            else -> 0.65f
         }
+    }
+
+    // RAW 파일 여부 확인
+    val isRawFile = remember(photo.filePath) {
+        photo.filePath.substringAfterLast('.', "").lowercase() in RAW_EXTENSIONS
     }
 
     Card(
@@ -338,45 +379,129 @@ private fun FluidPhotoGridItem(
         colors = CardDefaults.cardColors(containerColor = if (isSelected) Color.LightGray else MaterialTheme.colorScheme.surface)
     ) {
         Box {
-            // 사진 이미지 - 개선된 로딩
-            val file = File(photo.filePath)
-
-            val painter = rememberAsyncImagePainter(
-                ImageRequest.Builder(LocalContext.current)
-                    .data(file)
-                    .size(300) // 썸네일 크기 제한
-                    .crossfade(200)
-                    .error(android.R.drawable.ic_menu_gallery) // 에러 시 기본 이미지
-                    .fallback(android.R.drawable.ic_menu_gallery) // 로딩 실패 시 기본 이미지
-                    .placeholder(android.R.drawable.ic_menu_gallery) // 로딩 중 표시할 이미지
-                    .apply {
-                        // sRGB 색공간 설정
-                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                            colorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
+            if (isRawFile) {
+                // RAW 파일: 캐시 → ExifInterface 순서로 로드
+                val rawThumbnailState = produceState<Bitmap?>(
+                    initialValue = thumbnailCache.get(photo.id),
+                    key1 = photo.id
+                ) {
+                    if (value == null) {
+                        thumbnailLoadSemaphore.acquire()
+                        try {
+                            value = withContext(Dispatchers.IO) {
+                                try {
+                                    val exif = ExifInterface(photo.filePath)
+                                    exif.thumbnailBitmap?.also { bitmap ->
+                                        thumbnailCache.put(photo.id, bitmap)
+                                    }
+                                } catch (e: Exception) {
+                                    null
+                                }
+                            }
+                        } finally {
+                            thumbnailLoadSemaphore.release()
                         }
                     }
-                    .build()
-            )
+                }
 
-            Image(
-                painter = painter,
-                contentDescription = "${photo.id} 썸네일",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-
-            // 로딩 상태 표시
-            if (painter.state is coil.compose.AsyncImagePainter.State.Loading) {
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)),
-                    contentAlignment = Alignment.Center
+                when (val thumbnail = rawThumbnailState.value) {
+                    null -> {
+                        // 로딩 중 또는 썸네일 없음: placeholder
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    imageVector = Icons.Default.PhotoCamera,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(28.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                )
+                                Text(
+                                    text = photo.filePath.substringAfterLast('.', "").uppercase(),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                )
+                            }
+                        }
+                    }
+                    else -> {
+                        // 내장 썸네일이 있으면 표시
+                        Image(
+                            bitmap = thumbnail.asImageBitmap(),
+                            contentDescription = "${photo.id} RAW 썸네일",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                }
+            } else {
+                // JPEG/PNG: 캐시 → 시스템 썸네일 순서로 로드
+                val context = LocalContext.current
+                val thumbnailState = produceState<Bitmap?>(
+                    initialValue = thumbnailCache.get(photo.id),
+                    key1 = photo.id
                 ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    if (value == null) {
+                        thumbnailLoadSemaphore.acquire()
+                        try {
+                            value = withContext(Dispatchers.IO) {
+                                try {
+                                    val mediaId = photo.id.toLongOrNull()
+                                    val bitmap = if (mediaId != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                        // Android 10+: 시스템 썸네일 사용 (가장 빠름)
+                                        val uri = ContentUris.withAppendedId(
+                                            MediaStore.Images.Media.EXTERNAL_CONTENT_URI, 
+                                            mediaId
+                                        )
+                                        context.contentResolver.loadThumbnail(
+                                            uri,
+                                            Size(300, 300),
+                                            CancellationSignal()
+                                        )
+                                    } else {
+                                        // 폴백: ExifInterface로 내장 썸네일 추출
+                                        val exif = ExifInterface(photo.filePath)
+                                        exif.thumbnailBitmap
+                                    }
+                                    bitmap?.also { thumbnailCache.put(photo.id, it) }
+                                } catch (e: Exception) {
+                                    null
+                                }
+                            }
+                        } finally {
+                            thumbnailLoadSemaphore.release()
+                        }
+                    }
+                }
+
+                when (val thumbnail = thumbnailState.value) {
+                    null -> {
+                        // 로딩 중: placeholder
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                            )
+                        }
+                    }
+                    else -> {
+                        Image(
+                            bitmap = thumbnail.asImageBitmap(),
+                            contentDescription = "${photo.id} 썸네일",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
                 }
             }
 
@@ -487,12 +612,8 @@ fun CapturedPhotoItem(
                 ImageRequest.Builder(LocalContext.current)
                     .data(File(photo.filePath))
                     .crossfade(true)
-                    .apply {
-                        // sRGB 색공간 설정
-                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                            colorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
-                        }
-                    }
+                    .memoryCacheKey(photo.id)
+                    .diskCacheKey(photo.id)
                     .build()
             )
 

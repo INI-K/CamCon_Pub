@@ -246,22 +246,30 @@ fun CameraControlScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (showBottomSheet) {
-            ModalBottomSheet(
-                onDismissRequest = { scope.launch { bottomSheetState.hide() } },
-                sheetState = bottomSheetState,
-                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
-            ) {
-                CameraSettingsSheet(
-                    settings = uiState.cameraSettings,
-                    onSettingChange = { key, value ->
-                        viewModel.updateCameraSetting(key, value)
-                    },
-                    onClose = {
-                        scope.launch { bottomSheetState.hide() }
+        ModalBottomSheet(
+            onDismissRequest = {
+                scope.launch {
+                    bottomSheetState.hide()
+                    showBottomSheet = false
+                }
+            },
+            sheetState = bottomSheetState,
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+        ) {
+            CameraSettingsSheet(
+                settings = uiState.cameraSettings,
+                onSettingChange = { key, value ->
+                    viewModel.updateCameraSetting(key, value)
+                },
+                onClose = {
+                    scope.launch {
+                        bottomSheetState.hide()
+                        showBottomSheet = false
                     }
-                )
-            }
+                }
+            )
         }
+    }
         if (isFullscreen && (appSettings.isCameraControlsEnabled || uiState.capturedPhotos.isNotEmpty())) {
             LogcatManager.d(
                 "CameraControl",

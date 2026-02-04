@@ -29,16 +29,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.Divider
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Scaffold
-import androidx.compose.material.Switch
-import androidx.compose.material.SwitchDefaults
-import androidx.compose.material.Text
-import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
@@ -57,6 +47,19 @@ import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -127,6 +130,7 @@ fun SettingsActivityPreview() {
     SettingsScreenPreview()
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onBackClick: () -> Unit,
@@ -270,8 +274,11 @@ fun SettingsScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
-                backgroundColor = MaterialTheme.colors.primary,
-                contentColor = MaterialTheme.colors.onPrimary
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
         contentWindowInsets = WindowInsets.safeDrawing
@@ -354,7 +361,7 @@ fun SettingsScreen(
                     }
                 }
 
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 // PTPIP Wi-Fi 카메라 설정 섹션 - 개발자 기능이 활성화된 경우만 표시
                 SettingsSection(title = "Wi-Fi 카메라 연결 (PTPIP) - 개발 버전") {
@@ -436,7 +443,7 @@ fun SettingsScreen(
                     }
                 }
 
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
             // 색감 전송 설정 섹션
@@ -495,7 +502,7 @@ fun SettingsScreen(
                 }
             }
 
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             // 연결된 카메라 정보 섹션
             SettingsSection(title = "연결된 카메라 정보") {
@@ -542,7 +549,7 @@ fun SettingsScreen(
                 }
             }
 
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             // User Info Section
             SettingsSection(title = "사용자 정보") {
@@ -576,7 +583,7 @@ fun SettingsScreen(
                 }
             }
 
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             // Server Section
             if (BuildConfig.SHOW_DEVELOPER_FEATURES) {
@@ -595,7 +602,7 @@ fun SettingsScreen(
                     )
                 }
 
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
             // App Settings Section
@@ -673,7 +680,7 @@ fun SettingsScreen(
                         }
                     )
 
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                     // 네이티브 로그 캡처 설정
                     SettingsItemWithSwitch(
@@ -704,7 +711,7 @@ fun SettingsScreen(
                         SettingsItem(
                             icon = Icons.Default.Storage,
                             title = "로그 파일 보기",
-                            subtitle = "저장된 네이티브 로그 파일 확인 및 내보내기",
+                            subtitle = "저장된 네이티브 로그 파일 확인 및보내기",
                             onClick = {
                                 // 로그 파일 목록 표시
                                 val logFiles = appSettingsViewModel.getLogFiles()
@@ -744,7 +751,7 @@ fun SettingsScreen(
                     }
                 }
 
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
             if (showThemeDialog) {
@@ -771,7 +778,7 @@ fun SettingsScreen(
                     .show()
             }
 
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             // About Section
             SettingsSection(title = "정보") {
@@ -792,7 +799,7 @@ fun SettingsScreen(
                 )
             }
 
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             // 🧪 Mock Camera 섹션 - 개발 버전에서 표시
             if (BuildConfig.SHOW_DEVELOPER_FEATURES) {
@@ -808,7 +815,7 @@ fun SettingsScreen(
                     )
                 }
 
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 SettingsSection(title = "관리자 레퍼럴 코드 관리") {
                     // 통계 정보
@@ -866,7 +873,7 @@ fun SettingsScreen(
                         ) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(24.dp),
-                                color = MaterialTheme.colors.primary
+                                color = MaterialTheme.colorScheme.primary
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("처리 중...")
@@ -888,8 +895,8 @@ fun SettingsSection(
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.caption,
-            color = MaterialTheme.colors.primary,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(bottom = 8.dp)
         )
         content()
@@ -913,19 +920,19 @@ fun SettingsItem(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
             modifier = Modifier.size(24.dp)
         )
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.body1
+                style = MaterialTheme.typography.bodyLarge
             )
             Text(
                 text = subtitle,
-                style = MaterialTheme.typography.caption,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
         }
     }
@@ -948,26 +955,29 @@ fun SettingsItemWithSwitch(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
             modifier = Modifier.size(24.dp)
         )
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.body1
+                style = MaterialTheme.typography.bodyLarge
             )
             Text(
                 text = subtitle,
-                style = MaterialTheme.typography.caption,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
         }
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = MaterialTheme.colors.primary
+                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                checkedTrackColor = MaterialTheme.colorScheme.primary,
+                uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
             )
         )
     }
@@ -990,25 +1000,25 @@ fun SettingsItemWithNavigation(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
             modifier = Modifier.size(24.dp)
         )
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.body1
+                style = MaterialTheme.typography.bodyLarge
             )
             Text(
                 text = subtitle,
-                style = MaterialTheme.typography.caption,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
         }
         Icon(
             imageVector = Icons.Default.ChevronRight,
             contentDescription = "더보기",
-            tint = MaterialTheme.colors.onSurface.copy(alpha = 0.4f),
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
             modifier = Modifier.size(20.dp)
         )
     }
@@ -1045,7 +1055,7 @@ fun UserProfileItem(
                 Icon(
                     imageVector = Icons.Default.Person,
                     contentDescription = "기본 프로필",
-                    tint = MaterialTheme.colors.primary,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -1056,20 +1066,20 @@ fun UserProfileItem(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = user?.displayName ?: "사용자",
-                style = MaterialTheme.typography.body1,
+                style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium
             )
             Text(
                 text = user?.email ?: "로그인이 필요합니다",
-                style = MaterialTheme.typography.caption,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
         }
 
         Icon(
             imageVector = Icons.Default.ChevronRight,
             contentDescription = "더보기",
-            tint = MaterialTheme.colors.onSurface.copy(alpha = 0.4f),
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
             modifier = Modifier.size(20.dp)
         )
     }

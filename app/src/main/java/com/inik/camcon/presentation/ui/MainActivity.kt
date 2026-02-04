@@ -15,10 +15,16 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -27,19 +33,23 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.material.BottomNavigation
-import androidx.compose.material.BottomNavigationItem
-import androidx.compose.material.Icon
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Scaffold
-import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -223,40 +233,34 @@ fun MainScreen(
         if (showRestartDialog) {
             var isRestarting by remember { mutableStateOf(false) }
 
-            androidx.compose.material.AlertDialog(
+            AlertDialog(
                 onDismissRequest = { /* 다이얼로그 닫기 방지 */ },
-                title = { Text("앱 재시작 필요") },
+                icon = { Icon(Icons.Default.Settings, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                title = { Text("앱 재시작 필요", style = MaterialTheme.typography.titleLarge) },
                 text = {
-                androidx.compose.foundation.layout.Column {
-                    if (isRestarting) {
-                        Text("재시작 준비 중입니다...")
-                        androidx.compose.foundation.layout.Spacer(
-                            modifier = androidx.compose.ui.Modifier.height(8.dp)
-                        )
-                        Text(
-                            "잠시만 기다려주세요. 카메라 연결을 정리하고 있습니다.",
-                            style = androidx.compose.material.MaterialTheme.typography.caption
-                        )
-                    } else {
-                        Text("카메라 연결 문제로 인해 앱을 완전히 재시작해야 합니다.")
-                        androidx.compose.foundation.layout.Spacer(
-                            modifier = androidx.compose.ui.Modifier.height(8.dp)
-                        )
-                        Text(
-                            "• '즉시 재시작': 버튼 클릭 즉시 재시작\n• '종료': 앱만 종료 (수동 재실행 필요)",
-                            style = androidx.compose.material.MaterialTheme.typography.caption
-                        )
-                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (isRestarting) {
+                            Text("재시작 준비 중입니다...")
+                            Text(
+                                "잠시만 기다려주세요. 카메라 연결을 정리하고 있습니다.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            Text("카메라 연결 문제로 인해 앱을 완전히 재시작해야 합니다.")
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "• '즉시 재시작': 버튼 클릭 즉시 재시작\n• '종료': 앱만 종료 (수동 재실행 필요)",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 },
                 confirmButton = {
                     if (!isRestarting) {
-                        androidx.compose.foundation.layout.Row(
-                            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(
-                                8.dp
-                            )
-                        ) {
-                            androidx.compose.material.TextButton(
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(
                                 onClick = {
                                     isRestarting = true
                                     // 모든 상태 정리
@@ -270,7 +274,7 @@ fun MainScreen(
                                 }
                             ) { Text("즉시 재시작") }
 
-                            androidx.compose.material.TextButton(
+                            TextButton(
                                 onClick = {
                                     isRestarting = true
                                     // 모든 상태 정리
@@ -295,49 +299,44 @@ fun MainScreen(
 
         // USB 분리 다이얼로그 표시
         if (cameraUiState.isUsbDisconnected == true) {
-            androidx.compose.material.AlertDialog(
+            AlertDialog(
                 onDismissRequest = { cameraViewModel.clearUsbDisconnection() },
+                icon = {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                },
                 title = {
                     Text(
                         "USB 디바이스 분리",
-                        style = MaterialTheme.typography.h6,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                        color = MaterialTheme.colors.error
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
                     )
                 },
                 text = {
-                    androidx.compose.foundation.layout.Column {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
                             "카메라 USB 연결이 끊어졌습니다.",
-                            style = MaterialTheme.typography.body1
-                        )
-                        androidx.compose.foundation.layout.Spacer(
-                            modifier = androidx.compose.ui.Modifier.height(
-                                8.dp
-                            )
+                            style = MaterialTheme.typography.bodyMedium
                         )
                         Text(
                             "• USB 케이블 연결을 확인해주세요\n" +
                                     "• 카메라 전원을 확인해주세요\n" +
                                     "• 카메라를 PC 모드로 설정해주세요",
-                            style = MaterialTheme.typography.caption,
-                            color = MaterialTheme.colors.onSurface.copy(
-                                alpha = 0.7f
-                            )
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
                 confirmButton = {
-                    androidx.compose.material.TextButton(
+                    TextButton(
                         onClick = { cameraViewModel.clearUsbDisconnection() }
                     ) {
                         Text("확인")
                     }
-                },
-                properties = androidx.compose.ui.window.DialogProperties(
-                    dismissOnBackPress = true,
-                    dismissOnClickOutside = true
-                )
+                }
             )
         }
 
@@ -346,32 +345,32 @@ fun MainScreen(
             !cameraUiState.isUsbInitializing &&
             !cameraUiState.isCameraInitializing
         ) {
-            androidx.compose.material.AlertDialog(
+            AlertDialog(
                 onDismissRequest = { cameraViewModel.dismissCameraStatusCheckDialog() },
+                icon = {
+                    Icon(
+                        Icons.Default.Settings,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                },
                 title = {
                     Text(
                         "카메라 상태 점검 필요",
-                        style = MaterialTheme.typography.h6,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                        color = MaterialTheme.colors.error
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
                     )
                 },
                 text = {
-                    androidx.compose.foundation.layout.Column {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
                             "카메라가 정상적으로 동작하지 않습니다.",
-                            style = MaterialTheme.typography.body1
-                        )
-                        androidx.compose.foundation.layout.Spacer(
-                            modifier = androidx.compose.ui.Modifier.height(12.dp)
+                            style = MaterialTheme.typography.bodyMedium
                         )
                         Text(
                             "다음 사항을 확인해주세요:",
-                            style = MaterialTheme.typography.body2,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                        )
-                        androidx.compose.foundation.layout.Spacer(
-                            modifier = androidx.compose.ui.Modifier.height(8.dp)
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
                         )
                         Text(
                             "• 카메라 전원이 켜져 있는지 확인\n" +
@@ -379,22 +378,20 @@ fun MainScreen(
                                     "• USB 케이블 연결 상태 확인\n" +
                                     "• 카메라가 PC 연결 모드로 설정되어 있는지 확인\n" +
                                     "• 카메라를 껐다가 다시 켜보세요",
-                            style = MaterialTheme.typography.caption,
-                            color = MaterialTheme.colors.onSurface.copy(
-                                alpha = 0.8f
-                            )
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
                 confirmButton = {
-                    androidx.compose.material.TextButton(
+                    TextButton(
                         onClick = { cameraViewModel.dismissCameraStatusCheckDialog() }
                     ) {
                         Text("확인")
                     }
                 },
                 dismissButton = {
-                    androidx.compose.material.TextButton(
+                    TextButton(
                         onClick = {
                             cameraViewModel.dismissCameraStatusCheckDialog()
                             cameraViewModel.refreshUsbDevices()
@@ -409,21 +406,22 @@ fun MainScreen(
         }
 
         Scaffold(
-            modifier = Modifier
-                .fillMaxSize(),
+            modifier = Modifier.fillMaxSize(),
             bottomBar = {
                 // 전체화면 모드가 아닐 때만 하단 탭 표시
                 if (!isFullscreen) {
-                    BottomNavigation(
-                        backgroundColor = MaterialTheme.colors.surface,
-                        contentColor = MaterialTheme.colors.onSurface,
-                        modifier = Modifier.navigationBarsPadding() // 네비게이션 바 패딩 추가
-                    ) {
-                        val navBackStackEntry by navController.currentBackStackEntryAsState()
-                        val currentDestination = navBackStackEntry?.destination
+                    val navBackStackEntry by navController.currentBackStackEntryAsState()
+                    val currentDestination = navBackStackEntry?.destination
 
+                    NavigationBar(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        tonalElevation = 4.dp,
+                        modifier = Modifier.navigationBarsPadding()
+                    ) {
                         items.forEach { screen ->
-                            BottomNavigationItem(
+                            val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                            NavigationBarItem(
                                 icon = {
                                     Icon(
                                         screen.icon,
@@ -433,12 +431,12 @@ fun MainScreen(
                                 label = {
                                     Text(stringResource(screen.titleRes))
                                 },
-                                selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                                selected = selected,
                                 onClick = {
                                     if (screen == BottomNavItem.PhotoPreview && isPtpipConnected) {
                                         // PTPIP 연결 시 미리보기 탭 클릭하면 경고 다이얼로그 표시
                                         showPtpipWarning = true
-                                        return@BottomNavigationItem
+                                        return@NavigationBarItem
                                     }
 
                                     if (screen.route == "settings") {
@@ -453,8 +451,14 @@ fun MainScreen(
                                         }
                                     }
                                 },
-                                selectedContentColor = MaterialTheme.colors.primary,
-                                unselectedContentColor = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                                alwaysShowLabel = true,
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    indicatorColor = MaterialTheme.colorScheme.secondaryContainer
+                                )
                             )
                         }
                     }
@@ -483,57 +487,52 @@ fun MainScreen(
 
         // PTPIP 경고 다이얼로그
         if (showPtpipWarning) {
-            androidx.compose.material.AlertDialog(
+            AlertDialog(
                 onDismissRequest = { showPtpipWarning = false },
+                icon = { Icon(Icons.Default.CameraAlt, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                 title = {
                     Text(
                         "Wi-Fi 연결 중입니다",
-                        style = MaterialTheme.typography.h6,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                        color = MaterialTheme.colors.primary
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
                     )
                 },
                 text = {
-                    Column {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
                             "현재 카메라가 Wi-Fi로 연결되어 있어 사진 미리보기를 사용할 수 없습니다.",
-                            style = MaterialTheme.typography.body1
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            "💡 사진 미리보기를 사용하려면:",
-                            style = MaterialTheme.typography.body2,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                            color = MaterialTheme.colors.primary
+                            style = MaterialTheme.typography.bodyMedium
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "1️⃣ 카메라의 Wi-Fi 연결을 해제해주세요\n" +
-                                    "2️⃣ USB 케이블로 카메라를 연결해주세요\n" +
-                                    "3️⃣ 카메라를 PC 모드로 설정해주세요",
-                            style = MaterialTheme.typography.body2,
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f)
+                            "사진 미리보기를 사용하려면:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            "Wi-Fi 연결에서는 '카메라 제어' 탭을 이용해주세요! 📷",
-                            style = MaterialTheme.typography.caption,
-                            color = MaterialTheme.colors.primary,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                            "1. 카메라의 Wi-Fi 연결을 해제해주세요\n" +
+                                    "2. USB 케이블로 카메라를 연결해주세요\n" +
+                                    "3. 카메라를 PC 모드로 설정해주세요",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            "Wi-Fi 연결에서는 '카메라 제어' 탭을 이용해주세요!",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 },
                 confirmButton = {
-                    androidx.compose.material.TextButton(
+                    TextButton(
                         onClick = { showPtpipWarning = false }
                     ) {
                         Text("알겠습니다")
                     }
-                },
-                properties = androidx.compose.ui.window.DialogProperties(
-                    dismissOnBackPress = true,
-                    dismissOnClickOutside = true
-                )
+                }
             )
         }
 
@@ -569,35 +568,35 @@ fun MainScreen(
         }
 
         if (showWifiDisconnectedDialog) {
-            androidx.compose.material.AlertDialog(
+            AlertDialog(
                 onDismissRequest = { showWifiDisconnectedDialog = false },
+                icon = {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                },
                 title = {
                     Text(
                         "Wi-Fi 연결이 끊어졌습니다",
-                        style = MaterialTheme.typography.h6,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                        color = MaterialTheme.colors.error
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
                     )
                 },
                 text = {
-                    androidx.compose.foundation.layout.Column {
-                        Text(
-                            "카메라의 Wi-Fi 연결이 끊어졌습니다. 다시 연결해주세요.",
-                            style = MaterialTheme.typography.body1
-                        )
-                    }
+                    Text(
+                        "카메라의 Wi-Fi 연결이 끊어졌습니다. 다시 연결해주세요.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                 },
                 confirmButton = {
-                    androidx.compose.material.TextButton(
+                    TextButton(
                         onClick = { showWifiDisconnectedDialog = false }
                     ) {
                         Text("확인")
                     }
-                },
-                properties = androidx.compose.ui.window.DialogProperties(
-                    dismissOnBackPress = true,
-                    dismissOnClickOutside = true
-                )
+                }
             )
         }
 
@@ -1391,7 +1390,7 @@ fun MainActivityPreview() {
     CamConTheme {
         // 프리뷰용 간단한 컴포넌트
         Scaffold(
-            backgroundColor = MaterialTheme.colors.background
+            containerColor = MaterialTheme.colorScheme.background
         ) {
             Box(
                 modifier = Modifier
@@ -1401,7 +1400,7 @@ fun MainActivityPreview() {
             ) {
                 Text(
                     text = "CamCon - 메인 화면",
-                    style = MaterialTheme.typography.h6
+                    style = MaterialTheme.typography.titleLarge
                 )
             }
         }

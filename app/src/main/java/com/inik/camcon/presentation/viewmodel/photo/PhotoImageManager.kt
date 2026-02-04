@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import com.inik.camcon.utils.Constants
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -134,10 +135,18 @@ class PhotoImageManager @Inject constructor(
                                 }
 
                                 synchronized(currentCache) {
+                                    // LRU 캐시 크기 제한 적용
+                                    if (currentCache.size >= Constants.Cache.MAX_THUMBNAIL_CACHE_SIZE) {
+                                        val oldestKey = currentCache.keys.firstOrNull()
+                                        if (oldestKey != null) {
+                                            currentCache.remove(oldestKey)
+                                            Log.d(TAG, "캐시 크기 제한 - 가장 오래된 썸네일 제거: $oldestKey")
+                                        }
+                                    }
                                     currentCache[photo.path] = thumbnailData
                                     _thumbnailCache.value = currentCache.toMap()
                                 }
-                                Log.d(TAG, "💾 썸네일 캐시 저장 완료: ${photo.name}")
+                                Log.d(TAG, "💾 썸네일 캐시 저장 완료: ${photo.name} (캐시 크기: ${currentCache.size})")
                             } else {
                                 Log.w(TAG, "⚠️ 빈 썸네일 데이터 수신: ${photo.name}")
                                 // 빈 데이터도 캐시에 저장하여 재시도 방지
@@ -250,12 +259,22 @@ class PhotoImageManager @Inject constructor(
                 if (imageData != null && imageData.isNotEmpty()) {
                     Log.d(TAG, "이미지 데이터 확인: 유효함 (${imageData.size} bytes)")
 
-                    val currentCache = _fullImageCache.value
+                    val currentCache = _fullImageCache.value.toMutableMap()
                     if (!currentCache.containsKey(photoPath)) {
-                        val newCache = currentCache + (photoPath to imageData)
-                        _fullImageCache.value = newCache
+                        // LRU 캐시 크기 제한 적용
+                        while (currentCache.size >= Constants.Cache.MAX_FULL_IMAGE_CACHE_SIZE) {
+                            val oldestKey = currentCache.keys.firstOrNull()
+                            if (oldestKey != null) {
+                                currentCache.remove(oldestKey)
+                                Log.d(TAG, "캐시 크기 제한 - 가장 오래된 이미지 제거: $oldestKey")
+                            } else {
+                                break
+                            }
+                        }
+                        currentCache[photoPath] = imageData
+                        _fullImageCache.value = currentCache.toMap()
 
-                        Log.d(TAG, "실제 파일 다운로드 성공: ${imageData.size} bytes")
+                        Log.d(TAG, "실제 파일 다운로드 성공: ${imageData.size} bytes (캐시 크기: ${currentCache.size})")
 
                         // EXIF 파싱
                         if (!_exifCache.value.containsKey(photoPath)) {
