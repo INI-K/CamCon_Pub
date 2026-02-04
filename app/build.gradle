@@ -184,12 +184,6 @@ android {
     sourceSets {
         main { jniLibs.srcDirs = ['src/main/jniLibs'] }
     }
-
-    // ⚠️ Android APK는 jniLibs의 하위 디렉토리를 flat하게 펴버립니다.
-    // 따라서 Gradle로 디렉토리 구조를 만들어도 APK에는 포함되지 않습니다.
-    // 대신 런타임에 APK에서 직접 읽어서 디렉토리 구조를 생성합니다.
-    // (CamCon.kt 및 UsbConnectionManager.kt의 createLibgphoto2PluginDirs() 참고)
-
     buildFeatures {
         viewBinding true
         compose true
@@ -403,14 +397,14 @@ tasks.register('align16KbLibraries') {
     }
 }
 
-// 빌드 태스크에 16KB 정렬 자동 추가
-android.applicationVariants.all { variant ->
-    def mergeNativeLibsTask = tasks.findByName("merge${variant.name.capitalize()}NativeLibs")
-    if (mergeNativeLibsTask) {
-        def alignTask = tasks.named('align16KbLibraries').get()
-        mergeNativeLibsTask.finalizedBy(alignTask)
-    }
-}
+// 빌드 태스크에 16KB 정렬 자동 추가 - 비활성화 (libnative-lib.so 손상 문제)
+// android.applicationVariants.all { variant ->
+//     def mergeNativeLibsTask = tasks.findByName("merge${variant.name.capitalize()}NativeLibs")
+//     if (mergeNativeLibsTask) {
+//         def alignTask = tasks.named('align16KbLibraries').get()
+//         mergeNativeLibsTask.finalizedBy(alignTask)
+//     }
+// }
 
 // 커스텀 빌드 태스크들
 task printVersion {

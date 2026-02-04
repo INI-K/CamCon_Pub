@@ -1,6 +1,8 @@
 package com.inik.camcon.data.datasource.nativesource
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import com.inik.camcon.CameraNative
 import com.inik.camcon.domain.model.Camera
@@ -43,6 +45,9 @@ class NativeCameraDataSource @Inject constructor(
     private val isStoppingEventListener = AtomicBoolean(false)
     private val isClosingCamera = AtomicBoolean(false)
 
+    // 상태 리셋을 위한 Handler
+    private val mainHandler = Handler(Looper.getMainLooper())
+
     // 카메라 이벤트 리스닝 중지
     fun stopListenCameraEvents() {
         // 중복 호출 방지
@@ -57,12 +62,11 @@ class NativeCameraDataSource @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "카메라 이벤트 리스닝 중지 중 오류", e)
         } finally {
-            // 1초 후 상태 리셋
-            Thread {
-                Thread.sleep(1000)
+            // 1초 후 상태 리셋 (Handler 사용으로 스레드 블로킹 방지)
+            mainHandler.postDelayed({
                 isStoppingEventListener.set(false)
                 Log.d(TAG, "이벤트 리스너 중지 상태 리셋")
-            }.start()
+            }, 1000)
         }
     }
 
@@ -340,12 +344,11 @@ class NativeCameraDataSource @Inject constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "카메라 종료 중 오류", e)
             } finally {
-                // 2초 후 상태 리셋
-                Thread {
-                    Thread.sleep(2000)
+                // 2초 후 상태 리셋 (Handler 사용으로 스레드 블로킹 방지)
+                mainHandler.postDelayed({
                     isClosingCamera.set(false)
                     Log.d(TAG, "카메라 종료 상태 리셋")
-                }.start()
+                }, 2000)
             }
         }.start()
     }
@@ -422,10 +425,7 @@ class NativeCameraDataSource @Inject constructor(
                 Log.d(TAG, "카메라 이벤트 리스너 일시 중지")
                 CameraNative.stopListenCameraEvents()
                 needsListenerRestart = true
-
-                // 리스너가 완전히 중지될 때까지 충분히 대기
-                Thread.sleep(1000)
-                Log.d(TAG, "이벤트 리스너 중지 대기 완료")
+                Log.d(TAG, "이벤트 리스너 중지 요청 완료")
             } catch (e: Exception) {
                 Log.w(TAG, "이벤트 리스너 중지 실패 (이미 중지되었을 수 있음)", e)
             }
