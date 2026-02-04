@@ -722,12 +722,10 @@ class CameraEventManager @Inject constructor(
                         e
                     )
 
-                    if (stopAttempts < maxStopAttempts) {
-                        // 다음 시도 전 잠깐 대기
-                        Thread.sleep(500)
-                    } else {
+                    if (stopAttempts >= maxStopAttempts) {
                         LogcatManager.e("카메라이벤트매니저", "네이티브 이벤트 리스너 중지 최대 재시도 초과")
                     }
+                    // 재시도 간 대기는 제거 - performCompleteCleanup은 동기적으로 빠르게 완료되어야 함
                 }
             }
 
