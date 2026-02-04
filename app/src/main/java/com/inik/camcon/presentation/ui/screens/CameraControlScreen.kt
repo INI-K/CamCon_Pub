@@ -44,6 +44,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -95,6 +96,14 @@ import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.CameraSettings
 import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.Background
+import com.inik.camcon.presentation.theme.Surface
+import com.inik.camcon.presentation.theme.SurfaceElevated
+import com.inik.camcon.presentation.theme.Primary
+import com.inik.camcon.presentation.theme.Error
+import com.inik.camcon.presentation.theme.TextPrimary
+import com.inik.camcon.presentation.theme.TextSecondary
+import com.inik.camcon.presentation.theme.TextMuted
 import com.inik.camcon.presentation.ui.screens.components.CameraPreviewArea
 import com.inik.camcon.presentation.ui.screens.components.CaptureControls
 import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
@@ -394,11 +403,17 @@ private fun AppRestartDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Default.Close, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
         title = {
             Text("앱 재시작 필요")
         },
         text = {
-            Text("USB 장치 연결이 제대로 해제되지 않았거나 시스템 오류(-52)가 발생했습니다.\n\n앱을 재시작해야 정상적으로 사용할 수 있습니다.\n\n지금 앱을 재시작하시겠습니까?")
+            Text(
+                "USB 장치 연결이 제대로 해제되지 않았거나 시스템 오류(-52)가 발생했습니다.\n\n" +
+                        "앱을 재시작해야 정상적으로 사용할 수 있습니다.\n\n" +
+                        "지금 앱을 재시작하시겠습니까?",
+                style = MaterialTheme.typography.bodyMedium
+            )
         },
         confirmButton = {
             Button(onClick = onRestart) {
@@ -448,7 +463,7 @@ private fun PortraitCameraLayout(
                 activity.window.insetsController?.let { controller ->
                     controller.show(android.view.WindowInsets.Type.systemBars())
                     controller.systemBarsBehavior =
-                        android.view.WindowInsetsController.BEHAVIOR_SHOW_BARS_BY_SWIPE
+                        android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
                 }
             } else {
                 @Suppress("DEPRECATION")
@@ -504,9 +519,9 @@ private fun PortraitCameraLayout(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
-            .statusBarsPadding() // 상태바 패딩 추가
-            .imePadding() // 키보드 패딩 추가
+            .background(Background)
+            .statusBarsPadding()
+            .imePadding()
     ) {
         TopControlsBar(
             uiState = uiState,
@@ -518,7 +533,7 @@ private fun PortraitCameraLayout(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .background(Color.Black),
+                .background(Background),
             contentAlignment = Alignment.Center
         ) {
             if (appSettings.isCameraControlsEnabled && appSettings.isLiveViewEnabled) {
@@ -561,7 +576,7 @@ private fun PortraitCameraLayout(
                     AnimatedPhotoSwitcher(
                         capturedPhotos = uiState.capturedPhotos,
                         modifier = Modifier.fillMaxSize(),
-                        emptyTextColor = Color.White,
+                        emptyTextColor = TextSecondary,
                         isRotated = false,
                         onDoubleClick = {
                             if (canEnterFullscreen) {
@@ -573,30 +588,36 @@ private fun PortraitCameraLayout(
             }
 
             if (canEnterFullscreen) {
-                Text(
-                    "더블클릭으로 전체화면",
-                    color = Color.White.copy(alpha = 0.6f),
+                // 프리미엄 힌트 배지
+                Box(
                     modifier = Modifier
                         .align(Alignment.TopStart)
-                        .padding(16.dp)
+                        .padding(20.dp)
                         .background(
-                            Color.Black.copy(alpha = 0.5f),
-                            RoundedCornerShape(8.dp)
+                            SurfaceElevated.copy(alpha = 0.8f),
+                            RoundedCornerShape(12.dp)
                         )
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    fontSize = 12.sp
-                )
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = "더블클릭으로 전체화면",
+                        color = TextPrimary,
+                        fontSize = 12.sp
+                    )
+                }
             }
         }
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.Black.copy(alpha = 0.9f)
-            ),
-            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+        // 프리미엄 하단 컨트롤 패널
+        Surface(
+            color = Surface,
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+            tonalElevation = 8.dp,
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Column {
+            Column(
+                modifier = Modifier.padding(vertical = 16.dp)
+            ) {
                 if (appSettings.isCameraControlsEnabled && appSettings.isLiveViewEnabled) {
                     ShootingModeSelector(
                         uiState = uiState,
@@ -616,14 +637,15 @@ private fun PortraitCameraLayout(
 
                 if (recentPhotos.isNotEmpty()) {
                     Text(
-                        "수신된 사진 (${uiState.capturedPhotos.size}개)",
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        text = "수신된 사진 (${uiState.capturedPhotos.size}개)",
+                        color = TextPrimary,
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
                     )
                     RecentCapturesRow(
                         photos = recentPhotos,
                         onPhotoClick = onPhotoClick,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
                     )
                 }
             }
@@ -674,7 +696,7 @@ private fun FullscreenCameraLayout(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(Background)
     ) {
         // 메인 라이브뷰 또는 사진 뷰 영역
         if (isLiveViewEnabled && uiState.isLiveViewActive) {
@@ -698,7 +720,7 @@ private fun FullscreenCameraLayout(
                 AnimatedPhotoSwitcher(
                     capturedPhotos = uiState.capturedPhotos,
                     modifier = Modifier.fillMaxSize(),
-                    emptyTextColor = Color.White,
+                    emptyTextColor = TextSecondary,
                     isRotated = isRotated,
                     onDoubleClick = onExitFullscreen
                 )
@@ -715,71 +737,72 @@ private fun FullscreenCameraLayout(
                 onRotate = { isRotated = !isRotated },
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
-                    .padding(16.dp)
+                    .padding(20.dp)
             )
         } else if (uiState.capturedPhotos.isNotEmpty()) {
             Row(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(20.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Surface(
-                    color = Color.Black.copy(alpha = 0.7f),
+                    color = SurfaceElevated.copy(alpha = 0.9f),
                     shape = CircleShape
                 ) {
                     IconButton(
                         onClick = { isRotated = !isRotated },
                         modifier = Modifier
-                            .size(48.dp)
-                            .background(Color.DarkGray.copy(alpha = 0.4f), CircleShape)
+                            .size(52.dp)
+                            .background(SurfaceElevated, CircleShape)
                     ) {
                         Icon(
                             Icons.Default.RotateRight,
                             contentDescription = "180도 회전",
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp)
+                            tint = TextPrimary,
+                            modifier = Modifier.size(26.dp)
                         )
                     }
                 }
 
                 Surface(
-                    color = Color.Black.copy(alpha = 0.7f),
+                    color = SurfaceElevated.copy(alpha = 0.9f),
                     shape = CircleShape
                 ) {
                     IconButton(
                         onClick = onExitFullscreen,
                         modifier = Modifier
-                            .size(48.dp)
-                            .background(Color.Red.copy(alpha = 0.3f), CircleShape)
+                            .size(52.dp)
+                            .background(Error.copy(alpha = 0.3f), CircleShape)
                     ) {
                         Icon(
                             Icons.Default.Close,
                             contentDescription = "전체화면 종료",
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp)
+                            tint = TextPrimary,
+                            modifier = Modifier.size(26.dp)
                         )
                     }
                 }
             }
         }
 
-        // 하단 안내 텍스트
-        Text(
-            "더블클릭으로 종료",
-            color = Color.White.copy(alpha = 0.7f),
+        // 하단 안내 텍스트 - 프리미엄 스타일
+        Surface(
+            color = SurfaceElevated.copy(alpha = 0.8f),
+            shape = RoundedCornerShape(12.dp),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(16.dp)
-                .background(
-                    Color.Black.copy(alpha = 0.5f),
-                    RoundedCornerShape(8.dp)
-                )
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-            fontSize = 14.sp
-        )
+                .padding(20.dp)
+        ) {
+            Text(
+                text = "더블클릭으로 종료",
+                color = TextPrimary,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                fontSize = 14.sp
+            )
+        }
 
-        // 전역 로딩 상태 - 분리된 컴포넌트 사용
+        // 전역 로딩 상태
         if (uiState.isCapturing) {
             LoadingOverlay("촬영 중...")
         }
@@ -798,7 +821,7 @@ private fun FullscreenCameraLayout(
 }
 
 /**
- * 전체화면 컨트롤 패널 - 분리된 컴포넌트들 조합
+ * 프리미엄 전체화면 컨트롤 패널
  */
 @Composable
 private fun FullscreenControlPanel(
@@ -806,57 +829,66 @@ private fun FullscreenControlPanel(
     viewModel: CameraViewModel,
     onShowTimelapseDialog: () -> Unit,
     onExitFullscreen: () -> Unit,
-    onRotate: (() -> Unit)? = null, // 180도 회전 콜백 추가 (기본값 null)
+    onRotate: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Surface(
-        color = Color.Black.copy(alpha = 0.7f),
-        shape = RoundedCornerShape(16.dp),
+        color = SurfaceElevated.copy(alpha = 0.95f),
+        shape = RoundedCornerShape(20.dp),
+        tonalElevation = 8.dp,
         modifier = modifier
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // 종료 버튼
-            IconButton(
-                onClick = onExitFullscreen,
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(Color.Red.copy(alpha = 0.3f), CircleShape)
+            Surface(
+                color = Error.copy(alpha = 0.2f),
+                shape = CircleShape,
+                modifier = Modifier.size(52.dp)
             ) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = "전체화면 종료",
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
+                IconButton(
+                    onClick = onExitFullscreen,
+                    modifier = Modifier.size(52.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "전체화면 종료",
+                        tint = Error,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
             }
 
             // 180도 회전 버튼
-            IconButton(
-                onClick = { onRotate?.invoke() },
-                enabled = onRotate != null,
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(Color.DarkGray.copy(alpha = 0.4f), CircleShape)
+            Surface(
+                color = SurfaceElevated,
+                shape = CircleShape,
+                modifier = Modifier.size(52.dp)
             ) {
-                Icon(
-                    Icons.Default.RotateRight,
-                    contentDescription = "180도 회전",
-                    tint = if (onRotate != null) Color.White else Color.LightGray,
-                    modifier = Modifier.size(24.dp)
-                )
+                IconButton(
+                    onClick = { onRotate?.invoke() },
+                    enabled = onRotate != null,
+                    modifier = Modifier.size(52.dp)
+                ) {
+                    Icon(
+                        Icons.Default.RotateRight,
+                        contentDescription = "180도 회전",
+                        tint = if (onRotate != null) TextPrimary else TextSecondary,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
             }
 
-            // 촬영 모드 선택 (세로) - 분리된 컴포넌트 사용
+            // 촬영 모드 선택 (세로)
             ShootingModeSelector(
                 uiState = uiState,
                 onModeSelected = { mode -> viewModel.setShootingMode(mode) },
             )
 
-            // 메인 촬영 버튼 - 분리된 컴포넌트 사용
+            // 메인 촬영 버튼
             CaptureControls(
                 uiState = uiState,
                 viewModel = viewModel,
@@ -906,7 +938,7 @@ private fun RecentCapturesRow(
 }
 
 /**
- * 개별 사진 아이템 - 리컴포지션 최적화를 위해 분리
+ * 프리미엄 개별 사진 아이템
  */
 @Composable
 private fun RecentCaptureItem(
@@ -922,17 +954,17 @@ private fun RecentCaptureItem(
         }
     }
 
-    Card(
+    Surface(
         modifier = Modifier
-            .size(100.dp)
+            .size(104.dp)
             .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(4.dp)
+        shape = RoundedCornerShape(16.dp),
+        color = SurfaceElevated,
+        tonalElevation = 4.dp,
+        shadowElevation = 4.dp
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.DarkGray),
+            modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             // 실제 이미지가 있으면 표출
@@ -940,12 +972,11 @@ private fun RecentCaptureItem(
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(thumbnailPath)
-                        .crossfade(180)
+                        .crossfade(200)
                         .memoryCacheKey(photo.id + "_thumb")
                         .scale(Scale.FIT)
-                        .allowHardware(false) // EXIF 처리를 위해 하드웨어 가속 비활성화
+                        .allowHardware(false)
                         .apply {
-                            // sRGB 색공간 설정
                             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                                 colorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
                             }
@@ -960,12 +991,11 @@ private fun RecentCaptureItem(
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(photo.filePath)
-                        .crossfade(180)
+                        .crossfade(200)
                         .memoryCacheKey(photo.id + "_full")
                         .scale(Scale.FIT)
-                        .allowHardware(false) // EXIF 처리를 위해 하드웨어 가속 비활성화
+                        .allowHardware(false)
                         .apply {
-                            // sRGB 색공간 설정
                             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                                 colorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
                             }
@@ -982,31 +1012,31 @@ private fun RecentCaptureItem(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.5f)),
+                        .background(Background.copy(alpha = 0.7f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        "다운로드 중...",
-                        color = Color.White,
-                        fontSize = 10.sp
+                    CircularProgressIndicator(
+                        color = Primary,
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
                     )
                 }
             }
 
             // 파일 크기 표시 (하단)
             if (photo.size > 0) {
-                Text(
-                    sizeText,
-                    color = Color.White,
-                    fontSize = 10.sp,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .background(
-                            Color.Black.copy(alpha = 0.7f),
-                            RoundedCornerShape(4.dp)
-                        )
-                        .padding(4.dp)
-                )
+                Surface(
+                    color = Background.copy(alpha = 0.8f),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.align(Alignment.BottomEnd)
+                ) {
+                    Text(
+                        text = sizeText,
+                        color = TextPrimary,
+                        fontSize = 10.sp,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                    )
+                }
             }
         }
     }
