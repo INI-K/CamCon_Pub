@@ -105,6 +105,7 @@ import com.inik.camcon.presentation.theme.TextPrimary
 import com.inik.camcon.presentation.theme.TextSecondary
 import com.inik.camcon.presentation.theme.TextMuted
 import com.inik.camcon.presentation.ui.screens.components.CameraPreviewArea
+import com.inik.camcon.presentation.ui.screens.components.CameraSettingsControls
 import com.inik.camcon.presentation.ui.screens.components.CaptureControls
 import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
 import com.inik.camcon.presentation.ui.screens.components.LoadingOverlay
@@ -630,7 +631,20 @@ private fun PortraitCameraLayout(
                     ShootingModeSelector(
                         uiState = uiState,
                         onModeSelected = { mode -> viewModel.setShootingMode(mode) },
-                        modifier = Modifier.padding(vertical = 12.dp)
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                }
+
+                // ISO/셔터스피드/조리개 조절 컨트롤
+                if (appSettings.isCameraControlsEnabled && uiState.isConnected) {
+                    CameraSettingsControls(
+                        currentSettings = uiState.cameraSettings,
+                        capabilities = uiState.cameraCapabilities,
+                        onSettingChange = { key, value ->
+                            viewModel.updateCameraSetting(key, value)
+                        },
+                        isEnabled = uiState.isConnected && !uiState.isCapturing,
+                        modifier = Modifier.padding(vertical = 4.dp)
                     )
                 }
 
