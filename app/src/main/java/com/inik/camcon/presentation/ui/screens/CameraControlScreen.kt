@@ -625,13 +625,13 @@ private fun PortraitCameraLayout(
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
-                modifier = Modifier.padding(vertical = 16.dp)
+                modifier = Modifier.padding(vertical = 8.dp)
             ) {
                 if (appSettings.isCameraControlsEnabled && appSettings.isLiveViewEnabled) {
                     ShootingModeSelector(
                         uiState = uiState,
                         onModeSelected = { mode -> viewModel.setShootingMode(mode) },
-                        modifier = Modifier.padding(vertical = 4.dp)
+                        modifier = Modifier.padding(vertical = 2.dp)
                     )
                 }
 
@@ -644,7 +644,7 @@ private fun PortraitCameraLayout(
                             viewModel.updateCameraSetting(key, value)
                         },
                         isEnabled = uiState.isConnected && !uiState.isCapturing,
-                        modifier = Modifier.padding(vertical = 4.dp)
+                        modifier = Modifier.padding(vertical = 2.dp)
                     )
                 }
 
