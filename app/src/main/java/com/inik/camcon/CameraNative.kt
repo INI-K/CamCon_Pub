@@ -395,7 +395,7 @@ object CameraNative {
     external fun getMemoryPoolStatus(): String
 
     /**
-     * 🧪 Mock Camera (가상 카메라) JNI 함수들
+     * Mock Camera (가상 카메라) JNI 함수들
      * ADMIN 티어 전용 개발/테스트 기능
      */
     external fun enableMockCamera(enable: Boolean): Boolean
@@ -411,5 +411,78 @@ object CameraNative {
     external fun simulateCameraError(errorCode: Int, errorMessage: String): Boolean
     external fun setMockCameraAutoCapture(enable: Boolean, intervalMs: Int): Boolean
     external fun getMockCameraInfo(): String
+
+    // ===== libgphoto2 확장 API (새로 추가) =====
+
+    /**
+     * 모든 설정 목록을 플랫 리스트로 조회 (gp_camera_list_config)
+     * @return JSON: {"count": N, "configs": ["config1", "config2", ...]}
+     */
+    external fun listAllConfigs(): String
+
+    /**
+     * 카메라 매뉴얼 정보 조회 (gp_camera_get_manual)
+     * @return JSON: {"manual": "..."}
+     */
+    external fun getCameraManual(): String
+
+    /**
+     * 폴더 내 모든 파일 삭제 (gp_camera_folder_delete_all)
+     * @param folder 폴더 경로 (예: "/store_00010001/DCIM/100NIKON")
+     * @return 성공 여부
+     */
+    external fun deleteAllFilesInFolder(folder: String): Boolean
+
+    /**
+     * 파일 부분 읽기 - 대용량 파일용 (gp_camera_file_read)
+     * @param path 파일 경로
+     * @param offset 시작 위치 (바이트)
+     * @param size 읽을 크기 (바이트)
+     * @return 읽은 데이터
+     */
+    external fun readFileChunk(path: String, offset: Long, size: Int): ByteArray?
+
+    /**
+     * 카메라에 파일 업로드 (gp_camera_folder_put_file)
+     * @param folder 대상 폴더
+     * @param filename 파일명
+     * @param data 업로드할 데이터
+     * @return 성공 여부
+     */
+    external fun uploadFileToCamera(folder: String, filename: String, data: ByteArray): Boolean
+
+    /**
+     * 카메라에 폴더 생성 (gp_camera_folder_make_dir)
+     * @param parentFolder 상위 폴더
+     * @param folderName 생성할 폴더명
+     * @return 성공 여부
+     */
+    external fun createCameraFolder(parentFolder: String, folderName: String): Boolean
+
+    /**
+     * 카메라 폴더 삭제 (gp_camera_folder_remove_dir)
+     * @param parentFolder 상위 폴더
+     * @param folderName 삭제할 폴더명
+     * @return 성공 여부
+     */
+    external fun removeCameraFolder(parentFolder: String, folderName: String): Boolean
+
+    /**
+     * 상세 스토리지 정보 조회 (gp_camera_get_storageinfo 확장)
+     * @return JSON: {
+     *   "count": N,
+     *   "storages": [{
+     *     "basedir": "/",
+     *     "label": "SD Card",
+     *     "description": "...",
+     *     "type": "removable_ram",
+     *     "access": "readwrite",
+     *     "capacityKB": 123456789,
+     *     "freeKB": 12345678,
+     *     "freeImages": 1234
+     *   }, ...]
+     * }
+     */
+    external fun getDetailedStorageInfo(): String
 
 }
