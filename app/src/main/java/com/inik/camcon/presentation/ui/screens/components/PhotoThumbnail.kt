@@ -5,6 +5,7 @@ package com.inik.camcon.presentation.ui.screens.components
 import android.graphics.ColorSpace
 import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -35,12 +36,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -108,8 +111,11 @@ fun PhotoThumbnail(
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(photo.thumbnailPath)
+                            .size(300) // 썸네일 크기 제한
                             .crossfade(true)
-                            .allowHardware(false) // EXIF 처리를 위해 하드웨어 가속 비활성화
+                            .allowHardware(true) // 썸네일은 하드웨어 가속 허용
+                            .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
+                            .diskCachePolicy(coil.request.CachePolicy.ENABLED)
                             .build(),
                         contentDescription = photo.name,
                         modifier = Modifier.fillMaxSize(),
@@ -121,8 +127,11 @@ fun PhotoThumbnail(
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(photo.path)
+                            .size(300) // 썸네일 크기 제한
                             .crossfade(true)
-                            .allowHardware(false) // EXIF 처리를 위해 하드웨어 가속 비활성화
+                            .allowHardware(true) // 썸네일은 하드웨어 가속 허용
+                            .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
+                            .diskCachePolicy(coil.request.CachePolicy.ENABLED)
                             .build(),
                         contentDescription = photo.name,
                         modifier = Modifier.fillMaxSize(),
@@ -293,9 +302,9 @@ private fun ExifAwareThumbnail(
                     inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888 // sRGB 호환성
                     inPreferredColorSpace = ColorSpace.get(ColorSpace.Named.SRGB) // sRGB 색공간
                     inMutable = false
-                    inSampleSize = 1 // 썸네일이므로 원본 크기 유지
+                    inSampleSize = 4 // 썸네일 크기로 다운샘플링 (메모리 절약)
 
-                    // 하드웨어 가속 비활성화 (일부 디바이스에서 호환성 문제 방지)
+                    // 하드웨어 가속 활성화 (썸네일용)
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                         inPreferredColorSpace =
                             android.graphics.ColorSpace.get(android.graphics.ColorSpace.Named.SRGB)
@@ -438,91 +447,33 @@ private fun ThumbnailImage(
     photo: CameraPhoto,
     modifier: Modifier = Modifier
 ) {
-    var bitmap by remember(photo.path, thumbnailData) {
-        mutableStateOf<ImageBitmap?>(null)
-    }
+    var isLoading by remember { mutableStateOf(true) }
+    var hasError by remember { mutableStateOf(false) }
 
-    LaunchedEffect(photo.path, thumbnailData) {
-        withContext(Dispatchers.IO) {
-            try {
-                Log.d("PhotoThumbnail", "비트맵 디코딩 시작: ${photo.name}")
-                Log.d("PhotoThumbnail", "고화질 데이터 없음, 기본 썸네일 디코딩: ${photo.name}")
+    // Coil로 ByteArray 직접 로딩 - 메모리 캐싱 자동 적용
+    Box(modifier = modifier) {
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(thumbnailData) // ByteArray 직접 전달
+                .size(300)
+                .crossfade(true)
+                .allowHardware(true)
+                .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
+                .diskCachePolicy(coil.request.CachePolicy.DISABLED) // ByteArray는 디스크 캐시 불필요
+                .build(),
+            contentDescription = photo.name,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+            onLoading = { isLoading = true },
+            onSuccess = { isLoading = false; hasError = false },
+            onError = { isLoading = false; hasError = true }
+        )
 
-                // 썸네일 데이터 유효성 검사
-                if (thumbnailData.isEmpty()) {
-                    Log.w("PhotoThumbnail", "기본 썸네일 데이터가 비어있음: ${photo.name}")
-                    return@withContext
-                }
-
-                // 안전한 비트맵 디코딩 옵션 설정
-                val options = android.graphics.BitmapFactory.Options().apply {
-                    inJustDecodeBounds = false
-                    inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
-                    inMutable = false
-                    inSampleSize = 1
-
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                        inPreferredColorSpace =
-                            android.graphics.ColorSpace.get(android.graphics.ColorSpace.Named.SRGB)
-                    }
-                }
-
-                val decodedBitmap = try {
-                    android.graphics.BitmapFactory.decodeByteArray(
-                        thumbnailData, 0, thumbnailData.size, options
-                    )
-                } catch (e: OutOfMemoryError) {
-                    Log.e("PhotoThumbnail", "기본 썸네일 메모리 부족: ${photo.name}", e)
-                    // 메모리 부족 시 샘플 사이즈 증가
-                    options.inSampleSize = 2
-                    try {
-                        android.graphics.BitmapFactory.decodeByteArray(
-                            thumbnailData, 0, thumbnailData.size, options
-                        )
-                    } catch (e2: Exception) {
-                        Log.e("PhotoThumbnail", "기본 썸네일 재시도도 실패: ${photo.name}", e2)
-                        null
-                    }
-                } catch (e: Exception) {
-                    Log.e("PhotoThumbnail", "기본 썸네일 디코딩 실패: ${photo.name}", e)
-                    if (e.message?.contains("unimplemented") == true) {
-                        Log.e(
-                            "PhotoThumbnail",
-                            "--- Failed to create image decoder with message 'unimplemented'"
-                        )
-                        Log.e("PhotoThumbnail", "썸네일 비트맵 디코딩 실패: ${photo.name}")
-                    }
-                    null
-                }
-
-                if (decodedBitmap != null) {
-                    try {
-                        bitmap = decodedBitmap.asImageBitmap()
-                        Log.d(
-                            "PhotoThumbnail",
-                            "썸네일 비트맵 적용 성공: ${photo.name} (${decodedBitmap.width}x${decodedBitmap.height})"
-                        )
-                    } catch (e: Exception) {
-                        Log.e("PhotoThumbnail", "기본 썸네일 ImageBitmap 변환 실패: ${photo.name}", e)
-                        decodedBitmap.recycle()
-                    }
-                } else {
-                    Log.e("PhotoThumbnail", "썸네일 비트맵 디코딩 실패: ${photo.name}")
-                }
-            } catch (e: Exception) {
-                Log.e("PhotoThumbnail", "썸네일 이미지 처리 실패: ${photo.name}", e)
-            }
+        // 로딩 중이거나 에러 발생 시 플레이스홀더 표시
+        if (isLoading || hasError) {
+            ThumbnailPlaceholder()
         }
     }
-
-    bitmap?.let { bmp ->
-        Image(
-            bitmap = bmp,
-            contentDescription = photo.name,
-            modifier = modifier,
-            contentScale = ContentScale.Crop
-        )
-    } ?: ThumbnailPlaceholder()
 }
 
 /**
@@ -641,8 +592,11 @@ fun FluidPhotoThumbnail(
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(photo.thumbnailPath)
+                            .size(300) // 썸네일 크기 제한
                             .crossfade(true)
-                            .allowHardware(false) // EXIF 처리를 위해 하드웨어 가속 비활성화
+                            .allowHardware(true) // 썸네일은 하드웨어 가속 허용
+                            .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
+                            .diskCachePolicy(coil.request.CachePolicy.ENABLED)
                             .build(),
                         contentDescription = photo.name,
                         modifier = Modifier.fillMaxSize(),
@@ -654,8 +608,11 @@ fun FluidPhotoThumbnail(
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(photo.path)
+                            .size(300) // 썸네일 크기 제한
                             .crossfade(true)
-                            .allowHardware(false) // EXIF 처리를 위해 하드웨어 가속 비활성화
+                            .allowHardware(true) // 썸네일은 하드웨어 가속 허용
+                            .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
+                            .diskCachePolicy(coil.request.CachePolicy.ENABLED)
                             .build(),
                         contentDescription = photo.name,
                         modifier = Modifier.fillMaxSize(),
@@ -819,7 +776,7 @@ private fun FluidExifAwareThumbnail(
                     inJustDecodeBounds = false
                     inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
                     inMutable = false
-                    inSampleSize = 1
+                    inSampleSize = 4 // 썸네일 크기로 다운샘플링 (메모리 절약)
 
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                         inPreferredColorSpace =
@@ -946,73 +903,176 @@ private fun FluidThumbnailImage(
     photo: CameraPhoto,
     modifier: Modifier = Modifier
 ) {
-    var bitmap by remember(photo.path, thumbnailData) {
-        mutableStateOf<ImageBitmap?>(null)
+    var isLoading by remember { mutableStateOf(true) }
+    var hasError by remember { mutableStateOf(false) }
+
+    // Coil로 ByteArray 직접 로딩 - 메모리 캐싱 자동 적용
+    Box(modifier = modifier) {
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(thumbnailData) // ByteArray 직접 전달
+                .size(300)
+                .crossfade(true)
+                .allowHardware(true)
+                .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
+                .diskCachePolicy(coil.request.CachePolicy.DISABLED) // ByteArray는 디스크 캐시 불필요
+                .build(),
+            contentDescription = photo.name,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+            onLoading = { isLoading = true },
+            onSuccess = { isLoading = false; hasError = false },
+            onError = { isLoading = false; hasError = true }
+        )
+
+        // 로딩 중이거나 에러 발생 시 플레이스홀더 표시
+        if (isLoading || hasError) {
+            ThumbnailPlaceholder()
+        }
     }
+}
 
-    LaunchedEffect(photo.path, thumbnailData) {
-        withContext(Dispatchers.IO) {
-            try {
-                Log.d("FluidPhotoThumbnail", "유동적 기본 비트맵 디코딩 시작: ${photo.name}")
-
-                if (thumbnailData.isEmpty()) {
-                    Log.w("FluidPhotoThumbnail", "기본 썸네일 데이터가 비어있음: ${photo.name}")
-                    return@withContext
-                }
-
-                val options = android.graphics.BitmapFactory.Options().apply {
-                    inJustDecodeBounds = false
-                    inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
-                    inMutable = false
-                    inSampleSize = 1
-
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                        inPreferredColorSpace =
-                            android.graphics.ColorSpace.get(android.graphics.ColorSpace.Named.SRGB)
-                    }
-                }
-
-                val decodedBitmap = try {
-                    android.graphics.BitmapFactory.decodeByteArray(
-                        thumbnailData, 0, thumbnailData.size, options
-                    )
-                } catch (e: OutOfMemoryError) {
-                    Log.e("FluidPhotoThumbnail", "기본 썸네일 메모리 부족: ${photo.name}", e)
-                    options.inSampleSize = 2
-                    try {
-                        android.graphics.BitmapFactory.decodeByteArray(
-                            thumbnailData, 0, thumbnailData.size, options
-                        )
-                    } catch (e2: Exception) {
-                        Log.e("FluidPhotoThumbnail", "기본 썸네일 재시도도 실패: ${photo.name}", e2)
-                        null
-                    }
-                } catch (e: Exception) {
-                    Log.e("FluidPhotoThumbnail", "기본 썸네일 디코딩 실패: ${photo.name}", e)
-                    null
-                }
-
-                if (decodedBitmap != null) {
-                    try {
-                        bitmap = decodedBitmap.asImageBitmap()
-                        Log.d("FluidPhotoThumbnail", "유동적 기본 썸네일 성공: ${photo.name}")
-                    } catch (e: Exception) {
-                        Log.e("FluidPhotoThumbnail", "기본 썸네일 ImageBitmap 변환 실패: ${photo.name}", e)
-                        decodedBitmap.recycle()
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("FluidPhotoThumbnail", "유동적 썸네일 이미지 처리 실패: ${photo.name}", e)
-            }
+/**
+ * Pinterest 스타일의 특별 대표 썸네일 (전체 너비)
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun FeaturedPhotoThumbnail(
+    photo: CameraPhoto,
+    thumbnailData: ByteArray? = null,
+    fullImageCache: Map<String, ByteArray> = emptyMap(),
+    onClick: () -> Unit
+) {
+    // 더 큰 비율로 표시 (16:9 또는 실제 비율)
+    val aspectRatio = remember(photo.path) {
+        if (photo.width > 0 && photo.height > 0) {
+            (photo.width.toFloat() / photo.height.toFloat()).coerceIn(1.0f, 2.0f)
+        } else {
+            1.5f // 기본 3:2 비율
         }
     }
 
-    bitmap?.let { bmp ->
-        Image(
-            bitmap = bmp,
-            contentDescription = photo.name,
-            modifier = modifier,
-            contentScale = ContentScale.Crop
-        )
-    } ?: ThumbnailPlaceholder()
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(aspectRatio)
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Box {
+            // 이미지 로딩
+            when {
+                !photo.thumbnailPath.isNullOrEmpty() && File(photo.thumbnailPath).exists() -> {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(photo.thumbnailPath)
+                            .size(600) // 더 큰 크기
+                            .crossfade(true)
+                            .allowHardware(true)
+                            .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
+                            .diskCachePolicy(coil.request.CachePolicy.ENABLED)
+                            .build(),
+                        contentDescription = photo.name,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+
+                !photo.path.isNullOrEmpty() && File(photo.path).exists() -> {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(photo.path)
+                            .size(600)
+                            .crossfade(true)
+                            .allowHardware(true)
+                            .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
+                            .diskCachePolicy(coil.request.CachePolicy.ENABLED)
+                            .build(),
+                        contentDescription = photo.name,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+
+                thumbnailData != null && thumbnailData.isNotEmpty() -> {
+                    val fullImageData = fullImageCache[photo.path]
+                    if (fullImageData != null) {
+                        FluidExifAwareThumbnail(
+                            thumbnailData = thumbnailData,
+                            fullImageData = fullImageData,
+                            photo = photo,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        FluidThumbnailImage(
+                            thumbnailData = thumbnailData,
+                            photo = photo,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
+
+                else -> {
+                    ThumbnailPlaceholder()
+                }
+            }
+
+            // 하단 파일명 + 크기 표시 (더 크게)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.7f)
+                            )
+                        ),
+                        RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
+                    )
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            ) {
+                Column {
+                    Text(
+                        text = photo.name,
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        fontWeight = FontWeight.Bold
+                    )
+                    if (photo.size > 0) {
+                        Text(
+                            text = formatFileSize(photo.size),
+                            color = Color.White.copy(alpha = 0.8f),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
+
+            // "대표" 배지
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(12.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = "최신",
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
 }
