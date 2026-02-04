@@ -77,11 +77,17 @@ fun CameraPreviewArea(
                 contentAlignment = Alignment.Center
             ) {
                 uiState.liveViewFrame?.let { frame ->
-                    // 바이트 배열을 비트맵으로 직접 디코딩
+                    // 바이트 배열을 비트맵으로 직접 디코딩 (inMutable로 메모리 재사용)
+                    val bitmapOptions = remember {
+                        BitmapFactory.Options().apply {
+                            inMutable = true // 비트맵 재사용 가능하도록 설정
+                            inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888 // 색상 정밀도 유지
+                        }
+                    }
+                    
                     val bitmap = remember(frame.timestamp) {
                         try {
-                            Log.d("CameraPreview", "바이트 배열을 비트맵으로 디코딩 시도: ${frame.data.size} bytes")
-                            BitmapFactory.decodeByteArray(frame.data, 0, frame.data.size)
+                            BitmapFactory.decodeByteArray(frame.data, 0, frame.data.size, bitmapOptions)
                         } catch (e: Exception) {
                             Log.e("CameraPreview", "비트맵 디코딩 실패", e)
                             null
@@ -89,7 +95,6 @@ fun CameraPreviewArea(
                     }
 
                     bitmap?.let {
-                        Log.d("CameraPreview", "비트맵 디코딩 성공: ${it.width}x${it.height}")
                         Image(
                             bitmap = it.asImageBitmap(),
                             contentDescription = "Live View",
@@ -104,10 +109,7 @@ fun CameraPreviewArea(
                                 ),
                             contentScale = ContentScale.Fit
                         )
-                    } ?: run {
-                        Log.w("CameraPreview", "비트맵 디코딩 실패 - LoadingOverlay 표시")
-                        LoadingOverlay(stringResource(R.string.processing_liveview_frame))
-                    }
+                    } ?: LoadingOverlay(stringResource(R.string.processing_liveview_frame))
                 } ?: LoadingOverlay(stringResource(R.string.loading_liveview_frame))
 
                 // 라이브뷰 중지 버튼 오버레이
