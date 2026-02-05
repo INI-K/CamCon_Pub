@@ -205,7 +205,10 @@ private fun SettingDropdown(
                 properties = PopupProperties(focusable = true)
             ) {
                 LazyColumn {
-                    items(options) { option ->
+                    items(
+                        items = options,
+                        key = { option -> option }
+                    ) { option ->
                         val isSelected = option == currentValue
                         DropdownMenuItem(
                             text = {

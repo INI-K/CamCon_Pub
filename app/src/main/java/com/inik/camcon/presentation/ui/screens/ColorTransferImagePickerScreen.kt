@@ -229,7 +229,10 @@ fun ColorTransferImagePickerScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(availableImages) { imagePath ->
+                    items(
+                        items = availableImages,
+                        key = { imagePath -> imagePath }
+                    ) { imagePath ->
                         ImageItem(
                             imagePath = imagePath,
                             isSelected = selectedLocalPath == imagePath,

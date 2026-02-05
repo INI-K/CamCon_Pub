@@ -23,6 +23,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.inik.camcon.data.datasource.local.ThemeMode
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
+import com.inik.camcon.presentation.viewmodel.MockCameraUiEvent
 import com.inik.camcon.presentation.viewmodel.MockCameraViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
@@ -100,18 +101,17 @@ fun MockCameraScreen(
         }
     }
 
-    // 에러 및 성공 메시지 표시
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let { error ->
-            Toast.makeText(context, error, Toast.LENGTH_LONG).show()
-            mockCameraViewModel.clearError()
-        }
-    }
-
-    LaunchedEffect(uiState.successMessage) {
-        uiState.successMessage?.let { message ->
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-            mockCameraViewModel.clearSuccessMessage()
+    // SharedFlow 이벤트 수집 (에러 및 성공 메시지)
+    LaunchedEffect(Unit) {
+        mockCameraViewModel.uiEvent.collect { event ->
+            when (event) {
+                is MockCameraUiEvent.ShowError -> {
+                    Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
+                }
+                is MockCameraUiEvent.ShowSuccess -> {
+                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
 

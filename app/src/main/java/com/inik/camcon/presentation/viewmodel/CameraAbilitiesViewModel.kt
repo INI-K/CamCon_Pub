@@ -12,8 +12,19 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+/**
+ * CameraAbilitiesViewModel UI 상태
+ */
+data class CameraAbilitiesUiState(
+    val abilities: CameraAbilitiesInfo? = null,
+    val deviceInfo: PtpDeviceInfo? = null,
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null
+)
 
 /**
  * 카메라 기능 정보 화면 ViewModel
@@ -26,20 +37,27 @@ class CameraAbilitiesViewModel @Inject constructor(
     private val ptpipDataSource: PtpipDataSource
 ) : ViewModel() {
 
-    private val _abilities = MutableStateFlow<CameraAbilitiesInfo?>(null)
-    val abilities: StateFlow<CameraAbilitiesInfo?> = _abilities.asStateFlow()
+    private val _uiState = MutableStateFlow(CameraAbilitiesUiState())
+    val uiState: StateFlow<CameraAbilitiesUiState> = _uiState.asStateFlow()
 
-    private val _deviceInfo = MutableStateFlow<PtpDeviceInfo?>(null)
-    val deviceInfo: StateFlow<PtpDeviceInfo?> = _deviceInfo.asStateFlow()
-
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-
-    private val _errorMessage = MutableStateFlow<String?>(null)
-    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+    // 하위 호환성을 위한 computed properties
+    val abilities: StateFlow<CameraAbilitiesInfo?> get() = _uiState.mapState { it.abilities }
+    val deviceInfo: StateFlow<PtpDeviceInfo?> get() = _uiState.mapState { it.deviceInfo }
+    val isLoading: StateFlow<Boolean> get() = _uiState.mapState { it.isLoading }
+    val errorMessage: StateFlow<String?> get() = _uiState.mapState { it.errorMessage }
 
     companion object {
         private const val TAG = "CameraAbilitiesViewModel"
+    }
+
+    private inline fun <T, R> StateFlow<T>.mapState(crossinline transform: (T) -> R): StateFlow<R> {
+        return object : StateFlow<R> {
+            override val value: R get() = transform(this@mapState.value)
+            override val replayCache: List<R> get() = listOf(value)
+            override suspend fun collect(collector: kotlinx.coroutines.flow.FlowCollector<R>): Nothing {
+                this@mapState.collect { collector.emit(transform(it)) }
+            }
+        }
     }
 
     init {
@@ -51,14 +69,12 @@ class CameraAbilitiesViewModel @Inject constructor(
      */
     private fun loadAbilities() {
         viewModelScope.launch {
-            _isLoading.value = true
-            _errorMessage.value = null
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
             try {
                 // 카메라 초기화 확인
                 if (!CameraNative.isCameraInitialized()) {
-                    _errorMessage.value = "카메라가 연결되지 않았습니다"
-                    _isLoading.value = false
+                    _uiState.update { it.copy(errorMessage = "카메라가 연결되지 않았습니다", isLoading = false) }
                     return@launch
                 }
 
@@ -74,25 +90,33 @@ class CameraAbilitiesViewModel @Inject constructor(
                     val deviceInfoJson = CameraNative.getCameraDeviceInfo()
 
                     if (abilitiesJson != null && deviceInfoJson != null) {
-                        _abilities.value = parseAbilities(abilitiesJson)
-                        _deviceInfo.value = parseDeviceInfo(deviceInfoJson)
+                        _uiState.update {
+                            it.copy(
+                                abilities = parseAbilities(abilitiesJson),
+                                deviceInfo = parseDeviceInfo(deviceInfoJson)
+                            )
+                        }
                         Log.i(TAG, "카메라 기능 정보 조회 성공")
                     } else {
-                        _errorMessage.value = "카메라 기능 정보를 조회할 수 없습니다"
+                        _uiState.update { it.copy(errorMessage = "카메라 기능 정보를 조회할 수 없습니다") }
                     }
                 } else {
                     // 캐시된 정보 사용
-                    _abilities.value = abilities
-                    _deviceInfo.value = nativeDataSource.getUsbCameraDeviceInfo()
-                        ?: ptpipDataSource.getCurrentDeviceInfo()
+                    _uiState.update {
+                        it.copy(
+                            abilities = abilities,
+                            deviceInfo = nativeDataSource.getUsbCameraDeviceInfo()
+                                ?: ptpipDataSource.getCurrentDeviceInfo()
+                        )
+                    }
                     Log.i(TAG, "캐시된 카메라 기능 정보 사용")
                 }
 
             } catch (e: Exception) {
                 Log.e(TAG, "카메라 기능 정보 로드 실패", e)
-                _errorMessage.value = "오류: ${e.message}"
+                _uiState.update { it.copy(errorMessage = "오류: ${e.message}") }
             } finally {
-                _isLoading.value = false
+                _uiState.update { it.copy(isLoading = false) }
             }
         }
     }

@@ -248,4 +248,14 @@
     <string name="canon_camera_settings">• 캐논: 메뉴 > 통신 설정 > USB 연결 > PC 원격 촬영</string>
     <string name="nikon_camera_settings">• 니콘: 메뉴 > USB > PTP/MTP 모드</string>
     <string name="sony_camera_settings">• 소니: 메뉴 > USB 연결 > PC 원격</string>
+
+    <!-- 오픈소스 라이선스 -->
+    <string name="open_source_licenses">오픈소스 라이선스</string>
+    <string name="licenses_description">이 앱은 다음의 오픈소스 라이브러리들을 사용합니다:</string>
+    <string name="licenses_thanks">모든 오픈소스 라이브러리에 감사드립니다.</string>
+    <string name="native_libraries">네이티브 라이브러리</string>
+    <string name="gradle_dependencies">Gradle 의존성</string>
+    <string name="gradle_dependencies_desc">탭하여 모든 Gradle 의존성 라이선스 보기</string>
+    <string name="license_version">버전:</string>
+    <string name="license_type">라이선스:</string>
 </resources>
