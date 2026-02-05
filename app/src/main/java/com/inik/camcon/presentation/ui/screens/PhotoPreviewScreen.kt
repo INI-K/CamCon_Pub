@@ -71,6 +71,7 @@ import com.inik.camcon.presentation.ui.screens.components.FluidPhotoThumbnail
 import com.inik.camcon.presentation.ui.screens.components.FeaturedPhotoThumbnail
 import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
 import com.inik.camcon.presentation.ui.screens.components.UsbInitializationOverlay
+import com.inik.camcon.presentation.viewmodel.PhotoPreviewUiEvent
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import com.inik.camcon.presentation.viewmodel.photo.FileTypeFilter
@@ -105,7 +106,6 @@ fun PhotoPreviewScreen(
     Log.d("PhotoPreviewScreen", "  - isConnected: ${uiState.isConnected}")
     Log.d("PhotoPreviewScreen", "  - isLoading: ${isLoadingPhotos}")
     Log.d("PhotoPreviewScreen", "  - photos.size: ${photos.size}")
-    Log.d("PhotoPreviewScreen", "  - error: ${uiState.error}")
 
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isLoadingPhotos,
@@ -312,12 +312,24 @@ fun PhotoPreviewScreen(
         }
     }
 
-    // 에러 메시지
-    uiState.error?.let { error ->
+    // SharedFlow 이벤트 수집 - 에러 메시지
+    var showError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collect { event ->
+            when (event) {
+                is PhotoPreviewUiEvent.ShowError -> {
+                    showError = event.message
+                }
+            }
+        }
+    }
+
+    showError?.let { error ->
         ErrorSnackbar(
             error = error,
             onRetry = {
-                viewModel.clearError()
+                showError = null
                 viewModel.loadCameraPhotos()
             }
         )
@@ -466,23 +478,8 @@ private fun ModernHeader(
                     if (canAccessRaw) {
                         onFilterChange(FileTypeFilter.RAW)
                     } else {
-                        // RAW 접근 권한 없을 때 제한 메시지 표시
-                        val message = when (uiState.currentTier) {
-                            com.inik.camcon.domain.model.SubscriptionTier.FREE ->
-                                "RAW 파일 보기는 준비중입니다.\nJPG 파일만 확인하실 수 있습니다."
-
-                            com.inik.camcon.domain.model.SubscriptionTier.BASIC ->
-                                "RAW 파일은 PRO 구독에서만 볼 수 있습니다.\nPRO로 업그레이드해주세요!"
-
-                            else -> "RAW 파일에 접근할 수 없습니다."
-                        }
-                        viewModel?.let { vm ->
-                            vm.uiState.value.copy(error = message).let { newState ->
-                                // ViewModel의 private 메서드이므로 직접 호출 불가
-                                // 대신 RAW 필터 선택을 시도하여 ViewModel에서 에러 처리하도록 함
-                                onFilterChange(FileTypeFilter.RAW)
-                            }
-                        }
+                        // RAW 접근 권한 없을 때 ViewModel에서 에러 이벤트 발생하도록 RAW 필터 선택 시도
+                        onFilterChange(FileTypeFilter.RAW)
                     }
                 },
                 enabled = fileTypeFilter != FileTypeFilter.RAW

@@ -47,7 +47,10 @@ fun ShootingModeSelector(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = contentPadding
     ) {
-        items(ShootingMode.entries.toTypedArray()) { mode ->
+        items(
+            items = ShootingMode.entries.toTypedArray(),
+            key = { mode -> mode.name }
+        ) { mode ->
             val isEnabled = when (mode) {
                 ShootingMode.SINGLE -> uiState.isConnected
                 ShootingMode.BURST -> uiState.isConnected &&
