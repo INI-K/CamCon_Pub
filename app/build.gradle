@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.ksp)
     id 'com.google.dagger.hilt.android'
     id 'com.google.gms.google-services'
+    id 'com.google.android.gms.oss-licenses-plugin'
 }
 
 // === 개선된 버전 관리 시스템 ===
@@ -104,7 +105,7 @@ android {
         ndk {
             abiFilters "arm64-v8a"  // 16KB 페이지 크기 지원 (Android 15+)
         }
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner "com.inik.camcon.HiltTestRunner"
 
         // 지원하는 언어 설정
         resConfigs "en", "ko", "it", "fr", "de", "ja"
@@ -251,9 +252,27 @@ dependencies {
     // 버전 충돌 문제로 임시 제거
     // implementation "androidx.compose.material3:material3-adaptive:1.0.0-alpha06"
 
+    // === Unit Testing ===
     testImplementation libs.junit
+    testImplementation libs.mockk
+    testImplementation libs.kotlinx.coroutines.test
+    testImplementation libs.turbine
+    testImplementation libs.arch.core.testing
+    testImplementation libs.robolectric
+    testImplementation libs.hilt.android.testing
+    kspTest libs.hilt.compiler
+
+    // === Instrumented Testing ===
     androidTestImplementation libs.androidx.junit
     androidTestImplementation libs.androidx.espresso.core
+    androidTestImplementation libs.mockk.android
+    androidTestImplementation libs.kotlinx.coroutines.test
+    androidTestImplementation libs.turbine
+    androidTestImplementation libs.hilt.android.testing
+    kspAndroidTest libs.hilt.compiler
+    androidTestImplementation platform('androidx.compose:compose-bom:2024.12.01')
+    androidTestImplementation "androidx.compose.ui:ui-test-junit4"
+    debugImplementation "androidx.compose.ui:ui-test-manifest"
     //hilt
     implementation libs.hilt.android
     implementation 'androidx.hilt:hilt-navigation-compose:1.2.0'
@@ -330,6 +349,9 @@ dependencies {
     implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'com.squareup.okhttp3:logging-interceptor:4.12.0'
+
+    // OSS Licenses
+    implementation 'com.google.android.gms:play-services-oss-licenses:17.1.0'
 }
 
 // 16KB 정렬 태스크 (libyuv-decoder.so용)

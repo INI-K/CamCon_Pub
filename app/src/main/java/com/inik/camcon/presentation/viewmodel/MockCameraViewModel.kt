@@ -6,9 +6,13 @@ import androidx.lifecycle.viewModelScope
 import com.inik.camcon.CameraNative
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -23,10 +27,16 @@ data class MockCameraUiState(
     val images: List<String> = emptyList(),
     val cameraModel: String = "",
     val manufacturer: String = "",
-    val isLoading: Boolean = false,
-    val error: String? = null,
-    val successMessage: String? = null
+    val isLoading: Boolean = false
 )
+
+/**
+ * 일회성 UI 이벤트 (토스트 메시지)
+ */
+sealed class MockCameraUiEvent {
+    data class ShowError(val message: String) : MockCameraUiEvent()
+    data class ShowSuccess(val message: String) : MockCameraUiEvent()
+}
 
 @HiltViewModel
 class MockCameraViewModel @Inject constructor(
@@ -71,6 +81,10 @@ class MockCameraViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(MockCameraUiState())
     val uiState: StateFlow<MockCameraUiState> = _uiState.asStateFlow()
 
+    // 일회성 이벤트용 SharedFlow
+    private val _uiEvent = MutableSharedFlow<MockCameraUiEvent>(replay = 0)
+    val uiEvent: SharedFlow<MockCameraUiEvent> = _uiEvent.asSharedFlow()
+
     init {
         try {
             // CameraNative 라이브러리가 로드되었는지 확인
@@ -78,22 +92,30 @@ class MockCameraViewModel @Inject constructor(
                 refreshState()
             } else {
                 Log.e(TAG, "CameraNative 라이브러리가 로드되지 않음")
-                _uiState.value = _uiState.value.copy(
-                    error = "네이티브 라이브러리 로딩 실패"
-                )
+                emitError("네이티브 라이브러리 로딩 실패")
             }
         } catch (e: Exception) {
             Log.e(TAG, "ViewModel 초기화 실패", e)
-            _uiState.value = _uiState.value.copy(
-                error = "초기화 실패: ${e.message}"
-            )
+            emitError("초기화 실패: ${e.message}")
+        }
+    }
+
+    private fun emitError(message: String) {
+        viewModelScope.launch {
+            _uiEvent.emit(MockCameraUiEvent.ShowError(message))
+        }
+    }
+
+    private fun emitSuccess(message: String) {
+        viewModelScope.launch {
+            _uiEvent.emit(MockCameraUiEvent.ShowSuccess(message))
         }
     }
 
     fun refreshState() {
         viewModelScope.launch {
             try {
-                _uiState.value = _uiState.value.copy(isLoading = true)
+                _uiState.update { it.copy(isLoading = true) }
 
                 val info = withContext(Dispatchers.IO) {
                     cameraNative.getMockCameraInfo()
@@ -106,25 +128,25 @@ class MockCameraViewModel @Inject constructor(
                     images.add(imagesArray.getString(i))
                 }
 
-                _uiState.value = _uiState.value.copy(
-                    isEnabled = json.getBoolean("enabled"),
-                    imageCount = json.getInt("imageCount"),
-                    delayMs = json.getInt("delayMs"),
-                    autoCapture = json.getBoolean("autoCapture"),
-                    autoCaptureInterval = json.getInt("autoCaptureInterval"),
-                    cameraModel = json.optString("cameraModel", ""),
-                    manufacturer = json.optString("manufacturer", ""),
-                    images = images,
-                    isLoading = false
-                )
+                _uiState.update {
+                    it.copy(
+                        isEnabled = json.getBoolean("enabled"),
+                        imageCount = json.getInt("imageCount"),
+                        delayMs = json.getInt("delayMs"),
+                        autoCapture = json.getBoolean("autoCapture"),
+                        autoCaptureInterval = json.getInt("autoCaptureInterval"),
+                        cameraModel = json.optString("cameraModel", ""),
+                        manufacturer = json.optString("manufacturer", ""),
+                        images = images,
+                        isLoading = false
+                    )
+                }
 
                 Log.d(TAG, "Mock Camera 상태 업데이트: ${_uiState.value}")
             } catch (e: Exception) {
                 Log.e(TAG, "Mock Camera 상태 조회 실패", e)
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = "상태 조회 실패: ${e.message}"
-                )
+                _uiState.update { it.copy(isLoading = false) }
+                emitError("상태 조회 실패: ${e.message}")
             }
         }
     }
@@ -132,31 +154,24 @@ class MockCameraViewModel @Inject constructor(
     fun enableMockCamera(enable: Boolean) {
         viewModelScope.launch {
             try {
-                _uiState.value = _uiState.value.copy(isLoading = true)
+                _uiState.update { it.copy(isLoading = true) }
 
                 val result = withContext(Dispatchers.IO) {
                     cameraNative.enableMockCamera(enable)
                 }
 
                 if (result) {
-                    _uiState.value = _uiState.value.copy(
-                        isEnabled = enable,
-                        isLoading = false,
-                        successMessage = if (enable) "Mock Camera 활성화됨" else "Mock Camera 비활성화됨"
-                    )
+                    _uiState.update { it.copy(isEnabled = enable, isLoading = false) }
+                    emitSuccess(if (enable) "Mock Camera 활성화됨" else "Mock Camera 비활성화됨")
                     Log.i(TAG, "Mock Camera ${if (enable) "활성화" else "비활성화"} 성공")
                 } else {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = "Mock Camera 설정 실패"
-                    )
+                    _uiState.update { it.copy(isLoading = false) }
+                    emitError("Mock Camera 설정 실패")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Mock Camera 설정 실패", e)
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = "Mock Camera 설정 실패: ${e.message}"
-                )
+                _uiState.update { it.copy(isLoading = false) }
+                emitError("Mock Camera 설정 실패: ${e.message}")
             }
         }
     }
@@ -164,7 +179,7 @@ class MockCameraViewModel @Inject constructor(
     fun addMockImages(paths: List<String>) {
         viewModelScope.launch {
             try {
-                _uiState.value = _uiState.value.copy(isLoading = true)
+                _uiState.update { it.copy(isLoading = true) }
 
                 val result = withContext(Dispatchers.IO) {
                     cameraNative.setMockCameraImages(paths.toTypedArray())
@@ -172,22 +187,16 @@ class MockCameraViewModel @Inject constructor(
 
                 if (result) {
                     refreshState()
-                    _uiState.value = _uiState.value.copy(
-                        successMessage = "${paths.size}개 이미지 추가됨"
-                    )
+                    emitSuccess("${paths.size}개 이미지 추가됨")
                     Log.i(TAG, "${paths.size}개 Mock 이미지 추가 성공")
                 } else {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = "이미지 추가 실패"
-                    )
+                    _uiState.update { it.copy(isLoading = false) }
+                    emitError("이미지 추가 실패")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Mock 이미지 추가 실패", e)
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = "이미지 추가 실패: ${e.message}"
-                )
+                _uiState.update { it.copy(isLoading = false) }
+                emitError("이미지 추가 실패: ${e.message}")
             }
         }
     }
@@ -195,7 +204,7 @@ class MockCameraViewModel @Inject constructor(
     fun clearMockImages() {
         viewModelScope.launch {
             try {
-                _uiState.value = _uiState.value.copy(isLoading = true)
+                _uiState.update { it.copy(isLoading = true) }
 
                 val result = withContext(Dispatchers.IO) {
                     cameraNative.clearMockCameraImages()
@@ -203,22 +212,16 @@ class MockCameraViewModel @Inject constructor(
 
                 if (result) {
                     refreshState()
-                    _uiState.value = _uiState.value.copy(
-                        successMessage = "모든 이미지 삭제됨"
-                    )
+                    emitSuccess("모든 이미지 삭제됨")
                     Log.i(TAG, "Mock 이미지 모두 삭제 성공")
                 } else {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = "이미지 삭제 실패"
-                    )
+                    _uiState.update { it.copy(isLoading = false) }
+                    emitError("이미지 삭제 실패")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Mock 이미지 삭제 실패", e)
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = "이미지 삭제 실패: ${e.message}"
-                )
+                _uiState.update { it.copy(isLoading = false) }
+                emitError("이미지 삭제 실패: ${e.message}")
             }
         }
     }
@@ -231,21 +234,15 @@ class MockCameraViewModel @Inject constructor(
                 }
 
                 if (result) {
-                    _uiState.value = _uiState.value.copy(
-                        delayMs = delayMs,
-                        successMessage = "딜레이 ${delayMs}ms로 설정"
-                    )
+                    _uiState.update { it.copy(delayMs = delayMs) }
+                    emitSuccess("딜레이 ${delayMs}ms로 설정")
                     Log.i(TAG, "Mock Camera 딜레이 ${delayMs}ms 설정 성공")
                 } else {
-                    _uiState.value = _uiState.value.copy(
-                        error = "딜레이 설정 실패"
-                    )
+                    emitError("딜레이 설정 실패")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "딜레이 설정 실패", e)
-                _uiState.value = _uiState.value.copy(
-                    error = "딜레이 설정 실패: ${e.message}"
-                )
+                emitError("딜레이 설정 실패: ${e.message}")
             }
         }
     }
@@ -253,36 +250,30 @@ class MockCameraViewModel @Inject constructor(
     fun setAutoCapture(enable: Boolean, intervalMs: Int) {
         viewModelScope.launch {
             try {
-                _uiState.value = _uiState.value.copy(isLoading = true)
+                _uiState.update { it.copy(isLoading = true) }
 
                 val result = withContext(Dispatchers.IO) {
                     cameraNative.setMockCameraAutoCapture(enable, intervalMs)
                 }
 
                 if (result) {
-                    _uiState.value = _uiState.value.copy(
-                        autoCapture = enable,
-                        autoCaptureInterval = intervalMs,
-                        isLoading = false,
-                        successMessage = if (enable) {
-                            "자동 캡처 활성화 (${intervalMs}ms 간격)"
-                        } else {
-                            "자동 캡처 비활성화"
-                        }
-                    )
+                    _uiState.update {
+                        it.copy(
+                            autoCapture = enable,
+                            autoCaptureInterval = intervalMs,
+                            isLoading = false
+                        )
+                    }
+                    emitSuccess(if (enable) "자동 캡처 활성화 (${intervalMs}ms 간격)" else "자동 캡처 비활성화")
                     Log.i(TAG, "Mock Camera 자동 캡처 설정 성공")
                 } else {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = "자동 캡처 설정 실패"
-                    )
+                    _uiState.update { it.copy(isLoading = false) }
+                    emitError("자동 캡처 설정 실패")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "자동 캡처 설정 실패", e)
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = "자동 캡처 설정 실패: ${e.message}"
-                )
+                _uiState.update { it.copy(isLoading = false) }
+                emitError("자동 캡처 설정 실패: ${e.message}")
             }
         }
     }
@@ -295,30 +286,26 @@ class MockCameraViewModel @Inject constructor(
                 }
 
                 if (result) {
-                    _uiState.value = _uiState.value.copy(
-                        successMessage = "에러 시뮬레이션: $message"
-                    )
+                    emitSuccess("에러 시뮬레이션: $message")
                     Log.i(TAG, "에러 시뮬레이션 성공: $errorCode - $message")
                 } else {
-                    _uiState.value = _uiState.value.copy(
-                        error = "에러 시뮬레이션 실패"
-                    )
+                    emitError("에러 시뮬레이션 실패")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "에러 시뮬레이션 실패", e)
-                _uiState.value = _uiState.value.copy(
-                    error = "에러 시뮬레이션 실패: ${e.message}"
-                )
+                emitError("에러 시뮬레이션 실패: ${e.message}")
             }
         }
     }
 
+    @Deprecated("SharedFlow 이벤트로 대체됨")
     fun clearError() {
-        _uiState.value = _uiState.value.copy(error = null)
+        // SharedFlow 사용으로 더 이상 필요 없음
     }
 
+    @Deprecated("SharedFlow 이벤트로 대체됨")
     fun clearSuccessMessage() {
-        _uiState.value = _uiState.value.copy(successMessage = null)
+        // SharedFlow 사용으로 더 이상 필요 없음
     }
 
     fun setMockCameraModel(manufacturer: String, model: String) {
@@ -329,22 +316,15 @@ class MockCameraViewModel @Inject constructor(
                 }
 
                 if (result) {
-                    _uiState.value = _uiState.value.copy(
-                        manufacturer = manufacturer,
-                        cameraModel = model,
-                        successMessage = "카메라 모델 설정: $manufacturer $model"
-                    )
+                    _uiState.update { it.copy(manufacturer = manufacturer, cameraModel = model) }
+                    emitSuccess("카메라 모델 설정: $manufacturer $model")
                     Log.i(TAG, "Mock Camera 모델 설정 성공: $manufacturer $model")
                 } else {
-                    _uiState.value = _uiState.value.copy(
-                        error = "카메라 모델 설정 실패"
-                    )
+                    emitError("카메라 모델 설정 실패")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "카메라 모델 설정 실패", e)
-                _uiState.value = _uiState.value.copy(
-                    error = "카메라 모델 설정 실패: ${e.message}"
-                )
+                emitError("카메라 모델 설정 실패: ${e.message}")
             }
         }
     }
