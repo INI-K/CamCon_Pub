@@ -1,0 +1,273 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                   CamCon Android 프로젝트 구조 분석 완료                        ║
+║                                                                                ║
+║                    프로젝트명: CamCon (카메라 제어 애플리케이션)                ║
+║                    패키지명: com.inik.camcon                                   ║
+║                    분석일: 2026년 2월 5일                                       ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 📊 프로젝트 기본 통계                                                          ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+  총 소스 파일 수:            163개 파일
+  ├─ Presentation Layer:      65개 (UI/화면/컴포넌트/ViewModel)
+  ├─ Domain Layer:            37개 (비즈니스 로직/UseCase/Model)
+  ├─ Data Layer:              41개 (Repository/DataSource/Network)
+  └─ DI & Utils:              20개 (의존성 주입/유틸리티)
+
+  빌드 설정 파일:
+  ├─ app/build.gradle         457줄 (앱 레벨 설정)
+  ├─ build.gradle             10줄  (루트 레벨 설정)
+  ├─ settings.gradle          19줄  (프로젝트 설정)
+  ├─ gradle.properties         13줄  (Gradle 프로퍼티)
+  └─ gradle/libs.versions.toml 50줄  (버전 카탈로그)
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 🏗️  아키텍처 계층 구조                                                        ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+  ✅ Clean Architecture 3-Layer 패턴 완벽 준수
+
+  ┌─────────────────────────────────────────────────────────────────┐
+  │  📱 PRESENTATION LAYER (UI & State Management)       [65개 파일]  │
+  │  ├─ Activities (7개): MainActivity, LoginActivity, ...          │
+  │  ├─ Screens (5개): CameraControl, PhotoPreview, ...            │
+  │  ├─ Components (30개): UI 컴포넌트, 대화상자                    │
+  │  └─ ViewModels (15개): Compose ViewModel + StateFlow            │
+  └─────────────────────────────────────────────────────────────────┘
+           ⬇️  Interface (Repository Pattern)
+  ┌─────────────────────────────────────────────────────────────────┐
+  │  🎯 DOMAIN LAYER (Business Logic)                   [37개 파일]   │
+  │  ├─ Models (15개): Data Classes, Value Objects                 │
+  │  ├─ UseCases (18개): 비즈니스 로직 캡슐화                       │
+  │  ├─ Repositories (4개): Repository Interfaces                  │
+  │  └─ Managers (3개): Domain Managers                            │
+  └─────────────────────────────────────────────────────────────────┘
+           ⬇️  Implementation
+  ┌─────────────────────────────────────────────────────────────────┐
+  │  💾 DATA LAYER (Data Access & Persistence)          [41개 파일]  │
+  │  ├─ DataSources (10개): USB, Network, Local, Native           │
+  │  ├─ Repositories (4개): Repository Implementations            │
+  │  ├─ Network (4개): PTP-IP Protocol, HTTP Clients             │
+  │  ├─ Services (5개): Background Services, Managers             │
+  │  └─ Others (10개): Processors, Receivers, Constants            │
+  └─────────────────────────────────────────────────────────────────┘
+
+  🔧 Supporting Infrastructure
+  ├─ Dependency Injection (Hilt)
+  └─ Utilities & Constants
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 📚 주요 기술 스택                                                              ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+  🎨 UI Framework
+  ├─ Jetpack Compose (1.3.0)           ✅ 선언형 UI
+  ├─ Navigation Compose (2.7.7)        ✅ 라우팅 시스템
+  ├─ Material Design 3 (1.3.2)         ✅ 디자인 시스템
+  ├─ Coil (2.7.0)                      ✅ 이미지 로딩
+  └─ Accompanist (0.32.0)              ✅ Compose 보조 라이브러리
+
+  🔌 의존성 주입 & 아키텍처
+  ├─ Hilt (2.53.1)                    ✅ 의존성 주입 프레임워크
+  ├─ Dagger 2 (2.49)                  ✅ 컴파일타임 DI
+  └─ KSP (2.1.0)                      ✅ 빠른 코드 생성
+
+  ⏱️  비동기 & 동시성
+  ├─ Kotlin Coroutines (1.10.2)       ✅ 비동기 프로그래밍
+  └─ Play Services Integration         ✅ Firebase 연동
+
+  🔐 인증 & 백엔드
+  ├─ Firebase Auth                     ✅ 사용자 인증
+  ├─ Firebase Firestore                ✅ 실시간 데이터베이스
+  ├─ Firebase Messaging                ✅ 푸시 알림 (FCM)
+  ├─ Firebase Analytics                ✅ 분석
+  ├─ Firebase Remote Config             ✅ 원격 설정
+  ├─ Google Sign-In (21.1.1)           ✅ Google 소셜 로그인
+  └─ Google Credentials (1.3.0)        ✅ 자격증명 API
+
+  📷 이미지 & 미디어
+  ├─ GPUImage (2.1.0)                 ✅ GPU 기반 이미지 처리
+  ├─ ExifInterface (1.4.1)             ✅ 이미지 메타데이터
+  ├─ ZoomImage (1.4.0-beta04)          ✅ 이미지 줌/팬
+  └─ ImageViewer (1.0.3)               ✅ 이미지 뷰어
+
+  💾 로컬 데이터 저장
+  └─ DataStore Preferences (1.0.0)    ✅ 키-값 저장소
+
+  🌐 네트워킹
+  ├─ Retrofit (2.9.0)                 ✅ HTTP 클라이언트
+  ├─ OkHttp (4.12.0)                  ✅ HTTP 라이브러리
+  ├─ Gson (2.10.1)                    ✅ JSON 직렬화
+  └─ Logging Interceptor               ✅ HTTP 로깅
+
+  💰 구독 & 결제
+  └─ Google Play Billing (6.1.0)      ✅ In-App 결제
+
+  🔨 빌드 & 컴파일
+  ├─ Android Gradle Plugin (8.7.2)    ✅ 최신 AGP
+  ├─ Kotlin (2.1.0)                   ✅ 최신 Kotlin
+  └─ Compose Compiler                  ✅ Compose 컴파일러
+
+  ✅ 테스트
+  ├─ JUnit 4 (4.13.2)                 ✅ 단위 테스트
+  ├─ AndroidX JUnit (1.2.1)            ✅ Android 테스트
+  └─ Espresso (3.6.1)                 ✅ UI 자동화 테스트
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 🎯 특화 기능                                                                   ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+  📷 카메라 제어 시스템
+  ├─ USB 카메라 (PTP 프로토콜)         ✅ USB 기기 연결
+  ├─ Wi-Fi 카메라 (PTP-IP)            ✅ 무선 연결
+  ├─ 라이브 뷰 스트리밍                ✅ 실시간 영상
+  └─ 타임랩스 촬영                     ✅ 자동화 촬영
+
+  🖼️  이미지 처리
+  ├─ 색상 전이 (Color Transfer)        ✅ GPU 기반 처리
+  ├─ 고급 필터링                       ✅ 이미지 효과
+  └─ 메타데이터 보존                   ✅ EXIF 정보
+
+  🌍 국제화 (Localization)
+  ├─ 8개 언어 지원
+  │  ├─ English (en) ✅
+  │  ├─ 한국어 (ko) ✅
+  │  ├─ Deutsch (de) ✅
+  │  ├─ Español (es) ✅
+  │  ├─ Français (fr) ✅
+  │  ├─ Italiano (it) ✅
+  │  ├─ 日本語 (ja) ✅
+  │  └─ 中文 (zh) ✅
+  └─ 다크모드 지원 ✅
+
+  🛡️  보안 & 개인정보
+  ├─ Firebase 인증                     ✅ 안전한 로그인
+  ├─ 키 저장소 관리                     ✅ 서명 키 암호화
+  └─ OSS 라이선스 표시                 ✅ 투명성
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 📱 앱 설정 & 호환성                                                            ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+  최소 Android 버전:         Android 10 (API 29)
+  대상 Android 버전:         Android 15 (API 36) ✅ 최신
+  컴파일 Android 버전:       Android 15 (API 36)
+
+  지원 아키텍처:             arm64-v8a (64-bit 전용)
+  안정성 기능:               16KB 페이지 크기 정렬 (Android 15+)
+
+  주요 권한:
+  ├─ CAMERA                    ✅
+  ├─ USB_PERMISSION            ✅
+  ├─ INTERNET                  ✅
+  ├─ WIFI & NETWORK            ✅
+  ├─ STORAGE                   ✅
+  └─ BLUETOOTH (Wi-Fi 호환)    ✅
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 🧪 테스트 현황                                                                ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+  Unit Test (test/)
+  ├─ 상태:                    ❌ 미구성 (0개 파일)
+  └─ 권장사항:               JUnit, Mockito, Coroutine Test 추가 필요
+
+  Instrumented Test (androidTest/)
+  ├─ 상태:                    ⚠️  기본 구조만 존재 (1개 파일)
+  ├─ 파일:                    ExampleInstrumentedTest.kt
+  └─ 권장사항:               Hilt Test, Espresso, 통합테스트 확대
+
+  추가 테스트 라이브러리
+  ├─ Mockito / MockK:        ❌ 미포함 (권장: 추가)
+  ├─ Hilt Testing:           ❌ 미포함 (권장: 추가)
+  └─ Coroutine Test:         ❌ 미포함 (권장: 추가)
+
+  테스트 커버리지:           ~0% (최소한의 기본 예제만 존재)
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 📂 네이티브 코드                                                               ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+  CMake 빌드 시스템        ✅ CMakeLists.txt (외부 네이티브 빌드)
+  C++ 최적화:
+  ├─ Debug:               -DCMAKE_BUILD_TYPE=Debug
+  └─ Release:             -O3 -flto -ffast-math -funroll-loops
+
+  사전 빌드된 라이브러리:
+  ├─ libnative-lib.so      ✅ 메인 네이티브 라이브러리
+  ├─ libyuv-decoder.so     ✅ YUV 디코딩 라이브러리
+  └─ [기타 의존 .so]
+
+  지원 아키텍처:          arm64-v8a (64-bit)
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ ✨ 프로젝트 강점                                                               ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+  ✅ Clean Architecture 철저히 준수
+  ✅ 최신 Android 기술 스택 (Compose, Hilt, Coroutines)
+  ✅ 다층 데이터 소스 통합 (USB, Network, Local, Native, Billing)
+  ✅ 고성능 네이티브 C++ 통합
+  ✅ 8개 언어 다국어 지원
+  ✅ Firebase 완벽 통합 (Auth, DB, Messaging, Analytics)
+  ✅ Google Play 구독/결제 시스템
+  ✅ 명확한 패키지 구조와 분리된 책임
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ ⚠️  개선 필요 영역                                                             ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+  ❌ 테스트 커버리지 부족 (거의 없음)
+     → 권장: Unit tests, Integration tests, Hilt testing 추가
+
+  ❌ 단일 모듈 구조
+     → 권장: 향후 feature modules로 분리 (app → feature:camera, feature:auth 등)
+
+  ⚠️  일부 라이브러리 중복 정의
+     → 권장: gradle libs.versions.toml으로 통일
+
+  ⚠️  CI/CD 파이프라인 미구축
+     → 권장: GitHub Actions, Firebase App Distribution 설정
+
+  ❌ 성능 모니터링 도구 미통합
+     → 권장: Firebase Crashlytics, Performance Monitoring 추가
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 🎯 다음 단계 권장사항                                                          ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+  1️⃣  테스트 기반 개발 구축
+      • Unit Test 디렉토리 생성 및 Mockito 추가
+      • Hilt TestComponent 구성
+      • Coroutine Test 라이브러리 추가
+      • 최소 50% 이상의 테스트 커버리지 목표
+
+  2️⃣  CI/CD 파이프라인 구축
+      • GitHub Actions 워크플로우
+      • 자동 빌드, 테스트, 배포
+      • Firebase App Distribution으로 베타 배포
+
+  3️⃣  성능 모니터링 강화
+      • Firebase Crashlytics 통합
+      • Firebase Performance Monitoring
+      • Android Studio Profiler 활용
+
+  4️⃣  모듈화 아키텍처 계획
+      • feature:camera, feature:auth, feature:subscription 모듈 분리
+      • buildSrc를 이용한 Convention Plugins 구축
+      • 멀티 모듈 DI 전략 수립
+
+  5️⃣  문서화 및 개발 가이드
+      • API 문서화 (KDoc)
+      • 아키텍처 결정 기록 (ADR)
+      • 개발자 온보딩 가이드
+
+═══════════════════════════════════════════════════════════════════════════════════
+
+📌 보고서 위치: PROJECT_STRUCTURE_REPORT.md (프로젝트 루트)
+
+✅ 분석 완료! 이 프로젝트는 정말 잘 구조화된 현대적 Android 애플리케이션입니다.
+
+═══════════════════════════════════════════════════════════════════════════════════

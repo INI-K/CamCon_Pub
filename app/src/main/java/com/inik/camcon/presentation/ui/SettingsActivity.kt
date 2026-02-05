@@ -83,7 +83,9 @@ import com.inik.camcon.data.datasource.local.ThemeMode
 import com.inik.camcon.domain.model.User
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.AdminReferralCodeViewModel
+import com.inik.camcon.presentation.viewmodel.AdminReferralUiEvent
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
+import com.inik.camcon.presentation.viewmodel.AuthUiEvent
 import com.inik.camcon.presentation.viewmodel.AuthViewModel
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
@@ -155,29 +157,42 @@ fun SettingsScreen(
     val isUsbConnected = cameraUiState.isNativeCameraConnected
     val isPtpipConnected = cameraUiState.isPtpipConnected
 
-    // 로그아웃 성공 시 LoginActivity로 이동
-    LaunchedEffect(authUiState.isSignOutSuccess) {
-        if (authUiState.isSignOutSuccess) {
-            val intent = Intent(context, LoginActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+    // AuthViewModel SharedFlow 이벤트 수집
+    LaunchedEffect(Unit) {
+        authViewModel?.uiEvent?.collect { event ->
+            when (event) {
+                is AuthUiEvent.ShowError -> {
+                    android.widget.Toast.makeText(
+                        context,
+                        "로그아웃 실패: ${event.message}",
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+                }
+                is AuthUiEvent.SignOutSuccess -> {
+                    // 로그아웃 성공 - NavigateToLogin에서 처리
+                }
+                is AuthUiEvent.NavigateToLogin -> {
+                    val intent = Intent(context, LoginActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    }
+                    context.startActivity(intent)
+                    (context as? ComponentActivity)?.finish()
+                }
             }
-            context.startActivity(intent)
-            (context as? ComponentActivity)?.finish()
         }
     }
 
-    // 관리자 레퍼럴 코드 관련 메시지 처리
-    adminReferralState.error?.let { error ->
-        LaunchedEffect(error) {
-            android.widget.Toast.makeText(context, error, android.widget.Toast.LENGTH_LONG).show()
-            adminReferralCodeViewModel.clearError()
-        }
-    }
-
-    adminReferralState.successMessage?.let { message ->
-        LaunchedEffect(message) {
-            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
-            adminReferralCodeViewModel.clearSuccessMessage()
+    // AdminReferralCodeViewModel SharedFlow 이벤트 수집
+    LaunchedEffect(Unit) {
+        adminReferralCodeViewModel.uiEvent.collect { event ->
+            when (event) {
+                is AdminReferralUiEvent.ShowError -> {
+                    android.widget.Toast.makeText(context, event.message, android.widget.Toast.LENGTH_LONG).show()
+                }
+                is AdminReferralUiEvent.ShowSuccess -> {
+                    android.widget.Toast.makeText(context, event.message, android.widget.Toast.LENGTH_LONG).show()
+                }
+            }
         }
     }
 
@@ -573,14 +588,6 @@ fun SettingsScreen(
                         }
                     }
                 )
-            }
-
-            // 로그아웃 에러 처리
-            authUiState.error?.let { error ->
-                LaunchedEffect(error) {
-                    android.widget.Toast.makeText(context, "로그아웃 실패: $error", android.widget.Toast.LENGTH_LONG).show()
-                    authViewModel?.clearError()
-                }
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))

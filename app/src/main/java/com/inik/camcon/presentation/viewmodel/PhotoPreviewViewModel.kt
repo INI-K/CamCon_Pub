@@ -16,10 +16,14 @@ import com.inik.camcon.presentation.viewmodel.photo.PhotoListManager
 import com.inik.camcon.presentation.viewmodel.photo.PhotoSelectionManager
 import com.inik.camcon.utils.SubscriptionUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -28,7 +32,6 @@ import javax.inject.Inject
  */
 data class PhotoPreviewUiState(
     val isLoading: Boolean = false,
-    val error: String? = null,
     val selectedPhoto: CameraPhoto? = null,
     val isConnected: Boolean = false,
     val isInitialized: Boolean = false,
@@ -36,6 +39,13 @@ data class PhotoPreviewUiState(
     val currentTier: SubscriptionTier = SubscriptionTier.FREE,
     val isPtpipConnected: Boolean = false
 )
+
+/**
+ * 일회성 UI 이벤트 (스낵바 메시지)
+ */
+sealed class PhotoPreviewUiEvent {
+    data class ShowError(val message: String) : PhotoPreviewUiEvent()
+}
 
 /**
  * 사진 미리보기를 위한 ViewModel - MVVM 패턴 준수
@@ -63,6 +73,16 @@ class PhotoPreviewViewModel @Inject constructor(
     // UI 상태
     private val _uiState = MutableStateFlow(PhotoPreviewUiState())
     val uiState: StateFlow<PhotoPreviewUiState> = _uiState.asStateFlow()
+
+    // 일회성 이벤트용 SharedFlow
+    private val _uiEvent = MutableSharedFlow<PhotoPreviewUiEvent>(replay = 0)
+    val uiEvent: SharedFlow<PhotoPreviewUiEvent> = _uiEvent.asSharedFlow()
+
+    private fun emitError(message: String) {
+        viewModelScope.launch {
+            _uiEvent.emit(PhotoPreviewUiEvent.ShowError(message))
+        }
+    }
 
     // 매니저들의 상태 노출 (읽기 전용)
     val photos = photoListManager.filteredPhotos
@@ -97,7 +117,7 @@ class PhotoPreviewViewModel @Inject constructor(
         Log.d(TAG, "=== PhotoPreviewViewModel 초기화 시작 ===")
 
         // 초기 상태 설정
-        _uiState.value = _uiState.value.copy(isInitializing = true)
+        _uiState.update { it.copy(isInitializing = true) }
 
         // PTPIP 연결 상태에 따라 선택적 이벤트 리스너 관리
         viewModelScope.launch {
@@ -164,7 +184,7 @@ class PhotoPreviewViewModel @Inject constructor(
                 Log.d(TAG, "전역 카메라 연결 상태 변경: $isConnected")
 
                 val previousConnected = _uiState.value.isConnected
-                _uiState.value = _uiState.value.copy(isConnected = isConnected)
+                _uiState.update { it.copy(isConnected = isConnected) }
 
                 if (isConnected && !previousConnected) {
                     Log.d(TAG, "카메라 연결됨 - PTPIP 상태 확인 후 사진 목록 처리")
@@ -187,7 +207,7 @@ class PhotoPreviewViewModel @Inject constructor(
                     // 여기서 별도로 호출하지 않음
                 } else if (!isConnected && previousConnected) {
                     Log.d(TAG, "카메라 연결 해제됨")
-                    _uiState.value = _uiState.value.copy(isInitialized = false)
+                    _uiState.update { it.copy(isInitialized = false) }
                     errorHandlingManager.emitError(
                         com.inik.camcon.domain.manager.ErrorType.CONNECTION,
                         "카메라 연결이 해제되었습니다",
@@ -205,7 +225,7 @@ class PhotoPreviewViewModel @Inject constructor(
     private fun observePtpipConnection() {
         viewModelScope.launch {
             cameraRepository.isPtpipConnected().collect { isPtpipConnected ->
-                _uiState.value = _uiState.value.copy(isPtpipConnected = isPtpipConnected)
+                _uiState.update { it.copy(isPtpipConnected = isPtpipConnected) }
             }
         }
     }
@@ -238,7 +258,7 @@ class PhotoPreviewViewModel @Inject constructor(
     private fun observeCameraInitialization() {
         viewModelScope.launch {
             cameraRepository.isInitializing().collect { isInitializing ->
-                _uiState.value = _uiState.value.copy(isInitializing = isInitializing)
+                _uiState.update { it.copy(isInitializing = isInitializing) }
             }
         }
     }
@@ -250,7 +270,7 @@ class PhotoPreviewViewModel @Inject constructor(
         viewModelScope.launch {
             getSubscriptionUseCase.getSubscriptionTier().collect { tier ->
                 Log.d(TAG, "사용자 구독 티어 변경: $tier")
-                _uiState.value = _uiState.value.copy(currentTier = tier)
+                _uiState.update { it.copy(currentTier = tier) }
 
                 // 티어 변경 시 현재 필터에 따라 사진 목록 다시 필터링
                 photoListManager.changeFileTypeFilter(
@@ -267,7 +287,7 @@ class PhotoPreviewViewModel @Inject constructor(
     private fun observeErrorEvents() {
         viewModelScope.launch {
             errorHandlingManager.errorEvent.collect { errorEvent ->
-                _uiState.value = _uiState.value.copy(error = errorEvent.message)
+                emitError(errorEvent.message)
                 Log.e(TAG, "에러 이벤트 수신: ${errorEvent.type} - ${errorEvent.message}")
             }
         }
@@ -338,7 +358,7 @@ class PhotoPreviewViewModel @Inject constructor(
             return
         }
         
-        _uiState.value = _uiState.value.copy(selectedPhoto = photo)
+        _uiState.update { it.copy(selectedPhoto = photo) }
     }
 
     /**
@@ -456,17 +476,15 @@ class PhotoPreviewViewModel @Inject constructor(
                 SubscriptionTier.BASIC -> SubscriptionUtils.getRawRestrictionMessageForBasic()
                 else -> "RAW 파일에 접근할 수 없습니다."
             }
-            _uiState.value = _uiState.value.copy(error = message)
+            emitError(message)
             return false
         }
         return true
     }
 
-    /**
-     * 에러 메시지 클리어
-     */
+    @Deprecated("SharedFlow 이벤트로 대체됨")
     fun clearError() {
-        _uiState.value = _uiState.value.copy(error = null)
+        // SharedFlow 사용으로 더 이상 필요 없음
     }
 
     /**
@@ -480,7 +498,6 @@ class PhotoPreviewViewModel @Inject constructor(
             - 초기화중: ${_uiState.value.isInitializing}
             - 구독 티어: ${_uiState.value.currentTier}
             - 선택된 사진: ${_uiState.value.selectedPhoto?.name}
-            - 에러: ${_uiState.value.error}
             - PTPIP 연결 상태: ${_uiState.value.isPtpipConnected}
         """.trimIndent()
         )
@@ -654,7 +671,7 @@ class PhotoPreviewViewModel @Inject constructor(
      */
     fun startMultiSelectMode(initialPhotoPath: String) {
         photoSelectionManager.startMultiSelectMode(initialPhotoPath)
-        _uiState.value = _uiState.value.copy(selectedPhoto = null)
+        _uiState.update { it.copy(selectedPhoto = null) }
     }
 
     /**

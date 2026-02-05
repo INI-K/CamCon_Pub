@@ -258,4 +258,14 @@
     <string name="canon_camera_settings">• Canon: Menu > Communication Settings > USB Connection > PC Remote Shooting</string>
     <string name="nikon_camera_settings">• Nikon: Menu > USB > PTP/MTP Mode</string>
     <string name="sony_camera_settings">• Sony: Menu > USB Connection > PC Remote</string>
+
+    <!-- Open Source Licenses -->
+    <string name="open_source_licenses">Open Source Licenses</string>
+    <string name="licenses_description">This app uses the following open source libraries:</string>
+    <string name="licenses_thanks">Thank you to all open source contributors.</string>
+    <string name="native_libraries">Native Libraries</string>
+    <string name="gradle_dependencies">Gradle Dependencies</string>
+    <string name="gradle_dependencies_desc">Tap to view all Gradle dependency licenses</string>
+    <string name="license_version">Version:</string>
+    <string name="license_type">License:</string>
 </resources>
