@@ -11,9 +11,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.PhotoLibrary
@@ -21,11 +23,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.presentation.theme.CamConTheme
@@ -43,104 +46,82 @@ fun CaptureControls(
     isVertical: Boolean,
     modifier: Modifier = Modifier
 ) {
-    if (isVertical) {
-        // Vertical layout for landscape mode
-        Column(
-            modifier = modifier,
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            CaptureControlsContent(
-                uiState = uiState,
-                viewModel = viewModel,
-                onShowTimelapseDialog = onShowTimelapseDialog
-            )
-        }
-    } else {
-        // Horizontal layout for portrait mode
-        Row(
-            modifier = modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            CaptureControlsContent(
-                uiState = uiState,
-                viewModel = viewModel,
-                onShowTimelapseDialog = onShowTimelapseDialog
-            )
-        }
-    }
+    CaptureControlsCore(
+        uiState = uiState,
+        onCaptureClick = {
+            when (uiState.shootingMode) {
+                ShootingMode.TIMELAPSE -> onShowTimelapseDialog()
+                else -> viewModel.capturePhoto()
+            }
+        },
+        onFocusClick = { viewModel.performAutoFocus() },
+        onGalleryClick = { },
+        isVertical = isVertical,
+        modifier = modifier
+    )
 }
 
 @Composable
 private fun CaptureControlsContent(
     uiState: CameraUiState,
-    viewModel: CameraViewModel,
-    onShowTimelapseDialog: () -> Unit
+    onCaptureClick: () -> Unit,
+    onFocusClick: () -> Unit,
+    onGalleryClick: () -> Unit
 ) {
-    // Photo Gallery Button
+    // 갤러리 버튼
     IconButton(
-        onClick = { /* Navigate to gallery */ },
-        modifier = Modifier.size(48.dp)
+        onClick = onGalleryClick,
+        modifier = Modifier
+            .size(50.dp)
+            .background(Color(0x66384456), CircleShape)
     ) {
         Icon(
             Icons.Default.PhotoLibrary,
             contentDescription = stringResource(R.string.gallery),
-            tint = Color.White,
-            modifier = Modifier.size(32.dp)
+            tint = Color(0xFFF2D8BE),
+            modifier = Modifier.size(30.dp)
         )
     }
 
-    // Main Capture Button
+    // 메인 촬영 버튼
+    val ringColor = if (uiState.isConnected) Color(0xFFFFD8B3) else Color(0xFF8A8A8A)
+    val coreColor = if (uiState.isConnected) Color(0xFFCB5B15) else Color(0xFF5E636B)
     Box(
         modifier = Modifier
-            .size(80.dp)
+            .size(84.dp)
             .clip(CircleShape)
-            .border(
-                3.dp,
-                if (uiState.isConnected) Color.White else Color.Gray,
-                CircleShape
-            )
+            .border(3.dp, ringColor, CircleShape)
             .clickable(
                 enabled = uiState.isConnected && !uiState.isCapturing
-            ) {
-                when (uiState.shootingMode) {
-                    ShootingMode.TIMELAPSE -> onShowTimelapseDialog()
-                    else -> viewModel.capturePhoto()
-                }
-            },
+            ) { onCaptureClick() },
         contentAlignment = Alignment.Center
     ) {
         if (uiState.isCapturing) {
             CircularProgressIndicator(
-                color = Color.White,
-                modifier = Modifier.size(60.dp)
+                color = ringColor,
+                modifier = Modifier.size(62.dp)
             )
         } else {
             Box(
                 modifier = Modifier
-                    .size(64.dp)
+                    .size(66.dp)
                     .clip(CircleShape)
-                    .background(
-                        if (uiState.isConnected) Color.White else Color.Gray
-                    )
+                    .background(coreColor)
             )
         }
     }
 
-    // Focus Button
+    // 포커스 버튼
     IconButton(
-        onClick = {
-            viewModel.performAutoFocus()
-        },
+        onClick = onFocusClick,
         enabled = uiState.isConnected && !uiState.isFocusing,
-        modifier = Modifier.size(48.dp)
+        modifier = Modifier
+            .size(50.dp)
+            .background(Color(0x66384456), CircleShape)
     ) {
         if (uiState.isFocusing) {
             CircularProgressIndicator(
-                color = Color.White,
+                color = Color(0xFFFFD8B3),
                 modifier = Modifier.size(24.dp),
                 strokeWidth = 2.dp
             )
@@ -148,9 +129,82 @@ private fun CaptureControlsContent(
             Icon(
                 Icons.Default.CenterFocusStrong,
                 contentDescription = stringResource(R.string.focus),
-                tint = if (uiState.isConnected) Color.White else Color.Gray,
+                tint = if (uiState.isConnected) Color(0xFFFFD8B3) else Color.Gray,
                 modifier = Modifier.size(32.dp)
             )
+        }
+    }
+}
+@Composable
+private fun CaptureControlsCore(
+    uiState: CameraUiState,
+    onCaptureClick: () -> Unit,
+    onFocusClick: () -> Unit,
+    onGalleryClick: () -> Unit,
+    isVertical: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val shellModifier = modifier
+        .shadow(10.dp, RoundedCornerShape(24.dp))
+        .clip(RoundedCornerShape(24.dp))
+    if (isVertical) {
+        Surface(
+            modifier = shellModifier,
+            color = Color.Transparent
+        ) {
+            Column(
+                modifier = Modifier
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color(0xCC151C2A),
+                                Color(0xCC1C2333),
+                                Color(0xCC161D2C)
+                            )
+                        )
+                    )
+                    .padding(horizontal = 12.dp, vertical = 14.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                CaptureControlsContent(
+                    uiState = uiState,
+                    onCaptureClick = onCaptureClick,
+                    onFocusClick = onFocusClick,
+                    onGalleryClick = onGalleryClick
+                )
+            }
+        }
+    } else {
+        Surface(
+            modifier = shellModifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            color = Color.Transparent
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                Color(0xCC151C2A),
+                                Color(0xCC1C2333),
+                                Color(0xCC161D2C)
+                            )
+                        )
+                    )
+                    .padding(horizontal = 18.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CaptureControlsContent(
+                    uiState = uiState,
+                    onCaptureClick = onCaptureClick,
+                    onFocusClick = onFocusClick,
+                    onGalleryClick = onGalleryClick
+                )
+            }
         }
     }
 }
@@ -161,32 +215,36 @@ private fun CaptureControlsPortraitPreview() {
     CamConTheme {
         Column(
             modifier = Modifier
-                .background(Color.Black)
+                .background(Color(0xFF121722))
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            // Idle State
-            CaptureControlsContent(
+            // 기본 상태
+            CaptureControlsCore(
                 uiState = CameraUiState(
                     isConnected = true,
                     isCapturing = false,
                     isFocusing = false,
                     shootingMode = ShootingMode.SINGLE
                 ),
-                viewModel = hiltViewModel(),
-                onShowTimelapseDialog = { }
+                onCaptureClick = { },
+                onFocusClick = { },
+                onGalleryClick = { },
+                isVertical = false
             )
 
-            // Capturing State
-            CaptureControlsContent(
+            // 촬영 중 상태
+            CaptureControlsCore(
                 uiState = CameraUiState(
                     isConnected = true,
                     isCapturing = true,
                     isFocusing = false,
                     shootingMode = ShootingMode.BURST
                 ),
-                viewModel = hiltViewModel(),
-                onShowTimelapseDialog = { }
+                onCaptureClick = { },
+                onFocusClick = { },
+                onGalleryClick = { },
+                isVertical = true
             )
         }
     }

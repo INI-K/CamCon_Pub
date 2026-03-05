@@ -19,9 +19,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.BottomNavigation
 import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.Icon
@@ -43,10 +45,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -376,72 +382,74 @@ fun MainScreen(
         }
 
         Scaffold(
+            backgroundColor = Color.Transparent,
             bottomBar = {
                 // 전체화면 모드가 아닐 때만 하단 탭 표시
                 if (!isFullscreen) {
-                    BottomNavigation(
-                        backgroundColor = MaterialTheme.colors.surface,
-                        contentColor = MaterialTheme.colors.onSurface
-                    ) {
-                        val navBackStackEntry by navController.currentBackStackEntryAsState()
-                        val currentDestination = navBackStackEntry?.destination
-
-                        items.forEach { screen ->
-                            BottomNavigationItem(
-                                icon = {
-                                    Icon(
-                                        screen.icon,
-                                        contentDescription = stringResource(screen.titleRes)
-                                    )
-                                },
-                                label = { Text(stringResource(screen.titleRes)) },
-                                selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
-                                onClick = {
-                                    if (screen.route == "settings") {
-                                        onSettingsClick()
-                                    } else {
-                                        navController.navigate(screen.route) {
-                                            popUpTo(navController.graph.findStartDestination().id) {
-                                                saveState = true
-                                            }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
+                    val navBackStackEntry by navController.currentBackStackEntryAsState()
+                    val currentDestination = navBackStackEntry?.destination
+                    val selectedRoute = items.firstOrNull {
+                        currentDestination?.hierarchy?.any { destination -> destination.route == it.route } == true
+                    }?.route
+                    CamConBottomNav(
+                        items = items,
+                        selectedRoute = selectedRoute,
+                        onItemClick = { screen ->
+                            if (screen.route == "settings") {
+                                onSettingsClick()
+                            } else {
+                                navController.navigate(screen.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
                                     }
-                                },
-                                selectedContentColor = MaterialTheme.colors.primary,
-                                unselectedContentColor = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-                            )
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            }
                         }
-                    }
+                    )
                 }
             }
         ) { innerPadding ->
-            NavHost(
-                navController,
-                startDestination = BottomNavItem.CameraControl.route,
-                Modifier.padding(
-                    if (isFullscreen) PaddingValues(0.dp) else innerPadding
-                )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(if (isFullscreen) PaddingValues(0.dp) else innerPadding)
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colors.background,
+                                MaterialTheme.colors.background.copy(alpha = 0.86f),
+                                MaterialTheme.colors.surface.copy(alpha = 0.5f)
+                            )
+                        )
+                    )
             ) {
-                composable(BottomNavItem.PhotoPreview.route) { PhotoPreviewScreen() }
-                composable(BottomNavItem.CameraControl.route) {
-                    // AP 모드일 때는 사진 수신 대기 화면, 아니면 카메라 컨트롤 화면
-                    if (activeConnectionType == com.inik.camcon.domain.model.CameraConnectionType.AP_MODE) {
-                        com.inik.camcon.presentation.ui.screens.ApModePhotoReceiveScreen(
-                            viewModel = cameraViewModel // 전역 ViewModel 전달
-                        )
-                    } else {
-                        CameraControlScreen(
-                            viewModel = cameraViewModel, // 전역 ViewModel 전달
-                            onFullscreenChange = { isFullscreen = it }
-                        )
+                NavHost(
+                    navController,
+                    startDestination = BottomNavItem.CameraControl.route
+                ) {
+                    composable(BottomNavItem.PhotoPreview.route) { PhotoPreviewScreen() }
+                    composable(BottomNavItem.CameraControl.route) {
+                        // AP 모드일 때는 사진 수신 대기 화면, 아니면 카메라 컨트롤 화면
+                        if (activeConnectionType == com.inik.camcon.domain.model.CameraConnectionType.AP_MODE) {
+                            com.inik.camcon.presentation.ui.screens.ApModePhotoReceiveScreen(
+                                viewModel = cameraViewModel // 전역 ViewModel 전달
+                            )
+                        } else {
+                            CameraControlScreen(
+                                viewModel = cameraViewModel, // 전역 ViewModel 전달
+                                onFullscreenChange = { isFullscreen = it }
+                            )
+                        }
                     }
+                    composable(BottomNavItem.ServerPhotos.route) { MyPhotosScreen() }
+                    // 설정은 별도 액티비티로 처리하므로 여기서 제외
                 }
-                composable(BottomNavItem.ServerPhotos.route) { MyPhotosScreen() }
-                // 설정은 별도 액티비티로 처리하므로 여기서 제외
             }
         }
+
+        
 
         // USB 연결 및 초기화 상태에 따른 UI 블로킹 오버레이
         val shouldShowOverlay =
@@ -480,6 +488,71 @@ fun MainScreen(
                             "카메라초기화:${cameraUiState.isCameraInitializing}"
                 )
             }
+        }
+    }
+}
+@Composable
+private fun CamConBottomNav(
+    items: List<BottomNavItem>,
+    selectedRoute: String?,
+    onItemClick: (BottomNavItem) -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .clip(RoundedCornerShape(20.dp)),
+        color = MaterialTheme.colors.surface.copy(alpha = 0.94f),
+        shadowElevation = 10.dp
+    ) {
+        BottomNavigation(
+            backgroundColor = Color.Transparent,
+            contentColor = MaterialTheme.colors.onSurface
+        ) {
+            items.forEach { screen ->
+                BottomNavigationItem(
+                    icon = {
+                        Icon(
+                            screen.icon,
+                            contentDescription = stringResource(screen.titleRes)
+                        )
+                    },
+                    label = { Text(stringResource(screen.titleRes)) },
+                    selected = selectedRoute == screen.route,
+                    onClick = { onItemClick(screen) },
+                    selectedContentColor = MaterialTheme.colors.primary,
+                    unselectedContentColor = MaterialTheme.colors.onSurface.copy(alpha = 0.56f)
+                )
+            }
+        }
+    }
+}
+@Preview(showBackground = true, widthDp = 390)
+@Composable
+private fun CamConBottomNavPreview() {
+    CamConTheme {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colors.background,
+                            MaterialTheme.colors.background.copy(alpha = 0.86f),
+                            MaterialTheme.colors.surface.copy(alpha = 0.5f)
+                        )
+                    )
+                )
+        ) {
+            CamConBottomNav(
+                items = listOf(
+                    BottomNavItem.PhotoPreview,
+                    BottomNavItem.CameraControl,
+                    BottomNavItem.ServerPhotos,
+                    BottomNavItem.Settings
+                ),
+                selectedRoute = BottomNavItem.CameraControl.route,
+                onItemClick = {}
+            )
         }
     }
 }
@@ -1149,22 +1222,67 @@ class MainActivity : ComponentActivity() {
 /**
  * 메인 액티비티 프리뷰
  */
+@Preview(showBackground = true)
 @Composable
 fun MainActivityPreview() {
     CamConTheme {
-        // 프리뷰용 간단한 컴포넌트
-        Scaffold(
-            backgroundColor = MaterialTheme.colors.background
-        ) {
+        Scaffold(backgroundColor = Color.Transparent) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(it),
-                contentAlignment = androidx.compose.ui.Alignment.Center
+                    .padding(it)
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colors.background,
+                                MaterialTheme.colors.background.copy(alpha = 0.86f),
+                                MaterialTheme.colors.surface.copy(alpha = 0.5f)
+                            )
+                        )
+                    )
             ) {
-                Text(
-                    text = "CamCon - 메인 화면",
-                    style = MaterialTheme.typography.h6
+                CamConBottomNav(
+                    items = listOf(
+                        BottomNavItem.PhotoPreview,
+                        BottomNavItem.CameraControl,
+                        BottomNavItem.ServerPhotos,
+                        BottomNavItem.Settings
+                    ),
+                    selectedRoute = BottomNavItem.CameraControl.route,
+                    onItemClick = {}
+                )
+            }
+        }
+    }
+}
+@Preview(showBackground = true, widthDp = 412, heightDp = 915)
+@Composable
+private fun MainActivityDarkPreview() {
+    CamConTheme(themeMode = com.inik.camcon.data.datasource.local.ThemeMode.DARK) {
+        Scaffold(backgroundColor = Color.Transparent) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(it)
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colors.background,
+                                MaterialTheme.colors.background.copy(alpha = 0.86f),
+                                MaterialTheme.colors.surface.copy(alpha = 0.5f)
+                            )
+                        )
+                    )
+            ) {
+                CamConBottomNav(
+                    items = listOf(
+                        BottomNavItem.PhotoPreview,
+                        BottomNavItem.CameraControl,
+                        BottomNavItem.ServerPhotos,
+                        BottomNavItem.Settings
+                    ),
+                    selectedRoute = BottomNavItem.PhotoPreview.route,
+                    onItemClick = {}
                 )
             }
         }
