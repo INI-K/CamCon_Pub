@@ -9,27 +9,27 @@ import androidx.compose.ui.graphics.Color
 import com.inik.camcon.data.datasource.local.ThemeMode
 
 private val DarkColorPalette = darkColors(
-    primary = Color(0xFF1976D2),
-    primaryVariant = Color(0xFF1565C0),
-    secondary = Color(0xFF03DAC6),
-    background = Color(0xFF121212),
-    surface = Color(0xFF1E1E1E),
+    primary = Color(0xFFFF9A3D),
+    primaryVariant = Color(0xFFD97A1D),
+    secondary = Color(0xFF5ED1B8),
+    background = Color(0xFF171B22),
+    surface = Color(0xFF202735),
     onPrimary = Color.White,
-    onSecondary = Color.Black,
+    onSecondary = Color(0xFF0F1B1B),
     onBackground = Color.White,
     onSurface = Color.White,
 )
 
 private val LightColorPalette = lightColors(
-    primary = Color(0xFF1976D2),
-    primaryVariant = Color(0xFF1565C0),
-    secondary = Color(0xFF03DAC6),
-    background = Color(0xFFF5F5F5),
-    surface = Color.White,
+    primary = Color(0xFFCB5B15),
+    primaryVariant = Color(0xFFA84910),
+    secondary = Color(0xFF187A66),
+    background = Color(0xFFFAF7F1),
+    surface = Color(0xFFFFFCF6),
     onPrimary = Color.White,
-    onSecondary = Color.Black,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
+    onSecondary = Color.White,
+    onBackground = Color(0xFF1F232B),
+    onSurface = Color(0xFF1F232B),
 )
 
 @Composable

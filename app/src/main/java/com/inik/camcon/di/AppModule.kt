@@ -30,10 +30,8 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideNativeCameraDataSource(
-        @ApplicationContext context: Context,
-        uiStateManager: CameraUiStateManager
-    ) = NativeCameraDataSource(context, uiStateManager)
+    fun provideNativeCameraDataSource(@ApplicationContext context: Context) =
+        NativeCameraDataSource(context)
 
     @Provides
     @Singleton
@@ -55,9 +53,7 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideCameraCapabilitiesManager(
-        uiStateManager: CameraUiStateManager
-    ) = CameraCapabilitiesManager(uiStateManager)
+    fun provideCameraCapabilitiesManager() = CameraCapabilitiesManager()
 
     @Provides
     @Singleton

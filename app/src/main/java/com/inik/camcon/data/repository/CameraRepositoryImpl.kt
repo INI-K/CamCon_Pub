@@ -53,8 +53,7 @@ class CameraRepositoryImpl @Inject constructor(
     private val colorTransferUseCase: ColorTransferUseCase,
     private val connectionManager: CameraConnectionManager,
     private val eventManager: CameraEventManager,
-    private val downloadManager: PhotoDownloadManager,
-    private val uiStateManager: com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
+    private val downloadManager: PhotoDownloadManager
 ) : CameraRepository {
 
     init {
@@ -107,9 +106,7 @@ class CameraRepositoryImpl @Inject constructor(
                 handleExternalPhotoCapture(fullPath, fileName)
             },
             onFlushComplete = {
-                Log.d("카메라레포지토리", "🎯 카메라 이벤트 플러시 완료 - 초기화 상태 해제")
-                uiStateManager.updateCameraInitialization(false)
-                Log.d("카메라레포지토리", "✅ UI 블로킹 해제 완료 (isCameraInitializing = false)")
+                Log.d("카메라레포지토리", "🎯 카메라 이벤트 플러시 완료")
             },
             onCaptureFailed = { errorCode ->
                 Log.e("카메라레포지토리", "외부 셔터 촬영 실패: $errorCode")
@@ -542,9 +539,7 @@ class CameraRepositoryImpl @Inject constructor(
                 handleExternalPhotoCapture(fullPath, fileName)
             },
             onFlushComplete = {
-                Log.d("카메라레포지토리", "🎯 카메라 이벤트 플러시 완료 - 초기화 상태 해제")
-                uiStateManager.updateCameraInitialization(false)
-                Log.d("카메라레포지토리", "✅ UI 블로킹 해제 완료 (isCameraInitializing = false)")
+                Log.d("카메라레포지토리", "🎯 카메라 이벤트 플러시 완료")
             },
             onCaptureFailed = { errorCode ->
                 Log.e("카메라레포지토리", "외부 셔터 촬영 실패: $errorCode")

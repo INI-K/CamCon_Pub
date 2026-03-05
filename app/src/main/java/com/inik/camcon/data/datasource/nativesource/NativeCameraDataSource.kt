@@ -5,7 +5,6 @@ import android.util.Log
 import com.inik.camcon.CameraNative
 import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.domain.model.CameraCapabilities
-import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -20,8 +19,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class NativeCameraDataSource @Inject constructor(
-    @ApplicationContext private val context: Context,
-    private val uiStateManager: CameraUiStateManager
+    @ApplicationContext private val context: Context
 ) {
     companion object {
         private const val TAG = "네이티브_카메라_데이터소스"
@@ -168,7 +166,6 @@ class NativeCameraDataSource @Inject constructor(
         Log.e(TAG, "   4. 카메라가 PC 연결 모드로 설정되어 있는지 확인")
         Log.e(TAG, "   5. 카메라를 껐다가 다시 켜보세요")
         Log.e(TAG, "문제가 계속되면 카메라를 재연결해주세요")
-        uiStateManager.showCameraStatusCheckDialog(true)
     }
 
     /**
