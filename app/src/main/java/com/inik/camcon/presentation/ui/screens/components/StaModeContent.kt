@@ -1,5 +1,6 @@
 package com.inik.camcon.presentation.ui.screens.components
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,13 +10,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.Card
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Switch
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -26,6 +27,13 @@ import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
+private val StaModeSteps = listOf(
+    "1. 카메라와 스마트폰을 동일한 Wi-Fi 네트워크에 연결하세요",
+    "2. 카메라에서 Wi-Fi 기능을 활성화하고 'STA 모드'를 선택하세요",
+    "3. 카메라 메뉴에서 집 또는 사무실 Wi-Fi 네트워크를 선택하세요",
+    "4. 네트워크 비밀번호를 입력하여 연결하세요",
+    "5. 연결 후 아래 '카메라 찾기' 버튼을 눌러 검색하세요"
+)
 
 /**
  * STA 모드 화면 컴포넌트
@@ -51,11 +59,11 @@ fun StaModeContent(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
             StaModeDescriptionCard()
-            Spacer(modifier = Modifier.height(16.dp))
         }
 
         // 실시간 네트워크 상태 카드
@@ -64,7 +72,6 @@ fun StaModeContent(
                 wifiNetworkState = wifiNetworkState,
                 ptpipViewModel = ptpipViewModel
             )
-            Spacer(modifier = Modifier.height(16.dp))
         }
 
         // 자동 재연결 설정 카드
@@ -73,7 +80,6 @@ fun StaModeContent(
                 isAutoReconnectEnabled = isAutoReconnectEnabled,
                 onToggleAutoReconnect = { ptpipViewModel.setAutoReconnectEnabled(it) }
             )
-            Spacer(modifier = Modifier.height(16.dp))
         }
 
         // Wi-Fi 기능 정보 카드
@@ -83,7 +89,6 @@ fun StaModeContent(
                 hasLocationPermission = hasLocationPermission,
                 onRequestPermission = onRequestPermission
             )
-            Spacer(modifier = Modifier.height(16.dp))
         }
 
         // 공통 Wi-Fi 상태 카드
@@ -93,7 +98,6 @@ fun StaModeContent(
                 isPtpipEnabled = isPtpipEnabled,
                 onEnablePtpip = { ptpipViewModel.setPtpipEnabled(true) }
             )
-            Spacer(modifier = Modifier.height(16.dp))
         }
 
         // 공통 카메라 연결 및 검색 UI
@@ -118,19 +122,12 @@ fun StaModeContent(
  */
 @Composable
 private fun StaModeDescriptionCard() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = 4.dp,
-        backgroundColor = MaterialTheme.colors.secondary.copy(alpha = 0.1f)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
+    DarkInfoCard {
             Text(
                 text = "🏠 STA 모드 (스테이션)",
                 style = MaterialTheme.typography.h6,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colors.secondary
+                color = DarkTitleTextColor
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -138,24 +135,16 @@ private fun StaModeDescriptionCard() {
             Text(
                 text = "카메라와 스마트폰이 동일한 Wi-Fi 네트워크에 연결하는 방식입니다.",
                 style = MaterialTheme.typography.body2,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f)
+                color = DarkBodyTextColor
             )
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            val staModeSteps = listOf(
-                "1. 카메라와 스마트폰을 동일한 Wi-Fi 네트워크에 연결하세요",
-                "2. 카메라에서 Wi-Fi 기능을 활성화하고 'STA 모드'를 선택하세요",
-                "3. 카메라 메뉴에서 집 또는 사무실 Wi-Fi 네트워크를 선택하세요",
-                "4. 네트워크 비밀번호를 입력하여 연결하세요",
-                "5. 연결 후 아래 '카메라 찾기' 버튼을 눌러 검색하세요"
-            )
-
-            staModeSteps.forEach { step ->
+            StaModeSteps.forEach { step ->
                 Text(
                     text = step,
                     style = MaterialTheme.typography.caption,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
+                    color = DarkBodyTextColor,
                     modifier = Modifier.padding(vertical = 1.dp)
                 )
             }
@@ -165,7 +154,7 @@ private fun StaModeDescriptionCard() {
             Text(
                 text = "💡 장점: 카메라와 스마트폰 모두 인터넷에 연결된 상태를 유지할 수 있습니다.",
                 style = MaterialTheme.typography.caption,
-                color = MaterialTheme.colors.secondary,
+                color = DarkTitleTextColor,
                 fontWeight = FontWeight.Medium
             )
 
@@ -175,7 +164,6 @@ private fun StaModeDescriptionCard() {
                 color = MaterialTheme.colors.error,
                 fontWeight = FontWeight.Medium
             )
-        }
     }
 }
 
@@ -187,23 +175,12 @@ private fun NetworkStatusCard(
     wifiNetworkState: WifiNetworkState,
     ptpipViewModel: PtpipViewModel
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = 4.dp,
-        backgroundColor = if (wifiNetworkState.isConnected) {
-            MaterialTheme.colors.secondary.copy(alpha = 0.1f)
-        } else {
-            MaterialTheme.colors.error.copy(alpha = 0.1f)
-        }
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
+    DarkInfoCard {
             Text(
                 text = "📶 실시간 네트워크 상태",
                 style = MaterialTheme.typography.h6,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colors.secondary
+                color = DarkTitleTextColor
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -212,9 +189,9 @@ private fun NetworkStatusCard(
                 text = ptpipViewModel.getNetworkStatusMessage(),
                 style = MaterialTheme.typography.body2,
                 color = if (wifiNetworkState.isConnected) {
-                    MaterialTheme.colors.secondary
+                    DarkTitleTextColor
                 } else {
-                    MaterialTheme.colors.error
+                    Color(0xFFFFC3C3)
                 },
                 fontWeight = FontWeight.Medium
             )
@@ -224,7 +201,7 @@ private fun NetworkStatusCard(
                 Text(
                     text = "일반 Wi-Fi 네트워크에 연결되어 mDNS 검색 가능",
                     style = MaterialTheme.typography.caption,
-                    color = MaterialTheme.colors.secondary
+                    color = DarkTitleTextColor
                 )
             }
 
@@ -233,9 +210,8 @@ private fun NetworkStatusCard(
             Text(
                 text = ptpipViewModel.getComprehensiveStatusMessage(),
                 style = MaterialTheme.typography.caption,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                color = DarkBodyTextColor
             )
-        }
     }
 }
 
@@ -247,13 +223,7 @@ private fun AutoReconnectCard(
     isAutoReconnectEnabled: Boolean,
     onToggleAutoReconnect: (Boolean) -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = 4.dp
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
+    DarkInfoCard {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -265,7 +235,7 @@ private fun AutoReconnectCard(
                         text = "🔄 자동 재연결",
                         style = MaterialTheme.typography.h6,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colors.secondary
+                        color = DarkTitleTextColor
                     )
 
                     Spacer(modifier = Modifier.height(4.dp))
@@ -277,7 +247,7 @@ private fun AutoReconnectCard(
                             "수동으로 카메라 연결 관리"
                         },
                         style = MaterialTheme.typography.body2,
-                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                        color = DarkBodyTextColor
                     )
                 }
 
@@ -288,7 +258,6 @@ private fun AutoReconnectCard(
                     onCheckedChange = onToggleAutoReconnect
                 )
             }
-        }
     }
 }
 
