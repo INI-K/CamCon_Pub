@@ -45,6 +45,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -217,9 +218,12 @@ fun FullScreenPhotoViewer(
     val thumbnailCache by viewModel?.thumbnailCache?.collectAsState() ?: remember(thumbnailData) {
         mutableStateOf(thumbnailData?.let { mapOf(photo.path to it) } ?: emptyMap())
     }
+    val isGalleryMode = remember(viewModel, localPhotos, photos.size) {
+        viewModel != null || (localPhotos != null && photos.size > 1)
+    }
 
     // 현재 사진 인덱스 찾기
-    val currentPhotoIndex = if (viewModel != null || localPhotos != null) {
+    val currentPhotoIndex = if (isGalleryMode) {
         remember(photo.path, photos) {
             photos.indexOfFirst { it.path == photo.path }.takeIf { it >= 0 } ?: 0
         }
@@ -239,6 +243,9 @@ fun FullScreenPhotoViewer(
         initialPage = currentPhotoIndex,
         pageCount = { photos.size }
     )
+    val currentPhoto by remember(photos, pagerState, photo.path) {
+        derivedStateOf { photos.getOrNull(pagerState.currentPage) ?: photo }
+    }
 
     // 페이지 변경 감지
     LaunchedEffect(pagerState.currentPage) {
@@ -279,9 +286,13 @@ fun FullScreenPhotoViewer(
         }
     }
 
-    // 전체화면 배경
-    // 바텀시트 내부 컨텐츠
-    val currentPhotoForSheet = photos.getOrNull(pagerState.currentPage) ?: photo
+    val onSelectFromStrip: (CameraPhoto) -> Unit = { selectedPhoto ->
+        val newIndex = photos.indexOfFirst { it.path == selectedPhoto.path }
+        if (newIndex >= 0) {
+            scope.launch { pagerState.animateScrollToPage(newIndex) }
+            onPhotoChanged(selectedPhoto)
+        }
+    }
 
     @OptIn(ExperimentalMaterial3Api::class)
     if (showPhotoInfoSheet.value) {
@@ -293,7 +304,7 @@ fun FullScreenPhotoViewer(
             sheetState = modalBottomSheetState
         ) {
             PhotoInfoBottomSheetContent(
-                photo = currentPhotoForSheet,
+                photo = currentPhoto,
                 viewModel = viewModel,
                 onDismiss = {
                     showPhotoInfoSheet.value = false
@@ -328,13 +339,9 @@ fun FullScreenPhotoViewer(
 
         // 상단 컨트롤 바
         TopControlBar(
-            photo = if (viewModel != null) (photos.getOrNull(pagerState.currentPage)
-                ?: photo) else photo,
+            photo = currentPhoto,
             onClose = onDismiss,
             onInfoClick = {
-                val currentPhoto =
-                    if (viewModel != null) (photos.getOrNull(pagerState.currentPage)
-                        ?: photo) else photo
                 Log.d("FullScreenPhotoViewer", "정보 버튼 클릭됨: ${currentPhoto.name}")
                 try {
                     // 기존 AlertDialog/PhotoInfoDialog.showPhotoInfoDialog 대신 바텀시트로 상태 변경
@@ -349,24 +356,22 @@ fun FullScreenPhotoViewer(
             },
             onDownloadClick = if (hideDownloadButton) null else onDownload,
             onShareClick = {
-                val currentPhoto =
-                    if (viewModel != null) (photos.getOrNull(pagerState.currentPage)
-                        ?: photo) else photo
+                val shareTargetPhoto = currentPhoto
 
                 // 현재 페이지의 이미지 데이터 가져오기
                 val currentFullImageData = if (viewModel != null) {
-                    fullImageCache[currentPhoto.path]
+                    fullImageCache[shareTargetPhoto.path]
                 } else {
                     fullImageData
                 }
 
                 val currentThumbnailData = if (viewModel != null) {
-                    thumbnailCache[currentPhoto.path]
+                    thumbnailCache[shareTargetPhoto.path]
                 } else {
                     thumbnailData
                 }
 
-                Log.d("FullScreenPhotoViewer", "공유 버튼 클릭: ${currentPhoto.name}")
+                Log.d("FullScreenPhotoViewer", "공유 버튼 클릭: ${shareTargetPhoto.name}")
                 Log.d(
                     "FullScreenPhotoViewer",
                     "현재 이미지 데이터 상태: 고화질=${currentFullImageData?.size ?: "null"} bytes, 썸네일=${currentThumbnailData?.size ?: "null"} bytes"
@@ -374,7 +379,7 @@ fun FullScreenPhotoViewer(
 
                 shareCurrentPhoto(
                     context,
-                    currentPhoto,
+                    shareTargetPhoto,
                     viewModel,
                     currentFullImageData,
                     currentThumbnailData
@@ -384,9 +389,7 @@ fun FullScreenPhotoViewer(
         )
 
         // 하단 썸네일 리스트 (PhotoPreviewViewModel이 있거나 localPhotos가 있을 때 표시)
-        if ((viewModel != null && photos.size > 1) ||
-            (localPhotos != null && localPhotos.size > 1)
-        ) {
+        if (isGalleryMode) {
             if (viewModel != null) {
                 // 서버 사진용 기존 썸네일 스트립
                 BottomThumbnailStrip(
@@ -394,15 +397,7 @@ fun FullScreenPhotoViewer(
                     currentPhotoIndex = pagerState.currentPage,
                     thumbnailCache = thumbnailCache,
                     viewModel = viewModel,
-                    onPhotoSelected = { selectedPhoto ->
-                        val newIndex = photos.indexOfFirst { it.path == selectedPhoto.path }
-                        if (newIndex >= 0) {
-                            scope.launch {
-                                pagerState.animateScrollToPage(newIndex)
-                            }
-                            onPhotoChanged(selectedPhoto)
-                        }
-                    },
+                    onPhotoSelected = onSelectFromStrip,
                     modifier = Modifier.align(Alignment.BottomCenter)
                 )
             } else {
@@ -410,15 +405,7 @@ fun FullScreenPhotoViewer(
                 LocalBottomThumbnailStrip(
                     photos = photos,
                     currentPhotoIndex = pagerState.currentPage,
-                    onPhotoSelected = { selectedPhoto ->
-                        val newIndex = photos.indexOfFirst { it.path == selectedPhoto.path }
-                        if (newIndex >= 0) {
-                            scope.launch {
-                                pagerState.animateScrollToPage(newIndex)
-                            }
-                            onPhotoChanged(selectedPhoto)
-                        }
-                    },
+                    onPhotoSelected = onSelectFromStrip,
                     modifier = Modifier.align(Alignment.BottomCenter)
                 )
             }

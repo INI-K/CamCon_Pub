@@ -3,10 +3,10 @@ package com.inik.camcon.presentation.ui.screens
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -16,16 +16,11 @@ import androidx.compose.material.AlertDialog
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Scaffold
 import androidx.compose.material.SnackbarHost
 import androidx.compose.material.SnackbarHostState
-import androidx.compose.material.Tab
-import androidx.compose.material.TabRow
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
-import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
@@ -34,9 +29,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -44,7 +42,10 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.components.ApModeContent
+import com.inik.camcon.presentation.ui.screens.components.DarkTabRow
+import com.inik.camcon.presentation.ui.screens.components.DarkTopBar
 import com.inik.camcon.presentation.ui.screens.components.StaModeContent
+import com.inik.camcon.presentation.ui.screens.components.darkScreenBackground
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
 import kotlinx.coroutines.launch
 
@@ -64,7 +65,7 @@ fun PtpipConnectionScreen(
     
     // 탭 상태 - AP 모드를 먼저 표시 (index 0)
     val pagerState = rememberPagerState(initialPage = 0) { 2 }
-    val tabTitles = listOf("AP 모드", "STA 모드")
+    val tabTitles = remember { listOf("AP 모드", "STA 모드") }
 
     // 위치 권한 상태
     var hasLocationPermission by remember {
@@ -87,6 +88,9 @@ fun PtpipConnectionScreen(
             showPermissionDialog = true
         }
     }
+    val onRequestLocationPermission by rememberUpdatedState(
+        newValue = { permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION) }
+    )
 
     // 상태 수집
     val connectionState by ptpipViewModel.connectionState.collectAsState()
@@ -111,130 +115,175 @@ fun PtpipConnectionScreen(
     }
 
     // 권한 다이얼로그
-    if (showPermissionDialog) {
-        AlertDialog(
-            onDismissRequest = { showPermissionDialog = false },
-            title = { Text("위치 권한 필요") },
-            text = {
-                Text("Wi-Fi 네트워크 이름을 표시하려면 위치 권한이 필요합니다.\n설정에서 직접 권한을 허용해주세요.")
-            },
-            confirmButton = {
-                TextButton(onClick = { showPermissionDialog = false }) {
-                    Text("확인")
-                }
-            }
-        )
-    }
+    PermissionRequiredDialog(
+        visible = showPermissionDialog,
+        onDismiss = { showPermissionDialog = false }
+    )
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("카메라 연결") },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "뒤로가기")
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = { ptpipViewModel.discoverCameras() },
-                        enabled = !isDiscovering
-                    ) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "새로고침")
-                    }
-                    IconButton(onClick = {
-                        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                            try {
-                                Intent(Settings.Panel.ACTION_WIFI)
-                            } catch (e: Exception) {
-                                Intent(Settings.ACTION_WIFI_SETTINGS)
-                            }
-                        } else {
-                            Intent(Settings.ACTION_WIFI_SETTINGS)
-                        }
-                        context.startActivity(intent)
-                    }) {
-                        Icon(Icons.Filled.Settings, contentDescription = "Wi-Fi 설정")
-                    }
-                },
-                backgroundColor = MaterialTheme.colors.primary,
-                contentColor = MaterialTheme.colors.onPrimary
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { paddingValues ->
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .darkScreenBackground()
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(horizontal = 12.dp, vertical = 8.dp)
         ) {
-            // 탭 행
-            TabRow(
-                selectedTabIndex = pagerState.currentPage,
-                backgroundColor = MaterialTheme.colors.primary,
-                contentColor = MaterialTheme.colors.onPrimary
-            ) {
-                tabTitles.forEachIndexed { index, title ->
-                    Tab(
-                        selected = pagerState.currentPage == index,
-                        onClick = {
-                            scope.launch {
-                                pagerState.animateScrollToPage(index)
-                            }
-                        },
-                        text = { Text(title) }
+            DarkTopBar(
+                title = "카메라 연결",
+                subtitle = "PTP/IP 연결 모드 선택",
+                onBack = onBackClick,
+                actions = {
+                    TopBarActionButtons(
+                        isDiscovering = isDiscovering,
+                        onRefresh = { ptpipViewModel.discoverCameras() },
+                        onOpenWifiSettings = { openWifiSettings(context) }
                     )
                 }
-            }
+            )
+            DarkTabRow(
+                tabs = tabTitles,
+                selectedIndex = pagerState.currentPage,
+                onTabSelected = { index ->
+                    scope.launch { pagerState.animateScrollToPage(index) }
+                },
+                modifier = Modifier.padding(top = 10.dp, bottom = 8.dp)
+            )
 
             // 탭 내용
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.weight(1f)
-            ) { page ->
-                when (page) {
-                    0 -> ApModeContent(
-                        ptpipViewModel = ptpipViewModel,
-                        connectionState = connectionState,
-                        discoveredCameras = discoveredCameras,
-                        isDiscovering = isDiscovering,
-                        isConnecting = isConnecting,
-                        selectedCamera = selectedCamera,
-                        cameraInfo = cameraInfo,
-                        isPtpipEnabled = isPtpipEnabled,
-                        isWifiConnected = isWifiConnected,
-                        wifiCapabilities = wifiCapabilities,
-                        wifiNetworkState = wifiNetworkState,
-                        isAutoReconnectEnabled = isAutoReconnectEnabled,
-                        hasLocationPermission = hasLocationPermission,
-                        onRequestPermission = {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                                permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-                            }
-                        }
-                    )
-                    1 -> StaModeContent(
-                        ptpipViewModel = ptpipViewModel,
-                        connectionState = connectionState,
-                        discoveredCameras = discoveredCameras,
-                        isDiscovering = isDiscovering,
-                        isConnecting = isConnecting,
-                        selectedCamera = selectedCamera,
-                        cameraInfo = cameraInfo,
-                        isPtpipEnabled = isPtpipEnabled,
-                        isWifiConnected = isWifiConnected,
-                        wifiCapabilities = wifiCapabilities,
-                        wifiNetworkState = wifiNetworkState,
-                        isAutoReconnectEnabled = isAutoReconnectEnabled,
-                        hasLocationPermission = hasLocationPermission,
-                        onRequestPermission = {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                                permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-                            }
-                        }
-                    )
-                }
+            PtpipModePager(
+                pagerState = pagerState,
+                ptpipViewModel = ptpipViewModel,
+                connectionState = connectionState,
+                discoveredCameras = discoveredCameras,
+                isDiscovering = isDiscovering,
+                isConnecting = isConnecting,
+                selectedCamera = selectedCamera,
+                cameraInfo = cameraInfo,
+                isPtpipEnabled = isPtpipEnabled,
+                isWifiConnected = isWifiConnected,
+                wifiCapabilities = wifiCapabilities,
+                wifiNetworkState = wifiNetworkState,
+                isAutoReconnectEnabled = isAutoReconnectEnabled,
+                hasLocationPermission = hasLocationPermission,
+                onRequestPermission = onRequestLocationPermission
+            )
+        }
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(16.dp)
+        )
+    }
+}
+@Composable
+private fun PermissionRequiredDialog(
+    visible: Boolean,
+    onDismiss: () -> Unit
+) {
+    if (!visible) return
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("위치 권한 필요") },
+        text = {
+            Text("Wi-Fi 네트워크 이름을 표시하려면 위치 권한이 필요합니다.\n설정에서 직접 권한을 허용해주세요.")
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("확인")
             }
+        }
+    )
+}
+@Composable
+private fun TopBarActionButtons(
+    isDiscovering: Boolean,
+    onRefresh: () -> Unit,
+    onOpenWifiSettings: () -> Unit
+) {
+    IconButton(
+        onClick = onRefresh,
+        enabled = !isDiscovering
+    ) {
+        Icon(
+            Icons.Filled.Refresh,
+            contentDescription = "새로고침",
+            tint = Color(0xFFFFD6AE)
+        )
+    }
+    IconButton(onClick = onOpenWifiSettings) {
+        Icon(
+            Icons.Filled.Settings,
+            contentDescription = "Wi-Fi 설정",
+            tint = Color(0xFFFFD6AE)
+        )
+    }
+}
+private fun openWifiSettings(context: android.content.Context) {
+    val intent = try {
+        Intent(Settings.Panel.ACTION_WIFI)
+    } catch (_: Exception) {
+        Intent(Settings.ACTION_WIFI_SETTINGS)
+    }
+    context.startActivity(intent)
+}
+@Composable
+private fun PtpipModePager(
+    pagerState: androidx.compose.foundation.pager.PagerState,
+    ptpipViewModel: PtpipViewModel,
+    connectionState: com.inik.camcon.domain.model.PtpipConnectionState,
+    discoveredCameras: List<com.inik.camcon.domain.model.PtpipCamera>,
+    isDiscovering: Boolean,
+    isConnecting: Boolean,
+    selectedCamera: com.inik.camcon.domain.model.PtpipCamera?,
+    cameraInfo: com.inik.camcon.domain.model.PtpipCameraInfo?,
+    isPtpipEnabled: Boolean,
+    isWifiConnected: Boolean,
+    wifiCapabilities: com.inik.camcon.domain.model.WifiCapabilities,
+    wifiNetworkState: com.inik.camcon.domain.model.WifiNetworkState,
+    isAutoReconnectEnabled: Boolean,
+    hasLocationPermission: Boolean,
+    onRequestPermission: () -> Unit
+) {
+    HorizontalPager(
+        state = pagerState,
+        modifier = Modifier.fillMaxSize()
+    ) { page ->
+        when (page) {
+            0 -> ApModeContent(
+                ptpipViewModel = ptpipViewModel,
+                connectionState = connectionState,
+                discoveredCameras = discoveredCameras,
+                isDiscovering = isDiscovering,
+                isConnecting = isConnecting,
+                selectedCamera = selectedCamera,
+                cameraInfo = cameraInfo,
+                isPtpipEnabled = isPtpipEnabled,
+                isWifiConnected = isWifiConnected,
+                wifiCapabilities = wifiCapabilities,
+                wifiNetworkState = wifiNetworkState,
+                isAutoReconnectEnabled = isAutoReconnectEnabled,
+                hasLocationPermission = hasLocationPermission,
+                onRequestPermission = onRequestPermission
+            )
+            else -> StaModeContent(
+                ptpipViewModel = ptpipViewModel,
+                connectionState = connectionState,
+                discoveredCameras = discoveredCameras,
+                isDiscovering = isDiscovering,
+                isConnecting = isConnecting,
+                selectedCamera = selectedCamera,
+                cameraInfo = cameraInfo,
+                isPtpipEnabled = isPtpipEnabled,
+                isWifiConnected = isWifiConnected,
+                wifiCapabilities = wifiCapabilities,
+                wifiNetworkState = wifiNetworkState,
+                isAutoReconnectEnabled = isAutoReconnectEnabled,
+                hasLocationPermission = hasLocationPermission,
+                onRequestPermission = onRequestPermission
+            )
         }
     }
 }
@@ -243,38 +292,29 @@ fun PtpipConnectionScreen(
 @Composable
 private fun PtpipConnectionScreenPreview() {
     CamConTheme {
-        // 프리뷰용 더미 구현
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .darkScreenBackground()
                 .padding(16.dp)
         ) {
-            Text("카메라 연결 화면 프리뷰", style = MaterialTheme.typography.h6)
-
-            // 탭 영역 표시
-            TabRow(
-                selectedTabIndex = 0,
-                backgroundColor = MaterialTheme.colors.primary,
-                contentColor = MaterialTheme.colors.onPrimary
-            ) {
-                Tab(
-                    selected = true,
-                    onClick = { },
-                    text = { Text("AP 모드") }
-                )
-                Tab(
-                    selected = false,
-                    onClick = { },
-                    text = { Text("STA 모드") }
-                )
-            }
-
+            DarkTopBar(
+                title = "카메라 연결",
+                subtitle = "PTP/IP 연결 모드 선택",
+                onBack = {}
+            )
+            DarkTabRow(
+                tabs = listOf("AP 모드", "STA 모드"),
+                selectedIndex = 0,
+                onTabSelected = {},
+                modifier = Modifier.padding(top = 10.dp)
+            )
             Text(
-                "탭 컨텐츠 영역",
-                style = MaterialTheme.typography.body1,
-                modifier = Modifier.padding(16.dp)
+                "카메라 연결 화면 프리뷰",
+                style = MaterialTheme.typography.h6,
+                color = Color(0xFFFFD7B1),
+                modifier = Modifier.padding(top = 20.dp)
             )
         }
     }
 }
-
