@@ -97,6 +97,8 @@ import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.components.CameraPreviewArea
 import com.inik.camcon.presentation.ui.screens.components.CaptureControls
+import com.inik.camcon.presentation.ui.screens.components.DarkSectionHeader
+import com.inik.camcon.presentation.ui.screens.components.DarkStatusBadge
 import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
 import com.inik.camcon.presentation.ui.screens.components.LoadingOverlay
 import com.inik.camcon.presentation.ui.screens.components.ShootingModeSelector
@@ -144,13 +146,14 @@ fun CameraControlScreen(
     val isShowPreviewInCapture by appSettingsViewModel.isShowLatestPhotoWhenDisabled.collectAsState()
 
     // 다이얼로그 상태들
-    var showFolderSelectionDialog by remember { mutableStateOf(false) }
-    var showSaveFormatSelectionDialog by remember { mutableStateOf(false) }
     var showConnectionHelpDialog by remember { mutableStateOf(false) }
 
     // FullScreenPhotoViewer 상태들
     var showFullScreenViewer by remember { mutableStateOf(false) }
     var selectedPhoto by remember { mutableStateOf<CapturedPhoto?>(null) }
+    val selectedViewerPhoto = remember(selectedPhoto) { selectedPhoto?.toCameraPhoto() }
+    val selectedThumbnailData = remember(selectedPhoto) { selectedPhoto?.getThumbnailData() }
+    val selectedFullImageData = remember(selectedPhoto) { selectedPhoto?.getImageData() }
 
     // 앱 재시작 다이얼로그 - uiState의 showRestartDialog를 observe
     val showAppRestartDialog = uiState.showRestartDialog
@@ -188,7 +191,7 @@ fun CameraControlScreen(
                     // 이벤트 리스너는 중지하지 않음 - 탭 전환 중에도 유지
                 }
                 Lifecycle.Event.ON_RESUME -> {
-                    val isReturningFromOtherTab = viewModel.getAndClearTabSwitchFlag()
+                    viewModel.getAndClearTabSwitchFlag()
                     // 이벤트 리스너 자동 시작 로직을 제거 - 네이티브 초기화 완료 후에 처리됨
                 }
                 else -> Unit
@@ -303,23 +306,16 @@ fun CameraControlScreen(
             )
         }
 
-        // FullScreenPhotoViewer 표시
-        if (showFullScreenViewer && selectedPhoto != null) {
-            FullScreenPhotoViewer(
-                photo = selectedPhoto!!.toCameraPhoto(),
-                onDismiss = {
-                    showFullScreenViewer = false
-                    selectedPhoto = null
-                },
-                onPhotoChanged = { /* 단일 사진이므로 변경 없음 */ },
-                thumbnailData = selectedPhoto!!.getThumbnailData(),
-                fullImageData = selectedPhoto!!.getImageData(),
-                isDownloadingFullImage = false,
-                onDownload = { /* 이미 다운로드됨, 아무 동작 안함 */ },
-                viewModel = null, // PhotoPreviewViewModel 없이 사용
-                hideDownloadButton = true // 다운로드 버튼 숨김
-            )
-        }
+        CapturedPhotoViewerOverlay(
+            isVisible = showFullScreenViewer,
+            photo = selectedViewerPhoto,
+            thumbnailData = selectedThumbnailData,
+            fullImageData = selectedFullImageData,
+            onDismiss = {
+                showFullScreenViewer = false
+                selectedPhoto = null
+            }
+        )
     }
 
     if (showTimelapseDialog) {
@@ -342,44 +338,62 @@ fun CameraControlScreen(
         }
     }
 
+    CameraControlDialogs(
+        showConnectionHelpDialog = showConnectionHelpDialog,
+        onDismissConnectionHelp = { showConnectionHelpDialog = false },
+        onRetryConnection = {
+            showConnectionHelpDialog = false
+            viewModel.refreshUsbDevices()
+        },
+        showAppRestartDialog = showAppRestartDialog,
+        onDismissRestart = { viewModel.dismissRestartDialog() },
+        onRestart = { (context as? Activity)?.recreate() }
+    )
+}
+@Composable
+private fun CapturedPhotoViewerOverlay(
+    isVisible: Boolean,
+    photo: CameraPhoto?,
+    thumbnailData: ByteArray?,
+    fullImageData: ByteArray?,
+    onDismiss: () -> Unit
+) {
+    if (!isVisible || photo == null) return
+    FullScreenPhotoViewer(
+        photo = photo,
+        onDismiss = onDismiss,
+        onPhotoChanged = { /* 단일 사진이므로 변경 없음 */ },
+        thumbnailData = thumbnailData,
+        fullImageData = fullImageData,
+        isDownloadingFullImage = false,
+        onDownload = { /* 이미 다운로드됨, 아무 동작 안함 */ },
+        viewModel = null,
+        hideDownloadButton = true
+    )
+}
+@Composable
+private fun CameraControlDialogs(
+    showConnectionHelpDialog: Boolean,
+    onDismissConnectionHelp: () -> Unit,
+    onRetryConnection: () -> Unit,
+    showAppRestartDialog: Boolean,
+    onDismissRestart: () -> Unit,
+    onRestart: () -> Unit
+) {
     if (showConnectionHelpDialog) {
         CameraConnectionHelpDialog(
-            onDismiss = { showConnectionHelpDialog = false },
-            onRetry = {
-                showConnectionHelpDialog = false
-                viewModel.refreshUsbDevices()
-            }
+            onDismiss = onDismissConnectionHelp,
+            onRetry = onRetryConnection
         )
     }
 
     if (showAppRestartDialog) {
-        val context = LocalContext.current
         AppRestartDialog(
-            onDismiss = { viewModel.dismissRestartDialog() },
+            onDismiss = onDismissRestart,
             onRestart = {
-                viewModel.dismissRestartDialog()
-                // 액티비티 재시작 로직
-                (context as? Activity)?.recreate()
+                onDismissRestart()
+                onRestart()
             }
-        )
-    }
-}
-@Composable
-private fun CameraSectionHeader(
-    title: String,
-    subtitle: String,
-    modifier: Modifier = Modifier
-) {
-    Column(modifier = modifier) {
-        Text(
-            text = title,
-            color = Color(0xFFFFC892),
-            style = MaterialTheme.typography.subtitle1
-        )
-        Text(
-            text = subtitle,
-            color = Color(0xFFB8C0CF),
-            style = MaterialTheme.typography.caption
         )
     }
 }
@@ -409,19 +423,19 @@ private fun CameraStatusStrip(
                 .padding(horizontal = if (isCompact) 6.dp else 8.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(if (isCompact) 6.dp else 8.dp)
         ) {
-            CameraStatusBadge(
+            DarkStatusBadge(
                 text = liveBadge,
                 background = Color(0x66305A78),
                 border = Color(0x8892CFF8),
                 compact = isCompact
             )
-            CameraStatusBadge(
+            DarkStatusBadge(
                 text = connectBadge,
                 background = if (uiState.isConnected) Color(0x6630624B) else Color(0x66583A3A),
                 border = if (uiState.isConnected) Color(0x88A3E6C3) else Color(0x88F0A7A7),
                 compact = isCompact
             )
-            CameraStatusBadge(
+            DarkStatusBadge(
                 text = actionBadge,
                 background = if (uiState.isCapturing) Color(0x66674822) else Color(0x663D4457),
                 border = if (uiState.isCapturing) Color(0x88F2C58F) else Color(0x889AA8C5),
@@ -429,26 +443,6 @@ private fun CameraStatusStrip(
             )
         }
     }
-}
-@Composable
-private fun CameraStatusBadge(
-    text: String,
-    background: Color,
-    border: Color,
-    compact: Boolean = false
-) {
-    Text(
-        text = text,
-        color = Color(0xFFFAF3EA),
-        fontSize = if (compact) 9.sp else 10.sp,
-        modifier = Modifier
-            .background(background.copy(alpha = 0.92f), RoundedCornerShape(10.dp))
-            .border(1.dp, border.copy(alpha = 0.95f), RoundedCornerShape(10.dp))
-            .padding(
-                horizontal = if (compact) 7.dp else 8.dp,
-                vertical = if (compact) 3.dp else 4.dp
-            )
-    )
 }
 
 /**
@@ -673,7 +667,7 @@ private fun PortraitCameraLayout(
         ) {
             Column {
                 if (appSettings.isCameraControlsEnabled && appSettings.isLiveViewEnabled) {
-                    CameraSectionHeader(
+                    DarkSectionHeader(
                         title = "촬영 모드",
                         subtitle = "현재 촬영 시나리오를 선택하세요",
                         modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp)
@@ -695,7 +689,7 @@ private fun PortraitCameraLayout(
                 }
 
                 if (recentPhotos.isNotEmpty()) {
-                    CameraSectionHeader(
+                    DarkSectionHeader(
                         title = "수신된 사진",
                         subtitle = "총 ${uiState.capturedPhotos.size}장",
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -947,12 +941,12 @@ private fun FullscreenControlPanel(
             verticalArrangement = Arrangement.spacedBy(14.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            CameraSectionHeader(
+            DarkSectionHeader(
                 title = "FULL CONTROL",
                 subtitle = if (uiState.isConnected) "카메라 연결됨" else "카메라 연결 필요",
                 modifier = Modifier.align(Alignment.Start)
             )
-            CameraStatusBadge(
+            DarkStatusBadge(
                 text = if (uiState.isCapturing) "CAPTURING" else "READY",
                 background = if (uiState.isCapturing) Color(0x665F4122) else Color(0x66404B60),
                 border = if (uiState.isCapturing) Color(0x88F0C28D) else Color(0x889DB2D6)
@@ -1818,11 +1812,11 @@ private fun PreviewFullscreenControlPanelCard(
                     modifier = Modifier.padding(14.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    CameraSectionHeader(
+                    DarkSectionHeader(
                         title = "FULL CONTROL",
                         subtitle = "카메라 연결됨"
                     )
-                    CameraStatusBadge(
+                    DarkStatusBadge(
                         text = if (isCapturing) "CAPTURING" else "READY",
                         background = if (isCapturing) Color(0x665F4122) else Color(0x66404B60),
                         border = if (isCapturing) Color(0x88F0C28D) else Color(0x889DB2D6)
@@ -1838,14 +1832,14 @@ private fun PreviewFullscreenControlPanelCard(
 }
 @Preview(name = "Camera Section Header", showBackground = true)
 @Composable
-private fun CameraSectionHeaderPreview() {
+private fun DarkSectionHeaderPreview() {
     CamConTheme {
         Box(
             modifier = Modifier
                 .background(Color(0xFF121722))
                 .padding(16.dp)
         ) {
-            CameraSectionHeader(
+            DarkSectionHeader(
                 title = "수신된 사진",
                 subtitle = "총 12장"
             )
@@ -1854,7 +1848,7 @@ private fun CameraSectionHeaderPreview() {
 }
 @Preview(name = "Camera Status Strip", showBackground = true)
 @Composable
-private fun CameraStatusStripPreview() {
+private fun DarkStatusStripPreview() {
     CamConTheme {
         Box(
             modifier = Modifier
@@ -1874,7 +1868,7 @@ private fun CameraStatusStripPreview() {
 }
 @Preview(name = "Camera Status Strip - Focusing", showBackground = true)
 @Composable
-private fun CameraStatusStripFocusingPreview() {
+private fun DarkStatusStripFocusingPreview() {
     CamConTheme {
         Box(
             modifier = Modifier
@@ -1894,7 +1888,7 @@ private fun CameraStatusStripFocusingPreview() {
 }
 @Preview(name = "Camera Status Strip - Compact", showBackground = true, widthDp = 280)
 @Composable
-private fun CameraStatusStripCompactPreview() {
+private fun DarkStatusStripCompactPreview() {
     CamConTheme {
         Box(
             modifier = Modifier
