@@ -24,6 +24,8 @@ class ErrorHandlingManager @Inject constructor() {
         const val ERROR_USB_TIMEOUT = -10
         const val ERROR_USB_DETECTION_FAILED = -52
         const val ERROR_USB_WRITE_FAILED = -35
+        const val ERROR_APP_RESTART_REQUIRED = -1000
+        const val ERROR_PTP_TIMEOUT_PERSISTENT = -2000
     }
 
     // 에러 이벤트 스트림
@@ -98,6 +100,24 @@ class ErrorHandlingManager @Inject constructor() {
                     userFriendlyMessage = "USB 연결에 문제가 있습니다.\n\nUSB 케이블을 확인하거나 카메라를 재연결하세요.",
                     severity = ErrorSeverity.HIGH,
                     actionRequired = ErrorAction.RECONNECT_CAMERA
+                )
+            }
+            ERROR_APP_RESTART_REQUIRED -> {
+                NativeErrorEvent(
+                    errorCode = errorCode,
+                    originalMessage = errorMessage,
+                    userFriendlyMessage = "카메라 초기화가 반복 실패했습니다. 앱을 재시작해주세요.",
+                    severity = ErrorSeverity.CRITICAL,
+                    actionRequired = ErrorAction.RESTART_APP
+                )
+            }
+            ERROR_PTP_TIMEOUT_PERSISTENT -> {
+                NativeErrorEvent(
+                    errorCode = errorCode,
+                    originalMessage = errorMessage,
+                    userFriendlyMessage = "PTP 통신 타임아웃이 지속됩니다. 앱 재시작 후 다시 연결해주세요.",
+                    severity = ErrorSeverity.CRITICAL,
+                    actionRequired = ErrorAction.RESTART_APP
                 )
             }
 
