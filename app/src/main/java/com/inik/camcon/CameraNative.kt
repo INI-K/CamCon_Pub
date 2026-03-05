@@ -20,6 +20,8 @@ object CameraNative {
     const val GP_LOG_DEBUG = 2
     const val GP_LOG_DATA = 3
     const val GP_LOG_ALL = GP_LOG_DATA
+    const val ERROR_APP_RESTART_REQUIRED = -1000
+    const val ERROR_PTP_TIMEOUT_PERSISTENT = -2000
 
     init {
         System.loadLibrary("gphoto2_port") // Port 라이브러리 먼저
