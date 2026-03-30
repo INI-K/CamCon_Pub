@@ -16,19 +16,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material.ModalBottomSheetLayout
-import androidx.compose.material.ModalBottomSheetState
-import androidx.compose.material.ModalBottomSheetValue
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.PhotoCamera
-import androidx.compose.material.rememberModalBottomSheetState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -56,19 +55,18 @@ import java.util.Locale
 /**
  * Compose 기반 사진 정보 바텀 다이얼로그
  */
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PhotoInfoBottomSheet(
     photo: CameraPhoto,
     viewModel: PhotoPreviewViewModel?,
-    bottomSheetState: ModalBottomSheetState,
-    onDismiss: () -> Unit,
-    content: @Composable () -> Unit
+    onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
     var exifInfo by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
+    val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // EXIF 정보 로드
     LaunchedEffect(photo.path) {
@@ -87,9 +85,10 @@ fun PhotoInfoBottomSheet(
         }
     }
 
-    ModalBottomSheetLayout(
-        sheetState = bottomSheetState,
-        sheetContent = {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = bottomSheetState
+    ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -129,8 +128,7 @@ fun PhotoInfoBottomSheet(
                             onClick = {
                                 scope.launch {
                                     bottomSheetState.hide()
-                                    onDismiss()
-                                }
+                                }.invokeOnCompletion { onDismiss() }
                             }
                         ) {
                             Icon(
@@ -278,10 +276,7 @@ fun PhotoInfoBottomSheet(
                     )
                 }
             }
-        },
-        modifier = Modifier.fillMaxWidth(),
-        content = content
-    )
+        }
 }
 
 @Composable
@@ -497,33 +492,24 @@ private fun formatFlash(flash: String): String {
  * 사진 정보 다이얼로그를 표시하는 함수 (기존 호환성을 위한 래퍼)
  */
 object PhotoInfoDialog {
-    @OptIn(ExperimentalMaterialApi::class)
     fun showPhotoInfoDialog(
         context: Context,
         photo: CameraPhoto,
         viewModel: PhotoPreviewViewModel?
     ) {
         Log.d("PhotoInfoDialog", "showPhotoInfoDialog 호출됨: ${photo.name}")
-        
-        // Compose 다이얼로그를 위한 ComposeView 생성
+
         val composeView = ComposeView(context)
         val dialog = androidx.appcompat.app.AlertDialog.Builder(context)
             .setView(composeView)
             .create()
 
         composeView.setContent {
-            val bottomSheetState = rememberModalBottomSheetState(
-                initialValue = ModalBottomSheetValue.Expanded
-            )
-
             PhotoInfoBottomSheet(
                 photo = photo,
                 viewModel = viewModel,
-                bottomSheetState = bottomSheetState,
                 onDismiss = { dialog.dismiss() }
-            ) {
-                // 빈 컨텐츠 (바텀시트만 표시)
-            }
+            )
         }
 
         dialog.show()
