@@ -6,7 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.CameraNative
 import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
-import com.inik.camcon.domain.model.ThemeMode
+import com.inik.camcon.data.datasource.local.ThemeMode
 import com.inik.camcon.domain.usecase.ColorTransferUseCase
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.domain.model.SubscriptionTier

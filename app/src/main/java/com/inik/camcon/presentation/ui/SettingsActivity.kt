@@ -79,7 +79,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.inik.camcon.BuildConfig
-import com.inik.camcon.domain.model.ThemeMode
+import com.inik.camcon.data.datasource.local.ThemeMode
 import com.inik.camcon.domain.model.User
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.AdminReferralCodeViewModel
@@ -153,7 +153,7 @@ fun SettingsScreen(
     val adminReferralState by adminReferralCodeViewModel.uiState.collectAsStateWithLifecycle()
 
     // 카메라 상태 정보
-    val cameraUiState by cameraViewModel.uiState.collectAsState()
+    val cameraUiState by cameraViewModel.uiState.collectAsStateWithLifecycle()
     val isUsbConnected = cameraUiState.isNativeCameraConnected
     val isPtpipConnected = cameraUiState.isPtpipConnected
 
@@ -659,7 +659,7 @@ fun SettingsScreen(
 
             if (isAdminTier) {
                 // ADMIN 전용: 가상 카메라 설정 및 네이티브 로그
-                val isNativeLogCaptureEnabled by appSettingsViewModel.isNativeLogCaptureEnabled.collectAsState()
+                val isNativeLogCaptureEnabled by appSettingsViewModel.isNativeLogCaptureEnabled.collectAsStateWithLifecycle()
 
                 SettingsSection(title = "ADMIN 전용 설정") {
                     SettingsItem(
