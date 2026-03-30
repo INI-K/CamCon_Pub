@@ -360,7 +360,6 @@ class PhotoDownloadManager @Inject constructor(
             var tempFile: File? = null
             var processedFile: File? = null
             var colorTransferredFile: File? = null
-            var transferredBitmap: Bitmap? = null
             var processedPath: String? = null
 
             try {
@@ -455,15 +454,16 @@ class PhotoDownloadManager @Inject constructor(
                                 "${currentProcessedFile.nameWithoutExtension}_color_transferred.jpg"
                             )
 
-                            transferredBitmap =
-                                colorTransferUseCase.applyColorTransferWithGPUAndSave(
+                            val transferResult =
+                                colorTransferUseCase.applyColorTransferAndSave(
                                     currentProcessedFile.absolutePath,
-                                referenceImagePath,
-                                colorTransferredFile.absolutePath,
-                                colorTransferIntensity
-                            )
+                                    referenceImagePath,
+                                    currentProcessedFile.absolutePath,
+                                    colorTransferredFile.absolutePath,
+                                    colorTransferIntensity
+                                )
 
-                            if (transferredBitmap != null) {
+                            if (transferResult != null) {
                                 processedPath = colorTransferredFile.absolutePath
                                 Log.d(TAG, "✅ 색감 전송 적용 완료: ${colorTransferredFile.name}")
 
@@ -472,24 +472,14 @@ class PhotoDownloadManager @Inject constructor(
                                     currentProcessedFile.delete()
                                     processedFile = null
                                 }
-
-                                // 메모리 정리 - 즉시 해제만 
-                                transferredBitmap?.recycle()
-                                transferredBitmap = null
                             } else {
                                 Log.w(TAG, "⚠️ 색감 전송 실패, 이전 처리된 이미지 사용")
                             }
                         }
                     } catch (e: OutOfMemoryError) {
                         Log.e(TAG, "❌ 메모리 부족으로 색감 전송 실패", e)
-                        // 메모리 정리 후 원본 반환
-                        transferredBitmap?.recycle()
-                        transferredBitmap = null
                     } catch (e: Exception) {
                         Log.e(TAG, "❌ 색감 전송 처리 중 오류", e)
-                        // 오류 발생 시 메모리 정리 
-                        transferredBitmap?.recycle()
-                        transferredBitmap = null
                     }
                 }
 
@@ -531,8 +521,6 @@ class PhotoDownloadManager @Inject constructor(
                 capturedPhoto
             } catch (e: OutOfMemoryError) {
                 Log.e(TAG, "❌ Native 사진 저장 중 메모리 부족: $fileName", e)
-                // 메모리 정리만 
-                transferredBitmap?.recycle()
                 null
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Native 사진 저장 실패: $fileName", e)
@@ -540,8 +528,6 @@ class PhotoDownloadManager @Inject constructor(
             } finally {
                 // 메모리 정리 - 모든 임시 객체 해제
                 try {
-                    transferredBitmap?.recycle()
-
                     // 임시 파일들 정리
                     tempFile?.takeIf { it.exists() }?.delete()
                     processedFile?.takeIf {
@@ -700,14 +686,15 @@ class PhotoDownloadManager @Inject constructor(
                         "${processedFile.nameWithoutExtension}_color_transferred.jpg"
                     )
 
-                    val transferredBitmap = colorTransferUseCase.applyColorTransferWithGPUAndSave(
+                    val transferResult = colorTransferUseCase.applyColorTransferAndSave(
                         processedFile.absolutePath, // 입력 파일 경로 (리사이즈된 이미지 또는 원본)
                         referenceImagePath, // 참조 이미지 경로
+                        processedFile.absolutePath, // 원본 이미지 경로 (EXIF 메타데이터 복사용)
                         colorTransferredFile.absolutePath, // 출력 파일 경로
                         colorTransferIntensity // 사용자 설정 강도
                     )
 
-                    if (transferredBitmap != null) {
+                    if (transferResult != null) {
                         processedPath = colorTransferredFile.absolutePath
                         Log.d(TAG, "✅ 색감 전송 적용 완료: ${colorTransferredFile.name}")
 
@@ -715,9 +702,6 @@ class PhotoDownloadManager @Inject constructor(
                         if (processedFile.absolutePath != fullPath) {
                             processedFile.delete()
                         }
-
-                        // 메모리 정리 - 즉시 해제
-                        transferredBitmap.recycle()
                     } else {
                         Log.w(TAG, "⚠️ 색감 전송 실패, 이전 처리된 이미지 사용")
                     }

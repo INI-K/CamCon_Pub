@@ -172,7 +172,7 @@ fun MainScreen(
     var isFullscreen by remember { mutableStateOf(false) }
 
     // PTPIP 연결 상태 및 경고 다이얼로그 상태
-    val isPtpipConnected by cameraViewModel.isPtpipConnected.collectAsState()
+    val isPtpipConnected by cameraViewModel.isPtpipConnected.collectAsStateWithLifecycle()
     var showPtpipWarning by remember { mutableStateOf(false) }
 
     // 전역 연결 상태 모니터링
