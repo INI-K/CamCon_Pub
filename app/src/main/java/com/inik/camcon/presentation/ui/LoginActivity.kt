@@ -35,7 +35,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -96,13 +96,13 @@ class LoginActivity : ComponentActivity() {
 
         setContent {
             val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
-            val themeMode by appSettingsViewModel.themeMode.collectAsState()
+            val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
 
             CamConTheme(themeMode = themeMode) {
                 val viewModel: LoginViewModel = hiltViewModel()
                 loginViewModel = viewModel
 
-                val uiState by viewModel.uiState.collectAsState()
+                val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                 val snackbarHostState = remember { SnackbarHostState() }
 
                 // SharedFlow 이벤트 수집

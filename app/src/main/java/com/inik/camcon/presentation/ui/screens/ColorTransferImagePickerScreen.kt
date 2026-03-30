@@ -40,7 +40,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -70,10 +70,10 @@ fun ColorTransferImagePickerScreen(
     viewModel: ColorTransferViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-    val isLoading by viewModel.isLoading.collectAsState()
-    val errorMessage by viewModel.errorMessage.collectAsState()
-    val availableImages by viewModel.availableImages.collectAsState()
-    val selectedImagePath by viewModel.selectedImagePath.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
+    val availableImages by viewModel.availableImages.collectAsStateWithLifecycle()
+    val selectedImagePath by viewModel.selectedImagePath.collectAsStateWithLifecycle()
 
     var selectedLocalPath by remember { mutableStateOf<String?>(null) }
 
