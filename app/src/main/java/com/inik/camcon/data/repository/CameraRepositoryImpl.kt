@@ -30,6 +30,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -82,13 +83,14 @@ class CameraRepositoryImpl @Inject constructor(
         private const val DUP_WINDOW_MS = 1500L
     }
 
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     // 중복 처리 방지를 위한 변수들
     private val processedFiles = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
     private val _capturedPhotos = MutableStateFlow<List<CapturedPhoto>>(emptyList())
     private val _cameraSettings = MutableStateFlow<CameraSettings?>(null)
 
-    private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     init {
         initializeRepository()
@@ -121,7 +123,7 @@ class CameraRepositoryImpl @Inject constructor(
             com.inik.camcon.utils.LogcatManager.d(TAG, "  📊 데이터 크기: ${imageData.size / 1024}KB")
 
             // PhotoDownloadManager를 통해 실제 파일 저장 및 MediaStore 등록
-            repositoryScope.launch {
+            scope.launch {
                 com.inik.camcon.utils.LogcatManager.d(TAG, "🚀 PTPIP - handleNativePhotoDownload 호출")
 
                 val capturedPhoto = downloadManager.handleNativePhotoDownload(
@@ -156,7 +158,7 @@ class CameraRepositoryImpl @Inject constructor(
      * 개선: 에러 처리 로직을 별도 메서드로 분리
      */
     private fun handlePtpipDisconnection() {
-        repositoryScope.launch {
+        scope.launch {
             try {
                 CameraNative.stopListenCameraEvents()
                 com.inik.camcon.utils.LogcatManager.d(
@@ -174,7 +176,7 @@ class CameraRepositoryImpl @Inject constructor(
      * 개선: 이벤트 구독 로직을 별도 메서드로 분리
      */
     private fun subscribeToUsbEvents() {
-        repositoryScope.launch {
+        scope.launch {
             errorHandlingManager.usbDisconnectedEvent.collect {
                 com.inik.camcon.utils.LogcatManager.d(TAG, "USB 분리 이벤트 감지 - USB 분리 처리 시작")
                 usbCameraManager.handleUsbDisconnection()
@@ -393,7 +395,9 @@ class CameraRepositoryImpl @Inject constructor(
                 com.inik.camcon.utils.LogcatManager.d(TAG, "비동기 사진 촬영 호출 완료, 콜백 대기 중...")
             } catch (e: Exception) {
                 Log.e(TAG, "사진 촬영 중 예외 발생", e)
-                continuation.resumeWithException(e)
+                if (continuation.isActive) {
+                    continuation.resumeWithException(e)
+                }
             }
         }
     }
@@ -475,7 +479,7 @@ class CameraRepositoryImpl @Inject constructor(
 
         val photo = createCapturedPhoto(fullPath, fileName)
 
-        repositoryScope.launch {
+        scope.launch {
             downloadManager.handlePhotoDownload(
                 photo = photo,
                 fullPath = fullPath,
@@ -842,7 +846,7 @@ class CameraRepositoryImpl @Inject constructor(
         }
 
         // PhotoDownloadManager의 handleNativePhotoDownload를 직접 호출
-        repositoryScope.launch {
+        scope.launch {
             com.inik.camcon.utils.LogcatManager.d(
                 TAG,
                 "🚀 PhotoDownloadManager.handleNativePhotoDownload 시작: $fileName"
@@ -1017,7 +1021,7 @@ class CameraRepositoryImpl @Inject constructor(
      * 다운로드 실패한 사진 제거
      */
     private fun updatePhotoDownloadFailed(fileName: String) {
-        repositoryScope.launch(Dispatchers.Main) {
+        scope.launch(Dispatchers.Main) {
             _capturedPhotos.value = _capturedPhotos.value.filter { it.filePath != fileName }
             com.inik.camcon.utils.LogcatManager.d(TAG, "❌ 다운로드 실패한 사진 제거: $fileName")
         }
