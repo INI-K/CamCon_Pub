@@ -177,7 +177,7 @@ fun WifiCapabilitiesCard(
                         InfoRow(
                             label = "연결된 네트워크",
                             value = "이름 없음",
-                            valueColor = Color.Gray
+                            valueColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     } else {
                         InfoRow(
@@ -269,7 +269,7 @@ fun ConnectionStatusCard(
                         PtpipConnectionState.CONNECTED -> Color.Green
                         PtpipConnectionState.CONNECTING -> Color(0xFFFF9800)
                         PtpipConnectionState.ERROR -> Color.Red
-                        else -> Color.Gray
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
                     },
                     modifier = Modifier.size(32.dp)
                 )
@@ -490,7 +490,7 @@ fun CameraItem(
             Icon(
                 imageVector = Icons.Filled.CameraAlt,
                 contentDescription = null,
-                tint = if (camera.isOnline) Color.Green else Color.Gray,
+                tint = if (camera.isOnline) Color.Green else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(12.dp))
