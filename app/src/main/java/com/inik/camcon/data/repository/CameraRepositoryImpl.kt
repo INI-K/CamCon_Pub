@@ -22,7 +22,7 @@ import com.inik.camcon.domain.model.PaginatedCameraPhotos
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.domain.model.TimelapseSettings
 import com.inik.camcon.domain.repository.CameraRepository
-import com.inik.camcon.domain.usecase.ColorTransferUseCase
+import com.inik.camcon.domain.repository.ColorTransferRepository
 import com.inik.camcon.domain.usecase.camera.PhotoCaptureEventManager
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.utils.Constants
@@ -66,7 +66,7 @@ class CameraRepositoryImpl @Inject constructor(
     private val usbCameraManager: UsbCameraManager,
     private val photoCaptureEventManager: PhotoCaptureEventManager,
     private val appPreferencesDataSource: AppPreferencesDataSource,
-    private val colorTransferUseCase: ColorTransferUseCase,
+    private val colorTransferRepository: ColorTransferRepository,
     private val connectionManager: CameraConnectionManager,
     private val eventManager: CameraEventManager,
     private val downloadManager: PhotoDownloadManager,
@@ -100,7 +100,7 @@ class CameraRepositoryImpl @Inject constructor(
      */
     private fun initializeRepository() {
         // GPU 초기화
-        colorTransferUseCase.initializeGPU(context)
+        colorTransferRepository.initializeGPU(context)
 
         // PTPIP 콜백 설정
         setupPtpipCallbacks()

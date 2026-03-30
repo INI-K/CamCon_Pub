@@ -10,6 +10,7 @@ import com.inik.camcon.data.repository.AuthRepositoryImpl
 import com.inik.camcon.data.repository.CameraConnectionStateProviderImpl
 import com.inik.camcon.data.repository.CameraRepositoryImpl
 import com.inik.camcon.data.repository.SubscriptionRepositoryImpl
+import com.inik.camcon.data.repository.ColorTransferRepositoryImpl
 import com.inik.camcon.data.repository.UsbDeviceRepositoryImpl
 import com.inik.camcon.data.repository.managers.CameraConnectionGlobalManagerImpl
 import com.inik.camcon.data.util.AndroidLogger
@@ -18,6 +19,7 @@ import com.inik.camcon.domain.manager.NativeErrorCallbackRegistrar
 import com.inik.camcon.domain.repository.AppUpdateRepository
 import com.inik.camcon.domain.repository.AuthRepository
 import com.inik.camcon.domain.repository.CameraConnectionStateProvider
+import com.inik.camcon.domain.repository.ColorTransferRepository
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.repository.SubscriptionRepository
 import com.inik.camcon.domain.repository.UsbDeviceRepository
@@ -91,6 +93,12 @@ abstract class RepositoryModule {
     abstract fun bindNativeErrorCallbackRegistrar(
         impl: NativeErrorCallbackRegistrarImpl
     ): NativeErrorCallbackRegistrar
+
+    @Binds
+    @Singleton
+    abstract fun bindColorTransferRepository(
+        impl: ColorTransferRepositoryImpl
+    ): ColorTransferRepository
 
     @Binds
     @Singleton
