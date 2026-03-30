@@ -309,42 +309,58 @@ class PtpipDataSource @Inject constructor(
     }
 
     /**
-     * 자동 재연결 시도
+     * 자동 재연결 시도 (최대 횟수 제한 루프)
      */
     private suspend fun attemptAutoReconnect(camera: PtpipCamera) {
-        try {
-            // 이미 연결 시도 중이면 무시
-            if (_connectionState.value == PtpipConnectionState.CONNECTING) {
-                Log.d(TAG, "이미 연결 시도 중이므로 자동 재연결 무시")
-                return
+        // 이미 연결 시도 중이면 무시
+        if (_connectionState.value == PtpipConnectionState.CONNECTING) {
+            Log.d(TAG, "이미 연결 시도 중이므로 자동 재연결 무시")
+            return
+        }
+
+        val maxAttempts = 5
+        var attempts = 0
+        while (attempts < maxAttempts) {
+            try {
+                Log.i(TAG, "자동 재연결 시도 ${attempts + 1}/$maxAttempts: ${camera.name} (${camera.ipAddress})")
+                _connectionState.value = PtpipConnectionState.CONNECTING
+
+                if (connectToCamera(camera)) {
+                    Log.i(TAG, "자동 재연결 성공")
+                    return
+                }
+
+                Log.w(TAG, "자동 재연결 실패 (시도 ${attempts + 1}/$maxAttempts)")
+                _connectionState.value = PtpipConnectionState.ERROR
+            } catch (e: Exception) {
+                Log.w(TAG, "Reconnect attempt ${attempts + 1}/$maxAttempts failed", e)
+                _connectionState.value = PtpipConnectionState.ERROR
             }
 
             Log.i(TAG, "자동 재연결 시도: ${camera.name} (${camera.ipAddress})")
             _connectionState.value = PtpipConnectionState.CONNECTING
             _connectionProgressMessage.value = "카메라에 연결 중..."
-            
+
             if (connectToCamera(camera)) {
-                Log.i(TAG, "✅ 자동 재연결 성공")
+                Log.i(TAG, "자동 재연결 성공")
             } else {
-                Log.w(TAG, "❌ 자동 재연결 실패")
+                Log.w(TAG, "자동 재연결 실패")
                 _connectionState.value = PtpipConnectionState.ERROR
                 _connectionProgressMessage.value = ""
+            }
 
-                // 자동 재연결 활성화 상태에서만 재시도
-                if (isAutoReconnectEnabled) {
-                    delay(5000) // 5초 후 다시 시도
-                    // 여전히 오류 상태이고 자동 재연결이 활성화되어 있으면 재시도
-                    if (_connectionState.value == PtpipConnectionState.ERROR && isAutoReconnectEnabled) {
-                        Log.i(TAG, "자동 재연결 재시도")
-                        attemptAutoReconnect(camera)
-                    }
+            attempts++
+
+            // 마지막 시도가 아니고 자동 재연결이 여전히 활성화되어 있으면 대기
+            if (attempts < maxAttempts && isAutoReconnectEnabled) {
+                delay(5000)
+                // 자동 재연결이 비활성화되었거나 이미 연결되었으면 중단
+                if (!isAutoReconnectEnabled || _connectionState.value == PtpipConnectionState.CONNECTED) {
+                    return
                 }
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "자동 재연결 중 오류", e)
-            _connectionState.value = PtpipConnectionState.ERROR
-            _connectionProgressMessage.value = ""
         }
+        Log.e(TAG, "Auto-reconnect failed after $maxAttempts attempts")
     }
 
     /**
