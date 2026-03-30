@@ -663,8 +663,10 @@ class CameraViewModel @Inject constructor(
      * 카메라 설정 수동 로드 (설정 탭을 열 때 호출)
      */
     fun loadCameraSettingsManually() {
-        settingsManager.loadCameraSettings()
-        settingsManager.loadCameraCapabilities()
+        viewModelScope.launch {
+            settingsManager.loadCameraSettings()
+            settingsManager.loadCameraCapabilities()
+        }
     }
 
     override fun onCleared() {
