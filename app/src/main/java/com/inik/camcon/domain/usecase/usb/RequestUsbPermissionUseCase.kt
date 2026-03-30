@@ -1,13 +1,12 @@
 package com.inik.camcon.domain.usecase.usb
 
-import android.hardware.usb.UsbDevice
-import com.inik.camcon.data.datasource.usb.UsbCameraManager
+import com.inik.camcon.domain.repository.UsbDeviceRepository
 import javax.inject.Inject
 
 class RequestUsbPermissionUseCase @Inject constructor(
-    private val usbCameraManager: UsbCameraManager
+    private val usbDeviceRepository: UsbDeviceRepository
 ) {
-    operator fun invoke(device: UsbDevice) {
-        usbCameraManager.requestPermission(device)
+    operator fun invoke(deviceId: String) {
+        usbDeviceRepository.requestPermission(deviceId)
     }
 }
