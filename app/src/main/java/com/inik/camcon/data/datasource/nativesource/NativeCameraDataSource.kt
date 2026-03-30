@@ -12,9 +12,15 @@ import com.inik.camcon.domain.model.CameraSupports
 import com.inik.camcon.domain.model.PtpDeviceInfo
 import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
@@ -34,6 +40,9 @@ class NativeCameraDataSource @Inject constructor(
 
     // initCameraWithFd 중복 호출 방지용 Mutex
     private val initCameraWithFdMutex = Mutex()
+
+    // 비동기 작업용 CoroutineScope
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     // 카메라 이벤트 리스닝 시작
     fun listenCameraEvents(callback: CameraCaptureListener) {
@@ -62,11 +71,12 @@ class NativeCameraDataSource @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "카메라 이벤트 리스닝 중지 중 오류", e)
         } finally {
-            // 1초 후 상태 리셋 (Handler 사용으로 스레드 블로킹 방지)
-            mainHandler.postDelayed({
+            // 1초 후 상태 리셋
+            scope.launch {
+                delay(1000)
                 isStoppingEventListener.set(false)
                 Log.d(TAG, "이벤트 리스너 중지 상태 리셋")
-            }, 1000)
+            }
         }
     }
 
@@ -115,9 +125,9 @@ class NativeCameraDataSource @Inject constructor(
             Log.d(TAG, "카메라 초기화 (FD 기반) 완료: 결과 코드=$result")
 
             if (result >= 0) {
-                Log.i(TAG, "✅ USB 카메라 초기화 성공")
+                Log.i(TAG, "USB 카메라 초기화 성공")
 
-                // ✨ 카메라 기능 조회
+                // 카메라 기능 조회
                 try {
                     Log.i(TAG, "=== USB 카메라 기능 조회 ===")
 
@@ -128,7 +138,7 @@ class NativeCameraDataSource @Inject constructor(
                         val abilities = parseAbilities(abilitiesJson)
                         val deviceInfo = parseDeviceInfo(deviceInfoJson)
 
-                        Log.i(TAG, "📸 USB 연결된 카메라:")
+                        Log.i(TAG, "USB 연결된 카메라:")
                         Log.i(TAG, "   제조사: ${deviceInfo.manufacturer}")
                         Log.i(TAG, "   모델: ${deviceInfo.model}")
                         Log.i(TAG, "   시리얼: ${deviceInfo.serialNumber}")
@@ -142,13 +152,13 @@ class NativeCameraDataSource @Inject constructor(
                         // UI 상태 업데이트를 위해 기능 정보 저장
                         storeUsbCameraAbilities(abilities, deviceInfo)
                     } else {
-                        Log.w(TAG, "⚠️ 카메라 정보 조회 실패 (하지만 연결은 성공)")
+                        Log.w(TAG, "카메라 정보 조회 실패 (하지만 연결은 성공)")
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "USB 카메라 기능 조회 중 오류", e)
                 }
             } else {
-                Log.e(TAG, "❌ USB 카메라 초기화 실패: $result")
+                Log.e(TAG, "USB 카메라 초기화 실패: $result")
         }
 
             result
@@ -335,8 +345,8 @@ class NativeCameraDataSource @Inject constructor(
             return
         }
 
-        // 백그라운드 스레드에서 카메라 종료 수행
-        Thread {
+        // 백그라운드 코루틴에서 카메라 종료 수행
+        scope.launch {
             try {
                 Log.d(TAG, "카메라 종료")
                 CameraNative.closeCamera()
@@ -344,13 +354,12 @@ class NativeCameraDataSource @Inject constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "카메라 종료 중 오류", e)
             } finally {
-                // 2초 후 상태 리셋 (Handler 사용으로 스레드 블로킹 방지)
-                mainHandler.postDelayed({
-                    isClosingCamera.set(false)
-                    Log.d(TAG, "카메라 종료 상태 리셋")
-                }, 2000)
+                // 2초 후 상태 리셋
+                delay(2000)
+                isClosingCamera.set(false)
+                Log.d(TAG, "카메라 종료 상태 리셋")
             }
-        }.start()
+        }
     }
 
     // 카메라 감지
@@ -415,7 +424,7 @@ class NativeCameraDataSource @Inject constructor(
     }
 
     // 페이징을 지원하는 카메라 사진 목록 가져오기
-    fun getCameraPhotosPaged(page: Int, pageSize: Int = 20): PaginatedCameraPhotos {
+    suspend fun getCameraPhotosPaged(page: Int, pageSize: Int = 20): PaginatedCameraPhotos {
         return try {
             Log.d(TAG, "=== 페이징 카메라 사진 목록 가져오기 시작 (페이지: $page, 크기: $pageSize) ===")
 
@@ -425,7 +434,9 @@ class NativeCameraDataSource @Inject constructor(
                 Log.d(TAG, "카메라 이벤트 리스너 일시 중지")
                 CameraNative.stopListenCameraEvents()
                 needsListenerRestart = true
-                Log.d(TAG, "이벤트 리스너 중지 요청 완료")
+                // 리스너가 완전히 중지될 때까지 충분히 대기
+                delay(1000)
+                Log.d(TAG, "이벤트 리스너 중지 대기 완료")
             } catch (e: Exception) {
                 Log.w(TAG, "이벤트 리스너 중지 실패 (이미 중지되었을 수 있음)", e)
             }
@@ -582,7 +593,7 @@ class NativeCameraDataSource @Inject constructor(
     }
 
     // 기존 메서드는 첫 번째 페이지만 반환하도록 수정
-    fun getCameraPhotos(): List<NativeCameraPhoto> {
+    suspend fun getCameraPhotos(): List<NativeCameraPhoto> {
         Log.d(TAG, "getCameraPhotos 호출 - 페이징 버전으로 위임 (첫 페이지)")
         return getCameraPhotosPaged(0, 100).photos
     }
