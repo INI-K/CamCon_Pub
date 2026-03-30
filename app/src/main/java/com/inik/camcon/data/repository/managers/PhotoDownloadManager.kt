@@ -582,7 +582,7 @@ class PhotoDownloadManager @Inject constructor(
         var processedFile: File? = null
 
         try {
-            Log.d(TAG, "📥 사진 다운로드 시작: $fileName")
+            Log.d(TAG, "사진 다운로드 시작: $fileName")
             Log.d(TAG, "   전체 경로: $fullPath")
             val startTime = System.currentTimeMillis()
 
@@ -590,7 +590,7 @@ class PhotoDownloadManager @Inject constructor(
             val isCameraInternalPath = fullPath.startsWith("/store_") || fullPath.contains("/DCIM/")
 
             if (isCameraInternalPath) {
-                Log.d(TAG, "🔄 카메라 내부 경로 감지 - 네이티브 다운로드 사용: $fullPath")
+                Log.d(TAG, "카메라 내부 경로 감지 - 네이티브 다운로드 사용: $fullPath")
 
                 // 네이티브 데이터소스를 통해 카메라에서 직접 다운로드
                 val downloadResult = downloadPhotoFromCamera(
