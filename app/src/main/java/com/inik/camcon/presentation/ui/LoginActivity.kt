@@ -76,9 +76,11 @@ class LoginActivity : ComponentActivity() {
         val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
         try {
             val account = task.getResult(ApiException::class.java)
-            Log.d("LoginActivity", "Google account received: ${account?.email}")
+            if (com.inik.camcon.BuildConfig.DEBUG) {
+                Log.d("LoginActivity", "Google account received: ${account?.email}")
+            }
             account?.idToken?.let { idToken ->
-                Log.d("LoginActivity", "ID Token received, length: ${idToken.length}")
+                Log.d("LoginActivity", "ID Token received")
                 loginViewModel?.signInWithGoogle(idToken, currentReferralCode.ifBlank { null })
             } ?: run {
                 Log.e("LoginActivity", "ID Token is null")
