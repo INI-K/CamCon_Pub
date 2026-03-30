@@ -51,7 +51,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -163,16 +163,16 @@ fun PtpipConnectionScreen(
     }
 
     // 상태 수집
-    val connectionState by ptpipViewModel.connectionState.collectAsState()
-    val discoveredCameras by ptpipViewModel.discoveredCameras.collectAsState()
-    val isDiscovering by ptpipViewModel.isDiscovering.collectAsState()
-    val isConnecting by ptpipViewModel.isConnecting.collectAsState()
-    val errorMessage by ptpipViewModel.errorMessage.collectAsState()
-    val selectedCamera by ptpipViewModel.selectedCamera.collectAsState()
-    val cameraInfo by ptpipViewModel.cameraInfo.collectAsState()
-    val isPtpipEnabled by ptpipViewModel.isPtpipEnabled.collectAsState(initial = false)
-    val wifiNetworkState by ptpipViewModel.wifiNetworkState.collectAsState()
-    val isAutoReconnectEnabled by ptpipViewModel.isAutoReconnectEnabled.collectAsState(initial = false)
+    val connectionState by ptpipViewModel.connectionState.collectAsStateWithLifecycle()
+    val discoveredCameras by ptpipViewModel.discoveredCameras.collectAsStateWithLifecycle()
+    val isDiscovering by ptpipViewModel.isDiscovering.collectAsStateWithLifecycle()
+    val isConnecting by ptpipViewModel.isConnecting.collectAsStateWithLifecycle()
+    val errorMessage by ptpipViewModel.errorMessage.collectAsStateWithLifecycle()
+    val selectedCamera by ptpipViewModel.selectedCamera.collectAsStateWithLifecycle()
+    val cameraInfo by ptpipViewModel.cameraInfo.collectAsStateWithLifecycle()
+    val isPtpipEnabled by ptpipViewModel.isPtpipEnabled.collectAsStateWithLifecycle(initialValue = false)
+    val wifiNetworkState by ptpipViewModel.wifiNetworkState.collectAsStateWithLifecycle()
+    val isAutoReconnectEnabled by ptpipViewModel.isAutoReconnectEnabled.collectAsStateWithLifecycle(initialValue = false)
     val isWifiConnected = ptpipViewModel.isWifiConnected()
     val wifiCapabilities = ptpipViewModel.getWifiCapabilities()
     val nearbyWifiSSIDs by ptpipViewModel.nearbyWifiSSIDs.collectAsState()

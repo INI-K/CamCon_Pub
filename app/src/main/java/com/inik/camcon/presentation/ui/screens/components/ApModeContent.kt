@@ -24,7 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.GetApp
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,6 +63,13 @@ fun ApModeContent(
     onConnectToWifi: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // 전역 상태 수집
+    val globalConnectionState by ptpipViewModel.globalConnectionState.collectAsStateWithLifecycle()
+    val activeConnectionType by ptpipViewModel.activeConnectionType.collectAsStateWithLifecycle()
+    val connectionStatusMessage by ptpipViewModel.connectionStatusMessage.collectAsStateWithLifecycle()
+    val autoDownloadEnabled by ptpipViewModel.autoDownloadEnabled.collectAsStateWithLifecycle()
+    val lastDownloadedFile by ptpipViewModel.lastDownloadedFile.collectAsStateWithLifecycle()
+
     LazyColumn(
         modifier = modifier
             .fillMaxSize()

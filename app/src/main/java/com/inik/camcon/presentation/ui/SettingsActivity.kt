@@ -62,7 +62,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -100,7 +100,7 @@ class SettingsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
-            val themeMode by appSettingsViewModel.themeMode.collectAsState()
+            val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
             val authViewModel: AuthViewModel = hiltViewModel()
 
             CamConTheme(themeMode = themeMode) {
@@ -145,12 +145,12 @@ fun SettingsScreen(
     val context = LocalContext.current
 
     // Auth 상태 - null 체크 추가
-    val authUiState by authViewModel?.uiState?.collectAsState() ?: remember {
+    val authUiState by authViewModel?.uiState?.collectAsStateWithLifecycle() ?: remember {
         mutableStateOf(com.inik.camcon.presentation.viewmodel.AuthUiState())
     }
 
     // 관리자 레퍼럴 코드 상태
-    val adminReferralState by adminReferralCodeViewModel.uiState.collectAsState()
+    val adminReferralState by adminReferralCodeViewModel.uiState.collectAsStateWithLifecycle()
 
     // 카메라 상태 정보
     val cameraUiState by cameraViewModel.uiState.collectAsState()
@@ -197,28 +197,26 @@ fun SettingsScreen(
     }
 
     // PTPIP 설정 상태
-    val isPtpipEnabled by ptpipViewModel.isPtpipEnabled.collectAsState(initial = false)
-    val isWifiConnectionModeEnabled by ptpipViewModel.isWifiConnectionModeEnabled.collectAsState(
-        initial = true
-    )
-    val isAutoDiscoveryEnabled by ptpipViewModel.isAutoDiscoveryEnabled.collectAsState(initial = true)
-    val isAutoConnectEnabled by ptpipViewModel.isAutoConnectEnabled.collectAsState(initial = false)
-    val lastConnectedName by ptpipViewModel.lastConnectedName.collectAsState(initial = null)
+    val isPtpipEnabled by ptpipViewModel.isPtpipEnabled.collectAsStateWithLifecycle(initialValue = false)
+    val isWifiConnectionModeEnabled by ptpipViewModel.isWifiConnectionModeEnabled.collectAsStateWithLifecycle(initialValue = true)
+    val isAutoDiscoveryEnabled by ptpipViewModel.isAutoDiscoveryEnabled.collectAsStateWithLifecycle(initialValue = true)
+    val isAutoConnectEnabled by ptpipViewModel.isAutoConnectEnabled.collectAsStateWithLifecycle(initialValue = false)
+    val lastConnectedName by ptpipViewModel.lastConnectedName.collectAsStateWithLifecycle(initialValue = null)
 
     // 앱 설정 상태
-    val isCameraControlsEnabled by appSettingsViewModel.isCameraControlsEnabled.collectAsState()
-    val isLiveViewEnabled by appSettingsViewModel.isLiveViewEnabled.collectAsState()
-    val isAdminTier by appSettingsViewModel.isAdminTier.collectAsState()
-    val currentThemeMode by appSettingsViewModel.themeMode.collectAsState()
-    val isAutoStartEventListener by appSettingsViewModel.isAutoStartEventListenerEnabled.collectAsState()
-    val isShowLatestPhotoWhenDisabled by appSettingsViewModel.isShowLatestPhotoWhenDisabled.collectAsState()
+    val isCameraControlsEnabled by appSettingsViewModel.isCameraControlsEnabled.collectAsStateWithLifecycle()
+    val isLiveViewEnabled by appSettingsViewModel.isLiveViewEnabled.collectAsStateWithLifecycle()
+    val isAdminTier by appSettingsViewModel.isAdminTier.collectAsStateWithLifecycle()
+    val currentThemeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
+    val isAutoStartEventListener by appSettingsViewModel.isAutoStartEventListenerEnabled.collectAsStateWithLifecycle()
+    val isShowLatestPhotoWhenDisabled by appSettingsViewModel.isShowLatestPhotoWhenDisabled.collectAsStateWithLifecycle()
 
     // 색감 전송 설정 상태
-    val isColorTransferEnabled by appSettingsViewModel.isColorTransferEnabled.collectAsState()
-    val colorTransferReferenceImagePath by appSettingsViewModel.colorTransferReferenceImagePath.collectAsState()
-    val isRawFileDownloadEnabled by appSettingsViewModel.isRawFileDownloadEnabled.collectAsState()
+    val isColorTransferEnabled by appSettingsViewModel.isColorTransferEnabled.collectAsStateWithLifecycle()
+    val colorTransferReferenceImagePath by appSettingsViewModel.colorTransferReferenceImagePath.collectAsStateWithLifecycle()
+    val isRawFileDownloadEnabled by appSettingsViewModel.isRawFileDownloadEnabled.collectAsStateWithLifecycle()
 
-    val subscriptionTier by appSettingsViewModel.subscriptionTier.collectAsState()
+    val subscriptionTier by appSettingsViewModel.subscriptionTier.collectAsStateWithLifecycle()
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
