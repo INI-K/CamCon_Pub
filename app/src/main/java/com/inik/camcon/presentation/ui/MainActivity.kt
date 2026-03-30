@@ -194,7 +194,7 @@ fun MainScreen(
     // navigateToCameraControl 플래그가 true이면 카메라 컨트롤 탭으로 자동 이동
     LaunchedEffect(navigateToCameraControl) {
         if (navigateToCameraControl) {
-            LogcatManager.d("MainScreen", "🚀 카메라 컨트롤 탭으로 자동 이동")
+            LogcatManager.d("MainScreen", "카메라 컨트롤 탭으로 자동 이동")
             navController.navigate(BottomNavItem.CameraControl.route) {
                 popUpTo(navController.graph.findStartDestination().id) {
                     saveState = true
