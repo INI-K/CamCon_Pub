@@ -42,7 +42,7 @@ import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -88,7 +88,7 @@ import java.util.Locale
 fun MyPhotosScreen(
     viewModel: ServerPhotosViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedPhoto by remember { mutableStateOf<CapturedPhoto?>(null) }
 
     // 화면에 진입할 때마다 새로고침 - 탭 전환 시 확실히 실행됨

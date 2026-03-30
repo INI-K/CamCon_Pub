@@ -52,7 +52,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -176,12 +176,12 @@ fun MainScreen(
     var showPtpipWarning by remember { mutableStateOf(false) }
 
     // 전역 연결 상태 모니터링
-    val globalConnectionState by globalManager.globalConnectionState.collectAsState()
-    val activeConnectionType by globalManager.activeConnectionType.collectAsState()
-    val connectionStatusMessage by globalManager.connectionStatusMessage.collectAsState()
+    val globalConnectionState by globalManager.globalConnectionState.collectAsStateWithLifecycle()
+    val activeConnectionType by globalManager.activeConnectionType.collectAsStateWithLifecycle()
+    val connectionStatusMessage by globalManager.connectionStatusMessage.collectAsStateWithLifecycle()
 
     // CameraViewModel의 USB 초기화 상태 모니터링
-    val cameraUiState by cameraViewModel.uiState.collectAsState()
+    val cameraUiState by cameraViewModel.uiState.collectAsStateWithLifecycle()
 
     // LocalContext를 @Composable 내에서 미리 가져오기
     val context = LocalContext.current
@@ -207,7 +207,7 @@ fun MainScreen(
 
     // 테마 모드 상태
     val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
-    val themeMode by appSettingsViewModel.themeMode.collectAsState()
+    val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
 
     // 시스템 바 인셋 계산 - 기종별 대응
     val systemBarsPadding = WindowInsets.systemBars.asPaddingValues()
@@ -989,7 +989,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
-            val themeMode by appSettingsViewModel.themeMode.collectAsState()
+            val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
 
             var showBatteryDialog by remember { mutableStateOf(false) }
 

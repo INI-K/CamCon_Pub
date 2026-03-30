@@ -27,7 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -95,10 +95,10 @@ class SplashActivity : ComponentActivity() {
         setContent {
             val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
             val appVersionViewModel: AppVersionViewModel = hiltViewModel()
-            val themeMode by appSettingsViewModel.themeMode.collectAsState()
+            val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
 
             CamConTheme(themeMode = themeMode) {
-                val versionState by appVersionViewModel.uiState.collectAsState()
+                val versionState by appVersionViewModel.uiState.collectAsStateWithLifecycle()
 
                 // 앱 시작 시 버전 체크
                 LaunchedEffect(Unit) {
