@@ -47,6 +47,7 @@ import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -54,10 +55,12 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -267,6 +270,8 @@ fun SettingsScreen(
 
     // 테마 선택 다이얼로그 상태
     var showThemeDialog by remember { mutableStateOf(false) }
+    // 네이티브 로그 다이얼로그 상태
+    var logDialogContent by remember { mutableStateOf<String?>(null) }
 
     // 테마 모드를 한글로 변환하는 함수
     fun getThemeDisplayName(themeMode: ThemeMode): String {
@@ -727,29 +732,7 @@ fun SettingsScreen(
                                         android.widget.Toast.LENGTH_SHORT
                                     ).show()
                                 } else {
-                                    // 최신 로그 파일 내용 표시
-                                    val logContent = appSettingsViewModel.getLogFileContent()
-
-                                    // 간단한 다이얼로그로 로그 표시
-                                    android.app.AlertDialog.Builder(context)
-                                        .setTitle("네이티브 로그")
-                                        .setMessage(logContent.takeLast(3000)) // 마지막 3000자만 표시
-                                        .setPositiveButton("확인", null)
-                                        .setNeutralButton("전체 복사") { _, _ ->
-                                            val clipboard =
-                                                context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                            val clip = android.content.ClipData.newPlainText(
-                                                "native_log",
-                                                logContent
-                                            )
-                                            clipboard.setPrimaryClip(clip)
-                                            android.widget.Toast.makeText(
-                                                context,
-                                                "로그가 클립보드에 복사되었습니다",
-                                                android.widget.Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
-                                        .show()
+                                    logDialogContent = appSettingsViewModel.getLogFileContent()
                                 }
                             }
                         )
@@ -760,27 +743,71 @@ fun SettingsScreen(
             }
 
             if (showThemeDialog) {
-                android.app.AlertDialog.Builder(context)
-                    .setTitle("테마 설정")
-                    .setSingleChoiceItems(
-                        arrayOf("시스템 설정 따름", "라이트 모드", "다크 모드").map { it }.toTypedArray(),
-                        when (currentThemeMode) {
-                            ThemeMode.FOLLOW_SYSTEM -> 0
-                            ThemeMode.LIGHT -> 1
-                            ThemeMode.DARK -> 2
+                AlertDialog(
+                    onDismissRequest = { showThemeDialog = false },
+                    title = { Text("테마 설정") },
+                    text = {
+                        val options = listOf(
+                            ThemeMode.FOLLOW_SYSTEM to "시스템 설정 따름",
+                            ThemeMode.LIGHT to "라이트 모드",
+                            ThemeMode.DARK to "다크 모드"
+                        )
+                        Column {
+                            options.forEach { (mode, label) ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            appSettingsViewModel.setThemeMode(mode)
+                                            showThemeDialog = false
+                                        },
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    RadioButton(
+                                        selected = currentThemeMode == mode,
+                                        onClick = {
+                                            appSettingsViewModel.setThemeMode(mode)
+                                            showThemeDialog = false
+                                        }
+                                    )
+                                    Text(label)
+                                }
+                            }
                         }
-                    ) { _, which ->
-                        when (which) {
-                            0 -> appSettingsViewModel.setThemeMode(ThemeMode.FOLLOW_SYSTEM)
-                            1 -> appSettingsViewModel.setThemeMode(ThemeMode.LIGHT)
-                            2 -> appSettingsViewModel.setThemeMode(ThemeMode.DARK)
+                    },
+                    confirmButton = {},
+                    dismissButton = {
+                        TextButton(onClick = { showThemeDialog = false }) { Text("취소") }
+                    }
+                )
+            }
+
+            // 네이티브 로그 다이얼로그
+            logDialogContent?.let { logContent ->
+                AlertDialog(
+                    onDismissRequest = { logDialogContent = null },
+                    title = { Text("네이티브 로그") },
+                    text = {
+                        Column(
+                            modifier = Modifier.verticalScroll(rememberScrollState())
+                        ) {
+                            Text(
+                                text = logContent.takeLast(3000),
+                                style = MaterialTheme.typography.bodySmall
+                            )
                         }
-                        showThemeDialog = false
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { logDialogContent = null }) { Text("확인") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("native_log", logContent))
+                            android.widget.Toast.makeText(context, "로그가 클립보드에 복사되었습니다", android.widget.Toast.LENGTH_SHORT).show()
+                        }) { Text("전체 복사") }
                     }
-                    .setNegativeButton("취소") { _, _ ->
-                        showThemeDialog = false
-                    }
-                    .show()
+                )
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -799,8 +826,8 @@ fun SettingsScreen(
                 SettingsItem(
                     icon = Icons.Default.Update,
                     title = "앱 버전",
-                    subtitle = "1.0.0",
-                    onClick = { /* TODO */ }
+                    subtitle = BuildConfig.VERSION_NAME,
+                    onClick = { }
                 )
             }
 
