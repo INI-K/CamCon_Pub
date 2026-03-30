@@ -6,12 +6,11 @@ import com.inik.camcon.domain.model.CameraSettings
 import com.inik.camcon.domain.usecase.camera.GetCameraCapabilitiesUseCase
 import com.inik.camcon.domain.usecase.camera.GetCameraSettingsUseCase
 import com.inik.camcon.domain.usecase.camera.UpdateCameraSettingUseCase
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -58,8 +57,8 @@ class CameraSettingsManager @Inject constructor(
     /**
      * 카메라 설정 로드
      */
-    fun loadCameraSettings(cameraId: String? = null) {
-        CoroutineScope(Dispatchers.IO).launch {
+    suspend fun loadCameraSettings(cameraId: String? = null) {
+        withContext(Dispatchers.IO) {
             try {
                 _isLoadingSettings.value = true
                 logger.d(TAG, "카메라 설정 로딩 시작")
@@ -108,8 +107,8 @@ class CameraSettingsManager @Inject constructor(
     /**
      * 카메라 기능 정보 로드
      */
-    fun loadCameraCapabilities(cameraId: String? = null) {
-        CoroutineScope(Dispatchers.IO).launch {
+    suspend fun loadCameraCapabilities(cameraId: String? = null) {
+        withContext(Dispatchers.IO) {
             try {
                 logger.d(TAG, "카메라 기능 정보 로딩 시작")
 
@@ -118,7 +117,7 @@ class CameraSettingsManager @Inject constructor(
                     capabilitiesCache[cameraId]?.let { cachedCapabilities ->
                         logger.d(TAG, "기능 정보 캐시에서 로딩")
                         _cameraCapabilities.value = cachedCapabilities
-                        return@launch
+                        return@withContext
                     }
                 }
 
@@ -175,8 +174,8 @@ class CameraSettingsManager @Inject constructor(
     /**
      * 카메라 설정 업데이트
      */
-    fun updateCameraSetting(key: String, value: String) {
-        CoroutineScope(Dispatchers.IO).launch {
+    suspend fun updateCameraSetting(key: String, value: String) {
+        withContext(Dispatchers.IO) {
             try {
                 _isUpdatingSettings.value = true
                 logger.d(TAG, "카메라 설정 업데이트: $key = $value")
@@ -220,8 +219,8 @@ class CameraSettingsManager @Inject constructor(
     /**
      * 여러 카메라 설정을 한 번에 업데이트
      */
-    fun updateCameraSettings(settings: Map<String, String>) {
-        CoroutineScope(Dispatchers.IO).launch {
+    suspend fun updateCameraSettings(settings: Map<String, String>) {
+        withContext(Dispatchers.IO) {
             try {
                 _isUpdatingSettings.value = true
                 logger.d(TAG, "다중 카메라 설정 업데이트 시작: ${settings.size}개 설정")
