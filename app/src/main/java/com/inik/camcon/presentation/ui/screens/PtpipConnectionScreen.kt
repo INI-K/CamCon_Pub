@@ -98,7 +98,7 @@ fun PtpipConnectionScreen(
     val scope = rememberCoroutineScope()
 
     // 구독 티어 체크 (STA 모드는 ADMIN만 보임)
-    val isAdmin by appSettingsViewModel.isAdminTier.collectAsState()
+    val isAdmin by appSettingsViewModel.isAdminTier.collectAsStateWithLifecycle()
     // 탭 제목과 탭 수를 동적으로 구성
     val tabTitles = if (isAdmin) listOf("AP 모드", "STA 모드") else listOf("AP 모드")
     val pagerState = rememberPagerState(initialPage = 0) { tabTitles.size }
@@ -175,14 +175,14 @@ fun PtpipConnectionScreen(
     val isAutoReconnectEnabled by ptpipViewModel.isAutoReconnectEnabled.collectAsStateWithLifecycle(initialValue = false)
     val isWifiConnected = ptpipViewModel.isWifiConnected()
     val wifiCapabilities = ptpipViewModel.getWifiCapabilities()
-    val nearbyWifiSSIDs by ptpipViewModel.nearbyWifiSSIDs.collectAsState()
-    val needLocationSettings by ptpipViewModel.needLocationSettings.collectAsState()
-    val needWifiSettings by ptpipViewModel.needWifiSettings.collectAsState()
-    val connectionLostMessage by ptpipViewModel.connectionLostMessage.collectAsState()
+    val nearbyWifiSSIDs by ptpipViewModel.nearbyWifiSSIDs.collectAsStateWithLifecycle()
+    val needLocationSettings by ptpipViewModel.needLocationSettings.collectAsStateWithLifecycle()
+    val needWifiSettings by ptpipViewModel.needWifiSettings.collectAsStateWithLifecycle()
+    val connectionLostMessage by ptpipViewModel.connectionLostMessage.collectAsStateWithLifecycle()
 
     // PTPIP 연결 진행 상황을 위한 상태
     var showConnectionProgressDialog by remember { mutableStateOf(false) }
-    val connectionProgressMessage by ptpipViewModel.connectionProgressMessage.collectAsState()
+    val connectionProgressMessage by ptpipViewModel.connectionProgressMessage.collectAsStateWithLifecycle()
 
     // === 추가: Wi-Fi 패스워드 입력 다이얼로그 & 상태 ===
     var showPasswordDialog by remember { mutableStateOf(false) }
@@ -551,7 +551,7 @@ fun PtpipConnectionScreen(
     }
 
     // 테마 모드 가져오기
-    val themeMode by appSettingsViewModel.themeMode.collectAsState()
+    val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
 
     CamConTheme(themeMode = themeMode) {
         Scaffold(
