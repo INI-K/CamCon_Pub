@@ -293,7 +293,7 @@ class CameraConnectionManager @Inject constructor(
                     if (!hasPermission) {
                         // 권한이 없으면 권한 요청
                         Log.d(TAG, "USB 권한 없음 - 권한 요청")
-                        requestUsbPermissionUseCase(device)
+                        requestUsbPermissionUseCase(device.deviceId)
                         uiStateManager.setError("USB 권한을 요청했습니다. 대화상자에서 승인해주세요.")
                     } else if (!isConnected) {
                         // 권한이 있고 연결되지 않은 경우 자동 연결 시도
@@ -350,7 +350,7 @@ class CameraConnectionManager @Inject constructor(
                 val devices = refreshUsbDevicesUseCase()
                 if (devices.isNotEmpty()) {
                     val device = devices.first()
-                    requestUsbPermissionUseCase(device)
+                    requestUsbPermissionUseCase(device.deviceId)
                     uiStateManager?.setError("USB 권한을 요청했습니다. 대화상자에서 승인해주세요.")
                     uiStateManager?.updateUsbInitialization(false, "USB 권한 대기 중...")
                 } else {
