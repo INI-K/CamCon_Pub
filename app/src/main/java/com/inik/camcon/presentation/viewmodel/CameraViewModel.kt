@@ -669,6 +669,7 @@ class CameraViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
+        currentActivity = null
 
         // 매니저들 정리
         operationsManager.cleanup()
