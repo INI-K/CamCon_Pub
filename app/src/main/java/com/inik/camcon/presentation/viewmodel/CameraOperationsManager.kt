@@ -13,10 +13,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.cancelChildren
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -37,8 +37,9 @@ class CameraOperationsManager @Inject constructor(
         private const val TAG = "카메라작업매니저"
     }
 
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     // 작업 관리
-    private val operationsScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var liveViewJob: Job? = null
     private var timelapseJob: Job? = null
 
@@ -49,7 +50,7 @@ class CameraOperationsManager @Inject constructor(
         shootingMode: ShootingMode,
         uiStateManager: CameraUiStateManager
     ) {
-        operationsScope.launch {
+        scope.launch {
             try {
                 Log.d(TAG, "사진 촬영 요청 시작")
                 uiStateManager.updateCapturingState(true)
@@ -87,7 +88,7 @@ class CameraOperationsManager @Inject constructor(
         }
 
         Log.d(TAG, "라이브뷰 시작 요청")
-        liveViewJob = operationsScope.launch {
+        liveViewJob = scope.launch {
             try {
                 if (cameraCapabilities != null && !cameraCapabilities.canLiveView) {
                     Log.w(TAG, "카메라가 라이브뷰를 지원하지 않음")
@@ -138,7 +139,7 @@ class CameraOperationsManager @Inject constructor(
         liveViewJob?.cancel()
         liveViewJob = null
 
-        operationsScope.launch {
+        scope.launch {
             try {
                 stopLiveViewUseCase()
                 uiStateManager.updateLiveViewState(
@@ -175,7 +176,7 @@ class CameraOperationsManager @Inject constructor(
             duration = (interval * totalShots) / 60
         )
 
-        timelapseJob = operationsScope.launch {
+        timelapseJob = scope.launch {
             try {
                 uiStateManager.updateCapturingState(true)
                 uiStateManager.setShootingMode(ShootingMode.TIMELAPSE)
@@ -212,7 +213,7 @@ class CameraOperationsManager @Inject constructor(
      * 자동초점
      */
     fun performAutoFocus(uiStateManager: CameraUiStateManager) {
-        operationsScope.launch {
+        scope.launch {
             try {
                 uiStateManager.updateFocusingState(true)
 
@@ -255,10 +256,10 @@ class CameraOperationsManager @Inject constructor(
      * 모든 작업 중지 및 정리
      */
     fun cleanup() {
+        scope.cancel()
         liveViewJob?.cancel()
         timelapseJob?.cancel()
         liveViewJob = null
         timelapseJob = null
-        operationsScope.coroutineContext.cancelChildren()
     }
 }
