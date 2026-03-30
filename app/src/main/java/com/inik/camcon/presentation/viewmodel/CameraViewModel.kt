@@ -444,7 +444,9 @@ class CameraViewModel @Inject constructor(
      * 카메라 설정 업데이트 (SettingsManager에 위임)
      */
     fun updateCameraSetting(key: String, value: String) {
-        settingsManager.updateCameraSetting(key, value)
+        viewModelScope.launch {
+            settingsManager.updateCameraSetting(key, value)
+        }
     }
 
     /**
@@ -652,7 +654,9 @@ class CameraViewModel @Inject constructor(
     }
 
     fun refreshCameraCapabilities() {
-        settingsManager.loadCameraCapabilities()
+        viewModelScope.launch {
+            settingsManager.loadCameraCapabilities()
+        }
     }
 
     /**
