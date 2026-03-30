@@ -84,13 +84,14 @@ import java.util.Locale
  * 현재 보여지는 사진을 공유
  */
 private fun shareCurrentPhoto(
+    scope: CoroutineScope,
     context: android.content.Context,
     photo: CameraPhoto,
     viewModel: PhotoPreviewViewModel?,
     fullImageData: ByteArray? = null,
     thumbnailData: ByteArray? = null
 ) {
-    CoroutineScope(Dispatchers.IO).launch {
+    scope.launch(Dispatchers.IO) {
         try {
             // 1. 로컬 파일인 경우
             val isLocalFile = java.io.File(photo.path).exists()
@@ -373,6 +374,7 @@ fun FullScreenPhotoViewer(
                 )
 
                 shareCurrentPhoto(
+                    scope,
                     context,
                     currentPhoto,
                     viewModel,
