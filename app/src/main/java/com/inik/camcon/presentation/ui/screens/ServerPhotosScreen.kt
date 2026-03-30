@@ -644,7 +644,7 @@ fun CapturedPhotoItem(
                 Text(
                     text = dateFormat.format(Date(photo.captureTime)),
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 // 파일 크기 표시
@@ -656,7 +656,7 @@ fun CapturedPhotoItem(
                 Text(
                     text = sizeText,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 

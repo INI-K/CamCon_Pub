@@ -37,6 +37,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
@@ -92,7 +93,7 @@ fun PhotoInfoBottomSheet(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color.White)
+                    .background(MaterialTheme.colorScheme.surface)
                     .padding(horizontal = 20.dp)
             ) {
                 // 핸들 바
@@ -107,7 +108,7 @@ fun PhotoInfoBottomSheet(
                             .width(40.dp)
                             .height(4.dp)
                             .background(
-                                Color.Gray.copy(alpha = 0.3f),
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
                                 RoundedCornerShape(2.dp)
                             )
                     )
@@ -134,7 +135,7 @@ fun PhotoInfoBottomSheet(
                             Icon(
                                 Icons.Default.ArrowBack,
                                 contentDescription = "뒤로가기",
-                                tint = Color.Black
+                                tint = MaterialTheme.colorScheme.onSurface
                             )
                         }
                         Spacer(modifier = Modifier.width(8.dp))
@@ -142,14 +143,14 @@ fun PhotoInfoBottomSheet(
                             text = "상세정보",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Medium,
-                            color = Color.Black
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
 
                     Text(
                         text = "편집",
                         fontSize = 16.sp,
-                        color = Color.Black
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
@@ -168,7 +169,7 @@ fun PhotoInfoBottomSheet(
                                 Icons.Outlined.CalendarToday,
                                 contentDescription = null,
                                 modifier = Modifier.size(24.dp),
-                                tint = Color.Black
+                                tint = MaterialTheme.colorScheme.onSurface
                             )
                         },
                         content = {
@@ -182,7 +183,7 @@ fun PhotoInfoBottomSheet(
                             Text(
                                 text = formattedDate,
                                 fontSize = 16.sp,
-                                color = Color.Black
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                     )
@@ -194,7 +195,7 @@ fun PhotoInfoBottomSheet(
                                 Icons.Outlined.Image,
                                 contentDescription = null,
                                 modifier = Modifier.size(24.dp),
-                                tint = Color.Black
+                                tint = MaterialTheme.colorScheme.onSurface
                             )
                         },
                         content = {
@@ -203,7 +204,7 @@ fun PhotoInfoBottomSheet(
                                     text = photo.name,
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Medium,
-                                    color = Color.Black
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
 
                                 Spacer(modifier = Modifier.height(4.dp))
@@ -236,7 +237,7 @@ fun PhotoInfoBottomSheet(
                                 Text(
                                     text = fileInfo,
                                     fontSize = 14.sp,
-                                    color = Color.Gray
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
 
                                 // 폴더 경로
@@ -246,7 +247,7 @@ fun PhotoInfoBottomSheet(
                                 Text(
                                     text = folderPath,
                                     fontSize = 14.sp,
-                                    color = Color.Gray
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -259,7 +260,7 @@ fun PhotoInfoBottomSheet(
                                 Icons.Outlined.PhotoCamera,
                                 contentDescription = null,
                                 modifier = Modifier.size(24.dp),
-                                tint = Color.Black
+                                tint = MaterialTheme.colorScheme.onSurface
                             )
                         },
                         content = {
@@ -267,7 +268,7 @@ fun PhotoInfoBottomSheet(
                                 Text(
                                     text = "EXIF 정보 불러오는 중...",
                                     fontSize = 16.sp,
-                                    color = Color.Gray
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             } else {
                                 ExifInfoContent(exifInfo = exifInfo)
@@ -310,7 +311,7 @@ private fun ExifInfoContent(exifInfo: String?) {
         Text(
             text = "EXIF 정보가 없습니다",
             fontSize = 16.sp,
-            color = Color.Gray
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     } else {
         val exifEntries = remember(exifInfo) {
@@ -343,7 +344,7 @@ private fun ExifInfoContent(exifInfo: String?) {
                     text = cameraModel,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
@@ -373,7 +374,7 @@ private fun ExifInfoContent(exifInfo: String?) {
                     Text(
                         text = settings.joinToString("    "),
                         fontSize = 14.sp,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
@@ -391,7 +392,7 @@ private fun ExifInfoContent(exifInfo: String?) {
                     Text(
                         text = additionalInfo.joinToString("    "),
                         fontSize = 14.sp,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -399,7 +400,7 @@ private fun ExifInfoContent(exifInfo: String?) {
             Text(
                 text = "EXIF 정보를 파싱할 수 없습니다",
                 fontSize = 16.sp,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
