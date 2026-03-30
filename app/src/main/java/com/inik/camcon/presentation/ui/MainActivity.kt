@@ -234,7 +234,11 @@ fun MainScreen(
             var isRestarting by remember { mutableStateOf(false) }
 
             AlertDialog(
-                onDismissRequest = { /* 다이얼로그 닫기 방지 */ },
+                onDismissRequest = {
+                    if (!isRestarting) {
+                        showRestartDialog = false
+                    }
+                },
                 icon = { Icon(Icons.Default.Settings, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                 title = { Text("앱 재시작 필요", style = MaterialTheme.typography.titleLarge) },
                 text = {
@@ -261,12 +265,13 @@ fun MainScreen(
                     if (!isRestarting) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             TextButton(
+                                onClick = { showRestartDialog = false }
+                            ) { Text("나중에") }
+
+                            TextButton(
                                 onClick = {
                                     isRestarting = true
-                                    // 모든 상태 정리
                                     cameraViewModel.clearPtpTimeout()
-
-                                    // 시스템 재시작 메커니즘을 사용한 재시작
                                     val activity = context as? ComponentActivity
                                     activity?.let { act ->
                                         MainActivity.restartAppAfterCameraCleanup(act)
@@ -277,10 +282,7 @@ fun MainScreen(
                             TextButton(
                                 onClick = {
                                     isRestarting = true
-                                    // 모든 상태 정리
                                     cameraViewModel.clearPtpTimeout()
-
-                                    // 간단한 재시작 (앱 종료만)
                                     val activity = context as? ComponentActivity
                                     activity?.let { act ->
                                         MainActivity.systemRestartApp(act)
@@ -289,11 +291,7 @@ fun MainScreen(
                             ) { Text("종료") }
                         }
                     }
-                },
-                properties = androidx.compose.ui.window.DialogProperties(
-                    dismissOnBackPress = false,
-                    dismissOnClickOutside = false
-                )
+                }
             )
         }
 

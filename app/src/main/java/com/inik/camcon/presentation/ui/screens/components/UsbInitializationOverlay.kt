@@ -203,7 +203,7 @@ fun PtpTimeoutDialog(
             }
         },
         properties = DialogProperties(
-            dismissOnBackPress = false,
+            dismissOnBackPress = true,
             dismissOnClickOutside = false
         )
     )
