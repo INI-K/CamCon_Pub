@@ -137,7 +137,6 @@ object AppModule {
     fun provideAppPreferencesDataSource(@ApplicationContext context: Context) =
         AppPreferencesDataSource(context)
 
-
     @Provides
     @Singleton
     fun provideCameraUiStateManager(): CameraUiStateManager = CameraUiStateManager()
