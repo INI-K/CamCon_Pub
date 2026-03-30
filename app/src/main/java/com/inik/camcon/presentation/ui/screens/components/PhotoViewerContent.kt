@@ -19,7 +19,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.inik.camcon.domain.model.CameraPhoto
-import androidx.compose.material.MaterialTheme
+import androidx.compose.material3.MaterialTheme
 
 /**
  * 사진 뷰어의 메인 이미지 콘텐츠
