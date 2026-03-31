@@ -13,6 +13,7 @@ import com.inik.camcon.data.repository.CameraConnectionStateProviderImpl
 import com.inik.camcon.data.repository.CameraDiagnosticsRepositoryImpl
 import com.inik.camcon.data.repository.CameraFileRepositoryImpl
 import com.inik.camcon.data.repository.CameraFocusRepositoryImpl
+import com.inik.camcon.data.repository.CameraMockRepositoryImpl
 import com.inik.camcon.data.repository.CameraRepositoryImpl
 import com.inik.camcon.data.repository.CameraStreamingRepositoryImpl
 import com.inik.camcon.data.repository.SubscriptionRepositoryImpl
@@ -33,6 +34,7 @@ import com.inik.camcon.domain.repository.CameraConnectionStateProvider
 import com.inik.camcon.domain.repository.CameraDiagnosticsRepository
 import com.inik.camcon.domain.repository.CameraFileRepository
 import com.inik.camcon.domain.repository.CameraFocusRepository
+import com.inik.camcon.domain.repository.CameraMockRepository
 import com.inik.camcon.domain.repository.CameraStreamingRepository
 import com.inik.camcon.domain.repository.ColorTransferRepository
 import com.inik.camcon.domain.repository.CameraRepository
@@ -163,4 +165,9 @@ abstract class RepositoryModule {
     abstract fun bindDiagnosticsRepository(
         impl: CameraDiagnosticsRepositoryImpl
     ): CameraDiagnosticsRepository
+
+    @Binds
+    abstract fun bindMockRepository(
+        impl: CameraMockRepositoryImpl
+    ): CameraMockRepository
 }
