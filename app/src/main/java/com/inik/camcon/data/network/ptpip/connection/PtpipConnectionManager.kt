@@ -10,6 +10,7 @@ import java.net.InetSocketAddress
 import java.net.Socket
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -19,10 +20,10 @@ import javax.inject.Singleton
  */
 @Singleton
 class PtpipConnectionManager @Inject constructor() {
-    private var commandSocket: Socket? = null
-    private var eventSocket: Socket? = null
+    @Volatile private var commandSocket: Socket? = null
+    @Volatile private var eventSocket: Socket? = null
     private var sessionId: Int = 0
-    private var transactionId: Int = 0
+    private val transactionId = AtomicInteger(0)
 
     companion object {
         private const val TAG = "PtpipConnectionManager"
@@ -214,7 +215,7 @@ class PtpipConnectionManager @Inject constructor() {
             commandSocket = null
             eventSocket = null
             sessionId = 0
-            transactionId = 0
+            transactionId.set(0)
         }
     }
 
@@ -232,10 +233,10 @@ class PtpipConnectionManager @Inject constructor() {
         withContext(Dispatchers.IO) {
             return@withContext try {
                 Log.d(TAG, "포트 연결 확인: $ipAddress:$port")
-                val socket = Socket()
-                socket.connect(InetSocketAddress(ipAddress, port), 2000)
-                socket.close()
-                true
+                Socket().use { socket ->
+                    socket.connect(InetSocketAddress(ipAddress, port), 2000)
+                    true
+                }
             } catch (e: Exception) {
                 Log.w(TAG, "포트 연결 실패: $ipAddress:$port - ${e.message}")
                 false
@@ -370,7 +371,7 @@ class PtpipConnectionManager @Inject constructor() {
      */
     private fun createOperationRequest(operation: Int, vararg parameters: Int): ByteArray {
         val currentTransactionId =
-            if (operation == PtpipConstants.PTP_OC_OpenSession) 0 else transactionId++
+            if (operation == PtpipConstants.PTP_OC_OpenSession) 0 else transactionId.getAndIncrement()
         val paramSize = parameters.size * 4
         val totalSize = 18 + paramSize
 

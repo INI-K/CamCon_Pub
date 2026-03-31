@@ -87,6 +87,8 @@ class NikonAuthenticationService @Inject constructor() {
                         LogcatManager.d(TAG, "✅ Command 소켓 연결 성공")
                     } catch (e: Exception) {
                         LogcatManager.e(TAG, "❌ Command 소켓 연결 실패: ${e.message}")
+                        try { commandSocket?.close() } catch (_: Exception) {}
+                        commandSocket = null
                         retryCount++
                         continue
                     }
@@ -94,6 +96,8 @@ class NikonAuthenticationService @Inject constructor() {
                     val connectionNumber = performCommandInitialization(commandSocket)
                     if (connectionNumber == -1) {
                         LogcatManager.e(TAG, "❌ Command 초기화 실패")
+                        try { commandSocket?.close() } catch (_: Exception) {}
+                        commandSocket = null
                         retryCount++
                         continue
                     }
@@ -108,12 +112,20 @@ class NikonAuthenticationService @Inject constructor() {
                         LogcatManager.d(TAG, "✅ Event 소켓 연결 성공")
                     } catch (e: Exception) {
                         LogcatManager.e(TAG, "❌ Event 소켓 연결 실패: ${e.message}")
+                        try { commandSocket?.close() } catch (_: Exception) {}
+                        try { eventSocket?.close() } catch (_: Exception) {}
+                        commandSocket = null
+                        eventSocket = null
                         retryCount++
                         continue
                     }
 
                     if (!performEventInitialization(eventSocket, connectionNumber)) {
                         LogcatManager.e(TAG, "❌ Event 초기화 실패")
+                        try { commandSocket?.close() } catch (_: Exception) {}
+                        try { eventSocket?.close() } catch (_: Exception) {}
+                        commandSocket = null
+                        eventSocket = null
                         retryCount++
                         continue
                     }
@@ -263,7 +275,9 @@ class NikonAuthenticationService @Inject constructor() {
                 LogcatManager.e(TAG, "Phase 2 중 오류: ${e.message}")
                 return@withContext false
             } finally {
-                // Phase 2에서는 연결을 유지하므로 해제하지 않음
+                // Phase 2 소켓 정리 (테스트 호출용)
+                try { commandSocket?.close() } catch (_: Exception) {}
+                try { eventSocket?.close() } catch (_: Exception) {}
             }
         }
 
@@ -345,6 +359,7 @@ class NikonAuthenticationService @Inject constructor() {
                 val hasOperationResponse = checkForOperationResponse(response, bytesRead)
                 if (!hasOperationResponse) {
                     LogcatManager.d(TAG, "OPERATION_RESPONSE 없음 - 추가 read 시도")
+                    val originalTimeout = commandSocket.soTimeout
                     try {
                         commandSocket.soTimeout = 1000  // 1초만 대기
                         val additionalBytes = commandSocket.getInputStream()
@@ -358,6 +373,8 @@ class NikonAuthenticationService @Inject constructor() {
                         }
                     } catch (e: java.net.SocketTimeoutException) {
                         LogcatManager.d(TAG, "추가 응답 없음 (정상)")
+                    } finally {
+                        commandSocket.soTimeout = originalTimeout
                     }
                 }
 
@@ -409,6 +426,7 @@ class NikonAuthenticationService @Inject constructor() {
                 return true
             }
 
+            if (packetLength <= 0) break
             offset += packetLength
         }
         return false
@@ -435,6 +453,7 @@ class NikonAuthenticationService @Inject constructor() {
                 return responseCode
             }
 
+            if (packetLength <= 0) break
             offset += packetLength
         }
         return 0
@@ -510,7 +529,8 @@ class NikonAuthenticationService @Inject constructor() {
                     }
                 }
 
-                // 다음 패킷으로 이동
+                // 다음 패킷으로 이동 (packetLength가 0이면 무한루프 방지)
+                if (packetLength <= 0) break
                 offset += packetLength
             }
 
@@ -1031,11 +1051,11 @@ class NikonAuthenticationService @Inject constructor() {
 
             for (port in commonPorts) {
                 try {
-                    val socket = Socket()
-                    socket.connect(InetSocketAddress(ipAddress, port), 1000)
-                    socket.close()
-                    openPorts.add(port)
-                    LogcatManager.d(TAG, "포트 $port: 열림")
+                    Socket().use { socket ->
+                        socket.connect(InetSocketAddress(ipAddress, port), 1000)
+                        openPorts.add(port)
+                        LogcatManager.d(TAG, "포트 $port: 열림")
+                    }
                 } catch (e: Exception) {
                     LogcatManager.d(TAG, "포트 $port: 닫힘 (${e.message})")
                 }

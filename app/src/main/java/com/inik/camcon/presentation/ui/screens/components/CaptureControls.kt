@@ -1,7 +1,10 @@
 package com.inik.camcon.presentation.ui.screens.components
 
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -30,10 +33,10 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.presentation.theme.Background
+import com.inik.camcon.presentation.theme.Border
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.Primary
 import com.inik.camcon.presentation.theme.PrimaryDark
@@ -44,6 +47,7 @@ import com.inik.camcon.presentation.theme.TextSecondary
 import com.inik.camcon.presentation.viewmodel.CameraUiState
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import com.inik.camcon.data.datasource.local.ThemeMode
+import com.inik.camcon.presentation.theme.OnPrimary
 
 /**
  * 단순화된 촬영 컨트롤 컴포넌트
@@ -54,6 +58,7 @@ fun CaptureControls(
     viewModel: CameraViewModel,
     onShowTimelapseDialog: () -> Unit,
     isVertical: Boolean,
+    onGalleryClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (isVertical) {
@@ -64,8 +69,10 @@ fun CaptureControls(
         ) {
             CaptureControlsContent(
                 uiState = uiState,
-                viewModel = viewModel,
-                onShowTimelapseDialog = onShowTimelapseDialog
+                onCapture = { viewModel.capturePhoto() },
+                onAutoFocus = { viewModel.performAutoFocus() },
+                onShowTimelapseDialog = onShowTimelapseDialog,
+                onGalleryClick = onGalleryClick
             )
         }
     } else {
@@ -78,8 +85,10 @@ fun CaptureControls(
         ) {
             CaptureControlsContent(
                 uiState = uiState,
-                viewModel = viewModel,
-                onShowTimelapseDialog = onShowTimelapseDialog
+                onCapture = { viewModel.capturePhoto() },
+                onAutoFocus = { viewModel.performAutoFocus() },
+                onShowTimelapseDialog = onShowTimelapseDialog,
+                onGalleryClick = onGalleryClick
             )
         }
     }
@@ -88,72 +97,84 @@ fun CaptureControls(
 @Composable
 private fun CaptureControlsContent(
     uiState: CameraUiState,
-    viewModel: CameraViewModel,
-    onShowTimelapseDialog: () -> Unit
+    onCapture: () -> Unit,
+    onAutoFocus: () -> Unit,
+    onShowTimelapseDialog: () -> Unit,
+    onGalleryClick: () -> Unit = {}
 ) {
     // 갤러리 버튼
     Surface(
         color = SurfaceElevated,
         shape = CircleShape,
+        border = BorderStroke(1.dp, Border),
         modifier = Modifier.size(52.dp)
     ) {
         IconButton(
-            onClick = { /* Navigate to gallery */ },
+            onClick = onGalleryClick,
             modifier = Modifier.size(52.dp)
         ) {
             Icon(
                 Icons.Default.PhotoLibrary,
                 contentDescription = stringResource(R.string.gallery),
-                tint = TextPrimary,
-                modifier = Modifier.size(26.dp)
+                tint = TextSecondary,
+                modifier = Modifier.size(24.dp)
             )
         }
     }
 
-    // 메인 촬영 버튼
+    // 메인 촬영 버튼 — DSLR 이중 링 셔터 스타일
     val scale by animateFloatAsState(
-        targetValue = if (uiState.isCapturing) 0.95f else 1f,
-        animationSpec = tween(150),
+        targetValue = if (uiState.isCapturing) 0.93f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessHigh
+        ),
         label = "capture_button_scale"
     )
 
     val isEnabled = uiState.isConnected && !uiState.isCapturing
 
+    // 바깥 장식 링
     Box(
+        contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(76.dp)
+            .size(88.dp)
             .scale(scale)
-            .shadow(
-                elevation = if (isEnabled) 16.dp else 0.dp,
-                shape = CircleShape,
-                ambientColor = Primary.copy(alpha = 0.3f),
-                spotColor = Primary.copy(alpha = 0.5f)
-            )
-            .clip(CircleShape)
             .border(
-                width = 3.dp,
-                color = if (isEnabled) Primary else TextMuted,
+                width = 1.5.dp,
+                color = if (isEnabled) Primary.copy(alpha = 0.3f) else TextMuted.copy(alpha = 0.12f),
                 shape = CircleShape
             )
-            .background(
-                color = if (isEnabled) Primary else TextMuted.copy(alpha = 0.3f)
-            )
-            .clickable(
-                enabled = isEnabled
-            ) {
-                when (uiState.shootingMode) {
-                    ShootingMode.TIMELAPSE -> onShowTimelapseDialog()
-                    else -> viewModel.capturePhoto()
-                }
-            },
-        contentAlignment = Alignment.Center
     ) {
-        if (uiState.isCapturing) {
-            CircularProgressIndicator(
-                color = TextPrimary,
-                modifier = Modifier.size(40.dp),
-                strokeWidth = 3.dp
-            )
+        // 안쪽 버튼
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .shadow(
+                    elevation = if (isEnabled) 20.dp else 0.dp,
+                    shape = CircleShape,
+                    ambientColor = Primary.copy(alpha = 0.4f),
+                    spotColor = Primary.copy(alpha = 0.6f)
+                )
+                .clip(CircleShape)
+                .background(
+                    color = if (isEnabled) Primary else TextMuted.copy(alpha = 0.25f)
+                )
+                .clickable(enabled = isEnabled) {
+                    when (uiState.shootingMode) {
+                        ShootingMode.TIMELAPSE -> onShowTimelapseDialog()
+                        else -> onCapture()
+                    }
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            if (uiState.isCapturing) {
+                CircularProgressIndicator(
+                    color = OnPrimary,
+                    modifier = Modifier.size(36.dp),
+                    strokeWidth = 2.5.dp
+                )
+            }
         }
     }
 
@@ -161,25 +182,29 @@ private fun CaptureControlsContent(
     Surface(
         color = if (uiState.isConnected) SurfaceElevated else SurfaceElevated.copy(alpha = 0.5f),
         shape = CircleShape,
+        border = BorderStroke(
+            1.dp,
+            if (uiState.isConnected) Border else TextMuted.copy(alpha = 0.1f)
+        ),
         modifier = Modifier.size(52.dp)
     ) {
         IconButton(
-            onClick = { viewModel.performAutoFocus() },
+            onClick = onAutoFocus,
             enabled = uiState.isConnected && !uiState.isFocusing,
             modifier = Modifier.size(52.dp)
         ) {
             if (uiState.isFocusing) {
                 CircularProgressIndicator(
                     color = Primary,
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(22.dp),
                     strokeWidth = 2.dp
                 )
             } else {
                 Icon(
                     Icons.Default.CenterFocusStrong,
                     contentDescription = stringResource(R.string.focus),
-                    tint = if (uiState.isConnected) TextPrimary else TextMuted,
-                    modifier = Modifier.size(26.dp)
+                    tint = if (uiState.isConnected) TextSecondary else TextMuted,
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }
@@ -209,7 +234,8 @@ private fun CaptureControlsPreview() {
                         isFocusing = false,
                         shootingMode = ShootingMode.SINGLE
                     ),
-                    viewModel = hiltViewModel(),
+                    onCapture = {},
+                    onAutoFocus = {},
                     onShowTimelapseDialog = { }
                 )
             }
@@ -227,7 +253,8 @@ private fun CaptureControlsPreview() {
                         isFocusing = false,
                         shootingMode = ShootingMode.BURST
                     ),
-                    viewModel = hiltViewModel(),
+                    onCapture = {},
+                    onAutoFocus = {},
                     onShowTimelapseDialog = { }
                 )
             }

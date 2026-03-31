@@ -284,9 +284,9 @@ class PtpipDiscoveryService @Inject constructor(
             Log.d(TAG, "모든 mDNS 검색 완료: 총 ${allServices.size}개 서비스 발견")
 
             // 중복 제거 (같은 IP:Port 조합)
-            val uniqueServices = allServices.distinctBy {
-                "${it.host?.hostAddress}:${it.port}"
-            }
+            val uniqueServices = allServices
+                .filter { it.host?.hostAddress != null }
+                .distinctBy { "${it.host!!.hostAddress}:${it.port}" }
 
             Log.d(TAG, "중복 제거 후: ${uniqueServices.size}개 서비스")
             uniqueServices
@@ -324,6 +324,12 @@ class PtpipDiscoveryService @Inject constructor(
                             discoveredServices.isNotEmpty()
                         ) {
                             isResumed = true
+                            // 검색 중지 (리소스 정리)
+                            try {
+                                discoveryListener?.let { nsdManager.stopServiceDiscovery(it) }
+                            } catch (e: Exception) {
+                                Log.w(TAG, "검색 완료 후 정리 중 오류: ${e.message}")
+                            }
                             val resultList = discoveredServices.toList()
                             Log.d(
                                 TAG,
@@ -382,6 +388,10 @@ class PtpipDiscoveryService @Inject constructor(
 
                 override fun onServiceLost(service: NsdServiceInfo) {
                     Log.d(TAG, "서비스 손실: ${service.serviceName}")
+                    synchronized(discoveredServices) {
+                        val serviceKey = "${service.serviceName}:${service.serviceType}"
+                        resolvedServices.remove(serviceKey)
+                    }
                 }
 
                 override fun onDiscoveryStopped(serviceType: String) {
@@ -458,39 +468,38 @@ class PtpipDiscoveryService @Inject constructor(
         return try {
             Log.d(TAG, "PTP-IP 연결 테스트: $ipAddress:$port")
 
-            val socket = java.net.Socket()
-            socket.soTimeout = 3000 // 3초 타임아웃
-            socket.connect(java.net.InetSocketAddress(ipAddress, port), 3000)
+            java.net.Socket().use { socket ->
+                socket.soTimeout = 3000
+                socket.connect(java.net.InetSocketAddress(ipAddress, port), 3000)
 
-            // PTP-IP Init Command Request 생성 및 전송
-            val initPacket = createPtpipInitRequest()
-            socket.getOutputStream().write(initPacket)
-            socket.getOutputStream().flush()
+                // PTP-IP Init Command Request 생성 및 전송
+                val initPacket = createPtpipInitRequest()
+                socket.getOutputStream().write(initPacket)
+                socket.getOutputStream().flush()
 
-            // 응답 대기
-            val response = ByteArray(1024)
-            val bytesRead = socket.getInputStream().read(response)
+                // 응답 대기
+                val response = ByteArray(1024)
+                val bytesRead = socket.getInputStream().read(response)
 
-            // PTP-IP ACK 응답 확인
-            if (bytesRead >= 8) {
-                val buffer =
-                    java.nio.ByteBuffer.wrap(response).order(java.nio.ByteOrder.LITTLE_ENDIAN)
-                buffer.position(4) // length 필드 건너뛰기
-                val responseType = buffer.int
+                // PTP-IP ACK 응답 확인
+                if (bytesRead >= 8) {
+                    val buffer =
+                        java.nio.ByteBuffer.wrap(response).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+                    buffer.position(4)
+                    val responseType = buffer.int
 
-                if (responseType == PtpipConstants.PTPIP_INIT_COMMAND_ACK) {
-                    Log.d(TAG, "✅ PTP-IP 연결 성공: $ipAddress")
-                    socket.close() // 테스트 후 소켓 닫기
-                    return true
+                    if (responseType == PtpipConstants.PTPIP_INIT_COMMAND_ACK) {
+                        Log.d(TAG, "✅ PTP-IP 연결 성공: $ipAddress")
+                        return true
+                    } else {
+                        Log.d(TAG, "❌ PTP-IP 응답 타입 불일치: $responseType")
+                    }
                 } else {
-                    Log.d(TAG, "❌ PTP-IP 응답 타입 불일치: $responseType")
+                    Log.d(TAG, "❌ PTP-IP 응답 길이 부족: $bytesRead bytes")
                 }
-            } else {
-                Log.d(TAG, "❌ PTP-IP 응답 길이 부족: $bytesRead bytes")
-            }
 
-            socket.close()
-            false
+                false
+            }
         } catch (e: Exception) {
             Log.d(TAG, "❌ PTP-IP 연결 실패: $ipAddress - ${e.message}")
             false

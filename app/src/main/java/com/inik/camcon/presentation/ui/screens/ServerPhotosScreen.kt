@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -32,6 +33,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -90,6 +93,7 @@ fun MyPhotosScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedPhoto by remember { mutableStateOf<CapturedPhoto?>(null) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
 
     // 화면에 진입할 때마다 새로고침 - 탭 전환 시 확실히 실행됨
     DisposableEffect(Unit) {
@@ -134,7 +138,9 @@ fun MyPhotosScreen(
     }
 
     Column(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
     ) {
         // 상단 헤더 - 멀티 선택 모드에 따라 다르게 표시
         if (uiState.isMultiSelectMode) {
@@ -142,7 +148,7 @@ fun MyPhotosScreen(
                 selectedCount = uiState.selectedPhotos.size,
                 onSelectAll = { viewModel.selectAllPhotos() },
                 onDeselectAll = { viewModel.deselectAllPhotos() },
-                onDelete = { viewModel.deleteSelectedPhotos() },
+                onDelete = { showDeleteConfirmDialog = true },
                 onCancel = { viewModel.exitMultiSelectMode() }
             )
         } else {
@@ -214,6 +220,30 @@ fun MyPhotosScreen(
         }
     }
 
+    // 삭제 확인 다이얼로그
+    if (showDeleteConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            title = { Text("사진 삭제") },
+            text = { Text("선택한 ${uiState.selectedPhotos.size}장의 사진을 삭제하시겠습니까?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteSelectedPhotos()
+                        showDeleteConfirmDialog = false
+                    }
+                ) {
+                    Text("삭제")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text("취소")
+                }
+            }
+        )
+    }
+
     // 에러 표시
     uiState.error?.let { error ->
         Box(
@@ -225,9 +255,9 @@ fun MyPhotosScreen(
                 containerColor = MaterialTheme.colorScheme.error,
                 contentColor = MaterialTheme.colorScheme.onError,
                 action = {
-                    TextButton(onClick = { viewModel.clearError() }) {
+                    TextButton(onClick = { viewModel.refreshPhotos(); viewModel.clearError() }) {
                         Text(
-                            text = "확인",
+                            text = "재시도",
                             color = MaterialTheme.colorScheme.onError
                         )
                     }
@@ -349,15 +379,11 @@ private fun FluidPhotoGridItem(
     isSelected: Boolean = false,
     isMultiSelectMode: Boolean = false
 ) {
-    // 원본 비율에 관계없이 썸네일은 세로 비율로 강제 설정
     val aspectRatio = remember(photo.id) {
-        val hashCode = photo.id.hashCode()
-        when (hashCode % 5) {
-            0 -> 1f
-            1 -> 0.75f
-            2 -> 0.6f
-            3 -> 0.8f
-            else -> 0.65f
+        if (photo.width > 0 && photo.height > 0) {
+            photo.width.toFloat() / photo.height.toFloat()
+        } else {
+            0.75f
         }
     }
 
@@ -376,7 +402,7 @@ private fun FluidPhotoGridItem(
             ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(6.dp),
-        colors = CardDefaults.cardColors(containerColor = if (isSelected) Color.LightGray else MaterialTheme.colorScheme.surface)
+        colors = CardDefaults.cardColors(containerColor = if (isSelected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface)
     ) {
         Box {
             if (isRawFile) {
@@ -510,7 +536,7 @@ private fun FluidPhotoGridItem(
                 Box(
                     modifier = Modifier
                         .matchParentSize()
-                        .background(Color.Blue.copy(alpha = 0.3f))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
                 )
 
                 // 체크 아이콘
@@ -524,7 +550,7 @@ private fun FluidPhotoGridItem(
                         imageVector = Icons.Default.CheckCircle,
                         contentDescription = "선택됨",
                         modifier = Modifier.size(24.dp),
-                        tint = Color(0xFF27AE60) // 그린톤 (선택 표시)
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
