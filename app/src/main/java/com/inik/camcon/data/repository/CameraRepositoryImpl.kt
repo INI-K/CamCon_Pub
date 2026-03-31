@@ -43,7 +43,7 @@ import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.io.Closeable
-import java.nio.ByteBuffer
+
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -589,15 +589,14 @@ class CameraRepositoryImpl @Inject constructor(
         try {
             com.inik.camcon.utils.LogcatManager.d(TAG, "네이티브 startLiveView 호출 시작 (자동초점 생략)")
             nativeDataSource.startLiveView(object : LiveViewCallback {
-                override fun onLiveViewFrame(frame: ByteBuffer) {
+                override fun onLiveViewFrame(frame: ByteArray) {
                     try {
                         com.inik.camcon.utils.LogcatManager.d(
                             TAG,
-                            "라이브뷰 프레임 콜백 수신: position=${frame.position()}, limit=${frame.limit()}"
+                            "라이브뷰 프레임 콜백 수신: ${frame.size} bytes"
                         )
 
-                        val bytes = ByteArray(frame.remaining())
-                        frame.get(bytes)
+                        val bytes = frame
 
                         com.inik.camcon.utils.LogcatManager.d(
                             TAG,
