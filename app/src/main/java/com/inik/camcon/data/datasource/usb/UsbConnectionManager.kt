@@ -6,10 +6,10 @@ import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbManager
 import android.util.Log
 import com.inik.camcon.CameraNative
+import com.inik.camcon.di.ApplicationScope
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,7 +27,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class UsbConnectionManager @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    @ApplicationScope private val scope: CoroutineScope
 ) {
     private val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
 
@@ -36,8 +37,6 @@ class UsbConnectionManager @Inject constructor(
 
     private var currentDevice: UsbDevice? = null
     private var currentConnection: UsbDeviceConnection? = null
-
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     // 초기화 상태 관리
     private val isInitializingNativeCamera = AtomicBoolean(false)
@@ -175,7 +174,7 @@ class UsbConnectionManager @Inject constructor(
      * USB 디바이스에 연결하고 네이티브 카메라를 초기화합니다.
      */
     fun connectToCamera(device: UsbDevice) {
-        scope.launch {
+        scope.launch(Dispatchers.IO) {
             try {
                 Log.d(TAG, "카메라 연결 시작: ${device.deviceName}")
 
@@ -450,7 +449,7 @@ class UsbConnectionManager @Inject constructor(
     fun handleUsbError(errorCode: Int) {
         if (errorCode == -52 || errorCode == -4) { // GP_ERROR_IO_USB_FIND 또는 libusb disconnected
             Log.e(TAG, "USB 에러 감지 (코드: $errorCode) - USB 분리로 처리")
-            scope.launch {
+            scope.launch(Dispatchers.IO) {
                 handleUsbDisconnection()
             }
         }
@@ -519,7 +518,7 @@ class UsbConnectionManager @Inject constructor(
     }
 
     fun cleanup() {
-        scope.launch {
+        scope.launch(Dispatchers.IO) {
             disconnectCamera()
         }
     }

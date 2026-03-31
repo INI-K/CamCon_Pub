@@ -54,8 +54,9 @@ object AppModule {
     @Singleton
     fun provideNativeCameraDataSource(
         @ApplicationContext context: Context,
-        cameraStateObserver: CameraStateObserver
-    ) = NativeCameraDataSource(context, cameraStateObserver)
+        cameraStateObserver: CameraStateObserver,
+        @ApplicationScope scope: CoroutineScope
+    ) = NativeCameraDataSource(context, cameraStateObserver, scope)
 
     @Provides
     @Singleton
@@ -76,8 +77,10 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideUsbConnectionManager(@ApplicationContext context: Context) =
-        UsbConnectionManager(context)
+    fun provideUsbConnectionManager(
+        @ApplicationContext context: Context,
+        @ApplicationScope scope: CoroutineScope
+    ) = UsbConnectionManager(context, scope)
 
     @Provides
     @Singleton
@@ -126,7 +129,8 @@ object AppModule {
         cameraStateObserver: CameraStateObserver,
         photoDownloadManager: PhotoDownloadManager,
         autoConnectManager: AutoConnectManager,
-        autoConnectTaskRunner: Lazy<AutoConnectTaskRunner>
+        autoConnectTaskRunner: Lazy<AutoConnectTaskRunner>,
+        @ApplicationScope scope: CoroutineScope
     ): PtpipDataSource {
         return PtpipDataSource(
             context,
@@ -138,7 +142,8 @@ object AppModule {
             cameraStateObserver,
             photoDownloadManager,
             autoConnectManager,
-            autoConnectTaskRunner
+            autoConnectTaskRunner,
+            scope
         )
     }
 
@@ -162,13 +167,15 @@ object AppModule {
         nativeDataSource: NativeCameraDataSource,
         usbCameraManager: UsbCameraManager,
         validateImageFormatUseCase: ValidateImageFormatUseCase,
-        photoDownloadManager: PhotoDownloadManager
+        photoDownloadManager: PhotoDownloadManager,
+        @ApplicationScope scope: CoroutineScope
     ): CameraEventManager =
         CameraEventManager(
             nativeDataSource,
             usbCameraManager,
             validateImageFormatUseCase,
-            photoDownloadManager
+            photoDownloadManager,
+            scope
         )
 
     @Provides

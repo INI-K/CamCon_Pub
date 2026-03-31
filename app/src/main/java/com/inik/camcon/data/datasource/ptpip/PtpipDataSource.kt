@@ -30,11 +30,11 @@ import com.inik.camcon.domain.model.PtpipCameraInfo
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
+import com.inik.camcon.di.ApplicationScope
 import dagger.Lazy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -68,14 +68,13 @@ class PtpipDataSource @Inject constructor(
     private val cameraStateObserver: com.inik.camcon.domain.manager.CameraStateObserver,
     private val photoDownloadManager: com.inik.camcon.data.repository.managers.PhotoDownloadManager,
     private val autoConnectManager: AutoConnectManager,
-    private val autoConnectTaskRunnerProvider: Lazy<AutoConnectTaskRunner>
+    private val autoConnectTaskRunnerProvider: Lazy<AutoConnectTaskRunner>,
+    @ApplicationScope private val coroutineScope: CoroutineScope
 ) {
     private var connectedCamera: PtpipCamera? = null
     private var lastConnectedCamera: PtpipCamera? = null
     private var isAutoReconnectEnabled = false
     private var networkMonitoringJob: Job? = null
-    private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
     // 초기 플러시 완료 플래그
     private var isInitialFlushCompleted = false
 
@@ -176,7 +175,7 @@ class PtpipDataSource @Inject constructor(
      * 네트워크 상태 변화 처리
      */
     private fun handleNetworkStateChange(networkState: WifiNetworkState) {
-        coroutineScope.launch {
+        coroutineScope.launch(Dispatchers.IO) {
             val currentState = _connectionState.value
             
             when {
@@ -247,7 +246,7 @@ class PtpipDataSource @Inject constructor(
             return
         }
 
-        coroutineScope.launch {
+        coroutineScope.launch(Dispatchers.IO) {
             try {
                 val isAutoConnectEnabled = autoConnectManager.isEnabled()
                 if (!isAutoConnectEnabled) {
@@ -846,7 +845,7 @@ class PtpipDataSource @Inject constructor(
                     }
 
                     // ByteArray를 MediaStore에 저장하고 실제 안드로이드 경로 얻기
-                    coroutineScope.launch {
+                    coroutineScope.launch(Dispatchers.IO) {
                         try {
                             val savedPhoto = photoDownloadManager.handleNativePhotoDownload(
                                 filePath = filePath,
@@ -1200,7 +1199,7 @@ class PtpipDataSource @Inject constructor(
      * 자동 다운로드된 파일 처리 - 네이티브에서 모든 처리 완료됨
      */
     private fun handleAutomaticDownload(filePath: String, fileName: String) {
-        coroutineScope.launch {
+        coroutineScope.launch(Dispatchers.IO) {
             try {
                 Log.d(TAG, "네이티브 파일 처리 완료 알림: $fileName")
                 // 중복 처리 방지: 최근 처리 맵에서 윈도우 내 동일 파일 무시
@@ -1431,7 +1430,7 @@ class PtpipDataSource @Inject constructor(
                 val targetSsid = intent.getStringExtra(WifiNetworkHelper.EXTRA_AUTO_CONNECT_SSID)
                     ?: return
 
-                coroutineScope.launch {
+                coroutineScope.launch(Dispatchers.IO) {
                     try {
                         autoConnectTaskRunnerProvider.get().handlePostConnection(targetSsid)
                     } catch (e: Exception) {
