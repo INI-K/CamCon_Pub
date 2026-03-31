@@ -18,7 +18,6 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -54,13 +53,12 @@ class AuthViewModelTest {
     }
 
     @Test
-    fun `초기 상태는 isLoading false, error null`() = runTest {
+    fun `초기 상태는 isLoading false`() = runTest {
         viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
 
         val state = viewModel.uiState.value
         assertFalse(state.isLoading)
-        assertNull(state.error)
         assertFalse(state.isSignOutSuccess)
     }
 
@@ -92,7 +90,7 @@ class AuthViewModelTest {
     }
 
     @Test
-    fun `signOut 실패시 error 메시지 설정`() = runTest {
+    fun `signOut 실패시 isLoading false로 복원`() = runTest {
         val errorMessage = "로그아웃 실패"
         coEvery { signOutUseCase() } returns Result.failure(Exception(errorMessage))
         viewModel = createViewModel()
@@ -108,37 +106,19 @@ class AuthViewModelTest {
             // 로딩 상태
             awaitItem()
 
-            // 실패 상태
+            // 실패 상태 - isLoading은 false로 복원
             val failure = awaitItem()
             assertFalse(failure.isLoading)
             assertFalse(failure.isSignOutSuccess)
-            assertEquals(errorMessage, failure.error)
 
             cancelAndConsumeRemainingEvents()
         }
     }
 
     @Test
-    fun `clearError 호출시 error null로 설정`() = runTest {
-        coEvery { signOutUseCase() } returns Result.failure(Exception("error"))
-        viewModel = createViewModel()
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        // 에러 발생시키기
-        viewModel.signOut()
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        // 에러 클리어
-        viewModel.clearError()
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        assertNull(viewModel.uiState.value.error)
-    }
-
-    @Test
     fun `사용자 정보 변경시 currentUser 업데이트`() = runTest {
         val user = User(
-            uid = "test-uid",
+            id = "test-uid",
             email = "test@example.com",
             displayName = "Test User"
         )
