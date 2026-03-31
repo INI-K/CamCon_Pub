@@ -30,6 +30,12 @@ KEY/appkey
 # OS files
 .DS_Store
 
+# gphoto2 빌드 출력
+gphoto-build_16k/
+
+# 워크스페이스
+_workspace/
+
 # Android NDK/CMake build files
 app/.cxx/
 app/build/
