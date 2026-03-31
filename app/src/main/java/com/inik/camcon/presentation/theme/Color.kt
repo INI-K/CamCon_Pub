@@ -3,35 +3,38 @@ package com.inik.camcon.presentation.theme
 import androidx.compose.ui.graphics.Color
 
 /**
- * CamCon Navy Dark Color Palette
- * 전문가용 카메라 앱을 위한 네이비 다크 테마
+ * CamCon Cinema Dark + Amber Color Palette
+ * 전문가용 카메라 앱 — 근 OLED 블랙 + 렌즈 앰버 골드
  */
 
-// Primary - 부드러운 블루 (아이스 블루 느낌)
-val Primary = Color(0xFF5B8DEF)
-val PrimaryLight = Color(0xFF7BA5F2)
-val PrimaryDark = Color(0xFF4A7DE0)
+// Primary - 따뜻한 앰버 골드 (렌즈/조리개 느낌)
+val Primary = Color(0xFFE8A245)
+val PrimaryLight = Color(0xFFF0B865)
+val PrimaryDark = Color(0xFFCC8830)
 
-// Background - 깊은 네이비 계열
-val Background = Color(0xFF0A0F1C)
-val BackgroundSurface = Color(0xFF0F1623)
+// Background - 근 OLED 블랙
+val Background = Color(0xFF0A0A0E)
+val BackgroundSurface = Color(0xFF0F0F14)
 
-// Surface - 네이비 그레이
-val Surface = Color(0xFF141B2D)
-val SurfaceElevated = Color(0xFF1E2940)
+// Surface - 차분한 다크
+val Surface = Color(0xFF131317)
+val SurfaceElevated = Color(0xFF1E1E26)
 
-// Text - 눈에 편한 색상
-val TextPrimary = Color(0xFFE8EEF5)
-val TextSecondary = Color(0xFF8FA3BF)
-val TextMuted = Color(0xFF5A6A85)
+// Text - 약간 따뜻한 화이트 (차가운 블루 제거)
+val TextPrimary = Color(0xFFF0EEE9)
+val TextSecondary = Color(0xFF9A9590)
+val TextMuted = Color(0xFF585450)
 
-// Border - 네이비 톤
-val Border = Color(0xFF2A3A55)
+// Border - 반투명 유리 느낌 (rgba 255,255,255, 0.08)
+val Border = Color(0x14FFFFFF)
 
-// Status - 포인트 색상과 조화롭게
+// On-Primary - 앰버 버튼 위 어두운 텍스트
+val OnPrimary = Color(0xFF1C1005)
+
+// Status
 val Success = Color(0xFF4ADE80)
 val Error = Color(0xFFFB7185)
 val Warning = Color(0xFFFBBF24)
 
 // Transparent overlays
-val Overlay = Color(0x800A0F1C)
+val Overlay = Color(0x800A0A0E)

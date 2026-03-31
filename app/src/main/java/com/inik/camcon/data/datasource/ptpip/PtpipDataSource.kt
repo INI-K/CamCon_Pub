@@ -43,6 +43,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
@@ -71,12 +72,13 @@ class PtpipDataSource @Inject constructor(
     private val autoConnectTaskRunnerProvider: Lazy<AutoConnectTaskRunner>,
     @ApplicationScope private val coroutineScope: CoroutineScope
 ) {
-    private var connectedCamera: PtpipCamera? = null
-    private var lastConnectedCamera: PtpipCamera? = null
-    private var isAutoReconnectEnabled = false
+    @Volatile private var connectedCamera: PtpipCamera? = null
+    @Volatile private var lastConnectedCamera: PtpipCamera? = null
+    @Volatile private var isAutoReconnectEnabled = false
     private var networkMonitoringJob: Job? = null
     // 초기 플러시 완료 플래그
-    private var isInitialFlushCompleted = false
+    @Volatile private var isInitialFlushCompleted = false
+    private val reconnectMutex = Mutex()
 
     // Repository 콜백 저장용 - Singleton이므로 일반 참조 사용 (메모리 누수 방지 불필요)
     private var onPhotoCapturedCallback: ((String, String) -> Unit)? = null
@@ -311,55 +313,55 @@ class PtpipDataSource @Inject constructor(
      * 자동 재연결 시도 (최대 횟수 제한 루프)
      */
     private suspend fun attemptAutoReconnect(camera: PtpipCamera) {
-        // 이미 연결 시도 중이면 무시
-        if (_connectionState.value == PtpipConnectionState.CONNECTING) {
-            Log.d(TAG, "이미 연결 시도 중이므로 자동 재연결 무시")
+        // 동시 재연결 방지
+        if (!reconnectMutex.tryLock()) {
+            Log.d(TAG, "이미 재연결 시도 중이므로 무시")
             return
         }
+        try {
+            // 이미 연결 시도 중이면 무시
+            if (_connectionState.value == PtpipConnectionState.CONNECTING) {
+                Log.d(TAG, "이미 연결 시도 중이므로 자동 재연결 무시")
+                return
+            }
 
-        val maxAttempts = 5
-        var attempts = 0
-        while (attempts < maxAttempts) {
-            try {
-                Log.i(TAG, "자동 재연결 시도 ${attempts + 1}/$maxAttempts: ${camera.name} (${camera.ipAddress})")
-                _connectionState.value = PtpipConnectionState.CONNECTING
+            val maxAttempts = 5
+            var attempts = 0
+            while (attempts < maxAttempts) {
+                try {
+                    Log.i(TAG, "자동 재연결 시도 ${attempts + 1}/$maxAttempts: ${camera.name} (${camera.ipAddress})")
+                    _connectionState.value = PtpipConnectionState.CONNECTING
+                    _connectionProgressMessage.value = "카메라에 연결 중..."
 
-                if (connectToCamera(camera)) {
-                    Log.i(TAG, "자동 재연결 성공")
-                    return
+                    if (connectToCamera(camera)) {
+                        Log.i(TAG, "자동 재연결 성공")
+                        return
+                    }
+
+                    Log.w(TAG, "자동 재연결 실패 (시도 ${attempts + 1}/$maxAttempts)")
+                    _connectionState.value = PtpipConnectionState.ERROR
+                    _connectionProgressMessage.value = ""
+                } catch (e: Exception) {
+                    Log.w(TAG, "Reconnect attempt ${attempts + 1}/$maxAttempts failed", e)
+                    _connectionState.value = PtpipConnectionState.ERROR
+                    _connectionProgressMessage.value = ""
                 }
 
-                Log.w(TAG, "자동 재연결 실패 (시도 ${attempts + 1}/$maxAttempts)")
-                _connectionState.value = PtpipConnectionState.ERROR
-            } catch (e: Exception) {
-                Log.w(TAG, "Reconnect attempt ${attempts + 1}/$maxAttempts failed", e)
-                _connectionState.value = PtpipConnectionState.ERROR
-            }
+                attempts++
 
-            Log.i(TAG, "자동 재연결 시도: ${camera.name} (${camera.ipAddress})")
-            _connectionState.value = PtpipConnectionState.CONNECTING
-            _connectionProgressMessage.value = "카메라에 연결 중..."
-
-            if (connectToCamera(camera)) {
-                Log.i(TAG, "자동 재연결 성공")
-            } else {
-                Log.w(TAG, "자동 재연결 실패")
-                _connectionState.value = PtpipConnectionState.ERROR
-                _connectionProgressMessage.value = ""
-            }
-
-            attempts++
-
-            // 마지막 시도가 아니고 자동 재연결이 여전히 활성화되어 있으면 대기
-            if (attempts < maxAttempts && isAutoReconnectEnabled) {
-                delay(5000)
-                // 자동 재연결이 비활성화되었거나 이미 연결되었으면 중단
-                if (!isAutoReconnectEnabled || _connectionState.value == PtpipConnectionState.CONNECTED) {
-                    return
+                // 마지막 시도가 아니고 자동 재연결이 여전히 활성화되어 있으면 대기
+                if (attempts < maxAttempts && isAutoReconnectEnabled) {
+                    delay(5000)
+                    // 자동 재연결이 비활성화되었거나 이미 연결되었으면 중단
+                    if (!isAutoReconnectEnabled || _connectionState.value == PtpipConnectionState.CONNECTED) {
+                        return
+                    }
                 }
             }
+            Log.e(TAG, "Auto-reconnect failed after $maxAttempts attempts")
+        } finally {
+            reconnectMutex.unlock()
         }
-        Log.e(TAG, "Auto-reconnect failed after $maxAttempts attempts")
     }
 
     /**
@@ -377,15 +379,26 @@ class PtpipDataSource @Inject constructor(
         networkMonitoringJob?.cancel()
         networkMonitoringJob = null
 
+        // 카메라 연결 해제
+        coroutineScope.launch(Dispatchers.IO) {
+            try {
+                disconnect()
+            } catch (e: Exception) {
+                Log.w(TAG, "cleanup 중 disconnect 실패: ${e.message}")
+            }
+        }
+
         // 콜백 초기화
         onPhotoCapturedCallback = null
-
         onPhotoDownloadedCallback = null
-
         onConnectionLostCallback = null
 
         if (autoConnectReceiverRegistered) {
-            context.unregisterReceiver(autoConnectReceiver)
+            try {
+                context.unregisterReceiver(autoConnectReceiver)
+            } catch (e: Exception) {
+                Log.w(TAG, "BroadcastReceiver 해제 실패: ${e.message}")
+            }
             autoConnectReceiverRegistered = false
         }
 
@@ -1235,6 +1248,13 @@ class PtpipDataSource @Inject constructor(
     private val recentProcessingGuard = object {
         private val map = ConcurrentHashMap<String, Long>()
         fun tryMark(key: String, now: Long): Boolean {
+            // 오래된 항목 정리 (100개 이상이면)
+            if (map.size > 100) {
+                val expiredKeys = map.entries
+                    .filter { now - it.value > DUP_WINDOW_MS * 10 }
+                    .map { it.key }
+                expiredKeys.forEach { map.remove(it) }
+            }
             val last = map[key]
             return if (last == null || now - last > DUP_WINDOW_MS) {
                 map[key] = now

@@ -39,10 +39,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -338,10 +341,11 @@ private fun CameraDisconnectedState() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(
-                text = "📷",
-                style = MaterialTheme.typography.displayMedium,
-                modifier = Modifier.padding(bottom = 16.dp)
+            Icon(
+                imageVector = Icons.Default.CameraAlt,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp).padding(bottom = 16.dp),
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
             Text(
                 text = "카메라가 연결되지 않았습니다",
@@ -473,16 +477,27 @@ private fun ModernHeader(
                 },
                 enabled = fileTypeFilter != FileTypeFilter.RAW
             ) {
-                Text(
-                    text = "RAW${if (!canAccessRaw) " 🔒" else ""}",
-                    color = if (fileTypeFilter == FileTypeFilter.RAW)
-                        MaterialTheme.colorScheme.primary
-                    else if (!canAccessRaw)
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                    else
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                    style = MaterialTheme.typography.labelLarge
-                )
+                val rawTextColor = if (fileTypeFilter == FileTypeFilter.RAW)
+                    MaterialTheme.colorScheme.primary
+                else if (!canAccessRaw)
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                else
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "RAW",
+                        color = rawTextColor,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    if (!canAccessRaw) {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = null,
+                            modifier = Modifier.padding(start = 2.dp).size(12.dp),
+                            tint = rawTextColor
+                        )
+                    }
+                }
             }
 
             TextButton(
@@ -857,10 +872,11 @@ private fun PtpipBlockOverlay() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(
-                text = "📶",
-                style = MaterialTheme.typography.displaySmall,
-                modifier = Modifier.padding(bottom = 16.dp)
+            Icon(
+                imageVector = Icons.Default.Wifi,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp).padding(bottom = 16.dp),
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
             )
             Text(
                 text = "Wi-Fi 연결 중입니다",

@@ -128,6 +128,7 @@ private fun SettingDropdown(
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val isManuallySet = currentValue.isNotEmpty() && !currentValue.equals("auto", ignoreCase = true)
 
     Column(
         modifier = modifier,
@@ -148,24 +149,24 @@ private fun SettingDropdown(
                 modifier = Modifier
                     .height(36.dp)
                     .widthIn(min = 70.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(50.dp))
                     .clickable(enabled = isEnabled && options.isNotEmpty()) {
                         expanded = true
                     }
                     .then(
                         if (isEnabled) Modifier.border(
-                            1.dp,
-                            Border,
-                            RoundedCornerShape(8.dp)
+                            width = if (isManuallySet) 1.5.dp else 1.dp,
+                            color = if (isManuallySet) Primary.copy(alpha = 0.5f) else Border,
+                            shape = RoundedCornerShape(50.dp)
                         )
                         else Modifier.border(
                             1.dp,
                             TextMuted.copy(alpha = 0.3f),
-                            RoundedCornerShape(8.dp)
+                            RoundedCornerShape(50.dp)
                         )
                     ),
                 color = if (isEnabled) SurfaceElevated else SurfaceElevated.copy(alpha = 0.5f),
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(50.dp)
             ) {
                 Row(
                     modifier = Modifier
