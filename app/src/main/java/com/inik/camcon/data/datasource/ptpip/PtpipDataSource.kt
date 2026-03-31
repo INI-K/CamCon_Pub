@@ -11,6 +11,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import com.inik.camcon.CameraNative
+import com.inik.camcon.utils.LogcatManager
 import com.inik.camcon.EventListenerStopCallback
 import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
 import com.inik.camcon.data.network.ptpip.authentication.NikonAuthenticationService
@@ -112,6 +113,58 @@ class PtpipDataSource @Inject constructor(
 
     private var lastAutoConnectBroadcastSsid: String? = null
     private var lastAutoConnectBroadcastBssid: String? = null
+
+    // ===== PTP/IP 네이티브 설정 관리 =====
+
+    /**
+     * PTP/IP 설정 초기화 (GUID 재생성 강제)
+     */
+    fun clearPtpipSettings(): Boolean {
+        val result = CameraNative.clearPtpipSettings()
+        LogcatManager.d(TAG, "PTP/IP 설정 초기화: $result")
+        return result
+    }
+
+    /**
+     * PTP/IP GUID만 초기화
+     */
+    fun resetPtpipGuid(): Boolean {
+        val result = CameraNative.resetPtpipGuid()
+        LogcatManager.d(TAG, "PTP/IP GUID 초기화: $result")
+        return result
+    }
+
+    /**
+     * PTP/IP 연결에서 받은 카메라 정보를 libgphoto2에 전달
+     */
+    fun setCameraInfoFromPtpip(
+        manufacturer: String,
+        model: String,
+        version: String,
+        serial: String
+    ): Int {
+        val result = CameraNative.setCameraInfoFromPtpip(manufacturer, model, version, serial)
+        LogcatManager.d(TAG, "PTP/IP 카메라 정보 설정: result=$result (manufacturer=$manufacturer, model=$model)")
+        return result
+    }
+
+    /**
+     * STA 모드 세션 유지
+     */
+    fun maintainSessionForStaMode(): Int {
+        val result = CameraNative.maintainSessionForStaMode()
+        LogcatManager.d(TAG, "STA 모드 세션 유지: $result")
+        return result
+    }
+
+    /**
+     * 세션 유지 기반 카메라 초기화 (STA 모드용)
+     */
+    fun initCameraWithSessionMaintenance(ipAddress: String, port: Int, libDir: String): Int {
+        val result = CameraNative.initCameraWithSessionMaintenance(ipAddress, port, libDir)
+        LogcatManager.d(TAG, "세션 유지 카메라 초기화: result=$result (ip=$ipAddress, port=$port)")
+        return result
+    }
 
     companion object {
         private const val TAG = "PtpipDataSource"
