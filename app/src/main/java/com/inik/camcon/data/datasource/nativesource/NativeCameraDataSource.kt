@@ -10,7 +10,7 @@ import com.inik.camcon.domain.model.CameraAbilitiesInfo
 import com.inik.camcon.domain.model.CameraCapabilities
 import com.inik.camcon.domain.model.CameraSupports
 import com.inik.camcon.domain.model.PtpDeviceInfo
-import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
+import com.inik.camcon.domain.manager.CameraStateObserver
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -32,7 +32,7 @@ import javax.inject.Singleton
 @Singleton
 class NativeCameraDataSource @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val uiStateManager: CameraUiStateManager
+    private val cameraStateObserver: CameraStateObserver
 ) {
     companion object {
         private const val TAG = "네이티브_카메라_데이터소스"
@@ -178,7 +178,7 @@ class NativeCameraDataSource @Inject constructor(
         usbCameraDeviceInfo = deviceInfo
 
         // UI 상태 매니저에 기능 정보 전달
-        uiStateManager.updateCameraAbilities(abilities)
+        cameraStateObserver.updateCameraAbilities(abilities)
     }
 
     /**
@@ -323,7 +323,7 @@ class NativeCameraDataSource @Inject constructor(
         Log.e(TAG, "   4. 카메라가 PC 연결 모드로 설정되어 있는지 확인")
         Log.e(TAG, "   5. 카메라를 껐다가 다시 켜보세요")
         Log.e(TAG, "문제가 계속되면 카메라를 재연결해주세요")
-        uiStateManager.showCameraStatusCheckDialog(true)
+        cameraStateObserver.showCameraStatusCheckDialog(true)
     }
 
     /**

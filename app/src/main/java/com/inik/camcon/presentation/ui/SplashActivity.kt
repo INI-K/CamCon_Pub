@@ -3,6 +3,7 @@ package com.inik.camcon.presentation.ui
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import com.inik.camcon.BuildConfig
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.animateFloatAsState
@@ -54,7 +55,7 @@ import com.inik.camcon.data.datasource.local.ThemeMode
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.CoroutineScope
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
@@ -136,7 +137,7 @@ class SplashActivity : ComponentActivity() {
      * 라이브러리는 이제 CameraNative의 init 블록에서 자동으로 로드되므로 상태만 확인합니다.
      */
     private fun loadLibrariesInBackground() {
-        CoroutineScope(Dispatchers.IO).launch {
+        lifecycleScope.launch(Dispatchers.IO) {
             try {
                 LogcatManager.i("SplashActivity", "🚀 라이브러리 상태 확인 프로세스 시작")
                 withContext(Dispatchers.Main) {
@@ -206,7 +207,7 @@ class SplashActivity : ComponentActivity() {
     }
 
     private fun loadSubscriptionTierInBackground() {
-        CoroutineScope(Dispatchers.IO).launch {
+        lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val tier = getSubscriptionUseCase.getSubscriptionTier()
                     .drop(1) // 첫 번째 초기값(FREE) 건너뛰기
@@ -308,8 +309,8 @@ fun SplashScreen(
                 color = Color.White.copy(alpha = 0.8f)
             )
 
-            // 구독 정보 표시
-            if (subscriptionTier != null) {
+            // 구독 정보 표시 (디버그 빌드에서만)
+            if (BuildConfig.DEBUG && subscriptionTier != null) {
                 Text(
                     text = "구독 티어: ${subscriptionTier.name}",
                     fontSize = 14.sp,

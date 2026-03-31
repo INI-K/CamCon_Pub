@@ -287,8 +287,8 @@ class CamCon : Application() {
         Log.d(TAG, "앱 종료 - 카메라 세션 정리 시작")
 
         try {
-            // 네이티브 카메라 세션 종료를 백그라운드 스레드에서 실행
-            Thread {
+            // 네이티브 카메라 세션 종료를 백그라운드에서 실행
+            applicationScope.launch(Dispatchers.IO) {
                 try {
                     if (CameraNative.isLibrariesLoaded()) {
                         CameraNative.closeCamera()
@@ -300,7 +300,7 @@ class CamCon : Application() {
                 } catch (e: Exception) {
                     Log.w(TAG, "네이티브 리소스 정리 중 오류", e)
                 }
-            }.start()
+            }
         } catch (e: Exception) {
             Log.w(TAG, "네이티브 리소스 정리 스레드 시작 중 오류", e)
         }
