@@ -43,7 +43,14 @@ class CameraViewModel @Inject constructor(
     private val operationsManager: CameraOperationsManager,
     private val settingsManager: CameraSettingsManager,
     private val errorHandlingManager: ErrorHandlingManager,
-    private val appPreferencesDataSource: AppPreferencesDataSource
+    private val appPreferencesDataSource: AppPreferencesDataSource,
+
+    // 신규 매니저 의존성 주입
+    private val advancedCaptureManager: CameraAdvancedCaptureManager,
+    private val focusManager: CameraFocusManager,
+    private val fileManager: CameraFileManager,
+    private val streamingManager: CameraStreamingManager,
+    private val diagnosticsManager: CameraDiagnosticsManager
 ) : ViewModel() {
 
     companion object {
@@ -668,6 +675,55 @@ class CameraViewModel @Inject constructor(
             settingsManager.loadCameraCapabilities()
         }
     }
+
+    // === Advanced Capture ===
+    fun startBulbCapture() = advancedCaptureManager.startBulbCapture()
+    fun endBulbCapture() = advancedCaptureManager.endBulbCapture()
+    fun bulbCaptureWithDuration(seconds: Int) = advancedCaptureManager.bulbCaptureWithDuration(seconds)
+    fun startVideoRecording() = advancedCaptureManager.startVideoRecording()
+    fun stopVideoRecording() = advancedCaptureManager.stopVideoRecording()
+    fun startIntervalCapture(intervalSeconds: Int, totalFrames: Int) = advancedCaptureManager.startIntervalCapture(intervalSeconds, totalFrames)
+    fun stopIntervalCapture() = advancedCaptureManager.stopIntervalCapture()
+    fun captureDualMode(keepRawOnCard: Boolean, downloadJpeg: Boolean) = advancedCaptureManager.captureDualMode(keepRawOnCard, downloadJpeg)
+    fun triggerCapture() = advancedCaptureManager.triggerCapture()
+    fun captureAudio() = advancedCaptureManager.captureAudio()
+    val bulbState get() = advancedCaptureManager.bulbState
+    val videoState get() = advancedCaptureManager.videoState
+    val intervalStatus get() = advancedCaptureManager.intervalStatus
+
+    // === Focus ===
+    fun setAFMode(mode: String) = focusManager.setAFMode(mode)
+    fun refreshAFMode() = focusManager.refreshAFMode()
+    fun setAFArea(x: Int, y: Int, width: Int, height: Int) = focusManager.setAFArea(x, y, width, height)
+    fun driveManualFocus(steps: Int) = focusManager.driveManualFocus(steps)
+    val focusConfig get() = focusManager.focusConfig
+    val isFocusDriving get() = focusManager.isFocusDriving
+
+    // === File ===
+    fun refreshStorageInfo() = fileManager.refreshStorageInfo()
+    fun downloadAllRawFiles(folder: String) = fileManager.downloadAllRawFiles(folder)
+    fun uploadFileToCamera(folder: String, filename: String, data: ByteArray) = fileManager.uploadFileToCamera(folder, filename, data)
+    fun deleteAllFilesInFolder(folder: String) = fileManager.deleteAllFilesInFolder(folder)
+    fun createFolder(parentFolder: String, folderName: String) = fileManager.createFolder(parentFolder, folderName)
+    fun removeFolder(parentFolder: String, folderName: String) = fileManager.removeFolder(parentFolder, folderName)
+    fun initializeCache() = fileManager.initializeCache()
+    fun invalidateFileCache() = fileManager.invalidateFileCache()
+    val storageInfo get() = fileManager.storageInfo
+
+    // === Streaming ===
+    fun startStreaming() = streamingManager.startStreaming()
+    fun stopStreaming() = streamingManager.stopStreaming()
+    fun setStreamingParameters(width: Int, height: Int, fps: Int) = streamingManager.setStreamingParameters(width, height, fps)
+    val isStreaming get() = streamingManager.isStreaming
+    val currentStreamFrame get() = streamingManager.currentFrame
+
+    // === Diagnostics ===
+    fun runFullDiagnostics() = diagnosticsManager.runFullDiagnostics()
+    fun clearErrorHistory() = diagnosticsManager.clearErrorHistory()
+    fun refreshMemoryPoolStatus() = diagnosticsManager.refreshMemoryPoolStatus()
+    fun clearCameraFilePool() = diagnosticsManager.clearCameraFilePool()
+    val diagnosticsReport get() = diagnosticsManager.diagnosticsReport
+    val memoryPoolStatus get() = diagnosticsManager.memoryPoolStatus
 
     override fun onCleared() {
         super.onCleared()
