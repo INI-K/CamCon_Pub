@@ -5,9 +5,9 @@ package com.inik.camcon.presentation.ui.screens.components
 import android.graphics.ColorSpace
 import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,7 +48,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.tooling.preview.Preview
+import com.inik.camcon.data.datasource.local.ThemeMode
 import com.inik.camcon.domain.model.CameraPhoto
+import com.inik.camcon.presentation.theme.Background
+import com.inik.camcon.presentation.theme.CamConTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayInputStream
@@ -1073,6 +1079,42 @@ fun FeaturedPhotoThumbnail(
                     fontWeight = FontWeight.Bold
                 )
             }
+        }
+    }
+}
+
+@Preview(name = "Photo Thumbnails", showBackground = true)
+@Composable
+private fun PhotoThumbnailPreview() {
+    CamConTheme(themeMode = ThemeMode.DARK) {
+        val samplePhoto = CameraPhoto(
+            path = "/fake/DSC_0001.JPG",
+            name = "DSC_0001.JPG",
+            size = 8_388_608L,
+            date = System.currentTimeMillis(),
+            width = 6000,
+            height = 4000
+        )
+        Column(
+            modifier = Modifier
+                .background(Background)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(modifier = Modifier.size(160.dp)) {
+                    PhotoThumbnail(photo = samplePhoto, onClick = {})
+                }
+                Box(modifier = Modifier.size(160.dp)) {
+                    PhotoThumbnail(
+                        photo = samplePhoto.copy(name = "DSC_0002.JPG"),
+                        onClick = {},
+                        isSelected = true,
+                        isMultiSelectMode = true
+                    )
+                }
+            }
+            FeaturedPhotoThumbnail(photo = samplePhoto, onClick = {})
         }
     }
 }

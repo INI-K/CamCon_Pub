@@ -12,7 +12,7 @@ import com.inik.camcon.data.datasource.local.ThemeMode
 // 통일된 다크 색상 스킴
 private val UnifiedDarkColorScheme = darkColorScheme(
     primary = Primary,
-    onPrimary = TextPrimary,
+    onPrimary = OnPrimary,
     primaryContainer = Primary.copy(alpha = 0.15f),
     onPrimaryContainer = Primary,
 

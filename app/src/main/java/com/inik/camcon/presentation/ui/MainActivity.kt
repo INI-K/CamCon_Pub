@@ -43,6 +43,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -63,6 +64,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.inik.camcon.presentation.theme.Border
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.lifecycleScope
@@ -413,10 +415,11 @@ fun MainScreen(
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentDestination = navBackStackEntry?.destination
 
+                    HorizontalDivider(color = Border, thickness = 0.5.dp)
                     NavigationBar(
                         containerColor = MaterialTheme.colorScheme.surface,
                         contentColor = MaterialTheme.colorScheme.onSurface,
-                        tonalElevation = 4.dp,
+                        tonalElevation = 0.dp,
                         modifier = Modifier.navigationBarsPadding()
                     ) {
                         items.forEach { screen ->
@@ -477,7 +480,16 @@ fun MainScreen(
                     // AP 모드와 USB 모드 모두 동일한 CameraControlScreen 사용
                     CameraControlScreen(
                         viewModel = cameraViewModel, // 전역 ViewModel 전달
-                        onFullscreenChange = { isFullscreen = it }
+                        onFullscreenChange = { isFullscreen = it },
+                        onGalleryClick = {
+                            navController.navigate(BottomNavItem.ServerPhotos.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
                     )
                 }
                 composable(BottomNavItem.ServerPhotos.route) { MyPhotosScreen() }
