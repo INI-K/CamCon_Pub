@@ -29,11 +29,10 @@ class LoginViewModelTest {
     private lateinit var viewModel: LoginViewModel
 
     private val testUser = User(
-        uid = "test-uid",
+        id = "test-uid",
         email = "test@example.com",
         displayName = "Test User",
-        photoUrl = null,
-        subscriptionTier = com.inik.camcon.domain.model.SubscriptionTier.FREE
+        photoUrl = null
     )
 
     @Before

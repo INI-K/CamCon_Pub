@@ -64,7 +64,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -144,14 +144,14 @@ fun CameraControlScreen(
     }
 
     // UI 상태들을 선별적으로 수집
-    val uiState by viewModel.uiState.collectAsState()
-    val cameraFeed by viewModel.cameraFeed.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val cameraFeed by viewModel.cameraFeed.collectAsStateWithLifecycle()
 
     // 설정 상태들을 collectAsState로 개별 수집하되 리컴포지션 최적화
-    val isCameraControlsEnabled by appSettingsViewModel.isCameraControlsEnabled.collectAsState()
-    val isLiveViewEnabled by appSettingsViewModel.isLiveViewEnabled.collectAsState()
-    val isAutoStartEventListener by appSettingsViewModel.isAutoStartEventListenerEnabled.collectAsState()
-    val isShowPreviewInCapture by appSettingsViewModel.isShowLatestPhotoWhenDisabled.collectAsState()
+    val isCameraControlsEnabled by appSettingsViewModel.isCameraControlsEnabled.collectAsStateWithLifecycle()
+    val isLiveViewEnabled by appSettingsViewModel.isLiveViewEnabled.collectAsStateWithLifecycle()
+    val isAutoStartEventListener by appSettingsViewModel.isAutoStartEventListenerEnabled.collectAsStateWithLifecycle()
+    val isShowPreviewInCapture by appSettingsViewModel.isShowLatestPhotoWhenDisabled.collectAsStateWithLifecycle()
 
     // 다이얼로그 상태들
     var showFolderSelectionDialog by remember { mutableStateOf(false) }

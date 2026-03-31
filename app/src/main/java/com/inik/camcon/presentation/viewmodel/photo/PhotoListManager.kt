@@ -10,6 +10,8 @@ import com.inik.camcon.domain.usecase.camera.GetCameraPhotosPagedUseCase
 import com.inik.camcon.utils.SubscriptionUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -67,6 +69,8 @@ class PhotoListManager @Inject constructor(
     // 프리로딩 상태
     private val _prefetchedPage = MutableStateFlow(0)
 
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     // 작업 중단 플래그
     private var isManagerActive = true
 
@@ -75,7 +79,7 @@ class PhotoListManager @Inject constructor(
      */
     fun loadInitialPhotos(isConnected: Boolean, isPtpipConnected: Boolean = false) {
         Log.d(TAG, "=== loadInitialPhotos 호출 ===")
-        CoroutineScope(Dispatchers.IO).launch {
+        scope.launch {
             Log.d(TAG, "loadInitialPhotos 코루틴 시작")
 
             if (!isManagerActive) {
@@ -185,7 +189,7 @@ class PhotoListManager @Inject constructor(
         }
 
         Log.d(TAG, "=== loadNextPage 시작 ===")
-        CoroutineScope(Dispatchers.IO).launch {
+        scope.launch {
             _isLoadingMore.value = true
             Log.d(TAG, "isLoadingMore = true 설정됨")
 
@@ -373,7 +377,7 @@ class PhotoListManager @Inject constructor(
         }
 
         Log.d(TAG, "=== prefetchNextPage 시작 ===")
-        CoroutineScope(Dispatchers.IO).launch {
+        scope.launch {
             _isLoadingMore.value = true
 
             val nextPage = _currentPage.value + 1
@@ -448,6 +452,7 @@ class PhotoListManager @Inject constructor(
      * 매니저 정리
      */
     fun cleanup() {
+        scope.cancel()
         isManagerActive = false
         _allPhotos.value = emptyList()
         _filteredPhotos.value = emptyList()

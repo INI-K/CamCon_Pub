@@ -22,14 +22,14 @@ import com.inik.camcon.domain.model.PaginatedCameraPhotos
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.domain.model.TimelapseSettings
 import com.inik.camcon.domain.repository.CameraRepository
-import com.inik.camcon.domain.usecase.ColorTransferUseCase
+import com.inik.camcon.domain.repository.ColorTransferRepository
 import com.inik.camcon.domain.usecase.camera.PhotoCaptureEventManager
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
+import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.utils.Constants
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,8 +39,10 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import java.io.Closeable
 import java.nio.ByteBuffer
 import java.util.UUID
 import javax.inject.Inject
@@ -66,14 +68,15 @@ class CameraRepositoryImpl @Inject constructor(
     private val usbCameraManager: UsbCameraManager,
     private val photoCaptureEventManager: PhotoCaptureEventManager,
     private val appPreferencesDataSource: AppPreferencesDataSource,
-    private val colorTransferUseCase: ColorTransferUseCase,
+    private val colorTransferRepository: ColorTransferRepository,
     private val connectionManager: CameraConnectionManager,
     private val eventManager: CameraEventManager,
     private val downloadManager: PhotoDownloadManager,
-    private val uiStateManager: com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager,
+    private val cameraStateObserver: com.inik.camcon.domain.manager.CameraStateObserver,
     private val getSubscriptionUseCase: GetSubscriptionUseCase,
-    private val errorHandlingManager: com.inik.camcon.domain.manager.ErrorHandlingManager
-) : CameraRepository {
+    private val errorHandlingManager: com.inik.camcon.domain.manager.ErrorHandlingManager,
+    @ApplicationScope private val scope: CoroutineScope
+) : CameraRepository, Closeable {
 
     companion object {
         private const val TAG = "카메라레포지토리"
@@ -82,13 +85,18 @@ class CameraRepositoryImpl @Inject constructor(
         private const val DUP_WINDOW_MS = 1500L
     }
 
-    // 중복 처리 방지를 위한 변수들
-    private val processedFiles = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    // 중복 처리 방지를 위한 변수들 (LRU 방식으로 최대 1000개 유지)
+    private val processedFiles: MutableSet<String> = java.util.Collections.synchronizedSet(
+        java.util.Collections.newSetFromMap(object : LinkedHashMap<String, Boolean>(16, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Boolean>?): Boolean {
+                return size > 1000
+            }
+        })
+    )
 
     private val _capturedPhotos = MutableStateFlow<List<CapturedPhoto>>(emptyList())
     private val _cameraSettings = MutableStateFlow<CameraSettings?>(null)
 
-    private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     init {
         initializeRepository()
@@ -100,7 +108,7 @@ class CameraRepositoryImpl @Inject constructor(
      */
     private fun initializeRepository() {
         // GPU 초기화
-        colorTransferUseCase.initializeGPU(context)
+        colorTransferRepository.initializeGPU(context)
 
         // PTPIP 콜백 설정
         setupPtpipCallbacks()
@@ -121,7 +129,7 @@ class CameraRepositoryImpl @Inject constructor(
             com.inik.camcon.utils.LogcatManager.d(TAG, "  📊 데이터 크기: ${imageData.size / 1024}KB")
 
             // PhotoDownloadManager를 통해 실제 파일 저장 및 MediaStore 등록
-            repositoryScope.launch {
+            scope.launch(Dispatchers.IO) {
                 com.inik.camcon.utils.LogcatManager.d(TAG, "🚀 PTPIP - handleNativePhotoDownload 호출")
 
                 val capturedPhoto = downloadManager.handleNativePhotoDownload(
@@ -156,7 +164,7 @@ class CameraRepositoryImpl @Inject constructor(
      * 개선: 에러 처리 로직을 별도 메서드로 분리
      */
     private fun handlePtpipDisconnection() {
-        repositoryScope.launch {
+        scope.launch(Dispatchers.IO) {
             try {
                 CameraNative.stopListenCameraEvents()
                 com.inik.camcon.utils.LogcatManager.d(
@@ -174,7 +182,7 @@ class CameraRepositoryImpl @Inject constructor(
      * 개선: 이벤트 구독 로직을 별도 메서드로 분리
      */
     private fun subscribeToUsbEvents() {
-        repositoryScope.launch {
+        scope.launch(Dispatchers.IO) {
             errorHandlingManager.usbDisconnectedEvent.collect {
                 com.inik.camcon.utils.LogcatManager.d(TAG, "USB 분리 이벤트 감지 - USB 분리 처리 시작")
                 usbCameraManager.handleUsbDisconnection()
@@ -235,7 +243,7 @@ class CameraRepositoryImpl @Inject constructor(
             },
             onFlushComplete = {
                 com.inik.camcon.utils.LogcatManager.d(TAG, "🎯 카메라 이벤트 플러시 완료 - 초기화 상태 해제")
-                uiStateManager.updateCameraInitialization(false)
+                cameraStateObserver.updateCameraInitialization(false)
                 com.inik.camcon.utils.LogcatManager.d(
                     TAG,
                     "✅ UI 블로킹 해제 완료 (isCameraInitializing = false)"
@@ -393,7 +401,9 @@ class CameraRepositoryImpl @Inject constructor(
                 com.inik.camcon.utils.LogcatManager.d(TAG, "비동기 사진 촬영 호출 완료, 콜백 대기 중...")
             } catch (e: Exception) {
                 Log.e(TAG, "사진 촬영 중 예외 발생", e)
-                continuation.resumeWithException(e)
+                if (continuation.isActive) {
+                    continuation.resumeWithException(e)
+                }
             }
         }
     }
@@ -403,11 +413,13 @@ class CameraRepositoryImpl @Inject constructor(
      * 개선: 검증 로직을 별도 메서드로 분리
      */
     private fun validateCameraConnection(
-        continuation: kotlin.coroutines.Continuation<Result<CapturedPhoto>>
+        continuation: CancellableContinuation<Result<CapturedPhoto>>
     ): Boolean {
         if (!connectionManager.isConnected.value) {
             Log.e(TAG, "카메라가 연결되지 않은 상태에서 사진 촬영 불가")
-            continuation.resumeWithException(Exception("카메라가 연결되지 않음"))
+            if (continuation.isActive) {
+                continuation.resumeWithException(Exception("카메라가 연결되지 않음"))
+            }
             return false
         }
         return true
@@ -418,7 +430,7 @@ class CameraRepositoryImpl @Inject constructor(
      * 개선: 리스너 생성 로직을 별도 메서드로 분리하여 가독성 향상
      */
     private fun createCaptureListener(
-        continuation: kotlin.coroutines.Continuation<Result<CapturedPhoto>>
+        continuation: CancellableContinuation<Result<CapturedPhoto>>
     ): CameraCaptureListener {
         return object : CameraCaptureListener {
             override fun onFlushComplete() {
@@ -442,14 +454,18 @@ class CameraRepositoryImpl @Inject constructor(
 
             override fun onCaptureFailed(errorCode: Int) {
                 Log.e(TAG, "✗ 사진 촬영 실패, 오류 코드: $errorCode")
-                continuation.resumeWithException(Exception("사진 촬영 실패: 오류 코드 $errorCode"))
+                if (continuation.isActive) {
+                    continuation.resumeWithException(Exception("사진 촬영 실패: 오류 코드 $errorCode"))
+                }
             }
 
             override fun onUsbDisconnected() {
                 Log.e(TAG, "USB 디바이스 분리 감지 - 촬영 실패 처리")
-                continuation.resumeWithException(
-                    Exception("USB 디바이스가 분리되어 촬영을 완료할 수 없습니다")
-                )
+                if (continuation.isActive) {
+                    continuation.resumeWithException(
+                        Exception("USB 디바이스가 분리되어 촬영을 완료할 수 없습니다")
+                    )
+                }
             }
         }
     }
@@ -461,7 +477,7 @@ class CameraRepositoryImpl @Inject constructor(
     private fun handlePhotoCaptured(
         fullPath: String,
         fileName: String,
-        continuation: kotlin.coroutines.Continuation<Result<CapturedPhoto>>
+        continuation: CancellableContinuation<Result<CapturedPhoto>>
     ) {
         com.inik.camcon.utils.LogcatManager.d(TAG, "✓ 사진 촬영 완료!!!")
         com.inik.camcon.utils.LogcatManager.d(TAG, "파일명: $fileName")
@@ -475,7 +491,7 @@ class CameraRepositoryImpl @Inject constructor(
 
         val photo = createCapturedPhoto(fullPath, fileName)
 
-        repositoryScope.launch {
+        scope.launch(Dispatchers.IO) {
             downloadManager.handlePhotoDownload(
                 photo = photo,
                 fullPath = fullPath,
@@ -491,7 +507,9 @@ class CameraRepositoryImpl @Inject constructor(
             )
         }
 
-        continuation.resume(Result.success(photo))
+        if (continuation.isActive) {
+            continuation.resume(Result.success(photo))
+        }
     }
 
     /**
@@ -806,7 +824,7 @@ class CameraRepositoryImpl @Inject constructor(
             onPhotoDownloaded = null, // 중복 처리 방지를 위해 null로 설정
             onFlushComplete = {
                 com.inik.camcon.utils.LogcatManager.d(TAG, "🎯 카메라 이벤트 플러시 완료 - 초기화 상태 해제")
-                uiStateManager.updateCameraInitialization(false)
+                cameraStateObserver.updateCameraInitialization(false)
                 com.inik.camcon.utils.LogcatManager.d(
                     TAG,
                     "✅ UI 블로킹 해제 완료 (isCameraInitializing = false)"
@@ -842,7 +860,7 @@ class CameraRepositoryImpl @Inject constructor(
         }
 
         // PhotoDownloadManager의 handleNativePhotoDownload를 직접 호출
-        repositoryScope.launch {
+        scope.launch(Dispatchers.IO) {
             com.inik.camcon.utils.LogcatManager.d(
                 TAG,
                 "🚀 PhotoDownloadManager.handleNativePhotoDownload 시작: $fileName"
@@ -1017,7 +1035,7 @@ class CameraRepositoryImpl @Inject constructor(
      * 다운로드 실패한 사진 제거
      */
     private fun updatePhotoDownloadFailed(fileName: String) {
-        repositoryScope.launch(Dispatchers.Main) {
+        scope.launch(Dispatchers.Main) {
             _capturedPhotos.value = _capturedPhotos.value.filter { it.filePath != fileName }
             com.inik.camcon.utils.LogcatManager.d(TAG, "❌ 다운로드 실패한 사진 제거: $fileName")
         }
@@ -1037,5 +1055,9 @@ class CameraRepositoryImpl @Inject constructor(
         callback: ((fileName: String, restrictionMessage: String) -> Unit)?
     ) {
         eventManager.onRawFileRestricted = callback
+    }
+
+    override fun close() {
+        processedFiles.clear()
     }
 }

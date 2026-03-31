@@ -10,6 +10,7 @@ import com.inik.camcon.domain.model.CameraPhoto
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
@@ -89,6 +90,7 @@ object ImageProcessingUtils {
      * ImageView에 이미지 데이터를 로드하는 함수
      */
     fun loadImageIntoView(
+        scope: CoroutineScope,
         imageView: ImageView,
         photo: CameraPhoto,
         fullImageData: ByteArray?,
@@ -129,11 +131,11 @@ object ImageProcessingUtils {
 
             // 즉시 썸네일로 시작 (빠른 반응성)
             if (thumbnailData != null) {
-                loadThumbnailQuickly(imageView, photo, thumbnailData, bitmapCache)
+                loadThumbnailQuickly(scope, imageView, photo, thumbnailData, bitmapCache)
             }
 
             // 백그라운드에서 고화질 이미지 우선 처리
-            CoroutineScope(Dispatchers.IO).launch {
+            scope.launch(Dispatchers.IO) {
                 try {
                     val fullCacheKey = "${photo.path}_full"
                     var fullBitmap = bitmapCache[fullCacheKey]
@@ -146,7 +148,7 @@ object ImageProcessingUtils {
                     }
 
                     if (fullBitmap != null && !fullBitmap.isRecycled) {
-                        CoroutineScope(Dispatchers.Main).launch {
+                        withContext(Dispatchers.Main) {
                             // 현재 ImageView가 여전히 이 사진을 표시하고 있는지 확인
                             val currentImageView = imageViewRefs[photo.path]
                             if (currentImageView == imageView) {
@@ -167,7 +169,7 @@ object ImageProcessingUtils {
 
                 // 고화질 실패 시 썸네일로 fallback (이미 표시되어 있을 수 있음)
                 if (thumbnailData == null) {
-                    CoroutineScope(Dispatchers.Main).launch {
+                    withContext(Dispatchers.Main) {
                         setPlaceholderImage(imageView)
                     }
                 }
@@ -176,19 +178,20 @@ object ImageProcessingUtils {
         }
 
         // 고화질이 없거나 이미 처리된 경우 썸네일 처리
-        loadThumbnailFallback(imageView, photo, thumbnailData, bitmapCache)
+        loadThumbnailFallback(scope, imageView, photo, thumbnailData, bitmapCache)
     }
 
     /**
      * 썸네일을 빠르게 로드하는 함수 (고화질 로딩 전 임시 표시용)
      */
     private fun loadThumbnailQuickly(
+        scope: CoroutineScope,
         imageView: ImageView,
         photo: CameraPhoto,
         thumbnailData: ByteArray,
         bitmapCache: MutableMap<String, Bitmap>
     ) {
-        CoroutineScope(Dispatchers.IO).launch {
+        scope.launch(Dispatchers.IO) {
             try {
                 val thumbnailCacheKey = "${photo.path}_thumbnail"
                 var thumbnailBitmap = bitmapCache[thumbnailCacheKey]
@@ -201,7 +204,7 @@ object ImageProcessingUtils {
                 }
 
                 if (thumbnailBitmap != null && !thumbnailBitmap.isRecycled) {
-                    CoroutineScope(Dispatchers.Main).launch {
+                    withContext(Dispatchers.Main) {
                         imageView.setImageBitmap(thumbnailBitmap)
                         imageView.scaleType = ImageView.ScaleType.FIT_CENTER
                         imageView.alpha = 0.8f // 고화질 로딩 중임을 표시
@@ -218,6 +221,7 @@ object ImageProcessingUtils {
      * 썸네일 fallback 처리
      */
     private fun loadThumbnailFallback(
+        scope: CoroutineScope,
         imageView: ImageView,
         photo: CameraPhoto,
         thumbnailData: ByteArray?,
@@ -229,7 +233,7 @@ object ImageProcessingUtils {
             return
         }
 
-        CoroutineScope(Dispatchers.IO).launch {
+        scope.launch(Dispatchers.IO) {
             try {
                 val thumbnailCacheKey = "${photo.path}_thumbnail"
                 var thumbnailBitmap = bitmapCache[thumbnailCacheKey]
@@ -242,21 +246,21 @@ object ImageProcessingUtils {
                 }
 
                 if (thumbnailBitmap != null && !thumbnailBitmap.isRecycled) {
-                    CoroutineScope(Dispatchers.Main).launch {
+                    withContext(Dispatchers.Main) {
                         imageView.setImageBitmap(thumbnailBitmap)
                         imageView.scaleType = ImageView.ScaleType.FIT_CENTER
                         imageView.alpha = 1.0f
                         Log.d("ImageProcessing", "✅ 썸네일 표시 완료: ${photo.name}")
                     }
                 } else {
-                    CoroutineScope(Dispatchers.Main).launch {
+                    withContext(Dispatchers.Main) {
                         Log.w("ImageProcessing", "⚠️ 썸네일 처리 실패 - 플레이스홀더 표시: ${photo.name}")
                         setPlaceholderImage(imageView)
                     }
                 }
             } catch (e: Exception) {
                 Log.e("ImageProcessing", "❌ 썸네일 로딩 에러: ${photo.name}", e)
-                CoroutineScope(Dispatchers.Main).launch {
+                withContext(Dispatchers.Main) {
                     setPlaceholderImage(imageView)
                 }
             }
@@ -370,30 +374,31 @@ object ImageProcessingUtils {
      * 고화질 이미지를 ImageView에 로드하는 단순화된 함수
      */
     fun loadFullImageIntoView(
+        scope: CoroutineScope,
         imageView: ImageView,
         photo: CameraPhoto,
         fullImageData: ByteArray
     ) {
-        CoroutineScope(Dispatchers.IO).launch {
+        scope.launch(Dispatchers.IO) {
             try {
                 val bitmap = decodeBitmapWithExifRotation(fullImageData, photo)
 
                 if (bitmap != null && !bitmap.isRecycled) {
-                    CoroutineScope(Dispatchers.Main).launch {
+                    withContext(Dispatchers.Main) {
                         imageView.setImageBitmap(bitmap)
                         imageView.scaleType = ImageView.ScaleType.FIT_CENTER
                         imageView.alpha = 1.0f
                         Log.d("ImageProcessing", "✅ 고화질 이미지 로드 완료: ${photo.name}")
                     }
                 } else {
-                    CoroutineScope(Dispatchers.Main).launch {
+                    withContext(Dispatchers.Main) {
                         setPlaceholderImage(imageView)
                         Log.w("ImageProcessing", "고화질 비트맵 생성 실패: ${photo.name}")
                     }
                 }
             } catch (e: Exception) {
                 Log.e("ImageProcessing", "고화질 이미지 로드 실패: ${photo.name}", e)
-                CoroutineScope(Dispatchers.Main).launch {
+                withContext(Dispatchers.Main) {
                     setPlaceholderImage(imageView)
                 }
             }
@@ -404,30 +409,31 @@ object ImageProcessingUtils {
      * 썸네일 이미지를 ImageView에 로드하는 단순화된 함수
      */
     fun loadThumbnailIntoView(
+        scope: CoroutineScope,
         imageView: ImageView,
         photo: CameraPhoto,
         thumbnailData: ByteArray
     ) {
-        CoroutineScope(Dispatchers.IO).launch {
+        scope.launch(Dispatchers.IO) {
             try {
                 val bitmap = decodeBitmapWithExifRotation(thumbnailData, photo)
 
                 if (bitmap != null && !bitmap.isRecycled) {
-                    CoroutineScope(Dispatchers.Main).launch {
+                    withContext(Dispatchers.Main) {
                         imageView.setImageBitmap(bitmap)
                         imageView.scaleType = ImageView.ScaleType.FIT_CENTER
                         imageView.alpha = 1.0f
                         Log.d("ImageProcessing", "✅ 썸네일 이미지 로드 완료: ${photo.name}")
                     }
                 } else {
-                    CoroutineScope(Dispatchers.Main).launch {
+                    withContext(Dispatchers.Main) {
                         setPlaceholderImage(imageView)
                         Log.w("ImageProcessing", "썸네일 비트맵 생성 실패: ${photo.name}")
                     }
                 }
             } catch (e: Exception) {
                 Log.e("ImageProcessing", "썸네일 이미지 로드 실패: ${photo.name}", e)
-                CoroutineScope(Dispatchers.Main).launch {
+                withContext(Dispatchers.Main) {
                     setPlaceholderImage(imageView)
                 }
             }
