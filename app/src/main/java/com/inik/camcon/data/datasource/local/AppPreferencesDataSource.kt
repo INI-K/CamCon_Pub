@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.inik.camcon.domain.repository.AppSettingsRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -32,7 +33,7 @@ enum class ThemeMode(val value: Int) {
 @Singleton
 class AppPreferencesDataSource @Inject constructor(
     private val context: Context
-) {
+) : AppSettingsRepository {
     companion object {
         private val CAMERA_CONTROLS_ENABLED = booleanPreferencesKey("camera_controls_enabled")
         private val LIVE_VIEW_ENABLED = booleanPreferencesKey("live_view_enabled")
@@ -143,7 +144,7 @@ class AppPreferencesDataSource @Inject constructor(
     /**
      * RAW 파일 다운로드 활성화 여부 (기본값: true)
      */
-    val isRawFileDownloadEnabled: Flow<Boolean> = context.appDataStore.data
+    override val isRawFileDownloadEnabled: Flow<Boolean> = context.appDataStore.data
         .map { preferences ->
             preferences[RAW_FILE_DOWNLOAD_ENABLED] ?: true
         }

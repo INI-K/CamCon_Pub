@@ -2,6 +2,7 @@ package com.inik.camcon.presentation.viewmodel.state
 
 import android.util.Log
 import com.inik.camcon.data.repository.managers.PtpTimeoutException
+import com.inik.camcon.domain.manager.CameraStateObserver
 import com.inik.camcon.domain.model.CameraAbilitiesInfo
 import com.inik.camcon.domain.model.CameraCapabilities
 import com.inik.camcon.domain.model.CameraSettings
@@ -21,7 +22,7 @@ import javax.inject.Singleton
  * 카메라 UI 상태 관리를 담당하는 클래스
  */
 @Singleton
-class CameraUiStateManager @Inject constructor() {
+class CameraUiStateManager @Inject constructor() : CameraStateObserver {
 
     private val _uiState = MutableStateFlow(CameraUiState())
     val uiState: StateFlow<CameraUiState> = _uiState.asStateFlow()
@@ -84,7 +85,7 @@ class CameraUiStateManager @Inject constructor() {
     /**
      * 카메라 기능 정보 업데이트
      */
-    fun updateCameraCapabilities(capabilities: CameraCapabilities?) {
+    override fun updateCameraCapabilities(capabilities: CameraCapabilities?) {
         _uiState.update {
             it.copy(
                 cameraCapabilities = capabilities,
@@ -122,7 +123,7 @@ class CameraUiStateManager @Inject constructor() {
     /**
      * 카메라 초기화 상태 업데이트
      */
-    fun updateCameraInitialization(isInitializing: Boolean) {
+    override fun updateCameraInitialization(isInitializing: Boolean) {
         val previousState = _uiState.value.isCameraInitializing
         _uiState.update { it.copy(isCameraInitializing = isInitializing) }
         Log.d(TAG, "카메라 초기화 상태 업데이트: $previousState -> $isInitializing")
@@ -277,7 +278,7 @@ class CameraUiStateManager @Inject constructor() {
     /**
      * 카메라 상태 점검 다이얼로그 관리
      */
-    fun showCameraStatusCheckDialog(show: Boolean) {
+    override fun showCameraStatusCheckDialog(show: Boolean) {
         _uiState.update { it.copy(showCameraStatusCheckDialog = show) }
         Log.d(TAG, "카메라 상태 점검 다이얼로그 상태 업데이트: $show")
     }
@@ -404,7 +405,7 @@ class CameraUiStateManager @Inject constructor() {
      * - 기능 제한이 있는 경우 안내 메시지 표시
      * - 제조사별 특화 경고 표시 (Nikon STA 등)
      */
-    fun updateCameraAbilities(abilities: CameraAbilitiesInfo) {
+    override fun updateCameraAbilities(abilities: CameraAbilitiesInfo) {
         Log.i(TAG, "=== 카메라 Abilities 기반 UI 업데이트 ===")
         Log.i(TAG, "모델: ${abilities.model}")
         Log.i(TAG, "제조사: ${abilities.getManufacturer()}")

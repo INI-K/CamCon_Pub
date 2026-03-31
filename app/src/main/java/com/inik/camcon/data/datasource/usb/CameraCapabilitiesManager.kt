@@ -3,11 +3,14 @@ package com.inik.camcon.data.datasource.usb
 import android.util.Log
 import com.inik.camcon.CameraNative
 import com.inik.camcon.domain.model.CameraCapabilities
-import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
+import com.inik.camcon.domain.manager.CameraStateObserver
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import javax.inject.Inject
@@ -18,8 +21,10 @@ import javax.inject.Singleton
  */
 @Singleton
 class CameraCapabilitiesManager @Inject constructor(
-    private val uiStateManager: CameraUiStateManager
+    private val cameraStateObserver: CameraStateObserver
 ) {
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val _cameraCapabilities = MutableStateFlow<CameraCapabilities?>(null)
     val cameraCapabilities: StateFlow<CameraCapabilities?> = _cameraCapabilities.asStateFlow()
@@ -474,7 +479,7 @@ class CameraCapabilitiesManager @Inject constructor(
 
         // 실제 UI 알러트는 ViewModel이나 Activity에서 처리해야 하므로
         // 여기서는 로그로만 표시하고 상태를 업데이트
-        uiStateManager.showCameraStatusCheckDialog(true)
+        cameraStateObserver.showCameraStatusCheckDialog(true)
     }
 
     /**
@@ -482,7 +487,7 @@ class CameraCapabilitiesManager @Inject constructor(
      * 주의: 이 함수는 카메라가 꺼진 상태로 확실히 판단될 때만 실행되어야 함
      */
     private fun runPoweredOffTest() {
-        Thread {
+        scope.launch {
             try {
                 Log.d(TAG, "🔴 카메라 꺼진 상태 테스트 시작 - USB 연결은 유지, 카메라 전원은 OFF")
                 Log.d(TAG, "📁 꺼진 카메라에서 파일 목록 가져오기 테스트...")
@@ -498,7 +503,7 @@ class CameraCapabilitiesManager @Inject constructor(
                 if (!isInitialized) {
                     Log.w(TAG, "📁 카메라가 초기화되지 않음 - 테스트 중단")
                     Log.w(TAG, "🔴 USB 연결은 되어있지만 카메라 통신 불가능한 상태")
-                    return@Thread
+                    return@launch
                 }
 
                 // 2. 카메라가 정말 꺼진 상태인지 재확인
@@ -506,7 +511,7 @@ class CameraCapabilitiesManager @Inject constructor(
                     CameraNative.getCameraSummary()
                 } catch (e: Exception) {
                     Log.e(TAG, "카메라 요약 정보 재확인 실패", e)
-                    return@Thread
+                    return@launch
                 }
 
                 val stillPoweredOff = try {
@@ -524,7 +529,7 @@ class CameraCapabilitiesManager @Inject constructor(
 
                 if (!stillPoweredOff) {
                     Log.w(TAG, "🟢 카메라가 다시 켜진 것으로 감지됨 - 테스트 중단")
-                    return@Thread
+                    return@launch
                 }
 
                 Log.d(TAG, "✅ 카메라 꺼진 상태 확인됨 - 파일 다운로드 테스트 계속 진행")
@@ -547,7 +552,7 @@ class CameraCapabilitiesManager @Inject constructor(
                     Log.d(TAG, "📁 카메라에 파일이 없거나 목록 가져오기 실패")
                     Log.d(TAG, "🔴 꺼진 카메라에서는 파일 접근이 불가능한 것으로 확인됨")
                     Log.d(TAG, "🔴 꺼진 카메라 파일 다운로드 테스트 완료")
-                    return@Thread
+                    return@launch
                 }
 
                 // 4. JSON 파싱하여 파일 목록 분석
@@ -555,13 +560,13 @@ class CameraCapabilitiesManager @Inject constructor(
                     org.json.JSONObject(photoListJson)
                 } catch (e: Exception) {
                     Log.e(TAG, "📁 JSON 파싱 실패", e)
-                    return@Thread
+                    return@launch
                 }
 
                 if (json.has("error")) {
                     Log.e(TAG, "📁 파일 목록 오류: ${json.getString("error")}")
                     Log.d(TAG, "🔴 꺼진 카메라에서는 파일 접근 권한이 없는 것으로 확인됨")
-                    return@Thread
+                    return@launch
                 }
 
                 val filesArray = json.optJSONArray("files")
@@ -656,7 +661,7 @@ class CameraCapabilitiesManager @Inject constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "🔴 꺼진 카메라 테스트 중 오류", e)
             }
-        }.start()
+        }
     }
 
     /**

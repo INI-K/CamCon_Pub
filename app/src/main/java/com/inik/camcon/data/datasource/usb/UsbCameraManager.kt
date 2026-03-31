@@ -5,6 +5,10 @@ import android.hardware.usb.UsbDevice
 import android.util.Log
 import com.inik.camcon.domain.model.CameraCapabilities
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -21,6 +25,8 @@ class UsbCameraManager @Inject constructor(
     private val connectionManager: UsbConnectionManager,
     private val capabilitiesManager: CameraCapabilitiesManager
 ) {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     // StateFlow 위임
     val connectedDevices: StateFlow<List<UsbDevice>> = deviceDetector.connectedDevices
     val hasUsbPermission: StateFlow<Boolean> = deviceDetector.hasPermission
@@ -58,7 +64,7 @@ class UsbCameraManager @Inject constructor(
         deviceDetector.setDisconnectionCallback { device ->
             Log.d(TAG, "USB 디바이스 분리 감지: ${device.deviceName}")
             // 연결 매니저에서 분리 처리
-            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            scope.launch {
                 connectionManager.handleUsbDisconnection()
                 capabilitiesManager.reset()
             }
@@ -106,12 +112,11 @@ class UsbCameraManager @Inject constructor(
                     ) {
                         Log.w(TAG, "카메라 연결 상태 불량 감지 - 재연결 시도")
                         // 연결 상태가 불량하면 재연결 시도
-                        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO)
-                            .launch {
-                                connectionManager.disconnectCamera()
-                                kotlinx.coroutines.delay(500)
-                                connectToCamera(devices.first())
-                            }
+                        scope.launch {
+                            connectionManager.disconnectCamera()
+                            delay(500)
+                            connectToCamera(devices.first())
+                        }
                     }
                 }
             } else {
@@ -145,7 +150,7 @@ class UsbCameraManager @Inject constructor(
      * 카메라 연결을 해제합니다
      */
     fun disconnectCamera() {
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+        scope.launch {
             connectionManager.disconnectCamera()
             capabilitiesManager.reset()
         }
@@ -155,7 +160,7 @@ class UsbCameraManager @Inject constructor(
      * 카메라 기능 정보를 새로고침합니다
      */
     fun refreshCameraCapabilities() {
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+        scope.launch {
             capabilitiesManager.refreshCameraCapabilities()
         }
     }
@@ -200,7 +205,7 @@ class UsbCameraManager @Inject constructor(
         // 기존 콜백에 추가로 연결
         val originalCallback = connectionManager::handleUsbDisconnection
         connectionManager.setDisconnectionCallback {
-            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            scope.launch {
                 originalCallback.invoke()
                 callback.invoke()
             }
@@ -219,7 +224,7 @@ class UsbCameraManager @Inject constructor(
      * 카메라 전원 상태를 확인하고 필요시 테스트 실행
      */
     fun checkPowerStateAndTest() {
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+        scope.launch {
             try {
                 Log.d(TAG, "카메라 전원 상태 확인 및 테스트 실행")
 
@@ -260,11 +265,10 @@ class UsbCameraManager @Inject constructor(
                         }
 
                         // 메인 스레드에서 콜백 호출
-                        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main)
-                            .launch {
-                                Log.d(TAG, "카메라 정리 작업 완료")
-                                onCleanupComplete?.invoke()
-                            }
+                        scope.launch(Dispatchers.Main) {
+                            Log.d(TAG, "카메라 정리 작업 완료")
+                            onCleanupComplete?.invoke()
+                        }
                     }
                 }
             )

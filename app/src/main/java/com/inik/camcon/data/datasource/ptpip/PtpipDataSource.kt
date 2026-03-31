@@ -65,7 +65,7 @@ class PtpipDataSource @Inject constructor(
     private val nikonAuthService: NikonAuthenticationService,
     private val wifiHelper: WifiNetworkHelper,
     private val cameraEventManager: CameraEventManager,
-    private val uiStateManager: com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager,
+    private val cameraStateObserver: com.inik.camcon.domain.manager.CameraStateObserver,
     private val photoDownloadManager: com.inik.camcon.data.repository.managers.PhotoDownloadManager,
     private val autoConnectManager: AutoConnectManager,
     private val autoConnectTaskRunnerProvider: Lazy<AutoConnectTaskRunner>
@@ -756,7 +756,7 @@ class PtpipDataSource @Inject constructor(
 
         // UI 상태 업데이트 (PTPIP도 동일하게)
         try {
-            uiStateManager.updateCameraAbilities(abilities)
+            cameraStateObserver.updateCameraAbilities(abilities)
             Log.i(TAG, "✅ PTPIP 연결 - UI 상태 업데이트 완료")
         } catch (e: Exception) {
             Log.e(TAG, "UI 상태 업데이트 실패", e)
