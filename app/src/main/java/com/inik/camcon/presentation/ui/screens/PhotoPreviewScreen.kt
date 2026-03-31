@@ -26,7 +26,6 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -44,13 +43,12 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SelectAll
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -82,7 +80,7 @@ import java.io.File
 /**
  * 카메라에서 촬영한 사진들을 미리보기로 보여주는 메인 화면
  */
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PhotoPreviewScreen(
     viewModel: PhotoPreviewViewModel = hiltViewModel(),
@@ -90,30 +88,24 @@ fun PhotoPreviewScreen(
 ) {
     Log.d("PhotoPreviewScreen", "=== PhotoPreviewScreen 컴포저블 시작 ===")
 
-    val uiState by viewModel.uiState.collectAsState()
-    val photos by viewModel.photos.collectAsState()
-    val isLoadingPhotos by viewModel.isLoadingPhotos.collectAsState()
-    val isLoadingMore by viewModel.isLoadingMorePhotos.collectAsState()
-    val hasNextPage by viewModel.hasNextPage.collectAsState()
-    val currentFilter by viewModel.currentFilter.collectAsState()
-    val currentPage by viewModel.currentPage.collectAsState()
-    val totalPages by viewModel.totalPages.collectAsState()
-    val isMultiSelectMode by viewModel.isMultiSelectMode.collectAsState()
-    val selectedPhotos by viewModel.selectedPhotos.collectAsState()
-    val isPtpipConnected by cameraViewModel.isPtpipConnected.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val photos by viewModel.photos.collectAsStateWithLifecycle()
+    val isLoadingPhotos by viewModel.isLoadingPhotos.collectAsStateWithLifecycle()
+    val isLoadingMore by viewModel.isLoadingMorePhotos.collectAsStateWithLifecycle()
+    val hasNextPage by viewModel.hasNextPage.collectAsStateWithLifecycle()
+    val currentFilter by viewModel.currentFilter.collectAsStateWithLifecycle()
+    val currentPage by viewModel.currentPage.collectAsStateWithLifecycle()
+    val totalPages by viewModel.totalPages.collectAsStateWithLifecycle()
+    val isMultiSelectMode by viewModel.isMultiSelectMode.collectAsStateWithLifecycle()
+    val selectedPhotos by viewModel.selectedPhotos.collectAsStateWithLifecycle()
+    val isPtpipConnected by cameraViewModel.isPtpipConnected.collectAsStateWithLifecycle()
 
     Log.d("PhotoPreviewScreen", "현재 UI 상태:")
     Log.d("PhotoPreviewScreen", "  - isConnected: ${uiState.isConnected}")
     Log.d("PhotoPreviewScreen", "  - isLoading: ${isLoadingPhotos}")
     Log.d("PhotoPreviewScreen", "  - photos.size: ${photos.size}")
 
-    val pullRefreshState = rememberPullRefreshState(
-        refreshing = isLoadingPhotos,
-        onRefresh = {
-            Log.d("PhotoPreviewScreen", "Pull to refresh 트리거")
-            viewModel.loadCameraPhotos()
-        }
-    )
+    val pullToRefreshState = rememberPullToRefreshState()
 
     // 멀티 선택 모드에서 뒤로가기 처리
     BackHandler(enabled = isMultiSelectMode) {
@@ -131,11 +123,16 @@ fun PhotoPreviewScreen(
         }
     }
 
-    Box(
+    PullToRefreshBox(
+        isRefreshing = isLoadingPhotos,
+        onRefresh = {
+            Log.d("PhotoPreviewScreen", "Pull to refresh 트리거")
+            viewModel.loadCameraPhotos()
+        },
+        state = pullToRefreshState,
         modifier = Modifier
             .fillMaxSize()
-            .pullRefresh(pullRefreshState)
-            .padding(horizontal = 16.dp) // 좌우 마진 추가
+            .padding(horizontal = 16.dp)
     ) {
         Column(
             modifier = Modifier
@@ -206,21 +203,13 @@ fun PhotoPreviewScreen(
             }
         }
 
-        // Pull to refresh 인디케이터 - 정상 동작 복원
-        PullRefreshIndicator(
-            refreshing = isLoadingPhotos,
-            state = pullRefreshState,
-            modifier = Modifier.align(Alignment.TopCenter),
-            backgroundColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.primary
-        )
     }
 
     // 전체화면 사진 뷰어
     uiState.selectedPhoto?.let { photo ->
         // fullImageCache와 downloadingImages 상태 관찰
-        val fullImageCache by viewModel.fullImageCache.collectAsState()
-        val downloadingImages by viewModel.downloadingImages.collectAsState()
+        val fullImageCache by viewModel.fullImageCache.collectAsStateWithLifecycle()
+        val downloadingImages by viewModel.downloadingImages.collectAsStateWithLifecycle()
 
         // 선택된 사진의 실제 파일 다운로드 시작 (한 번만 실행, photo.path가 변경될 때만)
         LaunchedEffect(photo.path) {
@@ -387,7 +376,7 @@ private fun ModernHeader(
     var lastClickTime by remember { mutableStateOf(0L) }
 
     // 사용자 티어 정보 가져오기
-    val uiState by viewModel?.uiState?.collectAsState()
+    val uiState by viewModel?.uiState?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf(com.inik.camcon.presentation.viewmodel.PhotoPreviewUiState()) }
     val canAccessRaw = uiState.currentTier == com.inik.camcon.domain.model.SubscriptionTier.PRO ||
             uiState.currentTier == com.inik.camcon.domain.model.SubscriptionTier.REFERRER ||
@@ -553,7 +542,7 @@ private fun PhotoGrid(
     viewModel: PhotoPreviewViewModel
 ) {
     val lazyGridState = rememberLazyStaggeredGridState()
-    val fullImageCache by viewModel.fullImageCache.collectAsState()
+    val fullImageCache by viewModel.fullImageCache.collectAsStateWithLifecycle()
 
     // 무한 스크롤 구현 - 푸터 감지 개선
     LaunchedEffect(lazyGridState) {

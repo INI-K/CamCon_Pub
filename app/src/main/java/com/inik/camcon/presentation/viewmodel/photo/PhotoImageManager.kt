@@ -9,6 +9,8 @@ import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.usecase.camera.GetCameraThumbnailUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -54,6 +56,8 @@ class PhotoImageManager @Inject constructor(
     private val _exifCache = MutableStateFlow<Map<String, String>>(emptyMap())
     val exifCache: StateFlow<Map<String, String>> = _exifCache.asStateFlow()
 
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     // 작업 취소를 위한 플래그
     private var isManagerActive = true
 
@@ -69,7 +73,7 @@ class PhotoImageManager @Inject constructor(
         Log.d(TAG, "🔍 호출 스택:\n$stackTrace")
         Log.d(TAG, "=== 썸네일 로딩 시작: ${photos.size}개 사진 ===")
 
-        CoroutineScope(Dispatchers.IO).launch {
+        scope.launch {
             if (!isManagerActive) {
                 Log.d(TAG, "⛔ 썸네일 로딩 중단됨 (매니저 비활성)")
                 return@launch
@@ -247,7 +251,7 @@ class PhotoImageManager @Inject constructor(
             _downloadingImages.value = _downloadingImages.value + photoPath
         }
 
-        CoroutineScope(Dispatchers.IO).launch {
+        scope.launch {
             try {
                 Log.d(TAG, "실제 파일 다운로드 시작: $photoPath")
 
@@ -428,7 +432,7 @@ class PhotoImageManager @Inject constructor(
      * EXIF 정보 파싱
      */
     private fun parseExifFromImageData(photoPath: String, imageData: ByteArray) {
-        CoroutineScope(Dispatchers.IO).launch {
+        scope.launch {
             try {
                 Log.d(TAG, "EXIF 파싱 시작: $photoPath")
 
@@ -621,6 +625,7 @@ class PhotoImageManager @Inject constructor(
      * 정리
      */
     fun cleanup() {
+        scope.cancel()
         isManagerActive = false
         _thumbnailCache.value = emptyMap()
         _fullImageCache.value = emptyMap()

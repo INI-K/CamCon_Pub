@@ -5,7 +5,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -30,7 +30,7 @@ class PtpipConnectionActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
-            val themeMode by appSettingsViewModel.themeMode.collectAsState()
+            val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
 
             CamConTheme(themeMode = themeMode) {
                 PtpipConnectionScreen(

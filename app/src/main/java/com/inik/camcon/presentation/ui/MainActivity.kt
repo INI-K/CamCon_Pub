@@ -52,7 +52,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -90,7 +90,9 @@ import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import com.inik.camcon.utils.LogcatManager
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -172,16 +174,16 @@ fun MainScreen(
     var isFullscreen by remember { mutableStateOf(false) }
 
     // PTPIP 연결 상태 및 경고 다이얼로그 상태
-    val isPtpipConnected by cameraViewModel.isPtpipConnected.collectAsState()
+    val isPtpipConnected by cameraViewModel.isPtpipConnected.collectAsStateWithLifecycle()
     var showPtpipWarning by remember { mutableStateOf(false) }
 
     // 전역 연결 상태 모니터링
-    val globalConnectionState by globalManager.globalConnectionState.collectAsState()
-    val activeConnectionType by globalManager.activeConnectionType.collectAsState()
-    val connectionStatusMessage by globalManager.connectionStatusMessage.collectAsState()
+    val globalConnectionState by globalManager.globalConnectionState.collectAsStateWithLifecycle()
+    val activeConnectionType by globalManager.activeConnectionType.collectAsStateWithLifecycle()
+    val connectionStatusMessage by globalManager.connectionStatusMessage.collectAsStateWithLifecycle()
 
     // CameraViewModel의 USB 초기화 상태 모니터링
-    val cameraUiState by cameraViewModel.uiState.collectAsState()
+    val cameraUiState by cameraViewModel.uiState.collectAsStateWithLifecycle()
 
     // LocalContext를 @Composable 내에서 미리 가져오기
     val context = LocalContext.current
@@ -194,7 +196,7 @@ fun MainScreen(
     // navigateToCameraControl 플래그가 true이면 카메라 컨트롤 탭으로 자동 이동
     LaunchedEffect(navigateToCameraControl) {
         if (navigateToCameraControl) {
-            LogcatManager.d("MainScreen", "🚀 카메라 컨트롤 탭으로 자동 이동")
+            LogcatManager.d("MainScreen", "카메라 컨트롤 탭으로 자동 이동")
             navController.navigate(BottomNavItem.CameraControl.route) {
                 popUpTo(navController.graph.findStartDestination().id) {
                     saveState = true
@@ -207,7 +209,7 @@ fun MainScreen(
 
     // 테마 모드 상태
     val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
-    val themeMode by appSettingsViewModel.themeMode.collectAsState()
+    val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
 
     // 시스템 바 인셋 계산 - 기종별 대응
     val systemBarsPadding = WindowInsets.systemBars.asPaddingValues()
@@ -234,7 +236,11 @@ fun MainScreen(
             var isRestarting by remember { mutableStateOf(false) }
 
             AlertDialog(
-                onDismissRequest = { /* 다이얼로그 닫기 방지 */ },
+                onDismissRequest = {
+                    if (!isRestarting) {
+                        showRestartDialog = false
+                    }
+                },
                 icon = { Icon(Icons.Default.Settings, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                 title = { Text("앱 재시작 필요", style = MaterialTheme.typography.titleLarge) },
                 text = {
@@ -261,12 +267,13 @@ fun MainScreen(
                     if (!isRestarting) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             TextButton(
+                                onClick = { showRestartDialog = false }
+                            ) { Text("나중에") }
+
+                            TextButton(
                                 onClick = {
                                     isRestarting = true
-                                    // 모든 상태 정리
                                     cameraViewModel.clearPtpTimeout()
-
-                                    // 시스템 재시작 메커니즘을 사용한 재시작
                                     val activity = context as? ComponentActivity
                                     activity?.let { act ->
                                         MainActivity.restartAppAfterCameraCleanup(act)
@@ -277,10 +284,7 @@ fun MainScreen(
                             TextButton(
                                 onClick = {
                                     isRestarting = true
-                                    // 모든 상태 정리
                                     cameraViewModel.clearPtpTimeout()
-
-                                    // 간단한 재시작 (앱 종료만)
                                     val activity = context as? ComponentActivity
                                     activity?.let { act ->
                                         MainActivity.systemRestartApp(act)
@@ -289,11 +293,7 @@ fun MainScreen(
                             ) { Text("종료") }
                         }
                     }
-                },
-                properties = androidx.compose.ui.window.DialogProperties(
-                    dismissOnBackPress = false,
-                    dismissOnClickOutside = false
-                )
+                }
             )
         }
 
@@ -670,6 +670,9 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val TAG = "MainActivity"
 
+        // 정리 작업용 코루틴 스코프 (onDestroy/재시작 시 사용, lifecycleScope가 이미 취소된 상태)
+        private val cleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
         /**
          * 앱을 완전히 재시작하는 함수
          */
@@ -680,8 +683,8 @@ class MainActivity : ComponentActivity() {
                 // 1. 먼저 Activity 상태 정리
                 activity.finishAffinity()
 
-                // 2. 네이티브 리소스 정리를 백그라운드 스레드에서 수행
-                Thread {
+                // 2. 네이티브 리소스 정리를 백그라운드에서 수행
+                cleanupScope.launch {
                     try {
                         LogcatManager.d(TAG, "closeCamera 호출")
                         com.inik.camcon.CameraNative.closeCamera()
@@ -690,7 +693,7 @@ class MainActivity : ComponentActivity() {
                     } catch (e: Exception) {
                         LogcatManager.w(TAG, "네이티브 리소스 정리 중 오류", e)
                     }
-                }.start()
+                }
 
                 // 3. 더 긴 지연 후 재시작 실행 (네이티브 정리 완료 대기)
                 android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
@@ -766,7 +769,7 @@ class MainActivity : ComponentActivity() {
                 LogcatManager.d(TAG, "간단한 앱 재시작 시작")
 
                 // 네이티브 리소스 정리
-                Thread {
+                cleanupScope.launch {
                     try {
                         com.inik.camcon.CameraNative.closeCamera()
                         com.inik.camcon.CameraNative.closeLogFile()
@@ -774,7 +777,7 @@ class MainActivity : ComponentActivity() {
                     } catch (e: Exception) {
                         LogcatManager.w(TAG, "간단 재시작: 네이티브 리소스 정리 중 오류", e)
                     }
-                }.start()
+                }
 
                 // 0.5초 후 앱 종료 (사용자가 수동으로 재시작해야 함)
                 android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
@@ -814,7 +817,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 // 2. 네이티브 리소스 정리 (백그라운드에서)
-                Thread {
+                cleanupScope.launch {
                     try {
                         com.inik.camcon.CameraNative.closeCamera()
                         com.inik.camcon.CameraNative.closeLogFile()
@@ -822,7 +825,7 @@ class MainActivity : ComponentActivity() {
                     } catch (e: Exception) {
                         LogcatManager.w(TAG, "시스템 재시작: 네이티브 리소스 정리 중 오류", e)
                     }
-                }.start()
+                }
 
                 // 3. 프로세스 종료
                 kotlin.system.exitProcess(0)
@@ -862,7 +865,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 // 2. 네이티브 리소스 정리 (백그라운드에서)
-                Thread {
+                cleanupScope.launch {
                     try {
                         com.inik.camcon.CameraNative.closeCamera()
                         com.inik.camcon.CameraNative.closeLogFile()
@@ -870,7 +873,7 @@ class MainActivity : ComponentActivity() {
                     } catch (e: Exception) {
                         LogcatManager.w(TAG, "즉시 재시작: 네이티브 리소스 정리 중 오류", e)
                     }
-                }.start()
+                }
 
                 // 3. 프로세스 종료
                 kotlin.system.exitProcess(0)
@@ -989,7 +992,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
-            val themeMode by appSettingsViewModel.themeMode.collectAsState()
+            val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
 
             var showBatteryDialog by remember { mutableStateOf(false) }
 
@@ -1282,8 +1285,8 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         // Activity가 종료될 때 USB 매니저 정리
         try {
-            // 명시적으로 카메라 세션 종료 - 백그라운드 스레드에서 안전하게 수행
-            Thread {
+            // 명시적으로 카메라 세션 종료 - 백그라운드에서 안전하게 수행
+            cleanupScope.launch {
                 try {
                     LogcatManager.d(TAG, "onDestroy - closeCamera 호출")
                     com.inik.camcon.CameraNative.closeCamera()
@@ -1291,20 +1294,20 @@ class MainActivity : ComponentActivity() {
                 } catch (e: Exception) {
                     LogcatManager.w(TAG, "카메라 세션 종료 중 오류", e)
                 }
-            }.start()
+            }
 
             usbCameraManager.cleanup()
             globalManager.cleanup()
 
             // libgphoto2 로그 파일 닫기도 백그라운드에서 수행
-            Thread {
+            cleanupScope.launch {
                 try {
                     com.inik.camcon.CameraNative.closeLogFile()
                     LogcatManager.d(TAG, "libgphoto2 로그 파일 닫기 완료")
                 } catch (e: Exception) {
                     LogcatManager.w(TAG, "로그 파일 닫기 중 오류", e)
                 }
-            }.start()
+            }
         } catch (e: Exception) {
             LogcatManager.w(TAG, "매니저 정리 중 오류", e)
         }

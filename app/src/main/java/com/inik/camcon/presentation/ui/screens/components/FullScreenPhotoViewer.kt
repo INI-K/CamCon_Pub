@@ -44,7 +44,8 @@ import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -84,13 +85,14 @@ import java.util.Locale
  * 현재 보여지는 사진을 공유
  */
 private fun shareCurrentPhoto(
+    scope: CoroutineScope,
     context: android.content.Context,
     photo: CameraPhoto,
     viewModel: PhotoPreviewViewModel?,
     fullImageData: ByteArray? = null,
     thumbnailData: ByteArray? = null
 ) {
-    CoroutineScope(Dispatchers.IO).launch {
+    scope.launch(Dispatchers.IO) {
         try {
             // 1. 로컬 파일인 경우
             val isLocalFile = java.io.File(photo.path).exists()
@@ -211,10 +213,10 @@ fun FullScreenPhotoViewer(
     val scope = rememberCoroutineScope()
 
     // ViewModel의 상태 관찰 또는 로컬 사진 사용
-    val photos by viewModel?.photos?.collectAsState() ?: remember(localPhotos) {
+    val photos by viewModel?.photos?.collectAsStateWithLifecycle() ?: remember(localPhotos) {
         mutableStateOf(localPhotos ?: listOf(photo))
     }
-    val thumbnailCache by viewModel?.thumbnailCache?.collectAsState() ?: remember(thumbnailData) {
+    val thumbnailCache by viewModel?.thumbnailCache?.collectAsStateWithLifecycle() ?: remember(thumbnailData) {
         mutableStateOf(thumbnailData?.let { mapOf(photo.path to it) } ?: emptyMap())
     }
 
@@ -228,7 +230,7 @@ fun FullScreenPhotoViewer(
     }
 
     // ViewModel의 캐시 상태 관찰
-    val fullImageCache by viewModel?.fullImageCache?.collectAsState() ?: remember {
+    val fullImageCache by viewModel?.fullImageCache?.collectAsStateWithLifecycle() ?: remember {
         mutableStateOf(
             fullImageData?.let { mapOf(photo.path to it) } ?: emptyMap()
         )
@@ -373,6 +375,7 @@ fun FullScreenPhotoViewer(
                 )
 
                 shareCurrentPhoto(
+                    scope,
                     context,
                     currentPhoto,
                     viewModel,
@@ -986,9 +989,9 @@ private fun BottomThumbnailStrip(
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
-    val hasNextPage by viewModel?.hasNextPage?.collectAsState()
+    val hasNextPage by viewModel?.hasNextPage?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf(false) }
-    val isLoadingMore by viewModel?.isLoadingMorePhotos?.collectAsState() ?: remember {
+    val isLoadingMore by viewModel?.isLoadingMorePhotos?.collectAsStateWithLifecycle() ?: remember {
         mutableStateOf(
             false
         )

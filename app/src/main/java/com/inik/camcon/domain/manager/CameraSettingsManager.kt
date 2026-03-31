@@ -1,17 +1,16 @@
 package com.inik.camcon.domain.manager
 
-import android.util.Log
 import com.inik.camcon.domain.model.CameraCapabilities
+import com.inik.camcon.domain.util.Logger
 import com.inik.camcon.domain.model.CameraSettings
 import com.inik.camcon.domain.usecase.camera.GetCameraCapabilitiesUseCase
 import com.inik.camcon.domain.usecase.camera.GetCameraSettingsUseCase
 import com.inik.camcon.domain.usecase.camera.UpdateCameraSettingUseCase
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -25,7 +24,8 @@ class CameraSettingsManager @Inject constructor(
     private val getCameraSettingsUseCase: GetCameraSettingsUseCase,
     private val updateCameraSettingUseCase: UpdateCameraSettingUseCase,
     private val getCameraCapabilitiesUseCase: GetCameraCapabilitiesUseCase,
-    private val errorHandlingManager: ErrorHandlingManager
+    private val errorHandlingManager: ErrorHandlingManager,
+    private val logger: Logger
 ) {
 
     companion object {
@@ -57,15 +57,15 @@ class CameraSettingsManager @Inject constructor(
     /**
      * 카메라 설정 로드
      */
-    fun loadCameraSettings(cameraId: String? = null) {
-        CoroutineScope(Dispatchers.IO).launch {
+    suspend fun loadCameraSettings(cameraId: String? = null) {
+        withContext(Dispatchers.IO) {
             try {
                 _isLoadingSettings.value = true
-                Log.d(TAG, "카메라 설정 로딩 시작")
+                logger.d(TAG, "카메라 설정 로딩 시작")
 
                 // 캐시에서 먼저 확인
                 if (cameraId != null && settingsCache.isNotEmpty()) {
-                    Log.d(TAG, "설정 캐시에서 로딩 시도")
+                    logger.d(TAG, "설정 캐시에서 로딩 시도")
                 }
 
                 getCameraSettingsUseCase()
@@ -75,11 +75,11 @@ class CameraSettingsManager @Inject constructor(
                         // 개별 설정을 캐시에 저장
                         cacheIndividualSettings(settings)
 
-                        Log.d(TAG, "카메라 설정 로딩 성공")
-                        Log.d(TAG, "로딩된 설정: ${settings.availableSettings.size}개")
+                        logger.d(TAG, "카메라 설정 로딩 성공")
+                        logger.d(TAG, "로딩된 설정: ${settings.availableSettings.size}개")
                     }
                     .onFailure { exception ->
-                        Log.e(TAG, "카메라 설정 로딩 실패", exception)
+                        logger.e(TAG, "카메라 설정 로딩 실패", exception)
                         val errorMessage = errorHandlingManager.handleConnectionError(exception)
                         errorHandlingManager.emitError(
                             ErrorType.OPERATION,
@@ -90,7 +90,7 @@ class CameraSettingsManager @Inject constructor(
                     }
 
             } catch (e: Exception) {
-                Log.e(TAG, "카메라 설정 로딩 중 예외 발생", e)
+                logger.e(TAG, "카메라 설정 로딩 중 예외 발생", e)
                 val errorMessage = errorHandlingManager.handleConnectionError(e)
                 errorHandlingManager.emitError(
                     ErrorType.OPERATION,
@@ -107,24 +107,24 @@ class CameraSettingsManager @Inject constructor(
     /**
      * 카메라 기능 정보 로드
      */
-    fun loadCameraCapabilities(cameraId: String? = null) {
-        CoroutineScope(Dispatchers.IO).launch {
+    suspend fun loadCameraCapabilities(cameraId: String? = null) {
+        withContext(Dispatchers.IO) {
             try {
-                Log.d(TAG, "카메라 기능 정보 로딩 시작")
+                logger.d(TAG, "카메라 기능 정보 로딩 시작")
 
                 // 캐시에서 먼저 확인
                 if (cameraId != null) {
                     capabilitiesCache[cameraId]?.let { cachedCapabilities ->
-                        Log.d(TAG, "기능 정보 캐시에서 로딩")
+                        logger.d(TAG, "기능 정보 캐시에서 로딩")
                         _cameraCapabilities.value = cachedCapabilities
-                        return@launch
+                        return@withContext
                     }
                 }
 
                 getCameraCapabilitiesUseCase()
                     .onSuccess { capabilitiesNullable ->
                         val capabilities = capabilitiesNullable ?: run {
-                            Log.e(TAG, "카메라 기능 정보가 null 입니다.")
+                            logger.e(TAG, "카메라 기능 정보가 null 입니다.")
                             errorHandlingManager.emitError(
                                 ErrorType.OPERATION,
                                 "카메라 기능 정보를 불러오지 못했습니다(null)",
@@ -141,14 +141,14 @@ class CameraSettingsManager @Inject constructor(
                             capabilitiesCache[cameraId] = capabilities
                         }
 
-                        Log.d(TAG, "카메라 기능 정보 로딩 성공")
-                        Log.d(
+                        logger.d(TAG, "카메라 기능 정보 로딩 성공")
+                        logger.d(
                             TAG,
                             "지원 기능: 라이브뷰=${capabilities.canLiveView}, 타임랩스=${capabilities.canTimelapse}"
                         )
                     }
                     .onFailure { exception ->
-                        Log.e(TAG, "카메라 기능 정보 로딩 실패", exception)
+                        logger.e(TAG, "카메라 기능 정보 로딩 실패", exception)
                         val errorMessage = errorHandlingManager.handleConnectionError(exception)
                         errorHandlingManager.emitError(
                             ErrorType.OPERATION,
@@ -159,7 +159,7 @@ class CameraSettingsManager @Inject constructor(
                     }
 
             } catch (e: Exception) {
-                Log.e(TAG, "카메라 기능 정보 로딩 중 예외 발생", e)
+                logger.e(TAG, "카메라 기능 정보 로딩 중 예외 발생", e)
                 val errorMessage = errorHandlingManager.handleConnectionError(e)
                 errorHandlingManager.emitError(
                     ErrorType.OPERATION,
@@ -174,24 +174,24 @@ class CameraSettingsManager @Inject constructor(
     /**
      * 카메라 설정 업데이트
      */
-    fun updateCameraSetting(key: String, value: String) {
-        CoroutineScope(Dispatchers.IO).launch {
+    suspend fun updateCameraSetting(key: String, value: String) {
+        withContext(Dispatchers.IO) {
             try {
                 _isUpdatingSettings.value = true
-                Log.d(TAG, "카메라 설정 업데이트: $key = $value")
+                logger.d(TAG, "카메라 설정 업데이트: $key = $value")
 
                 updateCameraSettingUseCase(key, value)
                     .onSuccess {
                         // 캐시 업데이트
                         settingsCache[key] = value
 
-                        Log.d(TAG, "카메라 설정 업데이트 성공: $key = $value")
+                        logger.d(TAG, "카메라 설정 업데이트 성공: $key = $value")
 
                         // 설정 다시 로드하여 동기화
                         loadCameraSettings()
                     }
                     .onFailure { exception ->
-                        Log.e(TAG, "카메라 설정 업데이트 실패: $key = $value", exception)
+                        logger.e(TAG, "카메라 설정 업데이트 실패: $key = $value", exception)
                         val errorMessage = errorHandlingManager.handleConnectionError(exception)
                         errorHandlingManager.emitError(
                             ErrorType.OPERATION,
@@ -202,7 +202,7 @@ class CameraSettingsManager @Inject constructor(
                     }
 
             } catch (e: Exception) {
-                Log.e(TAG, "카메라 설정 업데이트 중 예외 발생", e)
+                logger.e(TAG, "카메라 설정 업데이트 중 예외 발생", e)
                 val errorMessage = errorHandlingManager.handleConnectionError(e)
                 errorHandlingManager.emitError(
                     ErrorType.OPERATION,
@@ -219,11 +219,11 @@ class CameraSettingsManager @Inject constructor(
     /**
      * 여러 카메라 설정을 한 번에 업데이트
      */
-    fun updateCameraSettings(settings: Map<String, String>) {
-        CoroutineScope(Dispatchers.IO).launch {
+    suspend fun updateCameraSettings(settings: Map<String, String>) {
+        withContext(Dispatchers.IO) {
             try {
                 _isUpdatingSettings.value = true
-                Log.d(TAG, "다중 카메라 설정 업데이트 시작: ${settings.size}개 설정")
+                logger.d(TAG, "다중 카메라 설정 업데이트 시작: ${settings.size}개 설정")
 
                 var successCount = 0
                 var failCount = 0
@@ -234,19 +234,19 @@ class CameraSettingsManager @Inject constructor(
                             .onSuccess {
                                 settingsCache[key] = value
                                 successCount++
-                                Log.d(TAG, "설정 업데이트 성공: $key = $value")
+                                logger.d(TAG, "설정 업데이트 성공: $key = $value")
                             }
                             .onFailure { exception ->
                                 failCount++
-                                Log.e(TAG, "설정 업데이트 실패: $key = $value", exception)
+                                logger.e(TAG, "설정 업데이트 실패: $key = $value", exception)
                             }
                     } catch (e: Exception) {
                         failCount++
-                        Log.e(TAG, "설정 업데이트 중 예외: $key = $value", e)
+                        logger.e(TAG, "설정 업데이트 중 예외: $key = $value", e)
                     }
                 }
 
-                Log.d(TAG, "다중 카메라 설정 업데이트 완료: 성공 $successCount 개, 실패 $failCount 개")
+                logger.d(TAG, "다중 카메라 설정 업데이트 완료: 성공 $successCount 개, 실패 $failCount 개")
 
                 if (successCount > 0) {
                     // 성공한 설정이 있으면 전체 설정 다시 로드
@@ -263,7 +263,7 @@ class CameraSettingsManager @Inject constructor(
                 }
 
             } catch (e: Exception) {
-                Log.e(TAG, "다중 카메라 설정 업데이트 중 예외 발생", e)
+                logger.e(TAG, "다중 카메라 설정 업데이트 중 예외 발생", e)
                 val errorMessage = errorHandlingManager.handleConnectionError(e)
                 errorHandlingManager.emitError(
                     ErrorType.OPERATION,
@@ -324,7 +324,7 @@ class CameraSettingsManager @Inject constructor(
                 settingsCache[key] = values.first()
             }
         }
-        Log.d(TAG, "설정 캐시 업데이트 완료: ${settingsCache.size}개 설정")
+        logger.d(TAG, "설정 캐시 업데이트 완료: ${settingsCache.size}개 설정")
     }
 
     /**
@@ -333,7 +333,7 @@ class CameraSettingsManager @Inject constructor(
     fun clearSettingsCache() {
         settingsCache.clear()
         capabilitiesCache.clear()
-        Log.d(TAG, "설정 캐시 초기화 완료")
+        logger.d(TAG, "설정 캐시 초기화 완료")
     }
 
     /**
@@ -343,7 +343,7 @@ class CameraSettingsManager @Inject constructor(
         val settings = _cameraSettings.value
         val capabilities = _cameraCapabilities.value
 
-        Log.d(
+        logger.d(
             TAG, """
             현재 카메라 설정 상태:
             - 설정 로딩됨: ${settings != null}
@@ -367,6 +367,6 @@ class CameraSettingsManager @Inject constructor(
         capabilitiesCache.clear()
         _isLoadingSettings.value = false
         _isUpdatingSettings.value = false
-        Log.d(TAG, "카메라 설정 매니저 정리 완료")
+        logger.d(TAG, "카메라 설정 매니저 정리 완료")
     }
 }

@@ -1,8 +1,6 @@
 package com.inik.camcon.domain.manager
 
-import android.util.Log
-import com.inik.camcon.CameraNative
-import com.inik.camcon.NativeErrorCallback
+import com.inik.camcon.domain.util.Logger
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -15,7 +13,10 @@ import javax.inject.Singleton
  * Domain Layer: Android Framework에 독립적
  */
 @Singleton
-class ErrorHandlingManager @Inject constructor() {
+class ErrorHandlingManager @Inject constructor(
+    private val callbackRegistrar: NativeErrorCallbackRegistrar,
+    private val logger: Logger
+) {
 
     companion object {
         private const val TAG = "에러핸들링매니저"
@@ -48,7 +49,7 @@ class ErrorHandlingManager @Inject constructor() {
         if (!isCallbackRegistered) {
             registerNativeErrorCallback()
             isCallbackRegistered = true
-            Log.d(TAG, "에러 처리 시스템 초기화 완료")
+            logger.d(TAG, "에러 처리 시스템 초기화 완료")
         }
     }
 
@@ -57,14 +58,12 @@ class ErrorHandlingManager @Inject constructor() {
      */
     private fun registerNativeErrorCallback() {
         try {
-            CameraNative.setErrorCallback(object : NativeErrorCallback {
-                override fun onNativeError(errorCode: Int, errorMessage: String) {
-                    handleNativeError(errorCode, errorMessage)
-                }
-            })
-            Log.d(TAG, "네이티브 에러 콜백 등록 완료")
+            callbackRegistrar.registerErrorCallback { errorCode, errorMessage ->
+                handleNativeError(errorCode, errorMessage)
+            }
+            logger.d(TAG, "네이티브 에러 콜백 등록 완료")
         } catch (e: Exception) {
-            Log.e(TAG, "네이티브 에러 콜백 등록 실패", e)
+            logger.e(TAG, "네이티브 에러 콜백 등록 실패", e)
             emitError(ErrorType.INITIALIZATION, "네이티브 에러 콜백 등록 실패: ${e.message}")
         }
     }
@@ -73,7 +72,7 @@ class ErrorHandlingManager @Inject constructor() {
      * 네이티브 에러 처리
      */
     private fun handleNativeError(errorCode: Int, errorMessage: String) {
-        Log.e(TAG, "네이티브 에러 감지: 코드=$errorCode, 메시지=$errorMessage")
+        logger.e(TAG, "네이티브 에러 감지: 코드=$errorCode, 메시지=$errorMessage")
 
         val errorEvent = when (errorCode) {
             ERROR_USB_TIMEOUT -> {
@@ -137,7 +136,7 @@ class ErrorHandlingManager @Inject constructor() {
         try {
             _nativeErrorEvent.tryEmit(errorEvent)
         } catch (e: Exception) {
-            Log.e(TAG, "네이티브 에러 이벤트 발생 실패", e)
+            logger.e(TAG, "네이티브 에러 이벤트 발생 실패", e)
         }
     }
 
@@ -160,9 +159,9 @@ class ErrorHandlingManager @Inject constructor() {
 
         try {
             _errorEvent.tryEmit(errorEvent)
-            Log.e(TAG, "에러 발생: $type - $message", exception)
+            logger.e(TAG, "에러 발생: $type - $message", exception)
         } catch (e: Exception) {
-            Log.e(TAG, "에러 이벤트 발생 실패", e)
+            logger.e(TAG, "에러 이벤트 발생 실패", e)
         }
     }
 
@@ -269,11 +268,11 @@ class ErrorHandlingManager @Inject constructor() {
      */
     fun cleanup() {
         try {
-            CameraNative.setErrorCallback(null)
+            callbackRegistrar.unregisterErrorCallback()
             isCallbackRegistered = false
-            Log.d(TAG, "에러 처리 시스템 정리 완료")
+            logger.d(TAG, "에러 처리 시스템 정리 완료")
         } catch (e: Exception) {
-            Log.w(TAG, "에러 처리 시스템 정리 중 오류", e)
+            logger.w(TAG, "에러 처리 시스템 정리 중 오류", e)
         }
     }
 }

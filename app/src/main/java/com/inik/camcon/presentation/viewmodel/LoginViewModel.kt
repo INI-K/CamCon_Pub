@@ -46,7 +46,7 @@ class LoginViewModel @Inject constructor(
     val uiEvent: SharedFlow<LoginUiEvent> = _uiEvent.asSharedFlow()
 
     fun signInWithGoogle(idToken: String, referralCode: String? = null) {
-        Log.d("LoginViewModel", "signInWithGoogle called with idToken: ${idToken.take(10)}...")
+        Log.d("LoginViewModel", "signInWithGoogle called")
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
@@ -55,7 +55,9 @@ class LoginViewModel @Inject constructor(
                 signInWithGoogleUseCase(idToken)
                     .fold(
                         onSuccess = { user ->
-                            Log.d("LoginViewModel", "Sign in successful for user: ${user.email}")
+                            if (com.inik.camcon.BuildConfig.DEBUG) {
+                                Log.d("LoginViewModel", "Sign in successful for user: ${user.email}")
+                            }
 
                             // 추천 코드가 있으면 처리
                             if (!referralCode.isNullOrBlank()) {
