@@ -734,6 +734,17 @@ fun PtpipConnectionScreen(
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                         textAlign = TextAlign.Center
                     )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    TextButton(
+                        onClick = {
+                            ptpipViewModel.disconnect()
+                            showConnectionProgressDialog = false
+                        }
+                    ) {
+                        Text("취소")
+                    }
                 }
             }
         }

@@ -22,6 +22,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
+import androidx.compose.ui.tooling.preview.Preview
+import com.inik.camcon.data.datasource.local.ThemeMode
+import com.inik.camcon.presentation.theme.CamConTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.outlined.CalendarToday
@@ -486,6 +489,26 @@ private fun formatFlash(flash: String): String {
         }
     } catch (e: Exception) {
         flash
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(name = "Photo Info Bottom Sheet", showBackground = true)
+@Composable
+private fun PhotoInfoBottomSheetPreview() {
+    CamConTheme(themeMode = ThemeMode.DARK) {
+        PhotoInfoBottomSheet(
+            photo = CameraPhoto(
+                path = "/storage/emulated/0/DCIM/Camera/DSC_0001.JPG",
+                name = "DSC_0001.JPG",
+                size = 8_388_608L,
+                date = 1_700_000_000L,
+                width = 6000,
+                height = 4000
+            ),
+            viewModel = null,
+            onDismiss = {}
+        )
     }
 }
 
