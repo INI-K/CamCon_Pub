@@ -1,7 +1,7 @@
 package com.inik.camcon.presentation.viewmodel.state
 
 import android.util.Log
-import com.inik.camcon.data.repository.managers.PtpTimeoutException
+import com.inik.camcon.domain.model.PtpTimeoutException
 import com.inik.camcon.domain.manager.CameraStateObserver
 import com.inik.camcon.domain.model.CameraAbilitiesInfo
 import com.inik.camcon.domain.model.CameraCapabilities

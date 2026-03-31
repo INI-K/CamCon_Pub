@@ -25,12 +25,11 @@ import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.repository.ColorTransferRepository
 import com.inik.camcon.domain.usecase.camera.PhotoCaptureEventManager
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
+import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.utils.Constants
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -75,7 +74,8 @@ class CameraRepositoryImpl @Inject constructor(
     private val downloadManager: PhotoDownloadManager,
     private val cameraStateObserver: com.inik.camcon.domain.manager.CameraStateObserver,
     private val getSubscriptionUseCase: GetSubscriptionUseCase,
-    private val errorHandlingManager: com.inik.camcon.domain.manager.ErrorHandlingManager
+    private val errorHandlingManager: com.inik.camcon.domain.manager.ErrorHandlingManager,
+    @ApplicationScope private val scope: CoroutineScope
 ) : CameraRepository, Closeable {
 
     companion object {
@@ -84,8 +84,6 @@ class CameraRepositoryImpl @Inject constructor(
         // 중복 처리 방지 윈도우 시간 (밀리초)
         private const val DUP_WINDOW_MS = 1500L
     }
-
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     // 중복 처리 방지를 위한 변수들 (LRU 방식으로 최대 1000개 유지)
     private val processedFiles: MutableSet<String> = java.util.Collections.synchronizedSet(
@@ -131,7 +129,7 @@ class CameraRepositoryImpl @Inject constructor(
             com.inik.camcon.utils.LogcatManager.d(TAG, "  📊 데이터 크기: ${imageData.size / 1024}KB")
 
             // PhotoDownloadManager를 통해 실제 파일 저장 및 MediaStore 등록
-            scope.launch {
+            scope.launch(Dispatchers.IO) {
                 com.inik.camcon.utils.LogcatManager.d(TAG, "🚀 PTPIP - handleNativePhotoDownload 호출")
 
                 val capturedPhoto = downloadManager.handleNativePhotoDownload(
@@ -166,7 +164,7 @@ class CameraRepositoryImpl @Inject constructor(
      * 개선: 에러 처리 로직을 별도 메서드로 분리
      */
     private fun handlePtpipDisconnection() {
-        scope.launch {
+        scope.launch(Dispatchers.IO) {
             try {
                 CameraNative.stopListenCameraEvents()
                 com.inik.camcon.utils.LogcatManager.d(
@@ -184,7 +182,7 @@ class CameraRepositoryImpl @Inject constructor(
      * 개선: 이벤트 구독 로직을 별도 메서드로 분리
      */
     private fun subscribeToUsbEvents() {
-        scope.launch {
+        scope.launch(Dispatchers.IO) {
             errorHandlingManager.usbDisconnectedEvent.collect {
                 com.inik.camcon.utils.LogcatManager.d(TAG, "USB 분리 이벤트 감지 - USB 분리 처리 시작")
                 usbCameraManager.handleUsbDisconnection()
@@ -493,7 +491,7 @@ class CameraRepositoryImpl @Inject constructor(
 
         val photo = createCapturedPhoto(fullPath, fileName)
 
-        scope.launch {
+        scope.launch(Dispatchers.IO) {
             downloadManager.handlePhotoDownload(
                 photo = photo,
                 fullPath = fullPath,
@@ -862,7 +860,7 @@ class CameraRepositoryImpl @Inject constructor(
         }
 
         // PhotoDownloadManager의 handleNativePhotoDownload를 직접 호출
-        scope.launch {
+        scope.launch(Dispatchers.IO) {
             com.inik.camcon.utils.LogcatManager.d(
                 TAG,
                 "🚀 PhotoDownloadManager.handleNativePhotoDownload 시작: $fileName"
@@ -1060,7 +1058,6 @@ class CameraRepositoryImpl @Inject constructor(
     }
 
     override fun close() {
-        scope.cancel()
         processedFiles.clear()
     }
 }

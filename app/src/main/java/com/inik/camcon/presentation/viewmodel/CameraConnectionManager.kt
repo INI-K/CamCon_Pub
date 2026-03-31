@@ -141,7 +141,7 @@ class CameraConnectionManager @Inject constructor(
                         uiStateManager.updateConnectionState(false, error.message)
                         uiStateManager.updateUsbInitialization(false, null)
                         // PtpTimeoutException인 경우 재시작 다이얼로그 표시
-                        if (error is com.inik.camcon.data.repository.managers.PtpTimeoutException) {
+                        if (error is com.inik.camcon.domain.model.PtpTimeoutException) {
                             Log.d(TAG, "PTP 타임아웃 또는 I/O 오류 감지 - 재시작 다이얼로그 표시")
                             uiStateManager.handlePtpTimeout(error)
                             uiStateManager.showRestartDialog(true)
@@ -238,7 +238,7 @@ class CameraConnectionManager @Inject constructor(
                         // 에러 메시지와 함께 연결 상태 업데이트
                         uiStateManager.updateConnectionState(false, error.message)
                         // PtpTimeoutException인 경우 재시작 다이얼로그 표시
-                        if (error is com.inik.camcon.data.repository.managers.PtpTimeoutException) {
+                        if (error is com.inik.camcon.domain.model.PtpTimeoutException) {
                             Log.d(TAG, "PTP 타임아웃 또는 I/O 오류 감지 - 재시작 다이얼로그 표시")
                             uiStateManager.handlePtpTimeout(error)
                             uiStateManager.showRestartDialog(true)
@@ -318,7 +318,7 @@ class CameraConnectionManager @Inject constructor(
                                 uiStateManager.updateConnectionState(false, error.message)
                                 uiStateManager.updateUsbInitialization(false, null)
                                 // PtpTimeoutException인 경우 재시작 다이얼로그 표시
-                                if (error is com.inik.camcon.data.repository.managers.PtpTimeoutException) {
+                                if (error is com.inik.camcon.domain.model.PtpTimeoutException) {
                                     Log.d(TAG, "PTP 타임아웃 또는 I/O 오류 감지 - 재시작 다이얼로그 표시")
                                     uiStateManager.handlePtpTimeout(error)
                                     uiStateManager.showRestartDialog(true)

@@ -10,12 +10,11 @@ import com.inik.camcon.domain.model.CameraAbilitiesInfo
 import com.inik.camcon.domain.model.CameraCapabilities
 import com.inik.camcon.domain.model.CameraSupports
 import com.inik.camcon.domain.model.PtpDeviceInfo
+import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.domain.manager.CameraStateObserver
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -32,7 +31,8 @@ import javax.inject.Singleton
 @Singleton
 class NativeCameraDataSource @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val cameraStateObserver: CameraStateObserver
+    private val cameraStateObserver: CameraStateObserver,
+    @ApplicationScope private val scope: CoroutineScope
 ) {
     companion object {
         private const val TAG = "네이티브_카메라_데이터소스"
@@ -40,9 +40,6 @@ class NativeCameraDataSource @Inject constructor(
 
     // initCameraWithFd 중복 호출 방지용 Mutex
     private val initCameraWithFdMutex = Mutex()
-
-    // 비동기 작업용 CoroutineScope
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     // 카메라 이벤트 리스닝 시작
     fun listenCameraEvents(callback: CameraCaptureListener) {
@@ -72,7 +69,7 @@ class NativeCameraDataSource @Inject constructor(
             Log.e(TAG, "카메라 이벤트 리스닝 중지 중 오류", e)
         } finally {
             // 1초 후 상태 리셋
-            scope.launch {
+            scope.launch(Dispatchers.IO) {
                 delay(1000)
                 isStoppingEventListener.set(false)
                 Log.d(TAG, "이벤트 리스너 중지 상태 리셋")
@@ -346,7 +343,7 @@ class NativeCameraDataSource @Inject constructor(
         }
 
         // 백그라운드 코루틴에서 카메라 종료 수행
-        scope.launch {
+        scope.launch(Dispatchers.IO) {
             try {
                 Log.d(TAG, "카메라 종료")
                 CameraNative.closeCamera()
