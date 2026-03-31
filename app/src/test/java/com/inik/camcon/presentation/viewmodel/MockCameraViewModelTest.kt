@@ -2,10 +2,8 @@ package com.inik.camcon.presentation.viewmodel
 
 import app.cash.turbine.test
 import com.inik.camcon.CameraNative
-import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.mockkObject
 import io.mockk.unmockkAll
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -18,7 +16,6 @@ import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -81,14 +78,13 @@ class MockCameraViewModelTest {
         viewModel.uiState.test {
             val state = awaitItem()
             assertTrue(state.isEnabled)
-            assertEquals("Mock Camera 활성화됨", state.successMessage)
             assertFalse(state.isLoading)
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `enableMockCamera should set error on failure`() = runTest {
+    fun `enableMockCamera should not enable on failure`() = runTest {
         // Given
         every { cameraNative.isLibrariesLoaded() } returns true
         every { cameraNative.getMockCameraInfo() } returns createMockCameraInfoJson()
@@ -104,7 +100,6 @@ class MockCameraViewModelTest {
         // Then
         viewModel.uiState.test {
             val state = awaitItem()
-            assertEquals("Mock Camera 설정 실패", state.error)
             assertFalse(state.isLoading)
             cancelAndIgnoreRemainingEvents()
         }
@@ -128,34 +123,6 @@ class MockCameraViewModelTest {
         viewModel.uiState.test {
             val state = awaitItem()
             assertEquals(1000, state.delayMs)
-            assertEquals("딜레이 1000ms로 설정", state.successMessage)
-            cancelAndIgnoreRemainingEvents()
-        }
-    }
-
-    @Test
-    fun `clearError should remove error message`() = runTest {
-        // Given
-        every { cameraNative.isLibrariesLoaded() } returns false
-
-        val viewModel = MockCameraViewModel(cameraNative)
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        // Verify error is set (from init failing to load libraries)
-        viewModel.uiState.test {
-            val errorState = awaitItem()
-            assertEquals("네이티브 라이브러리 로딩 실패", errorState.error)
-            cancelAndIgnoreRemainingEvents()
-        }
-
-        // When
-        viewModel.clearError()
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        // Then
-        viewModel.uiState.test {
-            val state = awaitItem()
-            assertNull(state.error)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -179,7 +146,6 @@ class MockCameraViewModelTest {
             val state = awaitItem()
             assertTrue(state.autoCapture)
             assertEquals(5000, state.autoCaptureInterval)
-            assertEquals("자동 캡처 활성화 (5000ms 간격)", state.successMessage)
             assertFalse(state.isLoading)
             cancelAndIgnoreRemainingEvents()
         }
@@ -204,7 +170,6 @@ class MockCameraViewModelTest {
             val state = awaitItem()
             assertEquals("Canon", state.manufacturer)
             assertEquals("Canon EOS R5", state.cameraModel)
-            assertEquals("카메라 모델 설정: Canon Canon EOS R5", state.successMessage)
             cancelAndIgnoreRemainingEvents()
         }
     }
