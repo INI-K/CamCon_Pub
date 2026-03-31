@@ -30,11 +30,11 @@ import com.inik.camcon.domain.model.PtpipCameraInfo
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
+import com.inik.camcon.di.ApplicationScope
 import dagger.Lazy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -65,17 +65,16 @@ class PtpipDataSource @Inject constructor(
     private val nikonAuthService: NikonAuthenticationService,
     private val wifiHelper: WifiNetworkHelper,
     private val cameraEventManager: CameraEventManager,
-    private val uiStateManager: com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager,
+    private val cameraStateObserver: com.inik.camcon.domain.manager.CameraStateObserver,
     private val photoDownloadManager: com.inik.camcon.data.repository.managers.PhotoDownloadManager,
     private val autoConnectManager: AutoConnectManager,
-    private val autoConnectTaskRunnerProvider: Lazy<AutoConnectTaskRunner>
+    private val autoConnectTaskRunnerProvider: Lazy<AutoConnectTaskRunner>,
+    @ApplicationScope private val coroutineScope: CoroutineScope
 ) {
     private var connectedCamera: PtpipCamera? = null
     private var lastConnectedCamera: PtpipCamera? = null
     private var isAutoReconnectEnabled = false
     private var networkMonitoringJob: Job? = null
-    private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
     // 초기 플러시 완료 플래그
     private var isInitialFlushCompleted = false
 
@@ -176,7 +175,7 @@ class PtpipDataSource @Inject constructor(
      * 네트워크 상태 변화 처리
      */
     private fun handleNetworkStateChange(networkState: WifiNetworkState) {
-        coroutineScope.launch {
+        coroutineScope.launch(Dispatchers.IO) {
             val currentState = _connectionState.value
             
             when {
@@ -247,7 +246,7 @@ class PtpipDataSource @Inject constructor(
             return
         }
 
-        coroutineScope.launch {
+        coroutineScope.launch(Dispatchers.IO) {
             try {
                 val isAutoConnectEnabled = autoConnectManager.isEnabled()
                 if (!isAutoConnectEnabled) {
@@ -309,42 +308,58 @@ class PtpipDataSource @Inject constructor(
     }
 
     /**
-     * 자동 재연결 시도
+     * 자동 재연결 시도 (최대 횟수 제한 루프)
      */
     private suspend fun attemptAutoReconnect(camera: PtpipCamera) {
-        try {
-            // 이미 연결 시도 중이면 무시
-            if (_connectionState.value == PtpipConnectionState.CONNECTING) {
-                Log.d(TAG, "이미 연결 시도 중이므로 자동 재연결 무시")
-                return
+        // 이미 연결 시도 중이면 무시
+        if (_connectionState.value == PtpipConnectionState.CONNECTING) {
+            Log.d(TAG, "이미 연결 시도 중이므로 자동 재연결 무시")
+            return
+        }
+
+        val maxAttempts = 5
+        var attempts = 0
+        while (attempts < maxAttempts) {
+            try {
+                Log.i(TAG, "자동 재연결 시도 ${attempts + 1}/$maxAttempts: ${camera.name} (${camera.ipAddress})")
+                _connectionState.value = PtpipConnectionState.CONNECTING
+
+                if (connectToCamera(camera)) {
+                    Log.i(TAG, "자동 재연결 성공")
+                    return
+                }
+
+                Log.w(TAG, "자동 재연결 실패 (시도 ${attempts + 1}/$maxAttempts)")
+                _connectionState.value = PtpipConnectionState.ERROR
+            } catch (e: Exception) {
+                Log.w(TAG, "Reconnect attempt ${attempts + 1}/$maxAttempts failed", e)
+                _connectionState.value = PtpipConnectionState.ERROR
             }
 
             Log.i(TAG, "자동 재연결 시도: ${camera.name} (${camera.ipAddress})")
             _connectionState.value = PtpipConnectionState.CONNECTING
             _connectionProgressMessage.value = "카메라에 연결 중..."
-            
+
             if (connectToCamera(camera)) {
-                Log.i(TAG, "✅ 자동 재연결 성공")
+                Log.i(TAG, "자동 재연결 성공")
             } else {
-                Log.w(TAG, "❌ 자동 재연결 실패")
+                Log.w(TAG, "자동 재연결 실패")
                 _connectionState.value = PtpipConnectionState.ERROR
                 _connectionProgressMessage.value = ""
+            }
 
-                // 자동 재연결 활성화 상태에서만 재시도
-                if (isAutoReconnectEnabled) {
-                    delay(5000) // 5초 후 다시 시도
-                    // 여전히 오류 상태이고 자동 재연결이 활성화되어 있으면 재시도
-                    if (_connectionState.value == PtpipConnectionState.ERROR && isAutoReconnectEnabled) {
-                        Log.i(TAG, "자동 재연결 재시도")
-                        attemptAutoReconnect(camera)
-                    }
+            attempts++
+
+            // 마지막 시도가 아니고 자동 재연결이 여전히 활성화되어 있으면 대기
+            if (attempts < maxAttempts && isAutoReconnectEnabled) {
+                delay(5000)
+                // 자동 재연결이 비활성화되었거나 이미 연결되었으면 중단
+                if (!isAutoReconnectEnabled || _connectionState.value == PtpipConnectionState.CONNECTED) {
+                    return
                 }
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "자동 재연결 중 오류", e)
-            _connectionState.value = PtpipConnectionState.ERROR
-            _connectionProgressMessage.value = ""
         }
+        Log.e(TAG, "Auto-reconnect failed after $maxAttempts attempts")
     }
 
     /**
@@ -740,7 +755,7 @@ class PtpipDataSource @Inject constructor(
 
         // UI 상태 업데이트 (PTPIP도 동일하게)
         try {
-            uiStateManager.updateCameraAbilities(abilities)
+            cameraStateObserver.updateCameraAbilities(abilities)
             Log.i(TAG, "✅ PTPIP 연결 - UI 상태 업데이트 완료")
         } catch (e: Exception) {
             Log.e(TAG, "UI 상태 업데이트 실패", e)
@@ -830,7 +845,7 @@ class PtpipDataSource @Inject constructor(
                     }
 
                     // ByteArray를 MediaStore에 저장하고 실제 안드로이드 경로 얻기
-                    coroutineScope.launch {
+                    coroutineScope.launch(Dispatchers.IO) {
                         try {
                             val savedPhoto = photoDownloadManager.handleNativePhotoDownload(
                                 filePath = filePath,
@@ -1184,7 +1199,7 @@ class PtpipDataSource @Inject constructor(
      * 자동 다운로드된 파일 처리 - 네이티브에서 모든 처리 완료됨
      */
     private fun handleAutomaticDownload(filePath: String, fileName: String) {
-        coroutineScope.launch {
+        coroutineScope.launch(Dispatchers.IO) {
             try {
                 Log.d(TAG, "네이티브 파일 처리 완료 알림: $fileName")
                 // 중복 처리 방지: 최근 처리 맵에서 윈도우 내 동일 파일 무시
@@ -1415,7 +1430,7 @@ class PtpipDataSource @Inject constructor(
                 val targetSsid = intent.getStringExtra(WifiNetworkHelper.EXTRA_AUTO_CONNECT_SSID)
                     ?: return
 
-                coroutineScope.launch {
+                coroutineScope.launch(Dispatchers.IO) {
                     try {
                         autoConnectTaskRunnerProvider.get().handlePostConnection(targetSsid)
                     } catch (e: Exception) {

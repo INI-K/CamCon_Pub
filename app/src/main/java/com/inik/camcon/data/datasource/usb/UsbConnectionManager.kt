@@ -6,6 +6,7 @@ import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbManager
 import android.util.Log
 import com.inik.camcon.CameraNative
+import com.inik.camcon.di.ApplicationScope
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,7 +27,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class UsbConnectionManager @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    @ApplicationScope private val scope: CoroutineScope
 ) {
     private val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
 
@@ -37,7 +39,7 @@ class UsbConnectionManager @Inject constructor(
     private var currentConnection: UsbDeviceConnection? = null
 
     // 초기화 상태 관리
-    private var isInitializingNativeCamera = false
+    private val isInitializingNativeCamera = AtomicBoolean(false)
     private var lastInitializedFd = -1
     private val initializationMutex = Mutex()
 
@@ -172,12 +174,12 @@ class UsbConnectionManager @Inject constructor(
      * USB 디바이스에 연결하고 네이티브 카메라를 초기화합니다.
      */
     fun connectToCamera(device: UsbDevice) {
-        CoroutineScope(Dispatchers.IO).launch {
+        scope.launch(Dispatchers.IO) {
             try {
                 Log.d(TAG, "카메라 연결 시작: ${device.deviceName}")
 
                 // 초기화 중이거나 이미 연결되어 있으면 중복 연결 방지
-                if (isInitializingNativeCamera) {
+                if (isInitializingNativeCamera.get()) {
                     Log.d(TAG, "네이티브 카메라가 이미 초기화 중 - 중복 연결 방지")
                     return@launch
                 }
@@ -219,7 +221,7 @@ class UsbConnectionManager @Inject constructor(
                 }
 
                 // 초기화 진행 중 체크
-                if (isInitializingNativeCamera) {
+                if (isInitializingNativeCamera.get()) {
                     Log.d(TAG, "네이티브 카메라 초기화가 이미 진행 중 - 대기: $fd")
                     return@withLock
                 }
@@ -231,7 +233,7 @@ class UsbConnectionManager @Inject constructor(
                 }
 
                 Log.d(TAG, "네이티브 카메라 초기화 시작: fd=$fd")
-                isInitializingNativeCamera = true
+                isInitializingNativeCamera.set(true)
                 lastInitializedFd = fd
 
                 // libgphoto2 플러그인 디렉토리 확인 및 생성 (앱 private 디렉토리에)
@@ -311,7 +313,7 @@ class UsbConnectionManager @Inject constructor(
                 lastInitializedFd = -1
                 tryGeneralInit()
             } finally {
-                isInitializingNativeCamera = false
+                isInitializingNativeCamera.set(false)
             }
         }
     }
@@ -350,15 +352,13 @@ class UsbConnectionManager @Inject constructor(
                     Log.w(TAG, "카메라 이벤트 리스너 중지 중 오류", e)
                 }
 
-                // 카메라 연결 완전 해제 - 백그라운드 스레드에서 실행
-                Thread {
-                    try {
-                        CameraNative.closeCamera()
-                        Log.d(TAG, "카메라 네이티브 연결 해제 완료")
-                    } catch (e: Exception) {
-                        Log.e(TAG, "카메라 네이티브 연결 해제 중 오류", e)
-                    }
-                }.start()
+                // 카메라 연결 완전 해제 (이미 IO 디스패처에서 실행 중)
+                try {
+                    CameraNative.closeCamera()
+                    Log.d(TAG, "카메라 네이티브 연결 해제 완료")
+                } catch (e: Exception) {
+                    Log.e(TAG, "카메라 네이티브 연결 해제 중 오류", e)
+                }
 
                 updateConnectionState(false, "연결 해제")
             }
@@ -405,22 +405,20 @@ class UsbConnectionManager @Inject constructor(
                 Log.w(TAG, "이벤트 리스너 중지 중 오류", e)
             }
 
-            // 카메라 연결 완전 해제 - 백그라운드 스레드에서 실행
-            Thread {
-                try {
-                    CameraNative.closeCamera()
-                    Log.d(TAG, "USB 분리 - 카메라 종료 완료")
-                } catch (e: Exception) {
-                    Log.w(TAG, "USB 분리 - 카메라 종료 중 오류", e)
-                }
-            }.start()
+            // 카메라 연결 완전 해제 (이미 IO 디스패처에서 실행 중)
+            try {
+                CameraNative.closeCamera()
+                Log.d(TAG, "USB 분리 - 카메라 종료 완료")
+            } catch (e: Exception) {
+                Log.w(TAG, "USB 분리 - 카메라 종료 중 오류", e)
+            }
 
             // USB 연결 상태 초기화
             currentDevice = null
             currentConnection?.close()
             currentConnection = null
             lastInitializedFd = -1
-            isInitializingNativeCamera = false
+            isInitializingNativeCamera.set(false)
 
             // 분리 콜백 호출
             disconnectionCallback?.invoke()
@@ -435,7 +433,7 @@ class UsbConnectionManager @Inject constructor(
             currentConnection?.close()
             currentConnection = null
             lastInitializedFd = -1
-            isInitializingNativeCamera = false
+            isInitializingNativeCamera.set(false)
             disconnectionCallback?.invoke()
         } finally {
             // 처리 완료 후 상태 리셋 (3초 후)
@@ -451,7 +449,7 @@ class UsbConnectionManager @Inject constructor(
     fun handleUsbError(errorCode: Int) {
         if (errorCode == -52 || errorCode == -4) { // GP_ERROR_IO_USB_FIND 또는 libusb disconnected
             Log.e(TAG, "USB 에러 감지 (코드: $errorCode) - USB 분리로 처리")
-            CoroutineScope(Dispatchers.IO).launch {
+            scope.launch(Dispatchers.IO) {
                 handleUsbDisconnection()
             }
         }
@@ -520,7 +518,7 @@ class UsbConnectionManager @Inject constructor(
     }
 
     fun cleanup() {
-        CoroutineScope(Dispatchers.IO).launch {
+        scope.launch(Dispatchers.IO) {
             disconnectCamera()
         }
     }

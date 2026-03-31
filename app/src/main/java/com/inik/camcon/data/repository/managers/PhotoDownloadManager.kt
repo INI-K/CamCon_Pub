@@ -23,7 +23,6 @@ import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.domain.usecase.camera.PhotoCaptureEventManager
 import com.inik.camcon.utils.Constants
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -360,7 +359,6 @@ class PhotoDownloadManager @Inject constructor(
             var tempFile: File? = null
             var processedFile: File? = null
             var colorTransferredFile: File? = null
-            var transferredBitmap: Bitmap? = null
             var processedPath: String? = null
 
             try {
@@ -455,15 +453,16 @@ class PhotoDownloadManager @Inject constructor(
                                 "${currentProcessedFile.nameWithoutExtension}_color_transferred.jpg"
                             )
 
-                            transferredBitmap =
-                                colorTransferUseCase.applyColorTransferWithGPUAndSave(
+                            val transferResult =
+                                colorTransferUseCase.applyColorTransferAndSave(
                                     currentProcessedFile.absolutePath,
-                                referenceImagePath,
-                                colorTransferredFile.absolutePath,
-                                colorTransferIntensity
-                            )
+                                    referenceImagePath,
+                                    currentProcessedFile.absolutePath,
+                                    colorTransferredFile.absolutePath,
+                                    colorTransferIntensity
+                                )
 
-                            if (transferredBitmap != null) {
+                            if (transferResult != null) {
                                 processedPath = colorTransferredFile.absolutePath
                                 Log.d(TAG, "✅ 색감 전송 적용 완료: ${colorTransferredFile.name}")
 
@@ -472,24 +471,14 @@ class PhotoDownloadManager @Inject constructor(
                                     currentProcessedFile.delete()
                                     processedFile = null
                                 }
-
-                                // 메모리 정리 - 즉시 해제만 
-                                transferredBitmap?.recycle()
-                                transferredBitmap = null
                             } else {
                                 Log.w(TAG, "⚠️ 색감 전송 실패, 이전 처리된 이미지 사용")
                             }
                         }
                     } catch (e: OutOfMemoryError) {
                         Log.e(TAG, "❌ 메모리 부족으로 색감 전송 실패", e)
-                        // 메모리 정리 후 원본 반환
-                        transferredBitmap?.recycle()
-                        transferredBitmap = null
                     } catch (e: Exception) {
                         Log.e(TAG, "❌ 색감 전송 처리 중 오류", e)
-                        // 오류 발생 시 메모리 정리 
-                        transferredBitmap?.recycle()
-                        transferredBitmap = null
                     }
                 }
 
@@ -531,8 +520,6 @@ class PhotoDownloadManager @Inject constructor(
                 capturedPhoto
             } catch (e: OutOfMemoryError) {
                 Log.e(TAG, "❌ Native 사진 저장 중 메모리 부족: $fileName", e)
-                // 메모리 정리만 
-                transferredBitmap?.recycle()
                 null
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Native 사진 저장 실패: $fileName", e)
@@ -540,8 +527,6 @@ class PhotoDownloadManager @Inject constructor(
             } finally {
                 // 메모리 정리 - 모든 임시 객체 해제
                 try {
-                    transferredBitmap?.recycle()
-
                     // 임시 파일들 정리
                     tempFile?.takeIf { it.exists() }?.delete()
                     processedFile?.takeIf {
@@ -582,7 +567,7 @@ class PhotoDownloadManager @Inject constructor(
         var processedFile: File? = null
 
         try {
-            Log.d(TAG, "📥 사진 다운로드 시작: $fileName")
+            Log.d(TAG, "사진 다운로드 시작: $fileName")
             Log.d(TAG, "   전체 경로: $fullPath")
             val startTime = System.currentTimeMillis()
 
@@ -590,7 +575,7 @@ class PhotoDownloadManager @Inject constructor(
             val isCameraInternalPath = fullPath.startsWith("/store_") || fullPath.contains("/DCIM/")
 
             if (isCameraInternalPath) {
-                Log.d(TAG, "🔄 카메라 내부 경로 감지 - 네이티브 다운로드 사용: $fullPath")
+                Log.d(TAG, "카메라 내부 경로 감지 - 네이티브 다운로드 사용: $fullPath")
 
                 // 네이티브 데이터소스를 통해 카메라에서 직접 다운로드
                 val downloadResult = downloadPhotoFromCamera(
@@ -700,14 +685,15 @@ class PhotoDownloadManager @Inject constructor(
                         "${processedFile.nameWithoutExtension}_color_transferred.jpg"
                     )
 
-                    val transferredBitmap = colorTransferUseCase.applyColorTransferWithGPUAndSave(
+                    val transferResult = colorTransferUseCase.applyColorTransferAndSave(
                         processedFile.absolutePath, // 입력 파일 경로 (리사이즈된 이미지 또는 원본)
                         referenceImagePath, // 참조 이미지 경로
+                        processedFile.absolutePath, // 원본 이미지 경로 (EXIF 메타데이터 복사용)
                         colorTransferredFile.absolutePath, // 출력 파일 경로
                         colorTransferIntensity // 사용자 설정 강도
                     )
 
-                    if (transferredBitmap != null) {
+                    if (transferResult != null) {
                         processedPath = colorTransferredFile.absolutePath
                         Log.d(TAG, "✅ 색감 전송 적용 완료: ${colorTransferredFile.name}")
 
@@ -715,9 +701,6 @@ class PhotoDownloadManager @Inject constructor(
                         if (processedFile.absolutePath != fullPath) {
                             processedFile.delete()
                         }
-
-                        // 메모리 정리 - 즉시 해제
-                        transferredBitmap.recycle()
                     } else {
                         Log.w(TAG, "⚠️ 색감 전송 실패, 이전 처리된 이미지 사용")
                     }
@@ -745,7 +728,7 @@ class PhotoDownloadManager @Inject constructor(
             )
 
             // UI 업데이트
-            CoroutineScope(Dispatchers.Main).launch {
+            withContext(Dispatchers.Main) {
                 onPhotoDownloaded(tempPhoto)
             }
 
@@ -1083,17 +1066,18 @@ class PhotoDownloadManager @Inject constructor(
 
         when (orientation) {
             ExifInterface.ORIENTATION_ROTATE_90 -> {
-                Log.d(TAG, "90도 회전 수정: 270도로 변경 (반대 방향 문제 해결)")
-                matrix.postRotate(270f) // 90도 대신 270도 적용
+                Log.d(TAG, "EXIF 90도 회전 적용")
+                matrix.postRotate(90f)
                 rotationApplied = true
             }
             ExifInterface.ORIENTATION_ROTATE_180 -> {
-                Log.d(TAG, "180도 회전 수정: 회전하지 않음 (거꾸로 표시 문제 해결)")
-                return bitmap // 180도 회전 시 회전하지 않음
+                Log.d(TAG, "EXIF 180도 회전 적용")
+                matrix.postRotate(180f)
+                rotationApplied = true
             }
             ExifInterface.ORIENTATION_ROTATE_270 -> {
-                Log.d(TAG, "270도 회전 수정: 90도로 변경 (거꾸로 표시 문제 해결)")
-                matrix.postRotate(90f) // 270도 대신 90도 적용
+                Log.d(TAG, "EXIF 270도 회전 적용")
+                matrix.postRotate(270f)
                 rotationApplied = true
             }
             else -> return bitmap // 회전 불필요

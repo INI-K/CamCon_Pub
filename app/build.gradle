@@ -352,6 +352,9 @@ dependencies {
 
     // OSS Licenses
     implementation 'com.google.android.gms:play-services-oss-licenses:17.1.0'
+
+    // Lifecycle runtime compose for collectAsStateWithLifecycle
+    implementation "androidx.lifecycle:lifecycle-runtime-compose:2.7.0"
 }
 
 // 16KB 정렬 태스크 (libyuv-decoder.so용)

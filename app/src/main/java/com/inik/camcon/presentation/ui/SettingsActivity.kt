@@ -47,6 +47,7 @@ import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -54,15 +55,17 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -100,7 +103,7 @@ class SettingsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
-            val themeMode by appSettingsViewModel.themeMode.collectAsState()
+            val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
             val authViewModel: AuthViewModel = hiltViewModel()
 
             CamConTheme(themeMode = themeMode) {
@@ -145,15 +148,15 @@ fun SettingsScreen(
     val context = LocalContext.current
 
     // Auth 상태 - null 체크 추가
-    val authUiState by authViewModel?.uiState?.collectAsState() ?: remember {
+    val authUiState by authViewModel?.uiState?.collectAsStateWithLifecycle() ?: remember {
         mutableStateOf(com.inik.camcon.presentation.viewmodel.AuthUiState())
     }
 
     // 관리자 레퍼럴 코드 상태
-    val adminReferralState by adminReferralCodeViewModel.uiState.collectAsState()
+    val adminReferralState by adminReferralCodeViewModel.uiState.collectAsStateWithLifecycle()
 
     // 카메라 상태 정보
-    val cameraUiState by cameraViewModel.uiState.collectAsState()
+    val cameraUiState by cameraViewModel.uiState.collectAsStateWithLifecycle()
     val isUsbConnected = cameraUiState.isNativeCameraConnected
     val isPtpipConnected = cameraUiState.isPtpipConnected
 
@@ -197,28 +200,26 @@ fun SettingsScreen(
     }
 
     // PTPIP 설정 상태
-    val isPtpipEnabled by ptpipViewModel.isPtpipEnabled.collectAsState(initial = false)
-    val isWifiConnectionModeEnabled by ptpipViewModel.isWifiConnectionModeEnabled.collectAsState(
-        initial = true
-    )
-    val isAutoDiscoveryEnabled by ptpipViewModel.isAutoDiscoveryEnabled.collectAsState(initial = true)
-    val isAutoConnectEnabled by ptpipViewModel.isAutoConnectEnabled.collectAsState(initial = false)
-    val lastConnectedName by ptpipViewModel.lastConnectedName.collectAsState(initial = null)
+    val isPtpipEnabled by ptpipViewModel.isPtpipEnabled.collectAsStateWithLifecycle(initialValue = false)
+    val isWifiConnectionModeEnabled by ptpipViewModel.isWifiConnectionModeEnabled.collectAsStateWithLifecycle(initialValue = true)
+    val isAutoDiscoveryEnabled by ptpipViewModel.isAutoDiscoveryEnabled.collectAsStateWithLifecycle(initialValue = true)
+    val isAutoConnectEnabled by ptpipViewModel.isAutoConnectEnabled.collectAsStateWithLifecycle(initialValue = false)
+    val lastConnectedName by ptpipViewModel.lastConnectedName.collectAsStateWithLifecycle(initialValue = null)
 
     // 앱 설정 상태
-    val isCameraControlsEnabled by appSettingsViewModel.isCameraControlsEnabled.collectAsState()
-    val isLiveViewEnabled by appSettingsViewModel.isLiveViewEnabled.collectAsState()
-    val isAdminTier by appSettingsViewModel.isAdminTier.collectAsState()
-    val currentThemeMode by appSettingsViewModel.themeMode.collectAsState()
-    val isAutoStartEventListener by appSettingsViewModel.isAutoStartEventListenerEnabled.collectAsState()
-    val isShowLatestPhotoWhenDisabled by appSettingsViewModel.isShowLatestPhotoWhenDisabled.collectAsState()
+    val isCameraControlsEnabled by appSettingsViewModel.isCameraControlsEnabled.collectAsStateWithLifecycle()
+    val isLiveViewEnabled by appSettingsViewModel.isLiveViewEnabled.collectAsStateWithLifecycle()
+    val isAdminTier by appSettingsViewModel.isAdminTier.collectAsStateWithLifecycle()
+    val currentThemeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
+    val isAutoStartEventListener by appSettingsViewModel.isAutoStartEventListenerEnabled.collectAsStateWithLifecycle()
+    val isShowLatestPhotoWhenDisabled by appSettingsViewModel.isShowLatestPhotoWhenDisabled.collectAsStateWithLifecycle()
 
     // 색감 전송 설정 상태
-    val isColorTransferEnabled by appSettingsViewModel.isColorTransferEnabled.collectAsState()
-    val colorTransferReferenceImagePath by appSettingsViewModel.colorTransferReferenceImagePath.collectAsState()
-    val isRawFileDownloadEnabled by appSettingsViewModel.isRawFileDownloadEnabled.collectAsState()
+    val isColorTransferEnabled by appSettingsViewModel.isColorTransferEnabled.collectAsStateWithLifecycle()
+    val colorTransferReferenceImagePath by appSettingsViewModel.colorTransferReferenceImagePath.collectAsStateWithLifecycle()
+    val isRawFileDownloadEnabled by appSettingsViewModel.isRawFileDownloadEnabled.collectAsStateWithLifecycle()
 
-    val subscriptionTier by appSettingsViewModel.subscriptionTier.collectAsState()
+    val subscriptionTier by appSettingsViewModel.subscriptionTier.collectAsStateWithLifecycle()
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -269,6 +270,8 @@ fun SettingsScreen(
 
     // 테마 선택 다이얼로그 상태
     var showThemeDialog by remember { mutableStateOf(false) }
+    // 네이티브 로그 다이얼로그 상태
+    var logDialogContent by remember { mutableStateOf<String?>(null) }
 
     // 테마 모드를 한글로 변환하는 함수
     fun getThemeDisplayName(themeMode: ThemeMode): String {
@@ -661,7 +664,7 @@ fun SettingsScreen(
 
             if (isAdminTier) {
                 // ADMIN 전용: 가상 카메라 설정 및 네이티브 로그
-                val isNativeLogCaptureEnabled by appSettingsViewModel.isNativeLogCaptureEnabled.collectAsState()
+                val isNativeLogCaptureEnabled by appSettingsViewModel.isNativeLogCaptureEnabled.collectAsStateWithLifecycle()
 
                 SettingsSection(title = "ADMIN 전용 설정") {
                     SettingsItem(
@@ -729,29 +732,7 @@ fun SettingsScreen(
                                         android.widget.Toast.LENGTH_SHORT
                                     ).show()
                                 } else {
-                                    // 최신 로그 파일 내용 표시
-                                    val logContent = appSettingsViewModel.getLogFileContent()
-
-                                    // 간단한 다이얼로그로 로그 표시
-                                    android.app.AlertDialog.Builder(context)
-                                        .setTitle("네이티브 로그")
-                                        .setMessage(logContent.takeLast(3000)) // 마지막 3000자만 표시
-                                        .setPositiveButton("확인", null)
-                                        .setNeutralButton("전체 복사") { _, _ ->
-                                            val clipboard =
-                                                context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                            val clip = android.content.ClipData.newPlainText(
-                                                "native_log",
-                                                logContent
-                                            )
-                                            clipboard.setPrimaryClip(clip)
-                                            android.widget.Toast.makeText(
-                                                context,
-                                                "로그가 클립보드에 복사되었습니다",
-                                                android.widget.Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
-                                        .show()
+                                    logDialogContent = appSettingsViewModel.getLogFileContent()
                                 }
                             }
                         )
@@ -762,27 +743,71 @@ fun SettingsScreen(
             }
 
             if (showThemeDialog) {
-                android.app.AlertDialog.Builder(context)
-                    .setTitle("테마 설정")
-                    .setSingleChoiceItems(
-                        arrayOf("시스템 설정 따름", "라이트 모드", "다크 모드").map { it }.toTypedArray(),
-                        when (currentThemeMode) {
-                            ThemeMode.FOLLOW_SYSTEM -> 0
-                            ThemeMode.LIGHT -> 1
-                            ThemeMode.DARK -> 2
+                AlertDialog(
+                    onDismissRequest = { showThemeDialog = false },
+                    title = { Text("테마 설정") },
+                    text = {
+                        val options = listOf(
+                            ThemeMode.FOLLOW_SYSTEM to "시스템 설정 따름",
+                            ThemeMode.LIGHT to "라이트 모드",
+                            ThemeMode.DARK to "다크 모드"
+                        )
+                        Column {
+                            options.forEach { (mode, label) ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            appSettingsViewModel.setThemeMode(mode)
+                                            showThemeDialog = false
+                                        },
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    RadioButton(
+                                        selected = currentThemeMode == mode,
+                                        onClick = {
+                                            appSettingsViewModel.setThemeMode(mode)
+                                            showThemeDialog = false
+                                        }
+                                    )
+                                    Text(label)
+                                }
+                            }
                         }
-                    ) { _, which ->
-                        when (which) {
-                            0 -> appSettingsViewModel.setThemeMode(ThemeMode.FOLLOW_SYSTEM)
-                            1 -> appSettingsViewModel.setThemeMode(ThemeMode.LIGHT)
-                            2 -> appSettingsViewModel.setThemeMode(ThemeMode.DARK)
+                    },
+                    confirmButton = {},
+                    dismissButton = {
+                        TextButton(onClick = { showThemeDialog = false }) { Text("취소") }
+                    }
+                )
+            }
+
+            // 네이티브 로그 다이얼로그
+            logDialogContent?.let { logContent ->
+                AlertDialog(
+                    onDismissRequest = { logDialogContent = null },
+                    title = { Text("네이티브 로그") },
+                    text = {
+                        Column(
+                            modifier = Modifier.verticalScroll(rememberScrollState())
+                        ) {
+                            Text(
+                                text = logContent.takeLast(3000),
+                                style = MaterialTheme.typography.bodySmall
+                            )
                         }
-                        showThemeDialog = false
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { logDialogContent = null }) { Text("확인") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("native_log", logContent))
+                            android.widget.Toast.makeText(context, "로그가 클립보드에 복사되었습니다", android.widget.Toast.LENGTH_SHORT).show()
+                        }) { Text("전체 복사") }
                     }
-                    .setNegativeButton("취소") { _, _ ->
-                        showThemeDialog = false
-                    }
-                    .show()
+                )
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -801,8 +826,8 @@ fun SettingsScreen(
                 SettingsItem(
                     icon = Icons.Default.Update,
                     title = "앱 버전",
-                    subtitle = "1.0.0",
-                    onClick = { /* TODO */ }
+                    subtitle = BuildConfig.VERSION_NAME,
+                    onClick = { }
                 )
             }
 
