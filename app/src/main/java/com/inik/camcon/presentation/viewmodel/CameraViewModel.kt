@@ -444,7 +444,9 @@ class CameraViewModel @Inject constructor(
      * 카메라 설정 업데이트 (SettingsManager에 위임)
      */
     fun updateCameraSetting(key: String, value: String) {
-        settingsManager.updateCameraSetting(key, value)
+        viewModelScope.launch {
+            settingsManager.updateCameraSetting(key, value)
+        }
     }
 
     /**
@@ -652,19 +654,24 @@ class CameraViewModel @Inject constructor(
     }
 
     fun refreshCameraCapabilities() {
-        settingsManager.loadCameraCapabilities()
+        viewModelScope.launch {
+            settingsManager.loadCameraCapabilities()
+        }
     }
 
     /**
      * 카메라 설정 수동 로드 (설정 탭을 열 때 호출)
      */
     fun loadCameraSettingsManually() {
-        settingsManager.loadCameraSettings()
-        settingsManager.loadCameraCapabilities()
+        viewModelScope.launch {
+            settingsManager.loadCameraSettings()
+            settingsManager.loadCameraCapabilities()
+        }
     }
 
     override fun onCleared() {
         super.onCleared()
+        currentActivity = null
 
         // 매니저들 정리
         operationsManager.cleanup()

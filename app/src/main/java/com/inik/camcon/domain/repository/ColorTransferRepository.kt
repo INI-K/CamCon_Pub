@@ -1,23 +1,18 @@
-package com.inik.camcon.domain.usecase
+package com.inik.camcon.domain.repository
 
 import com.inik.camcon.domain.model.ColorTransferResult
-import com.inik.camcon.domain.repository.ColorTransferRepository
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
- * Thin UseCase wrapper that delegates all color transfer logic to the repository.
- * Domain layer remains free of Android dependencies.
+ * Color transfer repository interface.
+ * All methods use primitive/domain types only (no Android-specific types like Bitmap, Context).
  */
-@Singleton
-class ColorTransferUseCase @Inject constructor(
-    private val colorTransferRepository: ColorTransferRepository
-) {
+interface ColorTransferRepository {
 
     /**
      * Applies color transfer using GPU acceleration with cached reference stats.
+     * Loads input from targetImagePath, applies cached reference stats, saves result to a temp file.
      * @param targetImagePath path to the input image
-     * @param referenceImagePath path to the reference image
+     * @param referenceImagePath path to the reference image (for cached stats)
      * @param intensity color transfer intensity (0.0 ~ 1.0)
      * @param maxSize optional max size to scale the input bitmap (0 = no scaling)
      * @return path to the result image file, or null on failure
@@ -27,10 +22,7 @@ class ColorTransferUseCase @Inject constructor(
         referenceImagePath: String,
         intensity: Float,
         maxSize: Int = 0
-    ): String? =
-        colorTransferRepository.applyColorTransferWithGPUCached(
-            targetImagePath, referenceImagePath, intensity, maxSize
-        )
+    ): String?
 
     /**
      * Applies color transfer between two images (CPU path).
@@ -45,13 +37,11 @@ class ColorTransferUseCase @Inject constructor(
         referenceImagePath: String,
         intensity: Float,
         maxSize: Int = 0
-    ): String? =
-        colorTransferRepository.applyColorTransfer(
-            targetImagePath, referenceImagePath, intensity, maxSize
-        )
+    ): String?
 
     /**
      * Applies color transfer using GPU acceleration.
+     * Loads images from paths, applies transfer, saves result.
      * @param inputImagePath path to the input image
      * @param referenceImagePath path to the reference image
      * @param intensity color transfer intensity (0.0 ~ 1.0)
@@ -61,11 +51,16 @@ class ColorTransferUseCase @Inject constructor(
         inputImagePath: String,
         referenceImagePath: String,
         intensity: Float
-    ): String? =
-        colorTransferRepository.applyColorTransferWithGPU(inputImagePath, referenceImagePath, intensity)
+    ): String?
 
     /**
      * Applies color transfer and saves result with EXIF metadata preservation.
+     * @param inputImagePath path to the input image
+     * @param referenceImagePath path to the reference image
+     * @param originalImagePath path to the original image for EXIF metadata copy
+     * @param outputPath path to save the result
+     * @param intensity color transfer intensity (0.0 ~ 1.0)
+     * @return result info, or null on failure
      */
     suspend fun applyColorTransferAndSave(
         inputImagePath: String,
@@ -73,26 +68,23 @@ class ColorTransferUseCase @Inject constructor(
         originalImagePath: String,
         outputPath: String,
         intensity: Float = 0.03f
-    ): ColorTransferResult? =
-        colorTransferRepository.applyColorTransferAndSave(
-            inputImagePath, referenceImagePath, originalImagePath, outputPath, intensity
-        )
+    ): ColorTransferResult?
 
     /**
      * Validates whether the file at the given path is a valid image.
+     * @param imagePath path to the image file
+     * @return true if the image is valid
      */
-    fun isValidImageFile(imagePath: String): Boolean =
-        colorTransferRepository.isValidImageFile(imagePath)
+    fun isValidImageFile(imagePath: String): Boolean
 
     /**
      * Clears the cached reference image statistics.
      */
-    fun clearReferenceCache() =
-        colorTransferRepository.clearReferenceCache()
+    fun clearReferenceCache()
 
     /**
-     * Initializes GPU processing.
+     * Initializes GPU processing. The contextProvider is expected to be an Android Context
+     * but is typed as Any to keep the domain layer free of Android dependencies.
      */
-    fun initializeGPU(contextProvider: Any) =
-        colorTransferRepository.initializeGPU(contextProvider)
+    fun initializeGPU(contextProvider: Any)
 }

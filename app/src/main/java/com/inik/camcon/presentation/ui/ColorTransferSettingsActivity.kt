@@ -40,7 +40,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,7 +68,7 @@ class ColorTransferSettingsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
-            val themeMode by appSettingsViewModel.themeMode.collectAsState()
+            val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
             
             CamConTheme(themeMode = themeMode) {
                 ColorTransferSettingsScreen(
@@ -98,17 +98,17 @@ fun ColorTransferSettingsScreen(
         }
     }
     
-    val isColorTransferEnabled by appSettingsViewModel.isColorTransferEnabled.collectAsState()
-    val colorTransferReferenceImagePath by appSettingsViewModel.colorTransferReferenceImagePath.collectAsState()
-    val colorTransferTargetImagePath by appSettingsViewModel.colorTransferTargetImagePath.collectAsState()
-    val colorTransferIntensity by appSettingsViewModel.colorTransferIntensity.collectAsState()
+    val isColorTransferEnabled by appSettingsViewModel.isColorTransferEnabled.collectAsStateWithLifecycle()
+    val colorTransferReferenceImagePath by appSettingsViewModel.colorTransferReferenceImagePath.collectAsStateWithLifecycle()
+    val colorTransferTargetImagePath by appSettingsViewModel.colorTransferTargetImagePath.collectAsStateWithLifecycle()
+    val colorTransferIntensity by appSettingsViewModel.colorTransferIntensity.collectAsStateWithLifecycle()
     
     // ColorTransferViewModel 상태
-    val isLoading by colorTransferViewModel.isLoading.collectAsState()
-    val processingProgress by colorTransferViewModel.processingProgress.collectAsState()
-    val processingStatus by colorTransferViewModel.processingStatus.collectAsState()
-    val errorMessage by colorTransferViewModel.errorMessage.collectAsState()
-    val performanceInfo by colorTransferViewModel.performanceInfo.collectAsState()
+    val isLoading by colorTransferViewModel.isLoading.collectAsStateWithLifecycle()
+    val processingProgress by colorTransferViewModel.processingProgress.collectAsStateWithLifecycle()
+    val processingStatus by colorTransferViewModel.processingStatus.collectAsStateWithLifecycle()
+    val errorMessage by colorTransferViewModel.errorMessage.collectAsStateWithLifecycle()
+    val performanceInfo by colorTransferViewModel.performanceInfo.collectAsStateWithLifecycle()
 
     // 이미지 선택 런처들
     val referenceImagePickerLauncher = rememberLauncherForActivityResult(
