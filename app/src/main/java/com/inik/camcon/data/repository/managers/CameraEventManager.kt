@@ -7,12 +7,12 @@ import com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
 import com.inik.camcon.data.repository.managers.PhotoDownloadManager
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
+import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.utils.Constants
 import com.inik.camcon.utils.LogcatManager
 import com.inik.camcon.utils.SubscriptionUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -36,7 +36,8 @@ class CameraEventManager @Inject constructor(
     private val nativeDataSource: NativeCameraDataSource,
     private val usbCameraManager: UsbCameraManager,
     private val validateImageFormatUseCase: ValidateImageFormatUseCase,
-    private val photoDownloadManager: PhotoDownloadManager
+    private val photoDownloadManager: PhotoDownloadManager,
+    @ApplicationScope private val scope: CoroutineScope
 ) {
     // 카메라 이벤트 리스너 상태 추적
     private val _isEventListenerActive = MutableStateFlow(false)
@@ -48,8 +49,6 @@ class CameraEventManager @Inject constructor(
 
     // 사진 미리보기 모드 상태 추가 (이벤트 리스너 자동 시작 방지용)
     private val _isPhotoPreviewMode = MutableStateFlow(false)
-
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     // USB 분리 처리 상태 추가 (무한 루프 방지)
     private val isHandlingUsbDisconnection = AtomicBoolean(false)
@@ -206,7 +205,7 @@ class CameraEventManager @Inject constructor(
             LogcatManager.d("카메라이벤트매니저", "=== ${connectionType.name} 카메라 이벤트 리스너 시작 ===")
 
             // 이벤트 리스너를 백그라운드 스레드에서 시작
-            scope.launch {
+            scope.launch(Dispatchers.IO) {
                 try {
                     // 안정화를 위한 추가 대기 시간
                     kotlinx.coroutines.delay(500)
@@ -481,7 +480,7 @@ class CameraEventManager @Inject constructor(
                             "🔍 ${connectionType.name} RAW 파일 촬영 감지: $fileName"
                         )
 
-                        scope.launch {
+                        scope.launch(Dispatchers.IO) {
                             try {
                                 val validationResult =
                                     validateImageFormatUseCase.validateRawFileAccess(fileName)
@@ -640,7 +639,7 @@ class CameraEventManager @Inject constructor(
             performCompleteCleanup()
 
             // UsbCameraManager에 USB 분리 알림
-            scope.launch {
+            scope.launch(Dispatchers.IO) {
                 try {
                     usbCameraManager.handleUsbDisconnection()
                     LogcatManager.d("카메라이벤트매니저", "USB 카메라 매니저 분리 처리 완료")
