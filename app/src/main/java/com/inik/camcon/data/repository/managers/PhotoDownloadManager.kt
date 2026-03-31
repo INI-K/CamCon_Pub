@@ -23,7 +23,6 @@ import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.domain.usecase.camera.PhotoCaptureEventManager
 import com.inik.camcon.utils.Constants
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -729,7 +728,7 @@ class PhotoDownloadManager @Inject constructor(
             )
 
             // UI 업데이트
-            CoroutineScope(Dispatchers.Main).launch {
+            withContext(Dispatchers.Main) {
                 onPhotoDownloaded(tempPhoto)
             }
 
@@ -1067,17 +1066,18 @@ class PhotoDownloadManager @Inject constructor(
 
         when (orientation) {
             ExifInterface.ORIENTATION_ROTATE_90 -> {
-                Log.d(TAG, "90도 회전 수정: 270도로 변경 (반대 방향 문제 해결)")
-                matrix.postRotate(270f) // 90도 대신 270도 적용
+                Log.d(TAG, "EXIF 90도 회전 적용")
+                matrix.postRotate(90f)
                 rotationApplied = true
             }
             ExifInterface.ORIENTATION_ROTATE_180 -> {
-                Log.d(TAG, "180도 회전 수정: 회전하지 않음 (거꾸로 표시 문제 해결)")
-                return bitmap // 180도 회전 시 회전하지 않음
+                Log.d(TAG, "EXIF 180도 회전 적용")
+                matrix.postRotate(180f)
+                rotationApplied = true
             }
             ExifInterface.ORIENTATION_ROTATE_270 -> {
-                Log.d(TAG, "270도 회전 수정: 90도로 변경 (거꾸로 표시 문제 해결)")
-                matrix.postRotate(90f) // 270도 대신 90도 적용
+                Log.d(TAG, "EXIF 270도 회전 적용")
+                matrix.postRotate(270f)
                 rotationApplied = true
             }
             else -> return bitmap // 회전 불필요

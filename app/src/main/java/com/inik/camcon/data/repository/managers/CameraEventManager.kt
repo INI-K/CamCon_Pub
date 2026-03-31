@@ -12,6 +12,7 @@ import com.inik.camcon.utils.LogcatManager
 import com.inik.camcon.utils.SubscriptionUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -47,6 +48,8 @@ class CameraEventManager @Inject constructor(
 
     // 사진 미리보기 모드 상태 추가 (이벤트 리스너 자동 시작 방지용)
     private val _isPhotoPreviewMode = MutableStateFlow(false)
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     // USB 분리 처리 상태 추가 (무한 루프 방지)
     private val isHandlingUsbDisconnection = AtomicBoolean(false)
@@ -203,7 +206,7 @@ class CameraEventManager @Inject constructor(
             LogcatManager.d("카메라이벤트매니저", "=== ${connectionType.name} 카메라 이벤트 리스너 시작 ===")
 
             // 이벤트 리스너를 백그라운드 스레드에서 시작
-            CoroutineScope(Dispatchers.IO).launch {
+            scope.launch {
                 try {
                     // 안정화를 위한 추가 대기 시간
                     kotlinx.coroutines.delay(500)
@@ -290,29 +293,30 @@ class CameraEventManager @Inject constructor(
                                     "❌ ${connectionType.name} 이벤트 리스너 시작 최대 재시도 초과"
                                 )
                                 isEventListenerRunning.set(false)
-                                CoroutineScope(Dispatchers.Main).launch {
+                                scope.launch(Dispatchers.Main) {
                                     _isEventListenerActive.value = false
                                 }
                             }
                         }
                     }
                 } catch (e: kotlinx.coroutines.CancellationException) {
-                    // 코루틴 취소는 정상적인 종료이므로 로그만 남김
+                    // 코루틴 취소는 정상적인 종료이므로 로그만 남기고 rethrow
                     LogcatManager.d("카메라이벤트매니저", "${connectionType.name} 이벤트 리스너 코루틴이 취소됨")
                     isEventListenerRunning.set(false)
-                    CoroutineScope(Dispatchers.Main).launch {
+                    withContext(Dispatchers.Main) {
                         _isEventListenerActive.value = false
                     }
+                    throw e
                 } catch (e: Exception) {
                     LogcatManager.e("카메라이벤트매니저", "❌ ${connectionType.name} 이벤트 리스너 스레드 실행 중 예외", e)
                     isEventListenerRunning.set(false)
-                    CoroutineScope(Dispatchers.Main).launch {
+                    scope.launch(Dispatchers.Main) {
                         _isEventListenerActive.value = false
                     }
                 }
             }
 
-            CoroutineScope(Dispatchers.Main).launch {
+            scope.launch(Dispatchers.Main) {
                 _isEventListenerActive.value = true
             }
 
@@ -477,7 +481,7 @@ class CameraEventManager @Inject constructor(
                             "🔍 ${connectionType.name} RAW 파일 촬영 감지: $fileName"
                         )
 
-                        CoroutineScope(Dispatchers.IO).launch {
+                        scope.launch {
                             try {
                                 val validationResult =
                                     validateImageFormatUseCase.validateRawFileAccess(fileName)
@@ -490,23 +494,15 @@ class CameraEventManager @Inject constructor(
 
                                     // 메인 스레드에서 다이얼로그 표시
                                     try {
-                                        CoroutineScope(Dispatchers.Main).launch {
-                                            try {
-                                                onRawFileRestricted?.invoke(
-                                                    fileName,
-                                                    validationResult.restrictionMessage
-                                                        ?: "RAW 파일전송은 지금 준비중입니다."
-                                                )
-                                            } catch (e: Exception) {
-                                                LogcatManager.w(
-                                                    "카메라이벤트매니저",
-                                                    "RAW 파일 제한 콜백 호출 중 예외",
-                                                    e
-                                                )
-                                            }
+                                        withContext(Dispatchers.Main) {
+                                            onRawFileRestricted?.invoke(
+                                                fileName,
+                                                validationResult.restrictionMessage
+                                                    ?: "RAW 파일전송은 지금 준비중입니다."
+                                            )
                                         }
                                     } catch (e: Exception) {
-                                        LogcatManager.w("카메라이벤트매니저", "RAW 파일 제한 스레드 시작 중 예외", e)
+                                        LogcatManager.w("카메라이벤트매니저", "RAW 파일 제한 콜백 호출 중 예외", e)
                                     }
 
                                     LogcatManager.d(
@@ -539,18 +535,14 @@ class CameraEventManager @Inject constructor(
                                 )
                                 // 오류 발생 시 기본적으로 차단
                                 try {
-                                    CoroutineScope(Dispatchers.Main).launch {
-                                        try {
-                                            onRawFileRestricted?.invoke(
-                                                fileName,
-                                                "파일 형식을 확인할 수 없습니다."
-                                            )
-                                        } catch (e: Exception) {
-                                            LogcatManager.w("카메라이벤트매니저", "RAW 파일 오류 콜백 호출 중 예외", e)
-                                        }
+                                    withContext(Dispatchers.Main) {
+                                        onRawFileRestricted?.invoke(
+                                            fileName,
+                                            "파일 형식을 확인할 수 없습니다."
+                                        )
                                     }
                                 } catch (e: Exception) {
-                                    LogcatManager.w("카메라이벤트매니저", "RAW 파일 오류 스레드 시작 중 예외", e)
+                                    LogcatManager.w("카메라이벤트매니저", "RAW 파일 오류 콜백 호출 중 예외", e)
                                 }
                             }
                         }
@@ -648,7 +640,7 @@ class CameraEventManager @Inject constructor(
             performCompleteCleanup()
 
             // UsbCameraManager에 USB 분리 알림
-            CoroutineScope(Dispatchers.IO).launch {
+            scope.launch {
                 try {
                     usbCameraManager.handleUsbDisconnection()
                     LogcatManager.d("카메라이벤트매니저", "USB 카메라 매니저 분리 처리 완료")
@@ -701,7 +693,7 @@ class CameraEventManager @Inject constructor(
             isEventListenerStarting.set(false)
 
             // UI 상태 업데이트
-            CoroutineScope(Dispatchers.Main).launch {
+            scope.launch(Dispatchers.Main) {
                 _isEventListenerActive.value = false
             }
 

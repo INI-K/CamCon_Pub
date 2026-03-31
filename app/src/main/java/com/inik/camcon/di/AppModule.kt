@@ -20,6 +20,7 @@ import com.inik.camcon.data.repository.managers.CameraEventManager
 import com.inik.camcon.data.repository.managers.CameraConnectionManager
 import com.inik.camcon.data.repository.managers.PhotoDownloadManager
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
+import com.inik.camcon.domain.manager.CameraStateObserver
 import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
 import com.inik.camcon.data.service.AutoConnectManager
 import com.inik.camcon.data.service.AutoConnectTaskRunner
@@ -29,7 +30,15 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import javax.inject.Qualifier
 import javax.inject.Singleton
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class ApplicationScope
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -37,10 +46,16 @@ object AppModule {
 
     @Provides
     @Singleton
+    @ApplicationScope
+    fun provideApplicationScope(): CoroutineScope =
+        CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    @Provides
+    @Singleton
     fun provideNativeCameraDataSource(
         @ApplicationContext context: Context,
-        uiStateManager: CameraUiStateManager
-    ) = NativeCameraDataSource(context, uiStateManager)
+        cameraStateObserver: CameraStateObserver
+    ) = NativeCameraDataSource(context, cameraStateObserver)
 
     @Provides
     @Singleton
@@ -67,8 +82,8 @@ object AppModule {
     @Provides
     @Singleton
     fun provideCameraCapabilitiesManager(
-        uiStateManager: CameraUiStateManager
-    ) = CameraCapabilitiesManager(uiStateManager)
+        cameraStateObserver: CameraStateObserver
+    ) = CameraCapabilitiesManager(cameraStateObserver)
 
     @Provides
     @Singleton
@@ -108,7 +123,7 @@ object AppModule {
         nikonAuthService: NikonAuthenticationService,
         wifiHelper: WifiNetworkHelper,
         cameraEventManager: CameraEventManager,
-        uiStateManager: CameraUiStateManager,
+        cameraStateObserver: CameraStateObserver,
         photoDownloadManager: PhotoDownloadManager,
         autoConnectManager: AutoConnectManager,
         autoConnectTaskRunner: Lazy<AutoConnectTaskRunner>
@@ -120,7 +135,7 @@ object AppModule {
             nikonAuthService,
             wifiHelper,
             cameraEventManager,
-            uiStateManager,
+            cameraStateObserver,
             photoDownloadManager,
             autoConnectManager,
             autoConnectTaskRunner

@@ -27,7 +27,7 @@ class CameraConnectionManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val nativeDataSource: NativeCameraDataSource,
     private val usbCameraManager: UsbCameraManager,
-    private val uiStateManager: com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
+    private val cameraStateObserver: com.inik.camcon.domain.manager.CameraStateObserver
 ) {
     // Mutex 동기화 추가(중복 connectCamera 방지)
     private val connectCameraMutex = Mutex()
@@ -392,7 +392,7 @@ class CameraConnectionManager @Inject constructor(
                         _cameraCapabilities.value = capabilities
                         Log.d("카메라연결매니저", "  📝 _cameraCapabilities 업데이트 완료")
 
-                        uiStateManager.updateCameraCapabilities(capabilities)
+                        cameraStateObserver.updateCameraCapabilities(capabilities)
                         Log.d("카메라연결매니저", "  ✅ UiStateManager 업데이트 완료")
                     } catch (e: Exception) {
                         Log.e("카메라연결매니저", "  ❌ UI 업데이트 실패", e)
