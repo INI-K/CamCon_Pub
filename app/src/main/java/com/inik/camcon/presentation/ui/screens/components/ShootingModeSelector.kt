@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -27,6 +28,7 @@ import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.Primary
 import com.inik.camcon.presentation.theme.Surface
 import com.inik.camcon.presentation.theme.SurfaceElevated
+import com.inik.camcon.presentation.theme.OnPrimary
 import com.inik.camcon.presentation.theme.TextMuted
 import com.inik.camcon.presentation.theme.TextPrimary
 import com.inik.camcon.presentation.viewmodel.CameraUiState
@@ -95,31 +97,28 @@ private fun ModeButton(
         modifier = modifier,
         colors = ButtonDefaults.buttonColors(
             containerColor = when {
-                !isEnabled -> Surface.copy(alpha = 0.5f)
-                isSelected -> Primary.copy(alpha = 0.15f)
+                isSelected -> Primary
                 else -> SurfaceElevated
             },
             contentColor = when {
-                !isEnabled -> TextMuted
-                isSelected -> Primary
+                isSelected -> OnPrimary
                 else -> TextPrimary
-            }
+            },
+            disabledContainerColor = Surface.copy(alpha = 0.4f),
+            disabledContentColor = TextMuted
         ),
-        border = BorderStroke(
-            width = if (isSelected) 2.dp else 1.dp,
-            color = when {
-                !isEnabled -> TextMuted.copy(alpha = 0.3f)
-                isSelected -> Primary.copy(alpha = 0.5f)
-                else -> Border
-            }
-        ),
-        shape = MaterialTheme.shapes.medium,
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+        border = if (!isSelected) BorderStroke(
+            width = 1.dp,
+            color = if (isEnabled) Border else TextMuted.copy(alpha = 0.2f)
+        ) else null,
+        shape = RoundedCornerShape(50.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
     ) {
         Text(
             text = label,
-            fontSize = 13.sp,
-            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
+            fontSize = 12.sp,
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
         )
     }
 }

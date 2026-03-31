@@ -25,9 +25,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
+import com.inik.camcon.data.datasource.local.ThemeMode
+import com.inik.camcon.presentation.theme.Background
+import com.inik.camcon.presentation.theme.CamConTheme
 
 /**
  * 간단한 로딩 오버레이
@@ -207,4 +211,32 @@ fun PtpTimeoutDialog(
             dismissOnClickOutside = false
         )
     )
+}
+
+@Preview(name = "Loading Overlay", showBackground = true)
+@Composable
+private fun LoadingOverlayPreview() {
+    CamConTheme(themeMode = ThemeMode.DARK) {
+        Box(modifier = Modifier.background(Background).fillMaxSize()) {
+            LoadingOverlay(message = "카메라 연결 중...")
+        }
+    }
+}
+
+@Preview(name = "USB Initialization Overlay", showBackground = true)
+@Composable
+private fun UsbInitializationOverlayPreview() {
+    CamConTheme(themeMode = ThemeMode.DARK) {
+        Box(modifier = Modifier.background(Background).fillMaxSize()) {
+            UsbInitializationOverlay(message = "USB 카메라 초기화 중...", progress = 0.6f)
+        }
+    }
+}
+
+@Preview(name = "PTP Timeout Dialog", showBackground = true)
+@Composable
+private fun PtpTimeoutDialogPreview() {
+    CamConTheme(themeMode = ThemeMode.DARK) {
+        PtpTimeoutDialog(onRestartRequest = {})
+    }
 }

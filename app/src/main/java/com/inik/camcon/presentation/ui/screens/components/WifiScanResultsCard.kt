@@ -1,5 +1,6 @@
 package com.inik.camcon.presentation.ui.screens.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,7 +19,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.inik.camcon.data.datasource.local.ThemeMode
+import com.inik.camcon.presentation.theme.Background
+import com.inik.camcon.presentation.theme.CamConTheme
 
 /**
  * 주변 Wi‑Fi 스캔 결과 카드 (AP/STA 모드 공용)
@@ -186,6 +191,34 @@ fun WifiScanResultsCard(
                     }
                 }
             }
+        }
+    }
+}
+
+@Preview(name = "WifiScanResultsCard - AP Mode", showBackground = true)
+@Composable
+private fun WifiScanResultsCardApPreview() {
+    CamConTheme(themeMode = ThemeMode.DARK) {
+        Column(modifier = Modifier.background(Background).padding(16.dp)) {
+            WifiScanResultsCard(
+                ssids = listOf("NIKON_Z6III_12345", "CANON_EOS_R5", "MyHomeWifi_5G", "iPhone"),
+                onConnectToWifi = {},
+                isStaMode = false
+            )
+        }
+    }
+}
+
+@Preview(name = "WifiScanResultsCard - STA Mode", showBackground = true)
+@Composable
+private fun WifiScanResultsCardStaPreview() {
+    CamConTheme(themeMode = ThemeMode.DARK) {
+        Column(modifier = Modifier.background(Background).padding(16.dp)) {
+            WifiScanResultsCard(
+                ssids = listOf("CameraNetwork_SONY", "HomeRouter_2G"),
+                onConnectToWifi = {},
+                isStaMode = true
+            )
         }
     }
 }

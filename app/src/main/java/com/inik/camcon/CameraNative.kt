@@ -163,6 +163,12 @@ object CameraNative {
     external fun buildWidgetJson(): String
     external fun queryConfig()
 
+    // Generic config access (C++ exists in camera_config.cpp)
+    external fun getConfigString(key: String): String?
+    external fun setConfigString(key: String, value: String): Int
+    external fun getConfigInt(key: String): Int
+    external fun setConfigInt(key: String, value: Int): Int
+
     external fun getSupportedCameras(): Array<String>?
     external fun getCameraDetails(model: String): Array<String>?
 
@@ -484,5 +490,23 @@ object CameraNative {
      * }
      */
     external fun getDetailedStorageInfo(): String
+
+    // Camera about info (to be implemented in C++)
+    external fun getCameraAbout(): String
+
+    // Audio capture (to be implemented in C++)
+    external fun captureAudio(): Int
+
+    // File info setting (to be implemented in C++)
+    external fun setFileInfo(folder: String, filename: String, permissions: Int, mtime: Long): Int
+
+    // Context progress callback (to be implemented in C++)
+    external fun setProgressCallback(enabled: Boolean): Int
+
+    // Context status callback (to be implemented in C++)
+    external fun setStatusCallback(enabled: Boolean): Int
+
+    // Context cancel callback (to be implemented in C++)
+    external fun setCancelCallback(enabled: Boolean): Int
 
 }

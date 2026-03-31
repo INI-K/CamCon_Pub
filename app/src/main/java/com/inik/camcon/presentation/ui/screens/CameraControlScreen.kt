@@ -14,10 +14,12 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -131,7 +133,8 @@ import java.io.File
 fun CameraControlScreen(
     viewModel: CameraViewModel,
     appSettingsViewModel: AppSettingsViewModel = hiltViewModel(),
-    onFullscreenChange: (Boolean) -> Unit = {}
+    onFullscreenChange: (Boolean) -> Unit = {},
+    onGalleryClick: () -> Unit = {}
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
@@ -271,7 +274,12 @@ fun CameraControlScreen(
             )
         }
     }
-        if (isFullscreen && (appSettings.isCameraControlsEnabled || uiState.capturedPhotos.isNotEmpty())) {
+        AnimatedContent(
+            targetState = isFullscreen && (appSettings.isCameraControlsEnabled || uiState.capturedPhotos.isNotEmpty()),
+            transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(300)) },
+            label = "fullscreen_content"
+        ) { isFullscreenMode ->
+        if (isFullscreenMode) {
             LogcatManager.d(
                 "CameraControl",
                 "🌟 전체화면 모드 렌더링 - isFullscreen=$isFullscreen, isCameraControlsEnabled=${appSettings.isCameraControlsEnabled}, capturedPhotos=${uiState.capturedPhotos.size}"
@@ -284,7 +292,8 @@ fun CameraControlScreen(
                     isFullscreen = false
                     onFullscreenChange(false)
                 },
-                isLiveViewEnabled = appSettings.isLiveViewEnabled
+                isLiveViewEnabled = appSettings.isLiveViewEnabled,
+                onGalleryClick = onGalleryClick
             )
         } else {
             LogcatManager.d(
@@ -312,8 +321,10 @@ fun CameraControlScreen(
                     selectedPhoto = photo
                     showFullScreenViewer = true
                 },
-                onShowBottomSheet = { showBottomSheet = true }
+                onShowBottomSheet = { showBottomSheet = true },
+                onGalleryClick = onGalleryClick
             )
+        }
         }
     }
 
@@ -460,7 +471,8 @@ private fun PortraitCameraLayout(
     onEnterFullscreen: () -> Unit,
     appSettings: AppSettings,
     onPhotoClick: (CapturedPhoto) -> Unit = {},
-    onShowBottomSheet: () -> Unit
+    onShowBottomSheet: () -> Unit,
+    onGalleryClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -653,7 +665,8 @@ private fun PortraitCameraLayout(
                         uiState = uiState,
                         viewModel = viewModel,
                         onShowTimelapseDialog = onShowTimelapseDialog,
-                        isVertical = false
+                        isVertical = false,
+                        onGalleryClick = onGalleryClick
                     )
                 }
 
@@ -685,7 +698,8 @@ private fun FullscreenCameraLayout(
     cameraFeed: List<Camera>,
     viewModel: CameraViewModel,
     onExitFullscreen: () -> Unit,
-    isLiveViewEnabled: Boolean
+    isLiveViewEnabled: Boolean,
+    onGalleryClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var showTimelapseDialog by remember { mutableStateOf(false) }
@@ -757,6 +771,7 @@ private fun FullscreenCameraLayout(
                 onShowTimelapseDialog = { showTimelapseDialog = true },
                 onExitFullscreen = onExitFullscreen,
                 onRotate = { isRotated = !isRotated },
+                onGalleryClick = onGalleryClick,
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .padding(20.dp)
@@ -852,6 +867,7 @@ private fun FullscreenControlPanel(
     onShowTimelapseDialog: () -> Unit,
     onExitFullscreen: () -> Unit,
     onRotate: (() -> Unit)? = null,
+    onGalleryClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -915,7 +931,8 @@ private fun FullscreenControlPanel(
                 uiState = uiState,
                 viewModel = viewModel,
                 onShowTimelapseDialog = onShowTimelapseDialog,
-                isVertical = true
+                isVertical = true,
+                onGalleryClick = onGalleryClick
             )
         }
     }
@@ -1055,7 +1072,7 @@ private fun RecentCaptureItem(
                     Text(
                         text = sizeText,
                         color = TextPrimary,
-                        fontSize = 10.sp,
+                        fontSize = 11.sp,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                     )
                 }
@@ -1463,7 +1480,7 @@ private fun RawFileRestrictionNotification(
                 .padding(top = 36.dp, start = 16.dp, end = 16.dp)
         ) {
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFFF6B6B)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.error),
                 shape = RoundedCornerShape(12.dp),
                 elevation = CardDefaults.cardElevation(8.dp),
                 modifier = Modifier.align(Alignment.TopCenter)
@@ -1479,13 +1496,13 @@ private fun RawFileRestrictionNotification(
                         Icon(
                             imageVector = Icons.Default.Photo,
                             contentDescription = "RAW 알림",
-                            tint = Color.White,
+                            tint = MaterialTheme.colorScheme.onError,
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
                             text = "RAW 파일 제한",
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onError,
                             fontSize = 16.sp,
                             style = MaterialTheme.typography.titleLarge
                         )
@@ -1494,7 +1511,7 @@ private fun RawFileRestrictionNotification(
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = "닫기",
-                                tint = Color.White,
+                                tint = MaterialTheme.colorScheme.onError,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -1504,7 +1521,7 @@ private fun RawFileRestrictionNotification(
 
                     Text(
                         text = "${restriction.fileName}",
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onError,
                         fontSize = 14.sp,
                         style = MaterialTheme.typography.bodyMedium
                     )
@@ -1513,7 +1530,7 @@ private fun RawFileRestrictionNotification(
 
                     Text(
                         text = restriction.message,
-                        color = Color.White.copy(alpha = 0.9f),
+                        color = MaterialTheme.colorScheme.onError.copy(alpha = 0.9f),
                         fontSize = 13.sp,
                         style = MaterialTheme.typography.bodyMedium
                     )
