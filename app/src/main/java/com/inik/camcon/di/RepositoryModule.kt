@@ -7,8 +7,15 @@ import com.inik.camcon.data.datasource.remote.AuthRemoteDataSource
 import com.inik.camcon.data.datasource.remote.AuthRemoteDataSourceImpl
 import com.inik.camcon.data.repository.AppUpdateRepositoryImpl
 import com.inik.camcon.data.repository.AuthRepositoryImpl
+import com.inik.camcon.data.repository.CameraAdvancedCaptureRepositoryImpl
+import com.inik.camcon.data.repository.CameraConfigRepositoryImpl
 import com.inik.camcon.data.repository.CameraConnectionStateProviderImpl
+import com.inik.camcon.data.repository.CameraDiagnosticsRepositoryImpl
+import com.inik.camcon.data.repository.CameraFileRepositoryImpl
+import com.inik.camcon.data.repository.CameraFocusRepositoryImpl
+import com.inik.camcon.data.repository.CameraMockRepositoryImpl
 import com.inik.camcon.data.repository.CameraRepositoryImpl
+import com.inik.camcon.data.repository.CameraStreamingRepositoryImpl
 import com.inik.camcon.data.repository.SubscriptionRepositoryImpl
 import com.inik.camcon.data.repository.ColorTransferRepositoryImpl
 import com.inik.camcon.data.repository.UsbDeviceRepositoryImpl
@@ -21,7 +28,14 @@ import com.inik.camcon.domain.manager.NativeErrorCallbackRegistrar
 import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.repository.AppUpdateRepository
 import com.inik.camcon.domain.repository.AuthRepository
+import com.inik.camcon.domain.repository.CameraAdvancedCaptureRepository
+import com.inik.camcon.domain.repository.CameraConfigRepository
 import com.inik.camcon.domain.repository.CameraConnectionStateProvider
+import com.inik.camcon.domain.repository.CameraDiagnosticsRepository
+import com.inik.camcon.domain.repository.CameraFileRepository
+import com.inik.camcon.domain.repository.CameraFocusRepository
+import com.inik.camcon.domain.repository.CameraMockRepository
+import com.inik.camcon.domain.repository.CameraStreamingRepository
 import com.inik.camcon.domain.repository.ColorTransferRepository
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.repository.SubscriptionRepository
@@ -121,4 +135,39 @@ abstract class RepositoryModule {
     abstract fun bindAppSettingsRepository(
         impl: AppPreferencesDataSource
     ): AppSettingsRepository
+
+    @Binds
+    abstract fun bindAdvancedCaptureRepository(
+        impl: CameraAdvancedCaptureRepositoryImpl
+    ): CameraAdvancedCaptureRepository
+
+    @Binds
+    abstract fun bindFocusRepository(
+        impl: CameraFocusRepositoryImpl
+    ): CameraFocusRepository
+
+    @Binds
+    abstract fun bindFileRepository(
+        impl: CameraFileRepositoryImpl
+    ): CameraFileRepository
+
+    @Binds
+    abstract fun bindConfigRepository(
+        impl: CameraConfigRepositoryImpl
+    ): CameraConfigRepository
+
+    @Binds
+    abstract fun bindStreamingRepository(
+        impl: CameraStreamingRepositoryImpl
+    ): CameraStreamingRepository
+
+    @Binds
+    abstract fun bindDiagnosticsRepository(
+        impl: CameraDiagnosticsRepositoryImpl
+    ): CameraDiagnosticsRepository
+
+    @Binds
+    abstract fun bindMockRepository(
+        impl: CameraMockRepositoryImpl
+    ): CameraMockRepository
 }
