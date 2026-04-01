@@ -723,8 +723,24 @@ class NativeCameraDataSource @Inject constructor(
                 return null
             }
 
-            val model = json.optString("model", "알 수 없음")
+            var model = json.optString("model", "알 수 없음")
             val supportsObj = json.optJSONObject("supports")
+
+            // Abilities의 모델명은 제네릭 드라이버명("PTP/IP Camera")이므로
+            // DeviceInfo에서 실제 카메라 모델명을 가져와 우선 사용
+            try {
+                val deviceInfoJson = CameraNative.getCameraDeviceInfo()
+                if (deviceInfoJson != null) {
+                    val deviceInfo = JSONObject(deviceInfoJson)
+                    val deviceModel = deviceInfo.optString("model", "")
+                    val manufacturer = deviceInfo.optString("manufacturer", "")
+                    if (deviceModel.isNotEmpty()) {
+                        model = if (manufacturer.isNotEmpty()) "$manufacturer $deviceModel" else deviceModel
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "DeviceInfo 조회 실패, Abilities 모델명 사용: $model")
+            }
 
             if (supportsObj == null) {
                 Log.e(TAG, "supports 객체가 없음")
