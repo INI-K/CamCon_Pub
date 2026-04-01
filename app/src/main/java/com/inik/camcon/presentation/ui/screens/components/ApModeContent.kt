@@ -22,10 +22,17 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.GetApp
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
+import com.inik.camcon.domain.model.SavedWifiCredential
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -61,6 +68,7 @@ fun ApModeContent(
     onRequestPermission: () -> Unit,
     nearbyWifiSSIDs: List<String>,
     onConnectToWifi: (String) -> Unit,
+    savedWifiSsids: Set<String> = emptySet(),
     modifier: Modifier = Modifier
 ) {
     // 전역 상태 수집
@@ -109,7 +117,23 @@ fun ApModeContent(
             if (nearbyWifiSSIDs.isNotEmpty()) {
                 WifiScanResultsCard(
                     ssids = nearbyWifiSSIDs,
-                    onConnectToWifi = onConnectToWifi
+                    onConnectToWifi = onConnectToWifi,
+                    savedSsids = savedWifiSsids
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+
+        // 저장된 Wi-Fi 네트워크 관리
+        item {
+            val savedCredentials by ptpipViewModel.savedWifiCredentials
+                .collectAsStateWithLifecycle(initialValue = emptyList())
+            if (savedCredentials.isNotEmpty()) {
+                SavedWifiNetworksCard(
+                    credentials = savedCredentials,
+                    onDelete = { ssid ->
+                        ptpipViewModel.deleteSavedWifiCredential(ssid)
+                    }
                 )
                 Spacer(modifier = Modifier.height(16.dp))
             }
@@ -448,5 +472,91 @@ private fun ApModeContentPreview() {
                 )
             }
         }
+    }
+}
+
+/**
+ * 저장된 Wi-Fi 네트워크 관리 카드
+ */
+@Composable
+private fun SavedWifiNetworksCard(
+    credentials: List<SavedWifiCredential>,
+    onDelete: (String) -> Unit
+) {
+    var ssidToDelete by remember { mutableStateOf<String?>(null) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "🔑 저장된 Wi-Fi 네트워크 (${credentials.size}개)",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "저장된 비밀번호로 빠르게 연결할 수 있습니다",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            credentials.forEach { credential ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = credential.ssid,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "${credential.security} · ${
+                                java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
+                                    .format(java.util.Date(credential.lastConnectedAt))
+                            }",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                    IconButton(onClick = { ssidToDelete = credential.ssid }) {
+                        Icon(
+                            imageVector = Icons.Filled.Delete,
+                            contentDescription = "삭제",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // 삭제 확인 다이얼로그
+    ssidToDelete?.let { ssid ->
+        AlertDialog(
+            onDismissRequest = { ssidToDelete = null },
+            title = { Text("저장된 네트워크 삭제") },
+            text = { Text("'$ssid'의 저장된 비밀번호를 삭제하시겠습니까?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDelete(ssid)
+                    ssidToDelete = null
+                }) {
+                    Text("삭제", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { ssidToDelete = null }) {
+                    Text("취소")
+                }
+            }
+        )
     }
 }
