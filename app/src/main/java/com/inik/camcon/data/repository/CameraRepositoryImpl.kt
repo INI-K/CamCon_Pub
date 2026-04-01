@@ -329,13 +329,19 @@ class CameraRepositoryImpl @Inject constructor(
      * 개선: JSON 소스 선택 로직을 별도 메서드로 분리
      */
     private suspend fun getWidgetJsonFromSource(): String {
-        return if (usbCameraManager.isNativeCameraConnected.value) {
+        val isUsbConnected = usbCameraManager.isNativeCameraConnected.value
+        val isPtpipConnected = connectionManager.isPtpipConnected.value
+
+        return if (isUsbConnected) {
             com.inik.camcon.utils.LogcatManager.d(TAG, "USB 카메라 연결됨 - 마스터 데이터 사용")
             usbCameraManager.buildWidgetJsonFromMaster()
+        } else if (isPtpipConnected) {
+            com.inik.camcon.utils.LogcatManager.d(TAG, "PTPIP 카메라 연결됨 - 직접 네이티브 호출")
+            nativeDataSource.buildWidgetJson()
         } else {
             val masterData = usbCameraManager.buildWidgetJsonFromMaster()
             if (masterData.isNotEmpty()) {
-                com.inik.camcon.utils.LogcatManager.d(TAG, "USB 카메라 미연결이지만 마스터 데이터 사용")
+                com.inik.camcon.utils.LogcatManager.d(TAG, "카메라 미연결이지만 마스터 데이터 사용")
                 masterData
             } else {
                 com.inik.camcon.utils.LogcatManager.d(TAG, "마스터 데이터 없음 - 직접 네이티브 호출")
@@ -423,7 +429,9 @@ class CameraRepositoryImpl @Inject constructor(
     private fun validateCameraConnection(
         continuation: CancellableContinuation<Result<CapturedPhoto>>
     ): Boolean {
-        if (!connectionManager.isConnected.value) {
+        val isAnyConnectionActive = connectionManager.isConnected.value ||
+                connectionManager.isPtpipConnected.value
+        if (!isAnyConnectionActive) {
             Log.e(TAG, "카메라가 연결되지 않은 상태에서 사진 촬영 불가")
             if (continuation.isActive) {
                 continuation.resumeWithException(Exception("카메라가 연결되지 않음"))

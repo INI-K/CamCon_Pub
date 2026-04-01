@@ -88,8 +88,10 @@ class CameraOperationsManager @Inject constructor(
         }
 
         Log.d(TAG, "라이브뷰 시작 요청")
+        Log.d(TAG, "  isConnected=$isConnected, canLiveView=${cameraCapabilities?.canLiveView}, capabilities=${cameraCapabilities != null}")
         liveViewJob = scope.launch {
             try {
+                Log.d(TAG, "라이브뷰 코루틴 시작됨")
                 if (cameraCapabilities != null && !cameraCapabilities.canLiveView) {
                     Log.w(TAG, "카메라가 라이브뷰를 지원하지 않음")
                     uiStateManager.setError("이 카메라는 라이브뷰를 지원하지 않습니다.")
@@ -97,11 +99,12 @@ class CameraOperationsManager @Inject constructor(
                 }
 
                 if (!isConnected) {
-                    Log.e(TAG, "카메라가 연결되지 않은 상태")
+                    Log.e(TAG, "카메라가 연결되지 않은 상태 — isConnected=$isConnected")
                     uiStateManager.setError("카메라가 연결되지 않았습니다. 먼저 카메라를 연결해주세요.")
                     return@launch
                 }
 
+                Log.d(TAG, "라이브뷰 UseCase 호출 시작")
                 uiStateManager.updateLiveViewState(isLoading = true)
                 uiStateManager.clearError()
 

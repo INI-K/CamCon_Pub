@@ -367,10 +367,16 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
 
     /**
      * PTPIP 연결 상태 업데이트
+     * CameraStateObserver 인터페이스 구현 — Data 레이어에서 호출됨
      */
-    fun updatePtpipConnectionState(isConnected: Boolean) {
-        _uiState.update { it.copy(isPtpipConnected = isConnected) }
-        Log.d(TAG, "PTPIP 연결 상태 업데이트: $isConnected")
+    override fun updatePtpipConnectionState(isConnected: Boolean) {
+        _uiState.update {
+            it.copy(
+                isPtpipConnected = isConnected,
+                isConnected = isConnected || it.isNativeCameraConnected
+            )
+        }
+        Log.d(TAG, "PTPIP 연결 상태 업데이트: isConnected=$isConnected")
     }
 
     /**

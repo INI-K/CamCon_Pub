@@ -12,4 +12,5 @@ interface CameraStateObserver {
     fun updateCameraCapabilities(capabilities: CameraCapabilities?)
     fun updateCameraInitialization(isInitializing: Boolean)
     fun showCameraStatusCheckDialog(show: Boolean)
+    fun updatePtpipConnectionState(isConnected: Boolean)
 }
