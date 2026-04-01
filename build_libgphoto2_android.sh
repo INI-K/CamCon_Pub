@@ -614,3 +614,50 @@ echo "       setenv(\"IOLIBS\",       nativeLibraryDir, 1)"
 echo "       setenv(\"CAMLIBS_PREFIX\", \"libgphoto2_camlib_\", 1)"
 echo "       setenv(\"IOLIBS_PREFIX\", \"libgphoto2_port_iolib_\", 1)"
 echo "=========================================="
+
+##############################################
+# 11. 빌드 결과물을 프로젝트 jniLibs에 복사
+##############################################
+echo ""
+echo "=========================================="
+echo "프로젝트 jniLibs 복사 시작"
+echo "=========================================="
+
+PROJECT_JNI_DIR="$BASE_DIR/app/src/main/jniLibs"
+
+for ABI in "${!ABI_TARGETS[@]}"; do
+    SRC_LIB="$BUILD_DIR/$ABI/output/lib"
+    DST_DIR="$PROJECT_JNI_DIR/$ABI"
+
+    if [ ! -d "$SRC_LIB" ]; then
+        echo "  ⚠️ [$ABI] 빌드 출력 없음, 건너뜀"
+        continue
+    fi
+
+    mkdir -p "$DST_DIR"
+    echo "  [$ABI] $SRC_LIB → $DST_DIR"
+
+    # 핵심 라이브러리
+    cp -f "$SRC_LIB/libgphoto2.so"    "$DST_DIR/" 2>/dev/null && echo "    ✓ libgphoto2.so"
+    cp -f "$SRC_LIB/libgphoto2_port.so" "$DST_DIR/" 2>/dev/null && echo "    ✓ libgphoto2_port.so"
+
+    # camlib 플러그인 (.so)
+    for f in "$SRC_LIB"/libgphoto2_camlib_*.so; do
+        [ -f "$f" ] && cp -f "$f" "$DST_DIR/" && echo "    ✓ $(basename "$f")"
+    done
+
+    # port iolib 플러그인 (.so)
+    for f in "$SRC_LIB"/libgphoto2_port_iolib_*.so; do
+        [ -f "$f" ] && cp -f "$f" "$DST_DIR/" && echo "    ✓ $(basename "$f")"
+    done
+
+    # ltdl (있는 경우)
+    [ -f "$SRC_LIB/libltdl.so" ] && cp -f "$SRC_LIB/libltdl.so" "$DST_DIR/" && echo "    ✓ libltdl.so"
+
+    echo "  ✅ [$ABI] 복사 완료"
+done
+
+echo ""
+echo "=========================================="
+echo "✅ 프로젝트 jniLibs 복사 완료!"
+echo "=========================================="
