@@ -256,10 +256,9 @@ class CameraOperationsManager @Inject constructor(
     }
 
     /**
-     * 모든 작업 중지 및 정리
+     * 진행 중인 작업만 중지 (scope은 유지 — @Singleton이므로 재사용됨)
      */
     fun cleanup() {
-        scope.cancel()
         liveViewJob?.cancel()
         timelapseJob?.cancel()
         liveViewJob = null
