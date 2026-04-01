@@ -123,19 +123,11 @@ class CameraViewModel @Inject constructor(
             try {
                 Log.d(TAG, "🔑 앱 시작 시 구독 티어 로드 시작")
 
-                // 첫 번째 값을 가져와서 네이티브로 전달
-                val tier = getSubscriptionUseCase.getSubscriptionTier().first()
-
-                val tierInt = when (tier) {
-                    SubscriptionTier.FREE -> 0
-                    SubscriptionTier.BASIC -> 1
-                    SubscriptionTier.PRO -> 2
-                    SubscriptionTier.REFERRER -> 2
-                    SubscriptionTier.ADMIN -> 2
-                }
-
-                CameraNative.setSubscriptionTier(tierInt)
-                Log.d(TAG, "✅ 앱 시작 시 구독 티어 설정 완료: $tier (네이티브: $tierInt)")
+                // 로컬 캐시된 구독 티어를 먼저 적용 (Firebase 오프라인 대비)
+                val cachedTier = appPreferencesDataSource.subscriptionTierEnum.first()
+                val cachedTierInt = subscriptionTierToInt(cachedTier)
+                CameraNative.setSubscriptionTier(cachedTierInt)
+                Log.d(TAG, "✅ 앱 시작 시 구독 티어 설정 완료: $cachedTier (네이티브: $cachedTierInt)")
 
                 // RAW 파일 다운로드 설정도 함께 로드
                 val isRawDownloadEnabled = appPreferencesDataSource.isRawFileDownloadEnabled.first()
@@ -146,9 +138,17 @@ class CameraViewModel @Inject constructor(
                 Log.e(TAG, "❌ 앱 시작 시 구독 티어 로드 실패", e)
                 // 실패 시 기본값(FREE) 설정
                 CameraNative.setSubscriptionTier(0)
-                CameraNative.setRawFileDownloadEnabled(true) // 기본값: 활성화
+                CameraNative.setRawFileDownloadEnabled(true)
             }
         }
+    }
+
+    private fun subscriptionTierToInt(tier: SubscriptionTier): Int = when (tier) {
+        SubscriptionTier.FREE -> 0
+        SubscriptionTier.BASIC -> 1
+        SubscriptionTier.PRO -> 2
+        SubscriptionTier.REFERRER -> 2
+        SubscriptionTier.ADMIN -> 2
     }
 
     /**
@@ -216,24 +216,26 @@ class CameraViewModel @Inject constructor(
                     // settingsManager.loadCameraSettings()
                     // settingsManager.loadCameraCapabilities()
 
-                    // 구독 티어는 이미 앱 시작 시 로드되었으므로 
-                    // 여기서는 변경사항 감지만 수행 (백그라운드)
+                    // 구독 티어는 이미 앱 시작 시 로컬 캐시에서 로드되었으므로
+                    // Firebase에서 최신 값을 가져올 수 있으면 업데이트 (AP 모드에서는 실패할 수 있음)
                     viewModelScope.launch {
                         try {
                             getSubscriptionUseCase.getSubscriptionTier()
                                 .collect { tier ->
-                                    val tierInt = when (tier) {
-                                        SubscriptionTier.FREE -> 0
-                                        SubscriptionTier.BASIC -> 1
-                                        SubscriptionTier.PRO -> 2
-                                        SubscriptionTier.REFERRER -> 2
-                                        SubscriptionTier.ADMIN -> 2
+                                    val tierInt = subscriptionTierToInt(tier)
+                                    // FREE(0)로 다운그레이드하는 것은 Firebase 오프라인 폴백일 수 있으므로
+                                    // 로컬 캐시가 더 높은 티어이면 유지
+                                    val cachedTier = appPreferencesDataSource.subscriptionTierEnum.first()
+                                    val cachedTierInt = subscriptionTierToInt(cachedTier)
+                                    if (tierInt >= cachedTierInt) {
+                                        CameraNative.setSubscriptionTier(tierInt)
+                                        Log.d(TAG, "🔄 구독 티어 업데이트: $tier (네이티브: $tierInt)")
+                                    } else {
+                                        Log.d(TAG, "🔄 구독 티어 유지 (로컬 캐시 우선): $cachedTier > $tier")
                                     }
-                                    CameraNative.setSubscriptionTier(tierInt)
-                                    Log.d(TAG, "🔄 구독 티어 업데이트: $tier (네이티브: $tierInt)")
                                 }
                         } catch (e: Exception) {
-                            Log.e(TAG, "구독 티어 업데이트 실패 (이미 로드된 값 사용)", e)
+                            Log.e(TAG, "구독 티어 업데이트 실패 (로컬 캐시 값 유지)", e)
                         }
                     }
                 }

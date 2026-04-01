@@ -727,19 +727,32 @@ class NativeCameraDataSource @Inject constructor(
             val supportsObj = json.optJSONObject("supports")
 
             // Abilities의 모델명은 제네릭 드라이버명("PTP/IP Camera")이므로
-            // DeviceInfo에서 실제 카메라 모델명을 가져와 우선 사용
-            try {
-                val deviceInfoJson = CameraNative.getCameraDeviceInfo()
-                if (deviceInfoJson != null) {
-                    val deviceInfo = JSONObject(deviceInfoJson)
-                    val deviceModel = deviceInfo.optString("model", "")
-                    val manufacturer = deviceInfo.optString("manufacturer", "")
-                    if (deviceModel.isNotEmpty()) {
-                        model = if (manufacturer.isNotEmpty()) "$manufacturer $deviceModel" else deviceModel
-                    }
+            // 캐시된 DeviceInfo에서 실제 카메라 모델명을 가져와 우선 사용
+            val cachedDeviceInfo = usbCameraDeviceInfo
+            if (cachedDeviceInfo != null && cachedDeviceInfo.model.isNotEmpty()) {
+                model = if (cachedDeviceInfo.manufacturer.isNotEmpty()) {
+                    "${cachedDeviceInfo.manufacturer} ${cachedDeviceInfo.model}"
+                } else {
+                    cachedDeviceInfo.model
                 }
-            } catch (e: Exception) {
-                Log.w(TAG, "DeviceInfo 조회 실패, Abilities 모델명 사용: $model")
+            } else {
+                // 캐시 없으면 한 번만 조회
+                try {
+                    val deviceInfoJson = CameraNative.getCameraDeviceInfo()
+                    if (deviceInfoJson != null) {
+                        val parsed = parseDeviceInfo(deviceInfoJson)
+                        usbCameraDeviceInfo = parsed
+                        if (parsed.model.isNotEmpty()) {
+                            model = if (parsed.manufacturer.isNotEmpty()) {
+                                "${parsed.manufacturer} ${parsed.model}"
+                            } else {
+                                parsed.model
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "DeviceInfo 조회 실패, Abilities 모델명 사용: $model")
+                }
             }
 
             if (supportsObj == null) {

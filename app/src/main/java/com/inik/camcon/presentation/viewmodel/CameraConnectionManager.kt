@@ -178,15 +178,18 @@ class CameraConnectionManager @Inject constructor(
                 // 추가 안정화 대기 (네이티브 초기화 완료 확보)
                 kotlinx.coroutines.delay(100)
 
-                // 연결 상태 재확인 - 직접 매니저에서 확인
+                // 연결 상태 재확인 - USB 또는 PTPIP 연결 확인
                 val isConnected = uiStateManager.uiState.value.isConnected
                 val isNativeCameraConnected = usbCameraManager.isNativeCameraConnected.value
+                val isPtpipConnected = uiStateManager.uiState.value.isPtpipConnected
 
                 Log.d(TAG, "연결 상태 재확인:")
                 Log.d(TAG, "  - isConnected (UI): $isConnected")
                 Log.d(TAG, "  - isNativeCameraConnected (Direct): $isNativeCameraConnected")
+                Log.d(TAG, "  - isPtpipConnected: $isPtpipConnected")
 
-                if (!isConnected || !isNativeCameraConnected) {
+                val isAnyConnectionActive = isNativeCameraConnected || isPtpipConnected
+                if (!isConnected || !isAnyConnectionActive) {
                     Log.w(TAG, "연결 상태 재확인 실패 - 이벤트 리스너 시작 중단")
                     return@launch
                 }
