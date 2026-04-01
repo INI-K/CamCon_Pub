@@ -479,11 +479,13 @@ class CameraConnectionManager @Inject constructor(
         Log.d("카메라연결매니저", "PTPIP 연결 상태 업데이트: $isConnected")
         _isPtpipConnected.value = isConnected
 
+        // UI 상태에도 PTPIP 연결 상태 반영 (CameraUiState.isConnected 갱신)
+        cameraStateObserver.updatePtpipConnectionState(isConnected)
+
         // PTPIP 연결 시에도 카메라 기능 정보 업데이트
         if (isConnected) {
             Log.d("카메라연결매니저", "PTPIP 연결됨 - 카메라 기능 정보 업데이트 시작")
             scope.launch(Dispatchers.IO) {
-                kotlinx.coroutines.delay(500) // 연결 안정화 대기
                 updateCameraCapabilities()
             }
         }
