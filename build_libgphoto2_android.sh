@@ -61,7 +61,7 @@ check_and_install_tools() {
         fi
 
         local missing=()
-        for tool in cmake autoconf automake pkg-config git; do
+        for tool in cmake autoconf automake pkg-config git gettext; do
             command -v "$tool" &>/dev/null || missing+=("$tool")
         done
         # macOS libtool은 brew 패키지명이 다름 (glibtool)
@@ -199,9 +199,12 @@ declare -A ABI_TARGETS=(
 )
 
 ##############################################
-# 4. 버전 정의 (최신 안정 버전)
+# 4. 버전 정의
 ##############################################
-LIBGPHOTO2_VER="2.5.33"
+# libgphoto2: git master HEAD 사용 (PR #1187 ptp_list_folder 루트 캐싱 수정 포함)
+# 2.5.33 릴리즈에는 이 수정이 누락되어 있어 PTP/IP 파일 전송이 매우 느림
+LIBGPHOTO2_REPO="https://github.com/gphoto/libgphoto2.git"
+LIBGPHOTO2_BRANCH="master"
 LIBTOOL_VER="2.4.7"
 LIBUSB_VER="1.0.27"
 LIBXML2_VER="2.13.6"
@@ -500,8 +503,61 @@ build_libgphoto2() {
 ##############################################
 cd "$BUILD_DIR"
 
-fetch "https://github.com/gphoto/libgphoto2/releases/download/v${LIBGPHOTO2_VER}/libgphoto2-${LIBGPHOTO2_VER}.tar.gz"
-extract_if_needed "libgphoto2-${LIBGPHOTO2_VER}.tar.gz" "$BUILD_DIR/libgphoto2"
+# libgphoto2: git clone (기존 디렉토리가 있으면 pull로 최신화)
+if [ -d "$BUILD_DIR/libgphoto2/.git" ]; then
+    echo ">> libgphoto2 기존 소스 최신화 (git pull)..."
+    cd "$BUILD_DIR/libgphoto2"
+    git fetch origin
+    git checkout "$LIBGPHOTO2_BRANCH"
+    git reset --hard "origin/$LIBGPHOTO2_BRANCH"
+    cd "$BUILD_DIR"
+else
+    echo ">> libgphoto2 소스 클론 (branch: $LIBGPHOTO2_BRANCH)..."
+    rm -rf "$BUILD_DIR/libgphoto2"
+    git clone --depth 1 --branch "$LIBGPHOTO2_BRANCH" "$LIBGPHOTO2_REPO" "$BUILD_DIR/libgphoto2"
+fi
+echo ">> libgphoto2 HEAD: $(cd "$BUILD_DIR/libgphoto2" && git log --oneline -1)"
+
+# CamCon 커스텀 패치 적용 (로컬 수정 사항 반영)
+# 패치 목록:
+#   - library.c:  find_child PTP 캐시 우선 탐색 + Nikon GetPartialObjectEx 확대
+#   - ptpip.c:    TCP 소켓 최적화
+#   - gphoto2-filesys.c: lookup_folder lazy creation + lookup_folder_file 캐시 우선 검색
+#                         + append_to_folder 재귀 생성 + gp_filesystem_append dirty 열거 스킵
+PATCH_SRC="/Users/ini-k/libgphoto2"
+if [ -d "$PATCH_SRC/camlibs/ptp2" ]; then
+    echo ">> CamCon 패치 적용 중..."
+    cp -v "$PATCH_SRC/camlibs/ptp2/library.c" "$BUILD_DIR/libgphoto2/camlibs/ptp2/library.c"
+    cp -v "$PATCH_SRC/camlibs/ptp2/ptpip.c"   "$BUILD_DIR/libgphoto2/camlibs/ptp2/ptpip.c"
+    [ -f "$PATCH_SRC/libgphoto2/gphoto2-filesys.c" ] && \
+        cp -v "$PATCH_SRC/libgphoto2/gphoto2-filesys.c" "$BUILD_DIR/libgphoto2/libgphoto2/gphoto2-filesys.c"
+
+    # 패치 검증 — 핵심 패치가 누락되면 빌드 중단
+    echo ">> 패치 검증 중..."
+    patch_ok=true
+    grep -q 'cache hit' "$BUILD_DIR/libgphoto2/camlibs/ptp2/library.c" \
+        && echo "  ✓ find_child 캐시 우선 탐색" \
+        || { echo "  ✗ find_child 패치 누락!"; patch_ok=false; }
+    grep -q 'returning NULL for lazy creation' "$BUILD_DIR/libgphoto2/libgphoto2/gphoto2-filesys.c" \
+        && echo "  ✓ lookup_folder lazy creation" \
+        || { echo "  ✗ lookup_folder 패치 누락!"; patch_ok=false; }
+    grep -q 'First check if the file' "$BUILD_DIR/libgphoto2/libgphoto2/gphoto2-filesys.c" \
+        && echo "  ✓ lookup_folder_file 캐시 우선 검색" \
+        || { echo "  ✗ lookup_folder_file 패치 누락!"; patch_ok=false; }
+    grep -q 'Skip full enumeration' "$BUILD_DIR/libgphoto2/libgphoto2/gphoto2-filesys.c" \
+        && echo "  ✓ gp_filesystem_append dirty 열거 스킵" \
+        || { echo "  ✗ gp_filesystem_append 패치 누락!"; patch_ok=false; }
+    grep -q 'skipping ChangeCameraMode' "$BUILD_DIR/libgphoto2/camlibs/ptp2/library.c" \
+        && echo "  ✓ PTP/IP capture_preview ChangeCameraMode 건너뜀 (물리 셔터 활성화)" \
+        || { echo "  ✗ capture_preview ChangeCameraMode 패치 누락!"; patch_ok=false; }
+
+    if [ "$patch_ok" = false ]; then
+        echo ""
+        echo "ERROR: 패치 검증 실패. $PATCH_SRC 디렉토리의 패치 파일을 확인하세요."
+        exit 1
+    fi
+    echo ">> 패치 적용 및 검증 완료"
+fi
 
 fetch "https://ftp.gnu.org/gnu/libtool/libtool-${LIBTOOL_VER}.tar.gz"
 fetch "https://github.com/libusb/libusb/releases/download/v${LIBUSB_VER}/libusb-${LIBUSB_VER}.tar.bz2"
