@@ -37,6 +37,7 @@ class AutoConnectForegroundService : Service() {
 
         when (intent?.action) {
             ACTION_UPDATE_NOTIFICATION -> {
+                createNotificationChannel()
                 val title = intent.getStringExtra(EXTRA_NOTIFICATION_TITLE)
                 val message = intent.getStringExtra(EXTRA_NOTIFICATION_MESSAGE)
                 // 이미 실행 중인 서비스의 알림만 업데이트

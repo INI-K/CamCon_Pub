@@ -9,9 +9,12 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.inik.camcon.domain.model.SavedWifiCredential
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import org.json.JSONArray
+import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -42,6 +45,7 @@ class PtpipPreferencesDataSource @Inject constructor(
         private val AUTO_CONNECT_HIDDEN = booleanPreferencesKey("auto_connect_hidden")
         private val AUTO_CONNECT_BSSID = stringPreferencesKey("auto_connect_bssid")
         private val AUTO_CONNECT_UPDATED_AT = longPreferencesKey("auto_connect_updated_at")
+        private val SAVED_WIFI_CREDENTIALS = stringPreferencesKey("saved_wifi_credentials")
     }
 
     /**
@@ -330,5 +334,79 @@ class PtpipPreferencesDataSource @Inject constructor(
         context.ptpipDataStore.edit { preferences ->
             preferences.clear()
         }
+    }
+
+    // ── 저장된 Wi-Fi 자격 증명 관리 ──
+
+    /**
+     * 저장된 Wi-Fi 자격 증명 목록 (Flow)
+     */
+    val savedWifiCredentials: Flow<List<SavedWifiCredential>> = context.ptpipDataStore.data
+        .map { preferences ->
+            val json = preferences[SAVED_WIFI_CREDENTIALS] ?: return@map emptyList()
+            parseSavedCredentials(json)
+        }
+
+    /**
+     * Wi-Fi 연결 성공 시 자격 증명 저장 (SSID 기준 upsert)
+     */
+    suspend fun saveWifiCredential(credential: SavedWifiCredential) {
+        context.ptpipDataStore.edit { preferences ->
+            val existing = parseSavedCredentials(preferences[SAVED_WIFI_CREDENTIALS] ?: "[]")
+            val updated = existing.filter { it.ssid != credential.ssid } + credential
+            preferences[SAVED_WIFI_CREDENTIALS] = serializeCredentials(updated)
+        }
+    }
+
+    /**
+     * SSID로 저장된 자격 증명 조회
+     */
+    suspend fun getSavedWifiCredential(ssid: String): SavedWifiCredential? {
+        val preferences = context.ptpipDataStore.data.first()
+        val json = preferences[SAVED_WIFI_CREDENTIALS] ?: return null
+        return parseSavedCredentials(json).find { it.ssid == ssid }
+    }
+
+    /**
+     * 저장된 Wi-Fi 자격 증명 삭제
+     */
+    suspend fun deleteSavedWifiCredential(ssid: String) {
+        context.ptpipDataStore.edit { preferences ->
+            val existing = parseSavedCredentials(preferences[SAVED_WIFI_CREDENTIALS] ?: "[]")
+            val updated = existing.filter { it.ssid != ssid }
+            preferences[SAVED_WIFI_CREDENTIALS] = serializeCredentials(updated)
+        }
+    }
+
+    private fun parseSavedCredentials(json: String): List<SavedWifiCredential> {
+        return try {
+            val array = JSONArray(json)
+            (0 until array.length()).map { i ->
+                val obj = array.getJSONObject(i)
+                SavedWifiCredential(
+                    ssid = obj.getString("ssid"),
+                    passphrase = obj.getString("passphrase"),
+                    security = obj.optString("security", "WPA2"),
+                    bssid = if (obj.has("bssid")) obj.getString("bssid") else null,
+                    lastConnectedAt = obj.optLong("lastConnectedAt", 0)
+                )
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun serializeCredentials(credentials: List<SavedWifiCredential>): String {
+        val array = JSONArray()
+        credentials.forEach { c ->
+            array.put(JSONObject().apply {
+                put("ssid", c.ssid)
+                put("passphrase", c.passphrase)
+                put("security", c.security)
+                c.bssid?.let { put("bssid", it) }
+                put("lastConnectedAt", c.lastConnectedAt)
+            })
+        }
+        return array.toString()
     }
 }

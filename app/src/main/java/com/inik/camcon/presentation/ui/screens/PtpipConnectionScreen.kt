@@ -179,6 +179,7 @@ fun PtpipConnectionScreen(
     val needLocationSettings by ptpipViewModel.needLocationSettings.collectAsStateWithLifecycle()
     val needWifiSettings by ptpipViewModel.needWifiSettings.collectAsStateWithLifecycle()
     val connectionLostMessage by ptpipViewModel.connectionLostMessage.collectAsStateWithLifecycle()
+    val savedWifiSsids by ptpipViewModel.savedWifiSsids.collectAsStateWithLifecycle()
 
     // PTPIP 연결 진행 상황을 위한 상태
     var showConnectionProgressDialog by remember { mutableStateOf(false) }
@@ -190,12 +191,18 @@ fun PtpipConnectionScreen(
     var currentWifiSsid by remember { mutableStateOf<String?>(null) }
     var passwordVisible by remember { mutableStateOf(false) }
 
-    // 패스워드 입력 콜백
+    // 패스워드 입력 콜백 (저장된 비밀번호가 있으면 바로 연결)
     val onConnectToWifiWithPassword: (ssid: String) -> Unit = { ssid ->
-        currentWifiSsid = ssid
-        showPasswordDialog = true
-        passwordForSsid = ""
-        passwordVisible = false
+        if (savedWifiSsids.contains(ssid)) {
+            // 저장된 비밀번호로 바로 연결
+            showConnectionProgressDialog = true
+            ptpipViewModel.connectToWifiSsidWithSavedCredential(ssid)
+        } else {
+            currentWifiSsid = ssid
+            showPasswordDialog = true
+            passwordForSsid = ""
+            passwordVisible = false
+        }
     }
 
     // 에러 메시지 표시
@@ -665,7 +672,8 @@ fun PtpipConnectionScreen(
                                 .analyzeWifiScanPermissionStatus().canScan,
                             onRequestPermission = { requestWifiScanPermissions() },
                             nearbyWifiSSIDs = nearbyWifiSSIDs,
-                            onConnectToWifi = { ssid -> onConnectToWifiWithPassword(ssid) }
+                            onConnectToWifi = { ssid -> onConnectToWifiWithPassword(ssid) },
+                            savedWifiSsids = savedWifiSsids
                         )
 
                         1 -> if (isAdmin) {

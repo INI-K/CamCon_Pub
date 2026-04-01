@@ -123,32 +123,40 @@ class CameraRepositoryImpl @Inject constructor(
      */
     private fun setupPtpipCallbacks() {
         // PTPIP 사진 다운로드 콜백 설정
+        // 주의: PtpipDataSource에서 이미 handleNativePhotoDownload로 저장 완료 후
+        //       로컬 저장 경로를 전달하므로, 여기서는 UI 상태 업데이트만 수행한다.
         ptpipDataSource.setPhotoDownloadedCallback { filePath, fileName, imageData ->
             com.inik.camcon.utils.LogcatManager.d(TAG, "PTPIP에서 사진 다운로드 완료: $fileName")
-            com.inik.camcon.utils.LogcatManager.d(TAG, "  📁 카메라 경로: $filePath")
+            com.inik.camcon.utils.LogcatManager.d(TAG, "  📁 저장 경로: $filePath")
             com.inik.camcon.utils.LogcatManager.d(TAG, "  📊 데이터 크기: ${imageData.size / 1024}KB")
 
-            // PhotoDownloadManager를 통해 실제 파일 저장 및 MediaStore 등록
             scope.launch(Dispatchers.IO) {
-                com.inik.camcon.utils.LogcatManager.d(TAG, "🚀 PTPIP - handleNativePhotoDownload 호출")
+                // 실제 저장된 파일 크기 조회 (리사이즈 등으로 원본과 다를 수 있음)
+                val actualSize = try {
+                    java.io.File(filePath).length()
+                } catch (_: Exception) {
+                    imageData.size.toLong()
+                }
 
-                val capturedPhoto = downloadManager.handleNativePhotoDownload(
+                val capturedPhoto = CapturedPhoto(
+                    id = java.util.UUID.randomUUID().toString(),
                     filePath = filePath,
-                    fileName = fileName,
-                    imageData = imageData,
-                    cameraCapabilities = connectionManager.cameraCapabilities.value,
-                    cameraSettings = _cameraSettings.value
+                    thumbnailPath = null,
+                    captureTime = System.currentTimeMillis(),
+                    cameraModel = connectionManager.cameraCapabilities.value?.model ?: "알 수 없음",
+                    settings = _cameraSettings.value,
+                    size = actualSize,
+                    width = 0,
+                    height = 0,
+                    isDownloading = false,
+                    downloadCompleteTime = System.currentTimeMillis()
                 )
 
-                if (capturedPhoto != null) {
-                    com.inik.camcon.utils.LogcatManager.d(
-                        TAG,
-                        "✅ PTPIP 사진 저장 성공: ${capturedPhoto.filePath}"
-                    )
-                    updateDownloadedPhoto(capturedPhoto)
-                } else {
-                    Log.e(TAG, "❌ PTPIP 사진 저장 실패: $fileName")
-                }
+                com.inik.camcon.utils.LogcatManager.d(
+                    TAG,
+                    "✅ PTPIP 사진 저장 성공: ${capturedPhoto.filePath}"
+                )
+                updateDownloadedPhoto(capturedPhoto)
             }
         }
 
