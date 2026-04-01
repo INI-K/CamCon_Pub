@@ -24,7 +24,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -66,6 +69,14 @@ class PtpipViewModel @Inject constructor(
     val globalConnectionState = globalManager.globalConnectionState
     val activeConnectionType = globalManager.activeConnectionType
     val connectionStatusMessage = globalManager.connectionStatusMessage
+
+    // 저장된 Wi-Fi 자격 증명 목록
+    val savedWifiCredentials = preferencesDataSource.savedWifiCredentials
+
+    // 저장된 Wi-Fi 자격 증명 (SSID Set으로 빠른 조회)
+    val savedWifiSsids: StateFlow<Set<String>> = savedWifiCredentials
+        .map { list -> list.map { it.ssid }.toSet() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
     // PTPIP 설정 상태
     val isPtpipEnabled = preferencesDataSource.isPtpipEnabled
@@ -266,6 +277,32 @@ class PtpipViewModel @Inject constructor(
     }
 
     /**
+     * 저장된 Wi-Fi 자격 증명 삭제
+     */
+    fun deleteSavedWifiCredential(ssid: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            preferencesDataSource.deleteSavedWifiCredential(ssid)
+            Log.d(TAG, "저장된 Wi-Fi 자격 증명 삭제: $ssid")
+        }
+    }
+
+    /**
+     * 저장된 비밀번호로 SSID 연결 (비밀번호 입력 생략)
+     */
+    fun connectToWifiSsidWithSavedCredential(ssid: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val credential = preferencesDataSource.getSavedWifiCredential(ssid)
+            if (credential != null) {
+                Log.d(TAG, "저장된 비밀번호로 Wi-Fi 연결 시도: $ssid")
+                connectToWifiSsid(ssid, credential.passphrase)
+            } else {
+                Log.w(TAG, "저장된 비밀번호 없음: $ssid")
+                _errorMessage.value = "저장된 비밀번호가 없습니다: $ssid"
+            }
+        }
+    }
+
+    /**
      * WifiNetworkSpecifier로 SSID 연결 요청
      */
     fun connectToWifiSsid(ssid: String, passphrase: String? = null) {
@@ -333,6 +370,21 @@ class PtpipViewModel @Inject constructor(
                                 lastConnectedWifiConfig = updatedConfig
 
                                 preferencesDataSource.saveAutoConnectNetworkConfig(updatedConfig)
+
+                                // 연결 성공 시 Wi-Fi 자격 증명 저장
+                                if (!passphrase.isNullOrEmpty()) {
+                                    preferencesDataSource.saveWifiCredential(
+                                        com.inik.camcon.domain.model.SavedWifiCredential(
+                                            ssid = ssid,
+                                            passphrase = passphrase,
+                                            security = securityType ?: "WPA2",
+                                            bssid = nextBssid,
+                                            lastConnectedAt = System.currentTimeMillis()
+                                        )
+                                    )
+                                    Log.d(TAG, "Wi-Fi 자격 증명 저장 완료: $ssid")
+                                }
+
                                 val autoConnectEnabled =
                                     preferencesDataSource.isAutoConnectEnabledNow()
                                 if (autoConnectEnabled) {

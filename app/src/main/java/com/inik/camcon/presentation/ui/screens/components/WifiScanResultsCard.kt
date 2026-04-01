@@ -36,7 +36,8 @@ import com.inik.camcon.presentation.theme.CamConTheme
 fun WifiScanResultsCard(
     ssids: List<String>,
     onConnectToWifi: (String) -> Unit,
-    isStaMode: Boolean = false
+    isStaMode: Boolean = false,
+    savedSsids: Set<String> = emptySet()
 ) {
     // 카메라 제조사 패턴 목록
     val cameraManufacturers = listOf(
@@ -134,9 +135,17 @@ fun WifiScanResultsCard(
                                     MaterialTheme.colorScheme.primary
                                 }
                             )
-                            if (detectedManufacturer != null) {
+                            val isSaved = savedSsids.contains(ssid)
+                            val manufacturerLabel = buildString {
+                                if (detectedManufacturer != null) append("📷 $detectedManufacturer 카메라")
+                                if (isSaved) {
+                                    if (isNotEmpty()) append(" · ")
+                                    append("🔑 저장됨")
+                                }
+                            }
+                            if (manufacturerLabel.isNotEmpty()) {
                                 Text(
-                                    text = "📷 $detectedManufacturer 카메라",
+                                    text = manufacturerLabel,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = if (isStaMode) {
                                         MaterialTheme.colorScheme.secondary.copy(alpha = 0.8f)
@@ -172,18 +181,27 @@ fun WifiScanResultsCard(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 otherSsids.forEach { ssid ->
+                    val isSaved = savedSsids.contains(ssid)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 4.dp)
                     ) {
-                        Text(
-                            text = ssid,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f),
-                            modifier = Modifier.weight(1f)
-                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = ssid,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f)
+                            )
+                            if (isSaved) {
+                                Text(
+                                    text = "🔑 저장됨",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                                )
+                            }
+                        }
                         Spacer(modifier = Modifier.width(8.dp))
                         TextButton(onClick = { onConnectToWifi(ssid) }) {
                             Text("연결")
