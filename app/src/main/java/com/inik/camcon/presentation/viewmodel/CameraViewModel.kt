@@ -216,23 +216,16 @@ class CameraViewModel @Inject constructor(
                     // settingsManager.loadCameraSettings()
                     // settingsManager.loadCameraCapabilities()
 
-                    // 구독 티어는 이미 앱 시작 시 로컬 캐시에서 로드되었으므로
-                    // Firebase에서 최신 값을 가져올 수 있으면 업데이트 (AP 모드에서는 실패할 수 있음)
+                    // Firebase에서 최신 구독 티어를 가져와 업데이트
+                    // AP 모드에서는 Firebase 오프라인으로 실패할 수 있으며,
+                    // 그 경우 loadSubscriptionTierAtStartup에서 설정한 로컬 캐시 값이 유지됨
                     viewModelScope.launch {
                         try {
                             getSubscriptionUseCase.getSubscriptionTier()
                                 .collect { tier ->
                                     val tierInt = subscriptionTierToInt(tier)
-                                    // FREE(0)로 다운그레이드하는 것은 Firebase 오프라인 폴백일 수 있으므로
-                                    // 로컬 캐시가 더 높은 티어이면 유지
-                                    val cachedTier = appPreferencesDataSource.subscriptionTierEnum.first()
-                                    val cachedTierInt = subscriptionTierToInt(cachedTier)
-                                    if (tierInt >= cachedTierInt) {
-                                        CameraNative.setSubscriptionTier(tierInt)
-                                        Log.d(TAG, "🔄 구독 티어 업데이트: $tier (네이티브: $tierInt)")
-                                    } else {
-                                        Log.d(TAG, "🔄 구독 티어 유지 (로컬 캐시 우선): $cachedTier > $tier")
-                                    }
+                                    CameraNative.setSubscriptionTier(tierInt)
+                                    Log.d(TAG, "🔄 구독 티어 업데이트: $tier (네이티브: $tierInt)")
                                 }
                         } catch (e: Exception) {
                             Log.e(TAG, "구독 티어 업데이트 실패 (로컬 캐시 값 유지)", e)
