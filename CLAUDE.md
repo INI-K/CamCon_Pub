@@ -174,6 +174,7 @@ RAW 파일 접근 제어는 `ValidateImageFormatUseCase`가 담당한다. 구독
 | `android-compose-design` | Compose 컴포넌트 계층 설계, UI 상태 모델 |
 | `android-implement` | 설계 명세를 Kotlin 코드로 구현 |
 | `android-code-review` | 아키텍처 위반, 코루틴 안전성, 성능, 보안 검토 |
+| `android-release-readiness` | 출시 준비도 최종 검사, Ship/No-Ship 판정 |
 | `android-test-strategy` | 단위/통합/Compose UI 테스트 케이스 설계 |
 | `android-planning` | 신규 기능 기획 명세 작성 |
 | `kotlin-concurrency-expert` | 코루틴 버그 수정, 스레드 안전성 검토 |

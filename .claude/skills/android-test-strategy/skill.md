@@ -78,7 +78,20 @@ then: {기대 결과}
 - Repository impl: 60%+ (Fake DataSource 사용)
 ```
 
-### 3. 테스트 원칙 체크
+### 3. 테스트 도구 스택
+
+| 도구 | 용도 |
+|------|------|
+| MockK | 모킹 프레임워크 |
+| Turbine | Flow 테스트 |
+| Robolectric | Android 프레임워크 JVM 시뮬레이션 |
+| Hilt testing | DI 통합 테스트 |
+| arch-core-testing | `InstantTaskExecutorRule` (LiveData/코루틴) |
+
+- **Fake 클래스 위치**: `src/test/java/com/inik/camcon/fake/`
+- **ViewModel 테스트 방향**: 구현 세부사항이 아닌 **상태 방출(StateFlow/SharedFlow)**을 검증한다.
+
+### 4. 테스트 원칙 체크
 
 - [ ] Hilt 테스트는 mock이 아닌 Fake 사용 (`hilt.shareTestComponents` 활용)
 - [ ] Flow 테스트: `turbine` 또는 `runTest` 사용

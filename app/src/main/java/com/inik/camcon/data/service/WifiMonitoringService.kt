@@ -18,11 +18,10 @@ import androidx.core.app.NotificationCompat
 import com.inik.camcon.R
 import com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
-import com.inik.camcon.presentation.ui.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -47,7 +46,7 @@ class WifiMonitoringService : Service() {
     @Inject
     lateinit var preferencesDataSource: PtpipPreferencesDataSource
 
-    private val serviceScope = CoroutineScope(Dispatchers.Default + Job())
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     private var lastConnectedSSID: String? = null
 
@@ -153,7 +152,11 @@ class WifiMonitoringService : Service() {
      * 알림 생성
      */
     private fun buildNotification(): Notification {
-        val intent = Intent(this, MainActivity::class.java)
+        val intent = packageManager.getLaunchIntentForPackage(packageName)
+            ?: Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                setPackage(packageName)
+            }
         val pendingIntent = PendingIntent.getActivity(
             this,
             0,

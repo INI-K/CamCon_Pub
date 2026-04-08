@@ -83,5 +83,5 @@ ViewModel이 노출해야 하는:
 
 - [ ] Screen Composable은 ViewModel에 직접 의존하지 않음 (상태/이벤트 파라미터로 수신)
 - [ ] 라이브뷰 프레임 렌더 영역은 별도 Composable로 격리
-- [ ] 다크모드: MaterialTheme.colorScheme만 사용
+- [ ] 다크 테마: CamCon은 다크 테마 고정(`UnifiedDarkColorScheme`)이므로 라이트 테마 분기 불필요. `MaterialTheme.colorScheme`만 사용
 - [ ] 접근성: 인터랙티브 요소에 contentDescription 명세

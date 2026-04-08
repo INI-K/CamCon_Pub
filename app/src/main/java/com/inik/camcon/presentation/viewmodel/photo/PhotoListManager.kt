@@ -8,10 +8,10 @@ import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.usecase.camera.GetCameraPhotosPagedUseCase
 import com.inik.camcon.utils.SubscriptionUtils
+import com.inik.camcon.di.ApplicationScope
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,13 +28,20 @@ import javax.inject.Singleton
 @Singleton
 class PhotoListManager @Inject constructor(
     private val getCameraPhotosPagedUseCase: GetCameraPhotosPagedUseCase,
-    private val errorHandlingManager: ErrorHandlingManager
+    private val errorHandlingManager: ErrorHandlingManager,
+    @ApplicationScope private val appScope: CoroutineScope
 ) {
 
     companion object {
         private const val TAG = "사진목록매니저"
         private const val PREFETCH_PAGE_SIZE = 50
     }
+
+    // 앱 scope의 자식 scope — cancelChildren해도 앱 scope에 영향 없음
+    private var managerScope = createManagerScope()
+
+    private fun createManagerScope(): CoroutineScope =
+        CoroutineScope(appScope.coroutineContext + SupervisorJob(appScope.coroutineContext.job))
 
     // 전체 사진 목록 (필터링 전)
     private val _allPhotos = MutableStateFlow<List<CameraPhoto>>(emptyList())
@@ -69,8 +76,6 @@ class PhotoListManager @Inject constructor(
     // 프리로딩 상태
     private val _prefetchedPage = MutableStateFlow(0)
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
     // 작업 중단 플래그
     private var isManagerActive = true
 
@@ -79,7 +84,7 @@ class PhotoListManager @Inject constructor(
      */
     fun loadInitialPhotos(isConnected: Boolean, isPtpipConnected: Boolean = false) {
         Log.d(TAG, "=== loadInitialPhotos 호출 ===")
-        scope.launch {
+        managerScope.launch {
             Log.d(TAG, "loadInitialPhotos 코루틴 시작")
 
             if (!isManagerActive) {
@@ -189,7 +194,7 @@ class PhotoListManager @Inject constructor(
         }
 
         Log.d(TAG, "=== loadNextPage 시작 ===")
-        scope.launch {
+        managerScope.launch {
             _isLoadingMore.value = true
             Log.d(TAG, "isLoadingMore = true 설정됨")
 
@@ -377,7 +382,7 @@ class PhotoListManager @Inject constructor(
         }
 
         Log.d(TAG, "=== prefetchNextPage 시작 ===")
-        scope.launch {
+        managerScope.launch {
             _isLoadingMore.value = true
 
             val nextPage = _currentPage.value + 1
@@ -452,7 +457,8 @@ class PhotoListManager @Inject constructor(
      * 매니저 정리
      */
     fun cleanup() {
-        scope.cancel()
+        managerScope.coroutineContext.job.cancel()
+        managerScope = createManagerScope()
         isManagerActive = false
         _allPhotos.value = emptyList()
         _filteredPhotos.value = emptyList()

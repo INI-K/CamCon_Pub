@@ -40,6 +40,19 @@ Step 8: presentation/ui/screens/ ← Compose 화면/컴포넌트
 
 ### 4. 구현 규칙
 
+#### 비동기 필수 규칙
+- **Dispatchers 주입 필수**: `Dispatchers.IO` 하드코딩 금지. 테스트 가능성을 위해 생성자 또는 Hilt로 주입한다.
+  ```kotlin
+  // Bad
+  CoroutineScope(Dispatchers.IO).launch { ... }
+
+  // Good
+  class MyClass @Inject constructor(
+      @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+  )
+  ```
+- **비구조화 CoroutineScope 금지**: `CoroutineScope(...)` 직접 생성 금지. 클래스 레벨 managed scope 또는 호출자 scope를 사용한다.
+
 #### Kotlin 코드 패턴
 ```kotlin
 // UseCase — suspend 함수 또는 Flow 반환
@@ -106,7 +119,7 @@ abstract fun bind{Feature}Repository(impl: {Feature}RepositoryImpl): {Feature}Re
 
 ### 6. 구현 로그 작성
 
-출력 파일: `_workspace/02_implementer_log.md`
+출력 파일: `_workspace/02_5_implementation_log.md`
 
 ```markdown
 # 구현 로그: {기능명}

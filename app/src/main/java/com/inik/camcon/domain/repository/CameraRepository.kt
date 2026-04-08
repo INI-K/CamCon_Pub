@@ -2,10 +2,12 @@ package com.inik.camcon.domain.repository
 
 import com.inik.camcon.domain.model.BracketingSettings
 import com.inik.camcon.domain.model.Camera
+import com.inik.camcon.domain.model.CameraAbilitiesInfo
 import com.inik.camcon.domain.model.CameraCapabilities
 import com.inik.camcon.domain.model.CameraSettings
 import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.domain.model.LiveViewFrame
+import com.inik.camcon.domain.model.PtpDeviceInfo
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.domain.model.TimelapseSettings
 import kotlinx.coroutines.flow.Flow
@@ -68,4 +70,8 @@ interface CameraRepository {
     suspend fun deletePhoto(photoId: String): Result<Boolean>
     suspend fun downloadPhotoFromCamera(photoId: String): Result<CapturedPhoto>
     fun setRawFileRestrictionCallback(callback: ((fileName: String, restrictionMessage: String) -> Unit)?)
+
+    // 카메라 abilities/deviceInfo 관련
+    fun getCameraAbilitiesInfo(): CameraAbilitiesInfo?
+    fun getCameraDeviceInfoDetail(): PtpDeviceInfo?
 }

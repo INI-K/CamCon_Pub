@@ -1,6 +1,7 @@
 package com.inik.camcon.utils
 
 import android.util.Log
+import kotlinx.coroutines.CancellationException
 
 /**
  * Result 타입 확장 함수들
@@ -50,6 +51,8 @@ suspend inline fun <T> safeExecuteSuspend(
         val result = block()
         LogcatManager.d(tag, "$operation 완료")
         Result.success(result)
+    } catch (e: CancellationException) {
+        throw e
     } catch (e: Exception) {
         LogcatManager.e(tag, "$operation 실패", e)
         Result.failure(e)

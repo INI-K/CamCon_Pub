@@ -23,6 +23,7 @@ import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.domain.usecase.camera.PhotoCaptureEventManager
 import com.inik.camcon.utils.Constants
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -74,6 +75,8 @@ class PhotoDownloadManager @Inject constructor(
 
                 Log.d("사진다운로드매니저", "카메라 사진 목록 가져오기 완료: ${cameraPhotos.size}개")
                 Result.success(cameraPhotos)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e("사진다운로드매니저", "카메라 사진 목록 가져오기 실패", e)
                 Result.failure(e)
@@ -105,6 +108,8 @@ class PhotoDownloadManager @Inject constructor(
                     try {
                         Log.d("사진다운로드매니저", "이벤트 리스너 재시작 시도")
                         onEventListenerRestart()
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (e: Exception) {
                         Log.w("사진다운로드매니저", "이벤트 리스너 재시작 실패", e)
                     }
@@ -138,6 +143,8 @@ class PhotoDownloadManager @Inject constructor(
                 )
                 Result.success(domainPaginatedPhotos)
 
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e("사진다운로드매니저", "페이징 카메라 사진 목록 가져오기 실패", e)
                 Result.failure(e)
@@ -243,6 +250,8 @@ class PhotoDownloadManager @Inject constructor(
 
                 return@withContext Result.failure(lastException ?: Exception("썸네일을 가져올 수 없습니다"))
 
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e("사진다운로드매니저", "썸네일 가져오기 중 예외", e)
                 return@withContext Result.failure(e)
@@ -338,6 +347,8 @@ class PhotoDownloadManager @Inject constructor(
                     Log.e("사진다운로드매니저", "네이티브 다운로드 실패: 데이터가 비어있음")
                     Result.failure(Exception("카메라에서 사진 데이터를 가져올 수 없습니다"))
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e("사진다운로드매니저", "카메라에서 사진 다운로드 실패", e)
                 Result.failure(e)
@@ -521,6 +532,8 @@ class PhotoDownloadManager @Inject constructor(
             } catch (e: OutOfMemoryError) {
                 Log.e(TAG, "❌ Native 사진 저장 중 메모리 부족: $fileName", e)
                 null
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Native 사진 저장 실패: $fileName", e)
                 null
@@ -738,6 +751,8 @@ class PhotoDownloadManager @Inject constructor(
             // 사진 촬영 이벤트 발생
             photoCaptureEventManager.emitPhotoCaptured()
 
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "❌ 사진 다운로드 실패: $fileName", e)
             onDownloadFailed(fileName)
@@ -898,6 +913,8 @@ class PhotoDownloadManager @Inject constructor(
             } catch (e: OutOfMemoryError) {
                 Log.e(TAG, "❌ 메모리 부족으로 리사이즈 실패", e)
                 return@withContext false
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "❌ 이미지 리사이즈 실패", e)
                 return@withContext false
@@ -1214,6 +1231,8 @@ class PhotoDownloadManager @Inject constructor(
                     Log.d(TAG, "   → Android 9 이하 - 기존 경로 사용")
                     tempFilePath
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "사진 후처리 실패", e)
                 tempFilePath // 실패 시 원본 경로 반환

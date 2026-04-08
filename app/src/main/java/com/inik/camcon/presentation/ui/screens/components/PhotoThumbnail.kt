@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -42,6 +43,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -51,9 +53,13 @@ import coil.request.ImageRequest
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.tooling.preview.Preview
-import com.inik.camcon.data.datasource.local.ThemeMode
+import com.inik.camcon.domain.model.ThemeMode
+import com.inik.camcon.R
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.presentation.theme.Background
+import com.inik.camcon.presentation.theme.Overlay
+import com.inik.camcon.presentation.theme.Success
+import com.inik.camcon.presentation.theme.TextPrimary
 import com.inik.camcon.presentation.theme.CamConTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -107,7 +113,7 @@ fun PhotoThumbnail(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Blue.copy(alpha = 0.3f))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
                 )
             }
 
@@ -179,7 +185,7 @@ fun PhotoThumbnail(
                         .padding(8.dp)
                         .size(24.dp)
                         .background(
-                            color = if (isSelected) Color.Green else Color.White.copy(alpha = 0.8f),
+                            color = if (isSelected) Success else TextPrimary.copy(alpha = 0.8f),
                             shape = CircleShape
                         ),
                     contentAlignment = Alignment.Center
@@ -187,8 +193,8 @@ fun PhotoThumbnail(
                     if (isSelected) {
                         Icon(
                             imageVector = Icons.Filled.CheckCircle,
-                            contentDescription = "선택됨",
-                            tint = Color.White,
+                            contentDescription = stringResource(R.string.cd_selected),
+                            tint = TextPrimary,
                             modifier = Modifier.size(20.dp)
                         )
                     } else {
@@ -211,14 +217,14 @@ fun PhotoThumbnail(
                     .align(Alignment.BottomStart)
                     .fillMaxWidth()
                     .background(
-                        Color.Black.copy(alpha = 0.6f),
+                        Background.copy(alpha = 0.6f),
                         RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp)
                     ),
                 contentAlignment = Alignment.CenterStart
             ) {
                 Text(
                     text = photo.name,
-                    color = Color.White,
+                    color = TextPrimary,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
                     maxLines = 1,
@@ -233,14 +239,14 @@ fun PhotoThumbnail(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .background(
-                            Color.Black.copy(alpha = 0.7f),
+                            Background.copy(alpha = 0.7f),
                             RoundedCornerShape(bottomStart = 8.dp, topEnd = 12.dp)
                         )
                         .padding(horizontal = 4.dp, vertical = 2.dp)
                 ) {
                     Text(
                         text = formatFileSize(photo.size),
-                        color = Color.White,
+                        color = TextPrimary,
                         style = MaterialTheme.typography.bodySmall,
                         fontSize = 8.sp
                     )
@@ -496,14 +502,14 @@ private fun ThumbnailPlaceholder() {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            androidx.compose.material.CircularProgressIndicator(
+            CircularProgressIndicator(
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp),
                 strokeWidth = 2.dp
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "로딩 중...",
+                text = stringResource(R.string.server_photos_loading_placeholder),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                 fontSize = 9.sp
@@ -588,7 +594,7 @@ fun FluidPhotoThumbnail(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Blue.copy(alpha = 0.3f))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
                 )
             }
 
@@ -660,7 +666,7 @@ fun FluidPhotoThumbnail(
                         .padding(8.dp)
                         .size(24.dp)
                         .background(
-                            color = if (isSelected) Color.Green else Color.White.copy(alpha = 0.8f),
+                            color = if (isSelected) Success else TextPrimary.copy(alpha = 0.8f),
                             shape = CircleShape
                         ),
                     contentAlignment = Alignment.Center
@@ -668,8 +674,8 @@ fun FluidPhotoThumbnail(
                     if (isSelected) {
                         Icon(
                             imageVector = Icons.Filled.CheckCircle,
-                            contentDescription = "선택됨",
-                            tint = Color.White,
+                            contentDescription = stringResource(R.string.cd_selected),
+                            tint = TextPrimary,
                             modifier = Modifier.size(20.dp)
                         )
                     } else {
@@ -692,14 +698,14 @@ fun FluidPhotoThumbnail(
                     .align(Alignment.BottomStart)
                     .fillMaxWidth()
                     .background(
-                        Color.Black.copy(alpha = 0.6f),
+                        Background.copy(alpha = 0.6f),
                         RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp)
                     ),
                 contentAlignment = Alignment.CenterStart
             ) {
                 Text(
                     text = photo.name,
-                    color = Color.White,
+                    color = TextPrimary,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
                     maxLines = 1,
@@ -714,14 +720,14 @@ fun FluidPhotoThumbnail(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .background(
-                            Color.Black.copy(alpha = 0.7f),
+                            Background.copy(alpha = 0.7f),
                             RoundedCornerShape(bottomStart = 8.dp, topEnd = 12.dp)
                         )
                         .padding(horizontal = 4.dp, vertical = 2.dp)
                 ) {
                     Text(
                         text = formatFileSize(photo.size),
-                        color = Color.White,
+                        color = TextPrimary,
                         style = MaterialTheme.typography.bodySmall,
                         fontSize = 8.sp
                     )
@@ -1034,7 +1040,7 @@ fun FeaturedPhotoThumbnail(
                         Brush.verticalGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                Color.Black.copy(alpha = 0.7f)
+                                Background.copy(alpha = 0.7f)
                             )
                         ),
                         RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
@@ -1044,7 +1050,7 @@ fun FeaturedPhotoThumbnail(
                 Column {
                     Text(
                         text = photo.name,
-                        color = Color.White,
+                        color = TextPrimary,
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -1053,7 +1059,7 @@ fun FeaturedPhotoThumbnail(
                     if (photo.size > 0) {
                         Text(
                             text = formatFileSize(photo.size),
-                            color = Color.White.copy(alpha = 0.8f),
+                            color = TextPrimary.copy(alpha = 0.8f),
                             style = MaterialTheme.typography.bodySmall,
                             fontSize = 12.sp
                         )
@@ -1073,8 +1079,8 @@ fun FeaturedPhotoThumbnail(
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(
-                    text = "최신",
-                    color = Color.White,
+                    text = stringResource(R.string.photo_thumbnail_latest),
+                    color = TextPrimary,
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold
                 )

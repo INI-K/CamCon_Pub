@@ -6,8 +6,8 @@ import android.hardware.usb.UsbManager
 import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.inik.camcon.data.datasource.usb.UsbCameraManager
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
+import com.inik.camcon.domain.repository.UsbDeviceRepository
 import com.inik.camcon.domain.model.CameraConnectionType
 import com.inik.camcon.domain.model.GlobalCameraConnectionState
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
@@ -18,12 +18,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @HiltViewModel
 class MainActivityViewModel @Inject constructor(
     private val cameraConnectionGlobalManager: CameraConnectionGlobalManager,
-    private val usbCameraManager: UsbCameraManager,
+    private val usbDeviceRepository: UsbDeviceRepository,
     private val getSubscriptionUseCase: GetSubscriptionUseCase
 ) : ViewModel() {
 
@@ -91,7 +90,7 @@ class MainActivityViewModel @Inject constructor(
                 }
 
                 LogcatManager.d(TAG, "카메라 디바이스 확인됨, 권한 요청")
-                requestUsbPermission(device)
+                usbDeviceRepository.requestPermission(device.deviceId.toString())
             }
 
             UsbManager.ACTION_USB_DEVICE_DETACHED -> {
@@ -105,36 +104,36 @@ class MainActivityViewModel @Inject constructor(
 
     private suspend fun checkUsbPermissionStatusInternal() {
         try {
-            val currentDevice = usbCameraManager.getCurrentDevice()
+            val currentDevice = usbDeviceRepository.getCurrentDeviceInfo()
 
             if (currentDevice != null) {
                 LogcatManager.d(TAG, "앱 재개 시 기존 연결된 디바이스 확인: ${currentDevice.deviceName}")
 
-                if (!usbCameraManager.hasUsbPermission.value) {
+                if (!usbDeviceRepository.hasUsbPermission.value) {
                     LogcatManager.d(TAG, "기존 디바이스의 권한이 없음, 권한 요청: ${currentDevice.deviceName}")
-                    requestUsbPermission(currentDevice)
-                } else if (!usbCameraManager.isNativeCameraConnected.value) {
+                    usbDeviceRepository.requestPermission(currentDevice.deviceId)
+                } else if (!usbDeviceRepository.isNativeCameraConnected.value) {
                     LogcatManager.d(TAG, "네이티브 연결 없음 - 자동 초기화 시작: ${currentDevice.deviceName}")
-                    connectToUsbCamera(currentDevice)
+                    usbDeviceRepository.connectToFirstCamera()
                 } else {
                     LogcatManager.d(TAG, "기존 디바이스에 권한이 있고 네이티브도 연결됨")
                 }
                 return
             }
 
-            val devices = usbCameraManager.getCameraDevices()
+            val devices = usbDeviceRepository.getCameraDevices()
             if (devices.isEmpty()) {
                 LogcatManager.d(TAG, "앱 재개 시 USB 카메라 디바이스 없음")
                 return
             }
 
             val device = devices.first()
-            if (!usbCameraManager.hasUsbPermission.value) {
+            if (!usbDeviceRepository.hasUsbPermission.value) {
                 LogcatManager.d(TAG, "권한이 없는 디바이스 발견, 권한 요청: ${device.deviceName}")
-                requestUsbPermission(device)
-            } else if (!usbCameraManager.isNativeCameraConnected.value) {
+                usbDeviceRepository.requestPermission(device.deviceId)
+            } else if (!usbDeviceRepository.isNativeCameraConnected.value) {
                 LogcatManager.d(TAG, "네이티브 연결 없음 - 자동 초기화 시작: ${device.deviceName}")
-                connectToUsbCamera(device)
+                usbDeviceRepository.connectToFirstCamera()
             } else {
                 LogcatManager.d(TAG, "카메라 디바이스 연결됨")
             }
@@ -145,7 +144,7 @@ class MainActivityViewModel @Inject constructor(
 
     private suspend fun checkAndInitializeUsbDevicesInternal() {
         try {
-            val devices = usbCameraManager.getCameraDevices()
+            val devices = usbDeviceRepository.getCameraDevices()
 
             if (devices.isEmpty()) {
                 LogcatManager.d(TAG, "연결된 USB 카메라 디바이스 없음")
@@ -153,12 +152,12 @@ class MainActivityViewModel @Inject constructor(
             }
 
             val device = devices.first()
-            if (!usbCameraManager.hasUsbPermission.value) {
+            if (!usbDeviceRepository.hasUsbPermission.value) {
                 LogcatManager.d(TAG, "디바이스에 대한 권한이 없음, 권한 요청: ${device.deviceName}")
-                requestUsbPermission(device)
-            } else if (!usbCameraManager.isNativeCameraConnected.value) {
+                usbDeviceRepository.requestPermission(device.deviceId)
+            } else if (!usbDeviceRepository.isNativeCameraConnected.value) {
                 LogcatManager.d(TAG, "네이티브 연결 없음 - 자동 초기화 시작: ${device.deviceName}")
-                connectToUsbCamera(device)
+                usbDeviceRepository.connectToFirstCamera()
             } else {
                 LogcatManager.d(TAG, "USB 카메라가 이미 초기화되어 있음")
             }
@@ -170,7 +169,7 @@ class MainActivityViewModel @Inject constructor(
     fun cleanup() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                usbCameraManager.cleanup()
+                usbDeviceRepository.cleanup()
             } catch (error: Exception) {
                 LogcatManager.w(TAG, "USB 카메라 매니저 정리 중 오류", error)
             }
@@ -204,15 +203,4 @@ class MainActivityViewModel @Inject constructor(
         return device.vendorId in knownCameraVendors
     }
 
-    private suspend fun requestUsbPermission(device: UsbDevice) {
-        withContext(Dispatchers.Main) {
-            usbCameraManager.requestPermission(device)
-        }
-    }
-
-    private suspend fun connectToUsbCamera(device: UsbDevice) {
-        withContext(Dispatchers.Main) {
-            usbCameraManager.connectToCamera(device)
-        }
-    }
 }

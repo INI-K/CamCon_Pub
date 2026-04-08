@@ -6,12 +6,13 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.CameraNative
-import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
 import com.inik.camcon.domain.manager.CameraSettingsManager
 import com.inik.camcon.domain.manager.ErrorHandlingManager
 import com.inik.camcon.domain.model.Camera
+import com.inik.camcon.domain.model.LiveViewFrame
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.domain.model.SubscriptionTier
+import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -43,7 +45,7 @@ class CameraViewModel @Inject constructor(
     private val operationsManager: CameraOperationsManager,
     private val settingsManager: CameraSettingsManager,
     private val errorHandlingManager: ErrorHandlingManager,
-    private val appPreferencesDataSource: AppPreferencesDataSource,
+    private val appSettingsRepository: AppSettingsRepository,
 
     // 신규 매니저 의존성 주입
     private val advancedCaptureManager: CameraAdvancedCaptureManager,
@@ -59,6 +61,9 @@ class CameraViewModel @Inject constructor(
 
     // UI 상태는 StateManager에 위임
     val uiState: StateFlow<CameraUiState> = uiStateManager.uiState
+
+    /** 라이브뷰 프레임 — 초당 수십 회 업데이트되므로 uiState와 분리 */
+    val liveViewFrame: StateFlow<LiveViewFrame?> = uiStateManager.liveViewFrame
 
     // 카메라 피드 (Repository에서 직접 가져오기 - 단순 위임 UseCase 제거)
     val cameraFeed: StateFlow<List<Camera>> = cameraRepository.getCameraFeed()
@@ -124,16 +129,18 @@ class CameraViewModel @Inject constructor(
                 Log.d(TAG, "🔑 앱 시작 시 구독 티어 로드 시작")
 
                 // 로컬 캐시된 구독 티어를 먼저 적용 (Firebase 오프라인 대비)
-                val cachedTier = appPreferencesDataSource.subscriptionTierEnum.first()
+                val cachedTier = appSettingsRepository.subscriptionTierEnum.first()
                 val cachedTierInt = subscriptionTierToInt(cachedTier)
                 CameraNative.setSubscriptionTier(cachedTierInt)
                 Log.d(TAG, "✅ 앱 시작 시 구독 티어 설정 완료: $cachedTier (네이티브: $cachedTierInt)")
 
                 // RAW 파일 다운로드 설정도 함께 로드
-                val isRawDownloadEnabled = appPreferencesDataSource.isRawFileDownloadEnabled.first()
+                val isRawDownloadEnabled = appSettingsRepository.isRawFileDownloadEnabled.first()
                 CameraNative.setRawFileDownloadEnabled(isRawDownloadEnabled)
                 Log.d(TAG, "✅ 앱 시작 시 RAW 파일 다운로드 설정 완료: $isRawDownloadEnabled")
 
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "❌ 앱 시작 시 구독 티어 로드 실패", e)
                 // 실패 시 기본값(FREE) 설정
@@ -155,7 +162,7 @@ class CameraViewModel @Inject constructor(
      * RAW 파일 다운로드 설정 관찰
      */
     private fun observeRawDownloadSetting() {
-        appPreferencesDataSource.isRawFileDownloadEnabled
+        appSettingsRepository.isRawFileDownloadEnabled
             .onEach { enabled ->
                 CameraNative.setRawFileDownloadEnabled(enabled)
                 Log.d(TAG, "🎯 RAW 파일 다운로드 설정 업데이트: $enabled")
@@ -227,6 +234,8 @@ class CameraViewModel @Inject constructor(
                                     CameraNative.setSubscriptionTier(tierInt)
                                     Log.d(TAG, "🔄 구독 티어 업데이트: $tier (네이티브: $tierInt)")
                                 }
+                        } catch (e: CancellationException) {
+                            throw e
                         } catch (e: Exception) {
                             Log.e(TAG, "구독 티어 업데이트 실패 (로컬 캐시 값 유지)", e)
                         }
@@ -313,6 +322,8 @@ class CameraViewModel @Inject constructor(
                 uiStateManager.updateInitializingState(true)
                 cameraRepository.setPhotoPreviewMode(false)
                 uiStateManager.updateInitializingState(false)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "카메라 리포지토리 초기화 실패", e)
                 uiStateManager.updateInitializingState(false)
@@ -508,6 +519,8 @@ class CameraViewModel @Inject constructor(
                 uiStateManager.clearError()
                 onFilesLoaded(fileList)
 
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "카메라 파일 목록 확인 중 예외 발생", e)
                 uiStateManager.updateLoadingState(false)
@@ -573,6 +586,8 @@ class CameraViewModel @Inject constructor(
                             com.inik.camcon.domain.manager.ErrorSeverity.MEDIUM
                         )
                     }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "이벤트 리스너 시작 중 예외 발생", e)
                 errorHandlingManager.emitError(
@@ -606,6 +621,8 @@ class CameraViewModel @Inject constructor(
                         )
                         onComplete?.invoke()
                     }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "이벤트 리스너 중지 중 예외 발생", e)
                 errorHandlingManager.emitError(

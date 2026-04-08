@@ -268,4 +268,222 @@
     <string name="gradle_dependencies_desc">Tap to view all Gradle dependency licenses</string>
     <string name="license_version">Version:</string>
     <string name="license_type">License:</string>
+
+    <!-- CameraControlScreen -->
+    <string name="camera_control_usb_initializing">USB 카메라 초기화 중…</string>
+    <string name="camera_control_double_click_fullscreen">더블클릭으로 전체화면</string>
+    <string name="camera_control_received_photos">수신된 사진 (%d개)</string>
+    <string name="camera_control_exit_fullscreen">전체화면 종료</string>
+    <string name="camera_control_rotate_180">180도 회전</string>
+    <string name="camera_control_double_click_exit">더블클릭으로 종료</string>
+    <string name="camera_control_capturing">촬영 중…</string>
+    <string name="camera_control_no_received_photos">수신된 사진이 없습니다</string>
+    <string name="camera_control_photo_appear_hint">카메라에서 사진을 촬영하면 여기에 표시됩니다</string>
+    <string name="camera_control_captured_photo">촬영된 사진</string>
+    <string name="camera_control_photo">사진</string>
+    <string name="camera_control_no_photo">사진 없음</string>
+    <string name="camera_control_app_restart_needed">앱 재시작 필요</string>
+    <string name="camera_control_app_restart_message">USB 장치 연결이 제대로 해제되지 않았거나 시스템 오류(-52)가 발생했습니다.\n\n앱을 재시작해야 정상적으로 사용할 수 있습니다.\n\n지금 앱을 재시작하시겠습니까?</string>
+    <string name="camera_control_app_restart">앱 재시작</string>
+    <string name="camera_control_raw_file_restriction">RAW 파일 제한</string>
+    <string name="camera_control_preview_screen">카메라 컨트롤 스크린</string>
+    <string name="camera_control_fullscreen_panel">전체화면 컨트롤 패널</string>
+
+    <!-- PtpipConnectionScreen -->
+    <string name="ptpip_ap_mode">AP 모드</string>
+    <string name="ptpip_sta_mode">STA 모드</string>
+    <string name="ptpip_camera_connection">카메라 연결</string>
+    <string name="ptpip_permission_needed">권한 필요</string>
+    <string name="ptpip_go_to_settings">설정으로 이동</string>
+    <string name="ptpip_location_service_needed">위치 서비스 필요</string>
+    <string name="ptpip_location_service_message">Wi-Fi 스캔을 위해 위치 서비스가 필요합니다.\n\'허용\'을 누르면 설정을 바로 변경할 수 있습니다.</string>
+    <string name="ptpip_allow">허용</string>
+    <string name="ptpip_wifi_scan_restriction">Wi-Fi 스캔 제한</string>
+    <string name="ptpip_wifi_scan_restriction_message">Android의 보안 정책으로 인해 앱에서 직접 Wi-Fi 스캔이 제한됩니다.</string>
+    <string name="ptpip_wifi_scan_steps">다음 단계를 따라주세요:</string>
+    <string name="ptpip_wifi_scan_step1">1. \'Wi-Fi 설정 열기\' 버튼을 누르세요</string>
+    <string name="ptpip_wifi_scan_step2">2. 시스템 Wi-Fi 설정에서 주변 네트워크 목록을 확인하세요</string>
+    <string name="ptpip_wifi_scan_step3">3. 카메라 Wi-Fi(CANON, NIKON 등)를 찾으세요</string>
+    <string name="ptpip_wifi_scan_step4">4. 설정을 닫고 다시 스캔해보세요</string>
+    <string name="ptpip_open_wifi_settings">Wi-Fi 설정 열기</string>
+    <string name="ptpip_enter_wifi_password">Wi-Fi 비밀번호를 입력하세요</string>
+    <string name="ptpip_password">비밀번호</string>
+    <string name="ptpip_connect">연결</string>
+    <string name="ptpip_connecting_to_camera">카메라에 연결 중…</string>
+    <string name="ptpip_please_wait">잠시만 기다려주세요</string>
+    <string name="ptpip_camera_disconnected">카메라 연결 끊어짐</string>
+    <string name="ptpip_next_steps">다음 단계를 수행해주세요:</string>
+    <string name="ptpip_check_wifi">1. Wi-Fi 연결 상태를 확인하세요</string>
+    <string name="ptpip_check_camera_wifi">2. 카메라 Wi-Fi가 켜져있는지 확인하세요</string>
+    <string name="ptpip_reconnect_camera">3. 카메라를 다시 검색하고 연결하세요</string>
+    <string name="ptpip_search_camera">카메라 재검색</string>
+    <string name="ptpip_preview_title">카메라 연결 화면 프리뷰</string>
+    <string name="ptpip_tab_content_area">탭 컨텐츠 영역</string>
+    <string name="ptpip_hide_password">숨기기</string>
+    <string name="ptpip_show_password">보이기</string>
+
+    <!-- ServerPhotosScreen -->
+    <string name="server_photos_my_photos">내 사진</string>
+    <string name="server_photos_count">%d장의 사진</string>
+    <string name="server_photos_delete_photos">사진 삭제</string>
+    <string name="server_photos_delete_confirm">선택한 %d장의 사진을 삭제하시겠습니까?</string>
+    <string name="server_photos_no_saved_photos">저장된 사진이 없습니다</string>
+    <string name="server_photos_capture_hint">카메라에서 촬영하면\n이곳에 저장됩니다</string>
+    <string name="server_photos_loading">내 사진을 불러오는 중…</string>
+    <string name="server_photos_selected_count">%d 개의 항목 선택됨</string>
+    <string name="server_photos_select_all">전체 선택</string>
+    <string name="server_photos_deselect_all">선택 해제</string>
+    <string name="server_photos_refresh">새로고침</string>
+    <string name="server_photos_retry">재시도</string>
+    <string name="server_photos_loading_placeholder">로딩 중…</string>
+
+    <!-- FullScreenPhotoViewer -->
+    <string name="fullscreen_viewer_close">닫기</string>
+    <string name="fullscreen_viewer_info">정보</string>
+    <string name="fullscreen_viewer_download">다운로드</string>
+    <string name="fullscreen_viewer_share">공유</string>
+    <string name="fullscreen_viewer_share_photo">사진 공유</string>
+    <string name="fullscreen_viewer_share_failed">사진 공유에 실패했습니다.</string>
+    <string name="fullscreen_viewer_no_share_data">공유할 이미지 데이터가 없습니다.</string>
+    <string name="fullscreen_viewer_detail_info">상세정보</string>
+    <string name="fullscreen_viewer_unknown_date">촬영 날짜 알 수 없음</string>
+    <string name="fullscreen_viewer_loading_date">날짜 정보 불러오는 중…</string>
+    <string name="fullscreen_viewer_no_exif">EXIF 정보가 없습니다</string>
+    <string name="fullscreen_viewer_exif_loading">EXIF 정보 불러오는 중…</string>
+    <string name="fullscreen_viewer_exif_parse_failed">EXIF 정보를 파싱할 수 없습니다</string>
+    <string name="fullscreen_viewer_unknown_camera">알 수 없는 카메라</string>
+    <string name="fullscreen_viewer_internal_storage">/내장 메모리</string>
+    <string name="fullscreen_viewer_wb_auto">자동</string>
+    <string name="fullscreen_viewer_wb_manual">수동</string>
+    <string name="fullscreen_viewer_wb_label">화이트밸런스</string>
+    <string name="fullscreen_viewer_flash_not_used">플래시 사용 안 함</string>
+    <string name="fullscreen_viewer_flash_used">플래시 사용함</string>
+
+    <!-- PhotoInfoDialog -->
+    <string name="photo_info_detail">상세정보</string>
+    <string name="photo_info_edit">편집</string>
+    <string name="photo_info_unknown">알 수 없음</string>
+    <string name="photo_info_back">뒤로가기</string>
+
+    <!-- ShootingModeSelector -->
+    <string name="shooting_mode_single">단일</string>
+    <string name="shooting_mode_burst">연사</string>
+    <string name="shooting_mode_timelapse">타임랩스</string>
+    <string name="shooting_mode_bulb">벌브</string>
+
+    <!-- PhotoThumbnail -->
+    <string name="photo_thumbnail_selected">선택됨</string>
+    <string name="photo_thumbnail_latest">최신</string>
+
+    <!-- WifiScanResultsCard -->
+    <string name="wifi_scan_nearby_wifi">주변 Wi-Fi (%d개)</string>
+    <string name="wifi_scan_nearby_camera_wifi">주변 카메라 Wi-Fi (%d개)</string>
+    <string name="wifi_scan_camera_network">카메라 네트워크 (%d개)</string>
+    <string name="wifi_scan_other_network">기타 네트워크 (%d개)</string>
+    <string name="wifi_scan_saved">저장됨</string>
+    <string name="wifi_scan_connect">연결</string>
+
+    <!-- PhotoPreviewScreen -->
+    <string name="photo_preview_camera_not_connected">카메라가 연결되지 않았습니다</string>
+    <string name="photo_preview_connect_usb">USB 케이블을 연결하고 카메라를 켜주세요</string>
+    <string name="photo_preview_loading_photos">카메라에서 사진을 불러오는 중…</string>
+    <string name="photo_preview_loading_more">더 많은 사진 불러오는 중…</string>
+    <string name="photo_preview_all_loaded">모든 사진을 불러왔습니다 (총 %d개)</string>
+    <string name="photo_preview_filter">필터:</string>
+    <string name="photo_preview_selected_count">%d 개 선택됨</string>
+    <string name="photo_preview_wifi_connected">Wi-Fi 연결 중입니다</string>
+    <string name="photo_preview_wifi_block_message">현재 카메라가 Wi-Fi로 연결되어 있어\n사진 미리보기를 사용할 수 없습니다.</string>
+    <string name="photo_preview_use_photo_preview">사진 미리보기를 사용하려면</string>
+    <string name="photo_preview_switch_usb">USB 케이블 연결로 전환해주세요</string>
+    <string name="photo_preview_use_camera_control">Wi-Fi 연결에서는 \'카메라 제어\' 탭을 이용해주세요!</string>
+    <string name="photo_preview_event_initializing">카메라 이벤트 초기화 중…</string>
+
+    <!-- CameraPreviewArea -->
+    <string name="camera_preview_live_view">Live View</string>
+
+    <!-- ApModeContent -->
+    <string name="ap_mode_wifi_connected">Wi-Fi 연결됨</string>
+    <string name="ap_mode_wifi_disconnected">Wi-Fi 연결 안됨</string>
+    <string name="ap_mode_ptpip_enable">PTP/IP 활성화</string>
+    <string name="ap_mode_camera_ip">카메라 IP: %s</string>
+    <string name="ap_mode_camera_ap_direct">카메라 AP 직접 연결</string>
+    <string name="ap_mode_search_camera_wifi">주변 카메라 Wi-Fi를 검색하세요</string>
+    <string name="ap_mode_turn_on_camera_wifi">카메라의 Wi-Fi를 켠 뒤 스캔하세요</string>
+    <string name="ap_mode_scanning">스캔 중…</string>
+    <string name="ap_mode_wifi_scan">Wi-Fi 스캔</string>
+    <string name="ap_mode_saved_networks">저장된 네트워크 (%d개)</string>
+    <string name="ap_mode_delete_saved_network">저장된 네트워크 삭제</string>
+    <string name="ap_mode_delete_saved_network_confirm">\'%s\'의 저장된 비밀번호를 삭제하시겠습니까?</string>
+
+    <!-- StaModeContent -->
+    <string name="sta_mode_general_wifi">일반 Wi-Fi 네트워크 — mDNS 검색 가능</string>
+    <string name="sta_mode_auto_reconnect">자동 재연결</string>
+    <string name="sta_mode_auto_reconnect_on">네트워크 변화 시 자동 재연결</string>
+    <string name="sta_mode_auto_reconnect_off">수동 연결 관리</string>
+    <string name="sta_mode_mdns_search">mDNS 카메라 검색</string>
+    <string name="sta_mode_mdns_description">같은 네트워크의 카메라를 자동 검색합니다.</string>
+    <string name="sta_mode_searching">검색 중…</string>
+    <string name="sta_mode_search_camera">카메라 검색</string>
+
+    <!-- PtpipCommonComponents -->
+    <string name="ptpip_camera">카메라</string>
+    <string name="ptpip_connected_ip">연결됨 — %s</string>
+    <string name="ptpip_connecting_status">연결 중…</string>
+    <string name="ptpip_connection_error">연결 오류</string>
+    <string name="ptpip_not_connected">연결 안됨</string>
+    <string name="ptpip_capture">촬영</string>
+    <string name="ptpip_disconnect">연결 해제</string>
+
+    <!-- UsbInitializationOverlay -->
+    <string name="usb_init_please_wait">잠시만 기다려주세요…</string>
+    <string name="usb_init_loading">로딩 중…</string>
+    <string name="usb_init_camera_connection_error">카메라 연결 오류</string>
+    <string name="usb_init_timeout_message">카메라 연결 중 타임아웃이 발생했습니다.</string>
+    <string name="usb_init_restart_fix">앱을 재시작하면 문제가 해결됩니다.</string>
+    <string name="usb_init_check_instructions">• 카메라 USB 케이블을 확인해주세요\n• 카메라가 PC 모드로 설정되어 있는지 확인해주세요</string>
+
+    <!-- CameraConnectionHelpDialog -->
+    <string name="camera_help_container_color_hint">도움말 내용</string>
+
+    <!-- ColorTransferImagePickerScreen -->
+    <string name="color_transfer_select_reference">색감 참조 이미지 선택</string>
+    <string name="color_transfer_select_title">색감 전송용 참조 이미지 선택</string>
+    <string name="color_transfer_select_description">카메라에서 받은 사진에 적용할 색감의 참조 이미지를 선택하세요. 선택한 이미지의 색감이 촬영된 사진에 자동으로 적용됩니다.</string>
+    <string name="color_transfer_add_from_gallery">갤러리에서 이미지 추가</string>
+    <string name="color_transfer_no_images">사용 가능한 이미지가 없습니다</string>
+    <string name="color_transfer_add_from_gallery_hint">갤러리에서 이미지를 추가해보세요</string>
+    <string name="color_transfer_file_size">크기: %d KB</string>
+    <string name="color_transfer_back">뒤로가기</string>
+    <string name="color_transfer_selection_done">선택 완료</string>
+
+    <!-- Content Descriptions -->
+    <string name="cd_close">닫기</string>
+    <string name="cd_info">정보</string>
+    <string name="cd_download">다운로드</string>
+    <string name="cd_share">공유</string>
+    <string name="cd_refresh">새로고침</string>
+    <string name="cd_wifi_settings">Wi-Fi 설정</string>
+    <string name="cd_back">뒤로가기</string>
+    <string name="cd_rotate_180">180도 회전</string>
+    <string name="cd_exit_fullscreen">전체화면 종료</string>
+    <string name="cd_stop_live_view">라이브뷰 중지</string>
+    <string name="cd_start_live_view">라이브뷰 시작</string>
+    <string name="cd_camera_capture">촬영</string>
+    <string name="cd_usb_off">USB 연결 끊김</string>
+    <string name="cd_live_view_frame">라이브뷰 프레임</string>
+    <string name="cd_wifi_connected">Wi-Fi 연결됨</string>
+    <string name="cd_wifi_disconnected">Wi-Fi 연결 안됨</string>
+    <string name="cd_camera_network">카메라 네트워크</string>
+    <string name="cd_other_network">기타 네트워크</string>
+    <string name="cd_wifi_scan">Wi-Fi 스캔</string>
+    <string name="cd_saved_network">저장된 네트워크</string>
+    <string name="cd_delete">삭제</string>
+    <string name="cd_selected">선택됨</string>
+    <string name="cd_raw_notification">RAW 알림</string>
+    <string name="cd_camera_status">카메라 상태</string>
+    <string name="cd_selection_indicator">선택 표시</string>
+    <string name="cd_search">검색</string>
+    <string name="cd_auto_reconnect">자동 재연결</string>
+    <string name="cd_camera_icon">카메라 아이콘</string>
+    <string name="cd_photo_placeholder">사진 플레이스홀더</string>
 </resources>

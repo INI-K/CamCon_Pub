@@ -3,12 +3,15 @@ package com.inik.camcon.domain.usecase
 import android.util.Log
 import com.inik.camcon.domain.model.ImageFormat
 import com.inik.camcon.domain.model.SubscriptionTier
+import com.inik.camcon.domain.model.ThemeMode
+import kotlinx.coroutines.flow.Flow
 import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.util.Logger
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
 import io.mockk.unmockkStatic
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,11 +47,35 @@ class ValidateImageFormatUseCaseTest {
     // Fake AppSettingsRepository 구현
     private class FakeAppSettingsRepository : AppSettingsRepository {
         private val _isRawFileDownloadEnabled = MutableStateFlow(true)
-        override val isRawFileDownloadEnabled = _isRawFileDownloadEnabled
+        override val isRawFileDownloadEnabled: Flow<Boolean> = _isRawFileDownloadEnabled
+        override val isCameraControlsEnabled: Flow<Boolean> = MutableStateFlow(true)
+        override val isLiveViewEnabled: Flow<Boolean> = MutableStateFlow(true)
+        override val isDarkModeEnabled: Flow<Boolean> = MutableStateFlow(true)
+        override val isAutoStartEventListenerEnabled: Flow<Boolean> = MutableStateFlow(true)
+        override val isShowLatestPhotoWhenDisabled: Flow<Boolean> = MutableStateFlow(false)
+        override val isColorTransferEnabled: Flow<Boolean> = MutableStateFlow(false)
+        override val colorTransferReferenceImagePath: Flow<String?> = MutableStateFlow(null)
+        override val colorTransferTargetImagePath: Flow<String?> = MutableStateFlow(null)
+        override val colorTransferIntensity: Flow<Float> = MutableStateFlow(0.5f)
+        override val subscriptionTierEnum: Flow<SubscriptionTier> = MutableStateFlow(SubscriptionTier.FREE)
+        override val themeMode: Flow<ThemeMode> = MutableStateFlow(ThemeMode.DARK)
+        override val isNativeLogCaptureEnabled: Flow<Boolean> = MutableStateFlow(false)
 
-        fun setRawFileDownloadEnabled(enabled: Boolean) {
+        override suspend fun setCameraControlsEnabled(enabled: Boolean) {}
+        override suspend fun setLiveViewEnabled(enabled: Boolean) {}
+        override suspend fun setDarkModeEnabled(enabled: Boolean) {}
+        override suspend fun setAutoStartEventListenerEnabled(enabled: Boolean) {}
+        override suspend fun setShowLatestPhotoWhenDisabled(enabled: Boolean) {}
+        override suspend fun setColorTransferEnabled(enabled: Boolean) {}
+        override suspend fun setColorTransferReferenceImagePath(path: String?) {}
+        override suspend fun setColorTransferTargetImagePath(path: String?) {}
+        override suspend fun setColorTransferIntensity(intensity: Float) {}
+        override suspend fun setRawFileDownloadEnabled(enabled: Boolean) {
             _isRawFileDownloadEnabled.value = enabled
         }
+        override suspend fun setThemeMode(mode: ThemeMode) {}
+        override suspend fun setNativeLogCaptureEnabled(enabled: Boolean) {}
+        override suspend fun clearAllSettings() {}
     }
 
     @Before
@@ -74,11 +101,11 @@ class ValidateImageFormatUseCaseTest {
      * GetSubscriptionUseCase의 init 블록이 Dispatchers.IO에서 refreshSubscription을 실행하므로
      * subscriptionStateFlow가 업데이트될 때까지 대기해야 한다.
      */
-    private suspend fun createUseCase(tier: SubscriptionTier) {
+    private suspend fun createUseCase(tier: SubscriptionTier, scope: CoroutineScope = CoroutineScope(testDispatcher)) {
         coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(
             Subscription(tier = tier)
         )
-        getSubscriptionUseCase = GetSubscriptionUseCase(subscriptionRepository, logger)
+        getSubscriptionUseCase = GetSubscriptionUseCase(subscriptionRepository, logger, scope)
         useCase = ValidateImageFormatUseCase(
             getSubscriptionUseCase,
             appSettingsRepository,

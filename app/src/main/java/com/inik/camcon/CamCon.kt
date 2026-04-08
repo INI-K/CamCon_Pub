@@ -10,10 +10,10 @@ import com.google.firebase.FirebaseApp
 import com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.data.service.WifiMonitoringService
+import com.inik.camcon.di.ApplicationScope
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -27,11 +27,12 @@ class CamCon : Application() {
     @Inject
     lateinit var preferencesDataSource: PtpipPreferencesDataSource
 
+    @Inject
+    @ApplicationScope
+    lateinit var applicationScope: CoroutineScope
+
     // 현재 활성 Activity 추적 (포그라운드 상태 확인용)
     private var activeActivityCount = 0
-
-    // Application 레벨 CoroutineScope
-    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     companion object {
         private const val TAG = "CamCon"

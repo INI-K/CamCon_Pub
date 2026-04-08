@@ -18,12 +18,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import com.inik.camcon.presentation.theme.SurfaceElevated
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
-import com.inik.camcon.data.datasource.local.ThemeMode
+import com.inik.camcon.domain.model.ThemeMode
 
 /**
  * 카메라 연결 문제 해결 도움말 다이얼로그
@@ -50,7 +51,7 @@ fun CameraConnectionHelpDialog(
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A))
+                    colors = CardDefaults.cardColors(containerColor = SurfaceElevated)
                 ) {
                     Column(
                         modifier = Modifier.padding(12.dp),

@@ -31,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
@@ -59,6 +60,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -66,7 +68,12 @@ import androidx.core.content.FileProvider
 import androidx.exifinterface.media.ExifInterface
 import com.github.panpf.zoomimage.CoilZoomAsyncImage
 import com.github.panpf.zoomimage.rememberCoilZoomState
+import com.inik.camcon.R
 import com.inik.camcon.domain.model.CameraPhoto
+import com.inik.camcon.presentation.theme.Background
+import com.inik.camcon.presentation.theme.Overlay
+import com.inik.camcon.presentation.theme.TextPrimary
+import com.inik.camcon.presentation.theme.TextSecondary
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
 import com.zhangke.imageviewer.ImageViewer
 import com.zhangke.imageviewer.rememberImageViewerState
@@ -308,7 +315,7 @@ fun FullScreenPhotoViewer(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(Background)
     ) {
         // 메인 이미지 페이저 (스와이프 네비게이션)
         HorizontalPager(
@@ -592,7 +599,7 @@ private fun LoadingIndicator() {
     ) {
         CircularProgressIndicator(
             modifier = Modifier.size(48.dp),
-            color = Color.White,
+            color = TextPrimary,
             strokeWidth = 3.dp
         )
     }
@@ -809,14 +816,14 @@ private fun TopControlBar(
             onClick = onClose,
             modifier = Modifier
                 .background(
-                    Color.Black.copy(alpha = 0.6f),
+                    Background.copy(alpha = 0.6f),
                     RoundedCornerShape(20.dp)
                 )
         ) {
             Icon(
                 Icons.Default.Close,
-                contentDescription = "닫기",
-                tint = Color.White
+                contentDescription = stringResource(R.string.cd_close),
+                tint = TextPrimary
             )
         }
 
@@ -827,14 +834,14 @@ private fun TopControlBar(
             onClick = onInfoClick,
             modifier = Modifier
                 .background(
-                    Color.Black.copy(alpha = 0.6f),
+                    Background.copy(alpha = 0.6f),
                     RoundedCornerShape(20.dp)
                 )
         ) {
             Icon(
                 Icons.Default.Info,
-                contentDescription = "정보",
-                tint = Color.White
+                contentDescription = stringResource(R.string.cd_info),
+                tint = TextPrimary
             )
         }
 
@@ -844,14 +851,14 @@ private fun TopControlBar(
                 onClick = onDownloadClick,
                 modifier = Modifier
                     .background(
-                        Color.Black.copy(alpha = 0.6f),
+                        Background.copy(alpha = 0.6f),
                         RoundedCornerShape(20.dp)
                     )
             ) {
                 Icon(
                     Icons.Default.Download,
-                    contentDescription = "다운로드",
-                    tint = Color.White
+                    contentDescription = stringResource(R.string.cd_download),
+                    tint = TextPrimary
                 )
             }
         }
@@ -861,14 +868,14 @@ private fun TopControlBar(
             onClick = onShareClick,
             modifier = Modifier
                 .background(
-                    Color.Black.copy(alpha = 0.6f),
+                    Background.copy(alpha = 0.6f),
                     RoundedCornerShape(20.dp)
                 )
         ) {
             Icon(
                 Icons.Default.Share,
-                contentDescription = "공유",
-                tint = Color.White
+                contentDescription = stringResource(R.string.cd_share),
+                tint = TextPrimary
             )
         }
     }
@@ -939,7 +946,7 @@ private fun ThumbnailItem(
             .size(60.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(
-                if (isSelected) Color.White else Color.Gray.copy(alpha = 0.3f)
+                if (isSelected) TextPrimary else TextSecondary.copy(alpha = 0.3f)
             )
             .clickable {
                 Log.d("ThumbnailItem", "썸네일 아이템 클릭: ${photo.name}")
@@ -1072,12 +1079,12 @@ private fun LoadingThumbnailItem() {
         modifier = Modifier
             .size(60.dp)
             .clip(RoundedCornerShape(8.dp))
-            .background(Color.Gray.copy(alpha = 0.3f)),
+            .background(TextSecondary.copy(alpha = 0.3f)),
         contentAlignment = Alignment.Center
     ) {
         CircularProgressIndicator(
             modifier = Modifier.size(24.dp),
-            color = Color.White,
+            color = TextPrimary,
             strokeWidth = 2.dp
         )
     }
@@ -1118,7 +1125,7 @@ private fun ServerThumbnailItem(
             .size(60.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(
-                if (isSelected) Color.White else Color.Gray.copy(alpha = 0.3f)
+                if (isSelected) TextPrimary else TextSecondary.copy(alpha = 0.3f)
             )
             .clickable { onClick() }
             .padding(if (isSelected) 2.dp else 0.dp)
@@ -1141,13 +1148,13 @@ private fun ServerThumbnailItem(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Gray.copy(alpha = 0.5f))
+                        .background(TextSecondary.copy(alpha = 0.5f))
                         .clip(RoundedCornerShape(if (isSelected) 6.dp else 8.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(16.dp),
-                        color = Color.White,
+                        color = TextPrimary,
                         strokeWidth = 1.5.dp
                     )
                 }
@@ -1158,13 +1165,13 @@ private fun ServerThumbnailItem(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Gray.copy(alpha = 0.5f))
+                        .background(TextSecondary.copy(alpha = 0.5f))
                         .clip(RoundedCornerShape(if (isSelected) 6.dp else 8.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
-                        color = Color.White,
+                        color = TextPrimary,
                         strokeWidth = 2.dp
                     )
                 }
@@ -1214,7 +1221,7 @@ private fun PhotoInfoBottomSheetContent(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.surface)
             .padding(horizontal = 20.dp)
             .padding(bottom = 40.dp) // 바텀 네비게이션 공간 확보
     ) {
@@ -1229,7 +1236,7 @@ private fun PhotoInfoBottomSheetContent(
                 modifier = Modifier
                     .size(width = 40.dp, height = 4.dp)
                     .background(
-                        Color.Gray.copy(alpha = 0.3f),
+                        TextSecondary.copy(alpha = 0.3f),
                         RoundedCornerShape(2.dp)
                     )
             )
@@ -1244,10 +1251,10 @@ private fun PhotoInfoBottomSheetContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "상세정보",
+                text = stringResource(R.string.fullscreen_viewer_detail_info),
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Medium,
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
 
@@ -1266,7 +1273,7 @@ private fun PhotoInfoBottomSheetContent(
                         Icons.Outlined.CalendarToday,
                         contentDescription = null,
                         modifier = Modifier.size(24.dp),
-                        tint = Color.Black
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
                 },
                 content = {
@@ -1292,7 +1299,7 @@ private fun PhotoInfoBottomSheetContent(
                                             result
                                         } else {
                                             Log.w("PhotoInfoDialog", "EXIF 날짜 파싱 실패, 기본값 사용")
-                                            "촬영 날짜 알 수 없음"
+                                            "Unknown date"
                                         }
                                     } catch (e: Exception) {
                                         Log.e(
@@ -1300,7 +1307,7 @@ private fun PhotoInfoBottomSheetContent(
                                             "EXIF 날짜 파싱 예외: $dateTimeOriginal",
                                             e
                                         )
-                                        "촬영 날짜 알 수 없음"
+                                        "Unknown date"
                                     }
                                 } else {
                                     Log.d("PhotoInfoDialog", "EXIF에 date_time_original 없음, 기본값 사용")
@@ -1314,7 +1321,7 @@ private fun PhotoInfoBottomSheetContent(
                             }
                         } else {
                             if (isLoading.value) {
-                                "날짜 정보 불러오는 중..."
+                                "Loading date..."
                             } else {
                                 SimpleDateFormat("yyyy년 M월 d일 a h:mm", Locale.KOREAN)
                                     .format(Date(photo.date))
@@ -1325,7 +1332,7 @@ private fun PhotoInfoBottomSheetContent(
                     Text(
                         text = formattedDate,
                         fontSize = 16.sp,
-                        color = Color.Black
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             )
@@ -1337,7 +1344,7 @@ private fun PhotoInfoBottomSheetContent(
                         Icons.Outlined.Image,
                         contentDescription = null,
                         modifier = Modifier.size(24.dp),
-                        tint = Color.Black
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
                 },
                 content = {
@@ -1346,7 +1353,7 @@ private fun PhotoInfoBottomSheetContent(
                             text = photo.name,
                             fontSize = 16.sp,
                             fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
-                            color = Color.Black
+                            color = MaterialTheme.colorScheme.onSurface
                         )
 
                         Spacer(modifier = Modifier.height(4.dp))
@@ -1372,7 +1379,7 @@ private fun PhotoInfoBottomSheetContent(
                         Text(
                             text = fileInfo,
                             fontSize = 14.sp,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
                         // 폴더 경로
@@ -1382,7 +1389,7 @@ private fun PhotoInfoBottomSheetContent(
                         Text(
                             text = folderPath,
                             fontSize = 14.sp,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -1395,15 +1402,15 @@ private fun PhotoInfoBottomSheetContent(
                         Icons.Outlined.PhotoCamera,
                         contentDescription = null,
                         modifier = Modifier.size(24.dp),
-                        tint = Color.Black
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
                 },
                 content = {
                     if (isLoading.value) {
                         Text(
-                            text = "EXIF 정보 불러오는 중...",
+                            text = stringResource(R.string.fullscreen_viewer_exif_loading),
                             fontSize = 16.sp,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     } else {
                         ExifInfoContent(exifInfo = exifInfo.value)
@@ -1521,9 +1528,9 @@ private fun InfoRow(
 private fun ExifInfoContent(exifInfo: String?) {
     if (exifInfo.isNullOrEmpty() || exifInfo == "{}") {
         Text(
-            text = "EXIF 정보가 없습니다",
+            text = stringResource(R.string.fullscreen_viewer_no_exif),
             fontSize = 16.sp,
-            color = Color.Gray
+            color = TextSecondary
         )
     } else {
         val exifEntries = remember(exifInfo) {
@@ -1548,7 +1555,7 @@ private fun ExifInfoContent(exifInfo: String?) {
 
                         make != null -> append(make)
                         model != null -> append(model)
-                        else -> append("알 수 없는 카메라")
+                        else -> append("Unknown")
                     }
                 }
 
@@ -1556,7 +1563,7 @@ private fun ExifInfoContent(exifInfo: String?) {
                     text = cameraModel,
                     fontSize = 16.sp,
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
@@ -1586,7 +1593,7 @@ private fun ExifInfoContent(exifInfo: String?) {
                     Text(
                         text = settings.joinToString("    "),
                         fontSize = 14.sp,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
@@ -1604,15 +1611,15 @@ private fun ExifInfoContent(exifInfo: String?) {
                     Text(
                         text = additionalInfo.joinToString("    "),
                         fontSize = 14.sp,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
         } else {
             androidx.compose.material.Text(
-                text = "EXIF 정보를 파싱할 수 없습니다",
+                text = stringResource(R.string.fullscreen_viewer_exif_parse_failed),
                 fontSize = 16.sp,
-                color = Color.Gray
+                color = TextSecondary
             )
         }
     }

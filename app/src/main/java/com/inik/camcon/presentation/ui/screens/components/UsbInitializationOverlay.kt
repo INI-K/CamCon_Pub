@@ -23,13 +23,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.inik.camcon.R
+import com.inik.camcon.presentation.theme.Overlay
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
-import com.inik.camcon.data.datasource.local.ThemeMode
+import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.presentation.theme.Background
 import com.inik.camcon.presentation.theme.CamConTheme
 
@@ -38,13 +41,13 @@ import com.inik.camcon.presentation.theme.CamConTheme
  */
 @Composable
 fun LoadingOverlay(
-    message: String = "로딩 중...",
+    message: String = "",
     progress: Float? = null
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.5f)),
+            .background(Overlay),
         contentAlignment = Alignment.Center
     ) {
         Card(
@@ -97,7 +100,7 @@ fun UsbInitializationOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.7f)),
+            .background(Overlay.copy(alpha = 0.7f)),
         contentAlignment = Alignment.Center
     ) {
         Card(
@@ -142,7 +145,7 @@ fun UsbInitializationOverlay(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "잠시만 기다려주세요...",
+                    text = stringResource(R.string.usb_init_please_wait),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center
@@ -164,7 +167,7 @@ fun PtpTimeoutDialog(
         onDismissRequest = onDismissRequest,
         title = {
             Text(
-                text = "카메라 연결 오류",
+                text = stringResource(R.string.usb_init_camera_connection_error),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.error
@@ -173,19 +176,19 @@ fun PtpTimeoutDialog(
         text = {
             Column {
                 Text(
-                    text = "카메라 연결 중 타임아웃이 발생했습니다.",
+                    text = stringResource(R.string.usb_init_timeout_message),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "앱을 재시작하면 문제가 해결됩니다.",
+                    text = stringResource(R.string.usb_init_restart_fix),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "• 카메라 USB 케이블을 확인해주세요\n• 카메라가 PC 모드로 설정되어 있는지 확인해주세요",
+                    text = stringResource(R.string.usb_init_check_instructions),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     fontSize = 12.sp
@@ -196,14 +199,14 @@ fun PtpTimeoutDialog(
             Button(
                 onClick = onRestartRequest
             ) {
-                Text("앱 재시작")
+                Text(stringResource(R.string.camera_control_app_restart))
             }
         },
         dismissButton = {
             TextButton(
                 onClick = onDismissRequest
             ) {
-                Text("닫기")
+                Text(stringResource(R.string.close))
             }
         },
         properties = DialogProperties(

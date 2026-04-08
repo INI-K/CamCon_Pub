@@ -92,9 +92,7 @@ import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import com.inik.camcon.utils.LogcatManager
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -682,8 +680,21 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val TAG = "MainActivity"
 
-        // 정리 작업용 코루틴 스코프 (onDestroy/재시작 시 사용, lifecycleScope가 이미 취소된 상태)
-        private val cleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        /**
+         * 네이티브 리소스 정리를 별도 스레드에서 fire-and-forget으로 수행.
+         * 프로세스 종료 직전에 호출되므로 managed scope 불필요.
+         */
+        private fun cleanupNativeResources(label: String) {
+            Thread {
+                try {
+                    com.inik.camcon.CameraNative.closeCamera()
+                    com.inik.camcon.CameraNative.closeLogFile()
+                    LogcatManager.d(TAG, "$label: 네이티브 리소스 정리 완료")
+                } catch (e: Exception) {
+                    LogcatManager.w(TAG, "$label: 네이티브 리소스 정리 중 오류", e)
+                }
+            }.start()
+        }
 
         /**
          * 앱을 완전히 재시작하는 함수
@@ -696,16 +707,7 @@ class MainActivity : ComponentActivity() {
                 activity.finishAffinity()
 
                 // 2. 네이티브 리소스 정리를 백그라운드에서 수행
-                cleanupScope.launch {
-                    try {
-                        LogcatManager.d(TAG, "closeCamera 호출")
-                        com.inik.camcon.CameraNative.closeCamera()
-                        com.inik.camcon.CameraNative.closeLogFile()
-                        LogcatManager.d(TAG, "네이티브 리소스 정리 완료")
-                    } catch (e: Exception) {
-                        LogcatManager.w(TAG, "네이티브 리소스 정리 중 오류", e)
-                    }
-                }
+                cleanupNativeResources("forceRestart")
 
                 // 3. 더 긴 지연 후 재시작 실행 (네이티브 정리 완료 대기)
                 android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
@@ -781,15 +783,7 @@ class MainActivity : ComponentActivity() {
                 LogcatManager.d(TAG, "간단한 앱 재시작 시작")
 
                 // 네이티브 리소스 정리
-                cleanupScope.launch {
-                    try {
-                        com.inik.camcon.CameraNative.closeCamera()
-                        com.inik.camcon.CameraNative.closeLogFile()
-                        LogcatManager.d(TAG, "간단 재시작: 네이티브 리소스 정리 완료")
-                    } catch (e: Exception) {
-                        LogcatManager.w(TAG, "간단 재시작: 네이티브 리소스 정리 중 오류", e)
-                    }
-                }
+                cleanupNativeResources("simpleRestart")
 
                 // 0.5초 후 앱 종료 (사용자가 수동으로 재시작해야 함)
                 android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
@@ -829,15 +823,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 // 2. 네이티브 리소스 정리 (백그라운드에서)
-                cleanupScope.launch {
-                    try {
-                        com.inik.camcon.CameraNative.closeCamera()
-                        com.inik.camcon.CameraNative.closeLogFile()
-                        LogcatManager.d(TAG, "시스템 재시작: 네이티브 리소스 정리 완료")
-                    } catch (e: Exception) {
-                        LogcatManager.w(TAG, "시스템 재시작: 네이티브 리소스 정리 중 오류", e)
-                    }
-                }
+                cleanupNativeResources("systemRestart")
 
                 // 3. 프로세스 종료
                 kotlin.system.exitProcess(0)
@@ -877,15 +863,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 // 2. 네이티브 리소스 정리 (백그라운드에서)
-                cleanupScope.launch {
-                    try {
-                        com.inik.camcon.CameraNative.closeCamera()
-                        com.inik.camcon.CameraNative.closeLogFile()
-                        LogcatManager.d(TAG, "즉시 재시작: 네이티브 리소스 정리 완료")
-                    } catch (e: Exception) {
-                        LogcatManager.w(TAG, "즉시 재시작: 네이티브 리소스 정리 중 오류", e)
-                    }
-                }
+                cleanupNativeResources("instantRestart")
 
                 // 3. 프로세스 종료
                 kotlin.system.exitProcess(0)
@@ -1297,29 +1275,11 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         // Activity가 종료될 때 USB 매니저 정리
         try {
-            // 명시적으로 카메라 세션 종료 - 백그라운드에서 안전하게 수행
-            cleanupScope.launch {
-                try {
-                    LogcatManager.d(TAG, "onDestroy - closeCamera 호출")
-                    com.inik.camcon.CameraNative.closeCamera()
-                    LogcatManager.d(TAG, "카메라 세션 명시적 종료 완료")
-                } catch (e: Exception) {
-                    LogcatManager.w(TAG, "카메라 세션 종료 중 오류", e)
-                }
-            }
+            // 명시적으로 카메라 세션 종료 + 로그 파일 닫기 - 백그라운드에서 안전하게 수행
+            cleanupNativeResources("onDestroy")
 
             usbCameraManager.cleanup()
             globalManager.cleanup()
-
-            // libgphoto2 로그 파일 닫기도 백그라운드에서 수행
-            cleanupScope.launch {
-                try {
-                    com.inik.camcon.CameraNative.closeLogFile()
-                    LogcatManager.d(TAG, "libgphoto2 로그 파일 닫기 완료")
-                } catch (e: Exception) {
-                    LogcatManager.w(TAG, "로그 파일 닫기 중 오류", e)
-                }
-            }
         } catch (e: Exception) {
             LogcatManager.w(TAG, "매니저 정리 중 오류", e)
         }
