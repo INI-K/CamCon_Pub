@@ -1,8 +1,6 @@
 package com.inik.camcon.data.datasource.nativesource
 
 import android.content.Context
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import com.inik.camcon.CameraNative
 import com.inik.camcon.domain.model.Camera
@@ -13,6 +11,8 @@ import com.inik.camcon.domain.model.PtpDeviceInfo
 import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.domain.manager.CameraStateObserver
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -32,7 +32,8 @@ import javax.inject.Singleton
 class NativeCameraDataSource @Inject constructor(
     @ApplicationContext private val context: Context,
     private val cameraStateObserver: CameraStateObserver,
-    @ApplicationScope private val scope: CoroutineScope
+    @ApplicationScope private val scope: CoroutineScope,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
     companion object {
         private const val TAG = "네이티브_카메라_데이터소스"
@@ -51,8 +52,8 @@ class NativeCameraDataSource @Inject constructor(
     private val isStoppingEventListener = AtomicBoolean(false)
     private val isClosingCamera = AtomicBoolean(false)
 
-    // 상태 리셋을 위한 Handler
-    private val mainHandler = Handler(Looper.getMainLooper())
+    // closeCamera 직렬화를 위한 Mutex
+    private val closeCameraMutex = Mutex()
 
     // 카메라 이벤트 리스닝 중지
     fun stopListenCameraEvents() {
@@ -69,7 +70,7 @@ class NativeCameraDataSource @Inject constructor(
             Log.e(TAG, "카메라 이벤트 리스닝 중지 중 오류", e)
         } finally {
             // 1초 후 상태 리셋
-            scope.launch(Dispatchers.IO) {
+            scope.launch(ioDispatcher) {
                 delay(1000)
                 isStoppingEventListener.set(false)
                 Log.d(TAG, "이벤트 리스너 중지 상태 리셋")
@@ -334,25 +335,26 @@ class NativeCameraDataSource @Inject constructor(
         )
     }
 
-    // 카메라 종료
-    fun closeCamera() {
-        // 중복 호출 방지
-        if (!isClosingCamera.compareAndSet(false, true)) {
-            Log.d(TAG, "카메라 종료가 이미 진행 중 - 중복 방지")
-            return
-        }
+    // 카메라 종료 (suspend — 완료 대기 보장)
+    suspend fun closeCamera() {
+        closeCameraMutex.withLock {
+            // 중복 호출 방지
+            if (!isClosingCamera.compareAndSet(false, true)) {
+                Log.d(TAG, "카메라 종료가 이미 진행 중 - 중복 방지")
+                return
+            }
 
-        // 백그라운드 코루틴에서 카메라 종료 수행
-        scope.launch(Dispatchers.IO) {
             try {
-                Log.d(TAG, "카메라 종료")
-                CameraNative.closeCamera()
-                Log.d(TAG, "카메라 종료 완료")
+                withContext(ioDispatcher) {
+                    Log.d(TAG, "카메라 종료")
+                    CameraNative.closeCamera()
+                    Log.d(TAG, "카메라 종료 완료")
+                }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "카메라 종료 중 오류", e)
             } finally {
-                // 2초 후 상태 리셋
-                delay(2000)
                 isClosingCamera.set(false)
                 Log.d(TAG, "카메라 종료 상태 리셋")
             }
@@ -425,19 +427,6 @@ class NativeCameraDataSource @Inject constructor(
         return try {
             Log.d(TAG, "=== 페이징 카메라 사진 목록 가져오기 시작 (페이지: $page, 크기: $pageSize) ===")
 
-            // 카메라 이벤트 리스너 일시 중지 (리소스 경합 방지)
-            var needsListenerRestart = false
-            try {
-                Log.d(TAG, "카메라 이벤트 리스너 일시 중지")
-                CameraNative.stopListenCameraEvents()
-                needsListenerRestart = true
-                // 리스너가 완전히 중지될 때까지 충분히 대기
-                delay(1000)
-                Log.d(TAG, "이벤트 리스너 중지 대기 완료")
-            } catch (e: Exception) {
-                Log.w(TAG, "이벤트 리스너 중지 실패 (이미 중지되었을 수 있음)", e)
-            }
-
             // 카메라 초기화 상태 확인 (타임아웃 없음)
             val isInitialized = try {
                 Log.d(TAG, "카메라 초기화 상태 확인 시작")
@@ -476,11 +465,6 @@ class NativeCameraDataSource @Inject constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "페이징 네이티브 메서드 호출 중 예외 발생", e)
                 null
-            }
-
-            // 이벤트 리스너 재시작은 Repository에서 처리하도록 함
-            if (needsListenerRestart) {
-                Log.d(TAG, "이벤트 리스너 재시작은 Repository에서 처리됩니다")
             }
 
             Log.d(TAG, "카메라 파일 목록 JSON: $photoListJson")
@@ -576,6 +560,8 @@ class NativeCameraDataSource @Inject constructor(
                 hasNext = hasNext
             )
 
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "페이징 카메라 사진 목록 가져오기 실패", e)
             PaginatedCameraPhotos(

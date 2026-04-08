@@ -47,8 +47,11 @@ import com.inik.camcon.presentation.theme.SurfaceElevated
 import com.inik.camcon.presentation.theme.TextMuted
 import com.inik.camcon.presentation.theme.TextPrimary
 import com.inik.camcon.presentation.theme.TextSecondary
+import com.inik.camcon.presentation.viewmodel.CameraConnectionState
+import com.inik.camcon.presentation.viewmodel.CameraSettingsState
 import com.inik.camcon.presentation.viewmodel.CameraUiState
-import com.inik.camcon.data.datasource.local.ThemeMode
+import com.inik.camcon.domain.model.CameraCapabilities
+import com.inik.camcon.domain.model.ThemeMode
 
 /**
  * 단순화된 상단 컨트롤 바
@@ -158,30 +161,32 @@ private fun TopControlsConnectedPreview() {
         Box(modifier = Modifier.background(Background)) {
             TopControlsBar(
                 uiState = CameraUiState(
-                    isConnected = true,
-                    cameraCapabilities = com.inik.camcon.domain.model.CameraCapabilities(
-                        model = "Canon EOS R5",
-                        canCapturePhoto = true,
-                        canCaptureVideo = true,
-                        canLiveView = true,
-                        canTriggerCapture = true,
-                        supportsAutofocus = true,
-                        supportsManualFocus = true,
-                        supportsFocusPoint = true,
-                        supportsBurstMode = true,
-                        supportsTimelapse = true,
-                        supportsBracketing = true,
-                        supportsBulbMode = true,
-                        canDownloadFiles = true,
-                        canDeleteFiles = true,
-                        canPreviewFiles = true,
-                        availableIsoSettings = emptyList(),
-                        availableShutterSpeeds = emptyList(),
-                        availableApertures = emptyList(),
-                        availableWhiteBalanceSettings = emptyList(),
-                        supportsRemoteControl = true,
-                        supportsConfigChange = true,
-                        batteryLevel = 85
+                    connection = CameraConnectionState(isConnected = true),
+                    settings = CameraSettingsState(
+                        cameraCapabilities = CameraCapabilities(
+                            model = "Canon EOS R5",
+                            canCapturePhoto = true,
+                            canCaptureVideo = true,
+                            canLiveView = true,
+                            canTriggerCapture = true,
+                            supportsAutofocus = true,
+                            supportsManualFocus = true,
+                            supportsFocusPoint = true,
+                            supportsBurstMode = true,
+                            supportsTimelapse = true,
+                            supportsBracketing = true,
+                            supportsBulbMode = true,
+                            canDownloadFiles = true,
+                            canDeleteFiles = true,
+                            canPreviewFiles = true,
+                            availableIsoSettings = emptyList(),
+                            availableShutterSpeeds = emptyList(),
+                            availableApertures = emptyList(),
+                            availableWhiteBalanceSettings = emptyList(),
+                            supportsRemoteControl = true,
+                            supportsConfigChange = true,
+                            batteryLevel = 85
+                        )
                     )
                 ),
                 cameraFeed = emptyList(),
@@ -197,7 +202,7 @@ private fun TopControlsDisconnectedPreview() {
     CamConTheme(themeMode = ThemeMode.DARK) {
         Box(modifier = Modifier.background(Background)) {
             TopControlsBar(
-                uiState = CameraUiState(isConnected = false),
+                uiState = CameraUiState(),
                 cameraFeed = emptyList(),
                 onSettingsClick = { }
             )

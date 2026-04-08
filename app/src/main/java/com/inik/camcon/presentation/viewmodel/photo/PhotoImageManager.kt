@@ -7,10 +7,12 @@ import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.usecase.camera.GetCameraThumbnailUseCase
+import com.inik.camcon.di.ApplicationScope
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,12 +31,19 @@ import javax.inject.Singleton
 @Singleton
 class PhotoImageManager @Inject constructor(
     private val cameraRepository: CameraRepository,
-    private val getCameraThumbnailUseCase: GetCameraThumbnailUseCase
+    private val getCameraThumbnailUseCase: GetCameraThumbnailUseCase,
+    @ApplicationScope private val appScope: CoroutineScope
 ) {
 
     companion object {
         private const val TAG = "사진이미지매니저"
     }
+
+    // 앱 scope의 자식 scope — cancelChildren해도 앱 scope에 영향 없음
+    private var managerScope = createManagerScope()
+
+    private fun createManagerScope(): CoroutineScope =
+        CoroutineScope(appScope.coroutineContext + SupervisorJob(appScope.coroutineContext.job))
 
     // 썸네일 캐시
     private val _thumbnailCache = MutableStateFlow<Map<String, ByteArray>>(emptyMap())
@@ -56,8 +65,6 @@ class PhotoImageManager @Inject constructor(
     private val _exifCache = MutableStateFlow<Map<String, String>>(emptyMap())
     val exifCache: StateFlow<Map<String, String>> = _exifCache.asStateFlow()
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
     // 작업 취소를 위한 플래그
     private var isManagerActive = true
 
@@ -73,7 +80,7 @@ class PhotoImageManager @Inject constructor(
         Log.d(TAG, "🔍 호출 스택:\n$stackTrace")
         Log.d(TAG, "=== 썸네일 로딩 시작: ${photos.size}개 사진 ===")
 
-        scope.launch {
+        managerScope.launch {
             if (!isManagerActive) {
                 Log.d(TAG, "⛔ 썸네일 로딩 중단됨 (매니저 비활성)")
                 return@launch
@@ -212,6 +219,8 @@ class PhotoImageManager @Inject constructor(
                             }
                         }
                     )
+                } catch (exception: CancellationException) {
+                    throw exception
                 } catch (exception: Exception) {
                     Log.e(TAG, "💥 썸네일 로딩 중 예외: ${photo.name}", exception)
                     if (isManagerActive) {
@@ -251,7 +260,7 @@ class PhotoImageManager @Inject constructor(
             _downloadingImages.value = _downloadingImages.value + photoPath
         }
 
-        scope.launch {
+        managerScope.launch {
             try {
                 Log.d(TAG, "실제 파일 다운로드 시작: $photoPath")
 
@@ -293,6 +302,8 @@ class PhotoImageManager @Inject constructor(
                 } else {
                     Log.e(TAG, "실제 파일 다운로드 실패: 데이터가 비어있음")
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "실제 파일 다운로드 중 예외", e)
             } finally {
@@ -339,6 +350,8 @@ class PhotoImageManager @Inject constructor(
                 tempFile.delete()
                 resizedFile.delete()
 
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Free 티어 리사이징 처리 중 오류", e)
             }
@@ -421,6 +434,8 @@ class PhotoImageManager @Inject constructor(
                 Log.e(TAG, "❌ 메모리 부족으로 리사이즈 실패", e)
                 System.gc()
                 false
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "❌ 이미지 리사이즈 실패", e)
                 false
@@ -432,7 +447,7 @@ class PhotoImageManager @Inject constructor(
      * EXIF 정보 파싱
      */
     private fun parseExifFromImageData(photoPath: String, imageData: ByteArray) {
-        scope.launch {
+        managerScope.launch {
             try {
                 Log.d(TAG, "EXIF 파싱 시작: $photoPath")
 
@@ -494,6 +509,8 @@ class PhotoImageManager @Inject constructor(
                 } finally {
                     tempFile.delete()
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "EXIF 파싱 실패", e)
             }
@@ -625,7 +642,8 @@ class PhotoImageManager @Inject constructor(
      * 정리
      */
     fun cleanup() {
-        scope.cancel()
+        managerScope.coroutineContext.job.cancel()
+        managerScope = createManagerScope()
         isManagerActive = false
         _thumbnailCache.value = emptyMap()
         _fullImageCache.value = emptyMap()

@@ -43,7 +43,7 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.inik.camcon.R
-import com.inik.camcon.data.datasource.local.ThemeMode
+import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.presentation.theme.Background
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.Primary

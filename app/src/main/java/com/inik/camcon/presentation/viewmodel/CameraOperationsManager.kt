@@ -9,13 +9,14 @@ import com.inik.camcon.domain.usecase.camera.StartLiveViewUseCase
 import com.inik.camcon.domain.usecase.camera.StartTimelapseUseCase
 import com.inik.camcon.domain.usecase.camera.StopLiveViewUseCase
 import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
+import com.inik.camcon.di.ApplicationScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -30,14 +31,19 @@ class CameraOperationsManager @Inject constructor(
     private val startLiveViewUseCase: StartLiveViewUseCase,
     private val stopLiveViewUseCase: StopLiveViewUseCase,
     private val performAutoFocusUseCase: PerformAutoFocusUseCase,
-    private val startTimelapseUseCase: StartTimelapseUseCase
+    private val startTimelapseUseCase: StartTimelapseUseCase,
+    @ApplicationScope private val appScope: CoroutineScope
 ) {
 
     companion object {
         private const val TAG = "카메라작업매니저"
     }
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    // 앱 scope의 자식 scope — cleanup해도 앱 scope에 영향 없음
+    private var managerScope = createManagerScope()
+
+    private fun createManagerScope(): CoroutineScope =
+        CoroutineScope(appScope.coroutineContext + SupervisorJob(appScope.coroutineContext.job))
 
     // 작업 관리
     private var liveViewJob: Job? = null
@@ -50,11 +56,24 @@ class CameraOperationsManager @Inject constructor(
         shootingMode: ShootingMode,
         uiStateManager: CameraUiStateManager
     ) {
-        scope.launch {
+        managerScope.launch {
             try {
                 Log.d(TAG, "사진 촬영 요청 시작")
                 uiStateManager.updateCapturingState(true)
                 uiStateManager.clearError()
+
+                // 라이브뷰 활성 상태면 Job 취소 + UI 상태 업데이트
+                // 네이티브 라이브뷰 중지는 capturePhotoAsync() 내부에서 동기적으로 처리
+                if (isLiveViewActive()) {
+                    Log.d(TAG, "라이브뷰 활성 상태 — 촬영 전 라이브뷰 Job 취소")
+                    liveViewJob?.cancel()
+                    liveViewJob = null
+                    uiStateManager.updateLiveViewState(
+                        isActive = false,
+                        isLoading = false,
+                        frame = null
+                    )
+                }
 
                 capturePhotoUseCase(shootingMode)
                     .onSuccess { photo ->
@@ -66,6 +85,8 @@ class CameraOperationsManager @Inject constructor(
                     }
 
                 uiStateManager.updateCapturingState(false)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "사진 촬영 중 예외 발생", e)
                 uiStateManager.updateCapturingState(false)
@@ -89,7 +110,7 @@ class CameraOperationsManager @Inject constructor(
 
         Log.d(TAG, "라이브뷰 시작 요청")
         Log.d(TAG, "  isConnected=$isConnected, canLiveView=${cameraCapabilities?.canLiveView}, capabilities=${cameraCapabilities != null}")
-        liveViewJob = scope.launch {
+        liveViewJob = managerScope.launch {
             try {
                 Log.d(TAG, "라이브뷰 코루틴 시작됨")
                 if (cameraCapabilities != null && !cameraCapabilities.canLiveView) {
@@ -115,7 +136,6 @@ class CameraOperationsManager @Inject constructor(
                         uiStateManager.setError("라이브뷰 시작 실패: ${error.message}")
                     }
                     .collect { frame ->
-                        Log.d(TAG, "라이브뷰 프레임 수신: ${frame.data.size} bytes")
                         uiStateManager.updateLiveViewState(
                             isActive = true,
                             isLoading = false,
@@ -123,6 +143,8 @@ class CameraOperationsManager @Inject constructor(
                         )
                         uiStateManager.clearError()
                     }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "라이브뷰 시작 중 예외 발생", e)
                 uiStateManager.updateLiveViewState(
@@ -142,7 +164,7 @@ class CameraOperationsManager @Inject constructor(
         liveViewJob?.cancel()
         liveViewJob = null
 
-        scope.launch {
+        managerScope.launch {
             try {
                 stopLiveViewUseCase()
                 uiStateManager.updateLiveViewState(
@@ -151,6 +173,8 @@ class CameraOperationsManager @Inject constructor(
                     frame = null
                 )
                 Log.d(TAG, "라이브뷰 중지 성공")
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "라이브뷰 중지 중 예외 발생", e)
                 uiStateManager.updateLiveViewState(
@@ -179,7 +203,7 @@ class CameraOperationsManager @Inject constructor(
             duration = (interval * totalShots) / 60
         )
 
-        timelapseJob = scope.launch {
+        timelapseJob = managerScope.launch {
             try {
                 uiStateManager.updateCapturingState(true)
                 uiStateManager.setShootingMode(ShootingMode.TIMELAPSE)
@@ -195,6 +219,8 @@ class CameraOperationsManager @Inject constructor(
                     }
 
                 uiStateManager.updateCapturingState(false)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "타임랩스 중 예외 발생", e)
                 uiStateManager.updateCapturingState(false)
@@ -216,7 +242,7 @@ class CameraOperationsManager @Inject constructor(
      * 자동초점
      */
     fun performAutoFocus(uiStateManager: CameraUiStateManager) {
-        scope.launch {
+        managerScope.launch {
             try {
                 uiStateManager.updateFocusingState(true)
 
@@ -233,6 +259,8 @@ class CameraOperationsManager @Inject constructor(
                         uiStateManager.updateFocusingState(false)
                         uiStateManager.setError("자동초점 실패: ${error.message ?: "알 수 없는 오류"}")
                     }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "자동초점 중 예외 발생", e)
                 uiStateManager.updateFocusingState(false)
@@ -263,5 +291,7 @@ class CameraOperationsManager @Inject constructor(
         timelapseJob?.cancel()
         liveViewJob = null
         timelapseJob = null
+        managerScope.coroutineContext.job.cancel()
+        managerScope = createManagerScope()
     }
 }
