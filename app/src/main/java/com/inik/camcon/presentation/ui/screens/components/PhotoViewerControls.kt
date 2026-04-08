@@ -40,6 +40,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.inik.camcon.R
+import com.inik.camcon.presentation.theme.Background
+import com.inik.camcon.presentation.theme.TextPrimary
 import com.inik.camcon.domain.model.CameraPhoto
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -62,7 +64,7 @@ fun PhotoViewerTopControls(
             Icon(
                 Icons.Default.Info,
                 contentDescription = context.getString(R.string.photo_details),
-                tint = Color.White,
+                tint = TextPrimary,
                 modifier = Modifier.size(28.dp)
             )
         }
@@ -73,7 +75,7 @@ fun PhotoViewerTopControls(
             Icon(
                 Icons.Default.Close,
                 contentDescription = context.getString(R.string.close),
-                tint = Color.White,
+                tint = TextPrimary,
                 modifier = Modifier.size(28.dp)
             )
         }
@@ -268,7 +270,7 @@ private fun PhotoViewerTopControlsPreview() {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color.Black.copy(alpha = 0.5f))
+                .background(Background.copy(alpha = 0.5f))
                 .padding(16.dp)
         ) {
             PhotoViewerTopControls(

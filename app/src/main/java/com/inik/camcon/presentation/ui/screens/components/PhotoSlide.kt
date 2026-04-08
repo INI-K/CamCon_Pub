@@ -93,14 +93,14 @@ private fun PhotoLoadError() {
         Icon(
             Icons.Default.BrokenImage,
             contentDescription = null,
-            tint = Color.White.copy(alpha = 0.6f),
+            tint = com.inik.camcon.presentation.theme.TextPrimary.copy(alpha = 0.6f),
             modifier = Modifier.size(64.dp)
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = context.getString(R.string.image_load_failed),
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.White.copy(alpha = 0.6f)
+            color = com.inik.camcon.presentation.theme.TextPrimary.copy(alpha = 0.6f)
         )
     }
 }

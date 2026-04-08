@@ -16,6 +16,9 @@ import com.inik.camcon.data.repository.CameraFocusRepositoryImpl
 import com.inik.camcon.data.repository.CameraMockRepositoryImpl
 import com.inik.camcon.data.repository.CameraRepositoryImpl
 import com.inik.camcon.data.repository.CameraStreamingRepositoryImpl
+import com.inik.camcon.data.repository.PtpipDebugRepositoryImpl
+import com.inik.camcon.data.repository.PtpipPreferencesRepositoryImpl
+import com.inik.camcon.data.repository.PtpipRepositoryImpl
 import com.inik.camcon.data.repository.SubscriptionRepositoryImpl
 import com.inik.camcon.data.repository.ColorTransferRepositoryImpl
 import com.inik.camcon.data.repository.UsbDeviceRepositoryImpl
@@ -35,6 +38,9 @@ import com.inik.camcon.domain.repository.CameraDiagnosticsRepository
 import com.inik.camcon.domain.repository.CameraFileRepository
 import com.inik.camcon.domain.repository.CameraFocusRepository
 import com.inik.camcon.domain.repository.CameraMockRepository
+import com.inik.camcon.domain.repository.PtpipDebugRepository
+import com.inik.camcon.domain.repository.PtpipPreferencesRepository
+import com.inik.camcon.domain.repository.PtpipRepository
 import com.inik.camcon.domain.repository.CameraStreamingRepository
 import com.inik.camcon.domain.repository.ColorTransferRepository
 import com.inik.camcon.domain.repository.CameraRepository
@@ -170,4 +176,22 @@ abstract class RepositoryModule {
     abstract fun bindMockRepository(
         impl: CameraMockRepositoryImpl
     ): CameraMockRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPtpipRepository(
+        impl: PtpipRepositoryImpl
+    ): PtpipRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPtpipPreferencesRepository(
+        impl: PtpipPreferencesRepositoryImpl
+    ): PtpipPreferencesRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPtpipDebugRepository(
+        impl: PtpipDebugRepositoryImpl
+    ): PtpipDebugRepository
 }

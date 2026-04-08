@@ -2,22 +2,22 @@ package com.inik.camcon.presentation.viewmodel
 
 import android.content.Context
 import android.util.Log
-import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
-import com.inik.camcon.data.datasource.usb.UsbCameraManager
-import com.inik.camcon.data.repository.managers.CameraEventManager
+import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.repository.CameraRepository
+import com.inik.camcon.domain.repository.UsbDeviceRepository
 import com.inik.camcon.domain.usecase.camera.ConnectCameraUseCase
 import com.inik.camcon.domain.usecase.camera.DisconnectCameraUseCase
 import com.inik.camcon.domain.usecase.usb.RefreshUsbDevicesUseCase
 import com.inik.camcon.domain.usecase.usb.RequestUsbPermissionUseCase
 import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
 import com.inik.camcon.utils.Constants
+import com.inik.camcon.di.ApplicationScope
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,16 +42,20 @@ class CameraConnectionManager @Inject constructor(
     private val disconnectCameraUseCase: DisconnectCameraUseCase,
     private val refreshUsbDevicesUseCase: RefreshUsbDevicesUseCase,
     private val requestUsbPermissionUseCase: RequestUsbPermissionUseCase,
-    private val usbCameraManager: UsbCameraManager,
-    private val eventManager: CameraEventManager,
-    private val appPreferencesDataSource: AppPreferencesDataSource
+    private val usbDeviceRepository: UsbDeviceRepository,
+    private val appSettingsRepository: AppSettingsRepository,
+    @ApplicationScope private val appScope: CoroutineScope
 ) {
 
     companion object {
         private const val TAG = "카메라연결매니저"
     }
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    // 앱 scope의 자식 scope — cancelChildren해도 앱 scope에 영향 없음
+    private var managerScope = createManagerScope()
+
+    private fun createManagerScope(): CoroutineScope =
+        CoroutineScope(appScope.coroutineContext + SupervisorJob(appScope.coroutineContext.job))
 
     // 내부 상태
     private val _isAutoConnecting = MutableStateFlow(false)
@@ -67,14 +71,14 @@ class CameraConnectionManager @Inject constructor(
         uiStateManager: CameraUiStateManager
     ) {
         // USB 디바이스 상태 관찰
-        usbCameraManager.connectedDevices
-            .onEach { devices ->
+        usbDeviceRepository.connectedDeviceCount
+            .onEach { deviceCount ->
                 uiStateManager.updateUsbDeviceState(
-                    devices.size,
-                    usbCameraManager.hasUsbPermission.value
+                    deviceCount,
+                    usbDeviceRepository.hasUsbPermission.value
                 )
 
-                if (devices.isNotEmpty() && !usbCameraManager.hasUsbPermission.value && !_isAutoConnecting.value) {
+                if (deviceCount > 0 && !usbDeviceRepository.hasUsbPermission.value && !_isAutoConnecting.value) {
                     Log.d(TAG, "USB 디바이스 감지됨 - 권한 자동 요청")
                     requestUsbPermission()
                 }
@@ -82,9 +86,9 @@ class CameraConnectionManager @Inject constructor(
             .launchIn(scope)
 
         // USB 권한 상태 관찰
-        usbCameraManager.hasUsbPermission
+        usbDeviceRepository.hasUsbPermission
             .onEach { hasPermission ->
-                val deviceCount = usbCameraManager.connectedDevices.value.size
+                val deviceCount = usbDeviceRepository.connectedDeviceCount.value
                 uiStateManager.updateUsbDeviceState(deviceCount, hasPermission)
 
                 if (hasPermission && deviceCount > 0 && !_isAutoConnecting.value) {
@@ -96,10 +100,10 @@ class CameraConnectionManager @Inject constructor(
 
         // 통합 연결 로직
         combine(
-            usbCameraManager.connectedDevices,
-            usbCameraManager.hasUsbPermission
-        ) { devices, hasPermission ->
-            Pair(devices.size, hasPermission)
+            usbDeviceRepository.connectedDeviceCount,
+            usbDeviceRepository.hasUsbPermission
+        ) { deviceCount, hasPermission ->
+            Pair(deviceCount, hasPermission)
         }.onEach { (deviceCount, hasPermission) ->
             if (deviceCount > 0 && hasPermission && !_isAutoConnecting.value) {
                 Log.d(TAG, "USB 디바이스 및 권한 확인 완료 - 자동 연결 시작")
@@ -119,7 +123,7 @@ class CameraConnectionManager @Inject constructor(
 
         _isAutoConnecting.value = true
 
-        connectionJob = scope.launch {
+        connectionJob = managerScope.launch {
             try {
                 Log.d(TAG, "자동 카메라 연결 시작")
                 uiStateManager.updateUsbInitialization(true, "USB 카메라 초기화 중...")
@@ -147,6 +151,8 @@ class CameraConnectionManager @Inject constructor(
                             uiStateManager.showRestartDialog(true)
                         }
                     }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "자동 카메라 연결 중 예외 발생", e)
                 uiStateManager.updateConnectionState(false, e.message)
@@ -162,11 +168,11 @@ class CameraConnectionManager @Inject constructor(
      * 자동 연결 완료 후 이벤트 리스너 자동 시작 시도
      */
     private fun tryAutoStartEventListener(uiStateManager: CameraUiStateManager) {
-        scope.launch {
+        managerScope.launch {
             try {
                 // 자동 시작 설정 확인
                 val isAutoStartEnabled =
-                    appPreferencesDataSource.isAutoStartEventListenerEnabled.first()
+                    appSettingsRepository.isAutoStartEventListenerEnabled.first()
 
                 if (!isAutoStartEnabled) {
                     Log.d(TAG, "이벤트 리스너 자동 시작 설정이 비활성화됨")
@@ -180,7 +186,7 @@ class CameraConnectionManager @Inject constructor(
 
                 // 연결 상태 재확인 - USB 또는 PTPIP 연결 확인
                 val isConnected = uiStateManager.uiState.value.isConnected
-                val isNativeCameraConnected = usbCameraManager.isNativeCameraConnected.value
+                val isNativeCameraConnected = usbDeviceRepository.isNativeCameraConnected.value
                 val isPtpipConnected = uiStateManager.uiState.value.isPtpipConnected
 
                 Log.d(TAG, "연결 상태 재확인:")
@@ -195,7 +201,7 @@ class CameraConnectionManager @Inject constructor(
                 }
 
                 // 이미 실행 중인지 확인
-                if (eventManager.isEventListenerActive.value) {
+                if (cameraRepository.isEventListenerActive().first()) {
                     Log.d(TAG, "이벤트 리스너가 이미 활성화되어 있음")
                     return@launch
                 }
@@ -216,6 +222,8 @@ class CameraConnectionManager @Inject constructor(
                 }.onFailure { error ->
                     Log.e(TAG, "자동 연결 완료 후 이벤트 리스너 시작 실패", error)
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "이벤트 리스너 자동 시작 중 예외", e)
             }
@@ -226,7 +234,7 @@ class CameraConnectionManager @Inject constructor(
      * 수동 카메라 연결
      */
     fun connectCamera(cameraId: String, uiStateManager: CameraUiStateManager) {
-        connectionJob = scope.launch {
+        connectionJob = managerScope.launch {
             try {
                 uiStateManager.updateLoadingState(true)
                 uiStateManager.clearError()
@@ -249,6 +257,8 @@ class CameraConnectionManager @Inject constructor(
                     }
 
                 uiStateManager.updateLoadingState(false)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "카메라 연결 중 예외 발생", e)
                 uiStateManager.updateLoadingState(false)
@@ -265,11 +275,13 @@ class CameraConnectionManager @Inject constructor(
         Log.d(TAG, "카메라 연결 해제 요청")
         connectionJob?.cancel()
 
-        scope.launch {
+        managerScope.launch {
             try {
                 disconnectCameraUseCase()
                 uiStateManager.onCameraDisconnected()
                 Log.i(TAG, "카메라 연결 해제 성공")
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "카메라 연결 해제 실패", e)
                 uiStateManager.setError("카메라 연결 해제 실패: ${e.message}")
@@ -281,13 +293,13 @@ class CameraConnectionManager @Inject constructor(
      * USB 디바이스 새로고침
      */
     fun refreshUsbDevices(uiStateManager: CameraUiStateManager) {
-        scope.launch {
+        managerScope.launch {
             try {
                 Log.d(TAG, "USB 디바이스 새로고침 시작")
 
                 val devices = refreshUsbDevicesUseCase()
-                val hasPermission = usbCameraManager.hasUsbPermission.value
-                val isConnected = usbCameraManager.isNativeCameraConnected.value
+                val hasPermission = usbDeviceRepository.hasUsbPermission.value
+                val isConnected = usbDeviceRepository.isNativeCameraConnected.value
 
                 uiStateManager.updateUsbDeviceState(devices.size, hasPermission)
 
@@ -336,6 +348,8 @@ class CameraConnectionManager @Inject constructor(
                     Log.d(TAG, "USB 디바이스가 감지되지 않음")
                     uiStateManager.setError("USB 카메라가 감지되지 않았습니다")
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "USB 디바이스 새로고침 실패", e)
                 uiStateManager.setError("USB 디바이스 확인 실패: ${e.message}")
@@ -347,7 +361,7 @@ class CameraConnectionManager @Inject constructor(
      * USB 권한 요청
      */
     fun requestUsbPermission(uiStateManager: CameraUiStateManager? = null) {
-        scope.launch {
+        managerScope.launch {
             try {
                 uiStateManager?.updateUsbInitialization(true, "USB 권한 요청 중...")
 
@@ -361,6 +375,8 @@ class CameraConnectionManager @Inject constructor(
                     uiStateManager?.setError("USB 카메라가 감지되지 않았습니다")
                     uiStateManager?.updateUsbInitialization(false)
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "USB 권한 요청 실패", e)
                 uiStateManager?.setError("USB 권한 요청 실패: ${e.message}")
@@ -373,10 +389,12 @@ class CameraConnectionManager @Inject constructor(
      * 카메라 전원 상태 확인 및 테스트
      */
     private fun checkCameraPowerStateAndTest() {
-        scope.launch {
+        managerScope.launch {
             try {
                 Log.d(TAG, "자동 연결 완료 후 카메라 전원 상태 확인 중...")
-                usbCameraManager.checkPowerStateAndTest()
+                usbDeviceRepository.checkPowerStateAndTest()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "카메라 전원 상태 확인 중 오류", e)
             }
@@ -387,8 +405,9 @@ class CameraConnectionManager @Inject constructor(
      * 정리
      */
     fun cleanup() {
-        scope.cancel()
-        connectionJob?.cancel()
+        managerScope.coroutineContext.job.cancel()
+        managerScope = createManagerScope()
+        connectionJob = null
         _isAutoConnecting.value = false
     }
 }

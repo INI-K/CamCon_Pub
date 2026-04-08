@@ -51,7 +51,7 @@ import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.AppVersionUiState
 import com.inik.camcon.presentation.viewmodel.AppVersionViewModel
 import com.inik.camcon.utils.LogcatManager
-import com.inik.camcon.data.datasource.local.ThemeMode
+import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import dagger.hilt.android.AndroidEntryPoint

@@ -23,7 +23,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.ui.tooling.preview.Preview
-import com.inik.camcon.data.datasource.local.ThemeMode
+import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.presentation.theme.CamConTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -41,12 +41,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.inik.camcon.R
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
 import kotlinx.coroutines.Dispatchers
@@ -137,13 +139,13 @@ fun PhotoInfoBottomSheet(
                         ) {
                             Icon(
                                 Icons.Default.ArrowBack,
-                                contentDescription = "뒤로가기",
+                                contentDescription = stringResource(R.string.cd_back),
                                 tint = MaterialTheme.colorScheme.onSurface
                             )
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "상세정보",
+                            text = stringResource(R.string.photo_info_detail),
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurface
@@ -151,7 +153,7 @@ fun PhotoInfoBottomSheet(
                     }
 
                     Text(
-                        text = "편집",
+                        text = stringResource(R.string.photo_info_edit),
                         fontSize = 16.sp,
                         color = MaterialTheme.colorScheme.onSurface
                     )
