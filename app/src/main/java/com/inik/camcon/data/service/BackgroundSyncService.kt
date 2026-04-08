@@ -15,12 +15,12 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.inik.camcon.R
 import com.inik.camcon.domain.repository.CameraRepository
-import com.inik.camcon.presentation.ui.MainActivity
 import com.inik.camcon.utils.LogcatManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -79,7 +79,7 @@ class BackgroundSyncService : Service() {
         super.onCreate()
         LogcatManager.d(TAG, "BackgroundSyncService 생성됨 - 백그라운드 이벤트 리스너 관리 포함")
 
-        serviceScope = CoroutineScope(Dispatchers.IO + Job())
+        serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         createNotificationChannel()
 
         // Wake Lock 획득 (화면이 꺼져도 이벤트 리스너 유지)
@@ -237,7 +237,11 @@ class BackgroundSyncService : Service() {
      * Foreground Service 알림 생성
      */
     private fun createNotification(): Notification {
-        val intent = Intent(this, MainActivity::class.java)
+        val intent = packageManager.getLaunchIntentForPackage(packageName)
+            ?: Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                setPackage(packageName)
+            }
         val pendingIntent = PendingIntent.getActivity(
             this, 0, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -380,7 +384,11 @@ class BackgroundSyncService : Service() {
         try {
             val notificationManager =
                 getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            val intent = Intent(this, MainActivity::class.java)
+            val intent = packageManager.getLaunchIntentForPackage(packageName)
+            ?: Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                setPackage(packageName)
+            }
             val pendingIntent = PendingIntent.getActivity(
                 this, 0, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE

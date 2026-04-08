@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -84,6 +85,9 @@ class CameraConnectionManager @Inject constructor(
 
                     val connectionResult = connectCameraInternal()
                     connectionResult
+                } catch (e: CancellationException) {
+                    _isInitializing.value = false
+                    throw e
                 } catch (e: Exception) {
                     Log.e("카메라연결매니저", "카메라 연결 중 예외 발생", e)
                     // 예외 발생 시에만 초기화 상태 해제
@@ -143,10 +147,8 @@ class CameraConnectionManager @Inject constructor(
         val result = nativeDataSource.initCamera()
         return if (result.contains("success", ignoreCase = true)) {
             Log.d("카메라연결매니저", "일반 카메라 초기화 성공")
-            withContext(Dispatchers.Main) {
-                _isConnected.value = true
-                _isInitializing.value = false  // 초기화 완료 시 상태 해제
-            }
+            _isConnected.value = true
+            _isInitializing.value = false  // 초기화 완료 시 상태 해제
             Log.d("카메라연결매니저", "카메라 초기화 상태 변경: false (일반 카메라 연결 성공)")
             updateCameraList()
             Result.success(true)
@@ -174,10 +176,8 @@ class CameraConnectionManager @Inject constructor(
         return when {
             result == 0 -> {
                 Log.d("카메라연결매니저", "네이티브 카메라 초기화 성공")
-                withContext(Dispatchers.Main) {
-                    _isConnected.value = true
-                    _isInitializing.value = false  // 초기화 완료 시 상태 해제
-                }
+                _isConnected.value = true
+                _isInitializing.value = false  // 초기화 완료 시 상태 해제
                 Log.d("카메라연결매니저", "카메라 초기화 상태 변경: false (연결 성공)")
                 updateCameraList()
                 Result.success(true)
@@ -186,10 +186,8 @@ class CameraConnectionManager @Inject constructor(
             result == -52 -> {
                 // GP_ERROR_IO_USB_FIND - USB 포트에서 카메라를 찾을 수 없음
                 Log.e("카메라연결매니저", "USB 포트에서 카메라를 찾을 수 없음: $result")
-                withContext(Dispatchers.Main) {
-                    _isConnected.value = false
-                    _isInitializing.value = false
-                }
+                _isConnected.value = false
+                _isInitializing.value = false
                 Log.d("카메라연결매니저", "카메라 초기화 상태 변경: false (USB 카메라 인식 실패)")
                 
                 // USB 연결은 유지되므로 재시도 가능함을 알림
@@ -245,14 +243,14 @@ class CameraConnectionManager @Inject constructor(
                 // 네이티브 카메라 연결 해제
                 nativeDataSource.closeCamera()
 
-                withContext(Dispatchers.Main) {
-                    _isConnected.value = false
-                    _isPtpipConnected.value = false
-                    _cameraFeed.value = emptyList()
-                }
+                _isConnected.value = false
+                _isPtpipConnected.value = false
+                _cameraFeed.value = emptyList()
 
                 Log.d("카메라연결매니저", "카메라 연결 해제 완료")
                 Result.success(true)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e("카메라연결매니저", "카메라 연결 해제 중 오류", e)
                 Result.failure(e)
@@ -300,16 +298,14 @@ class CameraConnectionManager @Inject constructor(
                     )
                 }
 
-                withContext(Dispatchers.Main) {
-                    _cameraFeed.value = cameras
-                }
+                _cameraFeed.value = cameras
                 Log.d("카메라연결매니저", "카메라 목록 업데이트 완료: ${cameras.size}개")
             } else {
                 Log.d("카메라연결매니저", "카메라가 감지되지 않음")
-                withContext(Dispatchers.Main) {
-                    _cameraFeed.value = emptyList()
-                }
+                _cameraFeed.value = emptyList()
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e("카메라연결매니저", "카메라 목록 업데이트 실패", e)
         }
@@ -323,9 +319,7 @@ class CameraConnectionManager @Inject constructor(
                 // 상태가 실제로 변경된 경우만 업데이트
                 val currentConnected = _isConnected.value
                 if (currentConnected != isConnected) {
-                    withContext(Dispatchers.Main) {
-                        _isConnected.value = isConnected
-                    }
+                    _isConnected.value = isConnected
                     Log.d("카메라연결매니저", "연결 상태 업데이트: $currentConnected -> $isConnected")
                 } else {
                     Log.d("카메라연결매니저", "연결 상태 이미 동일: $isConnected - 업데이트 생략")
@@ -352,10 +346,8 @@ class CameraConnectionManager @Inject constructor(
                 } else if (!isConnected && currentConnected) {
                     // 연결 상태가 true -> false로 변경된 경우에만 초기화
                     Log.d("카메라연결매니저", "연결 해제 감지 - 상태 초기화")
-                    withContext(Dispatchers.Main) {
-                        _cameraFeed.value = emptyList()
-                        _cameraCapabilities.value = null
-                    }
+                    _cameraFeed.value = emptyList()
+                    _cameraCapabilities.value = null
                 } else {
                     Log.d("카메라연결매니저", "연결 상태 변경 없음 또는 중복 - 업데이트 생략")
                 }
@@ -385,20 +377,22 @@ class CameraConnectionManager @Inject constructor(
                 Log.d("카메라연결매니저", "카메라 기능 정보 업데이트 완료: ${capabilities.model}")
                 Log.d("카메라연결매니저", "  🎯 라이브뷰 지원: ${capabilities.canLiveView}")
 
-                withContext(Dispatchers.Main) {
-                    try {
-                        _cameraCapabilities.value = capabilities
-                        Log.d("카메라연결매니저", "  📝 _cameraCapabilities 업데이트 완료")
+                try {
+                    _cameraCapabilities.value = capabilities
+                    Log.d("카메라연결매니저", "  _cameraCapabilities 업데이트 완료")
 
-                        cameraStateObserver.updateCameraCapabilities(capabilities)
-                        Log.d("카메라연결매니저", "  ✅ UiStateManager 업데이트 완료")
-                    } catch (e: Exception) {
-                        Log.e("카메라연결매니저", "  ❌ UI 업데이트 실패", e)
-                    }
+                    cameraStateObserver.updateCameraCapabilities(capabilities)
+                    Log.d("카메라연결매니저", "  UiStateManager 업데이트 완료")
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.e("카메라연결매니저", "  UI 업데이트 실패", e)
                 }
             } else {
                 Log.w("카메라연결매니저", "❌ 카메라 기능 정보가 null입니다")
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e("카메라연결매니저", "카메라 기능 정보 업데이트 실패", e)
         }

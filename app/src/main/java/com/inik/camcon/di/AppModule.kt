@@ -30,15 +30,25 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
 import javax.inject.Qualifier
 import javax.inject.Singleton
 
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 annotation class ApplicationScope
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class IoDispatcher
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class PtpDispatcher
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -51,12 +61,29 @@ object AppModule {
         CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     @Provides
+    @IoDispatcher
+    fun provideIoDispatcher(): CoroutineDispatcher = Dispatchers.IO
+
+    @Provides
+    @Singleton
+    @PtpDispatcher
+    fun providePtpDispatcher(): CoroutineDispatcher =
+        java.util.concurrent.Executors.newSingleThreadExecutor { r ->
+            Thread(r, "ptp-command-thread").apply { isDaemon = true }
+        }.asCoroutineDispatcher()
+
+    @Provides
+    @Singleton
+    fun provideNativeConfigDataSource(): com.inik.camcon.data.datasource.nativesource.NativeConfigDataSource =
+        com.inik.camcon.data.datasource.nativesource.NativeConfigDataSource(Dispatchers.IO)
+
+    @Provides
     @Singleton
     fun provideNativeCameraDataSource(
         @ApplicationContext context: Context,
         cameraStateObserver: CameraStateObserver,
         @ApplicationScope scope: CoroutineScope
-    ) = NativeCameraDataSource(context, cameraStateObserver, scope)
+    ) = NativeCameraDataSource(context, cameraStateObserver, scope, Dispatchers.IO)
 
     @Provides
     @Singleton
@@ -85,8 +112,9 @@ object AppModule {
     @Provides
     @Singleton
     fun provideCameraCapabilitiesManager(
-        cameraStateObserver: CameraStateObserver
-    ) = CameraCapabilitiesManager(cameraStateObserver)
+        cameraStateObserver: CameraStateObserver,
+        @ApplicationScope scope: CoroutineScope
+    ) = CameraCapabilitiesManager(cameraStateObserver, scope)
 
     @Provides
     @Singleton
@@ -94,8 +122,9 @@ object AppModule {
         @ApplicationContext context: Context,
         deviceDetector: UsbDeviceDetector,
         connectionManager: UsbConnectionManager,
-        capabilitiesManager: CameraCapabilitiesManager
-    ) = UsbCameraManager(context, deviceDetector, connectionManager, capabilitiesManager)
+        capabilitiesManager: CameraCapabilitiesManager,
+        @ApplicationScope scope: CoroutineScope
+    ) = UsbCameraManager(context, deviceDetector, connectionManager, capabilitiesManager, scope)
 
     @Provides
     @Singleton
@@ -168,6 +197,7 @@ object AppModule {
         usbCameraManager: UsbCameraManager,
         validateImageFormatUseCase: ValidateImageFormatUseCase,
         photoDownloadManager: PhotoDownloadManager,
+        errorHandlingManager: com.inik.camcon.domain.manager.ErrorHandlingManager,
         @ApplicationScope scope: CoroutineScope
     ): CameraEventManager =
         CameraEventManager(
@@ -175,6 +205,7 @@ object AppModule {
             usbCameraManager,
             validateImageFormatUseCase,
             photoDownloadManager,
+            errorHandlingManager,
             scope
         )
 

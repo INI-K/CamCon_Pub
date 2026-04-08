@@ -6,6 +6,7 @@ import com.inik.camcon.domain.model.CameraSettings
 import com.inik.camcon.domain.usecase.camera.GetCameraCapabilitiesUseCase
 import com.inik.camcon.domain.usecase.camera.GetCameraSettingsUseCase
 import com.inik.camcon.domain.usecase.camera.UpdateCameraSettingUseCase
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -89,6 +90,8 @@ class CameraSettingsManager @Inject constructor(
                         )
                     }
 
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 logger.e(TAG, "카메라 설정 로딩 중 예외 발생", e)
                 val errorMessage = errorHandlingManager.handleConnectionError(e)
@@ -158,6 +161,8 @@ class CameraSettingsManager @Inject constructor(
                         )
                     }
 
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 logger.e(TAG, "카메라 기능 정보 로딩 중 예외 발생", e)
                 val errorMessage = errorHandlingManager.handleConnectionError(e)
@@ -201,6 +206,8 @@ class CameraSettingsManager @Inject constructor(
                         )
                     }
 
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 logger.e(TAG, "카메라 설정 업데이트 중 예외 발생", e)
                 val errorMessage = errorHandlingManager.handleConnectionError(e)
@@ -240,6 +247,8 @@ class CameraSettingsManager @Inject constructor(
                                 failCount++
                                 logger.e(TAG, "설정 업데이트 실패: $key = $value", exception)
                             }
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (e: Exception) {
                         failCount++
                         logger.e(TAG, "설정 업데이트 중 예외: $key = $value", e)
@@ -262,6 +271,8 @@ class CameraSettingsManager @Inject constructor(
                     )
                 }
 
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 logger.e(TAG, "다중 카메라 설정 업데이트 중 예외 발생", e)
                 val errorMessage = errorHandlingManager.handleConnectionError(e)

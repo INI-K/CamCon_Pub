@@ -3,11 +3,11 @@ package com.inik.camcon.data.datasource.usb
 import android.content.Context
 import android.hardware.usb.UsbDevice
 import android.util.Log
+import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.domain.model.CameraCapabilities
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -23,9 +23,9 @@ class UsbCameraManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val deviceDetector: UsbDeviceDetector,
     private val connectionManager: UsbConnectionManager,
-    private val capabilitiesManager: CameraCapabilitiesManager
+    private val capabilitiesManager: CameraCapabilitiesManager,
+    @ApplicationScope private val scope: CoroutineScope
 ) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     // StateFlow 위임
     val connectedDevices: StateFlow<List<UsbDevice>> = deviceDetector.connectedDevices

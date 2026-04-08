@@ -2,42 +2,103 @@ package com.inik.camcon.data.network.ptpip.connection
 
 import android.util.Log
 import com.inik.camcon.data.constants.PtpipConstants
+import com.inik.camcon.domain.model.PtpSessionState
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.PtpipCameraInfo
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
  * PTPIP 연결 관리자
  * 소켓 연결, 패킷 송수신, 세션 관리 담당
+ *
+ * 동시성 보장:
+ * - [ptpTransactionMutex]로 PTP 트랜잭션 직렬화
+ * - [sessionState]로 상태머신 기반 전이 검증 (lock-free)
+ * - [sessionId]를 AtomicInteger로 관리하여 스레드 안전성 확보
  */
 @Singleton
-class PtpipConnectionManager @Inject constructor() {
+class PtpipConnectionManager @Inject constructor(
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+) {
     @Volatile private var commandSocket: Socket? = null
     @Volatile private var eventSocket: Socket? = null
-    private var sessionId: Int = 0
+    private val sessionId = AtomicInteger(0)
     private val transactionId = AtomicInteger(0)
+    private val ptpTransactionMutex = Mutex()
+    private val sessionState = AtomicReference(PtpSessionState.DISCONNECTED)
 
     companion object {
         private const val TAG = "PtpipConnectionManager"
+        private val SESSION_ID_COUNTER = AtomicInteger(1)
+        private const val MAX_PACKET_SIZE = 64 * 1024 * 1024 // 64MB
     }
+
+    // region 상태 전이 헬퍼
+
+    /**
+     * CAS 기반 상태 전이 시도. 유효하지 않은 전이는 거부한다.
+     * @return 전이 성공 여부
+     */
+    private fun tryTransition(to: PtpSessionState): Boolean {
+        while (true) {
+            val current = sessionState.get()
+            if (!PtpSessionState.isValidTransition(current, to)) {
+                Log.w(TAG, "상태 전이 거부: $current → $to")
+                return false
+            }
+            if (sessionState.compareAndSet(current, to)) {
+                Log.d(TAG, "상태 전이: $current → $to")
+                return true
+            }
+        }
+    }
+
+    /**
+     * 강제 상태 전이. 에러 복구 등 비정상 경로에서 사용한다.
+     */
+    private fun forceTransition(to: PtpSessionState) {
+        val previous = sessionState.getAndSet(to)
+        Log.w(TAG, "강제 상태 전이: $previous → $to")
+    }
+
+    // endregion
+
+    // region 세션 상태 조회
+
+    fun getSessionState(): PtpSessionState = sessionState.get()
+
+    fun isSessionReady(): Boolean = sessionState.get() == PtpSessionState.READY
+
+    // endregion
 
     /**
      * 기본 PTPIP 연결 설정
      */
-    suspend fun establishConnection(camera: PtpipCamera): Boolean = withContext(Dispatchers.IO) {
+    suspend fun establishConnection(camera: PtpipCamera): Boolean = withContext(ioDispatcher) {
+        if (!tryTransition(PtpSessionState.SOCKET_CONNECTING)) {
+            Log.e(TAG, "연결 시작 불가: 현재 상태 ${sessionState.get()}")
+            return@withContext false
+        }
+
         try {
             Log.d(TAG, "PTPIP 연결 시작: ${camera.ipAddress}:${camera.port}")
 
             // 포트 연결 확인
             if (!isPortReachable(camera.ipAddress, camera.port)) {
+                forceTransition(PtpSessionState.DISCONNECTED)
                 return@withContext false
             }
 
@@ -46,7 +107,10 @@ class PtpipConnectionManager @Inject constructor() {
             commandSocket?.connect(InetSocketAddress(camera.ipAddress, camera.port), 5000)
 
             val connectionNumber = performCommandInitialization()
-            if (connectionNumber == -1) return@withContext false
+            if (connectionNumber == -1) {
+                forceTransition(PtpSessionState.DISCONNECTED)
+                return@withContext false
+            }
 
             kotlinx.coroutines.delay(200)
 
@@ -55,15 +119,22 @@ class PtpipConnectionManager @Inject constructor() {
             eventSocket?.connect(InetSocketAddress(camera.ipAddress, camera.port), 5000)
 
             if (!performEventInitialization(connectionNumber)) {
+                forceTransition(PtpSessionState.DISCONNECTED)
                 return@withContext false
             }
 
-            Log.d(TAG, "✅ PTPIP 연결 성공")
+            if (!tryTransition(PtpSessionState.SOCKET_CONNECTED)) {
+                forceTransition(PtpSessionState.DISCONNECTED)
+                return@withContext false
+            }
+
+            Log.d(TAG, "PTPIP 연결 성공")
             return@withContext true
 
         } catch (e: Exception) {
             Log.e(TAG, "PTPIP 연결 실패: ${e.message}")
-            closeConnections()
+            closeConnections(closeSession = false)
+            forceTransition(PtpSessionState.DISCONNECTED)
             return@withContext false
         }
     }
@@ -71,136 +142,180 @@ class PtpipConnectionManager @Inject constructor() {
     /**
      * GetDeviceInfo 요청
      */
-    suspend fun getDeviceInfo(): PtpipCameraInfo? = withContext(Dispatchers.IO) {
-        try {
-            Log.d(TAG, "GetDeviceInfo 요청")
+    suspend fun getDeviceInfo(): PtpipCameraInfo? = withContext(ioDispatcher) {
+        val currentState = sessionState.get()
+        if (currentState == PtpSessionState.DISCONNECTED || currentState == PtpSessionState.CLOSING) {
+            Log.w(TAG, "GetDeviceInfo 스킵: 현재 상태 $currentState")
+            return@withContext null
+        }
 
-            val socket = commandSocket ?: run {
-                Log.e(TAG, "❌ GetDeviceInfo 실패: Command 소켓이 null")
+        ptpTransactionMutex.withLock {
+            try {
+                return@withContext withTimeout(10_000) {
+                    Log.d(TAG, "GetDeviceInfo 요청")
+
+                    val socket = commandSocket ?: run {
+                        Log.e(TAG, "GetDeviceInfo 실패: Command 소켓이 null")
+                        return@withTimeout null
+                    }
+
+                    val output = socket.getOutputStream()
+
+                    // GetDeviceInfo 패킷 생성
+                    val packet = createOperationRequest(PtpipConstants.PTP_OC_GetDeviceInfo)
+                    output.write(packet)
+                    output.flush()
+                    Log.d(TAG, "GetDeviceInfo 패킷 전송 완료")
+
+                    // 응답 처리
+                    val responses = readCompleteResponseDynamic(socket)
+                    Log.d(TAG, "GetDeviceInfo 응답 수신: ${responses.size}개 패킷")
+
+                    if (responses.isNotEmpty()) {
+                        val deviceDataPacket = responses.find { it.size > 50 }
+                        if (deviceDataPacket != null) {
+                            Log.d(TAG, "디바이스 데이터 패킷 크기: ${deviceDataPacket.size} bytes")
+                            val deviceInfo = parseDeviceInfo(deviceDataPacket)
+                            Log.i(TAG, "파싱된 카메라 정보: ${deviceInfo.manufacturer}")
+                            return@withTimeout deviceInfo
+                        } else {
+                            Log.e(TAG, "GetDeviceInfo 실패: 유효한 디바이스 데이터 패킷 없음")
+                        }
+                    } else {
+                        Log.e(TAG, "GetDeviceInfo 실패: 응답 패킷 없음")
+                    }
+
+                    return@withTimeout null
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "GetDeviceInfo 실패: ${e.message}")
                 return@withContext null
             }
-
-            val output = socket.getOutputStream()
-
-            // GetDeviceInfo 패킷 생성
-            val packet = createOperationRequest(PtpipConstants.PTP_OC_GetDeviceInfo)
-            output.write(packet)
-            output.flush()
-            Log.d(TAG, "GetDeviceInfo 패킷 전송 완료")
-
-            // 응답 처리
-            val responses = readCompleteResponse(socket)
-            Log.d(TAG, "GetDeviceInfo 응답 수신: ${responses.size}개 패킷")
-
-            if (responses.isNotEmpty()) {
-                val deviceDataPacket = responses.find { it.size > 50 }
-                if (deviceDataPacket != null) {
-                    Log.d(TAG, "디바이스 데이터 패킷 크기: ${deviceDataPacket.size} bytes")
-                    val deviceInfo = parseDeviceInfo(deviceDataPacket)
-                    Log.i(TAG, "✅ 파싱된 카메라 정보: ${deviceInfo.manufacturer}")
-                    return@withContext deviceInfo
-                } else {
-                    Log.e(TAG, "❌ GetDeviceInfo 실패: 유효한 디바이스 데이터 패킷 없음")
-                }
-            } else {
-                Log.e(TAG, "❌ GetDeviceInfo 실패: 응답 패킷 없음")
-            }
-
-            return@withContext null
-
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ GetDeviceInfo 실패: ${e.message}")
-            return@withContext null
         }
     }
 
     /**
      * OpenSession 요청
      */
-    suspend fun openSession(): Boolean = withContext(Dispatchers.IO) {
-        try {
-            Log.d(TAG, "OpenSession 요청")
-
-            val socket = commandSocket ?: return@withContext false
-            val output = socket.getOutputStream()
-
-            sessionId = (System.currentTimeMillis() % Int.MAX_VALUE).toInt()
-            val packet = createOperationRequest(PtpipConstants.PTP_OC_OpenSession, sessionId)
-
-            output.write(packet)
-            output.flush()
-
-            // 응답 대기
-            socket.soTimeout = 5000
-            val response = ByteArray(1024)
-            val bytesRead = socket.getInputStream().read(response)
-
-            if (bytesRead >= 8) {
-                val buffer = ByteBuffer.wrap(response).order(ByteOrder.LITTLE_ENDIAN)
-                buffer.position(4)
-                val responseType = buffer.int
-
-                if (responseType == PtpipConstants.PTPIP_OPERATION_RESPONSE) {
-                    Log.d(TAG, "✅ OpenSession 성공")
-                    return@withContext true
-                }
+    suspend fun openSession(): Boolean = withContext(ioDispatcher) {
+        ptpTransactionMutex.withLock {
+            if (!sessionState.compareAndSet(PtpSessionState.SOCKET_CONNECTED, PtpSessionState.OPENING)) {
+                Log.e(TAG, "OpenSession 불가: 현재 상태 ${sessionState.get()}")
+                return@withContext false
             }
 
-            return@withContext false
+            try {
+                Log.d(TAG, "OpenSession 요청")
 
-        } catch (e: Exception) {
-            Log.e(TAG, "OpenSession 실패: ${e.message}")
-            return@withContext false
+                val socket = commandSocket ?: run {
+                    sessionState.set(PtpSessionState.SOCKET_CONNECTED)
+                    return@withContext false
+                }
+                val output = socket.getOutputStream()
+
+                val newSessionId = SESSION_ID_COUNTER.incrementAndGet()
+                sessionId.set(newSessionId)
+                val packet = createOperationRequest(PtpipConstants.PTP_OC_OpenSession, newSessionId)
+
+                output.write(packet)
+                output.flush()
+
+                // 응답 대기
+                socket.soTimeout = 5000
+                val response = ByteArray(1024)
+                val bytesRead = socket.getInputStream().read(response)
+
+                if (bytesRead >= 8) {
+                    val buffer = ByteBuffer.wrap(response).order(ByteOrder.LITTLE_ENDIAN)
+                    buffer.position(4)
+                    val responseType = buffer.int
+
+                    if (responseType == PtpipConstants.PTPIP_OPERATION_RESPONSE) {
+                        sessionState.set(PtpSessionState.OPEN)
+                        Log.d(TAG, "OpenSession 성공 (sessionId=$newSessionId)")
+                        return@withContext true
+                    }
+                }
+
+                // 실패 시 롤백
+                sessionState.set(PtpSessionState.SOCKET_CONNECTED)
+                sessionId.set(0)
+                return@withContext false
+
+            } catch (e: Exception) {
+                Log.e(TAG, "OpenSession 실패: ${e.message}")
+                sessionState.set(PtpSessionState.SOCKET_CONNECTED)
+                sessionId.set(0)
+                return@withContext false
+            }
         }
     }
 
     /**
      * CloseSession 요청
      */
-    suspend fun closeSession(forceClose: Boolean = false): Boolean = withContext(Dispatchers.IO) {
+    suspend fun closeSession(forceClose: Boolean = false): Boolean = withContext(ioDispatcher) {
         // libgphoto2 호환성을 위해 forceClose가 true일 때만 실제로 세션 닫기
         if (!forceClose) {
             Log.d(TAG, "libgphoto2 호환성을 위해 세션 유지 (닫지 않음)")
             return@withContext true
         }
 
-        try {
-            Log.d(TAG, "CloseSession 요청")
+        ptpTransactionMutex.withLock {
+            val current = sessionState.get()
+            if (current != PtpSessionState.OPEN && current != PtpSessionState.READY) {
+                Log.w(TAG, "CloseSession 스킵: 현재 상태 $current")
+                return@withContext false
+            }
 
-            val socket = commandSocket ?: return@withContext false
-            val output = socket.getOutputStream()
+            if (!sessionState.compareAndSet(current, PtpSessionState.CLOSING)) {
+                Log.w(TAG, "CloseSession CAS 실패: 상태가 $current 에서 변경됨")
+                return@withContext false
+            }
 
-            val packet = createOperationRequest(PtpipConstants.PTP_OC_CloseSession)
-            output.write(packet)
-            output.flush()
+            try {
+                Log.d(TAG, "CloseSession 요청")
 
-            // 응답 대기 (타임아웃 짧게 설정)
-            socket.soTimeout = 2000
-            val response = ByteArray(1024)
-            val bytesRead = try {
-                socket.getInputStream().read(response)
+                val socket = commandSocket ?: run {
+                    forceTransition(PtpSessionState.DISCONNECTED)
+                    return@withContext false
+                }
+                val output = socket.getOutputStream()
+
+                val packet = createOperationRequest(PtpipConstants.PTP_OC_CloseSession)
+                output.write(packet)
+                output.flush()
+
+                // 응답 대기 (타임아웃 짧게 설정)
+                socket.soTimeout = 2000
+                val response = ByteArray(1024)
+                val bytesRead = try {
+                    socket.getInputStream().read(response)
+                } catch (e: Exception) {
+                    Log.d(TAG, "CloseSession 응답 대기 중 타임아웃: ${e.message}")
+                    -1
+                }
+
+                if (bytesRead > 0) {
+                    Log.d(TAG, "CloseSession 응답 수신: $bytesRead bytes")
+                }
+
+                sessionState.set(PtpSessionState.SOCKET_CONNECTED)
+                Log.d(TAG, "CloseSession 완료")
+                return@withContext true
+
             } catch (e: Exception) {
-                Log.d(TAG, "CloseSession 응답 대기 중 타임아웃: ${e.message}")
-                -1
+                Log.e(TAG, "CloseSession 실패: ${e.message}")
+                forceTransition(PtpSessionState.DISCONNECTED)
+                return@withContext false
             }
-
-            if (bytesRead > 0) {
-                Log.d(TAG, "CloseSession 응답 수신: $bytesRead bytes")
-            }
-
-            Log.d(TAG, "✅ CloseSession 완료")
-            return@withContext true
-
-        } catch (e: Exception) {
-            Log.e(TAG, "CloseSession 실패: ${e.message}")
-            return@withContext false
         }
     }
 
     /**
      * 연결 종료
      */
-    suspend fun closeConnections(closeSession: Boolean = true) = withContext(Dispatchers.IO) {
+    suspend fun closeConnections(closeSession: Boolean = true) = withContext(ioDispatcher) {
         try {
             // 세션 닫기 (필요한 경우에만)
             if (closeSession && commandSocket?.isConnected == true) {
@@ -214,8 +329,9 @@ class PtpipConnectionManager @Inject constructor() {
         } finally {
             commandSocket = null
             eventSocket = null
-            sessionId = 0
+            sessionId.set(0)
             transactionId.set(0)
+            forceTransition(PtpSessionState.DISCONNECTED)
         }
     }
 
@@ -230,7 +346,7 @@ class PtpipConnectionManager @Inject constructor() {
      * 포트 연결 가능성 확인
      */
     private suspend fun isPortReachable(ipAddress: String, port: Int): Boolean =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             return@withContext try {
                 Log.d(TAG, "포트 연결 확인: $ipAddress:$port")
                 Socket().use { socket ->
@@ -271,7 +387,7 @@ class PtpipConnectionManager @Inject constructor() {
                     // Connection Number 추출
                     buffer.position(8)
                     val connectionNumber = buffer.int
-                    Log.d(TAG, "✅ Command 초기화 성공, Connection Number: $connectionNumber")
+                    Log.d(TAG, "Command 초기화 성공, Connection Number: $connectionNumber")
                     return connectionNumber
                 }
             }
@@ -308,7 +424,7 @@ class PtpipConnectionManager @Inject constructor() {
                 val responseType = buffer.int
 
                 if (responseType == PtpipConstants.PTPIP_INIT_EVENT_ACK) {
-                    Log.d(TAG, "✅ Event 초기화 성공")
+                    Log.d(TAG, "Event 초기화 성공")
                     return true
                 }
             }
@@ -389,9 +505,13 @@ class PtpipConnectionManager @Inject constructor() {
     }
 
     /**
-     * 완전한 응답 패킷 읽기
+     * PTP 패킷 길이 기반 동적 버퍼 응답 읽기
+     *
+     * 기존 readCompleteResponse의 고정 4KB 버퍼 대신,
+     * PTP 패킷 헤더의 길이 필드를 먼저 읽고 정확한 크기만큼 데이터를 수신한다.
+     * 대용량 패킷(GetDeviceInfo 등)에서 데이터 잘림을 방지한다.
      */
-    private fun readCompleteResponse(socket: Socket): List<ByteArray> {
+    private fun readCompleteResponseDynamic(socket: Socket): List<ByteArray> {
         try {
             val input = socket.getInputStream()
             val responses = mutableListOf<ByteArray>()
@@ -400,24 +520,52 @@ class PtpipConnectionManager @Inject constructor() {
             socket.soTimeout = 2000
 
             while (!operationResponseReceived) {
-                val response = ByteArray(4096)
-                val bytesRead = try {
-                    input.read(response)
-                } catch (e: java.net.SocketTimeoutException) {
+                // 1. 패킷 길이 4바이트 읽기
+                val lengthBytes = ByteArray(4)
+                var totalLengthRead = 0
+                while (totalLengthRead < 4) {
+                    val read = try {
+                        input.read(lengthBytes, totalLengthRead, 4 - totalLengthRead)
+                    } catch (e: java.net.SocketTimeoutException) {
+                        if (totalLengthRead == 0) return responses // 첫 바이트도 못 읽었으면 정상 종료
+                        throw e // 중간에 끊기면 에러
+                    }
+                    if (read <= 0) return responses
+                    totalLengthRead += read
+                }
+
+                // 2. 패킷 길이 파싱 (Little Endian)
+                val packetLength = ByteBuffer.wrap(lengthBytes).order(ByteOrder.LITTLE_ENDIAN).int
+
+                // 3. 유효성 검사
+                if (packetLength < 8 || packetLength > MAX_PACKET_SIZE) {
+                    Log.e(TAG, "유효하지 않은 패킷 길이: $packetLength")
                     break
                 }
 
-                if (bytesRead <= 0) break
+                // 4. 나머지 데이터 정확히 읽기
+                val remainingLength = packetLength - 4
+                val remainingBytes = ByteArray(remainingLength)
+                var totalRead = 0
+                while (totalRead < remainingLength) {
+                    val read = input.read(remainingBytes, totalRead, remainingLength - totalRead)
+                    if (read <= 0) {
+                        Log.e(TAG, "패킷 읽기 중단: 예상 $remainingLength, 실제 $totalRead")
+                        break
+                    }
+                    totalRead += read
+                }
 
-                val actualResponse = response.copyOf(bytesRead)
-                responses.add(actualResponse)
+                // 5. 전체 패킷 조립
+                val fullPacket = ByteArray(packetLength)
+                System.arraycopy(lengthBytes, 0, fullPacket, 0, 4)
+                System.arraycopy(remainingBytes, 0, fullPacket, 4, totalRead)
+                responses.add(fullPacket)
 
-                // 패킷 타입 확인
-                if (bytesRead >= 8) {
-                    val buffer = ByteBuffer.wrap(actualResponse).order(ByteOrder.LITTLE_ENDIAN)
-                    buffer.position(4)
-                    val packetType = buffer.int
-
+                // 6. 패킷 타입 확인 — OPERATION_RESPONSE이면 루프 종료
+                if (totalRead >= 4) {
+                    val packetType = ByteBuffer.wrap(remainingBytes, 0, 4)
+                        .order(ByteOrder.LITTLE_ENDIAN).int
                     if (packetType == PtpipConstants.PTPIP_OPERATION_RESPONSE) {
                         operationResponseReceived = true
                     }
@@ -437,7 +585,7 @@ class PtpipConnectionManager @Inject constructor() {
     private fun parseDeviceInfo(data: ByteArray): PtpipCameraInfo {
         return try {
             Log.d(TAG, "디바이스 정보 파싱 시작: ${data.size} bytes")
-            
+
             // 전체 바이너리 데이터 분석
             val hexDump = data.take(200).chunked(16).mapIndexed { index, bytes ->
                 val offset = "%04X".format(index * 16)
@@ -454,7 +602,7 @@ class PtpipConnectionManager @Inject constructor() {
 
             // 문자열 패턴 직접 검색
             val deviceInfo = extractDeviceInfoFromStrings(data)
-            
+
             Log.d(TAG, "추출된 디바이스 정보: $deviceInfo")
             return deviceInfo
 
@@ -469,27 +617,27 @@ class PtpipConnectionManager @Inject constructor() {
      */
     private fun extractDeviceInfoFromStrings(data: ByteArray): PtpipCameraInfo {
         val deviceStrings = mutableListOf<String>()
-        
+
         // PTP 문자열 구조 검색 (길이 바이트 + UTF-16LE 문자열)
         for (i in 0 until data.size - 10) {
             val lengthByte = data[i].toInt() and 0xFF
-            
+
             if (lengthByte in 1..100) {
                 val stringStartIndex = i + 1
                 val stringByteLength = lengthByte * 2
-                
+
                 if (stringStartIndex + stringByteLength <= data.size) {
                     try {
                         val stringBytes = data.sliceArray(stringStartIndex until stringStartIndex + stringByteLength)
                         val utf16String = String(stringBytes, Charsets.UTF_16LE)
                             .replace("\u0000", "")
                             .trim()
-                        
+
                         // 유효한 문자열인지 확인 (ASCII 문자만 허용)
-                        if (utf16String.isNotEmpty() && 
-                            utf16String.length <= 50 && 
+                        if (utf16String.isNotEmpty() &&
+                            utf16String.length <= 50 &&
                             utf16String.all { it.code in 32..126 }) {
-                            
+
                             deviceStrings.add(utf16String)
                             Log.d(TAG, "발견된 문자열 at $i: '$utf16String'")
                         }
@@ -522,7 +670,7 @@ class PtpipConnectionManager @Inject constructor() {
                 else -> "Unknown"
             }
         } ?: "Unknown"
-        
+
         // 모델 찾기 (우선순위: 단독 모델명 > 제조사 포함 문자열)
         val model = run {
             // 1. 단독 모델명 패턴 찾기 (Z 8, D850, EOS R5 등)
@@ -531,15 +679,15 @@ class PtpipConnectionManager @Inject constructor() {
                 str.matches(Regex("^[A-Z] \\d+[A-Z]?\\d*$")) || // Z 8, R 5
                 str.matches(Regex("^[A-Z]{2,} [A-Z]?\\d+[A-Z]?$")) // EOS R5
             }
-            
+
             if (standaloneModel != null) {
                 Log.d(TAG, "단독 모델명 발견: '$standaloneModel'")
                 return@run standaloneModel
             }
-            
+
             // 2. 제조사 이름이 포함된 문자열에서 추출
             val manufacturerIncluded = deviceStrings.find { str ->
-                str.contains(manufacturer, ignoreCase = true) && 
+                str.contains(manufacturer, ignoreCase = true) &&
                 str.length > manufacturer.length + 1 &&
                 str != "$manufacturer Corporation" // "Nikon Corporation" 제외
             }?.let { foundStr ->
@@ -548,7 +696,7 @@ class PtpipConnectionManager @Inject constructor() {
                     .replace("Corporation", "", ignoreCase = true)
                     .trim()
             }
-            
+
             if (!manufacturerIncluded.isNullOrEmpty()) {
                 Log.d(TAG, "제조사 포함 문자열에서 모델명 추출: '$manufacturerIncluded'")
                 return@run manufacturerIncluded
@@ -557,20 +705,20 @@ class PtpipConnectionManager @Inject constructor() {
             Log.d(TAG, "모델명을 찾을 수 없음")
             return@run "Unknown"
         }
-        
+
         // 버전 찾기 (V로 시작하는 버전 패턴)
         val version = deviceStrings.find { str ->
             str.matches(Regex("^V\\d+\\.\\d+.*"))
         } ?: "Unknown"
-        
+
         // 시리얼 번호 찾기 (숫자로만 구성된 긴 문자열, 단 모든 0으로 시작하는 것은 제외)
         val serialNumber = deviceStrings.find { str ->
-            str.matches(Regex("^\\d{10,}$")) && 
+            str.matches(Regex("^\\d{10,}$")) &&
             !str.matches(Regex("^0+\\d{1,4}$")) // 00000...3869 같은 패턴 제외
         } ?: "Unknown"
-        
+
         Log.d(TAG, "최종 파싱 결과 - 제조사: '$manufacturer', 모델: '$model', 버전: '$version', 시리얼: '$serialNumber'")
-        
+
         return PtpipCameraInfo(
             manufacturer = manufacturer,
             model = model,

@@ -2,6 +2,7 @@ package com.inik.camcon.domain.manager
 
 import com.inik.camcon.domain.model.CameraAbilitiesInfo
 import com.inik.camcon.domain.model.CameraCapabilities
+import com.inik.camcon.domain.model.PtpSessionState
 
 /**
  * Data 레이어에서 카메라 상태를 Presentation 레이어로 전달하기 위한 인터페이스.
@@ -13,4 +14,5 @@ interface CameraStateObserver {
     fun updateCameraInitialization(isInitializing: Boolean)
     fun showCameraStatusCheckDialog(show: Boolean)
     fun updatePtpipConnectionState(isConnected: Boolean)
+    fun updatePtpSessionState(state: PtpSessionState)
 }

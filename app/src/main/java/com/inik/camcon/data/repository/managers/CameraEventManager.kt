@@ -6,6 +6,9 @@ import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
 import com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
 import com.inik.camcon.data.repository.managers.PhotoDownloadManager
+import com.inik.camcon.domain.manager.ErrorHandlingManager
+import com.inik.camcon.domain.manager.ErrorSeverity
+import com.inik.camcon.domain.manager.ErrorType
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.utils.Constants
@@ -16,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
@@ -37,6 +41,7 @@ class CameraEventManager @Inject constructor(
     private val usbCameraManager: UsbCameraManager,
     private val validateImageFormatUseCase: ValidateImageFormatUseCase,
     private val photoDownloadManager: PhotoDownloadManager,
+    private val errorHandlingManager: ErrorHandlingManager,
     @ApplicationScope private val scope: CoroutineScope
 ) {
     // 카메라 이벤트 리스너 상태 추적
@@ -145,6 +150,9 @@ class CameraEventManager @Inject constructor(
                 } finally {
                     isEventListenerStarting.set(false)
                 }
+            } catch (e: CancellationException) {
+                isEventListenerStarting.set(false)
+                throw e
             } catch (e: Exception) {
                 LogcatManager.e("카메라이벤트매니저", "❌ 카메라 이벤트 리스너 시작 실패 (public)", e)
                 isEventListenerStarting.set(false)
@@ -165,6 +173,8 @@ class CameraEventManager @Inject constructor(
                 performCompleteCleanup()
 
                 Result.success(true)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 LogcatManager.e("카메라이벤트매니저", "❌ 카메라 이벤트 리스너 중지 실패 (public)", e)
                 Result.failure(e)
@@ -207,10 +217,7 @@ class CameraEventManager @Inject constructor(
             // 이벤트 리스너를 백그라운드 스레드에서 시작
             scope.launch(Dispatchers.IO) {
                 try {
-                    // 안정화를 위한 추가 대기 시간
-                    kotlinx.coroutines.delay(500)
-
-                    // 상태 재확인 (비동기 지연 후)
+                    // 상태 재확인
                     val connectionStillValid = when (connectionType) {
                         ConnectionType.USB -> isConnected && usbCameraManager.isNativeCameraConnected.value
                         ConnectionType.PTPIP -> isConnected
@@ -259,6 +266,11 @@ class CameraEventManager @Inject constructor(
                                     onCaptureFailed
                                 )
                             )
+
+                            // 네이티브 호출 성공 확인 후 활성 상태 설정
+                            scope.launch(Dispatchers.Main) {
+                                _isEventListenerActive.value = true
+                            }
 
                             LogcatManager.d(
                                 "카메라이벤트매니저",
@@ -315,9 +327,7 @@ class CameraEventManager @Inject constructor(
                 }
             }
 
-            scope.launch(Dispatchers.Main) {
-                _isEventListenerActive.value = true
-            }
+            // _isEventListenerActive는 네이티브 호출 성공 후 내부 scope.launch에서 설정됨
 
         } catch (e: Exception) {
             LogcatManager.e("카메라이벤트매니저", "❌ ${connectionType.name} 이벤트 리스너 내부 시작 실패", e)
@@ -418,13 +428,13 @@ class CameraEventManager @Inject constructor(
                         "카메라이벤트매니저",
                         "PTPIP 네이티브 카메라 초기화 대기 중... (${waitTime}ms/${maxWaitTime}ms)"
                     )
-                    kotlinx.coroutines.delay(500)
-                    waitTime += 500
+                    kotlinx.coroutines.delay(200)
+                    waitTime += 200
                 }
             } catch (e: Exception) {
                 LogcatManager.w("카메라이벤트매니저", "PTPIP 네이티브 카메라 초기화 상태 확인 중 예외: ${e.message}")
-                kotlinx.coroutines.delay(500)
-                waitTime += 500
+                kotlinx.coroutines.delay(200)
+                waitTime += 200
             }
         }
 
@@ -643,6 +653,8 @@ class CameraEventManager @Inject constructor(
                 try {
                     usbCameraManager.handleUsbDisconnection()
                     LogcatManager.d("카메라이벤트매니저", "USB 카메라 매니저 분리 처리 완료")
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     LogcatManager.e("카메라이벤트매니저", "USB 분리 처리 중 오류", e)
                 } finally {
@@ -699,11 +711,13 @@ class CameraEventManager @Inject constructor(
             // 네이티브 이벤트 리스너 중지 시도 (여러 번 시도)
             var stopAttempts = 0
             val maxStopAttempts = 3
+            var stopSucceeded = false
 
             while (stopAttempts < maxStopAttempts) {
                 try {
                     CameraNative.stopListenCameraEvents()
                     LogcatManager.d("카메라이벤트매니저", "네이티브 이벤트 리스너 중지 성공 (시도 ${stopAttempts + 1})")
+                    stopSucceeded = true
                     break
                 } catch (e: Exception) {
                     stopAttempts++
@@ -712,12 +726,30 @@ class CameraEventManager @Inject constructor(
                         "네이티브 이벤트 리스너 중지 실패 (시도 ${stopAttempts}/$maxStopAttempts)",
                         e
                     )
-
-                    if (stopAttempts >= maxStopAttempts) {
-                        LogcatManager.e("카메라이벤트매니저", "네이티브 이벤트 리스너 중지 최대 재시도 초과")
-                    }
-                    // 재시도 간 대기는 제거 - performCompleteCleanup은 동기적으로 빠르게 완료되어야 함
                 }
+            }
+
+            if (!stopSucceeded) {
+                // 3회 재시도 실패: 에러 보고 + globalOperationCanceled 설정
+                LogcatManager.e(
+                    "카메라이벤트매니저",
+                    "SEVERE: 네이티브 이벤트 리스너 중지 최대 재시도 초과 (${maxStopAttempts} 회) " +
+                            "- C++ 스레드가 여전히 동작 중일 수 있음"
+                )
+                errorHandlingManager.emitError(
+                    type = ErrorType.OPERATION,
+                    message = "카메라 이벤트 리스너 정리 실패: ${maxStopAttempts} 회 재시도 초과",
+                    severity = ErrorSeverity.CRITICAL
+                )
+                // C++ 측 globalOperationCanceled 플래그 설정하여 스레드 종료 유도
+                try {
+                    CameraNative.cancelAllOperations()
+                    LogcatManager.d("카메라이벤트매니저", "globalOperationCanceled 플래그 설정 완료")
+                } catch (e: Exception) {
+                    LogcatManager.e("카메라이벤트매니저", "cancelAllOperations 호출 실패", e)
+                }
+                // isEventListenerRunning = false는 이미 위에서 설정됨 (재시도 무한루프 방지)
+                // _isEventListenerActive = false도 이미 설정됨
             }
 
             // USB 분리 처리 상태도 리셋

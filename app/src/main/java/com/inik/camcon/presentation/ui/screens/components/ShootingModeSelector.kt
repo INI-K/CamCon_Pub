@@ -31,15 +31,23 @@ import com.inik.camcon.presentation.theme.SurfaceElevated
 import com.inik.camcon.presentation.theme.OnPrimary
 import com.inik.camcon.presentation.theme.TextMuted
 import com.inik.camcon.presentation.theme.TextPrimary
-import com.inik.camcon.presentation.viewmodel.CameraUiState
-import com.inik.camcon.data.datasource.local.ThemeMode
+import com.inik.camcon.domain.model.CameraCapabilities
+import com.inik.camcon.presentation.viewmodel.CameraCaptureState
+import com.inik.camcon.domain.model.ThemeMode
 
 /**
- * 단순화된 촬영 모드 선택
+ * 촬영 모드 선택 -- state+callback 패턴
+ *
+ * @param captureState 촬영 sub-state (현재 모드 포함)
+ * @param isConnected 카메라 연결 여부
+ * @param cameraCapabilities 카메라 능력 (모드 활성화 판단)
+ * @param onModeSelected 모드 선택 콜백
  */
 @Composable
 fun ShootingModeSelector(
-    uiState: CameraUiState,
+    captureState: CameraCaptureState,
+    isConnected: Boolean,
+    cameraCapabilities: CameraCapabilities?,
     onModeSelected: (ShootingMode) -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = 20.dp)
@@ -54,20 +62,20 @@ fun ShootingModeSelector(
             key = { mode -> mode.name }
         ) { mode ->
             val isEnabled = when (mode) {
-                ShootingMode.SINGLE -> uiState.isConnected
-                ShootingMode.BURST -> uiState.isConnected &&
-                        (uiState.cameraCapabilities?.supportsBurstMode ?: false)
-                ShootingMode.TIMELAPSE -> uiState.isConnected &&
-                        (uiState.cameraCapabilities?.supportsTimelapse ?: false)
-                ShootingMode.BULB -> uiState.isConnected &&
-                        (uiState.cameraCapabilities?.supportsBulbMode ?: false)
-                ShootingMode.HDR_BRACKET -> uiState.isConnected &&
-                        (uiState.cameraCapabilities?.supportsBracketing ?: false)
+                ShootingMode.SINGLE -> isConnected
+                ShootingMode.BURST -> isConnected &&
+                        (cameraCapabilities?.supportsBurstMode ?: false)
+                ShootingMode.TIMELAPSE -> isConnected &&
+                        (cameraCapabilities?.supportsTimelapse ?: false)
+                ShootingMode.BULB -> isConnected &&
+                        (cameraCapabilities?.supportsBulbMode ?: false)
+                ShootingMode.HDR_BRACKET -> isConnected &&
+                        (cameraCapabilities?.supportsBracketing ?: false)
             }
 
             ModeButton(
                 mode = mode,
-                isSelected = uiState.shootingMode == mode,
+                isSelected = captureState.shootingMode == mode,
                 isEnabled = isEnabled,
                 onClick = { if (isEnabled) onModeSelected(mode) }
             )
@@ -84,11 +92,11 @@ private fun ModeButton(
     modifier: Modifier = Modifier
 ) {
     val label = when (mode) {
-        ShootingMode.SINGLE -> "단일"
-        ShootingMode.BURST -> "연사"
-        ShootingMode.TIMELAPSE -> "타임랩스"
-        ShootingMode.BULB -> "벌브"
-        ShootingMode.HDR_BRACKET -> "HDR"
+        ShootingMode.SINGLE -> stringResource(R.string.shooting_mode_single)
+        ShootingMode.BURST -> stringResource(R.string.shooting_mode_burst)
+        ShootingMode.TIMELAPSE -> stringResource(R.string.shooting_mode_timelapse)
+        ShootingMode.BULB -> stringResource(R.string.shooting_mode_bulb)
+        ShootingMode.HDR_BRACKET -> stringResource(R.string.hdr_bracket)
     }
 
     Button(
@@ -135,66 +143,62 @@ private fun ShootingModeSelectorPreview() {
         ) {
             // 연결됨
             ShootingModeSelector(
-                uiState = CameraUiState(
-                    isConnected = true,
-                    shootingMode = ShootingMode.BURST,
-                    cameraCapabilities = com.inik.camcon.domain.model.CameraCapabilities(
-                        model = "Canon EOS R5",
-                        canCapturePhoto = true,
-                        canCaptureVideo = true,
-                        canLiveView = true,
-                        canTriggerCapture = true,
-                        supportsAutofocus = true,
-                        supportsManualFocus = true,
-                        supportsFocusPoint = true,
-                        supportsBurstMode = true,
-                        supportsTimelapse = true,
-                        supportsBracketing = true,
-                        supportsBulbMode = true,
-                        canDownloadFiles = true,
-                        canDeleteFiles = true,
-                        canPreviewFiles = true,
-                        availableIsoSettings = emptyList(),
-                        availableShutterSpeeds = emptyList(),
-                        availableApertures = emptyList(),
-                        availableWhiteBalanceSettings = emptyList(),
-                        supportsRemoteControl = true,
-                        supportsConfigChange = true,
-                        batteryLevel = 85
-                    )
+                captureState = CameraCaptureState(shootingMode = ShootingMode.BURST),
+                isConnected = true,
+                cameraCapabilities = CameraCapabilities(
+                    model = "Canon EOS R5",
+                    canCapturePhoto = true,
+                    canCaptureVideo = true,
+                    canLiveView = true,
+                    canTriggerCapture = true,
+                    supportsAutofocus = true,
+                    supportsManualFocus = true,
+                    supportsFocusPoint = true,
+                    supportsBurstMode = true,
+                    supportsTimelapse = true,
+                    supportsBracketing = true,
+                    supportsBulbMode = true,
+                    canDownloadFiles = true,
+                    canDeleteFiles = true,
+                    canPreviewFiles = true,
+                    availableIsoSettings = emptyList(),
+                    availableShutterSpeeds = emptyList(),
+                    availableApertures = emptyList(),
+                    availableWhiteBalanceSettings = emptyList(),
+                    supportsRemoteControl = true,
+                    supportsConfigChange = true,
+                    batteryLevel = 85
                 ),
                 onModeSelected = { }
             )
 
             // 기본 카메라
             ShootingModeSelector(
-                uiState = CameraUiState(
-                    isConnected = true,
-                    shootingMode = ShootingMode.SINGLE,
-                    cameraCapabilities = com.inik.camcon.domain.model.CameraCapabilities(
-                        model = "Basic",
-                        canCapturePhoto = true,
-                        canCaptureVideo = false,
-                        canLiveView = false,
-                        canTriggerCapture = true,
-                        supportsAutofocus = true,
-                        supportsManualFocus = false,
-                        supportsFocusPoint = false,
-                        supportsBurstMode = false,
-                        supportsTimelapse = false,
-                        supportsBracketing = false,
-                        supportsBulbMode = false,
-                        canDownloadFiles = true,
-                        canDeleteFiles = false,
-                        canPreviewFiles = false,
-                        availableIsoSettings = emptyList(),
-                        availableShutterSpeeds = emptyList(),
-                        availableApertures = emptyList(),
-                        availableWhiteBalanceSettings = emptyList(),
-                        supportsRemoteControl = true,
-                        supportsConfigChange = false,
-                        batteryLevel = 60
-                    )
+                captureState = CameraCaptureState(shootingMode = ShootingMode.SINGLE),
+                isConnected = true,
+                cameraCapabilities = CameraCapabilities(
+                    model = "Basic",
+                    canCapturePhoto = true,
+                    canCaptureVideo = false,
+                    canLiveView = false,
+                    canTriggerCapture = true,
+                    supportsAutofocus = true,
+                    supportsManualFocus = false,
+                    supportsFocusPoint = false,
+                    supportsBurstMode = false,
+                    supportsTimelapse = false,
+                    supportsBracketing = false,
+                    supportsBulbMode = false,
+                    canDownloadFiles = true,
+                    canDeleteFiles = false,
+                    canPreviewFiles = false,
+                    availableIsoSettings = emptyList(),
+                    availableShutterSpeeds = emptyList(),
+                    availableApertures = emptyList(),
+                    availableWhiteBalanceSettings = emptyList(),
+                    supportsRemoteControl = true,
+                    supportsConfigChange = false,
+                    batteryLevel = 60
                 ),
                 onModeSelected = { }
             )

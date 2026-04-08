@@ -43,7 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.android.gms.oss.licenses.OssLicensesMenuActivity
 import com.inik.camcon.R
-import com.inik.camcon.data.datasource.local.ThemeMode
+import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import dagger.hilt.android.AndroidEntryPoint

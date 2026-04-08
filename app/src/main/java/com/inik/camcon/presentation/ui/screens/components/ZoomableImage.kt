@@ -313,7 +313,7 @@ fun ZoomableImageFromByteArray(
         ) {
             Text(
                 text = stringResource(R.string.image_load_failed),
-                color = Color.White,
+                color = com.inik.camcon.presentation.theme.TextPrimary,
                 style = MaterialTheme.typography.bodyMedium
             )
         }
@@ -416,7 +416,7 @@ private fun ZoomableImagePreview() {
         Box(
             modifier = Modifier
                 .size(300.dp)
-                .background(Color.Gray)
+                .background(com.inik.camcon.presentation.theme.TextSecondary)
                 .padding(8.dp)
         ) {
             ZoomableImage(

@@ -64,3 +64,35 @@ data class WifiCapabilities(
     val macAddress: String?,
     val detectedCameraIP: String?
 )
+
+/**
+ * PTP 세션 상태머신
+ *
+ * 소켓 연결부터 세션 준비까지의 전이를 정의한다.
+ * 유효하지 않은 상태 전이를 방지하여 동시성 문제를 예방한다.
+ */
+enum class PtpSessionState {
+    DISCONNECTED,
+    SOCKET_CONNECTING,
+    SOCKET_CONNECTED,
+    OPENING,
+    OPEN,
+    READY,
+    CLOSING;
+
+    companion object {
+        private val VALID_TRANSITIONS: Map<PtpSessionState, Set<PtpSessionState>> = mapOf(
+            DISCONNECTED to setOf(SOCKET_CONNECTING),
+            SOCKET_CONNECTING to setOf(SOCKET_CONNECTED, DISCONNECTED),
+            SOCKET_CONNECTED to setOf(OPENING, CLOSING, DISCONNECTED),
+            OPENING to setOf(OPEN, SOCKET_CONNECTED, DISCONNECTED),
+            OPEN to setOf(READY, CLOSING, DISCONNECTED),
+            READY to setOf(CLOSING, DISCONNECTED),
+            CLOSING to setOf(SOCKET_CONNECTED, DISCONNECTED)
+        )
+
+        fun isValidTransition(from: PtpSessionState, to: PtpSessionState): Boolean {
+            return VALID_TRANSITIONS[from]?.contains(to) == true
+        }
+    }
+}

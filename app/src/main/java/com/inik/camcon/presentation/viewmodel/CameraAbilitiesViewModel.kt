@@ -4,10 +4,9 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.CameraNative
-import com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource
-import com.inik.camcon.data.datasource.ptpip.PtpipDataSource
 import com.inik.camcon.domain.model.CameraAbilitiesInfo
 import com.inik.camcon.domain.model.PtpDeviceInfo
+import com.inik.camcon.domain.repository.CameraRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,8 +32,7 @@ data class CameraAbilitiesUiState(
  */
 @HiltViewModel
 class CameraAbilitiesViewModel @Inject constructor(
-    private val nativeDataSource: NativeCameraDataSource,
-    private val ptpipDataSource: PtpipDataSource
+    private val cameraRepository: CameraRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CameraAbilitiesUiState())
@@ -78,11 +76,8 @@ class CameraAbilitiesViewModel @Inject constructor(
                     return@launch
                 }
 
-                // USB 연결인지 PTPIP 연결인지 확인
-                val usbAbilities = nativeDataSource.getUsbCameraAbilities()
-                val ptpipAbilities = ptpipDataSource.getCurrentAbilities()
-
-                val abilities = usbAbilities ?: ptpipAbilities
+                // Repository를 통해 abilities/deviceInfo 조회
+                val abilities = cameraRepository.getCameraAbilitiesInfo()
 
                 if (abilities == null) {
                     // 직접 조회 시도
@@ -105,8 +100,7 @@ class CameraAbilitiesViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             abilities = abilities,
-                            deviceInfo = nativeDataSource.getUsbCameraDeviceInfo()
-                                ?: ptpipDataSource.getCurrentDeviceInfo()
+                            deviceInfo = cameraRepository.getCameraDeviceInfoDetail()
                         )
                     }
                     Log.i(TAG, "캐시된 카메라 기능 정보 사용")

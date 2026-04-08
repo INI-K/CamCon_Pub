@@ -45,20 +45,50 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.Camera
+import com.inik.camcon.presentation.theme.Background
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.Error
+import com.inik.camcon.presentation.theme.TextPrimary
+import com.inik.camcon.presentation.theme.TextSecondary
+import com.inik.camcon.presentation.theme.Warning
+import com.inik.camcon.domain.model.CameraCapabilities
+import com.inik.camcon.domain.model.LiveViewFrame
+import com.inik.camcon.presentation.viewmodel.CameraConnectionState
+import com.inik.camcon.presentation.viewmodel.CameraCaptureState
+import com.inik.camcon.presentation.viewmodel.CameraLiveViewState
 import com.inik.camcon.presentation.viewmodel.CameraUiState
-import com.inik.camcon.presentation.viewmodel.CameraViewModel
-import com.inik.camcon.data.datasource.local.ThemeMode
+import com.inik.camcon.domain.model.ThemeMode
 
 /**
- * 카메라 프리뷰 영역 - 라이브뷰와 연결 상태를 관리
+ * 카메라 프리뷰 영역 — state+callback 패턴
+ *
+ * @param liveViewState 라이브뷰 on/off 상태
+ * @param liveViewFrame 라이브뷰 프레임 (별도 StateFlow에서 수집)
+ * @param connectionState 연결 상태
+ * @param captureState 촬영 상태
+ * @param cameraCapabilities 카메라 능력
+ * @param cameraFeed 카메라 목록
+ * @param onStopLiveView 라이브뷰 중지 콜백
+ * @param onStartLiveView 라이브뷰 시작 콜백
+ * @param onConnectCamera 카메라 연결 콜백
+ * @param onRefreshUsb USB 새로고침 콜백
+ * @param onRequestUsbPermission USB 권한 요청 콜백
+ * @param onDoubleClick 더블클릭 콜백
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CameraPreviewArea(
-    uiState: CameraUiState,
+    liveViewState: CameraLiveViewState,
+    liveViewFrame: LiveViewFrame?,
+    connectionState: CameraConnectionState,
+    captureState: CameraCaptureState,
+    cameraCapabilities: CameraCapabilities?,
     cameraFeed: List<Camera>,
-    viewModel: CameraViewModel,
+    onStopLiveView: () -> Unit,
+    onStartLiveView: () -> Unit,
+    onConnectCamera: (String) -> Unit,
+    onRefreshUsb: () -> Unit,
+    onRequestUsbPermission: () -> Unit,
     modifier: Modifier = Modifier,
     onDoubleClick: (() -> Unit)? = null
 ) {
@@ -70,13 +100,13 @@ fun CameraPreviewArea(
                 onDoubleClick = { onDoubleClick?.invoke() }
             )
     ) {
-        if (uiState.isLiveViewActive && uiState.liveViewFrame != null) {
+        if (liveViewState.isLiveViewActive && liveViewFrame != null) {
             // Display live view frame using Android Bitmap
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                uiState.liveViewFrame?.let { frame ->
+                liveViewFrame.let { frame ->
                     // 바이트 배열을 비트맵으로 직접 디코딩 (inMutable로 메모리 재사용)
                     val bitmapOptions = remember {
                         BitmapFactory.Options().apply {
@@ -84,7 +114,7 @@ fun CameraPreviewArea(
                             inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888 // 색상 정밀도 유지
                         }
                     }
-                    
+
                     val bitmap = remember(frame.timestamp) {
                         try {
                             BitmapFactory.decodeByteArray(frame.data, 0, frame.data.size, bitmapOptions)
@@ -110,64 +140,71 @@ fun CameraPreviewArea(
                             contentScale = ContentScale.Fit
                         )
                     } ?: LoadingOverlay(stringResource(R.string.processing_liveview_frame))
-                } ?: LoadingOverlay(stringResource(R.string.loading_liveview_frame))
+                }
 
                 // 라이브뷰 중지 버튼 오버레이
                 Button(
                     onClick = {
                         Log.d("CameraControl", "Stop live view button clicked")
-                        viewModel.stopLiveView()
+                        onStopLiveView()
                     },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(16.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Red.copy(alpha = 0.8f)
+                        containerColor = Error.copy(alpha = 0.8f)
                     )
                 ) {
                     Icon(
                         Icons.Default.Stop,
-                        contentDescription = "Stop Live View",
-                        tint = Color.White,
+                        contentDescription = stringResource(R.string.cd_stop_live_view),
+                        tint = TextPrimary,
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.stop_live_view), color = Color.White)
+                    Text(stringResource(R.string.stop_live_view), color = TextPrimary)
                 }
             }
-        } else if (!uiState.isConnected) {
+        } else if (!connectionState.isConnected) {
             CameraDisconnectedState(
-                uiState = uiState,
+                connectionState = connectionState,
                 cameraFeed = cameraFeed,
-                viewModel = viewModel
+                onConnectCamera = onConnectCamera,
+                onRefreshUsb = onRefreshUsb,
+                onRequestUsbPermission = onRequestUsbPermission
             )
         } else {
             CameraConnectedState(
-                uiState = uiState,
-                viewModel = viewModel
+                isConnected = connectionState.isConnected,
+                isLiveViewActive = liveViewState.isLiveViewActive,
+                cameraCapabilities = cameraCapabilities,
+                onStartLiveView = onStartLiveView,
+                onStopLiveView = onStopLiveView
             )
         }
 
         // 전역 로딩 오버레이
-        if (uiState.isCapturing) {
+        if (captureState.isCapturing) {
             LoadingOverlay(stringResource(R.string.capturing_photo))
         }
 
         // 라이브뷰 로딩 오버레이
-        if (uiState.isLiveViewLoading) {
+        if (liveViewState.isLiveViewLoading) {
             LoadingOverlay(stringResource(R.string.starting_liveview))
         }
     }
 }
 
 /**
- * 카메라 연결 안됨 상태
+ * 카메라 연결 안됨 상태 — state+callback 패턴
  */
 @Composable
 fun CameraDisconnectedState(
-    uiState: CameraUiState,
+    connectionState: CameraConnectionState,
     cameraFeed: List<Camera>,
-    viewModel: CameraViewModel,
+    onConnectCamera: (String) -> Unit,
+    onRefreshUsb: () -> Unit,
+    onRequestUsbPermission: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -178,40 +215,45 @@ fun CameraDisconnectedState(
         Icon(
             Icons.Default.UsbOff,
             contentDescription = null,
-            tint = Color.Gray,
+            tint = TextSecondary,
             modifier = Modifier.size(64.dp)
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             stringResource(R.string.camera_not_connected),
-            color = Color.White,
+            color = TextPrimary,
             fontSize = 18.sp,
             fontWeight = FontWeight.Medium
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             stringResource(R.string.connect_camera_usb),
-            color = Color.Gray,
+            color = TextSecondary,
             fontSize = 14.sp,
             textAlign = TextAlign.Center
         )
 
         Spacer(modifier = Modifier.height(16.dp))
         CameraConnectionButtons(
-            uiState = uiState,
+            connectionState = connectionState,
             cameraFeed = cameraFeed,
-            viewModel = viewModel
+            onConnectCamera = onConnectCamera,
+            onRefreshUsb = onRefreshUsb,
+            onRequestUsbPermission = onRequestUsbPermission
         )
     }
 }
 
 /**
- * 카메라 연결됨 상태 (라이브뷰 비활성)
+ * 카메라 연결됨 상태 (라이브뷰 비활성) — state+callback 패턴
  */
 @Composable
 fun CameraConnectedState(
-    uiState: CameraUiState,
-    viewModel: CameraViewModel,
+    isConnected: Boolean,
+    isLiveViewActive: Boolean,
+    cameraCapabilities: CameraCapabilities?,
+    onStartLiveView: () -> Unit,
+    onStopLiveView: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -220,35 +262,35 @@ fun CameraConnectedState(
         verticalArrangement = Arrangement.Center
     ) {
         // 라이브뷰 지원 여부 확인
-        val supportsLiveView = uiState.cameraCapabilities?.canLiveView ?: false
+        val supportsLiveView = cameraCapabilities?.canLiveView ?: false
 
         if (supportsLiveView) {
             Icon(
-                if (uiState.isLiveViewActive) Icons.Default.VideocamOff
+                if (isLiveViewActive) Icons.Default.VideocamOff
                 else Icons.Default.Videocam,
-                contentDescription = null,
-                tint = Color.Gray,
+                contentDescription = stringResource(R.string.cd_live_view_frame),
+                tint = TextSecondary,
                 modifier = Modifier.size(64.dp)
             )
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = {
-                    if (uiState.isLiveViewActive) {
-                        viewModel.stopLiveView()
+                    if (isLiveViewActive) {
+                        onStopLiveView()
                     } else {
-                        viewModel.startLiveView()
+                        onStartLiveView()
                     }
                 },
-                enabled = uiState.isConnected,
+                enabled = isConnected,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (uiState.isConnected)
+                    containerColor = if (isConnected)
                         MaterialTheme.colorScheme.primary
                     else
-                        Color.Gray.copy(alpha = 0.5f)
+                        TextSecondary.copy(alpha = 0.5f)
                 )
             ) {
                 Text(
-                    if (uiState.isLiveViewActive)
+                    if (isLiveViewActive)
                         stringResource(R.string.stop_live_view)
                     else
                         stringResource(R.string.start_live_view)
@@ -258,21 +300,21 @@ fun CameraConnectedState(
             // 라이브뷰를 지원하지 않는 경우
             Icon(
                 Icons.Default.VideocamOff,
-                contentDescription = null,
-                tint = Color.Red.copy(alpha = 0.5f),
+                contentDescription = stringResource(R.string.cd_live_view_frame),
+                tint = Error.copy(alpha = 0.5f),
                 modifier = Modifier.size(64.dp)
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 stringResource(R.string.liveview_not_supported),
-                color = Color.Gray,
+                color = TextSecondary,
                 fontSize = 16.sp,
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 stringResource(R.string.liveview_not_supported_detail),
-                color = Color.Gray.copy(alpha = 0.7f),
+                color = TextSecondary.copy(alpha = 0.7f),
                 fontSize = 14.sp,
                 textAlign = TextAlign.Center
             )
@@ -281,13 +323,15 @@ fun CameraConnectedState(
 }
 
 /**
- * 카메라 연결 버튼들
+ * 카메라 연결 버튼들 — state+callback 패턴
  */
 @Composable
 fun CameraConnectionButtons(
-    uiState: CameraUiState,
+    connectionState: CameraConnectionState,
     cameraFeed: List<Camera>,
-    viewModel: CameraViewModel,
+    onConnectCamera: (String) -> Unit,
+    onRefreshUsb: () -> Unit,
+    onRequestUsbPermission: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -299,10 +343,10 @@ fun CameraConnectionButtons(
             onClick = {
                 // Try to reconnect or show camera list
                 cameraFeed.firstOrNull()?.let { camera ->
-                    viewModel.connectCamera(camera.id)
+                    onConnectCamera(camera.id)
                 } ?: run {
                     // 카메라가 없으면 강제로 연결 시도
-                    viewModel.connectCamera("auto")
+                    onConnectCamera("auto")
                 }
             },
             colors = ButtonDefaults.buttonColors(
@@ -314,7 +358,7 @@ fun CameraConnectionButtons(
 
         // USB 새로고침 버튼
         Button(
-            onClick = { viewModel.refreshUsbDevices() },
+            onClick = onRefreshUsb,
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.secondary
             )
@@ -331,21 +375,21 @@ fun CameraConnectionButtons(
         }
 
         // USB 권한 요청 버튼
-        if (uiState.usbDeviceCount > 0 && !uiState.hasUsbPermission) {
+        if (connectionState.usbDeviceCount > 0 && !connectionState.hasUsbPermission) {
             Button(
-                onClick = { viewModel.requestUsbPermission() },
+                onClick = onRequestUsbPermission,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFFF6B35)
+                    containerColor = Warning
                 )
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         Icons.Default.Security,
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.cd_camera_status),
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(stringResource(R.string.request_usb_permission), color = Color.White)
+                    Text(stringResource(R.string.request_usb_permission), color = TextPrimary)
                 }
             }
         }
@@ -359,37 +403,37 @@ private fun CameraPreviewConnectedPreview() {
         Box(
             modifier = Modifier
                 .size(300.dp)
-                .background(Color.Black)
+                .background(Background)
         ) {
             CameraConnectedState(
-                uiState = CameraUiState(
-                    isConnected = true,
-                    cameraCapabilities = com.inik.camcon.domain.model.CameraCapabilities(
-                        model = "Canon EOS R5",
-                        canLiveView = true,
-                        canCapturePhoto = true,
-                        canCaptureVideo = true,
-                        canTriggerCapture = true,
-                        supportsAutofocus = true,
-                        supportsManualFocus = true,
-                        supportsFocusPoint = true,
-                        supportsBurstMode = true,
-                        supportsTimelapse = true,
-                        supportsBracketing = true,
-                        supportsBulbMode = true,
-                        canDownloadFiles = true,
-                        canDeleteFiles = true,
-                        canPreviewFiles = true,
-                        availableIsoSettings = emptyList(),
-                        availableShutterSpeeds = emptyList(),
-                        availableApertures = emptyList(),
-                        availableWhiteBalanceSettings = emptyList(),
-                        supportsRemoteControl = true,
-                        supportsConfigChange = true,
-                        batteryLevel = 85
-                    )
+                isConnected = true,
+                isLiveViewActive = false,
+                cameraCapabilities = com.inik.camcon.domain.model.CameraCapabilities(
+                    model = "Canon EOS R5",
+                    canLiveView = true,
+                    canCapturePhoto = true,
+                    canCaptureVideo = true,
+                    canTriggerCapture = true,
+                    supportsAutofocus = true,
+                    supportsManualFocus = true,
+                    supportsFocusPoint = true,
+                    supportsBurstMode = true,
+                    supportsTimelapse = true,
+                    supportsBracketing = true,
+                    supportsBulbMode = true,
+                    canDownloadFiles = true,
+                    canDeleteFiles = true,
+                    canPreviewFiles = true,
+                    availableIsoSettings = emptyList(),
+                    availableShutterSpeeds = emptyList(),
+                    availableApertures = emptyList(),
+                    availableWhiteBalanceSettings = emptyList(),
+                    supportsRemoteControl = true,
+                    supportsConfigChange = true,
+                    batteryLevel = 85
                 ),
-                viewModel = androidx.hilt.navigation.compose.hiltViewModel()
+                onStartLiveView = {},
+                onStopLiveView = {}
             )
         }
     }

@@ -2,11 +2,11 @@ package com.inik.camcon.data.datasource.usb
 
 import android.util.Log
 import com.inik.camcon.CameraNative
+import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.domain.model.CameraCapabilities
 import com.inik.camcon.domain.manager.CameraStateObserver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,10 +21,9 @@ import javax.inject.Singleton
  */
 @Singleton
 class CameraCapabilitiesManager @Inject constructor(
-    private val cameraStateObserver: CameraStateObserver
+    private val cameraStateObserver: CameraStateObserver,
+    @ApplicationScope private val scope: CoroutineScope
 ) {
-
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val _cameraCapabilities = MutableStateFlow<CameraCapabilities?>(null)
     val cameraCapabilities: StateFlow<CameraCapabilities?> = _cameraCapabilities.asStateFlow()

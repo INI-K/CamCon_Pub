@@ -49,7 +49,7 @@ class GetSubscriptionUseCaseTest {
         )
 
         // When
-        useCase = GetSubscriptionUseCase(subscriptionRepository, logger)
+        useCase = GetSubscriptionUseCase(subscriptionRepository, logger, this)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
@@ -63,7 +63,7 @@ class GetSubscriptionUseCaseTest {
         val proSubscription = Subscription(tier = SubscriptionTier.PRO)
         coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(proSubscription)
 
-        useCase = GetSubscriptionUseCase(subscriptionRepository, logger)
+        useCase = GetSubscriptionUseCase(subscriptionRepository, logger, this)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // When & Then
@@ -80,7 +80,7 @@ class GetSubscriptionUseCaseTest {
         val nullTierSubscription = Subscription(tier = null)
         coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(nullTierSubscription)
 
-        useCase = GetSubscriptionUseCase(subscriptionRepository, logger)
+        useCase = GetSubscriptionUseCase(subscriptionRepository, logger, this)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // When & Then
@@ -99,7 +99,7 @@ class GetSubscriptionUseCaseTest {
         )
         coEvery { subscriptionRepository.syncSubscriptionStatus() } returns Unit
 
-        useCase = GetSubscriptionUseCase(subscriptionRepository, logger)
+        useCase = GetSubscriptionUseCase(subscriptionRepository, logger, this)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // When
@@ -116,7 +116,7 @@ class GetSubscriptionUseCaseTest {
         val adminSubscription = Subscription(tier = SubscriptionTier.ADMIN, isActive = true)
         coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(adminSubscription)
 
-        useCase = GetSubscriptionUseCase(subscriptionRepository, logger)
+        useCase = GetSubscriptionUseCase(subscriptionRepository, logger, this)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // When
@@ -135,7 +135,7 @@ class GetSubscriptionUseCaseTest {
         )
         coEvery { subscriptionRepository.syncSubscriptionStatus() } returns Unit
 
-        useCase = GetSubscriptionUseCase(subscriptionRepository, logger)
+        useCase = GetSubscriptionUseCase(subscriptionRepository, logger, this)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // When

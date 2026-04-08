@@ -39,11 +39,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.material3.CircularProgressIndicator
@@ -60,6 +62,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -73,12 +76,14 @@ import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.LocationSettingsRequest
+import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.components.ApModeContent
 import com.inik.camcon.presentation.ui.screens.components.StaModeContent
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
-import com.inik.camcon.data.datasource.local.ThemeMode
+import com.inik.camcon.domain.model.ThemeMode
+import com.inik.camcon.presentation.theme.SurfaceElevated
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -100,7 +105,7 @@ fun PtpipConnectionScreen(
     // 구독 티어 체크 (STA 모드는 ADMIN만 보임)
     val isAdmin by appSettingsViewModel.isAdminTier.collectAsStateWithLifecycle()
     // 탭 제목과 탭 수를 동적으로 구성
-    val tabTitles = if (isAdmin) listOf("AP 모드", "STA 모드") else listOf("AP 모드")
+    val tabTitles = if (isAdmin) listOf(stringResource(R.string.ptpip_ap_mode), stringResource(R.string.ptpip_sta_mode)) else listOf(stringResource(R.string.ptpip_ap_mode))
     val pagerState = rememberPagerState(initialPage = 0) { tabTitles.size }
 
     // Wi‑Fi 스캔 권한 상태 (WifiNetworkHelper 사용)
@@ -217,7 +222,7 @@ fun PtpipConnectionScreen(
     if (showPermissionDialog) {
         AlertDialog(
             onDismissRequest = { showPermissionDialog = false },
-            title = { Text("권한 필요") },
+            title = { Text(stringResource(R.string.ptpip_permission_needed)) },
             text = {
                 Text(ptpipViewModel.getWifiHelper().getPermissionRationaleMessage())
             },
@@ -228,12 +233,12 @@ fun PtpipConnectionScreen(
                     val intent = ptpipViewModel.getWifiHelper().createAppSettingsIntent()
                     context.startActivity(intent)
                 }) {
-                    Text("설정으로 이동")
+                    Text(stringResource(R.string.ptpip_go_to_settings))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showPermissionDialog = false }) {
-                    Text("취소")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -243,9 +248,9 @@ fun PtpipConnectionScreen(
     if (needLocationSettings) {
         AlertDialog(
             onDismissRequest = { ptpipViewModel.dismissLocationSettingsDialog() },
-            title = { Text("위치 서비스 필요") },
+            title = { Text(stringResource(R.string.ptpip_location_service_needed)) },
             text = {
-                Text("Wi-Fi 스캔을 위해 위치 서비스가 필요합니다.\n'허용'을 누르면 설정을 바로 변경할 수 있습니다.")
+                Text(stringResource(R.string.ptpip_location_service_message))
             },
             confirmButton = {
                 TextButton(onClick = {
@@ -289,12 +294,12 @@ fun PtpipConnectionScreen(
                             }
                         }
                 }) {
-                    Text("허용")
+                    Text(stringResource(R.string.ptpip_allow))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { ptpipViewModel.dismissLocationSettingsDialog() }) {
-                    Text("취소")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -304,17 +309,17 @@ fun PtpipConnectionScreen(
     if (needWifiSettings) {
         AlertDialog(
             onDismissRequest = { ptpipViewModel.dismissWifiSettingsDialog() },
-            title = { Text("Wi-Fi 스캔 제한") },
+            title = { Text(stringResource(R.string.ptpip_wifi_scan_restriction)) },
             text = {
                 Column {
-                    Text("Android의 보안 정책으로 인해 앱에서 직접 Wi-Fi 스캔이 제한됩니다.")
+                    Text(stringResource(R.string.ptpip_wifi_scan_restriction_message))
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("다음 단계를 따라주세요:")
+                    Text(stringResource(R.string.ptpip_wifi_scan_steps))
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("1. 'Wi-Fi 설정 열기' 버튼을 누르세요")
-                    Text("2. 시스템 Wi-Fi 설정에서 주변 네트워크 목록을 확인하세요")
-                    Text("3. 카메라 Wi-Fi(CANON, NIKON 등)를 찾으세요")
-                    Text("4. 설정을 닫고 다시 스캔해보세요")
+                    Text(stringResource(R.string.ptpip_wifi_scan_step1))
+                    Text(stringResource(R.string.ptpip_wifi_scan_step2))
+                    Text(stringResource(R.string.ptpip_wifi_scan_step3))
+                    Text(stringResource(R.string.ptpip_wifi_scan_step4))
                 }
             },
             confirmButton = {
@@ -331,12 +336,12 @@ fun PtpipConnectionScreen(
                     context.startActivity(intent)
                     ptpipViewModel.dismissWifiSettingsDialog()
                 }) {
-                    Text("Wi-Fi 설정 열기")
+                    Text(stringResource(R.string.ptpip_open_wifi_settings))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { ptpipViewModel.dismissWifiSettingsDialog() }) {
-                    Text("닫기")
+                    Text(stringResource(R.string.close))
                 }
             }
         )
@@ -360,7 +365,7 @@ fun PtpipConnectionScreen(
             text = {
                 Column {
                     Text(
-                        text = "Wi-Fi 비밀번호를 입력하세요",
+                        text = stringResource(R.string.ptpip_enter_wifi_password),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                         modifier = Modifier.padding(bottom = 12.dp)
@@ -368,7 +373,7 @@ fun PtpipConnectionScreen(
                     OutlinedTextField(
                         value = passwordForSsid,
                         onValueChange = { passwordForSsid = it },
-                        label = { Text("비밀번호", style = MaterialTheme.typography.bodySmall) },
+                        label = { Text(stringResource(R.string.ptpip_password), style = MaterialTheme.typography.bodySmall) },
                         visualTransformation =
                             if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
@@ -379,13 +384,13 @@ fun PtpipConnectionScreen(
                                 if (passwordVisible) {
                                     Icon(
                                         Icons.Filled.Visibility,
-                                        contentDescription = "숨기기",
+                                        contentDescription = stringResource(R.string.ptpip_hide_password),
                                         modifier = Modifier.size(20.dp)
                                     )
                                 } else {
                                     Icon(
                                         Icons.Filled.VisibilityOff,
-                                        contentDescription = "보이기",
+                                        contentDescription = stringResource(R.string.ptpip_show_password),
                                         modifier = Modifier.size(20.dp)
                                     )
                                 }
@@ -429,7 +434,7 @@ fun PtpipConnectionScreen(
                     enabled = passwordForSsid.isNotEmpty(),
                     modifier = Modifier.height(36.dp)
                 ) {
-                    Text("연결", style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.ptpip_connect), style = MaterialTheme.typography.labelLarge)
                 }
             },
             dismissButton = {
@@ -441,7 +446,7 @@ fun PtpipConnectionScreen(
                     },
                     modifier = Modifier.height(36.dp)
                 ) {
-                    Text("취소", style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.cancel), style = MaterialTheme.typography.labelLarge)
                 }
             }
         )
@@ -476,14 +481,14 @@ fun PtpipConnectionScreen(
                 Log.d("PtpipConnectionScreen", "   ⏸️ CONNECTED 상태 - 메시지 확인 중")
                 // "연결 완료!" 메시지일 때만 다이얼로그 닫기
                 if (connectionProgressMessage == "연결 완료!") {
-                    Log.d("PtpipConnectionScreen", "   🎉 '연결 완료!' 메시지 확인 - 2초 후 다이얼로그 닫기")
-                    kotlinx.coroutines.delay(2000) // 2초 대기
+                    Log.d("PtpipConnectionScreen", "   🎉 '연결 완료!' 메시지 확인 - 다이얼로그 닫기")
+                    kotlinx.coroutines.delay(500) // 연결 완료 메시지 확인용 최소 대기
                     showConnectionProgressDialog = false
                     Log.d("PtpipConnectionScreen", "   ✅ 다이얼로그 닫힘")
 
-                    // 1초 더 대기 후 카메라 컨트롤 화면으로 이동
-                    Log.d("PtpipConnectionScreen", "   🚀 1초 후 카메라 컨트롤 화면으로 이동")
-                    kotlinx.coroutines.delay(1000)
+                    // 카메라 컨트롤 화면으로 이동
+                    Log.d("PtpipConnectionScreen", "   🚀 카메라 컨트롤 화면으로 이동")
+                    kotlinx.coroutines.delay(300)
                     Log.d("PtpipConnectionScreen", "   ✅ 카메라 컨트롤 화면으로 이동")
                     onBackClick()
                 } else {
@@ -522,19 +527,19 @@ fun PtpipConnectionScreen(
     connectionLostMessage?.let { message ->
         AlertDialog(
             onDismissRequest = { ptpipViewModel.clearConnectionLostMessage() },
-            title = { Text("카메라 연결 끊어짐") },
+            title = { Text(stringResource(R.string.ptpip_camera_disconnected)) },
             text = {
                 Column {
                     Text(message)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "다음 단계를 수행해주세요:",
+                        stringResource(R.string.ptpip_next_steps),
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("1. Wi-Fi 연결 상태를 확인하세요")
-                    Text("2. 카메라 Wi-Fi가 켜져있는지 확인하세요")
-                    Text("3. 카메라를 다시 검색하고 연결하세요")
+                    Text(stringResource(R.string.ptpip_check_wifi))
+                    Text(stringResource(R.string.ptpip_check_camera_wifi))
+                    Text(stringResource(R.string.ptpip_reconnect_camera))
                 }
             },
             confirmButton = {
@@ -546,12 +551,12 @@ fun PtpipConnectionScreen(
                         1 -> ptpipViewModel.discoverCamerasSta()
                     }
                 }) {
-                    Text("카메라 재검색")
+                    Text(stringResource(R.string.ptpip_search_camera))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { ptpipViewModel.clearConnectionLostMessage() }) {
-                    Text("확인")
+                    Text(stringResource(R.string.ok))
                 }
             }
         )
@@ -565,10 +570,10 @@ fun PtpipConnectionScreen(
             topBar = {
                 TopAppBar(
                     modifier = Modifier.statusBarsPadding(),
-                    title = { Text("카메라 연결") },
+                    title = { Text(stringResource(R.string.ptpip_camera_connection)) },
                     navigationIcon = {
                         IconButton(onClick = onBackClick) {
-                            Icon(Icons.Filled.ArrowBack, contentDescription = "뒤로가기")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                         }
                     },
                     actions = {
@@ -593,7 +598,7 @@ fun PtpipConnectionScreen(
                             },
                             enabled = !isDiscovering && (pagerState.currentPage == 0 || isAdmin)
                         ) {
-                            Icon(Icons.Filled.Refresh, contentDescription = "새로고침")
+                            Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.cd_refresh))
                         }
                         IconButton(onClick = {
                             if (pagerState.currentPage == 0 || isAdmin) {
@@ -611,14 +616,14 @@ fun PtpipConnectionScreen(
                         },
                             enabled = pagerState.currentPage == 0 || isAdmin
                         ) {
-                            Icon(Icons.Filled.Settings, contentDescription = "Wi-Fi 설정")
+                            Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.cd_wifi_settings))
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                        actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        actionIconContentColor = MaterialTheme.colorScheme.primary
                     )
                 )
             },
@@ -633,8 +638,16 @@ fun PtpipConnectionScreen(
                 // 탭 행
                 TabRow(
                     selectedTabIndex = pagerState.currentPage,
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = SurfaceElevated,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    indicator = { tabPositions ->
+                        if (pagerState.currentPage < tabPositions.size) {
+                            TabRowDefaults.SecondaryIndicator(
+                                Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage]),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
                 ) {
                     tabTitles.forEachIndexed { index, title ->
                         Tab(
@@ -644,7 +657,16 @@ fun PtpipConnectionScreen(
                                     pagerState.animateScrollToPage(index)
                                 }
                             },
-                            text = { Text(title) }
+                            text = {
+                                Text(
+                                    title,
+                                    color = if (pagerState.currentPage == index)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.titleSmall
+                                )
+                            }
                         )
                     }
                 }
@@ -714,36 +736,41 @@ fun PtpipConnectionScreen(
         ) {
             Card(
                 shape = MaterialTheme.shapes.medium,
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = SurfaceElevated
+                ),
                 modifier = Modifier.padding(16.dp)
             ) {
                 Column(
-                    modifier = Modifier.padding(24.dp),
+                    modifier = Modifier.padding(32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(48.dp),
-                        strokeWidth = 4.dp
+                        modifier = Modifier.size(40.dp),
+                        strokeWidth = 3.dp,
+                        color = MaterialTheme.colorScheme.primary
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
                     Text(
-                        text = connectionProgressMessage.ifEmpty { "카메라에 연결 중..." },
-                        style = MaterialTheme.typography.bodyLarge,
+                        text = connectionProgressMessage.ifEmpty { stringResource(R.string.ptpip_connecting_to_camera) },
+                        style = MaterialTheme.typography.titleSmall,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = stringResource(R.string.ptpip_please_wait),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "잠시만 기다려주세요...",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
                     TextButton(
                         onClick = {
@@ -751,7 +778,10 @@ fun PtpipConnectionScreen(
                             showConnectionProgressDialog = false
                         }
                     ) {
-                        Text("취소")
+                        Text(
+                            stringResource(R.string.cancel),
+                            color = MaterialTheme.colorScheme.error
+                        )
                     }
                 }
             }
@@ -774,8 +804,8 @@ private fun PtpipConnectionScreenPreview() {
             // 탭 영역 표시
             TabRow(
                 selectedTabIndex = 0,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
+                containerColor = SurfaceElevated,
+                contentColor = MaterialTheme.colorScheme.onSurface
             ) {
                 Tab(
                     selected = true,

@@ -9,12 +9,12 @@ import com.inik.camcon.domain.model.GlobalCameraConnectionState
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.WifiNetworkState
+import com.inik.camcon.di.ApplicationScope
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,14 +26,19 @@ import kotlinx.coroutines.launch
 class CameraConnectionGlobalManagerImpl @Inject constructor(
     private val ptpipDataSource: PtpipDataSource,
     private val usbCameraManager: UsbCameraManager,
-    private val cameraConnectionManager: CameraConnectionManager
+    private val cameraConnectionManager: CameraConnectionManager,
+    @ApplicationScope private val appScope: CoroutineScope
 ) : CameraConnectionGlobalManager {
 
     companion object {
         private const val TAG = "CameraConnectionGlobalManager"
     }
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    // 앱 scope의 자식 scope — cancelChildren해도 앱 scope에 영향 없음
+    private var managerScope = createManagerScope()
+
+    private fun createManagerScope(): CoroutineScope =
+        CoroutineScope(appScope.coroutineContext + SupervisorJob(appScope.coroutineContext.job))
 
     private val _globalConnectionState = MutableStateFlow(GlobalCameraConnectionState())
     override val globalConnectionState: StateFlow<GlobalCameraConnectionState> =
@@ -54,23 +59,23 @@ class CameraConnectionGlobalManagerImpl @Inject constructor(
     private fun startGlobalStateMonitoring() {
         usbCameraManager.isNativeCameraConnected
             .onEach { Log.d(TAG, "USB 카메라 연결 상태 변경: $it"); updateGlobalState() }
-            .launchIn(scope)
+            .launchIn(managerScope)
 
         ptpipDataSource.connectionState
             .onEach { Log.d(TAG, "PTPIP 연결 상태 변경: $it"); updateGlobalState() }
-            .launchIn(scope)
+            .launchIn(managerScope)
 
         ptpipDataSource.wifiNetworkState
             .onEach { Log.d(TAG, "WiFi 네트워크 상태 변경: $it"); updateGlobalState() }
-            .launchIn(scope)
+            .launchIn(managerScope)
 
         ptpipDataSource.isApModeForced
             .onEach { Log.d(TAG, "AP 모드 강제 플래그 변경: $it"); updateGlobalState() }
-            .launchIn(scope)
+            .launchIn(managerScope)
 
         ptpipDataSource.discoveredCameras
             .onEach { Log.d(TAG, "발견된 카메라 목록 변경: ${it.size}개"); updateGlobalState() }
-            .launchIn(scope)
+            .launchIn(managerScope)
     }
 
     private fun updateGlobalState() {
@@ -94,7 +99,7 @@ class CameraConnectionGlobalManagerImpl @Inject constructor(
         }
 
         if (activeConnection == CameraConnectionType.AP_MODE) {
-            scope.launch {
+            managerScope.launch {
                 try {
                     cameraConnectionManager.updatePtpipConnectionStatus(true)
                     Log.d(TAG, "AP 모드 연결 감지: CameraConnectionManager를 통해 PTPIP 상태 업데이트")
@@ -103,7 +108,7 @@ class CameraConnectionGlobalManagerImpl @Inject constructor(
                 }
             }
         } else if (ptpipState != PtpipConnectionState.CONNECTED) {
-            scope.launch {
+            managerScope.launch {
                 try {
                     cameraConnectionManager.updatePtpipConnectionStatus(false)
                     Log.d(TAG, "PTPIP 연결 해제 상태 업데이트")
@@ -217,7 +222,7 @@ class CameraConnectionGlobalManagerImpl @Inject constructor(
     private fun performDisconnectionCleanup() {
         Log.d(TAG, "연결 해제 시 정리 수행")
 
-        scope.launch {
+        managerScope.launch {
             try {
                 try {
                     cameraConnectionManager.updatePtpipConnectionStatus(false)
@@ -235,6 +240,9 @@ class CameraConnectionGlobalManagerImpl @Inject constructor(
 
     override fun cleanup() {
         Log.d(TAG, "CameraConnectionGlobalManagerImpl 리소스 정리 시작")
-        scope.coroutineContext.cancel()
+        managerScope.coroutineContext.job.cancel()
+        managerScope = createManagerScope()
+        // 정리 후 모니터링 재시작 (Singleton이므로 앱 수명 동안 유지되어야 함)
+        startGlobalStateMonitoring()
     }
 }

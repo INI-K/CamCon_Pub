@@ -76,7 +76,7 @@ import com.inik.camcon.presentation.viewmodel.PhotoPreviewUiEvent
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import com.inik.camcon.presentation.viewmodel.photo.FileTypeFilter
-import com.inik.camcon.data.datasource.local.ThemeMode
+import com.inik.camcon.domain.model.ThemeMode
 import kotlinx.coroutines.delay
 import java.io.File
 
@@ -167,7 +167,7 @@ fun PhotoPreviewScreen(
             // 카메라 이벤트 초기화 블록 오버레이 표시
             if (uiState.isInitializing) {
                 UsbInitializationOverlay(
-                    message = "카메라 이벤트 초기화 중...",
+                    message = stringResource(R.string.photo_preview_event_initializing),
                     progress = null
                 )
                 return@Column // UI 상호작용 완전 차단 (오버레이만 보임)
@@ -348,14 +348,14 @@ private fun CameraDisconnectedState() {
                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
             Text(
-                text = "카메라가 연결되지 않았습니다",
+                text = stringResource(R.string.photo_preview_camera_not_connected),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "USB 케이블을 연결하고 카메라를 켜주세요",
+                text = stringResource(R.string.photo_preview_connect_usb),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                 textAlign = TextAlign.Center
@@ -431,7 +431,7 @@ private fun ModernHeader(
             ) {
                 Icon(
                     Icons.Default.Refresh,
-                    contentDescription = "새로고침",
+                    contentDescription = stringResource(R.string.cd_refresh),
                     tint = MaterialTheme.colorScheme.onSurface
                 )
             }
@@ -446,7 +446,7 @@ private fun ModernHeader(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "필터:",
+                text = stringResource(R.string.photo_preview_filter),
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(end = 8.dp)
@@ -535,7 +535,7 @@ private fun LoadingIndicator() {
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "카메라에서 사진을 불러오는 중...",
+                    text = stringResource(R.string.photo_preview_loading_photos),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
@@ -681,7 +681,7 @@ private fun LoadMoreIndicator() {
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "더 많은 사진 불러오는 중...",
+                text = stringResource(R.string.photo_preview_loading_more),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
@@ -701,7 +701,7 @@ private fun EndOfListMessage(photoCount: Int) {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "모든 사진을 불러왔습니다 (총 ${photoCount}개)",
+            text = stringResource(R.string.photo_preview_all_loaded, photoCount),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
             textAlign = TextAlign.Center
@@ -728,7 +728,7 @@ private fun ErrorSnackbar(
             action = {
                 TextButton(onClick = onRetry) {
                     Text(
-                        text = "재시도",
+                        text = stringResource(R.string.server_photos_retry),
                         color = MaterialTheme.colorScheme.onErrorContainer
                     )
                 }
@@ -768,7 +768,7 @@ private fun MultiSelectActionBar(
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Text(
-                    text = "$selectedCount 개 선택됨",
+                    text = stringResource(R.string.photo_preview_selected_count, selectedCount),
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
@@ -784,7 +784,7 @@ private fun MultiSelectActionBar(
                 )
             ) {
                 Text(
-                    text = "취소",
+                    text = stringResource(R.string.cancel),
                     style = MaterialTheme.typography.labelLarge
                 )
             }
@@ -812,7 +812,7 @@ private fun MultiSelectActionBar(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = "전체 선택",
+                    text = stringResource(R.string.server_photos_select_all),
                     style = MaterialTheme.typography.labelMedium
                 )
             }
@@ -831,7 +831,7 @@ private fun MultiSelectActionBar(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = "전체 해제",
+                    text = stringResource(R.string.server_photos_deselect_all),
                     style = MaterialTheme.typography.labelMedium
                 )
             }
@@ -850,7 +850,7 @@ private fun MultiSelectActionBar(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = "다운로드",
+                    text = stringResource(R.string.fullscreen_viewer_download),
                     style = MaterialTheme.typography.labelMedium
                 )
             }
@@ -879,7 +879,7 @@ private fun PtpipBlockOverlay() {
                 tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
             )
             Text(
-                text = "Wi-Fi 연결 중입니다",
+                text = stringResource(R.string.photo_preview_wifi_connected),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 textAlign = TextAlign.Center,
@@ -887,14 +887,14 @@ private fun PtpipBlockOverlay() {
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "현재 카메라가 Wi-Fi로 연결되어 있어\n사진 미리보기를 사용할 수 없습니다.",
+                text = stringResource(R.string.photo_preview_wifi_block_message),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "사진 미리보기를 사용하려면",
+                text = stringResource(R.string.photo_preview_use_photo_preview),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
@@ -902,14 +902,14 @@ private fun PtpipBlockOverlay() {
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "USB 케이블 연결로 전환해주세요",
+                text = stringResource(R.string.photo_preview_switch_usb),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = "Wi-Fi 연결에서는 '카메라 제어' 탭을 이용해주세요!",
+                text = stringResource(R.string.photo_preview_use_camera_control),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
                 textAlign = TextAlign.Center,

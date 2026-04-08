@@ -1,6 +1,6 @@
 package com.inik.camcon.presentation.ui.screens.components
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,25 +12,31 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.VpnKey
+import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.filled.WifiFind
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.inik.camcon.data.datasource.local.ThemeMode
+import com.inik.camcon.R
+import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.presentation.theme.Background
+import com.inik.camcon.presentation.theme.Border
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.SurfaceElevated
 
 /**
  * 주변 Wi‑Fi 스캔 결과 카드 (AP/STA 모드 공용)
- *
- * @param ssids 검색된 SSID 목록
- * @param onConnectToWifi WiFi 연결 콜백 (비밀번호 입력 다이얼로그 표시)
- * @param isStaMode STA 모드 여부 (UI 텍스트 변경용)
  */
 @Composable
 fun WifiScanResultsCard(
@@ -60,110 +66,133 @@ fun WifiScanResultsCard(
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = Border,
+                shape = MaterialTheme.shapes.medium
+            ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceElevated)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            Text(
-                text = if (isStaMode) {
-                    "🔎 주변 Wi‑Fi 네트워크 (${ssids.size}개)"
-                } else {
-                    "🔎 주변 카메라 Wi‑Fi (${ssids.size}개)"
-                },
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = if (isStaMode) {
-                    MaterialTheme.colorScheme.secondary
-                } else {
-                    MaterialTheme.colorScheme.primary
-                }
-            )
-
-            if (cameraSsids.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Filled.WifiFind,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "📷 카메라 네트워크 (${cameraSsids.size}개)",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Medium,
-                    color = if (isStaMode) {
-                        MaterialTheme.colorScheme.secondary
+                    text = if (isStaMode) {
+                        stringResource(R.string.wifi_scan_nearby_wifi, ssids.size)
                     } else {
-                        MaterialTheme.colorScheme.primary
-                    }
+                        stringResource(R.string.wifi_scan_nearby_camera_wifi, ssids.size)
+                    },
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // 카메라 제조사가 포함된 SSID 먼저 표시
-            cameraSsids.forEach { ssid ->
-                val detectedManufacturer = cameraManufacturers.find { manufacturer ->
-                    ssid.contains(manufacturer, ignoreCase = true)
+            // 카메라 제조사 네트워크 섹션
+            if (cameraSsids.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Filled.CameraAlt,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = stringResource(R.string.wifi_scan_camera_network, cameraSsids.size),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
 
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 2.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (isStaMode) {
-                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)
-                        } else {
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                        }
-                    )
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
+                Spacer(modifier = Modifier.height(8.dp))
+
+                cameraSsids.forEach { ssid ->
+                    val detectedManufacturer = cameraManufacturers.find { manufacturer ->
+                        ssid.contains(manufacturer, ignoreCase = true)
+                    }
+
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(12.dp)
+                            .padding(vertical = 3.dp)
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                shape = MaterialTheme.shapes.small
+                            ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
+                        )
                     ) {
-                        Column(
-                            modifier = Modifier.weight(1f)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp)
                         ) {
-                            Text(
-                                text = ssid,
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium,
-                                color = if (isStaMode) {
-                                    MaterialTheme.colorScheme.secondary
-                                } else {
-                                    MaterialTheme.colorScheme.primary
-                                }
-                            )
-                            val isSaved = savedSsids.contains(ssid)
-                            val manufacturerLabel = buildString {
-                                if (detectedManufacturer != null) append("📷 $detectedManufacturer 카메라")
-                                if (isSaved) {
-                                    if (isNotEmpty()) append(" · ")
-                                    append("🔑 저장됨")
+                            Column(
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = ssid,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                val isSaved = savedSsids.contains(ssid)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (detectedManufacturer != null) {
+                                        Text(
+                                            text = detectedManufacturer,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                                        )
+                                    }
+                                    if (isSaved) {
+                                        if (detectedManufacturer != null) {
+                                            Text(
+                                                text = " · ",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        Icon(
+                                            imageVector = Icons.Filled.VpnKey,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(2.dp))
+                                        Text(
+                                            text = stringResource(R.string.wifi_scan_saved),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                                        )
+                                    }
                                 }
                             }
-                            if (manufacturerLabel.isNotEmpty()) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Button(
+                                onClick = { onConnectToWifi(ssid) },
+                                modifier = Modifier.height(36.dp)
+                            ) {
                                 Text(
-                                    text = manufacturerLabel,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = if (isStaMode) {
-                                        MaterialTheme.colorScheme.secondary.copy(alpha = 0.8f)
-                                    } else {
-                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
-                                    }
+                                    stringResource(R.string.wifi_scan_connect),
+                                    style = MaterialTheme.typography.labelMedium
                                 )
                             }
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Button(
-                            onClick = { onConnectToWifi(ssid) },
-                            modifier = Modifier.size(width = 60.dp, height = 36.dp)
-                        ) {
-                            Text(
-                                "연결",
-                                style = MaterialTheme.typography.bodySmall
-                            )
                         }
                     }
                 }
@@ -171,13 +200,21 @@ fun WifiScanResultsCard(
 
             // 일반 Wi-Fi 네트워크
             if (otherSsids.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "📡 기타 네트워크 (${otherSsids.size}개)",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Filled.Wifi,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = stringResource(R.string.wifi_scan_other_network, otherSsids.size),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 Spacer(modifier = Modifier.height(4.dp))
 
                 otherSsids.forEach { ssid ->
@@ -191,20 +228,32 @@ fun WifiScanResultsCard(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = ssid,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f)
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                             )
                             if (isSaved) {
-                                Text(
-                                    text = "🔑 저장됨",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Filled.VpnKey,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                        modifier = Modifier.size(10.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(2.dp))
+                                    Text(
+                                        text = stringResource(R.string.wifi_scan_saved),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                                    )
+                                }
                             }
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         TextButton(onClick = { onConnectToWifi(ssid) }) {
-                            Text("연결")
+                            Text(
+                                stringResource(R.string.wifi_scan_connect),
+                                style = MaterialTheme.typography.labelMedium
+                            )
                         }
                     }
                 }
@@ -217,7 +266,7 @@ fun WifiScanResultsCard(
 @Composable
 private fun WifiScanResultsCardApPreview() {
     CamConTheme(themeMode = ThemeMode.DARK) {
-        Column(modifier = Modifier.background(Background).padding(16.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
             WifiScanResultsCard(
                 ssids = listOf("NIKON_Z6III_12345", "CANON_EOS_R5", "MyHomeWifi_5G", "iPhone"),
                 onConnectToWifi = {},
@@ -231,7 +280,7 @@ private fun WifiScanResultsCardApPreview() {
 @Composable
 private fun WifiScanResultsCardStaPreview() {
     CamConTheme(themeMode = ThemeMode.DARK) {
-        Column(modifier = Modifier.background(Background).padding(16.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
             WifiScanResultsCard(
                 ssids = listOf("CameraNetwork_SONY", "HomeRouter_2G"),
                 onConnectToWifi = {},

@@ -55,6 +55,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -74,6 +75,7 @@ import android.util.Size
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.exifinterface.media.ExifInterface
+import com.inik.camcon.R
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.CapturedPhoto
 import kotlinx.coroutines.Dispatchers
@@ -81,7 +83,7 @@ import kotlinx.coroutines.withContext
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
 import com.inik.camcon.presentation.viewmodel.ServerPhotosViewModel
-import com.inik.camcon.data.datasource.local.ThemeMode
+import com.inik.camcon.domain.model.ThemeMode
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -224,8 +226,8 @@ fun MyPhotosScreen(
     if (showDeleteConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmDialog = false },
-            title = { Text("사진 삭제") },
-            text = { Text("선택한 ${uiState.selectedPhotos.size}장의 사진을 삭제하시겠습니까?") },
+            title = { Text(stringResource(R.string.server_photos_delete_photos)) },
+            text = { Text(stringResource(R.string.server_photos_delete_confirm, uiState.selectedPhotos.size)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -233,12 +235,12 @@ fun MyPhotosScreen(
                         showDeleteConfirmDialog = false
                     }
                 ) {
-                    Text("삭제")
+                    Text(stringResource(R.string.delete))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirmDialog = false }) {
-                    Text("취소")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -257,7 +259,7 @@ fun MyPhotosScreen(
                 action = {
                     TextButton(onClick = { viewModel.refreshPhotos(); viewModel.clearError() }) {
                         Text(
-                            text = "재시도",
+                            text = stringResource(R.string.server_photos_retry),
                             color = MaterialTheme.colorScheme.onError
                         )
                     }
@@ -286,13 +288,13 @@ private fun ModernMyPhotosHeader(
     ) {
         Column {
             Text(
-                text = "내 사진",
+                text = stringResource(R.string.server_photos_my_photos),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
             if (photoCount > 0) {
                 Text(
-                    text = "${photoCount}장의 사진",
+                    text = stringResource(R.string.server_photos_count, photoCount),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
@@ -302,7 +304,7 @@ private fun ModernMyPhotosHeader(
         IconButton(onClick = onRefresh) {
             Icon(
                 Icons.Default.Refresh,
-                contentDescription = "새로고침",
+                contentDescription = stringResource(R.string.cd_refresh),
                 tint = MaterialTheme.colorScheme.onSurface
             )
         }
@@ -548,7 +550,7 @@ private fun FluidPhotoGridItem(
                 ) {
                     Icon(
                         imageVector = Icons.Default.CheckCircle,
-                        contentDescription = "선택됨",
+                        contentDescription = stringResource(R.string.cd_selected),
                         modifier = Modifier.size(24.dp),
                         tint = MaterialTheme.colorScheme.primary
                     )
@@ -573,7 +575,7 @@ private fun LoadingIndicator() {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "내 사진을 불러오는 중...",
+                text = stringResource(R.string.server_photos_loading),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
@@ -599,14 +601,14 @@ fun EmptyMyPhotosState() {
             )
             Spacer(modifier = Modifier.height(24.dp))
             Text(
-                text = "저장된 사진이 없습니다",
+                text = stringResource(R.string.server_photos_no_saved_photos),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "카메라에서 촬영하면\n이곳에 저장됩니다",
+                text = stringResource(R.string.server_photos_capture_hint),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                 textAlign = TextAlign.Center
@@ -649,7 +651,7 @@ fun CapturedPhotoItem(
                 modifier = Modifier
                     .size(80.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color.LightGray),
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentScale = ContentScale.Crop
             )
 
@@ -690,8 +692,8 @@ fun CapturedPhotoItem(
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Default.Delete,
-                    contentDescription = "삭제",
-                    tint = Color.Red.copy(alpha = 0.7f)
+                    contentDescription = stringResource(R.string.cd_delete),
+                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
                 )
             }
         }
@@ -714,22 +716,22 @@ fun MyPhotosMultiSelectActionBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "$selectedCount 개의 항목 선택됨",
+            text = stringResource(R.string.server_photos_selected_count, selectedCount),
             style = MaterialTheme.typography.bodyLarge
         )
 
         Row {
             TextButton(onClick = onSelectAll) {
-                Text("전체 선택")
+                Text(stringResource(R.string.server_photos_select_all))
             }
             TextButton(onClick = onDeselectAll) {
-                Text("선택 해제")
+                Text(stringResource(R.string.server_photos_deselect_all))
             }
             TextButton(onClick = onDelete) {
-                Text("삭제")
+                Text(stringResource(R.string.delete))
             }
             TextButton(onClick = onCancel) {
-                Text("취소")
+                Text(stringResource(R.string.cancel))
             }
         }
     }

@@ -48,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -57,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
+import com.inik.camcon.R
 import com.inik.camcon.presentation.viewmodel.ColorTransferViewModel
 import java.io.File
 
@@ -97,10 +99,10 @@ fun ColorTransferImagePickerScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("색감 참조 이미지 선택") },
+                title = { Text(stringResource(R.string.color_transfer_select_reference)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "뒤로가기")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
                 actions = {
@@ -112,7 +114,7 @@ fun ColorTransferImagePickerScreen(
                                 }
                             }
                         ) {
-                            Icon(Icons.Default.Check, contentDescription = "선택 완료")
+                            Icon(Icons.Default.Check, contentDescription = stringResource(R.string.color_transfer_selection_done))
                         }
                     }
                 },
@@ -141,13 +143,13 @@ fun ColorTransferImagePickerScreen(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        text = "색감 전송용 참조 이미지 선택",
+                        text = stringResource(R.string.color_transfer_select_title),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "카메라에서 받은 사진에 적용할 색감의 참조 이미지를 선택하세요. 선택한 이미지의 색감이 촬영된 사진에 자동으로 적용됩니다.",
+                        text = stringResource(R.string.color_transfer_select_description),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
@@ -164,7 +166,7 @@ fun ColorTransferImagePickerScreen(
             ) {
                 Icon(Icons.Default.Add, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("갤러리에서 이미지 추가")
+                Text(stringResource(R.string.color_transfer_add_from_gallery))
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -211,13 +213,13 @@ fun ColorTransferImagePickerScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "사용 가능한 이미지가 없습니다",
+                            text = stringResource(R.string.color_transfer_no_images),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "갤러리에서 이미지를 추가해보세요",
+                            text = stringResource(R.string.color_transfer_add_from_gallery_hint),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                         )
@@ -306,7 +308,7 @@ private fun ImageItem(
                     ) {
                         Icon(
                             Icons.Default.Check,
-                            contentDescription = "선택됨",
+                            contentDescription = stringResource(R.string.cd_selected),
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(32.dp)
                         )

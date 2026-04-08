@@ -45,8 +45,12 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.coroutines.cancellation.CancellationException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -80,6 +84,7 @@ class PtpipDataSource @Inject constructor(
     // 초기 플러시 완료 플래그
     @Volatile private var isInitialFlushCompleted = false
     private val reconnectMutex = Mutex()
+    private val connectionStateMutex = Mutex()
 
     // Repository 콜백 저장용 - Singleton이므로 일반 참조 사용 (메모리 누수 방지 불필요)
     private var onPhotoCapturedCallback: ((String, String) -> Unit)? = null
@@ -231,8 +236,9 @@ class PtpipDataSource @Inject constructor(
      */
     private fun handleNetworkStateChange(networkState: WifiNetworkState) {
         coroutineScope.launch(Dispatchers.IO) {
+            connectionStateMutex.withLock {
             val currentState = _connectionState.value
-            
+
             when {
                 // Wi-Fi 연결 해제됨
                 !networkState.isConnected -> {
@@ -287,6 +293,7 @@ class PtpipDataSource @Inject constructor(
                     }
                 }
             }
+            } // connectionStateMutex.withLock
         }
     }
 
@@ -394,6 +401,8 @@ class PtpipDataSource @Inject constructor(
                     Log.w(TAG, "자동 재연결 실패 (시도 ${attempts + 1}/$maxAttempts)")
                     _connectionState.value = PtpipConnectionState.ERROR
                     _connectionProgressMessage.value = ""
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Log.w(TAG, "Reconnect attempt ${attempts + 1}/$maxAttempts failed", e)
                     _connectionState.value = PtpipConnectionState.ERROR
@@ -548,8 +557,8 @@ class PtpipDataSource @Inject constructor(
      * Activity 생명주기와 독립적으로 실행됩니다
      */
     suspend fun connectToCamera(camera: PtpipCamera, forceApMode: Boolean = false): Boolean =
-        // Activity와 독립적인 coroutineScope 사용
-        coroutineScope.async(Dispatchers.IO) {
+        connectionStateMutex.withLock {
+        withContext(Dispatchers.IO) {
         try {
             Log.i(TAG, "============================================")
             Log.i(TAG, "=== 스마트 카메라 연결 시작 (독립 스코프) ===")
@@ -568,12 +577,13 @@ class PtpipDataSource @Inject constructor(
             // 라이브러리가 로드되지 않은 경우 로드
             ensureLibrariesLoaded()
 
-            // 이전 연결 정리
+            // 이전 연결 정리 (로컬 변수 스냅샷 패턴)
+            val currentCamera = connectedCamera
             if (_connectionState.value == PtpipConnectionState.CONNECTED &&
-                connectedCamera != null && connectedCamera != camera
+                currentCamera != null && currentCamera != camera
             ) {
                 Log.d(TAG, "다른 카메라 연결됨 - 기존 연결 해제")
-                disconnect()
+                disconnectInternal()
             }
 
             // Wi-Fi 연결 확인 생략 (네트워크 바인딩 상태에서는 불필요)
@@ -643,7 +653,7 @@ class PtpipDataSource @Inject constructor(
                 Log.e(TAG, "❌ libgphoto2 초기화 실패: $initResult")
                 _connectionState.value = PtpipConnectionState.ERROR
                 _connectionProgressMessage.value = "연결 실패: $initResult"
-                return@async false
+                return@withContext false
             }
 
             Log.i(TAG, "✅ libgphoto2 초기화 성공")
@@ -699,27 +709,30 @@ class PtpipDataSource @Inject constructor(
             }
 
             // =========================
-            // Step 4: 이벤트 리스너 시작
+            // Step 4: 이벤트 리스너 시작 (connectedCamera 설정 전에 시작)
             // =========================
             _connectionProgressMessage.value = "이벤트 리스너 시작 중..."
             startAutomaticFileReceiving(camera)
 
             // =========================
-            // Step 5: 연결 정보 저장 (상태는 플러시 완료 후 변경)
+            // Step 5: 연결 정보 저장 (이벤트 리스너 준비 완료 후)
             // =========================
             connectedCamera = camera
             lastConnectedCamera = camera
 
             Log.i(TAG, "🎉 카메라 연결 설정 완료! 초기 플러시 대기 중...")
-            return@async true
+            return@withContext true
 
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "카메라 연결 중 오류", e)
             _connectionState.value = PtpipConnectionState.ERROR
             _connectionProgressMessage.value = "연결 오류: ${e.message}"
-            return@async false
+            return@withContext false
         }
-        }.await() // async의 결과를 기다림
+        } // withContext
+        } // connectionStateMutex.withLock
 
     /**
      * Abilities JSON 파싱
@@ -789,7 +802,6 @@ class PtpipDataSource @Inject constructor(
         if (connectionManager.establishConnection(camera)) {
             val deviceInfo = connectionManager.getDeviceInfo()
             connectionManager.closeConnections()
-            delay(300)
 
             if (deviceInfo != null) {
                 // 즉시 연결 성공 = AP 모드
@@ -867,6 +879,9 @@ class PtpipDataSource @Inject constructor(
         // 초기 플러시 플래그 초기화
         isInitialFlushCompleted = false
 
+        // 이벤트 리스너 준비 완료 대기용
+        val listenerReady = CompletableDeferred<Boolean>()
+
         try {
             // 파일 목록 조회 생략 - 사진이 많으면 스캔 중 연결 끊김 방지
             Log.i(TAG, "=== PTPIP 연결 후 파일 목록 조회 생략 (성능 최적화) ===")
@@ -897,7 +912,6 @@ class PtpipDataSource @Inject constructor(
                         TAG,
                         "✅ 네이티브에서 완전한 다운로드 및 저장 처리 완료: $fileName"
                     )
-                    // com.inik.camcon.utils.LogcatManager.d(TAG, "📁 카메라 내부 경로: $filePath")
 
                     // 백그라운드 알림 업데이트 - 파일 전송 중
                     try {
@@ -973,6 +987,9 @@ class PtpipDataSource @Inject constructor(
                         _connectionProgressMessage.value = "연결 완료!"
                         Log.d(TAG, "PTPIP 연결 상태 변경: CONNECTED")
 
+                        // 이벤트 리스너 준비 완료 신호
+                        listenerReady.complete(true)
+
                         // 백그라운드 알림 업데이트 (앱이 백그라운드일 때)
                         try {
                             com.inik.camcon.data.service.AutoConnectForegroundService.updateNotification(
@@ -1013,13 +1030,23 @@ class PtpipDataSource @Inject constructor(
                     "❌ PTPIP 이벤트 리스너 시작 실패: ${result.exceptionOrNull()?.message}"
                 )
                 _connectionProgressMessage.value = "이벤트 리스너 오류"
+                listenerReady.complete(false)
             }
         } catch (e: Exception) {
             Log.e(TAG, "PTPIP AP 모드 이벤트 리스너 시작 중 오류", e)
             com.inik.camcon.utils.LogcatManager.e(TAG, "❌ PTPIP 이벤트 리스너 시작 중 예외: ${e.message}", e)
             _connectionProgressMessage.value = "설정 오류"
+            listenerReady.complete(false)
             // 폴백: 기존 방식 사용
             startFileReceiveListenerFallback(camera)
+        }
+
+        // 이벤트 리스너 준비 완료 대기 (최대 10초)
+        val ready = withTimeoutOrNull(10_000) { listenerReady.await() }
+        if (ready == null) {
+            Log.w(TAG, "이벤트 리스너 준비 완료 대기 타임아웃 (10초) - 연결은 유지")
+        } else if (!ready) {
+            Log.w(TAG, "이벤트 리스너 준비 실패 - 연결은 유지")
         }
     }
 
@@ -1198,9 +1225,9 @@ class PtpipDataSource @Inject constructor(
                 Log.w(TAG, "네이티브 이벤트 리스너 중지 중 예외: ${e.message}")
             }
 
-            // 추가 안전 대기 (이벤트 리스너가 완전히 종료될 때까지)
+            // 이벤트 리스너 종료 확인
             Log.d(TAG, "이벤트 리스너 완전 종료 대기 중...")
-            delay(1000) // 1초 추가 대기
+            delay(100)
 
         } catch (e: Exception) {
             Log.e(TAG, "자동 파일 수신 중지 중 오류", e)
@@ -1208,9 +1235,17 @@ class PtpipDataSource @Inject constructor(
     }
 
     /**
-     * 카메라 연결 해제
+     * 카메라 연결 해제 (외부 호출용 — connectionStateMutex 직렬화)
      */
-    suspend fun disconnect(keepSession: Boolean = false) = withContext(Dispatchers.IO) {
+    suspend fun disconnect(keepSession: Boolean = false) =
+        connectionStateMutex.withLock {
+            disconnectInternal(keepSession)
+        }
+
+    /**
+     * 카메라 연결 해제 내부 구현 (이미 mutex 보유 상태에서 호출)
+     */
+    private suspend fun disconnectInternal(keepSession: Boolean = false) = withContext(Dispatchers.IO) {
         try {
             Log.d(TAG, "카메라 연결 해제 시작 (keepSession: $keepSession)")
 
@@ -1256,6 +1291,8 @@ class PtpipDataSource @Inject constructor(
                 Log.d(TAG, "카메라 연결 유지 (세션 유지)")
             }
 
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "카메라 연결 해제 중 오류", e)
         }

@@ -38,8 +38,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.io.Closeable
@@ -179,6 +181,8 @@ class CameraRepositoryImpl @Inject constructor(
                     TAG,
                     "🛑 PTPIP 연결 끊어짐으로 인한 이벤트 리스너 중지 완료"
                 )
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 com.inik.camcon.utils.LogcatManager.e(TAG, "이벤트 리스너 중지 실패", e)
             }
@@ -317,6 +321,8 @@ class CameraRepositoryImpl @Inject constructor(
 
                 com.inik.camcon.utils.LogcatManager.d(TAG, "카메라 설정 업데이트")
                 Result.success(settings)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "카메라 설정 가져오기 실패", e)
                 Result.failure(e)
@@ -371,6 +377,8 @@ class CameraRepositoryImpl @Inject constructor(
             try {
                 val summary = nativeDataSource.getCameraSummary()
                 Result.success(summary.name)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "카메라 정보 가져오기 실패", e)
                 Result.failure(e)
@@ -383,6 +391,8 @@ class CameraRepositoryImpl @Inject constructor(
             try {
                 com.inik.camcon.utils.LogcatManager.d(TAG, "카메라 설정 업데이트: $key = $value")
                 Result.success(true)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "카메라 설정 업데이트 실패", e)
                 Result.failure(e)
@@ -607,27 +617,14 @@ class CameraRepositoryImpl @Inject constructor(
             nativeDataSource.startLiveView(object : LiveViewCallback {
                 override fun onLiveViewFrame(frame: ByteArray) {
                     try {
-                        com.inik.camcon.utils.LogcatManager.d(
-                            TAG,
-                            "라이브뷰 프레임 콜백 수신: ${frame.size} bytes"
-                        )
-
-                        val bytes = frame
-
-                        com.inik.camcon.utils.LogcatManager.d(
-                            TAG,
-                            "라이브뷰 프레임 변환 완료: ${bytes.size} bytes"
-                        )
-
                         val liveViewFrame = LiveViewFrame(
-                            data = bytes,
+                            data = frame,
                             width = 0, // TODO: 실제 크기 가져오기
                             height = 0,
                             timestamp = System.currentTimeMillis()
                         )
 
-                        val result = trySend(liveViewFrame)
-                        com.inik.camcon.utils.LogcatManager.d(TAG, "프레임 전송 결과: ${result.isSuccess}")
+                        trySend(liveViewFrame)
                     } catch (e: Exception) {
                         Log.e(TAG, "라이브뷰 프레임 처리 실패", e)
                     }
@@ -635,11 +632,31 @@ class CameraRepositoryImpl @Inject constructor(
 
                 override fun onLivePhotoCaptured(path: String) {
                     com.inik.camcon.utils.LogcatManager.d(TAG, "라이브뷰 중 사진 촬영: $path")
-                    // 라이브뷰 중 촬영된 사진 처리
+                }
+
+                override fun onPhotoCaptured(filePath: String, fileName: String) {
+                    com.inik.camcon.utils.LogcatManager.d(
+                        TAG,
+                        "라이브뷰 중 물리 셔터 사진 감지: $fileName"
+                    )
+                }
+
+                override fun onPhotoDownloaded(
+                    filePath: String,
+                    fileName: String,
+                    imageData: ByteArray
+                ) {
+                    com.inik.camcon.utils.LogcatManager.d(
+                        TAG,
+                        "라이브뷰 중 물리 셔터 사진 다운로드 완료: $fileName (${imageData.size / 1024}KB)"
+                    )
+                    handleNativePhotoDownload(filePath, fileName, imageData)
                 }
             })
 
             com.inik.camcon.utils.LogcatManager.d(TAG, "라이브뷰 콜백 등록 완료")
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "라이브뷰 시작 실패", e)
             close(e)
@@ -662,6 +679,8 @@ class CameraRepositoryImpl @Inject constructor(
                 com.inik.camcon.utils.LogcatManager.d(TAG, "라이브뷰 명시적 중지")
                 nativeDataSource.stopLiveView()
                 Result.success(true)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "라이브뷰 중지 실패", e)
                 Result.failure(e)
@@ -676,6 +695,8 @@ class CameraRepositoryImpl @Inject constructor(
                 val result = nativeDataSource.autoFocus()
                 com.inik.camcon.utils.LogcatManager.d(TAG, "자동초점 결과: $result")
                 Result.success(result)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "자동초점 실패", e)
                 Result.failure(e)
@@ -700,10 +721,10 @@ class CameraRepositoryImpl @Inject constructor(
         return withContext(Dispatchers.IO) {
             try {
                 com.inik.camcon.utils.LogcatManager.d(TAG, "사진 삭제: $photoId")
-                withContext(Dispatchers.Main) {
-                    _capturedPhotos.value = _capturedPhotos.value.filter { it.id != photoId }
-                }
+                _capturedPhotos.update { current -> current.filter { it.id != photoId } }
                 Result.success(true)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "사진 삭제 실패", e)
                 Result.failure(e)
@@ -725,6 +746,8 @@ class CameraRepositoryImpl @Inject constructor(
                 val capabilities = connectionManager.cameraCapabilities.value
                     ?: nativeDataSource.getCameraCapabilities()
                 Result.success(capabilities)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "카메라 기능 정보 가져오기 실패", e)
                 Result.failure(e)
@@ -1018,7 +1041,7 @@ class CameraRepositoryImpl @Inject constructor(
         com.inik.camcon.utils.LogcatManager.d(TAG, "  📋 현재 StateFlow 크기: $beforeCount 개")
         com.inik.camcon.utils.LogcatManager.d(TAG, "  🧵 스레드: ${Thread.currentThread().name}")
 
-        _capturedPhotos.value = _capturedPhotos.value + downloadedPhoto
+        _capturedPhotos.update { current -> current + downloadedPhoto }
         val afterCount = _capturedPhotos.value.size
 
         com.inik.camcon.utils.LogcatManager.d(
@@ -1050,10 +1073,8 @@ class CameraRepositoryImpl @Inject constructor(
      * 다운로드 실패한 사진 제거
      */
     private fun updatePhotoDownloadFailed(fileName: String) {
-        scope.launch(Dispatchers.Main) {
-            _capturedPhotos.value = _capturedPhotos.value.filter { it.filePath != fileName }
-            com.inik.camcon.utils.LogcatManager.d(TAG, "❌ 다운로드 실패한 사진 제거: $fileName")
-        }
+        _capturedPhotos.update { current -> current.filter { it.filePath != fileName } }
+        com.inik.camcon.utils.LogcatManager.d(TAG, "다운로드 실패한 사진 제거: $fileName")
     }
 
     /**
@@ -1070,6 +1091,16 @@ class CameraRepositoryImpl @Inject constructor(
         callback: ((fileName: String, restrictionMessage: String) -> Unit)?
     ) {
         eventManager.onRawFileRestricted = callback
+    }
+
+    override fun getCameraAbilitiesInfo(): com.inik.camcon.domain.model.CameraAbilitiesInfo? {
+        return nativeDataSource.getUsbCameraAbilities()
+            ?: ptpipDataSource.getCurrentAbilities()
+    }
+
+    override fun getCameraDeviceInfoDetail(): com.inik.camcon.domain.model.PtpDeviceInfo? {
+        return nativeDataSource.getUsbCameraDeviceInfo()
+            ?: ptpipDataSource.getCurrentDeviceInfo()
     }
 
     override fun close() {
