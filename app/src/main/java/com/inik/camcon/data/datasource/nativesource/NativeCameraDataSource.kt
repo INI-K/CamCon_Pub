@@ -845,4 +845,30 @@ class NativeCameraDataSource @Inject constructor(
             null
         }
     }
+
+    // C-3 수정: Subscription tier와 RAW 파일 설정
+    fun setSubscriptionTier(tierInt: Int) {
+        Log.d(TAG, "구독 티어 설정: $tierInt")
+        CameraNative.setSubscriptionTier(tierInt)
+    }
+
+    fun setRawFileDownloadEnabled(enabled: Boolean) {
+        Log.d(TAG, "RAW 파일 다운로드 설정: $enabled")
+        CameraNative.setRawFileDownloadEnabled(enabled)
+    }
+
+    // C-3 수정: 카메라 연결/초기화 상태 확인 (기존 메서드 이용)
+    fun isCameraConnectedNow(): Boolean {
+        Log.d(TAG, "카메라 연결 상태 확인")
+        return CameraNative.isCameraConnected()
+    }
+
+    // C-3 수정: 카메라 파일 목록 가져오기
+    fun getCameraFileListNow(): List<String> {
+        Log.d(TAG, "카메라 파일 목록 가져오기")
+        val fileListJson = CameraNative.getCameraFileList()
+        // getCameraFileList()는 JSON 문자열을 반환할 수 있음
+        // 기존 CameraViewModel에서는 String으로 사용했으므로 리스트로 변환 필요
+        return fileListJson.split(",").filter { it.isNotEmpty() }
+    }
 }

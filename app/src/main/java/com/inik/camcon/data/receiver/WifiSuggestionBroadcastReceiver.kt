@@ -13,7 +13,9 @@ import com.inik.camcon.data.service.AutoConnectForegroundService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * WiFi Suggestion 브로드캐스트 리시버
@@ -25,8 +27,6 @@ import kotlinx.coroutines.launch
  * 가장 안정적인 방법은 Application의 NetworkCallback을 사용하는 것입니다.
  */
 class WifiSuggestionBroadcastReceiver : BroadcastReceiver() {
-
-    private val receiverScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action ?: return
@@ -98,83 +98,97 @@ class WifiSuggestionBroadcastReceiver : BroadcastReceiver() {
 
     /**
      * 네트워크 변화 처리 (비동기 - goAsync 사용)
+     *
+     * 수정사항 (C-2 해결):
+     * - receiverScope 인스턴스 필드 제거
+     * - 로컬 CoroutineScope 생성 (함수 내 생명주기)
+     * - 5초 타임아웃으로 pendingResult.finish() 호출 보장
      */
     private fun handleNetworkChangeAsync(context: Context, application: CamCon) {
         val pendingResult = goAsync()
 
-        receiverScope.launch {
+        // 로컬 스코프: 이 함수 내에서만 유효
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+        scope.launch {
             try {
-                Log.d(TAG, "🔍 자동 연결 조건 확인 시작")
+                // 5초 타임아웃: goAsync() 제한 시간 내 완료 보장
+                kotlinx.coroutines.withTimeoutOrNull(5000) {
+                    Log.d(TAG, "🔍 자동 연결 조건 확인 시작")
 
-                // Application에서 preferencesDataSource 가져오기
-                val wifiNetworkHelper = application.wifiNetworkHelper
-                val preferencesDataSource = application.preferencesDataSource
+                    // Application에서 preferencesDataSource 가져오기
+                    val wifiNetworkHelper = application.wifiNetworkHelper
+                    val preferencesDataSource = application.preferencesDataSource
 
-                // 1. 자동 연결이 활성화되어 있는지 확인
-                val isAutoConnectEnabled = preferencesDataSource.isAutoConnectEnabledNow()
-                if (!isAutoConnectEnabled) {
-                    Log.d(TAG, "자동 연결이 비활성화되어 있음")
-                    return@launch
+                    // 1. 자동 연결이 활성화되어 있는지 확인
+                    val isAutoConnectEnabled = preferencesDataSource.isAutoConnectEnabledNow()
+                    if (!isAutoConnectEnabled) {
+                        Log.d(TAG, "자동 연결이 비활성화되어 있음")
+                        return@withTimeoutOrNull
+                    }
+
+                    // 2. WiFi 연결 확인
+                    val connectivityManager =
+                        context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+                    val network = connectivityManager?.activeNetwork
+                    val capabilities = network?.let { connectivityManager.getNetworkCapabilities(it) }
+
+                    if (capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) != true) {
+                        Log.d(TAG, "WiFi에 연결되어 있지 않음")
+                        return@withTimeoutOrNull
+                    }
+
+                    // 3. 현재 연결된 SSID 확인
+                    val currentSSID = wifiNetworkHelper.getCurrentSSID()
+                    if (currentSSID.isNullOrEmpty()) {
+                        Log.d(TAG, "현재 WiFi SSID를 가져올 수 없음")
+                        return@withTimeoutOrNull
+                    }
+
+                    // 4. 저장된 자동 연결 설정 확인
+                    val autoConnectConfig = preferencesDataSource.getAutoConnectNetworkConfig()
+                    if (autoConnectConfig == null) {
+                        Log.d(TAG, "저장된 자동 연결 설정 없음")
+                        return@withTimeoutOrNull
+                    }
+
+                    // 5. SSID 일치 확인
+                    if (currentSSID != autoConnectConfig.ssid) {
+                        Log.d(TAG, "SSID 불일치: 현재=$currentSSID, 설정=${autoConnectConfig.ssid}")
+                        return@withTimeoutOrNull
+                    }
+
+                    // 6. 카메라 AP 확인
+                    val isCameraAP = wifiNetworkHelper.isConnectedToCameraAP()
+                    if (!isCameraAP) {
+                        Log.d(TAG, "카메라 AP가 아님: $currentSSID")
+                        return@withTimeoutOrNull
+                    }
+
+                    Log.d(TAG, "========================================")
+                    Log.d(TAG, "✅✅✅ 자동 연결 조건 충족! (브로드캐스트) ✅✅✅")
+                    Log.d(TAG, "  - SSID: $currentSSID")
+                    Log.d(TAG, "  - 카메라 AP: true")
+                    Log.d(TAG, "========================================")
+
+                    // 7. AutoConnectForegroundService 시작
+                    Log.d(TAG, "🚀 AutoConnectForegroundService 시작 (브로드캐스트)")
+                    AutoConnectForegroundService.start(context.applicationContext, currentSSID)
+
+                    Log.d(TAG, "✅ 자동 연결 처리 완료")
                 }
-
-                // 2. WiFi 연결 확인
-                val connectivityManager =
-                    context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-                val network = connectivityManager?.activeNetwork
-                val capabilities = network?.let { connectivityManager.getNetworkCapabilities(it) }
-
-                if (capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) != true) {
-                    Log.d(TAG, "WiFi에 연결되어 있지 않음")
-                    return@launch
-                }
-
-                // 3. 현재 연결된 SSID 확인
-                val currentSSID = wifiNetworkHelper.getCurrentSSID()
-                if (currentSSID.isNullOrEmpty()) {
-                    Log.d(TAG, "현재 WiFi SSID를 가져올 수 없음")
-                    return@launch
-                }
-
-                // 4. 저장된 자동 연결 설정 확인
-                val autoConnectConfig = preferencesDataSource.getAutoConnectNetworkConfig()
-                if (autoConnectConfig == null) {
-                    Log.d(TAG, "저장된 자동 연결 설정 없음")
-                    return@launch
-                }
-
-                // 5. SSID 일치 확인
-                if (currentSSID != autoConnectConfig.ssid) {
-                    Log.d(TAG, "SSID 불일치: 현재=$currentSSID, 설정=${autoConnectConfig.ssid}")
-                    return@launch
-                }
-
-                // 6. 카메라 AP 확인
-                val isCameraAP = wifiNetworkHelper.isConnectedToCameraAP()
-                if (!isCameraAP) {
-                    Log.d(TAG, "카메라 AP가 아님: $currentSSID")
-                    return@launch
-                }
-
-                Log.d(TAG, "========================================")
-                Log.d(TAG, "✅✅✅ 자동 연결 조건 충족! (브로드캐스트) ✅✅✅")
-                Log.d(TAG, "  - SSID: $currentSSID")
-                Log.d(TAG, "  - 카메라 AP: true")
-                Log.d(TAG, "========================================")
-
-                // 7. AutoConnectForegroundService 시작
-                Log.d(TAG, "🚀 AutoConnectForegroundService 시작 (브로드캐스트)")
-                AutoConnectForegroundService.start(context.applicationContext, currentSSID)
-
-                Log.d(TAG, "✅ 자동 연결 처리 완료")
             } catch (e: Exception) {
                 Log.e(TAG, "❌ 자동 연결 처리 중 오류", e)
             } finally {
-                // 반드시 finish 호출 (한 번만!)
+                // 반드시 finish 호출 (한 번만!) - scope 정리 전
                 try {
                     pendingResult.finish()
+                    Log.d(TAG, "✅ pendingResult.finish() 호출 완료")
                 } catch (e: Exception) {
                     Log.w(TAG, "pendingResult.finish() 호출 실패: ${e.message}")
                 }
+                // scope 정리
+                scope.cancel()
             }
         }
     }
