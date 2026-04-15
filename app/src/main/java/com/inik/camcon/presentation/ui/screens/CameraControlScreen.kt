@@ -560,9 +560,13 @@ private fun PortraitCameraLayout(
             contentAlignment = Alignment.Center
         ) {
             if (appSettings.isCameraControlsEnabled && appSettings.isLiveViewEnabled) {
+                // ✅ Bitmap 디코딩 수집 (IO 디스패처에서 처리됨)
+                val decodedBitmap by viewModel.decodedLiveViewBitmap.collectAsStateWithLifecycle()
+
                 CameraPreviewArea(
                     liveViewState = uiState.liveView,
                     liveViewFrame = liveViewFrame,
+                    decodedBitmap = decodedBitmap,  // ✅ 새 파라미터 전달
                     connectionState = uiState.connection,
                     captureState = uiState.capture,
                     cameraCapabilities = uiState.cameraCapabilities,
@@ -758,10 +762,14 @@ private fun FullscreenCameraLayout(
     ) {
         // 메인 라이브뷰 또는 사진 뷰 영역
         if (isLiveViewEnabled && uiState.isLiveViewActive) {
+            // ✅ Bitmap 디코딩 수집 (IO 디스패처에서 처리됨)
+            val decodedBitmap by viewModel.decodedLiveViewBitmap.collectAsStateWithLifecycle()
+
             // 라이브뷰 모드
             CameraPreviewArea(
                 liveViewState = uiState.liveView,
                 liveViewFrame = liveViewFrame,
+                decodedBitmap = decodedBitmap,  // ✅ 새 파라미터 전달
                 connectionState = uiState.connection,
                 captureState = uiState.capture,
                 cameraCapabilities = uiState.cameraCapabilities,

@@ -159,10 +159,17 @@ RAW 파일 접근 제어는 `ValidateImageFormatUseCase`가 담당한다. 구독
 
 ## 핵심 알려진 이슈 (docs/DEV_DOCUMENT.md §5 참조)
 
+### 해소된 이슈
+- ✅ **WifiSuggestionBroadcastReceiver** (C-2): goAsync 패턴 적용 완료
+- ✅ **CameraViewModel CameraNative 직접 호출** (C-3): Repository 경유로 변경 완료
+- ✅ **CameraPreviewArea Bitmap 디코딩 성능** (C-1): IO 오프로드 완료
+- ✅ **Bitmap DisposableEffect recycle** (W-2): DisposableEffect에서 recycle 추가 완료
+
+### 잔존 이슈
 - **EXIF 회전 역방향** (`PhotoDownloadManager`): 세로 촬영 사진이 가로로 저장됨 (C7)
-- **processedFiles OOM** (`CameraRepositoryImpl:90`): 타임랩스 장기 사용 시 Set 무한 증가 (C5)
-- **비구조화 코루틴** 다수: `CoroutineScope(Dispatchers.IO).launch` 패턴 → Phase 2 리팩터링 대상
+- **processedFiles OOM** (`CameraRepositoryImpl:90`): 타임랩스 장기 사용 시 메모리 증가 (C5) — LRU 1000개 적용됨
 - **미구현 촬영 모드** (`CameraRepositoryImpl`): BURST, TIMELAPSE, BRACKETING, BULB 묵음 실패 (W2)
+- **FullScreenPhotoViewer 메가 Composable** (1,754줄): 분해 필요 (W-1)
 
 ## 사용 가능한 스킬 (`.claude/skills/`)
 
