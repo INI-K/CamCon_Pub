@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.UsbOff
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.VideocamOff
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -80,6 +81,7 @@ import com.inik.camcon.domain.model.ThemeMode
 fun CameraPreviewArea(
     liveViewState: CameraLiveViewState,
     liveViewFrame: LiveViewFrame?,
+    decodedBitmap: android.graphics.Bitmap?,  // ✅ 새 파라미터: IO 디스패처에서 디코딩된 Bitmap
     connectionState: CameraConnectionState,
     captureState: CameraCaptureState,
     cameraCapabilities: CameraCapabilities?,
@@ -100,46 +102,38 @@ fun CameraPreviewArea(
                 onDoubleClick = { onDoubleClick?.invoke() }
             )
     ) {
-        if (liveViewState.isLiveViewActive && liveViewFrame != null) {
-            // Display live view frame using Android Bitmap
+        // ✅ 수정 (CRITICAL-1 + W-2 해결): remember 기반 디코딩 제거, DisposableEffect 추가
+        if (liveViewState.isLiveViewActive && liveViewFrame != null && decodedBitmap != null) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                liveViewFrame.let { frame ->
-                    // 바이트 배열을 비트맵으로 직접 디코딩 (inMutable로 메모리 재사용)
-                    val bitmapOptions = remember {
-                        BitmapFactory.Options().apply {
-                            inMutable = true // 비트맵 재사용 가능하도록 설정
-                            inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888 // 색상 정밀도 유지
-                        }
-                    }
+                // ✅ 이미 디코딩된 Bitmap만 사용
+                // remember() 없음, 렌더 스레드 블로킹 없음
+                Image(
+                    bitmap = decodedBitmap.asImageBitmap(),
+                    contentDescription = "Live View",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .combinedClickable(
+                            onClick = { /* 단일 클릭 처리 */ },
+                            onDoubleClick = {
+                                Log.d("CameraPreview", "라이브뷰 이미지 더블클릭 감지")
+                                onDoubleClick?.invoke()
+                            }
+                        ),
+                    contentScale = ContentScale.Fit
+                )
 
-                    val bitmap = remember(frame.timestamp) {
+                // ✅ DisposableEffect 추가: Bitmap 명시적 회수 (W-2 해결)
+                androidx.compose.runtime.DisposableEffect(decodedBitmap) {
+                    onDispose {
                         try {
-                            BitmapFactory.decodeByteArray(frame.data, 0, frame.data.size, bitmapOptions)
+                            decodedBitmap.recycle()
                         } catch (e: Exception) {
-                            Log.e("CameraPreview", "비트맵 디코딩 실패", e)
-                            null
+                            Log.w("CameraPreview", "Bitmap recycle 실패", e)
                         }
                     }
-
-                    bitmap?.let {
-                        Image(
-                            bitmap = it.asImageBitmap(),
-                            contentDescription = "Live View",
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .combinedClickable(
-                                    onClick = { /* 단일 클릭 처리 */ },
-                                    onDoubleClick = {
-                                        Log.d("CameraPreview", "라이브뷰 이미지 더블클릭 감지")
-                                        onDoubleClick?.invoke()
-                                    }
-                                ),
-                            contentScale = ContentScale.Fit
-                        )
-                    } ?: LoadingOverlay(stringResource(R.string.processing_liveview_frame))
                 }
 
                 // 라이브뷰 중지 버튼 오버레이
