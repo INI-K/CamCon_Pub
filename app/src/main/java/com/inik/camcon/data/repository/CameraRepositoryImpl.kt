@@ -1103,6 +1103,69 @@ class CameraRepositoryImpl @Inject constructor(
             ?: ptpipDataSource.getCurrentDeviceInfo()
     }
 
+    // C-3 수정: CameraViewModel에서 CameraNative 직접 호출 제거
+    override suspend fun setSubscriptionTier(tier: com.inik.camcon.domain.model.SubscriptionTier): Result<Unit> = try {
+        val tierInt = when (tier) {
+            com.inik.camcon.domain.model.SubscriptionTier.FREE -> 0
+            com.inik.camcon.domain.model.SubscriptionTier.BASIC -> 1
+            com.inik.camcon.domain.model.SubscriptionTier.PRO -> 2
+            com.inik.camcon.domain.model.SubscriptionTier.REFERRER -> 2
+            com.inik.camcon.domain.model.SubscriptionTier.ADMIN -> 2
+        }
+        nativeDataSource.setSubscriptionTier(tierInt)
+        Log.d(TAG, "✅ 구독 티어 설정 완료: $tier (네이티브: $tierInt)")
+        Result.success(Unit)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Log.e(TAG, "❌ 구독 티어 설정 실패", e)
+        Result.failure(e)
+    }
+
+    override suspend fun setRawFileDownloadEnabled(enabled: Boolean): Result<Unit> = try {
+        nativeDataSource.setRawFileDownloadEnabled(enabled)
+        Log.d(TAG, "✅ RAW 파일 다운로드 설정 완료: $enabled")
+        Result.success(Unit)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Log.e(TAG, "❌ RAW 파일 다운로드 설정 실패", e)
+        Result.failure(e)
+    }
+
+    override suspend fun isCameraConnectedNow(): Result<Boolean> = try {
+        val connected = nativeDataSource.isCameraConnectedNow()
+        Log.d(TAG, "✅ 카메라 연결 상태 확인: $connected")
+        Result.success(connected)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Log.e(TAG, "❌ 카메라 연결 상태 확인 실패", e)
+        Result.failure(e)
+    }
+
+    override suspend fun isCameraInitializedNow(): Result<Boolean> = try {
+        val initialized = nativeDataSource.isCameraInitialized()
+        Log.d(TAG, "✅ 카메라 초기화 상태 확인: $initialized")
+        Result.success(initialized)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Log.e(TAG, "❌ 카메라 초기화 상태 확인 실패", e)
+        Result.failure(e)
+    }
+
+    override suspend fun getCameraFileListNow(): Result<List<String>> = try {
+        val fileList = nativeDataSource.getCameraFileListNow()
+        Log.d(TAG, "✅ 카메라 파일 목록 조회 완료: ${fileList.size}개")
+        Result.success(fileList)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Log.e(TAG, "❌ 카메라 파일 목록 조회 실패", e)
+        Result.failure(e)
+    }
+
     override fun close() {
         processedFiles.clear()
     }

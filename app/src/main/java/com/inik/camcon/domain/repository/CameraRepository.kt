@@ -9,6 +9,7 @@ import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.domain.model.LiveViewFrame
 import com.inik.camcon.domain.model.PtpDeviceInfo
 import com.inik.camcon.domain.model.ShootingMode
+import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.model.TimelapseSettings
 import kotlinx.coroutines.flow.Flow
 
@@ -74,4 +75,15 @@ interface CameraRepository {
     // 카메라 abilities/deviceInfo 관련
     fun getCameraAbilitiesInfo(): CameraAbilitiesInfo?
     fun getCameraDeviceInfoDetail(): PtpDeviceInfo?
+
+    // 구독/RAW 파일 설정 관련 (C-3 수정)
+    suspend fun setSubscriptionTier(tier: SubscriptionTier): Result<Unit>
+    suspend fun setRawFileDownloadEnabled(enabled: Boolean): Result<Unit>
+
+    // 카메라 연결/초기화 상태 (C-3 수정)
+    suspend fun isCameraConnectedNow(): Result<Boolean>
+    suspend fun isCameraInitializedNow(): Result<Boolean>
+
+    // 카메라 파일 목록 (C-3 수정)
+    suspend fun getCameraFileListNow(): Result<List<String>>
 }
