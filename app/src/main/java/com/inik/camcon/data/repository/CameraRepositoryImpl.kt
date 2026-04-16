@@ -26,8 +26,10 @@ import com.inik.camcon.domain.repository.ColorTransferRepository
 import com.inik.camcon.domain.usecase.camera.PhotoCaptureEventManager
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.di.ApplicationScope
+import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.utils.Constants
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
@@ -77,7 +79,8 @@ class CameraRepositoryImpl @Inject constructor(
     private val cameraStateObserver: com.inik.camcon.domain.manager.CameraStateObserver,
     private val getSubscriptionUseCase: GetSubscriptionUseCase,
     private val errorHandlingManager: com.inik.camcon.domain.manager.ErrorHandlingManager,
-    @ApplicationScope private val scope: CoroutineScope
+    @ApplicationScope private val scope: CoroutineScope,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : CameraRepository, Closeable {
 
     companion object {
@@ -132,7 +135,7 @@ class CameraRepositoryImpl @Inject constructor(
             com.inik.camcon.utils.LogcatManager.d(TAG, "  📁 저장 경로: $filePath")
             com.inik.camcon.utils.LogcatManager.d(TAG, "  📊 데이터 크기: ${imageData.size / 1024}KB")
 
-            scope.launch(Dispatchers.IO) {
+            scope.launch(ioDispatcher) {
                 // 실제 저장된 파일 크기 조회 (리사이즈 등으로 원본과 다를 수 있음)
                 val actualSize = try {
                     java.io.File(filePath).length()
@@ -174,7 +177,7 @@ class CameraRepositoryImpl @Inject constructor(
      * 개선: 에러 처리 로직을 별도 메서드로 분리
      */
     private fun handlePtpipDisconnection() {
-        scope.launch(Dispatchers.IO) {
+        scope.launch(ioDispatcher) {
             try {
                 CameraNative.stopListenCameraEvents()
                 com.inik.camcon.utils.LogcatManager.d(
@@ -194,7 +197,7 @@ class CameraRepositoryImpl @Inject constructor(
      * 개선: 이벤트 구독 로직을 별도 메서드로 분리
      */
     private fun subscribeToUsbEvents() {
-        scope.launch(Dispatchers.IO) {
+        scope.launch(ioDispatcher) {
             errorHandlingManager.usbDisconnectedEvent.collect {
                 com.inik.camcon.utils.LogcatManager.d(TAG, "USB 분리 이벤트 감지 - USB 분리 처리 시작")
                 usbCameraManager.handleUsbDisconnection()
@@ -304,7 +307,7 @@ class CameraRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getCameraSettings(): Result<CameraSettings> {
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             try {
                 // 캐시된 설정이 있으면 우선 반환
                 _cameraSettings.value?.let { cachedSettings ->
@@ -373,7 +376,7 @@ class CameraRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getCameraInfo(): Result<String> {
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             try {
                 val summary = nativeDataSource.getCameraSummary()
                 Result.success(summary.name)
@@ -387,7 +390,7 @@ class CameraRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateCameraSetting(key: String, value: String): Result<Boolean> {
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             try {
                 com.inik.camcon.utils.LogcatManager.d(TAG, "카메라 설정 업데이트: $key = $value")
                 Result.success(true)
@@ -517,7 +520,7 @@ class CameraRepositoryImpl @Inject constructor(
 
         val photo = createCapturedPhoto(fullPath, fileName)
 
-        scope.launch(Dispatchers.IO) {
+        scope.launch(ioDispatcher) {
             downloadManager.handlePhotoDownload(
                 photo = photo,
                 fullPath = fullPath,
@@ -674,7 +677,7 @@ class CameraRepositoryImpl @Inject constructor(
     }
 
     override suspend fun stopLiveView(): Result<Boolean> {
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             try {
                 com.inik.camcon.utils.LogcatManager.d(TAG, "라이브뷰 명시적 중지")
                 nativeDataSource.stopLiveView()
@@ -689,7 +692,7 @@ class CameraRepositoryImpl @Inject constructor(
     }
 
     override suspend fun autoFocus(): Result<Boolean> {
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             try {
                 com.inik.camcon.utils.LogcatManager.d(TAG, "자동초점 시작")
                 val result = nativeDataSource.autoFocus()
@@ -718,7 +721,7 @@ class CameraRepositoryImpl @Inject constructor(
         _capturedPhotos.asStateFlow()
 
     override suspend fun deletePhoto(photoId: String): Result<Boolean> {
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             try {
                 com.inik.camcon.utils.LogcatManager.d(TAG, "사진 삭제: $photoId")
                 _capturedPhotos.update { current -> current.filter { it.id != photoId } }
@@ -741,7 +744,7 @@ class CameraRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getCameraCapabilities(): Result<CameraCapabilities?> {
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             try {
                 val capabilities = connectionManager.cameraCapabilities.value
                     ?: nativeDataSource.getCameraCapabilities()
@@ -898,7 +901,7 @@ class CameraRepositoryImpl @Inject constructor(
         }
 
         // PhotoDownloadManager의 handleNativePhotoDownload를 직접 호출
-        scope.launch(Dispatchers.IO) {
+        scope.launch(ioDispatcher) {
             com.inik.camcon.utils.LogcatManager.d(
                 TAG,
                 "🚀 PhotoDownloadManager.handleNativePhotoDownload 시작: $fileName"

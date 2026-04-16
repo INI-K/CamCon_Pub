@@ -3,8 +3,10 @@ package com.inik.camcon.data.datasource.usb
 import android.util.Log
 import com.inik.camcon.CameraNative
 import com.inik.camcon.di.ApplicationScope
+import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.model.CameraCapabilities
 import com.inik.camcon.domain.manager.CameraStateObserver
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,7 +24,8 @@ import javax.inject.Singleton
 @Singleton
 class CameraCapabilitiesManager @Inject constructor(
     private val cameraStateObserver: CameraStateObserver,
-    @ApplicationScope private val scope: CoroutineScope
+    @ApplicationScope private val scope: CoroutineScope,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
 
     private val _cameraCapabilities = MutableStateFlow<CameraCapabilities?>(null)
@@ -55,7 +58,7 @@ class CameraCapabilitiesManager @Inject constructor(
     /**
      * 카메라 기능 정보를 가져옵니다 (캐시 우선)
      */
-    suspend fun fetchCameraCapabilities() = withContext(Dispatchers.IO) {
+    suspend fun fetchCameraCapabilities() = withContext(ioDispatcher) {
         // 이미 가져오는 중이면 건너뛰기
         if (isFetchingCapabilities) {
             Log.d(TAG, "카메라 기능 정보 가져오기 중복 호출 방지")
@@ -165,7 +168,7 @@ class CameraCapabilitiesManager @Inject constructor(
      * 지연 로딩: 실제로 필요할 때만 가져옴
      */
     private suspend fun ensureMasterCameraData(): Pair<String, String> =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             val now = System.currentTimeMillis()
 
             // 이미 가져오는 중이면 대기
@@ -675,7 +678,7 @@ class CameraCapabilitiesManager @Inject constructor(
     /**
      * 라이브뷰 지원 여부를 빠르게 확인합니다
      */
-    suspend fun isLiveViewSupported(): Boolean = withContext(Dispatchers.IO) {
+    suspend fun isLiveViewSupported(): Boolean = withContext(ioDispatcher) {
         return@withContext try {
             val (_, widgetJson) = ensureMasterCameraData()
             val hasLiveViewSize = widgetJson.contains("liveviewsize", ignoreCase = true)
@@ -692,7 +695,7 @@ class CameraCapabilitiesManager @Inject constructor(
     /**
      * 특정 기능 지원 여부를 확일합니다
      */
-    suspend fun hasCapability(capability: String): Boolean = withContext(Dispatchers.IO) {
+    suspend fun hasCapability(capability: String): Boolean = withContext(ioDispatcher) {
         return@withContext try {
             val (abilities, widgets) = ensureMasterCameraData()
             val hasInAbilities = abilities.contains(capability, ignoreCase = true)
@@ -709,7 +712,7 @@ class CameraCapabilitiesManager @Inject constructor(
     /**
      * 위젯 JSON을 반환합니다
      */
-    suspend fun buildWidgetJsonFromMaster(): String = withContext(Dispatchers.IO) {
+    suspend fun buildWidgetJsonFromMaster(): String = withContext(ioDispatcher) {
         return@withContext try {
             val (_, widgetJson) = ensureMasterCameraData()
             Log.d(TAG, "마스터 데이터에서 위젯 JSON 반환: ${widgetJson.length} chars")
@@ -723,7 +726,7 @@ class CameraCapabilitiesManager @Inject constructor(
     /**
      * 카메라 능력 정보를 반환합니다
      */
-    suspend fun getCameraAbilitiesFromMaster(): String = withContext(Dispatchers.IO) {
+    suspend fun getCameraAbilitiesFromMaster(): String = withContext(ioDispatcher) {
         return@withContext try {
             val (abilities, _) = ensureMasterCameraData()
             Log.d(TAG, "마스터 데이터에서 카메라 능력 반환: ${abilities.length} chars")

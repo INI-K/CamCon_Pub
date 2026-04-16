@@ -5,6 +5,8 @@ import com.inik.camcon.data.constants.PtpipConstants
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.data.network.ptpip.connection.PtpipConnectionManager
 import com.inik.camcon.utils.LogcatManager
+import com.inik.camcon.di.IoDispatcher
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -20,7 +22,9 @@ import javax.inject.Singleton
  * 니콘 카메라의 Wi-Fi STA 모드 연결 시 필요한 인증 프로세스 처리
  */
 @Singleton
-class NikonAuthenticationService @Inject constructor() {
+class NikonAuthenticationService @Inject constructor(
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+) {
     companion object {
         private const val TAG = "NikonAuthService"
         private const val NIKON_952B_COMMAND = 0x952b
@@ -33,7 +37,7 @@ class NikonAuthenticationService @Inject constructor() {
      * 니콘 STA 모드 전체 인증 시퀀스
      */
     suspend fun performStaAuthentication(camera: PtpipCamera): Boolean =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             try {
                 LogcatManager.i(TAG, "니콘 STA 모드 인증 시퀀스 시작")
 
@@ -61,7 +65,7 @@ class NikonAuthenticationService @Inject constructor() {
      * Phase 1: 승인 요청 임시 연결
      */
     private suspend fun performPhase1Authentication(camera: PtpipCamera): Boolean =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             var commandSocket: Socket? = null
             var eventSocket: Socket? = null
             var retryCount = 0
@@ -215,7 +219,7 @@ class NikonAuthenticationService @Inject constructor() {
      * Phase 2: 인증된 메인 연결
      */
     private suspend fun performPhase2Authentication(camera: PtpipCamera): Boolean =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             var commandSocket: Socket? = null
             var eventSocket: Socket? = null
 
@@ -831,7 +835,7 @@ class NikonAuthenticationService @Inject constructor() {
      * Phase 1 인증 테스트 (별도 메서드)
      */
     suspend fun testPhase1Authentication(camera: PtpipCamera): Boolean =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             LogcatManager.i(TAG, "=== Phase 1 인증 테스트 시작 ===")
             return@withContext performPhase1Authentication(camera)
         }
@@ -840,7 +844,7 @@ class NikonAuthenticationService @Inject constructor() {
      * Phase 2 인증 테스트 (별도 메서드)
      */
     suspend fun testPhase2Authentication(camera: PtpipCamera): Boolean =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             LogcatManager.i(TAG, "=== Phase 2 인증 테스트 시작 ===")
             return@withContext performPhase2Authentication(camera)
         }
@@ -849,7 +853,7 @@ class NikonAuthenticationService @Inject constructor() {
      * 소켓 연결 테스트
      */
     suspend fun testSocketConnection(camera: PtpipCamera): Boolean =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             var socket: Socket? = null
             return@withContext try {
                 LogcatManager.i(TAG, "소켓 연결 테스트: ${camera.ipAddress}:${camera.port}")
@@ -871,7 +875,7 @@ class NikonAuthenticationService @Inject constructor() {
      * 니콘 0x952b 명령 테스트
      */
     suspend fun testNikon952bCommand(camera: PtpipCamera): Boolean =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             var commandSocket: Socket? = null
             var eventSocket: Socket? = null
 
@@ -914,7 +918,7 @@ class NikonAuthenticationService @Inject constructor() {
      * 니콘 0x935a 명령 테스트
      */
     suspend fun testNikon935aCommand(camera: PtpipCamera): Boolean =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             var commandSocket: Socket? = null
             var eventSocket: Socket? = null
 
@@ -957,7 +961,7 @@ class NikonAuthenticationService @Inject constructor() {
      * GetDeviceInfo 명령 테스트
      */
     suspend fun testGetDeviceInfo(camera: PtpipCamera): Boolean =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             var commandSocket: Socket? = null
             var eventSocket: Socket? = null
 
@@ -1000,7 +1004,7 @@ class NikonAuthenticationService @Inject constructor() {
      * OpenSession 명령 테스트
      */
     suspend fun testOpenSession(camera: PtpipCamera): Boolean =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             var commandSocket: Socket? = null
             var eventSocket: Socket? = null
 
@@ -1043,7 +1047,7 @@ class NikonAuthenticationService @Inject constructor() {
      * 포트 스캔 테스트
      */
     suspend fun scanPorts(ipAddress: String): List<Int> =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             val commonPorts = listOf(15740, 80, 443, 8080, 8443, 5000, 5001, 8000, 8001, 9000)
             val openPorts = mutableListOf<Int>()
 
