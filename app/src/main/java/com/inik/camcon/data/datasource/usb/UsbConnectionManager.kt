@@ -7,7 +7,9 @@ import android.hardware.usb.UsbManager
 import android.util.Log
 import com.inik.camcon.CameraNative
 import com.inik.camcon.di.ApplicationScope
+import com.inik.camcon.di.IoDispatcher
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -28,7 +30,8 @@ import javax.inject.Singleton
 @Singleton
 class UsbConnectionManager @Inject constructor(
     @ApplicationContext private val context: Context,
-    @ApplicationScope private val scope: CoroutineScope
+    @ApplicationScope private val scope: CoroutineScope,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     private val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
 
@@ -174,7 +177,7 @@ class UsbConnectionManager @Inject constructor(
      * USB 디바이스에 연결하고 네이티브 카메라를 초기화합니다.
      */
     fun connectToCamera(device: UsbDevice) {
-        scope.launch(Dispatchers.IO) {
+        scope.launch(ioDispatcher) {
             try {
                 Log.d(TAG, "카메라 연결 시작: ${device.deviceName}")
 
@@ -211,7 +214,7 @@ class UsbConnectionManager @Inject constructor(
         }
     }
 
-    private suspend fun initializeNativeCamera(fd: Int) = withContext(Dispatchers.IO) {
+    private suspend fun initializeNativeCamera(fd: Int) = withContext(ioDispatcher) {
         initializationMutex.withLock {
             try {
                 // 중복 FD 초기화 방지
@@ -318,7 +321,7 @@ class UsbConnectionManager @Inject constructor(
         }
     }
 
-    private suspend fun tryGeneralInit() = withContext(Dispatchers.IO) {
+    private suspend fun tryGeneralInit() = withContext(ioDispatcher) {
         try {
             Log.d(TAG, "일반 카메라 초기화 시도...")
             val generalResult = CameraNative.initCamera()
@@ -339,7 +342,7 @@ class UsbConnectionManager @Inject constructor(
     /**
      * 카메라 연결을 완전히 해제합니다.
      */
-    suspend fun disconnectCamera() = withContext(Dispatchers.IO) {
+    suspend fun disconnectCamera() = withContext(ioDispatcher) {
         try {
             if (_isNativeCameraConnected.value) {
                 Log.d(TAG, "카메라 연결 해제 시작")
@@ -385,7 +388,7 @@ class UsbConnectionManager @Inject constructor(
     /**
      * USB 디바이스 분리 처리
      */
-    suspend fun handleUsbDisconnection() = withContext(Dispatchers.IO) {
+    suspend fun handleUsbDisconnection() = withContext(ioDispatcher) {
         // 중복 처리 방지 - 원자적 연산으로 체크
         if (!isHandlingDisconnection.compareAndSet(false, true)) {
             Log.d(TAG, "USB 분리 처리가 이미 진행 중 - 중복 방지")
@@ -449,7 +452,7 @@ class UsbConnectionManager @Inject constructor(
     fun handleUsbError(errorCode: Int) {
         if (errorCode == -52 || errorCode == -4) { // GP_ERROR_IO_USB_FIND 또는 libusb disconnected
             Log.e(TAG, "USB 에러 감지 (코드: $errorCode) - USB 분리로 처리")
-            scope.launch(Dispatchers.IO) {
+            scope.launch(ioDispatcher) {
                 handleUsbDisconnection()
             }
         }
@@ -518,7 +521,7 @@ class UsbConnectionManager @Inject constructor(
     }
 
     fun cleanup() {
-        scope.launch(Dispatchers.IO) {
+        scope.launch(ioDispatcher) {
             disconnectCamera()
         }
     }

@@ -9,7 +9,9 @@ import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.domain.model.CameraCapabilities
 import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.domain.model.PtpTimeoutException
+import com.inik.camcon.di.IoDispatcher
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,7 +30,8 @@ class CameraConnectionManager @Inject constructor(
     private val nativeDataSource: NativeCameraDataSource,
     private val usbCameraManager: UsbCameraManager,
     private val cameraStateObserver: com.inik.camcon.domain.manager.CameraStateObserver,
-    @ApplicationScope private val scope: CoroutineScope
+    @ApplicationScope private val scope: CoroutineScope,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     // Mutex 동기화 추가(중복 connectCamera 방지)
     private val connectCameraMutex = Mutex()
@@ -57,7 +60,7 @@ class CameraConnectionManager @Inject constructor(
 
     suspend fun connectCamera(cameraId: String): Result<Boolean> {
         return connectCameraMutex.withLock {
-            withContext(Dispatchers.IO) {
+            withContext(ioDispatcher) {
                 try {
                     Log.d("카메라연결매니저", "카메라 연결 시작: $cameraId (Mutex 보호)")
 
@@ -236,7 +239,7 @@ class CameraConnectionManager @Inject constructor(
     }
 
     suspend fun disconnectCamera(): Result<Boolean> {
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             try {
                 Log.d("카메라연결매니저", "카메라 연결 해제 시작")
 
@@ -258,7 +261,7 @@ class CameraConnectionManager @Inject constructor(
         }
     }
 
-    private suspend fun updateCameraList() = withContext(Dispatchers.IO) {
+    private suspend fun updateCameraList() = withContext(ioDispatcher) {
         try {
             Log.d("카메라연결매니저", "카메라 목록 업데이트")
             val detected = nativeDataSource.detectCamera()
@@ -312,7 +315,7 @@ class CameraConnectionManager @Inject constructor(
     }
 
     private fun observeNativeCameraConnection() {
-        scope.launch(Dispatchers.IO) {
+        scope.launch(ioDispatcher) {
             usbCameraManager.isNativeCameraConnected.collect { isConnected ->
                 Log.d("카메라연결매니저", "네이티브 카메라 연결 상태 변경: $isConnected")
 
@@ -355,7 +358,7 @@ class CameraConnectionManager @Inject constructor(
         }
     }
 
-    private suspend fun updateCameraCapabilities() = withContext(Dispatchers.IO) {
+    private suspend fun updateCameraCapabilities() = withContext(ioDispatcher) {
         try {
             Log.d("카메라연결매니저", "카메라 기능 정보 업데이트")
             Log.d("카메라연결매니저", "  - USB 연결: ${usbCameraManager.isNativeCameraConnected.value}")
@@ -479,7 +482,7 @@ class CameraConnectionManager @Inject constructor(
         // PTPIP 연결 시에도 카메라 기능 정보 업데이트
         if (isConnected) {
             Log.d("카메라연결매니저", "PTPIP 연결됨 - 카메라 기능 정보 업데이트 시작")
-            scope.launch(Dispatchers.IO) {
+            scope.launch(ioDispatcher) {
                 updateCameraCapabilities()
             }
         }

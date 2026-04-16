@@ -22,8 +22,10 @@ import com.inik.camcon.domain.usecase.ColorTransferUseCase
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.domain.usecase.camera.PhotoCaptureEventManager
 import com.inik.camcon.utils.Constants
+import com.inik.camcon.di.IoDispatcher
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -44,7 +46,8 @@ class PhotoDownloadManager @Inject constructor(
     private val appPreferencesDataSource: AppPreferencesDataSource,
     private val colorTransferUseCase: ColorTransferUseCase,
     private val photoCaptureEventManager: PhotoCaptureEventManager,
-    private val getSubscriptionUseCase: GetSubscriptionUseCase
+    private val getSubscriptionUseCase: GetSubscriptionUseCase,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
 
     companion object {
@@ -53,7 +56,7 @@ class PhotoDownloadManager @Inject constructor(
     }
 
     suspend fun getCameraPhotos(): Result<List<CameraPhoto>> {
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             try {
                 Log.d("사진다운로드매니저", "카메라 사진 목록 가져오기 시작")
 
@@ -90,7 +93,7 @@ class PhotoDownloadManager @Inject constructor(
         isPhotoPreviewMode: Boolean,
         onEventListenerRestart: suspend () -> Unit
     ): Result<PaginatedCameraPhotos> {
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             try {
                 Log.d("사진다운로드매니저", "페이징 카메라 사진 목록 가져오기 시작 (페이지: $page, 크기: $pageSize)")
 
@@ -158,7 +161,7 @@ class PhotoDownloadManager @Inject constructor(
         isInitializing: Boolean,
         isNativeCameraConnected: Boolean
     ): Result<ByteArray> {
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             try {
                 Log.d("사진다운로드매니저", "썸네일 가져오기 시작: $photoPath")
 
@@ -264,7 +267,7 @@ class PhotoDownloadManager @Inject constructor(
         cameraCapabilities: CameraCapabilities?,
         cameraSettings: CameraSettings?
     ): Result<CapturedPhoto> {
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             try {
                 Log.d("사진다운로드매니저", "=== 카메라에서 사진 다운로드 시작: $photoId ===")
 
@@ -366,7 +369,7 @@ class PhotoDownloadManager @Inject constructor(
         cameraCapabilities: CameraCapabilities? = null,
         cameraSettings: CameraSettings? = null
     ): CapturedPhoto? {
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             var tempFile: File? = null
             var processedFile: File? = null
             var colorTransferredFile: File? = null
@@ -793,7 +796,7 @@ class PhotoDownloadManager @Inject constructor(
      * 장축 기준 2000픽셀로 리사이즈하고 모든 EXIF 정보 보존
      */
     private suspend fun resizeImageForFreeTier(inputPath: String, outputPath: String): Boolean {
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             var originalBitmap: Bitmap? = null
             var resizedBitmap: Bitmap? = null
             var rotatedBitmap: Bitmap? = null
@@ -1213,7 +1216,7 @@ class PhotoDownloadManager @Inject constructor(
      * 사진 후처리 - SAF를 사용하여 최종 저장소에 저장
      */
     private suspend fun postProcessPhoto(tempFilePath: String, fileName: String): String {
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             try {
                 Log.d(TAG, "📝 postProcessPhoto 시작")
                 Log.d(TAG, "   임시 파일: $tempFilePath")

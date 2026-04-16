@@ -1,6 +1,5 @@
 package com.inik.camcon.presentation.viewmodel
 
-import android.app.Activity
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.util.Log
@@ -45,7 +44,7 @@ class CameraViewModel @Inject constructor(
     private val uiStateManager: CameraUiStateManager,
 
     // 매니저 의존성 주입 (단일책임원칙 적용)
-    private val connectionManager: CameraConnectionManager,
+    private val usbAutoConnectManager: UsbAutoConnectManager,
     private val operationsManager: CameraOperationsManager,
     private val settingsManager: CameraSettingsManager,
     private val errorHandlingManager: ErrorHandlingManager,
@@ -88,7 +87,7 @@ class CameraViewModel @Inject constructor(
     val isUpdatingSettings = settingsManager.isUpdatingSettings
 
     // 연결 상태 (ConnectionManager에서 관리)
-    val isAutoConnecting = connectionManager.isAutoConnecting
+    val isAutoConnecting = usbAutoConnectManager.isAutoConnecting
 
     // PTPIP 연결 상태 (사진 미리보기 차단용)
     val isPtpipConnected: StateFlow<Boolean> = cameraRepository.isPtpipConnected()
@@ -97,9 +96,6 @@ class CameraViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = false
         )
-
-    // RAW 파일 제한 스타일링을 위한 현재 Activity 참조
-    private var currentActivity: Activity? = null
 
     init {
         initializeViewModel()
@@ -211,8 +207,8 @@ class CameraViewModel @Inject constructor(
         // 촬영된 사진 관찰
         observeCapturedPhotos()
 
-        // USB 디바이스 상태 관찰 (ConnectionManager에 위임)
-        connectionManager.observeUsbDevices(viewModelScope, uiStateManager)
+        // USB 디바이스 상태 관찰 (UsbAutoConnectManager에 위임)
+        usbAutoConnectManager.observeUsbDevices(viewModelScope, uiStateManager)
 
         // 에러 이벤트 관찰
         observeErrorEvents()
@@ -349,6 +345,7 @@ class CameraViewModel @Inject constructor(
             .launchIn(viewModelScope)
 
         // ✅ 라이브뷰 프레임 Bitmap 디코딩 (IO 디스패처에서 처리) — CRITICAL-1 해결
+        // StateFlow는 이미 최신 값만 유지하므로 conflate() 불필요
         liveViewFrame
             .onEach { frame ->
                 if (frame != null) {
@@ -402,42 +399,35 @@ class CameraViewModel @Inject constructor(
     // MARK: - Public Methods (UI에서 호출)
 
     /**
-     * 현재 Activity 설정
-     */
-    fun setActivity(activity: Activity?) {
-        currentActivity = activity
-    }
-
-    /**
-     * 카메라 연결 (ConnectionManager에 위임)
+     * 카메라 연결 (UsbAutoConnectManager에 위임)
      */
     fun connectCamera(cameraId: String) {
-        connectionManager.connectCamera(cameraId, uiStateManager)
+        usbAutoConnectManager.connectCamera(cameraId, uiStateManager)
     }
 
     /**
-     * 카메라 연결 해제 (ConnectionManager에 위임)
+     * 카메라 연결 해제 (UsbAutoConnectManager에 위임)
      */
     fun disconnectCamera() {
         // 진행 중인 작업들 먼저 중단
         operationsManager.cleanup()
 
         // 연결 해제
-        connectionManager.disconnectCamera(uiStateManager)
+        usbAutoConnectManager.disconnectCamera(uiStateManager)
     }
 
     /**
-     * USB 디바이스 새로고침 (ConnectionManager에 위임)
+     * USB 디바이스 새로고침 (UsbAutoConnectManager에 위임)
      */
     fun refreshUsbDevices() {
-        connectionManager.refreshUsbDevices(uiStateManager)
+        usbAutoConnectManager.refreshUsbDevices(uiStateManager)
     }
 
     /**
-     * USB 권한 요청 (ConnectionManager에 위임)
+     * USB 권한 요청 (UsbAutoConnectManager에 위임)
      */
     fun requestUsbPermission() {
-        connectionManager.requestUsbPermission(uiStateManager)
+        usbAutoConnectManager.requestUsbPermission(uiStateManager)
     }
 
     /**
@@ -843,11 +833,10 @@ class CameraViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        currentActivity = null
 
         // 매니저들 정리
         operationsManager.cleanup()
-        connectionManager.cleanup()
+        usbAutoConnectManager.cleanup()
         settingsManager.cleanup()
         errorHandlingManager.cleanup()
 

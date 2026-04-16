@@ -16,6 +16,7 @@ import com.inik.camcon.presentation.viewmodel.photo.PhotoListManager
 import com.inik.camcon.presentation.viewmodel.photo.PhotoSelectionManager
 import com.inik.camcon.utils.SubscriptionUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -106,6 +107,14 @@ class PhotoPreviewViewModel @Inject constructor(
     val isMultiSelectMode = photoSelectionManager.isMultiSelectMode
     val selectedPhotos = photoSelectionManager.selectedPhotos
 
+    // 옵저버 Job 필드들 — Flow collect 중복 방지
+    private var connectionObserveJob: Job? = null
+    private var ptpipObserveJob: Job? = null
+    private var initObserveJob: Job? = null
+    private var tierObserveJob: Job? = null
+    private var errorObserveJob: Job? = null
+    private var photosObserveJob: Job? = null
+
     init {
         initializeViewModel()
     }
@@ -177,8 +186,11 @@ class PhotoPreviewViewModel @Inject constructor(
      * 카메라 연결 상태 관찰
      */
     private fun observeCameraConnection() {
+        // 이미 active인 Job이 있으면 재실행하지 않음
+        if (connectionObserveJob?.isActive == true) return
+
         Log.d(TAG, "=== observeCameraConnection 시작 ===")
-        viewModelScope.launch {
+        connectionObserveJob = viewModelScope.launch {
             globalManager.globalConnectionState.collect { connectionState ->
                 val isConnected = connectionState.isAnyConnectionActive
                 Log.d(TAG, "전역 카메라 연결 상태 변경: $isConnected")
@@ -223,7 +235,10 @@ class PhotoPreviewViewModel @Inject constructor(
      * PTPIP 연결 상태 관찰
      */
     private fun observePtpipConnection() {
-        viewModelScope.launch {
+        // 이미 active인 Job이 있으면 재실행하지 않음
+        if (ptpipObserveJob?.isActive == true) return
+
+        ptpipObserveJob = viewModelScope.launch {
             cameraRepository.isPtpipConnected().collect { isPtpipConnected ->
                 _uiState.update { it.copy(isPtpipConnected = isPtpipConnected) }
             }
@@ -234,9 +249,12 @@ class PhotoPreviewViewModel @Inject constructor(
      * 사진 목록 변화를 감지하고 썸네일 로드
      */
     private fun observePhotosAndLoadThumbnails() {
+        // 이미 active인 Job이 있으면 재실행하지 않음
+        if (photosObserveJob?.isActive == true) return
+
         Log.d(TAG, "[TRACE] observePhotosAndLoadThumbnails() 호출됨")
 
-        viewModelScope.launch {
+        photosObserveJob = viewModelScope.launch {
             Log.d(TAG, "[TRACE] photoListManager.filteredPhotos.collect 시작")
             var collectCount = 0
 
@@ -256,7 +274,10 @@ class PhotoPreviewViewModel @Inject constructor(
      * 카메라 초기화 상태 관찰
      */
     private fun observeCameraInitialization() {
-        viewModelScope.launch {
+        // 이미 active인 Job이 있으면 재실행하지 않음
+        if (initObserveJob?.isActive == true) return
+
+        initObserveJob = viewModelScope.launch {
             cameraRepository.isInitializing().collect { isInitializing ->
                 _uiState.update { it.copy(isInitializing = isInitializing) }
             }
@@ -267,7 +288,10 @@ class PhotoPreviewViewModel @Inject constructor(
      * 구독 티어 관찰
      */
     private fun observeSubscriptionTier() {
-        viewModelScope.launch {
+        // 이미 active인 Job이 있으면 재실행하지 않음
+        if (tierObserveJob?.isActive == true) return
+
+        tierObserveJob = viewModelScope.launch {
             getSubscriptionUseCase.getSubscriptionTier().collect { tier ->
                 Log.d(TAG, "사용자 구독 티어 변경: $tier")
                 _uiState.update { it.copy(currentTier = tier) }
@@ -285,7 +309,10 @@ class PhotoPreviewViewModel @Inject constructor(
      * 에러 이벤트 관찰
      */
     private fun observeErrorEvents() {
-        viewModelScope.launch {
+        // 이미 active인 Job이 있으면 재실행하지 않음
+        if (errorObserveJob?.isActive == true) return
+
+        errorObserveJob = viewModelScope.launch {
             errorHandlingManager.errorEvent.collect { errorEvent ->
                 emitError(errorEvent.message)
                 Log.e(TAG, "에러 이벤트 수신: ${errorEvent.type} - ${errorEvent.message}")
