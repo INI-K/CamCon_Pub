@@ -126,10 +126,13 @@ fun CameraPreviewArea(
                 )
 
                 // ✅ DisposableEffect 추가: Bitmap 명시적 회수 (W-2 해결)
-                androidx.compose.runtime.DisposableEffect(decodedBitmap) {
+                // Key를 Unit으로 변경하여 교체 중 경합 방지
+                androidx.compose.runtime.DisposableEffect(Unit) {
                     onDispose {
                         try {
-                            decodedBitmap.recycle()
+                            if (!decodedBitmap.isRecycled) {
+                                decodedBitmap.recycle()
+                            }
                         } catch (e: Exception) {
                             Log.w("CameraPreview", "Bitmap recycle 실패", e)
                         }

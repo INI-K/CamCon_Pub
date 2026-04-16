@@ -32,7 +32,9 @@ import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
 import com.inik.camcon.di.ApplicationScope
+import com.inik.camcon.di.IoDispatcher
 import dagger.Lazy
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -75,7 +77,8 @@ class PtpipDataSource @Inject constructor(
     private val photoDownloadManager: com.inik.camcon.data.repository.managers.PhotoDownloadManager,
     private val autoConnectManager: AutoConnectManager,
     private val autoConnectTaskRunnerProvider: Lazy<AutoConnectTaskRunner>,
-    @ApplicationScope private val coroutineScope: CoroutineScope
+    @ApplicationScope private val coroutineScope: CoroutineScope,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     @Volatile private var connectedCamera: PtpipCamera? = null
     @Volatile private var lastConnectedCamera: PtpipCamera? = null
@@ -235,7 +238,7 @@ class PtpipDataSource @Inject constructor(
      * 네트워크 상태 변화 처리
      */
     private fun handleNetworkStateChange(networkState: WifiNetworkState) {
-        coroutineScope.launch(Dispatchers.IO) {
+        coroutineScope.launch(ioDispatcher) {
             connectionStateMutex.withLock {
             val currentState = _connectionState.value
 
@@ -308,7 +311,7 @@ class PtpipDataSource @Inject constructor(
             return
         }
 
-        coroutineScope.launch(Dispatchers.IO) {
+        coroutineScope.launch(ioDispatcher) {
             try {
                 val isAutoConnectEnabled = autoConnectManager.isEnabled()
                 if (!isAutoConnectEnabled) {
@@ -442,7 +445,7 @@ class PtpipDataSource @Inject constructor(
         networkMonitoringJob = null
 
         // 카메라 연결 해제
-        coroutineScope.launch(Dispatchers.IO) {
+        coroutineScope.launch(ioDispatcher) {
             try {
                 disconnect()
             } catch (e: Exception) {
@@ -527,7 +530,7 @@ class PtpipDataSource @Inject constructor(
      * 니콘 카메라 연결 모드 감지 (AP/STA/UNKNOWN)
      */
     suspend fun detectNikonConnectionMode(camera: PtpipCamera): NikonConnectionMode = 
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             try {
                 Log.d(TAG, "니콘 카메라 연결 모드 감지 시작: ${camera.name}")
 
@@ -558,7 +561,7 @@ class PtpipDataSource @Inject constructor(
      */
     suspend fun connectToCamera(camera: PtpipCamera, forceApMode: Boolean = false): Boolean =
         connectionStateMutex.withLock {
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
         try {
             Log.i(TAG, "============================================")
             Log.i(TAG, "=== 스마트 카메라 연결 시작 (독립 스코프) ===")
@@ -925,7 +928,7 @@ class PtpipDataSource @Inject constructor(
                     }
 
                     // ByteArray를 MediaStore에 저장하고 실제 안드로이드 경로 얻기
-                    coroutineScope.launch(Dispatchers.IO) {
+                    coroutineScope.launch(ioDispatcher) {
                         try {
                             val savedPhoto = photoDownloadManager.handleNativePhotoDownload(
                                 filePath = filePath,
@@ -1110,7 +1113,7 @@ class PtpipDataSource @Inject constructor(
      */
     suspend fun capturePhoto(
         callback: CameraCaptureListener? = null,
-    ): Boolean = withContext(Dispatchers.IO) {
+    ): Boolean = withContext(ioDispatcher) {
         return@withContext try {
             Log.d(TAG, "수동 사진 촬영 시작 (사용자 요청)")
 
@@ -1195,7 +1198,7 @@ class PtpipDataSource @Inject constructor(
                             try {
                                 CameraNative.stopListenCameraEvents()
                                 // 고정 대기 시간 사용 (동기 방식)
-                                coroutineScope.launch(Dispatchers.IO) {
+                                coroutineScope.launch(ioDispatcher) {
                                     delay(1000) // 1초 대기
                                     if (continuation.isActive) {
                                         continuation.resume(Unit) {}
@@ -1245,7 +1248,7 @@ class PtpipDataSource @Inject constructor(
     /**
      * 카메라 연결 해제 내부 구현 (이미 mutex 보유 상태에서 호출)
      */
-    private suspend fun disconnectInternal(keepSession: Boolean = false) = withContext(Dispatchers.IO) {
+    private suspend fun disconnectInternal(keepSession: Boolean = false) = withContext(ioDispatcher) {
         try {
             Log.d(TAG, "카메라 연결 해제 시작 (keepSession: $keepSession)")
 
@@ -1302,7 +1305,7 @@ class PtpipDataSource @Inject constructor(
      * 자동 다운로드된 파일 처리 - 네이티브에서 모든 처리 완료됨
      */
     private fun handleAutomaticDownload(filePath: String, fileName: String) {
-        coroutineScope.launch(Dispatchers.IO) {
+        coroutineScope.launch(ioDispatcher) {
             try {
                 Log.d(TAG, "네이티브 파일 처리 완료 알림: $fileName")
                 // 중복 처리 방지: 최근 처리 맵에서 윈도우 내 동일 파일 무시
@@ -1358,7 +1361,7 @@ class PtpipDataSource @Inject constructor(
     /**
      * gphoto2 접근을 위한 연결 해제
      */
-    suspend fun disconnectForGphoto2(keepSession: Boolean = false) = withContext(Dispatchers.IO) {
+    suspend fun disconnectForGphoto2(keepSession: Boolean = false) = withContext(ioDispatcher) {
         try {
             Log.d(TAG, "gphoto2 호환 모드: 연결 해제 시작 (keepSession: $keepSession)")
 
@@ -1387,7 +1390,7 @@ class PtpipDataSource @Inject constructor(
      * 임시 연결 해제
      */
     suspend fun temporaryDisconnect(keepSession: Boolean = true): Boolean =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
         try {
             Log.d(TAG, "임시 연결 해제 시작 (keepSession: $keepSession)")
 
@@ -1409,7 +1412,7 @@ class PtpipDataSource @Inject constructor(
     /**
      * 임시 해제 후 재연결
      */
-    suspend fun reconnectAfterTemporary(camera: PtpipCamera): Boolean = withContext(Dispatchers.IO) {
+    suspend fun reconnectAfterTemporary(camera: PtpipCamera): Boolean = withContext(ioDispatcher) {
         try {
             Log.d(TAG, "임시 해제 후 재연결 시작")
             kotlinx.coroutines.delay(2000)
@@ -1540,7 +1543,7 @@ class PtpipDataSource @Inject constructor(
                 val targetSsid = intent.getStringExtra(WifiNetworkHelper.EXTRA_AUTO_CONNECT_SSID)
                     ?: return
 
-                coroutineScope.launch(Dispatchers.IO) {
+                coroutineScope.launch(ioDispatcher) {
                     try {
                         autoConnectTaskRunnerProvider.get().handlePostConnection(targetSsid)
                     } catch (e: Exception) {

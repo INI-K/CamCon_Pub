@@ -31,11 +31,11 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * 카메라 연결/해제 및 USB 관리 전용 매니저
- * 단일책임: 카메라 연결 상태 관리만 담당
+ * USB 자동 연결/해제 전용 매니저
+ * 단일책임: USB 디바이스 감지 및 자동 연결 상태 관리만 담당
  */
 @Singleton
-class CameraConnectionManager @Inject constructor(
+class UsbAutoConnectManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val cameraRepository: CameraRepository,
     private val connectCameraUseCase: ConnectCameraUseCase,

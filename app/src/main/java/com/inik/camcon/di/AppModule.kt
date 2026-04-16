@@ -74,16 +74,19 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideNativeConfigDataSource(): com.inik.camcon.data.datasource.nativesource.NativeConfigDataSource =
-        com.inik.camcon.data.datasource.nativesource.NativeConfigDataSource(Dispatchers.IO)
+    fun provideNativeConfigDataSource(
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
+    ): com.inik.camcon.data.datasource.nativesource.NativeConfigDataSource =
+        com.inik.camcon.data.datasource.nativesource.NativeConfigDataSource(ioDispatcher)
 
     @Provides
     @Singleton
     fun provideNativeCameraDataSource(
         @ApplicationContext context: Context,
         cameraStateObserver: CameraStateObserver,
-        @ApplicationScope scope: CoroutineScope
-    ) = NativeCameraDataSource(context, cameraStateObserver, scope, Dispatchers.IO)
+        @ApplicationScope scope: CoroutineScope,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
+    ) = NativeCameraDataSource(context, cameraStateObserver, scope, ioDispatcher)
 
     @Provides
     @Singleton
@@ -106,15 +109,17 @@ object AppModule {
     @Singleton
     fun provideUsbConnectionManager(
         @ApplicationContext context: Context,
-        @ApplicationScope scope: CoroutineScope
-    ) = UsbConnectionManager(context, scope)
+        @ApplicationScope scope: CoroutineScope,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
+    ) = UsbConnectionManager(context, scope, ioDispatcher)
 
     @Provides
     @Singleton
     fun provideCameraCapabilitiesManager(
         cameraStateObserver: CameraStateObserver,
-        @ApplicationScope scope: CoroutineScope
-    ) = CameraCapabilitiesManager(cameraStateObserver, scope)
+        @ApplicationScope scope: CoroutineScope,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
+    ) = CameraCapabilitiesManager(cameraStateObserver, scope, ioDispatcher)
 
     @Provides
     @Singleton
@@ -139,7 +144,9 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideNikonAuthenticationService() = NikonAuthenticationService()
+    fun provideNikonAuthenticationService(
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
+    ) = NikonAuthenticationService(ioDispatcher)
 
     @Provides
     @Singleton
@@ -159,7 +166,8 @@ object AppModule {
         photoDownloadManager: PhotoDownloadManager,
         autoConnectManager: AutoConnectManager,
         autoConnectTaskRunner: Lazy<AutoConnectTaskRunner>,
-        @ApplicationScope scope: CoroutineScope
+        @ApplicationScope scope: CoroutineScope,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
     ): PtpipDataSource {
         return PtpipDataSource(
             context,
@@ -172,7 +180,8 @@ object AppModule {
             photoDownloadManager,
             autoConnectManager,
             autoConnectTaskRunner,
-            scope
+            scope,
+            ioDispatcher
         )
     }
 
@@ -198,7 +207,8 @@ object AppModule {
         validateImageFormatUseCase: ValidateImageFormatUseCase,
         photoDownloadManager: PhotoDownloadManager,
         errorHandlingManager: com.inik.camcon.domain.manager.ErrorHandlingManager,
-        @ApplicationScope scope: CoroutineScope
+        @ApplicationScope scope: CoroutineScope,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
     ): CameraEventManager =
         CameraEventManager(
             nativeDataSource,
@@ -206,7 +216,8 @@ object AppModule {
             validateImageFormatUseCase,
             photoDownloadManager,
             errorHandlingManager,
-            scope
+            scope,
+            ioDispatcher
         )
 
     @Provides

@@ -27,6 +27,7 @@ class CameraStreamingManager @Inject constructor(
     val currentFrame: StateFlow<StreamFrame?> = _currentFrame.asStateFlow()
 
     private var streamingJob: Job? = null
+    private var stopJob: Job? = null
 
     fun startStreaming() {
         scope.launch {
@@ -42,7 +43,10 @@ class CameraStreamingManager @Inject constructor(
     }
 
     fun stopStreaming() {
-        scope.launch {
+        // 이미 active인 stopJob이 있으면 재실행하지 않음
+        if (stopJob?.isActive == true) return
+
+        stopJob = scope.launch {
             streamingJob?.cancel()
             streamingJob = null
             stopStreamingUseCase()

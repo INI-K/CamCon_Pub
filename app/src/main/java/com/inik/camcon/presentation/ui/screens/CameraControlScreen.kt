@@ -143,13 +143,6 @@ fun CameraControlScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
 
-    // Activity를 ViewModel에 설정
-    LaunchedEffect(context) {
-        (context as? Activity)?.let { activity ->
-            viewModel.setActivity(activity)
-        }
-    }
-
     // UI 상태들을 선별적으로 수집
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val liveViewFrame by viewModel.liveViewFrame.collectAsStateWithLifecycle()
@@ -221,9 +214,9 @@ fun CameraControlScreen(
     }
 
     // 이벤트 리스너 자동 시작 상태 추적 (중복 방지) - 더 이상 필요하지 않음
-    // CameraConnectionManager에서 자동 처리됨
+    // UsbAutoConnectManager에서 자동 처리됨
 
-    // 기존 자동 시작 로직은 CameraConnectionManager로 이동됨
+    // 기존 자동 시작 로직은 UsbAutoConnectManager로 이동됨
     // 여기서는 연결 상태만 모니터링
     LaunchedEffect(uiState.isConnected, uiState.isNativeCameraConnected) {
         LogcatManager.d("CameraControl", "=== 연결 상태 모니터링 ===")
@@ -234,9 +227,9 @@ fun CameraControlScreen(
         )
 
         if (uiState.isConnected && uiState.isNativeCameraConnected) {
-            LogcatManager.d("CameraControl", "카메라 완전 연결 완료 - CameraConnectionManager에서 자동 처리됨")
+            LogcatManager.d("CameraControl", "카메라 완전 연결 완료 - UsbAutoConnectManager에서 자동 처리됨")
             // 탭 전환 시에도 이벤트 리스너가 유지되도록 여기서는 별도 처리하지 않음
-            // CameraConnectionManager에서 자동으로 이벤트 리스너를 관리함
+            // UsbAutoConnectManager에서 자동으로 이벤트 리스너를 관리함
         }
     }
 
