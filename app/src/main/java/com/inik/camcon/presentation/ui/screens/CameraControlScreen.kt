@@ -119,6 +119,7 @@ import com.inik.camcon.presentation.ui.screens.components.TopControlsBar
 import com.inik.camcon.presentation.ui.screens.components.UsbInitializationOverlay
 import com.inik.camcon.presentation.ui.screens.dialogs.CameraConnectionHelpDialog
 import com.inik.camcon.presentation.ui.screens.dialogs.TimelapseSettingsDialog
+import com.inik.camcon.presentation.ui.screens.camera.dialogs.CameraRestartDialog
 import com.inik.camcon.domain.model.LiveViewFrame
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.CameraUiState
@@ -407,39 +408,6 @@ fun CameraControlScreen(
             }
         )
     }
-}
-
-/**
- * 앱 재시작을 요구하는 AlertDialog
- */
-@Composable
-private fun AppRestartDialog(
-    onDismiss: () -> Unit,
-    onRestart: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Default.Close, contentDescription = stringResource(R.string.cd_close), tint = MaterialTheme.colorScheme.error) },
-        title = {
-            Text(stringResource(R.string.camera_control_app_restart_needed))
-        },
-        text = {
-            Text(
-                stringResource(R.string.camera_control_app_restart_message),
-                style = MaterialTheme.typography.bodyMedium
-            )
-        },
-        confirmButton = {
-            Button(onClick = onRestart) {
-                Text(stringResource(R.string.camera_control_app_restart))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.cancel))
-            }
-        }
-    )
 }
 
 @androidx.compose.runtime.Stable
