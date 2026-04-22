@@ -141,6 +141,15 @@
     <string name="error_unknown">Ein unbekannter Fehler ist aufgetreten</string>
     <string name="error_usb_not_supported">USB OTG nicht unterstützt</string>
     <string name="error_camera_busy">Kamera ist beschäftigt</string>
+    <string name="error_unsupported_shooting_mode">Nicht unterstützter Aufnahmemodus: %1$s. Unterstützte Modi: %2$s</string>
+
+    <!-- Aufnahmemodus-Namen -->
+    <string name="shooting_mode_single">Einzelaufnahme</string>
+    <string name="shooting_mode_continuous">Serienbild</string>
+    <string name="shooting_mode_timelapse">Zeitraffer</string>
+    <string name="shooting_mode_burst">Burst</string>
+    <string name="shooting_mode_hdr_bracket">HDR-Reihe</string>
+    <string name="shooting_mode_bulb">Bulb</string>
 
     <!-- Berechtigungen -->
     <string name="permission_camera">Kamera-Berechtigung erforderlich</string>

@@ -140,6 +140,15 @@
     <string name="error_unknown">Unknown error occurred</string>
     <string name="error_usb_not_supported">USB OTG not supported</string>
     <string name="error_camera_busy">Camera is busy</string>
+    <string name="error_unsupported_shooting_mode">Unsupported shooting mode: %1$s. Supported: %2$s</string>
+
+    <!-- Shooting Mode Names -->
+    <string name="shooting_mode_single">Single shot</string>
+    <string name="shooting_mode_continuous">Continuous</string>
+    <string name="shooting_mode_timelapse">Timelapse</string>
+    <string name="shooting_mode_burst">Burst</string>
+    <string name="shooting_mode_hdr_bracket">HDR Bracket</string>
+    <string name="shooting_mode_bulb">Bulb</string>
 
     <!-- Permissions -->
     <string name="permission_camera">Camera permission is required</string>
@@ -365,12 +374,6 @@
     <string name="photo_info_unknown">알 수 없음</string>
     <string name="photo_info_back">뒤로가기</string>
 
-    <!-- ShootingModeSelector -->
-    <string name="shooting_mode_single">단일</string>
-    <string name="shooting_mode_burst">연사</string>
-    <string name="shooting_mode_timelapse">타임랩스</string>
-    <string name="shooting_mode_bulb">벌브</string>
-
     <!-- PhotoThumbnail -->
     <string name="photo_thumbnail_selected">선택됨</string>
     <string name="photo_thumbnail_latest">최신</string>
@@ -424,6 +427,15 @@
     <string name="sta_mode_mdns_description">같은 네트워크의 카메라를 자동 검색합니다.</string>
     <string name="sta_mode_searching">검색 중…</string>
     <string name="sta_mode_search_camera">카메라 검색</string>
+
+    <!-- PtpipPhaseMessages -->
+    <string name="ptpip_phase_discovering">카메라 검색 중…</string>
+    <string name="ptpip_phase_discovered">카메라를 발견했습니다</string>
+    <string name="ptpip_phase_tcp_connecting">TCP 연결 중…</string>
+    <string name="ptpip_phase_handshaking">카메라와 협상 중…</string>
+    <string name="ptpip_phase_authenticating">인증 중…</string>
+    <string name="ptpip_phase_session_ready">세션 준비 완료</string>
+    <string name="ptpip_phase_error">연결 오류</string>
 
     <!-- PtpipCommonComponents -->
     <string name="ptpip_camera">카메라</string>
