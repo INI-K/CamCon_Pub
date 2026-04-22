@@ -357,31 +357,6 @@ fun ExifInfoContent(
     }
 }
 
-@Composable
-private fun ExifField(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = label,
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = value,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-    }
-}
-
 private fun readExifFromFile(filePath: String): String? {
     return try {
         val file = java.io.File(filePath)
@@ -480,66 +455,5 @@ private fun formatPhotoDate(
             SimpleDateFormat("yyyy년 M월 d일 a h:mm", Locale.KOREAN)
                 .format(Date(photo.date))
         }
-    }
-}
-
-private fun parseExifInfo(exifJson: String): Map<String, String> {
-    return try {
-        com.google.gson.Gson().fromJson(exifJson, Map::class.java) as? Map<String, String>
-            ?: emptyMap()
-    } catch (e: Exception) {
-        Log.e("parseExifInfo", "Failed to parse EXIF JSON", e)
-        emptyMap()
-    }
-}
-
-private fun formatShutterSpeed(exposureTime: String): String {
-    return try {
-        val value = exposureTime.toDoubleOrNull() ?: return exposureTime
-        when {
-            value >= 1.0 -> "${value.toInt()}s"
-            value >= 0.5 -> "1/${(1 / value).toInt()}s"
-            else -> "1/${(1 / value).toInt()}s"
-        }
-    } catch (e: Exception) {
-        exposureTime
-    }
-}
-
-private fun formatAperture(fNumber: String): String {
-    return try {
-        val value = fNumber.toDoubleOrNull() ?: return fNumber
-        "f/${String.format("%.1f", value)}"
-    } catch (e: Exception) {
-        fNumber
-    }
-}
-
-private fun formatFocalLength(focalLength: String): String {
-    return try {
-        val value = focalLength.toDoubleOrNull() ?: return focalLength
-        "${value.toInt()}mm"
-    } catch (e: Exception) {
-        focalLength
-    }
-}
-
-private fun formatWhiteBalance(whiteBalance: String): String {
-    return when (whiteBalance) {
-        "0" -> "Auto"
-        "1" -> "Manual"
-        "2" -> "Daylight"
-        "3" -> "Cloudy"
-        "4" -> "Tungsten"
-        "5" -> "Fluorescent"
-        else -> whiteBalance
-    }
-}
-
-private fun formatFlash(flash: String): String {
-    return when {
-        flash.contains("1") -> "Flash On"
-        flash.contains("0") -> "Flash Off"
-        else -> flash
     }
 }

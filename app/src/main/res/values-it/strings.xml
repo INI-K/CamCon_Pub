@@ -141,6 +141,15 @@
     <string name="error_unknown">Si è verificato un errore sconosciuto</string>
     <string name="error_usb_not_supported">USB OTG non supportato</string>
     <string name="error_camera_busy">Fotocamera occupata</string>
+    <string name="error_unsupported_shooting_mode">Modalità di scatto non supportata: %1$s. Modalità supportate: %2$s</string>
+
+    <!-- Nomi Modalità di Scatto -->
+    <string name="shooting_mode_single">Scatto singolo</string>
+    <string name="shooting_mode_continuous">Continuo</string>
+    <string name="shooting_mode_timelapse">Time lapse</string>
+    <string name="shooting_mode_burst">Raffica</string>
+    <string name="shooting_mode_hdr_bracket">Bracketing HDR</string>
+    <string name="shooting_mode_bulb">Posa</string>
 
     <!-- Permessi -->
     <string name="permission_camera">È richiesto il permesso della fotocamera</string>

@@ -82,7 +82,8 @@ data class CameraDialogState(
     val showCameraStatusCheckDialog: Boolean = false,
     val showNikonStaWarning: Boolean = false,
     val cameraFunctionLimitation: String? = null,
-    val rawFileRestriction: RawFileRestriction? = null
+    val rawFileRestriction: RawFileRestriction? = null,
+    val shootingModeError: String? = null
 )
 
 /**

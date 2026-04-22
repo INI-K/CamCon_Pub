@@ -1131,11 +1131,63 @@ class PhotoDownloadManager @Inject constructor(
      */
     private fun saveRotatedImage(filePath: String, bitmap: Bitmap) {
         try {
+            // 1. 원본 EXIF 메타데이터 읽기 (compress 전에!)
+            val originalExif = ExifInterface(filePath)
+            val tagsToPreserve = arrayOf(
+                // 카메라 정보
+                ExifInterface.TAG_MAKE,
+                ExifInterface.TAG_MODEL,
+                ExifInterface.TAG_SOFTWARE,
+                // 촬영 설정
+                ExifInterface.TAG_F_NUMBER,
+                ExifInterface.TAG_EXPOSURE_TIME,
+                ExifInterface.TAG_ISO_SPEED_RATINGS,
+                ExifInterface.TAG_FOCAL_LENGTH,
+                ExifInterface.TAG_FOCAL_LENGTH_IN_35MM_FILM,
+                ExifInterface.TAG_APERTURE_VALUE,
+                ExifInterface.TAG_SHUTTER_SPEED_VALUE,
+                ExifInterface.TAG_WHITE_BALANCE,
+                ExifInterface.TAG_FLASH,
+                ExifInterface.TAG_EXPOSURE_MODE,
+                ExifInterface.TAG_METERING_MODE,
+                // 날짜/시간 정보
+                ExifInterface.TAG_DATETIME,
+                ExifInterface.TAG_DATETIME_ORIGINAL,
+                ExifInterface.TAG_DATETIME_DIGITIZED,
+                ExifInterface.TAG_SUBSEC_TIME,
+                ExifInterface.TAG_SUBSEC_TIME_ORIGINAL,
+                ExifInterface.TAG_SUBSEC_TIME_DIGITIZED,
+                // GPS 정보
+                ExifInterface.TAG_GPS_LATITUDE,
+                ExifInterface.TAG_GPS_LATITUDE_REF,
+                ExifInterface.TAG_GPS_LONGITUDE,
+                ExifInterface.TAG_GPS_LONGITUDE_REF,
+                ExifInterface.TAG_GPS_ALTITUDE,
+                ExifInterface.TAG_GPS_ALTITUDE_REF,
+                ExifInterface.TAG_GPS_TIMESTAMP,
+                ExifInterface.TAG_GPS_DATESTAMP
+            )
+            val savedTags = tagsToPreserve.associateWith { originalExif.getAttribute(it) }
+                .filterValues { it != null }
+
+            // 2. 회전된 비트맵 저장 (EXIF 새로 생성됨)
             FileOutputStream(filePath).use { fos ->
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 95, fos)
                 fos.flush()
             }
-            Log.d(TAG, "회전된 이미지 저장 완료: $filePath")
+
+            // 3. 보존된 EXIF 태그 복사 및 orientation=NORMAL 설정
+            val newExif = ExifInterface(filePath)
+            savedTags.forEach { (tag, value) ->
+                if (value != null) newExif.setAttribute(tag, value)
+            }
+            newExif.setAttribute(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL.toString()
+            )
+            newExif.saveAttributes()
+
+            Log.d(TAG, "회전된 이미지 저장 완료 (EXIF 보존): $filePath")
             bitmap.recycle()
         } catch (e: Exception) {
             Log.e(TAG, "회전된 이미지 저장 중 오류", e)
@@ -1165,6 +1217,28 @@ class PhotoDownloadManager @Inject constructor(
                 Log.d(TAG, "EXIF 270도 회전 적용")
                 rotationDegrees = 270f
                 swapDimensions = true
+            }
+            ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> {
+                Log.d(TAG, "EXIF 수평 반전 적용")
+                matrix.preScale(-1f, 1f)
+                return processTransformedBitmap(bitmap, matrix, swapDimensions = false)
+            }
+            ExifInterface.ORIENTATION_FLIP_VERTICAL -> {
+                Log.d(TAG, "EXIF 수직 반전 적용")
+                matrix.preScale(1f, -1f)
+                return processTransformedBitmap(bitmap, matrix, swapDimensions = false)
+            }
+            ExifInterface.ORIENTATION_TRANSPOSE -> {
+                Log.d(TAG, "EXIF 전치 적용 (90도 회전 + 수평 반전)")
+                matrix.postRotate(90f)
+                matrix.preScale(-1f, 1f)
+                return processTransformedBitmap(bitmap, matrix, swapDimensions = true)
+            }
+            ExifInterface.ORIENTATION_TRANSVERSE -> {
+                Log.d(TAG, "EXIF 역전치 적용 (270도 회전 + 수평 반전)")
+                matrix.postRotate(270f)
+                matrix.preScale(-1f, 1f)
+                return processTransformedBitmap(bitmap, matrix, swapDimensions = true)
             }
             else -> return bitmap // 회전 불필요
         }
@@ -1207,6 +1281,50 @@ class PhotoDownloadManager @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "이미지 회전 중 오류", e)
             bitmap // 회전 실패 시 원본 반환
+        }
+    }
+
+    /**
+     * EXIF 변환(반전, 전치) 적용 헬퍼 메서드
+     */
+    private fun processTransformedBitmap(
+        bitmap: Bitmap,
+        matrix: Matrix,
+        swapDimensions: Boolean
+    ): Bitmap {
+        return try {
+            // 메모리 상태 확인
+            val runtime = Runtime.getRuntime()
+            val availableMemory =
+                runtime.maxMemory() - (runtime.totalMemory() - runtime.freeMemory())
+
+            if (availableMemory < 20 * 1024 * 1024) { // 20MB 미만
+                Log.w(TAG, "메모리 부족으로 이미지 변환 생략: 사용가능 ${availableMemory / 1024 / 1024}MB")
+                return bitmap
+            }
+
+            // 변환 후 비트맵 크기 계산
+            val newWidth = if (swapDimensions) bitmap.height else bitmap.width
+            val newHeight = if (swapDimensions) bitmap.width else bitmap.height
+
+            val transformedBitmap = Bitmap.createBitmap(
+                bitmap, 0, 0,
+                bitmap.width, bitmap.height,
+                matrix, true
+            )
+
+            // 원본 비트맵과 다른 경우에만 원본 해제
+            if (transformedBitmap != bitmap) {
+                bitmap.recycle()
+            }
+
+            transformedBitmap
+        } catch (e: OutOfMemoryError) {
+            Log.e(TAG, "이미지 변환 중 메모리 부족", e)
+            bitmap
+        } catch (e: Exception) {
+            Log.e(TAG, "이미지 변환 중 오류", e)
+            bitmap
         }
     }
 
