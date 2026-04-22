@@ -3,6 +3,7 @@ package com.inik.camcon.presentation.viewmodel
 import android.util.Log
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.domain.model.TimelapseSettings
+import com.inik.camcon.domain.model.UnsupportedShootingModeException
 import com.inik.camcon.domain.usecase.camera.CapturePhotoUseCase
 import com.inik.camcon.domain.usecase.camera.PerformAutoFocusUseCase
 import com.inik.camcon.domain.usecase.camera.StartLiveViewUseCase
@@ -80,8 +81,13 @@ class CameraOperationsManager @Inject constructor(
                         Log.d(TAG, "사진 촬영 성공: ${photo.filePath}")
                     }
                     .onFailure { error ->
-                        Log.e(TAG, "사진 촬영 실패", error)
-                        uiStateManager.setError("사진 촬영 실패: ${error.message ?: "알 수 없는 오류"}")
+                        if (error is UnsupportedShootingModeException) {
+                            Log.w(TAG, "지원하지 않는 촬영 모드: ${error.message}")
+                            uiStateManager.setShootingModeError(error.message ?: "지원하지 않는 촬영 모드입니다")
+                        } else {
+                            Log.e(TAG, "사진 촬영 실패", error)
+                            uiStateManager.setError("사진 촬영 실패: ${error.message ?: "알 수 없는 오류"}")
+                        }
                     }
 
                 uiStateManager.updateCapturingState(false)
@@ -210,9 +216,14 @@ class CameraOperationsManager @Inject constructor(
 
                 startTimelapseUseCase(settings)
                     .catch { error ->
-                        Log.e(TAG, "타임랩스 실행 중 오류", error)
+                        if (error is UnsupportedShootingModeException) {
+                            Log.w(TAG, "지원하지 않는 촬영 모드: ${error.message}")
+                            uiStateManager.setShootingModeError(error.message ?: "지원하지 않는 촬영 모드입니다")
+                        } else {
+                            Log.e(TAG, "타임랩스 실행 중 오류", error)
+                            uiStateManager.setError("타임랩스 시작 실패: ${error.message ?: "알 수 없는 오류"}")
+                        }
                         uiStateManager.updateCapturingState(false)
-                        uiStateManager.setError("타임랩스 시작 실패: ${error.message ?: "알 수 없는 오류"}")
                     }
                     .collect { photo ->
                         Log.d(TAG, "타임랩스 사진 촬영: ${photo.filePath}")
