@@ -1078,33 +1078,95 @@ class PhotoDownloadManager @Inject constructor(
     }
 
     /**
-     * EXIF 정보에 따른 이미지 회전 처리
+     * Issue 1: 파일 경로에서 EXIF 정보를 읽어 이미지 회전 처리
+     * 파일 경로 기반 오버로드 — 디코딩 후 회전 적용
+     */
+    private fun rotateImageIfRequired(filePath: String) {
+        try {
+            val file = File(filePath)
+            if (!file.exists()) {
+                Log.w(TAG, "EXIF 회전: 파일 미존재 - $filePath")
+                return
+            }
+
+            // EXIF 정보 읽기
+            val exifInterface = ExifInterface(filePath)
+            val orientation = exifInterface.getAttributeInt(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL
+            )
+
+            // 회전 필요 없으면 조기 반환
+            if (orientation == ExifInterface.ORIENTATION_NORMAL) {
+                Log.d(TAG, "EXIF 회전: 정상 방향 (회전 불필요)")
+                return
+            }
+
+            Log.d(TAG, "EXIF 회전: orientation=$orientation")
+
+            // 이미지 디코딩
+            val bitmap = BitmapFactory.decodeFile(filePath)
+            if (bitmap == null) {
+                Log.w(TAG, "EXIF 회전: 비트맵 디코딩 실패")
+                return
+            }
+
+            // 회전된 비트맵 생성
+            val rotatedBitmap = rotateImageIfRequired(bitmap, orientation)
+
+            // 회전된 이미지를 파일에 저장
+            if (rotatedBitmap != bitmap) {
+                saveRotatedImage(filePath, rotatedBitmap)
+                // 원본 비트맵은 rotateImageIfRequired 내에서 이미 recycle됨
+            } else {
+                bitmap.recycle()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "EXIF 회전 처리 중 오류", e)
+        }
+    }
+
+    /**
+     * 회전된 비트맵을 파일에 저장
+     */
+    private fun saveRotatedImage(filePath: String, bitmap: Bitmap) {
+        try {
+            FileOutputStream(filePath).use { fos ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 95, fos)
+                fos.flush()
+            }
+            Log.d(TAG, "회전된 이미지 저장 완료: $filePath")
+            bitmap.recycle()
+        } catch (e: Exception) {
+            Log.e(TAG, "회전된 이미지 저장 중 오류", e)
+            bitmap.recycle()
+        }
+    }
+
+    /**
+     * EXIF 정보에 따른 이미지 회전 처리 (비트맵 기반 오버로드)
      */
     private fun rotateImageIfRequired(bitmap: Bitmap, orientation: Int): Bitmap {
         val matrix = Matrix()
-        var rotationApplied = false
+        var rotationDegrees = 0f
+        var swapDimensions = false
 
         when (orientation) {
             ExifInterface.ORIENTATION_ROTATE_90 -> {
                 Log.d(TAG, "EXIF 90도 회전 적용")
-                matrix.postRotate(90f)
-                rotationApplied = true
+                rotationDegrees = 90f
+                swapDimensions = true
             }
             ExifInterface.ORIENTATION_ROTATE_180 -> {
                 Log.d(TAG, "EXIF 180도 회전 적용")
-                matrix.postRotate(180f)
-                rotationApplied = true
+                rotationDegrees = 180f
             }
             ExifInterface.ORIENTATION_ROTATE_270 -> {
                 Log.d(TAG, "EXIF 270도 회전 적용")
-                matrix.postRotate(270f)
-                rotationApplied = true
+                rotationDegrees = 270f
+                swapDimensions = true
             }
             else -> return bitmap // 회전 불필요
-        }
-
-        if (!rotationApplied) {
-            return bitmap
         }
 
         return try {
@@ -1118,6 +1180,13 @@ class PhotoDownloadManager @Inject constructor(
                 Log.w(TAG, "메모리 부족으로 이미지 회전 생략: 사용가능 ${availableMemory / 1024 / 1024}MB")
                 return bitmap
             }
+
+            // 회전 후 비트맵 크기 계산
+            val newWidth = if (swapDimensions) bitmap.height else bitmap.width
+            val newHeight = if (swapDimensions) bitmap.width else bitmap.height
+
+            // 회전 중심을 비트맵 중앙으로 설정
+            matrix.postRotate(rotationDegrees, bitmap.width / 2f, bitmap.height / 2f)
 
             val rotatedBitmap = Bitmap.createBitmap(
                 bitmap, 0, 0,
@@ -1222,6 +1291,9 @@ class PhotoDownloadManager @Inject constructor(
                 Log.d(TAG, "   임시 파일: $tempFilePath")
                 Log.d(TAG, "   파일명: $fileName")
                 Log.d(TAG, "   Android SDK: ${Build.VERSION.SDK_INT}")
+
+                // Issue 1: EXIF 회전 역방향 — non-resize 경로에서 회전 적용
+                rotateImageIfRequired(tempFilePath)
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     // Android 10+: MediaStore API 사용
