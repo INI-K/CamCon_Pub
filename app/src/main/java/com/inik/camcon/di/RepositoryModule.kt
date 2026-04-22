@@ -48,6 +48,7 @@ import com.inik.camcon.domain.repository.SubscriptionRepository
 import com.inik.camcon.domain.repository.UsbDeviceRepository
 import com.inik.camcon.domain.util.Logger
 import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
+import com.inik.camcon.presentation.viewmodel.CameraOperationsManager
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -194,4 +195,5 @@ abstract class RepositoryModule {
     abstract fun bindPtpipDebugRepository(
         impl: PtpipDebugRepositoryImpl
     ): PtpipDebugRepository
+
 }

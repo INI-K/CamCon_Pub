@@ -219,6 +219,13 @@ android {
         }
     }
 
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+            returnDefaultValues = true
+        }
+    }
+
 }
 
 // KSP configuration for better performance

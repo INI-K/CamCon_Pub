@@ -57,6 +57,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.SheetValue
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -117,6 +118,7 @@ import com.inik.camcon.presentation.ui.screens.components.LoadingOverlay
 import com.inik.camcon.presentation.ui.screens.components.ShootingModeSelector
 import com.inik.camcon.presentation.ui.screens.components.TopControlsBar
 import com.inik.camcon.presentation.ui.screens.components.UsbInitializationOverlay
+import com.inik.camcon.presentation.ui.screens.components.UnsupportedShootingModeSnackbar
 import com.inik.camcon.presentation.ui.screens.dialogs.CameraConnectionHelpDialog
 import com.inik.camcon.presentation.ui.screens.dialogs.TimelapseSettingsDialog
 import com.inik.camcon.presentation.ui.screens.camera.dialogs.CameraRestartDialog
@@ -238,6 +240,7 @@ fun CameraControlScreen(
     var isFullscreen by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val snackbarHostState = remember { SnackbarHostState() }
     var showTimelapseDialog by remember { mutableStateOf(false) }
     var showBottomSheet by remember { mutableStateOf(false) }
 
@@ -339,6 +342,12 @@ fun CameraControlScreen(
         )
     }
 
+    // 지원하지 않는 촬영 모드 에러 Snackbar 표시
+    UnsupportedShootingModeSnackbar(
+        shootingModeError = uiState.dialog.shootingModeError,
+        snackbarHostState = snackbarHostState
+    )
+
     // FullScreenPhotoViewer 표시
     if (showFullScreenViewer && selectedPhoto != null) {
         FullScreenPhotoViewer(
@@ -388,7 +397,7 @@ fun CameraControlScreen(
 
     if (showAppRestartDialog) {
         val context = LocalContext.current
-        AppRestartDialog(
+        CameraRestartDialog(
             onDismiss = { viewModel.dismissRestartDialog() },
             onRestart = {
                 viewModel.dismissRestartDialog()

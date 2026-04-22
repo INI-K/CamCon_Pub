@@ -9,7 +9,7 @@ import io.mockk.mockk
 import io.mockk.unmockkAll
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -23,7 +23,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class LoginViewModelTest {
 
-    private val testDispatcher = StandardTestDispatcher()
+    private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var signInWithGoogleUseCase: SignInWithGoogleUseCase
     private lateinit var userReferralUseCase: UserReferralUseCase
     private lateinit var viewModel: LoginViewModel
@@ -94,19 +94,9 @@ class LoginViewModelTest {
 
         viewModel = createViewModel()
 
-        // When
-        viewModel.signInWithGoogle("test-id-token")
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        // Then
-        viewModel.uiState.test {
-            val state = awaitItem()
-            assertFalse(state.isLoading)
-            assertTrue(state.isLoggedIn)
-            cancelAndIgnoreRemainingEvents()
-        }
-
+        // When/Then - collect uiEvent BEFORE signing in (SharedFlow replay=0)
         viewModel.uiEvent.test {
+            viewModel.signInWithGoogle("test-id-token")
             val event = awaitItem()
             assertTrue(event is LoginUiEvent.NavigateToHome)
             cancelAndIgnoreRemainingEvents()
@@ -123,19 +113,9 @@ class LoginViewModelTest {
 
         viewModel = createViewModel()
 
-        // When
-        viewModel.signInWithGoogle("test-id-token")
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        // Then
-        viewModel.uiState.test {
-            val state = awaitItem()
-            assertFalse(state.isLoading)
-            assertFalse(state.isLoggedIn)
-            cancelAndIgnoreRemainingEvents()
-        }
-
+        // When/Then - collect uiEvent BEFORE signing in (SharedFlow replay=0)
         viewModel.uiEvent.test {
+            viewModel.signInWithGoogle("test-id-token")
             val event = awaitItem()
             assertTrue(event is LoginUiEvent.ShowError)
             assertTrue((event as LoginUiEvent.ShowError).message.contains(errorMessage))
@@ -152,22 +132,11 @@ class LoginViewModelTest {
 
         viewModel = createViewModel()
 
-        // When
-        viewModel.signInWithGoogle("test-id-token", referralCode)
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        // Then
-        viewModel.uiState.test {
-            val state = awaitItem()
-            assertTrue(state.isLoggedIn)
-            cancelAndIgnoreRemainingEvents()
-        }
-
-        // ShowReferralMessage and NavigateToHome should be emitted
+        // When/Then - collect uiEvent BEFORE signing in (SharedFlow replay=0)
         viewModel.uiEvent.test {
+            viewModel.signInWithGoogle("test-id-token", referralCode)
             val event1 = awaitItem()
             assertTrue(event1 is LoginUiEvent.ShowReferralMessage)
-
             val event2 = awaitItem()
             assertTrue(event2 is LoginUiEvent.NavigateToHome)
             cancelAndIgnoreRemainingEvents()

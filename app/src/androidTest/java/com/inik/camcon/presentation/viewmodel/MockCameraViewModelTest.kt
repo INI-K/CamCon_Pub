@@ -2,6 +2,8 @@ package com.inik.camcon.presentation.viewmodel
 
 import app.cash.turbine.test
 import com.inik.camcon.CameraNative
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.unmockkAll
@@ -18,16 +20,31 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 
+/**
+ * MockCameraViewModel instrumented test
+ * androidTest로 이관됨 (JVM 단위 테스트 환경에서 native library 로드 불가)
+ *
+ * 원인: CameraNative.kt 싱글톤이 초기화될 때 arm64-v8a libnative-lib.so 로드 시도
+ * → JVM에서는 로드 실패 → ExceptionInInitializerError
+ *
+ * androidTest 환경에서는 Android 컨텍스트가 있어 native library 로드 지원
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
+@HiltAndroidTest
 class MockCameraViewModelTest {
+
+    @get:Rule
+    val hiltRule = HiltAndroidRule(this)
 
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var cameraNative: CameraNative
 
     @Before
     fun setup() {
+        hiltRule.inject()
         Dispatchers.setMain(testDispatcher)
         cameraNative = mockk(relaxed = true)
     }

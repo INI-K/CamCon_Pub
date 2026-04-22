@@ -449,6 +449,28 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
         Log.d(TAG, "RAW 파일 제한 상태 초기화")
     }
 
+    /**
+     * Issue W2: 미구현 촬영 모드 에러 메시지 설정
+     */
+    fun setShootingModeError(message: String?) {
+        _uiState.update {
+            it.copy(dialog = it.dialog.copy(shootingModeError = message))
+        }
+        if (message != null) {
+            Log.w(TAG, "미구현 촬영 모드 에러: $message")
+        }
+    }
+
+    /**
+     * Issue W2: 미구현 촬영 모드 에러 메시지 초기화
+     */
+    fun clearShootingModeError() {
+        _uiState.update {
+            it.copy(dialog = it.dialog.copy(shootingModeError = null))
+        }
+        Log.d(TAG, "미구현 촬영 모드 에러 초기화")
+    }
+
     // ── PTPIP ──
 
     /**

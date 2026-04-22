@@ -342,46 +342,48 @@ class UsbConnectionManager @Inject constructor(
     /**
      * 카메라 연결을 완전히 해제합니다.
      */
-    suspend fun disconnectCamera() = withContext(ioDispatcher) {
-        try {
-            if (_isNativeCameraConnected.value) {
-                Log.d(TAG, "카메라 연결 해제 시작")
+    suspend fun disconnectCamera() {
+        withContext(ioDispatcher) {
+            try {
+                if (_isNativeCameraConnected.value) {
+                    Log.d(TAG, "카메라 연결 해제 시작")
 
-                // 카메라 이벤트 리스너 중지
-                try {
-                    CameraNative.stopListenCameraEvents()
-                    Log.d(TAG, "카메라 이벤트 리스너 중지 완료")
-                } catch (e: Exception) {
-                    Log.w(TAG, "카메라 이벤트 리스너 중지 중 오류", e)
+                    // 카메라 이벤트 리스너 중지
+                    try {
+                        CameraNative.stopListenCameraEvents()
+                        Log.d(TAG, "카메라 이벤트 리스너 중지 완료")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "카메라 이벤트 리스너 중지 중 오류", e)
+                    }
+
+                    // 카메라 연결 완전 해제 (이미 IO 디스패처에서 실행 중)
+                    try {
+                        CameraNative.closeCamera()
+                        Log.d(TAG, "카메라 네이티브 연결 해제 완료")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "카메라 네이티브 연결 해제 중 오류", e)
+                    }
+
+                    updateConnectionState(false, "연결 해제")
                 }
 
-                // 카메라 연결 완전 해제 (이미 IO 디스패처에서 실행 중)
-                try {
-                    CameraNative.closeCamera()
-                    Log.d(TAG, "카메라 네이티브 연결 해제 완료")
-                } catch (e: Exception) {
-                    Log.e(TAG, "카메라 네이티브 연결 해제 중 오류", e)
-                }
+                // USB 연결 정리
+                currentConnection?.close()
+                currentConnection = null
+                currentDevice = null
+                lastInitializedFd = -1
 
-                updateConnectionState(false, "연결 해제")
+                Log.d(TAG, "카메라 연결 해제 완료")
+            } catch (e: Exception) {
+                Log.e(TAG, "카메라 연결 해제 중 오류", e)
+                updateConnectionState(false, "오류 발생")
+
+                // 오류가 발생해도 상태는 초기화
+                currentConnection?.close()
+                currentConnection = null
+                currentDevice = null
+                lastInitializedFd = -1
             }
-
-            // USB 연결 정리
-            currentConnection?.close()
-            currentConnection = null
-            currentDevice = null
-            lastInitializedFd = -1
-
-            Log.d(TAG, "카메라 연결 해제 완료")
-        } catch (e: Exception) {
-            Log.e(TAG, "카메라 연결 해제 중 오류", e)
-            updateConnectionState(false, "오류 발생")
-
-            // 오류가 발생해도 상태는 초기화
-            currentConnection?.close()
-            currentConnection = null
-            currentDevice = null
-            lastInitializedFd = -1
         }
     }
 

@@ -140,6 +140,15 @@
     <string name="error_unknown">Ocurrió un error desconocido</string>
     <string name="error_usb_not_supported">USB OTG no soportado</string>
     <string name="error_camera_busy">Cámara ocupada</string>
+    <string name="error_unsupported_shooting_mode">Modo de disparo no soportado: %1$s. Modos soportados: %2$s</string>
+
+    <!-- Nombres de Modo de Disparo -->
+    <string name="shooting_mode_single">Disparo único</string>
+    <string name="shooting_mode_continuous">Continuo</string>
+    <string name="shooting_mode_timelapse">Lapso de tiempo</string>
+    <string name="shooting_mode_burst">Ráfaga</string>
+    <string name="shooting_mode_hdr_bracket">Horquilla HDR</string>
+    <string name="shooting_mode_bulb">Bombilla</string>
 
     <!-- Permisos -->
     <string name="permission_camera">Se requiere permiso de cámara</string>
