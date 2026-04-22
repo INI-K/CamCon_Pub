@@ -51,7 +51,7 @@ class PtpipRepositoryImpl @Inject constructor(
     override suspend fun connectToCamera(camera: PtpipCamera, forceApMode: Boolean): Boolean =
         ptpipDataSource.connectToCamera(camera, forceApMode)
 
-    override suspend fun disconnect() { ptpipDataSource.disconnect() }
+    override suspend fun disconnect() { ptpipDataSource.disconnect(keepSession = false) }
 
     override fun cleanup() = ptpipDataSource.cleanup()
 
@@ -63,21 +63,9 @@ class PtpipRepositoryImpl @Inject constructor(
     // ── 촬영 ──
 
     override suspend fun capturePhoto(callback: CameraCaptureCallback?) {
-        val listener: CameraCaptureListener? = if (callback != null) {
-            object : CameraCaptureListener {
-                override fun onFlushComplete() = callback.onFlushComplete()
-                override fun onPhotoCaptured(filePath: String, fileName: String) =
-                    callback.onPhotoCaptured(filePath, fileName)
-                override fun onPhotoDownloaded(
-                    filePath: String,
-                    fileName: String,
-                    imageData: ByteArray
-                ) = callback.onPhotoDownloaded(filePath, fileName, imageData)
-                override fun onCaptureFailed(errorCode: Int) = callback.onCaptureFailed(errorCode)
-                override fun onUsbDisconnected() = callback.onUsbDisconnected()
-            }
-        } else null
-        ptpipDataSource.capturePhoto(listener)
+        // PTP/IP의 경우 callback은 리스너 레지스트리를 통해 처리되며,
+        // 여기서는 실제 촬영 명령만 수행 (withAF=true로 기본 자동초점 활성화)
+        ptpipDataSource.capturePhoto(withAF = true)
     }
 
     // ── 네트워크 상태 조회 ──

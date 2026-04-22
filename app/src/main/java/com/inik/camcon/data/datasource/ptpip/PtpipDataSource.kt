@@ -28,6 +28,7 @@ import com.inik.camcon.domain.model.NikonConnectionMode
 import com.inik.camcon.domain.model.PtpDeviceInfo
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.PtpipCameraInfo
+import com.inik.camcon.domain.model.PtpipConnectionPhase
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
@@ -101,6 +102,10 @@ class PtpipDataSource @Inject constructor(
     // 추가: 연결 진행 메시지 상태 추가
     private val _connectionProgressMessage = MutableStateFlow("")
     val connectionProgressMessage: StateFlow<String> = _connectionProgressMessage.asStateFlow()
+
+    // 연결 단계 (mDNS 검색부터 세션 준비까지의 세부 단계)
+    private val _connectionPhase = MutableStateFlow(PtpipConnectionPhase.IDLE)
+    val connectionPhase: StateFlow<PtpipConnectionPhase> = _connectionPhase.asStateFlow()
 
     // Wi-Fi 연결 끊어짐 알림 상태 추가
     private val _connectionLostMessage = MutableStateFlow<String?>(null)
@@ -396,7 +401,7 @@ class PtpipDataSource @Inject constructor(
                     _connectionState.value = PtpipConnectionState.CONNECTING
                     _connectionProgressMessage.value = "카메라에 연결 중..."
 
-                    if (connectToCamera(camera)) {
+                    if (connectToCamera(camera, forceApMode = false)) {
                         Log.i(TAG, "자동 재연결 성공")
                         return
                     }
@@ -447,7 +452,7 @@ class PtpipDataSource @Inject constructor(
         // 카메라 연결 해제
         coroutineScope.launch(ioDispatcher) {
             try {
-                disconnect()
+                disconnect(keepSession = false)
             } catch (e: Exception) {
                 Log.w(TAG, "cleanup 중 disconnect 실패: ${e.message}")
             }
@@ -559,7 +564,7 @@ class PtpipDataSource @Inject constructor(
      * 스마트 카메라 연결 (libgphoto2 API 기반)
      * Activity 생명주기와 독립적으로 실행됩니다
      */
-    suspend fun connectToCamera(camera: PtpipCamera, forceApMode: Boolean = false): Boolean =
+    suspend fun connectToCamera(camera: PtpipCamera, forceApMode: Boolean): Boolean =
         connectionStateMutex.withLock {
         withContext(ioDispatcher) {
         try {
@@ -1109,47 +1114,36 @@ class PtpipDataSource @Inject constructor(
     }
 
     /**
-     * 사진 촬영 (수동 촬영 명령 - 사용자 요청 시에만 실행)
+     * PTP/IP를 통해 사진 촬영
      */
-    suspend fun capturePhoto(
-        callback: CameraCaptureListener? = null,
-    ): Boolean = withContext(ioDispatcher) {
+    suspend fun capturePhoto(withAF: Boolean): String? = withContext(ioDispatcher) {
         return@withContext try {
-            Log.d(TAG, "수동 사진 촬영 시작 (사용자 요청)")
+            Log.d(TAG, "PTP/IP 사진 촬영 시작 (AF: $withAF)")
 
             // 현재 연결된 카메라 정보 확인
             val camera = connectedCamera
             if (camera == null) {
-                Log.e(TAG, "수동 촬영 실패: 연결된 카메라 없음")
-                return@withContext false
+                Log.e(TAG, "촬영 실패: 연결된 카메라 없음")
+                return@withContext null
             }
 
-            // callback이 없으면 동기 방식으로 처리
-            if (callback == null) {
-                // 동기 방식 - 기존 코드
-                try {
-                    val result = CameraNative.capturePhoto()
-                    Log.d(TAG, "수동 동기 촬영 결과: $result")
-                    return@withContext result >= 0
-                } catch (e: Exception) {
-                    Log.e(TAG, "수동 동기 촬영 중 오류", e)
-                    return@withContext false
-                }
-            }
-
-            // 비동기 방식 - callback 있을 때 (수동 촬영 명령)
+            // PTP/IP 카메라로 사진 촬영
             try {
-                CameraNative.capturePhotoAsync(callback, "") // 사용자 요청 시에만 촬영
-                Log.d(TAG, "수동 비동기 촬영 요청 완료")
-                return@withContext true
+                val result = CameraNative.capturePhoto()
+                Log.d(TAG, "PTP/IP 촬영 결과: $result")
+                if (result >= 0) {
+                    result.toString() // 성공: 결과 코드를 문자열로 반환
+                } else {
+                    null // 실패: null 반환
+                }
             } catch (e: Exception) {
-                Log.e(TAG, "수동 비동기 촬영 중 오류", e)
-                return@withContext false
+                Log.e(TAG, "PTP/IP 촬영 중 오류", e)
+                null
             }
 
         } catch (e: Exception) {
-            Log.e(TAG, "수동 사진 촬영 중 오류", e)
-            false
+            Log.e(TAG, "PTP/IP 사진 촬영 중 오류", e)
+            null
         }
     }
 
@@ -1240,10 +1234,11 @@ class PtpipDataSource @Inject constructor(
     /**
      * 카메라 연결 해제 (외부 호출용 — connectionStateMutex 직렬화)
      */
-    suspend fun disconnect(keepSession: Boolean = false) =
+    suspend fun disconnect(keepSession: Boolean) {
         connectionStateMutex.withLock {
             disconnectInternal(keepSession)
         }
+    }
 
     /**
      * 카메라 연결 해제 내부 구현 (이미 mutex 보유 상태에서 호출)
@@ -1361,53 +1356,55 @@ class PtpipDataSource @Inject constructor(
     /**
      * gphoto2 접근을 위한 연결 해제
      */
-    suspend fun disconnectForGphoto2(keepSession: Boolean = false) = withContext(ioDispatcher) {
-        try {
-            Log.d(TAG, "gphoto2 호환 모드: 연결 해제 시작 (keepSession: $keepSession)")
+    suspend fun disconnectForGphoto2(keepSession: Boolean) {
+        withContext(ioDispatcher) {
+            try {
+                Log.d(TAG, "gphoto2 호환 모드: 연결 해제 시작 (keepSession: $keepSession)")
 
-            // 니콘 카메라 특별 처리
-            if (connectedCamera?.name?.contains("Nikon", ignoreCase = true) == true) {
-                if (!keepSession) {
-                    Log.d(TAG, "니콘 카메라 세션 종료")
-                    connectionManager.closeSession()
-                    kotlinx.coroutines.delay(2000)
-                } else {
-                    Log.d(TAG, "니콘 카메라 세션 유지 모드")
+                // 니콘 카메라 특별 처리
+                if (connectedCamera?.name?.contains("Nikon", ignoreCase = true) == true) {
+                    if (!keepSession) {
+                        Log.d(TAG, "니콘 카메라 세션 종료")
+                        connectionManager.closeSession()
+                        kotlinx.coroutines.delay(2000)
+                    } else {
+                        Log.d(TAG, "니콘 카메라 세션 유지 모드")
+                    }
                 }
+
+                // 일반 연결 해제 (세션 유지 여부 전달)
+                disconnect(keepSession)
+                kotlinx.coroutines.delay(100)
+
+                Log.d(TAG, "gphoto2 호환 모드: 연결 해제 완료")
+            } catch (e: Exception) {
+                Log.e(TAG, "gphoto2 호환 모드 연결 해제 중 오류", e)
             }
-
-            // 일반 연결 해제 (세션 유지 여부 전달)
-            disconnect(keepSession)
-            kotlinx.coroutines.delay(100)
-
-            Log.d(TAG, "gphoto2 호환 모드: 연결 해제 완료")
-        } catch (e: Exception) {
-            Log.e(TAG, "gphoto2 호환 모드 연결 해제 중 오류", e)
         }
     }
 
     /**
      * 임시 연결 해제
      */
-    suspend fun temporaryDisconnect(keepSession: Boolean = true): Boolean =
+    suspend fun temporaryDisconnect(keepSession: Boolean): Boolean =
         withContext(ioDispatcher) {
-        try {
-            Log.d(TAG, "임시 연결 해제 시작 (keepSession: $keepSession)")
+            try {
+                Log.d(TAG, "임시 연결 해제 시작 (keepSession: $keepSession)")
 
-            val currentCamera = connectedCamera
-            val wasConnected = _connectionState.value == PtpipConnectionState.CONNECTED
+                val currentCamera = connectedCamera
+                val wasConnected = _connectionState.value == PtpipConnectionState.CONNECTED
 
-            if (wasConnected && currentCamera != null) {
-                disconnectForGphoto2(keepSession)
-                return@withContext true
+                if (wasConnected && currentCamera != null) {
+                    disconnectForGphoto2(keepSession)
+                    return@withContext true
+                }
+
+                return@withContext false
+            } catch (e: Exception) {
+                Log.e(TAG, "임시 연결 해제 중 오류", e)
+                return@withContext false
             }
-
-            return@withContext false
-        } catch (e: Exception) {
-            Log.e(TAG, "임시 연결 해제 중 오류", e)
-            return@withContext false
         }
-    }
 
     /**
      * 임시 해제 후 재연결
@@ -1416,7 +1413,7 @@ class PtpipDataSource @Inject constructor(
         try {
             Log.d(TAG, "임시 해제 후 재연결 시작")
             kotlinx.coroutines.delay(2000)
-            return@withContext connectToCamera(camera)
+            return@withContext connectToCamera(camera, forceApMode = false)
         } catch (e: Exception) {
             Log.e(TAG, "임시 해제 후 재연결 중 오류", e)
             return@withContext false

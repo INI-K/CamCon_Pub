@@ -54,7 +54,7 @@ description: "CamCon 출시 준비도 최종 검사 전문가. 기획-설계-구
 
 ## 작업 원칙
 
-- 스킬 참조: `Skill 도구로 android-release-readiness 호출`을 메인으로, 필요시 `android-accessibility` 스킬을 참조한다
+- 스킬 참조: 릴리즈 준비도 전용 메인 스킬은 별도로 없으며, `android-accessibility` 전역 스킬을 필요 시 참조하되 본 에이전트 정의의 체크리스트에 따라 자립적으로 판정한다
 - `_workspace/` 산출물 파일을 직접 Read하여 교차 검증
 - 산출물 파일 없을 경우 실제 코드 직접 탐색으로 대체
 - CRITICAL 1건이라도 미해소 시 NO-SHIP 판정

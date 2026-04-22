@@ -164,27 +164,68 @@ RAW 파일 접근 제어는 `ValidateImageFormatUseCase`가 담당한다. 구독
 - ✅ **CameraViewModel CameraNative 직접 호출** (C-3): Repository 경유로 변경 완료
 - ✅ **CameraPreviewArea Bitmap 디코딩 성능** (C-1): IO 오프로드 완료
 - ✅ **Bitmap DisposableEffect recycle** (W-2): DisposableEffect에서 recycle 추가 완료
+- ✅ **EXIF 회전 역방향** (C7): Bitmap.createBitmap() Matrix 변환 시 90/270도 회전 차원 교환 적용, EXIF 33개 주요 태그 보존, orientation 5-8 모든 각도 지원 완료 (2026-04-22)
+- ✅ **미구현 촬영 모드** (W2): `UnsupportedShootingModeException` 도메인 예외 추가, CameraRepositoryImpl 검증 로직, CameraOperationsManager 에러 처리, UI Snackbar 통합, 8개 언어 문자열 추가 완료 (2026-04-22)
+- ✅ **processedFiles OOM 회귀 테스트** (C5): LRU 1000개 제한 적용 후 `CameraRepositoryImplLruCacheTest.kt` 단위 테스트 추가로 회귀 방지 (2026-04-22)
+- ✅ **FullScreenPhotoViewer 분해** (W-1): 실제 365줄로 이미 기능별 분해 완료 — 추가 분해 불필요 (2026-04-22)
 
 ### 잔존 이슈
-- **EXIF 회전 역방향** (`PhotoDownloadManager`): 세로 촬영 사진이 가로로 저장됨 (C7)
-- **processedFiles OOM** (`CameraRepositoryImpl:90`): 타임랩스 장기 사용 시 메모리 증가 (C5) — LRU 1000개 적용됨
-- **미구현 촬영 모드** (`CameraRepositoryImpl`): BURST, TIMELAPSE, BRACKETING, BULB 묵음 실패 (W2)
-- **FullScreenPhotoViewer 메가 Composable** (1,754줄): 분해 필요 (W-1)
+- **processedFiles OOM** (`CameraRepositoryImpl:90`, C5): 타임랩스 장기 사용 시 메모리 증가 — LRU 1000개 제한 + 단위 테스트 적용됨. 시간 기반 자동 만료는 후속 검토 사항.
 
-## 사용 가능한 스킬 (`.claude/skills/`)
+## 스킬 라우팅 권고 (Android 우선 · 권고 수준)
 
-태스크 유형별로 적합한 스킬을 활용한다:
+이 프로젝트는 Android 전용이다. `.kt`/`.kts` 파일이나 Android 도메인 키워드가 보이면 `android-*` 전역 스킬을 우선 고려한다. 강제가 아닌 권고이며, 언어·빌드 수준 작업에는 kotlin-* / gradle-* 스킬을 자유롭게 사용한다.
+
+### 의도 → 스킬 / 에이전트 매핑
+
+| 의도 키워드 | 1순위 | 2순위 (fallback) |
+|------------|-------|------------------|
+| 리뷰, 검토, 품질 | `reviewer` 에이전트 (자립형 체크리스트) | `kotlin-reviewer` 에이전트 |
+| 테스트, 커버리지 | `tester` 에이전트 + `android-testing` 스킬 | `kotlin-testing` |
+| 아키텍처, UseCase, Repository, Hilt | `architect` 에이전트 + `android-architecture` | `android-clean-architecture` |
+| UI, Compose, 화면, 레이아웃 | `designer` 에이전트 + `compose-ui` | `android-viewmodel` |
+| 구현, 코딩, 기능 개발 | `implementer` 에이전트 | — |
+| 기획, 스펙, PRD, 요구사항 | `planner` 에이전트 | — |
+| 출시, 릴리즈, Ship 판정 | `completeness-inspector` 에이전트 | — |
+| Compose 성능, Recomposition | `performance-auditor` 에이전트 + `compose-performance-audit` | — |
+| 코루틴 버그, 스레드 안전성 | `android-coroutines` | `kotlin-concurrency-expert` |
+| 빌드 에러 | `gradle-build` | `kotlin-build` |
+| 문서, CLAUDE.md 갱신 | `doc-writer` 에이전트 | — |
+
+### 에이전트 파이프라인 오케스트레이션
+
+여러 레이어(UI + Domain + Data)를 동시에 손대야 하는 요청, "새 기능 만들어줘" / "X 기능 추가" / "기획부터 리뷰까지" 같은 통합 요청에서는 개별 스킬로 바로 진입하지 말고 사용자에게 **"에이전트 파이프라인으로 진행할까요?"** 를 먼저 제안한다.
+
+승인 시 다음 순서로 에이전트를 순차 호출한다:
+
+```
+planner → architect → designer → implementer → reviewer / tester (병렬) →
+  performance-auditor → completeness-inspector → doc-writer
+```
+
+거절 시 해당 단계에 해당하는 개별 스킬·에이전트만 호출한다. 단일 레이어 작업(버그 수정, 소규모 리팩터링)에선 제안 없이 개별 스킬로 진행.
+
+### 예외 허용
+
+언어·빌드 전용 스킬은 Android 프로젝트에서도 그대로 사용 가능:
+- `kotlin-build`, `kotlin-patterns`, `gradle-build-performance`
+- `kotlin-ktor-patterns`, `kotlin-exposed-patterns`는 백엔드 전용이므로 이 프로젝트에선 비사용.
+
+## 사용 가능한 스킬 (전역 `~/.claude/skills/`)
+
+이 프로젝트는 전역 스킬만 사용하며 프로젝트 로컬 전용 스킬은 두지 않는다. 대신 위의 에이전트(`architect`, `designer`, `implementer`, `reviewer`, `tester`, `completeness-inspector`, `performance-auditor`, `planner`, `doc-writer`)가 프로젝트 고유 체크리스트를 담당한다.
 
 | 스킬 | 용도 |
 |------|------|
-| `android-arch-design` | UseCase/Repository/DataSource 설계, Hilt 모듈 |
-| `android-compose-design` | Compose 컴포넌트 계층 설계, UI 상태 모델 |
-| `android-implement` | 설계 명세를 Kotlin 코드로 구현 |
-| `android-code-review` | 아키텍처 위반, 코루틴 안전성, 성능, 보안 검토 |
-| `android-release-readiness` | 출시 준비도 최종 검사, Ship/No-Ship 판정 |
-| `android-test-strategy` | 단위/통합/Compose UI 테스트 케이스 설계 |
-| `android-planning` | 신규 기능 기획 명세 작성 |
-| `kotlin-concurrency-expert` | 코루틴 버그 수정, 스레드 안전성 검토 |
-| `android-coroutines` | Android 코루틴 패턴 참조 |
+| `android-architecture`, `android-clean-architecture` | Clean Architecture · 모듈 · 의존성 방향 |
+| `android-data-layer`, `android-retrofit` | Repository · Room · 네트워크 |
+| `android-viewmodel` | ViewModel · StateFlow · UI 상태 |
+| `android-coroutines`, `kotlin-concurrency-expert` | 코루틴 · 구조적 동시성 · 스레드 안전성 |
+| `compose-ui`, `compose-navigation` | Compose UI · 네비게이션 |
 | `compose-performance-audit` | Recomposition 성능 감사 |
-| `dev-pipeline` | 기획→설계→구현→리뷰 전체 파이프라인 오케스트레이션 |
+| `android-testing`, `kotlin-testing` | 테스트 전략 · 커버리지 |
+| `android-accessibility` | 접근성 · TalkBack · 터치 타겟 |
+| `android-gradle-logic`, `gradle-build-performance` | Gradle · 빌드 로직 · 빌드 속도 |
+| `android-emulator-skill` | 에뮬레이터 · adb · UI 자동화 |
+| `coil-compose` | 이미지 로딩 |
+| `kotlin-patterns` | Kotlin 언어 문법 · idiomatic 패턴 |

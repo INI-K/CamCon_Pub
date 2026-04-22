@@ -514,11 +514,20 @@ SplashActivity (LAUNCHER)
 
 ### 다음 작업 우선순위
 
-1. **[CRITICAL] C7** EXIF 회전 방향 수정 — 사용자 촬영 결과물 직접 영향
-2. **[CRITICAL] C8** SplashActivity 구독 티어 노출 제거
-3. **[CRITICAL] C5** `processedFiles` LRU 캐시로 교체
-4. **[CRITICAL] C6** `isInitializingNativeCamera` → `AtomicBoolean`
-5. **[CRITICAL] C3** `Thread { }.start()` → `scope.launch(Dispatchers.IO)`
-6. **[P0 테스트]** `ValidateImageFormatUseCase`, `CameraUiStateManager` 테스트 작성
-7. **[CRITICAL] C4** `ValidateImageFormatUseCase` DataSource 의존성 분리 (`AppSettingsRepository` 인터페이스)
-8. **[CRITICAL] C1** `CameraUiStateManager` Domain 인터페이스화 (`CameraStateObserver`)
+**갱신일: 2026-04-22**
+
+#### 에이전트 파이프라인 완료 후 해소된 이슈
+
+- ✅ **C7** EXIF 회전 방향 수정 (`PhotoDownloadManager.kt` + `ExifHandlingUtils.kt`) — 2026-04-22
+- ✅ **W2** 미구현 촬영 모드 에러 처리 (`UnsupportedShootingModeException`, Snackbar UI) — 2026-04-22
+- ✅ **C5** `processedFiles` OOM 회귀 테스트 작성 (`CameraRepositoryImplLruCacheTest.kt`) — 2026-04-22
+- ✅ **W-1** FullScreenPhotoViewer 라인 수 재측정 및 검증 (365줄 확인, 분해 불필요) — 2026-04-22
+
+#### 잔존 우선순위
+
+1. **[CRITICAL] C8** SplashActivity 구독 티어 노출 제거 — 사용자 신뢰도 영향
+2. **[CRITICAL] C6** `isInitializingNativeCamera` → `AtomicBoolean` — 스레드 안전성
+3. **[CRITICAL] C3** `Thread { }.start()` → `scope.launch(Dispatchers.IO)` — 구조적 동시성
+4. **[P0 테스트]** `ValidateImageFormatUseCase`, `CameraUiStateManager` 테스트 작성 — 커버리지
+5. **[CRITICAL] C4** `ValidateImageFormatUseCase` DataSource 의존성 분리 (`AppSettingsRepository` 인터페이스)
+6. **[CRITICAL] C1** `CameraUiStateManager` Domain 인터페이스화 (`CameraStateObserver`)

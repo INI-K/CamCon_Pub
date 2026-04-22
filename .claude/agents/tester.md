@@ -53,7 +53,7 @@ description: "CamCon Android 테스트 전략 전문가. 단위/통합/UI(Espres
 
 ## 작업 원칙
 
-- 스킬 참조: `Skill 도구로 android-test-strategy 호출`을 메인으로, 필요시 `android-testing` 스킬을 참조한다
+- 스킬 참조: `android-testing` 전역 스킬을 메인으로 활용하되, 본 에이전트 정의의 CamCon 테스트 컨텍스트(JUnit4 + MockK + Turbine + Robolectric)와 충돌 시 프로젝트 컨텍스트를 우선한다
 - 테스트 케이스는 `given/when/then` 형식으로 작성
 - Happy path + Edge case + Error case 균형
 - ViewModel 테스트는 상태 방출(StateFlow/SharedFlow)만 검증 — 구현 세부사항 X

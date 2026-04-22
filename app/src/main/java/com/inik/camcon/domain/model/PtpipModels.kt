@@ -11,6 +11,22 @@ enum class PtpipConnectionState {
 }
 
 /**
+ * PTPIP 연결 단계 (상세 상태)
+ *
+ * mDNS 검색부터 세션 준비까지의 세부 단계를 정의한다.
+ */
+enum class PtpipConnectionPhase {
+    IDLE,
+    DISCOVERING,
+    DISCOVERED,
+    TCP_CONNECTING,
+    HANDSHAKING,
+    AUTHENTICATING,
+    SESSION_READY,
+    ERROR
+}
+
+/**
  * 니콘 카메라 연결 모드 (AP/STA/UNKNOWN)
  */
 enum class NikonConnectionMode {

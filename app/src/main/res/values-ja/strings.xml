@@ -141,6 +141,15 @@
     <string name="error_unknown">不明なエラーが発生しました</string>
     <string name="error_usb_not_supported">USB OTGがサポートされていません</string>
     <string name="error_camera_busy">カメラがビジー状態です</string>
+    <string name="error_unsupported_shooting_mode">サポートされていない撮影モード: %1$s。サポートモード: %2$s</string>
+
+    <!-- 撮影モード名 -->
+    <string name="shooting_mode_single">シングルショット</string>
+    <string name="shooting_mode_continuous">連続</string>
+    <string name="shooting_mode_timelapse">タイムラプス</string>
+    <string name="shooting_mode_burst">バースト</string>
+    <string name="shooting_mode_hdr_bracket">HDRブラケット</string>
+    <string name="shooting_mode_bulb">バルブ</string>
 
     <!-- 権限 -->
     <string name="permission_camera">カメラ権限が必要です</string>
