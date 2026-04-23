@@ -3,12 +3,15 @@ package com.inik.camcon.presentation.ui.screens.components
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,6 +28,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.inik.camcon.R
 
 /**
@@ -308,8 +313,8 @@ fun ZoomableImageFromByteArray(
         ) {
             Text(
                 text = stringResource(R.string.image_load_failed),
-                color = Color.White,
-                style = MaterialTheme.typography.body2
+                color = com.inik.camcon.presentation.theme.TextPrimary,
+                style = MaterialTheme.typography.bodyMedium
             )
         }
     }
@@ -383,5 +388,42 @@ fun SimpleZoomableImage(
                     translationY = offset.y
                 )
         )
+    }
+}
+
+/**
+ * Zoomable Image 프리뷰
+ */
+@Preview(name = "Zoomable Image", showBackground = true)
+@Composable
+private fun ZoomableImagePreview() {
+    // 간단한 테스트 비트맵 생성
+    val bitmap =
+        android.graphics.Bitmap.createBitmap(400, 300, android.graphics.Bitmap.Config.ARGB_8888)
+            .apply {
+                val canvas = android.graphics.Canvas(this)
+                val paint = android.graphics.Paint().apply {
+                    color = android.graphics.Color.BLUE
+                }
+                canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+
+                paint.color = android.graphics.Color.WHITE
+                paint.textSize = 40f
+                canvas.drawText("Zoomable Image", 50f, 150f, paint)
+            }
+
+    MaterialTheme {
+        Box(
+            modifier = Modifier
+                .size(300.dp)
+                .background(com.inik.camcon.presentation.theme.TextSecondary)
+                .padding(8.dp)
+        ) {
+            ZoomableImage(
+                bitmap = bitmap,
+                contentDescription = "테스트 이미지",
+                contentScale = ContentScale.Fit
+            )
+        }
     }
 }

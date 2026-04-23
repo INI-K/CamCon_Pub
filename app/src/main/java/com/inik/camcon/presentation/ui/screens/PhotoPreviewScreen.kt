@@ -9,34 +9,49 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Snackbar
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,6 +60,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -53,47 +69,46 @@ import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.components.EmptyPhotoState
 import com.inik.camcon.presentation.ui.screens.components.FluidPhotoThumbnail
+import com.inik.camcon.presentation.ui.screens.components.FeaturedPhotoThumbnail
 import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
 import com.inik.camcon.presentation.ui.screens.components.UsbInitializationOverlay
+import com.inik.camcon.presentation.viewmodel.PhotoPreviewUiEvent
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
+import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import com.inik.camcon.presentation.viewmodel.photo.FileTypeFilter
+import com.inik.camcon.domain.model.ThemeMode
 import kotlinx.coroutines.delay
 import java.io.File
 
 /**
  * 카메라에서 촬영한 사진들을 미리보기로 보여주는 메인 화면
  */
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PhotoPreviewScreen(
-    viewModel: PhotoPreviewViewModel = hiltViewModel()
+    viewModel: PhotoPreviewViewModel = hiltViewModel(),
+    cameraViewModel: CameraViewModel = hiltViewModel()
 ) {
     Log.d("PhotoPreviewScreen", "=== PhotoPreviewScreen 컴포저블 시작 ===")
 
-    val uiState by viewModel.uiState.collectAsState()
-    val photos by viewModel.photos.collectAsState()
-    val isLoadingPhotos by viewModel.isLoadingPhotos.collectAsState()
-    val isLoadingMore by viewModel.isLoadingMorePhotos.collectAsState()
-    val hasNextPage by viewModel.hasNextPage.collectAsState()
-    val currentFilter by viewModel.currentFilter.collectAsState()
-    val currentPage by viewModel.currentPage.collectAsState()
-    val totalPages by viewModel.totalPages.collectAsState()
-    val isMultiSelectMode by viewModel.isMultiSelectMode.collectAsState()
-    val selectedPhotos by viewModel.selectedPhotos.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val photos by viewModel.photos.collectAsStateWithLifecycle()
+    val isLoadingPhotos by viewModel.isLoadingPhotos.collectAsStateWithLifecycle()
+    val isLoadingMore by viewModel.isLoadingMorePhotos.collectAsStateWithLifecycle()
+    val hasNextPage by viewModel.hasNextPage.collectAsStateWithLifecycle()
+    val currentFilter by viewModel.currentFilter.collectAsStateWithLifecycle()
+    val currentPage by viewModel.currentPage.collectAsStateWithLifecycle()
+    val totalPages by viewModel.totalPages.collectAsStateWithLifecycle()
+    val isMultiSelectMode by viewModel.isMultiSelectMode.collectAsStateWithLifecycle()
+    val selectedPhotos by viewModel.selectedPhotos.collectAsStateWithLifecycle()
+    val isPtpipConnected by cameraViewModel.isPtpipConnected.collectAsStateWithLifecycle()
 
     Log.d("PhotoPreviewScreen", "현재 UI 상태:")
     Log.d("PhotoPreviewScreen", "  - isConnected: ${uiState.isConnected}")
     Log.d("PhotoPreviewScreen", "  - isLoading: ${isLoadingPhotos}")
     Log.d("PhotoPreviewScreen", "  - photos.size: ${photos.size}")
-    Log.d("PhotoPreviewScreen", "  - error: ${uiState.error}")
 
-    val pullRefreshState = rememberPullRefreshState(
-        refreshing = isLoadingPhotos,
-        onRefresh = {
-            Log.d("PhotoPreviewScreen", "Pull to refresh 트리거")
-            viewModel.loadCameraPhotos()
-        }
-    )
+    val pullToRefreshState = rememberPullToRefreshState()
 
     // 멀티 선택 모드에서 뒤로가기 처리
     BackHandler(enabled = isMultiSelectMode) {
@@ -111,16 +126,22 @@ fun PhotoPreviewScreen(
         }
     }
 
-    Box(
+    PullToRefreshBox(
+        isRefreshing = isLoadingPhotos,
+        onRefresh = {
+            Log.d("PhotoPreviewScreen", "Pull to refresh 트리거")
+            viewModel.loadCameraPhotos()
+        },
+        state = pullToRefreshState,
         modifier = Modifier
             .fillMaxSize()
-            .pullRefresh(pullRefreshState)
-            .padding(horizontal = 16.dp) // 좌우 마진 추가
+            .padding(horizontal = 16.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = 24.dp) // 상단 마진 증가 (16dp → 24dp)
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
         ) {
             // 상단 타이틀 영역 (모던한 디자인)
             if (isMultiSelectMode) {
@@ -146,7 +167,7 @@ fun PhotoPreviewScreen(
             // 카메라 이벤트 초기화 블록 오버레이 표시
             if (uiState.isInitializing) {
                 UsbInitializationOverlay(
-                    message = "카메라 이벤트 초기화 중...",
+                    message = stringResource(R.string.photo_preview_event_initializing),
                     progress = null
                 )
                 return@Column // UI 상호작용 완전 차단 (오버레이만 보임)
@@ -154,6 +175,11 @@ fun PhotoPreviewScreen(
 
             // 메인 콘텐츠
             when {
+                isPtpipConnected -> {
+                    // PTPIP 연결 시 사진 미리보기 차단
+                    PtpipBlockOverlay()
+                }
+
                 !uiState.isConnected -> {
                     CameraDisconnectedState()
                 }
@@ -180,21 +206,13 @@ fun PhotoPreviewScreen(
             }
         }
 
-        // Pull to refresh 인디케이터 - 정상 동작 복원
-        PullRefreshIndicator(
-            refreshing = isLoadingPhotos,
-            state = pullRefreshState,
-            modifier = Modifier.align(Alignment.TopCenter),
-            backgroundColor = MaterialTheme.colors.surface,
-            contentColor = MaterialTheme.colors.primary
-        )
     }
 
     // 전체화면 사진 뷰어
     uiState.selectedPhoto?.let { photo ->
         // fullImageCache와 downloadingImages 상태 관찰
-        val fullImageCache by viewModel.fullImageCache.collectAsState()
-        val downloadingImages by viewModel.downloadingImages.collectAsState()
+        val fullImageCache by viewModel.fullImageCache.collectAsStateWithLifecycle()
+        val downloadingImages by viewModel.downloadingImages.collectAsStateWithLifecycle()
 
         // 선택된 사진의 실제 파일 다운로드 시작 (한 번만 실행, photo.path가 변경될 때만)
         LaunchedEffect(photo.path) {
@@ -286,12 +304,24 @@ fun PhotoPreviewScreen(
         }
     }
 
-    // 에러 메시지
-    uiState.error?.let { error ->
+    // SharedFlow 이벤트 수집 - 에러 메시지
+    var showError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collect { event ->
+            when (event) {
+                is PhotoPreviewUiEvent.ShowError -> {
+                    showError = event.message
+                }
+            }
+        }
+    }
+
+    showError?.let { error ->
         ErrorSnackbar(
             error = error,
             onRetry = {
-                viewModel.clearError()
+                showError = null
                 viewModel.loadCameraPhotos()
             }
         )
@@ -311,22 +341,23 @@ private fun CameraDisconnectedState() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(
-                text = "📷",
-                style = MaterialTheme.typography.h2,
-                modifier = Modifier.padding(bottom = 16.dp)
+            Icon(
+                imageVector = Icons.Default.CameraAlt,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp).padding(bottom = 16.dp),
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
             Text(
-                text = "카메라가 연결되지 않았습니다",
-                style = MaterialTheme.typography.h6,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f),
+                text = stringResource(R.string.photo_preview_camera_not_connected),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "USB 케이블을 연결하고 카메라를 켜주세요",
-                style = MaterialTheme.typography.body2,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                text = stringResource(R.string.photo_preview_connect_usb),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                 textAlign = TextAlign.Center
             )
         }
@@ -349,7 +380,7 @@ private fun ModernHeader(
     var lastClickTime by remember { mutableStateOf(0L) }
 
     // 사용자 티어 정보 가져오기
-    val uiState by viewModel?.uiState?.collectAsState()
+    val uiState by viewModel?.uiState?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf(com.inik.camcon.presentation.viewmodel.PhotoPreviewUiState()) }
     val canAccessRaw = uiState.currentTier == com.inik.camcon.domain.model.SubscriptionTier.PRO ||
             uiState.currentTier == com.inik.camcon.domain.model.SubscriptionTier.REFERRER ||
@@ -367,16 +398,16 @@ private fun ModernHeader(
             ) {
                 Text(
                     text = stringResource(R.string.camera_photo_list),
-                    color = MaterialTheme.colors.onSurface,
-                    style = MaterialTheme.typography.h6,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.titleMedium,
                     textAlign = TextAlign.Center
                 )
                 if (photoCount > 0) {
                     Text(
                         text = "${photoCount}장의 사진" +
                                 if (totalPages > 0) " (페이지 ${currentPage + 1}/${totalPages})" else "",
-                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
-                        style = MaterialTheme.typography.caption,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        style = MaterialTheme.typography.bodySmall,
                         textAlign = TextAlign.Center
                     )
                 }
@@ -400,8 +431,8 @@ private fun ModernHeader(
             ) {
                 Icon(
                     Icons.Default.Refresh,
-                    contentDescription = "새로고침",
-                    tint = MaterialTheme.colors.onSurface
+                    contentDescription = stringResource(R.string.cd_refresh),
+                    tint = MaterialTheme.colorScheme.onSurface
                 )
             }
         }
@@ -415,9 +446,9 @@ private fun ModernHeader(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "필터:",
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f),
-                style = MaterialTheme.typography.body2,
+                text = stringResource(R.string.photo_preview_filter),
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(end = 8.dp)
             )
 
@@ -428,10 +459,10 @@ private fun ModernHeader(
                 Text(
                     text = "ALL",
                     color = if (fileTypeFilter == FileTypeFilter.ALL)
-                        MaterialTheme.colors.primary
+                        MaterialTheme.colorScheme.primary
                     else
-                        MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
-                    style = MaterialTheme.typography.button
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    style = MaterialTheme.typography.labelLarge
                 )
             }
 
@@ -440,37 +471,33 @@ private fun ModernHeader(
                     if (canAccessRaw) {
                         onFilterChange(FileTypeFilter.RAW)
                     } else {
-                        // RAW 접근 권한 없을 때 제한 메시지 표시
-                        val message = when (uiState.currentTier) {
-                            com.inik.camcon.domain.model.SubscriptionTier.FREE ->
-                                "RAW 파일 보기는 준비중입니다.\nJPG 파일만 확인하실 수 있습니다."
-
-                            com.inik.camcon.domain.model.SubscriptionTier.BASIC ->
-                                "RAW 파일은 PRO 구독에서만 볼 수 있습니다.\nPRO로 업그레이드해주세요!"
-
-                            else -> "RAW 파일에 접근할 수 없습니다."
-                        }
-                        viewModel?.let { vm ->
-                            vm.uiState.value.copy(error = message).let { newState ->
-                                // ViewModel의 private 메서드이므로 직접 호출 불가
-                                // 대신 RAW 필터 선택을 시도하여 ViewModel에서 에러 처리하도록 함
-                                onFilterChange(FileTypeFilter.RAW)
-                            }
-                        }
+                        // RAW 접근 권한 없을 때 ViewModel에서 에러 이벤트 발생하도록 RAW 필터 선택 시도
+                        onFilterChange(FileTypeFilter.RAW)
                     }
                 },
                 enabled = fileTypeFilter != FileTypeFilter.RAW
             ) {
-                Text(
-                    text = "RAW${if (!canAccessRaw) " 🔒" else ""}",
-                    color = if (fileTypeFilter == FileTypeFilter.RAW)
-                        MaterialTheme.colors.primary
-                    else if (!canAccessRaw)
-                        MaterialTheme.colors.onSurface.copy(alpha = 0.4f)
-                    else
-                        MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
-                    style = MaterialTheme.typography.button
-                )
+                val rawTextColor = if (fileTypeFilter == FileTypeFilter.RAW)
+                    MaterialTheme.colorScheme.primary
+                else if (!canAccessRaw)
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                else
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "RAW",
+                        color = rawTextColor,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    if (!canAccessRaw) {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = null,
+                            modifier = Modifier.padding(start = 2.dp).size(12.dp),
+                            tint = rawTextColor
+                        )
+                    }
+                }
             }
 
             TextButton(
@@ -480,10 +507,10 @@ private fun ModernHeader(
                 Text(
                     text = "JPG",
                     color = if (fileTypeFilter == FileTypeFilter.JPG)
-                        MaterialTheme.colors.primary
+                        MaterialTheme.colorScheme.primary
                     else
-                        MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
-                    style = MaterialTheme.typography.button
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    style = MaterialTheme.typography.labelLarge
                 )
             }
         }
@@ -499,20 +526,20 @@ private fun LoadingIndicator() {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            CircularProgressIndicator(
-                color = MaterialTheme.colors.primary,
-                modifier = Modifier.size(48.dp)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "카메라에서 사진을 불러오는 중...",
-                style = MaterialTheme.typography.body2,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-            )
-        }
+                    Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CircularProgressIndicator(
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(48.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = stringResource(R.string.photo_preview_loading_photos),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            }
     }
 }
 
@@ -530,7 +557,7 @@ private fun PhotoGrid(
     viewModel: PhotoPreviewViewModel
 ) {
     val lazyGridState = rememberLazyStaggeredGridState()
-    val fullImageCache by viewModel.fullImageCache.collectAsState()
+    val fullImageCache by viewModel.fullImageCache.collectAsStateWithLifecycle()
 
     // 무한 스크롤 구현 - 푸터 감지 개선
     LaunchedEffect(lazyGridState) {
@@ -554,16 +581,32 @@ private fun PhotoGrid(
     }
 
     LazyVerticalStaggeredGrid(
-        columns = StaggeredGridCells.Adaptive(120.dp),
+        columns = StaggeredGridCells.Fixed(2), // Pinterest 스타일: 2열 고정
         state = lazyGridState,
         contentPadding = PaddingValues(12.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalItemSpacing = 8.dp,
         modifier = Modifier.fillMaxSize()
     ) {
+        // 첫 번째 아이템을 특별하게 표시 (전체 너비)
+        photos.firstOrNull()?.let { firstPhoto ->
+            if (!isMultiSelectMode) { // 멀티선택 모드가 아닐 때만 특별 표시
+                item(span = StaggeredGridItemSpan.FullLine) {
+                    FeaturedPhotoThumbnail(
+                        photo = firstPhoto,
+                        thumbnailData = viewModel.getThumbnail(firstPhoto.path),
+                        fullImageCache = fullImageCache,
+                        onClick = { viewModel.selectPhoto(firstPhoto) }
+                    )
+                }
+            }
+        }
+
+        // 나머지 아이템들 (2열 레이아웃)
         items(
-            items = photos,
-            key = { photo -> photo.path }
+            items = if (isMultiSelectMode) photos else photos.drop(1),
+            key = { photo -> photo.path },
+            contentType = { "photo_thumbnail" }
         ) { photo ->
             FluidPhotoThumbnail(
                 photo = photo,
@@ -633,14 +676,14 @@ private fun LoadMoreIndicator() {
             horizontalArrangement = Arrangement.Center
         ) {
             CircularProgressIndicator(
-                color = MaterialTheme.colors.primary,
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "더 많은 사진 불러오는 중...",
-                style = MaterialTheme.typography.caption,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                text = stringResource(R.string.photo_preview_loading_more),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
         }
     }
@@ -658,9 +701,9 @@ private fun EndOfListMessage(photoCount: Int) {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "모든 사진을 불러왔습니다 (총 ${photoCount}개)",
-            style = MaterialTheme.typography.caption,
-            color = MaterialTheme.colors.onSurface.copy(alpha = 0.5f),
+            text = stringResource(R.string.photo_preview_all_loaded, photoCount),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
             textAlign = TextAlign.Center
         )
     }
@@ -680,19 +723,20 @@ private fun ErrorSnackbar(
     ) {
         Snackbar(
             modifier = Modifier.padding(16.dp),
-            backgroundColor = MaterialTheme.colors.error,
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer,
             action = {
                 TextButton(onClick = onRetry) {
                     Text(
-                        text = "재시도",
-                        color = MaterialTheme.colors.onError
+                        text = stringResource(R.string.server_photos_retry),
+                        color = MaterialTheme.colorScheme.onErrorContainer
                     )
                 }
             }
         ) {
             Text(
                 text = error,
-                color = MaterialTheme.colors.onError
+                color = MaterialTheme.colorScheme.onErrorContainer
             )
         }
     }
@@ -709,50 +753,168 @@ private fun MultiSelectActionBar(
     onDownload: () -> Unit,
     onCancel: () -> Unit
 ) {
-    Column {
+    Column(
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
         // 첫 번째 행: 선택된 개수와 취소 버튼
-        Box(
-            modifier = Modifier.fillMaxWidth()
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // 중앙 정렬된 선택된 개수
-            Text(
-                text = "${selectedCount}개 선택됨",
-                color = MaterialTheme.colors.primary,
-                style = MaterialTheme.typography.h6,
-                modifier = Modifier.align(Alignment.Center)
-            )
-
-            // 우측 취소 버튼
-            TextButton(
-                onClick = onCancel,
-                modifier = Modifier.align(Alignment.CenterEnd)
+            // 선택된 개수 표시 (칩 스타일)
+            Surface(
+                color = MaterialTheme.colorScheme.primaryContainer,
+                shape = RoundedCornerShape(16.dp)
             ) {
                 Text(
-                    text = "취소",
-                    color = MaterialTheme.colors.onSurface
+                    text = stringResource(R.string.photo_preview_selected_count, selectedCount),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
+
+            // 취소 버튼 (텍스트 버튼)
+            TextButton(
+                onClick = onCancel,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            ) {
+                Text(
+                    text = stringResource(R.string.cancel),
+                    style = MaterialTheme.typography.labelLarge
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // 두 번째 행: 액션 버튼들
+        // 두 번째 행: 액션 버튼들 (OutlinedButton with icons)
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(onClick = onSelectAll) {
-                Text("전체 선택")
+            // 전체 선택 버튼
+            OutlinedButton(
+                onClick = onSelectAll,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.SelectAll,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = stringResource(R.string.server_photos_select_all),
+                    style = MaterialTheme.typography.labelMedium
+                )
             }
 
-            TextButton(onClick = onDeselectAll) {
-                Text("전체 해제")
+            // 전체 해제 버튼
+            OutlinedButton(
+                onClick = onDeselectAll,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = stringResource(R.string.server_photos_deselect_all),
+                    style = MaterialTheme.typography.labelMedium
+                )
             }
 
-            TextButton(onClick = onDownload) {
-                Text("다운로드")
+            // 다운로드 버튼 (FilledTonalButton로 강조)
+            FilledTonalButton(
+                onClick = onDownload,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Download,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = stringResource(R.string.fullscreen_viewer_download),
+                    style = MaterialTheme.typography.labelMedium
+                )
             }
+        }
+    }
+}
+
+/**
+ * PTPIP 모드에서 사진 미리보기를 블록하는 오버레이
+ */
+@Composable
+private fun PtpipBlockOverlay() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Wifi,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp).padding(bottom = 16.dp),
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+            )
+            Text(
+                text = stringResource(R.string.photo_preview_wifi_connected),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = TextAlign.Center,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.photo_preview_wifi_block_message),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = stringResource(R.string.photo_preview_use_photo_preview),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.photo_preview_switch_usb),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = stringResource(R.string.photo_preview_use_camera_control),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = TextAlign.Center,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+            )
         }
     }
 }
@@ -764,7 +926,7 @@ private fun MultiSelectActionBar(
 @Preview(showBackground = true)
 @Composable
 private fun ModernHeaderPreview_NoPhotos() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         ModernHeader(
             photoCount = 0,
             currentPage = 0,
@@ -779,7 +941,7 @@ private fun ModernHeaderPreview_NoPhotos() {
 @Preview(showBackground = true)
 @Composable
 private fun ModernHeaderPreview_WithPhotos() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         ModernHeader(
             photoCount = 42,
             currentPage = 1,
@@ -794,7 +956,7 @@ private fun ModernHeaderPreview_WithPhotos() {
 @Preview(showBackground = true)
 @Composable
 private fun LoadingIndicatorPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         LoadingIndicator()
     }
 }
@@ -802,7 +964,7 @@ private fun LoadingIndicatorPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun LoadMoreIndicatorPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         LoadMoreIndicator()
     }
 }
@@ -810,7 +972,7 @@ private fun LoadMoreIndicatorPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun EndOfListMessagePreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         EndOfListMessage(photoCount = 42)
     }
 }
@@ -818,7 +980,7 @@ private fun EndOfListMessagePreview() {
 @Preview(showBackground = true)
 @Composable
 private fun ErrorSnackbarPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         ErrorSnackbar(
             error = "사진을 불러오는 중 오류가 발생했습니다.",
             onRetry = {}
