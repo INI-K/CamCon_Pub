@@ -5,48 +5,77 @@ plugins {
     alias(libs.plugins.ksp)
     id 'com.google.dagger.hilt.android'
     id 'com.google.gms.google-services'
+    id 'com.google.android.gms.oss-licenses-plugin'
 }
 
-// Git 태그에서 버전 정보를 가져오는 함수
-def getVersionFromGit() {
+// === 개선된 버전 관리 시스템 ===
+
+// 메이저.마이너.패치 버전 정의 (수동 관리)
+project.ext.majorVersion = 1
+project.ext.minorVersion = 2
+project.ext.patchVersion = 1
+
+// 브랜치별 버전 식별자 생성
+def getBranchVersionSuffix() {
     try {
-        // 현재 태그 가져오기 (정확히 현재 커밋의 태그)
-        def currentTag = 'git describe --exact-match --tags HEAD'.execute().text.trim()
-        if (currentTag) {
-            // v1.0 -> 1.0으로 변환
-            return currentTag.startsWith('v') ? currentTag.substring(1) : currentTag
+        def branchName = 'git rev-parse --abbrev-ref HEAD'.execute().text.trim()
+        def shortHash = 'git rev-parse --short HEAD'.execute().text.trim()
+
+        switch (branchName) {
+            case 'main':
+            case 'master':
+                return "" // 메인 브랜치는 순수 버전
+            case { it.startsWith('release/') }:
+                return "-rc" // 릴리즈 후보
+            case { it.startsWith('hotfix/') }:
+                return "-hotfix.${shortHash}"
+            case 'develop':
+                return "-dev.${shortHash}"
+            case { it.startsWith('feature/') }:
+                return "-feature.${shortHash}"
+            default:
+                return "-${branchName.replaceAll('[^a-zA-Z0-9]', '')}.${shortHash}"
         }
     } catch (Exception ignored) {
-        // 현재 커밋에 태그가 없으면 가장 최근 태그 + 커밋 수 가져오기
-        try {
-            def tagInfo = 'git describe --tags --abbrev=0'.execute().text.trim()
-            def commitCount = 'git rev-list --count HEAD'.execute().text.trim()
-            def shortHash = 'git rev-parse --short HEAD'.execute().text.trim()
-
-            if (tagInfo) {
-                def baseVersion = tagInfo.startsWith('v') ? tagInfo.substring(1) : tagInfo
-                return "${baseVersion}-dev.${commitCount}.${shortHash}"
-            }
-        } catch (Exception e2) {
-            // Git이 없거나 태그가 없으면 기본값 사용
-        }
+        return "-unknown"
     }
-    return "1.0"
 }
 
-// Git 태그에서 버전 코드 생성 (태그의 마이너 버전 + 커밋 수)
-def getVersionCodeFromGit() {
+// 빌드 번호 생성 (타임스탬프 기반으로 단조증가 보장)
+def getBuildNumber() {
+    def buildNumber = System.getProperty("BUILD_NUMBER")
+    if (buildNumber) {
+        return buildNumber.toInteger()
+    }
+
     try {
+        // Git 커밋 카운트 사용 (안정적)
         def commitCount = 'git rev-list --count HEAD'.execute().text.trim()
         return commitCount.toInteger()
     } catch (Exception ignored) {
-        return 1
+        // 폴백: 현재 시간 기반 (분 단위)
+        return (System.currentTimeMillis() / 60000).intValue()
     }
+}
+
+// 최종 버전 문자열 생성
+def getAppVersionName() {
+    def baseVersion = "${project.ext.majorVersion}.${project.ext.minorVersion}.${project.ext.patchVersion}"
+    def suffix = getBranchVersionSuffix()
+    return baseVersion + suffix
+}
+
+// 버전 코드 생성 (Play Store용 - 단조증가 보장)
+def getAppVersionCode() {
+    // 메이저(2자리) + 마이너(2자리) + 패치(2자리) + 빌드번호 조합
+    def baseVersionCode = project.ext.majorVersion * 1000000 + project.ext.minorVersion * 10000 + project.ext.patchVersion * 100
+    def buildNumber = getBuildNumber()
+    return baseVersionCode + (buildNumber % 100) // 빌드번호는 99까지만 사용
 }
 
 android {
     namespace 'com.inik.camcon'
-    compileSdk 35
+    compileSdk 36
 
     // 키스토어 설정 로드
     def keystorePropertiesFile = rootProject.file("key.properties")
@@ -56,6 +85,7 @@ android {
     }
 
     signingConfigs {
+        // debug 키는 Android Gradle Plugin 기본 디버그 키 사용
         release {
             if (keystorePropertiesFile.exists()) {
                 keyAlias keystoreProperties['keyAlias']
@@ -69,82 +99,98 @@ android {
     defaultConfig {
         applicationId "com.inik.camcon"
         minSdk 29
-        targetSdk 35
-        versionCode getVersionCodeFromGit()
-        versionName getVersionFromGit()
+        targetSdk 36
+        versionCode getAppVersionCode()
+        versionName getAppVersionName()
         ndk {
-            abiFilters "arm64-v8a"
+            abiFilters "arm64-v8a"  // 16KB 페이지 크기 지원 (Android 15+)
         }
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner "com.inik.camcon.HiltTestRunner"
 
         // 지원하는 언어 설정
-        resConfigs "en", "ko", "it", "fr", "de", "ja"
+        resConfigs "en", "ko", "ja", "zh", "de", "es", "fr", "it"
     }
 
     buildTypes {
         debug {
             debuggable true
             minifyEnabled false
+            shrinkResources false
 //            applicationIdSuffix ".debug"
             versionNameSuffix "-debug"
-            signingConfig signingConfigs.release  // 릴리즈 키스토어 사용
-            // 개발자 기능 표시 (라이브뷰, PTPIP)
             buildConfigField "boolean", "SHOW_DEVELOPER_FEATURES", "true"
+            signingConfig signingConfigs.debug
         }
 
         release {
-            minifyEnabled false
+            debuggable false
+            minifyEnabled true
+            shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            debuggable true  // 로그 확인을 위해 활성화
             signingConfig signingConfigs.release
-            // 개발자 기능 숨김 (라이브뷰, PTPIP)
             buildConfigField "boolean", "SHOW_DEVELOPER_FEATURES", "false"
         }
 
-        // 릴리즈 성능 + 디버깅 가능한 빌드 타입
-        releaseDebug {
-            initWith release
-            debuggable true
+//        // 릴리즈 최적화 + 디버깅 가능
+//        releaseDebug {
+//            initWith release
+//            debuggable true
+//            minifyEnabled false
+//            shrinkResources false
 //            applicationIdSuffix ".release.debug"
-            versionNameSuffix "-release-debug"
-            matchingFallbacks = ['release', 'debug']
-            // 개발자 기능 표시 (디버깅용)
-            buildConfigField "boolean", "SHOW_DEVELOPER_FEATURES", "true"
-        }
+//            versionNameSuffix "-release-debug"
+//            matchingFallbacks = ['release', 'debug']
+//            buildConfigField "boolean", "SHOW_DEVELOPER_FEATURES", "true"
+//        }
     }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_11
         targetCompatibility JavaVersion.VERSION_11
     }
+
     externalNativeBuild {
         cmake {
             path file('src/main/cpp/CMakeLists.txt')
             version '3.22.1'
         }
     }
+
+    // CMake 빌드 타입 스위치
     android.buildTypes.all { buildType ->
         externalNativeBuild.cmake {
+            // 16KB 페이지 크기 지원 (Android 15+ 필수)
+            def link16KbFlags = '-Wl,-z,max-page-size=16384'
+
             if (buildType.name == 'debug') {
-                arguments '-DCMAKE_BUILD_TYPE=Debug'
+                arguments '-DCMAKE_BUILD_TYPE=Debug',
+                        "-DCMAKE_SHARED_LINKER_FLAGS=${link16KbFlags}",
+                        "-DCMAKE_EXE_LINKER_FLAGS=${link16KbFlags}"
             } else if (buildType.name == 'releaseDebug') {
-                arguments '-DCMAKE_BUILD_TYPE=RelWithDebInfo'
+                arguments '-DCMAKE_BUILD_TYPE=RelWithDebInfo',
+                        "-DCMAKE_SHARED_LINKER_FLAGS=${link16KbFlags}",
+                        "-DCMAKE_EXE_LINKER_FLAGS=${link16KbFlags}"
             } else {
-                arguments '-DCMAKE_BUILD_TYPE=Release'
+                arguments '-DCMAKE_BUILD_TYPE=Release',
+                        '-DCMAKE_CXX_FLAGS_RELEASE=-O3 -flto -ffast-math -funroll-loops',
+                        '-DCMAKE_C_FLAGS_RELEASE=-O3 -flto -ffast-math',
+                        "-DCMAKE_SHARED_LINKER_FLAGS=-s -Wl,--gc-sections -Wl,--strip-all ${link16KbFlags}",
+                        "-DCMAKE_EXE_LINKER_FLAGS=${link16KbFlags}"
             }
             cFlags '-g'
             cppFlags '-g'
         }
     }
+
     sourceSets {
-        main {
-            jniLibs.srcDirs = ['src/main/jniLibs']
-        }
+        main { jniLibs.srcDirs = ['src/main/jniLibs'] }
     }
     buildFeatures {
         viewBinding true
         compose true
         buildConfig true
     }
+
     kotlinOptions {
         jvmTarget = "11"
         freeCompilerArgs += [
@@ -153,12 +199,33 @@ android {
                 "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi"
         ]
     }
+
     packaging {
         jniLibs {
-            useLegacyPackaging = true
+            useLegacyPackaging = false  // 16KB 정렬을 위해 false로 변경
             keepDebugSymbols += ['**/*.so']
+            // 16KB 페이지 크기 정렬 활성화 (Android 15+ 필수)
+            pickFirsts += ['**/*.so']
+        }
+        resources {
+            excludes += [
+                    'META-INF/DEPENDENCIES',
+                    'META-INF/LICENSE',
+                    'META-INF/LICENSE.txt',
+                    'META-INF/NOTICE',
+                    'META-INF/NOTICE.txt',
+                    'META-INF/*.kotlin_module'
+            ]
         }
     }
+
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+            returnDefaultValues = true
+        }
+    }
+
 }
 
 // KSP configuration for better performance
@@ -175,32 +242,56 @@ dependencies {
     implementation libs.material
     implementation libs.androidx.constraintlayout
     implementation libs.androidx.activity
-    implementation "androidx.compose.material3:material3:1.1.2"
-    implementation "androidx.compose.material3:material3-window-size-class:1.1.2"
-    implementation "androidx.compose.material3:material3-adaptive:1.0.0-alpha06"
-    implementation "androidx.compose.runtime:runtime-livedata:1.5.4"
+
+    // === Compose BOM으로 버전 통일 ===
+    implementation platform('androidx.compose:compose-bom:2025.04.01')
+    implementation "androidx.compose.ui:ui"
+    implementation "androidx.compose.material:material"
+    implementation "androidx.compose.material:material-icons-core"
+    implementation "androidx.compose.material:material-icons-extended"
+    implementation "androidx.compose.ui:ui-tooling-preview"
+    implementation "androidx.compose.runtime:runtime-livedata"
+    debugImplementation "androidx.compose.ui:ui-tooling"
+
+    // Material 3 - BOM 호환 버전 사용
+    implementation "androidx.compose.material3:material3"
+    implementation "androidx.compose.material3:material3-window-size-class"
+    // 버전 충돌 문제로 임시 제거
+    // implementation "androidx.compose.material3:material3-adaptive:1.0.0-alpha06"
+
+    // === Unit Testing ===
     testImplementation libs.junit
+    testImplementation libs.mockk
+    testImplementation libs.kotlinx.coroutines.test
+    testImplementation libs.turbine
+    testImplementation libs.arch.core.testing
+    testImplementation libs.robolectric
+    testImplementation libs.hilt.android.testing
+    kspTest libs.hilt.compiler
+
+    // === Instrumented Testing ===
     androidTestImplementation libs.androidx.junit
     androidTestImplementation libs.androidx.espresso.core
+    androidTestImplementation libs.mockk.android
+    androidTestImplementation libs.kotlinx.coroutines.test
+    androidTestImplementation libs.turbine
+    androidTestImplementation libs.hilt.android.testing
+    kspAndroidTest libs.hilt.compiler
+    androidTestImplementation platform('androidx.compose:compose-bom:2025.04.01')
+    androidTestImplementation "androidx.compose.ui:ui-test-junit4"
+    debugImplementation "androidx.compose.ui:ui-test-manifest"
     //hilt
     implementation libs.hilt.android
     implementation 'androidx.hilt:hilt-navigation-compose:1.2.0'
     ksp libs.hilt.compiler
 
-    // 코루틴
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3'
+    // 코루틴 - 최신 버전으로 업데이트
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2'
     // Firebase await() 사용
 
-    implementation "com.google.android.material:material:1.7.0"
+    implementation "com.google.android.material:material:1.12.0"
 
-    // Jetpack Compose dependencies
-    implementation "androidx.compose.ui:ui:1.5.4"
-    implementation "androidx.compose.material:material:1.5.4"
-    implementation "androidx.compose.material:material-icons-core:1.5.4"
-    implementation "androidx.compose.material:material-icons-extended:1.5.4"
-    implementation "androidx.compose.ui:ui-tooling-preview:1.5.4"
-    debugImplementation "androidx.compose.ui:ui-tooling:1.5.4"
     implementation "androidx.activity:activity-compose:1.10.1"
     implementation("androidx.activity:activity-ktx:1.10.1")
 
@@ -208,21 +299,20 @@ dependencies {
     implementation "androidx.navigation:navigation-compose:2.7.7"
 
     // 소셜 로그인 - 구글만 사용
-    implementation 'com.google.android.gms:play-services-auth:21.0.0' // 구글 로그인
+    implementation 'com.google.android.gms:play-services-auth:21.1.1' // 구글 로그인
     implementation platform('com.google.firebase:firebase-bom:33.4.0')
     implementation 'com.google.firebase:firebase-auth-ktx'
 
     // DataStore for preferences
     implementation "androidx.datastore:datastore-preferences:1.0.0"
 
-    //
-    implementation "com.google.accompanist:accompanist-systemuicontroller:0.32.0"
+    // accompanist-systemuicontroller 제거됨 — enableEdgeToEdge() 또는 WindowCompat 사용
 
-    // Image loading
-    implementation "io.coil-kt:coil-compose:2.5.0"
+    // Image loading - 최신 버전
+    implementation "io.coil-kt:coil-compose:2.7.0"
 
-    // HorizontalPager for photo swiping
-    implementation "androidx.compose.foundation:foundation:1.5.4"
+    // Foundation - BOM으로 버전 관리
+    implementation "androidx.compose.foundation:foundation"
 
     implementation("com.google.firebase:firebase-auth")
     implementation 'com.google.firebase:firebase-analytics'
@@ -234,6 +324,7 @@ dependencies {
     // ExifInterface for preserving image metadata
     implementation "androidx.exifinterface:exifinterface:1.4.1"
     // GPUImage for color transfer and image processing
+    // libyuv-decoder.so는 CMake에서 16KB 정렬 재빌드 (pickFirsts로 AAR 버전 대체)
     implementation 'jp.co.cyberagent.android:gpuimage:2.1.0'
     // 0xZhangKe ImageViewer library for advanced image viewing
     implementation 'com.github.0xZhangKe:ImageViewer:1.0.3'
@@ -242,11 +333,7 @@ dependencies {
     // ZoomImage with Coil integration for Compose - 최신 버전 사용
     implementation "io.github.panpf.zoomimage:zoomimage-compose-coil2:1.4.0-beta04"
 
-    // GPUImage for image processing
-    implementation 'jp.co.cyberagent.android:gpuimage:2.1.0'
-
-    // ExifInterface for metadata handling
-    implementation 'androidx.exifinterface:exifinterface:1.3.7'
+    // (중복 제거됨: GPUImage, ExifInterface)
 
     // Gson for JSON serialization
     implementation 'com.google.code.gson:gson:2.10.1'
@@ -265,9 +352,27 @@ dependencies {
     implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'com.squareup.okhttp3:logging-interceptor:4.12.0'
+
+    // OSS Licenses
+    implementation 'com.google.android.gms:play-services-oss-licenses:17.1.0'
+
+    // Lifecycle runtime compose for collectAsStateWithLifecycle
+    implementation "androidx.lifecycle:lifecycle-runtime-compose:2.7.0"
 }
 
 // 커스텀 빌드 태스크들
+task printVersion {
+    description = '현재 앱 버전 정보 출력'
+    doLast {
+        println "=== CamCon 버전 정보 ==="
+        println "Version Name: ${getAppVersionName()}"
+        println "Version Code: ${getAppVersionCode()}"
+        println "Build Number: ${getBuildNumber()}"
+        println "Branch Suffix: ${getBranchVersionSuffix()}"
+        println "========================"
+    }
+}
+
 task buildDebug(type: GradleBuild) {
     description = '디버그 모드로 빌드 및 설치'
     tasks = ['assembleDebug', 'installDebug']

@@ -1,87 +1,349 @@
 package com.inik.camcon.data.datasource.local
+
 import android.content.Context
+import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.inik.camcon.domain.model.ThemeMode
+import com.inik.camcon.domain.repository.AppSettingsRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
-private val Context.appPreferences by preferencesDataStore(name = "app_preferences")
+
+private val Context.appDataStore: DataStore<Preferences> by preferencesDataStore(name = "app_settings")
+
+/**
+ * 앱 설정 정보를 관리하는 DataSource
+ */
 @Singleton
 class AppPreferencesDataSource @Inject constructor(
     private val context: Context
-) {
-    private object Keys {
-        val CAMERA_CONTROLS_ENABLED = booleanPreferencesKey("camera_controls_enabled")
-        val LIVE_VIEW_ENABLED = booleanPreferencesKey("live_view_enabled")
-        val DARK_MODE_ENABLED = booleanPreferencesKey("dark_mode_enabled")
-        val AUTO_START_EVENT_LISTENER = booleanPreferencesKey("auto_start_event_listener")
-        val SHOW_LATEST_PHOTO_WHEN_DISABLED =
+) : AppSettingsRepository {
+    companion object {
+        private val CAMERA_CONTROLS_ENABLED = booleanPreferencesKey("camera_controls_enabled")
+        private val LIVE_VIEW_ENABLED = booleanPreferencesKey("live_view_enabled")
+        private val THEME_MODE = intPreferencesKey("theme_mode")
+        private val DARK_MODE_ENABLED = booleanPreferencesKey("dark_mode_enabled")
+        private val AUTO_START_EVENT_LISTENER = booleanPreferencesKey("auto_start_event_listener")
+        private val SHOW_LATEST_PHOTO_WHEN_DISABLED =
             booleanPreferencesKey("show_latest_photo_when_disabled")
-        val COLOR_TRANSFER_ENABLED = booleanPreferencesKey("color_transfer_enabled")
-        val COLOR_TRANSFER_REFERENCE_PATH = stringPreferencesKey("color_transfer_reference_path")
-        val COLOR_TRANSFER_TARGET_PATH = stringPreferencesKey("color_transfer_target_path")
-        val COLOR_TRANSFER_INTENSITY = floatPreferencesKey("color_transfer_intensity")
-        val THEME_MODE = stringPreferencesKey("theme_mode")
+        private val COLOR_TRANSFER_ENABLED = booleanPreferencesKey("color_transfer_enabled")
+        private val COLOR_TRANSFER_REFERENCE_IMAGE_PATH =
+            stringPreferencesKey("color_transfer_reference_image_path")
+        private val COLOR_TRANSFER_TARGET_IMAGE_PATH =
+            stringPreferencesKey("color_transfer_target_image_path")
+        private val COLOR_TRANSFER_INTENSITY = floatPreferencesKey("color_transfer_intensity")
+        private val RAW_FILE_DOWNLOAD_ENABLED = booleanPreferencesKey("raw_file_download_enabled")
+        private val SUBSCRIPTION_TIER = stringPreferencesKey("subscription_tier")
+        private val ADMIN_NATIVE_LOG_STREAM_ENABLED =
+            booleanPreferencesKey("admin_native_log_stream_enabled")
+        private val NATIVE_LOG_CAPTURE_ENABLED =
+            booleanPreferencesKey("native_log_capture_enabled")
     }
-    val isCameraControlsEnabled: Flow<Boolean> = context.appPreferences.data.map {
-        it[Keys.CAMERA_CONTROLS_ENABLED] ?: false
+
+    /**
+     * 카메라 컨트롤 표시 여부 (기본값: false)
+     */
+    override val isCameraControlsEnabled: Flow<Boolean> = context.appDataStore.data
+        .map { preferences ->
+            preferences[CAMERA_CONTROLS_ENABLED] ?: false
+        }
+
+    /**
+     * 라이브뷰 표시 여부 (기본값: false - ADMIN 티어에서만 활성화 가능)
+     */
+    override val isLiveViewEnabled: Flow<Boolean> = context.appDataStore.data
+        .map { preferences ->
+            preferences[LIVE_VIEW_ENABLED] ?: false
+        }
+
+    /**
+     * 테마 모드 설정 (기본값: FOLLOW_SYSTEM - 기기 설정 따름)
+     */
+    override val themeMode: Flow<ThemeMode> = context.appDataStore.data
+        .map { preferences ->
+            val modeValue = preferences[THEME_MODE] ?: ThemeMode.FOLLOW_SYSTEM.value
+            ThemeMode.values().find { it.value == modeValue } ?: ThemeMode.FOLLOW_SYSTEM
+        }
+
+    /**
+     * 다크 모드 활성화 여부 (기존 호환성을 위해 유지, themeMode 기반으로 계산)
+     */
+    override val isDarkModeEnabled: Flow<Boolean> = themeMode
+        .map { mode ->
+            when (mode) {
+                ThemeMode.DARK -> true
+                ThemeMode.LIGHT -> false
+                ThemeMode.FOLLOW_SYSTEM -> false // 시스템 설정은 Theme.kt에서 처리됨
+            }
+        }
+
+    /**
+     * 카메라 제어 탭 진입 시 자동으로 이벤트 리스너 시작 여부 (기본값: true)
+     */
+    override val isAutoStartEventListenerEnabled: Flow<Boolean> = context.appDataStore.data
+        .map { preferences ->
+            preferences[AUTO_START_EVENT_LISTENER] ?: true
+        }
+
+    /**
+     * 카메라 컨트롤이 비활성화된 경우 최신 사진 표시 여부 (기본값: true)
+     */
+    override val isShowLatestPhotoWhenDisabled: Flow<Boolean> = context.appDataStore.data
+        .map { preferences ->
+            preferences[SHOW_LATEST_PHOTO_WHEN_DISABLED] ?: true
+        }
+
+    /**
+     * 색감 전송 기능 활성화 여부 (기본값: false)
+     */
+    override val isColorTransferEnabled: Flow<Boolean> = context.appDataStore.data
+        .map { preferences ->
+            preferences[COLOR_TRANSFER_ENABLED] ?: false
+        }
+
+    /**
+     * 색감 전송 참조 이미지 경로 (기본값: null)
+     */
+    override val colorTransferReferenceImagePath: Flow<String?> = context.appDataStore.data
+        .map { preferences ->
+            preferences[COLOR_TRANSFER_REFERENCE_IMAGE_PATH]
+        }
+
+    /**
+     * 색감 전송 대상 이미지 경로 (기본값: null)
+     */
+    override val colorTransferTargetImagePath: Flow<String?> = context.appDataStore.data
+        .map { preferences ->
+            preferences[COLOR_TRANSFER_TARGET_IMAGE_PATH]
+        }
+
+    /**
+     * 색감 전송 강도 (기본값: 0.03)
+     */
+    override val colorTransferIntensity: Flow<Float> = context.appDataStore.data
+        .map { preferences ->
+            preferences[COLOR_TRANSFER_INTENSITY] ?: 0.03f
+        }
+
+    /**
+     * RAW 파일 다운로드 활성화 여부 (기본값: true)
+     */
+    override val isRawFileDownloadEnabled: Flow<Boolean> = context.appDataStore.data
+        .map { preferences ->
+            preferences[RAW_FILE_DOWNLOAD_ENABLED] ?: true
+        }
+
+    /**
+     * 구독 티어 (기본값: null)
+     */
+    val subscriptionTier: Flow<String?> = context.appDataStore.data
+        .map { preferences ->
+            preferences[SUBSCRIPTION_TIER]
+        }
+
+    /**
+     * ADMIN 네이티브 로그 스트리밍 활성화 여부 (기본값: false)
+     */
+    val isAdminNativeLogStreamingEnabled: Flow<Boolean> = context.appDataStore.data
+        .map { preferences ->
+            preferences[ADMIN_NATIVE_LOG_STREAM_ENABLED] ?: false
+        }
+
+    /**
+     * 네이티브 로그 캡처 활성화 여부 (기본값: false)
+     */
+    override val isNativeLogCaptureEnabled: Flow<Boolean> = context.appDataStore.data
+        .map { preferences ->
+            preferences[NATIVE_LOG_CAPTURE_ENABLED] ?: false
+        }
+
+    /**
+     * 구독 티어 (SubscriptionTier enum으로 변환, 기본값: FREE)
+     */
+    override val subscriptionTierEnum: Flow<com.inik.camcon.domain.model.SubscriptionTier> = subscriptionTier
+        .map { tierName ->
+            if (tierName != null) {
+                try {
+                    com.inik.camcon.domain.model.SubscriptionTier.valueOf(tierName)
+                } catch (e: IllegalArgumentException) {
+                    com.inik.camcon.domain.model.SubscriptionTier.FREE
+                }
+            } else {
+                com.inik.camcon.domain.model.SubscriptionTier.FREE
+            }
+        }
+
+    /**
+     * 카메라 컨트롤 표시 여부 설정
+     */
+    override suspend fun setCameraControlsEnabled(enabled: Boolean) {
+        context.appDataStore.edit { preferences ->
+            preferences[CAMERA_CONTROLS_ENABLED] = enabled
+        }
     }
-    val isLiveViewEnabled: Flow<Boolean> = context.appPreferences.data.map {
-        it[Keys.LIVE_VIEW_ENABLED] ?: false
+
+    /**
+     * 라이브뷰 표시 여부 설정
+     */
+    override suspend fun setLiveViewEnabled(enabled: Boolean) {
+        context.appDataStore.edit { preferences ->
+            preferences[LIVE_VIEW_ENABLED] = enabled
+        }
     }
-    val isDarkModeEnabled: Flow<Boolean> = context.appPreferences.data.map {
-        it[Keys.DARK_MODE_ENABLED] ?: false
+
+    /**
+     * 다크 모드 활성화/비활성화 (기존 호환성을 위해 유지)
+     */
+    override suspend fun setDarkModeEnabled(enabled: Boolean) {
+        val newMode = if (enabled) ThemeMode.DARK else ThemeMode.LIGHT
+        setThemeMode(newMode)
     }
-    val isAutoStartEventListenerEnabled: Flow<Boolean> = context.appPreferences.data.map {
-        it[Keys.AUTO_START_EVENT_LISTENER] ?: true
+
+    /**
+     * 자동 이벤트 리스너 시작 활성화/비활성화
+     */
+    override suspend fun setAutoStartEventListenerEnabled(enabled: Boolean) {
+        context.appDataStore.edit { preferences ->
+            preferences[AUTO_START_EVENT_LISTENER] = enabled
+        }
     }
-    val isShowLatestPhotoWhenDisabled: Flow<Boolean> = context.appPreferences.data.map {
-        it[Keys.SHOW_LATEST_PHOTO_WHEN_DISABLED] ?: true
+
+    /**
+     * 비활성화 시 최신 사진 표시 활성화/비활성화
+     */
+    override suspend fun setShowLatestPhotoWhenDisabled(enabled: Boolean) {
+        context.appDataStore.edit { preferences ->
+            preferences[SHOW_LATEST_PHOTO_WHEN_DISABLED] = enabled
+        }
     }
-    val isColorTransferEnabled: Flow<Boolean> = context.appPreferences.data.map {
-        it[Keys.COLOR_TRANSFER_ENABLED] ?: false
+
+    /**
+     * 색감 전송 기능 활성화/비활성화
+     */
+    override suspend fun setColorTransferEnabled(enabled: Boolean) {
+        context.appDataStore.edit { preferences ->
+            preferences[COLOR_TRANSFER_ENABLED] = enabled
+        }
     }
-    val colorTransferReferenceImagePath: Flow<String?> = context.appPreferences.data.map {
-        it[Keys.COLOR_TRANSFER_REFERENCE_PATH]
+
+    /**
+     * 색감 전송 참조 이미지 경로 설정
+     */
+    override suspend fun setColorTransferReferenceImagePath(path: String?) {
+        context.appDataStore.edit { preferences ->
+            if (path != null) {
+                preferences[COLOR_TRANSFER_REFERENCE_IMAGE_PATH] = path
+            } else {
+                preferences.remove(COLOR_TRANSFER_REFERENCE_IMAGE_PATH)
+            }
+        }
     }
-    val colorTransferTargetImagePath: Flow<String?> = context.appPreferences.data.map {
-        it[Keys.COLOR_TRANSFER_TARGET_PATH]
+
+    /**
+     * 색감 전송 대상 이미지 경로 설정
+     */
+    override suspend fun setColorTransferTargetImagePath(path: String?) {
+        context.appDataStore.edit { preferences ->
+            if (path != null) {
+                preferences[COLOR_TRANSFER_TARGET_IMAGE_PATH] = path
+            } else {
+                preferences.remove(COLOR_TRANSFER_TARGET_IMAGE_PATH)
+            }
+        }
     }
-    val colorTransferIntensity: Flow<Float> = context.appPreferences.data.map {
-        it[Keys.COLOR_TRANSFER_INTENSITY] ?: 0.03f
+
+    /**
+     * 색감 전송 강도 설정 (0.0 ~ 1.0)
+     */
+    override suspend fun setColorTransferIntensity(intensity: Float) {
+        context.appDataStore.edit { preferences ->
+            preferences[COLOR_TRANSFER_INTENSITY] = intensity.coerceIn(0.0f, 1.0f)
+        }
     }
-    val themeMode: Flow<ThemeMode> = context.appPreferences.data.map { prefs ->
-        prefs[Keys.THEME_MODE]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() }
-            ?: ThemeMode.FOLLOW_SYSTEM
+
+    /**
+     * RAW 파일 다운로드 활성화/비활성화
+     */
+    override suspend fun setRawFileDownloadEnabled(enabled: Boolean) {
+        context.appDataStore.edit { preferences ->
+            preferences[RAW_FILE_DOWNLOAD_ENABLED] = enabled
+        }
     }
-    suspend fun setCameraControlsEnabled(enabled: Boolean) = setBoolean(Keys.CAMERA_CONTROLS_ENABLED, enabled)
-    suspend fun setLiveViewEnabled(enabled: Boolean) = setBoolean(Keys.LIVE_VIEW_ENABLED, enabled)
-    suspend fun setDarkModeEnabled(enabled: Boolean) = setBoolean(Keys.DARK_MODE_ENABLED, enabled)
-    suspend fun setAutoStartEventListenerEnabled(enabled: Boolean) = setBoolean(Keys.AUTO_START_EVENT_LISTENER, enabled)
-    suspend fun setShowLatestPhotoWhenDisabled(enabled: Boolean) = setBoolean(Keys.SHOW_LATEST_PHOTO_WHEN_DISABLED, enabled)
-    suspend fun setColorTransferEnabled(enabled: Boolean) = setBoolean(Keys.COLOR_TRANSFER_ENABLED, enabled)
-    suspend fun setColorTransferReferenceImagePath(path: String?) = setString(Keys.COLOR_TRANSFER_REFERENCE_PATH, path)
-    suspend fun setColorTransferTargetImagePath(path: String?) = setString(Keys.COLOR_TRANSFER_TARGET_PATH, path)
-    suspend fun setColorTransferIntensity(intensity: Float) {
-        context.appPreferences.edit { it[Keys.COLOR_TRANSFER_INTENSITY] = intensity.coerceIn(0f, 1f) }
+
+    /**
+     * ADMIN 네이티브 로그 스트리밍 활성화/비활성화
+     */
+    suspend fun setAdminNativeLogStreamingEnabled(enabled: Boolean) {
+        context.appDataStore.edit { preferences ->
+            preferences[ADMIN_NATIVE_LOG_STREAM_ENABLED] = enabled
+        }
     }
-    suspend fun setThemeMode(mode: ThemeMode) {
-        context.appPreferences.edit { it[Keys.THEME_MODE] = mode.name }
+
+    /**
+     * 네이티브 로그 캡처 활성화/비활성화
+     */
+    override suspend fun setNativeLogCaptureEnabled(enabled: Boolean) {
+        context.appDataStore.edit { preferences ->
+            preferences[NATIVE_LOG_CAPTURE_ENABLED] = enabled
+        }
     }
-    suspend fun clearAllSettings() {
-        context.appPreferences.edit { it.clear() }
+
+    /**
+     * 테마 모드 설정
+     */
+    override suspend fun setThemeMode(mode: ThemeMode) {
+        context.appDataStore.edit { preferences ->
+            preferences[THEME_MODE] = mode.value
+        }
     }
-    private suspend fun setBoolean(key: Preferences.Key<Boolean>, value: Boolean) {
-        context.appPreferences.edit { it[key] = value }
+
+    /**
+     * 구독 티어 설정 (String)
+     */
+    suspend fun setSubscriptionTier(tier: String?) {
+        context.appDataStore.edit { preferences ->
+            if (tier != null) {
+                preferences[SUBSCRIPTION_TIER] = tier
+            } else {
+                preferences.remove(SUBSCRIPTION_TIER)
+            }
+        }
     }
-    private suspend fun setString(key: Preferences.Key<String>, value: String?) {
-        context.appPreferences.edit {
-            if (value == null) it.remove(key) else it[key] = value
+
+    /**
+     * SubscriptionTier enum으로 구독 티어 저장 (헬퍼 메서드)
+     */
+    suspend fun saveSubscriptionTier(tier: com.inik.camcon.domain.model.SubscriptionTier?) {
+        if (tier == null) {
+            setSubscriptionTier(null)
+            return
+        }
+
+        val currentTier = subscriptionTierEnum.first()
+        if (tier == com.inik.camcon.domain.model.SubscriptionTier.FREE &&
+            currentTier != com.inik.camcon.domain.model.SubscriptionTier.FREE
+        ) {
+            // 유지 중인 상위 티어를 오프라인 FREE 폴백으로 덮어쓰지 않음
+            return
+        }
+
+        setSubscriptionTier(tier.name)
+    }
+
+    /**
+     * 모든 앱 설정 초기화 (기본값으로 되돌림)
+     */
+    override suspend fun clearAllSettings() {
+        context.appDataStore.edit { preferences ->
+            preferences.clear()
         }
     }
 }

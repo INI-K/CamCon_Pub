@@ -1,13 +1,13 @@
 package com.inik.camcon.domain.usecase.usb
 
-import android.hardware.usb.UsbDevice
-import com.inik.camcon.data.datasource.usb.UsbCameraManager
+import com.inik.camcon.domain.model.UsbDeviceInfo
+import com.inik.camcon.domain.repository.UsbDeviceRepository
 import javax.inject.Inject
 
 class RefreshUsbDevicesUseCase @Inject constructor(
-    private val usbCameraManager: UsbCameraManager
+    private val usbDeviceRepository: UsbDeviceRepository
 ) {
-    operator fun invoke(): List<UsbDevice> {
-        return usbCameraManager.getCameraDevices()
+    operator fun invoke(): List<UsbDeviceInfo> {
+        return usbDeviceRepository.getCameraDevices()
     }
 }

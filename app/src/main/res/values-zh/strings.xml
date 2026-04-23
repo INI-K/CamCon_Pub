@@ -140,6 +140,15 @@
     <string name="error_unknown">发生未知错误</string>
     <string name="error_usb_not_supported">不支持USB OTG</string>
     <string name="error_camera_busy">相机忙碌中</string>
+    <string name="error_unsupported_shooting_mode">不支持的拍摄模式: %1$s。支持的模式: %2$s</string>
+
+    <!-- 拍摄模式名称 -->
+    <string name="shooting_mode_single">单次拍摄</string>
+    <string name="shooting_mode_continuous">连续</string>
+    <string name="shooting_mode_timelapse">延时拍摄</string>
+    <string name="shooting_mode_burst">连拍</string>
+    <string name="shooting_mode_hdr_bracket">HDR包围</string>
+    <string name="shooting_mode_bulb">长曝光</string>
 
     <!-- 权限 -->
     <string name="permission_camera">需要相机权限</string>

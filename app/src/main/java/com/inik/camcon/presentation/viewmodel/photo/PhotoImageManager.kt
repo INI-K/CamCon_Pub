@@ -2,19 +2,25 @@ package com.inik.camcon.presentation.viewmodel.photo
 
 import android.util.Log
 import androidx.exifinterface.media.ExifInterface
-import com.inik.camcon.CameraNative
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.repository.CameraRepository
+import com.inik.camcon.domain.usecase.camera.DownloadCameraPhotoUseCase
+import com.inik.camcon.domain.usecase.camera.GetCameraPhotoExifJsonUseCase
 import com.inik.camcon.domain.usecase.camera.GetCameraThumbnailUseCase
+import com.inik.camcon.di.ApplicationScope
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import com.inik.camcon.utils.Constants
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -26,12 +32,21 @@ import javax.inject.Singleton
 @Singleton
 class PhotoImageManager @Inject constructor(
     private val cameraRepository: CameraRepository,
-    private val getCameraThumbnailUseCase: GetCameraThumbnailUseCase
+    private val getCameraThumbnailUseCase: GetCameraThumbnailUseCase,
+    private val downloadCameraPhotoUseCase: DownloadCameraPhotoUseCase,
+    private val getCameraPhotoExifJsonUseCase: GetCameraPhotoExifJsonUseCase,
+    @ApplicationScope private val appScope: CoroutineScope
 ) {
 
     companion object {
         private const val TAG = "사진이미지매니저"
     }
+
+    // 앱 scope의 자식 scope — cancelChildren해도 앱 scope에 영향 없음
+    private var managerScope = createManagerScope()
+
+    private fun createManagerScope(): CoroutineScope =
+        CoroutineScope(appScope.coroutineContext + SupervisorJob(appScope.coroutineContext.job))
 
     // 썸네일 캐시
     private val _thumbnailCache = MutableStateFlow<Map<String, ByteArray>>(emptyMap())
@@ -68,7 +83,7 @@ class PhotoImageManager @Inject constructor(
         Log.d(TAG, "🔍 호출 스택:\n$stackTrace")
         Log.d(TAG, "=== 썸네일 로딩 시작: ${photos.size}개 사진 ===")
 
-        CoroutineScope(Dispatchers.IO).launch {
+        managerScope.launch {
             if (!isManagerActive) {
                 Log.d(TAG, "⛔ 썸네일 로딩 중단됨 (매니저 비활성)")
                 return@launch
@@ -134,10 +149,18 @@ class PhotoImageManager @Inject constructor(
                                 }
 
                                 synchronized(currentCache) {
+                                    // LRU 캐시 크기 제한 적용
+                                    if (currentCache.size >= Constants.Cache.MAX_THUMBNAIL_CACHE_SIZE) {
+                                        val oldestKey = currentCache.keys.firstOrNull()
+                                        if (oldestKey != null) {
+                                            currentCache.remove(oldestKey)
+                                            Log.d(TAG, "캐시 크기 제한 - 가장 오래된 썸네일 제거: $oldestKey")
+                                        }
+                                    }
                                     currentCache[photo.path] = thumbnailData
                                     _thumbnailCache.value = currentCache.toMap()
                                 }
-                                Log.d(TAG, "💾 썸네일 캐시 저장 완료: ${photo.name}")
+                                Log.d(TAG, "💾 썸네일 캐시 저장 완료: ${photo.name} (캐시 크기: ${currentCache.size})")
                             } else {
                                 Log.w(TAG, "⚠️ 빈 썸네일 데이터 수신: ${photo.name}")
                                 // 빈 데이터도 캐시에 저장하여 재시도 방지
@@ -199,6 +222,8 @@ class PhotoImageManager @Inject constructor(
                             }
                         }
                     )
+                } catch (exception: CancellationException) {
+                    throw exception
                 } catch (exception: Exception) {
                     Log.e(TAG, "💥 썸네일 로딩 중 예외: ${photo.name}", exception)
                     if (isManagerActive) {
@@ -238,24 +263,34 @@ class PhotoImageManager @Inject constructor(
             _downloadingImages.value = _downloadingImages.value + photoPath
         }
 
-        CoroutineScope(Dispatchers.IO).launch {
+        managerScope.launch {
             try {
                 Log.d(TAG, "실제 파일 다운로드 시작: $photoPath")
 
                 val imageData = withContext(Dispatchers.IO) {
                     Log.d(TAG, "downloadCameraPhoto 호출")
-                    CameraNative.downloadCameraPhoto(photoPath)
+                    downloadCameraPhotoUseCase(photoPath)
                 }
 
                 if (imageData != null && imageData.isNotEmpty()) {
                     Log.d(TAG, "이미지 데이터 확인: 유효함 (${imageData.size} bytes)")
 
-                    val currentCache = _fullImageCache.value
+                    val currentCache = _fullImageCache.value.toMutableMap()
                     if (!currentCache.containsKey(photoPath)) {
-                        val newCache = currentCache + (photoPath to imageData)
-                        _fullImageCache.value = newCache
+                        // LRU 캐시 크기 제한 적용
+                        while (currentCache.size >= Constants.Cache.MAX_FULL_IMAGE_CACHE_SIZE) {
+                            val oldestKey = currentCache.keys.firstOrNull()
+                            if (oldestKey != null) {
+                                currentCache.remove(oldestKey)
+                                Log.d(TAG, "캐시 크기 제한 - 가장 오래된 이미지 제거: $oldestKey")
+                            } else {
+                                break
+                            }
+                        }
+                        currentCache[photoPath] = imageData
+                        _fullImageCache.value = currentCache.toMap()
 
-                        Log.d(TAG, "실제 파일 다운로드 성공: ${imageData.size} bytes")
+                        Log.d(TAG, "실제 파일 다운로드 성공: ${imageData.size} bytes (캐시 크기: ${currentCache.size})")
 
                         // EXIF 파싱
                         if (!_exifCache.value.containsKey(photoPath)) {
@@ -270,6 +305,8 @@ class PhotoImageManager @Inject constructor(
                 } else {
                     Log.e(TAG, "실제 파일 다운로드 실패: 데이터가 비어있음")
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "실제 파일 다운로드 중 예외", e)
             } finally {
@@ -316,6 +353,8 @@ class PhotoImageManager @Inject constructor(
                 tempFile.delete()
                 resizedFile.delete()
 
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Free 티어 리사이징 처리 중 오류", e)
             }
@@ -398,6 +437,8 @@ class PhotoImageManager @Inject constructor(
                 Log.e(TAG, "❌ 메모리 부족으로 리사이즈 실패", e)
                 System.gc()
                 false
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "❌ 이미지 리사이즈 실패", e)
                 false
@@ -409,7 +450,7 @@ class PhotoImageManager @Inject constructor(
      * EXIF 정보 파싱
      */
     private fun parseExifFromImageData(photoPath: String, imageData: ByteArray) {
-        CoroutineScope(Dispatchers.IO).launch {
+        managerScope.launch {
             try {
                 Log.d(TAG, "EXIF 파싱 시작: $photoPath")
 
@@ -421,7 +462,7 @@ class PhotoImageManager @Inject constructor(
                     val exifMap = mutableMapOf<String, Any>()
 
                     // 기본 정보
-                    val basicInfo = CameraNative.getCameraPhotoExif(photoPath)
+                    val basicInfo = getCameraPhotoExifJsonUseCase(photoPath)
                     basicInfo?.let { basic ->
                         try {
                             val basicJson = JSONObject(basic)
@@ -471,6 +512,8 @@ class PhotoImageManager @Inject constructor(
                 } finally {
                     tempFile.delete()
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "EXIF 파싱 실패", e)
             }
@@ -602,6 +645,8 @@ class PhotoImageManager @Inject constructor(
      * 정리
      */
     fun cleanup() {
+        managerScope.coroutineContext.job.cancel()
+        managerScope = createManagerScope()
         isManagerActive = false
         _thumbnailCache.value = emptyMap()
         _fullImageCache.value = emptyMap()

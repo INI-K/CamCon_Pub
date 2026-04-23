@@ -15,23 +15,27 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Button
-import androidx.compose.material.ButtonDefaults
-import androidx.compose.material.Card
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.Icon
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Snackbar
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,8 +57,10 @@ import com.google.android.gms.common.api.ApiException
 import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
+import com.inik.camcon.presentation.viewmodel.LoginUiEvent
 import com.inik.camcon.presentation.viewmodel.LoginUiState
 import com.inik.camcon.presentation.viewmodel.LoginViewModel
+import com.inik.camcon.domain.model.ThemeMode
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -70,9 +76,11 @@ class LoginActivity : ComponentActivity() {
         val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
         try {
             val account = task.getResult(ApiException::class.java)
-            Log.d("LoginActivity", "Google account received: ${account?.email}")
+            if (com.inik.camcon.BuildConfig.DEBUG) {
+                Log.d("LoginActivity", "Google account received: ${account?.email}")
+            }
             account?.idToken?.let { idToken ->
-                Log.d("LoginActivity", "ID Token received, length: ${idToken.length}")
+                Log.d("LoginActivity", "ID Token received")
                 loginViewModel?.signInWithGoogle(idToken, currentReferralCode.ifBlank { null })
             } ?: run {
                 Log.e("LoginActivity", "ID Token is null")
@@ -90,25 +98,39 @@ class LoginActivity : ComponentActivity() {
 
         setContent {
             val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
-            val themeMode by appSettingsViewModel.themeMode.collectAsState()
+            val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
 
             CamConTheme(themeMode = themeMode) {
                 val viewModel: LoginViewModel = hiltViewModel()
                 loginViewModel = viewModel
 
-                val uiState by viewModel.uiState.collectAsState()
+                val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+                val snackbarHostState = remember { SnackbarHostState() }
 
-                // 로그인 성공 시 MainActivity로 이동
-                LaunchedEffect(uiState.isLoggedIn) {
-                    if (uiState.isLoggedIn) {
-                        Log.d("LoginActivity", "User logged in, navigating to MainActivity")
-                        startActivity(Intent(this@LoginActivity, MainActivity::class.java))
-                        finish()
+                // SharedFlow 이벤트 수집
+                LaunchedEffect(Unit) {
+                    viewModel.uiEvent.collect { event ->
+                        when (event) {
+                            is LoginUiEvent.ShowError -> {
+                                Log.e("LoginActivity", "Error: ${event.message}")
+                                snackbarHostState.showSnackbar(event.message)
+                            }
+                            is LoginUiEvent.ShowReferralMessage -> {
+                                Log.d("LoginActivity", "Referral message: ${event.message}")
+                                snackbarHostState.showSnackbar(event.message)
+                            }
+                            is LoginUiEvent.NavigateToHome -> {
+                                Log.d("LoginActivity", "User logged in, navigating to MainActivity")
+                                startActivity(Intent(this@LoginActivity, MainActivity::class.java))
+                                finish()
+                            }
+                        }
                     }
                 }
 
                 LoginScreen(
                     uiState = uiState,
+                    snackbarHostState = snackbarHostState,
                     onGoogleSignIn = { referralCode ->
                         Log.d(
                             "LoginActivity",
@@ -116,9 +138,7 @@ class LoginActivity : ComponentActivity() {
                         )
                         currentReferralCode = referralCode  // 추천 코드 저장
                         signInWithGoogle()  // Google 로그인 시작
-                    },
-                    onDismissError = { viewModel.clearError() },
-                    onDismissReferralMessage = { viewModel.clearReferralMessage() }
+                    }
                 )
             }
         }
@@ -130,12 +150,17 @@ class LoginActivity : ComponentActivity() {
             val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestIdToken(getString(R.string.default_web_client_id))
                 .requestEmail()
+                .requestProfile()
                 .build()
 
             val googleSignInClient = GoogleSignIn.getClient(this, gso)
-            val signInIntent = googleSignInClient.signInIntent
-            Log.d("LoginActivity", "Launching Google Sign-In intent")
-            googleSignInLauncher.launch(signInIntent)
+            
+            // 기존 계정이 있으면 먼저 로그아웃
+            googleSignInClient.signOut().addOnCompleteListener {
+                val signInIntent = googleSignInClient.signInIntent
+                Log.d("LoginActivity", "Launching Google Sign-In intent")
+                googleSignInLauncher.launch(signInIntent)
+            }
         } catch (e: Exception) {
             Log.e("LoginActivity", "Error creating Google Sign-In intent", e)
         }
@@ -145,17 +170,15 @@ class LoginActivity : ComponentActivity() {
 @Composable
 fun LoginScreen(
     uiState: LoginUiState,
-    onGoogleSignIn: (String) -> Unit,
-    onDismissError: () -> Unit,
-    onDismissReferralMessage: () -> Unit
+    snackbarHostState: SnackbarHostState,
+    onGoogleSignIn: (String) -> Unit
 ) {
-
-    // State for recommendation code input
-    var recommendCode by remember { mutableStateOf("") }
-
     Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colors.background
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .navigationBarsPadding(),
+        color = MaterialTheme.colorScheme.background
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
@@ -169,7 +192,7 @@ fun LoginScreen(
                 Card(
                     modifier = Modifier.size(120.dp),
                     shape = RoundedCornerShape(24.dp),
-                    elevation = 8.dp
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                 ) {
                     Box(
                         contentAlignment = Alignment.Center,
@@ -179,7 +202,7 @@ fun LoginScreen(
                             painter = painterResource(id = R.drawable.ic_camera),
                             contentDescription = "Logo",
                             modifier = Modifier.size(60.dp),
-                            tint = MaterialTheme.colors.primary
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -190,13 +213,13 @@ fun LoginScreen(
                     text = stringResource(R.string.app_name),
                     fontSize = 40.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colors.primary
+                    color = MaterialTheme.colorScheme.primary
                 )
 
                 Text(
                     text = stringResource(R.string.app_description),
                     fontSize = 16.sp,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
 
                 Spacer(modifier = Modifier.height(48.dp))
@@ -204,26 +227,11 @@ fun LoginScreen(
                 Text(
                     text = stringResource(R.string.welcome_message),
                     fontSize = 14.sp,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                     textAlign = TextAlign.Center
                 )
 
                 Spacer(modifier = Modifier.height(32.dp))
-
-                // 추천 코드 입력 필드 - 숨김 처리
-                /*
-                OutlinedTextField(
-                    value = recommendCode,
-                    onValueChange = { recommendCode = it },
-                    label = { Text("추천 코드(선택)") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    maxLines = 1,
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
-                )
-                */
 
                 // Google Sign In Button
                 Button(
@@ -235,11 +243,11 @@ fun LoginScreen(
                         .fillMaxWidth()
                         .height(56.dp),
                     colors = ButtonDefaults.buttonColors(
-                        backgroundColor = Color.White,
+                        containerColor = Color.White,
                         contentColor = Color(0xFF4285F4)
                     ),
                     shape = RoundedCornerShape(8.dp),
-                    elevation = ButtonDefaults.elevation(
+                    elevation = ButtonDefaults.elevatedButtonElevation(
                         defaultElevation = 4.dp,
                         pressedElevation = 8.dp
                     ),
@@ -275,39 +283,17 @@ fun LoginScreen(
                 Text(
                     text = stringResource(R.string.terms_agreement),
                     fontSize = 12.sp,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.5f),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     textAlign = TextAlign.Center,
                     lineHeight = 18.sp
                 )
             }
 
-            // Error Snackbar
-            uiState.error?.let { error ->
-                Snackbar(
-                    modifier = Modifier.align(Alignment.BottomCenter),
-                    action = {
-                        TextButton(onClick = onDismissError) {
-                            Text(stringResource(R.string.close))
-                        }
-                    }
-                ) {
-                    Text(error)
-                }
-            }
-
-            // Referral Message
-            uiState.referralCodeMessage?.let { message ->
-                Snackbar(
-                    modifier = Modifier.align(Alignment.BottomCenter),
-                    action = {
-                        TextButton(onClick = onDismissReferralMessage) {
-                            Text(stringResource(R.string.close))
-                        }
-                    }
-                ) {
-                    Text(message)
-                }
-            }
+            // SharedFlow 이벤트용 SnackbarHost
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
         }
     }
 }
@@ -315,12 +301,11 @@ fun LoginScreen(
 @Preview(showBackground = true)
 @Composable
 fun LoginScreenPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         LoginScreen(
             uiState = LoginUiState(),
-            onGoogleSignIn = { _ -> },
-            onDismissError = {},
-            onDismissReferralMessage = {}
+            snackbarHostState = remember { SnackbarHostState() },
+            onGoogleSignIn = { _ -> }
         )
     }
 }

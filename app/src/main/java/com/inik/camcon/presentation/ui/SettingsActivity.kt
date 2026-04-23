@@ -1,8 +1,10 @@
 package com.inik.camcon.presentation.ui
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
@@ -19,21 +21,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.Divider
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Scaffold
-import androidx.compose.material.Switch
-import androidx.compose.material.SwitchDefaults
-import androidx.compose.material.Text
-import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
@@ -52,13 +47,31 @@ import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -71,16 +84,34 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.inik.camcon.BuildConfig
-import com.inik.camcon.data.datasource.local.ThemeMode
+import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.domain.model.User
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.AdminReferralCodeViewModel
+import com.inik.camcon.presentation.viewmodel.AdminReferralUiEvent
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
+import com.inik.camcon.presentation.viewmodel.AuthUiEvent
 import com.inik.camcon.presentation.viewmodel.AuthViewModel
+import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
 import java.io.FileOutputStream
+import kotlin.jvm.java
+import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.ui.unit.sp
+import com.inik.camcon.presentation.theme.Border
+import com.inik.camcon.presentation.theme.OnPrimary
+import com.inik.camcon.presentation.theme.Primary
+import com.inik.camcon.presentation.theme.SurfaceElevated
+import com.inik.camcon.presentation.theme.TextMuted
+import com.inik.camcon.presentation.theme.TextPrimary
+import com.inik.camcon.presentation.theme.TextSecondary
 
 @AndroidEntryPoint
 class SettingsActivity : ComponentActivity() {
@@ -88,7 +119,7 @@ class SettingsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
-            val themeMode by appSettingsViewModel.themeMode.collectAsState()
+            val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
             val authViewModel: AuthViewModel = hiltViewModel()
 
             CamConTheme(themeMode = themeMode) {
@@ -104,7 +135,7 @@ class SettingsActivity : ComponentActivity() {
 @Preview(showBackground = true, name = "SettingsScreen Preview")
 @Composable
 fun SettingsScreenPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         // Provide a default onBackClick. ViewModel is not injected in Preview.
         SettingsScreen(
             onBackClick = {},
@@ -113,69 +144,114 @@ fun SettingsScreenPreview() {
     }
 }
 
+// Activity-level Preview 추가
+@Preview(showBackground = true, name = "SettingsActivity Preview")
+@Composable
+fun SettingsActivityPreview() {
+    SettingsScreenPreview()
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onBackClick: () -> Unit,
     ptpipViewModel: PtpipViewModel = hiltViewModel(),
     appSettingsViewModel: AppSettingsViewModel = hiltViewModel(),
     authViewModel: AuthViewModel? = hiltViewModel(),
-    adminReferralCodeViewModel: AdminReferralCodeViewModel = hiltViewModel()
+    adminReferralCodeViewModel: AdminReferralCodeViewModel = hiltViewModel(),
+    cameraViewModel: CameraViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     // Auth 상태 - null 체크 추가
-    val authUiState by authViewModel?.uiState?.collectAsState() ?: remember {
+    val authUiState by authViewModel?.uiState?.collectAsStateWithLifecycle() ?: remember {
         mutableStateOf(com.inik.camcon.presentation.viewmodel.AuthUiState())
     }
 
     // 관리자 레퍼럴 코드 상태
-    val adminReferralState by adminReferralCodeViewModel.uiState.collectAsState()
+    val adminReferralState by adminReferralCodeViewModel.uiState.collectAsStateWithLifecycle()
 
-    // 로그아웃 성공 시 LoginActivity로 이동
-    LaunchedEffect(authUiState.isSignOutSuccess) {
-        if (authUiState.isSignOutSuccess) {
-            val intent = Intent(context, LoginActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+    // 카메라 상태 정보
+    val cameraUiState by cameraViewModel.uiState.collectAsStateWithLifecycle()
+    val isUsbConnected = cameraUiState.isNativeCameraConnected
+    val isPtpipConnected = cameraUiState.isPtpipConnected
+
+    // AuthViewModel SharedFlow 이벤트 수집
+    LaunchedEffect(Unit) {
+        authViewModel?.uiEvent?.collect { event ->
+            when (event) {
+                is AuthUiEvent.ShowError -> {
+                    android.widget.Toast.makeText(
+                        context,
+                        "로그아웃 실패: ${event.message}",
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+                }
+                is AuthUiEvent.SignOutSuccess -> {
+                    // 로그아웃 성공 - NavigateToLogin에서 처리
+                }
+                is AuthUiEvent.NavigateToLogin -> {
+                    val intent = Intent(context, LoginActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    }
+                    context.startActivity(intent)
+                    (context as? ComponentActivity)?.finish()
+                }
             }
-            context.startActivity(intent)
-            (context as? ComponentActivity)?.finish()
         }
     }
 
-    // 관리자 레퍼럴 코드 관련 메시지 처리
-    adminReferralState.error?.let { error ->
-        LaunchedEffect(error) {
-            android.widget.Toast.makeText(context, error, android.widget.Toast.LENGTH_LONG).show()
-            adminReferralCodeViewModel.clearError()
-        }
-    }
-
-    adminReferralState.successMessage?.let { message ->
-        LaunchedEffect(message) {
-            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
-            adminReferralCodeViewModel.clearSuccessMessage()
+    // AdminReferralCodeViewModel SharedFlow 이벤트 수집
+    LaunchedEffect(Unit) {
+        adminReferralCodeViewModel.uiEvent.collect { event ->
+            when (event) {
+                is AdminReferralUiEvent.ShowError -> {
+                    android.widget.Toast.makeText(context, event.message, android.widget.Toast.LENGTH_LONG).show()
+                }
+                is AdminReferralUiEvent.ShowSuccess -> {
+                    android.widget.Toast.makeText(context, event.message, android.widget.Toast.LENGTH_LONG).show()
+                }
+            }
         }
     }
 
     // PTPIP 설정 상태
-    val isPtpipEnabled by ptpipViewModel.isPtpipEnabled.collectAsState(initial = false)
-    val isWifiConnectionModeEnabled by ptpipViewModel.isWifiConnectionModeEnabled.collectAsState(
-        initial = true
-    )
-    val isAutoDiscoveryEnabled by ptpipViewModel.isAutoDiscoveryEnabled.collectAsState(initial = true)
-    val isAutoConnectEnabled by ptpipViewModel.isAutoConnectEnabled.collectAsState(initial = false)
-    val lastConnectedName by ptpipViewModel.lastConnectedName.collectAsState(initial = null)
+    val isPtpipEnabled by ptpipViewModel.isPtpipEnabled.collectAsStateWithLifecycle(initialValue = false)
+    val isWifiConnectionModeEnabled by ptpipViewModel.isWifiConnectionModeEnabled.collectAsStateWithLifecycle(initialValue = true)
+    val isAutoDiscoveryEnabled by ptpipViewModel.isAutoDiscoveryEnabled.collectAsStateWithLifecycle(initialValue = true)
+    val isAutoConnectEnabled by ptpipViewModel.isAutoConnectEnabled.collectAsStateWithLifecycle(initialValue = false)
+    val lastConnectedName by ptpipViewModel.lastConnectedName.collectAsStateWithLifecycle(initialValue = null)
 
     // 앱 설정 상태
-    val isCameraControlsEnabled by appSettingsViewModel.isCameraControlsEnabled.collectAsState()
-    val isLiveViewEnabled by appSettingsViewModel.isLiveViewEnabled.collectAsState()
-    val currentThemeMode by appSettingsViewModel.themeMode.collectAsState()
-    val isAutoStartEventListener by appSettingsViewModel.isAutoStartEventListenerEnabled.collectAsState()
-    val isShowLatestPhotoWhenDisabled by appSettingsViewModel.isShowLatestPhotoWhenDisabled.collectAsState()
+    val isCameraControlsEnabled by appSettingsViewModel.isCameraControlsEnabled.collectAsStateWithLifecycle()
+    val isLiveViewEnabled by appSettingsViewModel.isLiveViewEnabled.collectAsStateWithLifecycle()
+    val isAdminTier by appSettingsViewModel.isAdminTier.collectAsStateWithLifecycle()
+    val currentThemeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
+    val isAutoStartEventListener by appSettingsViewModel.isAutoStartEventListenerEnabled.collectAsStateWithLifecycle()
+    val isShowLatestPhotoWhenDisabled by appSettingsViewModel.isShowLatestPhotoWhenDisabled.collectAsStateWithLifecycle()
 
     // 색감 전송 설정 상태
-    val isColorTransferEnabled by appSettingsViewModel.isColorTransferEnabled.collectAsState()
-    val colorTransferReferenceImagePath by appSettingsViewModel.colorTransferReferenceImagePath.collectAsState()
+    val isColorTransferEnabled by appSettingsViewModel.isColorTransferEnabled.collectAsStateWithLifecycle()
+    val colorTransferReferenceImagePath by appSettingsViewModel.colorTransferReferenceImagePath.collectAsStateWithLifecycle()
+    val isRawFileDownloadEnabled by appSettingsViewModel.isRawFileDownloadEnabled.collectAsStateWithLifecycle()
+
+    val subscriptionTier by appSettingsViewModel.subscriptionTier.collectAsStateWithLifecycle()
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        val message = if (isGranted) {
+            "알림 권한이 허용되었습니다."
+        } else {
+            "알림 권한이 거부되었습니다."
+        }
+        android.widget.Toast.makeText(
+            context,
+            message,
+            android.widget.Toast.LENGTH_LONG
+        ).show()
+    }
 
     // 색감 전송 이미지 선택 런처
     val referenceImagePickerLauncher = rememberLauncherForActivityResult(
@@ -211,6 +287,8 @@ fun SettingsScreen(
 
     // 테마 선택 다이얼로그 상태
     var showThemeDialog by remember { mutableStateOf(false) }
+    // 네이티브 로그 다이얼로그 상태
+    var logDialogContent by remember { mutableStateOf<String?>(null) }
 
     // 테마 모드를 한글로 변환하는 함수
     fun getThemeDisplayName(themeMode: ThemeMode): String {
@@ -224,16 +302,21 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("설정") },
+                modifier = Modifier.statusBarsPadding(),
+                title = { Text("설정", fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
-                backgroundColor = MaterialTheme.colors.primary,
-                contentColor = MaterialTheme.colors.onPrimary
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onBackground
+                )
             )
-        }
+        },
+        contentWindowInsets = WindowInsets.safeDrawing
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -256,13 +339,33 @@ fun SettingsScreen(
                         onCheckedChange = { appSettingsViewModel.setCameraControlsEnabled(it) }
                     )
 
-                    if (isCameraControlsEnabled) {
+                    if (isCameraControlsEnabled && isAdminTier) {
                         SettingsItemWithSwitch(
                             icon = Icons.Default.Visibility,
                             title = "라이브뷰 활성화",
-                            subtitle = "실시간 카메라 화면 표시",
+                            subtitle = "실시간 카메라 화면 표시 (ADMIN 전용)",
                             checked = isLiveViewEnabled,
                             onCheckedChange = { appSettingsViewModel.setLiveViewEnabled(it) }
+                        )
+
+                        SettingsItemWithSwitch(
+                            icon = Icons.Default.Settings,
+                            title = "자동 이벤트 수신",
+                            subtitle = "카메라 제어 탭 진입 시 자동으로 이벤트 리스너 시작",
+                            checked = isAutoStartEventListener,
+                            onCheckedChange = {
+                                appSettingsViewModel.setAutoStartEventListenerEnabled(
+                                    it
+                                )
+                            }
+                        )
+                    } else if (isCameraControlsEnabled && !isAdminTier) {
+                        // ADMIN 티어가 아닐 때 라이브뷰 제한 안내
+                        SettingsItem(
+                            icon = Icons.Default.Visibility,
+                            title = "라이브뷰 기능",
+                            subtitle = "ADMIN 티어에서만 사용 가능한 기능입니다",
+                            onClick = { /* 클릭해도 아무 동작 안함 */ }
                         )
 
                         SettingsItemWithSwitch(
@@ -293,7 +396,7 @@ fun SettingsScreen(
                     }
                 }
 
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 // PTPIP Wi-Fi 카메라 설정 섹션 - 개발자 기능이 활성화된 경우만 표시
                 SettingsSection(title = "Wi-Fi 카메라 연결 (PTPIP) - 개발 버전") {
@@ -335,7 +438,31 @@ fun SettingsScreen(
                             title = "자동 연결",
                             subtitle = "마지막 연결된 카메라에 자동 연결",
                             checked = isAutoConnectEnabled,
-                            onCheckedChange = { ptpipViewModel.setAutoConnectEnabled(it) }
+                            onCheckedChange = { enabled ->
+                                ptpipViewModel.updateAutoConnectEnabled(
+                                    enabled = enabled,
+                                    onResult = { _, message ->
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            message,
+                                            android.widget.Toast.LENGTH_LONG
+                                        ).show()
+                                    },
+                                    onRequestNotificationPermission = {
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                            notificationPermissionLauncher.launch(
+                                                Manifest.permission.POST_NOTIFICATIONS
+                                            )
+                                        } else {
+                                            android.widget.Toast.makeText(
+                                                context,
+                                                "현재 기기에서 알림 권한 요청이 필요하지 않습니다.",
+                                                android.widget.Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                    }
+                                )
+                            }
                         )
 
                         SettingsItemWithNavigation(
@@ -351,7 +478,7 @@ fun SettingsScreen(
                     }
                 }
 
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
             }
 
             // 색감 전송 설정 섹션
@@ -387,7 +514,77 @@ fun SettingsScreen(
                 }
             }
 
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            // RAW 파일 다운로드 설정 섹션
+            SettingsSection(title = "RAW 파일 다운로드 설정") {
+                if (subscriptionTier == com.inik.camcon.domain.model.SubscriptionTier.PRO ||
+                    subscriptionTier == com.inik.camcon.domain.model.SubscriptionTier.ADMIN ||
+                    subscriptionTier == com.inik.camcon.domain.model.SubscriptionTier.REFERRER
+                ) {
+                    SettingsItemWithSwitch(
+                        icon = Icons.Default.Photo,
+                        title = "RAW 파일 다운로드",
+                        subtitle = if (isRawFileDownloadEnabled) "활성화됨" else "비활성화됨",
+                        checked = isRawFileDownloadEnabled,
+                        onCheckedChange = { appSettingsViewModel.setRawFileDownloadEnabled(it) }
+                    )
+                } else {
+                    SettingsItem(
+                        icon = Icons.Default.Photo,
+                        title = "RAW 파일 다운로드",
+                        subtitle = "PRO, ADMIN, REFERRER 티어에서만 사용 가능한 기능입니다",
+                        onClick = { /* 클릭해도 아무 동작 안함 */ }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // 연결된 카메라 정보 섹션
+            SettingsSection(title = "연결된 카메라 정보") {
+                val connectionType = when {
+                    isUsbConnected -> "USB 연결"
+                    isPtpipConnected -> "Wi-Fi 연결 (PTPIP)"
+                    else -> "연결 안됨"
+                }
+
+                val cameraName = when {
+                    cameraUiState.connectedCameraModel != null && cameraUiState.connectedCameraManufacturer != null ->
+                        "${cameraUiState.connectedCameraManufacturer} ${cameraUiState.connectedCameraModel}"
+
+                    cameraUiState.connectedCameraModel != null ->
+                        cameraUiState.connectedCameraModel
+
+                    else -> "정보 없음"
+                }
+
+                SettingsItem(
+                    icon = Icons.Default.CameraAlt,
+                    title = "연결 상태",
+                    subtitle = connectionType,
+                    onClick = { }
+                )
+
+                if (isUsbConnected || isPtpipConnected) {
+                    SettingsItem(
+                        icon = Icons.Default.Info,
+                        title = "카메라 모델",
+                        subtitle = cameraName ?: "정보 없음",
+                        onClick = { }
+                    )
+
+                    // 기능 제한 안내
+                    cameraUiState.cameraFunctionLimitation?.let { limitation ->
+                        SettingsItem(
+                            icon = Icons.Default.Info,
+                            title = "기능 제한 안내",
+                            subtitle = limitation,
+                            onClick = { }
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
 
             // User Info Section
             SettingsSection(title = "사용자 정보") {
@@ -413,15 +610,7 @@ fun SettingsScreen(
                 )
             }
 
-            // 로그아웃 에러 처리
-            authUiState.error?.let { error ->
-                LaunchedEffect(error) {
-                    android.widget.Toast.makeText(context, "로그아웃 실패: $error", android.widget.Toast.LENGTH_LONG).show()
-                    authViewModel?.clearError()
-                }
-            }
-
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             // Server Section
             if (BuildConfig.SHOW_DEVELOPER_FEATURES) {
@@ -440,7 +629,7 @@ fun SettingsScreen(
                     )
                 }
 
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
             }
 
             // App Settings Section
@@ -490,31 +679,157 @@ fun SettingsScreen(
                 // === 배터리 최적화 예외 항목 끝 ===
             }
 
-            if (showThemeDialog) {
-                android.app.AlertDialog.Builder(context)
-                    .setTitle("테마 설정")
-                    .setSingleChoiceItems(
-                        arrayOf("시스템 설정 따름", "라이트 모드", "다크 모드").map { it }.toTypedArray(),
-                        when (currentThemeMode) {
-                            ThemeMode.FOLLOW_SYSTEM -> 0
-                            ThemeMode.LIGHT -> 1
-                            ThemeMode.DARK -> 2
+            if (isAdminTier) {
+                // ADMIN 전용: 가상 카메라 설정 및 네이티브 로그
+                val isNativeLogCaptureEnabled by appSettingsViewModel.isNativeLogCaptureEnabled.collectAsStateWithLifecycle()
+
+                SettingsSection(title = "ADMIN 전용 설정") {
+                    SettingsItem(
+                        icon = Icons.Default.CameraAlt,
+                        title = "🧪 가상 카메라 (Mock Camera)",
+                        subtitle = "개발/테스트용 가상 카메라 기능",
+                        onClick = {
+                            context.startActivity(Intent(context, MockCameraActivity::class.java))
                         }
-                    ) { _, which ->
-                        when (which) {
-                            0 -> appSettingsViewModel.setThemeMode(ThemeMode.FOLLOW_SYSTEM)
-                            1 -> appSettingsViewModel.setThemeMode(ThemeMode.LIGHT)
-                            2 -> appSettingsViewModel.setThemeMode(ThemeMode.DARK)
+                    )
+
+                    SettingsItem(
+                        icon = Icons.Default.Info,
+                        title = "🔍 카메라 기능 정보",
+                        subtitle = "libgphoto2 API 기반 카메라 지원 기능 조회",
+                        onClick = {
+                            context.startActivity(
+                                Intent(
+                                    context,
+                                    CameraAbilitiesActivity::class.java
+                                )
+                            )
                         }
-                        showThemeDialog = false
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // 네이티브 로그 캡처 설정
+                    SettingsItemWithSwitch(
+                        icon = Icons.Default.Info,
+                        title = "📝 네이티브 로그 캡처",
+                        subtitle = if (isNativeLogCaptureEnabled) {
+                            "활성화됨 - libgphoto2 로그를 TXT 파일로 저장 중"
+                        } else {
+                            "PTP/IP 디버깅을 위한 상세 로그 기록"
+                        },
+                        checked = isNativeLogCaptureEnabled,
+                        onCheckedChange = {
+                            appSettingsViewModel.setNativeLogCaptureEnabled(it)
+                            val message = if (it) {
+                                "네이티브 로그 캡처를 시작합니다.\n카메라 초기화 시 상세 로그가 기록됩니다."
+                            } else {
+                                "네이티브 로그 캡처를 중지했습니다."
+                            }
+                            android.widget.Toast.makeText(
+                                context,
+                                message,
+                                android.widget.Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    )
+
+                    if (isNativeLogCaptureEnabled) {
+                        SettingsItem(
+                            icon = Icons.Default.Storage,
+                            title = "로그 파일 보기",
+                            subtitle = "저장된 네이티브 로그 파일 확인 및보내기",
+                            onClick = {
+                                // 로그 파일 목록 표시
+                                val logFiles = appSettingsViewModel.getLogFiles()
+                                if (logFiles.isEmpty()) {
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        "저장된 로그 파일이 없습니다.",
+                                        android.widget.Toast.LENGTH_SHORT
+                                    ).show()
+                                } else {
+                                    coroutineScope.launch {
+                                        logDialogContent = appSettingsViewModel.getLogFileContent()
+                                    }
+                                }
+                            }
+                        )
                     }
-                    .setNegativeButton("취소") { _, _ ->
-                        showThemeDialog = false
-                    }
-                    .show()
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
             }
 
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            if (showThemeDialog) {
+                AlertDialog(
+                    onDismissRequest = { showThemeDialog = false },
+                    title = { Text("테마 설정") },
+                    text = {
+                        val options = listOf(
+                            ThemeMode.FOLLOW_SYSTEM to "시스템 설정 따름",
+                            ThemeMode.LIGHT to "라이트 모드",
+                            ThemeMode.DARK to "다크 모드"
+                        )
+                        Column {
+                            options.forEach { (mode, label) ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            appSettingsViewModel.setThemeMode(mode)
+                                            showThemeDialog = false
+                                        },
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    RadioButton(
+                                        selected = currentThemeMode == mode,
+                                        onClick = {
+                                            appSettingsViewModel.setThemeMode(mode)
+                                            showThemeDialog = false
+                                        }
+                                    )
+                                    Text(label)
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {},
+                    dismissButton = {
+                        TextButton(onClick = { showThemeDialog = false }) { Text("취소") }
+                    }
+                )
+            }
+
+            // 네이티브 로그 다이얼로그
+            logDialogContent?.let { logContent ->
+                AlertDialog(
+                    onDismissRequest = { logDialogContent = null },
+                    title = { Text("네이티브 로그") },
+                    text = {
+                        Column(
+                            modifier = Modifier.verticalScroll(rememberScrollState())
+                        ) {
+                            Text(
+                                text = logContent.takeLast(3000),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { logDialogContent = null }) { Text("확인") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("native_log", logContent))
+                            android.widget.Toast.makeText(context, "로그가 클립보드에 복사되었습니다", android.widget.Toast.LENGTH_SHORT).show()
+                        }) { Text("전체 복사") }
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
 
             // About Section
             SettingsSection(title = "정보") {
@@ -530,15 +845,29 @@ fun SettingsScreen(
                 SettingsItem(
                     icon = Icons.Default.Update,
                     title = "앱 버전",
-                    subtitle = "1.0.0",
-                    onClick = { /* TODO */ }
+                    subtitle = BuildConfig.VERSION_NAME,
+                    onClick = { }
                 )
             }
 
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
-            // 관리자용 레퍼럴 코드 관리 섹션 - 관리자만 표시 (최하단으로 이동)
-            if (adminReferralState.isAdmin) {
+            // 🧪 Mock Camera 섹션 - 개발 버전에서 표시
+            if (BuildConfig.SHOW_DEVELOPER_FEATURES) {
+                SettingsSection(title = "🧪 가상 카메라 (개발 전용)") {
+                    SettingsItemWithNavigation(
+                        icon = Icons.Default.CameraAlt,
+                        title = "Mock Camera 설정",
+                        subtitle = "실제 카메라 없이 테스트할 수 있는 가상 카메라",
+                        onClick = {
+                            val intent = Intent(context, MockCameraActivity::class.java)
+                            context.startActivity(intent)
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
                 SettingsSection(title = "관리자 레퍼럴 코드 관리") {
                     // 통계 정보
                     val totalCodes = adminReferralState.statistics["totalCodes"] as? Int ?: 0
@@ -595,7 +924,7 @@ fun SettingsScreen(
                         ) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(24.dp),
-                                color = MaterialTheme.colors.primary
+                                color = MaterialTheme.colorScheme.primary
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("처리 중...")
@@ -613,15 +942,22 @@ fun SettingsSection(
     content: @Composable () -> Unit
 ) {
     Column(
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        modifier = Modifier.padding(horizontal = 16.dp)
     ) {
         Text(
-            text = title,
-            style = MaterialTheme.typography.caption,
-            color = MaterialTheme.colors.primary,
-            modifier = Modifier.padding(bottom = 8.dp)
+            text = title.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = TextMuted,
+            letterSpacing = 0.8.sp,
+            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp, top = 20.dp)
         )
-        content()
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(0.5.dp, Border)
+        ) {
+            content()
+        }
     }
 }
 
@@ -636,26 +972,38 @@ fun SettingsItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .padding(vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.width(16.dp))
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(SurfaceElevated, RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = TextSecondary,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+        Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.body1
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = TextPrimary
             )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.caption,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-            )
+            if (subtitle.isNotEmpty()) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextMuted,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
         }
     }
 }
@@ -671,32 +1019,48 @@ fun SettingsItemWithSwitch(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.width(16.dp))
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(SurfaceElevated, RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = TextSecondary,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+        Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.body1
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = TextPrimary
             )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.caption,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-            )
+            if (subtitle.isNotEmpty()) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextMuted,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
         }
+        Spacer(modifier = Modifier.width(8.dp))
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = MaterialTheme.colors.primary
+                checkedThumbColor = OnPrimary,
+                checkedTrackColor = Primary,
+                uncheckedThumbColor = TextSecondary,
+                uncheckedTrackColor = SurfaceElevated
             )
         )
     }
@@ -713,32 +1077,44 @@ fun SettingsItemWithNavigation(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .padding(vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.width(16.dp))
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(SurfaceElevated, RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = TextSecondary,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+        Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.body1
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = TextPrimary
             )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.caption,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-            )
+            if (subtitle.isNotEmpty()) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextMuted,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
         }
         Icon(
             imageVector = Icons.Default.ChevronRight,
-            contentDescription = "더보기",
-            tint = MaterialTheme.colors.onSurface.copy(alpha = 0.4f),
-            modifier = Modifier.size(20.dp)
+            contentDescription = null,
+            tint = TextMuted,
+            modifier = Modifier.size(16.dp)
         )
     }
 }
@@ -752,54 +1128,56 @@ fun UserProfileItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .padding(vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 프로필 이미지
         if (user?.photoUrl != null) {
             AsyncImage(
                 model = user.photoUrl,
                 contentDescription = "프로필 이미지",
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(40.dp)
                     .clip(CircleShape),
                 contentScale = ContentScale.Crop
             )
         } else {
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
+                    .size(40.dp)
+                    .background(Primary.copy(alpha = 0.15f), CircleShape),
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Person,
-                    contentDescription = "기본 프로필",
-                    tint = MaterialTheme.colors.primary,
-                    modifier = Modifier.size(24.dp)
+                    contentDescription = null,
+                    tint = Primary,
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(14.dp))
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = user?.displayName ?: "사용자",
-                style = MaterialTheme.typography.body1,
-                fontWeight = FontWeight.Medium
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary
             )
             Text(
                 text = user?.email ?: "로그인이 필요합니다",
-                style = MaterialTheme.typography.caption,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                style = MaterialTheme.typography.bodySmall,
+                color = TextMuted,
+                modifier = Modifier.padding(top = 2.dp)
             )
         }
 
         Icon(
             imageVector = Icons.Default.ChevronRight,
-            contentDescription = "더보기",
-            tint = MaterialTheme.colors.onSurface.copy(alpha = 0.4f),
-            modifier = Modifier.size(20.dp)
+            contentDescription = null,
+            tint = TextMuted,
+            modifier = Modifier.size(16.dp)
         )
     }
 }

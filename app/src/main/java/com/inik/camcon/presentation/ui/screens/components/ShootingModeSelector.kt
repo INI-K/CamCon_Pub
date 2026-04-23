@@ -1,61 +1,81 @@
 package com.inik.camcon.presentation.ui.screens.components
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.Chip
-import androidx.compose.material.ChipDefaults
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.ShootingMode
+import com.inik.camcon.presentation.theme.Background
+import com.inik.camcon.presentation.theme.Border
 import com.inik.camcon.presentation.theme.CamConTheme
-import com.inik.camcon.presentation.viewmodel.CameraUiState
+import com.inik.camcon.presentation.theme.Primary
+import com.inik.camcon.presentation.theme.Surface
+import com.inik.camcon.presentation.theme.SurfaceElevated
+import com.inik.camcon.presentation.theme.OnPrimary
+import com.inik.camcon.presentation.theme.TextMuted
+import com.inik.camcon.presentation.theme.TextPrimary
+import com.inik.camcon.domain.model.CameraCapabilities
+import com.inik.camcon.presentation.viewmodel.CameraCaptureState
+import com.inik.camcon.domain.model.ThemeMode
 
 /**
- * 촬영 모드를 선택하는 컴포넌트
+ * 촬영 모드 선택 -- state+callback 패턴
+ *
+ * @param captureState 촬영 sub-state (현재 모드 포함)
+ * @param isConnected 카메라 연결 여부
+ * @param cameraCapabilities 카메라 능력 (모드 활성화 판단)
+ * @param onModeSelected 모드 선택 콜백
  */
 @Composable
 fun ShootingModeSelector(
-    uiState: CameraUiState,
+    captureState: CameraCaptureState,
+    isConnected: Boolean,
+    cameraCapabilities: CameraCapabilities?,
     onModeSelected: (ShootingMode) -> Unit,
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp)
+    contentPadding: PaddingValues = PaddingValues(horizontal = 20.dp)
 ) {
     LazyRow(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = contentPadding
     ) {
-        items(ShootingMode.values()) { mode ->
+        items(
+            items = ShootingMode.entries.toTypedArray(),
+            key = { mode -> mode.name }
+        ) { mode ->
             val isEnabled = when (mode) {
-                ShootingMode.SINGLE -> uiState.isConnected
-                ShootingMode.BURST -> uiState.isConnected && (uiState.cameraCapabilities?.supportsBurstMode
-                    ?: false)
-
-                ShootingMode.TIMELAPSE -> uiState.isConnected && (uiState.cameraCapabilities?.supportsTimelapse
-                    ?: false)
-
-                ShootingMode.BULB -> uiState.isConnected && (uiState.cameraCapabilities?.supportsBulbMode
-                    ?: false)
-
-                ShootingMode.HDR_BRACKET -> uiState.isConnected && (uiState.cameraCapabilities?.supportsBracketing
-                    ?: false)
+                ShootingMode.SINGLE -> isConnected
+                ShootingMode.BURST -> isConnected &&
+                        (cameraCapabilities?.supportsBurstMode ?: false)
+                ShootingMode.TIMELAPSE -> isConnected &&
+                        (cameraCapabilities?.supportsTimelapse ?: false)
+                ShootingMode.BULB -> isConnected &&
+                        (cameraCapabilities?.supportsBulbMode ?: false)
+                ShootingMode.HDR_BRACKET -> isConnected &&
+                        (cameraCapabilities?.supportsBracketing ?: false)
             }
 
-            ShootingModeChip(
+            ModeButton(
                 mode = mode,
-                isSelected = uiState.shootingMode == mode,
+                isSelected = captureState.shootingMode == mode,
                 isEnabled = isEnabled,
                 onClick = { if (isEnabled) onModeSelected(mode) }
             )
@@ -63,121 +83,122 @@ fun ShootingModeSelector(
     }
 }
 
-/**
- * 개별 촬영 모드 칩
- */
 @Composable
-fun ShootingModeChip(
+private fun ModeButton(
     mode: ShootingMode,
     isSelected: Boolean,
     isEnabled: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val displayName = when (mode) {
-        ShootingMode.SINGLE -> stringResource(R.string.single_shot)
-        ShootingMode.BURST -> stringResource(R.string.burst_mode)
-        ShootingMode.TIMELAPSE -> stringResource(R.string.timelapse)
-        ShootingMode.BULB -> stringResource(R.string.bulb_mode)
+    val label = when (mode) {
+        ShootingMode.SINGLE -> stringResource(R.string.shooting_mode_single)
+        ShootingMode.BURST -> stringResource(R.string.shooting_mode_burst)
+        ShootingMode.TIMELAPSE -> stringResource(R.string.shooting_mode_timelapse)
+        ShootingMode.BULB -> stringResource(R.string.shooting_mode_bulb)
         ShootingMode.HDR_BRACKET -> stringResource(R.string.hdr_bracket)
     }
 
-    Chip(
+    Button(
         onClick = onClick,
         enabled = isEnabled,
         modifier = modifier,
-        colors = ChipDefaults.chipColors(
-            backgroundColor = if (isSelected && isEnabled) MaterialTheme.colors.primary
-            else if (isEnabled) Color.Gray.copy(alpha = 0.3f)
-            else Color.Gray.copy(alpha = 0.1f),
-            contentColor = if (isEnabled) Color.White else Color.Gray,
-            disabledBackgroundColor = Color.Gray.copy(alpha = 0.1f),
-            disabledContentColor = Color.Gray
-        )
+        colors = ButtonDefaults.buttonColors(
+            containerColor = when {
+                isSelected -> Primary
+                else -> SurfaceElevated
+            },
+            contentColor = when {
+                isSelected -> OnPrimary
+                else -> TextPrimary
+            },
+            disabledContainerColor = Surface.copy(alpha = 0.4f),
+            disabledContentColor = TextMuted
+        ),
+        border = if (!isSelected) BorderStroke(
+            width = 1.dp,
+            color = if (isEnabled) Border else TextMuted.copy(alpha = 0.2f)
+        ) else null,
+        shape = RoundedCornerShape(50.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
     ) {
-        Text(displayName, fontSize = 14.sp)
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+        )
     }
 }
 
 @Preview(name = "Shooting Mode Selector", showBackground = true)
 @Composable
 private fun ShootingModeSelectorPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.DARK) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = Modifier
+                .padding(20.dp)
+                .background(Background),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            Text("Connected Camera - All Features:")
+            // 연결됨
             ShootingModeSelector(
-                uiState = CameraUiState(
-                    isConnected = true,
-                    shootingMode = ShootingMode.BURST,
-                    cameraCapabilities = com.inik.camcon.domain.model.CameraCapabilities(
-                        model = "Canon EOS R5",
-                        canCapturePhoto = true,
-                        canCaptureVideo = true,
-                        canLiveView = true,
-                        canTriggerCapture = true,
-                        supportsAutofocus = true,
-                        supportsManualFocus = true,
-                        supportsFocusPoint = true,
-                        supportsBurstMode = true,
-                        supportsTimelapse = true,
-                        supportsBracketing = true,
-                        supportsBulbMode = true,
-                        canDownloadFiles = true,
-                        canDeleteFiles = true,
-                        canPreviewFiles = true,
-                        availableIsoSettings = emptyList(),
-                        availableShutterSpeeds = emptyList(),
-                        availableApertures = emptyList(),
-                        availableWhiteBalanceSettings = emptyList(),
-                        supportsRemoteControl = true,
-                        supportsConfigChange = true,
-                        batteryLevel = 85
-                    )
+                captureState = CameraCaptureState(shootingMode = ShootingMode.BURST),
+                isConnected = true,
+                cameraCapabilities = CameraCapabilities(
+                    model = "Canon EOS R5",
+                    canCapturePhoto = true,
+                    canCaptureVideo = true,
+                    canLiveView = true,
+                    canTriggerCapture = true,
+                    supportsAutofocus = true,
+                    supportsManualFocus = true,
+                    supportsFocusPoint = true,
+                    supportsBurstMode = true,
+                    supportsTimelapse = true,
+                    supportsBracketing = true,
+                    supportsBulbMode = true,
+                    canDownloadFiles = true,
+                    canDeleteFiles = true,
+                    canPreviewFiles = true,
+                    availableIsoSettings = emptyList(),
+                    availableShutterSpeeds = emptyList(),
+                    availableApertures = emptyList(),
+                    availableWhiteBalanceSettings = emptyList(),
+                    supportsRemoteControl = true,
+                    supportsConfigChange = true,
+                    batteryLevel = 85
                 ),
                 onModeSelected = { }
             )
 
-            Text("Limited Features Camera:")
+            // 기본 카메라
             ShootingModeSelector(
-                uiState = CameraUiState(
-                    isConnected = true,
-                    shootingMode = ShootingMode.SINGLE,
-                    cameraCapabilities = com.inik.camcon.domain.model.CameraCapabilities(
-                        model = "Basic Camera",
-                        canCapturePhoto = true,
-                        canCaptureVideo = false,
-                        canLiveView = false,
-                        canTriggerCapture = true,
-                        supportsAutofocus = true,
-                        supportsManualFocus = false,
-                        supportsFocusPoint = false,
-                        supportsBurstMode = false,
-                        supportsTimelapse = false,
-                        supportsBracketing = false,
-                        supportsBulbMode = false,
-                        canDownloadFiles = true,
-                        canDeleteFiles = false,
-                        canPreviewFiles = false,
-                        availableIsoSettings = emptyList(),
-                        availableShutterSpeeds = emptyList(),
-                        availableApertures = emptyList(),
-                        availableWhiteBalanceSettings = emptyList(),
-                        supportsRemoteControl = true,
-                        supportsConfigChange = false,
-                        batteryLevel = 60
-                    )
-                ),
-                onModeSelected = { }
-            )
-
-            Text("Disconnected:")
-            ShootingModeSelector(
-                uiState = CameraUiState(
-                    isConnected = false,
-                    shootingMode = ShootingMode.SINGLE
+                captureState = CameraCaptureState(shootingMode = ShootingMode.SINGLE),
+                isConnected = true,
+                cameraCapabilities = CameraCapabilities(
+                    model = "Basic",
+                    canCapturePhoto = true,
+                    canCaptureVideo = false,
+                    canLiveView = false,
+                    canTriggerCapture = true,
+                    supportsAutofocus = true,
+                    supportsManualFocus = false,
+                    supportsFocusPoint = false,
+                    supportsBurstMode = false,
+                    supportsTimelapse = false,
+                    supportsBracketing = false,
+                    supportsBulbMode = false,
+                    canDownloadFiles = true,
+                    canDeleteFiles = false,
+                    canPreviewFiles = false,
+                    availableIsoSettings = emptyList(),
+                    availableShutterSpeeds = emptyList(),
+                    availableApertures = emptyList(),
+                    availableWhiteBalanceSettings = emptyList(),
+                    supportsRemoteControl = true,
+                    supportsConfigChange = false,
+                    batteryLevel = 60
                 ),
                 onModeSelected = { }
             )
