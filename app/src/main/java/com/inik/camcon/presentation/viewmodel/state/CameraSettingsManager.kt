@@ -1,5 +1,7 @@
-package com.inik.camcon.domain.manager
+package com.inik.camcon.presentation.viewmodel.state
 
+import com.inik.camcon.domain.manager.ErrorSeverity
+import com.inik.camcon.domain.manager.ErrorType
 import com.inik.camcon.domain.model.CameraCapabilities
 import com.inik.camcon.domain.util.Logger
 import com.inik.camcon.domain.model.CameraSettings

@@ -27,7 +27,9 @@ import com.inik.camcon.data.util.AndroidLogger
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
 import com.inik.camcon.domain.manager.CameraStateObserver
+import com.inik.camcon.domain.manager.ErrorNotifier
 import com.inik.camcon.domain.manager.NativeErrorCallbackRegistrar
+import com.inik.camcon.presentation.viewmodel.state.ErrorHandlingManager
 import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.repository.AppUpdateRepository
 import com.inik.camcon.domain.repository.AuthRepository
@@ -195,5 +197,11 @@ abstract class RepositoryModule {
     abstract fun bindPtpipDebugRepository(
         impl: PtpipDebugRepositoryImpl
     ): PtpipDebugRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindErrorNotifier(
+        impl: ErrorHandlingManager
+    ): ErrorNotifier
 
 }

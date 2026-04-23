@@ -1,9 +1,9 @@
 package com.inik.camcon.presentation.viewmodel.photo
 
 import android.util.Log
-import com.inik.camcon.domain.manager.ErrorHandlingManager
 import com.inik.camcon.domain.manager.ErrorSeverity
 import com.inik.camcon.domain.manager.ErrorType
+import com.inik.camcon.presentation.viewmodel.state.ErrorHandlingManager
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.usecase.camera.GetCameraPhotosPagedUseCase
