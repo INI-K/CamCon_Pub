@@ -135,8 +135,7 @@ class CameraConnectionManager @Inject constructor(
         val fd = usbCameraManager.getFileDescriptor()
         return if (fd != null) {
             Log.d("카메라연결매니저", "파일 디스크립터로 카메라 초기화: $fd")
-            val nativeLibDir = "/data/data/com.inik.camcon/lib"
-            val result = nativeDataSource.initCameraWithFd(fd, nativeLibDir)
+            val result = nativeDataSource.initCameraWithFd(fd, context.applicationInfo.nativeLibraryDir)
             handleInitializationResult(result)
         } else {
             Log.e("카메라연결매니저", "파일 디스크립터를 가져올 수 없음 - USB 연결 실패")
@@ -398,74 +397,6 @@ class CameraConnectionManager @Inject constructor(
             throw e
         } catch (e: Exception) {
             Log.e("카메라연결매니저", "카메라 기능 정보 업데이트 실패", e)
-        }
-    }
-
-    /**
-     * JSON 데이터에서 CameraCapabilities 객체를 생성하는 함수
-     */
-    private fun parseCameraCapabilitiesFromJson(
-        abilitiesJson: String,
-        widgetJson: String
-    ): CameraCapabilities? {
-        return try {
-            Log.d("카메라연결매니저", "마스터 데이터에서 CameraCapabilities 파싱 시작")
-
-            // abilities JSON 파싱
-            val abilities = try {
-                org.json.JSONObject(abilitiesJson)
-            } catch (e: Exception) {
-                Log.e("카메라연결매니저", "abilities JSON 파싱 실패: $abilitiesJson", e)
-                org.json.JSONObject()
-            }
-
-            // 모델명 추출
-            val model = abilities.optString("model", "알 수 없음")
-
-            // 라이브뷰 지원 확인 (abilities와 위젯 모두 체크)
-            val supportsLiveViewFromAbilities = abilities.optBoolean("capturePreview", false)
-            val supportsLiveViewFromWidget =
-                widgetJson.contains("liveviewsize", ignoreCase = true) ||
-                        widgetJson.contains("liveview", ignoreCase = true) ||
-                        widgetJson.contains("viewfinder", ignoreCase = true)
-            val supportsLiveView = supportsLiveViewFromAbilities || supportsLiveViewFromWidget
-
-            Log.d("카메라연결매니저", "=== 라이브뷰 지원 확인 ===")
-            Log.d("카메라연결매니저", "  - abilities.capturePreview: $supportsLiveViewFromAbilities")
-            Log.d("카메라연결매니저", "  - 위젯 검색 결과: $supportsLiveViewFromWidget")
-            Log.d("카메라연결매니저", "  - 최종 결과: $supportsLiveView")
-            Log.d("카메라연결매니저", "==========================")
-
-            val capabilities = CameraCapabilities(
-                model = model,
-                canCapturePhoto = abilities.optBoolean("canCapturePhoto", true),
-                canCaptureVideo = abilities.optBoolean("canCaptureVideo", false),
-                canLiveView = supportsLiveView,
-                canTriggerCapture = abilities.optBoolean("canTriggerCapture", true),
-                supportsAutofocus = abilities.optBoolean("supportsAutofocus", true),
-                supportsManualFocus = abilities.optBoolean("supportsManualFocus", false),
-                supportsFocusPoint = abilities.optBoolean("supportsFocusPoint", false),
-                supportsBurstMode = abilities.optBoolean("supportsBurstMode", false),
-                supportsTimelapse = abilities.optBoolean("supportsTimelapse", false),
-                supportsBracketing = abilities.optBoolean("supportsBracketing", false),
-                supportsBulbMode = abilities.optBoolean("supportsBulbMode", false),
-                canDownloadFiles = abilities.optBoolean("canDownloadFiles", true),
-                canDeleteFiles = abilities.optBoolean("canDeleteFiles", false),
-                canPreviewFiles = abilities.optBoolean("canPreviewFiles", false),
-                availableIsoSettings = emptyList(), // TODO: 위젯에서 파싱 필요
-                availableShutterSpeeds = emptyList(), // TODO: 위젯에서 파싱 필요
-                availableApertures = emptyList(), // TODO: 위젯에서 파싱 필요
-                availableWhiteBalanceSettings = emptyList(), // TODO: 위젯에서 파싱 필요
-                supportsRemoteControl = abilities.optBoolean("supportsRemoteControl", false),
-                supportsConfigChange = abilities.optBoolean("supportsConfigChange", false),
-                batteryLevel = null
-            )
-
-            Log.d("카메라연결매니저", "마스터 데이터에서 CameraCapabilities 파싱 완료: ${capabilities.model}")
-            capabilities
-        } catch (e: Exception) {
-            Log.e("카메라연결매니저", "CameraCapabilities 파싱 실패", e)
-            null
         }
     }
 

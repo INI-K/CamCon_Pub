@@ -300,4 +300,18 @@ class FakeCameraRepository : CameraRepository {
             }
         }
     }
+
+    // ── C3 라운드 1 stub (2026-04-23) ──
+    override suspend fun isNativeLibrariesLoaded(): Boolean = false
+    override suspend fun setupNativeEnvironment(pluginDir: String): Boolean = false
+    override suspend fun getLibGphoto2Version(): String = ""
+    override suspend fun startNativeLog(logPath: String, level: Int): Boolean = false
+    override suspend fun stopNativeLog(): Boolean = false
+    override suspend fun readNativeLog(filePath: String): String = ""
+    override suspend fun getCameraAbilitiesJson(): String? = null
+    override suspend fun getCameraDeviceInfoJson(): String? = null
+    override suspend fun deleteGphotoSettings(): String = ""
+    override suspend fun resumeNativeOperations() {}
+    override suspend fun downloadCameraPhoto(photoPath: String): ByteArray? = null
+    override suspend fun getCameraPhotoExifJson(photoPath: String): String? = null
 }

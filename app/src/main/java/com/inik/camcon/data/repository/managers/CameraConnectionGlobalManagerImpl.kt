@@ -12,6 +12,7 @@ import com.inik.camcon.domain.model.WifiNetworkState
 import com.inik.camcon.di.ApplicationScope
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.job
@@ -103,6 +104,8 @@ class CameraConnectionGlobalManagerImpl @Inject constructor(
                 try {
                     cameraConnectionManager.updatePtpipConnectionStatus(true)
                     Log.d(TAG, "AP 모드 연결 감지: CameraConnectionManager를 통해 PTPIP 상태 업데이트")
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (error: Exception) {
                     Log.e(TAG, "AP 모드 PTPIP 상태 업데이트 실패", error)
                 }
@@ -112,6 +115,8 @@ class CameraConnectionGlobalManagerImpl @Inject constructor(
                 try {
                     cameraConnectionManager.updatePtpipConnectionStatus(false)
                     Log.d(TAG, "PTPIP 연결 해제 상태 업데이트")
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (error: Exception) {
                     Log.e(TAG, "PTPIP 연결 해제 상태 업데이트 실패", error)
                 }
@@ -227,11 +232,15 @@ class CameraConnectionGlobalManagerImpl @Inject constructor(
                 try {
                     cameraConnectionManager.updatePtpipConnectionStatus(false)
                     Log.d(TAG, "카메라 연결 매니저 PTPIP 상태 정리 완료")
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (error: Exception) {
                     Log.e(TAG, "카메라 연결 매니저 정리 실패", error)
                 }
 
                 Log.d(TAG, "전역 카메라 연결 상태 정리 완료")
+            } catch (e: CancellationException) {
+                throw e
             } catch (error: Exception) {
                 Log.e(TAG, "연결 해제 정리 중 오류", error)
             }

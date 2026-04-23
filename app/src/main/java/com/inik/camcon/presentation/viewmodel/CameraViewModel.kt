@@ -5,8 +5,8 @@ import android.graphics.BitmapFactory
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.inik.camcon.domain.manager.CameraSettingsManager
-import com.inik.camcon.domain.manager.ErrorHandlingManager
+import com.inik.camcon.presentation.viewmodel.state.CameraSettingsManager
+import com.inik.camcon.presentation.viewmodel.state.ErrorHandlingManager
 import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.domain.model.LiveViewFrame
 import com.inik.camcon.domain.model.ShootingMode

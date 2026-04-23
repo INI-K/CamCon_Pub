@@ -1,5 +1,12 @@
-package com.inik.camcon.domain.manager
+package com.inik.camcon.presentation.viewmodel.state
 
+import com.inik.camcon.domain.manager.ErrorAction
+import com.inik.camcon.domain.manager.ErrorEvent
+import com.inik.camcon.domain.manager.ErrorNotifier
+import com.inik.camcon.domain.manager.ErrorSeverity
+import com.inik.camcon.domain.manager.ErrorType
+import com.inik.camcon.domain.manager.NativeErrorCallbackRegistrar
+import com.inik.camcon.domain.manager.NativeErrorEvent
 import com.inik.camcon.domain.util.Logger
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -16,7 +23,7 @@ import javax.inject.Singleton
 class ErrorHandlingManager @Inject constructor(
     private val callbackRegistrar: NativeErrorCallbackRegistrar,
     private val logger: Logger
-) {
+) : ErrorNotifier {
 
     companion object {
         private const val TAG = "에러핸들링매니저"
@@ -38,7 +45,7 @@ class ErrorHandlingManager @Inject constructor(
 
     // USB 분리 이벤트 스트림
     private val _usbDisconnectedEvent = MutableSharedFlow<Unit>()
-    val usbDisconnectedEvent: SharedFlow<Unit> = _usbDisconnectedEvent.asSharedFlow()
+    override val usbDisconnectedEvent: SharedFlow<Unit> = _usbDisconnectedEvent.asSharedFlow()
 
     private var isCallbackRegistered = false
 
@@ -143,11 +150,11 @@ class ErrorHandlingManager @Inject constructor(
     /**
      * 일반적인 에러 이벤트 발생
      */
-    fun emitError(
+    override fun emitError(
         type: ErrorType,
         message: String,
-        exception: Throwable? = null,
-        severity: ErrorSeverity = ErrorSeverity.MEDIUM
+        exception: Throwable?,
+        severity: ErrorSeverity
     ) {
         val errorEvent = ErrorEvent(
             type = type,
@@ -275,64 +282,4 @@ class ErrorHandlingManager @Inject constructor(
             logger.w(TAG, "에러 처리 시스템 정리 중 오류", e)
         }
     }
-}
-
-/**
- * 에러 이벤트 데이터 클래스
- */
-data class ErrorEvent(
-    val type: ErrorType,
-    val message: String,
-    val exception: Throwable?,
-    val severity: ErrorSeverity,
-    val timestamp: Long
-)
-
-/**
- * 네이티브 에러 이벤트 데이터 클래스
- */
-data class NativeErrorEvent(
-    val errorCode: Int,
-    val originalMessage: String,
-    val userFriendlyMessage: String,
-    val severity: ErrorSeverity,
-    val actionRequired: ErrorAction
-)
-
-/**
- * 에러 타입 열거형
- */
-enum class ErrorType {
-    CONNECTION,
-    PERMISSION,
-    OPERATION,
-    FILE_SYSTEM,
-    NETWORK,
-    STORAGE,
-    INITIALIZATION,
-    UNKNOWN
-}
-
-/**
- * 에러 심각도 열거형
- */
-enum class ErrorSeverity {
-    LOW,
-    MEDIUM,
-    HIGH,
-    CRITICAL,
-    WARNING
-}
-
-/**
- * 에러 발생 시 필요한 액션 열거형
- */
-enum class ErrorAction {
-    SHOW_ERROR,
-    RETRY_CONNECTION,
-    RECONNECT_CAMERA,
-    RESTART_APP,
-    CHECK_PERMISSIONS,
-    FREE_STORAGE,
-    CHECK_NETWORK
 }

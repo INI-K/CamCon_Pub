@@ -2,10 +2,11 @@ package com.inik.camcon.presentation.viewmodel.photo
 
 import android.util.Log
 import androidx.exifinterface.media.ExifInterface
-import com.inik.camcon.CameraNative
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.repository.CameraRepository
+import com.inik.camcon.domain.usecase.camera.DownloadCameraPhotoUseCase
+import com.inik.camcon.domain.usecase.camera.GetCameraPhotoExifJsonUseCase
 import com.inik.camcon.domain.usecase.camera.GetCameraThumbnailUseCase
 import com.inik.camcon.di.ApplicationScope
 import kotlinx.coroutines.CoroutineScope
@@ -32,6 +33,8 @@ import javax.inject.Singleton
 class PhotoImageManager @Inject constructor(
     private val cameraRepository: CameraRepository,
     private val getCameraThumbnailUseCase: GetCameraThumbnailUseCase,
+    private val downloadCameraPhotoUseCase: DownloadCameraPhotoUseCase,
+    private val getCameraPhotoExifJsonUseCase: GetCameraPhotoExifJsonUseCase,
     @ApplicationScope private val appScope: CoroutineScope
 ) {
 
@@ -266,7 +269,7 @@ class PhotoImageManager @Inject constructor(
 
                 val imageData = withContext(Dispatchers.IO) {
                     Log.d(TAG, "downloadCameraPhoto 호출")
-                    CameraNative.downloadCameraPhoto(photoPath)
+                    downloadCameraPhotoUseCase(photoPath)
                 }
 
                 if (imageData != null && imageData.isNotEmpty()) {
@@ -459,7 +462,7 @@ class PhotoImageManager @Inject constructor(
                     val exifMap = mutableMapOf<String, Any>()
 
                     // 기본 정보
-                    val basicInfo = CameraNative.getCameraPhotoExif(photoPath)
+                    val basicInfo = getCameraPhotoExifJsonUseCase(photoPath)
                     basicInfo?.let { basic ->
                         try {
                             val basicJson = JSONObject(basic)

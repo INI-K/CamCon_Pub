@@ -324,17 +324,6 @@ class NativeCameraDataSource @Inject constructor(
         cameraStateObserver.showCameraStatusCheckDialog(true)
     }
 
-    /**
-     * 카메라가 꺼진 상태일 때 파일 다운로드 기능 테스트
-     */
-    private fun testFileDownloadWhenPoweredOff() {
-        // 이 메서드는 더 이상 사용하지 않음 - 카메라 상태 알러트로 대체
-        Log.w(
-            TAG,
-            "⚠️ testFileDownloadWhenPoweredOff는 더 이상 사용되지 않습니다. showCameraStatusAlert를 사용하세요."
-        )
-    }
-
     // 카메라 종료 (suspend — 완료 대기 보장)
     suspend fun closeCamera() {
         closeCameraMutex.withLock {
@@ -390,12 +379,6 @@ class NativeCameraDataSource @Inject constructor(
     fun queryConfig() {
         CameraNative.queryConfig()
     }
-
-    // 지원하는 카메라 목록 반환
-    fun getSupportedCameras(): Array<String>? = CameraNative.getSupportedCameras()
-
-    // 지정된 모델의 상세 정보 반환
-    fun getCameraDetails(model: String): Array<String>? = CameraNative.getCameraDetails(model)
 
     // 비동기 사진 촬영: 결과는 콜백으로 전달됨
     fun capturePhotoAsync(callback: CameraCaptureListener, saveDir: String) {
@@ -635,39 +618,6 @@ class NativeCameraDataSource @Inject constructor(
         }
     }
 
-    // 타임아웃과 함께 함수 호출하는 헬퍼 함수 (미사용)
-    /*
-    private fun <T> callWithTimeout(timeoutMs: Long, action: () -> T): T? {
-        return try {
-            val result = arrayOfNulls<Any>(1)
-            val exception = arrayOfNulls<Exception>(1)
-
-            val thread = Thread {
-                try {
-                    result[0] = action()
-                } catch (e: Exception) {
-                    exception[0] = e
-                }
-            }
-
-            thread.start()
-            thread.join(timeoutMs)
-
-            if (thread.isAlive) {
-                thread.interrupt()
-                throw Exception("작업이 ${timeoutMs}ms 내에 완료되지 않음 (타임아웃)")
-            }
-
-            exception[0]?.let { throw it }
-
-            @Suppress("UNCHECKED_CAST")
-            result[0] as T?
-        } catch (e: Exception) {
-            throw e
-        }
-    }
-    */
-
     // 네이티브 카메라 사진 정보 데이터 클래스
     data class NativeCameraPhoto(
         val path: String,              // 사진 경로
@@ -870,5 +820,51 @@ class NativeCameraDataSource @Inject constructor(
         // getCameraFileList()는 JSON 문자열을 반환할 수 있음
         // 기존 CameraViewModel에서는 String으로 사용했으므로 리스트로 변환 필요
         return fileListJson.split(",").filter { it.isNotEmpty() }
+    }
+
+    // ── C3 라운드 1: Presentation→JNI 직접 호출 래핑 (2026-04-23) ──
+
+    suspend fun isLibrariesLoaded(): Boolean = withContext(ioDispatcher) {
+        CameraNative.isLibrariesLoaded()
+    }
+
+    suspend fun setupEnvironmentPaths(pluginDir: String): Boolean = withContext(ioDispatcher) {
+        CameraNative.setupEnvironmentPaths(pluginDir)
+    }
+
+    suspend fun startLogFile(logPath: String, level: Int): Boolean = withContext(ioDispatcher) {
+        val started = CameraNative.startLogFile(logPath)
+        if (started) {
+            CameraNative.setLogLevel(level)
+        }
+        started
+    }
+
+    suspend fun stopLogFile(): Boolean = withContext(ioDispatcher) {
+        CameraNative.stopLogFile()
+    }
+
+    suspend fun getLogFileContent(filePath: String): String = withContext(ioDispatcher) {
+        CameraNative.getLogFileContent(filePath)
+    }
+
+    suspend fun getCameraAbilitiesJson(): String? = withContext(ioDispatcher) {
+        CameraNative.getCameraAbilities()
+    }
+
+    suspend fun getCameraDeviceInfoJson(): String? = withContext(ioDispatcher) {
+        CameraNative.getCameraDeviceInfo()
+    }
+
+    suspend fun deleteGphotoSettings(): String = withContext(ioDispatcher) {
+        CameraNative.deleteGphotoSettings()
+    }
+
+    suspend fun resumeOperations() = withContext(ioDispatcher) {
+        CameraNative.resumeOperations()
+    }
+
+    suspend fun getCameraPhotoExifJson(photoPath: String): String? = withContext(ioDispatcher) {
+        CameraNative.getCameraPhotoExif(photoPath)
     }
 }
