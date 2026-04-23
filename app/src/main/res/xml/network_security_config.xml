@@ -1,13 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
     <domain-config cleartextTrafficPermitted="true">
-        <!-- 카메라 PTP-IP 연결을 위한 로컬 네트워크 허용 -->
-        <domain includeSubdomains="true">192.168.0.0/16</domain>
-        <domain includeSubdomains="true">10.0.0.0/8</domain>
-        <domain includeSubdomains="true">172.16.0.0/12</domain>
-        <!-- 카메라 AP 모드 IP 대역 -->
-        <domain includeSubdomains="true">192.168.1.1</domain>
-        <domain includeSubdomains="true">192.168.4.1</domain>
+        <!-- 카메라 AP 모드 전용 IP — PTP/IP 프로토콜이 암호화를 지원하지 않아 평문 허용 -->
+        <domain includeSubdomains="false">192.168.1.1</domain>
+        <domain includeSubdomains="false">192.168.4.1</domain>
     </domain-config>
 
     <!-- Firebase와 Google 서비스를 위한 설정 -->

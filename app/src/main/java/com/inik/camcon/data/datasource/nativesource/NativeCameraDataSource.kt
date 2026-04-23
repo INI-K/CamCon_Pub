@@ -4,11 +4,22 @@ import android.content.Context
 import android.util.Log
 import com.inik.camcon.CameraNative
 import com.inik.camcon.domain.model.Camera
+import com.inik.camcon.domain.model.CameraAbilitiesInfo
 import com.inik.camcon.domain.model.CameraCapabilities
+import com.inik.camcon.domain.model.CameraSupports
+import com.inik.camcon.domain.model.PtpDeviceInfo
+import com.inik.camcon.di.ApplicationScope
+import com.inik.camcon.domain.manager.CameraStateObserver
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
@@ -19,7 +30,10 @@ import javax.inject.Singleton
  */
 @Singleton
 class NativeCameraDataSource @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val cameraStateObserver: CameraStateObserver,
+    @ApplicationScope private val scope: CoroutineScope,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
     companion object {
         private const val TAG = "네이티브_카메라_데이터소스"
@@ -38,6 +52,9 @@ class NativeCameraDataSource @Inject constructor(
     private val isStoppingEventListener = AtomicBoolean(false)
     private val isClosingCamera = AtomicBoolean(false)
 
+    // closeCamera 직렬화를 위한 Mutex
+    private val closeCameraMutex = Mutex()
+
     // 카메라 이벤트 리스닝 중지
     fun stopListenCameraEvents() {
         // 중복 호출 방지
@@ -53,11 +70,11 @@ class NativeCameraDataSource @Inject constructor(
             Log.e(TAG, "카메라 이벤트 리스닝 중지 중 오류", e)
         } finally {
             // 1초 후 상태 리셋
-            Thread {
-                Thread.sleep(1000)
+            scope.launch(ioDispatcher) {
+                delay(1000)
                 isStoppingEventListener.set(false)
                 Log.d(TAG, "이벤트 리스너 중지 상태 리셋")
-            }.start()
+            }
         }
     }
 
@@ -72,16 +89,31 @@ class NativeCameraDataSource @Inject constructor(
 
     // 카메라 초기화
     fun initCamera(): String {
+        // 라이브러리 확인
+        if (!CameraNative.isLibrariesLoaded()) {
+            throw IllegalStateException("네이티브 라이브러리가 로딩되지 않았습니다")
+        }
+
         Log.d(TAG, "카메라 초기화 시작")
         val result = CameraNative.initCamera()
         Log.d(TAG, "카메라 초기화 완료: 결과=$result")
         return result
     }
 
-    // 파일 디스크립터 기반 초기화
-    fun initCameraWithFd(fd: Int, nativeLibDir: String): Int = runBlocking {
+    // 파일 디스크립터 기반 초기화 (USB 연결)
+    suspend fun initCameraWithFd(fd: Int, nativeLibDir: String): Int =
         initCameraWithFdMutex.withLock {
-            Log.d(TAG, "카메라 초기화 (FD 기반) 시작: fd=$fd, libDir=$nativeLibDir")
+            // 라이브러리 확인
+            if (!CameraNative.isLibrariesLoaded()) {
+                throw IllegalStateException("네이티브 라이브러리가 로딩되지 않았습니다")
+            }
+
+            Log.i(TAG, "============================================")
+            Log.i(TAG, "=== USB 카메라 초기화 시작 ===")
+            Log.i(TAG, "FD: $fd")
+            Log.i(TAG, "LibDir: $nativeLibDir")
+            Log.i(TAG, "============================================")
+
             // 올바른 네이티브 라이브러리 경로 설정
             val applicationInfo = context.applicationInfo
             val correctNativeLibDir = applicationInfo.nativeLibraryDir
@@ -89,12 +121,135 @@ class NativeCameraDataSource @Inject constructor(
 
             val result = CameraNative.initCameraWithFd(fd, correctNativeLibDir)
             Log.d(TAG, "카메라 초기화 (FD 기반) 완료: 결과 코드=$result")
+
+            if (result >= 0) {
+                Log.i(TAG, "USB 카메라 초기화 성공")
+
+                // 카메라 기능 조회
+                try {
+                    Log.i(TAG, "=== USB 카메라 기능 조회 ===")
+
+                    val abilitiesJson = CameraNative.getCameraAbilities()
+                    val deviceInfoJson = CameraNative.getCameraDeviceInfo()
+
+                    if (abilitiesJson != null && deviceInfoJson != null) {
+                        val abilities = parseAbilities(abilitiesJson)
+                        val deviceInfo = parseDeviceInfo(deviceInfoJson)
+
+                        Log.i(TAG, "USB 연결된 카메라:")
+                        Log.i(TAG, "   제조사: ${deviceInfo.manufacturer}")
+                        Log.i(TAG, "   모델: ${deviceInfo.model}")
+                        Log.i(TAG, "   시리얼: ${deviceInfo.serialNumber}")
+                        Log.i(TAG, "   지원 기능:")
+                        Log.i(TAG, "     - 원격 촬영: ${abilities.supports.captureImage}")
+                        Log.i(TAG, "     - 라이브뷰: ${abilities.supports.capturePreview}")
+                        Log.i(TAG, "     - 비디오: ${abilities.supports.captureVideo}")
+                        Log.i(TAG, "     - 설정: ${abilities.supports.config}")
+                        Log.i(TAG, "     - 트리거: ${abilities.supports.triggerCapture}")
+
+                        // UI 상태 업데이트를 위해 기능 정보 저장
+                        storeUsbCameraAbilities(abilities, deviceInfo)
+                    } else {
+                        Log.w(TAG, "카메라 정보 조회 실패 (하지만 연결은 성공)")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "USB 카메라 기능 조회 중 오류", e)
+                }
+            } else {
+                Log.e(TAG, "USB 카메라 초기화 실패: $result")
+        }
+
             result
+    }
+
+    /**
+     * USB 카메라 Abilities 저장
+     */
+    private var usbCameraAbilities: CameraAbilitiesInfo? = null
+    private var usbCameraDeviceInfo: PtpDeviceInfo? = null
+
+    private fun storeUsbCameraAbilities(
+        abilities: CameraAbilitiesInfo,
+        deviceInfo: PtpDeviceInfo
+    ) {
+        usbCameraAbilities = abilities
+        usbCameraDeviceInfo = deviceInfo
+
+        // UI 상태 매니저에 기능 정보 전달
+        cameraStateObserver.updateCameraAbilities(abilities)
+    }
+
+    /**
+     * 현재 USB 카메라 Abilities 조회
+     */
+    fun getUsbCameraAbilities(): CameraAbilitiesInfo? =
+        usbCameraAbilities
+
+    /**
+     * 현재 USB 카메라 DeviceInfo 조회
+     */
+    fun getUsbCameraDeviceInfo(): PtpDeviceInfo? =
+        usbCameraDeviceInfo
+
+    /**
+     * Abilities JSON 파싱
+     */
+    private fun parseAbilities(json: String): CameraAbilitiesInfo {
+        try {
+            val obj = JSONObject(json)
+            val supportsObj = obj.getJSONObject("supports")
+
+            return CameraAbilitiesInfo(
+                model = obj.getString("model"),
+                status = obj.getString("status"),
+                portType = obj.getInt("port_type"),
+                usbVendor = obj.getString("usb_vendor"),
+                usbProduct = obj.getString("usb_product"),
+                usbClass = obj.getInt("usb_class"),
+                operations = obj.getInt("operations"),
+                fileOperations = obj.getInt("file_operations"),
+                folderOperations = obj.getInt("folder_operations"),
+                supports = CameraSupports(
+                    captureImage = supportsObj.getBoolean("capture_image"),
+                    captureVideo = supportsObj.getBoolean("capture_video"),
+                    captureAudio = supportsObj.getBoolean("capture_audio"),
+                    capturePreview = supportsObj.getBoolean("capture_preview"),
+                    triggerCapture = supportsObj.getBoolean("trigger_capture"),
+                    config = supportsObj.getBoolean("config"),
+                    delete = supportsObj.getBoolean("delete"),
+                    preview = supportsObj.getBoolean("preview"),
+                    raw = supportsObj.getBoolean("raw"),
+                    audio = supportsObj.getBoolean("audio"),
+                    exif = supportsObj.getBoolean("exif"),
+                    deleteAll = supportsObj.getBoolean("delete_all"),
+                    putFile = supportsObj.getBoolean("put_file"),
+                    makeDir = supportsObj.getBoolean("make_dir"),
+                    removeDir = supportsObj.getBoolean("remove_dir")
+                )
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Abilities 파싱 실패", e)
+            throw e
         }
     }
 
-    // 동기식 사진 촬영 (성공시 0 이라고 가정)
-    fun capturePhoto(): Boolean = CameraNative.capturePhoto() == 0
+    /**
+     * DeviceInfo JSON 파싱
+     */
+    private fun parseDeviceInfo(json: String): PtpDeviceInfo {
+        try {
+            val obj = JSONObject(json)
+            return PtpDeviceInfo(
+                manufacturer = obj.getString("manufacturer"),
+                model = obj.getString("model"),
+                version = obj.getString("version"),
+                serialNumber = obj.getString("serial_number")
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "DeviceInfo 파싱 실패", e)
+            throw e
+        }
+    }
 
     // 카메라 요약 정보를 받아 Domain 모델인 Camera로 변환
     fun getCameraSummary(): Camera {
@@ -166,44 +321,33 @@ class NativeCameraDataSource @Inject constructor(
         Log.e(TAG, "   4. 카메라가 PC 연결 모드로 설정되어 있는지 확인")
         Log.e(TAG, "   5. 카메라를 껐다가 다시 켜보세요")
         Log.e(TAG, "문제가 계속되면 카메라를 재연결해주세요")
+        cameraStateObserver.showCameraStatusCheckDialog(true)
     }
 
-    /**
-     * 카메라가 꺼진 상태일 때 파일 다운로드 기능 테스트
-     */
-    private fun testFileDownloadWhenPoweredOff() {
-        // 이 메서드는 더 이상 사용하지 않음 - 카메라 상태 알러트로 대체
-        Log.w(
-            TAG,
-            "⚠️ testFileDownloadWhenPoweredOff는 더 이상 사용되지 않습니다. showCameraStatusAlert를 사용하세요."
-        )
-    }
+    // 카메라 종료 (suspend — 완료 대기 보장)
+    suspend fun closeCamera() {
+        closeCameraMutex.withLock {
+            // 중복 호출 방지
+            if (!isClosingCamera.compareAndSet(false, true)) {
+                Log.d(TAG, "카메라 종료가 이미 진행 중 - 중복 방지")
+                return
+            }
 
-    // 카메라 종료
-    fun closeCamera() {
-        // 중복 호출 방지
-        if (!isClosingCamera.compareAndSet(false, true)) {
-            Log.d(TAG, "카메라 종료가 이미 진행 중 - 중복 방지")
-            return
-        }
-
-        // 백그라운드 스레드에서 카메라 종료 수행
-        Thread {
             try {
-                Log.d(TAG, "카메라 종료")
-                CameraNative.closeCamera()
-                Log.d(TAG, "카메라 종료 완료")
+                withContext(ioDispatcher) {
+                    Log.d(TAG, "카메라 종료")
+                    CameraNative.closeCamera()
+                    Log.d(TAG, "카메라 종료 완료")
+                }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "카메라 종료 중 오류", e)
             } finally {
-                // 2초 후 상태 리셋
-                Thread {
-                    Thread.sleep(2000)
-                    isClosingCamera.set(false)
-                    Log.d(TAG, "카메라 종료 상태 리셋")
-                }.start()
+                isClosingCamera.set(false)
+                Log.d(TAG, "카메라 종료 상태 리셋")
             }
-        }.start()
+        }
     }
 
     // 카메라 감지
@@ -236,12 +380,6 @@ class NativeCameraDataSource @Inject constructor(
         CameraNative.queryConfig()
     }
 
-    // 지원하는 카메라 목록 반환
-    fun getSupportedCameras(): Array<String>? = CameraNative.getSupportedCameras()
-
-    // 지정된 모델의 상세 정보 반환
-    fun getCameraDetails(model: String): Array<String>? = CameraNative.getCameraDetails(model)
-
     // 비동기 사진 촬영: 결과는 콜백으로 전달됨
     fun capturePhotoAsync(callback: CameraCaptureListener, saveDir: String) {
         CameraNative.capturePhotoAsync(callback, saveDir)
@@ -268,23 +406,9 @@ class NativeCameraDataSource @Inject constructor(
     }
 
     // 페이징을 지원하는 카메라 사진 목록 가져오기
-    fun getCameraPhotosPaged(page: Int, pageSize: Int = 20): PaginatedCameraPhotos {
+    suspend fun getCameraPhotosPaged(page: Int, pageSize: Int = 20): PaginatedCameraPhotos {
         return try {
             Log.d(TAG, "=== 페이징 카메라 사진 목록 가져오기 시작 (페이지: $page, 크기: $pageSize) ===")
-
-            // 카메라 이벤트 리스너 일시 중지 (리소스 경합 방지)
-            var needsListenerRestart = false
-            try {
-                Log.d(TAG, "카메라 이벤트 리스너 일시 중지")
-                CameraNative.stopListenCameraEvents()
-                needsListenerRestart = true
-
-                // 리스너가 완전히 중지될 때까지 충분히 대기
-                Thread.sleep(1000)
-                Log.d(TAG, "이벤트 리스너 중지 대기 완료")
-            } catch (e: Exception) {
-                Log.w(TAG, "이벤트 리스너 중지 실패 (이미 중지되었을 수 있음)", e)
-            }
 
             // 카메라 초기화 상태 확인 (타임아웃 없음)
             val isInitialized = try {
@@ -324,11 +448,6 @@ class NativeCameraDataSource @Inject constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "페이징 네이티브 메서드 호출 중 예외 발생", e)
                 null
-            }
-
-            // 이벤트 리스너 재시작은 Repository에서 처리하도록 함
-            if (needsListenerRestart) {
-                Log.d(TAG, "이벤트 리스너 재시작은 Repository에서 처리됩니다")
             }
 
             Log.d(TAG, "카메라 파일 목록 JSON: $photoListJson")
@@ -424,6 +543,8 @@ class NativeCameraDataSource @Inject constructor(
                 hasNext = hasNext
             )
 
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "페이징 카메라 사진 목록 가져오기 실패", e)
             PaginatedCameraPhotos(
@@ -438,7 +559,7 @@ class NativeCameraDataSource @Inject constructor(
     }
 
     // 기존 메서드는 첫 번째 페이지만 반환하도록 수정
-    fun getCameraPhotos(): List<NativeCameraPhoto> {
+    suspend fun getCameraPhotos(): List<NativeCameraPhoto> {
         Log.d(TAG, "getCameraPhotos 호출 - 페이징 버전으로 위임 (첫 페이지)")
         return getCameraPhotosPaged(0, 100).photos
     }
@@ -497,39 +618,6 @@ class NativeCameraDataSource @Inject constructor(
         }
     }
 
-    // 타임아웃과 함께 함수 호출하는 헬퍼 함수 (미사용)
-    /*
-    private fun <T> callWithTimeout(timeoutMs: Long, action: () -> T): T? {
-        return try {
-            val result = arrayOfNulls<Any>(1)
-            val exception = arrayOfNulls<Exception>(1)
-
-            val thread = Thread {
-                try {
-                    result[0] = action()
-                } catch (e: Exception) {
-                    exception[0] = e
-                }
-            }
-
-            thread.start()
-            thread.join(timeoutMs)
-
-            if (thread.isAlive) {
-                thread.interrupt()
-                throw Exception("작업이 ${timeoutMs}ms 내에 완료되지 않음 (타임아웃)")
-            }
-
-            exception[0]?.let { throw it }
-
-            @Suppress("UNCHECKED_CAST")
-            result[0] as T?
-        } catch (e: Exception) {
-            throw e
-        }
-    }
-    */
-
     // 네이티브 카메라 사진 정보 데이터 클래스
     data class NativeCameraPhoto(
         val path: String,              // 사진 경로
@@ -553,51 +641,106 @@ class NativeCameraDataSource @Inject constructor(
     // 카메라 기능 정보를 가져오는 새로운 함수
     fun getCameraCapabilities(): CameraCapabilities? {
         return try {
-            val summaryJson = CameraNative.getCameraSummary()
-            val json = JSONObject(summaryJson)
+            Log.d(TAG, "=== 카메라 기능 정보 가져오기 시작 ===")
+
+            // getCameraAbilities()를 사용하여 정확한 정보 가져오기
+            val abilitiesJson = CameraNative.getCameraAbilities()
+            if (abilitiesJson == null) {
+                Log.e(TAG, "getCameraAbilities() 반환값이 null")
+                return null
+            }
+
+            Log.d(TAG, "Abilities JSON 길이: ${abilitiesJson.length}")
+
+            val json = JSONObject(abilitiesJson)
 
             if (json.has("error")) {
                 Log.e(TAG, "카메라 기능 정보 가져오기 오류: ${json.getString("error")}")
                 return null
             }
 
-            val model = json.optString("model", "알 수 없음")
-            val supportsLiveView = json.optBoolean("supportsLiveView", false)
-            val canTriggerCapture = json.optBoolean("canTriggerCapture", true)
+            var model = json.optString("model", "알 수 없음")
+            val supportsObj = json.optJSONObject("supports")
 
-            // 추가 기능 정보를 가져오기 위해 abilities 조회
-            val abilitiesJson = CameraNative.listCameraAbilities()
-            val abilities = try {
-                JSONObject(abilitiesJson)
-            } catch (e: Exception) {
-                Log.e(TAG, "기능 정보 파싱 실패: $abilitiesJson", e)
-                JSONObject()
+            // Abilities의 모델명은 제네릭 드라이버명("PTP/IP Camera")이므로
+            // 캐시된 DeviceInfo에서 실제 카메라 모델명을 가져와 우선 사용
+            val cachedDeviceInfo = usbCameraDeviceInfo
+            if (cachedDeviceInfo != null && cachedDeviceInfo.model.isNotEmpty()) {
+                model = if (cachedDeviceInfo.manufacturer.isNotEmpty()) {
+                    "${cachedDeviceInfo.manufacturer} ${cachedDeviceInfo.model}"
+                } else {
+                    cachedDeviceInfo.model
+                }
+            } else {
+                // 캐시 없으면 한 번만 조회
+                try {
+                    val deviceInfoJson = CameraNative.getCameraDeviceInfo()
+                    if (deviceInfoJson != null) {
+                        val parsed = parseDeviceInfo(deviceInfoJson)
+                        usbCameraDeviceInfo = parsed
+                        if (parsed.model.isNotEmpty()) {
+                            model = if (parsed.manufacturer.isNotEmpty()) {
+                                "${parsed.manufacturer} ${parsed.model}"
+                            } else {
+                                parsed.model
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "DeviceInfo 조회 실패, Abilities 모델명 사용: $model")
+                }
             }
 
-            CameraCapabilities(
+            if (supportsObj == null) {
+                Log.e(TAG, "supports 객체가 없음")
+                return null
+            }
+
+            // supports 객체에서 기능 정보 추출
+            val canCaptureImage = supportsObj.optBoolean("capture_image", false)
+            val canCaptureVideo = supportsObj.optBoolean("capture_video", false)
+            val canLiveView = supportsObj.optBoolean("capture_preview", false)
+            val canConfig = supportsObj.optBoolean("config", false)
+            val canTriggerCapture = supportsObj.optBoolean("trigger_capture", false)
+            val canDelete = supportsObj.optBoolean("delete", false)
+            val canPreview = supportsObj.optBoolean("preview", false)
+
+            Log.d(TAG, "=== 파싱된 카메라 기능 정보 ===")
+            Log.d(TAG, "  모델: $model")
+            Log.d(TAG, "  사진 촬영: $canCaptureImage")
+            Log.d(TAG, "  비디오 촬영: $canCaptureVideo")
+            Log.d(TAG, "  라이브뷰: $canLiveView  ✅")
+            Log.d(TAG, "  설정 변경: $canConfig")
+            Log.d(TAG, "  트리거: $canTriggerCapture")
+            Log.d(TAG, "==============================")
+
+            val capabilities = CameraCapabilities(
                 model = model,
-                canCapturePhoto = canTriggerCapture,
-                canCaptureVideo = abilities.optBoolean("captureVideo", false),
-                canLiveView = supportsLiveView,
+                canCapturePhoto = canCaptureImage,
+                canCaptureVideo = canCaptureVideo,
+                canLiveView = canLiveView,
                 canTriggerCapture = canTriggerCapture,
-                supportsAutofocus = true, // TODO: 실제 값으로 대체 필요
-                supportsManualFocus = abilities.optBoolean("config", false),
-                supportsFocusPoint = false, // TODO: 위젯에서 확인 필요
-                supportsBurstMode = abilities.optBoolean("burstMode", false),
-                supportsTimelapse = abilities.optBoolean("timelapse", false),
-                supportsBracketing = false, // TODO: 위젯에서 확인 필요
-                supportsBulbMode = abilities.optBoolean("bulbMode", false),
-                canDownloadFiles = abilities.optBoolean("fileDownload", true),
-                canDeleteFiles = abilities.optBoolean("fileDelete", false),
-                canPreviewFiles = abilities.optBoolean("filePreview", false),
+                supportsAutofocus = canConfig,
+                supportsManualFocus = canConfig,
+                supportsFocusPoint = canConfig,
+                supportsBurstMode = canCaptureImage && canTriggerCapture,
+                supportsTimelapse = canCaptureImage && canTriggerCapture,
+                supportsBracketing = canCaptureImage && canConfig,
+                supportsBulbMode = canCaptureImage,
+                canDownloadFiles = true,  // 기본적으로 가능
+                canDeleteFiles = canDelete,
+                canPreviewFiles = canPreview,
                 availableIsoSettings = emptyList(), // TODO: 위젯에서 파싱 필요
                 availableShutterSpeeds = emptyList(), // TODO: 위젯에서 파싱 필요
                 availableApertures = emptyList(), // TODO: 위젯에서 파싱 필요
                 availableWhiteBalanceSettings = emptyList(), // TODO: 위젯에서 파싱 필요
-                supportsRemoteControl = abilities.optBoolean("remoteControl", false),
-                supportsConfigChange = abilities.optBoolean("configChange", false),
+                supportsRemoteControl = canConfig,
+                supportsConfigChange = canConfig,
                 batteryLevel = null
             )
+
+            Log.d(TAG, "✅ 카메라 기능 정보 파싱 완료")
+            capabilities
         } catch (e: Exception) {
             Log.e(TAG, "카메라 기능 정보 가져오기 실패", e)
             null
@@ -651,5 +794,77 @@ class NativeCameraDataSource @Inject constructor(
             Log.e(TAG, "최신 파일 가져오기 실패", e)
             null
         }
+    }
+
+    // C-3 수정: Subscription tier와 RAW 파일 설정
+    fun setSubscriptionTier(tierInt: Int) {
+        Log.d(TAG, "구독 티어 설정: $tierInt")
+        CameraNative.setSubscriptionTier(tierInt)
+    }
+
+    fun setRawFileDownloadEnabled(enabled: Boolean) {
+        Log.d(TAG, "RAW 파일 다운로드 설정: $enabled")
+        CameraNative.setRawFileDownloadEnabled(enabled)
+    }
+
+    // C-3 수정: 카메라 연결/초기화 상태 확인 (기존 메서드 이용)
+    fun isCameraConnectedNow(): Boolean {
+        Log.d(TAG, "카메라 연결 상태 확인")
+        return CameraNative.isCameraConnected()
+    }
+
+    // C-3 수정: 카메라 파일 목록 가져오기
+    fun getCameraFileListNow(): List<String> {
+        Log.d(TAG, "카메라 파일 목록 가져오기")
+        val fileListJson = CameraNative.getCameraFileList()
+        // getCameraFileList()는 JSON 문자열을 반환할 수 있음
+        // 기존 CameraViewModel에서는 String으로 사용했으므로 리스트로 변환 필요
+        return fileListJson.split(",").filter { it.isNotEmpty() }
+    }
+
+    // ── C3 라운드 1: Presentation→JNI 직접 호출 래핑 (2026-04-23) ──
+
+    suspend fun isLibrariesLoaded(): Boolean = withContext(ioDispatcher) {
+        CameraNative.isLibrariesLoaded()
+    }
+
+    suspend fun setupEnvironmentPaths(pluginDir: String): Boolean = withContext(ioDispatcher) {
+        CameraNative.setupEnvironmentPaths(pluginDir)
+    }
+
+    suspend fun startLogFile(logPath: String, level: Int): Boolean = withContext(ioDispatcher) {
+        val started = CameraNative.startLogFile(logPath)
+        if (started) {
+            CameraNative.setLogLevel(level)
+        }
+        started
+    }
+
+    suspend fun stopLogFile(): Boolean = withContext(ioDispatcher) {
+        CameraNative.stopLogFile()
+    }
+
+    suspend fun getLogFileContent(filePath: String): String = withContext(ioDispatcher) {
+        CameraNative.getLogFileContent(filePath)
+    }
+
+    suspend fun getCameraAbilitiesJson(): String? = withContext(ioDispatcher) {
+        CameraNative.getCameraAbilities()
+    }
+
+    suspend fun getCameraDeviceInfoJson(): String? = withContext(ioDispatcher) {
+        CameraNative.getCameraDeviceInfo()
+    }
+
+    suspend fun deleteGphotoSettings(): String = withContext(ioDispatcher) {
+        CameraNative.deleteGphotoSettings()
+    }
+
+    suspend fun resumeOperations() = withContext(ioDispatcher) {
+        CameraNative.resumeOperations()
+    }
+
+    suspend fun getCameraPhotoExifJson(photoPath: String): String? = withContext(ioDispatcher) {
+        CameraNative.getCameraPhotoExif(photoPath)
     }
 }

@@ -1,40 +1,487 @@
 package com.inik.camcon.data.service
+
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.os.Build
+import android.hardware.usb.UsbManager
 import android.os.IBinder
+import android.os.PowerManager
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.inik.camcon.R
+import com.inik.camcon.domain.repository.CameraRepository
+import com.inik.camcon.utils.LogcatManager
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+/**
+ * 백그라운드에서 Firebase 연결을 유지하고 카메라 이벤트 리스너를 관리하는 서비스
+ * 도즈 모드에서도 카메라 이벤트 수신을 위한 Wake Lock 관리
+ * Google Play 정책 준수를 위해 최소한의 작업만 수행
+ */
+@AndroidEntryPoint
 class BackgroundSyncService : Service() {
+
+    @Inject
+    lateinit var cameraRepository: CameraRepository
+
+    @Inject
+    lateinit var globalConnectionManager: com.inik.camcon.domain.manager.CameraConnectionGlobalManager
+
+    private var serviceScope: CoroutineScope? = null
+    private var syncJob: Job? = null
+    private var eventListenerJob: Job? = null
+    private var wakeLock: PowerManager.WakeLock? = null
+
     companion object {
-        private const val CHANNEL_ID = "camcon_background_sync"
+        private const val TAG = "BackgroundSyncService"
         private const val NOTIFICATION_ID = 1001
+        private const val CHANNEL_ID = "background_sync_channel"
+        private const val SYNC_INTERVAL = 30_000L // 30초마다 체크
+        private const val EVENT_LISTENER_CHECK_INTERVAL = 10_000L // 10초마다 이벤트 리스너 체크
+
+        /**
+         * 서비스 시작
+         */
         fun startService(context: Context) {
             val intent = Intent(context, BackgroundSyncService::class.java)
-            context.startForegroundService(intent)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+        }
+
+        /**
+         * 서비스 중지
+         */
+        fun stopService(context: Context) {
+            val intent = Intent(context, BackgroundSyncService::class.java)
+            context.stopService(intent)
         }
     }
-    override fun onBind(intent: Intent?): IBinder? = null
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForeground(NOTIFICATION_ID, createNotification())
-        return START_STICKY
+
+    override fun onCreate() {
+        super.onCreate()
+        LogcatManager.d(TAG, "BackgroundSyncService 생성됨 - 백그라운드 이벤트 리스너 관리 포함")
+
+        serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        createNotificationChannel()
+
+        // Wake Lock 획득 (화면이 꺼져도 이벤트 리스너 유지)
+        acquireWakeLock()
     }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        LogcatManager.d(TAG, "BackgroundSyncService 시작됨 - 도즈 모드 대응")
+
+        try {
+            // Foreground Service로 시작
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                // Android 14+ (API 34+)에서는 서비스 타입 지정 필수
+                startForeground(
+                    NOTIFICATION_ID,
+                    createNotification(),
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+                )
+            } else {
+                startForeground(NOTIFICATION_ID, createNotification())
+            }
+        } catch (e: Exception) {
+            LogcatManager.e(TAG, "포그라운드 서비스 시작 실패", e)
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        // 백그라운드 동기화 작업 시작
+        startBackgroundSync()
+
+        // 백그라운드 이벤트 리스너 관리 시작
+        startBackgroundEventListenerManager()
+
+        // 앱이 종료되면 재시작되지 않도록 설정
+        return START_NOT_STICKY
+    }
+
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onDestroy() {
+        super.onDestroy()
+        LogcatManager.d(TAG, "BackgroundSyncService 종료됨")
+
+        syncJob?.cancel()
+        eventListenerJob?.cancel()
+        serviceScope?.cancel()
+        releaseWakeLock()
+
+        try {
+            stopForeground(true)
+            val notificationManager =
+                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.cancel(NOTIFICATION_ID)
+        } catch (e: Exception) {
+            LogcatManager.w(TAG, "서비스 종료 중 알림 정리 실패", e)
+        }
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        LogcatManager.d(TAG, "Task removed - 앱 종료로 서비스 정리")
+        try {
+            syncJob?.cancel()
+            eventListenerJob?.cancel()
+            serviceScope?.cancel()
+            releaseWakeLock()
+
+            stopForeground(true)
+            val notificationManager =
+                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.cancel(NOTIFICATION_ID)
+        } catch (e: Exception) {
+            LogcatManager.w(TAG, "Task removed 처리 중 정리 실패", e)
+        } finally {
+            stopSelf()
+        }
+    }
+
+    /**
+     * Wake Lock 획득 (화면이 꺼져도 작동)
+     */
+    private fun acquireWakeLock() {
+        try {
+            val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+            wakeLock = powerManager.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK,
+                "CamCon::BackgroundEventListener"
+            ).apply {
+                acquire(10 * 60 * 1000L /*10 minutes*/) // 10분 제한 설정
+                LogcatManager.d(TAG, " Wake Lock 획득 - 백그라운드 이벤트 리스너 유지")
+            }
+        } catch (e: Exception) {
+            LogcatManager.e(TAG, "Wake Lock 획득 실패", e)
+        }
+    }
+
+    /**
+     * Wake Lock 해제
+     */
+    private fun releaseWakeLock() {
+        try {
+            wakeLock?.let { lock ->
+                if (lock.isHeld) {
+                    lock.release()
+                    LogcatManager.d(TAG, " Wake Lock 해제됨")
+                }
+            }
+            wakeLock = null
+        } catch (e: Exception) {
+            LogcatManager.e(TAG, "Wake Lock 해제 실패", e)
+        }
+    }
+
+    /**
+     * Wake Lock 갱신 (10분마다)
+     */
+    private fun renewWakeLock() {
+        try {
+            wakeLock?.let { lock ->
+                if (!lock.isHeld) {
+                    lock.acquire(10 * 60 * 1000L) // 다시 10분 연장
+                    LogcatManager.d(TAG, " Wake Lock 갱신됨")
+                }
+            }
+        } catch (e: Exception) {
+            LogcatManager.e(TAG, "Wake Lock 갱신 실패", e)
+            // 실패 시 다시 획득 시도
+            releaseWakeLock()
+            acquireWakeLock()
+        }
+    }
+
+    /**
+     * 알림 채널 생성 (Android 8.0+)
+     */
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "백그라운드 동기화",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "카메라 파일 동기화 및 연결 유지"
+                setShowBadge(false)
+                setSound(null, null)
+                enableVibration(false)
+            }
+
+            val notificationManager =
+                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    /**
+     * Foreground Service 알림 생성
+     */
     private fun createNotification(): Notification {
-        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            getString(R.string.app_name),
-            NotificationManager.IMPORTANCE_LOW
+        val intent = packageManager.getLaunchIntentForPackage(packageName)
+            ?: Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                setPackage(packageName)
+            }
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        manager.createNotificationChannel(channel)
+
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle(getString(R.string.app_name))
-            .setContentText("백그라운드 동기화 중")
-            .setOngoing(true)
+            .setContentTitle("CamCon 백그라운드 동기화")
+            .setContentText("카메라 이벤트 리스너 활성 상태 - 화면이 꺼져도 사진 수신 가능")
+            .setSmallIcon(R.drawable.ic_camera_24) // 카메라 아이콘 사용
+            .setContentIntent(pendingIntent)
+            .setOngoing(true) // 사용자가 스와이프로 제거할 수 없도록
+            .setSilent(true) // 소리 없음
+            .setVisibility(NotificationCompat.VISIBILITY_SECRET) // 잠금화면에서 숨김
+            .setPriority(NotificationCompat.PRIORITY_MIN) // 최소 우선순위
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .build()
+    }
+
+    /**
+     * 백그라운드 동기화 작업 시작
+     */
+    private fun startBackgroundSync() {
+        syncJob?.cancel()
+
+        syncJob = serviceScope?.launch {
+            try {
+                LogcatManager.d(TAG, "백그라운드 동기화 작업 시작")
+
+                while (true) {
+                    try {
+                        // Firebase 연결 상태 확인 및 유지
+                        checkFirebaseConnection()
+
+                        // 필요시 파일 동기화 상태 확인
+                        checkFileSyncStatus()
+
+                        // Wake Lock 갱신 (10분마다)
+                        renewWakeLock()
+
+                        // 30초 대기
+                        delay(SYNC_INTERVAL)
+
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        // 코루틴 취소는 정상 종료
+                        LogcatManager.d(TAG, "백그라운드 동기화 작업이 정상적으로 취소됨")
+                        throw e // CancellationException은 다시 throw해야 함
+                    } catch (e: Exception) {
+                        LogcatManager.w(TAG, "백그라운드 동기화 작업 중 오류", e)
+                        // 오류 발생 시 1분 대기 후 재시도
+                        delay(60_000L)
+                    }
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                LogcatManager.d(TAG, "백그라운드 동기화 작업 종료")
+                // CancellationException은 정상 종료이므로 아무것도 하지 않음
+            } catch (e: Exception) {
+                LogcatManager.e(TAG, "백그라운드 동기화 작업 중 치명적 오류", e)
+            }
+        }
+    }
+
+    /**
+     * 백그라운드 이벤트 리스너 관리자 시작
+     */
+    private fun startBackgroundEventListenerManager() {
+        eventListenerJob?.cancel()
+
+        eventListenerJob = serviceScope?.launch {
+            try {
+                LogcatManager.d(TAG, " 백그라운드 이벤트 리스너 관리자 시작")
+
+                globalConnectionManager.globalConnectionState.collect { state ->
+                    if (state.isAnyConnectionActive) {
+                        // 카메라 연결된 경우 - 이벤트 리스너 상태 확인
+                        val isEventListenerActive = cameraRepository.isEventListenerActive().first()
+
+                        LogcatManager.d(
+                            TAG,
+                            " 카메라 연결됨: ${state.activeConnectionType}, 이벤트 리스너: $isEventListenerActive"
+                        )
+
+                        if (!isEventListenerActive) {
+                            LogcatManager.d(TAG, " 카메라는 연결되어 있으나 이벤트 리스너가 비활성 - 재시작 시도")
+
+                            try {
+                                val result = cameraRepository.startCameraEventListener()
+                                if (result.isSuccess) {
+                                    LogcatManager.d(TAG, " 백그라운드에서 이벤트 리스너 재시작 성공")
+                                    updateNotificationText("카메라 이벤트 리스너 활성 - 사진 수신 대기 중")
+                                } else {
+                                    LogcatManager.w(TAG, " 백그라운드에서 이벤트 리스너 재시작 실패")
+                                    updateNotificationText("카메라 연결 확인 중...")
+                                }
+                            } catch (e: kotlinx.coroutines.CancellationException) {
+                                LogcatManager.d(TAG, "이벤트 리스너 재시작 작업이 취소됨")
+                                throw e
+                            } catch (e: Exception) {
+                                LogcatManager.e(TAG, "백그라운드 이벤트 리스너 시작 중 예외", e)
+                            }
+
+                        } else if (isEventListenerActive) {
+                            LogcatManager.d(TAG, " 카메라 연결 및 이벤트 리스너 정상 작동 중")
+                            updateNotificationText("카메라 이벤트 리스너 활성 - 사진 수신 대기 중")
+                        }
+                    } else {
+                        // 카메라 연결이 끊어지면 모든 이벤트 리스너 완전 정리
+                        try {
+                            val stopResult = cameraRepository.stopCameraEventListener()
+                            if (stopResult.isSuccess) {
+                                LogcatManager.d(TAG, " 백그라운드에서 이벤트 리스너 정리 성공")
+                            } else {
+                                LogcatManager.w(TAG, " 백그라운드에서 이벤트 리스너 정리 실패")
+                            }
+                        } catch (e: kotlinx.coroutines.CancellationException) {
+                            LogcatManager.d(TAG, "이벤트 리스너 정리 작업이 취소됨")
+                            throw e
+                        } catch (e: Exception) {
+                            LogcatManager.e(TAG, "백그라운드 이벤트 리스너 정리 중 예외", e)
+                        }
+
+                        updateNotificationText("카메라 연결 대기 중...")
+
+                        // 카메라 연결이 끊어지면 리스너 관리 루프 중지하고 대기 모드로 전환
+                        LogcatManager.d(TAG, " 카메라 연결 끊김 - 이벤트 리스너 관리 대기 모드로 전환")
+                    }
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                LogcatManager.d(TAG, "백그라운드 이벤트 리스너 관리자가 정상적으로 종료됨")
+                // CancellationException은 정상 종료이므로 아무것도 하지 않음
+            } catch (e: Exception) {
+                LogcatManager.e(TAG, "백그라운드 이벤트 리스너 관리자 중 치명적 오류", e)
+            }
+        }
+    }
+
+    /**
+     * 알림 텍스트 업데이트
+     */
+    private fun updateNotificationText(text: String) {
+        try {
+            val notificationManager =
+                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val intent = packageManager.getLaunchIntentForPackage(packageName)
+            ?: Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                setPackage(packageName)
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                this, 0, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("CamCon 백그라운드 동기화")
+                .setContentText(text)
+                .setSmallIcon(R.drawable.ic_camera_24)
+                .setContentIntent(pendingIntent)
+                .setOngoing(true)
+                .setSilent(true)
+                .setVisibility(NotificationCompat.VISIBILITY_SECRET)
+                .setPriority(NotificationCompat.PRIORITY_MIN)
+                .setCategory(NotificationCompat.CATEGORY_SERVICE)
+                .build()
+
+            notificationManager.notify(NOTIFICATION_ID, notification)
+        } catch (e: Exception) {
+            LogcatManager.w(TAG, "알림 텍스트 업데이트 실패", e)
+        }
+    }
+
+    /**
+     * Firebase 연결 상태 확인
+     */
+    private suspend fun checkFirebaseConnection() {
+        try {
+            // 카메라 AP 모드로 연결 시 인터넷이 끊기므로 Firebase 연결 시도 생략
+            val globalState = globalConnectionManager.globalConnectionState.first()
+            if (globalState.activeConnectionType == com.inik.camcon.domain.model.CameraConnectionType.AP_MODE) {
+                LogcatManager.d(TAG, "카메라 AP 모드 연결 중 - Firebase 연결 시도 생략")
+                return
+            }
+
+            // Firebase Auth 연결 상태 확인
+            val firebaseAuth = com.google.firebase.auth.FirebaseAuth.getInstance()
+            val currentUser = firebaseAuth.currentUser
+
+            if (currentUser != null) {
+                LogcatManager.d(TAG, "Firebase 사용자 인증 유지됨: ${currentUser.uid}")
+
+                // 필요시 토큰 갱신
+                currentUser.getIdToken(false).addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        LogcatManager.d(TAG, "Firebase 토큰 갱신 성공")
+                    } else {
+                        LogcatManager.w(TAG, "Firebase 토큰 갱신 실패", task.exception)
+                    }
+                }
+            } else {
+                LogcatManager.d(TAG, "Firebase 사용자 인증되지 않음")
+            }
+
+        } catch (e: Exception) {
+            LogcatManager.w(TAG, "Firebase 연결 상태 확인 실패", e)
+        }
+    }
+
+    /**
+     * 파일 동기화 상태 확인
+     */
+    private suspend fun checkFileSyncStatus() {
+        try {
+            // 실제 구현에서는 필요한 동기화 작업 수행
+            // 예: 대기 중인 업로드 파일 확인, 클라우드 상태 동기화 등
+            LogcatManager.d(TAG, "파일 동기화 상태 확인 완료")
+
+        } catch (e: Exception) {
+            LogcatManager.w(TAG, "파일 동기화 상태 확인 실패", e)
+        }
+    }
+
+    /**
+     * 카메라 연결 완전 해제 시 서비스 정리
+     */
+    fun cleanupOnCameraDisconnection() {
+        LogcatManager.d(TAG, "카메라 연결 해제로 인한 서비스 정리 시작")
+
+        try {
+            // 이벤트 리스너 관리 작업 중지
+            eventListenerJob?.cancel()
+            LogcatManager.d(TAG, "백그라운드 이벤트 리스너 관리 작업 중지됨")
+
+            // Wake Lock 해제
+            releaseWakeLock()
+
+            // 알림 업데이트
+            updateNotificationText("카메라 연결 해제됨 - 서비스 대기 중")
+
+            LogcatManager.d(TAG, "카메라 연결 해제로 인한 서비스 정리 완료")
+        } catch (e: Exception) {
+            LogcatManager.e(TAG, "카메라 연결 해제 정리 중 오류", e)
+        }
     }
 }

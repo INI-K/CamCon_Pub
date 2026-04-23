@@ -1,7 +1,7 @@
 package com.inik.camcon.presentation.ui.screens
 
-import android.graphics.ColorSpace
 import android.util.Log
+import android.util.LruCache
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -26,14 +27,17 @@ import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Card
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Snackbar
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
@@ -41,7 +45,8 @@ import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,6 +55,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -60,11 +66,24 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
+import android.content.ContentUris
+import android.graphics.Bitmap
+import android.os.Build
+import android.os.CancellationSignal
+import android.provider.MediaStore
+import android.util.Size
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.exifinterface.media.ExifInterface
+import com.inik.camcon.R
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.CapturedPhoto
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
 import com.inik.camcon.presentation.viewmodel.ServerPhotosViewModel
+import com.inik.camcon.domain.model.ThemeMode
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -74,8 +93,9 @@ import java.util.Locale
 fun MyPhotosScreen(
     viewModel: ServerPhotosViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedPhoto by remember { mutableStateOf<CapturedPhoto?>(null) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
 
     // 화면에 진입할 때마다 새로고침 - 탭 전환 시 확실히 실행됨
     DisposableEffect(Unit) {
@@ -120,7 +140,9 @@ fun MyPhotosScreen(
     }
 
     Column(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
     ) {
         // 상단 헤더 - 멀티 선택 모드에 따라 다르게 표시
         if (uiState.isMultiSelectMode) {
@@ -128,7 +150,7 @@ fun MyPhotosScreen(
                 selectedCount = uiState.selectedPhotos.size,
                 onSelectAll = { viewModel.selectAllPhotos() },
                 onDeselectAll = { viewModel.deselectAllPhotos() },
-                onDelete = { viewModel.deleteSelectedPhotos() },
+                onDelete = { showDeleteConfirmDialog = true },
                 onCancel = { viewModel.exitMultiSelectMode() }
             )
         } else {
@@ -200,6 +222,30 @@ fun MyPhotosScreen(
         }
     }
 
+    // 삭제 확인 다이얼로그
+    if (showDeleteConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            title = { Text(stringResource(R.string.server_photos_delete_photos)) },
+            text = { Text(stringResource(R.string.server_photos_delete_confirm, uiState.selectedPhotos.size)) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteSelectedPhotos()
+                        showDeleteConfirmDialog = false
+                    }
+                ) {
+                    Text(stringResource(R.string.delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
     // 에러 표시
     uiState.error?.let { error ->
         Box(
@@ -208,19 +254,20 @@ fun MyPhotosScreen(
         ) {
             Snackbar(
                 modifier = Modifier.padding(16.dp),
-                backgroundColor = MaterialTheme.colors.error,
+                containerColor = MaterialTheme.colorScheme.error,
+                contentColor = MaterialTheme.colorScheme.onError,
                 action = {
-                    TextButton(onClick = { viewModel.clearError() }) {
+                    TextButton(onClick = { viewModel.refreshPhotos(); viewModel.clearError() }) {
                         Text(
-                            text = "확인",
-                            color = MaterialTheme.colors.onError
+                            text = stringResource(R.string.server_photos_retry),
+                            color = MaterialTheme.colorScheme.onError
                         )
                     }
                 }
             ) {
                 Text(
                     text = error,
-                    color = MaterialTheme.colors.onError
+                    color = MaterialTheme.colorScheme.onError
                 )
             }
         }
@@ -241,15 +288,15 @@ private fun ModernMyPhotosHeader(
     ) {
         Column {
             Text(
-                text = "내 사진",
-                style = MaterialTheme.typography.h5,
+                text = stringResource(R.string.server_photos_my_photos),
+                style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
             if (photoCount > 0) {
                 Text(
-                    text = "${photoCount}장의 사진",
-                    style = MaterialTheme.typography.caption,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                    text = stringResource(R.string.server_photos_count, photoCount),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
             }
         }
@@ -257,8 +304,8 @@ private fun ModernMyPhotosHeader(
         IconButton(onClick = onRefresh) {
             Icon(
                 Icons.Default.Refresh,
-                contentDescription = "새로고침",
-                tint = MaterialTheme.colors.onSurface
+                contentDescription = stringResource(R.string.cd_refresh),
+                tint = MaterialTheme.colorScheme.onSurface
             )
         }
     }
@@ -281,7 +328,15 @@ private fun FluidPhotoGrid(
         verticalItemSpacing = 4.dp,
         modifier = Modifier.fillMaxSize()
     ) {
-        items(photos) { photo ->
+        items(
+            items = photos,
+            key = { it.id }  // key 추가: 아이템 안정성 보장
+        ) { photo ->
+            // 선택 상태를 derivedStateOf로 최적화
+            val isSelected by remember(photo.id) {
+                derivedStateOf { selectedPhotos.contains(photo.id) }
+            }
+            
             FluidPhotoGridItem(
                 photo = photo,
                 onClick = {
@@ -293,12 +348,29 @@ private fun FluidPhotoGrid(
                 },
                 onDelete = { onDeleteClick(photo) },
                 onLongClick = { onPhotoLongClick(photo) },
-                isSelected = selectedPhotos.contains(photo.id),
+                isSelected = isSelected,
                 isMultiSelectMode = isMultiSelectMode
             )
         }
     }
 }
+
+// RAW 파일 확장자 목록
+private val RAW_EXTENSIONS = setOf("nef", "cr2", "cr3", "arw", "dng", "orf", "rw2", "raf", "raw")
+
+// 썸네일 LRU 캐시 (메모리의 1/8 사용, 최대 64MB)
+private val thumbnailCache: LruCache<String, Bitmap> by lazy {
+    val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
+    val cacheSize = minOf(maxMemory / 8, 64 * 1024)  // 최대 64MB
+    object : LruCache<String, Bitmap>(cacheSize) {
+        override fun sizeOf(key: String, bitmap: Bitmap): Int {
+            return bitmap.byteCount / 1024
+        }
+    }
+}
+
+// 동시 썸네일 로드 수 제한 (최대 4개)
+private val thumbnailLoadSemaphore = kotlinx.coroutines.sync.Semaphore(4)
 
 @Composable
 private fun FluidPhotoGridItem(
@@ -309,17 +381,17 @@ private fun FluidPhotoGridItem(
     isSelected: Boolean = false,
     isMultiSelectMode: Boolean = false
 ) {
-    // 원본 비율에 관계없이 썸네일은 세로 비율로 강제 설정
     val aspectRatio = remember(photo.id) {
-        // photo.id를 기반으로 고정된 비율 생성 (무한 호출 방지)
-        val hashCode = photo.id.hashCode()
-        when (hashCode % 5) {
-            0 -> 1f        // 정사각형
-            1 -> 0.75f     // 3:4 세로형
-            2 -> 0.6f      // 긴 세로형
-            3 -> 0.8f      // 4:5 세로형  
-            else -> 0.65f  // 중간 세로형
+        if (photo.width > 0 && photo.height > 0) {
+            photo.width.toFloat() / photo.height.toFloat()
+        } else {
+            0.75f
         }
+    }
+
+    // RAW 파일 여부 확인
+    val isRawFile = remember(photo.filePath) {
+        photo.filePath.substringAfterLast('.', "").lowercase() in RAW_EXTENSIONS
     }
 
     Card(
@@ -330,50 +402,134 @@ private fun FluidPhotoGridItem(
                 onClick = { onClick() },
                 onLongClick = { onLongClick() }
             ),
-        elevation = 2.dp,
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(6.dp),
-        backgroundColor = if (isSelected) Color.LightGray else MaterialTheme.colors.surface
+        colors = CardDefaults.cardColors(containerColor = if (isSelected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface)
     ) {
         Box {
-            // 사진 이미지 - 개선된 로딩
-            val file = File(photo.filePath)
-
-            val painter = rememberAsyncImagePainter(
-                ImageRequest.Builder(LocalContext.current)
-                    .data(file)
-                    .size(300) // 썸네일 크기 제한
-                    .crossfade(200)
-                    .error(android.R.drawable.ic_menu_gallery) // 에러 시 기본 이미지
-                    .fallback(android.R.drawable.ic_menu_gallery) // 로딩 실패 시 기본 이미지
-                    .placeholder(android.R.drawable.ic_menu_gallery) // 로딩 중 표시할 이미지
-                    .apply {
-                        // sRGB 색공간 설정
-                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                            colorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
+            if (isRawFile) {
+                // RAW 파일: 캐시 → ExifInterface 순서로 로드
+                val rawThumbnailState = produceState<Bitmap?>(
+                    initialValue = thumbnailCache.get(photo.id),
+                    key1 = photo.id
+                ) {
+                    if (value == null) {
+                        thumbnailLoadSemaphore.acquire()
+                        try {
+                            value = withContext(Dispatchers.IO) {
+                                try {
+                                    val exif = ExifInterface(photo.filePath)
+                                    exif.thumbnailBitmap?.also { bitmap ->
+                                        thumbnailCache.put(photo.id, bitmap)
+                                    }
+                                } catch (e: Exception) {
+                                    null
+                                }
+                            }
+                        } finally {
+                            thumbnailLoadSemaphore.release()
                         }
                     }
-                    .build()
-            )
+                }
 
-            Image(
-                painter = painter,
-                contentDescription = "${photo.id} 썸네일",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-
-            // 로딩 상태 표시
-            if (painter.state is coil.compose.AsyncImagePainter.State.Loading) {
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(MaterialTheme.colors.surface.copy(alpha = 0.7f)),
-                    contentAlignment = Alignment.Center
+                when (val thumbnail = rawThumbnailState.value) {
+                    null -> {
+                        // 로딩 중 또는 썸네일 없음: placeholder
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    imageVector = Icons.Default.PhotoCamera,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(28.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                )
+                                Text(
+                                    text = photo.filePath.substringAfterLast('.', "").uppercase(),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                )
+                            }
+                        }
+                    }
+                    else -> {
+                        // 내장 썸네일이 있으면 표시
+                        Image(
+                            bitmap = thumbnail.asImageBitmap(),
+                            contentDescription = "${photo.id} RAW 썸네일",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                }
+            } else {
+                // JPEG/PNG: 캐시 → 시스템 썸네일 순서로 로드
+                val context = LocalContext.current
+                val thumbnailState = produceState<Bitmap?>(
+                    initialValue = thumbnailCache.get(photo.id),
+                    key1 = photo.id
                 ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colors.primary
-                    )
+                    if (value == null) {
+                        thumbnailLoadSemaphore.acquire()
+                        try {
+                            value = withContext(Dispatchers.IO) {
+                                try {
+                                    val mediaId = photo.id.toLongOrNull()
+                                    val bitmap = if (mediaId != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                        // Android 10+: 시스템 썸네일 사용 (가장 빠름)
+                                        val uri = ContentUris.withAppendedId(
+                                            MediaStore.Images.Media.EXTERNAL_CONTENT_URI, 
+                                            mediaId
+                                        )
+                                        context.contentResolver.loadThumbnail(
+                                            uri,
+                                            Size(300, 300),
+                                            CancellationSignal()
+                                        )
+                                    } else {
+                                        // 폴백: ExifInterface로 내장 썸네일 추출
+                                        val exif = ExifInterface(photo.filePath)
+                                        exif.thumbnailBitmap
+                                    }
+                                    bitmap?.also { thumbnailCache.put(photo.id, it) }
+                                } catch (e: Exception) {
+                                    null
+                                }
+                            }
+                        } finally {
+                            thumbnailLoadSemaphore.release()
+                        }
+                    }
+                }
+
+                when (val thumbnail = thumbnailState.value) {
+                    null -> {
+                        // 로딩 중: placeholder
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                            )
+                        }
+                    }
+                    else -> {
+                        Image(
+                            bitmap = thumbnail.asImageBitmap(),
+                            contentDescription = "${photo.id} 썸네일",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
                 }
             }
 
@@ -382,7 +538,7 @@ private fun FluidPhotoGridItem(
                 Box(
                     modifier = Modifier
                         .matchParentSize()
-                        .background(Color.Blue.copy(alpha = 0.3f))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
                 )
 
                 // 체크 아이콘
@@ -394,9 +550,9 @@ private fun FluidPhotoGridItem(
                 ) {
                     Icon(
                         imageVector = Icons.Default.CheckCircle,
-                        contentDescription = "선택됨",
+                        contentDescription = stringResource(R.string.cd_selected),
                         modifier = Modifier.size(24.dp),
-                        tint = Color(0xFF27AE60) // 그린톤 (선택 표시)
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -414,14 +570,14 @@ private fun LoadingIndicator() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             CircularProgressIndicator(
-                color = MaterialTheme.colors.primary,
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(48.dp)
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "내 사진을 불러오는 중...",
-                style = MaterialTheme.typography.body2,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                text = stringResource(R.string.server_photos_loading),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
         }
     }
@@ -441,20 +597,20 @@ fun EmptyMyPhotosState() {
                 imageVector = Icons.Default.PhotoCamera,
                 contentDescription = null,
                 modifier = Modifier.size(80.dp),
-                tint = MaterialTheme.colors.onSurface.copy(alpha = 0.3f)
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
             )
             Spacer(modifier = Modifier.height(24.dp))
             Text(
-                text = "저장된 사진이 없습니다",
-                style = MaterialTheme.typography.h6,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                text = stringResource(R.string.server_photos_no_saved_photos),
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "카메라에서 촬영하면\n이곳에 저장됩니다",
-                style = MaterialTheme.typography.body2,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.4f),
+                text = stringResource(R.string.server_photos_capture_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                 textAlign = TextAlign.Center
             )
         }
@@ -471,7 +627,7 @@ fun CapturedPhotoItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { /* TODO: 사진 상세 보기 */ },
-        elevation = 2.dp
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -484,12 +640,8 @@ fun CapturedPhotoItem(
                 ImageRequest.Builder(LocalContext.current)
                     .data(File(photo.filePath))
                     .crossfade(true)
-                    .apply {
-                        // sRGB 색공간 설정
-                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                            colorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
-                        }
-                    }
+                    .memoryCacheKey(photo.id)
+                    .diskCacheKey(photo.id)
                     .build()
             )
 
@@ -499,7 +651,7 @@ fun CapturedPhotoItem(
                 modifier = Modifier
                     .size(80.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color.LightGray),
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentScale = ContentScale.Crop
             )
 
@@ -511,7 +663,7 @@ fun CapturedPhotoItem(
             ) {
                 Text(
                     text = File(photo.filePath).name,
-                    style = MaterialTheme.typography.body1,
+                    style = MaterialTheme.typography.bodyLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -519,8 +671,8 @@ fun CapturedPhotoItem(
                 val dateFormat = SimpleDateFormat("yyyy.MM.dd HH:mm", Locale.getDefault())
                 Text(
                     text = dateFormat.format(Date(photo.captureTime)),
-                    style = MaterialTheme.typography.caption,
-                    color = Color.Gray
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 // 파일 크기 표시
@@ -531,8 +683,8 @@ fun CapturedPhotoItem(
                 }
                 Text(
                     text = sizeText,
-                    style = MaterialTheme.typography.caption,
-                    color = Color.Gray
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -540,8 +692,8 @@ fun CapturedPhotoItem(
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Default.Delete,
-                    contentDescription = "삭제",
-                    tint = Color.Red.copy(alpha = 0.7f)
+                    contentDescription = stringResource(R.string.cd_delete),
+                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
                 )
             }
         }
@@ -564,22 +716,22 @@ fun MyPhotosMultiSelectActionBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "$selectedCount 개의 항목 선택됨",
-            style = MaterialTheme.typography.body1
+            text = stringResource(R.string.server_photos_selected_count, selectedCount),
+            style = MaterialTheme.typography.bodyLarge
         )
 
         Row {
             TextButton(onClick = onSelectAll) {
-                Text("전체 선택")
+                Text(stringResource(R.string.server_photos_select_all))
             }
             TextButton(onClick = onDeselectAll) {
-                Text("선택 해제")
+                Text(stringResource(R.string.server_photos_deselect_all))
             }
             TextButton(onClick = onDelete) {
-                Text("삭제")
+                Text(stringResource(R.string.delete))
             }
             TextButton(onClick = onCancel) {
-                Text("취소")
+                Text(stringResource(R.string.cancel))
             }
         }
     }
@@ -588,7 +740,7 @@ fun MyPhotosMultiSelectActionBar(
 @Preview(showBackground = true)
 @Composable
 fun EmptyMyPhotosStatePreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         EmptyMyPhotosState()
     }
 }
@@ -596,7 +748,7 @@ fun EmptyMyPhotosStatePreview() {
 @Preview(showBackground = true)
 @Composable
 fun CapturedPhotoItemPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         CapturedPhotoItem(
             photo = CapturedPhoto(
                 id = "1",

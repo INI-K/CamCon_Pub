@@ -33,7 +33,7 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun signInWithGoogle(idToken: String): Result<User> {
         return try {
-            Log.d(TAG, "Firebase Auth 로그인 시작, idToken: ${idToken.take(20)}...")
+            Log.d(TAG, "Firebase Auth 로그인 시작")
 
             // Google ID Token으로 Firebase 인증 크리덴셜 생성
             val credential =

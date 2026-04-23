@@ -6,10 +6,15 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.inik.camcon.domain.model.SavedWifiCredential
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import org.json.JSONArray
+import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -34,6 +39,13 @@ class PtpipPreferencesDataSource @Inject constructor(
         private val AUTO_CONNECT = booleanPreferencesKey("auto_connect")
         private val WIFI_CONNECTION_MODE = booleanPreferencesKey("wifi_connection_mode")
         private val AUTO_RECONNECT = booleanPreferencesKey("auto_reconnect")
+        private val AUTO_CONNECT_SSID = stringPreferencesKey("auto_connect_ssid")
+        private val AUTO_CONNECT_SECURITY = stringPreferencesKey("auto_connect_security")
+        private val AUTO_CONNECT_PASSPHRASE = stringPreferencesKey("auto_connect_passphrase")
+        private val AUTO_CONNECT_HIDDEN = booleanPreferencesKey("auto_connect_hidden")
+        private val AUTO_CONNECT_BSSID = stringPreferencesKey("auto_connect_bssid")
+        private val AUTO_CONNECT_UPDATED_AT = longPreferencesKey("auto_connect_updated_at")
+        private val SAVED_WIFI_CREDENTIALS = stringPreferencesKey("saved_wifi_credentials")
     }
 
     /**
@@ -120,6 +132,28 @@ class PtpipPreferencesDataSource @Inject constructor(
         }
 
     /**
+     * 자동 연결용 Wi-Fi 제안 설정 정보
+     */
+    val autoConnectNetworkConfig: Flow<com.inik.camcon.domain.model.AutoConnectNetworkConfig?> =
+        context.ptpipDataStore.data
+            .map { preferences ->
+                val ssid = preferences[AUTO_CONNECT_SSID]
+                if (ssid.isNullOrBlank()) {
+                    null
+                } else {
+                    com.inik.camcon.domain.model.AutoConnectNetworkConfig(
+                        ssid = ssid,
+                        passphrase = preferences[AUTO_CONNECT_PASSPHRASE],
+                        securityType = preferences[AUTO_CONNECT_SECURITY],
+                        isHidden = preferences[AUTO_CONNECT_HIDDEN] ?: false,
+                        bssid = preferences[AUTO_CONNECT_BSSID],
+                        lastUpdatedEpochMillis = preferences[AUTO_CONNECT_UPDATED_AT]
+                            ?: System.currentTimeMillis()
+                    )
+                }
+            }
+
+    /**
      * PTPIP 기능 활성화/비활성화
      */
     suspend fun setPtpipEnabled(enabled: Boolean) {
@@ -184,6 +218,13 @@ class PtpipPreferencesDataSource @Inject constructor(
     }
 
     /**
+     * 현재 자동 연결 활성화 여부 즉시 조회
+     */
+    suspend fun isAutoConnectEnabledNow(): Boolean {
+        return context.ptpipDataStore.data.first()[AUTO_CONNECT] ?: false
+    }
+
+    /**
      * 자동 재연결 활성화/비활성화
      */
     suspend fun setAutoReconnectEnabled(enabled: Boolean) {
@@ -207,11 +248,165 @@ class PtpipPreferencesDataSource @Inject constructor(
     }
 
     /**
+     * 자동 연결을 위한 Wi-Fi 네트워크 정보 저장
+     */
+    suspend fun saveAutoConnectNetworkConfig(config: com.inik.camcon.domain.model.AutoConnectNetworkConfig) {
+        context.ptpipDataStore.edit { preferences ->
+            preferences[AUTO_CONNECT_SSID] = config.ssid
+            if (config.securityType.isNullOrEmpty()) {
+                preferences.remove(AUTO_CONNECT_SECURITY)
+            } else {
+                preferences[AUTO_CONNECT_SECURITY] = config.securityType
+            }
+            if (config.passphrase.isNullOrEmpty()) {
+                preferences.remove(AUTO_CONNECT_PASSPHRASE)
+            } else {
+                preferences[AUTO_CONNECT_PASSPHRASE] = config.passphrase
+            }
+            preferences[AUTO_CONNECT_HIDDEN] = config.isHidden
+            config.bssid?.let { preferences[AUTO_CONNECT_BSSID] = it } ?: preferences.remove(
+                AUTO_CONNECT_BSSID
+            )
+            preferences[AUTO_CONNECT_UPDATED_AT] = config.lastUpdatedEpochMillis
+        }
+    }
+
+    /**
+     * 자동 연결용 Wi-Fi 네트워크 정보 조회
+     */
+    suspend fun getAutoConnectNetworkConfig(): com.inik.camcon.domain.model.AutoConnectNetworkConfig? {
+        val preferences = context.ptpipDataStore.data.first()
+        val ssid = preferences[AUTO_CONNECT_SSID]
+        if (ssid.isNullOrBlank()) {
+            return null
+        }
+        return com.inik.camcon.domain.model.AutoConnectNetworkConfig(
+            ssid = ssid,
+            passphrase = preferences[AUTO_CONNECT_PASSPHRASE],
+            securityType = preferences[AUTO_CONNECT_SECURITY],
+            isHidden = preferences[AUTO_CONNECT_HIDDEN] ?: false,
+            bssid = preferences[AUTO_CONNECT_BSSID],
+            lastUpdatedEpochMillis = preferences[AUTO_CONNECT_UPDATED_AT]
+                ?: System.currentTimeMillis()
+        )
+    }
+
+    /**
+     * 자동 연결 네트워크 구성의 타임스탬프만 현재값으로 업데이트
+     */
+    suspend fun updateAutoConnectNetworkTimestamp(newTimestamp: Long = System.currentTimeMillis()) {
+        context.ptpipDataStore.edit { preferences ->
+            preferences[AUTO_CONNECT_UPDATED_AT] = newTimestamp
+        }
+    }
+
+    /**
+     * 마지막 연결된 카메라 정보 조회
+     */
+    suspend fun getLastConnectedCameraInfo(): Pair<String, String?>? {
+        val preferences = context.ptpipDataStore.data.first()
+        val ip = preferences[LAST_CONNECTED_IP]
+        if (ip.isNullOrBlank()) {
+            return null
+        }
+        val name = preferences[LAST_CONNECTED_NAME]
+        return ip to name
+    }
+
+    /**
+     * 자동 연결 네트워크 정보 초기화
+     */
+    suspend fun clearAutoConnectNetworkConfig() {
+        context.ptpipDataStore.edit { preferences ->
+            preferences.remove(AUTO_CONNECT_SSID)
+            preferences.remove(AUTO_CONNECT_SECURITY)
+            preferences.remove(AUTO_CONNECT_PASSPHRASE)
+            preferences.remove(AUTO_CONNECT_HIDDEN)
+            preferences.remove(AUTO_CONNECT_BSSID)
+            preferences.remove(AUTO_CONNECT_UPDATED_AT)
+        }
+    }
+
+    /**
      * 모든 PTPIP 설정 초기화
      */
     suspend fun clearAllSettings() {
         context.ptpipDataStore.edit { preferences ->
             preferences.clear()
         }
+    }
+
+    // ── 저장된 Wi-Fi 자격 증명 관리 ──
+
+    /**
+     * 저장된 Wi-Fi 자격 증명 목록 (Flow)
+     */
+    val savedWifiCredentials: Flow<List<SavedWifiCredential>> = context.ptpipDataStore.data
+        .map { preferences ->
+            val json = preferences[SAVED_WIFI_CREDENTIALS] ?: return@map emptyList()
+            parseSavedCredentials(json)
+        }
+
+    /**
+     * Wi-Fi 연결 성공 시 자격 증명 저장 (SSID 기준 upsert)
+     */
+    suspend fun saveWifiCredential(credential: SavedWifiCredential) {
+        context.ptpipDataStore.edit { preferences ->
+            val existing = parseSavedCredentials(preferences[SAVED_WIFI_CREDENTIALS] ?: "[]")
+            val updated = existing.filter { it.ssid != credential.ssid } + credential
+            preferences[SAVED_WIFI_CREDENTIALS] = serializeCredentials(updated)
+        }
+    }
+
+    /**
+     * SSID로 저장된 자격 증명 조회
+     */
+    suspend fun getSavedWifiCredential(ssid: String): SavedWifiCredential? {
+        val preferences = context.ptpipDataStore.data.first()
+        val json = preferences[SAVED_WIFI_CREDENTIALS] ?: return null
+        return parseSavedCredentials(json).find { it.ssid == ssid }
+    }
+
+    /**
+     * 저장된 Wi-Fi 자격 증명 삭제
+     */
+    suspend fun deleteSavedWifiCredential(ssid: String) {
+        context.ptpipDataStore.edit { preferences ->
+            val existing = parseSavedCredentials(preferences[SAVED_WIFI_CREDENTIALS] ?: "[]")
+            val updated = existing.filter { it.ssid != ssid }
+            preferences[SAVED_WIFI_CREDENTIALS] = serializeCredentials(updated)
+        }
+    }
+
+    private fun parseSavedCredentials(json: String): List<SavedWifiCredential> {
+        return try {
+            val array = JSONArray(json)
+            (0 until array.length()).map { i ->
+                val obj = array.getJSONObject(i)
+                SavedWifiCredential(
+                    ssid = obj.getString("ssid"),
+                    passphrase = obj.getString("passphrase"),
+                    security = obj.optString("security", "WPA2"),
+                    bssid = if (obj.has("bssid")) obj.getString("bssid") else null,
+                    lastConnectedAt = obj.optLong("lastConnectedAt", 0)
+                )
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun serializeCredentials(credentials: List<SavedWifiCredential>): String {
+        val array = JSONArray()
+        credentials.forEach { c ->
+            array.put(JSONObject().apply {
+                put("ssid", c.ssid)
+                put("passphrase", c.passphrase)
+                put("security", c.security)
+                c.bssid?.let { put("bssid", it) }
+                put("lastConnectedAt", c.lastConnectedAt)
+            })
+        }
+        return array.toString()
     }
 }

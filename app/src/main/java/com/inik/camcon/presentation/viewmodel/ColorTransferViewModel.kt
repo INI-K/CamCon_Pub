@@ -19,7 +19,7 @@ import java.io.FileOutputStream
 import javax.inject.Inject
 
 /**
- * 색감 전송 기능을 위한 ViewModel
+ * ViewModel for color transfer functionality.
  */
 @HiltViewModel
 class ColorTransferViewModel @Inject constructor(
@@ -47,25 +47,16 @@ class ColorTransferViewModel @Inject constructor(
     private val _selectedImagePath = MutableStateFlow<String?>(null)
     val selectedImagePath: StateFlow<String?> = _selectedImagePath.asStateFlow()
 
-    /**
-     * 색감 전송 처리 상태를 업데이트합니다
-     */
     private fun updateProcessingStatus(status: String, progress: Float = 0f) {
         _processingStatus.value = status
         _processingProgress.value = progress
     }
 
-    /**
-     * 성능 정보를 업데이트합니다
-     */
     private fun updatePerformanceInfo(processingTime: Long, isNativeUsed: Boolean) {
         val method = if (isNativeUsed) "네이티브 최적화" else "코틀린 폴백"
         _performanceInfo.value = "처리 시간: ${processingTime}ms ($method)"
     }
 
-    /**
-     * 사용 가능한 이미지 목록을 로드합니다
-     */
     fun loadAvailableImages(context: Context) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -95,9 +86,6 @@ class ColorTransferViewModel @Inject constructor(
         }
     }
 
-    /**
-     * 갤러리에서 선택한 이미지를 처리합니다
-     */
     fun handleImageSelection(uri: Uri, context: Context) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -112,17 +100,17 @@ class ColorTransferViewModel @Inject constructor(
                 val fileName = "color_ref_${System.currentTimeMillis()}.jpg"
                 val targetFile = File(imageDir, fileName)
 
-                // URI에서 파일로 복사
+                // Copy from URI to file
                 context.contentResolver.openInputStream(uri)?.use { inputStream ->
                     FileOutputStream(targetFile).use { outputStream ->
                         inputStream.copyTo(outputStream)
                     }
                 }
 
-                // 이미지 파일 유효성 검사
+                // Validate image file
                 if (colorTransferUseCase.isValidImageFile(targetFile.absolutePath)) {
                     _selectedImagePath.value = targetFile.absolutePath
-                    loadAvailableImages(context) // 목록 새로고침
+                    loadAvailableImages(context)
                 } else {
                     targetFile.delete()
                     _errorMessage.value = "유효하지 않은 이미지 파일입니다"
@@ -136,37 +124,27 @@ class ColorTransferViewModel @Inject constructor(
         }
     }
 
-    /**
-     * 이미지 경로를 선택합니다
-     */
     fun selectImagePath(path: String) {
         _selectedImagePath.value = path
     }
 
-    /**
-     * 에러 메시지를 초기화합니다
-     */
     fun clearError() {
         _errorMessage.value = null
     }
 
-    /**
-     * 성능 정보를 초기화합니다
-     */
     fun clearPerformanceInfo() {
         _performanceInfo.value = null
     }
 
-    /**
-     * 처리 상태를 초기화합니다
-     */
     fun clearProcessingStatus() {
         _processingStatus.value = null
         _processingProgress.value = 0f
     }
 
     /**
-     * 미리보기용 색감 전송 처리
+     * Preview color transfer processing.
+     * Uses scaled images (maxSize=400) for fast processing.
+     * Returns a Bitmap for UI display by loading the result file from the UseCase.
      */
     suspend fun processColorTransfer(
         referenceImagePath: String,
@@ -174,80 +152,59 @@ class ColorTransferViewModel @Inject constructor(
         intensity: Float
     ): Bitmap? = withContext(Dispatchers.IO) {
         try {
-            android.util.Log.d("ColorTransferViewModel", "🚀 미리보기 색감 전송 시작")
-            android.util.Log.d(
-                "ColorTransferViewModel",
-                "  참조: ${java.io.File(referenceImagePath).name}"
-            )
-            android.util.Log.d(
-                "ColorTransferViewModel",
-                "  대상: ${java.io.File(targetImagePath).name}"
-            )
-            android.util.Log.d("ColorTransferViewModel", "  강도: ${intensity * 100}%")
+            android.util.Log.d("ColorTransferViewModel", "Preview color transfer start")
 
             updateProcessingStatus("색감 전송 처리 중...", 0.5f)
 
-            // 미리보기용으로 크기를 줄여서 빠른 처리
-            val targetBitmap = loadScaledBitmap(targetImagePath, 400)
-            val referenceBitmap = loadScaledBitmap(referenceImagePath, 400)
-
-            if (targetBitmap == null || referenceBitmap == null) {
-                _errorMessage.value = "이미지 로드에 실패했습니다"
-                android.util.Log.e("ColorTransferViewModel", "❌ 이미지 로드 실패")
-                return@withContext null
-            }
-
-            android.util.Log.d(
-                "ColorTransferViewModel",
-                "📐 미리보기 이미지 크기: ${targetBitmap.width}x${targetBitmap.height}"
-            )
-
             val startTime = System.currentTimeMillis()
 
-            // GPU 가속을 시도하기 위해 캐시된 참조 통계 사용
-            android.util.Log.d("ColorTransferViewModel", "🎮 GPU 가속 색감 전송 시도...")
-            val result = try {
-                // GPU 가속 메서드 사용
+            // Try GPU-cached method first with scaled preview size
+            android.util.Log.d("ColorTransferViewModel", "GPU-cached color transfer attempt...")
+            val resultPath = try {
                 colorTransferUseCase.applyColorTransferWithGPUCached(
-                    targetBitmap,
+                    targetImagePath,
                     referenceImagePath,
-                    intensity
+                    intensity,
+                    maxSize = 400
                 )
             } catch (e: Exception) {
-                android.util.Log.w("ColorTransferViewModel", "⚠️ GPU 가속 실패, CPU 폴백: ${e.message}")
-                // GPU 실패 시 일반 메서드 사용
+                android.util.Log.w("ColorTransferViewModel", "GPU-cached failed, CPU fallback: ${e.message}")
                 colorTransferUseCase.applyColorTransfer(
-                    targetBitmap,
-                    referenceBitmap,
-                    intensity
+                    targetImagePath,
+                    referenceImagePath,
+                    intensity,
+                    maxSize = 400
                 )
             }
 
             val processingTime = System.currentTimeMillis() - startTime
 
-            if (result != null) {
-                android.util.Log.d("ColorTransferViewModel", "✅ 색감 전송 성공 (${processingTime}ms)")
-                updatePerformanceInfo(processingTime, true)
-                updateProcessingStatus("처리 완료", 1f)
-            } else {
-                android.util.Log.e("ColorTransferViewModel", "❌ 색감 전송 실패")
-                _errorMessage.value = "색감 전송 처리에 실패했습니다"
+            if (resultPath != null) {
+                val bitmap = BitmapFactory.decodeFile(resultPath)
+                // Clean up temp file
+                File(resultPath).delete()
+
+                if (bitmap != null) {
+                    android.util.Log.d("ColorTransferViewModel", "Color transfer succeeded (${processingTime}ms)")
+                    updatePerformanceInfo(processingTime, true)
+                    updateProcessingStatus("처리 완료", 1f)
+                    return@withContext bitmap
+                }
             }
 
-            // 메모리 해제
-            targetBitmap.recycle()
-            referenceBitmap.recycle()
-
-            result
+            android.util.Log.e("ColorTransferViewModel", "Color transfer failed")
+            _errorMessage.value = "색감 전송 처리에 실패했습니다"
+            null
         } catch (e: Exception) {
-            android.util.Log.e("ColorTransferViewModel", "❌ 색감 전송 처리 예외: ${e.message}")
+            android.util.Log.e("ColorTransferViewModel", "Color transfer exception: ${e.message}")
             _errorMessage.value = "색감 전송 처리 중 오류가 발생했습니다: ${e.message}"
             null
         }
     }
 
     /**
-     * 원본 크기 색감 전송 처리
+     * Full-size color transfer processing.
+     * Returns a Bitmap for UI display by loading the result file from the UseCase.
      */
     suspend fun processColorTransferFullSize(
         referenceImagePath: String,
@@ -255,122 +212,52 @@ class ColorTransferViewModel @Inject constructor(
         intensity: Float
     ): Bitmap? = withContext(Dispatchers.IO) {
         try {
-            android.util.Log.d("ColorTransferViewModel", "🖼️ 원본 크기 색감 전송 시작")
-            android.util.Log.d(
-                "ColorTransferViewModel",
-                "  참조: ${java.io.File(referenceImagePath).name}"
-            )
-            android.util.Log.d(
-                "ColorTransferViewModel",
-                "  대상: ${java.io.File(targetImagePath).name}"
-            )
-            android.util.Log.d("ColorTransferViewModel", "  강도: ${intensity * 100}%")
+            android.util.Log.d("ColorTransferViewModel", "Full-size color transfer start")
 
             updateProcessingStatus("원본 크기로 색감 전송 처리 중...", 0.3f)
-
-            val targetBitmap = BitmapFactory.decodeFile(targetImagePath)
-            val referenceBitmap = BitmapFactory.decodeFile(referenceImagePath)
-
-            if (targetBitmap == null || referenceBitmap == null) {
-                _errorMessage.value = "이미지 로드에 실패했습니다"
-                android.util.Log.e("ColorTransferViewModel", "❌ 원본 이미지 로드 실패")
-                return@withContext null
-            }
-
-            android.util.Log.d(
-                "ColorTransferViewModel",
-                "📐 원본 이미지 크기: ${targetBitmap.width}x${targetBitmap.height}"
-            )
 
             updateProcessingStatus("GPU 가속 색감 전송 적용 중...", 0.7f)
 
             val startTime = System.currentTimeMillis()
 
-            // GPU 가속 메서드를 우선 사용
-            android.util.Log.d("ColorTransferViewModel", "🎮 GPU 가속 원본 크기 처리 시도...")
-            val result = try {
+            // Try GPU method first (full size, no maxSize limit)
+            android.util.Log.d("ColorTransferViewModel", "GPU full-size processing attempt...")
+            val resultPath = try {
                 colorTransferUseCase.applyColorTransferWithGPU(
                     targetImagePath,
                     referenceImagePath,
                     intensity
                 )
             } catch (e: Exception) {
-                android.util.Log.w("ColorTransferViewModel", "⚠️ GPU 가속 실패, CPU 폴백: ${e.message}")
-                // GPU 실패 시 CPU 폴백
+                android.util.Log.w("ColorTransferViewModel", "GPU failed, CPU fallback: ${e.message}")
                 colorTransferUseCase.applyColorTransfer(
-                    targetBitmap,
-                    referenceBitmap,
+                    targetImagePath,
+                    referenceImagePath,
                     intensity
                 )
             }
 
             val processingTime = System.currentTimeMillis() - startTime
 
-            if (result != null) {
-                android.util.Log.d(
-                    "ColorTransferViewModel",
-                    "✅ 원본 크기 색감 전송 성공 (${processingTime}ms)"
-                )
-                updatePerformanceInfo(processingTime, true)
-                updateProcessingStatus("처리 완료", 1f)
-            } else {
-                android.util.Log.e("ColorTransferViewModel", "❌ 원본 크기 색감 전송 실패")
-                _errorMessage.value = "원본 크기 색감 전송에 실패했습니다"
+            if (resultPath != null) {
+                val bitmap = BitmapFactory.decodeFile(resultPath)
+                // Clean up temp file
+                File(resultPath).delete()
+
+                if (bitmap != null) {
+                    android.util.Log.d("ColorTransferViewModel", "Full-size color transfer succeeded (${processingTime}ms)")
+                    updatePerformanceInfo(processingTime, true)
+                    updateProcessingStatus("처리 완료", 1f)
+                    return@withContext bitmap
+                }
             }
 
-            // 메모리 해제
-            targetBitmap.recycle()
-            referenceBitmap.recycle()
-
-            result
-        } catch (e: Exception) {
-            android.util.Log.e("ColorTransferViewModel", "❌ 원본 크기 색감 전송 예외: ${e.message}")
-            _errorMessage.value = "원본 크기 색감 전송 중 오류가 발생했습니다: ${e.message}"
+            android.util.Log.e("ColorTransferViewModel", "Full-size color transfer failed")
+            _errorMessage.value = "원본 크기 색감 전송에 실패했습니다"
             null
-        }
-    }
-
-    /**
-     * 지정된 크기로 비트맵을 로드합니다
-     */
-    private fun loadScaledBitmap(imagePath: String, maxSize: Int): Bitmap? {
-        return try {
-            // 먼저 이미지 크기 정보만 가져오기
-            val options = BitmapFactory.Options().apply {
-                inJustDecodeBounds = true
-            }
-            BitmapFactory.decodeFile(imagePath, options)
-
-            // 스케일링 계산
-            val scale = maxOf(options.outWidth, options.outHeight) / maxSize.toFloat()
-            val sampleSize = if (scale > 1f) scale.toInt() else 1
-
-            // 실제 비트맵 로드
-            val loadOptions = BitmapFactory.Options().apply {
-                inSampleSize = sampleSize
-                inPreferredConfig = Bitmap.Config.ARGB_8888
-            }
-
-            val bitmap = BitmapFactory.decodeFile(imagePath, loadOptions)
-
-            // 정확한 크기로 리사이즈
-            if (bitmap != null && (bitmap.width > maxSize || bitmap.height > maxSize)) {
-                val aspectRatio = bitmap.width.toFloat() / bitmap.height.toFloat()
-                val (newWidth, newHeight) = if (aspectRatio > 1) {
-                    maxSize to (maxSize / aspectRatio).toInt()
-                } else {
-                    (maxSize * aspectRatio).toInt() to maxSize
-                }
-
-                val scaledBitmap = Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
-                if (scaledBitmap != bitmap) {
-                    bitmap.recycle()
-                }
-                scaledBitmap
-            } else {
-                bitmap
-            }
         } catch (e: Exception) {
+            android.util.Log.e("ColorTransferViewModel", "Full-size color transfer exception: ${e.message}")
+            _errorMessage.value = "원본 크기 색감 전송 중 오류가 발생했습니다: ${e.message}"
             null
         }
     }

@@ -6,9 +6,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.Icon
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.runtime.Composable
@@ -19,6 +19,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -92,14 +93,34 @@ private fun PhotoLoadError() {
         Icon(
             Icons.Default.BrokenImage,
             contentDescription = null,
-            tint = Color.White.copy(alpha = 0.6f),
+            tint = com.inik.camcon.presentation.theme.TextPrimary.copy(alpha = 0.6f),
             modifier = Modifier.size(64.dp)
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = context.getString(R.string.image_load_failed),
-            style = MaterialTheme.typography.body2,
-            color = Color.White.copy(alpha = 0.6f)
+            style = MaterialTheme.typography.bodyMedium,
+            color = com.inik.camcon.presentation.theme.TextPrimary.copy(alpha = 0.6f)
+        )
+    }
+}
+
+/**
+ * Photo Slide 프리뷰
+ */
+@Preview(name = "Photo Slide - Placeholder", showBackground = true)
+@Composable
+private fun PhotoSlidePreview() {
+    MaterialTheme {
+        PhotoSlide(
+            photo = CameraPhoto(
+                name = "IMG_0001.JPG",
+                path = "/sdcard/DCIM/Camera/IMG_0001.JPG",
+                size = 2048576,
+                date = System.currentTimeMillis() / 1000,
+                width = 4032,
+                height = 3024
+            )
         )
     }
 }

@@ -1,5 +1,10 @@
 package com.inik.camcon.presentation.ui.screens.components
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -11,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -20,232 +24,261 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.ShootingMode
+import com.inik.camcon.presentation.theme.Background
+import com.inik.camcon.presentation.theme.Border
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.Primary
+import com.inik.camcon.presentation.theme.PrimaryDark
+import com.inik.camcon.presentation.theme.SurfaceElevated
+import com.inik.camcon.presentation.theme.TextMuted
+import com.inik.camcon.presentation.theme.TextPrimary
+import com.inik.camcon.presentation.theme.TextSecondary
+import com.inik.camcon.presentation.viewmodel.CameraCaptureState
 import com.inik.camcon.presentation.viewmodel.CameraUiState
-import com.inik.camcon.presentation.viewmodel.CameraViewModel
+import com.inik.camcon.domain.model.ThemeMode
+import com.inik.camcon.presentation.theme.OnPrimary
 
 /**
- * 촬영 관련 컨트롤을 표시하는 컴포넌트
+ * 단순화된 촬영 컨트롤 컴포넌트 — state+callback 패턴
+ *
+ * @param captureState 촬영 관련 sub-state
+ * @param isConnected 카메라 연결 여부
+ * @param onCapture 촬영 콜백
+ * @param onAutoFocus AF 콜백
+ * @param onShowTimelapseDialog 타임랩스 다이얼로그 콜백
+ * @param isVertical 세로 레이아웃 여부
+ * @param onGalleryClick 갤러리 클릭 콜백
  */
 @Composable
 fun CaptureControls(
-    uiState: CameraUiState,
-    viewModel: CameraViewModel,
+    captureState: CameraCaptureState,
+    isConnected: Boolean,
+    onCapture: () -> Unit,
+    onAutoFocus: () -> Unit,
     onShowTimelapseDialog: () -> Unit,
     isVertical: Boolean,
+    onGalleryClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    CaptureControlsCore(
-        uiState = uiState,
-        onCaptureClick = {
-            when (uiState.shootingMode) {
-                ShootingMode.TIMELAPSE -> onShowTimelapseDialog()
-                else -> viewModel.capturePhoto()
-            }
-        },
-        onFocusClick = { viewModel.performAutoFocus() },
-        onGalleryClick = { },
-        isVertical = isVertical,
-        modifier = modifier
-    )
+    if (isVertical) {
+        Column(
+            modifier = modifier,
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            CaptureControlsContent(
+                captureState = captureState,
+                isConnected = isConnected,
+                onCapture = onCapture,
+                onAutoFocus = onAutoFocus,
+                onShowTimelapseDialog = onShowTimelapseDialog,
+                onGalleryClick = onGalleryClick
+            )
+        }
+    } else {
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            CaptureControlsContent(
+                captureState = captureState,
+                isConnected = isConnected,
+                onCapture = onCapture,
+                onAutoFocus = onAutoFocus,
+                onShowTimelapseDialog = onShowTimelapseDialog,
+                onGalleryClick = onGalleryClick
+            )
+        }
+    }
 }
 
 @Composable
 private fun CaptureControlsContent(
-    uiState: CameraUiState,
-    onCaptureClick: () -> Unit,
-    onFocusClick: () -> Unit,
-    onGalleryClick: () -> Unit
+    captureState: CameraCaptureState,
+    isConnected: Boolean,
+    onCapture: () -> Unit,
+    onAutoFocus: () -> Unit,
+    onShowTimelapseDialog: () -> Unit,
+    onGalleryClick: () -> Unit = {}
 ) {
     // 갤러리 버튼
-    IconButton(
-        onClick = onGalleryClick,
-        modifier = Modifier
-            .size(50.dp)
-            .background(Color(0x66384456), CircleShape)
+    Surface(
+        color = SurfaceElevated,
+        shape = CircleShape,
+        border = BorderStroke(1.dp, Border),
+        modifier = Modifier.size(52.dp)
     ) {
-        Icon(
-            Icons.Default.PhotoLibrary,
-            contentDescription = stringResource(R.string.gallery),
-            tint = Color(0xFFF2D8BE),
-            modifier = Modifier.size(30.dp)
-        )
+        IconButton(
+            onClick = onGalleryClick,
+            modifier = Modifier.size(52.dp)
+        ) {
+            Icon(
+                Icons.Default.PhotoLibrary,
+                contentDescription = stringResource(R.string.gallery),
+                tint = TextSecondary,
+                modifier = Modifier.size(24.dp)
+            )
+        }
     }
 
-    // 메인 촬영 버튼
-    val ringColor = if (uiState.isConnected) Color(0xFFFFD8B3) else Color(0xFF8A8A8A)
-    val coreColor = if (uiState.isConnected) Color(0xFFCB5B15) else Color(0xFF5E636B)
+    // 메인 촬영 버튼 — DSLR 이중 링 셔터 스타일
+    val scale by animateFloatAsState(
+        targetValue = if (captureState.isCapturing) 0.93f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessHigh
+        ),
+        label = "capture_button_scale"
+    )
+
+    val isEnabled = isConnected && !captureState.isCapturing
+
+    // 바깥 장식 링
     Box(
+        contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(84.dp)
-            .clip(CircleShape)
-            .border(3.dp, ringColor, CircleShape)
-            .clickable(
-                enabled = uiState.isConnected && !uiState.isCapturing
-            ) { onCaptureClick() },
-        contentAlignment = Alignment.Center
+            .size(88.dp)
+            .scale(scale)
+            .border(
+                width = 1.5.dp,
+                color = if (isEnabled) Primary.copy(alpha = 0.3f) else TextMuted.copy(alpha = 0.12f),
+                shape = CircleShape
+            )
     ) {
-        if (uiState.isCapturing) {
-            CircularProgressIndicator(
-                color = ringColor,
-                modifier = Modifier.size(62.dp)
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .size(66.dp)
-                    .clip(CircleShape)
-                    .background(coreColor)
-            )
+        // 안쪽 버튼
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .shadow(
+                    elevation = if (isEnabled) 20.dp else 0.dp,
+                    shape = CircleShape,
+                    ambientColor = Primary.copy(alpha = 0.4f),
+                    spotColor = Primary.copy(alpha = 0.6f)
+                )
+                .clip(CircleShape)
+                .background(
+                    color = if (isEnabled) Primary else TextMuted.copy(alpha = 0.25f)
+                )
+                .semantics {
+                    role = Role.Button
+                    contentDescription = "촬영"
+                }
+                .clickable(enabled = isEnabled) {
+                    when (captureState.shootingMode) {
+                        ShootingMode.TIMELAPSE -> onShowTimelapseDialog()
+                        else -> onCapture()
+                    }
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            if (captureState.isCapturing) {
+                CircularProgressIndicator(
+                    color = OnPrimary,
+                    modifier = Modifier.size(36.dp),
+                    strokeWidth = 2.5.dp
+                )
+            }
         }
     }
 
     // 포커스 버튼
-    IconButton(
-        onClick = onFocusClick,
-        enabled = uiState.isConnected && !uiState.isFocusing,
-        modifier = Modifier
-            .size(50.dp)
-            .background(Color(0x66384456), CircleShape)
+    Surface(
+        color = if (isConnected) SurfaceElevated else SurfaceElevated.copy(alpha = 0.5f),
+        shape = CircleShape,
+        border = BorderStroke(
+            1.dp,
+            if (isConnected) Border else TextMuted.copy(alpha = 0.1f)
+        ),
+        modifier = Modifier.size(52.dp)
     ) {
-        if (uiState.isFocusing) {
-            CircularProgressIndicator(
-                color = Color(0xFFFFD8B3),
-                modifier = Modifier.size(24.dp),
-                strokeWidth = 2.dp
-            )
-        } else {
-            Icon(
-                Icons.Default.CenterFocusStrong,
-                contentDescription = stringResource(R.string.focus),
-                tint = if (uiState.isConnected) Color(0xFFFFD8B3) else Color.Gray,
-                modifier = Modifier.size(32.dp)
-            )
-        }
-    }
-}
-@Composable
-private fun CaptureControlsCore(
-    uiState: CameraUiState,
-    onCaptureClick: () -> Unit,
-    onFocusClick: () -> Unit,
-    onGalleryClick: () -> Unit,
-    isVertical: Boolean,
-    modifier: Modifier = Modifier
-) {
-    val shellModifier = modifier
-        .shadow(10.dp, RoundedCornerShape(24.dp))
-        .clip(RoundedCornerShape(24.dp))
-    if (isVertical) {
-        Surface(
-            modifier = shellModifier,
-            color = Color.Transparent
+        IconButton(
+            onClick = onAutoFocus,
+            enabled = isConnected && !captureState.isFocusing,
+            modifier = Modifier.size(52.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color(0xCC151C2A),
-                                Color(0xCC1C2333),
-                                Color(0xCC161D2C)
-                            )
-                        )
-                    )
-                    .padding(horizontal = 12.dp, vertical = 14.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                CaptureControlsContent(
-                    uiState = uiState,
-                    onCaptureClick = onCaptureClick,
-                    onFocusClick = onFocusClick,
-                    onGalleryClick = onGalleryClick
+            if (captureState.isFocusing) {
+                CircularProgressIndicator(
+                    color = Primary,
+                    modifier = Modifier.size(22.dp),
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Icon(
+                    Icons.Default.CenterFocusStrong,
+                    contentDescription = stringResource(R.string.focus),
+                    tint = if (isConnected) TextSecondary else TextMuted,
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }
-    } else {
-        Surface(
-            modifier = shellModifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            color = Color.Transparent
+    }
+}
+
+@Preview(name = "Capture Controls", showBackground = true)
+@Composable
+private fun CaptureControlsPreview() {
+    CamConTheme(themeMode = ThemeMode.DARK) {
+        Column(
+            modifier = Modifier
+                .background(Background)
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(32.dp)
         ) {
+            // 연결됨
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(
-                                Color(0xCC151C2A),
-                                Color(0xCC1C2333),
-                                Color(0xCC161D2C)
-                            )
-                        )
-                    )
-                    .padding(horizontal = 18.dp, vertical = 10.dp),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 CaptureControlsContent(
-                    uiState = uiState,
-                    onCaptureClick = onCaptureClick,
-                    onFocusClick = onFocusClick,
-                    onGalleryClick = onGalleryClick
+                    captureState = CameraCaptureState(
+                        isCapturing = false,
+                        isFocusing = false,
+                        shootingMode = ShootingMode.SINGLE
+                    ),
+                    isConnected = true,
+                    onCapture = {},
+                    onAutoFocus = {},
+                    onShowTimelapseDialog = { }
                 )
             }
-        }
-    }
-}
 
-@Preview(name = "Capture Controls - Portrait", showBackground = true)
-@Composable
-private fun CaptureControlsPortraitPreview() {
-    CamConTheme {
-        Column(
-            modifier = Modifier
-                .background(Color(0xFF121722))
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            // 기본 상태
-            CaptureControlsCore(
-                uiState = CameraUiState(
+            // 촬영 중
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CaptureControlsContent(
+                    captureState = CameraCaptureState(
+                        isCapturing = true,
+                        isFocusing = false,
+                        shootingMode = ShootingMode.BURST
+                    ),
                     isConnected = true,
-                    isCapturing = false,
-                    isFocusing = false,
-                    shootingMode = ShootingMode.SINGLE
-                ),
-                onCaptureClick = { },
-                onFocusClick = { },
-                onGalleryClick = { },
-                isVertical = false
-            )
-
-            // 촬영 중 상태
-            CaptureControlsCore(
-                uiState = CameraUiState(
-                    isConnected = true,
-                    isCapturing = true,
-                    isFocusing = false,
-                    shootingMode = ShootingMode.BURST
-                ),
-                onCaptureClick = { },
-                onFocusClick = { },
-                onGalleryClick = { },
-                isVertical = true
-            )
+                    onCapture = {},
+                    onAutoFocus = {},
+                    onShowTimelapseDialog = { }
+                )
+            }
         }
     }
 }

@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalMaterialApi::class)
-
 package com.inik.camcon.presentation.ui.screens.components
 
 import androidx.compose.foundation.background
@@ -13,42 +11,49 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.AlertDialog
-import androidx.compose.material.Button
-import androidx.compose.material.Card
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.inik.camcon.R
+import com.inik.camcon.presentation.theme.Overlay
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
+import com.inik.camcon.domain.model.ThemeMode
+import com.inik.camcon.presentation.theme.Background
+import com.inik.camcon.presentation.theme.CamConTheme
 
 /**
  * 간단한 로딩 오버레이
  */
 @Composable
 fun LoadingOverlay(
-    message: String = "로딩 중...",
+    message: String = "",
     progress: Float? = null
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.5f)),
+            .background(Overlay),
         contentAlignment = Alignment.Center
     ) {
         Card(
             shape = RoundedCornerShape(12.dp),
-            backgroundColor = MaterialTheme.colors.surface,
-            elevation = 6.dp,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
             modifier = Modifier.padding(24.dp)
         ) {
             Column(
@@ -60,13 +65,13 @@ fun LoadingOverlay(
                     CircularProgressIndicator(
                         progress = progress,
                         modifier = Modifier.size(48.dp),
-                        color = MaterialTheme.colors.primary,
+                        color = MaterialTheme.colorScheme.primary,
                         strokeWidth = 3.dp
                     )
                 } else {
                     CircularProgressIndicator(
                         modifier = Modifier.size(48.dp),
-                        color = MaterialTheme.colors.primary,
+                        color = MaterialTheme.colorScheme.primary,
                         strokeWidth = 3.dp
                     )
                 }
@@ -75,8 +80,8 @@ fun LoadingOverlay(
 
                 Text(
                     text = message,
-                    style = MaterialTheme.typography.body2,
-                    color = MaterialTheme.colors.onSurface,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center
                 )
             }
@@ -95,13 +100,13 @@ fun UsbInitializationOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.7f)),
+            .background(Overlay.copy(alpha = 0.7f)),
         contentAlignment = Alignment.Center
     ) {
         Card(
             shape = RoundedCornerShape(16.dp),
-            backgroundColor = MaterialTheme.colors.surface,
-            elevation = 8.dp,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
             modifier = Modifier
                 .padding(32.dp)
                 .width(300.dp)
@@ -116,13 +121,13 @@ fun UsbInitializationOverlay(
                     CircularProgressIndicator(
                         progress = progress,
                         modifier = Modifier.size(60.dp),
-                        color = MaterialTheme.colors.primary,
+                        color = MaterialTheme.colorScheme.primary,
                         strokeWidth = 4.dp
                     )
                 } else {
                     CircularProgressIndicator(
                         modifier = Modifier.size(60.dp),
-                        color = MaterialTheme.colors.primary,
+                        color = MaterialTheme.colorScheme.primary,
                         strokeWidth = 4.dp
                     )
                 }
@@ -131,8 +136,8 @@ fun UsbInitializationOverlay(
 
                 Text(
                     text = message,
-                    style = MaterialTheme.typography.body1,
-                    color = MaterialTheme.colors.onSurface,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center,
                     fontWeight = FontWeight.Medium
                 )
@@ -140,9 +145,9 @@ fun UsbInitializationOverlay(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "잠시만 기다려주세요...",
-                    style = MaterialTheme.typography.caption,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
+                    text = stringResource(R.string.usb_init_please_wait),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center
                 )
             }
@@ -162,30 +167,30 @@ fun PtpTimeoutDialog(
         onDismissRequest = onDismissRequest,
         title = {
             Text(
-                text = "카메라 연결 오류",
-                style = MaterialTheme.typography.h6,
+                text = stringResource(R.string.usb_init_camera_connection_error),
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colors.error
+                color = MaterialTheme.colorScheme.error
             )
         },
         text = {
             Column {
                 Text(
-                    text = "카메라 연결 중 타임아웃이 발생했습니다.",
-                    style = MaterialTheme.typography.body1,
-                    color = MaterialTheme.colors.onSurface
+                    text = stringResource(R.string.usb_init_timeout_message),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "앱을 재시작하면 문제가 해결됩니다.",
-                    style = MaterialTheme.typography.body2,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f)
+                    text = stringResource(R.string.usb_init_restart_fix),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "• 카메라 USB 케이블을 확인해주세요\n• 카메라가 PC 모드로 설정되어 있는지 확인해주세요",
-                    style = MaterialTheme.typography.caption,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                    text = stringResource(R.string.usb_init_check_instructions),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     fontSize = 12.sp
                 )
             }
@@ -194,19 +199,47 @@ fun PtpTimeoutDialog(
             Button(
                 onClick = onRestartRequest
             ) {
-                Text("앱 재시작")
+                Text(stringResource(R.string.camera_control_app_restart))
             }
         },
         dismissButton = {
             TextButton(
                 onClick = onDismissRequest
             ) {
-                Text("닫기")
+                Text(stringResource(R.string.close))
             }
         },
         properties = DialogProperties(
-            dismissOnBackPress = false,
+            dismissOnBackPress = true,
             dismissOnClickOutside = false
         )
     )
+}
+
+@Preview(name = "Loading Overlay", showBackground = true)
+@Composable
+private fun LoadingOverlayPreview() {
+    CamConTheme(themeMode = ThemeMode.DARK) {
+        Box(modifier = Modifier.background(Background).fillMaxSize()) {
+            LoadingOverlay(message = "카메라 연결 중...")
+        }
+    }
+}
+
+@Preview(name = "USB Initialization Overlay", showBackground = true)
+@Composable
+private fun UsbInitializationOverlayPreview() {
+    CamConTheme(themeMode = ThemeMode.DARK) {
+        Box(modifier = Modifier.background(Background).fillMaxSize()) {
+            UsbInitializationOverlay(message = "USB 카메라 초기화 중...", progress = 0.6f)
+        }
+    }
+}
+
+@Preview(name = "PTP Timeout Dialog", showBackground = true)
+@Composable
+private fun PtpTimeoutDialogPreview() {
+    CamConTheme(themeMode = ThemeMode.DARK) {
+        PtpTimeoutDialog(onRestartRequest = {})
+    }
 }

@@ -6,6 +6,21 @@ package com.inik.camcon.utils
 object Constants {
 
     /**
+     * 로깅 관련 상수
+     */
+    object Logging {
+        // 개발 모드에서만 상세 로그 활성화
+        const val ENABLE_VERBOSE_LOGGING = false
+
+        // 특정 컴포넌트의 로그를 비활성화하고 싶을 때 사용
+        const val ENABLE_CAMERA_EVENT_LOGS = true
+        const val ENABLE_USB_CONNECTION_LOGS = true
+        const val ENABLE_PTPIP_CONNECTION_LOGS = true
+        const val ENABLE_COLOR_TRANSFER_LOGS = true
+        const val ENABLE_BACKGROUND_SERVICE_LOGS = true
+    }
+
+    /**
      * 파일 저장 관련 경로 - 외부 저장소 우선순위 시스템
      */
     object FilePaths {
@@ -134,6 +149,44 @@ object Constants {
         // 재시도 관련
         const val MAX_RETRY_COUNT = 3
         const val RETRY_DELAY_MS = 1000L
+        
+        // Wi-Fi 연결 안정화 지연 시간
+        const val WIFI_STABILIZATION_DELAY_MS = 800L
+        const val WIFI_INFO_FETCH_DELAY_MS = 500L
+    }
+
+    /**
+     * 타이밍 관련 상수 (지연 시간, 타임아웃 등)
+     */
+    object Timing {
+        // 이벤트 리스너 상태 리셋 지연
+        const val EVENT_LISTENER_RESET_DELAY_MS = 1000L
+        const val CAMERA_CLOSE_RESET_DELAY_MS = 2000L
+        
+        // USB 카메라 초기화 타임아웃
+        const val USB_CAMERA_INIT_TIMEOUT_MS = 10000L
+        const val PTPIP_CAMERA_INIT_TIMEOUT_MS = 5000L
+        
+        // 이벤트 리스너 안정화 대기
+        const val EVENT_LISTENER_STABILIZATION_DELAY_MS = 500L
+        
+        // USB 분리 처리 상태 리셋 지연
+        const val USB_DISCONNECTION_RESET_DELAY_MS = 5000L
+        
+        // OOM 복구 지연
+        const val OOM_RECOVERY_DELAY_MS = 100L
+    }
+
+    /**
+     * 캐시 관련 상수
+     */
+    object Cache {
+        // 썸네일 캐시 크기 제한
+        const val MAX_THUMBNAIL_CACHE_SIZE = 50
+        // 고해상도 이미지 캐시 크기 제한
+        const val MAX_FULL_IMAGE_CACHE_SIZE = 10
+        // 색감 전송 통계 캐시 크기
+        const val MAX_COLOR_TRANSFER_STATS_CACHE_SIZE = 10
     }
 
     /**

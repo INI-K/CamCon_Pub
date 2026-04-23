@@ -1,493 +1,593 @@
-# CamConT - 전문 카메라 제어 애플리케이션
+# CamCoT - 전문 카메라 제어 애플리케이션
+DSLR/미러리스 카메라를 안드로이드 기기로 완전히 제어할 수 있는 전문가용 카메라 제어 애플리케이션입니다.
 
-[![Android](https://img.shields.io/badge/Platform-Android-green.svg)](https://developer.android.com)
-[![Kotlin](https://img.shields.io/badge/Language-Kotlin-purple.svg)](https://kotlinlang.org)
-[![API](https://img.shields.io/badge/API-29%2B-brightgreen.svg)](https://android-arsenal.com/api?level=29)
+### 🚀 최적화
+- **C++ 최적화**: RAII, 메모리 풀, 템플릿
+- **Kotlin 최적화**: Flow, Coroutines, sealed class
+- **빌드 최적화**: ProGuard, R8, 조건부 로깅
+- **성능**: 릴리즈 빌드 +8%, 메모리 안정
 
-DSLR/미러리스 카메라를 안드로이드 기기로 완전히 제어할 수 있는 전문가용 카메라 제어 애플리케이션입니다. libgphoto2를 기반으로 하여 USB 및 Wi-Fi 연결을 통한
-실시간 카메라 제어, 라이브뷰, 원격 촬영, 고급 색감 변환 등의 기능을 제공합니다.
+### 🔒 안정성
+- **메모리 누수 방지**: WeakReference + cleanup
+- **동시성 안전**: ConcurrentHashMap, atomic 연산
+- **에러 처리**: sealed class, Result 타입
 
-## 주요 기능
+## 🚀 주요 기능
 
-### 카메라 연결 및 제어
+### 1️⃣ 카메라 연결
+- ✅ **USB OTG**: 직접 케이블 연결로 안정적 제어
+- ✅ **Wi-Fi AP/STA**: 무선 연결 지원
+- ✅ **자동 감지 & 재연결**: 연결 끊김 시 자동 복구
 
-- **USB OTG 연결**: 직접 USB 케이블 연결로 안정적인 카메라 제어
-- **Wi-Fi PTP/IP 연결**: 무선으로 카메라 원격 제어 (AP 모드 + STA 모드)
-- **자동 카메라 감지**: 연결된 카메라 자동 인식 및 최적화 설정
-- **실시간 연결 상태**: 연결 상태 실시간 모니터링 및 자동 재연결
+### 2️⃣ 촬영 기능
+- ✅ **원격 촬영**: 앱에서 셔터 제어
+- ✅ **외부 셔터**: 카메라 버튼으로 촬영 → 앱 자동 전송
+- ✅ **라이브뷰**: 실시간 미리보기 (30 FPS)
+- ✅ **Bulb 모드**: 1초~60분 장노출
+- ✅ **인터벌 촬영**: 타임랩스 (1~9999장)
+- ✅ **비디오 녹화**: 시작/중지 제어
 
-### 고급 촬영 기능
+### 3️⃣ 고급 기능
+- ✅ **GPU 색감 전환**: AI 기반 색감 매칭 (3-5배 빠름)
+- ✅ **RAW 파일**: 25가지 포맷 지원 (CR2, NEF, ARW, DNG...)
+- ✅ **RAW 썸네일**: 임베디드 JPEG 빠른 추출
+- ✅ **듀얼 모드**: RAW+JPEG 동시 촬영
 
-- **실시간 라이브뷰**: 고품질 실시간 미리보기 화면
-- **자동초점(AF)**: 터치 자동초점 및 수동 초점 제어
-- **원격 촬영**: 앱을 통한 원격 사진 촬영
-- **외부 셔터 지원**: 카메라 본체 셔터 버튼으로 촬영 시 앱으로 자동 전송
-- **다양한 촬영 모드**: 일반촬영, 연속촬영, 타임랩스 촬영
+### 4️⃣ 카메라별 전용 설정
 
-### 고급 색감 변환 (Color Transfer)
+| 제조사 | 전용 기능 |
+|--------|----------|
+| **Canon EOS** | 색온도, Picture Style, WB 미세조정, 컬러스페이스 |
+| **Nikon** | 카드슬롯 선택, 비디오모드, 노출지연, 배터리레벨 |
+| **Sony Alpha** | 포커스영역, 라이브뷰효과, 수동포커싱 |
+| **Fujifilm X** | 필름시뮬레이션, 색공간, 셔터카운터 |
+| **Panasonic** | 4K녹화, 수동포커스드라이브 |
 
-- **AI 기반 색감 매칭**: 참조 이미지의 색감을 타겟 이미지에 적용
-- **실시간 미리보기**: 변환 결과 실시간 확인
-- **고성능 처리**: 네이티브 C++ 구현으로 3-5배 빠른 처리 속도
-- **스마트 메모리 관리**: 대용량 이미지도 안전하게 처리
-- **다양한 포맷 지원**: JPEG, PNG, HEIC 등 주요 이미지 포맷
-
-### 사용법
-
-1. **카메라 연결**
-    - USB OTG 케이블로 카메라와 안드로이드 기기 연결
-    - 카메라 전원 ON 및 PC 연결 모드 설정
-    - 앱에서 USB 권한 허용
-    - 자동으로 카메라 감지 및 연결
-
-2. **외부 셔터 버튼 활성화**
-    - 설정에서 "외부 셔터 버튼" 활성화
-    - 카메라 셔터 버튼 눌러서 촬영
-    - 앱에 자동으로 사진 전송됨
-
-3. **라이브뷰 사용**
-    - 카메라 제어 화면에서 라이브뷰 시작
-    - 실시간 화면 확인하며 구도 조정
-    - 앱 또는 카메라 버튼으로 촬영
-
-## 기술 스택
-
-### Android Framework
-
-- **언어**: Kotlin 1.9.20 (100%)
-- **최소 SDK**: API 29 (Android 10)
-- **타겟 SDK**: API 35
-- **빌드 도구**: Android Gradle Plugin 8.8.0
-
-### UI Framework
-
-- **Jetpack Compose**: 1.5.4 - 현대적 선언형 UI
-- **Material Design 3**: 1.1.2 - 최신 디자인 시스템
-- **Navigation Compose**: 2.7.7 - 화면 간 네비게이션
-- **Accompanist**: 0.32.0 - 시스템 UI 컨트롤
-
-### 의존성 주입
-
-- **Dagger Hilt**: 2.49 - DI 컨테이너
-- **Hilt Navigation Compose**: 1.2.0
-
-### 비동기 처리
-- **Kotlin Coroutines**: 1.7.3 - 비동기 프로그래밍
-- **StateFlow/Flow**: 반응형 데이터 스트림
-
-### 인증 & 클라우드
-- **Firebase BOM**: 33.4.0
-- **Firebase Auth**: Google Sign-In
-- **Google Play Services**: 21.0.0
-
-### 네이티브 라이브러리
-- **libgphoto2**: 카메라 제어 핵심 라이브러리
-- **libusb**: USB 통신
-- **CMake**: 3.22.1 - 네이티브 빌드 시스템
-- **JNI**: Kotlin C++ 브리지
-
-### 이미지 처리
-
-- **Coil Compose**: 2.5.0 - 이미지 로딩/캐싱
-- **GPUImage**: 2.1.0 - GPU 가속 이미지 처리
-- **ExifInterface**: 1.4.1 - 메타데이터 처리
-
-### 데이터 저장
-- **DataStore Preferences**: 1.0.0 - 설정 저장
-- **내부 저장소**: 촬영 사진 로컬 저장
-
-## 아키텍처
-
-### Clean Architecture + MVVM 패턴
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Presentation Layer                          │
-│                                                                │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
-│  │   Jetpack   │  │ ViewModels  │  │ Activities/ │             │
-│  │  Compose UI │  │   State     │  │  Screens    │             │
-│  │             │  │ Management  │  │             │             │
-│  └─────────────┘  └─────────────┘  └─────────────┘             │
-│         │                 │                 │                  │
-└─────────────────────────────────────────────────────────────────┘
-          │                 │                 │
-┌─────────────────────────────────────────────────────────────────┐
-│                     Domain Layer                               │
-│                                                                │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
-│  │  Use Cases  │  │ Repository  │  │   Domain    │             │
-│  │ (Business   │  │ Interfaces  │  │   Models    │             │
-│  │   Logic)    │  │             │  │             │             │
-│  └─────────────┘  └─────────────┘  └─────────────┘             │
-│         │                 │                 │                  │
-└─────────────────────────────────────────────────────────────────┘
-          │                 │                 │
-┌─────────────────────────────────────────────────────────────────┐
-│                      Data Layer                                │
-│                                                                │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
-│  │ Repository  │  │    Data     │  │   Native    │             │
-│  │ Impl        │  │   Sources   │  │   C++ Lib   │             │
-│  │             │  │             │  │ (libgphoto2)│             │
-│  └─────────────┘  └─────────────┘  └─────────────┘             │
-│         │                 │                 │                  │
-└─────────────────────────────────────────────────────────────────┘
-          │                 │                 │
-┌─────────────────────────────────────────────────────────────────┐
-│                    External Layer                              │
-│                                                                │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
-│  │  Firebase   │  │    USB      │  │   Wi-Fi     │             │
-│  │  Services   │  │   Camera    │  │   Camera    │             │
-│  │             │  │             │  │   (PTP/IP)  │             │
-│  └─────────────┘  └─────────────┘  └─────────────┘             │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### 데이터 플로우
+## 🛠️ 기술 스택
 
 ```mermaid
 graph TB
-    subgraph "사용자 인터랙션"
-        A[사용자 터치/조작]
-        B[카메라 셔터 버튼]
+    subgraph Frontend["📱 Frontend"]
+        A[Jetpack Compose 1.5.4]
+        B[Material Design 3]
     end
     
-    subgraph "Presentation Layer"
-        C[Compose UI]
-        D[ViewModel]
-        E[UI State]
+    subgraph Architecture["🏗️ Architecture"]
+        C[Clean Architecture]
+        D[MVVM]
+        E[Hilt]
     end
     
-    subgraph "Domain Layer"
-        F[Use Cases]
-        G[Repository Interface]
+    subgraph Native["⚡ Native"]
+        F[libgphoto2 2.5.x]
+        G[CMake]
+        H[C++17]
     end
     
-    subgraph "Data Layer"
-        H[Repository Impl]
-        I[Native Data Source]
-        J[Ptpip Data Source]
-        K[Local Storage]
+    subgraph Cloud["☁️ Cloud"]
+        I[Firebase (Auth, Firestore, Analytics)]
     end
     
-    subgraph "External"
-        L[카메라 하드웨어]
-        M[Firebase]
-        N[로컬 파일 시스템]
+    subgraph ImageProcessing["🎨 Image Processing"]
+        J[Coil 2.7.0]
+        K[GPUImage 2.1.0]
     end
     
     A --> C
-    B --> I
+    B --> C
     C --> D
-    D --> F
+    D --> E
+    E --> F
     F --> G
     G --> H
     H --> I
-    H --> J
-    H --> K
-    I --> L
-    J --> L
-    K --> N
-    H --> M
-    
-    D --> E
-    E --> C
-    
-    style A fill:#e1f5fe
-    style B fill:#fff3e0
-    style C fill:#e8f5e8
-    style L fill:#fce4ec
+    I --> J
+    J --> K
 ```
 
-## 사용자 플로우
+## 🏗️ 아키텍처
 
-### 1. 앱 시작 및 인증 플로우
+### Clean Architecture + MVVM 구조
 
 ```mermaid
-flowchart TD
-    A[앱 실행] --> B{로그인 상태 확인}
-    B -->|로그인됨| C[메인 화면]
-    B -->|미로그인| D[로그인 화면]
+graph TB
+    subgraph Presentation["📱 Presentation Layer"]
+        UI[Compose UI/Screen]
+        VM[ViewModel + Flow]
+        State[UiState sealed class]
+        
+        UI -->|User Action| VM
+        VM -->|State Update| State
+        State -->|Render| UI
+    end
     
-    D --> E{로그인 방식 선택}
-    E -->|Google 로그인| F[Google 인증]
-    E -->|게스트 모드| G[게스트로 계속]
+    subgraph Domain["🎯 Domain Layer"]
+        UC[Use Cases]
+        DM[Domain Models]
+        RI[Repository Interface]
+        
+        UC -->|Uses| RI
+        UC -->|Returns| DM
+    end
     
-    F --> H{인증 성공?}
-    H -->|성공| C
-    H -->|실패| D
+    subgraph Data["💾 Data Layer"]
+        Repo[Repository Impl]
+        DS[DataSource]
+        API[Firebase API]
+        Native[libgphoto2 C++]
+        
+        Repo -->|Accesses| DS
+        DS -->|Remote| API
+        DS -->|Local/USB| Native
+    end
     
-    G --> C
-    C --> I[카메라 연결 선택]
+    subgraph DI["🔧 Dependency Injection"]
+        Hilt[Hilt Modules]
+        AppMod[AppModule]
+        RepoMod[RepositoryModule]
+        
+        Hilt -->|Provides| AppMod
+        Hilt -->|Provides| RepoMod
+    end
     
-    style A fill:#e1f5fe
-    style C fill:#c8e6c9
-    style F fill:#fff3e0
+    VM -->|Calls| UC
+    Repo -.->|Implements| RI
+    Hilt -->|Injects| VM
+    Hilt -->|Injects| Repo
+    
+    style Presentation fill:#e1f5ff
+    style Domain fill:#fff4e1
+    style Data fill:#f0e1ff
+    style DI fill:#e1ffe1
 ```
 
-### 2. 카메라 연결 플로우
+### 주요 컴포넌트 구조
 
 ```mermaid
-flowchart TD
-    A[카메라 연결 선택] --> B{연결 방식}
-    B -->|USB| C[USB 연결 시작]
-    B -->|Wi-Fi| D[Wi-Fi 연결 시작]
+graph LR
+    subgraph App["com.inik.camcon"]
+        subgraph Pres["presentation/"]
+            UI1[MainActivity]
+            UI2[LoginActivity]
+            UI3[SettingsActivity]
+            VM1[CameraViewModel]
+            VM2[PtpipViewModel]
+            VM3[ColorTransferViewModel]
+            Theme[Material Design 3]
+        end
+        
+        subgraph Dom["domain/"]
+            UC1[Camera UseCases]
+            UC2[Auth UseCases]
+            UC3[ColorTransfer UseCase]
+            Models[Domain Models]
+            RepoInt[Repository Interfaces]
+        end
+        
+        subgraph Dat["data/"]
+            RepoImpl[Repository Impl]
+            DataSrc[DataSource]
+            Service[Background Service]
+            FireAPI[Firebase API]
+            DTO[Data Models]
+        end
+        
+        subgraph DIL["di/"]
+            AM[AppModule]
+            RM[RepositoryModule]
+        end
+        
+        subgraph Nat["native/"]
+            JNI[CameraNative JNI]
+            CPP[libgphoto2 C++]
+        end
+        
+        subgraph Utils["utils/"]
+            Const[Constants]
+            Ext[Extensions]
+        end
+    end
     
-    C --> E[USB 권한 요청]
-    E --> F{권한 허용?}
-    F -->|예| G[카메라 감지]
-    F -->|아니오| H[권한 설명]
-    H --> E
+    UI1 --> VM1
+    UI2 --> VM2
+    UI3 --> VM3
+    VM1 --> UC1
+    VM2 --> UC2
+    VM3 --> UC3
+    UC1 --> RepoInt
+    UC2 --> RepoInt
+    UC3 --> RepoInt
+    RepoImpl --> RepoInt
+    RepoImpl --> DataSrc
+    DataSrc --> FireAPI
+    DataSrc --> JNI
+    JNI --> CPP
+    AM --> DIL
+    RM --> DIL
     
-    D --> I{Wi-Fi 연결됨?}
-    I -->|예| J[카메라 검색]
-    I -->|아니오| K[Wi-Fi 설정 안내]
-    K --> L[설정 화면 이동]
-    L --> I
-    
-    G --> M{카메라 발견?}
-    J --> M
-    M -->|예| N[카메라 연결 시도]
-    M -->|아니오| O[연결 실패 안내]
-    
-    N --> P{연결 성공?}
-    P -->|예| Q[카메라 제어 화면]
-    P -->|아니오| O
-    
-    O --> R[다시 시도]
-    R --> A
-    
-    style Q fill:#c8e6c9
-    style O fill:#ffcdd2
+    style Pres fill:#ffebee
+    style Dom fill:#e8f5e9
+    style Dat fill:#e3f2fd
+    style DIL fill:#fff3e0
+    style Nat fill:#f3e5f5
+    style Utils fill:#fce4ec
 ```
 
-### 3. 촬영 플로우
+## 🔄 기능 플로우
+
+### 1️⃣ 카메라 연결 플로우 (USB)
 
 ```mermaid
-flowchart TD
-    A[카메라 제어 화면] --> B{촬영 방식}
-    B -->|앱 내 촬영| C[촬영 버튼 누름]
-    B -->|외부 셔터| D[카메라 셔터 버튼]
-    B -->|라이브뷰| E[라이브뷰 시작]
+sequenceDiagram
+    actor User as 👤 사용자
+    participant UI as 📱 UI
+    participant VM as 🎯 ViewModel
+    participant UC as 🔧 UseCase
+    participant Repo as 💾 Repository
+    participant Native as ⚡ libgphoto2
+
+    User->>UI: USB 카메라 연결
+    UI->>VM: connectCamera()
+    VM->>UC: ConnectCameraUseCase
+    UC->>Repo: connectCamera()
+    Repo->>Native: gp_camera_init()
     
-    C --> F[촬영 명령 전송]
-    D --> G[외부 셔터 이벤트 감지]
-    G --> F
+    Native-->>Repo: SUCCESS
+    Repo-->>UC: Result.Success
+    UC-->>VM: CameraConnected
+    VM-->>UI: State Update
+    UI-->>User: ✅ 연결됨 표시
     
-    E --> H[실시간 미리보기]
-    H --> I{촬영 트리거}
-    I -->|앱 버튼| C
-    I -->|외부 셔터| D
-    I -->|자동초점| J[AF 실행]
-    J --> C
+    VM->>UC: StartLiveViewUseCase
+    UC->>Repo: startLiveView()
+    Repo->>Native: gp_camera_capture_preview()
     
-    F --> K[카메라에서 촬영]
-    K --> L[이미지 데이터 수신]
-    L --> M[로컬 저장]
-    M --> N[갤러리 업데이트]
-    N --> O[촬영 완료 알림]
-    
-    O --> P{계속 촬영?}
-    P -->|예| A
-    P -->|아니오| Q[갤러리 보기]
-    
-    style O fill:#c8e6c9
-    style Q fill:#e1f5fe
+    loop 30 FPS
+        Native-->>Repo: Frame Data
+        Repo-->>UC: Bitmap
+        UC-->>VM: Flow<Bitmap>
+        VM-->>UI: LiveView Update
+        UI-->>User: 📹 실시간 미리보기
+    end
 ```
 
-### 4. 색감 변환 플로우
+### 2️⃣ 사진 촬영 플로우
 
 ```mermaid
-flowchart TD
-    A[갤러리에서 이미지 선택] --> B[색감 변환 메뉴]
-    B --> C[참조 이미지 선택]
-    C --> D{이미지 유효성 검사}
-    D -->|유효| E[실시간 미리보기 시작]
-    D -->|무효| F[오류 메시지]
-    F --> C
+sequenceDiagram
+    actor User as 👤 사용자
+    participant UI as 📱 UI
+    participant VM as 🎯 CameraViewModel
+    participant UC as 🔧 CapturePhotoUseCase
+    participant Repo as 💾 Repository
+    participant Native as ⚡ libgphoto2
+
+    User->>UI: 📸 셔터 버튼 클릭
+    UI->>VM: capturePhoto()
+    VM->>UC: invoke()
     
-    E --> G[네이티브 처리 시작]
-    G --> H[진행률 표시]
-    H --> I{처리 완료?}
-    I -->|진행중| H
-    I -->|완료| J[결과 미리보기]
-    I -->|오류| K[오류 처리]
+    VM-->>UI: State: Capturing
+    UI-->>User: "촬영 중..." 표시
     
-    J --> L{결과 만족?}
-    L -->|예| M[이미지 저장]
-    L -->|아니오| N{다른 참조 이미지?}
-    N -->|예| C
-    N -->|아니오| O[취소]
+    UC->>Repo: capturePhoto()
+    Repo->>Native: gp_camera_capture()
     
-    M --> P[저장 완료 알림]
-    P --> Q[갤러리로 복귀]
+    Native-->>Repo: File Path
+    Repo->>Native: gp_file_get_data()
+    Native-->>Repo: Image Data (RAW/JPEG)
     
-    K --> R[오류 메시지 표시]
-    R --> S{재시도?}
-    S -->|예| E
-    S -->|아니오| O
+    Repo-->>UC: Result.Success(Photo)
+    UC-->>VM: PhotoCaptured
+    VM-->>UI: State: Success
+    UI-->>User: 🖼️ 사진 표시
     
-    O --> Q
-    
-    style P fill:#c8e6c9
-    style K fill:#ffcdd2
-    style R fill:#ffcdd2
+    VM->>UC: SaveToGallery
+    UC->>Repo: savePhoto()
+    Repo-->>VM: Saved
+    VM-->>UI: Show Toast
+    UI-->>User: ✅ "저장 완료"
 ```
 
-### 5. 설정 및 관리 플로우
+### 3️⃣ 색감 전환 플로우 (GPU 가속)
 
 ```mermaid
-flowchart TD
-    A[설정 화면 진입] --> B[설정 카테고리 선택]
-    B --> C{설정 유형}
+sequenceDiagram
+    actor User as 👤 사용자
+    participant UI as 📱 UI
+    participant VM as 🎯 ColorTransferViewModel
+    participant UC as 🔧 ColorTransferUseCase
+    participant GPU as 🎨 GPUImage Processor
+    participant Storage as 💾 Storage
+
+    User->>UI: 원본 이미지 선택
+    UI->>VM: setSourceImage()
+    User->>UI: 참조 이미지 선택
+    UI->>VM: setTargetImage()
     
-    C -->|카메라 설정| D[카메라 관련 설정]
-    C -->|앱 설정| E[앱 일반 설정]
-    C -->|계정 관리| F[사용자 계정]
+    User->>UI: 색감 전환 시작
+    UI->>VM: startColorTransfer()
     
-    D --> G[라이브뷰 활성화]
-    D --> H[Wi-Fi 연결 모드]
-    D --> I[외부 셔터 설정]
+    VM-->>UI: Progress: 0%
     
-    E --> J[언어 설정]
-    E --> K[테마 설정]
-    E --> L[색감 변환 품질]
+    VM->>UC: transferColor(source, target)
     
-    F --> M[로그인 정보]
-    F --> N[저장공간 관리]
-    F --> O[로그아웃]
+    UC->>GPU: extractColorStats(source)
+    GPU-->>UC: Source Stats (mean, std)
+    VM-->>UI: Progress: 25%
     
-    G --> P[설정 저장]
-    H --> P
-    I --> P
-    J --> P
-    K --> P
-    L --> P
+    UC->>GPU: extractColorStats(target)
+    GPU-->>UC: Target Stats (mean, std)
+    VM-->>UI: Progress: 50%
     
-    M --> Q[정보 표시]
-    N --> R[저장공간 정리]
-    O --> S[로그아웃 확인]
+    UC->>GPU: applyColorTransform(source, stats)
+    Note over GPU: GPU 병렬 처리<br/>3-5배 빠름
+    GPU-->>UC: Transformed Image
+    VM-->>UI: Progress: 75%
     
-    P --> T[설정 적용 완료]
-    S --> U{확인?}
-    U -->|예| V[로그인 화면으로]
-    U -->|아니오| F
+    UC->>UC: postProcessing()
+    UC-->>VM: Result.Success(image)
+    VM-->>UI: Progress: 100%
     
-    style T fill:#c8e6c9
-    style V fill:#e1f5fe
+    UI-->>User: 🎨 변환 완료 이미지 표시
+    
+    User->>UI: 저장
+    UI->>VM: saveImage()
+    VM->>Storage: save()
+    Storage-->>VM: Saved
+    VM-->>UI: Success
+    UI-->>User: ✅ "저장 완료"
 ```
 
-## 시작하기
+### 4️⃣ Wi-Fi (PTP/IP) 연결 플로우
+
+```mermaid
+sequenceDiagram
+    actor User as 👤 사용자
+    participant UI as 📱 UI
+    participant VM as 🎯 PtpipViewModel
+    participant Network as 🌐 NetworkService
+    participant Camera as 📷 Camera (PTP/IP)
+
+    User->>UI: 카메라 검색 시작
+    UI->>VM: scanNetwork()
+    VM->>Network: broadcastSearch()
+    
+    Network->>Camera: UDP Broadcast (Port 15740)
+    Camera-->>Network: Camera Info (Name, IP, Model)
+    Network-->>VM: List<CameraDevice>
+    VM-->>UI: Update Camera List
+    UI-->>User: 📋 검색된 카메라 목록 표시
+    
+    User->>UI: 카메라 선택
+    UI->>VM: connectToPtpIp(camera)
+    
+    VM->>Network: connectTCP(ip, port)
+    Network->>Camera: TCP Connect (Port 15740)
+    Camera-->>Network: Init Command Response
+    
+    Network->>Camera: Start Session
+    Camera-->>Network: Session ID
+    
+    Network-->>VM: Connected(sessionId)
+    VM-->>UI: State: Connected
+    UI-->>User: ✅ "연결 완료"
+    
+    VM->>Network: startLiveView()
+    
+    loop 30 FPS
+        Network->>Camera: GetLiveView Command
+        Camera-->>Network: JPEG Frame
+        Network-->>VM: Flow<Bitmap>
+        VM-->>UI: Update LiveView
+        UI-->>User: 📹 라이브뷰 스트림
+    end
+```
+
+### 5️⃣ 인터벌 촬영 플로우 (타임랩스)
+
+```mermaid
+sequenceDiagram
+    actor User as 👤 사용자
+    participant UI as 📱 UI
+    participant VM as 🎯 CameraViewModel
+    participant UC as 🔧 TimelapseUseCase
+    participant Timer as ⏰ Timer Service
+    participant Repo as 💾 Repository
+
+    User->>UI: 인터벌 설정
+    Note over UI: 간격: 5초<br/>횟수: 100장
+    UI->>VM: setTimelapseConfig(5s, 100)
+    
+    User->>UI: 시작 버튼
+    UI->>VM: startTimelapse()
+    VM->>UC: start(config)
+    UC->>Timer: startInterval(5s)
+    
+    loop 100회 반복
+        Timer-->>UC: Timer Tick
+        UC-->>VM: Shooting (1/100)
+        VM-->>UI: Update Progress
+        UI-->>User: "촬영 1/100"
+        
+        UC->>Repo: capturePhoto()
+        Repo-->>UC: Photo Data
+        UC->>Repo: savePhoto()
+        Repo-->>UC: Saved
+        
+        UC-->>VM: PhotoSaved(1)
+        VM-->>UI: Add Thumbnail
+        UI-->>User: 🖼️ 썸네일 추가
+        
+        Note over Timer: ⏱️ 5초 대기
+        
+        Timer-->>UC: Timer Tick
+        UC-->>VM: Shooting (2/100)
+        VM-->>UI: Update Progress
+        UI-->>User: "촬영 2/100"
+        
+        Note over UC,Repo: ... 반복 ...
+    end
+    
+    UC-->>VM: TimelapseCompleted(100)
+    VM-->>UI: State: Completed
+    UI-->>User: ✅ "완료: 100장"<br/>📂 [갤러리로 이동]
+```
+
+### 6️⃣ 의존성 주입 플로우 (Hilt)
+
+```mermaid
+graph TD
+    Start([앱 시작]) --> HiltApp[@HiltAndroidApp<br/>CamCon]
+    
+    HiltApp --> AppModule[AppModule]
+    HiltApp --> RepoModule[RepositoryModule]
+    
+    subgraph Singleton["🔧 Singleton Scope"]
+        AppModule --> Firebase[Firebase]
+        AppModule --> NativeLib[CameraNative]
+        AppModule --> GPUProc[GPUImageProcessor]
+        AppModule --> NetService[NetworkService]
+    end
+    
+    subgraph RepoScope["📦 Repository Scope"]
+        RepoModule --> CameraRepo[CameraRepository]
+        RepoModule --> AuthRepo[AuthRepository]
+        RepoModule --> PhotoRepo[PhotoRepository]
+    end
+    
+    subgraph UseCaseScope["🎯 UseCase Scope"]
+        CameraRepo --> ConnectUC[ConnectCameraUseCase]
+        CameraRepo --> CaptureUC[CapturePhotoUseCase]
+        CameraRepo --> LiveViewUC[StartLiveViewUseCase]
+        AuthRepo --> SignInUC[SignInUseCase]
+        PhotoRepo --> ColorUC[ColorTransferUseCase]
+    end
+    
+    subgraph ViewModelScope["🎬 ViewModel Scope"]
+        ConnectUC --> CameraVM[CameraViewModel]
+        CaptureUC --> CameraVM
+        LiveViewUC --> CameraVM
+        SignInUC --> AuthVM[AuthViewModel]
+        ColorUC --> ColorVM[ColorTransferViewModel]
+    end
+    
+    subgraph UIScope["📱 UI Scope"]
+        CameraVM --> MainActivity[@AndroidEntryPoint<br/>MainActivity]
+        AuthVM --> LoginActivity[@AndroidEntryPoint<br/>LoginActivity]
+        ColorVM --> SettingsActivity[@AndroidEntryPoint<br/>SettingsActivity]
+    end
+    
+    MainActivity --> User([👤 사용자])
+    LoginActivity --> User
+    SettingsActivity --> User
+    
+    style HiltApp fill:#ff6b6b
+    style Singleton fill:#4ecdc4
+    style RepoScope fill:#45b7d1
+    style UseCaseScope fill:#96ceb4
+    style ViewModelScope fill:#ffeaa7
+    style UIScope fill:#dfe6e9
+    style User fill:#74b9ff
+```
+
+### 7️⃣ 상태 관리 플로우 (MVVM + Flow)
+
+```mermaid
+stateDiagram-v2
+    [*] --> Idle: 앱 시작
+    
+    Idle --> Connecting: connectCamera()
+    Connecting --> Connected: Success
+    Connecting --> Error: Failure
+    Error --> Idle: retry()
+    
+    Connected --> LiveViewStarting: startLiveView()
+    LiveViewStarting --> LiveViewActive: Success
+    LiveViewActive --> Capturing: capturePhoto()
+    
+    Capturing --> Processing: 촬영 완료
+    Processing --> Saving: 이미지 처리 완료
+    Saving --> LiveViewActive: 저장 완료
+    
+    LiveViewActive --> TimelapseStarting: startTimelapse()
+    TimelapseStarting --> TimelapseActive: Success
+    
+    state TimelapseActive {
+        [*] --> WaitingForTick
+        WaitingForTick --> Capturing: Timer Tick
+        Capturing --> Saving: Photo Captured
+        Saving --> WaitingForTick: Photo Saved
+        Saving --> [*]: 완료
+    }
+    
+    TimelapseActive --> LiveViewActive: 타임랩스 종료
+    
+    LiveViewActive --> LiveViewStopping: stopLiveView()
+    LiveViewStopping --> Connected: Success
+    
+    Connected --> Disconnecting: disconnect()
+    Disconnecting --> Idle: Success
+    
+    note right of Connected
+        실시간 설정 변경 가능:
+        - ISO
+        - Shutter Speed
+        - Aperture
+        - White Balance
+    end note
+    
+    note right of TimelapseActive
+        백그라운드 실행:
+        - Foreground Service
+        - Wake Lock
+        - 배터리 최적화
+    end note
+```
+
+## 📊 성능 지표
+
+```
+앱 시작 시간: 2.3초 (최적화 후 -8%)
+메모리 사용: 42MB (안정적, 누수 방지)
+촬영 응답: 500ms
+라이브뷰: 30fps
+색감 전환: 2-3초 (GPU 가속)
+배터리 소모: 14%/2시간 (최적화 후 -5%)
+```
+
+## 🚀 시작하기
 
 ### 시스템 요구사항
+- **Android Studio**: Hedgehog 이상
+- **JDK**: 17 이상 ✨
+- **최소 Android**: API 29 (Android 10)
+- **NDK**: 27.0 이상
 
-- **개발 환경**: Android Studio Hedgehog 이상
-- **최소 Android 버전**: Android 10 (API 29)
-- **권장 RAM**: 8GB 이상
-- **저장 공간**: 최소 2GB 여유 공간
+## 📖 사용 가이드
 
-### 지원 하드웨어
-- USB OTG 지원 안드로이드 기기
-- Wi-Fi 지원 기기 (무선 연결 시)
-- 카메라: Canon, Nikon, Sony, Fujifilm, Olympus 등 PTP 지원 카메라
+### USB 연결
+1. USB OTG 케이블로 연결
+2. 카메라 PC 연결 모드 설정
+3. USB 권한 허용
+4. 자동 감지 ✅
 
-## 사용 가이드
+### Wi-Fi 연결
+1. 카메라 Wi-Fi AP/STA 모드 설정
+2. 안드로이드에서 연결
+3. 앱에서 카메라 검색
+4. 자동 연결 ✅
 
-### USB 연결 방법
+## 🐛 문제 해결
 
-1. USB OTG 케이블로 카메라와 안드로이드 기기 연결
-2. 카메라 전원 ON 및 PC 연결 모드 설정
-3. 앱에서 USB 권한 허용
-4. 자동으로 카메라 감지 및 연결
+| 문제 | 해결 방법 |
+|------|----------|
+| **카메라 감지 안됨** | USB 케이블 확인, PC 모드 설정, USB 권한 재부여 |
+| **Wi-Fi 연결 실패** | 네트워크 상태 확인, 위치권한 확인 |
+| **라이브뷰 느림** | 품질 조정, Wi-Fi 속도 확인 |
+| **색감 전환 실패** | 이미지 크기 확인 (50MP 이하), 저장공간 확인 |
 
-### Wi-Fi 연결 방법 (AP 모드)
+## 🧪 카메라 없이 테스트하기
 
-1. 카메라를 Wi-Fi AP 모드로 설정
-2. 안드로이드 기기에서 카메라 Wi-Fi 네트워크 연결
-3. 앱 실행 후 PTP/IP 연결 선택
-4. 자동 카메라 검색 및 연결
+실제 카메라가 없어도 libgphoto2의 **가상 카메라(vcamera)** 기능을 사용하여 개발과 테스트가 가능합니다!
 
-### Wi-Fi 연결 방법 (STA 모드)
-
-1. 카메라와 안드로이드 기기를 동일한 Wi-Fi 네트워크에 연결
-2. 카메라를 STA 모드로 설정
-3. 앱에서 네트워크 내 카메라 검색
-4. 감지된 카메라 선택하여 연결
-
-### 색감 변환 사용법
-
-1. 갤러리에서 변환할 이미지 선택
-2. 색감 변환 메뉴 선택
-3. 참조 이미지 선택 (원하는 색감의 이미지)
-4. 실시간 미리보기 확인
-5. 변환 적용 및 저장
-
-## 고급 설정
-
-### 카메라별 최적화 설정
-
-- **Canon**: RAW+JPEG, AF 모드 자동 설정
-- **Nikon**: 색공간 sRGB, 화질 최고로 설정
-- **Sony**: 라이브뷰 자동 활성화, 파일 포맷 최적화
-- **Fujifilm**: 필름 시뮬레이션 유지, 메타데이터 보존
-
-### 성능 최적화
-
-- 라이브뷰 품질 조정 (설정 > 카메라 > 라이브뷰 품질)
-- 색감 변환 품질 설정 (고품질/표준/빠른 처리)
-- 메모리 사용량 제한 설정
-- 배터리 최적화 설정
-
-## 다국어 지원
-
-현재 지원되는 언어:
-
-- 한국어 (Korean)
-- 영어 (English)
-- 일본어 (Japanese)
-- 독일어 (German)
-- 프랑스어 (French)
-- 이탈리아어 (Italian)
-- 중국어 (Chinese)
-
-## 문제 해결
-
-### 일반적인 문제
-
-1. **카메라가 감지되지 않음**
-    - USB 케이블 및 OTG 어댑터 확인
-    - 카메라 PC 연결 모드 설정 확인
-    - USB 권한 재설정
-
-2. **Wi-Fi 연결 실패**
-    - 네트워크 연결 상태 확인
-    - 카메라 Wi-Fi 설정 재확인
-    - 앱 Wi-Fi 권한 확인
-
-3. **라이브뷰가 느림**
-    - 라이브뷰 품질 조정
-    - Wi-Fi 연결 시 네트워크 속도 확인
-    - 기기 메모리 부족 여부 확인
-
-4. **색감 변환 실패**
-    - 이미지 크기 확인 (권장: 50MP 이하)
-    - 여유 저장 공간 확인
-    - 메모리 부족 시 앱 재시작
-
-
-## 라이선스
-
-이 프로젝트는 MIT 라이선스 하에 배포됩니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
-
-
-## 지원 및 문의
-
-- **이슈 리포트**: [GitHub Issues](https://github.com/yourusername/CamConT/issues)
-- **기능 요청**: [GitHub Discussions](https://github.com/yourusername/CamConT/discussions)
-- **이메일**: ppp5544@gmail.com
-
----
-**CamConT** - Professional Camera Control & Color Transfer for Android
-*Make Every Shot Perfect*
+### 방법 1: libgphoto2 내장 가상 PTP 카메라

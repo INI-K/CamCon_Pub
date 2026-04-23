@@ -1,35 +1,57 @@
 package com.inik.camcon.presentation.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.darkColors
-import androidx.compose.material.lightColors
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
-import com.inik.camcon.data.datasource.local.ThemeMode
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import com.inik.camcon.domain.model.ThemeMode
 
-private val DarkColorPalette = darkColors(
-    primary = Color(0xFFFF9A3D),
-    primaryVariant = Color(0xFFD97A1D),
-    secondary = Color(0xFF5ED1B8),
-    background = Color(0xFF171B22),
-    surface = Color(0xFF202735),
-    onPrimary = Color.White,
-    onSecondary = Color(0xFF0F1B1B),
-    onBackground = Color.White,
-    onSurface = Color.White,
-)
+// 통일된 다크 색상 스킴
+private val UnifiedDarkColorScheme = darkColorScheme(
+    primary = Primary,
+    onPrimary = OnPrimary,
+    primaryContainer = Primary.copy(alpha = 0.15f),
+    onPrimaryContainer = Primary,
 
-private val LightColorPalette = lightColors(
-    primary = Color(0xFFCB5B15),
-    primaryVariant = Color(0xFFA84910),
-    secondary = Color(0xFF187A66),
-    background = Color(0xFFFAF7F1),
-    surface = Color(0xFFFFFCF6),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onBackground = Color(0xFF1F232B),
-    onSurface = Color(0xFF1F232B),
+    secondary = PrimaryLight,
+    onSecondary = TextPrimary,
+    secondaryContainer = Primary.copy(alpha = 0.1f),
+    onSecondaryContainer = Primary,
+
+    tertiary = PrimaryLight,
+    onTertiary = TextPrimary,
+
+    background = Background,
+    onBackground = TextPrimary,
+
+    surface = Surface,
+    onSurface = TextPrimary,
+    surfaceVariant = SurfaceElevated,
+    onSurfaceVariant = TextSecondary,
+
+    error = Error,
+    onError = TextPrimary,
+
+    outline = Border,
+    outlineVariant = Border.copy(alpha = 0.5f),
+    scrim = Overlay,
+
+    inverseSurface = TextPrimary,
+    inverseOnSurface = Background,
+    inversePrimary = Primary,
+
+    surfaceBright = SurfaceElevated,
+    surfaceDim = Background,
+    surfaceContainer = Surface,
+    surfaceContainerHigh = SurfaceElevated,
+    surfaceContainerHighest = SurfaceElevated,
+    surfaceContainerLow = BackgroundSurface,
+    surfaceContainerLowest = Background,
+
+    surfaceTint = Primary.copy(alpha = 0.05f)
 )
 
 @Composable
@@ -43,14 +65,23 @@ fun CamConTheme(
         ThemeMode.DARK -> true
     }
 
-    val colors = if (darkTheme) {
-        DarkColorPalette
-    } else {
-        LightColorPalette
+    // 항상 다크 테마 사용 (라이트 모드도 다크로 강제)
+    val colorScheme = UnifiedDarkColorScheme
+
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as? android.app.Activity)?.window
+            window?.let {
+                val insetsController = WindowCompat.getInsetsController(it, view)
+                insetsController.isAppearanceLightStatusBars = false
+                insetsController.isAppearanceLightNavigationBars = false
+            }
+        }
     }
 
     MaterialTheme(
-        colors = colors,
+        colorScheme = colorScheme,
         typography = Typography,
         shapes = Shapes,
         content = content

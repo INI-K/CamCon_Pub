@@ -141,6 +141,15 @@
     <string name="error_unknown">Une erreur inconnue s\'est produite</string>
     <string name="error_usb_not_supported">USB OTG non supporté</string>
     <string name="error_camera_busy">Appareil photo occupé</string>
+    <string name="error_unsupported_shooting_mode">Mode de prise de vue non supporté: %1$s. Modes supportés: %2$s</string>
+
+    <!-- Noms de Mode de Prise de Vue -->
+    <string name="shooting_mode_single">Prise unique</string>
+    <string name="shooting_mode_continuous">Continu</string>
+    <string name="shooting_mode_timelapse">Accéléré</string>
+    <string name="shooting_mode_burst">Rafale</string>
+    <string name="shooting_mode_hdr_bracket">Bracketing HDR</string>
+    <string name="shooting_mode_bulb">Pose</string>
 
     <!-- Permissions -->
     <string name="permission_camera">Permission appareil photo requise</string>

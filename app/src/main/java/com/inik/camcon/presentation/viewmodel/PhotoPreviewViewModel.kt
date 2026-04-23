@@ -4,22 +4,29 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
-import com.inik.camcon.domain.manager.ErrorHandlingManager
+import com.inik.camcon.presentation.viewmodel.state.ErrorHandlingManager
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.SubscriptionTier
+import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.domain.usecase.camera.PhotoCaptureEventManager
+import com.inik.camcon.domain.usecase.camera.ResumeNativeOperationsUseCase
 import com.inik.camcon.presentation.viewmodel.photo.FileTypeFilter
 import com.inik.camcon.presentation.viewmodel.photo.PhotoImageManager
 import com.inik.camcon.presentation.viewmodel.photo.PhotoListManager
 import com.inik.camcon.presentation.viewmodel.photo.PhotoSelectionManager
 import com.inik.camcon.utils.SubscriptionUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -28,13 +35,20 @@ import javax.inject.Inject
  */
 data class PhotoPreviewUiState(
     val isLoading: Boolean = false,
-    val error: String? = null,
     val selectedPhoto: CameraPhoto? = null,
     val isConnected: Boolean = false,
     val isInitialized: Boolean = false,
     val isInitializing: Boolean = false,
-    val currentTier: SubscriptionTier = SubscriptionTier.FREE
+    val currentTier: SubscriptionTier = SubscriptionTier.FREE,
+    val isPtpipConnected: Boolean = false
 )
+
+/**
+ * 일회성 UI 이벤트 (스낵바 메시지)
+ */
+sealed class PhotoPreviewUiEvent {
+    data class ShowError(val message: String) : PhotoPreviewUiEvent()
+}
 
 /**
  * 사진 미리보기를 위한 ViewModel - MVVM 패턴 준수
@@ -47,12 +61,14 @@ class PhotoPreviewViewModel @Inject constructor(
     private val photoCaptureEventManager: PhotoCaptureEventManager,
     private val globalManager: CameraConnectionGlobalManager,
     private val getSubscriptionUseCase: GetSubscriptionUseCase,
+    private val appSettingsRepository: AppSettingsRepository,
 
     // 매니저 의존성 주입 (단일책임원칙 적용)
     private val photoListManager: PhotoListManager,
     private val photoImageManager: PhotoImageManager,
     private val photoSelectionManager: PhotoSelectionManager,
-    private val errorHandlingManager: ErrorHandlingManager
+    private val errorHandlingManager: ErrorHandlingManager,
+    private val resumeNativeOperationsUseCase: ResumeNativeOperationsUseCase
 ) : ViewModel() {
 
     companion object {
@@ -62,6 +78,16 @@ class PhotoPreviewViewModel @Inject constructor(
     // UI 상태
     private val _uiState = MutableStateFlow(PhotoPreviewUiState())
     val uiState: StateFlow<PhotoPreviewUiState> = _uiState.asStateFlow()
+
+    // 일회성 이벤트용 SharedFlow
+    private val _uiEvent = MutableSharedFlow<PhotoPreviewUiEvent>(replay = 0)
+    val uiEvent: SharedFlow<PhotoPreviewUiEvent> = _uiEvent.asSharedFlow()
+
+    private fun emitError(message: String) {
+        viewModelScope.launch {
+            _uiEvent.emit(PhotoPreviewUiEvent.ShowError(message))
+        }
+    }
 
     // 매니저들의 상태 노출 (읽기 전용)
     val photos = photoListManager.filteredPhotos
@@ -85,6 +111,17 @@ class PhotoPreviewViewModel @Inject constructor(
     val isMultiSelectMode = photoSelectionManager.isMultiSelectMode
     val selectedPhotos = photoSelectionManager.selectedPhotos
 
+    // RAW 다운로드 허용 설정 (ValidateImageFormatUseCase와 동일 조건 유지)
+    private val _isRawDownloadEnabled = MutableStateFlow(true)
+
+    // 옵저버 Job 필드들 — Flow collect 중복 방지
+    private var connectionObserveJob: Job? = null
+    private var ptpipObserveJob: Job? = null
+    private var initObserveJob: Job? = null
+    private var tierObserveJob: Job? = null
+    private var errorObserveJob: Job? = null
+    private var photosObserveJob: Job? = null
+
     init {
         initializeViewModel()
     }
@@ -96,22 +133,30 @@ class PhotoPreviewViewModel @Inject constructor(
         Log.d(TAG, "=== PhotoPreviewViewModel 초기화 시작 ===")
 
         // 초기 상태 설정
-        _uiState.value = _uiState.value.copy(isInitializing = true)
+        _uiState.update { it.copy(isInitializing = true) }
 
-        // 사진 미리보기 탭 진입 시 이벤트 리스너 즉시 중단
+        // PTPIP 연결 상태에 따라 선택적 이벤트 리스너 관리
         viewModelScope.launch {
             try {
-                Log.d(TAG, "📸 사진 미리보기 탭 진입 - 이벤트 리스너 즉시 중단")
-                
-                // 사진 미리보기 모드 활성화 (자동 시작 방지)
-                cameraRepository.setPhotoPreviewMode(true)
-                
-                // 이벤트 리스너만 중단
-                cameraRepository.stopCameraEventListener()
-                Log.d(TAG, "✓ 이벤트 리스너 중단 완료")
+                // PTPIP 연결 상태 확인
+                val isPtpipConnected = cameraRepository.isPtpipConnected().first()
+                Log.d(TAG, "📸 사진 미리보기 탭 진입 - PTPIP 연결 상태: $isPtpipConnected")
+
+                if (isPtpipConnected) {
+                    Log.d(TAG, "PTPIP 연결 상태 - 이벤트 리스너 유지 (파일 목록만 차단)")
+                } else {
+                    Log.d(TAG, "USB 연결 상태 - 이벤트 리스너 중지")
+
+                    // 사진 미리보기 모드 활성화 (자동 시작 방지)
+                    cameraRepository.setPhotoPreviewMode(true)
+
+                    // 이벤트 리스너만 중단
+                    cameraRepository.stopCameraEventListener()
+                    Log.d(TAG, "✓ 이벤트 리스너 중단 완료")
+                }
                 
             } catch (e: Exception) {
-                Log.w(TAG, "이벤트 리스너 중단 실패 (무시하고 계속)", e)
+                Log.w(TAG, "이벤트 리스너 관리 실패 (무시하고 계속)", e)
             }
         }
 
@@ -127,13 +172,23 @@ class PhotoPreviewViewModel @Inject constructor(
     private fun setupObservers() {
         // 카메라 연결 상태 관찰
         observeCameraConnection()
-        
+
+        // PTPIP 연결 상태 관찰
+        observePtpipConnection()
+
         // 카메라 초기화 상태 관찰
         observeCameraInitialization()
         
         // 구독 티어 관찰
         observeSubscriptionTier()
-        
+
+        // RAW 다운로드 허용 설정 관찰 (ValidateImageFormatUseCase와 동일 조건 유지)
+        viewModelScope.launch {
+            appSettingsRepository.isRawFileDownloadEnabled.collect { enabled ->
+                _isRawDownloadEnabled.value = enabled
+            }
+        }
+
         // 에러 이벤트 관찰
         observeErrorEvents()
 
@@ -145,24 +200,40 @@ class PhotoPreviewViewModel @Inject constructor(
      * 카메라 연결 상태 관찰
      */
     private fun observeCameraConnection() {
+        // 이미 active인 Job이 있으면 재실행하지 않음
+        if (connectionObserveJob?.isActive == true) return
+
         Log.d(TAG, "=== observeCameraConnection 시작 ===")
-        viewModelScope.launch {
+        connectionObserveJob = viewModelScope.launch {
             globalManager.globalConnectionState.collect { connectionState ->
                 val isConnected = connectionState.isAnyConnectionActive
                 Log.d(TAG, "전역 카메라 연결 상태 변경: $isConnected")
 
                 val previousConnected = _uiState.value.isConnected
-                _uiState.value = _uiState.value.copy(isConnected = isConnected)
+                _uiState.update { it.copy(isConnected = isConnected) }
 
                 if (isConnected && !previousConnected) {
-                    Log.d(TAG, "카메라 연결됨 - 사진 목록 불러오기")
-                    photoListManager.loadInitialPhotos(isConnected)
+                    Log.d(TAG, "카메라 연결됨 - PTPIP 상태 확인 후 사진 목록 처리")
+
+                    // PTPIP 연결 상태를 확인하여 파일 목록 로딩 여부 결정
+                    val isPtpipConnected = _uiState.value.isPtpipConnected
+                    if (isPtpipConnected) {
+                        Log.d(TAG, "⚠️ PTPIP 연결 상태 - 파일 목록 로딩 완전 차단")
+                        // PTPIP 연결 시에는 어떤 파일 목록 작업도 수행하지 않음
+                        return@collect
+                    } else {
+                        Log.d(TAG, "USB 연결 상태 - 파일 목록 불러오기")
+                        photoListManager.loadInitialPhotos(
+                            _uiState.value.isConnected,
+                            _uiState.value.isPtpipConnected
+                        )
+                    }
 
                     // observePhotosAndLoadThumbnails()는 이미 setupObservers()에서 설정됨
                     // 여기서 별도로 호출하지 않음
                 } else if (!isConnected && previousConnected) {
                     Log.d(TAG, "카메라 연결 해제됨")
-                    _uiState.value = _uiState.value.copy(isInitialized = false)
+                    _uiState.update { it.copy(isInitialized = false) }
                     errorHandlingManager.emitError(
                         com.inik.camcon.domain.manager.ErrorType.CONNECTION,
                         "카메라 연결이 해제되었습니다",
@@ -175,12 +246,29 @@ class PhotoPreviewViewModel @Inject constructor(
     }
 
     /**
+     * PTPIP 연결 상태 관찰
+     */
+    private fun observePtpipConnection() {
+        // 이미 active인 Job이 있으면 재실행하지 않음
+        if (ptpipObserveJob?.isActive == true) return
+
+        ptpipObserveJob = viewModelScope.launch {
+            cameraRepository.isPtpipConnected().collect { isPtpipConnected ->
+                _uiState.update { it.copy(isPtpipConnected = isPtpipConnected) }
+            }
+        }
+    }
+
+    /**
      * 사진 목록 변화를 감지하고 썸네일 로드
      */
     private fun observePhotosAndLoadThumbnails() {
+        // 이미 active인 Job이 있으면 재실행하지 않음
+        if (photosObserveJob?.isActive == true) return
+
         Log.d(TAG, "[TRACE] observePhotosAndLoadThumbnails() 호출됨")
 
-        viewModelScope.launch {
+        photosObserveJob = viewModelScope.launch {
             Log.d(TAG, "[TRACE] photoListManager.filteredPhotos.collect 시작")
             var collectCount = 0
 
@@ -200,9 +288,12 @@ class PhotoPreviewViewModel @Inject constructor(
      * 카메라 초기화 상태 관찰
      */
     private fun observeCameraInitialization() {
-        viewModelScope.launch {
+        // 이미 active인 Job이 있으면 재실행하지 않음
+        if (initObserveJob?.isActive == true) return
+
+        initObserveJob = viewModelScope.launch {
             cameraRepository.isInitializing().collect { isInitializing ->
-                _uiState.value = _uiState.value.copy(isInitializing = isInitializing)
+                _uiState.update { it.copy(isInitializing = isInitializing) }
             }
         }
     }
@@ -211,10 +302,13 @@ class PhotoPreviewViewModel @Inject constructor(
      * 구독 티어 관찰
      */
     private fun observeSubscriptionTier() {
-        viewModelScope.launch {
+        // 이미 active인 Job이 있으면 재실행하지 않음
+        if (tierObserveJob?.isActive == true) return
+
+        tierObserveJob = viewModelScope.launch {
             getSubscriptionUseCase.getSubscriptionTier().collect { tier ->
                 Log.d(TAG, "사용자 구독 티어 변경: $tier")
-                _uiState.value = _uiState.value.copy(currentTier = tier)
+                _uiState.update { it.copy(currentTier = tier) }
 
                 // 티어 변경 시 현재 필터에 따라 사진 목록 다시 필터링
                 photoListManager.changeFileTypeFilter(
@@ -229,9 +323,12 @@ class PhotoPreviewViewModel @Inject constructor(
      * 에러 이벤트 관찰
      */
     private fun observeErrorEvents() {
-        viewModelScope.launch {
+        // 이미 active인 Job이 있으면 재실행하지 않음
+        if (errorObserveJob?.isActive == true) return
+
+        errorObserveJob = viewModelScope.launch {
             errorHandlingManager.errorEvent.collect { errorEvent ->
-                _uiState.value = _uiState.value.copy(error = errorEvent.message)
+                emitError(errorEvent.message)
                 Log.e(TAG, "에러 이벤트 수신: ${errorEvent.type} - ${errorEvent.message}")
             }
         }
@@ -243,14 +340,25 @@ class PhotoPreviewViewModel @Inject constructor(
      * 초기 사진 목록 로드 (PhotoListManager에 위임)
      */
     fun loadInitialPhotos() {
-        photoListManager.loadInitialPhotos(_uiState.value.isConnected)
+        if (_uiState.value.isPtpipConnected) {
+            Log.d(TAG, "PTPIP 연결 상태로 인해 파일 목록 로딩 차단")
+            return
+        }
+        photoListManager.loadInitialPhotos(
+            _uiState.value.isConnected,
+            _uiState.value.isPtpipConnected
+        )
     }
 
     /**
      * 다음 페이지 로드 (PhotoListManager에 위임)
      */
     fun loadNextPage() {
-        photoListManager.loadNextPage()
+        if (_uiState.value.isPtpipConnected) {
+            Log.d(TAG, "PTPIP 연결 상태로 인해 파일 목록 로딩 차단")
+            return
+        }
+        photoListManager.loadNextPage(_uiState.value.isPtpipConnected)
 
         // 다음 페이지 로드 시에는 observePhotosAndLoadThumbnails()의 collect가
         // 자동으로 filteredPhotos 변화를 감지하여 썸네일 로딩을 처리함
@@ -261,8 +369,12 @@ class PhotoPreviewViewModel @Inject constructor(
      * 사진 목록 새로고침 (PhotoListManager에 위임)
      */
     fun refreshPhotos() {
+        if (_uiState.value.isPtpipConnected) {
+            Log.d(TAG, "PTPIP 연결 상태로 인해 파일 목록 로딩 차단")
+            return
+        }
         Log.d(TAG, "사진 목록 새로고침")
-        photoListManager.refreshPhotos(_uiState.value.isConnected)
+        photoListManager.refreshPhotos(_uiState.value.isConnected, _uiState.value.isPtpipConnected)
     }
 
     /**
@@ -276,7 +388,7 @@ class PhotoPreviewViewModel @Inject constructor(
      * 프리로딩 체크 (PhotoListManager에 위임)
      */
     fun onPhotoIndexReached(currentIndex: Int) {
-        photoListManager.onPhotoIndexReached(currentIndex)
+        photoListManager.onPhotoIndexReached(currentIndex, _uiState.value.isPtpipConnected)
     }
 
     /**
@@ -287,7 +399,7 @@ class PhotoPreviewViewModel @Inject constructor(
             return
         }
         
-        _uiState.value = _uiState.value.copy(selectedPhoto = photo)
+        _uiState.update { it.copy(selectedPhoto = photo) }
     }
 
     /**
@@ -390,9 +502,10 @@ class PhotoPreviewViewModel @Inject constructor(
      */
     private fun canAccessRawFiles(): Boolean {
         val tier = _uiState.value.currentTier
-        return tier == SubscriptionTier.PRO ||
+        val tierAllowed = tier == SubscriptionTier.PRO ||
                 tier == SubscriptionTier.REFERRER ||
                 tier == SubscriptionTier.ADMIN
+        return tierAllowed && _isRawDownloadEnabled.value
     }
 
     /**
@@ -405,17 +518,15 @@ class PhotoPreviewViewModel @Inject constructor(
                 SubscriptionTier.BASIC -> SubscriptionUtils.getRawRestrictionMessageForBasic()
                 else -> "RAW 파일에 접근할 수 없습니다."
             }
-            _uiState.value = _uiState.value.copy(error = message)
+            emitError(message)
             return false
         }
         return true
     }
 
-    /**
-     * 에러 메시지 클리어
-     */
+    @Deprecated("SharedFlow 이벤트로 대체됨")
     fun clearError() {
-        _uiState.value = _uiState.value.copy(error = null)
+        // SharedFlow 사용으로 더 이상 필요 없음
     }
 
     /**
@@ -429,7 +540,7 @@ class PhotoPreviewViewModel @Inject constructor(
             - 초기화중: ${_uiState.value.isInitializing}
             - 구독 티어: ${_uiState.value.currentTier}
             - 선택된 사진: ${_uiState.value.selectedPhoto?.name}
-            - 에러: ${_uiState.value.error}
+            - PTPIP 연결 상태: ${_uiState.value.isPtpipConnected}
         """.trimIndent()
         )
 
@@ -442,56 +553,65 @@ class PhotoPreviewViewModel @Inject constructor(
      * 탭 이탈 시 이벤트 리스너 재시작 처리
      */
     fun onTabExit() {
-        Log.d(TAG, "📸 사진 미리보기 탭 이탈 감지 - 이벤트 리스너 재시작 시도")
+        Log.d(TAG, "📸 사진 미리보기 탭 이탈 감지 - 연결 상태별 처리")
 
         viewModelScope.launch {
             try {
                 val currentConnected = _uiState.value.isConnected
-                Log.d(TAG, "📸 사진 미리보기 탭 종료 - 연결상태: $currentConnected")
+                val isPtpipConnected = _uiState.value.isPtpipConnected
+
+                Log.d(TAG, "📸 사진 미리보기 탭 종료 - 연결상태: $currentConnected, PTPIP: $isPtpipConnected")
 
                 if (currentConnected) {
-                    // 사진 미리보기 모드 비활성화 (먼저 실행)
-                    cameraRepository.setPhotoPreviewMode(false)
-                    Log.d(TAG, "📴 사진 미리보기 모드 비활성화 완료")
+                    if (isPtpipConnected) {
+                        Log.d(TAG, "PTPIP 연결 상태 - 이벤트 리스너 재시작 불필요")
+                        // PTPIP에서는 이벤트 리스너가 계속 실행 중이므로 재시작 불필요
+                    } else {
+                        Log.d(TAG, "USB 연결 상태 - 이벤트 리스너 재시작 처리")
 
-                    // 네이티브 작업 재개
-                    try {
-                        com.inik.camcon.CameraNative.resumeOperations()
-                        Log.d(TAG, "▶️ 네이티브 작업 재개 완료")
-                    } catch (e: Exception) {
-                        Log.w(TAG, "네이티브 작업 재개 실패 (무시)", e)
-                    }
+                        // 사진 미리보기 모드 비활성화 (먼저 실행)
+                        cameraRepository.setPhotoPreviewMode(false)
+                        Log.d(TAG, "📴 사진 미리보기 모드 비활성화 완료")
 
-                    // 카메라 연결 상태 재확인
-                    kotlinx.coroutines.delay(200) // 지연 시간
-
-                    val isStillConnected = try {
-                        cameraRepository.isCameraConnected().first()
-                    } catch (e: Exception) {
-                        Log.w(TAG, "연결 상태 확인 실패", e)
-                        false
-                    }
-
-                    if (isStillConnected) {
-                        Log.d(TAG, "🔄 카메라 여전히 연결됨, 이벤트 리스너 재시작 시도")
-
+                        // 네이티브 작업 재개
                         try {
-                            cameraRepository.startCameraEventListener()
-                            Log.d(TAG, "✅ 이벤트 리스너 재시작 성공")
+                            resumeNativeOperationsUseCase()
+                            Log.d(TAG, "▶️ 네이티브 작업 재개 완료")
                         } catch (e: Exception) {
-                            Log.e(TAG, "이벤트 리스너 재시작 실패", e)
+                            Log.w(TAG, "네이티브 작업 재개 실패 (무시)", e)
+                        }
 
-                            // 재시도 1번 더
-                            kotlinx.coroutines.delay(500)
+                        // 카메라 연결 상태 재확인
+                        kotlinx.coroutines.delay(200) // 지연 시간
+
+                        val isStillConnected = try {
+                            cameraRepository.isCameraConnected().first()
+                        } catch (e: Exception) {
+                            Log.w(TAG, "연결 상태 확인 실패", e)
+                            false
+                        }
+
+                        if (isStillConnected) {
+                            Log.d(TAG, "🔄 카메라 여전히 연결됨, 이벤트 리스너 재시작 시도")
+
                             try {
                                 cameraRepository.startCameraEventListener()
-                                Log.d(TAG, "✅ 이벤트 리스너 재시작 성공 (재시도)")
-                            } catch (e2: Exception) {
-                                Log.e(TAG, "이벤트 리스너 재시작 최종 실패", e2)
+                                Log.d(TAG, "✅ 이벤트 리스너 재시작 성공")
+                            } catch (e: Exception) {
+                                Log.e(TAG, "이벤트 리스너 재시작 실패", e)
+
+                                // 재시도 1번 더
+                                kotlinx.coroutines.delay(500)
+                                try {
+                                    cameraRepository.startCameraEventListener()
+                                    Log.d(TAG, "✅ 이벤트 리스너 재시작 성공 (재시도)")
+                                } catch (e2: Exception) {
+                                    Log.e(TAG, "이벤트 리스너 재시작 최종 실패", e2)
+                                }
                             }
+                        } else {
+                            Log.w(TAG, "카메라 연결 해제됨, 이벤트 리스너 재시작 건너뛰기")
                         }
-                    } else {
-                        Log.w(TAG, "카메라 연결 해제됨, 이벤트 리스너 재시작 건너뛰기")
                     }
                 } else {
                     Log.d(TAG, "카메라 연결되지 않음, 이벤트 리스너 작업 건너뛰기")
@@ -502,6 +622,90 @@ class PhotoPreviewViewModel @Inject constructor(
         }
     }
 
+    override fun onCleared() {
+        super.onCleared()
+        Log.d(TAG, "=== PhotoPreviewViewModel 정리 시작 ===")
+
+        // 사진 미리보기 탭에서 나갈 때 이벤트 리스너 재시작
+        viewModelScope.launch {
+            try {
+                val currentConnected = _uiState.value.isConnected
+                val isPtpipConnected = _uiState.value.isPtpipConnected
+
+                Log.d(TAG, "📸 사진 미리보기 탭 종료 - 연결상태: $currentConnected, PTPIP: $isPtpipConnected")
+
+                if (currentConnected) {
+                    if (isPtpipConnected) {
+                        Log.d(TAG, "PTPIP 연결 상태 - 이벤트 리스너 재시작 불필요")
+                        // PTPIP에서는 이벤트 리스너가 계속 실행 중이므로 재시작 불필요
+                    } else {
+                        Log.d(TAG, "USB 연결 상태 - 이벤트 리스너 재시작 처리")
+
+                        // 사진 미리보기 모드 비활성화 (먼저 실행)
+                        cameraRepository.setPhotoPreviewMode(false)
+                        Log.d(TAG, "📴 사진 미리보기 모드 비활성화 완료")
+
+                        // 네이티브 작업 재개
+                        try {
+                            resumeNativeOperationsUseCase()
+                            Log.d(TAG, "▶️ 네이티브 작업 재개 완료")
+                        } catch (e: Exception) {
+                            Log.w(TAG, "네이티브 작업 재개 실패 (무시)", e)
+                        }
+
+                        // 카메라 연결 상태 재확인
+                        kotlinx.coroutines.delay(200) // 더 긴 지연
+
+                        val isStillConnected = try {
+                            cameraRepository.isCameraConnected().first()
+                        } catch (e: Exception) {
+                            Log.w(TAG, "연결 상태 확인 실패", e)
+                            false
+                        }
+
+                        if (isStillConnected) {
+                            Log.d(TAG, "🔄 카메라 여전히 연결됨, 이벤트 리스너 재시작 시도")
+
+                            try {
+                                cameraRepository.startCameraEventListener()
+                                Log.d(TAG, "✅ 이벤트 리스너 재시작 성공")
+                            } catch (e: Exception) {
+                                Log.e(TAG, "이벤트 리스너 재시작 실패", e)
+
+                                // 재시도 1번 더
+                                kotlinx.coroutines.delay(500)
+                                try {
+                                    cameraRepository.startCameraEventListener()
+                                    Log.d(TAG, "✅ 이벤트 리스너 재시작 성공 (재시도)")
+                                } catch (e2: Exception) {
+                                    Log.e(TAG, "이벤트 리스너 재시작 최종 실패", e2)
+                                }
+                            }
+                        } else {
+                            Log.w(TAG, "카메라 연결 해제됨, 이벤트 리스너 재시작 건너뛰기")
+                        }
+                    }
+                } else {
+                    Log.d(TAG, "카메라 연결되지 않음, 이벤트 리스너 작업 건너뛰기")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "PhotoPreview 정리 중 예외 발생", e)
+            }
+        }
+
+        // 매니저들 정리
+        try {
+            photoListManager.cleanup()
+            photoImageManager.cleanup()
+            photoSelectionManager.clearSelection()
+            Log.d(TAG, "매니저들 정리 완료")
+        } catch (e: Exception) {
+            Log.w(TAG, "매니저 정리 중 예외", e)
+        }
+
+        Log.d(TAG, "=== PhotoPreviewViewModel 정리 완료 ===")
+    }
+
     // MARK: - 멀티 선택 관련 메서드들 (PhotoSelectionManager에 위임)
 
     /**
@@ -509,7 +713,7 @@ class PhotoPreviewViewModel @Inject constructor(
      */
     fun startMultiSelectMode(initialPhotoPath: String) {
         photoSelectionManager.startMultiSelectMode(initialPhotoPath)
-        _uiState.value = _uiState.value.copy(selectedPhoto = null)
+        _uiState.update { it.copy(selectedPhoto = null) }
     }
 
     /**
@@ -560,80 +764,5 @@ class PhotoPreviewViewModel @Inject constructor(
                 photoImageManager.downloadFullImage(photoPath, _uiState.value.currentTier)
             }
         }
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        Log.d(TAG, "=== PhotoPreviewViewModel 정리 시작 ===")
-
-        // 사진 미리보기 탭에서 나갈 때 이벤트 리스너 재시작
-        viewModelScope.launch {
-            try {
-                val currentConnected = _uiState.value.isConnected
-                Log.d(TAG, "📸 사진 미리보기 탭 종료 - 연결상태: $currentConnected")
-
-                if (currentConnected) {
-                    // 사진 미리보기 모드 비활성화 (먼저 실행)
-                    cameraRepository.setPhotoPreviewMode(false)
-                    Log.d(TAG, "📴 사진 미리보기 모드 비활성화 완료")
-
-                    // 네이티브 작업 재개
-                    try {
-                        com.inik.camcon.CameraNative.resumeOperations()
-                        Log.d(TAG, "▶️ 네이티브 작업 재개 완료")
-                    } catch (e: Exception) {
-                        Log.w(TAG, "네이티브 작업 재개 실패 (무시)", e)
-                    }
-
-                    // 카메라 연결 상태 재확인
-                    kotlinx.coroutines.delay(200) // 더 긴 지연
-
-                    val isStillConnected = try {
-                        cameraRepository.isCameraConnected().first()
-                    } catch (e: Exception) {
-                        Log.w(TAG, "연결 상태 확인 실패", e)
-                        false
-                    }
-
-                    if (isStillConnected) {
-                        Log.d(TAG, "🔄 카메라 여전히 연결됨, 이벤트 리스너 재시작 시도")
-
-                        try {
-                            cameraRepository.startCameraEventListener()
-                            Log.d(TAG, "✅ 이벤트 리스너 재시작 성공")
-                        } catch (e: Exception) {
-                            Log.e(TAG, "이벤트 리스너 재시작 실패", e)
-
-                            // 재시도 1번 더
-                            kotlinx.coroutines.delay(500)
-                            try {
-                                cameraRepository.startCameraEventListener()
-                                Log.d(TAG, "✅ 이벤트 리스너 재시작 성공 (재시도)")
-                            } catch (e2: Exception) {
-                                Log.e(TAG, "이벤트 리스너 재시작 최종 실패", e2)
-                            }
-                        }
-                    } else {
-                        Log.w(TAG, "카메라 연결 해제됨, 이벤트 리스너 재시작 건너뛰기")
-                    }
-                } else {
-                    Log.d(TAG, "카메라 연결되지 않음, 이벤트 리스너 작업 건너뛰기")
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "PhotoPreview 정리 중 예외 발생", e)
-            }
-        }
-
-        // 매니저들 정리
-        try {
-            photoListManager.cleanup()
-            photoImageManager.cleanup()
-            photoSelectionManager.clearSelection()
-            Log.d(TAG, "매니저들 정리 완료")
-        } catch (e: Exception) {
-            Log.w(TAG, "매니저 정리 중 예외", e)
-        }
-
-        Log.d(TAG, "=== PhotoPreviewViewModel 정리 완료 ===")
     }
 }
