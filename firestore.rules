@@ -63,10 +63,12 @@ service cloud.firestore {
     }
 
     // ==================== REFERRALS 컬렉션 ====================
-    // 추천 기록 - 인증된 사용자는 읽기 가능
-    // (사용자가 자신의 추천 기록 확인용)
+    // 추천 기록 - 추천인 또는 피추천인 본인만 읽기 가능
     match /referrals/{referralDoc} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && (
+        resource.data.referrerId == request.auth.uid ||
+        resource.data.referredId == request.auth.uid
+      );
 
       // 쓰기는 백엔드(Admin SDK)에서만 가능
       allow write: if false;

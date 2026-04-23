@@ -44,7 +44,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.firebase.auth.FirebaseAuth
-import com.inik.camcon.CameraNative
 import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
@@ -54,6 +53,9 @@ import com.inik.camcon.utils.LogcatManager
 import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
+import com.inik.camcon.domain.usecase.camera.GetLibGphoto2VersionUseCase
+import com.inik.camcon.domain.usecase.camera.IsNativeLibrariesLoadedUseCase
+import com.inik.camcon.domain.usecase.camera.SetupNativeEnvironmentUseCase
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
@@ -76,6 +78,15 @@ class SplashActivity : ComponentActivity() {
 
     @Inject
     lateinit var appPreferencesDataSource: com.inik.camcon.data.datasource.local.AppPreferencesDataSource
+
+    @Inject
+    lateinit var isNativeLibrariesLoadedUseCase: IsNativeLibrariesLoadedUseCase
+
+    @Inject
+    lateinit var setupNativeEnvironmentUseCase: SetupNativeEnvironmentUseCase
+
+    @Inject
+    lateinit var getLibGphoto2VersionUseCase: GetLibGphoto2VersionUseCase
 
     private var libraryLoadingStatus by mutableStateOf("초기화 중...")
     private var isLibraryLoaded by mutableStateOf(false)
@@ -146,7 +157,7 @@ class SplashActivity : ComponentActivity() {
 
                 // 라이브러리 로딩 상태 확인
                 val startTime = System.currentTimeMillis()
-                val isLoaded = CameraNative.isLibrariesLoaded()
+                val isLoaded = isNativeLibrariesLoadedUseCase()
 
                 LogcatManager.d(
                     "SplashActivity",
@@ -168,7 +179,7 @@ class SplashActivity : ComponentActivity() {
                     applicationContext.getDir("gphoto2_plugins", MODE_PRIVATE).absolutePath
                 LogcatManager.d("SplashActivity", "플러그인 디렉토리 경로: $pluginDir")
 
-                val envSetupResult = CameraNative.setupEnvironmentPaths(pluginDir)
+                val envSetupResult = setupNativeEnvironmentUseCase(pluginDir)
                 if (!envSetupResult) {
                     LogcatManager.e("SplashActivity", "❌ 환경변수 설정 실패")
                     withContext(Dispatchers.Main) {
@@ -190,7 +201,7 @@ class SplashActivity : ComponentActivity() {
                 // 추가 검증을 위해 라이브러리 버전 확인 시도
                 try {
                     delay(100) // 약간의 지연 후 검증
-                    val version = CameraNative.getLibGphoto2Version()
+                    val version = getLibGphoto2VersionUseCase()
                     LogcatManager.i("SplashActivity", "📋 Libgphoto2 버전: $version")
                 } catch (e: Exception) {
                     LogcatManager.w("SplashActivity", "⚠️ 라이브러리 버전 확인 실패 (정상적일 수 있음): ${e.message}")

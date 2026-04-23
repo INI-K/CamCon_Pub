@@ -7,7 +7,9 @@ import android.net.nsd.NsdServiceInfo
 import android.util.Log
 import com.inik.camcon.data.constants.PtpipConstants
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
+import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.model.PtpipCamera
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -30,7 +32,8 @@ import kotlin.coroutines.resume
 @Singleton
 class PtpipDiscoveryService @Inject constructor(
     private val context: Context,
-    private val wifiHelper: WifiNetworkHelper
+    private val wifiHelper: WifiNetworkHelper,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
     private val nsdManager = context.getSystemService(Context.NSD_SERVICE) as NsdManager
     private var discoveryListener: NsdManager.DiscoveryListener? = null
@@ -53,7 +56,7 @@ class PtpipDiscoveryService @Inject constructor(
      * PTPIP 지원 카메라 검색 (최적화된 빠른 검색)
      */
     suspend fun discoverCameras(forceApMode: Boolean = false): List<PtpipCamera> =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             val cameras = mutableListOf<PtpipCamera>()
 
             Log.i(TAG, "========================================")
@@ -201,7 +204,7 @@ class PtpipDiscoveryService @Inject constructor(
     /**
      * 캐시된 IP로 빠른 연결 시도
      */
-    private suspend fun tryCachedIP(): PtpipCamera? = withContext(Dispatchers.IO) {
+    private suspend fun tryCachedIP(): PtpipCamera? = withContext(ioDispatcher) {
         val cachedIP = prefs.getString(PREF_LAST_CAMERA_IP, null)
         val cachedName = prefs.getString(PREF_LAST_CAMERA_NAME, null)
         val lastSuccessTime = prefs.getLong(PREF_LAST_SUCCESS_TIME, 0)
@@ -256,7 +259,7 @@ class PtpipDiscoveryService @Inject constructor(
      * 여러 mDNS 서비스 타입 동시 검색
      */
     private suspend fun discoverPtpServicesMultiType(): List<NsdServiceInfo> =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             val allServices = mutableListOf<NsdServiceInfo>()
 
             // 모든 서비스 타입을 동시에 검색

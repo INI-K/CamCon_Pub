@@ -1,7 +1,8 @@
 package com.inik.camcon.data.datasource.remote
 
 import android.util.Log
-import kotlinx.coroutines.Dispatchers
+import com.inik.camcon.di.IoDispatcher
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -11,14 +12,16 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class PlayStoreVersionDataSource @Inject constructor() {
+class PlayStoreVersionDataSource @Inject constructor(
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+) {
 
     /**
      * Google Play Store에서 앱의 최신 버전 정보를 가져옵니다.
      * 방법 1: Play Store 웹페이지 스크래핑
      */
     suspend fun getPlayStoreVersionInfo(packageName: String): PlayStoreVersionInfo? {
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             try {
                 Log.d("PlayStoreVersion", "버전 정보 조회 중: $packageName")
 
@@ -56,7 +59,7 @@ class PlayStoreVersionDataSource @Inject constructor() {
      * 방법 2: 간접적으로 JSON API 사용 (비공식)
      */
     suspend fun getVersionViaJsonApi(packageName: String): PlayStoreVersionInfo? {
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             try {
                 Log.d("PlayStoreVersion", "JSON API를 통한 조회 중: $packageName")
 

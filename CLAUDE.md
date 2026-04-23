@@ -114,6 +114,17 @@ com.inik.camcon/
 - `app/src/main/jniLibs/arm64-v8a/` — 사전 빌드 `.so` (libgphoto2, libgphoto2_port, libltdl)
 - 로딩 실패 시 `CameraNative.init`이 `RuntimeException`을 던짐
 
+#### libgphoto2 Android 빌드
+- **업스트림 소스**: [github.com/gphoto/libgphoto2](https://github.com/gphoto/libgphoto2)
+- **빌드 방식**: CamCon 저장소 **외부**에서 Android NDK 툴체인으로 크로스 컴파일 후, 산출물(`.so`)만 `app/src/main/jniLibs/arm64-v8a/` 에 체크인.
+- **대상 ABI**: `arm64-v8a` 전용. Android 15+ **16KB 페이지** 호환을 위해 링커 플래그 `-Wl,-z,max-page-size=16384` 로 빌드 필요.
+- **포함 라이브러리**:
+  - `libgphoto2.so` — 카메라 제어 상위 레벨
+  - `libgphoto2_port.so` — USB/PTP-IP 포트 드라이버
+  - `libltdl.so` — 동적 모듈 로더 (gphoto2 camlibs)
+- **카메라 드라이버(camlibs)**: libgphoto2 내부에 정적 링크 또는 같은 jniLibs 디렉터리에 배치. 업스트림에 추가된 신규 카메라는 libgphoto2 재빌드 후 `.so` 교체.
+- **업데이트 절차**: 업스트림 변경 시 (1) gphoto/libgphoto2 최신 태그 체크아웃, (2) Android NDK로 재빌드, (3) `.so` 3개 교체, (4) `CameraNative.kt` external 시그니처 동기화 확인, (5) `./gradlew assembleDebug` 로 링킹 검증.
+
 ### 구독 티어 (기능 게이팅)
 
 | 티어 | 포맷 | 제한 |
@@ -176,7 +187,8 @@ com.inik.camcon/
 - [Android Developer Documentation](https://developer.android.com)
 - [Kotlin Documentation](https://kotlinlang.org)
 - [Jetpack Compose](https://developer.android.com/jetpack/compose)
-- [libgphoto2](http://www.gphoto.org/doc/) — JNI 계층 카메라 프로토콜 원본
+- [libgphoto2 문서](http://www.gphoto.org/doc/) — JNI 계층 카메라 프로토콜 원본
+- [libgphoto2 GitHub](https://github.com/gphoto/libgphoto2) — 네이티브 라이브러리 소스(Android용으로 외부 크로스 컴파일하여 `jniLibs/arm64-v8a/`에 `.so` 체크인)
 
 프로젝트 내 상세 문서는 `docs/DEV_DOCUMENT.md`(알려진 이슈·아키텍처 결정사항)를 우선 참조.
 
@@ -217,6 +229,38 @@ com.inik.camcon/
 ### 멀티 레이어 요청 처리 원칙
 
 여러 레이어(UI + Domain + Data)를 동시에 손대야 하는 요청, "새 기능 만들어줘" / "X 기능 추가" / "기획부터 리뷰까지" 같은 통합 요청에서는 개별 스킬로 바로 진입하지 말고 사용자에게 **"어떤 레이어부터 손댈지"** 또는 **"전체 설계 → 구현 → 리뷰 순서로 진행할지"** 를 먼저 확인한다. 단일 레이어 작업(버그 수정, 소규모 리팩터링)은 확인 없이 해당 스킬로 바로 진행.
+
+### 자동 팀 라우팅 (camcon-dev)
+
+이 프로젝트에서 Claude Code 세션은 기본적으로 `camcon-dev` 팀의 **team-lead** 역할을 한다. 팀 설정: `~/.claude/teams/camcon-dev/config.json`. 사용자 요청이 들어오면 다음 절차를 따른다.
+
+1. **의도 분류** — 아래 역할별 매핑으로 분류한다. 여러 레이어면 복수 역할을 **병렬** 소환.
+
+   | 의도 | 역할 (name) | subagent_type | 선행 로드 스킬 |
+   |-----|-------------|---------------|---------------|
+   | 아키텍처·Clean Arch·Hilt 설계 | `camcon-architect` | `everything-claude-code:architect` | `android-architecture`, `android-data-layer`, `android-viewmodel` |
+   | Kotlin/Compose/ViewModel/코루틴 리뷰 | `kotlin-compose-reviewer` | `everything-claude-code:kotlin-reviewer` | `compose-ui`, `compose-performance-audit`, `android-viewmodel`, `android-coroutines`, `kotlin-concurrency-expert`, `coil-compose`, `android-accessibility`, `compose-navigation` |
+   | JNI/C++/libgphoto2 | `jni-cpp-reviewer` | `everything-claude-code:cpp-reviewer` | (Android 스킬 해당 없음) |
+   | 멀티레이어 추적·USB/PTP-IP | `camera-explorer` | `everything-claude-code:code-explorer` | `android-architecture`, `android-data-layer` |
+   | Gradle/KSP/JBR 21 빌드 실패 | `kotlin-build-resolver` | `everything-claude-code:kotlin-build-resolver` | `gradle-build-performance`, `android-gradle-logic` |
+   | 테스트·TDD·커버리지 | `tdd-guide` | `everything-claude-code:tdd-guide` | `android-testing` |
+   | Compose 성능·Recomposition | `performance-optimizer` | `everything-claude-code:performance-optimizer` | `compose-performance-audit`, `gradle-build-performance` |
+   | Firebase·Billing·Auth 보안 | `security-reviewer` | `everything-claude-code:security-reviewer` | — |
+   | XML→Compose / RxJava→Coroutines 마이그레이션 | `kotlin-compose-reviewer` | `everything-claude-code:kotlin-reviewer` | `xml-to-compose-migration` 또는 `rxjava-to-coroutines-migration` 추가 |
+   | HTTP/Retrofit | `kotlin-compose-reviewer` | `everything-claude-code:kotlin-reviewer` | `android-retrofit` 추가 |
+   | 에뮬레이터/adb 자동화 | `kotlin-compose-reviewer` | `everything-claude-code:kotlin-reviewer` | `android-emulator-skill` 추가 |
+
+2. **선행 스킬 로드** — 분류된 역할의 스킬을 `Skill` 툴로 먼저 로드해 컨텍스트를 확보.
+3. **멀티레이어 확인** — 위 "멀티 레이어 요청 처리 원칙" 규약 적용.
+4. **병렬 소환** — `Agent` 툴 호출 시 `team_name: "camcon-dev"`, `name: <역할명>`, `subagent_type: <매핑 에이전트>`, `prompt`에 선행 스킬 요약 + 요청 본문 + CamCon 컨텍스트(minSdk 29, arm64-v8a 전용, JBR 21, 다크 고정) 주입. 독립 역할은 단일 메시지에 복수 Agent 호출로 병렬.
+5. **결과 통합 보고** — 한국어로, 상충 의견은 근거와 함께 모두 제시.
+
+**명시적 트리거**: `/camcon-dev <요청>` — 위 절차를 프롬프트 템플릿으로 강제 실행 (.claude/commands/camcon-dev.md).
+
+**자동 병행 규칙**
+- 신규 기능 구현 시 `tdd-guide` 자동 병행 (커버리지 8% → 80% 목표).
+- Firebase/결제 변경 시 `security-reviewer` 자동 병행.
+- JNI 레이어 변경 시 `jni-cpp-reviewer` 필수 포함.
 
 ---
 
