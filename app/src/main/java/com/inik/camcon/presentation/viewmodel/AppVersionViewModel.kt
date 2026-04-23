@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 data class AppVersionUiState(
@@ -33,7 +34,17 @@ class AppVersionViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
 
-            checkAppVersionUseCase().fold(
+            val result = withTimeoutOrNull(8_000L) {
+                checkAppVersionUseCase()
+            }
+
+            if (result == null) {
+                // 타임아웃 — 업데이트 불필요로 처리하고 계속 진행
+                _uiState.update { it.copy(isLoading = false) }
+                return@launch
+            }
+
+            result.fold(
                 onSuccess = { versionInfo ->
                     _uiState.update {
                         it.copy(

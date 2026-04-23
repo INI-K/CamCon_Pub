@@ -2,9 +2,92 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 임시: 모든 접근 허용 (관리자 설정용)
+    // 인증된 사용자인지 확인하는 함수
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // 사용자 ID가 일치하는지 확인
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // 사용자가 ADMIN 티어인지 확인
+    function isAdmin(userId) {
+      return isAuthenticated() &&
+             exists(/databases/{database}/documents/users/{userId}/subscriptions/current) &&
+             get(/databases/{database}/documents/users/{userId}/subscriptions/current).data.tier == 'ADMIN';
+    }
+
+    // 현재 사용자가 ADMIN인지 확인
+    function currentUserIsAdmin() {
+      return isAdmin(request.auth.uid);
+    }
+
+    // 필드 변경 감지 함수
+    function fieldChanged(fieldName) {
+      return fieldName in request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    // 보호된 필드(구독 티어 등)가 변경되지 않았는지 확인
+    function protectedFieldsNotChanged() {
+      return !fieldChanged('tier') &&
+             !fieldChanged('updatedAt') &&
+             !fieldChanged('updatedBy');
+    }
+
+    // ==================== USERS 컬렉션 ====================
+    // 사용자는 자신의 문서만 읽기 가능
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+
+      // 사용자는 자신의 문서의 기본 정보만 수정 가능
+      // 구독 티어는 절대 변경 불가 (서버에서만 Admin SDK로 변경)
+      allow write: if isOwner(userId) && protectedFieldsNotChanged();
+
+      // 관리자는 모든 사용자 문서 읽기 가능
+      allow read: if currentUserIsAdmin();
+
+      // ==================== SUBSCRIPTIONS 서브컬렉션 ====================
+      // 사용자는 자신의 구독 정보만 읽기 가능
+      match /subscriptions/{subscriptionDoc} {
+        allow read: if isOwner(userId);
+
+        // 구독 정보는 클라이언트에서 절대 쓰기 불가
+        // (서버 Admin SDK 또는 결제 처리 시스템에서만 업데이트)
+        allow write: if false;
+
+        // 관리자는 모든 사용자의 구독 정보 읽기 가능
+        allow read: if currentUserIsAdmin();
+      }
+    }
+
+    // ==================== REFERRALS 컬렉션 ====================
+    // 추천 기록 - 추천인 또는 피추천인 본인만 읽기 가능
+    match /referrals/{referralDoc} {
+      allow read: if isAuthenticated() && (
+        resource.data.referrerId == request.auth.uid ||
+        resource.data.referredId == request.auth.uid
+      );
+
+      // 쓰기는 백엔드(Admin SDK)에서만 가능
+      allow write: if false;
+    }
+
+    // ==================== REFERRAL_CODES 컬렉션 ====================
+    // 추천 코드 - 인증된 사용자는 읽기 가능
+    // (사용자가 추천 코드 조회 및 입력용)
+    match /referral_codes/{codeDoc} {
+      allow read: if isAuthenticated();
+
+      // 쓰기는 백엔드(Admin SDK/관리자 기능)에서만 가능
+      allow write: if false;
+    }
+
+    // ==================== 기본 규칙: 모든 다른 경로 차단 ====================
+    // 위의 명시적 규칙에 매칭되지 않는 모든 접근은 거부
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }

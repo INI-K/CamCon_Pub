@@ -15,45 +15,56 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.BottomNavigation
-import androidx.compose.material.BottomNavigationItem
-import androidx.compose.material.Icon
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Scaffold
-import androidx.compose.material.Text
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.inik.camcon.presentation.theme.Border
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.lifecycleScope
@@ -67,6 +78,7 @@ import com.inik.camcon.R
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
 import com.inik.camcon.data.service.BackgroundSyncService
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
+import com.inik.camcon.domain.model.CameraConnectionType
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.presentation.theme.CamConTheme
@@ -77,11 +89,13 @@ import com.inik.camcon.presentation.ui.screens.components.PtpTimeoutDialog
 import com.inik.camcon.presentation.ui.screens.components.UsbInitializationOverlay
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
+import com.inik.camcon.utils.LogcatManager
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import javax.inject.Inject
 
 sealed class BottomNavItem(val route: String, val titleRes: Int, val icon: ImageVector) {
     object PhotoPreview :
@@ -108,7 +122,7 @@ fun CameraConnectionOptimizationDialog(
         title = {
             androidx.compose.material3.Text(
                 "카메라 연결 최적화 설정",
-                style = androidx.compose.material3.MaterialTheme.typography.titleLarge, 
+                style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
         },
@@ -145,7 +159,8 @@ fun CameraConnectionOptimizationDialog(
 fun MainScreen(
     onSettingsClick: () -> Unit,
     globalManager: CameraConnectionGlobalManager,
-    cameraViewModel: CameraViewModel = hiltViewModel()
+    cameraViewModel: CameraViewModel = hiltViewModel(),
+    navigateToCameraControl: Boolean = false
 ) {
     val navController = rememberNavController()
     val items = listOf(
@@ -158,27 +173,51 @@ fun MainScreen(
     // 전체화면 상태 관리
     var isFullscreen by remember { mutableStateOf(false) }
 
+    // PTPIP 연결 상태 및 경고 다이얼로그 상태
+    val isPtpipConnected by cameraViewModel.isPtpipConnected.collectAsStateWithLifecycle()
+    var showPtpipWarning by remember { mutableStateOf(false) }
+
     // 전역 연결 상태 모니터링
-    val globalConnectionState by globalManager.globalConnectionState.collectAsState()
-    val activeConnectionType by globalManager.activeConnectionType.collectAsState()
-    val connectionStatusMessage by globalManager.connectionStatusMessage.collectAsState()
+    val globalConnectionState by globalManager.globalConnectionState.collectAsStateWithLifecycle()
+    val activeConnectionType by globalManager.activeConnectionType.collectAsStateWithLifecycle()
+    val connectionStatusMessage by globalManager.connectionStatusMessage.collectAsStateWithLifecycle()
 
     // CameraViewModel의 USB 초기화 상태 모니터링
-    val cameraUiState by cameraViewModel.uiState.collectAsState()
+    val cameraUiState by cameraViewModel.uiState.collectAsStateWithLifecycle()
 
     // LocalContext를 @Composable 내에서 미리 가져오기
     val context = LocalContext.current
 
     // 전역 상태 변화 시 로그 출력
     LaunchedEffect(globalConnectionState) {
-        Log.d("MainScreen", "전역 연결 상태 변화: $connectionStatusMessage")
+        LogcatManager.d("MainScreen", "전역 연결 상태 변화: $connectionStatusMessage")
+    }
+
+    // navigateToCameraControl 플래그가 true이면 카메라 컨트롤 탭으로 자동 이동
+    LaunchedEffect(navigateToCameraControl) {
+        if (navigateToCameraControl) {
+            LogcatManager.d("MainScreen", "카메라 컨트롤 탭으로 자동 이동")
+            navController.navigate(BottomNavItem.CameraControl.route) {
+                popUpTo(navController.graph.findStartDestination().id) {
+                    saveState = true
+                }
+                launchSingleTop = true
+                restoreState = true
+            }
+        }
     }
 
     // 테마 모드 상태
     val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
-    val themeMode by appSettingsViewModel.themeMode.collectAsState()
+    val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    // 시스템 바 인셋 계산 - 기종별 대응
+    val systemBarsPadding = WindowInsets.systemBars.asPaddingValues()
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+    ) {
 
         // --- PTP 타임아웃 다이얼로그 모니터링 및 표시 ---
         var showRestartDialog by remember { mutableStateOf(false) }
@@ -196,46 +235,45 @@ fun MainScreen(
         if (showRestartDialog) {
             var isRestarting by remember { mutableStateOf(false) }
 
-            androidx.compose.material.AlertDialog(
-                onDismissRequest = { /* 다이얼로그 닫기 방지 */ },
-                title = { Text("앱 재시작 필요") },
-                text = {
-                androidx.compose.foundation.layout.Column {
-                    if (isRestarting) {
-                        Text("재시작 준비 중입니다...")
-                        androidx.compose.foundation.layout.Spacer(
-                            modifier = androidx.compose.ui.Modifier.height(8.dp)
-                        )
-                        Text(
-                            "잠시만 기다려주세요. 카메라 연결을 정리하고 있습니다.",
-                            style = androidx.compose.material.MaterialTheme.typography.caption
-                        )
-                    } else {
-                        Text("카메라 연결 문제로 인해 앱을 완전히 재시작해야 합니다.")
-                        androidx.compose.foundation.layout.Spacer(
-                            modifier = androidx.compose.ui.Modifier.height(8.dp)
-                        )
-                        Text(
-                            "• '즉시 재시작': 버튼 클릭 즉시 재시작\n• '종료': 앱만 종료 (수동 재실행 필요)",
-                            style = androidx.compose.material.MaterialTheme.typography.caption
-                        )
+            AlertDialog(
+                onDismissRequest = {
+                    if (!isRestarting) {
+                        showRestartDialog = false
                     }
+                },
+                icon = { Icon(Icons.Default.Settings, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                title = { Text("앱 재시작 필요", style = MaterialTheme.typography.titleLarge) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (isRestarting) {
+                            Text("재시작 준비 중입니다...")
+                            Text(
+                                "잠시만 기다려주세요. 카메라 연결을 정리하고 있습니다.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            Text("카메라 연결 문제로 인해 앱을 완전히 재시작해야 합니다.")
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "• '즉시 재시작': 버튼 클릭 즉시 재시작\n• '종료': 앱만 종료 (수동 재실행 필요)",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 },
                 confirmButton = {
                     if (!isRestarting) {
-                        androidx.compose.foundation.layout.Row(
-                            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(
-                                8.dp
-                            )
-                        ) {
-                            androidx.compose.material.TextButton(
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(
+                                onClick = { showRestartDialog = false }
+                            ) { Text("나중에") }
+
+                            TextButton(
                                 onClick = {
                                     isRestarting = true
-                                    // 모든 상태 정리
                                     cameraViewModel.clearPtpTimeout()
-
-                                    // 시스템 재시작 메커니즘을 사용한 재시작
                                     val activity = context as? ComponentActivity
                                     activity?.let { act ->
                                         MainActivity.restartAppAfterCameraCleanup(act)
@@ -243,13 +281,10 @@ fun MainScreen(
                                 }
                             ) { Text("즉시 재시작") }
 
-                            androidx.compose.material.TextButton(
+                            TextButton(
                                 onClick = {
                                     isRestarting = true
-                                    // 모든 상태 정리
                                     cameraViewModel.clearPtpTimeout()
-
-                                    // 간단한 재시작 (앱 종료만)
                                     val activity = context as? ComponentActivity
                                     activity?.let { act ->
                                         MainActivity.systemRestartApp(act)
@@ -258,57 +293,50 @@ fun MainScreen(
                             ) { Text("종료") }
                         }
                     }
-                },
-                properties = androidx.compose.ui.window.DialogProperties(
-                    dismissOnBackPress = false,
-                    dismissOnClickOutside = false
-                )
+                }
             )
         }
 
         // USB 분리 다이얼로그 표시
         if (cameraUiState.isUsbDisconnected == true) {
-            androidx.compose.material.AlertDialog(
+            AlertDialog(
                 onDismissRequest = { cameraViewModel.clearUsbDisconnection() },
+                icon = {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                },
                 title = {
                     Text(
                         "USB 디바이스 분리",
-                        style = androidx.compose.material.MaterialTheme.typography.h6,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                        color = androidx.compose.material.MaterialTheme.colors.error
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
                     )
                 },
                 text = {
-                    androidx.compose.foundation.layout.Column {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
                             "카메라 USB 연결이 끊어졌습니다.",
-                            style = androidx.compose.material.MaterialTheme.typography.body1
-                        )
-                        androidx.compose.foundation.layout.Spacer(
-                            modifier = androidx.compose.ui.Modifier.height(
-                                8.dp
-                            )
+                            style = MaterialTheme.typography.bodyMedium
                         )
                         Text(
-                            "• USB 케이블 연결을 확인해주세요\n• 카메라 전원을 확인해주세요\n• 카메라를 PC 모드로 설정해주세요",
-                            style = androidx.compose.material.MaterialTheme.typography.caption,
-                            color = androidx.compose.material.MaterialTheme.colors.onSurface.copy(
-                                alpha = 0.7f
-                            )
+                            "• USB 케이블 연결을 확인해주세요\n" +
+                                    "• 카메라 전원을 확인해주세요\n" +
+                                    "• 카메라를 PC 모드로 설정해주세요",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
                 confirmButton = {
-                    androidx.compose.material.TextButton(
+                    TextButton(
                         onClick = { cameraViewModel.clearUsbDisconnection() }
                     ) {
                         Text("확인")
                     }
-                },
-                properties = androidx.compose.ui.window.DialogProperties(
-                    dismissOnBackPress = true,
-                    dismissOnClickOutside = true
-                )
+                }
             )
         }
 
@@ -317,32 +345,32 @@ fun MainScreen(
             !cameraUiState.isUsbInitializing &&
             !cameraUiState.isCameraInitializing
         ) {
-            androidx.compose.material.AlertDialog(
+            AlertDialog(
                 onDismissRequest = { cameraViewModel.dismissCameraStatusCheckDialog() },
+                icon = {
+                    Icon(
+                        Icons.Default.Settings,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                },
                 title = {
                     Text(
                         "카메라 상태 점검 필요",
-                        style = androidx.compose.material.MaterialTheme.typography.h6,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                        color = androidx.compose.material.MaterialTheme.colors.error
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
                     )
                 },
                 text = {
-                    androidx.compose.foundation.layout.Column {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
                             "카메라가 정상적으로 동작하지 않습니다.",
-                            style = androidx.compose.material.MaterialTheme.typography.body1
-                        )
-                        androidx.compose.foundation.layout.Spacer(
-                            modifier = androidx.compose.ui.Modifier.height(12.dp)
+                            style = MaterialTheme.typography.bodyMedium
                         )
                         Text(
                             "다음 사항을 확인해주세요:",
-                            style = androidx.compose.material.MaterialTheme.typography.body2,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                        )
-                        androidx.compose.foundation.layout.Spacer(
-                            modifier = androidx.compose.ui.Modifier.height(8.dp)
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
                         )
                         Text(
                             "• 카메라 전원이 켜져 있는지 확인\n" +
@@ -350,29 +378,25 @@ fun MainScreen(
                                     "• USB 케이블 연결 상태 확인\n" +
                                     "• 카메라가 PC 연결 모드로 설정되어 있는지 확인\n" +
                                     "• 카메라를 껐다가 다시 켜보세요",
-                            style = androidx.compose.material.MaterialTheme.typography.caption,
-                            color = androidx.compose.material.MaterialTheme.colors.onSurface.copy(
-                                alpha = 0.8f
-                            )
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
                 confirmButton = {
-                    androidx.compose.material.TextButton(
+                    TextButton(
                         onClick = { cameraViewModel.dismissCameraStatusCheckDialog() }
                     ) {
                         Text("확인")
                     }
                 },
                 dismissButton = {
-                    androidx.compose.material.TextButton(
+                    TextButton(
                         onClick = {
                             cameraViewModel.dismissCameraStatusCheckDialog()
                             cameraViewModel.refreshUsbDevices()
                         }
-                    ) {
-                        Text("다시 연결")
-                    }
+                    ) { Text("다시 연결") }
                 },
                 properties = androidx.compose.ui.window.DialogProperties(
                     dismissOnBackPress = true,
@@ -382,81 +406,216 @@ fun MainScreen(
         }
 
         Scaffold(
-            backgroundColor = Color.Transparent,
+            modifier = Modifier.fillMaxSize(),
             bottomBar = {
                 // 전체화면 모드가 아닐 때만 하단 탭 표시
                 if (!isFullscreen) {
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentDestination = navBackStackEntry?.destination
-                    val selectedRoute = items.firstOrNull {
-                        currentDestination?.hierarchy?.any { destination -> destination.route == it.route } == true
-                    }?.route
-                    CamConBottomNav(
-                        items = items,
-                        selectedRoute = selectedRoute,
-                        onItemClick = { screen ->
-                            if (screen.route == "settings") {
-                                onSettingsClick()
-                            } else {
-                                navController.navigate(screen.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
+
+                    HorizontalDivider(color = Border, thickness = 0.5.dp)
+                    NavigationBar(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        tonalElevation = 0.dp,
+                        modifier = Modifier.navigationBarsPadding()
+                    ) {
+                        items.forEach { screen ->
+                            val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                            NavigationBarItem(
+                                icon = {
+                                    Icon(
+                                        screen.icon,
+                                        contentDescription = stringResource(screen.titleRes)
+                                    )
+                                },
+                                label = {
+                                    Text(stringResource(screen.titleRes))
+                                },
+                                selected = selected,
+                                onClick = {
+                                    if (screen == BottomNavItem.PhotoPreview && isPtpipConnected) {
+                                        // PTPIP 연결 시 미리보기 탭 클릭하면 경고 다이얼로그 표시
+                                        showPtpipWarning = true
+                                        return@NavigationBarItem
                                     }
-                                    launchSingleTop = true
-                                    restoreState = true
+
+                                    if (screen.route == "settings") {
+                                        onSettingsClick()
+                                    } else {
+                                        navController.navigate(screen.route) {
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    }
+                                },
+                                alwaysShowLabel = true,
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    indicatorColor = MaterialTheme.colorScheme.secondaryContainer
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        ) { innerPadding ->
+            NavHost(
+                navController,
+                startDestination = BottomNavItem.CameraControl.route,
+                Modifier
+                    .fillMaxSize()
+                    .padding(if (isFullscreen) PaddingValues(0.dp) else innerPadding)
+            ) {
+                composable(BottomNavItem.PhotoPreview.route) { PhotoPreviewScreen() }
+                composable(BottomNavItem.CameraControl.route) {
+                    // AP 모드와 USB 모드 모두 동일한 CameraControlScreen 사용
+                    CameraControlScreen(
+                        viewModel = cameraViewModel, // 전역 ViewModel 전달
+                        onFullscreenChange = { isFullscreen = it },
+                        onGalleryClick = {
+                            navController.navigate(BottomNavItem.ServerPhotos.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
                                 }
+                                launchSingleTop = true
+                                restoreState = true
                             }
                         }
                     )
                 }
+                composable(BottomNavItem.ServerPhotos.route) { MyPhotosScreen() }
+                // 설정은 별도 액티비티로 처리하므로 여기서 제외
             }
-        ) { innerPadding ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(if (isFullscreen) PaddingValues(0.dp) else innerPadding)
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                MaterialTheme.colors.background,
-                                MaterialTheme.colors.background.copy(alpha = 0.86f),
-                                MaterialTheme.colors.surface.copy(alpha = 0.5f)
-                            )
-                        )
+        }
+
+        // PTPIP 경고 다이얼로그
+        if (showPtpipWarning) {
+            AlertDialog(
+                onDismissRequest = { showPtpipWarning = false },
+                icon = { Icon(Icons.Default.CameraAlt, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                title = {
+                    Text(
+                        "Wi-Fi 연결 중입니다",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
                     )
-            ) {
-                NavHost(
-                    navController,
-                    startDestination = BottomNavItem.CameraControl.route
-                ) {
-                    composable(BottomNavItem.PhotoPreview.route) { PhotoPreviewScreen() }
-                    composable(BottomNavItem.CameraControl.route) {
-                        // AP 모드일 때는 사진 수신 대기 화면, 아니면 카메라 컨트롤 화면
-                        if (activeConnectionType == com.inik.camcon.domain.model.CameraConnectionType.AP_MODE) {
-                            com.inik.camcon.presentation.ui.screens.ApModePhotoReceiveScreen(
-                                viewModel = cameraViewModel // 전역 ViewModel 전달
-                            )
-                        } else {
-                            CameraControlScreen(
-                                viewModel = cameraViewModel, // 전역 ViewModel 전달
-                                onFullscreenChange = { isFullscreen = it }
-                            )
-                        }
+                },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            "현재 카메라가 Wi-Fi로 연결되어 있어 사진 미리보기를 사용할 수 없습니다.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            "사진 미리보기를 사용하려면:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            "1. 카메라의 Wi-Fi 연결을 해제해주세요\n" +
+                                    "2. USB 케이블로 카메라를 연결해주세요\n" +
+                                    "3. 카메라를 PC 모드로 설정해주세요",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            "Wi-Fi 연결에서는 '카메라 제어' 탭을 이용해주세요!",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
-                    composable(BottomNavItem.ServerPhotos.route) { MyPhotosScreen() }
-                    // 설정은 별도 액티비티로 처리하므로 여기서 제외
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = { showPtpipWarning = false }
+                    ) {
+                        Text("알겠습니다")
+                    }
+                }
+            )
+        }
+
+        // Wi-Fi 연결 끊김 알림 다이얼로그
+        var showWifiDisconnectedDialog by remember { mutableStateOf(false) }
+        val ptpipConnectionState = globalConnectionState.ptpipConnectionState
+        val wasConnected = remember { mutableStateOf(false) }
+
+        LaunchedEffect(ptpipConnectionState) {
+            when (ptpipConnectionState) {
+                PtpipConnectionState.CONNECTED -> {
+                    wasConnected.value = true
+                }
+
+                PtpipConnectionState.DISCONNECTED -> {
+                    // 이전에 연결되어 있었다면 끊김 알림 표시
+                    if (wasConnected.value && (activeConnectionType == CameraConnectionType.AP_MODE || activeConnectionType == CameraConnectionType.STA_MODE)) {
+                        showWifiDisconnectedDialog = true
+                        wasConnected.value = false
+                    }
+                }
+
+                PtpipConnectionState.ERROR -> {
+                    if (wasConnected.value) {
+                        showWifiDisconnectedDialog = true
+                        wasConnected.value = false
+                    }
+                }
+
+                else -> { /* 다른 상태는 무시 */
                 }
             }
         }
 
-        
+        if (showWifiDisconnectedDialog) {
+            AlertDialog(
+                onDismissRequest = { showWifiDisconnectedDialog = false },
+                icon = {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                },
+                title = {
+                    Text(
+                        "Wi-Fi 연결이 끊어졌습니다",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Text(
+                        "카메라의 Wi-Fi 연결이 끊어졌습니다. 다시 연결해주세요.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = { showWifiDisconnectedDialog = false }
+                    ) {
+                        Text("확인")
+                    }
+                }
+            )
+        }
 
         // USB 연결 및 초기화 상태에 따른 UI 블로킹 오버레이
         val shouldShowOverlay =
             globalConnectionState.ptpipConnectionState == PtpipConnectionState.CONNECTING ||
-            connectionStatusMessage.contains("초기화 중") ||
-            cameraUiState.isUsbInitializing ||
-                cameraUiState.isCameraInitializing
+                    connectionStatusMessage.contains("초기화 중") ||
+                    cameraUiState.isUsbInitializing ||
+                    cameraUiState.isCameraInitializing
 
         if (shouldShowOverlay) {
             val overlayMessage = when {
@@ -467,8 +626,8 @@ fun MainScreen(
                 else -> connectionStatusMessage
             }
 
-            Log.d("MainActivity", " UI 블로킹 오버레이 표시: $overlayMessage")
-            Log.d(
+            LogcatManager.d("MainActivity", " UI 블로킹 오버레이 표시: $overlayMessage")
+            LogcatManager.d(
                 "MainActivity", "블로킹 조건 - PTP연결:${globalConnectionState.ptpipConnectionState}, " +
                         "메시지초기화:${connectionStatusMessage.contains("초기화 중")}, " +
                         "USB초기화:${cameraUiState.isUsbInitializing}, " +
@@ -479,8 +638,8 @@ fun MainScreen(
         } else {
             // 오버레이가 사라질 때도 로그 출력
             LaunchedEffect(Unit) {
-                Log.d("MainActivity", " UI 블로킹 오버레이 해제됨")
-                Log.d(
+                LogcatManager.d("MainActivity", " UI 블로킹 오버레이 해제됨")
+                LogcatManager.d(
                     "MainActivity",
                     "해제 조건 - PTP연결:${globalConnectionState.ptpipConnectionState}, " +
                             "메시지초기화:${connectionStatusMessage.contains("초기화 중")}, " +
@@ -488,71 +647,6 @@ fun MainScreen(
                             "카메라초기화:${cameraUiState.isCameraInitializing}"
                 )
             }
-        }
-    }
-}
-@Composable
-private fun CamConBottomNav(
-    items: List<BottomNavItem>,
-    selectedRoute: String?,
-    onItemClick: (BottomNavItem) -> Unit
-) {
-    Surface(
-        modifier = Modifier
-            .padding(horizontal = 14.dp, vertical = 10.dp)
-            .clip(RoundedCornerShape(20.dp)),
-        color = MaterialTheme.colors.surface.copy(alpha = 0.94f),
-        shadowElevation = 10.dp
-    ) {
-        BottomNavigation(
-            backgroundColor = Color.Transparent,
-            contentColor = MaterialTheme.colors.onSurface
-        ) {
-            items.forEach { screen ->
-                BottomNavigationItem(
-                    icon = {
-                        Icon(
-                            screen.icon,
-                            contentDescription = stringResource(screen.titleRes)
-                        )
-                    },
-                    label = { Text(stringResource(screen.titleRes)) },
-                    selected = selectedRoute == screen.route,
-                    onClick = { onItemClick(screen) },
-                    selectedContentColor = MaterialTheme.colors.primary,
-                    unselectedContentColor = MaterialTheme.colors.onSurface.copy(alpha = 0.56f)
-                )
-            }
-        }
-    }
-}
-@Preview(showBackground = true, widthDp = 390)
-@Composable
-private fun CamConBottomNavPreview() {
-    CamConTheme {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colors.background,
-                            MaterialTheme.colors.background.copy(alpha = 0.86f),
-                            MaterialTheme.colors.surface.copy(alpha = 0.5f)
-                        )
-                    )
-                )
-        ) {
-            CamConBottomNav(
-                items = listOf(
-                    BottomNavItem.PhotoPreview,
-                    BottomNavItem.CameraControl,
-                    BottomNavItem.ServerPhotos,
-                    BottomNavItem.Settings
-                ),
-                selectedRoute = BottomNavItem.CameraControl.route,
-                onItemClick = {}
-            )
         }
     }
 }
@@ -577,9 +671,9 @@ class MainActivity : ComponentActivity() {
     ) { permissions ->
         val allGranted = permissions.all { it.value }
         if (allGranted) {
-            Log.d("MainActivity", "모든 저장소 권한이 승인됨")
+            LogcatManager.d("MainActivity", "모든 저장소 권한이 승인됨")
         } else {
-            Log.w("MainActivity", "일부 저장소 권한이 거부됨: $permissions")
+            LogcatManager.w("MainActivity", "일부 저장소 권한이 거부됨: $permissions")
         }
     }
 
@@ -587,31 +681,38 @@ class MainActivity : ComponentActivity() {
         private const val TAG = "MainActivity"
 
         /**
+         * 네이티브 리소스 정리를 별도 스레드에서 fire-and-forget으로 수행.
+         * 프로세스 종료 직전에 호출되므로 managed scope 불필요.
+         */
+        private fun cleanupNativeResources(label: String) {
+            Thread {
+                try {
+                    com.inik.camcon.CameraNative.closeCamera()
+                    com.inik.camcon.CameraNative.closeLogFile()
+                    LogcatManager.d(TAG, "$label: 네이티브 리소스 정리 완료")
+                } catch (e: Exception) {
+                    LogcatManager.w(TAG, "$label: 네이티브 리소스 정리 중 오류", e)
+                }
+            }.start()
+        }
+
+        /**
          * 앱을 완전히 재시작하는 함수
          */
         fun forceRestartApp(activity: ComponentActivity) {
             try {
-                Log.d(TAG, "앱 강제 재시작 시작")
+                LogcatManager.d(TAG, "앱 강제 재시작 시작")
 
                 // 1. 먼저 Activity 상태 정리
                 activity.finishAffinity()
 
-                // 2. 네이티브 리소스 정리를 백그라운드 스레드에서 수행
-                Thread {
-                    try {
-                        Log.d(TAG, "closeCamera 호출")
-                        com.inik.camcon.CameraNative.closeCamera()
-                        com.inik.camcon.CameraNative.closeLogFile()
-                        Log.d(TAG, "네이티브 리소스 정리 완료")
-                    } catch (e: Exception) {
-                        Log.w(TAG, "네이티브 리소스 정리 중 오류", e)
-                    }
-                }.start()
+                // 2. 네이티브 리소스 정리를 백그라운드에서 수행
+                cleanupNativeResources("forceRestart")
 
                 // 3. 더 긴 지연 후 재시작 실행 (네이티브 정리 완료 대기)
                 android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                     try {
-                        Log.d(TAG, "앱 재시작 실행")
+                        LogcatManager.d(TAG, "앱 재시작 실행")
 
                         // 재시작 Intent 생성
                         val restartIntent = Intent(activity, MainActivity::class.java).apply {
@@ -625,21 +726,21 @@ class MainActivity : ComponentActivity() {
 
                         // 프로세스 종료는 더 긴 지연 후 실행
                         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                            Log.d(TAG, "프로세스 종료 실행")
+                            LogcatManager.d(TAG, "프로세스 종료 실행")
                             android.os.Process.killProcess(android.os.Process.myPid())
                         }, 1000) // 1초 후 프로세스 종료
 
                     } catch (e: Exception) {
-                        Log.e(TAG, "재시작 실행 중 오류", e)
+                        LogcatManager.e(TAG, "재시작 실행 중 오류", e)
                         // Fallback: PackageManager 사용
                         restartWithPackageManager(activity)
                     }
                 }, 2000) // 2초 지연으로 네이티브 정리 완료 대기
 
-                Log.d(TAG, "재시작 예약 완료")
+                LogcatManager.d(TAG, "재시작 예약 완료")
 
             } catch (e: Exception) {
-                Log.e(TAG, "앱 재시작 중 오류", e)
+                LogcatManager.e(TAG, "앱 재시작 중 오류", e)
                 // 오류 발생 시 PackageManager 재시작 시도
                 restartWithPackageManager(activity)
             }
@@ -650,7 +751,7 @@ class MainActivity : ComponentActivity() {
          */
         private fun restartWithPackageManager(activity: ComponentActivity) {
             try {
-                Log.d(TAG, "PackageManager 재시작 시도")
+                LogcatManager.d(TAG, "PackageManager 재시작 시도")
                 val packageManager = activity.packageManager
                 val restartIntent = packageManager.getLaunchIntentForPackage(activity.packageName)
 
@@ -663,12 +764,12 @@ class MainActivity : ComponentActivity() {
                     activity.finishAffinity()
                     android.os.Process.killProcess(android.os.Process.myPid())
                 } else {
-                    Log.e(TAG, "PackageManager 재시작 실패 - Intent 없음")
+                    LogcatManager.e(TAG, "PackageManager 재시작 실패 - Intent 없음")
                     activity.finishAffinity()
                     System.exit(0)
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "PackageManager 재시작 중 오류", e)
+                LogcatManager.e(TAG, "PackageManager 재시작 중 오류", e)
                 activity.finishAffinity()
                 System.exit(0)
             }
@@ -679,28 +780,20 @@ class MainActivity : ComponentActivity() {
          */
         fun simpleRestartApp(activity: ComponentActivity) {
             try {
-                Log.d(TAG, "간단한 앱 재시작 시작")
+                LogcatManager.d(TAG, "간단한 앱 재시작 시작")
 
                 // 네이티브 리소스 정리
-                Thread {
-                    try {
-                        com.inik.camcon.CameraNative.closeCamera()
-                        com.inik.camcon.CameraNative.closeLogFile()
-                        Log.d(TAG, "간단 재시작: 네이티브 리소스 정리 완료")
-                    } catch (e: Exception) {
-                        Log.w(TAG, "간단 재시작: 네이티브 리소스 정리 중 오류", e)
-                    }
-                }.start()
+                cleanupNativeResources("simpleRestart")
 
                 // 0.5초 후 앱 종료 (사용자가 수동으로 재시작해야 함)
                 android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                    Log.d(TAG, "앱 종료 - 사용자 수동 재시작 필요")
+                    LogcatManager.d(TAG, "앱 종료 - 사용자 수동 재시작 필요")
                     activity.finishAffinity()
                     android.os.Process.killProcess(android.os.Process.myPid())
                 }, 500)
 
             } catch (e: Exception) {
-                Log.e(TAG, "간단한 앱 재시작 중 오류", e)
+                LogcatManager.e(TAG, "간단한 앱 재시작 중 오류", e)
                 activity.finishAffinity()
                 android.os.Process.killProcess(android.os.Process.myPid())
             }
@@ -711,7 +804,7 @@ class MainActivity : ComponentActivity() {
          */
         fun systemRestartApp(activity: ComponentActivity) {
             try {
-                Log.d(TAG, "시스템 재시작 시작")
+                LogcatManager.d(TAG, "시스템 재시작 시작")
 
                 // 1. makeRestartActivityTask를 사용한 즉시 재시작
                 val packageManager = activity.packageManager
@@ -721,30 +814,22 @@ class MainActivity : ComponentActivity() {
                 if (componentName != null) {
                     val mainIntent = Intent.makeRestartActivityTask(componentName)
                     activity.startActivity(mainIntent)
-                    Log.d(TAG, "makeRestartActivityTask 실행 완료")
+                    LogcatManager.d(TAG, "makeRestartActivityTask 실행 완료")
                 } else {
-                    Log.e(TAG, "ComponentName을 찾을 수 없음")
+                    LogcatManager.e(TAG, "ComponentName을 찾을 수 없음")
                     // Fallback: 기존 방식
                     restartWithPackageManager(activity)
                     return
                 }
 
                 // 2. 네이티브 리소스 정리 (백그라운드에서)
-                Thread {
-                    try {
-                        com.inik.camcon.CameraNative.closeCamera()
-                        com.inik.camcon.CameraNative.closeLogFile()
-                        Log.d(TAG, "시스템 재시작: 네이티브 리소스 정리 완료")
-                    } catch (e: Exception) {
-                        Log.w(TAG, "시스템 재시작: 네이티브 리소스 정리 중 오류", e)
-                    }
-                }.start()
+                cleanupNativeResources("systemRestart")
 
                 // 3. 프로세스 종료
                 kotlin.system.exitProcess(0)
 
             } catch (e: Exception) {
-                Log.e(TAG, "시스템 재시작 중 오류", e)
+                LogcatManager.e(TAG, "시스템 재시작 중 오류", e)
                 // Fallback: 기존 방식
                 restartWithPackageManager(activity)
             }
@@ -755,7 +840,7 @@ class MainActivity : ComponentActivity() {
          */
         fun instantRestartApp(activity: ComponentActivity) {
             try {
-                Log.d(TAG, "즉시 재시작 시작")
+                LogcatManager.d(TAG, "즉시 재시작 시작")
 
                 // 1. makeRestartActivityTask를 사용한 즉시 재시작
                 val packageManager = activity.packageManager
@@ -765,9 +850,9 @@ class MainActivity : ComponentActivity() {
                 if (componentName != null) {
                     val mainIntent = Intent.makeRestartActivityTask(componentName)
                     activity.startActivity(mainIntent)
-                    Log.d(TAG, "즉시 재시작: makeRestartActivityTask 실행 완료")
+                    LogcatManager.d(TAG, "즉시 재시작: makeRestartActivityTask 실행 완료")
                 } else {
-                    Log.e(TAG, "즉시 재시작: ComponentName을 찾을 수 없음")
+                    LogcatManager.e(TAG, "즉시 재시작: ComponentName을 찾을 수 없음")
                     // Fallback: 기존 방식
                     val restartIntent = Intent(activity, MainActivity::class.java).apply {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -778,21 +863,13 @@ class MainActivity : ComponentActivity() {
                 }
 
                 // 2. 네이티브 리소스 정리 (백그라운드에서)
-                Thread {
-                    try {
-                        com.inik.camcon.CameraNative.closeCamera()
-                        com.inik.camcon.CameraNative.closeLogFile()
-                        Log.d(TAG, "즉시 재시작: 네이티브 리소스 정리 완료")
-                    } catch (e: Exception) {
-                        Log.w(TAG, "즉시 재시작: 네이티브 리소스 정리 중 오류", e)
-                    }
-                }.start()
+                cleanupNativeResources("instantRestart")
 
                 // 3. 프로세스 종료
                 kotlin.system.exitProcess(0)
 
             } catch (e: Exception) {
-                Log.e(TAG, "즉시 재시작 중 오류", e)
+                LogcatManager.e(TAG, "즉시 재시작 중 오류", e)
                 // Fallback: 기존 방식
                 try {
                     activity.finishAffinity()
@@ -808,20 +885,20 @@ class MainActivity : ComponentActivity() {
          */
         fun restartAppAfterCameraCleanup(activity: ComponentActivity) {
             try {
-                Log.d(TAG, "카메라 정리 후 앱 재시작 시작")
+                LogcatManager.d(TAG, "카메라 정리 후 앱 재시작 시작")
 
                 // 카메라 정리 완료 콜백을 사용한 안전한 재시작
                 com.inik.camcon.CameraNative.closeCameraAsync(
                     object : com.inik.camcon.CameraCleanupCallback {
                         override fun onCleanupComplete(success: Boolean, message: String) {
-                            Log.d(TAG, "카메라 정리 완료: success=$success, message=$message")
-                            
+                            LogcatManager.d(TAG, "카메라 정리 완료: success=$success, message=$message")
+
                             // 메인 스레드에서 재시작 실행
                             android.os.Handler(android.os.Looper.getMainLooper()).post {
                                 try {
                                     // 로그 파일도 닫기
                                     com.inik.camcon.CameraNative.closeLogFile()
-                                    
+
                                     // 시스템 재시작 메커니즘 사용
                                     val packageManager = activity.packageManager
                                     val intent = packageManager.getLaunchIntentForPackage(activity.packageName)
@@ -830,7 +907,7 @@ class MainActivity : ComponentActivity() {
                                     if (componentName != null) {
                                         val mainIntent = Intent.makeRestartActivityTask(componentName)
                                         activity.startActivity(mainIntent)
-                                        Log.d(TAG, "카메라 정리 후 재시작 실행 완료")
+                                        LogcatManager.d(TAG, "카메라 정리 후 재시작 실행 완료")
                                     } else {
                                         // Fallback
                                         val restartIntent = Intent(activity, MainActivity::class.java).apply {
@@ -846,8 +923,8 @@ class MainActivity : ComponentActivity() {
                                     kotlin.system.exitProcess(0)
 
                                 } catch (e: Exception) {
-                                    Log.e(TAG, "카메라 정리 후 재시작 실행 중 오류", e)
-                                    // Fallback: 기존 방식
+                                    LogcatManager.e(TAG, "카메라 정리 후 재시작 실행 중 오류", e)
+                                    // Fallback: 기존 방식 사용
                                     systemRestartApp(activity)
                                 }
                             }
@@ -856,7 +933,7 @@ class MainActivity : ComponentActivity() {
                 )
 
             } catch (e: Exception) {
-                Log.e(TAG, "카메라 정리 후 재시작 중 오류", e)
+                LogcatManager.e(TAG, "카메라 정리 후 재시작 중 오류", e)
                 // Fallback: 기존 방식 사용
                 systemRestartApp(activity)
             }
@@ -866,13 +943,19 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val intent = intent
+        val navigateToCameraControl = intent.getBooleanExtra("navigate_to_camera_control", false)
+
+        // 엣지투엣지 활성화 - 모든 기종에서 일관된 동작 보장
+        setupEdgeToEdge()
+
         // 백그라운드 서비스(이벤트 리스너 유지) 시작
         try {
             val serviceIntent = Intent(this, BackgroundSyncService::class.java)
             ContextCompat.startForegroundService(this, serviceIntent)
-            Log.d(TAG, "BackgroundSyncService 시작 요청됨")
+            LogcatManager.d(TAG, "BackgroundSyncService 시작 요청됨")
         } catch (e: Exception) {
-            Log.w(TAG, "BackgroundSyncService 시작 실패", e)
+            LogcatManager.w(TAG, "BackgroundSyncService 시작 실패", e)
         }
 
         // 사용자 구독 티어 로그 출력
@@ -881,7 +964,7 @@ class MainActivity : ComponentActivity() {
                 // 상세한 티어 정보를 한 번만 로그에 출력
                 getSubscriptionUseCase.logCurrentTier()
             } catch (e: Exception) {
-                Log.e(TAG, "사용자 티어 정보 로드 실패", e)
+                LogcatManager.e(TAG, "사용자 티어 정보 로드 실패", e)
             }
         }
 
@@ -891,11 +974,15 @@ class MainActivity : ComponentActivity() {
         // USB 디바이스 연결 Intent 처리를 비동기로 수행
         lifecycleScope.launch(Dispatchers.IO) {
             handleUsbIntent(intent)
+
+            // 추가: 앱 시작 시 이미 연결된 USB 디바이스 검색
+            delay(500) // UI 초기화 대기
+            checkAndInitializeUsbDevices()
         }
 
         setContent {
             val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
-            val themeMode by appSettingsViewModel.themeMode.collectAsState()
+            val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
 
             var showBatteryDialog by remember { mutableStateOf(false) }
 
@@ -928,7 +1015,8 @@ class MainActivity : ComponentActivity() {
                         onSettingsClick = {
                             startActivity(Intent(this, SettingsActivity::class.java))
                         },
-                        globalManager = globalManager
+                        globalManager = globalManager,
+                        navigateToCameraControl = navigateToCameraControl
                     )
                 }
             }
@@ -955,19 +1043,19 @@ class MainActivity : ComponentActivity() {
                         intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
                     }
                 device?.let {
-                    Log.d(TAG, "USB 카메라 디바이스가 연결됨: ${it.deviceName}")
-                    Log.d(
+                    LogcatManager.d(TAG, "USB 카메라 디바이스가 연결됨: ${it.deviceName}")
+                    LogcatManager.d(
                         TAG,
                         "제조사ID: 0x${it.vendorId.toString(16)}, 제품ID: 0x${it.productId.toString(16)}"
                     )
 
                     // 즉시 권한 요청
                     if (!isUsbCameraDevice(it)) {
-                        Log.d(TAG, "카메라 디바이스가 아님")
+                        LogcatManager.d(TAG, "카메라 디바이스가 아님")
                         return@withContext
                     }
 
-                    Log.d(TAG, "카메라 디바이스 확인됨, 권한 요청")
+                    LogcatManager.d(TAG, "카메라 디바이스 확인됨, 권한 요청")
 
                     withContext(Dispatchers.Main) {
                         usbCameraManager.requestPermission(it)
@@ -983,7 +1071,7 @@ class MainActivity : ComponentActivity() {
                         intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
                     }
                 device?.let {
-                    Log.d(TAG, "USB 디바이스가 분리됨: ${it.deviceName}")
+                    LogcatManager.d(TAG, "USB 디바이스가 분리됨: ${it.deviceName}")
                 }
             }
         }
@@ -1006,7 +1094,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        Log.d(TAG, " 앱 포그라운드 진입 - 백그라운드 서비스 상태 확인")
+        LogcatManager.d(TAG, " 앱 포그라운드 진입 - 백그라운드 서비스 상태 확인")
 
         // 앱이 다시 활성화될 때 USB 상태만 확인 (디바이스 재검색은 하지 않음)
         lifecycleScope.launch(Dispatchers.IO) {
@@ -1016,7 +1104,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
-        Log.d(TAG, " 앱 백그라운드 진입 - 백그라운드 서비스 확인")
+        LogcatManager.d(TAG, " 앱 백그라운드 진입 - 백그라운드 서비스 확인")
 
         // 앱이 백그라운드로 이동할 때 백그라운드 서비스가 실행 중인지 확인
         lifecycleScope.launch(Dispatchers.IO) {
@@ -1024,15 +1112,15 @@ class MainActivity : ComponentActivity() {
                 // 백그라운드 서비스가 실행 중인지 확인
                 val isServiceRunning = isServiceRunning(BackgroundSyncService::class.java)
                 if (!isServiceRunning) {
-                    Log.d(TAG, " 백그라운드 서비스 재시작 필요")
+                    LogcatManager.d(TAG, " 백그라운드 서비스 재시작 필요")
                     withContext(Dispatchers.Main) {
                         BackgroundSyncService.startService(this@MainActivity)
                     }
                 } else {
-                    Log.d(TAG, " 백그라운드 서비스 이미 실행 중")
+                    LogcatManager.d(TAG, " 백그라운드 서비스 이미 실행 중")
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "백그라운드 서비스 상태 확인 실패", e)
+                LogcatManager.w(TAG, "백그라운드 서비스 상태 확인 실패", e)
             }
         }
     }
@@ -1045,14 +1133,14 @@ class MainActivity : ComponentActivity() {
             val manager = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
             for (service in manager.getRunningServices(Int.MAX_VALUE)) {
                 if (serviceClass.name == service.service.className) {
-                    Log.d(TAG, "서비스 실행 중: ${serviceClass.simpleName}")
+                    LogcatManager.d(TAG, "서비스 실행 중: ${serviceClass.simpleName}")
                     return true
                 }
             }
-            Log.d(TAG, "서비스 실행되지 않음: ${serviceClass.simpleName}")
+            LogcatManager.d(TAG, "서비스 실행되지 않음: ${serviceClass.simpleName}")
             false
         } catch (e: Exception) {
-            Log.w(TAG, "서비스 상태 확인 실패", e)
+            LogcatManager.w(TAG, "서비스 상태 확인 실패", e)
             false
         }
     }
@@ -1063,39 +1151,88 @@ class MainActivity : ComponentActivity() {
             val currentDevice = usbCameraManager.getCurrentDevice()
 
             if (currentDevice != null) {
-                Log.d(TAG, "앱 재개 시 기존 연결된 디바이스 확인: ${currentDevice.deviceName}")
+                LogcatManager.d(TAG, "앱 재개 시 기존 연결된 디바이스 확인: ${currentDevice.deviceName}")
 
                 // 권한 상태만 확인
                 if (!usbCameraManager.hasUsbPermission.value) {
-                    Log.d(TAG, "기존 디바이스의 권한이 없음, 권한 요청: ${currentDevice.deviceName}")
+                    LogcatManager.d(TAG, "기존 디바이스의 권한이 없음, 권한 요청: ${currentDevice.deviceName}")
                     withContext(Dispatchers.Main) {
                         usbCameraManager.requestPermission(currentDevice)
                     }
                 } else {
-                    Log.d(TAG, "기존 디바이스에 권한이 있음: ${currentDevice.deviceName}")
+                    LogcatManager.d(TAG, "기존 디바이스에 권한이 있음: ${currentDevice.deviceName}")
+                    // 권한 있음 + 아직 네이티브 연결이 없다면 자동 초기화 트리거
+                    if (!usbCameraManager.isNativeCameraConnected.value) {
+                        LogcatManager.d(TAG, "네이티브 연결 없음 - 자동 초기화 시작: ${currentDevice.deviceName}")
+                        withContext(Dispatchers.Main) {
+                            usbCameraManager.connectToCamera(currentDevice)
+                        }
+                    }
                 }
             } else {
                 // 연결된 디바이스가 없으면 StateFlow를 통해 확인
                 // 캐시된 목록이 있을 것이므로 빠르게 처리됨
                 val devices = usbCameraManager.getCameraDevices()
                 if (devices.isNotEmpty()) {
-                    Log.d(TAG, "앱 재개 시 캐시된 디바이스 목록 확인: ${devices.size}개")
+                    LogcatManager.d(TAG, "앱 재개 시 캐시된 디바이스 목록 확인: ${devices.size}개")
 
                     val device = devices.first()
                     if (!usbCameraManager.hasUsbPermission.value) {
-                        Log.d(TAG, "권한이 없는 디바이스 발견, 권한 요청: ${device.deviceName}")
+                        LogcatManager.d(TAG, "권한이 없는 디바이스 발견, 권한 요청: ${device.deviceName}")
                         withContext(Dispatchers.Main) {
                             usbCameraManager.requestPermission(device)
                         }
                     } else {
-                        Log.d(TAG, "카메라 디바이스 연결됨")
+                        LogcatManager.d(TAG, "카메라 디바이스 연결됨")
+                        // 권한 있음 + 아직 네이티브 연결이 없다면 자동 초기화 트리거
+                        if (!usbCameraManager.isNativeCameraConnected.value) {
+                            LogcatManager.d(TAG, "네이티브 연결 없음 - 자동 초기화 시작: ${device.deviceName}")
+                            withContext(Dispatchers.Main) {
+                                usbCameraManager.connectToCamera(device)
+                            }
+                        }
                     }
                 } else {
-                    Log.d(TAG, "앱 재개 시 USB 카메라 디바이스 없음")
+                    LogcatManager.d(TAG, "앱 재개 시 USB 카메라 디바이스 없음")
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "USB 권한 상태 확인 중 오류", e)
+            LogcatManager.e(TAG, "USB 권한 상태 확인 중 오류", e)
+        }
+    }
+
+    private suspend fun checkAndInitializeUsbDevices() = withContext(Dispatchers.IO) {
+        try {
+            // USB 매니저를 사용하여 연결된 디바이스 목록 가져오기
+            val devices = usbCameraManager.getCameraDevices()
+
+            // 연결된 디바이스 목록이 비어 있으면 종료
+            if (devices.isEmpty()) {
+                LogcatManager.d(TAG, "연결된 USB 카메라 디바이스 없음")
+                return@withContext
+            }
+
+            // 연결된 디바이스 중 첫 번째 디바이스를 선택
+            val device = devices.first()
+
+            // 디바이스에 대한 권한이 있는지 확인
+            if (!usbCameraManager.hasUsbPermission.value) {
+                LogcatManager.d(TAG, "디바이스에 대한 권한이 없음, 권한 요청: ${device.deviceName}")
+                withContext(Dispatchers.Main) {
+                    usbCameraManager.requestPermission(device)
+                }
+            } else {
+                LogcatManager.d(TAG, "디바이스에 대한 권한이 있음: ${device.deviceName}")
+                // 권한 있음 + 아직 네이티브 연결이 없다면 자동 초기화 트리거
+                if (!usbCameraManager.isNativeCameraConnected.value) {
+                    LogcatManager.d(TAG, "네이티브 연결 없음 - 자동 초기화 시작: ${device.deviceName}")
+                    withContext(Dispatchers.Main) {
+                        usbCameraManager.connectToCamera(device)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            LogcatManager.e(TAG, "USB 디바이스 초기화 중 오류", e)
         }
     }
 
@@ -1127,10 +1264,10 @@ class MainActivity : ComponentActivity() {
         }
 
         if (permissionsToRequest.isNotEmpty()) {
-            Log.d("MainActivity", "저장소 권한 요청: $permissionsToRequest")
+            LogcatManager.d("MainActivity", "저장소 권한 요청: $permissionsToRequest")
             storagePermissionLauncher.launch(permissionsToRequest.toTypedArray())
         } else {
-            Log.d("MainActivity", "저장소 권한이 이미 승인됨")
+            LogcatManager.d("MainActivity", "저장소 권한이 이미 승인됨")
         }
     }
 
@@ -1138,31 +1275,31 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         // Activity가 종료될 때 USB 매니저 정리
         try {
-            // 명시적으로 카메라 세션 종료 - 백그라운드 스레드에서 안전하게 수행
-            Thread {
-                try {
-                    Log.d(TAG, "onDestroy - closeCamera 호출")
-                    com.inik.camcon.CameraNative.closeCamera()
-                    Log.d(TAG, "카메라 세션 명시적 종료 완료")
-                } catch (e: Exception) {
-                    Log.w(TAG, "카메라 세션 종료 중 오류", e)
-                }
-            }.start()
+            // 명시적으로 카메라 세션 종료 + 로그 파일 닫기 - 백그라운드에서 안전하게 수행
+            cleanupNativeResources("onDestroy")
 
             usbCameraManager.cleanup()
             globalManager.cleanup()
-
-            // libgphoto2 로그 파일 닫기도 백그라운드에서 수행
-            Thread {
-                try {
-                    com.inik.camcon.CameraNative.closeLogFile()
-                    Log.d(TAG, "libgphoto2 로그 파일 닫기 완료")
-                } catch (e: Exception) {
-                    Log.w(TAG, "로그 파일 닫기 중 오류", e)
-                }
-            }.start()
         } catch (e: Exception) {
-            Log.w(TAG, "매니저 정리 중 오류", e)
+            LogcatManager.w(TAG, "매니저 정리 중 오류", e)
+        }
+    }
+
+    /**
+     * 엣지투엣지 레이아웃 설정
+     */
+    private fun setupEdgeToEdge() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Android 11 이상: WindowInsetsController 사용
+            window.setDecorFitsSystemWindows(false)
+        } else {
+            // Android 10 이하: 레거시 플래그 사용
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility = (
+                    android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                            or android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                            or android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    )
         }
     }
 
@@ -1206,83 +1343,39 @@ class MainActivity : ComponentActivity() {
             intent.data = Uri.parse("package:$packageName")
             startActivity(intent)
         } catch (e: Exception) {
-            Log.e(TAG, "배터리 최적화 예외 설정 화면 이동 실패", e)
+            LogcatManager.e(TAG, "배터리 최적화 예외 설정 화면 이동 실패", e)
             // 대체 절차: 앱 상세 정보 화면
             try {
                 val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                 intent.data = Uri.parse("package:$packageName")
                 startActivity(intent)
             } catch (ex: Exception) {
-                Log.e(TAG, "APP 상세 정보 화면도 이동 실패", ex)
+                LogcatManager.e(TAG, "APP 상세 정보 화면도 이동 실패", ex)
             }
         }
     }
+
 }
 
 /**
  * 메인 액티비티 프리뷰
  */
-@Preview(showBackground = true)
 @Composable
 fun MainActivityPreview() {
     CamConTheme {
-        Scaffold(backgroundColor = Color.Transparent) {
+        // 프리뷰용 간단한 컴포넌트
+        Scaffold(
+            containerColor = MaterialTheme.colorScheme.background
+        ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(it)
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                MaterialTheme.colors.background,
-                                MaterialTheme.colors.background.copy(alpha = 0.86f),
-                                MaterialTheme.colors.surface.copy(alpha = 0.5f)
-                            )
-                        )
-                    )
+                    .padding(it),
+                contentAlignment = androidx.compose.ui.Alignment.Center
             ) {
-                CamConBottomNav(
-                    items = listOf(
-                        BottomNavItem.PhotoPreview,
-                        BottomNavItem.CameraControl,
-                        BottomNavItem.ServerPhotos,
-                        BottomNavItem.Settings
-                    ),
-                    selectedRoute = BottomNavItem.CameraControl.route,
-                    onItemClick = {}
-                )
-            }
-        }
-    }
-}
-@Preview(showBackground = true, widthDp = 412, heightDp = 915)
-@Composable
-private fun MainActivityDarkPreview() {
-    CamConTheme(themeMode = com.inik.camcon.data.datasource.local.ThemeMode.DARK) {
-        Scaffold(backgroundColor = Color.Transparent) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(it)
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                MaterialTheme.colors.background,
-                                MaterialTheme.colors.background.copy(alpha = 0.86f),
-                                MaterialTheme.colors.surface.copy(alpha = 0.5f)
-                            )
-                        )
-                    )
-            ) {
-                CamConBottomNav(
-                    items = listOf(
-                        BottomNavItem.PhotoPreview,
-                        BottomNavItem.CameraControl,
-                        BottomNavItem.ServerPhotos,
-                        BottomNavItem.Settings
-                    ),
-                    selectedRoute = BottomNavItem.PhotoPreview.route,
-                    onItemClick = {}
+                Text(
+                    text = "CamCon - 메인 화면",
+                    style = MaterialTheme.typography.titleLarge
                 )
             }
         }

@@ -7,21 +7,24 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.AlertDialog
-import androidx.compose.material.Card
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import com.inik.camcon.presentation.theme.SurfaceElevated
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.domain.model.ThemeMode
 
 /**
  * 카메라 연결 문제 해결 도움말 다이얼로그
@@ -43,12 +46,12 @@ fun CameraConnectionHelpDialog(
             ) {
                 Text(
                     context.getString(R.string.camera_connection_help_message),
-                    style = MaterialTheme.typography.body1
+                    style = MaterialTheme.typography.bodyLarge
                 )
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    backgroundColor = Color(0xFF2A2A2A)
+                    colors = CardDefaults.cardColors(containerColor = SurfaceElevated)
                 ) {
                     Column(
                         modifier = Modifier.padding(12.dp),
@@ -68,7 +71,7 @@ fun CameraConnectionHelpDialog(
 
                 Text(
                     context.getString(R.string.camera_specific_settings),
-                    style = MaterialTheme.typography.subtitle2,
+                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )
 
@@ -108,18 +111,18 @@ private fun CameraBrandInstructions() {
     ) {
         Text(
             context.getString(R.string.canon_camera_settings),
-            style = MaterialTheme.typography.caption,
-            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
         )
         Text(
             context.getString(R.string.nikon_camera_settings),
-            style = MaterialTheme.typography.caption,
-            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
         )
         Text(
             context.getString(R.string.sony_camera_settings),
-            style = MaterialTheme.typography.caption,
-            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
         )
     }
 }
@@ -127,7 +130,7 @@ private fun CameraBrandInstructions() {
 @Preview(name = "Camera Connection Help Dialog", showBackground = true)
 @Composable
 private fun CameraConnectionHelpDialogPreview() {
-    CamConTheme {
+    CamConTheme(themeMode = ThemeMode.LIGHT) {
         CameraConnectionHelpDialog(
             onDismiss = { },
             onRetry = { }

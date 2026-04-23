@@ -1,7 +1,6 @@
 package com.inik.camcon.presentation.ui.screens.components
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,39 +11,48 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.Badge
-import androidx.compose.material.BadgedBox
-import androidx.compose.material.Card
-import androidx.compose.material.Icon
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Switch
-import androidx.compose.material.Text
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.GetApp
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SignalCellularAlt
+import androidx.compose.material.icons.filled.VpnKey
+import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
+import com.inik.camcon.domain.model.SavedWifiCredential
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.inik.camcon.R
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.PtpipCameraInfo
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
+import com.inik.camcon.presentation.theme.Border
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.Success
+import com.inik.camcon.presentation.theme.SurfaceElevated
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
-private val ApModeSteps = listOf(
-    "1. 카메라에서 Wi-Fi 기능을 켜세요",
-    "2. 카메라 메뉴에서 'AP 모드' 또는 '액세스 포인트 모드'를 선택하세요",
-    "3. 카메라가 Wi-Fi 핫스팟을 생성합니다",
-    "4. 스마트폰 Wi-Fi 설정에서 카메라 네트워크를 선택하세요",
-    "5. 연결 후 아래 '카메라 찾기' 버튼을 눌러 검색하세요"
-)
+import com.inik.camcon.domain.model.ThemeMode
 
 /**
  * AP 모드 화면 컴포넌트
@@ -65,434 +73,338 @@ fun ApModeContent(
     isAutoReconnectEnabled: Boolean,
     hasLocationPermission: Boolean,
     onRequestPermission: () -> Unit,
+    nearbyWifiSSIDs: List<String>,
+    onConnectToWifi: (String) -> Unit,
+    savedWifiSsids: Set<String> = emptySet(),
     modifier: Modifier = Modifier
 ) {
-    // 전역 상태 수집
-    val globalConnectionState by ptpipViewModel.globalConnectionState.collectAsState()
-    val activeConnectionType by ptpipViewModel.activeConnectionType.collectAsState()
-    val connectionStatusMessage by ptpipViewModel.connectionStatusMessage.collectAsState()
-    val autoDownloadEnabled by ptpipViewModel.autoDownloadEnabled.collectAsState()
-    val lastDownloadedFile by ptpipViewModel.lastDownloadedFile.collectAsState()
-
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
+        // 통합 네트워크 상태 카드 (NetworkStatus + WifiStatus + PTP/IP 활성화)
         item {
-            ApModeDescriptionCard()
-        }
-
-        // 전역 연결 상태 카드 (새로 추가)
-        item {
-            GlobalConnectionStatusCard(
-                connectionStatusMessage = connectionStatusMessage,
-                activeConnectionType = activeConnectionType,
-                globalConnectionState = globalConnectionState
-            )
-        }
-
-        // 실시간 네트워크 상태 카드
-        item {
-            NetworkStatusCard(
+            ApNetworkStatusCard(
                 wifiNetworkState = wifiNetworkState,
+                isPtpipEnabled = isPtpipEnabled,
+                isWifiConnected = isWifiConnected,
                 ptpipViewModel = ptpipViewModel
             )
+            Spacer(modifier = Modifier.height(12.dp))
         }
 
-        // 자동 재연결 설정 카드
-        item {
-            AutoReconnectCard(
-                isAutoReconnectEnabled = isAutoReconnectEnabled,
-                onToggleAutoReconnect = { ptpipViewModel.setAutoReconnectEnabled(it) }
-            )
-        }
-
-        // 자동 파일 다운로드 설정 카드
-        item {
-            if (autoDownloadEnabled) {
-                AutoDownloadStatusCard(lastDownloadedFile = lastDownloadedFile)
-            }
-        }
-
-        item {
-            WifiStatusCard(
-                isWifiConnected = isWifiConnected,
-                isPtpipEnabled = isPtpipEnabled,
-                onEnablePtpip = { ptpipViewModel.setPtpipEnabled(true) }
-            )
-        }
-
-        item {
-            CameraAPConnectionCard(
-                wifiCapabilities = wifiCapabilities
-            )
-        }
-
-        // 공통 카메라 연결 및 검색 UI
-        item {
-            BadgedBox(
-                badge = {
-                    if (autoDownloadEnabled) {
-                        Badge(
-                            backgroundColor = MaterialTheme.colors.primary,
-                            contentColor = MaterialTheme.colors.onPrimary
-                        ) {
-                            Text("AUTO")
-                        }
-                    }
-                }
-            ) {
-                CameraConnectionContent(
-                    ptpipViewModel = ptpipViewModel,
+        // 카메라 연결 상태 (연결 중이거나 연결됨일 때만)
+        if (connectionState != PtpipConnectionState.DISCONNECTED) {
+            item {
+                ConnectionStatusCard(
                     connectionState = connectionState,
-                    discoveredCameras = discoveredCameras,
-                    isDiscovering = isDiscovering,
-                    isConnecting = isConnecting,
                     selectedCamera = selectedCamera,
                     cameraInfo = cameraInfo,
-                    isPtpipEnabled = isPtpipEnabled,
-                    isWifiConnected = isWifiConnected
+                    onDisconnect = { ptpipViewModel.disconnect() },
+                    onCapture = { ptpipViewModel.capturePhoto() }
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+        }
+
+        // 주변 Wi‑Fi 스캔 결과
+        if (nearbyWifiSSIDs.isNotEmpty()) {
+            item {
+                WifiScanResultsCard(
+                    ssids = nearbyWifiSSIDs,
+                    onConnectToWifi = onConnectToWifi,
+                    savedSsids = savedWifiSsids
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+        } else if (isPtpipEnabled) {
+            // 스캔 결과 없을 때 안내
+            item {
+                ScanPromptCard(
+                    isDiscovering = isDiscovering,
+                    hasLocationPermission = hasLocationPermission,
+                    onScan = { ptpipViewModel.scanNearbyWifiNetworks() },
+                    onRequestPermission = onRequestPermission
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+        }
+
+        // 저장된 Wi-Fi 네트워크
+        item {
+            val savedCredentials by ptpipViewModel.savedWifiCredentials
+                .collectAsStateWithLifecycle(initialValue = emptyList())
+            if (savedCredentials.isNotEmpty()) {
+                SavedWifiNetworksCard(
+                    credentials = savedCredentials,
+                    onDelete = { ssid ->
+                        ptpipViewModel.deleteSavedWifiCredential(ssid)
+                    }
                 )
             }
         }
     }
 }
 
-@Composable
-private fun AutoDownloadStatusCard(lastDownloadedFile: String?) {
-    DarkInfoCard {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.CloudDownload,
-                contentDescription = "자동 다운로드",
-                tint = MaterialTheme.colors.primary
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "자동 파일 다운로드 활성화",
-                style = MaterialTheme.typography.h6,
-                color = DarkTitleTextColor
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "카메라에서 촬영한 사진이 자동으로 스마트폰에 저장됩니다.",
-            style = MaterialTheme.typography.body2,
-            color = DarkBodyTextColor
-        )
-        lastDownloadedFile?.let { fileName ->
-            Spacer(modifier = Modifier.height(8.dp))
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = 2.dp,
-                backgroundColor = Color(0xFF111827),
-                border = BorderStroke(1.dp, Color(0x338D99AD))
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.GetApp,
-                        contentDescription = "다운로드 완료",
-                        tint = MaterialTheme.colors.secondary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "최근 다운로드: $fileName",
-                        style = MaterialTheme.typography.caption,
-                        color = DarkBodyTextColor
-                    )
-                }
-            }
-        }
-    }
-}
-
 /**
- * 전역 연결 상태 카드 (새로 추가)
+ * 통합 네트워크 상태 카드 (AP 모드)
+ * - Wi-Fi 연결 상태 + PTP/IP 활성화 + 카메라 AP 감지
  */
 @Composable
-private fun GlobalConnectionStatusCard(
-    connectionStatusMessage: String,
-    activeConnectionType: com.inik.camcon.domain.model.CameraConnectionType?,
-    globalConnectionState: com.inik.camcon.domain.model.GlobalCameraConnectionState
-) {
-    DarkInfoCard {
-            Text(
-                text = "🌐 전역 연결 상태",
-                style = MaterialTheme.typography.h6,
-                fontWeight = FontWeight.Bold,
-                color = DarkTitleTextColor
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = connectionStatusMessage,
-                style = MaterialTheme.typography.body1,
-                color = DarkBodyTextColor,
-                fontWeight = FontWeight.Medium
-            )
-
-            activeConnectionType?.let { type ->
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "활성 연결: ${getConnectionTypeText(type)}",
-                    style = MaterialTheme.typography.caption,
-                    color = DarkBodyTextColor
-                )
-            }
-
-            if (globalConnectionState.discoveredCameras.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "발견된 카메라: ${globalConnectionState.discoveredCameras.size}개",
-                    style = MaterialTheme.typography.caption,
-                    color = DarkTitleTextColor
-                )
-            }
-    }
-}
-
-/**
- * 연결 타입을 한국어로 변환
- */
-private fun getConnectionTypeText(type: com.inik.camcon.domain.model.CameraConnectionType): String {
-    return when (type) {
-        com.inik.camcon.domain.model.CameraConnectionType.USB -> "USB 연결"
-        com.inik.camcon.domain.model.CameraConnectionType.AP_MODE -> "AP 모드"
-        com.inik.camcon.domain.model.CameraConnectionType.STA_MODE -> "STA 모드"
-    }
-}
-
-/**
- * AP 모드 설명 카드
- */
-@Composable
-private fun ApModeDescriptionCard() {
-    DarkInfoCard {
-            Text(
-                text = "📡 AP 모드 (액세스 포인트)",
-                style = MaterialTheme.typography.h6,
-                fontWeight = FontWeight.Bold,
-                color = DarkTitleTextColor
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "카메라가 Wi-Fi 핫스팟을 생성하여 스마트폰이 직접 연결하는 방식입니다.",
-                style = MaterialTheme.typography.body2,
-                color = DarkBodyTextColor
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            ApModeSteps.forEach { step ->
-                Text(
-                    text = step,
-                    style = MaterialTheme.typography.caption,
-                    color = DarkBodyTextColor,
-                    modifier = Modifier.padding(vertical = 1.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "💡 장점: 설정이 간단하고 빠른 연결이 가능합니다.",
-                style = MaterialTheme.typography.caption,
-                color = DarkTitleTextColor,
-                fontWeight = FontWeight.Medium
-            )
-
-            Text(
-                text = "⚠️ 단점: 스마트폰이 인터넷에 연결되지 않습니다.",
-                style = MaterialTheme.typography.caption,
-                color = MaterialTheme.colors.error,
-                fontWeight = FontWeight.Medium
-            )
-    }
-}
-
-/**
- * 실시간 네트워크 상태 카드
- */
-@Composable
-private fun NetworkStatusCard(
+private fun ApNetworkStatusCard(
     wifiNetworkState: WifiNetworkState,
+    isPtpipEnabled: Boolean,
+    isWifiConnected: Boolean,
     ptpipViewModel: PtpipViewModel
 ) {
-    DarkInfoCard {
-            Text(
-                text = "📶 실시간 네트워크 상태",
-                style = MaterialTheme.typography.h6,
-                fontWeight = FontWeight.Bold,
-                color = DarkTitleTextColor
-            )
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = if (wifiNetworkState.isConnected)
+                    Success.copy(alpha = 0.2f)
+                else
+                    MaterialTheme.colorScheme.error.copy(alpha = 0.2f),
+                shape = MaterialTheme.shapes.medium
+            ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceElevated)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (isWifiConnected) Icons.Filled.Wifi else Icons.Filled.WifiOff,
+                    contentDescription = null,
+                    tint = if (wifiNetworkState.isConnected) Success else MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (isWifiConnected) stringResource(R.string.ap_mode_wifi_connected) else stringResource(R.string.ap_mode_wifi_disconnected),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f)
+                )
+
+                // PTP/IP 비활성일 때 활성화 버튼
+                if (!isPtpipEnabled) {
+                    Button(onClick = { ptpipViewModel.setPtpipEnabled(true) }) {
+                        Text(stringResource(R.string.ap_mode_ptpip_enable))
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = ptpipViewModel.getNetworkStatusMessage(),
-                style = MaterialTheme.typography.body2,
-                color = if (wifiNetworkState.isConnected) DarkTitleTextColor else Color(0xFFFFC3C3),
+                style = MaterialTheme.typography.bodySmall,
+                color = if (wifiNetworkState.isConnected) Success else MaterialTheme.colorScheme.error,
                 fontWeight = FontWeight.Medium
             )
 
             if (wifiNetworkState.isConnectedToCameraAP && wifiNetworkState.detectedCameraIP != null) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "감지된 카메라 IP: ${wifiNetworkState.detectedCameraIP}",
-                    style = MaterialTheme.typography.caption,
-                    color = DarkTitleTextColor
+                    text = stringResource(R.string.ap_mode_camera_ip, wifiNetworkState.detectedCameraIP ?: ""),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = ptpipViewModel.getComprehensiveStatusMessage(),
-                style = MaterialTheme.typography.caption,
-                color = DarkBodyTextColor
-            )
-    }
-}
-
-/**
- * 자동 재연결 설정 카드
- */
-@Composable
-private fun AutoReconnectCard(
-    isAutoReconnectEnabled: Boolean,
-    onToggleAutoReconnect: (Boolean) -> Unit
-) {
-    DarkInfoCard {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = "🔄 자동 재연결",
-                        style = MaterialTheme.typography.h6,
-                        fontWeight = FontWeight.Bold,
-                        color = DarkTitleTextColor
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Text(
-                        text = if (isAutoReconnectEnabled) {
-                            "Wi-Fi 연결 변화 시 자동으로 카메라 재연결 시도"
-                        } else {
-                            "수동으로 카메라 연결 관리"
-                        },
-                        style = MaterialTheme.typography.body2,
-                        color = DarkBodyTextColor
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                Switch(
-                    checked = isAutoReconnectEnabled,
-                    onCheckedChange = onToggleAutoReconnect
-                )
-            }
-    }
-}
-
-/**
- * 카메라 AP 연결 상태 카드
- */
-@Composable
-private fun CameraAPConnectionCard(
-    wifiCapabilities: WifiCapabilities
-) {
-    DarkInfoCard {
-            Text(
-                text = if (wifiCapabilities.isConnectedToCameraAP) {
-                    "✅ 카메라 AP에 연결됨"
-                } else {
-                    "❌ 카메라 AP에 연결되지 않음"
-                },
-                style = MaterialTheme.typography.h6,
-                fontWeight = FontWeight.Bold,
-                color = if (wifiCapabilities.isConnectedToCameraAP) {
-                    DarkTitleTextColor
-                } else {
-                    Color(0xFFFFC3C3)
-                }
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            if (wifiCapabilities.isConnectedToCameraAP) {
-                wifiCapabilities.networkName?.let { networkName ->
-                    Text(
-                        text = "연결된 네트워크: $networkName",
-                        style = MaterialTheme.typography.body2,
-                        color = DarkBodyTextColor
-                    )
-                }
-
-                wifiCapabilities.detectedCameraIP?.let { cameraIP ->
-                    Text(
-                        text = "감지된 카메라 IP: $cameraIP",
-                        style = MaterialTheme.typography.body2,
-                        color = DarkTitleTextColor,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            } else {
+            if (wifiNetworkState.isConnected && wifiNetworkState.isConnectedToCameraAP) {
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "카메라 Wi-Fi 핫스팟에 연결 후 카메라 검색을 시작할 수 있습니다.",
-                    style = MaterialTheme.typography.body2,
-                    color = DarkBodyTextColor
+                    text = stringResource(R.string.ap_mode_camera_ap_direct),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
+
+            // 상세 상태 (한 줄 요약)
+            val comprehensiveMsg = ptpipViewModel.getComprehensiveStatusMessage()
+            if (comprehensiveMsg.isNotBlank()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = comprehensiveMsg,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 }
 
-@Preview(name = "AP Mode Description Card", showBackground = true)
+/**
+ * 스캔 안내 카드 - 스캔 결과가 없을 때 표시
+ */
 @Composable
-private fun ApModeDescriptionCardPreview() {
-    CamConTheme {
-        ApModeDescriptionCard()
+private fun ScanPromptCard(
+    isDiscovering: Boolean,
+    hasLocationPermission: Boolean,
+    onScan: () -> Unit,
+    onRequestPermission: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = Border,
+                shape = MaterialTheme.shapes.medium
+            ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceElevated)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Search,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                modifier = Modifier.size(36.dp)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = stringResource(R.string.ap_mode_search_camera_wifi),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = stringResource(R.string.ap_mode_turn_on_camera_wifi),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = {
+                    if (hasLocationPermission) onScan() else onRequestPermission()
+                },
+                enabled = !isDiscovering
+            ) {
+                Text(if (isDiscovering) stringResource(R.string.ap_mode_scanning) else stringResource(R.string.ap_mode_wifi_scan))
+            }
+        }
+    }
+}
+
+/**
+ * 저장된 Wi-Fi 네트워크 관리 카드
+ */
+@Composable
+private fun SavedWifiNetworksCard(
+    credentials: List<SavedWifiCredential>,
+    onDelete: (String) -> Unit
+) {
+    var ssidToDelete by remember { mutableStateOf<String?>(null) }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = Border,
+                shape = MaterialTheme.shapes.medium
+            ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceElevated)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Filled.VpnKey,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.ap_mode_saved_networks, credentials.size),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+
+            credentials.forEach { credential ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = credential.ssid,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "${credential.security} · ${
+                                java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
+                                    .format(java.util.Date(credential.lastConnectedAt))
+                            }",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(onClick = { ssidToDelete = credential.ssid }) {
+                        Icon(
+                            imageVector = Icons.Filled.Delete,
+                            contentDescription = stringResource(R.string.cd_delete),
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    ssidToDelete?.let { ssid ->
+        AlertDialog(
+            onDismissRequest = { ssidToDelete = null },
+            title = { Text(stringResource(R.string.ap_mode_delete_saved_network)) },
+            text = { Text(stringResource(R.string.ap_mode_delete_saved_network_confirm, ssid)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDelete(ssid)
+                    ssidToDelete = null
+                }) {
+                    Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { ssidToDelete = null }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
     }
 }
 
 @Preview(name = "AP Mode Content", showBackground = true)
 @Composable
 private fun ApModeContentPreview() {
-    CamConTheme {
-        // 프리뷰는 단순화된 형태로 표시
+    CamConTheme(themeMode = ThemeMode.DARK) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
             item {
-                ApModeDescriptionCard()
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            item {
                 Text(
-                    text = "카메라 연결 UI 영역",
-                    style = MaterialTheme.typography.h6,
+                    text = "AP 모드 프리뷰",
+                    style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(16.dp)
                 )
             }

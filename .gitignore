@@ -30,14 +30,30 @@ KEY/appkey
 # OS files
 .DS_Store
 
+# gphoto2 빌드 출력
+gphoto-build_16k/
+
+# 워크스페이스
+_workspace/
+
 # Android NDK/CMake build files
 app/.cxx/
 app/build/
-*.so
-*.o
+#*.so
+#*.o
 
 # Gradle build cache
 .gradle/*/executionHistory/
 .gradle/*/fileHashes/
 .gradle/buildOutputCleanup/
 .gradle/file-system.probe
+
+# Kotlin 컴파일러 캐시
+.kotlin/
+
+# 백업 파일
+*.bak
+
+# 중요: app/src/main/java/com/inik/camcon/data 폴더는 추적해야 함
+!app/src/main/java/com/inik/camcon/data/
+!app/src/main/java/com/inik/camcon/data/**

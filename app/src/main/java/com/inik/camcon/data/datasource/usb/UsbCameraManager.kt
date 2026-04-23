@@ -3,8 +3,12 @@ package com.inik.camcon.data.datasource.usb
 import android.content.Context
 import android.hardware.usb.UsbDevice
 import android.util.Log
+import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.domain.model.CameraCapabilities
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -19,8 +23,10 @@ class UsbCameraManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val deviceDetector: UsbDeviceDetector,
     private val connectionManager: UsbConnectionManager,
-    private val capabilitiesManager: CameraCapabilitiesManager
+    private val capabilitiesManager: CameraCapabilitiesManager,
+    @ApplicationScope private val scope: CoroutineScope
 ) {
+
     // StateFlow 위임
     val connectedDevices: StateFlow<List<UsbDevice>> = deviceDetector.connectedDevices
     val hasUsbPermission: StateFlow<Boolean> = deviceDetector.hasPermission
@@ -37,6 +43,20 @@ class UsbCameraManager @Inject constructor(
 
         // 기존 카메라 연결 상태 확인
         checkExistingCameraConnection()
+
+        // USB 권한 승인 시 자동 연결 트리거
+        deviceDetector.setPermissionGrantedCallback { device ->
+            try {
+                Log.d(TAG, "권한 승인 콜백 수신 - 자동 연결 시도: ${device.deviceName}")
+                if (!isNativeCameraConnected.value) {
+                    connectToCamera(device)
+                } else {
+                    Log.d(TAG, "이미 네이티브 카메라 연결됨 - 자동 연결 생략")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "권한 승인 콜백 처리 중 오류", e)
+            }
+        }
     }
 
     private fun setupDisconnectionCallbacks() {
@@ -44,7 +64,7 @@ class UsbCameraManager @Inject constructor(
         deviceDetector.setDisconnectionCallback { device ->
             Log.d(TAG, "USB 디바이스 분리 감지: ${device.deviceName}")
             // 연결 매니저에서 분리 처리
-            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            scope.launch {
                 connectionManager.handleUsbDisconnection()
                 capabilitiesManager.reset()
             }
@@ -62,17 +82,48 @@ class UsbCameraManager @Inject constructor(
      */
     private fun checkExistingCameraConnection() {
         try {
-            // 네이티브 카메라가 이미 초기화되어 있는지 확인
-            val summary = capabilitiesManager.getCachedOrFetchSummary()
-            if (summary.isNotEmpty() && !summary.contains("에러", ignoreCase = true) &&
-                !summary.contains("error", ignoreCase = true)
-            ) {
-                Log.d(TAG, "앱 재개 시 기존 카메라 연결이 유지되고 있음")
+            // USB 디바이스가 연결되어 있는지 확인
+            val devices = deviceDetector.getCameraDevices()
+            val hasPermission = hasUsbPermission.value
+
+            Log.d(
+                TAG,
+                "앱 시작/재개 시 USB 상태 확인: 디바이스=${devices.size}개, 권한=$hasPermission, 연결상태=${isNativeCameraConnected.value}"
+            )
+
+            if (devices.isNotEmpty()) {
+                // USB 디바이스가 연결되어 있음
+                if (!hasPermission) {
+                    // 권한이 없으면 권한 요청
+                    Log.d(TAG, "USB 디바이스 감지됨 - 권한 요청")
+                    requestPermission(devices.first())
+                } else if (!isNativeCameraConnected.value) {
+                    // 권한이 있고 카메라가 연결되지 않았으면 자동 연결 시도
+                    Log.d(TAG, "USB 디바이스 감지됨 & 권한 있음 - 자동 연결 시도")
+                    connectToCamera(devices.first())
+                } else {
+                    // 이미 연결되어 있는 경우
+                    Log.d(TAG, "이미 네이티브 카메라가 연결되어 있음")
+
+                    // 연결 상태 확인을 위해 summary 체크
+                    val summary = capabilitiesManager.getCachedOrFetchSummary()
+                    if (summary.isEmpty() || summary.contains("에러", ignoreCase = true) ||
+                        summary.contains("error", ignoreCase = true)
+                    ) {
+                        Log.w(TAG, "카메라 연결 상태 불량 감지 - 재연결 시도")
+                        // 연결 상태가 불량하면 재연결 시도
+                        scope.launch {
+                            connectionManager.disconnectCamera()
+                            delay(500)
+                            connectToCamera(devices.first())
+                        }
+                    }
+                }
             } else {
-                Log.d(TAG, "앱 재개 시 새로운 카메라 초기화 필요")
+                Log.d(TAG, "연결된 USB 디바이스 없음")
             }
         } catch (e: Exception) {
-            Log.d(TAG, "기존 카메라 연결 상태 확인 실패: ${e.message}")
+            Log.e(TAG, "기존 카메라 연결 상태 확인 실패", e)
         }
     }
 
@@ -99,7 +150,7 @@ class UsbCameraManager @Inject constructor(
      * 카메라 연결을 해제합니다
      */
     fun disconnectCamera() {
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+        scope.launch {
             connectionManager.disconnectCamera()
             capabilitiesManager.reset()
         }
@@ -109,7 +160,7 @@ class UsbCameraManager @Inject constructor(
      * 카메라 기능 정보를 새로고침합니다
      */
     fun refreshCameraCapabilities() {
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+        scope.launch {
             capabilitiesManager.refreshCameraCapabilities()
         }
     }
@@ -154,7 +205,7 @@ class UsbCameraManager @Inject constructor(
         // 기존 콜백에 추가로 연결
         val originalCallback = connectionManager::handleUsbDisconnection
         connectionManager.setDisconnectionCallback {
-            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            scope.launch {
                 originalCallback.invoke()
                 callback.invoke()
             }
@@ -173,7 +224,7 @@ class UsbCameraManager @Inject constructor(
      * 카메라 전원 상태를 확인하고 필요시 테스트 실행
      */
     fun checkPowerStateAndTest() {
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+        scope.launch {
             try {
                 Log.d(TAG, "카메라 전원 상태 확인 및 테스트 실행")
 
@@ -214,11 +265,10 @@ class UsbCameraManager @Inject constructor(
                         }
 
                         // 메인 스레드에서 콜백 호출
-                        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main)
-                            .launch {
-                                Log.d(TAG, "카메라 정리 작업 완료")
-                                onCleanupComplete?.invoke()
-                            }
+                        scope.launch(Dispatchers.Main) {
+                            Log.d(TAG, "카메라 정리 작업 완료")
+                            onCleanupComplete?.invoke()
+                        }
                     }
                 }
             )

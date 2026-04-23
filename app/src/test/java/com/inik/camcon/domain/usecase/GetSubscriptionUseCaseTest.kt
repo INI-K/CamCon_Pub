@@ -1,66 +1,148 @@
 package com.inik.camcon.domain.usecase
-import com.inik.camcon.domain.model.ReferralCode
+
+import app.cash.turbine.test
 import com.inik.camcon.domain.model.Subscription
 import com.inik.camcon.domain.model.SubscriptionTier
-import com.inik.camcon.domain.model.User
-import com.inik.camcon.domain.repository.AuthRepository
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
+import com.inik.camcon.domain.repository.SubscriptionRepository
+import com.inik.camcon.domain.util.Logger
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.mockk
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Before
 import org.junit.Test
+
+@OptIn(ExperimentalCoroutinesApi::class)
 class GetSubscriptionUseCaseTest {
-    @Test
-    fun `invoke returns FREE when user is null`() = runBlocking {
-        val repository = FakeAuthRepository(null)
-        val useCase = GetSubscriptionUseCase(repository)
-        val subscription = useCase().first()
-        assertEquals(SubscriptionTier.FREE, subscription.tier)
+
+    private lateinit var useCase: GetSubscriptionUseCase
+    private lateinit var subscriptionRepository: SubscriptionRepository
+    private lateinit var logger: Logger
+
+    private val testDispatcher = StandardTestDispatcher()
+
+    @Before
+    fun setUp() {
+        Dispatchers.setMain(testDispatcher)
+        subscriptionRepository = mockk()
+        logger = mockk(relaxed = true)
     }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
     @Test
-    fun `getSubscriptionTier returns current user tier`() = runBlocking {
-        val repository = FakeAuthRepository(
-            User(
-                id = "1",
-                email = "test@camcon.com",
-                displayName = "tester",
-                subscription = Subscription(tier = SubscriptionTier.PRO)
-            )
+    fun `초기 상태는 FREE 티어`() = runTest {
+        // Given
+        coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(
+            Subscription(tier = SubscriptionTier.FREE)
         )
-        val useCase = GetSubscriptionUseCase(repository)
-        val tier = useCase.getSubscriptionTier().first()
-        assertEquals(SubscriptionTier.PRO, tier)
+
+        // When
+        useCase = GetSubscriptionUseCase(subscriptionRepository, logger, this)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then
+        val result = useCase().value
+        assertEquals(SubscriptionTier.FREE, result.tier)
     }
-    private class FakeAuthRepository(initialUser: User?) : AuthRepository {
-        private val userFlow = MutableStateFlow(initialUser)
-        override suspend fun signInWithGoogle(idToken: String): Result<User> {
-            return Result.failure(UnsupportedOperationException())
+
+    @Test
+    fun `getSubscriptionTier는 현재 티어를 Flow로 반환`() = runTest {
+        // Given
+        val proSubscription = Subscription(tier = SubscriptionTier.PRO)
+        coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(proSubscription)
+
+        useCase = GetSubscriptionUseCase(subscriptionRepository, logger, this)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // When & Then
+        useCase.getSubscriptionTier().test {
+            val tier = awaitItem()
+            assertEquals(SubscriptionTier.PRO, tier)
+            cancelAndConsumeRemainingEvents()
         }
-        override suspend fun signOut() {}
-        override fun getCurrentUser(): Flow<User?> = userFlow
-        override suspend fun isUserLoggedIn(): Boolean = userFlow.value != null
-        override suspend fun getUserById(userId: String): User? = null
-        override suspend fun getAllUsers(): List<User> = emptyList()
-        override suspend fun updateUser(user: User): Boolean = false
-        override suspend fun updateUserTier(userId: String, tier: SubscriptionTier): Boolean = false
-        override suspend fun updateUserReferralCode(userId: String, referralCode: String): Boolean = false
-        override suspend fun deactivateUser(userId: String): Boolean = false
-        override suspend fun reactivateUser(userId: String): Boolean = false
-        override suspend fun getUsersByTier(tier: SubscriptionTier): List<User> = emptyList()
-        override suspend fun searchUsers(query: String): List<User> = emptyList()
-        override suspend fun getReferralStats(userId: String): Map<String, Any> = emptyMap()
-        override suspend fun generateReferralCode(userId: String): String? = null
-        override suspend fun createReferralCode(
-            code: String,
-            tier: SubscriptionTier?,
-            description: String?
-        ): Boolean = false
-        override suspend fun getAllReferralCodes(): List<ReferralCode> = emptyList()
-        override suspend fun getAvailableReferralCodes(): List<ReferralCode> = emptyList()
-        override suspend fun getUsedReferralCodes(): List<ReferralCode> = emptyList()
-        override suspend fun validateReferralCode(code: String): ReferralCode? = null
-        override suspend fun useReferralCode(code: String, userId: String): Boolean = false
-        override suspend fun deleteReferralCode(code: String): Boolean = false
+    }
+
+    @Test
+    fun `tier가 null이면 FREE를 반환`() = runTest {
+        // Given
+        val nullTierSubscription = Subscription(tier = null)
+        coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(nullTierSubscription)
+
+        useCase = GetSubscriptionUseCase(subscriptionRepository, logger, this)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // When & Then
+        useCase.getSubscriptionTier().test {
+            val tier = awaitItem()
+            assertEquals(SubscriptionTier.FREE, tier)
+            cancelAndConsumeRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `refreshSubscription with forceSync true면 syncSubscriptionStatus 호출`() = runTest {
+        // Given
+        coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(
+            Subscription(tier = SubscriptionTier.FREE)
+        )
+        coEvery { subscriptionRepository.syncSubscriptionStatus() } returns Unit
+
+        useCase = GetSubscriptionUseCase(subscriptionRepository, logger, this)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // When
+        useCase.refreshSubscription(forceSync = true)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then
+        coVerify { subscriptionRepository.syncSubscriptionStatus() }
+    }
+
+    @Test
+    fun `ADMIN 티어 구독 정보 반환`() = runTest {
+        // Given
+        val adminSubscription = Subscription(tier = SubscriptionTier.ADMIN, isActive = true)
+        coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(adminSubscription)
+
+        useCase = GetSubscriptionUseCase(subscriptionRepository, logger, this)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // When
+        val result = useCase().value
+
+        // Then
+        assertEquals(SubscriptionTier.ADMIN, result.tier)
+        assertEquals(true, result.isActive)
+    }
+
+    @Test
+    fun `syncSubscriptionStatus 호출시 구독 상태 동기화`() = runTest {
+        // Given
+        coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(
+            Subscription(tier = SubscriptionTier.FREE)
+        )
+        coEvery { subscriptionRepository.syncSubscriptionStatus() } returns Unit
+
+        useCase = GetSubscriptionUseCase(subscriptionRepository, logger, this)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // When
+        useCase.syncSubscriptionStatus()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then
+        coVerify { subscriptionRepository.syncSubscriptionStatus() }
     }
 }

@@ -2,13 +2,28 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- 자체 앱만 커스텀 브로드캐스트를 전송할 수 있도록 signature-level permission 선언 -->
+    <permission
+        android:name="com.inik.camcon.permission.WIFI_AUTO_CONNECT"
+        android:protectionLevel="signature" />
+
+    <uses-permission android:name="com.inik.camcon.permission.WIFI_AUTO_CONNECT" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Wi-Fi 권한 추가 (PTPIP용) -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Android 13+ 근처 Wi‑Fi 스캔/연결 권한 -->
+    <uses-permission
+        android:name="android.permission.NEARBY_WIFI_DEVICES"
+        tools:targetApi="33" />
+    <!-- Android 13+ 알림 권한 -->
+    <uses-permission
+        android:name="android.permission.POST_NOTIFICATIONS"
+        tools:targetApi="33" />
     <!-- USB 권한 추가 -->
     <uses-permission android:name="android.permission.USB_PERMISSION" />
     <uses-permission
@@ -16,10 +31,12 @@
         tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- 화면이 꺼져도 작동하기 위한 권한 -->
     <uses-permission android:name="android.permission.PARTIAL_WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <!-- 재부팅 시 자동 시작 -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- 파일 시스템 접근 권한 -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
@@ -29,12 +46,7 @@
 
     <!-- Android 13+ 세분화된 미디어 권한 -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
-
-    <!-- SAF 관련 권한 -->
-    <uses-permission
-        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
-        tools:ignore="ScopedStorage" />
+    <!-- <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" /> -->
 
     <!-- 미디어 스캔 권한 -->
     <uses-permission
@@ -58,7 +70,7 @@
     <application
         android:name=".CamCon"
         android:largeHeap="true"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:hardwareAccelerated="true"
@@ -69,7 +81,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.CamCon"
-        android:usesCleartextTraffic="true"
+        android:usesCleartextTraffic="false"
         tools:targetApi="31">
 
         <!-- Google Play Services 버전 메타데이터 추가 -->
@@ -89,6 +101,7 @@
         <activity
             android:name=".presentation.ui.SplashActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -109,6 +122,7 @@
         <activity
             android:name=".presentation.ui.MainActivity"
             android:exported="false"
+            android:launchMode="singleTask"
             android:screenOrientation="fullSensor"
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout" />
         <activity
@@ -130,6 +144,17 @@
             android:exported="false"
             android:screenOrientation="fullSensor"
             android:label="오픈소스 라이선스" />
+        <activity
+            android:name=".presentation.ui.MockCameraActivity"
+            android:exported="false"
+            android:screenOrientation="fullSensor"
+            android:label="Mock Camera 설정" />
+        <activity
+            android:name=".presentation.ui.CameraAbilitiesActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.CamCon"
+            android:label="카메라 기능 정보" />
 
         <!-- FileProvider for sharing photos -->
         <provider
@@ -142,12 +167,56 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <!-- Wi-Fi 자동 연결 콜백 수신 -->
+        <receiver
+            android:name=".data.receiver.WifiSuggestionBroadcastReceiver"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="com.inik.camcon.permission.WIFI_AUTO_CONNECT">
+            <intent-filter>
+                <!-- WiFi Suggestion 연결 후 (시스템 브로드캐스트) -->
+                <action android:name="android.net.wifi.action.WIFI_NETWORK_SUGGESTION_POST_CONNECTION" />
+                <!-- 커스텀 브로드캐스트 -->
+                <action android:name="com.inik.camcon.action.AUTO_CONNECT_TRIGGER" />
+                <action android:name="com.inik.camcon.action.AUTO_CONNECT_SUCCESS" />
+                <!-- WiFi 상태 변화 (Android 10+ 에서도 작동) -->
+                <action android:name="android.net.wifi.STATE_CHANGE" />
+                <action android:name="android.net.wifi.supplicant.CONNECTION_CHANGE" />
+            </intent-filter>
+        </receiver>
+
+        <!-- 재부팅 시 자동 시작 -->
+        <receiver
+            android:name=".data.receiver.BootCompletedReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- 자동 연결용 Foreground Service -->
+        <service
+            android:name=".data.service.AutoConnectForegroundService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
+
+        <!-- WiFi 모니터링 Foreground Service (자동 연결 토글 ON 시 상시 실행) -->
+        <service
+            android:name=".data.service.WifiMonitoringService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice"
+            android:stopWithTask="false" />
+
         <!-- 백그라운드 동기화 서비스 -->
         <service
             android:name=".data.service.BackgroundSyncService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:foregroundServiceType="connectedDevice"
+            android:stopWithTask="true" />
 
     </application>
 
