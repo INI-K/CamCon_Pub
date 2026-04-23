@@ -21,7 +21,6 @@ import com.inik.camcon.data.repository.managers.CameraConnectionManager
 import com.inik.camcon.data.repository.managers.PhotoDownloadManager
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.domain.manager.CameraStateObserver
-import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
 import com.inik.camcon.data.service.AutoConnectManager
 import com.inik.camcon.data.service.AutoConnectTaskRunner
 import dagger.Lazy
@@ -197,16 +196,12 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideCameraUiStateManager(): CameraUiStateManager = CameraUiStateManager()
-
-    @Provides
-    @Singleton
     fun provideCameraEventManager(
         nativeDataSource: NativeCameraDataSource,
         usbCameraManager: UsbCameraManager,
         validateImageFormatUseCase: ValidateImageFormatUseCase,
         photoDownloadManager: PhotoDownloadManager,
-        errorHandlingManager: com.inik.camcon.domain.manager.ErrorHandlingManager,
+        errorHandlingManager: com.inik.camcon.domain.manager.ErrorNotifier,
         @ApplicationScope scope: CoroutineScope,
         @IoDispatcher ioDispatcher: CoroutineDispatcher
     ): CameraEventManager =

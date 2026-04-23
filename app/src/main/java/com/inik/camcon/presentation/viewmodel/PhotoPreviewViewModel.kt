@@ -4,12 +4,14 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
-import com.inik.camcon.domain.manager.ErrorHandlingManager
+import com.inik.camcon.presentation.viewmodel.state.ErrorHandlingManager
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.SubscriptionTier
+import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.domain.usecase.camera.PhotoCaptureEventManager
+import com.inik.camcon.domain.usecase.camera.ResumeNativeOperationsUseCase
 import com.inik.camcon.presentation.viewmodel.photo.FileTypeFilter
 import com.inik.camcon.presentation.viewmodel.photo.PhotoImageManager
 import com.inik.camcon.presentation.viewmodel.photo.PhotoListManager
@@ -59,12 +61,14 @@ class PhotoPreviewViewModel @Inject constructor(
     private val photoCaptureEventManager: PhotoCaptureEventManager,
     private val globalManager: CameraConnectionGlobalManager,
     private val getSubscriptionUseCase: GetSubscriptionUseCase,
+    private val appSettingsRepository: AppSettingsRepository,
 
     // 매니저 의존성 주입 (단일책임원칙 적용)
     private val photoListManager: PhotoListManager,
     private val photoImageManager: PhotoImageManager,
     private val photoSelectionManager: PhotoSelectionManager,
-    private val errorHandlingManager: ErrorHandlingManager
+    private val errorHandlingManager: ErrorHandlingManager,
+    private val resumeNativeOperationsUseCase: ResumeNativeOperationsUseCase
 ) : ViewModel() {
 
     companion object {
@@ -106,6 +110,9 @@ class PhotoPreviewViewModel @Inject constructor(
     // 선택 관련 상태
     val isMultiSelectMode = photoSelectionManager.isMultiSelectMode
     val selectedPhotos = photoSelectionManager.selectedPhotos
+
+    // RAW 다운로드 허용 설정 (ValidateImageFormatUseCase와 동일 조건 유지)
+    private val _isRawDownloadEnabled = MutableStateFlow(true)
 
     // 옵저버 Job 필드들 — Flow collect 중복 방지
     private var connectionObserveJob: Job? = null
@@ -174,7 +181,14 @@ class PhotoPreviewViewModel @Inject constructor(
         
         // 구독 티어 관찰
         observeSubscriptionTier()
-        
+
+        // RAW 다운로드 허용 설정 관찰 (ValidateImageFormatUseCase와 동일 조건 유지)
+        viewModelScope.launch {
+            appSettingsRepository.isRawFileDownloadEnabled.collect { enabled ->
+                _isRawDownloadEnabled.value = enabled
+            }
+        }
+
         // 에러 이벤트 관찰
         observeErrorEvents()
 
@@ -488,9 +502,10 @@ class PhotoPreviewViewModel @Inject constructor(
      */
     private fun canAccessRawFiles(): Boolean {
         val tier = _uiState.value.currentTier
-        return tier == SubscriptionTier.PRO ||
+        val tierAllowed = tier == SubscriptionTier.PRO ||
                 tier == SubscriptionTier.REFERRER ||
                 tier == SubscriptionTier.ADMIN
+        return tierAllowed && _isRawDownloadEnabled.value
     }
 
     /**
@@ -560,7 +575,7 @@ class PhotoPreviewViewModel @Inject constructor(
 
                         // 네이티브 작업 재개
                         try {
-                            com.inik.camcon.CameraNative.resumeOperations()
+                            resumeNativeOperationsUseCase()
                             Log.d(TAG, "▶️ 네이티브 작업 재개 완료")
                         } catch (e: Exception) {
                             Log.w(TAG, "네이티브 작업 재개 실패 (무시)", e)
@@ -632,7 +647,7 @@ class PhotoPreviewViewModel @Inject constructor(
 
                         // 네이티브 작업 재개
                         try {
-                            com.inik.camcon.CameraNative.resumeOperations()
+                            resumeNativeOperationsUseCase()
                             Log.d(TAG, "▶️ 네이티브 작업 재개 완료")
                         } catch (e: Exception) {
                             Log.w(TAG, "네이티브 작업 재개 실패 (무시)", e)

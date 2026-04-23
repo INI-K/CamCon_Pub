@@ -3,10 +3,12 @@ package com.inik.camcon.presentation.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.inik.camcon.CameraNative
 import com.inik.camcon.domain.model.CameraAbilitiesInfo
 import com.inik.camcon.domain.model.PtpDeviceInfo
 import com.inik.camcon.domain.repository.CameraRepository
+import com.inik.camcon.domain.usecase.camera.GetCameraAbilitiesJsonUseCase
+import com.inik.camcon.domain.usecase.camera.GetCameraDeviceInfoJsonUseCase
+import com.inik.camcon.domain.usecase.camera.IsCameraInitializedUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,7 +34,10 @@ data class CameraAbilitiesUiState(
  */
 @HiltViewModel
 class CameraAbilitiesViewModel @Inject constructor(
-    private val cameraRepository: CameraRepository
+    private val cameraRepository: CameraRepository,
+    private val isCameraInitializedUseCase: IsCameraInitializedUseCase,
+    private val getCameraAbilitiesJsonUseCase: GetCameraAbilitiesJsonUseCase,
+    private val getCameraDeviceInfoJsonUseCase: GetCameraDeviceInfoJsonUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CameraAbilitiesUiState())
@@ -71,7 +76,7 @@ class CameraAbilitiesViewModel @Inject constructor(
 
             try {
                 // 카메라 초기화 확인
-                if (!CameraNative.isCameraInitialized()) {
+                if (!isCameraInitializedUseCase()) {
                     _uiState.update { it.copy(errorMessage = "카메라가 연결되지 않았습니다", isLoading = false) }
                     return@launch
                 }
@@ -81,8 +86,8 @@ class CameraAbilitiesViewModel @Inject constructor(
 
                 if (abilities == null) {
                     // 직접 조회 시도
-                    val abilitiesJson = CameraNative.getCameraAbilities()
-                    val deviceInfoJson = CameraNative.getCameraDeviceInfo()
+                    val abilitiesJson = getCameraAbilitiesJsonUseCase()
+                    val deviceInfoJson = getCameraDeviceInfoJsonUseCase()
 
                     if (abilitiesJson != null && deviceInfoJson != null) {
                         _uiState.update {

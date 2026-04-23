@@ -315,6 +315,7 @@ class WifiNetworkHelper @Inject constructor(
         const val ACTION_AUTO_CONNECT_SUCCESS = "com.inik.camcon.action.AUTO_CONNECT_SUCCESS"
         const val EXTRA_AUTO_CONNECT_SSID = "extra_auto_connect_ssid"
         const val EXTRA_CAMERA_IP = "extra_camera_ip"
+        const val WIFI_AUTO_CONNECT_PERMISSION = "com.inik.camcon.permission.WIFI_AUTO_CONNECT"
 
         data class SuggestionResult(
             val success: Boolean,
@@ -354,7 +355,7 @@ class WifiNetworkHelper @Inject constructor(
         }
 
         Log.d(TAG, "자동 연결 브로드캐스트 전송 요청: ssid=$ssid")
-        context.sendBroadcast(intent)
+        context.sendBroadcast(intent, WIFI_AUTO_CONNECT_PERMISSION)
     }
 
     /**
@@ -368,7 +369,7 @@ class WifiNetworkHelper @Inject constructor(
         }
 
         Log.d(TAG, "✅ 자동 연결 성공 브로드캐스트 전송: ssid=$ssid, ip=$cameraIp")
-        context.sendBroadcast(intent)
+        context.sendBroadcast(intent, WIFI_AUTO_CONNECT_PERMISSION)
     }
 
     /**

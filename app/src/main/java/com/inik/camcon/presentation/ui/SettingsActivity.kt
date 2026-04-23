@@ -65,11 +65,13 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -160,6 +162,7 @@ fun SettingsScreen(
     cameraViewModel: CameraViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     // Auth 상태 - null 체크 추가
     val authUiState by authViewModel?.uiState?.collectAsStateWithLifecycle() ?: remember {
@@ -746,7 +749,9 @@ fun SettingsScreen(
                                         android.widget.Toast.LENGTH_SHORT
                                     ).show()
                                 } else {
-                                    logDialogContent = appSettingsViewModel.getLogFileContent()
+                                    coroutineScope.launch {
+                                        logDialogContent = appSettingsViewModel.getLogFileContent()
+                                    }
                                 }
                             }
                         )

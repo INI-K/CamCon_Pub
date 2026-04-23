@@ -5,7 +5,6 @@ import android.Manifest
 import android.os.Build
 import android.util.Log
 import androidx.core.app.ActivityCompat
-import com.inik.camcon.CameraNative
 import com.inik.camcon.R
 import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
@@ -18,6 +17,7 @@ import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
 import com.inik.camcon.domain.repository.PtpipPreferencesRepository
 import com.inik.camcon.domain.repository.PtpipRepository
+import com.inik.camcon.domain.usecase.camera.DeleteGphotoSettingsUseCase
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -45,6 +45,7 @@ class PtpipConnectionHelper @Inject constructor(
     private val ptpipRepository: PtpipRepository,
     private val preferencesRepository: PtpipPreferencesRepository,
     private val globalManager: CameraConnectionGlobalManager,
+    private val deleteGphotoSettingsUseCase: DeleteGphotoSettingsUseCase,
     @ApplicationScope private val scope: CoroutineScope
 ) {
 
@@ -81,7 +82,7 @@ class PtpipConnectionHelper @Inject constructor(
             // libgphoto2 설정 초기화
             try {
                 Log.i(TAG, "=== libgphoto2 설정 초기화 시작 ===")
-                val deleteResult = CameraNative.deleteGphotoSettings()
+                val deleteResult = deleteGphotoSettingsUseCase()
                 Log.i(TAG, "설정 삭제 결과:\n$deleteResult")
                 delay(500)
                 Log.i(TAG, "=== libgphoto2 설정 초기화 완료 ===")

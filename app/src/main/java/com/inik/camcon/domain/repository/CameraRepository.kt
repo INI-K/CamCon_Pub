@@ -86,4 +86,22 @@ interface CameraRepository {
 
     // 카메라 파일 목록 (C-3 수정)
     suspend fun getCameraFileListNow(): Result<List<String>>
+
+    // ── C3 라운드 1 (2026-04-23): Presentation→JNI 직접 호출 래핑용 네이티브 게이트웨이 ──
+
+    suspend fun isNativeLibrariesLoaded(): Boolean
+    suspend fun setupNativeEnvironment(pluginDir: String): Boolean
+    suspend fun getLibGphoto2Version(): String
+    suspend fun startNativeLog(
+        logPath: String,
+        level: Int = com.inik.camcon.domain.model.NativeLogLevel.DEBUG
+    ): Boolean
+    suspend fun stopNativeLog(): Boolean
+    suspend fun readNativeLog(filePath: String): String
+    suspend fun getCameraAbilitiesJson(): String?
+    suspend fun getCameraDeviceInfoJson(): String?
+    suspend fun deleteGphotoSettings(): String
+    suspend fun resumeNativeOperations()
+    suspend fun downloadCameraPhoto(photoPath: String): ByteArray?
+    suspend fun getCameraPhotoExifJson(photoPath: String): String?
 }

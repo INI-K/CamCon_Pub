@@ -4,11 +4,13 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.inik.camcon.CameraNative
 import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.usecase.ColorTransferUseCase
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
+import com.inik.camcon.domain.usecase.camera.ReadNativeLogUseCase
+import com.inik.camcon.domain.usecase.camera.StartNativeLogUseCase
+import com.inik.camcon.domain.usecase.camera.StopNativeLogUseCase
 import com.inik.camcon.domain.model.SubscriptionTier
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -25,7 +27,10 @@ class AppSettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val appSettingsRepository: AppSettingsRepository,
     private val colorTransferUseCase: ColorTransferUseCase,
-    private val getSubscriptionUseCase: GetSubscriptionUseCase
+    private val getSubscriptionUseCase: GetSubscriptionUseCase,
+    private val startNativeLogUseCase: StartNativeLogUseCase,
+    private val stopNativeLogUseCase: StopNativeLogUseCase,
+    private val readNativeLogUseCase: ReadNativeLogUseCase
 ) : ViewModel() {
 
     companion object {
@@ -319,11 +324,10 @@ class AppSettingsViewModel @Inject constructor(
             if (enabled) {
                 // 로그 캡처 시작
                 val logPath = getLogFilePath()
-                val result = CameraNative.startLogFile(logPath)
+                // GP_LOG_DEBUG 레벨로 설정 (DATA는 전송 바이너리 hexdump 포함하여 로그 폭증)
+                val result = startNativeLogUseCase(logPath)
 
                 if (result) {
-                    // GP_LOG_DEBUG 레벨로 설정 (DATA는 전송 바이너리 hexdump 포함하여 로그 폭증)
-                    CameraNative.setLogLevel(CameraNative.GP_LOG_DEBUG)
                     Log.i(TAG, "네이티브 로그 캡처 시작: $logPath")
                 } else {
                     Log.e(TAG, "네이티브 로그 파일 시작 실패")
@@ -332,7 +336,7 @@ class AppSettingsViewModel @Inject constructor(
                 }
             } else {
                 // 로그 캡처 중지
-                CameraNative.stopLogFile()
+                stopNativeLogUseCase()
                 Log.i(TAG, "네이티브 로그 캡처 중지")
             }
         }
@@ -341,7 +345,7 @@ class AppSettingsViewModel @Inject constructor(
     /**
      * 로그 파일 내용 가져오기
      */
-    fun getLogFileContent(): String {
+    suspend fun getLogFileContent(): String {
         return try {
             val logFiles = context.filesDir.listFiles { file ->
                 file.name.startsWith("libgphoto2_debug_") && file.name.endsWith(".txt")
@@ -350,7 +354,7 @@ class AppSettingsViewModel @Inject constructor(
             val latestLog = logFiles?.maxByOrNull { it.lastModified() }
 
             if (latestLog != null) {
-                CameraNative.getLogFileContent(latestLog.absolutePath)
+                readNativeLogUseCase(latestLog.absolutePath)
             } else {
                 "로그 파일이 없습니다."
             }

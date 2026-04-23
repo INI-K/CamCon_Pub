@@ -6,7 +6,7 @@ import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
 import com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
 import com.inik.camcon.data.repository.managers.PhotoDownloadManager
-import com.inik.camcon.domain.manager.ErrorHandlingManager
+import com.inik.camcon.domain.manager.ErrorNotifier
 import com.inik.camcon.domain.manager.ErrorSeverity
 import com.inik.camcon.domain.manager.ErrorType
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
@@ -43,9 +43,10 @@ class CameraEventManager @Inject constructor(
     private val usbCameraManager: UsbCameraManager,
     private val validateImageFormatUseCase: ValidateImageFormatUseCase,
     private val photoDownloadManager: PhotoDownloadManager,
-    private val errorHandlingManager: ErrorHandlingManager,
+    private val errorHandlingManager: ErrorNotifier,
     @ApplicationScope private val scope: CoroutineScope,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+    private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main
 ) {
     // 카메라 이벤트 리스너 상태 추적
     private val _isEventListenerActive = MutableStateFlow(false)
@@ -271,7 +272,7 @@ class CameraEventManager @Inject constructor(
                             )
 
                             // 네이티브 호출 성공 확인 후 활성 상태 설정
-                            scope.launch(Dispatchers.Main) {
+                            scope.launch(mainDispatcher) {
                                 _isEventListenerActive.value = true
                             }
 
@@ -307,7 +308,7 @@ class CameraEventManager @Inject constructor(
                                     "❌ ${connectionType.name} 이벤트 리스너 시작 최대 재시도 초과"
                                 )
                                 isEventListenerRunning.set(false)
-                                scope.launch(Dispatchers.Main) {
+                                scope.launch(mainDispatcher) {
                                     _isEventListenerActive.value = false
                                 }
                             }
@@ -317,14 +318,14 @@ class CameraEventManager @Inject constructor(
                     // 코루틴 취소는 정상적인 종료이므로 로그만 남기고 rethrow
                     LogcatManager.d("카메라이벤트매니저", "${connectionType.name} 이벤트 리스너 코루틴이 취소됨")
                     isEventListenerRunning.set(false)
-                    withContext(Dispatchers.Main) {
+                    withContext(mainDispatcher) {
                         _isEventListenerActive.value = false
                     }
                     throw e
                 } catch (e: Exception) {
                     LogcatManager.e("카메라이벤트매니저", "❌ ${connectionType.name} 이벤트 리스너 스레드 실행 중 예외", e)
                     isEventListenerRunning.set(false)
-                    scope.launch(Dispatchers.Main) {
+                    scope.launch(mainDispatcher) {
                         _isEventListenerActive.value = false
                     }
                 }
@@ -506,7 +507,7 @@ class CameraEventManager @Inject constructor(
 
                                     // 메인 스레드에서 다이얼로그 표시
                                     try {
-                                        withContext(Dispatchers.Main) {
+                                        withContext(mainDispatcher) {
                                             onRawFileRestricted?.invoke(
                                                 fileName,
                                                 validationResult.restrictionMessage
@@ -547,7 +548,7 @@ class CameraEventManager @Inject constructor(
                                 )
                                 // 오류 발생 시 기본적으로 차단
                                 try {
-                                    withContext(Dispatchers.Main) {
+                                    withContext(mainDispatcher) {
                                         onRawFileRestricted?.invoke(
                                             fileName,
                                             "파일 형식을 확인할 수 없습니다."
@@ -707,7 +708,7 @@ class CameraEventManager @Inject constructor(
             isEventListenerStarting.set(false)
 
             // UI 상태 업데이트
-            scope.launch(Dispatchers.Main) {
+            scope.launch(mainDispatcher) {
                 _isEventListenerActive.value = false
             }
 
