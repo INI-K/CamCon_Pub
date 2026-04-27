@@ -84,6 +84,13 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ==================== PURCHASE_TOKENS 컬렉션 ====================
+    // 결제 멱등성 잠금 — Cloud Function(verifyAndRecordPurchase)이 Admin SDK로만 쓴다.
+    // 클라이언트 read/write 모두 금지.
+    match /purchase_tokens/{tokenHash} {
+      allow read, write: if false;
+    }
+
     // ==================== 기본 규칙: 모든 다른 경로 차단 ====================
     // 위의 명시적 규칙에 매칭되지 않는 모든 접근은 거부
     match /{document=**} {

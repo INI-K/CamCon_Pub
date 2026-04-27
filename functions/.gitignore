@@ -1,0 +1,9 @@
+node_modules/
+.firebase/
+*.local
+firebase-debug.log
+firebase-debug.*.log
+.env
+.env.local
+.runtimeconfig.json
+package-lock.json
