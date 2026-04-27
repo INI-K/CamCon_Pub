@@ -40,6 +40,14 @@ app/symbols.zip
 # 워크스페이스
 _workspace/
 
+# Firebase Cloud Functions
+functions/node_modules/
+functions/.firebase/
+functions/firebase-debug.log
+functions/firebase-debug.*.log
+functions/.runtimeconfig.json
+functions/package-lock.json
+
 # Android NDK/CMake build files
 app/.cxx/
 app/build/
