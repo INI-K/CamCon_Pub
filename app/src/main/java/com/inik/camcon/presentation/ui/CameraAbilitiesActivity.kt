@@ -84,7 +84,8 @@ fun CameraAbilitiesScreen(
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
-        }
+        },
+        contentWindowInsets = WindowInsets.safeDrawing
     ) { paddingValues ->
         when {
             isLoading -> {
