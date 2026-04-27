@@ -7,3 +7,9 @@ firebase-debug.*.log
 .env.local
 .runtimeconfig.json
 package-lock.json
+
+# 서비스 계정 키 — 절대 커밋 금지 (ADC 기반 운영, 로컬 키는 외부 안전한 위치에 보관)
+*service-account*.json
+service-account*.json
+*-credentials.json
+gcloud-keyfile.json

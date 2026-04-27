@@ -129,6 +129,10 @@ exports.verifyAndRecordPurchase = onCall(
         const expiryTime = matchedLineItem.expiryTime ? new Date(matchedLineItem.expiryTime) : null;
         const autoRenew = matchedLineItem.autoRenewingPlan?.autoRenewEnabled === true;
 
+        // expiryTime이 있고 이미 과거이면 isActive=false (RTDN 부재 시 만료 즉시 반영을 위해)
+        // ACCEPTABLE_SUBSCRIPTION_STATES 검사로 이 시점에 도달했더라도 안전 차원에서 한 번 더 확인.
+        const isActive = expiryTime ? expiryTime.getTime() > Date.now() : true;
+
         // 4) Firestore 기록 (Admin SDK는 rules 우회)
         const userSubRef = admin.firestore()
             .collection('users').doc(uid)
@@ -142,7 +146,7 @@ exports.verifyAndRecordPurchase = onCall(
                 : admin.firestore.FieldValue.serverTimestamp(),
             endDate: expiryTime ? admin.firestore.Timestamp.fromDate(expiryTime) : null,
             autoRenew,
-            isActive: true,
+            isActive,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedBy: 'verifyAndRecordPurchase',
         };
@@ -163,7 +167,7 @@ exports.verifyAndRecordPurchase = onCall(
         return {
             ok: true,
             tier,
-            isActive: true,
+            isActive,
             endDate: expiryTime ? expiryTime.toISOString() : null,
         };
     }
