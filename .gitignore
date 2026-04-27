@@ -33,6 +33,10 @@ KEY/appkey
 # gphoto2 빌드 출력
 gphoto-build_16k/
 
+# Play Console 심볼 파일 (빌드 스크립트 자동 생성, jniLibs와 중복)
+app/src/main/symbols/
+app/symbols.zip
+
 # 워크스페이스
 _workspace/
 

@@ -617,6 +617,8 @@ echo "=========================================="
 
 ##############################################
 # 11. 빌드 결과물을 프로젝트 jniLibs에 복사
+#     - symbols/ : unstripped 원본 보관 (Play Console 디버그 심볼 업로드용)
+#     - jniLibs/ : strip된 경량 버전 (앱 배포용)
 ##############################################
 echo ""
 echo "=========================================="
@@ -624,38 +626,68 @@ echo "프로젝트 jniLibs 복사 시작"
 echo "=========================================="
 
 PROJECT_JNI_DIR="$BASE_DIR/app/src/main/jniLibs"
+PROJECT_SYMBOLS_DIR="$BASE_DIR/app/src/main/symbols"
+
+# .so 하나를 symbols에 보관하고 jniLibs에는 strip해서 복사하는 헬퍼
+copy_and_strip() {
+    local src="$1"
+    local dst_jni="$2"
+    local dst_sym="$3"
+    local name
+    name="$(basename "$src")"
+
+    cp -f "$src" "$dst_sym/$name"
+    cp -f "$src" "$dst_jni/$name"
+    "$STRIP" --strip-unneeded "$dst_jni/$name"
+    echo "    ✓ $name"
+}
 
 for ABI in "${!ABI_TARGETS[@]}"; do
     SRC_LIB="$BUILD_DIR/$ABI/output/lib"
     DST_DIR="$PROJECT_JNI_DIR/$ABI"
+    SYM_DIR="$PROJECT_SYMBOLS_DIR/$ABI"
 
     if [ ! -d "$SRC_LIB" ]; then
         echo "  ⚠️ [$ABI] 빌드 출력 없음, 건너뜀"
         continue
     fi
 
-    mkdir -p "$DST_DIR"
-    echo "  [$ABI] $SRC_LIB → $DST_DIR"
+    mkdir -p "$DST_DIR" "$SYM_DIR"
+    echo "  [$ABI] $SRC_LIB → $DST_DIR (strip) + $SYM_DIR (unstripped)"
 
     # 핵심 라이브러리
-    cp -f "$SRC_LIB/libgphoto2.so"    "$DST_DIR/" 2>/dev/null && echo "    ✓ libgphoto2.so"
-    cp -f "$SRC_LIB/libgphoto2_port.so" "$DST_DIR/" 2>/dev/null && echo "    ✓ libgphoto2_port.so"
+    [ -f "$SRC_LIB/libgphoto2.so" ]      && copy_and_strip "$SRC_LIB/libgphoto2.so"      "$DST_DIR" "$SYM_DIR"
+    [ -f "$SRC_LIB/libgphoto2_port.so" ] && copy_and_strip "$SRC_LIB/libgphoto2_port.so" "$DST_DIR" "$SYM_DIR"
 
-    # camlib 플러그인 (.so)
+    # camlib 플러그인
     for f in "$SRC_LIB"/libgphoto2_camlib_*.so; do
-        [ -f "$f" ] && cp -f "$f" "$DST_DIR/" && echo "    ✓ $(basename "$f")"
+        [ -f "$f" ] && copy_and_strip "$f" "$DST_DIR" "$SYM_DIR"
     done
 
-    # port iolib 플러그인 (.so)
+    # port iolib 플러그인
     for f in "$SRC_LIB"/libgphoto2_port_iolib_*.so; do
-        [ -f "$f" ] && cp -f "$f" "$DST_DIR/" && echo "    ✓ $(basename "$f")"
+        [ -f "$f" ] && copy_and_strip "$f" "$DST_DIR" "$SYM_DIR"
     done
 
-    # ltdl (있는 경우)
-    [ -f "$SRC_LIB/libltdl.so" ] && cp -f "$SRC_LIB/libltdl.so" "$DST_DIR/" && echo "    ✓ libltdl.so"
+    # ltdl
+    [ -f "$SRC_LIB/libltdl.so" ] && copy_and_strip "$SRC_LIB/libltdl.so" "$DST_DIR" "$SYM_DIR"
 
     echo "  ✅ [$ABI] 복사 완료"
 done
+
+##############################################
+# 12. Play Console 심볼 업로드용 zip 생성
+##############################################
+SYMBOLS_ZIP="$BASE_DIR/app/symbols.zip"
+if [ -d "$PROJECT_SYMBOLS_DIR" ]; then
+    echo ""
+    echo "=========================================="
+    echo "Play Console 심볼 zip 생성"
+    echo "=========================================="
+    (cd "$PROJECT_SYMBOLS_DIR" && zip -r "$SYMBOLS_ZIP" .)
+    echo "✅ 심볼 zip: $SYMBOLS_ZIP"
+    echo "   → Play Console > 앱 번들 > 디버그 기호 파일에 업로드하세요."
+fi
 
 echo ""
 echo "=========================================="
