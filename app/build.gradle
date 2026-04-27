@@ -339,7 +339,7 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.10.1'
 
     // Google Play Billing for subscription management
-    implementation 'com.android.billingclient:billing-ktx:6.1.0'
+    implementation 'com.android.billingclient:billing-ktx:8.3.0'
 
     // Toasty for showing stylish notifications
     implementation 'com.github.GrenderG:Toasty:1.5.2'
