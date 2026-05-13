@@ -330,4 +330,282 @@ class ValidateImageFormatUseCaseTest {
         // Then: RAW 파일 지원
         assertTrue(useCase.isFormatSupported("photo.nef"))
     }
+
+    // ── PR1 회귀: isRawFile 공개 메서드 (게이팅 단일 지점 강제) ──
+
+    @Test
+    fun `isRawFile - RAW 확장자는 true 반환 (Nikon Canon Sony 등)`() = runTest {
+        createUseCase(SubscriptionTier.FREE)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // 티어와 무관하게 파일 확장자만 보고 판단해야 한다.
+        assertTrue(useCase.isRawFile("photo.nef"))
+        assertTrue(useCase.isRawFile("photo.cr2"))
+        assertTrue(useCase.isRawFile("photo.arw"))
+        assertTrue(useCase.isRawFile("/some/path/photo.NEF"))
+    }
+
+    @Test
+    fun `isRawFile - JPEG PNG 등 비-RAW 파일은 false 반환`() = runTest {
+        createUseCase(SubscriptionTier.PRO)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(useCase.isRawFile("photo.jpg"))
+        assertFalse(useCase.isRawFile("photo.jpeg"))
+        assertFalse(useCase.isRawFile("photo.png"))
+        assertFalse(useCase.isRawFile("photo.bmp"))
+    }
+
+    @Test
+    fun `isRawFile - 알 수 없는 확장자는 false 반환`() = runTest {
+        createUseCase(SubscriptionTier.PRO)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(useCase.isRawFile("photo.xyz"))
+        assertFalse(useCase.isRawFile("photo"))
+        assertFalse(useCase.isRawFile(""))
+    }
+
+    // ── PR1 회귀: 5곳 호출 지점이 단일 게이팅 지점을 우회하지 않는지 정적 검증 ──
+
+    /**
+     * 정책: `ValidateImageFormatUseCase` 가 RAW 게이팅 단일 진입점. 다른 main 소스에서 직접
+     * `SubscriptionUtils.isRawFile` 를 호출하면 게이팅 정책을 우회하므로 회귀로 본다.
+     *
+     * 본 테스트는 정적 grep 으로 호출 위치를 검증한다(런타임 의존성 없음).
+     * 허용 파일: `ValidateImageFormatUseCase.kt` 단 1곳.
+     */
+    @Test
+    fun `정적 회귀 - SubscriptionUtils isRawFile 직접 호출은 ValidateImageFormatUseCase 한 곳에서만 발생해야 한다`() {
+        val mainSrcRoot = java.io.File("src/main/java")
+        require(mainSrcRoot.isDirectory) { "테스트는 :app 모듈 디렉터리에서 실행되어야 함: ${mainSrcRoot.absolutePath}" }
+
+        val allowedFile = "ValidateImageFormatUseCase.kt"
+        val pattern = Regex("""SubscriptionUtils\.isRawFile\s*\(""")
+        val violations = mutableListOf<String>()
+
+        mainSrcRoot.walkTopDown()
+            .filter { it.isFile && it.extension == "kt" && it.name != allowedFile }
+            .forEach { ktFile ->
+                ktFile.readLines().forEachIndexed { idx, line ->
+                    if (pattern.containsMatchIn(line)) {
+                        violations += "${ktFile.relativeTo(mainSrcRoot)}:${idx + 1}  $line"
+                    }
+                }
+            }
+
+        assertTrue(
+            "RAW 게이팅 단일 지점 위반: 다음 위치에서 SubscriptionUtils.isRawFile 을 직접 호출함.\n" +
+                "허용 위치는 ValidateImageFormatUseCase.kt 뿐. 대신 useCase.isRawFile(path) 를 사용하세요.\n" +
+                violations.joinToString("\n"),
+            violations.isEmpty()
+        )
+    }
+
+    /**
+     * 5곳 호출 지점이 `ValidateImageFormatUseCase` 를 주입받고 있는지 정적 검증.
+     *
+     * 회귀 시나리오: 누군가 `ValidateImageFormatUseCase` 의존성을 제거하고 자체 로직으로 게이팅을
+     * 시도하면 본 테스트가 즉시 실패한다.
+     */
+    @Test
+    fun `정적 회귀 - 5곳 호출 지점은 ValidateImageFormatUseCase 를 주입받아야 한다`() {
+        val mainSrcRoot = java.io.File("src/main/java")
+        require(mainSrcRoot.isDirectory) { "테스트는 :app 모듈 디렉터리에서 실행되어야 함" }
+
+        val expectedInjectionSites = listOf(
+            "data/repository/managers/CameraEventManager.kt",
+            "presentation/viewmodel/PhotoPreviewViewModel.kt",
+            "presentation/viewmodel/photo/PhotoListManager.kt"
+            // PhotoPreviewScreen 은 ViewModel 의 downloadPhoto(photo) 경유라 직접 주입 X.
+            // AppModule 은 DI factory 라 주입자 목록과는 별개로 검증 대상에서 제외.
+        )
+
+        val pattern = Regex("""ValidateImageFormatUseCase""")
+        val missing = expectedInjectionSites.filterNot { rel ->
+            val file = java.io.File(mainSrcRoot, "com/inik/camcon/$rel")
+            file.exists() && pattern.containsMatchIn(file.readText())
+        }
+
+        assertTrue(
+            "RAW 게이팅 회귀: 다음 호출 지점이 ValidateImageFormatUseCase 를 더 이상 주입받지 않습니다.\n" +
+                "PR1 의 단일 지점 정책이 깨졌습니다.\n" +
+                missing.joinToString("\n"),
+            missing.isEmpty()
+        )
+    }
+
+    /**
+     * `PhotoPreviewScreen` 이 RAW 게이팅을 직접 수행하지 않고 ViewModel 의 `downloadPhoto(photo)` 를
+     * 경유하는지 정적 검증. Compose 화면에서 직접 `SubscriptionUtils` 호출은 금지.
+     */
+    @Test
+    fun `정적 회귀 - PhotoPreviewScreen 은 RAW 게이팅을 직접 수행하지 않는다`() {
+        val mainSrcRoot = java.io.File("src/main/java")
+        require(mainSrcRoot.isDirectory)
+        val screen = java.io.File(mainSrcRoot, "com/inik/camcon/presentation/ui/screens/PhotoPreviewScreen.kt")
+        if (!screen.exists()) return // 파일 구조 변경 시 본 테스트는 자연스럽게 무의미해짐(빌드 실패가 우선 신호)
+
+        val text = screen.readText()
+        val forbidden = Regex("""SubscriptionUtils\.isRawFile\s*\(""")
+        val directUseCaseCall = Regex("""validateImageFormatUseCase\s*\.""")
+
+        assertFalse(
+            "PhotoPreviewScreen 이 SubscriptionUtils.isRawFile 을 직접 호출함 (정책 위반)",
+            forbidden.containsMatchIn(text)
+        )
+        assertFalse(
+            "PhotoPreviewScreen 은 ViewModel.downloadPhoto(photo) 경유여야 하며 UseCase 를 직접 호출하면 안 됨",
+            directUseCaseCall.containsMatchIn(text)
+        )
+    }
+
+    // ── PR1 추가 회귀: canAccessRawFiles 자체 분기 제거 ──
+
+    /**
+     * implementer 가 PR1 정정 보고에서 `PhotoPreviewViewModel.canAccessRawFiles` /
+     * `PhotoListManager.canAccessRawFiles` 자체 분기를 모두 삭제했다.
+     * 누군가 같은 이름으로 다시 자체 분기를 도입하면 단일 지점 정책이 깨진다.
+     *
+     * main 소스 전체에서 `canAccessRawFiles` 토큰이 0건이어야 한다.
+     */
+    @Test
+    fun `정적 회귀 - canAccessRawFiles 자체 분기 함수는 main 소스에서 0건이어야 한다`() {
+        val mainSrcRoot = java.io.File("src/main/java")
+        require(mainSrcRoot.isDirectory)
+
+        val pattern = Regex("""\bcanAccessRawFiles\b""")
+        val violations = mutableListOf<String>()
+
+        mainSrcRoot.walkTopDown()
+            .filter { it.isFile && it.extension == "kt" }
+            .forEach { ktFile ->
+                ktFile.readLines().forEachIndexed { idx, line ->
+                    if (pattern.containsMatchIn(line)) {
+                        violations += "${ktFile.relativeTo(mainSrcRoot)}:${idx + 1}  $line"
+                    }
+                }
+            }
+
+        assertTrue(
+            "canAccessRawFiles 자체 분기 부활: 단일 지점 정책 위반. " +
+                "대신 useCase.isRawAllowedForTier / resolveRawAccess 사용.\n" +
+                violations.joinToString("\n"),
+            violations.isEmpty()
+        )
+    }
+
+    // ── PR1 신규: isRawAllowedForTier 동기 메서드 5 tier 검증 ──
+
+    @Test
+    fun `isRawAllowedForTier - PRO ADMIN REFERRER 는 true 반환`() = runTest {
+        createUseCase(SubscriptionTier.FREE) // useCase 인스턴스만 필요 (순수 함수)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(useCase.isRawAllowedForTier(SubscriptionTier.PRO))
+        assertTrue(useCase.isRawAllowedForTier(SubscriptionTier.ADMIN))
+        assertTrue(useCase.isRawAllowedForTier(SubscriptionTier.REFERRER))
+    }
+
+    @Test
+    fun `isRawAllowedForTier - FREE BASIC 은 false 반환`() = runTest {
+        createUseCase(SubscriptionTier.PRO)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(useCase.isRawAllowedForTier(SubscriptionTier.FREE))
+        assertFalse(useCase.isRawAllowedForTier(SubscriptionTier.BASIC))
+    }
+
+    // ── PR1 신규: resolveRawAccess 동기 메서드 매트릭스 ──
+    // 매트릭스: {non-RAW, RAW} × {PRO/ADMIN/REFERRER, FREE, BASIC} × {rawDownloadEnabled true/false}
+
+    @Test
+    fun `resolveRawAccess - 비-RAW 파일은 tier 와 설정 무관하게 isSupported true`() = runTest {
+        createUseCase(SubscriptionTier.FREE)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val result = useCase.resolveRawAccess("photo.jpg", SubscriptionTier.FREE, isRawDownloadEnabled = false)
+        assertTrue(result.isSupported)
+        assertFalse(result.isRawFile)
+        assertNull(result.restrictionMessage)
+        assertFalse(result.needsUpgrade)
+    }
+
+    @Test
+    fun `resolveRawAccess - RAW + PRO + rawDownload true 는 허용`() = runTest {
+        createUseCase(SubscriptionTier.PRO)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val result = useCase.resolveRawAccess("photo.cr2", SubscriptionTier.PRO, isRawDownloadEnabled = true)
+        assertTrue(result.isSupported)
+        assertTrue(result.isRawFile)
+        assertEquals("Canon", result.manufacturer)
+        assertNull(result.restrictionMessage)
+    }
+
+    @Test
+    fun `resolveRawAccess - RAW + ADMIN REFERRER 도 허용`() = runTest {
+        createUseCase(SubscriptionTier.ADMIN)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val admin = useCase.resolveRawAccess("photo.nef", SubscriptionTier.ADMIN, isRawDownloadEnabled = true)
+        assertTrue(admin.isSupported)
+        assertEquals("Nikon", admin.manufacturer)
+
+        val referrer = useCase.resolveRawAccess("photo.arw", SubscriptionTier.REFERRER, isRawDownloadEnabled = true)
+        assertTrue(referrer.isSupported)
+        assertEquals("Sony", referrer.manufacturer)
+    }
+
+    @Test
+    fun `resolveRawAccess - RAW + FREE + rawDownload true 는 needsUpgrade true + FREE 메시지`() = runTest {
+        createUseCase(SubscriptionTier.FREE)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val result = useCase.resolveRawAccess("photo.nef", SubscriptionTier.FREE, isRawDownloadEnabled = true)
+        assertFalse(result.isSupported)
+        assertTrue(result.needsUpgrade)
+        assertTrue(result.isRawFile)
+        assertEquals("Nikon", result.manufacturer)
+        // implementer 가 한국어 i18n 문자열 그대로 사용 (SubscriptionUtils.getRawRestrictionMessage)
+        assertEquals(
+            com.inik.camcon.utils.SubscriptionUtils.getRawRestrictionMessage(),
+            result.restrictionMessage
+        )
+    }
+
+    @Test
+    fun `resolveRawAccess - RAW + BASIC + rawDownload true 는 needsUpgrade true + BASIC 메시지`() = runTest {
+        createUseCase(SubscriptionTier.BASIC)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val result = useCase.resolveRawAccess("photo.arw", SubscriptionTier.BASIC, isRawDownloadEnabled = true)
+        assertFalse(result.isSupported)
+        assertTrue(result.needsUpgrade)
+        assertTrue(result.isRawFile)
+        assertEquals("Sony", result.manufacturer)
+        assertEquals(
+            com.inik.camcon.utils.SubscriptionUtils.getRawRestrictionMessageForBasic(),
+            result.restrictionMessage
+        )
+    }
+
+    @Test
+    fun `resolveRawAccess - rawDownload false 는 tier 무관하게 isSupported false + 설정 비활성화 메시지`() = runTest {
+        createUseCase(SubscriptionTier.PRO)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // PRO 라도 rawDownload 비활성화 시 차단.
+        val pro = useCase.resolveRawAccess("photo.cr2", SubscriptionTier.PRO, isRawDownloadEnabled = false)
+        assertFalse(pro.isSupported)
+        assertFalse("rawDownload 설정 비활성화는 업그레이드 권유 케이스가 아님", pro.needsUpgrade)
+        assertTrue(pro.isRawFile)
+        assertTrue("설정 비활성화 메시지 포함", pro.restrictionMessage!!.contains("비활성화"))
+
+        // FREE 도 동일 차단 (메시지는 설정 비활성화 우선 — 업그레이드 권유 없음).
+        val free = useCase.resolveRawAccess("photo.nef", SubscriptionTier.FREE, isRawDownloadEnabled = false)
+        assertFalse(free.isSupported)
+        assertFalse(free.needsUpgrade)
+        assertTrue(free.restrictionMessage!!.contains("비활성화"))
+    }
 }
