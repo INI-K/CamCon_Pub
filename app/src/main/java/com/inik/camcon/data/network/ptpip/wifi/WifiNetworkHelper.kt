@@ -13,6 +13,7 @@ import android.net.wifi.WifiNetworkSpecifier
 import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
+import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.model.AutoConnectNetworkConfig
 import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
@@ -22,7 +23,7 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.LocationSettingsRequest
 import com.google.android.gms.location.LocationSettingsResponse
 import com.google.android.gms.tasks.Task
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -130,7 +131,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class WifiNetworkHelper @Inject constructor(
-    private val context: Context
+    private val context: Context,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     private val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
     private val connectivityManager =
@@ -509,7 +511,7 @@ class WifiNetworkHelper @Inject constructor(
         awaitClose {
             connectivityManager.unregisterNetworkCallback(networkCallback)
         }
-    }.distinctUntilChanged().flowOn(Dispatchers.IO)
+    }.distinctUntilChanged().flowOn(ioDispatcher)
 
     /**
      * 현재 네트워크 상태 가져오기
@@ -878,7 +880,7 @@ class WifiNetworkHelper @Inject constructor(
      * - SO_LINGER 비활성, 짧은 타임아웃 적용, 성공 즉시 close
      */
     private suspend fun testTcpPort(ipAddress: String, port: Int, timeoutMs: Int = 1500): Boolean {
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             try {
                 Log.d(TAG, "TCP 포트 확인: $ipAddress:$port")
                 val socket = java.net.Socket()
@@ -909,7 +911,7 @@ class WifiNetworkHelper @Inject constructor(
      */
     private suspend fun testPtpipConnection(ipAddress: String, port: Int = 15740): Boolean {
         return try {
-            withContext(Dispatchers.IO) {
+            withContext(ioDispatcher) {
                 Log.d(TAG, "PTP/IP 초기화 테스트 시작: $ipAddress:$port")
 
                 val socket = java.net.Socket()
@@ -996,7 +998,7 @@ class WifiNetworkHelper @Inject constructor(
      * - Android 13+에서는 `NEARBY_WIFI_DEVICES` 권한 필요
      * - 카메라 관련 네트워크만 필터링하여 반환
      */
-    suspend fun scanNearbyWifiSSIDs(): List<String> = withContext(Dispatchers.IO) {
+    suspend fun scanNearbyWifiSSIDs(): List<String> = withContext(ioDispatcher) {
         try {
             Log.d(TAG, "=== Wi-Fi 스캔 시작 (Android ${Build.VERSION.SDK_INT}) ===")
 
@@ -2271,7 +2273,7 @@ class WifiNetworkHelper @Inject constructor(
     /**
      * Android 13+ 전용 실험적 스캔 (NEARBY_WIFI_DEVICES만 사용)
      */
-    suspend fun experimentalScanForAndroid13(): List<String> = withContext(Dispatchers.IO) {
+    suspend fun experimentalScanForAndroid13(): List<String> = withContext(ioDispatcher) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             Log.d(TAG, "Android 13 미만에서는 실행되지 않음")
             return@withContext emptyList()
