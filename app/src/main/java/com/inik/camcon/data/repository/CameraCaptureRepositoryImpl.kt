@@ -2,6 +2,7 @@ package com.inik.camcon.data.repository
 
 import android.content.Context
 import android.util.Log
+import androidx.annotation.VisibleForTesting
 import com.inik.camcon.data.cache.CacheSweeper
 import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
 import com.inik.camcon.data.datasource.nativesource.LiveViewCallback
@@ -87,18 +88,22 @@ class CameraCaptureRepositoryImpl @Inject constructor(
 
     // ── Test helpers (Issue C5 dedup 캐시 회귀 테스트) ──
     // 외부 시그니처 보존, 내부는 ProcessedFileCache(LRU 1000 + TTL 24h) 직접 위임.
+    @VisibleForTesting
     fun markFileAsProcessed(filePath: String) {
         processedFileCache.add(filePath)
     }
 
+    @VisibleForTesting
     fun isFileProcessed(filePath: String): Boolean {
         return processedFileCache.contains(filePath)
     }
 
+    @VisibleForTesting
     fun getProcessedFilesCount(): Int {
         return processedFileCache.size()
     }
 
+    @VisibleForTesting
     fun clearProcessedFiles() {
         processedFileCache.clear()
     }
