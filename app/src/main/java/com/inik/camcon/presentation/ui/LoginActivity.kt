@@ -242,6 +242,8 @@ fun LoginScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
+                    // 다크 테마 규약 예외 — Google Sign-In 디자인 가이드라인에 따라
+                    // 버튼은 흰 배경 + Google 브랜드 파랑(0xFF4285F4) 콘텐츠 고정.
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.White,
                         contentColor = Color(0xFF4285F4)
