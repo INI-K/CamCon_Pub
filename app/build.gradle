@@ -331,8 +331,8 @@ dependencies {
     implementation 'com.github.0xZhangKe:ImageViewer:1.0.3'
     // 기본 Compose 제스처를 사용한 이미지 뷰어 구현
 
-    // ZoomImage with Coil integration for Compose - 최신 버전 사용
-    implementation "io.github.panpf.zoomimage:zoomimage-compose-coil2:1.4.0-beta04"
+    // ZoomImage with Coil integration for Compose - 1.4.0 stable (2025-08-15 release)
+    implementation "io.github.panpf.zoomimage:zoomimage-compose-coil2:1.4.0"
 
     // (중복 제거됨: GPUImage, ExifInterface)
 
