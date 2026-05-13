@@ -284,6 +284,9 @@ fun SplashScreen(
         }
     }
 
+    // 다크 테마 규약 예외 — 본 Splash 는 브랜드 화면이라 배경이 `colorScheme.primary`(브랜드 색).
+    // 그 위에 표시되는 텍스트·인디케이터는 의도적으로 `Color.White` 를 사용해 대비를 확보한다.
+    // colorScheme.onPrimary 가 항상 white 라는 보장이 없어 명시적으로 white 고정.
     Box(
         modifier = Modifier
             .fillMaxSize()
