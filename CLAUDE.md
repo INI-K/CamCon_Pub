@@ -194,73 +194,17 @@ com.inik.camcon/
 
 ---
 
-## 7. Useful Agent Skills Recap
+## 하네스: CamCon 개발
 
-프로젝트 로컬 스킬은 `.claude/skills/` 에 설치되어 있다 ([awesome-android-agent-skills](https://github.com/new-silvermoon/awesome-android-agent-skills)에서 가져옴). Agent.md의 6개 도메인 분류를 그대로 따른다.
+**목표:** CamCon 코드 작성·수정·리뷰·디버깅을 explorer / architect / implementer / reviewer / tdd-tester 5명 서브 에이전트 팀으로 분배해 처리한다.
 
-| 도메인 | 스킬 | 용도 |
-|--------|------|------|
-| **architecture** | `android-architecture`, `android-viewmodel`, `android-data-layer` | Clean Architecture, ViewModel/StateFlow, Repository/Room/Retrofit |
-| **ui** | `compose-ui`, `compose-navigation`, `coil-compose`, `android-accessibility` | Compose 베스트 프랙티스, 이미지 로딩, 접근성 |
-| **performance** | `compose-performance-audit`, `gradle-build-performance` | Recomposition 감사, 빌드 속도 |
-| **migration** | `xml-to-compose-migration`, `rxjava-to-coroutines-migration` | 레거시 마이그레이션 |
-| **testing_and_automation** | `android-testing`, `android-emulator-skill` | 단위/UI 테스트, 에뮬레이터·adb 자동화 |
-| **concurrency_and_networking** | `android-coroutines`, `android-retrofit`, `kotlin-concurrency-expert` | 코루틴, HTTP, 스레드 안전성 |
-| **build_and_tooling** | `android-gradle-logic` | Gradle 빌드 로직 |
+**트리거:** CamCon 코드 변경·설계·리뷰·테스트가 필요한 모든 작업은 `camcon-orchestrator` 스킬로 진입한다. 단순 질의(개념 설명, 위치 찾기)는 직접 응답 가능. 에이전트·스킬 정의는 `.claude/agents/`, `.claude/skills/` 참조.
 
-### 의도 → 스킬 매핑 (CamCon 실무 라우팅)
-
-| 의도 키워드 | 1순위 스킬 |
-|------------|-----------|
-| 아키텍처, UseCase, Repository, Hilt | `android-architecture`, `android-data-layer` |
-| UI, Compose, 화면, 레이아웃 | `compose-ui`, `compose-navigation` |
-| ViewModel, StateFlow, UI 상태 | `android-viewmodel` |
-| 테스트, 커버리지 | `android-testing` |
-| 에뮬레이터, adb, UI 자동화 | `android-emulator-skill` |
-| 코루틴 버그, 스레드 안전성 | `android-coroutines`, `kotlin-concurrency-expert` |
-| 네트워크(HTTP) | `android-retrofit` |
-| Compose 성능, Recomposition | `compose-performance-audit` |
-| 빌드 속도, Gradle | `gradle-build-performance`, `android-gradle-logic` |
-| XML → Compose 전환 | `xml-to-compose-migration` |
-| RxJava → Coroutines 전환 | `rxjava-to-coroutines-migration` |
-| 접근성(TalkBack, 터치 타겟) | `android-accessibility` |
-| 이미지 로딩 | `coil-compose` |
-
-### 멀티 레이어 요청 처리 원칙
-
-여러 레이어(UI + Domain + Data)를 동시에 손대야 하는 요청, "새 기능 만들어줘" / "X 기능 추가" / "기획부터 리뷰까지" 같은 통합 요청에서는 개별 스킬로 바로 진입하지 말고 사용자에게 **"어떤 레이어부터 손댈지"** 또는 **"전체 설계 → 구현 → 리뷰 순서로 진행할지"** 를 먼저 확인한다. 단일 레이어 작업(버그 수정, 소규모 리팩터링)은 확인 없이 해당 스킬로 바로 진행.
-
-### 자동 팀 라우팅 (camcon-dev)
-
-이 프로젝트에서 Claude Code 세션은 기본적으로 `camcon-dev` 팀의 **team-lead** 역할을 한다. 팀 설정: `~/.claude/teams/camcon-dev/config.json`. 사용자 요청이 들어오면 다음 절차를 따른다.
-
-1. **의도 분류** — 아래 역할별 매핑으로 분류한다. 여러 레이어면 복수 역할을 **병렬** 소환.
-
-   | 의도 | 역할 (name) | subagent_type | 선행 로드 스킬 |
-   |-----|-------------|---------------|---------------|
-   | 아키텍처·Clean Arch·Hilt 설계 | `camcon-architect` | `everything-claude-code:architect` | `android-architecture`, `android-data-layer`, `android-viewmodel` |
-   | Kotlin/Compose/ViewModel/코루틴 리뷰 | `kotlin-compose-reviewer` | `everything-claude-code:kotlin-reviewer` | `compose-ui`, `compose-performance-audit`, `android-viewmodel`, `android-coroutines`, `kotlin-concurrency-expert`, `coil-compose`, `android-accessibility`, `compose-navigation` |
-   | JNI/C++/libgphoto2 | `jni-cpp-reviewer` | `everything-claude-code:cpp-reviewer` | (Android 스킬 해당 없음) |
-   | 멀티레이어 추적·USB/PTP-IP | `camera-explorer` | `everything-claude-code:code-explorer` | `android-architecture`, `android-data-layer` |
-   | Gradle/KSP/JBR 21 빌드 실패 | `kotlin-build-resolver` | `everything-claude-code:kotlin-build-resolver` | `gradle-build-performance`, `android-gradle-logic` |
-   | 테스트·TDD·커버리지 | `tdd-guide` | `everything-claude-code:tdd-guide` | `android-testing` |
-   | Compose 성능·Recomposition | `performance-optimizer` | `everything-claude-code:performance-optimizer` | `compose-performance-audit`, `gradle-build-performance` |
-   | Firebase·Billing·Auth 보안 | `security-reviewer` | `everything-claude-code:security-reviewer` | — |
-   | XML→Compose / RxJava→Coroutines 마이그레이션 | `kotlin-compose-reviewer` | `everything-claude-code:kotlin-reviewer` | `xml-to-compose-migration` 또는 `rxjava-to-coroutines-migration` 추가 |
-   | HTTP/Retrofit | `kotlin-compose-reviewer` | `everything-claude-code:kotlin-reviewer` | `android-retrofit` 추가 |
-   | 에뮬레이터/adb 자동화 | `kotlin-compose-reviewer` | `everything-claude-code:kotlin-reviewer` | `android-emulator-skill` 추가 |
-
-2. **선행 스킬 로드** — 분류된 역할의 스킬을 `Skill` 툴로 먼저 로드해 컨텍스트를 확보.
-3. **멀티레이어 확인** — 위 "멀티 레이어 요청 처리 원칙" 규약 적용.
-4. **병렬 소환** — `Agent` 툴 호출 시 `team_name: "camcon-dev"`, `name: <역할명>`, `subagent_type: <매핑 에이전트>`, `prompt`에 선행 스킬 요약 + 요청 본문 + CamCon 컨텍스트(minSdk 29, arm64-v8a 전용, JBR 21, 다크 고정) 주입. 독립 역할은 단일 메시지에 복수 Agent 호출로 병렬.
-5. **결과 통합 보고** — 한국어로, 상충 의견은 근거와 함께 모두 제시.
-
-**명시적 트리거**: `/camcon-dev <요청>` — 위 절차를 프롬프트 템플릿으로 강제 실행 (.claude/commands/camcon-dev.md).
-
-**자동 병행 규칙**
-- 신규 기능 구현 시 `tdd-guide` 자동 병행 (커버리지 8% → 80% 목표).
-- Firebase/결제 변경 시 `security-reviewer` 자동 병행.
-- JNI 레이어 변경 시 `jni-cpp-reviewer` 필수 포함.
+**변경 이력:**
+| 날짜 | 변경 내용 | 대상 | 사유 |
+|------|----------|------|------|
+| 2026-05-13 | §7(가상 라우팅) 제거 | CLAUDE.md, .claude/commands/camcon-dev.md | `everything-claude-code:*` 플러그인 미설치로 8개 에이전트 라우팅 환상이었음 |
+| 2026-05-13 | 초기 하네스 구성 | 전체 (.claude/agents/ × 5, .claude/skills/camcon-* × 4) | 신규 구축. 서브 에이전트 패턴, 기존 Android 스킬 18개는 그대로 보존 |
 
 ---
 
