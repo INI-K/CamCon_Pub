@@ -155,8 +155,10 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideWifiNetworkHelper(@ApplicationContext context: Context) =
-        WifiNetworkHelper(context)
+    fun provideWifiNetworkHelper(
+        @ApplicationContext context: Context,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
+    ) = WifiNetworkHelper(context, ioDispatcher)
 
     @Provides
     @Singleton
