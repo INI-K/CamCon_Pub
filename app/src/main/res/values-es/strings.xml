@@ -256,16 +256,20 @@
     <string name="nikon_camera_settings">• Nikon: Menú > USB > Modo PTP/MTP</string>
     <string name="sony_camera_settings">• Sony: Menú > Conexión USB > Remoto PC</string>
 
-    <!-- RAW gating messages (i18n PR-7, 2026-05-13). 자리표시: 영어 fallback. 정식 스페인어 번역 후속. -->
-    <string name="raw_restriction_free">RAW file transfer is in preparation.\nPlease shoot in JPG only!</string>
-    <string name="raw_restriction_basic">RAW files are available only with the PRO subscription.\nUpgrade to PRO to access advanced RAW editing!</string>
-    <string name="raw_restriction_download_disabled">RAW file download is disabled in settings.</string>
-    <string name="raw_restriction_generic">You cannot access this RAW file.</string>
-    <string name="format_unsupported">Unsupported file format.</string>
-    <string name="format_unsupported_in_subscription">This file format is not supported in your current subscription.</string>
-    <string name="upgrade_message_free">Upgrade to BASIC: PNG not supported\nUpgrade to PRO: RAW supported</string>
-    <string name="upgrade_message_basic">Upgrade to PRO: RAW file editing</string>
-    <string name="upgrade_message_pro">You are already on the highest tier!</string>
-    <string name="upgrade_message_referrer">Referrer special tier! All features available.</string>
-    <string name="upgrade_message_admin">Administrator tier! All features available.</string>
+    <!-- RAW gating + filter messages (i18n PR-7 + PR-8, M2 스페인어 번역, 2026-05-13). -->
+    <string name="raw_restriction_free">La transferencia de archivos RAW está en preparación.\n¡Por favor, dispare solo en JPG!</string>
+    <string name="raw_restriction_basic">Los archivos RAW están disponibles solo con la suscripción PRO.\n¡Actualice a PRO para acceder a la edición RAW avanzada!</string>
+    <string name="raw_restriction_download_disabled">La descarga de archivos RAW está desactivada en la configuración.</string>
+    <string name="raw_restriction_generic">No puede acceder a este archivo RAW.</string>
+    <string name="format_unsupported">Formato de archivo no compatible.</string>
+    <string name="format_unsupported_in_subscription">Este formato de archivo no es compatible con su suscripción actual.</string>
+    <string name="upgrade_message_free">Actualizar a BASIC: PNG no compatible\nActualizar a PRO: RAW compatible</string>
+    <string name="upgrade_message_basic">Actualizar a PRO: edición de archivos RAW</string>
+    <string name="upgrade_message_pro">¡Ya está en el nivel más alto!</string>
+    <string name="upgrade_message_referrer">¡Nivel especial de referido! Todas las funciones disponibles.</string>
+    <string name="upgrade_message_admin">¡Nivel administrador! Todas las funciones disponibles.</string>
+    <string name="raw_restriction_unknown">La transferencia de archivos RAW está actualmente en preparación.</string>
+    <string name="raw_filter_restriction_free">La visualización de archivos RAW está en preparación.\nSolo se pueden ver archivos JPG.</string>
+    <string name="raw_filter_restriction_basic">Los archivos RAW solo se pueden ver con la suscripción PRO.\n¡Actualice a PRO!</string>
+    <string name="raw_filter_restriction_generic">No puede acceder a los archivos RAW.</string>
 </resources>

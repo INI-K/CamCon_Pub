@@ -256,16 +256,20 @@
     <string name="nikon_camera_settings">• Nikon：菜单 > USB > PTP/MTP模式</string>
     <string name="sony_camera_settings">• Sony：菜单 > USB连接 > PC遥控</string>
 
-    <!-- RAW gating messages (i18n PR-7, 2026-05-13). 자리표시: 영어 fallback. 정식 중국어 번역 후속. -->
-    <string name="raw_restriction_free">RAW file transfer is in preparation.\nPlease shoot in JPG only!</string>
-    <string name="raw_restriction_basic">RAW files are available only with the PRO subscription.\nUpgrade to PRO to access advanced RAW editing!</string>
-    <string name="raw_restriction_download_disabled">RAW file download is disabled in settings.</string>
-    <string name="raw_restriction_generic">You cannot access this RAW file.</string>
-    <string name="format_unsupported">Unsupported file format.</string>
-    <string name="format_unsupported_in_subscription">This file format is not supported in your current subscription.</string>
-    <string name="upgrade_message_free">Upgrade to BASIC: PNG not supported\nUpgrade to PRO: RAW supported</string>
-    <string name="upgrade_message_basic">Upgrade to PRO: RAW file editing</string>
-    <string name="upgrade_message_pro">You are already on the highest tier!</string>
-    <string name="upgrade_message_referrer">Referrer special tier! All features available.</string>
-    <string name="upgrade_message_admin">Administrator tier! All features available.</string>
+    <!-- RAW gating + filter messages (i18n PR-7 + PR-8, M2 중국어 번역, 2026-05-13). -->
+    <string name="raw_restriction_free">RAW文件传输正在准备中。\n请仅使用JPG拍摄！</string>
+    <string name="raw_restriction_basic">RAW文件仅在PRO订阅中可用。\n升级到PRO以使用高级RAW编辑功能！</string>
+    <string name="raw_restriction_download_disabled">设置中已禁用RAW文件下载。</string>
+    <string name="raw_restriction_generic">无法访问此RAW文件。</string>
+    <string name="format_unsupported">不支持的文件格式。</string>
+    <string name="format_unsupported_in_subscription">您当前的订阅不支持此文件格式。</string>
+    <string name="upgrade_message_free">升级到BASIC：不支持PNG\n升级到PRO：支持RAW</string>
+    <string name="upgrade_message_basic">升级到PRO：RAW文件编辑</string>
+    <string name="upgrade_message_pro">您已使用最高级别！</string>
+    <string name="upgrade_message_referrer">推荐人特别级别！可使用所有功能。</string>
+    <string name="upgrade_message_admin">管理员级别！可使用所有功能。</string>
+    <string name="raw_restriction_unknown">RAW文件传输目前正在准备中。</string>
+    <string name="raw_filter_restriction_free">RAW文件查看正在准备中。\n只能查看JPG文件。</string>
+    <string name="raw_filter_restriction_basic">RAW文件仅在PRO订阅中可查看。\n请升级到PRO！</string>
+    <string name="raw_filter_restriction_generic">无法访问RAW文件。</string>
 </resources>
