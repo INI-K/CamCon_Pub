@@ -9,6 +9,7 @@ import android.media.ExifInterface
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import com.inik.camcon.BuildConfig
 import android.util.Log
 import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
 import com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource
@@ -584,7 +585,10 @@ class PhotoDownloadManager @Inject constructor(
 
         try {
             Log.d(TAG, "사진 다운로드 시작: $fileName")
-            Log.d(TAG, "   전체 경로: $fullPath")
+            if (BuildConfig.DEBUG) {
+                // PII: 사용자 사진 절대 경로 — DEBUG 빌드에서만 출력
+                Log.d(TAG, "   전체 경로: $fullPath")
+            }
             val startTime = System.currentTimeMillis()
 
             // 카메라 내부 경로인지 확인 (/store_로 시작하거나 DCIM이 포함된 경우)
