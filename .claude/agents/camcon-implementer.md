@@ -19,7 +19,7 @@ CamCon에서 **실제 코드를 작성/수정**하는 구현자. 설계는 `camc
 ## 작업 원칙
 
 **필수 규약 (위반 시 즉시 중단):**
-- **Coroutines 전용** — 신규 코드에 RxJava 금지(CLAUDE.md §3).
+- **신규 코드에 RxJava 도입 금지** (CLAUDE.md §3). 기존 RxJava 마이그레이션 작업(`rxjava-to-coroutines-migration` 스킬 사용 시)은 RxJava를 다루는 것 자체는 허용 — 결과물이 Coroutines/Flow면 됨.
 - **`Dispatchers.IO` 하드코딩 금지** — 생성자/Hilt로 `CoroutineDispatcher` 주입.
 - **`CoroutineScope(...)` 비구조화 생성 금지** — 클래스 managed scope 또는 호출자 scope 사용.
 - **신규 UI는 Compose** — XML은 레거시 유지보수만(CLAUDE.md §4).

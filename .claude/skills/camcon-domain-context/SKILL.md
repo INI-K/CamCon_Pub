@@ -118,6 +118,21 @@ libgphoto2 빌드 절차는 `camcon-jni-protocol` 스킬 참조.
 - 사용자의 글로벌 CLAUDE.md: **Claude/Anthropic 공동저자 트레일러 금지**. "Generated with Claude Code" 푸터도 금지.
 - 짧은 한 줄 선호: `fix: handle empty input`, `feat: add CSV export`.
 
+## 백그라운드 / 무인 작업 (장시간 안정성)
+
+CamCon은 타임랩스(최대 9999장), 자동 재연결, 무인 이벤트 리스닝 같은 장시간 작업이 핵심 차별점이다. 다음 컴포넌트가 관련 도메인:
+
+- **`BackgroundSyncService`** — Foreground Service Type `CONNECTED_DEVICE` (Android 14+ 필수). Wake Lock 획득. `onCreate`/`onDestroy` 라이프사이클로 scope 관리.
+- **`WifiMonitoringService`** — Wi-Fi 상태 모니터링 + STA/AP 전환 감지.
+- **`AutoConnectManager` + `AutoConnectTaskRunner`** — 마지막 카메라 자동 재연결.
+- **`UsbConnectionRecovery`** — USB 끊김 자동 복구.
+
+규약:
+- Service에서 `CoroutineScope(...)` 비구조화 생성은 `onDestroy`에서 명시적 cancel 필수 — 누락 시 누수.
+- 권장 패턴: `LifecycleService` + `lifecycleScope` 또는 Hilt `@ApplicationScope` 주입.
+- Wake Lock은 반드시 try-finally로 release 보장.
+- Foreground Service Type을 `CONNECTED_DEVICE`(USB 카메라) 또는 `DATA_SYNC`(자동 동기)로 명시. SDK 34+ 필수.
+
 ## 알려진 이슈 참조
 
 상세는 `docs/DEV_DOCUMENT.md` §5. 잔존 이슈:

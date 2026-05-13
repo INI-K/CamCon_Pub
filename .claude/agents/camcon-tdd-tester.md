@@ -26,9 +26,22 @@ CamCon에서 **테스트를 작성·실행**하고 회귀 방어선을 구축한
 
 **Fake 클래스 위치:** `src/test/.../fake/`. Mock 남발 대신 Fake로 시나리오 표현을 선호.
 
-**자동 테스트 불가 경로(스킵 허용):**
-- JNI / USB / PTP-IP / GPU — 실물 장비 필요.
-- 이 경로는 추상화 레이어(Repository 인터페이스)에서 Fake로 대체.
+**자동 테스트 영역 구분:**
+
+| 영역 | 자동 가능 | 비고 |
+|------|---------|------|
+| Domain / UseCase | ✅ | MockK / Fake repo |
+| ViewModel / StateFlow / SharedFlow | ✅ | Turbine + `InstantTaskExecutorRule` |
+| Data Repository (추상화 레이어) | ✅ | Fake DataSource |
+| **PTP-IP 디스커버리·명령 흐름** | ✅ | **libgphoto2 vcamera로 자동화 가능** (README L589~593) |
+| 카메라 abilities 매핑 | ✅ | vcamera + `camera_abilities.cpp` |
+| 라이브뷰 프레임 디코딩 | ✅ | vcamera 미니 JPEG |
+| USB OTG 실제 데이터 흐름 | ❌ | 실물 USB 디바이스 필수 |
+| 제조사별 PTP 비표준 응답 | ❌ | 실물 + 모델별 |
+| GPU 색감 전환 GPUImage | ❌ | OpenGL ES 실 디바이스 |
+| Compose UI 인터랙션 | ⚠️ 부분 | Robolectric 또는 계측 테스트 |
+
+자동 테스트 불가 영역은 추상화 레이어(Repository 인터페이스)에서 Fake로 대체. **PTP-IP 디스커버리는 vcamera로 자동화 시도해 보고, 어려우면 Fake 대체**.
 
 **실행 명령:**
 - `./gradlew :app:testDebugUnitTest` — 전체 단위 테스트

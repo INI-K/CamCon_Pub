@@ -205,6 +205,8 @@ com.inik.camcon/
 |------|----------|------|------|
 | 2026-05-13 | §7(가상 라우팅) 제거 | CLAUDE.md, .claude/commands/camcon-dev.md | `everything-claude-code:*` 플러그인 미설치로 8개 에이전트 라우팅 환상이었음 |
 | 2026-05-13 | 초기 하네스 구성 | 전체 (.claude/agents/ × 5, .claude/skills/camcon-* × 4) | 신규 구축. 서브 에이전트 패턴, 기존 Android 스킬 18개는 그대로 보존 |
+| 2026-05-13 | 1차 TTL 합의안 도출 시연 | _workspace/ × 5 | C5 잔존 이슈 해결 — 팀 모드(TeamCreate) 실증, BLOCKER 0건 도달 |
+| 2026-05-13 | 하네스 갭 9건 보강 | orchestrator/domain-context/jni-protocol/reviewer/tdd-tester/implementer | M2/M3(오케스트레이터 모순), S1(흐름 5→8), S2(자동 병행 4종 추가), S3(백그라운드 서비스), S4(제조사 5종 매핑), S5(i18n+PII 체크), S6(vcamera 영역), S7(정보 동기화 규약), N1(RxJava 마이그레이션 표현 명확화) |
 
 ---
 
