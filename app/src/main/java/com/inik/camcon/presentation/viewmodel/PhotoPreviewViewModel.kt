@@ -10,13 +10,13 @@ import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
+import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.domain.usecase.camera.PhotoCaptureEventManager
 import com.inik.camcon.domain.usecase.camera.ResumeNativeOperationsUseCase
 import com.inik.camcon.presentation.viewmodel.photo.FileTypeFilter
 import com.inik.camcon.presentation.viewmodel.photo.PhotoImageManager
 import com.inik.camcon.presentation.viewmodel.photo.PhotoListManager
 import com.inik.camcon.presentation.viewmodel.photo.PhotoSelectionManager
-import com.inik.camcon.utils.SubscriptionUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -62,6 +62,7 @@ class PhotoPreviewViewModel @Inject constructor(
     private val globalManager: CameraConnectionGlobalManager,
     private val getSubscriptionUseCase: GetSubscriptionUseCase,
     private val appSettingsRepository: AppSettingsRepository,
+    private val validateImageFormatUseCase: ValidateImageFormatUseCase,
 
     // 매니저 의존성 주입 (단일책임원칙 적용)
     private val photoListManager: PhotoListManager,
@@ -498,27 +499,22 @@ class PhotoPreviewViewModel @Inject constructor(
     // MARK: - Private Helper Methods
 
     /**
-     * RAW 파일 접근 권한 확인
-     */
-    private fun canAccessRawFiles(): Boolean {
-        val tier = _uiState.value.currentTier
-        val tierAllowed = tier == SubscriptionTier.PRO ||
-                tier == SubscriptionTier.REFERRER ||
-                tier == SubscriptionTier.ADMIN
-        return tierAllowed && _isRawDownloadEnabled.value
-    }
-
-    /**
-     * RAW 파일 접근 권한 처리
+     * RAW 파일 접근 권한 처리.
+     *
+     * RAW 게이팅 분기는 [ValidateImageFormatUseCase] 단일 지점에 위임한다 (CLAUDE.md §2).
+     * 본 함수는 캐싱된 tier / rawDownloadEnabled 를 동기 메서드 [ValidateImageFormatUseCase.resolveRawAccess]
+     * 에 넘겨 결정을 받고, 차단된 경우 SharedFlow 로 에러 메시지를 emit 한다.
+     *
+     * @return 접근 허용 시 true, 차단 시 false.
      */
     private fun handleRawFileAccess(photo: CameraPhoto): Boolean {
-        if (SubscriptionUtils.isRawFile(photo.path) && !canAccessRawFiles()) {
-            val message = when (_uiState.value.currentTier) {
-                SubscriptionTier.FREE -> SubscriptionUtils.getRawRestrictionMessage()
-                SubscriptionTier.BASIC -> SubscriptionUtils.getRawRestrictionMessageForBasic()
-                else -> "RAW 파일에 접근할 수 없습니다."
-            }
-            emitError(message)
+        val result = validateImageFormatUseCase.resolveRawAccess(
+            filePath = photo.path,
+            currentTier = _uiState.value.currentTier,
+            isRawDownloadEnabled = _isRawDownloadEnabled.value
+        )
+        if (!result.isSupported) {
+            result.restrictionMessage?.let { emitError(it) }
             return false
         }
         return true
