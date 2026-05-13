@@ -512,4 +512,11 @@
     <string name="upgrade_message_pro">You are already on the highest tier!</string>
     <string name="upgrade_message_referrer">Referrer special tier! All features available.</string>
     <string name="upgrade_message_admin">Administrator tier! All features available.</string>
+
+    <!-- RAW filter + event-listener fallback messages (i18n PR-8, 2026-05-13) -->
+    <!-- 호출자: CameraEventManager (UseCase null fallback), PhotoListManager (RAW 필터 차단). -->
+    <string name="raw_restriction_unknown">RAW file transfer is currently in preparation.</string>
+    <string name="raw_filter_restriction_free">RAW file viewing is in preparation.\nOnly JPG files can be viewed.</string>
+    <string name="raw_filter_restriction_basic">RAW files can only be viewed with the PRO subscription.\nPlease upgrade to PRO!</string>
+    <string name="raw_filter_restriction_generic">You cannot access RAW files.</string>
 </resources>

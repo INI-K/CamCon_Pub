@@ -260,16 +260,20 @@
     <string name="refresh_usb">USBを更新</string>
     <string name="request_usb_permission">USB権限を要求</string>
 
-    <!-- RAW gating messages (i18n PR-7, 2026-05-13). 자리표시: 영어 fallback. 정식 일본어 번역 후속. -->
-    <string name="raw_restriction_free">RAW file transfer is in preparation.\nPlease shoot in JPG only!</string>
-    <string name="raw_restriction_basic">RAW files are available only with the PRO subscription.\nUpgrade to PRO to access advanced RAW editing!</string>
-    <string name="raw_restriction_download_disabled">RAW file download is disabled in settings.</string>
-    <string name="raw_restriction_generic">You cannot access this RAW file.</string>
-    <string name="format_unsupported">Unsupported file format.</string>
-    <string name="format_unsupported_in_subscription">This file format is not supported in your current subscription.</string>
-    <string name="upgrade_message_free">Upgrade to BASIC: PNG not supported\nUpgrade to PRO: RAW supported</string>
-    <string name="upgrade_message_basic">Upgrade to PRO: RAW file editing</string>
-    <string name="upgrade_message_pro">You are already on the highest tier!</string>
-    <string name="upgrade_message_referrer">Referrer special tier! All features available.</string>
-    <string name="upgrade_message_admin">Administrator tier! All features available.</string>
+    <!-- RAW gating + filter messages (i18n PR-7 + PR-8, M2 일본어 번역, 2026-05-13). -->
+    <string name="raw_restriction_free">RAWファイル転送は準備中です。\nJPGのみで撮影してください！</string>
+    <string name="raw_restriction_basic">RAWファイルはPROサブスクリプションでのみご利用いただけます。\nPROにアップグレードして高度なRAW編集機能をお試しください！</string>
+    <string name="raw_restriction_download_disabled">設定でRAWファイルのダウンロードが無効になっています。</string>
+    <string name="raw_restriction_generic">このRAWファイルにはアクセスできません。</string>
+    <string name="format_unsupported">サポートされていないファイル形式です。</string>
+    <string name="format_unsupported_in_subscription">現在のサブスクリプションではサポートされていないファイル形式です。</string>
+    <string name="upgrade_message_free">BASICにアップグレード：PNG非対応\nPROにアップグレード：RAW対応</string>
+    <string name="upgrade_message_basic">PROにアップグレード：RAWファイル編集</string>
+    <string name="upgrade_message_pro">すでに最上位ティアをご利用中です！</string>
+    <string name="upgrade_message_referrer">リファラル特別ティアです！すべての機能をご利用いただけます。</string>
+    <string name="upgrade_message_admin">管理者ティアです！すべての機能をご利用いただけます。</string>
+    <string name="raw_restriction_unknown">RAWファイル転送は現在準備中です。</string>
+    <string name="raw_filter_restriction_free">RAWファイルの表示は準備中です。\nJPGファイルのみ表示できます。</string>
+    <string name="raw_filter_restriction_basic">RAWファイルはPROサブスクリプションでのみ表示できます。\nPROにアップグレードしてください！</string>
+    <string name="raw_filter_restriction_generic">RAWファイルにアクセスできません。</string>
 </resources>

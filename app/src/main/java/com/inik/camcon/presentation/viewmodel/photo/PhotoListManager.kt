@@ -1,6 +1,8 @@
 package com.inik.camcon.presentation.viewmodel.photo
 
+import android.content.Context
 import android.util.Log
+import com.inik.camcon.R
 import com.inik.camcon.domain.manager.ErrorSeverity
 import com.inik.camcon.domain.manager.ErrorType
 import com.inik.camcon.presentation.viewmodel.state.ErrorHandlingManager
@@ -9,6 +11,7 @@ import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.domain.usecase.camera.GetCameraPhotosPagedUseCase
 import com.inik.camcon.di.ApplicationScope
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.job
@@ -27,6 +30,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class PhotoListManager @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val getCameraPhotosPagedUseCase: GetCameraPhotosPagedUseCase,
     private val validateImageFormatUseCase: ValidateImageFormatUseCase,
     private val errorHandlingManager: ErrorHandlingManager,
@@ -297,9 +301,9 @@ class PhotoListManager @Inject constructor(
                 if (!validateImageFormatUseCase.isRawAllowedForTier(currentTier)) {
                     // RAW 필터 선택했지만 권한 없는 경우 에러 메시지 표시
                     val message = when (currentTier) {
-                        SubscriptionTier.FREE -> "RAW 파일 보기는 준비중입니다.\nJPG 파일만 확인하실 수 있습니다."
-                        SubscriptionTier.BASIC -> "RAW 파일은 PRO 구독에서만 볼 수 있습니다.\nPRO로 업그레이드해주세요!"
-                        else -> "RAW 파일에 접근할 수 없습니다."
+                        SubscriptionTier.FREE -> context.getString(R.string.raw_filter_restriction_free)
+                        SubscriptionTier.BASIC -> context.getString(R.string.raw_filter_restriction_basic)
+                        else -> context.getString(R.string.raw_filter_restriction_generic)
                     }
                     errorHandlingManager.emitError(
                         ErrorType.PERMISSION,
