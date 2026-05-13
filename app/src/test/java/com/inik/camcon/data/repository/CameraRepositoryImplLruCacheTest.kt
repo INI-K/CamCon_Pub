@@ -1,6 +1,8 @@
 package com.inik.camcon.data.repository
 
 import android.content.Context
+import com.inik.camcon.data.cache.CacheSweeper
+import com.inik.camcon.data.cache.TtlLruProcessedFileCache
 import com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource
 import com.inik.camcon.data.datasource.ptpip.PtpipDataSource
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
@@ -18,6 +20,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
 
 /**
  * LRU 캐시 회귀 테스트: processedFiles LinkedHashMap이 정확히 1000개 항목 제한을 준수하는지 검증
@@ -47,6 +52,14 @@ class CameraRepositoryImplLruCacheTest {
         val scope = mockk<CoroutineScope>(relaxed = true)
         val ioDispatcher: CoroutineDispatcher = StandardTestDispatcher()
 
+        // 실 ProcessedFileCache 주입 (mockk relaxed 면 add/contains 결과가 기본값이라 LRU 검증 의미 상실).
+        // Clock.fixed 로 TTL 만료 없이 LRU 1000 cap 만 검증 — 본 회귀 테스트의 목적과 일치.
+        val processedFileCache = TtlLruProcessedFileCache(
+            clock = Clock.fixed(Instant.EPOCH, ZoneOffset.UTC)
+        )
+        // CacheSweeper 는 1h delay 코루틴이라 테스트 누수 회피 위해 mockk 대체.
+        val cacheSweeper = mockk<CacheSweeper>(relaxed = true)
+
         // LRU 캐시를 보유한 실제 Capture sub-impl
         val captureRepo = CameraCaptureRepositoryImpl(
             context = context,
@@ -56,6 +69,8 @@ class CameraRepositoryImplLruCacheTest {
             connectionManager = connectionManager,
             eventManager = eventManager,
             downloadManager = downloadManager,
+            processedFileCache = processedFileCache,
+            cacheSweeper = cacheSweeper,
             scope = scope,
             ioDispatcher = ioDispatcher
         )

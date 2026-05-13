@@ -1,12 +1,14 @@
 package com.inik.camcon.data.repository
 
 import android.content.Context
+import com.inik.camcon.data.cache.CacheSweeper
 import com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource
 import com.inik.camcon.data.datasource.ptpip.PtpipDataSource
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
 import com.inik.camcon.data.repository.managers.CameraConnectionManager
 import com.inik.camcon.data.repository.managers.CameraEventManager
 import com.inik.camcon.data.repository.managers.PhotoDownloadManager
+import com.inik.camcon.domain.cache.ProcessedFileCache
 import com.inik.camcon.domain.manager.CameraStateObserver
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.domain.model.UnsupportedShootingModeException
@@ -47,6 +49,10 @@ class CameraRepositoryImplShootingModeTest {
         val scope = mockk<CoroutineScope>(relaxed = true)
         val ioDispatcher: CoroutineDispatcher = StandardTestDispatcher()
 
+        // cache 는 ShootingMode 분기와 무관하므로 relaxed mock 으로 충분.
+        val processedFileCache = mockk<ProcessedFileCache>(relaxed = true)
+        val cacheSweeper = mockk<CacheSweeper>(relaxed = true)
+
         // 실제 Capture sub-impl (미구현 모드 검증 로직 포함)
         val captureRepo = CameraCaptureRepositoryImpl(
             context = context,
@@ -56,6 +62,8 @@ class CameraRepositoryImplShootingModeTest {
             connectionManager = connectionManager,
             eventManager = eventManager,
             downloadManager = downloadManager,
+            processedFileCache = processedFileCache,
+            cacheSweeper = cacheSweeper,
             scope = scope,
             ioDispatcher = ioDispatcher
         )

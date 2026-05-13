@@ -2,6 +2,7 @@ package com.inik.camcon.data.repository
 
 import android.content.Context
 import android.util.Log
+import com.inik.camcon.data.cache.CacheSweeper
 import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
 import com.inik.camcon.data.datasource.nativesource.LiveViewCallback
 import com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource
@@ -12,6 +13,7 @@ import com.inik.camcon.data.repository.managers.CameraEventManager
 import com.inik.camcon.data.repository.managers.PhotoDownloadManager
 import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.di.IoDispatcher
+import com.inik.camcon.domain.cache.ProcessedFileCache
 import com.inik.camcon.domain.model.BracketingSettings
 import com.inik.camcon.domain.model.CameraSettings
 import com.inik.camcon.domain.model.CapturedPhoto
@@ -42,12 +44,12 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /**
- * 카메라 이벤트 리스너·촬영·라이브뷰·캡처 사진 StateFlow·LRU 중복 방지 담당 sub-impl.
+ * 카메라 이벤트 리스너·촬영·라이브뷰·캡처 사진 StateFlow·dedup 캐시 담당 sub-impl.
  *
  * H8 분해: 원본 CameraRepositoryImpl의 Event(3) + Capture(6) + LiveView(2) + CapturedPhotos(3) = 14개 override 이동.
  *
  * 공유 상태 소유:
- *  - `processedFiles` LRU 1000개 (다운로드 콜백 중복 방지)
+ *  - `processedFileCache` LRU 1000 + TTL 24h (다운로드 콜백 중복 방지, lazy on read + 1h sweep)
  *  - `_capturedPhotos: MutableStateFlow<List<CapturedPhoto>>`
  *
  * 외부 의존: `CameraSettings?` 현재 값을 Facade 콜백(`cameraSettingsProvider`)으로 받아 PTPIP/capture 메타데이터에 사용.
@@ -62,6 +64,8 @@ class CameraCaptureRepositoryImpl @Inject constructor(
     private val connectionManager: CameraConnectionManager,
     private val eventManager: CameraEventManager,
     private val downloadManager: PhotoDownloadManager,
+    private val processedFileCache: ProcessedFileCache,
+    @Suppress("unused") private val cacheSweeper: CacheSweeper,
     @ApplicationScope private val scope: CoroutineScope,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
@@ -79,32 +83,24 @@ class CameraCaptureRepositoryImpl @Inject constructor(
     @Volatile
     var onFlushCompleteCallback: (() -> Unit)? = null
 
-    // 중복 처리 방지를 위한 변수들 (LRU 방식으로 최대 1000개 유지)
-    private val processedFiles: MutableSet<String> = java.util.Collections.synchronizedSet(
-        java.util.Collections.newSetFromMap(object : LinkedHashMap<String, Boolean>(16, 0.75f, true) {
-            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Boolean>?): Boolean {
-                return size > 1000
-            }
-        })
-    )
-
     private val _capturedPhotos = MutableStateFlow<List<CapturedPhoto>>(emptyList())
 
-    // ── Test helpers (Issue C5 LRU 캐시 테스트) ──
+    // ── Test helpers (Issue C5 dedup 캐시 회귀 테스트) ──
+    // 외부 시그니처 보존, 내부는 ProcessedFileCache(LRU 1000 + TTL 24h) 직접 위임.
     fun markFileAsProcessed(filePath: String) {
-        processedFiles.add(filePath)
+        processedFileCache.add(filePath)
     }
 
     fun isFileProcessed(filePath: String): Boolean {
-        return processedFiles.contains(filePath)
+        return processedFileCache.contains(filePath)
     }
 
     fun getProcessedFilesCount(): Int {
-        return processedFiles.size
+        return processedFileCache.size()
     }
 
     fun clearProcessedFiles() {
-        processedFiles.clear()
+        processedFileCache.clear()
     }
 
     // ── Event Listener ──
@@ -166,9 +162,7 @@ class CameraCaptureRepositoryImpl @Inject constructor(
         }
     }
 
-    private fun shouldProcessFile(fileKey: String): Boolean {
-        return processedFiles.add(fileKey)
-    }
+    private fun shouldProcessFile(fileKey: String): Boolean = processedFileCache.add(fileKey)
 
     suspend fun stopCameraEventListener(): Result<Boolean> {
         return eventManager.stopCameraEventListener()
