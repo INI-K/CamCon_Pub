@@ -270,30 +270,10 @@ fun PhotoPreviewScreen(
             thumbnailData = viewModel.getThumbnail(photo.path),
             fullImageData = fullImageCache[photo.path], // 실시간으로 업데이트되는 실제 파일 데이터
             isDownloadingFullImage = downloadingImages.contains(photo.path),
-            onDownload = { 
-                // RAW 파일 접근 권한 체크
-                if (com.inik.camcon.utils.SubscriptionUtils.isRawFile(photo.path)) {
-                    val tier = uiState.currentTier
-                    val canAccess = tier == com.inik.camcon.domain.model.SubscriptionTier.PRO || 
-                                   tier == com.inik.camcon.domain.model.SubscriptionTier.REFERRER || 
-                                   tier == com.inik.camcon.domain.model.SubscriptionTier.ADMIN
-                    
-                    if (!canAccess) {
-                        // RAW 파일 다운로드 제한 메시지 표시
-                        val message = when (tier) {
-                            com.inik.camcon.domain.model.SubscriptionTier.FREE -> 
-                                "RAW 파일 다운로드는 준비중입니다.\nJPG 파일만 다운로드하실 수 있습니다."
-                            com.inik.camcon.domain.model.SubscriptionTier.BASIC -> 
-                                "RAW 파일 다운로드는 PRO 구독에서만 가능합니다.\nPRO로 업그레이드해주세요!"
-                            else -> "RAW 파일을 다운로드할 수 없습니다."
-                        }
-                        // 에러 메시지 표시 (ViewModel을 통해)
-                        viewModel.clearError() // 기존 에러 클리어 후
-                        // ViewModel에서 직접 에러 상태 설정은 불가하므로, 대신 다운로드 시도로 처리
-                        // viewModel.downloadPhoto에서 이미 RAW 제한 로직이 있음
-                    }
-                }
-                viewModel.downloadPhoto(photo) 
+            onDownload = {
+                // RAW 게이팅은 ValidateImageFormatUseCase 단일 지점.
+                // ViewModel.downloadPhoto 내부의 handleRawFileAccess 가 SharedFlow 로 에러를 emit 한다.
+                viewModel.downloadPhoto(photo)
             },
             viewModel = viewModel, // ViewModel을 통해 썸네일 캐시 공유
             localPhotos = if (photos.any { File(it.path).exists() }) photos else null // 로컬 사진인 경우 목록 전달

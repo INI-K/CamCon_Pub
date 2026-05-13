@@ -13,7 +13,6 @@ import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.utils.Constants
 import com.inik.camcon.utils.LogcatManager
-import com.inik.camcon.utils.SubscriptionUtils
 import com.inik.camcon.di.IoDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -487,8 +486,8 @@ class CameraEventManager @Inject constructor(
                         return
                     }
 
-                    // RAW 파일 검증 추가
-                    if (SubscriptionUtils.isRawFile(fileName)) {
+                    // RAW 파일 검증 추가 (게이팅은 ValidateImageFormatUseCase 단일 지점)
+                    if (validateImageFormatUseCase.isRawFile(fileName)) {
                         LogcatManager.d(
                             "카메라이벤트매니저",
                             "🔍 ${connectionType.name} RAW 파일 촬영 감지: $fileName"
