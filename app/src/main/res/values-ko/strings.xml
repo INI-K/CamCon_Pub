@@ -280,4 +280,10 @@
     <string name="upgrade_message_pro">이미 최고 등급을 사용 중입니다!</string>
     <string name="upgrade_message_referrer">추천인 특별 등급입니다! 모든 기능을 이용하실 수 있습니다.</string>
     <string name="upgrade_message_admin">관리자 등급입니다! 모든 기능을 이용하실 수 있습니다.</string>
+
+    <!-- RAW 필터 + 이벤트 리스너 fallback 메시지 (i18n PR-8, 2026-05-13) -->
+    <string name="raw_restriction_unknown">RAW 파일전송은 지금 준비중입니다.</string>
+    <string name="raw_filter_restriction_free">RAW 파일 보기는 준비중입니다.\nJPG 파일만 확인하실 수 있습니다.</string>
+    <string name="raw_filter_restriction_basic">RAW 파일은 PRO 구독에서만 볼 수 있습니다.\nPRO로 업그레이드해주세요!</string>
+    <string name="raw_filter_restriction_generic">RAW 파일에 접근할 수 없습니다.</string>
 </resources>

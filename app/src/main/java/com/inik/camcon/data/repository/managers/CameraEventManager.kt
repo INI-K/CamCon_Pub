@@ -1,7 +1,9 @@
 package com.inik.camcon.data.repository.managers
 
+import android.content.Context
 import android.util.Log
 import com.inik.camcon.CameraNative
+import com.inik.camcon.R
 import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
 import com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
@@ -14,6 +16,7 @@ import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.utils.Constants
 import com.inik.camcon.utils.LogcatManager
 import com.inik.camcon.di.IoDispatcher
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -38,6 +41,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class CameraEventManager @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val nativeDataSource: NativeCameraDataSource,
     private val usbCameraManager: UsbCameraManager,
     private val validateImageFormatUseCase: ValidateImageFormatUseCase,
@@ -510,7 +514,7 @@ class CameraEventManager @Inject constructor(
                                             onRawFileRestricted?.invoke(
                                                 fileName,
                                                 validationResult.restrictionMessage
-                                                    ?: "RAW 파일전송은 지금 준비중입니다."
+                                                    ?: context.getString(R.string.raw_restriction_unknown)
                                             )
                                         }
                                     } catch (e: Exception) {

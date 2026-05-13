@@ -260,16 +260,20 @@
     <string name="refresh_usb">Actualiser USB</string>
     <string name="request_usb_permission">Demander Permission USB</string>
 
-    <!-- RAW gating messages (i18n PR-7, 2026-05-13). 자리표시: 영어 fallback. 정식 프랑스어 번역 후속. -->
-    <string name="raw_restriction_free">RAW file transfer is in preparation.\nPlease shoot in JPG only!</string>
-    <string name="raw_restriction_basic">RAW files are available only with the PRO subscription.\nUpgrade to PRO to access advanced RAW editing!</string>
-    <string name="raw_restriction_download_disabled">RAW file download is disabled in settings.</string>
-    <string name="raw_restriction_generic">You cannot access this RAW file.</string>
-    <string name="format_unsupported">Unsupported file format.</string>
-    <string name="format_unsupported_in_subscription">This file format is not supported in your current subscription.</string>
-    <string name="upgrade_message_free">Upgrade to BASIC: PNG not supported\nUpgrade to PRO: RAW supported</string>
-    <string name="upgrade_message_basic">Upgrade to PRO: RAW file editing</string>
-    <string name="upgrade_message_pro">You are already on the highest tier!</string>
-    <string name="upgrade_message_referrer">Referrer special tier! All features available.</string>
-    <string name="upgrade_message_admin">Administrator tier! All features available.</string>
+    <!-- RAW gating + filter messages (i18n PR-7 + PR-8, M2 프랑스어 번역, 2026-05-13). -->
+    <string name="raw_restriction_free">Le transfert de fichiers RAW est en préparation.\nVeuillez prendre des photos uniquement en JPG !</string>
+    <string name="raw_restriction_basic">Les fichiers RAW ne sont disponibles qu\'avec l\'abonnement PRO.\nPassez à PRO pour accéder à l\'édition RAW avancée !</string>
+    <string name="raw_restriction_download_disabled">Le téléchargement des fichiers RAW est désactivé dans les paramètres.</string>
+    <string name="raw_restriction_generic">Vous ne pouvez pas accéder à ce fichier RAW.</string>
+    <string name="format_unsupported">Format de fichier non pris en charge.</string>
+    <string name="format_unsupported_in_subscription">Ce format de fichier n\'est pas pris en charge par votre abonnement actuel.</string>
+    <string name="upgrade_message_free">Passer à BASIC : PNG non pris en charge\nPasser à PRO : RAW pris en charge</string>
+    <string name="upgrade_message_basic">Passer à PRO : édition de fichiers RAW</string>
+    <string name="upgrade_message_pro">Vous êtes déjà au niveau le plus élevé !</string>
+    <string name="upgrade_message_referrer">Niveau spécial parrainage ! Toutes les fonctionnalités disponibles.</string>
+    <string name="upgrade_message_admin">Niveau administrateur ! Toutes les fonctionnalités disponibles.</string>
+    <string name="raw_restriction_unknown">Le transfert de fichiers RAW est actuellement en préparation.</string>
+    <string name="raw_filter_restriction_free">L\'affichage des fichiers RAW est en préparation.\nSeuls les fichiers JPG peuvent être affichés.</string>
+    <string name="raw_filter_restriction_basic">Les fichiers RAW ne peuvent être affichés qu\'avec l\'abonnement PRO.\nVeuillez passer à PRO !</string>
+    <string name="raw_filter_restriction_generic">Vous ne pouvez pas accéder aux fichiers RAW.</string>
 </resources>

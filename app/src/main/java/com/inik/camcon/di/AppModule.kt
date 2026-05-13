@@ -205,6 +205,7 @@ object AppModule {
     @Provides
     @Singleton
     fun provideCameraEventManager(
+        @ApplicationContext context: Context,
         nativeDataSource: NativeCameraDataSource,
         usbCameraManager: UsbCameraManager,
         validateImageFormatUseCase: ValidateImageFormatUseCase,
@@ -214,6 +215,7 @@ object AppModule {
         @IoDispatcher ioDispatcher: CoroutineDispatcher
     ): CameraEventManager =
         CameraEventManager(
+            context,
             nativeDataSource,
             usbCameraManager,
             validateImageFormatUseCase,
