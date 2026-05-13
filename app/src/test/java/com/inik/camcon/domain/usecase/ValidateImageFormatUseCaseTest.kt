@@ -1,6 +1,8 @@
 package com.inik.camcon.domain.usecase
 
+import android.content.Context
 import android.util.Log
+import com.inik.camcon.R
 import com.inik.camcon.domain.model.ImageFormat
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.model.ThemeMode
@@ -37,10 +39,23 @@ import kotlinx.coroutines.flow.first
 class ValidateImageFormatUseCaseTest {
 
     private lateinit var useCase: ValidateImageFormatUseCase
+    private lateinit var context: Context
     private lateinit var getSubscriptionUseCase: GetSubscriptionUseCase
     private lateinit var subscriptionRepository: SubscriptionRepository
     private lateinit var appSettingsRepository: FakeAppSettingsRepository
     private lateinit var logger: Logger
+
+    // PR-7 i18n: UseCase 내부 메시지가 R.string.* 자원에서 가져오므로 test 환경에서는 Context.getString 을
+    // 한국어 원문으로 stub. 기존 한국어 매칭 검증 ("비활성화", FREE/BASIC 메시지 등) 그대로 통과.
+    private companion object {
+        private const val MSG_DOWNLOAD_DISABLED = "설정에서 RAW 파일 다운로드가 비활성화되어 있습니다."
+        private const val MSG_RAW_FREE = "RAW 파일전송은 준비중입니다.\nJPG로만 촬영해주세요!"
+        private const val MSG_RAW_BASIC =
+            "RAW 파일은 PRO 구독에서만 사용할 수 있습니다.\nPRO로 업그레이드하여 고급 RAW 파일 편집 기능을 이용해보세요!"
+        private const val MSG_RAW_GENERIC = "RAW 파일에 접근할 수 없습니다."
+        private const val MSG_FORMAT_UNSUPPORTED = "지원되지 않는 파일 형식입니다."
+        private const val MSG_FORMAT_UNSUPPORTED_IN_SUB = "현재 구독에서는 지원되지 않는 파일 형식입니다."
+    }
 
     private val testDispatcher = StandardTestDispatcher()
 
@@ -89,6 +104,20 @@ class ValidateImageFormatUseCaseTest {
         subscriptionRepository = mockk()
         appSettingsRepository = FakeAppSettingsRepository()
         logger = mockk(relaxed = true)
+
+        // PR-7 i18n: R.string.* 자원을 한국어 원문으로 stub (values-ko 매칭).
+        context = mockk()
+        every { context.getString(R.string.raw_restriction_download_disabled) } returns MSG_DOWNLOAD_DISABLED
+        every { context.getString(R.string.raw_restriction_free) } returns MSG_RAW_FREE
+        every { context.getString(R.string.raw_restriction_basic) } returns MSG_RAW_BASIC
+        every { context.getString(R.string.raw_restriction_generic) } returns MSG_RAW_GENERIC
+        every { context.getString(R.string.format_unsupported) } returns MSG_FORMAT_UNSUPPORTED
+        every { context.getString(R.string.format_unsupported_in_subscription) } returns MSG_FORMAT_UNSUPPORTED_IN_SUB
+        every { context.getString(R.string.upgrade_message_free) } returns "BASIC으로 업그레이드: PNG 미지원\nPRO로 업그레이드: RAW 지원"
+        every { context.getString(R.string.upgrade_message_basic) } returns "PRO로 업그레이드: RAW 파일 편집"
+        every { context.getString(R.string.upgrade_message_pro) } returns "이미 최고 등급을 사용 중입니다!"
+        every { context.getString(R.string.upgrade_message_referrer) } returns "추천인 특별 등급입니다! 모든 기능을 이용하실 수 있습니다."
+        every { context.getString(R.string.upgrade_message_admin) } returns "관리자 등급입니다! 모든 기능을 이용하실 수 있습니다."
     }
 
     @After
@@ -107,6 +136,7 @@ class ValidateImageFormatUseCaseTest {
         )
         getSubscriptionUseCase = GetSubscriptionUseCase(subscriptionRepository, logger, scope)
         useCase = ValidateImageFormatUseCase(
+            context,
             getSubscriptionUseCase,
             appSettingsRepository,
             logger
@@ -567,11 +597,8 @@ class ValidateImageFormatUseCaseTest {
         assertTrue(result.needsUpgrade)
         assertTrue(result.isRawFile)
         assertEquals("Nikon", result.manufacturer)
-        // implementer 가 한국어 i18n 문자열 그대로 사용 (SubscriptionUtils.getRawRestrictionMessage)
-        assertEquals(
-            com.inik.camcon.utils.SubscriptionUtils.getRawRestrictionMessage(),
-            result.restrictionMessage
-        )
+        // PR-7 i18n: R.string.raw_restriction_free (values-ko 원문 매칭)
+        assertEquals(MSG_RAW_FREE, result.restrictionMessage)
     }
 
     @Test
@@ -584,10 +611,8 @@ class ValidateImageFormatUseCaseTest {
         assertTrue(result.needsUpgrade)
         assertTrue(result.isRawFile)
         assertEquals("Sony", result.manufacturer)
-        assertEquals(
-            com.inik.camcon.utils.SubscriptionUtils.getRawRestrictionMessageForBasic(),
-            result.restrictionMessage
-        )
+        // PR-7 i18n: R.string.raw_restriction_basic (values-ko 원문 매칭)
+        assertEquals(MSG_RAW_BASIC, result.restrictionMessage)
     }
 
     @Test
