@@ -6,8 +6,8 @@ import com.inik.camcon.domain.manager.ErrorType
 import com.inik.camcon.presentation.viewmodel.state.ErrorHandlingManager
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.SubscriptionTier
+import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.domain.usecase.camera.GetCameraPhotosPagedUseCase
-import com.inik.camcon.utils.SubscriptionUtils
 import com.inik.camcon.di.ApplicationScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -28,6 +28,7 @@ import javax.inject.Singleton
 @Singleton
 class PhotoListManager @Inject constructor(
     private val getCameraPhotosPagedUseCase: GetCameraPhotosPagedUseCase,
+    private val validateImageFormatUseCase: ValidateImageFormatUseCase,
     private val errorHandlingManager: ErrorHandlingManager,
     @ApplicationScope private val appScope: CoroutineScope
 ) {
@@ -271,11 +272,11 @@ class PhotoListManager @Inject constructor(
         )
 
         // 먼저 티어에 따른 접근 가능한 파일만 필터링
-        val accessiblePhotos = if (canAccessRawFiles(currentTier)) {
+        val accessiblePhotos = if (validateImageFormatUseCase.isRawAllowedForTier(currentTier)) {
             allPhotos
         } else {
             allPhotos.filter { photo ->
-                val isRaw = SubscriptionUtils.isRawFile(photo.path)
+                val isRaw = validateImageFormatUseCase.isRawFile(photo.path)
                 if (isRaw) {
                     Log.v(TAG, "RAW 파일 숨김 (권한없음): ${photo.path}")
                 }
@@ -293,7 +294,7 @@ class PhotoListManager @Inject constructor(
             }
 
             FileTypeFilter.RAW -> {
-                if (!canAccessRawFiles(currentTier)) {
+                if (!validateImageFormatUseCase.isRawAllowedForTier(currentTier)) {
                     // RAW 필터 선택했지만 권한 없는 경우 에러 메시지 표시
                     val message = when (currentTier) {
                         SubscriptionTier.FREE -> "RAW 파일 보기는 준비중입니다.\nJPG 파일만 확인하실 수 있습니다."
@@ -309,7 +310,7 @@ class PhotoListManager @Inject constructor(
                     emptyList()
                 } else {
                     accessiblePhotos.filter {
-                        val isRaw = SubscriptionUtils.isRawFile(it.path)
+                        val isRaw = validateImageFormatUseCase.isRawFile(it.path)
                         Log.v(TAG, "RAW 필터 확인: ${it.path} -> $isRaw")
                         isRaw
                     }
@@ -414,15 +415,6 @@ class PhotoListManager @Inject constructor(
 
             _isLoadingMore.value = false
         }
-    }
-
-    /**
-     * RAW 파일 접근 권한 확인
-     */
-    private fun canAccessRawFiles(currentTier: SubscriptionTier): Boolean {
-        return currentTier == SubscriptionTier.PRO ||
-                currentTier == SubscriptionTier.REFERRER ||
-                currentTier == SubscriptionTier.ADMIN
     }
 
     /**
