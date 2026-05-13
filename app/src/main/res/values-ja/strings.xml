@@ -259,4 +259,17 @@
     <!-- USB Connection -->
     <string name="refresh_usb">USBを更新</string>
     <string name="request_usb_permission">USB権限を要求</string>
+
+    <!-- RAW gating messages (i18n PR-7, 2026-05-13). 자리표시: 영어 fallback. 정식 일본어 번역 후속. -->
+    <string name="raw_restriction_free">RAW file transfer is in preparation.\nPlease shoot in JPG only!</string>
+    <string name="raw_restriction_basic">RAW files are available only with the PRO subscription.\nUpgrade to PRO to access advanced RAW editing!</string>
+    <string name="raw_restriction_download_disabled">RAW file download is disabled in settings.</string>
+    <string name="raw_restriction_generic">You cannot access this RAW file.</string>
+    <string name="format_unsupported">Unsupported file format.</string>
+    <string name="format_unsupported_in_subscription">This file format is not supported in your current subscription.</string>
+    <string name="upgrade_message_free">Upgrade to BASIC: PNG not supported\nUpgrade to PRO: RAW supported</string>
+    <string name="upgrade_message_basic">Upgrade to PRO: RAW file editing</string>
+    <string name="upgrade_message_pro">You are already on the highest tier!</string>
+    <string name="upgrade_message_referrer">Referrer special tier! All features available.</string>
+    <string name="upgrade_message_admin">Administrator tier! All features available.</string>
 </resources>
