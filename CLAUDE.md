@@ -221,9 +221,10 @@ com.inik.camcon/
 - ✅ **미구현 촬영 모드** (W2, 2026-04-22): `UnsupportedShootingModeException` + Snackbar + 8개 언어 문자열
 - ✅ **processedFiles OOM 회귀 테스트** (C5, 2026-04-22): LRU 1000개 제한 + `CameraRepositoryImplLruCacheTest.kt`
 - ✅ **FullScreenPhotoViewer 분해** (W-1, 2026-04-22): 365줄로 기능별 분해 완료
+- ✅ **processedFiles OOM 완전 해소** (C5, 2026-05-13): LRU 1000 + TTL 24h 자동 만료 도입. `ProcessedFileCache` 인터페이스 + `TtlLruProcessedFileCache`(ReentrantLock 기반) + `CacheSweeper`(1h 주기) + `java.time.Clock` 주입. `CameraCaptureRepositoryImpl` 인라인 LRU 제거. 회귀 13종 + 통합 5종 통과.
 
 ### 잔존
-- **processedFiles OOM** (`CameraRepositoryImpl:90`, C5) — LRU 1000개 제한 적용됨. 시간 기반 자동 만료는 후속 검토.
+- (없음 — 2026-05-13 기준 모든 추적 이슈 해소)
 
 ---
 
