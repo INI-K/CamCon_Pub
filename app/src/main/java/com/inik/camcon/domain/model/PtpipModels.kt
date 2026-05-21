@@ -11,7 +11,9 @@ enum class PtpipConnectionState {
 }
 
 /**
- * 니콘 카메라 연결 모드 (AP/STA/UNKNOWN)
+ * 니콘 카메라 연결 모드 (AP/STA/UNKNOWN).
+ *
+ * 레거시 진단/디버그 코드 호환용. 신규 코드는 [ConnectionMethod]를 사용한다.
  */
 enum class NikonConnectionMode {
     AP_MODE,
@@ -40,13 +42,20 @@ data class PtpipCameraInfo(
 )
 
 /**
- * Wi-Fi 네트워크 상태 정보
+ * Wi-Fi 네트워크 상태 정보.
+ *
+ * - [isHotspotEnabled]: 이 폰이 직접 핫스팟(테더링)을 켜고 있는 상태. 카메라 STA 클라이언트를 받는 시나리오.
+ * - [gatewayIp]: 현재 네트워크의 게이트웨이 IP. AP 모드에서는 카메라 IP 후보.
+ * - [subnetPrefix]: 현재 서브넷 prefix 길이 (CIDR). 검색 범위 한정에 사용.
  */
 data class WifiNetworkState(
     val isConnected: Boolean,
     val isConnectedToCameraAP: Boolean,
     val ssid: String?,
-    val detectedCameraIP: String?
+    val detectedCameraIP: String?,
+    val gatewayIp: String? = null,
+    val subnetPrefix: Int? = null,
+    val isHotspotEnabled: Boolean = false,
 )
 
 /**

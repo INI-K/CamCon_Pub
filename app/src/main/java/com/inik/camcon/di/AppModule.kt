@@ -13,6 +13,7 @@ import com.inik.camcon.data.datasource.usb.UsbConnectionManager
 import com.inik.camcon.data.datasource.usb.UsbDeviceDetector
 import com.inik.camcon.data.network.ptpip.authentication.NikonAuthenticationService
 import com.inik.camcon.data.network.ptpip.connection.PtpipConnectionManager
+import com.inik.camcon.data.network.ptpip.discovery.MdnsCameraDiscovery
 import com.inik.camcon.data.network.ptpip.discovery.PtpipDiscoveryService
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
@@ -66,10 +67,16 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideMdnsCameraDiscovery(@ApplicationContext context: Context) =
+        MdnsCameraDiscovery(context)
+
+    @Provides
+    @Singleton
     fun providePtpipDiscoveryService(
         @ApplicationContext context: Context,
-        wifiHelper: WifiNetworkHelper
-    ) = PtpipDiscoveryService(context, wifiHelper)
+        wifiHelper: WifiNetworkHelper,
+        mdns: MdnsCameraDiscovery
+    ) = PtpipDiscoveryService(context, wifiHelper, mdns)
 
     @Provides
     @Singleton

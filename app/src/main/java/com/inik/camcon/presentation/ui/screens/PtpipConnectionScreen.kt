@@ -40,10 +40,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.inik.camcon.domain.model.ConnectionMethod
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.components.ApModeContent
 import com.inik.camcon.presentation.ui.screens.components.DarkTabRow
 import com.inik.camcon.presentation.ui.screens.components.DarkTopBar
+import com.inik.camcon.presentation.ui.screens.components.HotspotStaModeContent
 import com.inik.camcon.presentation.ui.screens.components.StaModeContent
 import com.inik.camcon.presentation.ui.screens.components.darkScreenBackground
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
@@ -63,9 +65,19 @@ fun PtpipConnectionScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     
-    // 탭 상태 - AP 모드를 먼저 표시 (index 0)
-    val pagerState = rememberPagerState(initialPage = 0) { 2 }
-    val tabTitles = remember { listOf("AP 모드", "STA 모드") }
+    // 탭 상태 - AP / STA(공유기) / STA(폰 핫스팟)
+    val pagerState = rememberPagerState(initialPage = 0) { 3 }
+    val tabTitles = remember { listOf("AP 모드", "STA · 공유기", "STA · 폰 핫스팟") }
+
+    // 탭 전환 → ViewModel의 선택된 ConnectionMethod 동기화
+    LaunchedEffect(pagerState.currentPage) {
+        val method = when (pagerState.currentPage) {
+            0 -> ConnectionMethod.AP
+            1 -> ConnectionMethod.STA_ROUTER
+            else -> ConnectionMethod.STA_PHONE_HOTSPOT
+        }
+        ptpipViewModel.selectConnectionMethod(method)
+    }
 
     // 위치 권한 상태
     var hasLocationPermission by remember {
@@ -268,7 +280,23 @@ private fun PtpipModePager(
                 hasLocationPermission = hasLocationPermission,
                 onRequestPermission = onRequestPermission
             )
-            else -> StaModeContent(
+            1 -> StaModeContent(
+                ptpipViewModel = ptpipViewModel,
+                connectionState = connectionState,
+                discoveredCameras = discoveredCameras,
+                isDiscovering = isDiscovering,
+                isConnecting = isConnecting,
+                selectedCamera = selectedCamera,
+                cameraInfo = cameraInfo,
+                isPtpipEnabled = isPtpipEnabled,
+                isWifiConnected = isWifiConnected,
+                wifiCapabilities = wifiCapabilities,
+                wifiNetworkState = wifiNetworkState,
+                isAutoReconnectEnabled = isAutoReconnectEnabled,
+                hasLocationPermission = hasLocationPermission,
+                onRequestPermission = onRequestPermission
+            )
+            else -> HotspotStaModeContent(
                 ptpipViewModel = ptpipViewModel,
                 connectionState = connectionState,
                 discoveredCameras = discoveredCameras,
@@ -304,7 +332,7 @@ private fun PtpipConnectionScreenPreview() {
                 onBack = {}
             )
             DarkTabRow(
-                tabs = listOf("AP 모드", "STA 모드"),
+                tabs = listOf("AP 모드", "STA · 공유기", "STA · 폰 핫스팟"),
                 selectedIndex = 0,
                 onTabSelected = {},
                 modifier = Modifier.padding(top = 10.dp)
