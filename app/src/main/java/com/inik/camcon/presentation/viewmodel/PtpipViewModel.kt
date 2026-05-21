@@ -7,6 +7,7 @@ import com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource
 import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
 import com.inik.camcon.data.datasource.ptpip.PtpipDataSource
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
+import com.inik.camcon.domain.model.ConnectionMethod
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.model.WifiCapabilities
@@ -83,6 +84,15 @@ class PtpipViewModel @Inject constructor(
 
     private val _lastDownloadedFile = MutableStateFlow<String?>(null)
     val lastDownloadedFile: StateFlow<String?> = _lastDownloadedFile.asStateFlow()
+
+    // 사용자가 선택한 연결 방식 (AP / STA_ROUTER / STA_PHONE_HOTSPOT)
+    private val _selectedConnectionMethod = MutableStateFlow(ConnectionMethod.AP)
+    val selectedConnectionMethod: StateFlow<ConnectionMethod> =
+        _selectedConnectionMethod.asStateFlow()
+
+    // 사용자가 직접 입력한 카메라 IP (STA 모드 폴백)
+    private val _manualIp = MutableStateFlow("")
+    val manualIp: StateFlow<String> = _manualIp.asStateFlow()
 
     // 종합 상태 (PTPIP 활성화 + Wi-Fi 연결)
     val isPtpipAvailable = combine(
@@ -238,7 +248,7 @@ class PtpipViewModel @Inject constructor(
                 }
 
                 Log.i(TAG, "Wi-Fi 연결 확인됨, 카메라 검색 시작...")
-                val cameras = ptpipDataSource.discoverCameras()
+                val cameras = ptpipDataSource.discoverCameras(_selectedConnectionMethod.value)
 
                 Log.i(TAG, "카메라 검색 완료: ${cameras.size}개 발견")
 
@@ -274,16 +284,19 @@ class PtpipViewModel @Inject constructor(
     }
 
     /**
-     * 카메라 연결 (AP/STA 모드 지원)
+     * 카메라 연결.
+     *
+     * @param method 명시적 연결 방식. null이면 [selectedConnectionMethod]를 사용.
      */
-    fun connectToCamera(camera: PtpipCamera) {
+    fun connectToCamera(camera: PtpipCamera, method: ConnectionMethod? = null) {
         viewModelScope.launch {
             try {
                 _isConnecting.value = true
                 _errorMessage.value = null
                 _autoDownloadEnabled.value = false // 연결 시도 중에는 비활성화
 
-                val success = ptpipDataSource.connectToCamera(camera)
+                val effective = method ?: _selectedConnectionMethod.value
+                val success = ptpipDataSource.connectToCamera(camera, effective)
                 if (success) {
                     _isConnecting.value = false
                     _errorMessage.value = null
@@ -766,6 +779,36 @@ class PtpipViewModel @Inject constructor(
      */
     private fun stopAutoDiscovery() {
         // 자동 검색 중단 로직 추가
+    }
+
+    /**
+     * 연결 방식 선택 (AP / STA_ROUTER / STA_PHONE_HOTSPOT).
+     */
+    fun selectConnectionMethod(method: ConnectionMethod) {
+        _selectedConnectionMethod.value = method
+    }
+
+    /**
+     * 사용자가 직접 입력한 카메라 IP 갱신.
+     */
+    fun setManualIp(ip: String) {
+        _manualIp.value = ip
+    }
+
+    /**
+     * 수동 입력 IP로 즉시 연결 시도.
+     */
+    fun connectManualCamera() {
+        val ip = _manualIp.value.trim()
+        if (ip.isEmpty()) {
+            _errorMessage.value = "카메라 IP를 입력하세요"
+            return
+        }
+        val camera = ptpipDataSource.addManualCamera(
+            ipAddress = ip,
+            name = "Manual ($ip)",
+        )
+        connectToCamera(camera)
     }
 
     /**
