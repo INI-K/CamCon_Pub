@@ -13,6 +13,9 @@ local.properties
 .idea/
 *.iml
 
+# OMC / harness runtime state
+.omc/
+
 # Keystore files
 *.jks
 *.keystore
