@@ -188,10 +188,12 @@
         </receiver>
 
         <!-- 재부팅 시 자동 시작 -->
+        <!-- android:permission 으로 시스템(BOOT_COMPLETED 권한 보유)에서만 호출 가능하도록 제한 -->
         <receiver
             android:name=".data.receiver.BootCompletedReceiver"
             android:enabled="true"
-            android:exported="true">
+            android:exported="true"
+            android:permission="android.permission.RECEIVE_BOOT_COMPLETED">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>

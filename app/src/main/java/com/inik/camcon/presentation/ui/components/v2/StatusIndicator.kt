@@ -24,7 +24,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
+import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.CameraSpec
@@ -43,6 +49,12 @@ import com.inik.camcon.presentation.theme.TextTertiary
  * - Connecting: Accent dot + 360° 회전 (1000ms linear infinite)
  * - Connected: Accent dot + 펄스 scale 1.0↔1.2 (1500ms reverse infinite)
  * - Error: ErrorV2 dot + ErrorV2 label
+ *
+ * 접근성(WCAG 2.2 SC 4.1.3 Status Messages):
+ * - Idle 이외 상태에서 [LiveRegionMode.Polite] 적용 → 화면 포커스 변화 없이도
+ *   TalkBack 이 상태 변경을 자동으로 announce.
+ * - contentDescription 은 "{상태} {label}" 형태로 구성하여 dot 의미와 label 을
+ *   하나의 발화로 들려준다.
  */
 enum class StatusKind { Idle, Connecting, Connected, Error }
 
@@ -62,9 +74,22 @@ fun StatusIndicator(
         StatusKind.Error -> ErrorV2
         else -> TextSecondaryV2
     }
+    val statusLabel = when (kind) {
+        StatusKind.Idle -> stringResource(R.string.cd_status_idle)
+        StatusKind.Connecting -> stringResource(R.string.cd_status_connecting)
+        StatusKind.Connected -> stringResource(R.string.cd_status_connected)
+        StatusKind.Error -> stringResource(R.string.cd_status_error)
+    }
+    val announce = "$statusLabel, $label"
 
     Row(
-        modifier = modifier,
+        modifier = modifier
+            .semantics(mergeDescendants = true) {
+                contentDescription = announce
+                if (kind != StatusKind.Idle) {
+                    liveRegion = LiveRegionMode.Polite
+                }
+            },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
     ) {

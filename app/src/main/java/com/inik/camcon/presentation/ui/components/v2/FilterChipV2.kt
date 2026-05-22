@@ -22,6 +22,10 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.inik.camcon.presentation.theme.Accent
@@ -58,11 +62,16 @@ fun FilterChipV2(
     val bg = if (selected) Accent else Color.Transparent
     val contentColor = if (selected) OnAccent else TextSecondaryV2
 
+    // WCAG 2.2 SC 4.1.2 — `selected` 시맨틱으로 토글 상태를 announce.
     val baseModifier = modifier
         .height(28.dp)
         .alpha(if (enabled) 1f else 0.4f)
         .clip(shape)
         .background(bg, shape)
+        .semantics {
+            role = Role.Button
+            this.selected = selected
+        }
         .let { m ->
             if (selected) m else m.border(1.dp, DividerLine, shape)
         }

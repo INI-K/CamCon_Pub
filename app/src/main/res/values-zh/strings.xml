@@ -292,4 +292,31 @@
     <string name="camera_connection_optimization_details">• 保持实时相机控制\n• 提升照片自动传输稳定性\n• 防止后台连接中断\n\n※ 作为相机外设连接应用，符合 Google Play 政策。</string>
     <string name="camera_connection_optimization_confirm">前往设置</string>
     <string name="camera_connection_optimization_dismiss">稍后</string>
+
+    <!-- 无障碍 — 状态/加载 (WCAG 2.2 SC 4.1.3) -->
+    <string name="cd_loading">加载中</string>
+    <string name="cd_button_loading">处理中</string>
+    <string name="cd_status_idle">待机中</string>
+    <string name="cd_status_connecting">连接中</string>
+    <string name="cd_status_connected">已连接</string>
+    <string name="cd_status_error">错误</string>
+    <!-- %1$s = 文件名, %2$s = 拍摄时间 -->
+    <string name="cd_photo_preview">照片 %1$s，%2$s</string>
+    <string name="cd_photo_preview_no_date">照片 %1$s</string>
+
+    <!-- SettingsActivity (developer + logs) -->
+    <string name="settings_toast_logout_failed">退出登录失败: %s</string>
+    <string name="settings_toast_notification_granted">已授予通知权限。</string>
+    <string name="settings_toast_notification_denied">通知权限被拒绝。</string>
+    <string name="settings_toast_notification_unsupported">当前设备无需请求通知权限。</string>
+    <string name="settings_toast_battery_settings_error">无法打开设置界面: %s</string>
+    <string name="settings_native_log_dialog_title">原生日志</string>
+    <string name="settings_native_log_clipboard_label">native_log</string>
+    <string name="settings_native_log_copy_button">全部复制</string>
+    <string name="settings_native_log_copied">日志已复制到剪贴板</string>
+    <string name="settings_native_log_no_files">没有已保存的日志文件。</string>
+    <string name="settings_native_log_toast_enable">开始捕获原生日志。\n相机初始化时将记录详细日志。</string>
+    <string name="settings_native_log_toast_disable">已停止原生日志捕获。</string>
+    <string name="settings_referral_clipboard_label">referral_code</string>
+    <string name="settings_referral_copied">推荐码 \'%s\' 已复制到剪贴板</string>
 </resources>

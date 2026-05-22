@@ -199,8 +199,15 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideAppPreferencesDataSource(@ApplicationContext context: Context) =
-        AppPreferencesDataSource(context)
+    fun provideEncryptedAppPreferences(@ApplicationContext context: Context) =
+        com.inik.camcon.data.datasource.local.EncryptedAppPreferences(context)
+
+    @Provides
+    @Singleton
+    fun provideAppPreferencesDataSource(
+        @ApplicationContext context: Context,
+        encryptedPrefs: com.inik.camcon.data.datasource.local.EncryptedAppPreferences
+    ) = AppPreferencesDataSource(context, encryptedPrefs)
 
     @Provides
     @Singleton

@@ -17,18 +17,21 @@ import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.inik.camcon.di.IoDispatcher
 import javax.inject.Inject
 
 /**
@@ -55,7 +58,10 @@ class CameraViewModel @Inject constructor(
     private val focusManager: CameraFocusManager,
     private val fileManager: CameraFileManager,
     private val streamingManager: CameraStreamingManager,
-    private val diagnosticsManager: CameraDiagnosticsManager
+    private val diagnosticsManager: CameraDiagnosticsManager,
+
+    // Hilt 로 주입되는 IO 디스패처 — 테스트 시 교체 가능하도록 하드코딩 회피.
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
     companion object {
@@ -189,6 +195,8 @@ class CameraViewModel @Inject constructor(
                             .onFailure { e ->
                                 Log.e(TAG, "❌ RAW 파일 다운로드 설정 업데이트 실패", e)
                             }
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (e: Exception) {
                         Log.e(TAG, "RAW 파일 설정 업데이트 중 예외 발생", e)
                     }
@@ -221,11 +229,13 @@ class CameraViewModel @Inject constructor(
     }
 
     /**
-     * PTPIP 연결 상태 관찰
+     * PTPIP 연결 상태 관찰.
+     * 최신 연결 상태만 의미를 가지므로 collectLatest 로 이전 emission 처리를 취소.
      */
+    @OptIn(ExperimentalCoroutinesApi::class)
     private fun observePtpipConnection() {
-        isPtpipConnected
-            .onEach { isConnected ->
+        viewModelScope.launch {
+            isPtpipConnected.collectLatest { isConnected ->
                 uiStateManager.updatePtpipConnectionState(isConnected)
                 if (isConnected) {
                     // PTPIP 연결 상태에 따라 사진 미리보기 탭을 블록합니다.
@@ -234,15 +244,18 @@ class CameraViewModel @Inject constructor(
                     uiStateManager.blockPreviewTab(false)
                 }
             }
-            .launchIn(viewModelScope)
+        }
     }
 
     /**
-     * 카메라 연결 상태 관찰
+     * 카메라 연결 상태 관찰.
+     * 연결 상태가 잇따라 토글되는 동안 이전 구독 티어 collect 가 살아남으면 안되므로
+     * collectLatest 로 이전 작업을 자동 취소한다.
      */
+    @OptIn(ExperimentalCoroutinesApi::class)
     private fun observeCameraConnection() {
-        cameraRepository.isCameraConnected()
-            .onEach { isConnected ->
+        viewModelScope.launch {
+            cameraRepository.isCameraConnected().collectLatest { isConnected ->
                 uiStateManager.updateConnectionState(isConnected)
                 if (isConnected) {
                     // 연결 시 설정 로딩을 생략하여 연결 속도 향상 (15초 단축)
@@ -253,28 +266,26 @@ class CameraViewModel @Inject constructor(
                     // Firebase에서 최신 구독 티어를 가져와 업데이트
                     // AP 모드에서는 Firebase 오프라인으로 실패할 수 있으며,
                     // 그 경우 loadSubscriptionTierAtStartup에서 설정한 로컬 캐시 값이 유지됨
-                    viewModelScope.launch {
-                        try {
-                            getSubscriptionUseCase.getSubscriptionTier()
-                                .collect { tier ->
-                                    // C-3 수정: Repository를 통한 간접 호출
-                                    cameraRepository.setSubscriptionTier(tier)
-                                        .onSuccess {
-                                            Log.d(TAG, "🔄 구독 티어 업데이트: $tier")
-                                        }
-                                        .onFailure { e ->
-                                            Log.e(TAG, "구독 티어 업데이트 실패", e)
-                                        }
-                                }
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (e: Exception) {
-                            Log.e(TAG, "구독 티어 업데이트 실패 (로컬 캐시 값 유지)", e)
-                        }
+                    try {
+                        getSubscriptionUseCase.getSubscriptionTier()
+                            .collect { tier ->
+                                // C-3 수정: Repository를 통한 간접 호출
+                                cameraRepository.setSubscriptionTier(tier)
+                                    .onSuccess {
+                                        Log.d(TAG, "🔄 구독 티어 업데이트: $tier")
+                                    }
+                                    .onFailure { e ->
+                                        Log.e(TAG, "구독 티어 업데이트 실패", e)
+                                    }
+                            }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Log.e(TAG, "구독 티어 업데이트 실패 (로컬 캐시 값 유지)", e)
                     }
                 }
             }
-            .launchIn(viewModelScope)
+        }
     }
 
     /**
@@ -323,38 +334,41 @@ class CameraViewModel @Inject constructor(
     }
 
     /**
-     * 기타 상태들 관찰
+     * 기타 상태들 관찰.
+     * 최신 값만 의미를 가지는 흐름은 collectLatest 로 이전 emission 처리를 취소한다.
      */
+    @OptIn(ExperimentalCoroutinesApi::class)
     private fun observeOtherStates() {
-        // 이벤트 리스너 상태
-        cameraRepository.isEventListenerActive()
-            .onEach { isActive ->
+        // 이벤트 리스너 상태 — 최신 값만 의미.
+        viewModelScope.launch {
+            cameraRepository.isEventListenerActive().collectLatest { isActive ->
                 uiStateManager.updateEventListenerState(isActive)
             }
-            .launchIn(viewModelScope)
+        }
 
-        // 카메라 초기화 상태 - 시작만 감지하고 해제는 onFlushComplete에서 처리
-        cameraRepository.isInitializing()
-            .onEach { isInitializing ->
+        // 카메라 초기화 상태 - 시작만 감지하고 해제는 onFlushComplete에서 처리.
+        viewModelScope.launch {
+            cameraRepository.isInitializing().collectLatest { isInitializing ->
                 // 초기화 시작만 UI에 반영하고, 해제는 onFlushComplete 콜백에서 처리
                 if (isInitializing) {
                     uiStateManager.updateCameraInitialization(true)
                 }
                 // 카메라 초기화 완료(false)는 여기서 처리하지 않음 - onFlushComplete에서만 처리
             }
-            .launchIn(viewModelScope)
+        }
 
-        // ✅ 라이브뷰 프레임 Bitmap 디코딩 (IO 디스패처에서 처리) — CRITICAL-1 해결
-        // StateFlow는 이미 최신 값만 유지하므로 conflate() 불필요
-        liveViewFrame
-            .onEach { frame ->
+        // ✅ 라이브뷰 프레임 Bitmap 디코딩 (IO 디스패처에서 처리) — CRITICAL-1 해결.
+        // StateFlow 라 conflate 불필요. 디코딩 진행 중 새 프레임이 오면 이전 프레임은
+        // 버려도 안전하므로 collectLatest 사용 — 디코딩 작업이 자동 취소되어 백프레셔 완화.
+        viewModelScope.launch {
+            liveViewFrame.collectLatest { frame ->
                 if (frame != null) {
                     decodeLiveViewFrameAsync(frame)
                 } else {
                     _decodedLiveViewBitmap.value = null
                 }
             }
-            .launchIn(viewModelScope)
+        }
     }
 
     /**
@@ -808,7 +822,7 @@ class CameraViewModel @Inject constructor(
     private fun decodeLiveViewFrameAsync(frame: LiveViewFrame) {
         viewModelScope.launch {
             try {
-                val decodedBitmap = withContext(Dispatchers.IO) {
+                val decodedBitmap = withContext(ioDispatcher) {
                     val bitmapOptions = BitmapFactory.Options().apply {
                         inMutable = true
                         inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
@@ -817,6 +831,8 @@ class CameraViewModel @Inject constructor(
                         BitmapFactory.decodeByteArray(
                             frame.data, 0, frame.data.size, bitmapOptions
                         )
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (e: Exception) {
                         Log.e(TAG, "라이브뷰 Bitmap 디코딩 실패", e)
                         null

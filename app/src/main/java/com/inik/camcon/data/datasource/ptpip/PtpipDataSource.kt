@@ -139,8 +139,21 @@ class PtpipDataSource @Inject constructor(
         _activeConnectionMethod.value = method
     }
 
-    /** 사용자 입력 IP 갱신. UI/ViewModel에서 호출. */
+    /**
+     * 사용자 입력 IP 갱신. UI/ViewModel에서 호출.
+     *
+     * 빈 문자열은 초기화 신호로 그대로 받는다. 그 외에는 사설망/link-local 화이트리스트만 허용한다.
+     * 위반 시 상태를 갱신하지 않고 경고만 남긴다 (UI는 기존 입력 유지).
+     */
     fun setManualIp(ip: String) {
+        if (ip.isBlank()) {
+            _manualIp.value = ""
+            return
+        }
+        if (!com.inik.camcon.data.network.ptpip.IpAddressValidator.isAllowedCameraIp(ip)) {
+            Log.w(TAG, "setManualIp 거부: 허용되지 않은 IP 형식/대역 - ${ip.take(45)}")
+            return
+        }
         _manualIp.value = ip
     }
 
@@ -149,8 +162,15 @@ class PtpipDataSource @Inject constructor(
      * 동일 IP가 이미 있으면 사용자 입력 정보(이름/포트)로 갱신한다.
      * `distinctBy`는 첫 occurrence를 유지하므로 사용자가 mDNS로 발견된 카메라의
      * 이름/포트를 수동 입력으로 덮어쓸 수 없는 문제가 있어 명시적 filterNot+append로 처리.
+     *
+     * IP는 사설망/link-local만 허용. 화이트리스트 외에는 `IllegalArgumentException`을 던진다.
      */
     fun addManualCamera(ipAddress: String, name: String, port: Int): PtpipCamera {
+        require(
+            com.inik.camcon.data.network.ptpip.IpAddressValidator.isAllowedCameraIp(ipAddress)
+        ) {
+            "허용되지 않은 카메라 IP: ${ipAddress.take(45)} (사설망/link-local만 허용)"
+        }
         val safeName = name.ifBlank { "Manual ($ipAddress)" }
         val safePort = if (port > 0) port else 15740
         val cam = PtpipCamera(ipAddress, safePort, safeName, isOnline = true)

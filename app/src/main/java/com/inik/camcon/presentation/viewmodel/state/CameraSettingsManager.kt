@@ -1,5 +1,6 @@
 package com.inik.camcon.presentation.viewmodel.state
 
+import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.manager.ErrorSeverity
 import com.inik.camcon.domain.manager.ErrorType
 import com.inik.camcon.domain.model.CameraCapabilities
@@ -9,7 +10,7 @@ import com.inik.camcon.domain.usecase.camera.GetCameraCapabilitiesUseCase
 import com.inik.camcon.domain.usecase.camera.GetCameraSettingsUseCase
 import com.inik.camcon.domain.usecase.camera.UpdateCameraSettingUseCase
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,7 +29,8 @@ class CameraSettingsManager @Inject constructor(
     private val updateCameraSettingUseCase: UpdateCameraSettingUseCase,
     private val getCameraCapabilitiesUseCase: GetCameraCapabilitiesUseCase,
     private val errorHandlingManager: ErrorHandlingManager,
-    private val logger: Logger
+    private val logger: Logger,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
 
     companion object {
@@ -61,7 +63,7 @@ class CameraSettingsManager @Inject constructor(
      * 카메라 설정 로드
      */
     suspend fun loadCameraSettings(cameraId: String? = null) {
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             try {
                 _isLoadingSettings.value = true
                 logger.d(TAG, "카메라 설정 로딩 시작")
@@ -113,7 +115,7 @@ class CameraSettingsManager @Inject constructor(
      * 카메라 기능 정보 로드
      */
     suspend fun loadCameraCapabilities(cameraId: String? = null) {
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             try {
                 logger.d(TAG, "카메라 기능 정보 로딩 시작")
 
@@ -182,7 +184,7 @@ class CameraSettingsManager @Inject constructor(
      * 카메라 설정 업데이트
      */
     suspend fun updateCameraSetting(key: String, value: String) {
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             try {
                 _isUpdatingSettings.value = true
                 logger.d(TAG, "카메라 설정 업데이트: $key = $value")
@@ -229,7 +231,7 @@ class CameraSettingsManager @Inject constructor(
      * 여러 카메라 설정을 한 번에 업데이트
      */
     suspend fun updateCameraSettings(settings: Map<String, String>) {
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             try {
                 _isUpdatingSettings.value = true
                 logger.d(TAG, "다중 카메라 설정 업데이트 시작: ${settings.size}개 설정")

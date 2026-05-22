@@ -9,9 +9,10 @@ import com.inik.camcon.domain.usecase.camera.DownloadCameraPhotoUseCase
 import com.inik.camcon.domain.usecase.camera.GetCameraPhotoExifJsonUseCase
 import com.inik.camcon.domain.usecase.camera.GetCameraThumbnailUseCase
 import com.inik.camcon.di.ApplicationScope
+import com.inik.camcon.di.IoDispatcher
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,7 +36,8 @@ class PhotoImageManager @Inject constructor(
     private val getCameraThumbnailUseCase: GetCameraThumbnailUseCase,
     private val downloadCameraPhotoUseCase: DownloadCameraPhotoUseCase,
     private val getCameraPhotoExifJsonUseCase: GetCameraPhotoExifJsonUseCase,
-    @ApplicationScope private val appScope: CoroutineScope
+    @ApplicationScope private val appScope: CoroutineScope,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
 
     companion object {
@@ -267,7 +269,7 @@ class PhotoImageManager @Inject constructor(
             try {
                 Log.d(TAG, "실제 파일 다운로드 시작: $photoPath")
 
-                val imageData = withContext(Dispatchers.IO) {
+                val imageData = withContext(ioDispatcher) {
                     Log.d(TAG, "downloadCameraPhoto 호출")
                     downloadCameraPhotoUseCase(photoPath)
                 }
@@ -322,7 +324,7 @@ class PhotoImageManager @Inject constructor(
     private suspend fun processImageForFreeTier(photoPath: String, imageData: ByteArray) {
         if (!photoPath.endsWith(".jpg", true)) return
 
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             try {
                 Log.d(TAG, "🎯 Free 티어 사용자 - 리사이징 처리 시작")
 
@@ -365,7 +367,7 @@ class PhotoImageManager @Inject constructor(
      * Free 티어 이미지 리사이징
      */
     private suspend fun resizeImageForFreeTier(inputPath: String, outputPath: String): Boolean {
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             try {
                 Log.d(TAG, "🔧 Free 티어 이미지 리사이즈 시작: $inputPath")
 
