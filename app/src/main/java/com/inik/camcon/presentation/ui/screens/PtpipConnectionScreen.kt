@@ -86,6 +86,14 @@ import com.inik.camcon.presentation.viewmodel.PtpipViewModel
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.presentation.theme.SurfaceElevated
+import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.Surface1
+import com.inik.camcon.presentation.theme.CameraSpec
+import com.inik.camcon.presentation.ui.components.v2.IconButtonV2
+import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
+import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
+import com.inik.camcon.presentation.ui.components.v2.StatusIndicator
+import com.inik.camcon.presentation.ui.components.v2.StatusKind
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -236,19 +244,21 @@ fun PtpipConnectionScreen(
                 Text(ptpipViewModel.getWifiHelper().getPermissionRationaleMessage())
             },
             confirmButton = {
-                TextButton(onClick = {
-                    showPermissionDialog = false
-                    // 설정으로 이동
-                    val intent = ptpipViewModel.getWifiHelper().createAppSettingsIntent()
-                    context.startActivity(intent)
-                }) {
-                    Text(stringResource(R.string.ptpip_go_to_settings))
-                }
+                PrimaryButton(
+                    text = stringResource(R.string.ptpip_go_to_settings),
+                    onClick = {
+                        showPermissionDialog = false
+                        // 설정으로 이동
+                        val intent = ptpipViewModel.getWifiHelper().createAppSettingsIntent()
+                        context.startActivity(intent)
+                    }
+                )
             },
             dismissButton = {
-                TextButton(onClick = { showPermissionDialog = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
+                SecondaryButton(
+                    text = stringResource(R.string.cancel),
+                    onClick = { showPermissionDialog = false }
+                )
             }
         )
     }
@@ -262,54 +272,56 @@ fun PtpipConnectionScreen(
                 Text(stringResource(R.string.ptpip_location_service_message))
             },
             confirmButton = {
-                TextButton(onClick = {
-                    // Google Play Services를 통한 위치 설정 확인 및 요청
-                    ptpipViewModel.checkLocationSettings()
+                PrimaryButton(
+                    text = stringResource(R.string.ptpip_allow),
+                    onClick = {
+                        // Google Play Services를 통한 위치 설정 확인 및 요청
+                        ptpipViewModel.checkLocationSettings()
 
-                    // WifiNetworkHelper를 통해 위치 설정 요청
-                    val wifiHelper = ptpipViewModel.getWifiHelper()
-                    wifiHelper.checkLocationSettingsForScan()
-                        .addOnSuccessListener {
-                            // 이미 설정되어 있음
-                            Log.d("PtpipConnectionScreen", "위치 설정이 이미 활성화됨")
-                            ptpipViewModel.dismissLocationSettingsDialog()
-                            ptpipViewModel.scanNearbyWifiNetworks()
-                        }
-                        .addOnFailureListener { exception: Exception ->
-                            if (exception is ResolvableApiException) {
-                                try {
-                                    Log.d(
-                                        "PtpipConnectionScreen",
-                                        "Google Play Services 위치 설정 다이얼로그 표시"
-                                    )
-                                    locationSettingsLauncher.launch(
-                                        androidx.activity.result.IntentSenderRequest.Builder(
-                                            exception.resolution
-                                        ).build()
-                                    )
-                                } catch (e: Exception) {
-                                    Log.e("PtpipConnectionScreen", "위치 설정 다이얼로그 표시 실패", e)
+                        // WifiNetworkHelper를 통해 위치 설정 요청
+                        val wifiHelper = ptpipViewModel.getWifiHelper()
+                        wifiHelper.checkLocationSettingsForScan()
+                            .addOnSuccessListener {
+                                // 이미 설정되어 있음
+                                Log.d("PtpipConnectionScreen", "위치 설정이 이미 활성화됨")
+                                ptpipViewModel.dismissLocationSettingsDialog()
+                                ptpipViewModel.scanNearbyWifiNetworks()
+                            }
+                            .addOnFailureListener { exception: Exception ->
+                                if (exception is ResolvableApiException) {
+                                    try {
+                                        Log.d(
+                                            "PtpipConnectionScreen",
+                                            "Google Play Services 위치 설정 다이얼로그 표시"
+                                        )
+                                        locationSettingsLauncher.launch(
+                                            androidx.activity.result.IntentSenderRequest.Builder(
+                                                exception.resolution
+                                            ).build()
+                                        )
+                                    } catch (e: Exception) {
+                                        Log.e("PtpipConnectionScreen", "위치 설정 다이얼로그 표시 실패", e)
+                                        // 폴백: 시스템 설정으로 이동
+                                        val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                                        context.startActivity(intent)
+                                        ptpipViewModel.dismissLocationSettingsDialog()
+                                    }
+                                } else {
+                                    Log.w("PtpipConnectionScreen", "위치 설정 확인 실패: ${exception.message}")
                                     // 폴백: 시스템 설정으로 이동
                                     val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
                                     context.startActivity(intent)
                                     ptpipViewModel.dismissLocationSettingsDialog()
                                 }
-                            } else {
-                                Log.w("PtpipConnectionScreen", "위치 설정 확인 실패: ${exception.message}")
-                                // 폴백: 시스템 설정으로 이동
-                                val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
-                                context.startActivity(intent)
-                                ptpipViewModel.dismissLocationSettingsDialog()
                             }
-                        }
-                }) {
-                    Text(stringResource(R.string.ptpip_allow))
-                }
+                    }
+                )
             },
             dismissButton = {
-                TextButton(onClick = { ptpipViewModel.dismissLocationSettingsDialog() }) {
-                    Text(stringResource(R.string.cancel))
-                }
+                SecondaryButton(
+                    text = stringResource(R.string.cancel),
+                    onClick = { ptpipViewModel.dismissLocationSettingsDialog() }
+                )
             }
         )
     }
@@ -332,26 +344,28 @@ fun PtpipConnectionScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        try {
-                            Intent(Settings.Panel.ACTION_WIFI)
-                        } catch (e: Exception) {
+                PrimaryButton(
+                    text = stringResource(R.string.ptpip_open_wifi_settings),
+                    onClick = {
+                        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            try {
+                                Intent(Settings.Panel.ACTION_WIFI)
+                            } catch (e: Exception) {
+                                Intent(Settings.ACTION_WIFI_SETTINGS)
+                            }
+                        } else {
                             Intent(Settings.ACTION_WIFI_SETTINGS)
                         }
-                    } else {
-                        Intent(Settings.ACTION_WIFI_SETTINGS)
+                        context.startActivity(intent)
+                        ptpipViewModel.dismissWifiSettingsDialog()
                     }
-                    context.startActivity(intent)
-                    ptpipViewModel.dismissWifiSettingsDialog()
-                }) {
-                    Text(stringResource(R.string.ptpip_open_wifi_settings))
-                }
+                )
             },
             dismissButton = {
-                TextButton(onClick = { ptpipViewModel.dismissWifiSettingsDialog() }) {
-                    Text(stringResource(R.string.close))
-                }
+                SecondaryButton(
+                    text = stringResource(R.string.close),
+                    onClick = { ptpipViewModel.dismissWifiSettingsDialog() }
+                )
             }
         )
     }
@@ -551,23 +565,25 @@ fun PtpipConnectionScreen(
                 }
             },
             confirmButton = {
-                Button(onClick = {
-                    ptpipViewModel.clearConnectionLostMessage()
-                    // 자동으로 카메라 검색 시작 (admin: 0=AP, 1=STA, 2=Hotspot / non-admin: 0=AP, 1=Hotspot)
-                    val page = pagerState.currentPage
-                    when {
-                        page == 0 -> ptpipViewModel.discoverCamerasAp()
-                        isAdmin && page == 1 -> ptpipViewModel.discoverCamerasSta()
-                        else -> ptpipViewModel.discoverCamerasHotspot()
+                PrimaryButton(
+                    text = stringResource(R.string.ptpip_search_camera),
+                    onClick = {
+                        ptpipViewModel.clearConnectionLostMessage()
+                        // 자동으로 카메라 검색 시작 (admin: 0=AP, 1=STA, 2=Hotspot / non-admin: 0=AP, 1=Hotspot)
+                        val page = pagerState.currentPage
+                        when {
+                            page == 0 -> ptpipViewModel.discoverCamerasAp()
+                            isAdmin && page == 1 -> ptpipViewModel.discoverCamerasSta()
+                            else -> ptpipViewModel.discoverCamerasHotspot()
+                        }
                     }
-                }) {
-                    Text(stringResource(R.string.ptpip_search_camera))
-                }
+                )
             },
             dismissButton = {
-                TextButton(onClick = { ptpipViewModel.clearConnectionLostMessage() }) {
-                    Text(stringResource(R.string.ok))
-                }
+                SecondaryButton(
+                    text = stringResource(R.string.ok),
+                    onClick = { ptpipViewModel.clearConnectionLostMessage() }
+                )
             }
         )
     }
@@ -587,7 +603,11 @@ fun PtpipConnectionScreen(
                         }
                     },
                     actions = {
-                        IconButton(
+                        IconButtonV2(
+                            icon = Icons.Filled.Refresh,
+                            contentDescription = stringResource(R.string.cd_refresh),
+                            tint = MaterialTheme.colorScheme.primary,
+                            enabled = !isDiscovering,
                             onClick = {
                                 val page = pagerState.currentPage
                                 when {
@@ -604,25 +624,25 @@ fun PtpipConnectionScreen(
                                     isAdmin && page == 1 -> ptpipViewModel.discoverCamerasSta()
                                     else -> ptpipViewModel.discoverCamerasHotspot()
                                 }
-                            },
-                            enabled = !isDiscovering
-                        ) {
-                            Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.cd_refresh))
-                        }
-                        IconButton(onClick = {
-                            val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                try {
-                                    Intent(Settings.Panel.ACTION_WIFI)
-                                } catch (e: Exception) {
+                            }
+                        )
+                        IconButtonV2(
+                            icon = Icons.Filled.Settings,
+                            contentDescription = stringResource(R.string.cd_wifi_settings),
+                            tint = MaterialTheme.colorScheme.primary,
+                            onClick = {
+                                val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                    try {
+                                        Intent(Settings.Panel.ACTION_WIFI)
+                                    } catch (e: Exception) {
+                                        Intent(Settings.ACTION_WIFI_SETTINGS)
+                                    }
+                                } else {
                                     Intent(Settings.ACTION_WIFI_SETTINGS)
                                 }
-                            } else {
-                                Intent(Settings.ACTION_WIFI_SETTINGS)
+                                context.startActivity(intent)
                             }
-                            context.startActivity(intent)
-                        }) {
-                            Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.cd_wifi_settings))
-                        }
+                        )
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface,
@@ -648,6 +668,29 @@ fun PtpipConnectionScreen(
                     .fillMaxSize()
                     .widthIn(max = 600.dp)
             ) {
+                // V2 StatusBar — TopAppBar 아래 PTP 연결 상태 표시 (32dp)
+                val ptpStatusKind = when (connectionState) {
+                    com.inik.camcon.domain.model.PtpipConnectionState.CONNECTED -> StatusKind.Connected
+                    com.inik.camcon.domain.model.PtpipConnectionState.CONNECTING -> StatusKind.Connecting
+                    com.inik.camcon.domain.model.PtpipConnectionState.ERROR -> StatusKind.Error
+                    com.inik.camcon.domain.model.PtpipConnectionState.DISCONNECTED -> if (isConnecting || isDiscovering) StatusKind.Connecting else StatusKind.Idle
+                }
+                val ptpStatusLabel = when (ptpStatusKind) {
+                    StatusKind.Connected -> selectedCamera?.name ?: stringResource(R.string.ptpip_camera_connection)
+                    StatusKind.Connecting -> connectionProgressMessage.ifEmpty { stringResource(R.string.ptpip_connecting_to_camera) }
+                    StatusKind.Error -> errorMessage ?: stringResource(R.string.ptpip_camera_disconnected)
+                    StatusKind.Idle -> stringResource(R.string.ptpip_camera_connection)
+                }
+                androidx.compose.foundation.layout.Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(CameraSpec.statusBarHeight)
+                        .padding(horizontal = Spacing.lg),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    StatusIndicator(kind = ptpStatusKind, label = ptpStatusLabel)
+                }
+
                 // 탭 행
                 TabRow(
                     selectedTabIndex = pagerState.currentPage,

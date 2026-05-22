@@ -119,6 +119,15 @@ import com.inik.camcon.presentation.theme.TextPrimary
 import com.inik.camcon.presentation.theme.TextSecondary
 import com.inik.camcon.presentation.theme.TextMuted
 import com.inik.camcon.presentation.theme.TouchTarget
+import com.inik.camcon.presentation.theme.Surface0
+import com.inik.camcon.presentation.theme.TextSecondaryV2
+import com.inik.camcon.presentation.ui.components.v2.EmptyState
+import com.inik.camcon.presentation.ui.components.v2.StatusIndicator
+import com.inik.camcon.presentation.ui.components.v2.StatusKind
+import com.inik.camcon.presentation.ui.components.v2.ToastV2
+import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.outlined.WarningAmber
 import com.inik.camcon.presentation.ui.screens.components.CameraPreviewArea
 import com.inik.camcon.presentation.ui.screens.components.CameraSettingsControls
 import com.inik.camcon.presentation.ui.screens.components.CaptureControls
@@ -518,6 +527,27 @@ private fun PortraitCameraLayout(
         result
     }
 
+    // V2 StatusBar — 카메라 연결 상태 라벨
+    val statusKind = when {
+        uiState.isConnected && uiState.isNativeCameraConnected -> StatusKind.Connected
+        uiState.isUsbInitializing -> StatusKind.Connecting
+        uiState.error != null -> StatusKind.Error
+        else -> StatusKind.Idle
+    }
+    val connectedLabel = stringResource(R.string.camera_connected)
+    val connectingLabel = stringResource(R.string.connecting)
+    val errorLabel = stringResource(R.string.error)
+    val disconnectedLabel = stringResource(R.string.camera_disconnected)
+    val statusLabel = when (statusKind) {
+        StatusKind.Connected -> {
+            val model = cameraFeed.firstOrNull()?.name
+            if (model.isNullOrBlank()) connectedLabel else "$connectedLabel · $model"
+        }
+        StatusKind.Connecting -> connectingLabel
+        StatusKind.Error -> errorLabel
+        StatusKind.Idle -> disconnectedLabel
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -525,6 +555,17 @@ private fun PortraitCameraLayout(
             .padding(contentPadding)
             .imePadding()
     ) {
+        // V2 StatusBar Row (32dp) — 연결 상태 표시 + 토스트 슬롯
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(32.dp)
+                .padding(horizontal = Spacing.lg),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            StatusIndicator(kind = statusKind, label = statusLabel)
+        }
+
         TopControlsBar(
             uiState = uiState,
             cameraFeed = cameraFeed,
@@ -1211,36 +1252,20 @@ private fun AnimatedPhotoSwitcher(
                 )
             }
         }
-        // 사진이 없을 때 애니메이션 표시
+        // 사진이 없을 때 EmptyState 표시 (V2)
         AnimatedVisibility(
             visible = latestPhoto == null,
             enter = fadeIn(animationSpec = tween(350)),
             exit = fadeOut(animationSpec = tween(350))
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    Icons.Default.Photo,
-                    contentDescription = stringResource(R.string.camera_control_no_photo),
-                    modifier = Modifier.size(64.dp),
-                    tint = emptyTextColor
-                )
-                Spacer(modifier = Modifier.height(Spacing.base))
-                Text(
-                    stringResource(R.string.camera_control_no_received_photos),
-                    color = emptyTextColor,
-                    textAlign = TextAlign.Center
-                )
-                Text(
-                    stringResource(R.string.camera_control_photo_appear_hint),
-                    color = emptyTextColor.copy(alpha = 0.7f),
-                    style = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = Padding.sm)
+                EmptyState(
+                    icon = Icons.Outlined.PhotoLibrary,
+                    title = stringResource(R.string.camera_control_no_received_photos),
+                    description = stringResource(R.string.camera_control_photo_appear_hint)
                 )
             }
         }
@@ -1489,7 +1514,7 @@ private fun RawFileRestrictionNotification(
         onDismiss()
     }
 
-    // 화면 상단에 표시
+    // 화면 상단에 표시 — V2 ToastV2 (Error kind)
     AnimatedVisibility(
         visible = true,
         enter = slideInVertically(
@@ -1504,59 +1529,13 @@ private fun RawFileRestrictionNotification(
                 .fillMaxWidth()
                 .padding(top = 36.dp, start = Padding.base, end = Padding.base)
         ) {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.error),
-                shape = RoundedCornerShape(Radius.lg),
-                elevation = CardDefaults.cardElevation(Padding.sm),
-                modifier = Modifier.align(Alignment.TopCenter)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .padding(Padding.base)
-                        .fillMaxWidth()
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Photo,
-                            contentDescription = stringResource(R.string.cd_raw_notification),
-                            tint = MaterialTheme.colorScheme.onError,
-                            modifier = Modifier.size(IconSize.lg)
-                        )
-                        Spacer(modifier = Modifier.width(Spacing.md))
-                        Text(
-                            text = stringResource(R.string.camera_control_raw_file_restriction),
-                            color = MaterialTheme.colorScheme.onError,
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
-                        )
-                        Spacer(modifier = Modifier.weight(1f))
-                        IconButton(onClick = onDismiss) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = stringResource(R.string.cd_close),
-                                tint = MaterialTheme.colorScheme.onError,
-                                modifier = Modifier.size(IconSize.md)
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(Spacing.sm))
-
-                    Text(
-                        text = "${restriction.fileName}",
-                        color = MaterialTheme.colorScheme.onError,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-
-                    Spacer(modifier = Modifier.height(Spacing.xs))
-
-                    Text(
-                        text = restriction.message,
-                        color = MaterialTheme.colorScheme.onError.copy(alpha = 0.9f),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
+            Box(modifier = Modifier.align(Alignment.TopCenter)) {
+                ToastV2(
+                    message = "${stringResource(R.string.camera_control_raw_file_restriction)} · ${restriction.fileName} — ${restriction.message}",
+                    kind = StatusKind.Error,
+                    leadingIcon = Icons.Outlined.WarningAmber,
+                    modifier = Modifier.clickable { onDismiss() }
+                )
             }
         }
     }
