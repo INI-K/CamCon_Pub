@@ -740,7 +740,7 @@ fun MyPhotosMultiSelectActionBar(
 @Preview(showBackground = true)
 @Composable
 fun EmptyMyPhotosStatePreview() {
-    CamConTheme(themeMode = ThemeMode.LIGHT) {
+    CamConTheme() {
         EmptyMyPhotosState()
     }
 }
@@ -748,7 +748,7 @@ fun EmptyMyPhotosStatePreview() {
 @Preview(showBackground = true)
 @Composable
 fun CapturedPhotoItemPreview() {
-    CamConTheme(themeMode = ThemeMode.LIGHT) {
+    CamConTheme() {
         CapturedPhotoItem(
             photo = CapturedPhoto(
                 id = "1",

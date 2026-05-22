@@ -69,7 +69,7 @@ fun TimelapseSettingsDialog(
 @Preview(name = "Timelapse Settings Dialog", showBackground = true)
 @Composable
 private fun TimelapseSettingsDialogPreview() {
-    CamConTheme(themeMode = ThemeMode.LIGHT) {
+    CamConTheme() {
         TimelapseSettingsDialog(
             onConfirm = { _, _ -> },
             onDismiss = { }

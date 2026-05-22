@@ -223,7 +223,7 @@ private fun getTextForDestination(destination: AppDestination): String {
 @Preview(showBackground = true, backgroundColor = 0xFF0A0F1C, widthDp = 400)
 @Composable
 private fun MainBottomNavigationPreview() {
-    CamConTheme(themeMode = ThemeMode.DARK) {
+    CamConTheme() {
         Box(
             modifier = Modifier
                 .fillMaxWidth()

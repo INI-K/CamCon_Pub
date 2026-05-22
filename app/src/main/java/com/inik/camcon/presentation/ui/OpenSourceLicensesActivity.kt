@@ -69,7 +69,7 @@ class OpenSourceLicensesActivity : ComponentActivity() {
             val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
             val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
 
-            CamConTheme(themeMode = themeMode) {
+            CamConTheme() {
                 OpenSourceLicensesScreen(
                     onBackClick = { finish() }
                 )
@@ -284,7 +284,7 @@ fun NativeLicenseItem(license: NativeLicense) {
 @Preview(showBackground = true, name = "Open Source Licenses Preview")
 @Composable
 fun OpenSourceLicensesScreenPreview() {
-    CamConTheme(themeMode = ThemeMode.LIGHT) {
+    CamConTheme() {
         OpenSourceLicensesScreen(
             onBackClick = {}
         )

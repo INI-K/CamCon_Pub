@@ -235,7 +235,7 @@ private fun CaptureControlsContent(
 @Preview(name = "Capture Controls", showBackground = true)
 @Composable
 private fun CaptureControlsPreview() {
-    CamConTheme(themeMode = ThemeMode.DARK) {
+    CamConTheme() {
         Column(
             modifier = Modifier
                 .background(Background)

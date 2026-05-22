@@ -106,6 +106,11 @@ import com.inik.camcon.domain.model.CameraSettings
 import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.Background
+import com.inik.camcon.presentation.theme.IconSize
+import com.inik.camcon.presentation.theme.Padding
+import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.StrokeWidth
 import com.inik.camcon.presentation.theme.Surface
 import com.inik.camcon.presentation.theme.SurfaceElevated
 import com.inik.camcon.presentation.theme.Primary
@@ -113,6 +118,7 @@ import com.inik.camcon.presentation.theme.Error
 import com.inik.camcon.presentation.theme.TextPrimary
 import com.inik.camcon.presentation.theme.TextSecondary
 import com.inik.camcon.presentation.theme.TextMuted
+import com.inik.camcon.presentation.theme.TouchTarget
 import com.inik.camcon.presentation.ui.screens.components.CameraPreviewArea
 import com.inik.camcon.presentation.ui.screens.components.CameraSettingsControls
 import com.inik.camcon.presentation.ui.screens.components.CaptureControls
@@ -269,7 +275,7 @@ fun CameraControlScreen(
                         }
                     },
                     sheetState = bottomSheetState,
-                    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+                    shape = RoundedCornerShape(topStart = Radius.xl, topEnd = Radius.xl)
                 ) {
                     CameraSettingsSheet(
                         settings = uiState.cameraSettings,
@@ -607,12 +613,12 @@ private fun PortraitCameraLayout(
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopStart)
-                        .padding(20.dp)
+                        .padding(Padding.lg)
                         .background(
                             SurfaceElevated.copy(alpha = 0.8f),
-                            RoundedCornerShape(12.dp)
+                            RoundedCornerShape(Radius.lg)
                         )
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                        .padding(horizontal = Padding.md, vertical = 6.dp)
                 ) {
                     Text(
                         text = stringResource(R.string.camera_control_double_click_fullscreen),
@@ -627,11 +633,11 @@ private fun PortraitCameraLayout(
         Surface(
             color = Surface,
             shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-            tonalElevation = 8.dp,
+            tonalElevation = Spacing.sm,
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
-                modifier = Modifier.padding(vertical = 8.dp)
+                modifier = Modifier.padding(vertical = Padding.sm)
             ) {
                 if (appSettings.isCameraControlsEnabled && appSettings.isLiveViewEnabled) {
                     ShootingModeSelector(
@@ -673,12 +679,12 @@ private fun PortraitCameraLayout(
                         text = stringResource(R.string.camera_control_received_photos, uiState.capturedPhotos.size),
                         color = TextPrimary,
                         style = MaterialTheme.typography.labelLarge,
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+                        modifier = Modifier.padding(horizontal = Padding.lg, vertical = Padding.md)
                     )
                     RecentCapturesRow(
                         photos = recentPhotos,
                         onPhotoClick = onPhotoClick,
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+                        modifier = Modifier.padding(horizontal = Padding.lg, vertical = Padding.sm)
                     )
                 }
             }
@@ -783,14 +789,14 @@ private fun FullscreenCameraLayout(
                 onGalleryClick = onGalleryClick,
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
-                    .padding(20.dp)
+                    .padding(Padding.lg)
             )
         } else if (uiState.capturedPhotos.isNotEmpty()) {
             Row(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(20.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(Padding.lg),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.md)
             ) {
                 Surface(
                     color = SurfaceElevated.copy(alpha = 0.9f),
@@ -799,7 +805,7 @@ private fun FullscreenCameraLayout(
                     IconButton(
                         onClick = { isRotated = !isRotated },
                         modifier = Modifier
-                            .size(52.dp)
+                            .size(TouchTarget.xl)
                             .background(SurfaceElevated, CircleShape)
                     ) {
                         Icon(
@@ -818,7 +824,7 @@ private fun FullscreenCameraLayout(
                     IconButton(
                         onClick = onExitFullscreen,
                         modifier = Modifier
-                            .size(52.dp)
+                            .size(TouchTarget.xl)
                             .background(Error.copy(alpha = 0.3f), CircleShape)
                     ) {
                         Icon(
@@ -835,15 +841,15 @@ private fun FullscreenCameraLayout(
         // 하단 안내 텍스트 - 프리미엄 스타일
         Surface(
             color = SurfaceElevated.copy(alpha = 0.8f),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(Radius.lg),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(20.dp)
+                .padding(Padding.lg)
         ) {
             Text(
                 text = stringResource(R.string.camera_control_double_click_exit),
                 color = TextPrimary,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                modifier = Modifier.padding(horizontal = Padding.base, vertical = 10.dp),
                 style = MaterialTheme.typography.bodyMedium
             )
         }
@@ -886,23 +892,23 @@ private fun FullscreenControlPanel(
     Surface(
         color = SurfaceElevated.copy(alpha = 0.95f),
         shape = RoundedCornerShape(20.dp),
-        tonalElevation = 8.dp,
+        tonalElevation = Spacing.sm,
         modifier = modifier
     ) {
         Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+            modifier = Modifier.padding(Padding.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.lg),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // 종료 버튼
             Surface(
                 color = Error.copy(alpha = 0.2f),
                 shape = CircleShape,
-                modifier = Modifier.size(52.dp)
+                modifier = Modifier.size(TouchTarget.xl)
             ) {
                 IconButton(
                     onClick = onExitFullscreen,
-                    modifier = Modifier.size(52.dp)
+                    modifier = Modifier.size(TouchTarget.xl)
                 ) {
                     Icon(
                         Icons.Default.Close,
@@ -917,12 +923,12 @@ private fun FullscreenControlPanel(
             Surface(
                 color = SurfaceElevated,
                 shape = CircleShape,
-                modifier = Modifier.size(52.dp)
+                modifier = Modifier.size(TouchTarget.xl)
             ) {
                 IconButton(
                     onClick = { onRotate?.invoke() },
                     enabled = onRotate != null,
-                    modifier = Modifier.size(52.dp)
+                    modifier = Modifier.size(TouchTarget.xl)
                 ) {
                     Icon(
                         Icons.Default.RotateRight,
@@ -979,7 +985,7 @@ private fun RecentCapturesRow(
     LazyRow(
         state = listState,
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md)
     ) {
         items(
             items = photos,
@@ -1014,10 +1020,10 @@ private fun RecentCaptureItem(
         modifier = Modifier
             .size(104.dp)
             .clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(Radius.xl),
         color = SurfaceElevated,
-        tonalElevation = 4.dp,
-        shadowElevation = 4.dp
+        tonalElevation = Padding.xs,
+        shadowElevation = Padding.xs
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -1073,8 +1079,8 @@ private fun RecentCaptureItem(
                 ) {
                     CircularProgressIndicator(
                         color = Primary,
-                        modifier = Modifier.size(24.dp),
-                        strokeWidth = 2.dp
+                        modifier = Modifier.size(IconSize.lg),
+                        strokeWidth = StrokeWidth.thick
                     )
                 }
             }
@@ -1083,7 +1089,7 @@ private fun RecentCaptureItem(
             if (photo.size > 0) {
                 Surface(
                     color = Background.copy(alpha = 0.8f),
-                    shape = RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(Radius.md),
                     modifier = Modifier.align(Alignment.BottomEnd)
                 ) {
                     Text(
@@ -1223,7 +1229,7 @@ private fun AnimatedPhotoSwitcher(
                     modifier = Modifier.size(64.dp),
                     tint = emptyTextColor
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(Spacing.base))
                 Text(
                     stringResource(R.string.camera_control_no_received_photos),
                     color = emptyTextColor,
@@ -1234,7 +1240,7 @@ private fun AnimatedPhotoSwitcher(
                     color = emptyTextColor.copy(alpha = 0.7f),
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 8.dp)
+                    modifier = Modifier.padding(top = Padding.sm)
                 )
             }
         }
@@ -1253,7 +1259,7 @@ private fun CameraSettingsSheet(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp)
+            .padding(Padding.base)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1272,7 +1278,7 @@ private fun CameraSettingsSheet(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(Spacing.base))
 
         // Settings would be dynamically loaded based on camera capabilities
 //        settings?.let {
@@ -1496,17 +1502,17 @@ private fun RawFileRestrictionNotification(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 36.dp, start = 16.dp, end = 16.dp)
+                .padding(top = 36.dp, start = Padding.base, end = Padding.base)
         ) {
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.error),
-                shape = RoundedCornerShape(12.dp),
-                elevation = CardDefaults.cardElevation(8.dp),
+                shape = RoundedCornerShape(Radius.lg),
+                elevation = CardDefaults.cardElevation(Padding.sm),
                 modifier = Modifier.align(Alignment.TopCenter)
             ) {
                 Column(
                     modifier = Modifier
-                        .padding(16.dp)
+                        .padding(Padding.base)
                         .fillMaxWidth()
                 ) {
                     Row(
@@ -1516,9 +1522,9 @@ private fun RawFileRestrictionNotification(
                             imageVector = Icons.Default.Photo,
                             contentDescription = stringResource(R.string.cd_raw_notification),
                             tint = MaterialTheme.colorScheme.onError,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(IconSize.lg)
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(Spacing.md))
                         Text(
                             text = stringResource(R.string.camera_control_raw_file_restriction),
                             color = MaterialTheme.colorScheme.onError,
@@ -1530,12 +1536,12 @@ private fun RawFileRestrictionNotification(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = stringResource(R.string.cd_close),
                                 tint = MaterialTheme.colorScheme.onError,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(IconSize.md)
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Spacing.sm))
 
                     Text(
                         text = "${restriction.fileName}",
@@ -1543,7 +1549,7 @@ private fun RawFileRestrictionNotification(
                         style = MaterialTheme.typography.bodyMedium
                     )
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(Spacing.xs))
 
                     Text(
                         text = restriction.message,
@@ -1560,7 +1566,7 @@ private fun RawFileRestrictionNotification(
 @Preview(name = "Camera Control Screen", showBackground = true)
 @Composable
 private fun CameraControlScreenPreview() {
-    CamConTheme(themeMode = ThemeMode.LIGHT) {
+    CamConTheme() {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -1579,7 +1585,7 @@ private fun CameraControlScreenPreview() {
 @Preview(name = "Camera Settings Sheet", showBackground = true)
 @Composable
 private fun CameraSettingsSheetPreview() {
-    CamConTheme(themeMode = ThemeMode.LIGHT) {
+    CamConTheme() {
         CameraSettingsSheet(
             settings = CameraSettings(
                 iso = "400",
@@ -1598,7 +1604,7 @@ private fun CameraSettingsSheetPreview() {
 @Preview(name = "Recent Captures Row", showBackground = true)
 @Composable
 private fun RecentCapturesRowPreview() {
-    CamConTheme(themeMode = ThemeMode.LIGHT) {
+    CamConTheme() {
         RecentCapturesRow(
             photos = listOf(
                 CapturedPhoto(
@@ -1635,7 +1641,7 @@ private fun RecentCapturesRowPreview() {
                     height = 1080
                 )
             ),
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(Padding.base)
         )
     }
 }
@@ -1643,7 +1649,7 @@ private fun RecentCapturesRowPreview() {
 @Preview(name = "Fullscreen Control Panel", showBackground = true)
 @Composable
 private fun FullscreenControlPanelPreview() {
-    CamConTheme(themeMode = ThemeMode.LIGHT) {
+    CamConTheme() {
         Box(
             modifier = Modifier
                 .fillMaxSize()

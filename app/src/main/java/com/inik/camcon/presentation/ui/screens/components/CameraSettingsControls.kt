@@ -262,7 +262,7 @@ private fun formatDisplayValue(value: String): String {
 @Preview(name = "Camera Settings Controls", showBackground = true)
 @Composable
 private fun CameraSettingsControlsPreview() {
-    CamConTheme(themeMode = ThemeMode.DARK) {
+    CamConTheme() {
         Column(
             modifier = Modifier
                 .background(Background)

@@ -530,4 +530,11 @@
     <string name="raw_filter_restriction_free">RAW file viewing is in preparation.\nOnly JPG files can be viewed.</string>
     <string name="raw_filter_restriction_basic">RAW files can only be viewed with the PRO subscription.\nPlease upgrade to PRO!</string>
     <string name="raw_filter_restriction_generic">You cannot access RAW files.</string>
+
+    <!-- Camera connection optimization dialog (MainActivity, 2026-05-22) -->
+    <string name="camera_connection_optimization_title">Optimize Camera Connection</string>
+    <string name="camera_connection_optimization_message">We recommend disabling battery optimization for a stable camera connection.</string>
+    <string name="camera_connection_optimization_details">• Keep real-time camera control active\n• Improve auto photo transfer stability\n• Prevent background disconnections\n\n※ Allowed under Google Play policy as a camera accessory connection app.</string>
+    <string name="camera_connection_optimization_confirm">Open settings</string>
+    <string name="camera_connection_optimization_dismiss">Later</string>
 </resources>

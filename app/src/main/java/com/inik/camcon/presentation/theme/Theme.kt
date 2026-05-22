@@ -1,13 +1,11 @@
 package com.inik.camcon.presentation.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
-import com.inik.camcon.domain.model.ThemeMode
 
 // 통일된 다크 색상 스킴
 private val UnifiedDarkColorScheme = darkColorScheme(
@@ -56,16 +54,9 @@ private val UnifiedDarkColorScheme = darkColorScheme(
 
 @Composable
 fun CamConTheme(
-    themeMode: ThemeMode = ThemeMode.FOLLOW_SYSTEM,
     content: @Composable () -> Unit
 ) {
-    val darkTheme = when (themeMode) {
-        ThemeMode.FOLLOW_SYSTEM -> isSystemInDarkTheme()
-        ThemeMode.LIGHT -> false
-        ThemeMode.DARK -> true
-    }
-
-    // 항상 다크 테마 사용 (라이트 모드도 다크로 강제)
+    // CamCon은 다크 테마 고정. 라이트 분기 시그니처 자체를 제거해 향후 확장 차단.
     val colorScheme = UnifiedDarkColorScheme
 
     val view = LocalView.current

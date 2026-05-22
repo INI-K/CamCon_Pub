@@ -49,7 +49,7 @@ fun FeatureBadge(
 @Preview(name = "Feature Badges", showBackground = true)
 @Composable
 private fun FeatureBadgesPreview() {
-    CamConTheme(themeMode = ThemeMode.LIGHT) {
+    CamConTheme() {
         val context = LocalContext.current
         Column(
             modifier = Modifier.padding(16.dp),

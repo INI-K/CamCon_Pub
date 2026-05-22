@@ -46,7 +46,7 @@ class CameraAbilitiesActivity : ComponentActivity() {
             val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
             val themeMode by appSettingsViewModel.themeMode.collectAsState()
 
-            CamConTheme(themeMode = themeMode) {
+            CamConTheme() {
                 CameraAbilitiesScreen(
                     onBackClick = { finish() }
                 )
@@ -598,7 +598,7 @@ private fun Preview_CameraAbilitiesScreen() {
         serialNumber = "123456789012",
     )
 
-    CamConTheme(themeMode = ThemeMode.LIGHT) {
+    CamConTheme() {
         CameraAbilitiesContent(
             abilities = dummyAbilities,
             deviceInfo = dummyDeviceInfo

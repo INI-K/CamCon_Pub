@@ -101,7 +101,7 @@ class LoginActivity : ComponentActivity() {
             val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
             val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
 
-            CamConTheme(themeMode = themeMode) {
+            CamConTheme() {
                 val viewModel: LoginViewModel = hiltViewModel()
                 loginViewModel = viewModel
 
@@ -302,7 +302,7 @@ fun LoginScreen(
 @Preview(showBackground = true)
 @Composable
 fun LoginScreenPreview() {
-    CamConTheme(themeMode = ThemeMode.LIGHT) {
+    CamConTheme() {
         LoginScreen(
             uiState = LoginUiState(),
             snackbarHostState = remember { SnackbarHostState() },
