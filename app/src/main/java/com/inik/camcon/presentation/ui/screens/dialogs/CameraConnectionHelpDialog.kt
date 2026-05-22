@@ -130,7 +130,7 @@ private fun CameraBrandInstructions() {
 @Preview(name = "Camera Connection Help Dialog", showBackground = true)
 @Composable
 private fun CameraConnectionHelpDialogPreview() {
-    CamConTheme(themeMode = ThemeMode.LIGHT) {
+    CamConTheme() {
         CameraConnectionHelpDialog(
             onDismiss = { },
             onRetry = { }

@@ -289,4 +289,11 @@
     <string name="ptpip_hotspot_step_3">3. Sur l\'appareil photo, saisissez le SSID/mot de passe du point d\'accès du téléphone et connectez-vous</string>
     <string name="ptpip_hotspot_step_4">4. Une fois l\'appareil photo connecté, touchez « Rechercher un appareil » ou saisissez l\'IP directement</string>
     <string name="ptpip_hotspot_step_5">5. Si l\'annonce mDNS n\'arrive pas, saisissez l\'IP directement</string>
+
+    <!-- Boîte de dialogue d\'optimisation de la connexion de l\'appareil photo (MainActivity, 2026-05-22) -->
+    <string name="camera_connection_optimization_title">Optimiser la connexion de l\'appareil photo</string>
+    <string name="camera_connection_optimization_message">Pour une connexion stable avec l\'appareil photo, nous recommandons d\'exclure l\'application de l\'optimisation de la batterie.</string>
+    <string name="camera_connection_optimization_details">• Maintenir le contrôle de l\'appareil photo en temps réel\n• Améliorer la stabilité du transfert automatique des photos\n• Éviter les déconnexions en arrière-plan\n\n※ Autorisé par la politique Google Play en tant qu\'application de connexion d\'accessoires d\'appareil photo.</string>
+    <string name="camera_connection_optimization_confirm">Ouvrir les réglages</string>
+    <string name="camera_connection_optimization_dismiss">Plus tard</string>
 </resources>

@@ -289,4 +289,11 @@
     <string name="ptpip_hotspot_step_3">3. カメラ側でスマホテザリングのSSID/パスワードを入力して接続してください</string>
     <string name="ptpip_hotspot_step_4">4. カメラが接続されたら「カメラを探す」を押すか、IPを直接入力してください</string>
     <string name="ptpip_hotspot_step_5">5. mDNS広告が届かない場合はIPを直接入力してください</string>
+
+    <!-- カメラ接続最適化ダイアログ (MainActivity, 2026-05-22) -->
+    <string name="camera_connection_optimization_title">カメラ接続最適化設定</string>
+    <string name="camera_connection_optimization_message">カメラとの安定した接続のため、バッテリー最適化の除外設定を推奨します。</string>
+    <string name="camera_connection_optimization_details">• リアルタイムカメラ制御の維持\n• 写真自動転送の安定性向上\n• バックグラウンド切断の防止\n\n※ カメラ周辺機器接続アプリとしてGoogle Playポリシーにより許可されています。</string>
+    <string name="camera_connection_optimization_confirm">設定する</string>
+    <string name="camera_connection_optimization_dismiss">後で</string>
 </resources>

@@ -38,7 +38,7 @@ class MockCameraActivity : ComponentActivity() {
                 val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
                 val themeMode by appSettingsViewModel.themeMode.collectAsState()
 
-                CamConTheme(themeMode = themeMode) {
+                CamConTheme() {
                     MockCameraScreen(
                         onBackClick = { finish() }
                     )
@@ -603,7 +603,7 @@ fun MockCameraScreen(
 @Preview(showBackground = true, name = "Mock Camera Screen Preview")
 @Composable
 fun MockCameraScreenPreview() {
-    CamConTheme(themeMode = ThemeMode.LIGHT) {
+    CamConTheme() {
         Scaffold(
             topBar = {
                 TopAppBar(

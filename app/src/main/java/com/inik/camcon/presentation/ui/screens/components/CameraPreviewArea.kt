@@ -395,7 +395,7 @@ fun CameraConnectionButtons(
 @Preview(name = "Camera Preview - Connected", showBackground = true)
 @Composable
 private fun CameraPreviewConnectedPreview() {
-    CamConTheme(themeMode = ThemeMode.LIGHT) {
+    CamConTheme() {
         Box(
             modifier = Modifier
                 .size(300.dp)
