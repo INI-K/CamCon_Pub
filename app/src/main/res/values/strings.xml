@@ -510,6 +510,17 @@
     <string name="cd_camera_icon">카메라 아이콘</string>
     <string name="cd_photo_placeholder">사진 플레이스홀더</string>
 
+    <!-- Accessibility — Status / Loading (WCAG 2.2 SC 4.1.3 Status Messages) -->
+    <string name="cd_loading">Loading</string>
+    <string name="cd_button_loading">In progress</string>
+    <string name="cd_status_idle">Idle</string>
+    <string name="cd_status_connecting">Connecting</string>
+    <string name="cd_status_connected">Connected</string>
+    <string name="cd_status_error">Error</string>
+    <!-- %1$s = file name, %2$s = capture date string. Empty when unknown. -->
+    <string name="cd_photo_preview">Photo %1$s, %2$s</string>
+    <string name="cd_photo_preview_no_date">Photo %1$s</string>
+
     <!-- RAW gating messages (i18n PR-7, 2026-05-13) -->
     <!-- Owner: ValidateImageFormatUseCase. RAW 차단 + 업그레이드 안내 + 포맷 미지원 메시지. -->
     <string name="raw_restriction_free">RAW file transfer is in preparation.\nPlease shoot in JPG only!</string>
@@ -537,4 +548,20 @@
     <string name="camera_connection_optimization_details">• Keep real-time camera control active\n• Improve auto photo transfer stability\n• Prevent background disconnections\n\n※ Allowed under Google Play policy as a camera accessory connection app.</string>
     <string name="camera_connection_optimization_confirm">Open settings</string>
     <string name="camera_connection_optimization_dismiss">Later</string>
+
+    <!-- SettingsActivity (developer + logs) -->
+    <string name="settings_toast_logout_failed">Logout failed: %s</string>
+    <string name="settings_toast_notification_granted">Notification permission granted.</string>
+    <string name="settings_toast_notification_denied">Notification permission denied.</string>
+    <string name="settings_toast_notification_unsupported">Notification permission is not required on this device.</string>
+    <string name="settings_toast_battery_settings_error">Cannot open settings screen: %s</string>
+    <string name="settings_native_log_dialog_title">Native log</string>
+    <string name="settings_native_log_clipboard_label">native_log</string>
+    <string name="settings_native_log_copy_button">Copy all</string>
+    <string name="settings_native_log_copied">Log copied to clipboard</string>
+    <string name="settings_native_log_no_files">No saved log files.</string>
+    <string name="settings_native_log_toast_enable">Starting native log capture.\nDetailed logs are recorded during camera initialization.</string>
+    <string name="settings_native_log_toast_disable">Native log capture stopped.</string>
+    <string name="settings_referral_clipboard_label">referral_code</string>
+    <string name="settings_referral_copied">Referral code \'%s\' copied to clipboard</string>
 </resources>

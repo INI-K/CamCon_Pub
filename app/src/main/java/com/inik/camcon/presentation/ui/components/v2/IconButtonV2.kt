@@ -24,8 +24,12 @@ import com.inik.camcon.presentation.theme.TouchTarget
 /**
  * V2 디자인 시스템 — Icon Button.
  *
- * [TouchTarget.min] (40dp) 터치 타깃 + [IconSize.lg] (24dp) 아이콘.
+ * [TouchTarget.min] (44dp) 터치 타깃 + [IconSize.lg] (24dp) 아이콘.
  * Material 3 기본 Ripple 유지. Tint는 기본 [TextPrimaryV2].
+ *
+ * 접근성(WCAG 2.2 SC 2.5.8 Target Size, SC 4.1.2 Name):
+ * - 터치 영역은 [TouchTarget.min] (44dp) 보장.
+ * - contentDescription 은 호출부가 반드시 의미 있는 라벨을 넘겨야 한다.
  */
 @Composable
 fun IconButtonV2(

@@ -132,7 +132,10 @@ fun PhotoThumbnail(
                             .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
                             .diskCachePolicy(coil.request.CachePolicy.ENABLED)
                             .build(),
-                        contentDescription = photo.name,
+                        contentDescription = stringResource(
+                            R.string.cd_photo_preview_no_date,
+                            photo.name
+                        ),
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
@@ -148,7 +151,10 @@ fun PhotoThumbnail(
                             .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
                             .diskCachePolicy(coil.request.CachePolicy.ENABLED)
                             .build(),
-                        contentDescription = photo.name,
+                        contentDescription = stringResource(
+                            R.string.cd_photo_preview_no_date,
+                            photo.name
+                        ),
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
@@ -610,7 +616,10 @@ fun FluidPhotoThumbnail(
                             .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
                             .diskCachePolicy(coil.request.CachePolicy.ENABLED)
                             .build(),
-                        contentDescription = photo.name,
+                        contentDescription = stringResource(
+                            R.string.cd_photo_preview_no_date,
+                            photo.name
+                        ),
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
@@ -626,7 +635,10 @@ fun FluidPhotoThumbnail(
                             .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
                             .diskCachePolicy(coil.request.CachePolicy.ENABLED)
                             .build(),
-                        contentDescription = photo.name,
+                        contentDescription = stringResource(
+                            R.string.cd_photo_preview_no_date,
+                            photo.name
+                        ),
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
@@ -984,7 +996,10 @@ fun FeaturedPhotoThumbnail(
                             .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
                             .diskCachePolicy(coil.request.CachePolicy.ENABLED)
                             .build(),
-                        contentDescription = photo.name,
+                        contentDescription = stringResource(
+                            R.string.cd_photo_preview_no_date,
+                            photo.name
+                        ),
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
@@ -1000,7 +1015,10 @@ fun FeaturedPhotoThumbnail(
                             .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
                             .diskCachePolicy(coil.request.CachePolicy.ENABLED)
                             .build(),
-                        contentDescription = photo.name,
+                        contentDescription = stringResource(
+                            R.string.cd_photo_preview_no_date,
+                            photo.name
+                        ),
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )

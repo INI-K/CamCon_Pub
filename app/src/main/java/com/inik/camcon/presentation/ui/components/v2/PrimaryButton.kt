@@ -18,9 +18,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PhotoCamera
+import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.ButtonText
 import com.inik.camcon.presentation.theme.CamConTheme
@@ -34,9 +38,15 @@ import com.inik.camcon.presentation.theme.TouchTarget
 /**
  * V2 디자인 시스템 — Primary Button.
  *
- * [Accent] 배경 / [OnAccent] 텍스트 / 4dp([Radius.sm]) radius / 40dp([TouchTarget.min]) 높이.
+ * [Accent] 배경 / [OnAccent] 텍스트 / 4dp([Radius.sm]) radius / [TouchTarget.min](44dp) 높이.
  * [isLoading]=true 시 텍스트 자리에 작은 [CircularProgressIndicator] 표시 + 입력 비활성.
  * [enabled]=false 시 Accent.copy(alpha=0.4) 배경.
+ *
+ * 접근성(WCAG 2.2 SC 4.1.2 Name/Role/Value, SC 2.5.8 Target Size):
+ * - [isLoading]=true 일 때 stateDescription="In progress" 가 합성되어 TalkBack 이
+ *   버튼 라벨과 함께 진행 중 상태를 발화한다.
+ * - [enabled]=false 는 Material3 Button 이 자동으로 disabled 시맨틱을 부여한다.
+ * - 높이는 [TouchTarget.min](44dp) 으로 보장.
  */
 @Composable
 fun PrimaryButton(
@@ -48,9 +58,16 @@ fun PrimaryButton(
     isLoading: Boolean = false
 ) {
     val effectivelyEnabled = enabled && !isLoading
+    val loadingLabel = stringResource(R.string.cd_button_loading)
+    val a11y = if (isLoading) {
+        Modifier.semantics { stateDescription = loadingLabel }
+    } else {
+        Modifier
+    }
     Button(
         onClick = onClick,
         modifier = modifier
+            .then(a11y)
             .defaultMinSize(minHeight = TouchTarget.min)
             .height(TouchTarget.min),
         enabled = effectivelyEnabled,

@@ -296,4 +296,31 @@
     <string name="camera_connection_optimization_details">• Maintenir le contrôle de l\'appareil photo en temps réel\n• Améliorer la stabilité du transfert automatique des photos\n• Éviter les déconnexions en arrière-plan\n\n※ Autorisé par la politique Google Play en tant qu\'application de connexion d\'accessoires d\'appareil photo.</string>
     <string name="camera_connection_optimization_confirm">Ouvrir les réglages</string>
     <string name="camera_connection_optimization_dismiss">Plus tard</string>
+
+    <!-- Accessibilité — État/Chargement (WCAG 2.2 SC 4.1.3) -->
+    <string name="cd_loading">Chargement</string>
+    <string name="cd_button_loading">En cours</string>
+    <string name="cd_status_idle">Inactif</string>
+    <string name="cd_status_connecting">Connexion en cours</string>
+    <string name="cd_status_connected">Connecté</string>
+    <string name="cd_status_error">Erreur</string>
+    <!-- %1$s = nom de fichier, %2$s = date de prise de vue -->
+    <string name="cd_photo_preview">Photo %1$s, %2$s</string>
+    <string name="cd_photo_preview_no_date">Photo %1$s</string>
+
+    <!-- SettingsActivity (developer + logs) -->
+    <string name="settings_toast_logout_failed">Échec de la déconnexion : %s</string>
+    <string name="settings_toast_notification_granted">Autorisation de notification accordée.</string>
+    <string name="settings_toast_notification_denied">Autorisation de notification refusée.</string>
+    <string name="settings_toast_notification_unsupported">Aucune autorisation de notification n\'est requise sur cet appareil.</string>
+    <string name="settings_toast_battery_settings_error">Impossible d\'ouvrir l\'écran des paramètres : %s</string>
+    <string name="settings_native_log_dialog_title">Journal natif</string>
+    <string name="settings_native_log_clipboard_label">native_log</string>
+    <string name="settings_native_log_copy_button">Tout copier</string>
+    <string name="settings_native_log_copied">Journal copié dans le presse-papiers</string>
+    <string name="settings_native_log_no_files">Aucun fichier journal enregistré.</string>
+    <string name="settings_native_log_toast_enable">Démarrage de la capture du journal natif.\nDes journaux détaillés sont enregistrés lors de l\'initialisation de la caméra.</string>
+    <string name="settings_native_log_toast_disable">Capture du journal natif arrêtée.</string>
+    <string name="settings_referral_clipboard_label">referral_code</string>
+    <string name="settings_referral_copied">Code de parrainage \'%s\' copié dans le presse-papiers</string>
 </resources>

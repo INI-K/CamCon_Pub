@@ -19,12 +19,15 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.CameraPhoto
+import java.text.DateFormat
+import java.util.Date
 
 /**
  * 개별 사진 슬라이드 컴포넌트
@@ -67,16 +70,36 @@ fun PhotoSlide(
             "사용할 이미지 데이터: ${if (isFullQuality) "고화질" else if (thumbnailData != null) "썸네일" else "파일 경로"}"
         )
 
+        // WCAG 2.2 SC 1.1.1 — 사진은 의미를 가진 콘텐츠이므로 파일명 + 촬영 일시를
+        // 결합한 의미 있는 contentDescription 을 제공한다.
+        val a11yDescription = buildPhotoContentDescription(photo)
+
         AsyncImage(
             model = ImageRequest.Builder(context)
                 .data(imageData)
                 .crossfade(true)
                 .allowHardware(false)
                 .build(),
-            contentDescription = photo.name,
+            contentDescription = a11yDescription,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Fit
         )
+    }
+}
+
+/**
+ * 사진의 의미 있는 contentDescription 생성 — 파일명 + 촬영 일시.
+ * date<=0 이면 날짜를 생략한 짧은 형식을 사용한다.
+ */
+@Composable
+internal fun buildPhotoContentDescription(photo: CameraPhoto): String {
+    return if (photo.date > 0L) {
+        val dateText = DateFormat
+            .getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+            .format(Date(photo.date * 1000L))
+        stringResource(R.string.cd_photo_preview, photo.name, dateText)
+    } else {
+        stringResource(R.string.cd_photo_preview_no_date, photo.name)
     }
 }
 
