@@ -11,11 +11,13 @@ object PtpipConstants {
     // mDNS 서비스 타입 (여러 타입 지원)
     const val SERVICE_TYPE = "_ptp._tcp" // 기본 PTP 서비스
     val SERVICE_TYPES = listOf(
-        "_ptp._tcp",           // 표준 PTP over IP
-        "_ptpip._tcp",         // PTP/IP (일부 카메라)
-        "_axis-video._tcp",    // Axis 네트워크 카메라
-        "_ipp._tcp",           // 일부 Canon 카메라
-        "_pdl-datastream._tcp" // 일부 카메라가 사용
+        "_ptp._tcp",            // 표준 PTP over IP
+        "_ptpip._tcp",          // PTP/IP (일부 카메라)
+        "_axis-video._tcp",     // Axis 네트워크 카메라
+        "_ipp._tcp",            // 일부 Canon 카메라
+        "_pdl-datastream._tcp", // 일부 카메라가 사용
+        "_nikon._tcp",          // Nikon 일부 모델 자체 광고
+        "_dpsoffer._tcp"        // 일부 Canon (DPS over IP)
     )
 
     // 캐시된 IP 시도를 위한 타임아웃 (매우 빠름)

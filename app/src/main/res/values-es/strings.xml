@@ -272,4 +272,17 @@
     <string name="raw_filter_restriction_free">La visualización de archivos RAW está en preparación.\nSolo se pueden ver archivos JPG.</string>
     <string name="raw_filter_restriction_basic">Los archivos RAW solo se pueden ver con la suscripción PRO.\n¡Actualice a PRO!</string>
     <string name="raw_filter_restriction_generic">No puede acceder a los archivos RAW.</string>
+
+    <!-- Modo STA con punto de acceso del teléfono (PtpipConnectionScreen, 3.ª pestaña) -->
+    <string name="ptpip_sta_hotspot_mode">STA (punto de acceso del teléfono)</string>
+    <string name="ptpip_hotspot_description">Sin enrutador: el teléfono actúa como punto de acceso y la cámara se conecta como cliente.</string>
+    <string name="ptpip_hotspot_enabled">Punto de acceso del teléfono activado</string>
+    <string name="ptpip_hotspot_disabled">Punto de acceso del teléfono desactivado</string>
+    <string name="ptpip_manual_ip_input">Introducir IP de la cámara directamente</string>
+    <string name="ptpip_connect_with_ip">Conectar con esta IP</string>
+    <string name="ptpip_hotspot_step_1">1. Active el punto de acceso móvil (anclaje a red) del teléfono</string>
+    <string name="ptpip_hotspot_step_2">2. En los ajustes de Wi-Fi de la cámara, seleccione el modo STA</string>
+    <string name="ptpip_hotspot_step_3">3. En la cámara, introduzca el SSID/contraseña del punto de acceso del teléfono y conéctese</string>
+    <string name="ptpip_hotspot_step_4">4. Una vez conectada la cámara, toque \"Buscar cámara\" o introduzca la IP directamente</string>
+    <string name="ptpip_hotspot_step_5">5. Si no llega el anuncio mDNS, introduzca la IP directamente</string>
 </resources>
