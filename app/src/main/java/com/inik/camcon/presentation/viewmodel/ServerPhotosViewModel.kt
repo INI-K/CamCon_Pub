@@ -5,11 +5,12 @@ import android.provider.MediaStore
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.domain.repository.CameraRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,7 +33,8 @@ data class ServerPhotosUiState(
 @HiltViewModel
 class ServerPhotosViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val cameraRepository: CameraRepository
+    private val cameraRepository: CameraRepository,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ServerPhotosUiState())
@@ -50,7 +52,7 @@ class ServerPhotosViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
             try {
-                val photos = withContext(Dispatchers.IO) {
+                val photos = withContext(ioDispatcher) {
                     loadPhotosFromDCIM()
                 }
 
@@ -215,7 +217,7 @@ class ServerPhotosViewModel @Inject constructor(
             try {
                 val photo = _uiState.value.photos.find { it.id == photoId }
                 if (photo != null) {
-                    val deleted = withContext(Dispatchers.IO) {
+                    val deleted = withContext(ioDispatcher) {
                         deletePhotoFromMediaStore(photo.filePath, photoId)
                     }
 
@@ -410,7 +412,7 @@ class ServerPhotosViewModel @Inject constructor(
         val urisToDelete = mutableListOf<android.net.Uri>()
         val idsMapping = mutableMapOf<android.net.Uri, String>() // URI와 photoId 매핑
 
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             // 먼저 모든 선택된 파일의 MediaStore URI를 수집
             selectedIds.forEach { photoId ->
                 val photo = _uiState.value.photos.find { it.id == photoId }
@@ -519,7 +521,7 @@ class ServerPhotosViewModel @Inject constructor(
         var needsPermission = false
         var securityException: android.app.RecoverableSecurityException? = null
 
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             selectedIds.forEach { photoId ->
                 val photo = _uiState.value.photos.find { it.id == photoId }
                 if (photo != null) {

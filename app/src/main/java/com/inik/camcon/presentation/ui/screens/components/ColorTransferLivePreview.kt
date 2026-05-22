@@ -97,6 +97,7 @@ fun ColorTransferLivePreview(
                 processedBitmap = null
 
                 try {
+                    // TODO(LOW): Dispatchers.IO 하드코딩 — ColorTransferViewModel.processColorTransfer 가 이미 ioDispatcher 사용 중. 이중 withContext 제거 후보.
                     withContext(Dispatchers.IO) {
                         val processed = processColorTransferPreview(
                             referenceImagePath,
@@ -453,6 +454,7 @@ private suspend fun processColorTransferPreview(
     intensity: Float,
     colorTransferViewModel: ColorTransferViewModel
 ): Bitmap? {
+    // TODO(LOW): Dispatchers.IO 하드코딩 — ViewModel.processColorTransfer 가 이미 ioDispatcher 컨텍스트로 전환하므로 중복. 차후 제거.
     return withContext(Dispatchers.IO) {
         try {
             // ColorTransferUseCase를 사용하여 색감 전송 처리
@@ -479,6 +481,7 @@ private suspend fun processColorTransferFullSize(
     intensity: Float,
     colorTransferViewModel: ColorTransferViewModel
 ): Bitmap? {
+    // TODO(LOW): Dispatchers.IO 하드코딩 — ViewModel.processColorTransferFullSize 가 이미 ioDispatcher 컨텍스트로 전환하므로 중복. 차후 제거.
     return withContext(Dispatchers.IO) {
         try {
             // ColorTransferUseCase를 사용하여 색감 전송 처리

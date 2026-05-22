@@ -4,10 +4,15 @@ import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.manager.ErrorSeverity
 import com.inik.camcon.domain.manager.ErrorType
 import com.inik.camcon.domain.model.CameraCapabilities
+import com.inik.camcon.domain.model.ExposureCompensation
+import com.inik.camcon.domain.model.StorageInfo
 import com.inik.camcon.domain.util.Logger
 import com.inik.camcon.domain.model.CameraSettings
 import com.inik.camcon.domain.usecase.camera.GetCameraCapabilitiesUseCase
 import com.inik.camcon.domain.usecase.camera.GetCameraSettingsUseCase
+import com.inik.camcon.domain.usecase.camera.GetExposureCompensationUseCase
+import com.inik.camcon.domain.usecase.camera.GetStorageInfoUseCase
+import com.inik.camcon.domain.usecase.camera.SetExposureCompensationUseCase
 import com.inik.camcon.domain.usecase.camera.UpdateCameraSettingUseCase
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -28,6 +33,9 @@ class CameraSettingsManager @Inject constructor(
     private val getCameraSettingsUseCase: GetCameraSettingsUseCase,
     private val updateCameraSettingUseCase: UpdateCameraSettingUseCase,
     private val getCameraCapabilitiesUseCase: GetCameraCapabilitiesUseCase,
+    private val getExposureCompensationUseCase: GetExposureCompensationUseCase,
+    private val setExposureCompensationUseCase: SetExposureCompensationUseCase,
+    private val getStorageInfoUseCase: GetStorageInfoUseCase,
     private val errorHandlingManager: ErrorHandlingManager,
     private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
@@ -52,6 +60,15 @@ class CameraSettingsManager @Inject constructor(
     // 설정 업데이트 상태
     private val _isUpdatingSettings = MutableStateFlow(false)
     val isUpdatingSettings: StateFlow<Boolean> = _isUpdatingSettings.asStateFlow()
+
+    // 노출 보정(EV) — current/available pair. 미지원 카메라 시 null
+    private val _exposureCompensation = MutableStateFlow<ExposureCompensation?>(null)
+    val exposureCompensation: StateFlow<ExposureCompensation?> =
+        _exposureCompensation.asStateFlow()
+
+    // 카메라 스토리지 정보 — 연결/촬영 완료 시 갱신
+    private val _storageInfo = MutableStateFlow<StorageInfo?>(null)
+    val storageInfo: StateFlow<StorageInfo?> = _storageInfo.asStateFlow()
 
     // 설정 캐시 (성능 최적화용)
     private val settingsCache = mutableMapOf<String, String>()
@@ -293,6 +310,87 @@ class CameraSettingsManager @Inject constructor(
     }
 
     /**
+     * 노출 보정(EV) 현재값/선택지 로드.
+     * 미지원 카메라 또는 widget 부재 시 null 유지.
+     */
+    suspend fun loadExposureCompensation() {
+        withContext(ioDispatcher) {
+            try {
+                getExposureCompensationUseCase()
+                    .onSuccess { ev ->
+                        _exposureCompensation.value = ev
+                        logger.d(TAG, "EV 로딩 결과: current=${ev?.current}, count=${ev?.available?.size}")
+                    }
+                    .onFailure { e ->
+                        logger.e(TAG, "EV 로딩 실패", e)
+                    }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logger.e(TAG, "EV 로딩 중 예외", e)
+            }
+        }
+    }
+
+    /**
+     * 노출 보정 값 설정 후 재조회로 동기화.
+     * value 는 카메라 widget이 돌려준 raw 문자열(예: "+1/3").
+     */
+    suspend fun setExposureCompensation(value: String) {
+        withContext(ioDispatcher) {
+            try {
+                _isUpdatingSettings.value = true
+                setExposureCompensationUseCase(value)
+                    .onSuccess {
+                        logger.d(TAG, "EV 설정 성공: $value")
+                        loadExposureCompensation()
+                    }
+                    .onFailure { e ->
+                        logger.e(TAG, "EV 설정 실패: $value", e)
+                        val msg = errorHandlingManager.handleConnectionError(e)
+                        errorHandlingManager.emitError(
+                            ErrorType.OPERATION,
+                            msg,
+                            e,
+                            ErrorSeverity.MEDIUM
+                        )
+                    }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logger.e(TAG, "EV 설정 중 예외", e)
+            } finally {
+                _isUpdatingSettings.value = false
+            }
+        }
+    }
+
+    /**
+     * 스토리지 정보 로드. 미지원/조회 실패 시 null 유지.
+     */
+    suspend fun loadStorageInfo() {
+        withContext(ioDispatcher) {
+            try {
+                getStorageInfoUseCase()
+                    .onSuccess { info ->
+                        _storageInfo.value = info
+                        logger.d(
+                            TAG,
+                            "스토리지 정보 로딩: free=${info?.freeBytes}, imagesFree=${info?.imagesFree}"
+                        )
+                    }
+                    .onFailure { e ->
+                        logger.e(TAG, "스토리지 정보 로딩 실패", e)
+                    }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logger.e(TAG, "스토리지 정보 로딩 중 예외", e)
+            }
+        }
+    }
+
+    /**
      * 특정 설정 값 가져오기 (캐시 우선)
      */
     fun getSettingValue(key: String): String? {
@@ -378,6 +476,8 @@ class CameraSettingsManager @Inject constructor(
     fun cleanup() {
         _cameraSettings.value = null
         _cameraCapabilities.value = null
+        _exposureCompensation.value = null
+        _storageInfo.value = null
         settingsCache.clear()
         capabilitiesCache.clear()
         _isLoadingSettings.value = false

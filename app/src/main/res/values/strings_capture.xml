@@ -5,6 +5,8 @@
     <string name="capture_shutter_sound_subtitle">Play system shutter sound when capturing</string>
     <string name="capture_no_liveview_label">Trigger capture without live view</string>
     <string name="liveview_grid_toggle">Grid</string>
+    <string name="liveview_histogram_toggle">Histogram</string>
+    <string name="liveview_focus_peaking_toggle">Focus peaking</string>
     <string name="liveview_exposure_compensation_label">EV</string>
 
     <!-- Coachmark -->
@@ -19,6 +21,11 @@
     <!-- Camera status badges -->
     <string name="camera_status_battery_percent">Battery %1$d%%</string>
     <string name="camera_status_sd_free">SD free %1$s</string>
+    <string name="liveview_ev_label">Exposure compensation</string>
+    <string name="camera_status_sd_format_gb">SD %1$.1fGB</string>
+    <string name="camera_status_sd_format_mb">SD %1$dMB</string>
+    <string name="camera_status_sd_low">SD low</string>
+    <string name="camera_status_sd_images_free">%1$d shots left</string>
 
     <!-- Timelapse labels (already exist in main strings; keep capture-scoped keys) -->
     <string name="timelapse_interval_label">Interval (seconds)</string>

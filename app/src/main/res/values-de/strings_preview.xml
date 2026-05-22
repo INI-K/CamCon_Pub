@@ -12,5 +12,10 @@
     <string name="share_in_progress">Teilen…</string>
     <string name="raw_gating_unified_message">RAW-Dateien sind mit dem PRO-Abonnement verfügbar. Aktuelle Stufe: %1$s</string>
     <string name="raw_gating_current_tier">Aktuelle Stufe: %1$s</string>
+    <string name="raw_gating_tier_label_FREE">FREE</string>
+    <string name="raw_gating_tier_label_BASIC">BASIC</string>
+    <string name="raw_gating_tier_label_PRO">PRO</string>
+    <string name="raw_gating_tier_label_REFERRER">REFERRER</string>
+    <string name="raw_gating_tier_label_ADMIN">ADMIN</string>
     <string name="preview_retry_single">Wiederholen</string>
 </resources>

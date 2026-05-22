@@ -78,6 +78,12 @@ class CameraViewModel @Inject constructor(
     private val _decodedLiveViewBitmap = MutableStateFlow<android.graphics.Bitmap?>(null)
     val decodedLiveViewBitmap: StateFlow<android.graphics.Bitmap?> = _decodedLiveViewBitmap.asStateFlow()
 
+    // 라이브뷰 히스토그램 데이터 — 토글 OFF 시 null. IO 디스패처에서 계산.
+    private val _histogramData =
+        MutableStateFlow<com.inik.camcon.presentation.util.HistogramData?>(null)
+    val histogramData: StateFlow<com.inik.camcon.presentation.util.HistogramData?> =
+        _histogramData.asStateFlow()
+
     // 카메라 피드 (Repository에서 직접 가져오기 - 단순 위임 UseCase 제거)
     val cameraFeed: StateFlow<List<Camera>> = cameraRepository.getCameraFeed()
         .stateIn(
@@ -91,6 +97,12 @@ class CameraViewModel @Inject constructor(
     val cameraCapabilities = settingsManager.cameraCapabilities
     val isLoadingSettings = settingsManager.isLoadingSettings
     val isUpdatingSettings = settingsManager.isUpdatingSettings
+
+    // 노출 보정(EV) 현재값/선택지 — SettingsManager에서 관리
+    val exposureCompensation = settingsManager.exposureCompensation
+
+    // 카메라 스토리지 정보 — SettingsManager에서 관리
+    val cameraStorageInfo = settingsManager.storageInfo
 
     // 연결 상태 (ConnectionManager에서 관리)
     val isAutoConnecting = usbAutoConnectManager.isAutoConnecting
@@ -262,6 +274,19 @@ class CameraViewModel @Inject constructor(
                     // 설정은 사용자가 설정 탭을 열 때 로드됨
                     // settingsManager.loadCameraSettings()
                     // settingsManager.loadCameraCapabilities()
+
+                    // EV/Storage 칩은 캡쳐 화면에서 항상 노출되므로 연결 시 한 번 로드.
+                    // 둘 다 단일 widget/storage 호출이라 비용 작음.
+                    launch {
+                        try {
+                            settingsManager.loadExposureCompensation()
+                            settingsManager.loadStorageInfo()
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Log.e(TAG, "EV/Storage 초기 로딩 실패", e)
+                        }
+                    }
 
                     // Firebase에서 최신 구독 티어를 가져와 업데이트
                     // AP 모드에서는 Firebase 오프라인으로 실패할 수 있으며,
@@ -445,10 +470,30 @@ class CameraViewModel @Inject constructor(
     }
 
     /**
-     * 사진 촬영 (OperationsManager에 위임)
+     * 사진 촬영 (OperationsManager에 위임).
+     * 촬영 완료 후 스토리지 잔량 칩을 최신화하기 위해 백그라운드로 storage 재조회.
      */
     fun capturePhoto() {
         operationsManager.capturePhoto(uiState.value.shootingMode, uiStateManager)
+        viewModelScope.launch {
+            try {
+                settingsManager.loadStorageInfo()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "촬영 후 스토리지 갱신 실패", e)
+            }
+        }
+    }
+
+    /**
+     * 노출 보정 값 설정 (SettingsManager에 위임).
+     * value 는 ExposureCompensation.available 의 raw 문자열(예: "+1/3", "0").
+     */
+    fun setExposureCompensation(value: String) {
+        viewModelScope.launch {
+            settingsManager.setExposureCompensation(value)
+        }
     }
 
     /**
@@ -818,6 +863,9 @@ class CameraViewModel @Inject constructor(
      * - Bitmap 디코딩을 Compose 렌더 스레드에서 IO 디스패처로 오프로드
      * - 렌더 스레드 블로킹 제거 → 프레임 드롭 50% 이상 감소
      * - 이전 Bitmap은 DisposableEffect에서 자동 recycle (W-2 해결)
+     *
+     * 추가로 히스토그램 토글이 ON 이면 동일 디스패처에서 히스토그램까지 계산한다.
+     * 토글 OFF 면 히스토그램 계산을 스킵하여 비용 제로.
      */
     private fun decodeLiveViewFrameAsync(frame: LiveViewFrame) {
         viewModelScope.launch {
@@ -839,6 +887,22 @@ class CameraViewModel @Inject constructor(
                     }
                 }
                 _decodedLiveViewBitmap.value = decodedBitmap
+
+                if (decodedBitmap != null && appSettingsRepository.isHistogramEnabled.first()) {
+                    val hist = withContext(ioDispatcher) {
+                        try {
+                            com.inik.camcon.presentation.util.computeHistogram(decodedBitmap)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Log.e(TAG, "히스토그램 계산 실패", e)
+                            null
+                        }
+                    }
+                    _histogramData.value = hist
+                } else {
+                    _histogramData.value = null
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

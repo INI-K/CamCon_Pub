@@ -175,6 +175,9 @@ fun CameraControlScreen(
     val isShowPreviewInCapture by appSettingsViewModel.isShowLatestPhotoWhenDisabled.collectAsStateWithLifecycle()
     val isShutterSoundEnabled by appSettingsViewModel.isShutterSoundEnabled.collectAsStateWithLifecycle()
     val isLiveViewGridEnabled by appSettingsViewModel.isLiveViewGridEnabled.collectAsStateWithLifecycle()
+    val isHistogramEnabled by appSettingsViewModel.isHistogramEnabled.collectAsStateWithLifecycle()
+    val isFocusPeakingEnabled by appSettingsViewModel.isFocusPeakingEnabled.collectAsStateWithLifecycle()
+    val histogramData by viewModel.histogramData.collectAsStateWithLifecycle()
     val hasSeenCaptureCoachmark by appSettingsViewModel.hasSeenCaptureCoachmark.collectAsStateWithLifecycle()
     val lastTimelapseInterval by appSettingsViewModel.lastTimelapseInterval.collectAsStateWithLifecycle()
     val lastTimelapseCount by appSettingsViewModel.lastTimelapseCount.collectAsStateWithLifecycle()
@@ -324,6 +327,15 @@ fun CameraControlScreen(
                         isLiveViewGridEnabled = isLiveViewGridEnabled,
                         onToggleLiveViewGrid = {
                             appSettingsViewModel.setLiveViewGridEnabled(!isLiveViewGridEnabled)
+                        },
+                        histogramData = histogramData,
+                        isHistogramEnabled = isHistogramEnabled,
+                        onToggleHistogram = {
+                            appSettingsViewModel.setHistogramEnabled(!isHistogramEnabled)
+                        },
+                        isFocusPeakingEnabled = isFocusPeakingEnabled,
+                        onToggleFocusPeaking = {
+                            appSettingsViewModel.setFocusPeakingEnabled(!isFocusPeakingEnabled)
                         }
                     )
                 } else {
@@ -357,6 +369,15 @@ fun CameraControlScreen(
                         isLiveViewGridEnabled = isLiveViewGridEnabled,
                         onToggleLiveViewGrid = {
                             appSettingsViewModel.setLiveViewGridEnabled(!isLiveViewGridEnabled)
+                        },
+                        histogramData = histogramData,
+                        isHistogramEnabled = isHistogramEnabled,
+                        onToggleHistogram = {
+                            appSettingsViewModel.setHistogramEnabled(!isHistogramEnabled)
+                        },
+                        isFocusPeakingEnabled = isFocusPeakingEnabled,
+                        onToggleFocusPeaking = {
+                            appSettingsViewModel.setFocusPeakingEnabled(!isFocusPeakingEnabled)
                         },
                         onUnsupportedShootingMode = { mode ->
                             viewModel.setShootingMode(mode)
@@ -501,6 +522,11 @@ private fun PortraitCameraLayout(
     isShutterSoundEnabled: Boolean = true,
     isLiveViewGridEnabled: Boolean = false,
     onToggleLiveViewGrid: () -> Unit = {},
+    histogramData: com.inik.camcon.presentation.util.HistogramData? = null,
+    isHistogramEnabled: Boolean = false,
+    onToggleHistogram: () -> Unit = {},
+    isFocusPeakingEnabled: Boolean = false,
+    onToggleFocusPeaking: () -> Unit = {},
     onUnsupportedShootingMode: (com.inik.camcon.domain.model.ShootingMode) -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -595,10 +621,14 @@ private fun PortraitCameraLayout(
             StatusIndicator(kind = statusKind, label = statusLabel)
         }
 
+        val cameraStorageInfo by viewModel.cameraStorageInfo.collectAsStateWithLifecycle()
+        val exposureCompensation by viewModel.exposureCompensation.collectAsStateWithLifecycle()
+
         TopControlsBar(
             uiState = uiState,
             cameraFeed = cameraFeed,
-            onSettingsClick = { onShowBottomSheet() }
+            onSettingsClick = { onShowBottomSheet() },
+            storageInfo = cameraStorageInfo
         )
 
         Box(
@@ -631,7 +661,12 @@ private fun PortraitCameraLayout(
                         }
                     },
                     isGridOverlayEnabled = isLiveViewGridEnabled,
-                    onToggleGridOverlay = onToggleLiveViewGrid
+                    onToggleGridOverlay = onToggleLiveViewGrid,
+                    histogramData = histogramData,
+                    isHistogramEnabled = isHistogramEnabled,
+                    onToggleHistogram = onToggleHistogram,
+                    isFocusPeakingEnabled = isFocusPeakingEnabled,
+                    onToggleFocusPeaking = onToggleFocusPeaking
                 )
             } else {
                 LogcatManager.d(
@@ -723,7 +758,7 @@ private fun PortraitCameraLayout(
                     )
                 }
 
-                // ISO/셔터스피드/조리개 조절 컨트롤
+                // ISO/셔터스피드/조리개/EV 조절 컨트롤
                 if (appSettings.isCameraControlsEnabled && uiState.isConnected) {
                     CameraSettingsControls(
                         currentSettings = uiState.cameraSettings,
@@ -732,7 +767,11 @@ private fun PortraitCameraLayout(
                             viewModel.updateCameraSetting(key, value)
                         },
                         isEnabled = uiState.isConnected && !uiState.isCapturing,
-                        modifier = Modifier.padding(vertical = 2.dp)
+                        modifier = Modifier.padding(vertical = 2.dp),
+                        exposureCompensation = exposureCompensation,
+                        onExposureCompensationChange = { value ->
+                            viewModel.setExposureCompensation(value)
+                        }
                     )
                 }
 
@@ -788,7 +827,12 @@ private fun FullscreenCameraLayout(
     onGalleryClick: () -> Unit = {},
     isShutterSoundEnabled: Boolean = true,
     isLiveViewGridEnabled: Boolean = false,
-    onToggleLiveViewGrid: () -> Unit = {}
+    onToggleLiveViewGrid: () -> Unit = {},
+    histogramData: com.inik.camcon.presentation.util.HistogramData? = null,
+    isHistogramEnabled: Boolean = false,
+    onToggleHistogram: () -> Unit = {},
+    isFocusPeakingEnabled: Boolean = false,
+    onToggleFocusPeaking: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var showTimelapseDialog by remember { mutableStateOf(false) }
@@ -833,7 +877,12 @@ private fun FullscreenCameraLayout(
                 modifier = Modifier.fillMaxSize(),
                 onDoubleClick = onExitFullscreen,
                 isGridOverlayEnabled = isLiveViewGridEnabled,
-                onToggleGridOverlay = onToggleLiveViewGrid
+                onToggleGridOverlay = onToggleLiveViewGrid,
+                histogramData = histogramData,
+                isHistogramEnabled = isHistogramEnabled,
+                onToggleHistogram = onToggleHistogram,
+                isFocusPeakingEnabled = isFocusPeakingEnabled,
+                onToggleFocusPeaking = onToggleFocusPeaking
             )
         } else {
             Box(

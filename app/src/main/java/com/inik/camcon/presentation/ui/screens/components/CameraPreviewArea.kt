@@ -26,6 +26,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.CenterFocusWeak
 import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.GridOff
 import androidx.compose.material.icons.filled.Refresh
@@ -101,7 +103,12 @@ fun CameraPreviewArea(
     modifier: Modifier = Modifier,
     onDoubleClick: (() -> Unit)? = null,
     isGridOverlayEnabled: Boolean = false,
-    onToggleGridOverlay: (() -> Unit)? = null
+    onToggleGridOverlay: (() -> Unit)? = null,
+    histogramData: com.inik.camcon.presentation.util.HistogramData? = null,
+    isHistogramEnabled: Boolean = false,
+    onToggleHistogram: (() -> Unit)? = null,
+    isFocusPeakingEnabled: Boolean = false,
+    onToggleFocusPeaking: (() -> Unit)? = null
 ) {
     Box(
         modifier = modifier
@@ -117,10 +124,32 @@ fun CameraPreviewArea(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                // ✅ 이미 디코딩된 Bitmap만 사용
-                // remember() 없음, 렌더 스레드 블로킹 없음
+                // 포커스 피킹: 토글 ON 이면 edge 가 입혀진 별도 Bitmap 으로 표시.
+                // IO 작업이므로 LaunchedEffect 에서 처리하고 결과만 화면에 반영.
+                val focusPeakingBitmap = androidx.compose.runtime.remember {
+                    androidx.compose.runtime.mutableStateOf<android.graphics.Bitmap?>(null)
+                }
+                val ioDispatcher = kotlinx.coroutines.Dispatchers.IO
+                androidx.compose.runtime.LaunchedEffect(decodedBitmap, isFocusPeakingEnabled) {
+                    if (!isFocusPeakingEnabled) {
+                        focusPeakingBitmap.value = null
+                        return@LaunchedEffect
+                    }
+                    val processed = kotlinx.coroutines.withContext(ioDispatcher) {
+                        try {
+                            com.inik.camcon.presentation.util.applyFocusPeaking(decodedBitmap)
+                        } catch (e: Exception) {
+                            Log.w("CameraPreview", "포커스 피킹 처리 실패", e)
+                            null
+                        }
+                    }
+                    focusPeakingBitmap.value = processed
+                }
+
+                val displayBitmap = focusPeakingBitmap.value ?: decodedBitmap
+
                 Image(
-                    bitmap = decodedBitmap.asImageBitmap(),
+                    bitmap = displayBitmap.asImageBitmap(),
                     contentDescription = "Live View",
                     modifier = Modifier
                         .fillMaxSize()
@@ -148,6 +177,18 @@ fun CameraPreviewArea(
                     }
                 }
 
+                // 포커스 피킹 결과 Bitmap 도 화면에서 사라질 때 회수.
+                androidx.compose.runtime.DisposableEffect(focusPeakingBitmap.value) {
+                    val bmp = focusPeakingBitmap.value
+                    onDispose {
+                        try {
+                            if (bmp != null && !bmp.isRecycled) bmp.recycle()
+                        } catch (e: Exception) {
+                            Log.w("CameraPreview", "포커스 피킹 Bitmap recycle 실패", e)
+                        }
+                    }
+                }
+
                 // H5: Rule-of-Thirds 그리드 오버레이
                 if (isGridOverlayEnabled) {
                     Canvas(modifier = Modifier.fillMaxSize()) {
@@ -169,26 +210,88 @@ fun CameraPreviewArea(
                     }
                 }
 
-                // H5: 우상단 그리드 토글 버튼
-                if (onToggleGridOverlay != null) {
-                    androidx.compose.material3.Surface(
-                        color = SurfaceElevated.copy(alpha = 0.7f),
-                        shape = androidx.compose.foundation.shape.CircleShape,
+                // H5 + G7: 우상단 토글 버튼 묶음 (그리드 / 히스토그램 / 포커스 피킹)
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(Spacing.md),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (onToggleGridOverlay != null) {
+                        androidx.compose.material3.Surface(
+                            color = SurfaceElevated.copy(alpha = 0.7f),
+                            shape = androidx.compose.foundation.shape.CircleShape
+                        ) {
+                            IconButton(
+                                onClick = onToggleGridOverlay,
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isGridOverlayEnabled) Icons.Default.GridOn else Icons.Default.GridOff,
+                                    contentDescription = stringResource(R.string.liveview_grid_toggle),
+                                    tint = TextPrimary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    if (onToggleHistogram != null) {
+                        androidx.compose.material3.Surface(
+                            color = SurfaceElevated.copy(
+                                alpha = if (isHistogramEnabled) 0.9f else 0.7f
+                            ),
+                            shape = androidx.compose.foundation.shape.CircleShape
+                        ) {
+                            IconButton(
+                                onClick = onToggleHistogram,
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.BarChart,
+                                    contentDescription = stringResource(R.string.liveview_histogram_toggle),
+                                    tint = if (isHistogramEnabled)
+                                        MaterialTheme.colorScheme.primary else TextPrimary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    if (onToggleFocusPeaking != null) {
+                        androidx.compose.material3.Surface(
+                            color = SurfaceElevated.copy(
+                                alpha = if (isFocusPeakingEnabled) 0.9f else 0.7f
+                            ),
+                            shape = androidx.compose.foundation.shape.CircleShape
+                        ) {
+                            IconButton(
+                                onClick = onToggleFocusPeaking,
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CenterFocusWeak,
+                                    contentDescription = stringResource(R.string.liveview_focus_peaking_toggle),
+                                    tint = if (isFocusPeakingEnabled)
+                                        MaterialTheme.colorScheme.primary else TextPrimary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // G7: 좌상단 히스토그램 오버레이 (토글 ON 시에만)
+                if (isHistogramEnabled) {
+                    Box(
                         modifier = Modifier
-                            .align(Alignment.TopEnd)
+                            .align(Alignment.TopStart)
                             .padding(Spacing.md)
                     ) {
-                        IconButton(
-                            onClick = onToggleGridOverlay,
-                            modifier = Modifier.size(40.dp)
-                        ) {
-                            Icon(
-                                imageVector = if (isGridOverlayEnabled) Icons.Default.GridOn else Icons.Default.GridOff,
-                                contentDescription = stringResource(R.string.liveview_grid_toggle),
-                                tint = TextPrimary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
+                        com.inik.camcon.presentation.ui.components.v2.HistogramOverlay(
+                            data = histogramData
+                        )
                     }
                 }
 

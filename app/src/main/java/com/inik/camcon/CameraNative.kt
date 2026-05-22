@@ -507,6 +507,26 @@ object CameraNative {
     // Camera about info (to be implemented in C++)
     external fun getCameraAbout(): String
 
+    // ===== Widget 확장: 노출 보정 / 배터리 / 스토리지 / 파일 삭제 =====
+
+    /** 현재 노출 보정(EV) 값 — exposurecompensation widget value, 미지원 시 null */
+    external fun getExposureCompensationNative(): String?
+
+    /** 노출 보정(EV) 값을 설정. 반환은 libgphoto2 GP 에러 코드(GP_OK=0) */
+    external fun setExposureCompensationNative(value: String): Int
+
+    /** 카메라가 지원하는 EV 선택지 목록(예: "-2", "-5/3", "0", "+1/3"). 미지원 시 null */
+    external fun listExposureCompensationOptionsNative(): Array<String>?
+
+    /** 배터리 레벨 widget 값. "50%" 등 카메라가 반환하는 raw 문자열. 미지원 시 null */
+    external fun getBatteryLevelNative(): String?
+
+    /** 첫 스토리지의 [totalKb, freeKb, imagesFree]. 미지원/실패 시 null */
+    external fun getStorageInfoNative(): LongArray?
+
+    /** 카메라 내 파일 삭제. 반환은 libgphoto2 GP 에러 코드(GP_OK=0) */
+    external fun deleteCameraFileNative(folder: String, filename: String): Int
+
     // Audio capture (to be implemented in C++)
     external fun captureAudio(): Int
 

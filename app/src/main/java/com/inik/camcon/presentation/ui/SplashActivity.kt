@@ -63,8 +63,10 @@ import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.AppVersionUiState
 import com.inik.camcon.presentation.viewmodel.AppVersionViewModel
 import com.inik.camcon.utils.LogcatManager
+import com.inik.camcon.di.IoDispatcher
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
@@ -92,6 +94,10 @@ class SplashActivity : ComponentActivity() {
 
     @Inject
     lateinit var getLibGphoto2VersionUseCase: GetLibGphoto2VersionUseCase
+
+    @Inject
+    @IoDispatcher
+    lateinit var ioDispatcher: CoroutineDispatcher
 
     private var libraryLoadingStatus by mutableStateOf<UiText>(
         UiText.Resource(R.string.splash_initializing)
@@ -147,7 +153,7 @@ class SplashActivity : ComponentActivity() {
      * 백그라운드에서 Libgphoto2 라이브러리들의 로딩 상태를 확인합니다.
      */
     private fun loadLibrariesInBackground() {
-        lifecycleScope.launch(Dispatchers.IO) {
+        lifecycleScope.launch(ioDispatcher) {
             try {
                 LogcatManager.i("SplashActivity", "🚀 라이브러리 상태 확인 프로세스 시작")
                 withContext(Dispatchers.Main) {
@@ -219,7 +225,7 @@ class SplashActivity : ComponentActivity() {
     }
 
     private fun loadSubscriptionTierInBackground() {
-        lifecycleScope.launch(Dispatchers.IO) {
+        lifecycleScope.launch(ioDispatcher) {
             try {
                 val tier = getSubscriptionUseCase.getSubscriptionTier()
                     .drop(1)

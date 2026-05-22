@@ -14,11 +14,12 @@ import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.inik.camcon.R
+import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.utils.LogcatManager
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -41,6 +42,10 @@ class BackgroundSyncService : Service() {
 
     @Inject
     lateinit var globalConnectionManager: com.inik.camcon.domain.manager.CameraConnectionGlobalManager
+
+    @Inject
+    @IoDispatcher
+    lateinit var ioDispatcher: CoroutineDispatcher
 
     private var serviceScope: CoroutineScope? = null
     private var syncJob: Job? = null
@@ -79,7 +84,7 @@ class BackgroundSyncService : Service() {
         super.onCreate()
         LogcatManager.d(TAG, "BackgroundSyncService 생성됨 - 백그라운드 이벤트 리스너 관리 포함")
 
-        serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        serviceScope = CoroutineScope(SupervisorJob() + ioDispatcher)
         createNotificationChannel()
 
         // Wake Lock 획득 (화면이 꺼져도 이벤트 리스너 유지)

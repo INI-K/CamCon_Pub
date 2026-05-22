@@ -4,6 +4,8 @@
     <string name="capture_shutter_sound_subtitle">Jouer le son système à la capture</string>
     <string name="capture_no_liveview_label">Déclencher sans visée en direct</string>
     <string name="liveview_grid_toggle">Grille</string>
+    <string name="liveview_histogram_toggle">Histogramme</string>
+    <string name="liveview_focus_peaking_toggle">Focus peaking</string>
     <string name="liveview_exposure_compensation_label">EV</string>
 
     <string name="coachmark_double_tap_fullscreen">Double-tape pour le plein écran</string>
@@ -15,6 +17,11 @@
 
     <string name="camera_status_battery_percent">Batterie %1$d%%</string>
     <string name="camera_status_sd_free">SD libre %1$s</string>
+    <string name="liveview_ev_label">Correction d\'exposition</string>
+    <string name="camera_status_sd_format_gb">SD %1$.1fGB</string>
+    <string name="camera_status_sd_format_mb">SD %1$dMB</string>
+    <string name="camera_status_sd_low">SD faible</string>
+    <string name="camera_status_sd_images_free">%1$d prises restantes</string>
 
     <string name="timelapse_interval_label">Intervalle (s)</string>
     <string name="timelapse_count_label">Nombre total</string>

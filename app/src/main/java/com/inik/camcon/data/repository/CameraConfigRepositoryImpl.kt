@@ -1,6 +1,8 @@
 package com.inik.camcon.data.repository
 
 import com.inik.camcon.data.datasource.nativesource.NativeConfigDataSource
+import com.inik.camcon.domain.model.ExposureCompensation
+import com.inik.camcon.domain.model.StorageInfo
 import com.inik.camcon.domain.model.config.CameraConfigTree
 import com.inik.camcon.domain.model.config.ConfigRange
 import com.inik.camcon.domain.model.config.ConfigWidget
@@ -89,6 +91,37 @@ class CameraConfigRepositoryImpl @Inject constructor(
             "shuttercounter" -> nativeDataSource.getFujiShutterCounter().toString()
             else -> nativeDataSource.getConfigString(query.key)
                 ?: throw IllegalStateException("Manufacturer setting not found: ${query.key}")
+        }
+    }
+
+    override suspend fun getExposureCompensation(): Result<ExposureCompensation?> = runCatching {
+        val current = nativeDataSource.getExposureCompensation() ?: return@runCatching null
+        val options = nativeDataSource.listExposureCompensationOptions()
+        ExposureCompensation(current = current, available = options)
+    }
+
+    override suspend fun setExposureCompensation(value: String): Result<Unit> = runCatching {
+        val code = nativeDataSource.setExposureCompensation(value)
+        if (code != 0) {
+            throw IllegalStateException("setExposureCompensation 실패 (gp code=$code)")
+        }
+    }
+
+    override suspend fun getStorageInfo(): Result<StorageInfo?> = runCatching {
+        val raw = nativeDataSource.getStorageInfo() ?: return@runCatching null
+        if (raw.size < 3) return@runCatching null
+        val imagesFree = raw[2]
+        StorageInfo(
+            totalBytes = raw[0],
+            freeBytes = raw[1],
+            imagesFree = if (imagesFree < 0) null else imagesFree.toInt()
+        )
+    }
+
+    override suspend fun deleteCameraFile(folder: String, filename: String): Result<Unit> = runCatching {
+        val code = nativeDataSource.deleteCameraFile(folder, filename)
+        if (code != 0) {
+            throw IllegalStateException("deleteCameraFile 실패 (gp code=$code)")
         }
     }
 
