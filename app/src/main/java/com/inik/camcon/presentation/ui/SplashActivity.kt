@@ -2,8 +2,6 @@ package com.inik.camcon.presentation.ui
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
-import com.inik.camcon.BuildConfig
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.animateFloatAsState
@@ -14,21 +12,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,40 +29,50 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import com.google.firebase.auth.FirebaseAuth
+import com.inik.camcon.BuildConfig
 import com.inik.camcon.R
-import com.inik.camcon.presentation.theme.CamConTheme
-import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
-import com.inik.camcon.presentation.viewmodel.AppVersionUiState
-import com.inik.camcon.presentation.viewmodel.AppVersionViewModel
-import com.inik.camcon.utils.LogcatManager
-import com.inik.camcon.domain.model.ThemeMode
+import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.domain.usecase.camera.GetLibGphoto2VersionUseCase
 import com.inik.camcon.domain.usecase.camera.IsNativeLibrariesLoadedUseCase
 import com.inik.camcon.domain.usecase.camera.SetupNativeEnvironmentUseCase
+import com.inik.camcon.presentation.theme.BodySmall
+import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.HeadingL
+import com.inik.camcon.presentation.theme.HeadingXL
+import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.Surface0
+import com.inik.camcon.presentation.theme.TextPrimaryV2
+import com.inik.camcon.presentation.theme.TextSecondaryV2
+import com.inik.camcon.presentation.theme.TextTertiary
+import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
+import com.inik.camcon.presentation.ui.components.v2.ProgressBarV2
+import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
+import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
+import com.inik.camcon.presentation.viewmodel.AppVersionUiState
+import com.inik.camcon.presentation.viewmodel.AppVersionViewModel
+import com.inik.camcon.utils.LogcatManager
 import dagger.hilt.android.AndroidEntryPoint
-import androidx.lifecycle.lifecycleScope
+import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import javax.inject.Inject
 
 @AndroidEntryPoint
 class SplashActivity : ComponentActivity() {
-    
+
     @Inject
     lateinit var firebaseAuth: FirebaseAuth
 
@@ -77,7 +80,7 @@ class SplashActivity : ComponentActivity() {
     lateinit var getSubscriptionUseCase: GetSubscriptionUseCase
 
     @Inject
-    lateinit var appPreferencesDataSource: com.inik.camcon.data.datasource.local.AppPreferencesDataSource
+    lateinit var appPreferencesDataSource: AppPreferencesDataSource
 
     @Inject
     lateinit var isNativeLibrariesLoadedUseCase: IsNativeLibrariesLoadedUseCase
@@ -95,12 +98,8 @@ class SplashActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 엣지-투-엣지 설정을 제거하여 시스템 영역(상단바, 하단바)에 배경이 채워지도록 설정 해제
-        // WindowCompat.setDecorFitsSystemWindows(window, true)
-
         LogcatManager.i("SplashActivity", "=== 스플래시 화면 시작 ===")
 
-        // 백그라운드에서 라이브러리 로딩 및 구독 정보 로드 시작
         loadLibrariesInBackground()
         loadSubscriptionTierInBackground()
 
@@ -112,7 +111,6 @@ class SplashActivity : ComponentActivity() {
             CamConTheme() {
                 val versionState by appVersionViewModel.uiState.collectAsStateWithLifecycle()
 
-                // 앱 시작 시 버전 체크
                 LaunchedEffect(Unit) {
                     appVersionViewModel.checkForUpdate()
                 }
@@ -124,7 +122,6 @@ class SplashActivity : ComponentActivity() {
                     subscriptionTier = subscriptionTier,
                     onUpdateApp = { appVersionViewModel.startUpdate() },
                     onDismissUpdateDialog = {
-                        // 강제 업데이트인 경우 앱 종료
                         if (versionState.versionInfo?.isUpdateRequired == true) {
                             finish()
                         } else {
@@ -133,7 +130,6 @@ class SplashActivity : ComponentActivity() {
                         }
                     },
                     navigateToNext = {
-                        // 업데이트 체크가 완료되고 업데이트 다이얼로그가 없는 경우에만 네비게이션
                         if (!versionState.showUpdateDialog) {
                             navigateToNextScreen()
                         }
@@ -145,7 +141,6 @@ class SplashActivity : ComponentActivity() {
 
     /**
      * 백그라운드에서 Libgphoto2 라이브러리들의 로딩 상태를 확인합니다.
-     * 라이브러리는 이제 CameraNative의 init 블록에서 자동으로 로드되므로 상태만 확인합니다.
      */
     private fun loadLibrariesInBackground() {
         lifecycleScope.launch(Dispatchers.IO) {
@@ -155,7 +150,6 @@ class SplashActivity : ComponentActivity() {
                     libraryLoadingStatus = "라이브러리 상태 확인 중..."
                 }
 
-                // 라이브러리 로딩 상태 확인
                 val startTime = System.currentTimeMillis()
                 val isLoaded = isNativeLibrariesLoadedUseCase()
 
@@ -173,8 +167,6 @@ class SplashActivity : ComponentActivity() {
                     return@launch
                 }
 
-                // 환경변수 설정
-                // 플러그인 디렉토리 경로 사용 (CamCon.kt에서 생성한 경로)
                 val pluginDir =
                     applicationContext.getDir("gphoto2_plugins", MODE_PRIVATE).absolutePath
                 LogcatManager.d("SplashActivity", "플러그인 디렉토리 경로: $pluginDir")
@@ -192,21 +184,20 @@ class SplashActivity : ComponentActivity() {
                 LogcatManager.i("SplashActivity", "✅ 환경변수 설정 완료")
 
                 val totalTime = System.currentTimeMillis() - startTime
-                
+
                 withContext(Dispatchers.Main) {
                     libraryLoadingStatus = "라이브러리 준비 완료 (${totalTime}ms)"
                     isLibraryLoaded = true
                 }
-                
-                // 추가 검증을 위해 라이브러리 버전 확인 시도
+
                 try {
-                    delay(100) // 약간의 지연 후 검증
+                    delay(100)
                     val version = getLibGphoto2VersionUseCase()
                     LogcatManager.i("SplashActivity", "📋 Libgphoto2 버전: $version")
                 } catch (e: Exception) {
                     LogcatManager.w("SplashActivity", "⚠️ 라이브러리 버전 확인 실패 (정상적일 수 있음): ${e.message}")
                 }
-                
+
             } catch (e: Exception) {
                 LogcatManager.e("SplashActivity", "❌ 라이브러리 상태 확인 실패: ${e.message}", e)
                 withContext(Dispatchers.Main) {
@@ -221,7 +212,7 @@ class SplashActivity : ComponentActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val tier = getSubscriptionUseCase.getSubscriptionTier()
-                    .drop(1) // 첫 번째 초기값(FREE) 건너뛰기
+                    .drop(1)
                     .firstOrNull()
 
                 if (tier != null) {
@@ -233,7 +224,6 @@ class SplashActivity : ComponentActivity() {
                 }
             } catch (e: Exception) {
                 LogcatManager.e("SplashActivity", "❌ 구독 정보 로드 실패: ${e.message}", e)
-                // 에러 발생 시 FREE로 폴백
                 withContext(Dispatchers.Main) {
                     subscriptionTier = SubscriptionTier.FREE
                 }
@@ -242,22 +232,18 @@ class SplashActivity : ComponentActivity() {
     }
 
     private fun navigateToNextScreen() {
-        // 자동 로그인 확인
         if (firebaseAuth.currentUser != null) {
-            // 이미 로그인된 사용자는 MainActivity로 이동
             startActivity(Intent(this, MainActivity::class.java))
         } else {
-            // 로그인되지 않은 사용자는 LoginActivity로 이동
             startActivity(Intent(this, LoginActivity::class.java))
         }
-        // 스플래시 화면 종료
         finish()
     }
 }
 
 @Composable
 fun SplashScreen(
-    versionState: com.inik.camcon.presentation.viewmodel.AppVersionUiState,
+    versionState: AppVersionUiState,
     libraryLoadingStatus: String,
     isLibraryLoaded: Boolean,
     subscriptionTier: SubscriptionTier?,
@@ -268,7 +254,8 @@ fun SplashScreen(
     var startAnimation by remember { mutableStateOf(false) }
     val alphaAnim = animateFloatAsState(
         targetValue = if (startAnimation) 1f else 0f,
-        animationSpec = tween(durationMillis = 1000)
+        animationSpec = tween(durationMillis = 1000),
+        label = "splashAlpha"
     )
 
     LaunchedEffect(key1 = true) {
@@ -276,78 +263,86 @@ fun SplashScreen(
         delay(1500)
     }
 
-    // 버전 체크가 완료되고 업데이트가 필요하지 않은 경우 자동으로 다음 화면으로 이동
     LaunchedEffect(versionState.isLoading, versionState.showUpdateDialog) {
         if (!versionState.isLoading && !versionState.showUpdateDialog) {
-            delay(500) // 애니메이션 완료를 위한 추가 지연
+            delay(500)
             navigateToNext()
         }
     }
 
-    // 다크 테마 규약 예외 — 본 Splash 는 브랜드 화면이라 배경이 `colorScheme.primary`(브랜드 색).
-    // 그 위에 표시되는 텍스트·인디케이터는 의도적으로 `Color.White` 를 사용해 대비를 확보한다.
-    // colorScheme.onPrimary 가 항상 white 라는 보장이 없어 명시적으로 white 고정.
+    // V2 Airy 등급: 풀 블랙(Surface0) + 중앙 로고 + 단일 ProgressBarV2
     Box(
         modifier = Modifier
             .fillMaxSize()
             .systemBarsPadding()
-            .background(MaterialTheme.colorScheme.primary),
+            .background(Surface0),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.alpha(alphaAnim.value)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Spacing.xl)
+                .alpha(alphaAnim.value)
         ) {
             Image(
                 painter = painterResource(id = R.drawable.ic_camera),
-                contentDescription = "Logo",
-                modifier = Modifier.size(120.dp)
+                contentDescription = null,
+                modifier = Modifier.size(96.dp)
             )
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(Spacing.lg))
             Text(
                 text = "CamCon",
-                style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                color = Color.White
+                style = HeadingXL,
+                color = TextPrimaryV2
             )
+            Spacer(modifier = Modifier.height(Spacing.xs))
             Text(
                 text = "Camera Controller",
-                style = MaterialTheme.typography.titleMedium,
-                color = Color.White.copy(alpha = 0.8f)
+                style = HeadingL,
+                color = TextSecondaryV2
             )
 
-            // 라이브러리 로딩 상태 표시
+            Spacer(modifier = Modifier.height(Spacing.xl))
+
+            // 단일 ProgressBarV2 — 항상 indeterminate로 진행감 제공
+            ProgressBarV2(
+                progress = null,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(Spacing.md))
+
+            // 라이브러리 로딩 상태 — bodyMedium 정렬
             Text(
                 text = libraryLoadingStatus,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.8f)
+                color = TextSecondaryV2,
+                textAlign = TextAlign.Center
             )
 
-            // 구독 정보 표시 (디버그 빌드에서만)
-            if (BuildConfig.DEBUG && subscriptionTier != null) {
-                Text(
-                    text = "구독 티어: ${subscriptionTier.name}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.8f)
-                )
-            }
-
-            // 버전 체크 로딩 상태 표시
             if (versionState.isLoading) {
-                Spacer(modifier = Modifier.height(32.dp))
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = Color.White
-                )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Spacing.sm))
                 Text(
                     text = "버전 확인 중...",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.8f)
+                    color = TextTertiary,
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            if (BuildConfig.DEBUG && subscriptionTier != null) {
+                Spacer(modifier = Modifier.height(Spacing.sm))
+                Text(
+                    text = "구독 티어: ${subscriptionTier.name}",
+                    style = BodySmall,
+                    color = TextTertiary,
+                    textAlign = TextAlign.Center
                 )
             }
         }
 
-        // Update Dialog
+        // Update Dialog — V2 PrimaryButton / SecondaryButton 사용
         if (versionState.showUpdateDialog) {
             val versionInfo = versionState.versionInfo
             if (versionInfo != null) {
@@ -359,11 +354,7 @@ fun SplashScreen(
                     },
                     title = {
                         Text(
-                            text = if (versionInfo.isUpdateRequired) {
-                                "필수 업데이트"
-                            } else {
-                                "업데이트 가능"
-                            }
+                            text = if (versionInfo.isUpdateRequired) "필수 업데이트" else "업데이트 가능"
                         )
                     },
                     text = {
@@ -376,15 +367,11 @@ fun SplashScreen(
                         )
                     },
                     confirmButton = {
-                        Button(onClick = onUpdateApp) {
-                            Text("업데이트")
-                        }
+                        PrimaryButton(text = "업데이트", onClick = onUpdateApp)
                     },
                     dismissButton = if (!versionInfo.isUpdateRequired) {
                         {
-                            TextButton(onClick = onDismissUpdateDialog) {
-                                Text("나중에")
-                            }
+                            SecondaryButton(text = "나중에", onClick = onDismissUpdateDialog)
                         }
                     } else null
                 )
