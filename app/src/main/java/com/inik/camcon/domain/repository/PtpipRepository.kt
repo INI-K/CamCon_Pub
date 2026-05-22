@@ -2,6 +2,7 @@ package com.inik.camcon.domain.repository
 
 import com.inik.camcon.domain.model.AutoConnectNetworkConfig
 import com.inik.camcon.domain.model.CameraCaptureCallback
+import com.inik.camcon.domain.model.ConnectionMethod
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.PtpipCameraInfo
 import com.inik.camcon.domain.model.PtpipConnectionState
@@ -37,10 +38,25 @@ interface PtpipRepository {
     /** 연결 끊어짐 알림 메시지 */
     val connectionLostMessage: StateFlow<String?>
 
+    /** 현재 활성화된 사용자 시나리오 (AP / STA_ROUTER / STA_PHONE_HOTSPOT). */
+    val activeConnectionMethod: StateFlow<ConnectionMethod?>
+
+    /** 사용자 수동 입력 IP. 폰 핫스팟 모드의 mDNS 폴백용. */
+    val manualIp: StateFlow<String>
+
     // ── 카메라 연결/해제 ──
 
     /** 카메라 연결 (AP/STA 모드 지원) */
     suspend fun connectToCamera(camera: PtpipCamera, forceApMode: Boolean = false): Boolean
+
+    /** 사용자 시나리오 선택. */
+    fun setActiveConnectionMethod(method: ConnectionMethod)
+
+    /** 사용자 입력 IP 갱신. */
+    fun setManualIp(ip: String)
+
+    /** 사용자가 직접 입력한 IP를 카메라 후보 목록에 추가. */
+    suspend fun addManualCamera(ip: String, name: String, port: Int): PtpipCamera
 
     /** 카메라 연결 해제 */
     suspend fun disconnect()

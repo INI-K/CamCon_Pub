@@ -276,4 +276,17 @@
     <string name="raw_filter_restriction_free">L\'affichage des fichiers RAW est en préparation.\nSeuls les fichiers JPG peuvent être affichés.</string>
     <string name="raw_filter_restriction_basic">Les fichiers RAW ne peuvent être affichés qu\'avec l\'abonnement PRO.\nVeuillez passer à PRO !</string>
     <string name="raw_filter_restriction_generic">Vous ne pouvez pas accéder aux fichiers RAW.</string>
+
+    <!-- Mode STA via point d\'accès du téléphone (PtpipConnectionScreen, 3e onglet) -->
+    <string name="ptpip_sta_hotspot_mode">STA (point d\'accès du téléphone)</string>
+    <string name="ptpip_hotspot_description">Sans routeur, le téléphone fait office de point d\'accès et l\'appareil photo s\'y connecte en tant que client.</string>
+    <string name="ptpip_hotspot_enabled">Point d\'accès du téléphone activé</string>
+    <string name="ptpip_hotspot_disabled">Point d\'accès du téléphone désactivé</string>
+    <string name="ptpip_manual_ip_input">Saisir l\'IP de l\'appareil photo directement</string>
+    <string name="ptpip_connect_with_ip">Se connecter avec cette IP</string>
+    <string name="ptpip_hotspot_step_1">1. Activez le point d\'accès mobile (partage de connexion) du téléphone</string>
+    <string name="ptpip_hotspot_step_2">2. Dans les réglages Wi-Fi de l\'appareil photo, sélectionnez le mode STA</string>
+    <string name="ptpip_hotspot_step_3">3. Sur l\'appareil photo, saisissez le SSID/mot de passe du point d\'accès du téléphone et connectez-vous</string>
+    <string name="ptpip_hotspot_step_4">4. Une fois l\'appareil photo connecté, touchez « Rechercher un appareil » ou saisissez l\'IP directement</string>
+    <string name="ptpip_hotspot_step_5">5. Si l\'annonce mDNS n\'arrive pas, saisissez l\'IP directement</string>
 </resources>

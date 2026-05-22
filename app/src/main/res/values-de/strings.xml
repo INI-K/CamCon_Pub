@@ -274,4 +274,17 @@
     <string name="raw_filter_restriction_free">RAW-Dateiansicht wird vorbereitet.\nNur JPG-Dateien können angezeigt werden.</string>
     <string name="raw_filter_restriction_basic">RAW-Dateien können nur mit dem PRO-Abonnement angezeigt werden.\nBitte upgraden Sie auf PRO!</string>
     <string name="raw_filter_restriction_generic">Sie können nicht auf RAW-Dateien zugreifen.</string>
+
+    <!-- Telefon-Hotspot STA-Modus (PtpipConnectionScreen, 3. Tab) -->
+    <string name="ptpip_sta_hotspot_mode">STA (Telefon-Hotspot)</string>
+    <string name="ptpip_hotspot_description">Ohne Router fungiert das Telefon als Hotspot, und die Kamera verbindet sich als Client.</string>
+    <string name="ptpip_hotspot_enabled">Telefon-Hotspot aktiviert</string>
+    <string name="ptpip_hotspot_disabled">Telefon-Hotspot ist ausgeschaltet</string>
+    <string name="ptpip_manual_ip_input">Kamera-IP direkt eingeben</string>
+    <string name="ptpip_connect_with_ip">Mit dieser IP verbinden</string>
+    <string name="ptpip_hotspot_step_1">1. Aktivieren Sie den mobilen Hotspot (Tethering) Ihres Telefons</string>
+    <string name="ptpip_hotspot_step_2">2. Wählen Sie in den Wi-Fi-Einstellungen der Kamera den STA-Modus</string>
+    <string name="ptpip_hotspot_step_3">3. Geben Sie an der Kamera SSID/Passwort des Telefon-Hotspots ein und verbinden Sie sich</string>
+    <string name="ptpip_hotspot_step_4">4. Tippen Sie nach erfolgreicher Verbindung auf \"Kamera suchen\" oder geben Sie die IP direkt ein</string>
+    <string name="ptpip_hotspot_step_5">5. Wenn keine mDNS-Bekanntmachung eintrifft, geben Sie die IP direkt ein</string>
 </resources>

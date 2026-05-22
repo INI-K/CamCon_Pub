@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.domain.model.CameraCaptureCallback
+import com.inik.camcon.domain.model.ConnectionMethod
 import com.inik.camcon.domain.repository.PtpipPreferencesRepository
 import com.inik.camcon.domain.repository.PtpipRepository
 import com.inik.camcon.domain.model.PtpipCamera
@@ -74,6 +75,10 @@ class PtpipViewModel @Inject constructor(
 
     // Wi-Fi 연결 끊어짐 알림 상태
     val connectionLostMessage = ptpipRepository.connectionLostMessage
+
+    // 폰 핫스팟 STA 모드 — 활성 시나리오와 사용자 입력 IP를 repository에서 위임.
+    val activeConnectionMethod: StateFlow<ConnectionMethod?> = ptpipRepository.activeConnectionMethod
+    val manualIp: StateFlow<String> = ptpipRepository.manualIp
 
     // 전역 연결 상태
     val globalConnectionState = globalManager.globalConnectionState
@@ -343,6 +348,57 @@ class PtpipViewModel @Inject constructor(
     fun discoverCameras() = discoverCameras(false)
     fun discoverCamerasAp() = discoverCameras(true)
     fun discoverCamerasSta() = discoverCameras(false)
+    fun discoverCamerasHotspot() {
+        viewModelScope.launch {
+            ptpipRepository.setActiveConnectionMethod(ConnectionMethod.STA_PHONE_HOTSPOT)
+            ptpipRepository.discoverCameras(forceApMode = false)
+        }
+    }
+
+    // ── 폰 핫스팟 STA 모드 신규 API ──
+
+    /** 사용자가 선택한 시나리오를 repository에 전달한다. */
+    fun selectConnectionMethod(method: ConnectionMethod) {
+        ptpipRepository.setActiveConnectionMethod(method)
+    }
+
+    /** 사용자 입력 IP를 repository에 전달한다 (UI TextField에서 호출). */
+    fun setManualIp(ip: String) {
+        ptpipRepository.setManualIp(ip)
+    }
+
+    /**
+     * 사용자가 입력한 IP로 즉시 연결을 시도한다.
+     * 빈 IP면 errorMessage를 방출하고 repository는 호출하지 않는다.
+     */
+    fun connectManualCamera() {
+        val ip = ptpipRepository.manualIp.value.trim()
+        if (ip.isBlank()) {
+            _errorMessage.value = "IP를 입력하세요"
+            return
+        }
+        viewModelScope.launch {
+            try {
+                _isConnecting.value = true
+                _errorMessage.value = null
+                val cam = ptpipRepository.addManualCamera(ip, "Manual ($ip)", 15740)
+                val ok = ptpipRepository.connectToCamera(cam, forceApMode = false)
+                if (ok) {
+                    _selectedCamera.value = cam
+                    _autoDownloadEnabled.value = true
+                } else {
+                    _errorMessage.value = "카메라 연결에 실패했습니다"
+                    _isConnecting.value = false
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "수동 IP 연결 중 오류", e)
+                _errorMessage.value = "카메라 연결 중 오류: ${e.message}"
+                _isConnecting.value = false
+            }
+        }
+    }
 
     // ── 카메라 연결/해제 (ConnectionHelper) ──
 

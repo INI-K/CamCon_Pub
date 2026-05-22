@@ -272,4 +272,17 @@
     <string name="raw_filter_restriction_free">RAW文件查看正在准备中。\n只能查看JPG文件。</string>
     <string name="raw_filter_restriction_basic">RAW文件仅在PRO订阅中可查看。\n请升级到PRO！</string>
     <string name="raw_filter_restriction_generic">无法访问RAW文件。</string>
+
+    <!-- 手机热点 STA 模式 (PtpipConnectionScreen 第三标签页) -->
+    <string name="ptpip_sta_hotspot_mode">STA (手机热点)</string>
+    <string name="ptpip_hotspot_description">无需路由器，手机作为热点，相机以客户端身份连接到手机。</string>
+    <string name="ptpip_hotspot_enabled">手机热点已开启</string>
+    <string name="ptpip_hotspot_disabled">手机热点未开启</string>
+    <string name="ptpip_manual_ip_input">直接输入相机 IP</string>
+    <string name="ptpip_connect_with_ip">使用此 IP 连接</string>
+    <string name="ptpip_hotspot_step_1">1. 请打开手机的移动热点（共享网络）</string>
+    <string name="ptpip_hotspot_step_2">2. 在相机的 Wi-Fi 设置中选择 STA 模式</string>
+    <string name="ptpip_hotspot_step_3">3. 在相机端输入手机热点的 SSID/密码并连接</string>
+    <string name="ptpip_hotspot_step_4">4. 相机连接成功后，点击\"查找相机\"或直接输入 IP</string>
+    <string name="ptpip_hotspot_step_5">5. 如果未收到 mDNS 广播，请直接输入 IP</string>
 </resources>
