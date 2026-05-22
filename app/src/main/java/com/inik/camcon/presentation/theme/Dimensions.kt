@@ -3,9 +3,30 @@ package com.inik.camcon.presentation.theme
 import androidx.compose.ui.unit.dp
 
 /**
- * CamCon 디자인 토큰 — 사이즈/여백/터치 타깃/라디우스/카메라 특화 스펙
- * Color.kt(색상)·Type.kt(타이포)와 함께 디자인 시스템의 3대 축을 구성한다.
+ * CamCon Design System V2 — Dimensions
+ *
+ * 8pt grid, V1 대비 12% 촘촘. Padding/Spacing 단일화.
+ * 디자인 가이드는 docs/DESIGN_SYSTEM_V2.md §3 참조.
  */
+
+object Spacing {
+    val xs = 4.dp
+    val sm = 8.dp
+    val md = 12.dp
+    val base = 14.dp   // V2 카드/패널 표준 패딩
+    val lg = 20.dp
+    val xl = 28.dp
+}
+
+/** V1 호환 별칭 — 점진 폐기. 신규 코드는 `Spacing` 사용. */
+object Padding {
+    val xs = Spacing.xs
+    val sm = Spacing.sm
+    val md = Spacing.md
+    val base = Spacing.base
+    val lg = Spacing.lg
+    val xl = Spacing.xl
+}
 
 object IconSize {
     val xs = 12.dp
@@ -15,26 +36,7 @@ object IconSize {
     val xl = 32.dp
 }
 
-object Padding {
-    val xs = 4.dp
-    val sm = 8.dp
-    val md = 12.dp
-    val base = 16.dp
-    val lg = 20.dp
-    val xl = 24.dp
-}
-
-object Spacing {
-    val xs = 4.dp
-    val sm = 8.dp
-    val md = 12.dp
-    val base = 16.dp
-    val lg = 20.dp
-    val xl = 24.dp
-    val xxl = 32.dp
-}
-
-/** Material 3 권장 최소 터치 타깃은 48dp. min=40dp는 보조 컨트롤에만 사용. */
+/** Material 3 권장 최소 터치 타깃은 48dp. 보조 컨트롤은 40dp 허용. */
 object TouchTarget {
     val min = 40.dp
     val std = 44.dp
@@ -43,10 +45,10 @@ object TouchTarget {
 }
 
 object Radius {
-    val sm = 4.dp
-    val md = 8.dp
-    val lg = 12.dp
-    val xl = 16.dp
+    val sm = 4.dp    // 인풋/버튼/칩 표준
+    val md = 6.dp    // 카드 표준
+    val lg = 8.dp    // 다이얼로그
+    val xl = 12.dp   // BottomSheet 상단
 }
 
 object StrokeWidth {
@@ -57,7 +59,7 @@ object StrokeWidth {
     val heavy = 2.5.dp
 }
 
-/** 카메라 도메인 전용 치수. DSLR 메타포(이중 링 셔터·배지·라이브뷰 인디케이터). */
+/** 카메라 도메인 전용 치수. */
 object CameraSpec {
     val shutterOuter = 88.dp
     val shutterInner = 68.dp
@@ -66,4 +68,5 @@ object CameraSpec {
     val thumbnailGrid = 120.dp
     val featuredThumbnailAspect = 16f / 9f
     val liveviewIndicator = 8.dp
+    val statusBarHeight = 32.dp
 }
