@@ -54,6 +54,33 @@ class UsbConnectionManager @Inject constructor(
 
     companion object {
         private const val TAG = "USB연결관리자"
+
+        /**
+         * 신뢰하는 DSLR/미러리스 제조사 USB Vendor ID 화이트리스트.
+         *
+         * device_filter.xml 은 사용자에게 USB 연결 의도를 묻기 위해 더 넓은 풀을 노출하지만,
+         * 실제로 libgphoto2 초기화를 진행하는 시점에서는 PTP/IP 카메라 제조사만 허용한다.
+         * 임의의 PTP-호환 디바이스(예: 스토리지/플로터/스캐너 변형)가 통과해
+         * 네이티브 USB I/O 경로에 부담을 주는 일을 차단한다.
+         */
+        private val ALLOWED_CAMERA_VENDOR_IDS: Set<Int> = setOf(
+            0x04A9, // Canon
+            0x04B0, // Nikon
+            0x054C, // Sony
+            0x04CB, // Fujifilm
+            0x04DA, // Panasonic
+            0x07B4, // Olympus / OM System
+            0x25FB, // Pentax / Ricoh
+            0x1843, // Leica (참고)
+            0x1A98, // Blackmagic (시네마)
+        )
+    }
+
+    /**
+     * VID 화이트리스트 검증. 화이트리스트 외 디바이스는 명시적으로 거부한다.
+     */
+    private fun isAllowedCameraVendor(device: UsbDevice): Boolean {
+        return device.vendorId in ALLOWED_CAMERA_VENDOR_IDS
     }
 
     /**
@@ -175,11 +202,24 @@ class UsbConnectionManager @Inject constructor(
 
     /**
      * USB 디바이스에 연결하고 네이티브 카메라를 초기화합니다.
+     *
+     * VID 화이트리스트(`ALLOWED_CAMERA_VENDOR_IDS`)에 속하지 않는 디바이스는
+     * PTP 클래스라도 명시적으로 거부한다. (사용자에게는 연결 실패 상태로 노출)
      */
     fun connectToCamera(device: UsbDevice) {
         scope.launch(ioDispatcher) {
             try {
                 Log.d(TAG, "카메라 연결 시작: ${device.deviceName}")
+
+                if (!isAllowedCameraVendor(device)) {
+                    Log.w(
+                        TAG,
+                        "허용되지 않은 USB VID=0x${device.vendorId.toString(16)}, " +
+                                "PID=0x${device.productId.toString(16)} - 카메라 연결 거부"
+                    )
+                    updateConnectionState(false, "지원하지 않는 USB 디바이스")
+                    return@launch
+                }
 
                 // 초기화 중이거나 이미 연결되어 있으면 중복 연결 방지
                 if (isInitializingNativeCamera.get()) {

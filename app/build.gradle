@@ -308,6 +308,9 @@ dependencies {
     // DataStore for preferences
     implementation "androidx.datastore:datastore-preferences:1.0.0"
 
+    // Encrypted storage for sensitive flags (subscription tier, RAW download)
+    implementation "androidx.security:security-crypto:1.1.0-alpha06"
+
     // accompanist-systemuicontroller 제거됨 — enableEdgeToEdge() 또는 WindowCompat 사용
 
     // Image loading - 최신 버전

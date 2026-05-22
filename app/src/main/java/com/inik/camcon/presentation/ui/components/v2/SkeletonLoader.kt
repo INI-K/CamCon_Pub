@@ -26,8 +26,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.Radius
@@ -43,11 +49,17 @@ import androidx.compose.runtime.setValue
  *
  * shimmer 좌→우 슬라이드 1200ms infinite restart.
  * width/height는 호출부 Modifier로 제어.
+ *
+ * 접근성(WCAG 2.2 SC 4.1.3 Status Messages):
+ * - 단일 contentDescription "로딩 중" + [LiveRegionMode.Polite] 으로 묶는다.
+ * - 한 화면에 다수의 스켈레톤이 있을 경우, 호출부에서 가장 바깥 컨테이너에만
+ *   [announceLoading]=true 를 설정하여 중복 발화를 방지한다.
  */
 @Composable
 fun SkeletonLoader(
     modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(Radius.md)
+    shape: Shape = RoundedCornerShape(Radius.md),
+    announceLoading: Boolean = true
 ) {
     var widthPx by remember { mutableStateOf(0f) }
 
@@ -76,8 +88,19 @@ fun SkeletonLoader(
         end = androidx.compose.ui.geometry.Offset(startX + gradientWidth, 0f)
     )
 
+    val loadingLabel = stringResource(R.string.cd_loading)
+    val a11y = if (announceLoading) {
+        Modifier.semantics {
+            contentDescription = loadingLabel
+            liveRegion = LiveRegionMode.Polite
+        }
+    } else {
+        Modifier
+    }
+
     Box(
         modifier = modifier
+            .then(a11y)
             .clip(shape)
             .background(Surface2)
             .onGloballyPositioned { coords ->

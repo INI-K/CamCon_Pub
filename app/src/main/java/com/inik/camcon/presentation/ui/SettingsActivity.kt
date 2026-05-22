@@ -36,7 +36,6 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.NetworkWifi
@@ -53,7 +52,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -73,13 +71,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.inik.camcon.BuildConfig
+import com.inik.camcon.R
 import com.inik.camcon.domain.model.SubscriptionTier
-import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.domain.model.User
 import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.AccentMuted
@@ -100,6 +99,7 @@ import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
 import com.inik.camcon.presentation.ui.components.v2.ProgressBarV2
 import com.inik.camcon.presentation.ui.components.v2.RowItem
 import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
+import com.inik.camcon.presentation.util.copyToClipboard
 import com.inik.camcon.presentation.viewmodel.AdminReferralCodeViewModel
 import com.inik.camcon.presentation.viewmodel.AdminReferralUiEvent
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
@@ -117,11 +117,9 @@ class SettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
-            val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
             val authViewModel: AuthViewModel = hiltViewModel()
 
-            CamConTheme() {
+            CamConTheme {
                 SettingsScreen(
                     onBackClick = { finish() },
                     authViewModel = authViewModel
@@ -134,7 +132,7 @@ class SettingsActivity : ComponentActivity() {
 @Preview(showBackground = true, name = "SettingsScreen Preview")
 @Composable
 fun SettingsScreenPreview() {
-    CamConTheme() {
+    CamConTheme {
         SettingsScreen(
             onBackClick = {},
             authViewModel = null
@@ -171,13 +169,16 @@ fun SettingsScreen(
     val isUsbConnected = cameraUiState.isNativeCameraConnected
     val isPtpipConnected = cameraUiState.isPtpipConnected
 
+    val logoutFailedTemplate = stringResource(R.string.settings_toast_logout_failed)
+
+    // 1회 구독 — uiEvent 채널은 ViewModel lifetime 동안 단일 collector만 필요
     LaunchedEffect(Unit) {
         authViewModel?.uiEvent?.collect { event ->
             when (event) {
                 is AuthUiEvent.ShowError -> {
                     android.widget.Toast.makeText(
                         context,
-                        "로그아웃 실패: ${event.message}",
+                        logoutFailedTemplate.format(event.message),
                         android.widget.Toast.LENGTH_LONG
                     ).show()
                 }
@@ -195,6 +196,7 @@ fun SettingsScreen(
         }
     }
 
+    // 1회 구독 — uiEvent 채널은 ViewModel lifetime 동안 단일 collector만 필요
     LaunchedEffect(Unit) {
         adminReferralCodeViewModel.uiEvent.collect { event ->
             when (event) {
@@ -217,7 +219,6 @@ fun SettingsScreen(
     val isCameraControlsEnabled by appSettingsViewModel.isCameraControlsEnabled.collectAsStateWithLifecycle()
     val isLiveViewEnabled by appSettingsViewModel.isLiveViewEnabled.collectAsStateWithLifecycle()
     val isAdminTier by appSettingsViewModel.isAdminTier.collectAsStateWithLifecycle()
-    val currentThemeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
     val isAutoStartEventListener by appSettingsViewModel.isAutoStartEventListenerEnabled.collectAsStateWithLifecycle()
     val isShowLatestPhotoWhenDisabled by appSettingsViewModel.isShowLatestPhotoWhenDisabled.collectAsStateWithLifecycle()
 
@@ -227,10 +228,21 @@ fun SettingsScreen(
 
     val subscriptionTier by appSettingsViewModel.subscriptionTier.collectAsStateWithLifecycle()
 
+    val notificationGrantedText = stringResource(R.string.settings_toast_notification_granted)
+    val notificationDeniedText = stringResource(R.string.settings_toast_notification_denied)
+    val notificationUnsupportedText = stringResource(R.string.settings_toast_notification_unsupported)
+    val batterySettingsErrorTemplate = stringResource(R.string.settings_toast_battery_settings_error)
+    val nativeLogToastEnableText = stringResource(R.string.settings_native_log_toast_enable)
+    val nativeLogToastDisableText = stringResource(R.string.settings_native_log_toast_disable)
+    val nativeLogNoFilesText = stringResource(R.string.settings_native_log_no_files)
+    val nativeLogClipboardLabel = stringResource(R.string.settings_native_log_clipboard_label)
+    val nativeLogCopiedText = stringResource(R.string.settings_native_log_copied)
+    val referralClipboardLabel = stringResource(R.string.settings_referral_clipboard_label)
+    val referralCopiedTemplate = stringResource(R.string.settings_referral_copied)
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
-        val message = if (isGranted) "알림 권한이 허용되었습니다." else "알림 권한이 거부되었습니다."
+        val message = if (isGranted) notificationGrantedText else notificationDeniedText
         android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
     }
 
@@ -257,14 +269,7 @@ fun SettingsScreen(
         }
     }
 
-    var showThemeDialog by remember { mutableStateOf(false) }
     var logDialogContent by remember { mutableStateOf<String?>(null) }
-
-    fun getThemeDisplayName(themeMode: ThemeMode): String = when (themeMode) {
-        ThemeMode.FOLLOW_SYSTEM -> "시스템 설정 따름"
-        ThemeMode.LIGHT -> "라이트 모드"
-        ThemeMode.DARK -> "다크 모드"
-    }
 
     Scaffold(
         topBar = {
@@ -403,7 +408,7 @@ fun SettingsScreen(
                                         } else {
                                             android.widget.Toast.makeText(
                                                 context,
-                                                "현재 기기에서 알림 권한 요청이 필요하지 않습니다.",
+                                                notificationUnsupportedText,
                                                 android.widget.Toast.LENGTH_SHORT
                                             ).show()
                                         }
@@ -565,13 +570,6 @@ fun SettingsScreen(
                     subtitle = "푸시 알림 및 소리 설정",
                     onClick = { }
                 )
-                ClickableRowV2(
-                    icon = Icons.Default.DarkMode,
-                    title = "테마 설정",
-                    subtitle = "현재: ${getThemeDisplayName(currentThemeMode)}",
-                    onClick = { showThemeDialog = true }
-                )
-
                 val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
                 val packageName = context.packageName
                 val isIgnoringOptimizations = pm.isIgnoringBatteryOptimizations(packageName)
@@ -591,7 +589,7 @@ fun SettingsScreen(
                         } catch (e: Exception) {
                             android.widget.Toast.makeText(
                                 context,
-                                "설정 화면을 열 수 없습니다: ${e.localizedMessage}",
+                                batterySettingsErrorTemplate.format(e.localizedMessage ?: ""),
                                 android.widget.Toast.LENGTH_LONG
                             ).show()
                         }
@@ -630,11 +628,7 @@ fun SettingsScreen(
                         checked = isNativeLogCaptureEnabled,
                         onCheckedChange = {
                             appSettingsViewModel.setNativeLogCaptureEnabled(it)
-                            val message = if (it) {
-                                "네이티브 로그 캡처를 시작합니다.\n카메라 초기화 시 상세 로그가 기록됩니다."
-                            } else {
-                                "네이티브 로그 캡처를 중지했습니다."
-                            }
+                            val message = if (it) nativeLogToastEnableText else nativeLogToastDisableText
                             android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
                         }
                     )
@@ -649,7 +643,7 @@ fun SettingsScreen(
                                 if (logFiles.isEmpty()) {
                                     android.widget.Toast.makeText(
                                         context,
-                                        "저장된 로그 파일이 없습니다.",
+                                        nativeLogNoFilesText,
                                         android.widget.Toast.LENGTH_SHORT
                                     ).show()
                                 } else {
@@ -663,52 +657,11 @@ fun SettingsScreen(
                 }
             }
 
-            // 테마 다이얼로그 — V2 SecondaryButton
-            if (showThemeDialog) {
-                AlertDialog(
-                    onDismissRequest = { showThemeDialog = false },
-                    title = { Text("테마 설정") },
-                    text = {
-                        val options = listOf(
-                            ThemeMode.FOLLOW_SYSTEM to "시스템 설정 따름",
-                            ThemeMode.LIGHT to "라이트 모드",
-                            ThemeMode.DARK to "다크 모드"
-                        )
-                        Column {
-                            options.forEach { (mode, label) ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            appSettingsViewModel.setThemeMode(mode)
-                                            showThemeDialog = false
-                                        },
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    RadioButton(
-                                        selected = currentThemeMode == mode,
-                                        onClick = {
-                                            appSettingsViewModel.setThemeMode(mode)
-                                            showThemeDialog = false
-                                        }
-                                    )
-                                    Text(label, color = TextPrimaryV2)
-                                }
-                            }
-                        }
-                    },
-                    confirmButton = {},
-                    dismissButton = {
-                        SecondaryButton(text = "취소", onClick = { showThemeDialog = false })
-                    }
-                )
-            }
-
             // 네이티브 로그 다이얼로그 — V2 PrimaryButton/SecondaryButton
             logDialogContent?.let { logContent ->
                 AlertDialog(
                     onDismissRequest = { logDialogContent = null },
-                    title = { Text("네이티브 로그") },
+                    title = { Text(stringResource(R.string.settings_native_log_dialog_title)) },
                     text = {
                         Column(
                             modifier = Modifier.verticalScroll(rememberScrollState())
@@ -720,14 +673,23 @@ fun SettingsScreen(
                         }
                     },
                     confirmButton = {
-                        PrimaryButton(text = "확인", onClick = { logDialogContent = null })
+                        PrimaryButton(
+                            text = stringResource(R.string.ok),
+                            onClick = { logDialogContent = null }
+                        )
                     },
                     dismissButton = {
-                        SecondaryButton(text = "전체 복사", onClick = {
-                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("native_log", logContent))
-                            android.widget.Toast.makeText(context, "로그가 클립보드에 복사되었습니다", android.widget.Toast.LENGTH_SHORT).show()
-                        })
+                        SecondaryButton(
+                            text = stringResource(R.string.settings_native_log_copy_button),
+                            onClick = {
+                                context.copyToClipboard(nativeLogClipboardLabel, logContent)
+                                android.widget.Toast.makeText(
+                                    context,
+                                    nativeLogCopiedText,
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        )
                     }
                 )
             }
@@ -794,12 +756,10 @@ fun SettingsScreen(
                         onClick = {
                             val code = adminReferralCodeViewModel.extractOneAvailableCode()
                             if (code != null) {
-                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                val clip = android.content.ClipData.newPlainText("referral_code", code)
-                                clipboard.setPrimaryClip(clip)
+                                context.copyToClipboard(referralClipboardLabel, code)
                                 android.widget.Toast.makeText(
                                     context,
-                                    "레퍼럴 코드 '$code'가 클립보드에 복사되었습니다",
+                                    referralCopiedTemplate.format(code),
                                     android.widget.Toast.LENGTH_LONG
                                 ).show()
                             }
