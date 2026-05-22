@@ -72,6 +72,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.inik.camcon.presentation.theme.Border
+import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
+import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.lifecycleScope
@@ -149,14 +151,16 @@ fun CameraConnectionOptimizationDialog(
             }
         },
         confirmButton = {
-            androidx.compose.material3.Button(onClick = onGoToSettings) {
-                androidx.compose.material3.Text(stringResource(R.string.camera_connection_optimization_confirm))
-            }
+            PrimaryButton(
+                text = stringResource(R.string.camera_connection_optimization_confirm),
+                onClick = onGoToSettings
+            )
         },
         dismissButton = {
-            androidx.compose.material3.TextButton(onClick = onDismissRequest) {
-                androidx.compose.material3.Text(stringResource(R.string.camera_connection_optimization_dismiss))
-            }
+            SecondaryButton(
+                text = stringResource(R.string.camera_connection_optimization_dismiss),
+                onClick = onDismissRequest
+            )
         }
     )
 }
@@ -276,11 +280,12 @@ fun MainScreen(
                 confirmButton = {
                     if (!isRestarting) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextButton(
+                            SecondaryButton(
+                                text = "나중에",
                                 onClick = { showRestartDialog = false }
-                            ) { Text("나중에") }
-
-                            TextButton(
+                            )
+                            PrimaryButton(
+                                text = "즉시 재시작",
                                 onClick = {
                                     isRestarting = true
                                     cameraViewModel.clearPtpTimeout()
@@ -289,9 +294,9 @@ fun MainScreen(
                                         MainActivity.restartAppAfterCameraCleanup(act)
                                     }
                                 }
-                            ) { Text("즉시 재시작") }
-
-                            TextButton(
+                            )
+                            SecondaryButton(
+                                text = "종료",
                                 onClick = {
                                     isRestarting = true
                                     cameraViewModel.clearPtpTimeout()
@@ -300,7 +305,7 @@ fun MainScreen(
                                         MainActivity.systemRestartApp(act)
                                     }
                                 }
-                            ) { Text("종료") }
+                            )
                         }
                     }
                 }
@@ -341,11 +346,10 @@ fun MainScreen(
                     }
                 },
                 confirmButton = {
-                    TextButton(
+                    PrimaryButton(
+                        text = "확인",
                         onClick = { cameraViewModel.clearUsbDisconnection() }
-                    ) {
-                        Text("확인")
-                    }
+                    )
                 }
             )
         }
@@ -394,19 +398,19 @@ fun MainScreen(
                     }
                 },
                 confirmButton = {
-                    TextButton(
+                    PrimaryButton(
+                        text = "확인",
                         onClick = { cameraViewModel.dismissCameraStatusCheckDialog() }
-                    ) {
-                        Text("확인")
-                    }
+                    )
                 },
                 dismissButton = {
-                    TextButton(
+                    SecondaryButton(
+                        text = "다시 연결",
                         onClick = {
                             cameraViewModel.dismissCameraStatusCheckDialog()
                             cameraViewModel.refreshUsbDevices()
                         }
-                    ) { Text("다시 연결") }
+                    )
                 },
                 properties = androidx.compose.ui.window.DialogProperties(
                     dismissOnBackPress = true,
@@ -597,11 +601,10 @@ fun MainScreen(
                     }
                 },
                 confirmButton = {
-                    TextButton(
+                    PrimaryButton(
+                        text = "알겠습니다",
                         onClick = { showPtpipWarning = false }
-                    ) {
-                        Text("알겠습니다")
-                    }
+                    )
                 }
             )
         }
@@ -661,11 +664,10 @@ fun MainScreen(
                     )
                 },
                 confirmButton = {
-                    TextButton(
+                    PrimaryButton(
+                        text = "확인",
                         onClick = { showWifiDisconnectedDialog = false }
-                    ) {
-                        Text("확인")
-                    }
+                    )
                 }
             )
         }
