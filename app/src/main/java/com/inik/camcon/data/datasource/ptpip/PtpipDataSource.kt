@@ -12,6 +12,7 @@ import android.provider.MediaStore
 import android.util.Log
 import com.inik.camcon.CameraNative
 import com.inik.camcon.EventListenerStopCallback
+import com.inik.camcon.R
 import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
 import com.inik.camcon.data.network.ptpip.authentication.NikonAuthenticationService
 import com.inik.camcon.data.network.ptpip.connection.PtpipConnectionManager
@@ -32,6 +33,7 @@ import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.PtpipCameraInfo
 import com.inik.camcon.domain.model.PtpipConnectionPhase
 import com.inik.camcon.domain.model.PtpipConnectionState
+import com.inik.camcon.domain.model.UiText
 import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
 import com.inik.camcon.domain.model.toForceApMode
@@ -80,6 +82,7 @@ class PtpipDataSource @Inject constructor(
     private val photoDownloadManager: com.inik.camcon.data.repository.managers.PhotoDownloadManager,
     private val autoConnectManager: AutoConnectManager,
     private val autoConnectTaskRunnerProvider: Lazy<AutoConnectTaskRunner>,
+    private val ptpipPreferencesDataSource: com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource,
     @ApplicationScope private val coroutineScope: CoroutineScope,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
@@ -101,9 +104,23 @@ class PtpipDataSource @Inject constructor(
     private val _connectionState = MutableStateFlow(PtpipConnectionState.DISCONNECTED)
     val connectionState: StateFlow<PtpipConnectionState> = _connectionState.asStateFlow()
 
-    // 추가: 연결 진행 메시지 상태 추가
+    // 추가: 연결 진행 메시지 상태 — 외부 API는 String 유지 (UI 단순화).
+    // i18n: 내부에서 setProgress(UiText)로 resource를 즉시 resolve해 저장한다.
     private val _connectionProgressMessage = MutableStateFlow("")
     val connectionProgressMessage: StateFlow<String> = _connectionProgressMessage.asStateFlow()
+
+    /** UiText 기반 진행 메시지 설정 — Context.getString으로 즉시 resolve. */
+    private fun setProgress(text: UiText) {
+        _connectionProgressMessage.value = when (text) {
+            is UiText.Empty -> ""
+            is UiText.Raw -> text.value
+            is UiText.Resource -> if (text.args.isEmpty()) {
+                context.getString(text.resId)
+            } else {
+                context.getString(text.resId, *text.args.toTypedArray())
+            }
+        }
+    }
 
     // 연결 단계 (mDNS 검색부터 세션 준비까지의 세부 단계)
     private val _connectionPhase = MutableStateFlow(PtpipConnectionPhase.IDLE)
@@ -279,6 +296,7 @@ class PtpipDataSource @Inject constructor(
     init {
         startNetworkMonitoring()
         registerAutoConnectReceiver()
+        restoreLastConnectedCamera()
 
         // libgphoto2 디버그 로그 활성화
         try {
@@ -295,6 +313,34 @@ class PtpipDataSource @Inject constructor(
                 Log.d(TAG, "libgphoto2 개별 로그 활성화 완료")
             } catch (e2: Exception) {
                 Log.e(TAG, "libgphoto2 개별 로그 활성화 실패", e2)
+            }
+        }
+    }
+
+    /**
+     * 앱 재시작 후 DataStore에서 마지막 연결 카메라 정보를 비동기로 복원한다.
+     * 이게 없으면 자동 재연결이 활성화돼 있어도 `lastConnectedCamera == null`이라
+     * `handleNetworkStateChange`의 자동 재연결 분기가 통과되지 않는다.
+     *
+     * port는 DataStore에 저장돼 있지 않으므로 표준 PTP/IP 포트(15740)로 채우고,
+     * isOnline은 검증 전이므로 false로 둔다(자동 재연결 시 실제 연결로 검증).
+     */
+    private fun restoreLastConnectedCamera() {
+        coroutineScope.launch(ioDispatcher) {
+            try {
+                val info = ptpipPreferencesDataSource.getLastConnectedCameraInfo()
+                if (info != null && lastConnectedCamera == null) {
+                    val (ip, name) = info
+                    lastConnectedCamera = PtpipCamera(
+                        ipAddress = ip,
+                        port = 15740,
+                        name = name ?: "Last camera",
+                        isOnline = false
+                    )
+                    Log.d(TAG, "마지막 연결 카메라 복원: ip=$ip, name=$name")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "마지막 연결 카메라 복원 실패: ${e.message}")
             }
         }
     }
@@ -331,7 +377,8 @@ class PtpipDataSource @Inject constructor(
                         Log.i(TAG, "Wi-Fi 연결 해제됨 - 카메라 연결 해제")
                         _connectionState.value = PtpipConnectionState.DISCONNECTED
                         connectedCamera = null
-                        _connectionLostMessage.value = "Wi-Fi 연결이 끊어졌습니다. 다시 연결해 주세요."
+                        _connectionLostMessage.value =
+                            context.getString(R.string.progress_wifi_disconnected)
                         onConnectionLostCallback?.invoke()
                     }
                 }
@@ -476,7 +523,7 @@ class PtpipDataSource @Inject constructor(
                 try {
                     Log.i(TAG, "자동 재연결 시도 ${attempts + 1}/$maxAttempts: ${camera.name} (${camera.ipAddress})")
                     _connectionState.value = PtpipConnectionState.CONNECTING
-                    _connectionProgressMessage.value = "카메라에 연결 중..."
+                    setProgress(UiText.Resource(R.string.progress_ptpip_connecting))
 
                     if (connectToCamera(camera, forceApMode = false)) {
                         Log.i(TAG, "자동 재연결 성공")
@@ -485,13 +532,13 @@ class PtpipDataSource @Inject constructor(
 
                     Log.w(TAG, "자동 재연결 실패 (시도 ${attempts + 1}/$maxAttempts)")
                     _connectionState.value = PtpipConnectionState.ERROR
-                    _connectionProgressMessage.value = ""
+                    setProgress(UiText.Empty)
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
                     Log.w(TAG, "Reconnect attempt ${attempts + 1}/$maxAttempts failed", e)
                     _connectionState.value = PtpipConnectionState.ERROR
-                    _connectionProgressMessage.value = ""
+                    setProgress(UiText.Empty)
                 }
 
                 attempts++
@@ -653,7 +700,7 @@ class PtpipDataSource @Inject constructor(
 
             // 연결 시작 시 상태를 CONNECTING으로 변경
             _connectionState.value = PtpipConnectionState.CONNECTING
-            _connectionProgressMessage.value = "카메라 연결 시작..."
+            setProgress(UiText.Resource(R.string.progress_ptpip_connection_start))
             Log.d(TAG, "PTPIP 연결 상태 변경: CONNECTING")
 
             // AP 모드 강제 플래그 설정
@@ -690,7 +737,7 @@ class PtpipDataSource @Inject constructor(
 
             if (isNikonCamera && !forceApMode) {
                 Log.i(TAG, "=== Nikon 카메라 감지 (${camera.name}) - STA 인증 시도 ===")
-                _connectionProgressMessage.value = "Nikon 카메라 인증 중..."
+                setProgress(UiText.Resource(R.string.progress_ptpip_authenticating_nikon))
 
                 // STA 인증 시도
                 if (!nikonAuthService.performStaAuthentication(camera)) {
@@ -713,7 +760,7 @@ class PtpipDataSource @Inject constructor(
             val pluginDir = "${portVersionDir.absolutePath}:${gphoto2VersionDir.absolutePath}"
             Log.i(TAG, "플러그인 디렉토리: $pluginDir")
 
-            _connectionProgressMessage.value = "카메라 연결 중..."
+            setProgress(UiText.Resource(R.string.progress_ptpip_connecting))
 
             // 환경 변수 설정 (중요!)
             Log.i(TAG, "=== libgphoto2 환경 변수 설정 ===")
@@ -742,16 +789,16 @@ class PtpipDataSource @Inject constructor(
             if (!initOk) {
                 Log.e(TAG, "❌ libgphoto2 초기화 실패: $initResult")
                 _connectionState.value = PtpipConnectionState.ERROR
-                _connectionProgressMessage.value = "연결 실패: $initResult"
+                setProgress(UiText.Resource( R.string.progress_ptpip_failed, listOf(initResult.orEmpty()) ))
                 return@withContext false
             }
 
             Log.i(TAG, "✅ libgphoto2 초기화 성공")
 
             // =========================
-            // Step 2: 카메라 기능 조회 
+            // Step 2: 카메라 기능 조회
             // =========================
-            _connectionProgressMessage.value = "카메라 정보 확인 중..."
+            setProgress(UiText.Resource(R.string.progress_ptpip_checking_info))
 
             val abilitiesJson = try {
                 CameraNative.getCameraAbilities()
@@ -794,14 +841,14 @@ class PtpipDataSource @Inject constructor(
                 if (abilities.supports.isDownloadOnly()) {
                     Log.w(TAG, "⚠️ 이 카메라는 다운로드만 지원합니다")
                     Log.w(TAG, "   원격 촬영 및 라이브뷰는 지원되지 않습니다")
-                    _connectionProgressMessage.value = "연결 완료 (기능 제한)"
+                    setProgress(UiText.Resource(R.string.progress_ptpip_complete_limited))
                 }
             }
 
             // =========================
             // Step 4: 이벤트 리스너 시작 (connectedCamera 설정 전에 시작)
             // =========================
-            _connectionProgressMessage.value = "이벤트 리스너 시작 중..."
+            setProgress(UiText.Resource(R.string.progress_ptpip_listener_start))
             startAutomaticFileReceiving(camera)
 
             // =========================
@@ -818,7 +865,7 @@ class PtpipDataSource @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "카메라 연결 중 오류", e)
             _connectionState.value = PtpipConnectionState.ERROR
-            _connectionProgressMessage.value = "연결 오류: ${e.message}"
+            setProgress(UiText.Resource( R.string.progress_ptpip_error, listOf(e.message.orEmpty()) ))
             return@withContext false
         }
         } // withContext
@@ -978,7 +1025,7 @@ class PtpipDataSource @Inject constructor(
             com.inik.camcon.utils.LogcatManager.d(TAG, "⚡ 파일 목록 조회 건너뜀 - 이벤트 리스너만 시작")
 
             // 이벤트 리스너 시작
-            _connectionProgressMessage.value = "이벤트 리스너 시작 중..."
+            setProgress(UiText.Resource(R.string.progress_ptpip_listener_start))
             com.inik.camcon.utils.LogcatManager.d(TAG, "🎧 CameraEventManager를 통한 이벤트 리스너 시작")
 
             // CameraEventManager를 통해 PTPIP 이벤트 리스너 시작
@@ -1074,7 +1121,7 @@ class PtpipDataSource @Inject constructor(
 
                         // 초기 플러시 완료 시 연결 완료 상태로 변경
                         _connectionState.value = PtpipConnectionState.CONNECTED
-                        _connectionProgressMessage.value = "연결 완료!"
+                        setProgress(UiText.Resource(R.string.progress_ptpip_complete))
                         Log.d(TAG, "PTPIP 연결 상태 변경: CONNECTED")
 
                         // 이벤트 리스너 준비 완료 신호
@@ -1109,7 +1156,7 @@ class PtpipDataSource @Inject constructor(
             if (result.isSuccess) {
                 Log.i(TAG, "✅ PTPIP AP 모드 이벤트 리스너 시작 성공")
                 com.inik.camcon.utils.LogcatManager.d(TAG, "🎉 PTPIP 이벤트 리스너 시작 성공!")
-                _connectionProgressMessage.value = "초기화 완료 중..."
+                setProgress(UiText.Resource(R.string.progress_ptpip_finalizing))
             } else {
                 Log.e(
                     TAG,
@@ -1119,13 +1166,13 @@ class PtpipDataSource @Inject constructor(
                     TAG,
                     "❌ PTPIP 이벤트 리스너 시작 실패: ${result.exceptionOrNull()?.message}"
                 )
-                _connectionProgressMessage.value = "이벤트 리스너 오류"
+                setProgress(UiText.Resource(R.string.progress_ptpip_listener_error))
                 listenerReady.complete(false)
             }
         } catch (e: Exception) {
             Log.e(TAG, "PTPIP AP 모드 이벤트 리스너 시작 중 오류", e)
             com.inik.camcon.utils.LogcatManager.e(TAG, "❌ PTPIP 이벤트 리스너 시작 중 예외: ${e.message}", e)
-            _connectionProgressMessage.value = "설정 오류"
+            setProgress(UiText.Resource(R.string.progress_ptpip_setup_error))
             listenerReady.complete(false)
             // 폴백: 기존 방식 사용
             startFileReceiveListenerFallback(camera)
@@ -1365,7 +1412,7 @@ class PtpipDataSource @Inject constructor(
                 _isApModeForced.value = false
                 // 사용자 시나리오도 리셋 — 다음 연결의 inferMethod() 결과 보존.
                 _activeConnectionMethod.value = null
-                _connectionProgressMessage.value = ""
+                setProgress(UiText.Empty)
                 isInitialFlushCompleted = false
                 Log.d(TAG, "카메라 연결 해제 완료")
             } else {

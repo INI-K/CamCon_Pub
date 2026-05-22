@@ -68,6 +68,12 @@ class ValidateImageFormatUseCaseTest {
         override val subscriptionTierEnum: Flow<SubscriptionTier> = MutableStateFlow(SubscriptionTier.FREE)
         override val themeMode: Flow<ThemeMode> = MutableStateFlow(ThemeMode.DARK)
         override val isNativeLogCaptureEnabled: Flow<Boolean> = MutableStateFlow(false)
+        override val hasSeenPtpipPreviewWarning: Flow<Boolean> = MutableStateFlow(false)
+        override val isShutterSoundEnabled: Flow<Boolean> = MutableStateFlow(true)
+        override val isLiveViewGridEnabled: Flow<Boolean> = MutableStateFlow(false)
+        override val hasSeenCaptureCoachmark: Flow<Boolean> = MutableStateFlow(false)
+        override val lastTimelapseInterval: Flow<Int> = MutableStateFlow(5)
+        override val lastTimelapseCount: Flow<Int> = MutableStateFlow(100)
 
         override suspend fun setCameraControlsEnabled(enabled: Boolean) {}
         override suspend fun setLiveViewEnabled(enabled: Boolean) {}
@@ -83,6 +89,12 @@ class ValidateImageFormatUseCaseTest {
         }
         override suspend fun setThemeMode(mode: ThemeMode) {}
         override suspend fun setNativeLogCaptureEnabled(enabled: Boolean) {}
+        override suspend fun setHasSeenPtpipPreviewWarning(seen: Boolean) {}
+        override suspend fun setShutterSoundEnabled(enabled: Boolean) {}
+        override suspend fun setLiveViewGridEnabled(enabled: Boolean) {}
+        override suspend fun setHasSeenCaptureCoachmark(seen: Boolean) {}
+        override suspend fun setLastTimelapseInterval(seconds: Int) {}
+        override suspend fun setLastTimelapseCount(count: Int) {}
         override suspend fun clearAllSettings() {}
     }
 

@@ -30,6 +30,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -681,14 +683,60 @@ fun PtpipConnectionScreen(
                     StatusKind.Error -> errorMessage ?: stringResource(R.string.ptpip_camera_disconnected)
                     StatusKind.Idle -> stringResource(R.string.ptpip_camera_connection)
                 }
-                androidx.compose.foundation.layout.Box(
+                androidx.compose.foundation.layout.Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(CameraSpec.statusBarHeight)
                         .padding(horizontal = Spacing.lg),
-                    contentAlignment = Alignment.CenterStart
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    StatusIndicator(kind = ptpStatusKind, label = ptpStatusLabel)
+                    androidx.compose.foundation.layout.Box(
+                        modifier = Modifier.weight(1f),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        StatusIndicator(kind = ptpStatusKind, label = ptpStatusLabel)
+                    }
+
+                    // 자동 재연결 토글 — TopAppBar 아래 항상 노출.
+                    // POST_NOTIFICATIONS(API 33+) 미부여 시 Switch는 비활성 + 안내 라벨.
+                    val notificationPermissionGranted = remember(context) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.POST_NOTIFICATIONS
+                            ) == PackageManager.PERMISSION_GRANTED
+                        } else {
+                            true
+                        }
+                    }
+                    Text(
+                        text = if (notificationPermissionGranted) {
+                            stringResource(R.string.connect_auto_reconnect_label)
+                        } else {
+                            stringResource(R.string.autoconnect_notification_required)
+                        },
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (notificationPermissionGranted) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.error
+                        },
+                        modifier = Modifier.padding(end = Spacing.sm)
+                    )
+                    Switch(
+                        checked = isAutoReconnectEnabled,
+                        enabled = notificationPermissionGranted,
+                        onCheckedChange = { enabled ->
+                            ptpipViewModel.setAutoReconnectEnabled(enabled)
+                            // 자동 재연결 토글은 자동 연결(브로드캐스트 기반)과 함께 운용된다.
+                            // 사용자 의도 — 토글을 켜면 두 기능 모두 활성화.
+                            ptpipViewModel.setAutoConnectEnabled(enabled)
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                            checkedTrackColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
                 }
 
                 // 탭 행

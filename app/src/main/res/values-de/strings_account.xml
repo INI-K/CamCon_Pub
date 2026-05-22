@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Konto: Abmelden / Löschen -->
+    <string name="account_logout_dialog_title">Abmelden?</string>
+    <string name="account_logout_dialog_message">Lokaler Foto-Cache und Verbindungsverlauf bleiben erhalten. Möchten Sie sich wirklich abmelden?</string>
+    <string name="account_logout_confirm">Abmelden</string>
+    <string name="account_logout_cancel">Abbrechen</string>
+
+    <string name="account_delete_row_title">Konto löschen</string>
+    <string name="account_delete_row_subtitle">Konto und alle Daten dauerhaft entfernen</string>
+    <string name="account_delete_dialog_title">Konto löschen?</string>
+    <string name="account_delete_dialog_message">Beim Löschen des Kontos werden Ihre Cloud-Fotos, Einstellungen und Abonnementdaten dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.</string>
+    <string name="account_delete_continue">Weiter</string>
+    <string name="account_delete_cancel">Abbrechen</string>
+
+    <string name="account_delete_confirm_title">DELETE eingeben</string>
+    <string name="account_delete_confirm_message">Geben Sie DELETE in das Feld unten ein, um die endgültige Löschung zu bestätigen.</string>
+    <string name="account_delete_confirm_placeholder">DELETE</string>
+    <string name="account_delete_confirm_button">Endgültig löschen</string>
+    <string name="account_delete_confirm_cancel">Abbrechen</string>
+    <string name="account_delete_success">Konto gelöscht</string>
+    <string name="account_delete_failed">Konto konnte nicht gelöscht werden: %s</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_skip">Überspringen</string>
+    <string name="onboarding_next">Weiter</string>
+    <string name="onboarding_start">Loslegen</string>
+
+    <string name="onboarding_step1_title">Per USB OTG verbinden</string>
+    <string name="onboarding_step1_description">Schließen Sie Ihre DSLR oder spiegellose Kamera mit einem USB-OTG-Kabel an und stellen Sie die Kamera auf PC/PTP-Modus.</string>
+
+    <string name="onboarding_step2_title">Per Wi-Fi PTP-IP verbinden</string>
+    <string name="onboarding_step2_description">Verbinden Sie sich mit dem WLAN-Access-Point der Kamera oder bringen Sie beide Geräte in dasselbe WLAN-Netzwerk, um drahtlos zu steuern.</string>
+
+    <string name="onboarding_step3_title">Berechtigungen</string>
+    <string name="onboarding_step3_description">Für WLAN-Erkennung und Live-Benachrichtigungen erteilen Sie bitte die Standort-, WLAN- und Benachrichtigungsberechtigungen.</string>
+
+    <!-- Sprache -->
+    <string name="language_row_title">Sprache / Language</string>
+    <string name="language_dialog_title">Sprache auswählen</string>
+    <string name="language_system_default">Systemstandard</string>
+    <string name="language_option_en">English</string>
+    <string name="language_option_ko">한국어</string>
+    <string name="language_option_ja">日本語</string>
+    <string name="language_option_zh">中文</string>
+    <string name="language_option_de">Deutsch</string>
+    <string name="language_option_es">Español</string>
+    <string name="language_option_fr">Français</string>
+    <string name="language_option_it">Italiano</string>
+
+    <!-- Empfehlungscode -->
+    <string name="referral_input_label">Empfehlungscode (optional)</string>
+    <string name="referral_input_helper">Falls Sie einen Empfehlungscode haben, geben Sie ihn vor der Anmeldung ein.</string>
+</resources>

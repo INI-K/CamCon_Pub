@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- PhotoPreview group 4 — UX improvements -->
+    <string name="preview_local_only_banner">Wi-Fi mode shows only locally downloaded photos. USB mode is recommended for camera card access.</string>
+    <string name="preview_ptpip_first_warning">Wi-Fi mode shows only locally downloaded photos. Switch to USB to browse the camera card.</string>
+    <string name="preview_delete_title">Delete photo?</string>
+    <string name="preview_delete_confirm">Delete this photo? It will be removed from camera memory as well.</string>
+    <string name="preview_delete_success">Photo deleted</string>
+    <string name="share_chooser_title">Share photo</string>
+    <string name="share_no_image_data">No image data available to share.</string>
+    <string name="share_failed">Failed to share photo.</string>
+    <string name="share_local_unavailable">Local file unavailable.</string>
+    <string name="share_in_progress">Sharing…</string>
+    <string name="raw_gating_unified_message">RAW files are available with PRO subscription. Current tier: %1$s</string>
+    <string name="raw_gating_current_tier">Current tier: %1$s</string>
+    <string name="preview_retry_single">Retry</string>
+</resources>

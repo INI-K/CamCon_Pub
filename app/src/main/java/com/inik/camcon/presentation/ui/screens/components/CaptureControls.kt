@@ -1,5 +1,6 @@
 package com.inik.camcon.presentation.ui.screens.components
 
+import android.media.MediaActionSound
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -19,22 +20,29 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.inik.camcon.R
@@ -44,6 +52,7 @@ import com.inik.camcon.presentation.theme.Border
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.Primary
 import com.inik.camcon.presentation.theme.PrimaryDark
+import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.SurfaceElevated
 import com.inik.camcon.presentation.theme.TextMuted
 import com.inik.camcon.presentation.theme.TextPrimary
@@ -63,6 +72,8 @@ import com.inik.camcon.presentation.theme.OnPrimary
  * @param onShowTimelapseDialog 타임랩스 다이얼로그 콜백
  * @param isVertical 세로 레이아웃 여부
  * @param onGalleryClick 갤러리 클릭 콜백
+ * @param isLiveViewActive 라이브뷰 활성 여부. false면 트리거 캡처 라벨을 함께 표시한다.
+ * @param isShutterSoundEnabled 셔터 사운드 토글 (기본 true)
  */
 @Composable
 fun CaptureControls(
@@ -73,6 +84,8 @@ fun CaptureControls(
     onShowTimelapseDialog: () -> Unit,
     isVertical: Boolean,
     onGalleryClick: () -> Unit = {},
+    isLiveViewActive: Boolean = true,
+    isShutterSoundEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     if (isVertical) {
@@ -87,25 +100,44 @@ fun CaptureControls(
                 onCapture = onCapture,
                 onAutoFocus = onAutoFocus,
                 onShowTimelapseDialog = onShowTimelapseDialog,
-                onGalleryClick = onGalleryClick
+                onGalleryClick = onGalleryClick,
+                isLiveViewActive = isLiveViewActive,
+                isShutterSoundEnabled = isShutterSoundEnabled
             )
         }
     } else {
-        Row(
+        Column(
             modifier = modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            CaptureControlsContent(
-                captureState = captureState,
-                isConnected = isConnected,
-                onCapture = onCapture,
-                onAutoFocus = onAutoFocus,
-                onShowTimelapseDialog = onShowTimelapseDialog,
-                onGalleryClick = onGalleryClick
-            )
+            if (!isLiveViewActive) {
+                Text(
+                    text = stringResource(R.string.capture_no_liveview_label),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = TextSecondary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = Spacing.sm, bottom = Spacing.xs)
+                )
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CaptureControlsContent(
+                    captureState = captureState,
+                    isConnected = isConnected,
+                    onCapture = onCapture,
+                    onAutoFocus = onAutoFocus,
+                    onShowTimelapseDialog = onShowTimelapseDialog,
+                    onGalleryClick = onGalleryClick,
+                    isLiveViewActive = isLiveViewActive,
+                    isShutterSoundEnabled = isShutterSoundEnabled
+                )
+            }
         }
     }
 }
@@ -117,8 +149,26 @@ private fun CaptureControlsContent(
     onCapture: () -> Unit,
     onAutoFocus: () -> Unit,
     onShowTimelapseDialog: () -> Unit,
-    onGalleryClick: () -> Unit = {}
+    onGalleryClick: () -> Unit = {},
+    isLiveViewActive: Boolean = true,
+    isShutterSoundEnabled: Boolean = true
 ) {
+    val haptic = LocalHapticFeedback.current
+
+    // 셔터음 — 호스트 컴포저블의 라이프사이클을 따라 load/release
+    val shutterSound = remember {
+        MediaActionSound().apply { load(MediaActionSound.SHUTTER_CLICK) }
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            try {
+                shutterSound.release()
+            } catch (e: Exception) {
+                // best effort — 일부 OEM에서 release 중 예외 가능
+            }
+        }
+    }
+
     // 갤러리 버튼
     Surface(
         color = SurfaceElevated,
@@ -182,6 +232,15 @@ private fun CaptureControlsContent(
                     contentDescription = "촬영"
                 }
                 .clickable(enabled = isEnabled) {
+                    // H1: 햅틱·셔터음
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    if (isShutterSoundEnabled) {
+                        try {
+                            shutterSound.play(MediaActionSound.SHUTTER_CLICK)
+                        } catch (e: Exception) {
+                            // ignore — 사운드 실패가 캡처를 막아서는 안 됨
+                        }
+                    }
                     when (captureState.shootingMode) {
                         ShootingMode.TIMELAPSE -> onShowTimelapseDialog()
                         else -> onCapture()

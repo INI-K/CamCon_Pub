@@ -7,6 +7,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,9 +22,12 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.GridOn
+import androidx.compose.material.icons.filled.GridOff
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Stop
@@ -48,7 +52,10 @@ import com.inik.camcon.R
 import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.presentation.theme.Background
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.Error
+import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.SurfaceElevated
 import com.inik.camcon.presentation.theme.TextPrimary
 import com.inik.camcon.presentation.theme.TextSecondary
 import com.inik.camcon.presentation.theme.Warning
@@ -92,7 +99,9 @@ fun CameraPreviewArea(
     onRefreshUsb: () -> Unit,
     onRequestUsbPermission: () -> Unit,
     modifier: Modifier = Modifier,
-    onDoubleClick: (() -> Unit)? = null
+    onDoubleClick: (() -> Unit)? = null,
+    isGridOverlayEnabled: Boolean = false,
+    onToggleGridOverlay: (() -> Unit)? = null
 ) {
     Box(
         modifier = modifier
@@ -135,6 +144,50 @@ fun CameraPreviewArea(
                             }
                         } catch (e: Exception) {
                             Log.w("CameraPreview", "Bitmap recycle 실패", e)
+                        }
+                    }
+                }
+
+                // H5: Rule-of-Thirds 그리드 오버레이
+                if (isGridOverlayEnabled) {
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        val w = size.width
+                        val h = size.height
+                        val stroke = 1.dp.toPx()
+                        val color = androidx.compose.ui.graphics.Color(DividerLine.value)
+                            .copy(alpha = 0.7f)
+                        // 2 vertical lines at 1/3 and 2/3
+                        drawLine(color, androidx.compose.ui.geometry.Offset(w / 3f, 0f),
+                            androidx.compose.ui.geometry.Offset(w / 3f, h), strokeWidth = stroke)
+                        drawLine(color, androidx.compose.ui.geometry.Offset(2f * w / 3f, 0f),
+                            androidx.compose.ui.geometry.Offset(2f * w / 3f, h), strokeWidth = stroke)
+                        // 2 horizontal lines at 1/3 and 2/3
+                        drawLine(color, androidx.compose.ui.geometry.Offset(0f, h / 3f),
+                            androidx.compose.ui.geometry.Offset(w, h / 3f), strokeWidth = stroke)
+                        drawLine(color, androidx.compose.ui.geometry.Offset(0f, 2f * h / 3f),
+                            androidx.compose.ui.geometry.Offset(w, 2f * h / 3f), strokeWidth = stroke)
+                    }
+                }
+
+                // H5: 우상단 그리드 토글 버튼
+                if (onToggleGridOverlay != null) {
+                    androidx.compose.material3.Surface(
+                        color = SurfaceElevated.copy(alpha = 0.7f),
+                        shape = androidx.compose.foundation.shape.CircleShape,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(Spacing.md)
+                    ) {
+                        IconButton(
+                            onClick = onToggleGridOverlay,
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isGridOverlayEnabled) Icons.Default.GridOn else Icons.Default.GridOff,
+                                contentDescription = stringResource(R.string.liveview_grid_toggle),
+                                tint = TextPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
                         }
                     }
                 }

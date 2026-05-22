@@ -117,6 +117,10 @@ class PhotoPreviewViewModel @Inject constructor(
     // RAW 다운로드 허용 설정 (ValidateImageFormatUseCase와 동일 조건 유지)
     private val _isRawDownloadEnabled = MutableStateFlow(true)
 
+    // M12: 마지막 다운로드 시도한 사진 (재시도용)
+    private val _lastFailedDownload = MutableStateFlow<CameraPhoto?>(null)
+    val lastFailedDownload: StateFlow<CameraPhoto?> = _lastFailedDownload.asStateFlow()
+
     // 옵저버 Job 필드들 — Flow collect 중복 방지
     private var connectionObserveJob: Job? = null
     private var ptpipObserveJob: Job? = null
@@ -414,8 +418,53 @@ class PhotoPreviewViewModel @Inject constructor(
         if (!handleRawFileAccess(photo)) {
             return
         }
-        
+
+        // M12 — 단일 사진 재시도용 추적
+        _lastFailedDownload.value = photo
         photoImageManager.downloadFullImage(photo.path, _uiState.value.currentTier)
+    }
+
+    /**
+     * H7-A — 사진 삭제. 카메라/로컬 모두에서 제거.
+     */
+    fun deletePhoto(photo: CameraPhoto) {
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "사진 삭제 시도: ${photo.name}")
+                // TODO: 카메라 측 삭제 API 호출 결과를 UI에 반영 (현재 Result 반환만 사용).
+                val result = cameraRepository.deletePhoto(photo.path)
+                result.fold(
+                    onSuccess = {
+                        Log.d(TAG, "카메라 측 사진 삭제 성공: ${photo.name}")
+                    },
+                    onFailure = { e ->
+                        Log.w(TAG, "카메라 측 사진 삭제 실패 (로컬 정리는 계속): ${photo.name}", e)
+                    }
+                )
+
+                // 로컬 파일도 정리.
+                runCatching {
+                    val localFile = java.io.File(photo.path)
+                    if (localFile.exists()) localFile.delete()
+                }
+
+                // 선택 해제 및 목록 갱신
+                if (_uiState.value.selectedPhoto?.path == photo.path) {
+                    _uiState.update { it.copy(selectedPhoto = null) }
+                }
+                if (!_uiState.value.isPtpipConnected) {
+                    photoListManager.refreshPhotos(
+                        _uiState.value.isConnected,
+                        _uiState.value.isPtpipConnected
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "사진 삭제 중 예외", e)
+                emitError(e.message ?: "delete failed")
+            }
+        }
     }
 
     /**
@@ -498,6 +547,32 @@ class PhotoPreviewViewModel @Inject constructor(
      */
     fun forceLoadNextPage() {
         loadNextPage()
+    }
+
+    /**
+     * M12 — 마지막 실패한 다운로드 재시도. 없으면 전체 새로고침으로 폴백.
+     */
+    fun retryDownload(photo: CameraPhoto?) {
+        val target = photo ?: _lastFailedDownload.value
+        if (target != null) {
+            Log.d(TAG, "단일 사진 재시도: ${target.name}")
+            _lastFailedDownload.value = null
+            photoImageManager.downloadFullImage(target.path, _uiState.value.currentTier)
+        } else {
+            Log.d(TAG, "마지막 실패 다운로드 없음 - 전체 새로고침 폴백")
+            loadCameraPhotos()
+        }
+    }
+
+    /**
+     * H3 — PTPIP 활성 시 카메라 fetch는 스킵, 로컬 다운로드 캐시만 사용.
+     * 현재 photoListManager의 기존 로드는 PTPIP 시 차단되므로 본 함수는 명시적 호출 시
+     * 차단 메시지를 띄우지 않고 silently no-op한다 (그리드는 이미 다운로드된 파일을 보여줌).
+     */
+    fun loadLocalOnlyPhotos() {
+        Log.d(TAG, "loadLocalOnlyPhotos 호출 - PTPIP 모드 로컬 전용")
+        // 다운로드 폴더 기반 로컬 사진은 추후 별도 구현 (현재는 processedFiles 기반 캐시에 의존).
+        // PhotoListManager 호출은 의도적으로 생략한다.
     }
 
     // MARK: - Private Helper Methods

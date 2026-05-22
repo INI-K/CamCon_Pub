@@ -130,6 +130,32 @@ fun TopControlsBar(
                     color = TextPrimary,
                     style = MaterialTheme.typography.labelLarge
                 )
+
+                // M8: 배터리 칩 — capabilities.batteryLevel 이 있을 때만 표시
+                uiState.cameraCapabilities?.batteryLevel?.let { level ->
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                color = Surface,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            .border(
+                                width = 1.dp,
+                                color = Border,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.camera_status_battery_percent, level),
+                            color = if (level <= 15) Error else TextPrimary,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+                // TODO(M8): SD 잔량 — domain CameraCapabilities에 sdFree 필드가 추가되면 같은 패턴으로 표시
             }
 
             // 설정 버튼

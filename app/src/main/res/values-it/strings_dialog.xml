@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="splash_initializing">Inizializzazione...</string>
+    <string name="splash_library_check">Verifica della libreria...</string>
+    <string name="splash_library_failed">Caricamento libreria non riuscito</string>
+    <string name="splash_env_failed">Configurazione ambiente non riuscita</string>
+    <string name="splash_library_ready">Libreria pronta (%1$dms)</string>
+    <string name="splash_library_status_check_failed">Verifica libreria non riuscita: %1$s</string>
+    <string name="splash_version_check">Verifica versione...</string>
+    <string name="splash_update_required_title">Aggiornamento obbligatorio</string>
+    <string name="splash_update_available_title">Aggiornamento disponibile</string>
+    <string name="splash_update_required_message">Devi aggiornare all\'ultima versione per usare l\'app.\n\nAttuale: %1$s\nUltima: %2$s</string>
+    <string name="splash_update_available_message">È disponibile una nuova versione. Aggiornare?\n\nAttuale: %1$s\nUltima: %2$s</string>
+    <string name="splash_update_button">Aggiorna</string>
+    <string name="splash_later_button">Più tardi</string>
+    <string name="splash_camera_controller">Camera Controller</string>
+    <string name="splash_subscription_tier">Abbonamento: %1$s</string>
+
+    <string name="dialog_restart_required_title">Riavvio dell\'app necessario</string>
+    <string name="dialog_restart_preparing_title">Preparazione al riavvio...</string>
+    <string name="dialog_restart_preparing_body">Attendere mentre viene ripulita la connessione.</string>
+    <string name="dialog_restart_body">L\'app deve essere riavviata completamente per un problema di connessione.</string>
+    <string name="dialog_restart_options">• Riavvia ora: immediato\n• Esci: chiude l\'app (riavvio manuale)</string>
+    <string name="dialog_restart_now">Riavvia ora</string>
+    <string name="dialog_restart_quit">Esci</string>
+    <string name="dialog_later">Più tardi</string>
+    <string name="dialog_confirm">OK</string>
+    <string name="dialog_understood">Capito</string>
+    <string name="dialog_reconnect">Riconnetti</string>
+
+    <string name="dialog_usb_disconnected_title">Dispositivo USB disconnesso</string>
+    <string name="dialog_usb_disconnected_body">La connessione USB della fotocamera è stata persa.</string>
+    <string name="dialog_usb_disconnected_hints">• Controlla il cavo USB\n• Controlla l\'alimentazione della fotocamera\n• Imposta la fotocamera in modalità PC</string>
+
+    <string name="dialog_camera_check_title">Diagnostica fotocamera necessaria</string>
+    <string name="dialog_camera_check_body">La fotocamera non risponde correttamente.</string>
+    <string name="dialog_camera_check_prompt">Verifica quanto segue:</string>
+    <string name="dialog_camera_check_hints">• Fotocamera accesa\n• Batteria sufficiente\n• Cavo USB connesso\n• Modalità connessione PC\n• Prova a spegnere e riaccendere</string>
+
+    <string name="dialog_wifi_active_title">Connessione Wi-Fi attiva</string>
+    <string name="dialog_wifi_active_body">L\'anteprima non è disponibile perché la fotocamera è connessa via Wi-Fi.</string>
+    <string name="dialog_wifi_active_steps_title">Per usare l\'anteprima:</string>
+    <string name="dialog_wifi_active_steps">1. Disconnetti il Wi-Fi della fotocamera\n2. Connettila via cavo USB\n3. Impostala in modalità PC</string>
+    <string name="dialog_wifi_active_hint">Su Wi-Fi usa la scheda \"Controllo fotocamera\".</string>
+
+    <string name="dialog_wifi_disconnected_title">Wi-Fi disconnesso</string>
+    <string name="dialog_wifi_disconnected_body">La connessione Wi-Fi alla fotocamera è stata persa. Riconnetti.</string>
+
+    <string name="progress_ptpip_connecting">Connessione alla fotocamera...</string>
+    <string name="progress_ptpip_connection_start">Avvio connessione fotocamera...</string>
+    <string name="progress_ptpip_authenticating_nikon">Autenticazione Nikon...</string>
+    <string name="progress_ptpip_checking_info">Verifica informazioni fotocamera...</string>
+    <string name="progress_ptpip_listener_start">Avvio listener eventi...</string>
+    <string name="progress_ptpip_finalizing">Completamento inizializzazione...</string>
+    <string name="progress_ptpip_complete">Connesso!</string>
+    <string name="progress_ptpip_complete_limited">Connesso (funzioni limitate)</string>
+    <string name="progress_ptpip_listener_error">Errore listener eventi</string>
+    <string name="progress_ptpip_setup_error">Errore di configurazione</string>
+    <string name="progress_ptpip_failed">Connessione fallita: %1$s</string>
+    <string name="progress_ptpip_error">Errore di connessione: %1$s</string>
+    <string name="progress_wifi_disconnected">Wi-Fi disconnesso. Riconnetti.</string>
+
+    <string name="progress_wifi_auto_connect_failed">Auto-connessione Wi-Fi fallita: %1$s</string>
+    <string name="progress_wifi_request_exception">Errore richiesta Wi-Fi: %1$s</string>
+    <string name="progress_camera_connect_failed">Connessione alla fotocamera fallita.\nVerifica la rete e riprova.</string>
+    <string name="progress_camera_connect_exception">Errore durante la connessione: %1$s</string>
+    <string name="progress_camera_label_connected">%1$s (connessa)</string>
+
+    <string name="notification_settings_title">Notifiche</string>
+    <string name="notification_settings_subtitle">Notifiche push e suono</string>
+</resources>

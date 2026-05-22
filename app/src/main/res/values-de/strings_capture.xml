@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="capture_shutter_sound_label">Auslöserton</string>
+    <string name="capture_shutter_sound_subtitle">Systemauslöserton bei Aufnahme abspielen</string>
+    <string name="capture_no_liveview_label">Aufnahme ohne Live-View auslösen</string>
+    <string name="liveview_grid_toggle">Raster</string>
+    <string name="liveview_exposure_compensation_label">EV</string>
+
+    <string name="coachmark_double_tap_fullscreen">Doppeltippen für Vollbild</string>
+    <string name="coachmark_shutter_area">88dp Auslöserbereich antippen</string>
+    <string name="coachmark_recent_double_tap">Aktuelles Foto doppeltippen für Galerie</string>
+    <string name="coachmark_got_it">Verstanden</string>
+
+    <string name="shooting_unsupported_mode">Diese Kamera unterstützt den %1$s-Modus nicht</string>
+
+    <string name="camera_status_battery_percent">Akku %1$d%%</string>
+    <string name="camera_status_sd_free">SD frei %1$s</string>
+
+    <string name="timelapse_interval_label">Intervall (Sek)</string>
+    <string name="timelapse_count_label">Anzahl Aufnahmen</string>
+</resources>

@@ -58,6 +58,37 @@ class AppPreferencesDataSource @Inject constructor(
             booleanPreferencesKey("admin_native_log_stream_enabled")
         private val NATIVE_LOG_CAPTURE_ENABLED =
             booleanPreferencesKey("native_log_capture_enabled")
+        private val HAS_SEEN_PTPIP_PREVIEW_WARNING =
+            booleanPreferencesKey("has_seen_ptpip_preview_warning")
+
+        // Capture UX (Group 3)
+        private val SHUTTER_SOUND_ENABLED = booleanPreferencesKey("shutter_sound_enabled")
+        private val LIVE_VIEW_GRID_ENABLED = booleanPreferencesKey("live_view_grid_enabled")
+        private val HAS_SEEN_CAPTURE_COACHMARK =
+            booleanPreferencesKey("has_seen_capture_coachmark")
+        private val LAST_TIMELAPSE_INTERVAL = intPreferencesKey("last_timelapse_interval")
+        private val LAST_TIMELAPSE_COUNT = intPreferencesKey("last_timelapse_count")
+
+        // Onboarding (Group 1)
+        private val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
+    }
+
+    /**
+     * 첫 사용자 온보딩 완료 여부 (기본값: false).
+     * 신규 사용자에게 USB / Wi-Fi / 권한 안내 3-스텝 페이저를 1회 보여주기 위한 플래그.
+     */
+    val isOnboardingCompleted: Flow<Boolean> = context.appDataStore.data
+        .map { preferences ->
+            preferences[ONBOARDING_COMPLETED] ?: false
+        }
+
+    /**
+     * 온보딩 완료 표시 — true 로 저장하면 다음 실행부터 페이저를 건너뛴다.
+     */
+    suspend fun setOnboardingCompleted(completed: Boolean) {
+        context.appDataStore.edit { preferences ->
+            preferences[ONBOARDING_COMPLETED] = completed
+        }
     }
 
     /**
@@ -204,6 +235,55 @@ class AppPreferencesDataSource @Inject constructor(
         }
 
     /**
+     * 사용자가 PTPIP 미리보기 안내를 한 번 본 적이 있는지 여부 (기본값: false).
+     * H3 — Wi-Fi 모드 첫 진입 시 1회 안내 후 다시 표시하지 않기 위해 사용.
+     */
+    override val hasSeenPtpipPreviewWarning: Flow<Boolean> = context.appDataStore.data
+        .map { preferences ->
+            preferences[HAS_SEEN_PTPIP_PREVIEW_WARNING] ?: false
+        }
+
+    /**
+     * 셔터 사운드 사용 여부 (기본값: true)
+     */
+    override val isShutterSoundEnabled: Flow<Boolean> = context.appDataStore.data
+        .map { preferences ->
+            preferences[SHUTTER_SOUND_ENABLED] ?: true
+        }
+
+    /**
+     * 라이브뷰 그리드 오버레이 사용 여부 (기본값: false)
+     */
+    override val isLiveViewGridEnabled: Flow<Boolean> = context.appDataStore.data
+        .map { preferences ->
+            preferences[LIVE_VIEW_GRID_ENABLED] ?: false
+        }
+
+    /**
+     * 촬영 화면 첫 진입 코치마크 표시 완료 여부 (기본값: false)
+     */
+    override val hasSeenCaptureCoachmark: Flow<Boolean> = context.appDataStore.data
+        .map { preferences ->
+            preferences[HAS_SEEN_CAPTURE_COACHMARK] ?: false
+        }
+
+    /**
+     * 마지막 타임랩스 간격 (초) — 다이얼로그 prefill (기본값: 5)
+     */
+    override val lastTimelapseInterval: Flow<Int> = context.appDataStore.data
+        .map { preferences ->
+            preferences[LAST_TIMELAPSE_INTERVAL] ?: 5
+        }
+
+    /**
+     * 마지막 타임랩스 총 컷 수 — 다이얼로그 prefill (기본값: 100)
+     */
+    override val lastTimelapseCount: Flow<Int> = context.appDataStore.data
+        .map { preferences ->
+            preferences[LAST_TIMELAPSE_COUNT] ?: 100
+        }
+
+    /**
      * 구독 티어 (SubscriptionTier enum으로 변환, 기본값: FREE)
      */
     override val subscriptionTierEnum: Flow<com.inik.camcon.domain.model.SubscriptionTier> = subscriptionTier
@@ -330,6 +410,60 @@ class AppPreferencesDataSource @Inject constructor(
     override suspend fun setNativeLogCaptureEnabled(enabled: Boolean) {
         context.appDataStore.edit { preferences ->
             preferences[NATIVE_LOG_CAPTURE_ENABLED] = enabled
+        }
+    }
+
+    /**
+     * PTPIP 미리보기 안내 표시 여부 저장.
+     */
+    override suspend fun setHasSeenPtpipPreviewWarning(seen: Boolean) {
+        context.appDataStore.edit { preferences ->
+            preferences[HAS_SEEN_PTPIP_PREVIEW_WARNING] = seen
+        }
+    }
+
+    /**
+     * 셔터 사운드 사용 여부 저장.
+     */
+    override suspend fun setShutterSoundEnabled(enabled: Boolean) {
+        context.appDataStore.edit { preferences ->
+            preferences[SHUTTER_SOUND_ENABLED] = enabled
+        }
+    }
+
+    /**
+     * 라이브뷰 그리드 오버레이 사용 여부 저장.
+     */
+    override suspend fun setLiveViewGridEnabled(enabled: Boolean) {
+        context.appDataStore.edit { preferences ->
+            preferences[LIVE_VIEW_GRID_ENABLED] = enabled
+        }
+    }
+
+    /**
+     * 촬영 코치마크 표시 완료 플래그 저장.
+     */
+    override suspend fun setHasSeenCaptureCoachmark(seen: Boolean) {
+        context.appDataStore.edit { preferences ->
+            preferences[HAS_SEEN_CAPTURE_COACHMARK] = seen
+        }
+    }
+
+    /**
+     * 마지막 타임랩스 간격(초) 저장.
+     */
+    override suspend fun setLastTimelapseInterval(seconds: Int) {
+        context.appDataStore.edit { preferences ->
+            preferences[LAST_TIMELAPSE_INTERVAL] = seconds.coerceAtLeast(1)
+        }
+    }
+
+    /**
+     * 마지막 타임랩스 총 컷 수 저장.
+     */
+    override suspend fun setLastTimelapseCount(count: Int) {
+        context.appDataStore.edit { preferences ->
+            preferences[LAST_TIMELAPSE_COUNT] = count.coerceAtLeast(1)
         }
     }
 

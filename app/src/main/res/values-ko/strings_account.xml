@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 계정: 로그아웃 / 삭제 -->
+    <string name="account_logout_dialog_title">로그아웃하시겠습니까?</string>
+    <string name="account_logout_dialog_message">로컬 사진 캐시, 자동 연결 기록은 유지됩니다. 정말 로그아웃하시겠습니까?</string>
+    <string name="account_logout_confirm">로그아웃</string>
+    <string name="account_logout_cancel">취소</string>
+
+    <string name="account_delete_row_title">계정 삭제</string>
+    <string name="account_delete_row_subtitle">계정과 모든 데이터를 영구히 제거합니다</string>
+    <string name="account_delete_dialog_title">계정을 삭제하시겠습니까?</string>
+    <string name="account_delete_dialog_message">계정 삭제 시 클라우드 사진, 설정, 구독 정보가 영구 삭제됩니다. 이 작업은 되돌릴 수 없습니다.</string>
+    <string name="account_delete_continue">계속</string>
+    <string name="account_delete_cancel">취소</string>
+
+    <string name="account_delete_confirm_title">DELETE 를 입력해 주세요</string>
+    <string name="account_delete_confirm_message">영구 삭제를 진행하려면 아래 칸에 DELETE 를 입력하세요.</string>
+    <string name="account_delete_confirm_placeholder">DELETE</string>
+    <string name="account_delete_confirm_button">영구 삭제</string>
+    <string name="account_delete_confirm_cancel">취소</string>
+    <string name="account_delete_success">계정이 삭제되었습니다</string>
+    <string name="account_delete_failed">계정 삭제 실패: %s</string>
+
+    <!-- 온보딩 -->
+    <string name="onboarding_skip">건너뛰기</string>
+    <string name="onboarding_next">다음</string>
+    <string name="onboarding_start">시작하기</string>
+
+    <string name="onboarding_step1_title">USB OTG로 카메라 연결</string>
+    <string name="onboarding_step1_description">USB OTG 케이블로 DSLR/미러리스 카메라를 연결한 뒤, 카메라를 PC/PTP 모드로 설정하세요.</string>
+
+    <string name="onboarding_step2_title">Wi-Fi PTP-IP 연결</string>
+    <string name="onboarding_step2_description">카메라가 만드는 액세스 포인트에 접속하거나, 카메라와 폰을 같은 Wi-Fi 공유기에 연결하면 무선으로 제어할 수 있습니다.</string>
+
+    <string name="onboarding_step3_title">권한 안내</string>
+    <string name="onboarding_step3_description">Wi-Fi 검색과 실시간 알림을 위해 위치, Wi-Fi, 알림 권한을 허용해 주세요.</string>
+
+    <!-- 언어 선택 -->
+    <string name="language_row_title">언어 / Language</string>
+    <string name="language_dialog_title">언어 선택</string>
+    <string name="language_system_default">시스템 기본</string>
+    <string name="language_option_en">English</string>
+    <string name="language_option_ko">한국어</string>
+    <string name="language_option_ja">日本語</string>
+    <string name="language_option_zh">中文</string>
+    <string name="language_option_de">Deutsch</string>
+    <string name="language_option_es">Español</string>
+    <string name="language_option_fr">Français</string>
+    <string name="language_option_it">Italiano</string>
+
+    <!-- 추천 코드 입력 -->
+    <string name="referral_input_label">추천 코드 (선택)</string>
+    <string name="referral_input_helper">추천 코드가 있다면 로그인 전에 입력하세요.</string>
+</resources>

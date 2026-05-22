@@ -208,6 +208,78 @@ class AppSettingsViewModel @Inject constructor(
                 initialValue = false
             )
 
+    /**
+     * 셔터 사운드 활성화 여부 (기본값: true)
+     */
+    val isShutterSoundEnabled: StateFlow<Boolean> =
+        appSettingsRepository.isShutterSoundEnabled
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = true
+            )
+
+    /**
+     * 라이브뷰 그리드 오버레이 활성화 여부 (기본값: false)
+     */
+    val isLiveViewGridEnabled: StateFlow<Boolean> =
+        appSettingsRepository.isLiveViewGridEnabled
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = false
+            )
+
+    /**
+     * 촬영 화면 코치마크 표시 완료 여부 (기본값: false)
+     */
+    val hasSeenCaptureCoachmark: StateFlow<Boolean> =
+        appSettingsRepository.hasSeenCaptureCoachmark
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = false
+            )
+
+    /**
+     * 마지막 타임랩스 간격(초) prefill (기본값: 5)
+     */
+    val lastTimelapseInterval: StateFlow<Int> =
+        appSettingsRepository.lastTimelapseInterval
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = 5
+            )
+
+    /**
+     * 마지막 타임랩스 총 컷 수 prefill (기본값: 100)
+     */
+    val lastTimelapseCount: StateFlow<Int> =
+        appSettingsRepository.lastTimelapseCount
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = 100
+            )
+
+    /**
+     * H3 — PTPIP 미리보기 안내 1회 표시 플래그 (기본값: false)
+     */
+    val hasSeenPtpipPreviewWarning: StateFlow<Boolean> =
+        appSettingsRepository.hasSeenPtpipPreviewWarning
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = false
+            )
+
+    fun markPtpipPreviewWarningSeen() {
+        viewModelScope.launch {
+            appSettingsRepository.setHasSeenPtpipPreviewWarning(true)
+        }
+    }
+
     // 로그 파일 경로 생성
     private fun getLogFilePath(): String {
         val logDir = context.filesDir
@@ -377,6 +449,43 @@ class AppSettingsViewModel @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "로그 파일 목록 조회 실패", e)
             emptyList()
+        }
+    }
+
+    /**
+     * 셔터 사운드 활성화 토글
+     */
+    fun setShutterSoundEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            appSettingsRepository.setShutterSoundEnabled(enabled)
+        }
+    }
+
+    /**
+     * 라이브뷰 그리드 오버레이 활성화 토글
+     */
+    fun setLiveViewGridEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            appSettingsRepository.setLiveViewGridEnabled(enabled)
+        }
+    }
+
+    /**
+     * 촬영 코치마크 표시 완료 플래그 저장
+     */
+    fun setHasSeenCaptureCoachmark(seen: Boolean) {
+        viewModelScope.launch {
+            appSettingsRepository.setHasSeenCaptureCoachmark(seen)
+        }
+    }
+
+    /**
+     * 마지막 타임랩스 설정 prefill 저장
+     */
+    fun setLastTimelapseSettings(intervalSeconds: Int, totalCount: Int) {
+        viewModelScope.launch {
+            appSettingsRepository.setLastTimelapseInterval(intervalSeconds)
+            appSettingsRepository.setLastTimelapseCount(totalCount)
         }
     }
 

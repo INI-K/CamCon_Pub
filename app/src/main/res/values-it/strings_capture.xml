@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="capture_shutter_sound_label">Suono otturatore</string>
+    <string name="capture_shutter_sound_subtitle">Riproduci il suono dell\'otturatore allo scatto</string>
+    <string name="capture_no_liveview_label">Scatto senza Live View</string>
+    <string name="liveview_grid_toggle">Griglia</string>
+    <string name="liveview_exposure_compensation_label">EV</string>
+
+    <string name="coachmark_double_tap_fullscreen">Doppio tocco per schermo intero</string>
+    <string name="coachmark_shutter_area">Tocca l\'area otturatore 88dp</string>
+    <string name="coachmark_recent_double_tap">Doppio tocco su uno scatto recente per la galleria</string>
+    <string name="coachmark_got_it">Ho capito</string>
+
+    <string name="shooting_unsupported_mode">Questa fotocamera non supporta la modalità %1$s</string>
+
+    <string name="camera_status_battery_percent">Batteria %1$d%%</string>
+    <string name="camera_status_sd_free">SD libero %1$s</string>
+
+    <string name="timelapse_interval_label">Intervallo (s)</string>
+    <string name="timelapse_count_label">Scatti totali</string>
+</resources>

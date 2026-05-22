@@ -25,13 +25,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -52,7 +56,9 @@ import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.HeadingXL
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.Surface0
+import com.inik.camcon.presentation.theme.Surface3
 import com.inik.camcon.presentation.theme.TextPrimaryV2
 import com.inik.camcon.presentation.theme.TextSecondaryV2
 import com.inik.camcon.presentation.theme.TextTertiary
@@ -218,13 +224,49 @@ fun LoginScreen(
                 color = TextSecondaryV2
             )
 
-            Spacer(modifier = Modifier.height(Spacing.xl))
+            Spacer(modifier = Modifier.height(Spacing.lg))
+
+            // 추천 코드 입력 — 선택. 공백이면 무시하고 로그인 진행.
+            var referralCode by remember { mutableStateOf("") }
+            OutlinedTextField(
+                value = referralCode,
+                onValueChange = { referralCode = it },
+                singleLine = true,
+                enabled = !uiState.isLoading,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = {
+                    Text(
+                        text = stringResource(R.string.referral_input_label),
+                        color = TextTertiary,
+                        style = BodySmall
+                    )
+                },
+                supportingText = {
+                    Text(
+                        text = stringResource(R.string.referral_input_helper),
+                        color = TextTertiary,
+                        style = BodySmall
+                    )
+                },
+                colors = TextFieldDefaults.colors(
+                    focusedTextColor = TextPrimaryV2,
+                    unfocusedTextColor = TextPrimaryV2,
+                    focusedContainerColor = Surface3,
+                    unfocusedContainerColor = Surface3,
+                    disabledContainerColor = Surface3,
+                    focusedIndicatorColor = Accent,
+                    unfocusedIndicatorColor = Surface3,
+                    cursorColor = Accent
+                )
+            )
+
+            Spacer(modifier = Modifier.height(Spacing.lg))
 
             // Google Sign In Button — 외부 브랜드 색상 유지
             // 다크 테마 규약 예외: Google Sign-In 디자인 가이드라인에 따라
             // 버튼은 흰 배경 + Google 브랜드 파랑(0xFF4285F4) 콘텐츠 고정.
             Button(
-                onClick = { onGoogleSignIn("") },
+                onClick = { onGoogleSignIn(referralCode.trim()) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),

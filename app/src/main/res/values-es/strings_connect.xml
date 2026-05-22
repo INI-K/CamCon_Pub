@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Mensajes de error de conexión USB -->
+    <string name="error_usb_help_title">Problema de conexión con la cámara</string>
+    <string name="error_usb_not_found">No se encontró la cámara. Por favor verifica:\n1) Conexión del cable\n2) Encendido de la cámara\n3) Modo PC / PTP en la cámara</string>
+    <string name="error_usb_io_change_mode">Error de E/S USB. Cambia la cámara de “Almacenamiento masivo” al modo PTP / MTP.</string>
+    <string name="error_usb_timeout">Tiempo de respuesta agotado. Prueba con otro cable USB.</string>
+    <string name="error_usb_permission">Permiso USB denegado. Vuelve a conectar el cable y concede el permiso.</string>
+    <string name="error_usb_unsupported">Dispositivo USB no compatible.</string>
+    <string name="error_usb_restart">Por favor reinicia la aplicación.</string>
+
+    <!-- Reconexión automática PTP/IP -->
+    <string name="connect_auto_reconnect_label">Reconexión automática</string>
+    <string name="connect_auto_reconnect_subtitle">Vuelve a conectarse automáticamente cuando el Wi-Fi de la cámara esté disponible</string>
+    <string name="autoconnect_notification_required">Se requiere permiso de notificaciones para mantener la reconexión automática en segundo plano.</string>
+</resources>
