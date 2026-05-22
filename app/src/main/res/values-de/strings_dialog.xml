@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="splash_initializing">Initialisierung...</string>
+    <string name="splash_library_check">Bibliotheksstatus wird geprüft...</string>
+    <string name="splash_library_failed">Laden der Bibliothek fehlgeschlagen</string>
+    <string name="splash_env_failed">Umgebungseinrichtung fehlgeschlagen</string>
+    <string name="splash_library_ready">Bibliothek bereit (%1$dms)</string>
+    <string name="splash_library_status_check_failed">Bibliotheksstatusprüfung fehlgeschlagen: %1$s</string>
+    <string name="splash_version_check">Version wird geprüft...</string>
+    <string name="splash_update_required_title">Update erforderlich</string>
+    <string name="splash_update_available_title">Update verfügbar</string>
+    <string name="splash_update_required_message">Sie müssen auf die neueste Version aktualisieren, um die App zu verwenden.\n\nAktuell: %1$s\nNeueste: %2$s</string>
+    <string name="splash_update_available_message">Eine neue Version ist verfügbar. Jetzt aktualisieren?\n\nAktuell: %1$s\nNeueste: %2$s</string>
+    <string name="splash_update_button">Aktualisieren</string>
+    <string name="splash_later_button">Später</string>
+    <string name="splash_camera_controller">Camera Controller</string>
+    <string name="splash_subscription_tier">Abonnementstufe: %1$s</string>
+
+    <string name="dialog_restart_required_title">App-Neustart erforderlich</string>
+    <string name="dialog_restart_preparing_title">Neustart wird vorbereitet...</string>
+    <string name="dialog_restart_preparing_body">Bitte warten, die Kameraverbindung wird bereinigt.</string>
+    <string name="dialog_restart_body">Aufgrund eines Verbindungsproblems muss die App vollständig neu gestartet werden.</string>
+    <string name="dialog_restart_options">• Sofort neu starten: Klick startet sofort\n• Beenden: App schließen (manueller Neustart nötig)</string>
+    <string name="dialog_restart_now">Sofort neu starten</string>
+    <string name="dialog_restart_quit">Beenden</string>
+    <string name="dialog_later">Später</string>
+    <string name="dialog_confirm">OK</string>
+    <string name="dialog_understood">Verstanden</string>
+    <string name="dialog_reconnect">Erneut verbinden</string>
+
+    <string name="dialog_usb_disconnected_title">USB-Gerät getrennt</string>
+    <string name="dialog_usb_disconnected_body">Die USB-Verbindung der Kamera wurde getrennt.</string>
+    <string name="dialog_usb_disconnected_hints">• USB-Kabel prüfen\n• Kamerastromversorgung prüfen\n• Kamera in den PC-Modus schalten</string>
+
+    <string name="dialog_camera_check_title">Kameraprüfung erforderlich</string>
+    <string name="dialog_camera_check_body">Die Kamera reagiert nicht normal.</string>
+    <string name="dialog_camera_check_prompt">Bitte folgendes prüfen:</string>
+    <string name="dialog_camera_check_hints">• Kamera ist eingeschaltet\n• Akku ausreichend geladen\n• USB-Kabel korrekt verbunden\n• Kamera im PC-Verbindungsmodus\n• Kamera aus- und wieder einschalten</string>
+
+    <string name="dialog_wifi_active_title">Wi-Fi-Verbindung aktiv</string>
+    <string name="dialog_wifi_active_body">Die Fotovorschau ist nicht verfügbar, da die Kamera über Wi-Fi verbunden ist.</string>
+    <string name="dialog_wifi_active_steps_title">Um die Fotovorschau zu nutzen:</string>
+    <string name="dialog_wifi_active_steps">1. Wi-Fi der Kamera trennen\n2. Kamera per USB anschließen\n3. Kamera in den PC-Modus schalten</string>
+    <string name="dialog_wifi_active_hint">Bei Wi-Fi bitte den Tab \"Kamerasteuerung\" verwenden.</string>
+
+    <string name="dialog_wifi_disconnected_title">Wi-Fi getrennt</string>
+    <string name="dialog_wifi_disconnected_body">Die Wi-Fi-Verbindung zur Kamera wurde getrennt. Bitte neu verbinden.</string>
+
+    <string name="progress_ptpip_connecting">Verbinde mit Kamera...</string>
+    <string name="progress_ptpip_connection_start">Starte Kameraverbindung...</string>
+    <string name="progress_ptpip_authenticating_nikon">Nikon-Kamera wird authentifiziert...</string>
+    <string name="progress_ptpip_checking_info">Kamerainformationen werden geprüft...</string>
+    <string name="progress_ptpip_listener_start">Ereignis-Listener wird gestartet...</string>
+    <string name="progress_ptpip_finalizing">Initialisierung wird abgeschlossen...</string>
+    <string name="progress_ptpip_complete">Verbunden!</string>
+    <string name="progress_ptpip_complete_limited">Verbunden (eingeschränkt)</string>
+    <string name="progress_ptpip_listener_error">Ereignis-Listener-Fehler</string>
+    <string name="progress_ptpip_setup_error">Setup-Fehler</string>
+    <string name="progress_ptpip_failed">Verbindung fehlgeschlagen: %1$s</string>
+    <string name="progress_ptpip_error">Verbindungsfehler: %1$s</string>
+    <string name="progress_wifi_disconnected">Wi-Fi getrennt. Bitte neu verbinden.</string>
+
+    <string name="progress_wifi_auto_connect_failed">Wi-Fi-Auto-Verbindung fehlgeschlagen: %1$s</string>
+    <string name="progress_wifi_request_exception">Fehler bei Wi-Fi-Verbindungsanfrage: %1$s</string>
+    <string name="progress_camera_connect_failed">Kameraverbindung fehlgeschlagen.\nBitte Netzwerk prüfen und erneut versuchen.</string>
+    <string name="progress_camera_connect_exception">Fehler bei der Kameraverbindung: %1$s</string>
+    <string name="progress_camera_label_connected">%1$s (verbunden)</string>
+
+    <string name="notification_settings_title">Benachrichtigungseinstellungen</string>
+    <string name="notification_settings_subtitle">Push-Benachrichtigungen und Ton</string>
+</resources>

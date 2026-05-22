@@ -38,6 +38,13 @@ class UsbConnectionManager @Inject constructor(
     private val _isNativeCameraConnected = MutableStateFlow(false)
     val isNativeCameraConnected: StateFlow<Boolean> = _isNativeCameraConnected.asStateFlow()
 
+    /**
+     * 최근 실패 사유. UI는 이 값을 관찰해 다이얼로그 본문/도움말을 띄운다.
+     * 성공/초기 상태에서는 null.
+     */
+    private val _lastErrorKind = MutableStateFlow<UsbErrorKind?>(null)
+    val lastErrorKind: StateFlow<UsbErrorKind?> = _lastErrorKind.asStateFlow()
+
     private var currentDevice: UsbDevice? = null
     private var currentConnection: UsbDeviceConnection? = null
 
@@ -217,6 +224,7 @@ class UsbConnectionManager @Inject constructor(
                         "허용되지 않은 USB VID=0x${device.vendorId.toString(16)}, " +
                                 "PID=0x${device.productId.toString(16)} - 카메라 연결 거부"
                     )
+                    reportError(UsbErrorKind.Unsupported)
                     updateConnectionState(false, "지원하지 않는 USB 디바이스")
                     return@launch
                 }
@@ -245,13 +253,28 @@ class UsbConnectionManager @Inject constructor(
                     initializeNativeCamera(fd)
                 } ?: run {
                     Log.e(TAG, "USB 디바이스 열기 실패: ${device.deviceName}")
+                    reportError(UsbErrorKind.PermissionDenied)
                     updateConnectionState(false, "USB 디바이스 열기 실패")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "카메라 연결 실패", e)
+                reportError(UsbErrorKind.Restart)
                 updateConnectionState(false, "카메라 연결 실패")
             }
         }
+    }
+
+    /**
+     * 사용자에게 보고할 마지막 에러 종류 갱신.
+     * 성공 시 [clearError] 호출로 null로 되돌린다.
+     */
+    private fun reportError(kind: UsbErrorKind) {
+        _lastErrorKind.value = kind
+    }
+
+    /** 외부에서 에러 표시를 닫았을 때 호출. */
+    fun clearError() {
+        _lastErrorKind.value = null
     }
 
     private suspend fun initializeNativeCamera(fd: Int) = withContext(ioDispatcher) {
@@ -292,16 +315,19 @@ class UsbConnectionManager @Inject constructor(
                 when (result) {
                     0 -> { // GP_OK
                         Log.d(TAG, "네이티브 카메라 초기화 성공")
+                        clearError()
                         updateConnectionState(true, "초기화 성공")
                     }
 
                     -52 -> { // GP_ERROR_IO_USB_FIND
                         Log.e(TAG, "USB 포트에서 카메라를 찾을 수 없음 - 카메라 연결 실패")
+                        reportError(UsbErrorKind.fromInitResult(result))
                         handleUsbError(result)
                     }
 
                     -7 -> { // GP_ERROR_IO
                         Log.e(TAG, "USB I/O 오류 - 권한 또는 커널 드라이버 문제")
+                        reportError(UsbErrorKind.fromInitResult(result))
                         updateConnectionState(false, "USB I/O 오류")
                         lastInitializedFd = -1
                         currentConnection?.close()
@@ -311,6 +337,7 @@ class UsbConnectionManager @Inject constructor(
 
                     -10 -> { // 타임아웃
                         Log.e(TAG, "카메라 초기화 타임아웃")
+                        reportError(UsbErrorKind.fromInitResult(result))
                         updateConnectionState(false, "카메라 초기화 타임아웃")
                         lastInitializedFd = -1
                         currentConnection?.close()
@@ -320,6 +347,7 @@ class UsbConnectionManager @Inject constructor(
 
                     -1000 -> { // 앱 재시작 필요
                         Log.e(TAG, "카메라 초기화 실패 - 앱 재시작 필요")
+                        reportError(UsbErrorKind.fromInitResult(result))
                         updateConnectionState(false, "앱 재시작 필요")
                         lastInitializedFd = -1
                         currentConnection?.close()
@@ -329,6 +357,7 @@ class UsbConnectionManager @Inject constructor(
 
                     -2000 -> { // PTP 타임아웃
                         Log.e(TAG, "PTP 타임아웃 오류")
+                        reportError(UsbErrorKind.fromInitResult(result))
                         updateConnectionState(false, "PTP 타임아웃")
                         lastInitializedFd = -1
                         currentConnection?.close()
@@ -338,6 +367,7 @@ class UsbConnectionManager @Inject constructor(
 
                     else -> {
                         Log.e(TAG, "네이티브 카메라 초기화 실패: $result")
+                        reportError(UsbErrorKind.fromInitResult(result))
                         updateConnectionState(false, "초기화 실패 (코드: $result)")
                         lastInitializedFd = -1
                         // 기타 에러의 경우에만 일반 초기화 시도
@@ -352,6 +382,7 @@ class UsbConnectionManager @Inject constructor(
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "네이티브 카메라 초기화 중 예외 발생", e)
+                reportError(UsbErrorKind.Restart)
                 updateConnectionState(false, "예외 발생")
                 lastInitializedFd = -1
                 tryGeneralInit()

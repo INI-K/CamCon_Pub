@@ -36,7 +36,9 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.NetworkWifi
 import androidx.compose.material.icons.filled.Notifications
@@ -52,10 +54,14 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -82,7 +88,9 @@ import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.model.User
 import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.AccentMuted
+import com.inik.camcon.presentation.theme.BodySmall
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.ErrorV2
 import com.inik.camcon.presentation.theme.HeadingL
 import com.inik.camcon.presentation.theme.HeadingM
 import com.inik.camcon.presentation.theme.IconSize
@@ -90,10 +98,12 @@ import com.inik.camcon.presentation.theme.OnAccent
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.Surface0
 import com.inik.camcon.presentation.theme.Surface1
+import com.inik.camcon.presentation.theme.Surface2
 import com.inik.camcon.presentation.theme.Surface3
 import com.inik.camcon.presentation.theme.TextPrimaryV2
 import com.inik.camcon.presentation.theme.TextSecondaryV2
 import com.inik.camcon.presentation.theme.TextTertiary
+import com.inik.camcon.presentation.ui.components.v2.DestructiveRowV2
 import com.inik.camcon.presentation.ui.components.v2.DividerLineV2
 import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
 import com.inik.camcon.presentation.ui.components.v2.ProgressBarV2
@@ -107,6 +117,9 @@ import com.inik.camcon.presentation.viewmodel.AuthUiEvent
 import com.inik.camcon.presentation.viewmodel.AuthViewModel
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
+import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
 import java.io.FileOutputStream
@@ -270,6 +283,17 @@ fun SettingsScreen(
     }
 
     var logDialogContent by remember { mutableStateOf<String?>(null) }
+
+    // 그룹 1 — 계정/로그아웃/삭제 UX, 언어 선택
+    var showLogoutConfirm by remember { mutableStateOf(false) }
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var deleteConfirmInput by remember { mutableStateOf("") }
+    var isDeletingAccount by remember { mutableStateOf(false) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
+
+    val accountDeleteSuccessText = stringResource(R.string.account_delete_success)
+    val accountDeleteFailedTemplate = stringResource(R.string.account_delete_failed)
 
     Scaffold(
         topBar = {
@@ -538,7 +562,17 @@ fun SettingsScreen(
                     },
                     onClick = {
                         if (!authUiState.isLoading) {
-                            authViewModel?.signOut()
+                            showLogoutConfirm = true
+                        }
+                    }
+                )
+                DestructiveRowV2(
+                    icon = Icons.Default.DeleteForever,
+                    title = stringResource(R.string.account_delete_row_title),
+                    subtitle = stringResource(R.string.account_delete_row_subtitle),
+                    onClick = {
+                        if (!isDeletingAccount) {
+                            showDeleteAccountDialog = true
                         }
                     }
                 )
@@ -550,7 +584,8 @@ fun SettingsScreen(
                     ClickableRowV2(
                         icon = Icons.Default.Storage,
                         title = "저장 공간",
-                        subtitle = "사용 중: 2.3GB / 10GB",
+                        // TBD: 실제 quota API 연결 전까지 placeholder. 하드코딩 mock 표기 금지.
+                        subtitle = "TBD",
                         onClick = { }
                     )
                     ClickableRowV2(
@@ -563,12 +598,41 @@ fun SettingsScreen(
             }
 
             // 앱 설정
+            val isShutterSoundEnabled by appSettingsViewModel.isShutterSoundEnabled.collectAsStateWithLifecycle()
             SettingsSection(title = "앱 설정") {
+                SwitchRowV2(
+                    icon = Icons.Default.CameraAlt,
+                    title = stringResource(R.string.capture_shutter_sound_label),
+                    subtitle = stringResource(R.string.capture_shutter_sound_subtitle),
+                    checked = isShutterSoundEnabled,
+                    onCheckedChange = { appSettingsViewModel.setShutterSoundEnabled(it) }
+                )
+                val currentLocaleLabel = currentLanguageLabel()
+                ClickableRowV2(
+                    icon = Icons.Default.Language,
+                    title = stringResource(R.string.language_row_title),
+                    subtitle = currentLocaleLabel,
+                    onClick = { showLanguageDialog = true }
+                )
                 ClickableRowV2(
                     icon = Icons.Default.Notifications,
-                    title = "알림 설정",
-                    subtitle = "푸시 알림 및 소리 설정",
-                    onClick = { }
+                    title = stringResource(R.string.notification_settings_title),
+                    subtitle = stringResource(R.string.notification_settings_subtitle),
+                    onClick = {
+                        try {
+                            val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            // Fallback: 앱 상세 설정 화면
+                            try {
+                                val fallback = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                fallback.data = Uri.parse("package:${context.packageName}")
+                                context.startActivity(fallback)
+                            } catch (_: Exception) {
+                            }
+                        }
+                    }
                 )
                 val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
                 val packageName = context.packageName
@@ -713,20 +777,10 @@ fun SettingsScreen(
                 )
             }
 
-            // Mock Camera 섹션
+            // Mock Camera 진입점은 ADMIN 섹션에 이미 노출됨 (위쪽 isAdminTier 블록).
+            // 개발자 빌드 분기는 ADMIN 권한과 중복되어 동일 화면이 두 번 보이는 문제가 있어 삭제.
+            // 관리자 레퍼럴 코드 관리는 SHOW_DEVELOPER_FEATURES 기준으로 유지.
             if (BuildConfig.SHOW_DEVELOPER_FEATURES) {
-                SettingsSection(title = "🧪 가상 카메라 (개발 전용)") {
-                    NavigationRowV2(
-                        icon = Icons.Default.CameraAlt,
-                        title = "Mock Camera 설정",
-                        subtitle = "실제 카메라 없이 테스트할 수 있는 가상 카메라",
-                        onClick = {
-                            val intent = Intent(context, MockCameraActivity::class.java)
-                            context.startActivity(intent)
-                        }
-                    )
-                }
-
                 SettingsSection(title = "관리자 레퍼럴 코드 관리") {
                     val totalCodes = adminReferralState.statistics["totalCodes"] as? Int ?: 0
                     val availableCodes = adminReferralState.statistics["availableCodes"] as? Int ?: 0
@@ -778,7 +832,314 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(Spacing.lg))
         }
+
+        // -------- 그룹 1 — 로그아웃 / 계정 삭제 / 언어 선택 다이얼로그 --------
+
+        if (showLogoutConfirm) {
+            AlertDialog(
+                onDismissRequest = { showLogoutConfirm = false },
+                title = {
+                    Text(
+                        stringResource(R.string.account_logout_dialog_title),
+                        style = HeadingL,
+                        color = TextPrimaryV2
+                    )
+                },
+                text = {
+                    Text(
+                        stringResource(R.string.account_logout_dialog_message),
+                        style = BodySmall,
+                        color = TextSecondaryV2
+                    )
+                },
+                confirmButton = {
+                    PrimaryButton(
+                        text = stringResource(R.string.account_logout_confirm),
+                        onClick = {
+                            showLogoutConfirm = false
+                            authViewModel?.signOut()
+                        }
+                    )
+                },
+                dismissButton = {
+                    SecondaryButton(
+                        text = stringResource(R.string.account_logout_cancel),
+                        onClick = { showLogoutConfirm = false }
+                    )
+                },
+                containerColor = Surface2
+            )
+        }
+
+        if (showDeleteAccountDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteAccountDialog = false },
+                title = {
+                    Text(
+                        stringResource(R.string.account_delete_dialog_title),
+                        style = HeadingL,
+                        color = ErrorV2
+                    )
+                },
+                text = {
+                    Text(
+                        stringResource(R.string.account_delete_dialog_message),
+                        style = BodySmall,
+                        color = TextSecondaryV2
+                    )
+                },
+                confirmButton = {
+                    PrimaryButton(
+                        text = stringResource(R.string.account_delete_continue),
+                        onClick = {
+                            showDeleteAccountDialog = false
+                            deleteConfirmInput = ""
+                            showDeleteConfirmDialog = true
+                        }
+                    )
+                },
+                dismissButton = {
+                    SecondaryButton(
+                        text = stringResource(R.string.account_delete_cancel),
+                        onClick = { showDeleteAccountDialog = false }
+                    )
+                },
+                containerColor = Surface2
+            )
+        }
+
+        if (showDeleteConfirmDialog) {
+            val confirmEnabled = deleteConfirmInput.trim() == "DELETE" && !isDeletingAccount
+            AlertDialog(
+                onDismissRequest = {
+                    if (!isDeletingAccount) {
+                        showDeleteConfirmDialog = false
+                    }
+                },
+                title = {
+                    Text(
+                        stringResource(R.string.account_delete_confirm_title),
+                        style = HeadingL,
+                        color = ErrorV2
+                    )
+                },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                        Text(
+                            stringResource(R.string.account_delete_confirm_message),
+                            style = BodySmall,
+                            color = TextSecondaryV2
+                        )
+                        OutlinedTextField(
+                            value = deleteConfirmInput,
+                            onValueChange = { deleteConfirmInput = it },
+                            singleLine = true,
+                            enabled = !isDeletingAccount,
+                            placeholder = {
+                                Text(
+                                    stringResource(R.string.account_delete_confirm_placeholder),
+                                    color = TextTertiary
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = TextFieldDefaults.colors(
+                                focusedTextColor = TextPrimaryV2,
+                                unfocusedTextColor = TextPrimaryV2,
+                                focusedContainerColor = Surface3,
+                                unfocusedContainerColor = Surface3,
+                                disabledContainerColor = Surface3,
+                                focusedIndicatorColor = ErrorV2,
+                                unfocusedIndicatorColor = Surface3,
+                                cursorColor = ErrorV2
+                            )
+                        )
+                    }
+                },
+                confirmButton = {
+                    PrimaryButton(
+                        text = stringResource(R.string.account_delete_confirm_button),
+                        enabled = confirmEnabled,
+                        isLoading = isDeletingAccount,
+                        onClick = {
+                            isDeletingAccount = true
+                            val firebaseUser = FirebaseAuth.getInstance().currentUser
+                            if (firebaseUser == null) {
+                                isDeletingAccount = false
+                                showDeleteConfirmDialog = false
+                                val intent = Intent(context, LoginActivity::class.java).apply {
+                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                                            Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                }
+                                context.startActivity(intent)
+                                (context as? ComponentActivity)?.finish()
+                            } else {
+                                firebaseUser.delete()
+                                    .addOnCompleteListener { task ->
+                                        isDeletingAccount = false
+                                        showDeleteConfirmDialog = false
+                                        if (task.isSuccessful) {
+                                            android.widget.Toast.makeText(
+                                                context,
+                                                accountDeleteSuccessText,
+                                                android.widget.Toast.LENGTH_LONG
+                                            ).show()
+                                            // TODO: 도메인 UseCase 추가 시 클라우드 사진/구독/사용자 문서 정리 호출
+                                            val intent = Intent(context, LoginActivity::class.java).apply {
+                                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                                                        Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                            }
+                                            context.startActivity(intent)
+                                            (context as? ComponentActivity)?.finish()
+                                        } else {
+                                            val msg = task.exception?.localizedMessage ?: "unknown"
+                                            android.widget.Toast.makeText(
+                                                context,
+                                                accountDeleteFailedTemplate.format(msg),
+                                                android.widget.Toast.LENGTH_LONG
+                                            ).show()
+                                        }
+                                    }
+                            }
+                        }
+                    )
+                },
+                dismissButton = {
+                    SecondaryButton(
+                        text = stringResource(R.string.account_delete_confirm_cancel),
+                        onClick = {
+                            if (!isDeletingAccount) {
+                                showDeleteConfirmDialog = false
+                            }
+                        }
+                    )
+                },
+                containerColor = Surface2
+            )
+        }
+
+        if (showLanguageDialog) {
+            LanguageSelectionDialog(
+                onDismissRequest = { showLanguageDialog = false },
+                onLanguageSelected = { tag ->
+                    val locales = if (tag == null) {
+                        LocaleListCompat.getEmptyLocaleList()
+                    } else {
+                        LocaleListCompat.forLanguageTags(tag)
+                    }
+                    AppCompatDelegate.setApplicationLocales(locales)
+                    showLanguageDialog = false
+                }
+            )
+        }
     }
+}
+
+/**
+ * 현재 적용된 언어 라벨. AppCompatDelegate 의 application locales 가 비어 있으면
+ * 시스템 기본, 그렇지 않으면 첫 locale 의 language tag 를 매핑해 반환한다.
+ */
+@Composable
+private fun currentLanguageLabel(): String {
+    val applied = AppCompatDelegate.getApplicationLocales()
+    val tag = if (applied.isEmpty) {
+        null
+    } else {
+        applied.toLanguageTags().substringBefore(',').substringBefore('-')
+    }
+    val resId = when (tag) {
+        "ko" -> R.string.language_option_ko
+        "ja" -> R.string.language_option_ja
+        "zh" -> R.string.language_option_zh
+        "de" -> R.string.language_option_de
+        "es" -> R.string.language_option_es
+        "fr" -> R.string.language_option_fr
+        "it" -> R.string.language_option_it
+        "en" -> R.string.language_option_en
+        else -> R.string.language_system_default
+    }
+    return stringResource(resId)
+}
+
+/**
+ * 언어 선택 다이얼로그 — System default + 8개 언어 라디오 리스트.
+ *
+ * [onLanguageSelected] 의 인자는 BCP-47 tag 또는 null(시스템 기본).
+ * 호출자가 AppCompatDelegate.setApplicationLocales 처리 책임을 가진다.
+ */
+@Composable
+private fun LanguageSelectionDialog(
+    onDismissRequest: () -> Unit,
+    onLanguageSelected: (String?) -> Unit
+) {
+    data class LangOption(val tag: String?, val labelRes: Int)
+    val options = listOf(
+        LangOption(null, R.string.language_system_default),
+        LangOption("ko", R.string.language_option_ko),
+        LangOption("ja", R.string.language_option_ja),
+        LangOption("zh", R.string.language_option_zh),
+        LangOption("de", R.string.language_option_de),
+        LangOption("es", R.string.language_option_es),
+        LangOption("fr", R.string.language_option_fr),
+        LangOption("it", R.string.language_option_it),
+        LangOption("en", R.string.language_option_en)
+    )
+
+    val applied = AppCompatDelegate.getApplicationLocales()
+    val currentTag = if (applied.isEmpty) {
+        null
+    } else {
+        applied.toLanguageTags().substringBefore(',').substringBefore('-')
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = {
+            Text(
+                stringResource(R.string.language_dialog_title),
+                style = HeadingL,
+                color = TextPrimaryV2
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs)
+            ) {
+                options.forEach { option ->
+                    val selected = option.tag == currentTag
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onLanguageSelected(option.tag) }
+                            .padding(vertical = Spacing.sm, horizontal = Spacing.xs),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = selected,
+                            onClick = { onLanguageSelected(option.tag) },
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = Accent,
+                                unselectedColor = TextSecondaryV2
+                            )
+                        )
+                        Spacer(modifier = Modifier.width(Spacing.sm))
+                        Text(
+                            text = stringResource(option.labelRes),
+                            style = HeadingM,
+                            color = TextPrimaryV2
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            SecondaryButton(
+                text = stringResource(R.string.cancel),
+                onClick = onDismissRequest
+            )
+        },
+        containerColor = Surface2
+    )
 }
 
 /**

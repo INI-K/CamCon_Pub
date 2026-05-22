@@ -62,6 +62,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -81,6 +82,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.inik.camcon.R
+import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
 import com.inik.camcon.data.service.BackgroundSyncService
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
@@ -88,6 +90,7 @@ import com.inik.camcon.domain.model.CameraConnectionType
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.ui.onboarding.OnboardingScreen
 import com.inik.camcon.presentation.navigation.BottomNavItem
 import com.inik.camcon.presentation.theme.LocalWindowSizeClass
 import com.inik.camcon.presentation.theme.isMediumOrWider
@@ -169,6 +172,7 @@ fun MainScreen(
 
     // PTPIP 연결 상태 및 경고 다이얼로그 상태
     val isPtpipConnected by cameraViewModel.isPtpipConnected.collectAsStateWithLifecycle()
+    // H3 — 다이얼로그 차단 제거 (1회 Toast로 대체).
     var showPtpipWarning by remember { mutableStateOf(false) }
 
     // 전역 연결 상태 모니터링
@@ -240,21 +244,21 @@ fun MainScreen(
                     }
                 },
                 icon = { Icon(Icons.Default.Settings, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                title = { Text("앱 재시작 필요", style = MaterialTheme.typography.titleLarge) },
+                title = { Text(stringResource(R.string.dialog_restart_required_title), style = MaterialTheme.typography.titleLarge) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (isRestarting) {
-                            Text("재시작 준비 중입니다...")
+                            Text(stringResource(R.string.dialog_restart_preparing_title))
                             Text(
-                                "잠시만 기다려주세요. 카메라 연결을 정리하고 있습니다.",
+                                stringResource(R.string.dialog_restart_preparing_body),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         } else {
-                            Text("카메라 연결 문제로 인해 앱을 완전히 재시작해야 합니다.")
+                            Text(stringResource(R.string.dialog_restart_body))
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                "• '즉시 재시작': 버튼 클릭 즉시 재시작\n• '종료': 앱만 종료 (수동 재실행 필요)",
+                                stringResource(R.string.dialog_restart_options),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -265,11 +269,11 @@ fun MainScreen(
                     if (!isRestarting) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             SecondaryButton(
-                                text = "나중에",
+                                text = stringResource(R.string.dialog_later),
                                 onClick = { showRestartDialog = false }
                             )
                             PrimaryButton(
-                                text = "즉시 재시작",
+                                text = stringResource(R.string.dialog_restart_now),
                                 onClick = {
                                     isRestarting = true
                                     cameraViewModel.clearPtpTimeout()
@@ -280,7 +284,7 @@ fun MainScreen(
                                 }
                             )
                             SecondaryButton(
-                                text = "종료",
+                                text = stringResource(R.string.dialog_restart_quit),
                                 onClick = {
                                     isRestarting = true
                                     cameraViewModel.clearPtpTimeout()
@@ -309,7 +313,7 @@ fun MainScreen(
                 },
                 title = {
                     Text(
-                        "USB 디바이스 분리",
+                        stringResource(R.string.dialog_usb_disconnected_title),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -317,13 +321,11 @@ fun MainScreen(
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
-                            "카메라 USB 연결이 끊어졌습니다.",
+                            stringResource(R.string.dialog_usb_disconnected_body),
                             style = MaterialTheme.typography.bodyMedium
                         )
                         Text(
-                            "• USB 케이블 연결을 확인해주세요\n" +
-                                    "• 카메라 전원을 확인해주세요\n" +
-                                    "• 카메라를 PC 모드로 설정해주세요",
+                            stringResource(R.string.dialog_usb_disconnected_hints),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -331,7 +333,7 @@ fun MainScreen(
                 },
                 confirmButton = {
                     PrimaryButton(
-                        text = "확인",
+                        text = stringResource(R.string.dialog_confirm),
                         onClick = { cameraViewModel.clearUsbDisconnection() }
                     )
                 }
@@ -354,7 +356,7 @@ fun MainScreen(
                 },
                 title = {
                     Text(
-                        "카메라 상태 점검 필요",
+                        stringResource(R.string.dialog_camera_check_title),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -362,20 +364,16 @@ fun MainScreen(
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
-                            "카메라가 정상적으로 동작하지 않습니다.",
+                            stringResource(R.string.dialog_camera_check_body),
                             style = MaterialTheme.typography.bodyMedium
                         )
                         Text(
-                            "다음 사항을 확인해주세요:",
+                            stringResource(R.string.dialog_camera_check_prompt),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            "• 카메라 전원이 켜져 있는지 확인\n" +
-                                    "• 카메라 배터리가 충분한지 확인\n" +
-                                    "• USB 케이블 연결 상태 확인\n" +
-                                    "• 카메라가 PC 연결 모드로 설정되어 있는지 확인\n" +
-                                    "• 카메라를 껐다가 다시 켜보세요",
+                            stringResource(R.string.dialog_camera_check_hints),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -383,13 +381,13 @@ fun MainScreen(
                 },
                 confirmButton = {
                     PrimaryButton(
-                        text = "확인",
+                        text = stringResource(R.string.dialog_confirm),
                         onClick = { cameraViewModel.dismissCameraStatusCheckDialog() }
                     )
                 },
                 dismissButton = {
                     SecondaryButton(
-                        text = "다시 연결",
+                        text = stringResource(R.string.dialog_reconnect),
                         onClick = {
                             cameraViewModel.dismissCameraStatusCheckDialog()
                             cameraViewModel.refreshUsbDevices()
@@ -403,11 +401,31 @@ fun MainScreen(
             )
         }
 
+        // H3 — PTPIP 미리보기 첫 진입 1회 안내용 플래그
+        val hasSeenPtpipPreviewWarning by appSettingsViewModel.hasSeenPtpipPreviewWarning
+            .collectAsStateWithLifecycle()
+        val ptpipFirstWarningMessage = stringResource(R.string.preview_ptpip_first_warning)
+        val ptpipToastContext = LocalContext.current
+
         // 탭 클릭 핸들러 — NavigationBar / NavigationRail에서 공유
         val onTabClick: (BottomNavItem) -> Unit = { screen ->
             if (screen == BottomNavItem.PhotoPreview && isPtpipConnected) {
-                // PTPIP 연결 시 미리보기 탭 클릭하면 경고 다이얼로그 표시
-                showPtpipWarning = true
+                // H3 — 다이얼로그 차단 제거. 첫 1회만 Toast로 안내하고 탭 진입은 항상 허용.
+                if (!hasSeenPtpipPreviewWarning) {
+                    android.widget.Toast.makeText(
+                        ptpipToastContext,
+                        ptpipFirstWarningMessage,
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+                    appSettingsViewModel.markPtpipPreviewWarningSeen()
+                }
+                navController.navigate(screen.route) {
+                    popUpTo(navController.graph.findStartDestination().id) {
+                        saveState = true
+                    }
+                    launchSingleTop = true
+                    restoreState = true
+                }
             } else if (screen.route == "settings") {
                 onSettingsClick()
             } else {
@@ -550,7 +568,7 @@ fun MainScreen(
                 icon = { Icon(Icons.Default.CameraAlt, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                 title = {
                     Text(
-                        "Wi-Fi 연결 중입니다",
+                        stringResource(R.string.dialog_wifi_active_title),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -558,26 +576,24 @@ fun MainScreen(
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
-                            "현재 카메라가 Wi-Fi로 연결되어 있어 사진 미리보기를 사용할 수 없습니다.",
+                            stringResource(R.string.dialog_wifi_active_body),
                             style = MaterialTheme.typography.bodyMedium
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "사진 미리보기를 사용하려면:",
+                            stringResource(R.string.dialog_wifi_active_steps_title),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            "1. 카메라의 Wi-Fi 연결을 해제해주세요\n" +
-                                    "2. USB 케이블로 카메라를 연결해주세요\n" +
-                                    "3. 카메라를 PC 모드로 설정해주세요",
+                            stringResource(R.string.dialog_wifi_active_steps),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "Wi-Fi 연결에서는 '카메라 제어' 탭을 이용해주세요!",
+                            stringResource(R.string.dialog_wifi_active_hint),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Medium
@@ -586,7 +602,7 @@ fun MainScreen(
                 },
                 confirmButton = {
                     PrimaryButton(
-                        text = "알겠습니다",
+                        text = stringResource(R.string.dialog_understood),
                         onClick = { showPtpipWarning = false }
                     )
                 }
@@ -636,20 +652,20 @@ fun MainScreen(
                 },
                 title = {
                     Text(
-                        "Wi-Fi 연결이 끊어졌습니다",
+                        stringResource(R.string.dialog_wifi_disconnected_title),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                 },
                 text = {
                     Text(
-                        "카메라의 Wi-Fi 연결이 끊어졌습니다. 다시 연결해주세요.",
+                        stringResource(R.string.dialog_wifi_disconnected_body),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 },
                 confirmButton = {
                     PrimaryButton(
-                        text = "확인",
+                        text = stringResource(R.string.dialog_confirm),
                         onClick = { showWifiDisconnectedDialog = false }
                     )
                 }
@@ -710,6 +726,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var getSubscriptionUseCase: GetSubscriptionUseCase
+
+    @Inject
+    lateinit var appPreferences: AppPreferencesDataSource
 
     // 권한 요청 런처
     private val storagePermissionLauncher = registerForActivityResult(
@@ -1038,6 +1057,11 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // 첫 사용자 온보딩 표시 여부 — DataStore 초깃값(null) 동안 깜빡임을 막기 위해 null 상태 유지.
+            val onboardingCompleted by appPreferences.isOnboardingCompleted
+                .collectAsStateWithLifecycle(initialValue = null as Boolean?)
+            val scope = rememberCoroutineScope()
+
             // WindowSizeClass 계산 후 CompositionLocal로 전파.
             // 다크 테마 고정이므로 CamConTheme은 변경하지 않는다.
             @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
@@ -1046,27 +1070,45 @@ class MainActivity : ComponentActivity() {
             CompositionLocalProvider(LocalWindowSizeClass provides windowSizeClass) {
                 CamConTheme() {
                     Surface {
-                        if (showBatteryDialog) {
-                            CameraConnectionOptimizationDialog(
-                                onDismissRequest = {
-                                    showBatteryDialog = false
-                                    markCameraConnectionOptimizationDialogShown()
-                                },
-                                onGoToSettings = {
-                                    // 배터리 최적화 예외 설정 화면으로 이동
-                                    openBatteryOptimizationSettings()
-                                    showBatteryDialog = false
-                                    markCameraConnectionOptimizationDialogShown()
+                        when (onboardingCompleted) {
+                            null -> {
+                                // 첫 emit 대기 — 빈 Surface 만 표시. (깜빡임/잘못된 분기 방지)
+                            }
+
+                            false -> {
+                                OnboardingScreen(
+                                    onFinish = {
+                                        scope.launch {
+                                            appPreferences.setOnboardingCompleted(true)
+                                        }
+                                    }
+                                )
+                            }
+
+                            true -> {
+                                if (showBatteryDialog) {
+                                    CameraConnectionOptimizationDialog(
+                                        onDismissRequest = {
+                                            showBatteryDialog = false
+                                            markCameraConnectionOptimizationDialogShown()
+                                        },
+                                        onGoToSettings = {
+                                            // 배터리 최적화 예외 설정 화면으로 이동
+                                            openBatteryOptimizationSettings()
+                                            showBatteryDialog = false
+                                            markCameraConnectionOptimizationDialogShown()
+                                        }
+                                    )
                                 }
-                            )
+                                MainScreen(
+                                    onSettingsClick = {
+                                        startActivity(Intent(this, SettingsActivity::class.java))
+                                    },
+                                    globalManager = globalManager,
+                                    navigateToCameraControl = navigateToCameraControl
+                                )
+                            }
                         }
-                        MainScreen(
-                            onSettingsClick = {
-                                startActivity(Intent(this, SettingsActivity::class.java))
-                            },
-                            globalManager = globalManager,
-                            navigateToCameraControl = navigateToCameraControl
-                        )
                     }
                 }
             }

@@ -399,34 +399,41 @@ class WifiMonitoringService : Service() {
     }
 
     /**
-     * SSID가 카메라 관련 네트워크인지 판단
+     * SSID가 카메라 관련 네트워크인지 판단.
+     *
+     * 보수적 매칭 — 일반 SSID와 충돌하기 쉬운 짧은 generic 토큰
+     * ("Mini", "Hero", "Action", "Pocket", "Mobile", "PEN", "fp", "G9" 등)은 제거했다.
+     * 제조사 brand keyword 또는 카메라 시리즈/모델 prefix 기반으로만 판정한다.
      */
     private fun isCameraNetwork(ssid: String): Boolean {
         val cameraPatterns = listOf(
-            "CANON", "Canon",
-            "NIKON", "Nikon",
-            "SONY", "Sony",
-            "FUJIFILM", "Fujifilm", "FUJI",
-            "OLYMPUS", "Olympus",
-            "PANASONIC", "Panasonic", "Lumix", "LUMIX",
-            "PENTAX", "Pentax", "RICOH", "Ricoh",
-            "LEICA", "Leica",
-            "HASSELBLAD", "Hasselblad",
-            "GoPro", "GOPRO", "Hero",
-            "DJI", "Dji", "Mavic", "Phantom", "Inspire", "Mini",
-            "Insta360", "INSTA360",
-            "EOS", "PowerShot", "IXUS", "VIXIA",
-            "COOLPIX", "Z_5", "Z_6", "Z_7", "Z8", "Z9", "Z30", "Z50", "Zfc",
+            // ── 제조사 brand ──
+            "Canon",
+            "Nikon",
+            "Sony",
+            "Fujifilm", "FUJIFILM",
+            "Olympus",
+            "Panasonic", "Lumix",
+            "Pentax", "Ricoh",
+            "Leica",
+            "Hasselblad",
+            "GoPro",
+            "DJI", "Mavic", "Phantom", "Inspire",
+            "Insta360",
+            "Godox",
+            "Sigma",
+            "Tamron",
+            // ── 모델 prefix(brand 없는 카메라 SSID 대비) ──
+            "EOS", "PowerShot", "VIXIA",
+            "COOLPIX", "Z_5", "Z_6", "Z_7", "Z_8", "Z_9", "Z_30", "Z_50", "Z_fc",
             "D3500", "D5600", "D7500", "D780", "D850", "D500",
-            "Alpha", "FX30", "FX3", "A7R", "A7S", "A7C", "A7IV", "A9",
-            "RX100", "RX10", "ZV-1", "ZV-E10",
-            "X-T4", "X-T5", "X-T30", "X-T50", "X-PRO3", "X-E4", "X-S10", "X-S20",
-            "X-A7", "X-H1", "X-H2", "GFX50", "GFX100",
-            "OM-D", "E-M1", "E-M5", "E-M10", "PEN", "E-PL", "E-P7",
-            "GH5", "GH6", "GX9", "G9", "G100", "FZ1000", "LX100",
-            "GODOX", "Godox", "Flashpoint",
-            "Osmo", "OSMO", "Pocket", "Action", "Mobile",
-            "SIGMA", "fp", "TAMRON"
+            "Alpha", "ILCE",
+            "A7R", "A7S", "A7C", "A7IV",
+            "ZV-1", "ZV-E10",
+            "X-T4", "X-T5", "X-T30", "X-T50", "X-Pro3", "X-E4", "X-S10", "X-S20",
+            "X-H1", "X-H2", "GFX50", "GFX100",
+            "OM-D", "E-M1", "E-M5", "E-M10",
+            "GH5", "GH6", "FZ1000", "LX100"
         )
 
         return cameraPatterns.any { pattern ->

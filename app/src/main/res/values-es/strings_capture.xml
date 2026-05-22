@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="capture_shutter_sound_label">Sonido del obturador</string>
+    <string name="capture_shutter_sound_subtitle">Reproducir el sonido del obturador al capturar</string>
+    <string name="capture_no_liveview_label">Disparo sin vista en vivo</string>
+    <string name="liveview_grid_toggle">Cuadrícula</string>
+    <string name="liveview_exposure_compensation_label">EV</string>
+
+    <string name="coachmark_double_tap_fullscreen">Doble toque para pantalla completa</string>
+    <string name="coachmark_shutter_area">Toca el botón de obturador de 88dp</string>
+    <string name="coachmark_recent_double_tap">Doble toque en una toma reciente abre la galería</string>
+    <string name="coachmark_got_it">Entendido</string>
+
+    <string name="shooting_unsupported_mode">Esta cámara no admite el modo %1$s</string>
+
+    <string name="camera_status_battery_percent">Batería %1$d%%</string>
+    <string name="camera_status_sd_free">SD libre %1$s</string>
+
+    <string name="timelapse_interval_label">Intervalo (s)</string>
+    <string name="timelapse_count_label">Tomas totales</string>
+</resources>

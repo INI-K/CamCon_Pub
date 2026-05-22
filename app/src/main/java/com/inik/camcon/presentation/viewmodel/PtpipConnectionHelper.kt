@@ -108,7 +108,10 @@ class PtpipConnectionHelper @Inject constructor(
                         scope.launch {
                             Log.d(TAG, "WifiNetworkSpecifier 결과: success=$success")
                             if (!success) {
-                                val errorMsg = "Wi‑Fi 자동 연결 실패: $ssid"
+                                val errorMsg = appContext.getString(
+                                    R.string.progress_wifi_auto_connect_failed,
+                                    ssid
+                                )
                                 Log.e(TAG, errorMsg)
                                 onErrorChanged(errorMsg)
                                 onConnectionStateChanged(false)
@@ -178,7 +181,10 @@ class PtpipConnectionHelper @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                val errorMsg = "Wi‑Fi 연결 요청 중 예외 발생: ${e.message}"
+                val errorMsg = appContext.getString(
+                    R.string.progress_wifi_request_exception,
+                    e.message.orEmpty()
+                )
                 Log.e(TAG, errorMsg, e)
                 onErrorChanged(errorMsg)
                 onConnectionStateChanged(false)
@@ -205,7 +211,7 @@ class PtpipConnectionHelper @Inject constructor(
                 val currentPortValue = 15740
 
                 val camera = PtpipCamera(
-                    name = "$ssid (연결됨)",
+                    name = appContext.getString(R.string.progress_camera_label_connected, ssid),
                     ipAddress = cameraIP,
                     port = currentPortValue,
                     isOnline = true
@@ -223,7 +229,7 @@ class PtpipConnectionHelper @Inject constructor(
                 val connectionSuccess = ptpipRepository.connectToCamera(camera, forceApMode = true)
                 if (!connectionSuccess) {
                     Log.e(TAG, "카메라 연결 실패 - 네트워크 상태 재확인")
-                    onErrorChanged("카메라 연결에 실패했습니다.\n네트워크 상태를 확인하고 다시 시도해주세요.")
+                    onErrorChanged(appContext.getString(R.string.progress_camera_connect_failed))
                     onConnectionStateChanged(false)
                 } else {
                     onConnectionStateChanged(false)
@@ -233,7 +239,12 @@ class PtpipConnectionHelper @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Wi-Fi 연결 후 카메라 연결 과정에서 오류", e)
-                onErrorChanged("카메라 연결 과정에서 오류가 발생했습니다: ${e.message}")
+                onErrorChanged(
+                    appContext.getString(
+                        R.string.progress_camera_connect_exception,
+                        e.message.orEmpty()
+                    )
+                )
                 onConnectionStateChanged(false)
             }
         }

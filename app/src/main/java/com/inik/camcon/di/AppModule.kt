@@ -173,6 +173,7 @@ object AppModule {
         photoDownloadManager: PhotoDownloadManager,
         autoConnectManager: AutoConnectManager,
         autoConnectTaskRunner: Lazy<AutoConnectTaskRunner>,
+        ptpipPreferencesDataSource: PtpipPreferencesDataSource,
         @ApplicationScope scope: CoroutineScope,
         @IoDispatcher ioDispatcher: CoroutineDispatcher
     ): PtpipDataSource {
@@ -187,6 +188,7 @@ object AppModule {
             photoDownloadManager,
             autoConnectManager,
             autoConnectTaskRunner,
+            ptpipPreferencesDataSource,
             scope,
             ioDispatcher
         )

@@ -19,7 +19,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.FileProvider
+import com.inik.camcon.R
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.presentation.theme.Background
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
@@ -31,6 +33,16 @@ import java.io.File
 import java.io.FileOutputStream
 
 /**
+ * 공유 토스트/Chooser 라벨용 i18n 문자열 묶음.
+ * Composable 밖 함수에서는 stringResource를 호출할 수 없으므로 호출자가 전달한다.
+ */
+private data class ShareStrings(
+    val chooserTitle: String,
+    val noImageData: String,
+    val failed: String
+)
+
+/**
  * 현재 보여지는 사진을 공유
  */
 private fun shareCurrentPhoto(
@@ -39,8 +51,10 @@ private fun shareCurrentPhoto(
     photo: CameraPhoto,
     viewModel: PhotoPreviewViewModel?,
     fullImageData: ByteArray? = null,
-    thumbnailData: ByteArray? = null
+    thumbnailData: ByteArray? = null,
+    strings: ShareStrings
 ) {
+    // TODO(LOW): Dispatchers.IO 하드코딩 — ViewModel/UseCase 위임으로 옮길 것
     scope.launch(Dispatchers.IO) {
         try {
             // 1. 로컬 파일인 경우
@@ -64,13 +78,13 @@ private fun shareCurrentPhoto(
                             putExtra(Intent.EXTRA_STREAM, fileUri)
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         }
-                        val chooser = Intent.createChooser(shareIntent, "사진 공유")
+                        val chooser = Intent.createChooser(shareIntent, strings.chooserTitle)
                         context.startActivity(chooser)
 
                         Log.d("PhotoShare", "로컬 파일 공유 시작: ${file.name} (${file.length()} bytes)")
                     } catch (e: Exception) {
                         Log.e("PhotoShare", "로컬 파일 공유 인텐트 실행 실패", e)
-                        Toast.makeText(context, "사진 공유에 실패했습니다.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, strings.failed, Toast.LENGTH_SHORT).show()
                     }
                 }
                 return@launch
@@ -111,25 +125,25 @@ private fun shareCurrentPhoto(
                             putExtra(Intent.EXTRA_STREAM, fileUri)
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         }
-                        val chooser = Intent.createChooser(shareIntent, "사진 공유")
+                        val chooser = Intent.createChooser(shareIntent, strings.chooserTitle)
                         context.startActivity(chooser)
 
                         Log.d("PhotoShare", "서버 사진 공유 시작: ${tempFile.name} (${imageData.size} bytes)")
                     } catch (e: Exception) {
                         Log.e("PhotoShare", "공유 인텐트 실행 실패", e)
-                        Toast.makeText(context, "사진 공유에 실패했습니다.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, strings.failed, Toast.LENGTH_SHORT).show()
                     }
                 }
             } else {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "공유할 이미지 데이터가 없습니다.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, strings.noImageData, Toast.LENGTH_SHORT).show()
                     Log.w("PhotoShare", "공유할 이미지 데이터 없음: viewModel=${viewModel != null}, fullImageData=${fullImageData?.let { "${it.size} bytes" } ?: "null"}, thumbnailData=${thumbnailData?.let { "${it.size} bytes" } ?: "null"}")
                 }
             }
         } catch (e: Exception) {
             Log.e("PhotoShare", "사진 공유 준비 중 오류", e)
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, "사진 공유에 실패했습니다: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, strings.failed, Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -149,9 +163,17 @@ fun FullScreenPhotoViewer(
     onDownload: () -> Unit,
     viewModel: PhotoPreviewViewModel? = null,
     hideDownloadButton: Boolean = false,
-    localPhotos: List<CameraPhoto>? = null
+    localPhotos: List<CameraPhoto>? = null,
+    onDeleteRequest: ((CameraPhoto) -> Unit)? = null
 ) {
     val context = LocalContext.current
+
+    // H7-B: 공유 토스트/Chooser 라벨 i18n
+    val shareStrings = ShareStrings(
+        chooserTitle = stringResource(R.string.share_chooser_title),
+        noImageData = stringResource(R.string.share_no_image_data),
+        failed = stringResource(R.string.share_failed)
+    )
 
     val showPhotoInfoSheet = remember { mutableStateOf(false) }
     val modalBottomSheetState = androidx.compose.material3.rememberModalBottomSheetState(
@@ -312,8 +334,17 @@ fun FullScreenPhotoViewer(
                     currentPhoto,
                     viewModel,
                     currentFullImageData,
-                    currentThumbnailData
+                    currentThumbnailData,
+                    shareStrings
                 )
+            },
+            onDeleteClick = onDeleteRequest?.let { handler ->
+                {
+                    val currentPhoto =
+                        if (viewModel != null) (photos.getOrNull(pagerState.currentPage)
+                            ?: photo) else photo
+                    handler(currentPhoto)
+                }
             },
             modifier = Modifier.align(Alignment.TopStart)
         )

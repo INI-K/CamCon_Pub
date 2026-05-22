@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Capture UX (Group 3) -->
+    <string name="capture_shutter_sound_label">Shutter sound</string>
+    <string name="capture_shutter_sound_subtitle">Play system shutter sound when capturing</string>
+    <string name="capture_no_liveview_label">Trigger capture without live view</string>
+    <string name="liveview_grid_toggle">Grid</string>
+    <string name="liveview_exposure_compensation_label">EV</string>
+
+    <!-- Coachmark -->
+    <string name="coachmark_double_tap_fullscreen">Double tap to enter fullscreen</string>
+    <string name="coachmark_shutter_area">Tap the 88dp shutter to capture</string>
+    <string name="coachmark_recent_double_tap">Double tap a recent shot to open gallery</string>
+    <string name="coachmark_got_it">Got it</string>
+
+    <!-- Shooting mode -->
+    <string name="shooting_unsupported_mode">This camera does not support %1$s mode</string>
+
+    <!-- Camera status badges -->
+    <string name="camera_status_battery_percent">Battery %1$d%%</string>
+    <string name="camera_status_sd_free">SD free %1$s</string>
+
+    <!-- Timelapse labels (already exist in main strings; keep capture-scoped keys) -->
+    <string name="timelapse_interval_label">Interval (seconds)</string>
+    <string name="timelapse_count_label">Total shots</string>
+</resources>

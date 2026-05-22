@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 账户：登出 / 删除 -->
+    <string name="account_logout_dialog_title">要登出吗？</string>
+    <string name="account_logout_dialog_message">本地照片缓存与自动连接记录将会保留。确定要登出吗？</string>
+    <string name="account_logout_confirm">登出</string>
+    <string name="account_logout_cancel">取消</string>
+
+    <string name="account_delete_row_title">删除账户</string>
+    <string name="account_delete_row_subtitle">永久删除您的账户和所有数据</string>
+    <string name="account_delete_dialog_title">要删除账户吗？</string>
+    <string name="account_delete_dialog_message">删除账户将永久清除您的云端照片、设置和订阅信息。此操作无法撤销。</string>
+    <string name="account_delete_continue">继续</string>
+    <string name="account_delete_cancel">取消</string>
+
+    <string name="account_delete_confirm_title">请输入 DELETE</string>
+    <string name="account_delete_confirm_message">为确认永久删除,请在下方输入 DELETE 。</string>
+    <string name="account_delete_confirm_placeholder">DELETE</string>
+    <string name="account_delete_confirm_button">永久删除</string>
+    <string name="account_delete_confirm_cancel">取消</string>
+    <string name="account_delete_success">账户已删除</string>
+    <string name="account_delete_failed">账户删除失败:%s</string>
+
+    <!-- 引导 -->
+    <string name="onboarding_skip">跳过</string>
+    <string name="onboarding_next">下一步</string>
+    <string name="onboarding_start">开始使用</string>
+
+    <string name="onboarding_step1_title">通过 USB OTG 连接相机</string>
+    <string name="onboarding_step1_description">使用 USB OTG 数据线将单反或微单连接到手机,然后将相机切换到 PC/PTP 模式。</string>
+
+    <string name="onboarding_step2_title">通过 Wi-Fi PTP-IP 连接</string>
+    <string name="onboarding_step2_description">连接到相机自带的 Wi-Fi 热点,或将相机和手机连接到同一路由器,即可无线控制。</string>
+
+    <string name="onboarding_step3_title">权限授予</string>
+    <string name="onboarding_step3_description">为了实现 Wi-Fi 发现与实时通知,请在弹出时允许位置、Wi-Fi 和通知权限。</string>
+
+    <!-- 语言选择 -->
+    <string name="language_row_title">语言 / Language</string>
+    <string name="language_dialog_title">选择语言</string>
+    <string name="language_system_default">系统默认</string>
+    <string name="language_option_en">English</string>
+    <string name="language_option_ko">한국어</string>
+    <string name="language_option_ja">日本語</string>
+    <string name="language_option_zh">中文</string>
+    <string name="language_option_de">Deutsch</string>
+    <string name="language_option_es">Español</string>
+    <string name="language_option_fr">Français</string>
+    <string name="language_option_it">Italiano</string>
+
+    <!-- 推荐码输入 -->
+    <string name="referral_input_label">推荐码(可选)</string>
+    <string name="referral_input_helper">如果有推荐码,请在登录前输入。</string>
+</resources>
