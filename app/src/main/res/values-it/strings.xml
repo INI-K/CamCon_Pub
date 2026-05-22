@@ -287,4 +287,11 @@
     <string name="ptpip_hotspot_step_3">3. Sulla fotocamera inserisci SSID/password dell\'hotspot del telefono e connettiti</string>
     <string name="ptpip_hotspot_step_4">4. Una volta connessa la fotocamera, tocca \"Cerca fotocamera\" o inserisci l\'IP direttamente</string>
     <string name="ptpip_hotspot_step_5">5. Se l\'annuncio mDNS non arriva, inserisci l\'IP direttamente</string>
+
+    <!-- Finestra di dialogo per l\'ottimizzazione della connessione della fotocamera (MainActivity, 2026-05-22) -->
+    <string name="camera_connection_optimization_title">Ottimizza la connessione della fotocamera</string>
+    <string name="camera_connection_optimization_message">Per una connessione stabile con la fotocamera, ti consigliamo di escludere l\'app dall\'ottimizzazione della batteria.</string>
+    <string name="camera_connection_optimization_details">• Mantenere il controllo della fotocamera in tempo reale\n• Migliorare la stabilità del trasferimento automatico delle foto\n• Prevenire le disconnessioni in background\n\n※ Consentito dalla politica di Google Play in quanto app di connessione di accessori per fotocamera.</string>
+    <string name="camera_connection_optimization_confirm">Apri impostazioni</string>
+    <string name="camera_connection_optimization_dismiss">Più tardi</string>
 </resources>

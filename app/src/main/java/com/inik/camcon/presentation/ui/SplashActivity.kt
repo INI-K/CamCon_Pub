@@ -109,7 +109,7 @@ class SplashActivity : ComponentActivity() {
             val appVersionViewModel: AppVersionViewModel = hiltViewModel()
             val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
 
-            CamConTheme(themeMode = themeMode) {
+            CamConTheme() {
                 val versionState by appVersionViewModel.uiState.collectAsStateWithLifecycle()
 
                 // 앱 시작 시 버전 체크
@@ -396,7 +396,7 @@ fun SplashScreen(
 @Preview(showBackground = true)
 @Composable
 fun SplashScreenPreview() {
-    CamConTheme(themeMode = ThemeMode.LIGHT) {
+    CamConTheme() {
         SplashScreen(
             versionState = AppVersionUiState(),
             libraryLoadingStatus = "라이브러리 로딩 중...",

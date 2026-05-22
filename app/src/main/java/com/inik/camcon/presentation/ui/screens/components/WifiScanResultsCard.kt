@@ -265,7 +265,7 @@ fun WifiScanResultsCard(
 @Preview(name = "WifiScanResultsCard - AP Mode", showBackground = true)
 @Composable
 private fun WifiScanResultsCardApPreview() {
-    CamConTheme(themeMode = ThemeMode.DARK) {
+    CamConTheme() {
         Column(modifier = Modifier.padding(16.dp)) {
             WifiScanResultsCard(
                 ssids = listOf("NIKON_Z6III_12345", "CANON_EOS_R5", "MyHomeWifi_5G", "iPhone"),
@@ -279,7 +279,7 @@ private fun WifiScanResultsCardApPreview() {
 @Preview(name = "WifiScanResultsCard - STA Mode", showBackground = true)
 @Composable
 private fun WifiScanResultsCardStaPreview() {
-    CamConTheme(themeMode = ThemeMode.DARK) {
+    CamConTheme() {
         Column(modifier = Modifier.padding(16.dp)) {
             WifiScanResultsCard(
                 ssids = listOf("CameraNetwork_SONY", "HomeRouter_2G"),

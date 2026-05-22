@@ -157,7 +157,7 @@ fun TopControlsBar(
 @Preview(name = "Top Controls - Connected", showBackground = true)
 @Composable
 private fun TopControlsConnectedPreview() {
-    CamConTheme(themeMode = ThemeMode.DARK) {
+    CamConTheme() {
         Box(modifier = Modifier.background(Background)) {
             TopControlsBar(
                 uiState = CameraUiState(
@@ -199,7 +199,7 @@ private fun TopControlsConnectedPreview() {
 @Preview(name = "Top Controls - Disconnected", showBackground = true)
 @Composable
 private fun TopControlsDisconnectedPreview() {
-    CamConTheme(themeMode = ThemeMode.DARK) {
+    CamConTheme() {
         Box(modifier = Modifier.background(Background)) {
             TopControlsBar(
                 uiState = CameraUiState(),

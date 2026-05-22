@@ -32,7 +32,7 @@ class PtpipConnectionActivity : ComponentActivity() {
             val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
             val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
 
-            CamConTheme(themeMode = themeMode) {
+            CamConTheme() {
                 PtpipConnectionScreen(
                     onBackClick = {
                         // 연결 완료 시 MainActivity로 돌아가면서 카메라 컨트롤 탭 선택
@@ -53,7 +53,7 @@ class PtpipConnectionActivity : ComponentActivity() {
 @Preview(showBackground = true, name = "PTPIP Connection Screen Preview")
 @Composable
 fun PtpipConnectionActivityPreview() {
-    CamConTheme(themeMode = ThemeMode.LIGHT) {
+    CamConTheme() {
         PtpipConnectionScreen(
             onBackClick = {}
         )

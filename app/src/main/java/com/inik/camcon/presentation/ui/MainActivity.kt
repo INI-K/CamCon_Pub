@@ -130,7 +130,7 @@ fun CameraConnectionOptimizationDialog(
         icon = { androidx.compose.material3.Icon(Icons.Default.Settings, contentDescription = null) },
         title = {
             androidx.compose.material3.Text(
-                "카메라 연결 최적화 설정",
+                stringResource(R.string.camera_connection_optimization_title),
                 style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -138,14 +138,11 @@ fun CameraConnectionOptimizationDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 androidx.compose.material3.Text(
-                    text = "카메라와의 안정적인 연결을 위해 배터리 최적화 예외 설정을 권장합니다.",
+                    text = stringResource(R.string.camera_connection_optimization_message),
                     style = androidx.compose.material3.MaterialTheme.typography.bodyLarge
                 )
                 androidx.compose.material3.Text(
-                    text = "• 실시간 카메라 제어 유지\n" +
-                            "• 사진 자동 전송 안정성 향상\n" +
-                            "• 백그라운드 연결 끊김 방지\n\n" +
-                            "※ 카메라 주변기기 연결 앱으로서 Google Play 정책에 따라 허용됩니다.",
+                    text = stringResource(R.string.camera_connection_optimization_details),
                     style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
                     color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                 )
@@ -153,12 +150,12 @@ fun CameraConnectionOptimizationDialog(
         },
         confirmButton = {
             androidx.compose.material3.Button(onClick = onGoToSettings) {
-                androidx.compose.material3.Text("설정하기")
+                androidx.compose.material3.Text(stringResource(R.string.camera_connection_optimization_confirm))
             }
         },
         dismissButton = {
             androidx.compose.material3.TextButton(onClick = onDismissRequest) {
-                androidx.compose.material3.Text("나중에")
+                androidx.compose.material3.Text(stringResource(R.string.camera_connection_optimization_dismiss))
             }
         }
     )
@@ -1061,7 +1058,7 @@ class MainActivity : ComponentActivity() {
             val windowSizeClass: WindowSizeClass = calculateWindowSizeClass(this)
 
             CompositionLocalProvider(LocalWindowSizeClass provides windowSizeClass) {
-                CamConTheme(themeMode = themeMode) {
+                CamConTheme() {
                     Surface {
                         if (showBatteryDialog) {
                             CameraConnectionOptimizationDialog(

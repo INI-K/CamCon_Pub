@@ -135,7 +135,7 @@ private fun ModeButton(
 @Preview(name = "Shooting Mode Selector", showBackground = true)
 @Composable
 private fun ShootingModeSelectorPreview() {
-    CamConTheme(themeMode = ThemeMode.DARK) {
+    CamConTheme() {
         Column(
             modifier = Modifier
                 .padding(20.dp)
