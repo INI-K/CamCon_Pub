@@ -57,13 +57,20 @@ data class PtpipCameraInfo(
 )
 
 /**
- * Wi-Fi 네트워크 상태 정보
+ * Wi-Fi 네트워크 상태 정보.
+ *
+ * 신규 3 필드(`gatewayIp`, `subnetPrefix`, `isHotspotEnabled`)는 폰 핫스팟 STA 모드를
+ * 표현하기 위해 추가됐다. default 값을 가지므로 origin의 positional 4-arg 호출부는
+ * 그대로 컴파일된다.
  */
 data class WifiNetworkState(
     val isConnected: Boolean,
     val isConnectedToCameraAP: Boolean,
     val ssid: String?,
-    val detectedCameraIP: String?
+    val detectedCameraIP: String?,
+    val gatewayIp: String? = null,
+    val subnetPrefix: Int? = null,
+    val isHotspotEnabled: Boolean = false,
 )
 
 /**

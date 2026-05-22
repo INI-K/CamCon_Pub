@@ -4,6 +4,7 @@ import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
 import com.inik.camcon.data.datasource.ptpip.PtpipDataSource
 import com.inik.camcon.domain.model.AutoConnectNetworkConfig
 import com.inik.camcon.domain.model.CameraCaptureCallback
+import com.inik.camcon.domain.model.ConnectionMethod
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.PtpipCameraInfo
 import com.inik.camcon.domain.model.PtpipConnectionState
@@ -46,10 +47,27 @@ class PtpipRepositoryImpl @Inject constructor(
     override val connectionLostMessage: StateFlow<String?>
         get() = ptpipDataSource.connectionLostMessage
 
+    override val activeConnectionMethod: StateFlow<ConnectionMethod?>
+        get() = ptpipDataSource.activeConnectionMethod
+
+    override val manualIp: StateFlow<String>
+        get() = ptpipDataSource.manualIp
+
     // ── 카메라 연결/해제 ──
 
     override suspend fun connectToCamera(camera: PtpipCamera, forceApMode: Boolean): Boolean =
         ptpipDataSource.connectToCamera(camera, forceApMode)
+
+    override fun setActiveConnectionMethod(method: ConnectionMethod) {
+        ptpipDataSource.setActiveConnectionMethod(method)
+    }
+
+    override fun setManualIp(ip: String) {
+        ptpipDataSource.setManualIp(ip)
+    }
+
+    override suspend fun addManualCamera(ip: String, name: String, port: Int): PtpipCamera =
+        ptpipDataSource.addManualCamera(ip, name, port)
 
     override suspend fun disconnect() { ptpipDataSource.disconnect(keepSession = false) }
 

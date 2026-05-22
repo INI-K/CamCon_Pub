@@ -1,8 +1,8 @@
 package com.inik.camcon.data.datasource.ptpip
 
 import android.content.BroadcastReceiver
-import android.content.Context
 import android.content.ContentValues
+import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
@@ -11,7 +11,6 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import com.inik.camcon.CameraNative
-import com.inik.camcon.utils.LogcatManager
 import com.inik.camcon.EventListenerStopCallback
 import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
 import com.inik.camcon.data.network.ptpip.authentication.NikonAuthenticationService
@@ -22,8 +21,11 @@ import com.inik.camcon.data.repository.managers.CameraEventManager
 import com.inik.camcon.data.repository.managers.PhotoDownloadManager
 import com.inik.camcon.data.service.AutoConnectManager
 import com.inik.camcon.data.service.AutoConnectTaskRunner
+import com.inik.camcon.di.ApplicationScope
+import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.model.CameraAbilitiesInfo
 import com.inik.camcon.domain.model.CameraSupports
+import com.inik.camcon.domain.model.ConnectionMethod
 import com.inik.camcon.domain.model.NikonConnectionMode
 import com.inik.camcon.domain.model.PtpDeviceInfo
 import com.inik.camcon.domain.model.PtpipCamera
@@ -32,9 +34,14 @@ import com.inik.camcon.domain.model.PtpipConnectionPhase
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
-import com.inik.camcon.di.ApplicationScope
-import com.inik.camcon.di.IoDispatcher
+import com.inik.camcon.domain.model.toForceApMode
+import com.inik.camcon.utils.LogcatManager
 import dagger.Lazy
+import java.util.concurrent.ConcurrentHashMap
+import javax.inject.Inject
+import javax.inject.Singleton
+import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -50,12 +57,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.withTimeoutOrNull
-import java.util.concurrent.ConcurrentHashMap
-import kotlin.coroutines.cancellation.CancellationException
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * PTPIP (Picture Transfer Protocol over IP) 데이터 소스
@@ -123,6 +125,61 @@ class PtpipDataSource @Inject constructor(
     // AP 모드 강제 여부 (탭 선택 등으로 AP 모드를 명시적으로 사용하는 경우)
     private val _isApModeForced = MutableStateFlow(false)
     val isApModeForced: StateFlow<Boolean> = _isApModeForced.asStateFlow()
+
+    // 활성화된 사용자 시나리오 (AP / STA_ROUTER / STA_PHONE_HOTSPOT). null=미선택.
+    private val _activeConnectionMethod = MutableStateFlow<ConnectionMethod?>(null)
+    val activeConnectionMethod: StateFlow<ConnectionMethod?> = _activeConnectionMethod.asStateFlow()
+
+    // 사용자가 직접 입력한 카메라 IP. 폰 핫스팟 모드의 mDNS 폴백용.
+    private val _manualIp = MutableStateFlow("")
+    val manualIp: StateFlow<String> = _manualIp.asStateFlow()
+
+    /** 사용자 시나리오 선택. UI/ViewModel에서 호출. */
+    fun setActiveConnectionMethod(method: ConnectionMethod) {
+        _activeConnectionMethod.value = method
+    }
+
+    /** 사용자 입력 IP 갱신. UI/ViewModel에서 호출. */
+    fun setManualIp(ip: String) {
+        _manualIp.value = ip
+    }
+
+    /**
+     * 사용자가 입력한 IP를 카메라 후보로 등록한다.
+     * 동일 IP가 이미 있으면 사용자 입력 정보(이름/포트)로 갱신한다.
+     * `distinctBy`는 첫 occurrence를 유지하므로 사용자가 mDNS로 발견된 카메라의
+     * 이름/포트를 수동 입력으로 덮어쓸 수 없는 문제가 있어 명시적 filterNot+append로 처리.
+     */
+    fun addManualCamera(ipAddress: String, name: String, port: Int): PtpipCamera {
+        val safeName = name.ifBlank { "Manual ($ipAddress)" }
+        val safePort = if (port > 0) port else 15740
+        val cam = PtpipCamera(ipAddress, safePort, safeName, isOnline = true)
+        _discoveredCameras.value =
+            _discoveredCameras.value.filterNot { it.ipAddress == cam.ipAddress } + cam
+        return cam
+    }
+
+    /**
+     * 현재 환경을 기반으로 사용자 시나리오를 추정한다.
+     * UI 선택이 없을 때 폴백으로 사용.
+     */
+    fun inferMethod(): ConnectionMethod = when {
+        wifiHelper.isHotspotEnabled() -> ConnectionMethod.STA_PHONE_HOTSPOT
+        wifiHelper.isConnectedToCameraAP() -> ConnectionMethod.AP
+        else -> ConnectionMethod.STA_ROUTER
+    }
+
+    /**
+     * `ConnectionMethod`를 인자로 받는 오버로드.
+     * 기존 `connectToCamera(camera, forceApMode)` 시그니처에 위임하고
+     * 결과와 무관하게 `activeConnectionMethod`를 갱신한다.
+     */
+    suspend fun connectToCamera(camera: PtpipCamera, method: ConnectionMethod): Boolean {
+        val result = connectToCamera(camera, forceApMode = method.toForceApMode())
+        // 본체에서 inferMethod() 기반으로 갱신했을 수 있으므로 사용자 의도(method)로 덮어쓴다.
+        _activeConnectionMethod.value = method
+        return result
+    }
 
     private var lastAutoConnectBroadcastSsid: String? = null
     private var lastAutoConnectBroadcastBssid: String? = null
@@ -581,6 +638,11 @@ class PtpipDataSource @Inject constructor(
 
             // AP 모드 강제 플래그 설정
             _isApModeForced.value = forceApMode
+            // 직접 호출 경로(ConnectionHelper / DiscoveryHelper / AutoConnectTaskRunner / connectManualCamera 등)
+            // 에서도 activeConnectionMethod가 stale되지 않도록 본체에서 일관 갱신한다.
+            // 신규 오버로드(connectToCamera(camera, method))는 이 호출 후 명시 method로 덮어쓰므로 사용자 의도 보존.
+            _activeConnectionMethod.value =
+                if (forceApMode) ConnectionMethod.AP else inferMethod()
 
             // 라이브러리가 로드되지 않은 경우 로드
             ensureLibrariesLoaded()
@@ -1281,6 +1343,8 @@ class PtpipDataSource @Inject constructor(
                 _cameraInfo.value = null
                 // 연결 해제 시 AP 강제 표시 해제
                 _isApModeForced.value = false
+                // 사용자 시나리오도 리셋 — 다음 연결의 inferMethod() 결과 보존.
+                _activeConnectionMethod.value = null
                 _connectionProgressMessage.value = ""
                 isInitialFlushCompleted = false
                 Log.d(TAG, "카메라 연결 해제 완료")
