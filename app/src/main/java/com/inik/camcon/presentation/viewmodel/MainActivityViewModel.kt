@@ -6,6 +6,7 @@ import android.hardware.usb.UsbManager
 import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.domain.repository.UsbDeviceRepository
 import com.inik.camcon.domain.model.CameraConnectionType
@@ -14,7 +15,7 @@ import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.utils.LogcatManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -23,7 +24,8 @@ import kotlinx.coroutines.launch
 class MainActivityViewModel @Inject constructor(
     private val cameraConnectionGlobalManager: CameraConnectionGlobalManager,
     private val usbDeviceRepository: UsbDeviceRepository,
-    private val getSubscriptionUseCase: GetSubscriptionUseCase
+    private val getSubscriptionUseCase: GetSubscriptionUseCase,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
     companion object {
@@ -50,7 +52,7 @@ class MainActivityViewModel @Inject constructor(
     }
 
     fun initializeUsbState(initialIntent: Intent?) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             handleUsbIntentInternal(initialIntent)
             delay(500)
             checkAndInitializeUsbDevicesInternal()
@@ -58,13 +60,13 @@ class MainActivityViewModel @Inject constructor(
     }
 
     fun handleUsbIntent(intent: Intent?) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             handleUsbIntentInternal(intent)
         }
     }
 
     fun checkUsbPermissionStatus() {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             checkUsbPermissionStatusInternal()
         }
     }
@@ -167,7 +169,7 @@ class MainActivityViewModel @Inject constructor(
     }
 
     fun cleanup() {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             try {
                 usbDeviceRepository.cleanup()
             } catch (error: Exception) {

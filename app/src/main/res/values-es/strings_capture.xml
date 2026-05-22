@@ -4,6 +4,8 @@
     <string name="capture_shutter_sound_subtitle">Reproducir el sonido del obturador al capturar</string>
     <string name="capture_no_liveview_label">Disparo sin vista en vivo</string>
     <string name="liveview_grid_toggle">Cuadrícula</string>
+    <string name="liveview_histogram_toggle">Histograma</string>
+    <string name="liveview_focus_peaking_toggle">Resalte de enfoque</string>
     <string name="liveview_exposure_compensation_label">EV</string>
 
     <string name="coachmark_double_tap_fullscreen">Doble toque para pantalla completa</string>
@@ -15,6 +17,11 @@
 
     <string name="camera_status_battery_percent">Batería %1$d%%</string>
     <string name="camera_status_sd_free">SD libre %1$s</string>
+    <string name="liveview_ev_label">Compensación de exposición</string>
+    <string name="camera_status_sd_format_gb">SD %1$.1fGB</string>
+    <string name="camera_status_sd_format_mb">SD %1$dMB</string>
+    <string name="camera_status_sd_low">SD bajo</string>
+    <string name="camera_status_sd_images_free">%1$d disparos restantes</string>
 
     <string name="timelapse_interval_label">Intervalo (s)</string>
     <string name="timelapse_count_label">Tomas totales</string>

@@ -115,6 +115,12 @@ data class CameraCapabilities(
     val supportsConfigChange: Boolean,
     val batteryLevel: Int? = null,
 
+    // 노출 보정 widget 존재 여부 (libgphoto2 widget root에서 검출)
+    val canExposureCompensation: Boolean = false,
+
+    // 첫 스토리지 정보. 미지원 카메라/조회 실패 시 null
+    val storageInfo: StorageInfo? = null,
+
     // 추가 기능 프로퍼티
     val canTimelapse: Boolean = supportsTimelapse,
     val canAutoFocus: Boolean = supportsAutofocus

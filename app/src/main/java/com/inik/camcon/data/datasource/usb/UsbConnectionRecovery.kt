@@ -6,7 +6,9 @@ import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbManager
 import android.util.Log
 import com.inik.camcon.CameraNative
-import kotlinx.coroutines.Dispatchers
+import com.inik.camcon.di.IoDispatcher
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers // for Dispatchers.Default — IO 하드코딩 아님
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -18,7 +20,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class UsbConnectionRecovery @Inject constructor(
-    private val context: Context
+    private val context: Context,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     private val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
 
@@ -35,7 +38,7 @@ class UsbConnectionRecovery @Inject constructor(
         currentConnection: UsbDeviceConnection?,
         getDevicesFunction: () -> List<UsbDevice>,
         errorCallback: ((errorCode: Int, errorMessage: String) -> Unit)? = null
-    ): RecoveryResult = withContext(Dispatchers.IO) {
+    ): RecoveryResult = withContext(ioDispatcher) {
 
         return@withContext try {
             Log.d(TAG, "🔄 단순 USB 복구 시작 (네이티브 완전 정리 + 권한 재요청)")

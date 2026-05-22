@@ -264,6 +264,28 @@ class AppSettingsViewModel @Inject constructor(
             )
 
     /**
+     * 라이브뷰 히스토그램 오버레이 활성화 여부 (기본값: false)
+     */
+    val isHistogramEnabled: StateFlow<Boolean> =
+        appSettingsRepository.isHistogramEnabled
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = false
+            )
+
+    /**
+     * 라이브뷰 포커스 피킹 오버레이 활성화 여부 (기본값: false)
+     */
+    val isFocusPeakingEnabled: StateFlow<Boolean> =
+        appSettingsRepository.isFocusPeakingEnabled
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = false
+            )
+
+    /**
      * H3 — PTPIP 미리보기 안내 1회 표시 플래그 (기본값: false)
      */
     val hasSeenPtpipPreviewWarning: StateFlow<Boolean> =
@@ -467,6 +489,24 @@ class AppSettingsViewModel @Inject constructor(
     fun setLiveViewGridEnabled(enabled: Boolean) {
         viewModelScope.launch {
             appSettingsRepository.setLiveViewGridEnabled(enabled)
+        }
+    }
+
+    /**
+     * 라이브뷰 히스토그램 오버레이 활성화 토글
+     */
+    fun setHistogramEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            appSettingsRepository.setHistogramEnabled(enabled)
+        }
+    }
+
+    /**
+     * 라이브뷰 포커스 피킹 오버레이 활성화 토글
+     */
+    fun setFocusPeakingEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            appSettingsRepository.setFocusPeakingEnabled(enabled)
         }
     }
 

@@ -593,8 +593,8 @@ class ValidateImageFormatUseCaseTest {
         assertTrue(result.needsUpgrade)
         assertTrue(result.isRawFile)
         assertEquals("Nikon", result.manufacturer)
-        // PR-7 i18n: R.string.raw_restriction_free (values-ko 원문 매칭)
-        assertEquals(KoreanStringStubs.korean(R.string.raw_restriction_free), result.restrictionMessage)
+        // PR-G7: 통일 RAW 게이팅 메시지(FREE 티어 라벨 포맷).
+        assertEquals(KoreanStringStubs.unifiedGatingMessageKo("FREE"), result.restrictionMessage)
     }
 
     @Test
@@ -607,8 +607,8 @@ class ValidateImageFormatUseCaseTest {
         assertTrue(result.needsUpgrade)
         assertTrue(result.isRawFile)
         assertEquals("Sony", result.manufacturer)
-        // PR-7 i18n: R.string.raw_restriction_basic (values-ko 원문 매칭)
-        assertEquals(KoreanStringStubs.korean(R.string.raw_restriction_basic), result.restrictionMessage)
+        // PR-G7: 통일 RAW 게이팅 메시지(BASIC 티어 라벨 포맷).
+        assertEquals(KoreanStringStubs.unifiedGatingMessageKo("BASIC"), result.restrictionMessage)
     }
 
     @Test

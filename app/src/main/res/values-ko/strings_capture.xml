@@ -4,6 +4,8 @@
     <string name="capture_shutter_sound_subtitle">촬영 시 시스템 셔터음을 재생합니다</string>
     <string name="capture_no_liveview_label">라이브뷰 없이 트리거 캡처</string>
     <string name="liveview_grid_toggle">그리드</string>
+    <string name="liveview_histogram_toggle">히스토그램</string>
+    <string name="liveview_focus_peaking_toggle">포커스 피킹</string>
     <string name="liveview_exposure_compensation_label">EV</string>
 
     <string name="coachmark_double_tap_fullscreen">더블탭하여 전체화면</string>
@@ -15,6 +17,11 @@
 
     <string name="camera_status_battery_percent">배터리 %1$d%%</string>
     <string name="camera_status_sd_free">SD 잔량 %1$s</string>
+    <string name="liveview_ev_label">노출 보정</string>
+    <string name="camera_status_sd_format_gb">SD %1$.1fGB</string>
+    <string name="camera_status_sd_format_mb">SD %1$dMB</string>
+    <string name="camera_status_sd_low">SD 부족</string>
+    <string name="camera_status_sd_images_free">여유 %1$d컷</string>
 
     <string name="timelapse_interval_label">간격 (초)</string>
     <string name="timelapse_count_label">총 컷 수</string>

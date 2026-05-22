@@ -9,8 +9,10 @@ import android.os.Build
 import android.util.Log
 import androidx.exifinterface.media.ExifInterface
 import com.inik.camcon.data.processor.ColorTransferProcessor
+import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.model.ColorTransferResult
 import com.inik.camcon.domain.repository.ColorTransferRepository
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -20,7 +22,8 @@ import javax.inject.Singleton
 
 @Singleton
 class ColorTransferRepositoryImpl @Inject constructor(
-    private val colorTransferProcessor: ColorTransferProcessor
+    private val colorTransferProcessor: ColorTransferProcessor,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ColorTransferRepository {
 
     companion object {
@@ -178,7 +181,7 @@ class ColorTransferRepositoryImpl @Inject constructor(
         originalImagePath: String,
         outputPath: String,
         intensity: Float
-    ): ColorTransferResult? = withContext(Dispatchers.IO) {
+    ): ColorTransferResult? = withContext(ioDispatcher) {
         try {
             // Get cached reference stats
             val referenceStats = colorTransferProcessor.getCachedReferenceStats(referenceImagePath)

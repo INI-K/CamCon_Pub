@@ -3,23 +3,28 @@ package com.inik.camcon.presentation.viewmodel.photo
 import android.content.Context
 import android.util.Log
 import com.inik.camcon.R
+import com.inik.camcon.di.ApplicationScope
+import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.manager.ErrorSeverity
 import com.inik.camcon.domain.manager.ErrorType
-import com.inik.camcon.presentation.viewmodel.state.ErrorHandlingManager
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.domain.usecase.camera.GetCameraPhotosPagedUseCase
-import com.inik.camcon.di.ApplicationScope
+import com.inik.camcon.presentation.viewmodel.state.ErrorHandlingManager
+import com.inik.camcon.utils.Constants
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -34,12 +39,22 @@ class PhotoListManager @Inject constructor(
     private val getCameraPhotosPagedUseCase: GetCameraPhotosPagedUseCase,
     private val validateImageFormatUseCase: ValidateImageFormatUseCase,
     private val errorHandlingManager: ErrorHandlingManager,
-    @ApplicationScope private val appScope: CoroutineScope
+    @ApplicationScope private val appScope: CoroutineScope,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
 
     companion object {
         private const val TAG = "사진목록매니저"
         private const val PREFETCH_PAGE_SIZE = 50
+
+        /** 로컬 사진으로 인정하는 확장자 집합. */
+        private val LOCAL_PHOTO_EXTENSIONS: Set<String> = setOf(
+            "jpg", "jpeg", "png", "heic", "heif",
+            "nef", "cr2", "arw", "dng", "orf", "rw2", "raf"
+        )
+
+        /** 로컬 디렉터리 재귀 스캔 최대 깊이 (DCIM/CamCon/서브폴더/파일 구조 커버). */
+        private const val MAX_LOCAL_SCAN_DEPTH = 3
     }
 
     // 앱 scope의 자식 scope — cancelChildren해도 앱 scope에 영향 없음
@@ -447,6 +462,85 @@ class PhotoListManager @Inject constructor(
             - 추가 로딩 중: ${_isLoadingMore.value}
         """.trimIndent()
         )
+    }
+
+    /**
+     * PTPIP 모드 전용: 카메라 fetch 없이 로컬 다운로드 디렉터리만 스캔하여 사진 목록을 적재한다.
+     *
+     * 스캔 위치(존재하는 디렉터리만 사용):
+     *  - [Constants.FilePaths.findAvailableExternalStoragePath] — 메인 다운로드 경로 (예: DCIM/CamCon)
+     *  - `context.filesDir/photos` — 내부 폴백
+     *  - `context.cacheDir/<TEMP_DOWNLOADS_DIR>` — 임시 다운로드 결과
+     *  - `context.cacheDir/<COLOR_TRANSFER_DIR>` — 색감 전송 결과
+     *
+     * RAW 게이팅은 [ValidateImageFormatUseCase] 단일 지점에 위임한다.
+     */
+    fun loadLocalPhotos(currentTier: SubscriptionTier = SubscriptionTier.FREE) {
+        Log.d(TAG, "=== loadLocalPhotos 호출 (티어=$currentTier) ===")
+        managerScope.launch {
+            if (!isManagerActive) {
+                Log.d(TAG, "⛔ loadLocalPhotos 작업 중단됨 (매니저 비활성)")
+                return@launch
+            }
+            _isLoading.value = true
+            _currentPage.value = 0
+            _totalPages.value = 1
+            _hasNextPage.value = false
+
+            val photos = withContext(ioDispatcher) { scanLocalDirectories() }
+            Log.d(TAG, "로컬 디렉터리 스캔 결과: ${photos.size}개")
+
+            if (!isManagerActive) {
+                Log.d(TAG, "⛔ loadLocalPhotos 중단됨 (스캔 후)")
+                return@launch
+            }
+            _allPhotos.value = photos
+            updateFilteredPhotos(currentTier)
+            _isLoading.value = false
+            Log.d(TAG, "loadLocalPhotos 완료: 전체 ${photos.size}, 필터링 ${_filteredPhotos.value.size}")
+        }
+    }
+
+    /**
+     * 로컬 디렉터리들을 순회하며 [CameraPhoto] 목록을 만든다. IO 디스패처에서 호출되어야 한다.
+     *
+     * 중복 경로는 path 키로 제거하며 `lastModified` 내림차순으로 정렬한다.
+     */
+    private fun scanLocalDirectories(): List<CameraPhoto> {
+        val candidates: List<File> = buildList {
+            add(File(Constants.FilePaths.findAvailableExternalStoragePath()))
+            add(File(context.filesDir, "photos"))
+            add(File(context.cacheDir, Constants.FilePaths.TEMP_DOWNLOADS_DIR))
+            add(File(context.cacheDir, Constants.FilePaths.COLOR_TRANSFER_DIR))
+        }
+
+        val collected = linkedMapOf<String, CameraPhoto>()
+        for (root in candidates) {
+            if (!root.exists() || !root.isDirectory) continue
+            try {
+                root.walkTopDown()
+                    .maxDepth(MAX_LOCAL_SCAN_DEPTH)
+                    .filter { f ->
+                        f.isFile && f.extension.lowercase() in LOCAL_PHOTO_EXTENSIONS
+                    }
+                    .forEach { file ->
+                        val path = file.absolutePath
+                        if (path !in collected) {
+                            collected[path] = CameraPhoto(
+                                path = path,
+                                name = file.name,
+                                size = file.length(),
+                                date = file.lastModified()
+                            )
+                        }
+                    }
+            } catch (t: Throwable) {
+                // 권한 부족 등으로 스캔 실패 — 다른 디렉터리는 계속 시도.
+                Log.w(TAG, "로컬 디렉터리 스캔 실패: ${root.absolutePath}", t)
+            }
+        }
+
+        return collected.values.sortedByDescending { it.date }
     }
 
     /**

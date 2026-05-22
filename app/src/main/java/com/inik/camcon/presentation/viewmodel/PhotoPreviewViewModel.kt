@@ -11,6 +11,7 @@ import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
+import com.inik.camcon.domain.usecase.camera.DeleteCameraFileUseCase
 import com.inik.camcon.domain.usecase.camera.PhotoCaptureEventManager
 import com.inik.camcon.domain.usecase.camera.ResumeNativeOperationsUseCase
 import com.inik.camcon.presentation.viewmodel.photo.FileTypeFilter
@@ -71,7 +72,8 @@ class PhotoPreviewViewModel @Inject constructor(
     private val photoImageManager: PhotoImageManager,
     private val photoSelectionManager: PhotoSelectionManager,
     private val errorHandlingManager: ErrorHandlingManager,
-    private val resumeNativeOperationsUseCase: ResumeNativeOperationsUseCase
+    private val resumeNativeOperationsUseCase: ResumeNativeOperationsUseCase,
+    private val deleteCameraFileUseCase: DeleteCameraFileUseCase
 ) : ViewModel() {
 
     companion object {
@@ -227,9 +229,8 @@ class PhotoPreviewViewModel @Inject constructor(
                     // PTPIP 연결 상태를 확인하여 파일 목록 로딩 여부 결정
                     val isPtpipConnected = _uiState.value.isPtpipConnected
                     if (isPtpipConnected) {
-                        Log.d(TAG, "⚠️ PTPIP 연결 상태 - 파일 목록 로딩 완전 차단")
-                        // PTPIP 연결 시에는 어떤 파일 목록 작업도 수행하지 않음
-                        return@collect
+                        Log.d(TAG, "PTPIP 연결 상태 - 로컬 다운로드 디렉터리 전용 스캔")
+                        loadLocalOnlyPhotos()
                     } else {
                         Log.d(TAG, "USB 연결 상태 - 파일 목록 불러오기")
                         photoListManager.loadInitialPhotos(
@@ -263,7 +264,13 @@ class PhotoPreviewViewModel @Inject constructor(
 
         ptpipObserveJob = viewModelScope.launch {
             cameraRepository.isPtpipConnected().collect { isPtpipConnected ->
+                val previous = _uiState.value.isPtpipConnected
                 _uiState.update { it.copy(isPtpipConnected = isPtpipConnected) }
+                // PTPIP 활성 전환 시 로컬 디렉터리 즉시 스캔 (카메라 연결 이벤트 후행 케이스 대비).
+                if (isPtpipConnected && !previous) {
+                    Log.d(TAG, "PTPIP 활성 전환 감지 - 로컬 스캔 트리거")
+                    loadLocalOnlyPhotos()
+                }
             }
         }
     }
@@ -426,21 +433,31 @@ class PhotoPreviewViewModel @Inject constructor(
 
     /**
      * H7-A — 사진 삭제. 카메라/로컬 모두에서 제거.
+     *
+     * 카메라 측 path는 libgphoto2 풀경로 (예: "/store_00010001/DCIM/100NIKON/DSC_0001.JPG").
+     * 마지막 '/' 기준으로 folder/filename 분리 후 DeleteCameraFileUseCase 호출.
+     * folder/filename 추출 실패(슬래시 없음) 시 카메라 측 삭제는 스킵하고 로컬만 정리.
      */
     fun deletePhoto(photo: CameraPhoto) {
         viewModelScope.launch {
             try {
                 Log.d(TAG, "사진 삭제 시도: ${photo.name}")
-                // TODO: 카메라 측 삭제 API 호출 결과를 UI에 반영 (현재 Result 반환만 사용).
-                val result = cameraRepository.deletePhoto(photo.path)
-                result.fold(
-                    onSuccess = {
-                        Log.d(TAG, "카메라 측 사진 삭제 성공: ${photo.name}")
-                    },
-                    onFailure = { e ->
-                        Log.w(TAG, "카메라 측 사진 삭제 실패 (로컬 정리는 계속): ${photo.name}", e)
-                    }
-                )
+
+                val lastSlash = photo.path.lastIndexOf('/')
+                if (lastSlash > 0 && lastSlash < photo.path.length - 1) {
+                    val folder = photo.path.substring(0, lastSlash)
+                    val filename = photo.path.substring(lastSlash + 1)
+                    deleteCameraFileUseCase(folder, filename).fold(
+                        onSuccess = {
+                            Log.d(TAG, "카메라 측 사진 삭제 성공: $folder / $filename")
+                        },
+                        onFailure = { e ->
+                            Log.w(TAG, "카메라 측 사진 삭제 실패 (로컬 정리는 계속): ${photo.name}", e)
+                        }
+                    )
+                } else {
+                    Log.w(TAG, "카메라 path 형식이 예상과 다름 — 카메라 측 삭제 스킵: ${photo.path}")
+                }
 
                 // 로컬 파일도 정리.
                 runCatching {
@@ -536,10 +553,16 @@ class PhotoPreviewViewModel @Inject constructor(
     }
 
     /**
-     * 카메라 사진 로드 (별칭)
+     * 카메라 사진 로드 (별칭).
+     *
+     * PTPIP 활성 시에는 카메라 fetch 대신 로컬 디렉터리 스캔으로 분기한다 (G4 후속).
      */
     fun loadCameraPhotos() {
-        loadInitialPhotos()
+        if (_uiState.value.isPtpipConnected) {
+            loadLocalOnlyPhotos()
+        } else {
+            loadInitialPhotos()
+        }
     }
 
     /**
@@ -565,14 +588,16 @@ class PhotoPreviewViewModel @Inject constructor(
     }
 
     /**
-     * H3 — PTPIP 활성 시 카메라 fetch는 스킵, 로컬 다운로드 캐시만 사용.
-     * 현재 photoListManager의 기존 로드는 PTPIP 시 차단되므로 본 함수는 명시적 호출 시
-     * 차단 메시지를 띄우지 않고 silently no-op한다 (그리드는 이미 다운로드된 파일을 보여줌).
+     * H3 — PTPIP 활성 시 카메라 fetch는 스킵, 로컬 다운로드 디렉터리만 스캔.
+     *
+     * PhotoListManager 의 카메라 페이지 fetch 경로는 PTPIP 시 차단되므로, 본 함수는
+     * 로컬 디렉터리(외부 DCIM/CamCon · 내부 photos · 임시 다운로드 · 색감 전송 결과)를
+     * 직접 스캔하여 그리드에 표시한다. RAW 게이팅은 ValidateImageFormatUseCase 단일 지점에
+     * 의해 [PhotoListManager.updateFilteredPhotos] 내부에서 처리된다.
      */
     fun loadLocalOnlyPhotos() {
-        Log.d(TAG, "loadLocalOnlyPhotos 호출 - PTPIP 모드 로컬 전용")
-        // 다운로드 폴더 기반 로컬 사진은 추후 별도 구현 (현재는 processedFiles 기반 캐시에 의존).
-        // PhotoListManager 호출은 의도적으로 생략한다.
+        Log.d(TAG, "loadLocalOnlyPhotos 호출 - PTPIP 모드 로컬 전용 스캔")
+        photoListManager.loadLocalPhotos(_uiState.value.currentTier)
     }
 
     // MARK: - Private Helper Methods

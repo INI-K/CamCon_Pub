@@ -33,6 +33,10 @@ interface AppSettingsRepository {
     val lastTimelapseInterval: Flow<Int>
     val lastTimelapseCount: Flow<Int>
 
+    // === Live View Overlays (Group 7) ===
+    val isHistogramEnabled: Flow<Boolean>
+    val isFocusPeakingEnabled: Flow<Boolean>
+
     // === 쓰기 ===
     suspend fun setCameraControlsEnabled(enabled: Boolean)
     suspend fun setLiveViewEnabled(enabled: Boolean)
@@ -52,5 +56,7 @@ interface AppSettingsRepository {
     suspend fun setHasSeenCaptureCoachmark(seen: Boolean)
     suspend fun setLastTimelapseInterval(seconds: Int)
     suspend fun setLastTimelapseCount(count: Int)
+    suspend fun setHistogramEnabled(enabled: Boolean)
+    suspend fun setFocusPeakingEnabled(enabled: Boolean)
     suspend fun clearAllSettings()
 }
