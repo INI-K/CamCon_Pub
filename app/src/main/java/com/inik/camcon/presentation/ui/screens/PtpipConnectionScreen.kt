@@ -575,7 +575,7 @@ fun PtpipConnectionScreen(
     // 테마 모드 가져오기
     val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
 
-    CamConTheme(themeMode = themeMode) {
+    CamConTheme() {
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -826,7 +826,7 @@ fun PtpipConnectionScreen(
 @Preview(name = "PTPIP Connection Screen", showBackground = true)
 @Composable
 private fun PtpipConnectionScreenPreview() {
-    CamConTheme(themeMode = ThemeMode.LIGHT) {
+    CamConTheme() {
         // 프리뷰용 더미 구현
         Column(
             modifier = Modifier

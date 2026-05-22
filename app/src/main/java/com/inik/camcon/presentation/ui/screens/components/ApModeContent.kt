@@ -395,7 +395,7 @@ private fun SavedWifiNetworksCard(
 @Preview(name = "AP Mode Content", showBackground = true)
 @Composable
 private fun ApModeContentPreview() {
-    CamConTheme(themeMode = ThemeMode.DARK) {
+    CamConTheme() {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()

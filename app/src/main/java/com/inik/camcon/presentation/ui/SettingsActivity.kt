@@ -122,7 +122,7 @@ class SettingsActivity : ComponentActivity() {
             val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
             val authViewModel: AuthViewModel = hiltViewModel()
 
-            CamConTheme(themeMode = themeMode) {
+            CamConTheme() {
                 SettingsScreen(
                     onBackClick = { finish() },
                     authViewModel = authViewModel
@@ -135,7 +135,7 @@ class SettingsActivity : ComponentActivity() {
 @Preview(showBackground = true, name = "SettingsScreen Preview")
 @Composable
 fun SettingsScreenPreview() {
-    CamConTheme(themeMode = ThemeMode.LIGHT) {
+    CamConTheme() {
         // Provide a default onBackClick. ViewModel is not injected in Preview.
         SettingsScreen(
             onBackClick = {},

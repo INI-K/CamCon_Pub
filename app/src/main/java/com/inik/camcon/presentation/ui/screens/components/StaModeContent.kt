@@ -327,7 +327,7 @@ private fun MdnsSearchCard(
 @Preview(name = "STA Mode Content", showBackground = true)
 @Composable
 private fun StaModeContentPreview() {
-    CamConTheme(themeMode = ThemeMode.DARK) {
+    CamConTheme() {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()

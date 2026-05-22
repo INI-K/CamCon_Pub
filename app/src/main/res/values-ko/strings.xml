@@ -299,4 +299,11 @@
     <string name="ptpip_hotspot_step_3">3. 카메라에서 폰 핫스팟의 SSID/비밀번호를 입력해 접속하세요</string>
     <string name="ptpip_hotspot_step_4">4. 카메라가 접속되면 \'카메라 찾기\' 또는 IP를 직접 입력하세요</string>
     <string name="ptpip_hotspot_step_5">5. mDNS 광고가 없으면 IP를 직접 입력하세요</string>
+
+    <!-- 카메라 연결 최적화 다이얼로그 (MainActivity, 2026-05-22) -->
+    <string name="camera_connection_optimization_title">카메라 연결 최적화 설정</string>
+    <string name="camera_connection_optimization_message">카메라와의 안정적인 연결을 위해 배터리 최적화 예외 설정을 권장합니다.</string>
+    <string name="camera_connection_optimization_details">• 실시간 카메라 제어 유지\n• 사진 자동 전송 안정성 향상\n• 백그라운드 연결 끊김 방지\n\n※ 카메라 주변기기 연결 앱으로서 Google Play 정책에 따라 허용됩니다.</string>
+    <string name="camera_connection_optimization_confirm">설정하기</string>
+    <string name="camera_connection_optimization_dismiss">나중에</string>
 </resources>

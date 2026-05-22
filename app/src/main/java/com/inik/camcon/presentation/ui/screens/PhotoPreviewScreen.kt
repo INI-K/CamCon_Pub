@@ -1,7 +1,6 @@
 package com.inik.camcon.presentation.ui.screens
 
 // Multi-select feature: Required imports
-import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -66,6 +65,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.inik.camcon.R
+import com.inik.camcon.utils.LogcatManager
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.LocalWindowSizeClass
@@ -91,8 +91,6 @@ fun PhotoPreviewScreen(
     viewModel: PhotoPreviewViewModel = hiltViewModel(),
     cameraViewModel: CameraViewModel = hiltViewModel()
 ) {
-    Log.d("PhotoPreviewScreen", "=== PhotoPreviewScreen 컴포저블 시작 ===")
-
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val photos by viewModel.photos.collectAsStateWithLifecycle()
     val isLoadingPhotos by viewModel.isLoadingPhotos.collectAsStateWithLifecycle()
@@ -105,11 +103,6 @@ fun PhotoPreviewScreen(
     val selectedPhotos by viewModel.selectedPhotos.collectAsStateWithLifecycle()
     val isPtpipConnected by cameraViewModel.isPtpipConnected.collectAsStateWithLifecycle()
 
-    Log.d("PhotoPreviewScreen", "현재 UI 상태:")
-    Log.d("PhotoPreviewScreen", "  - isConnected: ${uiState.isConnected}")
-    Log.d("PhotoPreviewScreen", "  - isLoading: ${isLoadingPhotos}")
-    Log.d("PhotoPreviewScreen", "  - photos.size: ${photos.size}")
-
     val pullToRefreshState = rememberPullToRefreshState()
 
     // 멀티 선택 모드에서 뒤로가기 처리
@@ -118,12 +111,10 @@ fun PhotoPreviewScreen(
     }
 
     DisposableEffect(Unit) {
-        Log.d("PhotoPreviewScreen", "📸 사진 미리보기 탭 진입 - 이벤트 리스너 관리 시작")
+        LogcatManager.d("PhotoPreviewScreen", "사진 미리보기 탭 진입 - 이벤트 리스너 관리 시작")
 
         onDispose {
-            Log.d("PhotoPreviewScreen", "📸 사진 미리보기 탭 이탈 - 이벤트 리스너 재시작 신호")
-
-            // ViewModel에 탭 이탈을 알려서 이벤트 리스너를 재시작하도록 함
+            LogcatManager.d("PhotoPreviewScreen", "사진 미리보기 탭 이탈 - 이벤트 리스너 재시작 신호")
             viewModel.onTabExit()
         }
     }
@@ -131,7 +122,7 @@ fun PhotoPreviewScreen(
     PullToRefreshBox(
         isRefreshing = isLoadingPhotos,
         onRefresh = {
-            Log.d("PhotoPreviewScreen", "Pull to refresh 트리거")
+            LogcatManager.d("PhotoPreviewScreen", "Pull to refresh 트리거")
             viewModel.loadCameraPhotos()
         },
         state = pullToRefreshState,
@@ -222,11 +213,11 @@ fun PhotoPreviewScreen(
             val isLocalFile = File(photo.path).exists()
 
             if (isLocalFile) {
-                Log.d("PhotoPreviewScreen", "로컬 파일이므로 다운로드 건너뛰기: ${photo.name}")
+                LogcatManager.d("PhotoPreviewScreen", "로컬 파일이므로 다운로드 건너뛰기: ${photo.name}")
                 return@LaunchedEffect
             }
 
-            Log.d(
+            LogcatManager.d(
                 "PhotoPreviewScreen",
                 "ImageViewer 진입 - 최적화된 다운로드: ${photo.name}"
             )
@@ -256,13 +247,13 @@ fun PhotoPreviewScreen(
         FullScreenPhotoViewer(
             photo = photo,
             onDismiss = {
-                Log.d("PhotoPreviewScreen", "❌ ImageViewer 닫힘")
+                LogcatManager.d("PhotoPreviewScreen", "❌ ImageViewer 닫힘")
                 viewModel.selectPhoto(null)
             },
             onPhotoChanged = { newPhoto ->
                 // 같은 사진이면 호출하지 않음 (중복 방지)
                 if (newPhoto.path != photo.path) {
-                    Log.d(
+                    LogcatManager.d(
                         "PhotoPreviewScreen",
                         "📸 ImageViewer - 사진 변경: ${photo.name} → ${newPhoto.name}"
                     )
@@ -401,7 +392,7 @@ private fun ModernHeader(
                     val currentTime = System.currentTimeMillis()
                     if (currentTime - lastClickTime < 1000) {
                         // 더블클릭 감지 - 강제 로딩 테스트
-                        Log.d("PhotoPreviewScreen", "🧪 더블클릭 감지 - 강제 로딩 테스트")
+                        LogcatManager.d("PhotoPreviewScreen", "🧪 더블클릭 감지 - 강제 로딩 테스트")
                         viewModel?.forceLoadNextPage()
                     } else {
                         // 일반 새로고침
@@ -561,7 +552,7 @@ private fun PhotoGrid(
         }
             .collect { lastVisibleIndex ->
                 if (lastVisibleIndex >= 0 && photos.isNotEmpty()) {
-                    Log.d(
+                    LogcatManager.d(
                         "PhotoPreviewScreen",
                         "스크롤 감지: 마지막 보이는 인덱스=$lastVisibleIndex, 총 사진=${photos.size}개"
                     )
@@ -623,14 +614,14 @@ private fun PhotoGrid(
         }
 
         // 로딩 상태 디버깅
-        Log.d("PhotoPreviewScreen", "로딩 상태 체크:")
-        Log.d("PhotoPreviewScreen", "  - isLoading: ${isLoadingMore}")
-        Log.d("PhotoPreviewScreen", "  - photos.size: ${photos.size}")
-        Log.d("PhotoPreviewScreen", "  - hasNextPage: ${hasNextPage}")
+        LogcatManager.d("PhotoPreviewScreen", "로딩 상태 체크:")
+        LogcatManager.d("PhotoPreviewScreen", "  - isLoading: ${isLoadingMore}")
+        LogcatManager.d("PhotoPreviewScreen", "  - photos.size: ${photos.size}")
+        LogcatManager.d("PhotoPreviewScreen", "  - hasNextPage: ${hasNextPage}")
 
         // 더 로딩 중일 때 로딩 인디케이터 표시
         if ((isLoadingMore) && photos.isNotEmpty()) {
-            Log.d("PhotoPreviewScreen", "LoadMoreIndicator 표시 조건 만족")
+            LogcatManager.d("PhotoPreviewScreen", "LoadMoreIndicator 표시 조건 만족")
             item(span = StaggeredGridItemSpan.FullLine) {
                 LoadMoreIndicator()
             }
@@ -638,12 +629,12 @@ private fun PhotoGrid(
 
         // 마지막 페이지일 때 완료 메시지
         else if (!hasNextPage && photos.isNotEmpty() && !isLoadingMore) {
-            Log.d("PhotoPreviewScreen", "EndOfListMessage 표시 조건 만족")
+            LogcatManager.d("PhotoPreviewScreen", "EndOfListMessage 표시 조건 만족")
             item(span = StaggeredGridItemSpan.FullLine) {
                 EndOfListMessage(photoCount = photos.size)
             }
         } else {
-            Log.d("PhotoPreviewScreen", "로딩 인디케이터/완료 메시지 표시하지 않음")
+            LogcatManager.d("PhotoPreviewScreen", "로딩 인디케이터/완료 메시지 표시하지 않음")
         }
     }
 }
@@ -653,7 +644,7 @@ private fun PhotoGrid(
  */
 @Composable
 private fun LoadMoreIndicator() {
-    Log.d("PhotoPreviewScreen", "🔄 LoadMoreIndicator 컴포넌트 렌더링됨")
+    LogcatManager.d("PhotoPreviewScreen", "🔄 LoadMoreIndicator 컴포넌트 렌더링됨")
 
     Box(
         modifier = Modifier
@@ -916,7 +907,7 @@ private fun PtpipBlockOverlay() {
 @Preview(showBackground = true)
 @Composable
 private fun ModernHeaderPreview_NoPhotos() {
-    CamConTheme(themeMode = ThemeMode.LIGHT) {
+    CamConTheme() {
         ModernHeader(
             photoCount = 0,
             currentPage = 0,
@@ -931,7 +922,7 @@ private fun ModernHeaderPreview_NoPhotos() {
 @Preview(showBackground = true)
 @Composable
 private fun ModernHeaderPreview_WithPhotos() {
-    CamConTheme(themeMode = ThemeMode.LIGHT) {
+    CamConTheme() {
         ModernHeader(
             photoCount = 42,
             currentPage = 1,
@@ -946,7 +937,7 @@ private fun ModernHeaderPreview_WithPhotos() {
 @Preview(showBackground = true)
 @Composable
 private fun LoadingIndicatorPreview() {
-    CamConTheme(themeMode = ThemeMode.LIGHT) {
+    CamConTheme() {
         LoadingIndicator()
     }
 }
@@ -954,7 +945,7 @@ private fun LoadingIndicatorPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun LoadMoreIndicatorPreview() {
-    CamConTheme(themeMode = ThemeMode.LIGHT) {
+    CamConTheme() {
         LoadMoreIndicator()
     }
 }
@@ -962,7 +953,7 @@ private fun LoadMoreIndicatorPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun EndOfListMessagePreview() {
-    CamConTheme(themeMode = ThemeMode.LIGHT) {
+    CamConTheme() {
         EndOfListMessage(photoCount = 42)
     }
 }
@@ -970,7 +961,7 @@ private fun EndOfListMessagePreview() {
 @Preview(showBackground = true)
 @Composable
 private fun ErrorSnackbarPreview() {
-    CamConTheme(themeMode = ThemeMode.LIGHT) {
+    CamConTheme() {
         ErrorSnackbar(
             error = "사진을 불러오는 중 오류가 발생했습니다.",
             onRetry = {}

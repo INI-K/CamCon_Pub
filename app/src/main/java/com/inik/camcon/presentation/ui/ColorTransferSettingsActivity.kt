@@ -72,7 +72,7 @@ class ColorTransferSettingsActivity : ComponentActivity() {
             val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
             val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
             
-            CamConTheme(themeMode = themeMode) {
+            CamConTheme() {
                 ColorTransferSettingsScreen(
                     onBackClick = { finish() },
                     appSettingsViewModel = appSettingsViewModel,

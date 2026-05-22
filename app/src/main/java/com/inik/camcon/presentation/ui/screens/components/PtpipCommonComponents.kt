@@ -137,7 +137,7 @@ fun ConnectionStatusCard(
 @Preview(name = "Connection Status - Connected", showBackground = true)
 @Composable
 private fun ConnectionStatusConnectedPreview() {
-    CamConTheme(themeMode = ThemeMode.DARK) {
+    CamConTheme() {
         ConnectionStatusCard(
             connectionState = PtpipConnectionState.CONNECTED,
             selectedCamera = PtpipCamera(
@@ -156,7 +156,7 @@ private fun ConnectionStatusConnectedPreview() {
 @Preview(name = "Connection Status - Disconnected", showBackground = true)
 @Composable
 private fun ConnectionStatusDisconnectedPreview() {
-    CamConTheme(themeMode = ThemeMode.DARK) {
+    CamConTheme() {
         ConnectionStatusCard(
             connectionState = PtpipConnectionState.DISCONNECTED,
             selectedCamera = null,

@@ -1089,7 +1089,7 @@ fun FeaturedPhotoThumbnail(
 @Preview(name = "Photo Thumbnails", showBackground = true)
 @Composable
 private fun PhotoThumbnailPreview() {
-    CamConTheme(themeMode = ThemeMode.DARK) {
+    CamConTheme() {
         val samplePhoto = CameraPhoto(
             path = "/fake/DSC_0001.JPG",
             name = "DSC_0001.JPG",

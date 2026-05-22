@@ -218,7 +218,7 @@ fun PtpTimeoutDialog(
 @Preview(name = "Loading Overlay", showBackground = true)
 @Composable
 private fun LoadingOverlayPreview() {
-    CamConTheme(themeMode = ThemeMode.DARK) {
+    CamConTheme() {
         Box(modifier = Modifier.background(Background).fillMaxSize()) {
             LoadingOverlay(message = "카메라 연결 중...")
         }
@@ -228,7 +228,7 @@ private fun LoadingOverlayPreview() {
 @Preview(name = "USB Initialization Overlay", showBackground = true)
 @Composable
 private fun UsbInitializationOverlayPreview() {
-    CamConTheme(themeMode = ThemeMode.DARK) {
+    CamConTheme() {
         Box(modifier = Modifier.background(Background).fillMaxSize()) {
             UsbInitializationOverlay(message = "USB 카메라 초기화 중...", progress = 0.6f)
         }
@@ -238,7 +238,7 @@ private fun UsbInitializationOverlayPreview() {
 @Preview(name = "PTP Timeout Dialog", showBackground = true)
 @Composable
 private fun PtpTimeoutDialogPreview() {
-    CamConTheme(themeMode = ThemeMode.DARK) {
+    CamConTheme() {
         PtpTimeoutDialog(onRestartRequest = {})
     }
 }
