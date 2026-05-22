@@ -14,13 +14,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.inik.camcon.R
-import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.domain.model.ThemeMode
+import com.inik.camcon.presentation.theme.BadgeText
+import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.FeatureBadgeBurst
+import com.inik.camcon.presentation.theme.FeatureBadgeTimeLapse
 
 /**
  * 카메라 기능을 표시하는 배지 컴포넌트
@@ -40,8 +41,7 @@ fun FeatureBadge(
         Text(
             text = text,
             color = color,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold
+            style = BadgeText
         )
     }
 }
@@ -57,8 +57,8 @@ private fun FeatureBadgesPreview() {
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FeatureBadge(context.getString(R.string.live_view), MaterialTheme.colorScheme.primary)
-                FeatureBadge(context.getString(R.string.time_lapse), Color(0xFF9C27B0))
-                FeatureBadge(context.getString(R.string.burst), Color(0xFFFF9800))
+                FeatureBadge(context.getString(R.string.time_lapse), FeatureBadgeTimeLapse)
+                FeatureBadge(context.getString(R.string.burst), FeatureBadgeBurst)
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

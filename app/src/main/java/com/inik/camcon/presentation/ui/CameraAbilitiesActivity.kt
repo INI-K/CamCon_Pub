@@ -496,9 +496,9 @@ private fun FeatureCard(
                         imageVector = if (feature.supported) Icons.Default.Check else Icons.Default.Close,
                         contentDescription = if (feature.supported) "지원" else "미지원",
                         tint = if (feature.supported)
-                            Color(0xFF4CAF50)
+                            com.inik.camcon.presentation.theme.Success
                         else
-                            Color(0xFFF44336),
+                            com.inik.camcon.presentation.theme.Error,
                         modifier = Modifier.size(24.dp)
                     )
                 }

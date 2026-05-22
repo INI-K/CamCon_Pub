@@ -132,8 +132,10 @@ private fun PhotoInfoBottomSheetHeader(modifier: Modifier = Modifier) {
     ) {
         Text(
             text = stringResource(R.string.fullscreen_viewer_detail_info),
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Medium,
+            style = MaterialTheme.typography.titleLarge.copy(
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Medium
+            ),
             color = MaterialTheme.colorScheme.onSurface
         )
     }
@@ -165,7 +167,7 @@ private fun PhotoInfoDateRow(
         content = {
             Text(
                 text = formattedDate,
-                fontSize = 16.sp,
+                style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface
             )
         }
@@ -193,8 +195,7 @@ private fun PhotoInfoFileRow(
             Column {
                 Text(
                     text = photo.name,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
+                    style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
@@ -219,7 +220,7 @@ private fun PhotoInfoFileRow(
 
                 Text(
                     text = fileInfo,
-                    fontSize = 14.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
@@ -228,7 +229,7 @@ private fun PhotoInfoFileRow(
 
                 Text(
                     text = folderPath,
-                    fontSize = 14.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -256,7 +257,7 @@ private fun PhotoInfoExifRow(
             if (isLoading) {
                 Text(
                     text = stringResource(R.string.fullscreen_viewer_exif_loading),
-                    fontSize = 16.sp,
+                    style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
@@ -292,7 +293,7 @@ fun ExifInfoContent(
     if (exifInfo.isNullOrEmpty() || exifInfo == "{}") {
         Text(
             text = stringResource(R.string.fullscreen_viewer_exif_loading),
-            fontSize = 16.sp,
+            style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     } else {
@@ -304,7 +305,7 @@ fun ExifInfoContent(
             Log.e("ExifInfoContent", "Failed to parse EXIF info")
             Text(
                 text = stringResource(R.string.fullscreen_viewer_exif_parse_failed),
-                fontSize = 16.sp,
+                style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.error
             )
         } else {

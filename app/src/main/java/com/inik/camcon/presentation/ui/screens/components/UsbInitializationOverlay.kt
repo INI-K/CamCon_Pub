@@ -190,8 +190,7 @@ fun PtpTimeoutDialog(
                 Text(
                     text = stringResource(R.string.usb_init_check_instructions),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                    fontSize = 12.sp
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
             }
         },

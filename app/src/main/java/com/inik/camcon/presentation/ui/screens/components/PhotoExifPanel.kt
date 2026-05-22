@@ -28,7 +28,7 @@ fun PhotoExifPanel(
     if (exifInfo.isNullOrEmpty() || exifInfo == "{}") {
         Text(
             text = stringResource(R.string.fullscreen_viewer_exif_loading),
-            fontSize = 16.sp,
+            style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     } else {
@@ -40,7 +40,7 @@ fun PhotoExifPanel(
             Log.e("PhotoExifPanel", "Failed to parse EXIF info")
             Text(
                 text = stringResource(R.string.fullscreen_viewer_exif_parse_failed),
-                fontSize = 16.sp,
+                style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.error
             )
         } else {

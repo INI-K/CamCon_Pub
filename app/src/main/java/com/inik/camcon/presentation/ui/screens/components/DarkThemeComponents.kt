@@ -14,10 +14,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.Card
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Card
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
@@ -31,20 +31,42 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-val DarkCardBackgroundColor = Color(0xE6151C2A)
-val DarkCardBorderStroke = BorderStroke(1.dp, Color(0x44FFD1A8))
-val DarkBodyTextColor = Color(0xFFB8C0CF)
-val DarkTitleTextColor = Color(0xFFFFC892)
+import com.inik.camcon.presentation.theme.DarkBackgroundGradientEnd
+import com.inik.camcon.presentation.theme.DarkBackgroundGradientMid
+import com.inik.camcon.presentation.theme.DarkBackgroundGradientStart
+import com.inik.camcon.presentation.theme.DarkBodyText
+import com.inik.camcon.presentation.theme.DarkCardBackground
+import com.inik.camcon.presentation.theme.DarkCardBorder
+import com.inik.camcon.presentation.theme.DarkFilterChipLockedText
+import com.inik.camcon.presentation.theme.DarkFilterChipSelectedBackground
+import com.inik.camcon.presentation.theme.DarkFilterChipSelectedBorder
+import com.inik.camcon.presentation.theme.DarkFilterChipUnselectedBackground
+import com.inik.camcon.presentation.theme.DarkFilterChipUnselectedBorder
+import com.inik.camcon.presentation.theme.DarkIconButtonBackground
+import com.inik.camcon.presentation.theme.DarkIconButtonTint
+import com.inik.camcon.presentation.theme.DarkStatusBadgeText
+import com.inik.camcon.presentation.theme.DarkTabRowBackground
+import com.inik.camcon.presentation.theme.DarkTabRowBorder
+import com.inik.camcon.presentation.theme.DarkTabSelectedBackground
+import com.inik.camcon.presentation.theme.DarkTabSelectedText
+import com.inik.camcon.presentation.theme.DarkTabUnselectedText
+import com.inik.camcon.presentation.theme.DarkTitleText
+import com.inik.camcon.presentation.theme.DarkTopBarGradientEnd
+import com.inik.camcon.presentation.theme.DarkTopBarGradientStart
+
+private val DarkCardBorderStroke = BorderStroke(1.dp, DarkCardBorder)
+
 fun Modifier.darkScreenBackground(): Modifier =
     background(
         Brush.verticalGradient(
             colors = listOf(
-                Color(0xFF0E121A),
-                Color(0xFF151B27),
-                Color(0xFF111722)
+                DarkBackgroundGradientStart,
+                DarkBackgroundGradientMid,
+                DarkBackgroundGradientEnd
             )
         )
     )
+
 @Composable
 fun DarkScreenBackground(
     modifier: Modifier = Modifier,
@@ -57,6 +79,7 @@ fun DarkScreenBackground(
         content = content
     )
 }
+
 @Composable
 fun DarkInfoCard(
     modifier: Modifier = Modifier,
@@ -65,13 +88,14 @@ fun DarkInfoCard(
     Card(
         modifier = modifier.fillMaxWidth(),
         elevation = 4.dp,
-        backgroundColor = DarkCardBackgroundColor,
+        backgroundColor = DarkCardBackground,
         border = DarkCardBorderStroke,
         shape = RoundedCornerShape(18.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp), content = content)
     }
 }
+
 @Composable
 fun DarkTopBar(
     title: String,
@@ -88,8 +112,8 @@ fun DarkTopBar(
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        Color(0xCC1A2232),
-                        Color(0xCC131A27)
+                        DarkTopBarGradientStart,
+                        DarkTopBarGradientEnd
                     )
                 )
             )
@@ -112,25 +136,25 @@ fun DarkTopBar(
                         onClick = onBack,
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0x55374455))
+                            .background(DarkIconButtonBackground)
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "뒤로가기",
-                            tint = Color(0xFFFFD6AE)
+                            tint = DarkIconButtonTint
                         )
                     }
                 }
                 Column {
                     Text(
                         text = title,
-                        color = Color(0xFFFFC892),
+                        color = DarkTitleText,
                         style = MaterialTheme.typography.h6
                     )
                     if (!subtitle.isNullOrBlank()) {
                         Text(
                             text = subtitle,
-                            color = Color(0xFFB8C0CF),
+                            color = DarkBodyText,
                             style = MaterialTheme.typography.caption
                         )
                     }
@@ -144,6 +168,7 @@ fun DarkTopBar(
         }
     }
 }
+
 @Composable
 fun DarkSectionHeader(
     title: String,
@@ -153,16 +178,17 @@ fun DarkSectionHeader(
     Column(modifier = modifier) {
         Text(
             text = title,
-            color = Color(0xFFFFC892),
+            color = DarkTitleText,
             style = MaterialTheme.typography.subtitle1
         )
         Text(
             text = subtitle,
-            color = Color(0xFFB8C0CF),
+            color = DarkBodyText,
             style = MaterialTheme.typography.caption
         )
     }
 }
+
 @Composable
 fun DarkStatusBadge(
     text: String,
@@ -172,7 +198,7 @@ fun DarkStatusBadge(
 ) {
     Text(
         text = text,
-        color = Color(0xFFFAF3EA),
+        color = DarkStatusBadgeText,
         fontSize = if (compact) 9.sp else 10.sp,
         modifier = Modifier
             .background(background.copy(alpha = 0.92f), RoundedCornerShape(10.dp))
@@ -183,6 +209,7 @@ fun DarkStatusBadge(
             )
     )
 }
+
 @Composable
 fun DarkTabRow(
     tabs: List<String>,
@@ -194,8 +221,8 @@ fun DarkTabRow(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(Color(0x66131B2A))
-            .border(1.dp, Color(0x66FFD1A8), RoundedCornerShape(14.dp))
+            .background(DarkTabRowBackground)
+            .border(1.dp, DarkTabRowBorder, RoundedCornerShape(14.dp))
             .padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
@@ -206,11 +233,11 @@ fun DarkTabRow(
                     .weight(1f)
                     .clip(RoundedCornerShape(10.dp))
                     .clickable { onTabSelected(index) },
-                color = if (selected) Color(0x66A14F1D) else Color.Transparent
+                color = if (selected) DarkTabSelectedBackground else Color.Transparent
             ) {
                 Text(
                     text = title,
-                    color = if (selected) Color(0xFFFFD7B1) else Color(0xFFBAC2D2),
+                    color = if (selected) DarkTabSelectedText else DarkTabUnselectedText,
                     style = MaterialTheme.typography.body2,
                     fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                     modifier = Modifier.padding(vertical = 10.dp),
@@ -220,6 +247,7 @@ fun DarkTabRow(
         }
     }
 }
+
 @Composable
 fun DarkFilterChip(
     text: String,
@@ -227,12 +255,12 @@ fun DarkFilterChip(
     isLocked: Boolean = false,
     onClick: () -> Unit
 ) {
-    val background = if (isSelected) Color(0x663D4457) else Color(0x33131B2A)
-    val border = if (isSelected) Color(0x99FFC88C) else Color(0x558D99AD)
+    val background = if (isSelected) DarkFilterChipSelectedBackground else DarkFilterChipUnselectedBackground
+    val border = if (isSelected) DarkFilterChipSelectedBorder else DarkFilterChipUnselectedBorder
     val content = when {
-        isLocked -> Color(0x66BAC2D2)
-        isSelected -> Color(0xFFFFD7B1)
-        else -> Color(0xFFBAC2D2)
+        isLocked -> DarkFilterChipLockedText
+        isSelected -> DarkTabSelectedText
+        else -> DarkTabUnselectedText
     }
     Surface(
         modifier = Modifier

@@ -125,8 +125,9 @@ private fun ModeButton(
     ) {
         Text(
             text = label,
-            fontSize = 12.sp,
-            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+            )
         )
     }
 }
