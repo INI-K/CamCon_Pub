@@ -42,6 +42,7 @@ import com.inik.camcon.presentation.theme.TextSecondaryV2
  *
  * Settings 화면 표준 행. 최소 높이 56dp, 좌우 패딩 14dp(Spacing.base).
  * leadingIcon(IconSize.md, TextSecondaryV2) + Column(label HeadingM, description BodySmall) + trailing.
+ * 프로필 사진 등 ImageVector로 표현 불가한 경우 `leadingContent` 슬롯 사용(leadingIcon보다 우선).
  * onClick=null이면 정적 행, !=null이면 ripple. enabled=false면 alpha 0.4 + 클릭 무효.
  *
  * 디자인 가이드: docs/DESIGN_SYSTEM_V2.md §8 Row/ListItem.
@@ -52,6 +53,7 @@ fun RowItem(
     modifier: Modifier = Modifier,
     description: String? = null,
     leadingIcon: ImageVector? = null,
+    leadingContent: (@Composable () -> Unit)? = null,
     trailing: @Composable (() -> Unit)? = null,
     onClick: (() -> Unit)? = null,
     enabled: Boolean = true
@@ -70,8 +72,9 @@ fun RowItem(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.md)
     ) {
-        if (leadingIcon != null) {
-            Icon(
+        when {
+            leadingContent != null -> leadingContent()
+            leadingIcon != null -> Icon(
                 imageVector = leadingIcon,
                 contentDescription = null,
                 tint = TextSecondaryV2,

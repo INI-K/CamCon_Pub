@@ -948,7 +948,25 @@ fun UserProfileItem(
         RowItem(
             label = user?.displayName ?: "사용자",
             description = user?.email ?: "로그인이 필요합니다",
-            leadingIcon = null,
+            leadingContent = {
+                if (user?.photoUrl != null) {
+                    AsyncImage(
+                        model = user.photoUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(IconSize.xl)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        tint = TextSecondaryV2,
+                        modifier = Modifier.size(IconSize.lg)
+                    )
+                }
+            },
             trailing = {
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
@@ -957,11 +975,8 @@ fun UserProfileItem(
                     modifier = Modifier.size(IconSize.md)
                 )
             },
-            onClick = onClick,
-            modifier = Modifier
+            onClick = onClick
         )
-        // 프로필 이미지는 RowItem의 leadingIcon이 ImageVector만 받기 때문에
-        // 별도 오버레이 처리는 생략하고 RowItem 위에 별도 행으로 표시한다.
     }
 }
 
