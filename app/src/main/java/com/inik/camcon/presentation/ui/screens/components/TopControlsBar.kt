@@ -48,21 +48,26 @@ import com.inik.camcon.presentation.theme.SurfaceElevated
 import com.inik.camcon.presentation.theme.TextMuted
 import com.inik.camcon.presentation.theme.TextPrimary
 import com.inik.camcon.presentation.theme.TextSecondary
+import com.inik.camcon.presentation.theme.WarningV2
 import com.inik.camcon.presentation.viewmodel.CameraConnectionState
 import com.inik.camcon.presentation.viewmodel.CameraSettingsState
 import com.inik.camcon.presentation.viewmodel.CameraUiState
 import com.inik.camcon.domain.model.CameraCapabilities
+import com.inik.camcon.domain.model.StorageInfo
 import com.inik.camcon.domain.model.ThemeMode
 
 /**
- * 단순화된 상단 컨트롤 바
+ * 단순화된 상단 컨트롤 바.
+ *
+ * @param storageInfo 카메라 첫 슬롯 스토리지 정보. null 이면 SD 칩 숨김.
  */
 @Composable
 fun TopControlsBar(
     uiState: CameraUiState,
     cameraFeed: List<Camera>,
     onSettingsClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    storageInfo: StorageInfo? = null
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "status_pulse")
     val pulseAlpha by infiniteTransition.animateFloat(
@@ -155,7 +160,56 @@ fun TopControlsBar(
                         )
                     }
                 }
-                // TODO(M8): SD 잔량 — domain CameraCapabilities에 sdFree 필드가 추가되면 같은 패턴으로 표시
+
+                // SD 잔량 칩 — storageInfo 가 주어지고 freeBytes 가 0 이상일 때 표시.
+                // 1GB 이상 → "SD %.1fGB", 그 외 MB. freeBytes < 100MB 면 Warning 색.
+                // imagesFree 가 있으면 보조 텍스트 "여유 %d컷".
+                storageInfo?.let { info ->
+                    if (info.freeBytes >= 0) {
+                        val freeBytes = info.freeBytes
+                        val isLow = freeBytes < 100L * 1024 * 1024 // 100MB
+                        val mb = freeBytes / (1024.0 * 1024.0)
+                        val gb = freeBytes / (1024.0 * 1024.0 * 1024.0)
+                        val sdText = if (freeBytes >= 1024L * 1024 * 1024) {
+                            stringResource(R.string.camera_status_sd_format_gb, gb)
+                        } else {
+                            stringResource(R.string.camera_status_sd_format_mb, mb.toInt())
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    color = Surface,
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .border(
+                                    width = 1.dp,
+                                    color = if (isLow) WarningV2.copy(alpha = 0.5f) else Border,
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    text = sdText,
+                                    color = if (isLow) WarningV2 else TextPrimary,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                info.imagesFree?.let { count ->
+                                    Text(
+                                        text = stringResource(
+                                            R.string.camera_status_sd_images_free,
+                                            count
+                                        ),
+                                        color = TextMuted,
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             // 설정 버튼

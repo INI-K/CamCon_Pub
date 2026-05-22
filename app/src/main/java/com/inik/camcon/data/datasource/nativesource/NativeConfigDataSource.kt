@@ -109,6 +109,32 @@ class NativeConfigDataSource @Inject constructor(
         CameraNative.setPanasonicManualFocusDrive(steps)
     }
 
+    // ===== Widget·storage·delete 확장 =====
+
+    suspend fun getExposureCompensation(): String? = withContext(ioDispatcher) {
+        CameraNative.getExposureCompensationNative()
+    }
+
+    suspend fun setExposureCompensation(value: String): Int = withContext(ioDispatcher) {
+        CameraNative.setExposureCompensationNative(value)
+    }
+
+    suspend fun listExposureCompensationOptions(): List<String> = withContext(ioDispatcher) {
+        CameraNative.listExposureCompensationOptionsNative()?.toList().orEmpty()
+    }
+
+    suspend fun getBatteryLevel(): String? = withContext(ioDispatcher) {
+        CameraNative.getBatteryLevelNative()
+    }
+
+    suspend fun getStorageInfo(): LongArray? = withContext(ioDispatcher) {
+        CameraNative.getStorageInfoNative()
+    }
+
+    suspend fun deleteCameraFile(folder: String, filename: String): Int = withContext(ioDispatcher) {
+        CameraNative.deleteCameraFileNative(folder, filename)
+    }
+
     companion object {
         private const val TAG = "NativeConfigDS"
     }

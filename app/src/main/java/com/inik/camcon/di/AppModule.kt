@@ -247,7 +247,8 @@ object AppModule {
     fun provideAutoConnectTaskRunner(
         ptpipDataSource: PtpipDataSource,
         autoConnectManager: AutoConnectManager,
-        wifiNetworkHelper: WifiNetworkHelper
+        wifiNetworkHelper: WifiNetworkHelper,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
     ): AutoConnectTaskRunner =
-        AutoConnectTaskRunner(ptpipDataSource, autoConnectManager, wifiNetworkHelper)
+        AutoConnectTaskRunner(ptpipDataSource, autoConnectManager, wifiNetworkHelper, ioDispatcher)
 }

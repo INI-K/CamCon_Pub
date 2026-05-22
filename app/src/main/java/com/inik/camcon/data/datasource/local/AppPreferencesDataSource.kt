@@ -71,6 +71,10 @@ class AppPreferencesDataSource @Inject constructor(
 
         // Onboarding (Group 1)
         private val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
+
+        // Live View Overlays (Group 7)
+        private val HISTOGRAM_ENABLED = booleanPreferencesKey("liveview_histogram_enabled")
+        private val FOCUS_PEAKING_ENABLED = booleanPreferencesKey("liveview_focus_peaking_enabled")
     }
 
     /**
@@ -284,6 +288,22 @@ class AppPreferencesDataSource @Inject constructor(
         }
 
     /**
+     * 라이브뷰 히스토그램 오버레이 사용 여부 (기본값: false)
+     */
+    override val isHistogramEnabled: Flow<Boolean> = context.appDataStore.data
+        .map { preferences ->
+            preferences[HISTOGRAM_ENABLED] ?: false
+        }
+
+    /**
+     * 라이브뷰 포커스 피킹 오버레이 사용 여부 (기본값: false)
+     */
+    override val isFocusPeakingEnabled: Flow<Boolean> = context.appDataStore.data
+        .map { preferences ->
+            preferences[FOCUS_PEAKING_ENABLED] ?: false
+        }
+
+    /**
      * 구독 티어 (SubscriptionTier enum으로 변환, 기본값: FREE)
      */
     override val subscriptionTierEnum: Flow<com.inik.camcon.domain.model.SubscriptionTier> = subscriptionTier
@@ -464,6 +484,24 @@ class AppPreferencesDataSource @Inject constructor(
     override suspend fun setLastTimelapseCount(count: Int) {
         context.appDataStore.edit { preferences ->
             preferences[LAST_TIMELAPSE_COUNT] = count.coerceAtLeast(1)
+        }
+    }
+
+    /**
+     * 라이브뷰 히스토그램 오버레이 활성화/비활성화.
+     */
+    override suspend fun setHistogramEnabled(enabled: Boolean) {
+        context.appDataStore.edit { preferences ->
+            preferences[HISTOGRAM_ENABLED] = enabled
+        }
+    }
+
+    /**
+     * 라이브뷰 포커스 피킹 오버레이 활성화/비활성화.
+     */
+    override suspend fun setFocusPeakingEnabled(enabled: Boolean) {
+        context.appDataStore.edit { preferences ->
+            preferences[FOCUS_PEAKING_ENABLED] = enabled
         }
     }
 

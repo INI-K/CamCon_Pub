@@ -3,10 +3,11 @@ package com.inik.camcon.data.service
 import android.util.Log
 import com.inik.camcon.data.datasource.ptpip.PtpipDataSource
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
+import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.model.WifiNetworkState
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -16,7 +17,8 @@ import javax.inject.Singleton
 class AutoConnectTaskRunner @Inject constructor(
     private val ptpipDataSource: PtpipDataSource,
     private val autoConnectManager: AutoConnectManager,
-    private val wifiNetworkHelper: WifiNetworkHelper
+    private val wifiNetworkHelper: WifiNetworkHelper,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     companion object {
         private const val TAG = "AutoConnectTaskRunner"
@@ -27,7 +29,7 @@ class AutoConnectTaskRunner @Inject constructor(
     @Volatile
     private var isRunning = false
 
-    suspend fun handlePostConnection(ssid: String?) = withContext(Dispatchers.IO) {
+    suspend fun handlePostConnection(ssid: String?) = withContext(ioDispatcher) {
         // 중복 실행 방지
         if (isRunning) {
             Log.d(TAG, "⚠️ 이미 자동 연결 처리 실행 중 - 중복 요청 무시")

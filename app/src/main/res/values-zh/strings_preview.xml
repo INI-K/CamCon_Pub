@@ -12,5 +12,10 @@
     <string name="share_in_progress">正在分享…</string>
     <string name="raw_gating_unified_message">RAW 文件需要 PRO 订阅。当前等级: %1$s</string>
     <string name="raw_gating_current_tier">当前等级: %1$s</string>
+    <string name="raw_gating_tier_label_FREE">FREE</string>
+    <string name="raw_gating_tier_label_BASIC">BASIC</string>
+    <string name="raw_gating_tier_label_PRO">PRO</string>
+    <string name="raw_gating_tier_label_REFERRER">REFERRER</string>
+    <string name="raw_gating_tier_label_ADMIN">ADMIN</string>
     <string name="preview_retry_single">重试</string>
 </resources>

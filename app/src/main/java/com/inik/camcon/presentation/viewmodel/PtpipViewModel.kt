@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
+import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.domain.model.CameraCaptureCallback
 import com.inik.camcon.domain.model.ConnectionMethod
@@ -17,7 +18,7 @@ import com.inik.camcon.domain.model.WifiNetworkState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -49,7 +50,8 @@ class PtpipViewModel @Inject constructor(
     private val connectionHelper: PtpipConnectionHelper,
     private val discoveryHelper: PtpipDiscoveryHelper,
     private val debugHelper: PtpipDebugHelper,
-    private val wifiHelper: WifiNetworkHelper
+    private val wifiHelper: WifiNetworkHelper,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
     companion object {
@@ -236,13 +238,13 @@ class PtpipViewModel @Inject constructor(
     }
 
     fun deleteSavedWifiCredential(ssid: String) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             connectionHelper.deleteSavedWifiCredential(ssid)
         }
     }
 
     fun connectToWifiSsidWithSavedCredential(ssid: String) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             val passphrase = connectionHelper.getSavedCredentialPassphrase(ssid)
             if (passphrase != null) {
                 Log.d(TAG, "저장된 비밀번호로 Wi-Fi 연결 시도: $ssid")

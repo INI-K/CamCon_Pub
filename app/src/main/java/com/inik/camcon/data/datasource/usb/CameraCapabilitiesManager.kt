@@ -5,6 +5,7 @@ import com.inik.camcon.CameraNative
 import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.model.CameraCapabilities
+import com.inik.camcon.domain.model.StorageInfo
 import com.inik.camcon.domain.manager.CameraStateObserver
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -85,7 +86,8 @@ class CameraCapabilitiesManager @Inject constructor(
                 Log.w(TAG, "Abilities 조회 실패 - 레거시 방식으로 폴백")
                 // 레거시 방식으로 폴백
                 val (legacyAbilities, widgetJson) = ensureMasterCameraData()
-                val capabilities = parseCameraCapabilities(legacyAbilities, widgetJson)
+                val base = parseCameraCapabilities(legacyAbilities, widgetJson)
+                val capabilities = enrichWithWidgetAndStorage(base, widgetJson)
                 cachedCapabilities = capabilities
                 lastCapabilitiesFetch = System.currentTimeMillis()
                 _cameraCapabilities.value = capabilities
@@ -93,7 +95,8 @@ class CameraCapabilitiesManager @Inject constructor(
             }
 
             // libgphoto2 Abilities 파싱
-            val capabilities = parseCameraAbilitiesFromApi(abilitiesJson)
+            val baseCapabilities = parseCameraAbilitiesFromApi(abilitiesJson)
+            val capabilities = enrichWithWidgetAndStorage(baseCapabilities)
 
             // 캐시 갱신
             cachedCapabilities = capabilities
@@ -161,6 +164,48 @@ class CameraCapabilitiesManager @Inject constructor(
             Log.e(TAG, "libgphoto2 Abilities 파싱 실패", e)
             throw e
         }
+    }
+
+    /**
+     * widget root에 exposurecompensation 존재 여부, 첫 스토리지 정보를 캡처해 보강.
+     *
+     * @param widgetJsonHint 이미 가져온 widget JSON이 있으면 재사용해 JNI 호출 절약. null이면 caching layer 활용.
+     */
+    private suspend fun enrichWithWidgetAndStorage(
+        base: CameraCapabilities,
+        widgetJsonHint: String? = null
+    ): CameraCapabilities = withContext(ioDispatcher) {
+        val canExposureCompensation = try {
+            val widgetJson = widgetJsonHint ?: runCatching {
+                ensureMasterCameraData().second
+            }.getOrNull()
+            widgetJson?.contains("\"name\":\"exposurecompensation\"", ignoreCase = true) == true
+        } catch (e: Exception) {
+            Log.w(TAG, "exposurecompensation widget 검출 실패", e)
+            false
+        }
+
+        val storageInfo = try {
+            val raw = CameraNative.getStorageInfoNative()
+            if (raw != null && raw.size >= 3) {
+                val imagesFree = raw[2]
+                StorageInfo(
+                    totalBytes = raw[0],
+                    freeBytes = raw[1],
+                    imagesFree = if (imagesFree < 0) null else imagesFree.toInt()
+                )
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "스토리지 정보 조회 실패", e)
+            null
+        }
+
+        base.copy(
+            canExposureCompensation = canExposureCompensation,
+            storageInfo = storageInfo
+        )
     }
 
     /**

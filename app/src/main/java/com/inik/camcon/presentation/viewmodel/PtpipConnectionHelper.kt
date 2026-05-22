@@ -7,6 +7,7 @@ import android.util.Log
 import androidx.core.app.ActivityCompat
 import com.inik.camcon.R
 import com.inik.camcon.di.ApplicationScope
+import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.domain.model.AutoConnectNetworkConfig
 import com.inik.camcon.domain.model.CameraCaptureCallback
@@ -20,8 +21,8 @@ import com.inik.camcon.domain.repository.PtpipRepository
 import com.inik.camcon.domain.usecase.camera.DeleteGphotoSettingsUseCase
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -46,7 +47,8 @@ class PtpipConnectionHelper @Inject constructor(
     private val preferencesRepository: PtpipPreferencesRepository,
     private val globalManager: CameraConnectionGlobalManager,
     private val deleteGphotoSettingsUseCase: DeleteGphotoSettingsUseCase,
-    @ApplicationScope private val scope: CoroutineScope
+    @ApplicationScope private val scope: CoroutineScope,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
 
     companion object {
@@ -78,7 +80,7 @@ class PtpipConnectionHelper @Inject constructor(
         onConnectionStateChanged(true)
         onErrorChanged(null)
 
-        scope.launch(Dispatchers.IO) {
+        scope.launch(ioDispatcher) {
             // libgphoto2 설정 초기화
             try {
                 Log.i(TAG, "=== libgphoto2 설정 초기화 시작 ===")
