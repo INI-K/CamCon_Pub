@@ -3,77 +3,89 @@ package com.inik.camcon.presentation.theme
 import androidx.compose.ui.graphics.Color
 
 /**
- * CamCon Cinema Dark + Amber Color Palette
- * 전문가용 카메라 앱 — 근 OLED 블랙 + 렌즈 앰버 골드
+ * CamCon Design System V2 — Editorial Pro Tool
+ *
+ * Capture One / Lightroom Classic 풍 모노크롬 + 앰버 골드 액센트.
+ * 디자인 가이드는 docs/DESIGN_SYSTEM_V2.md 참조.
+ *
+ * V1 이름(Primary/Background/Surface/TextPrimary 등)은 유지하되 색만 V2로 교체.
+ * 신규 V2 토큰(Surface0-4, TextPrimary~Disabled, Accent*, Semantic)은 별도 추가.
  */
 
-// Primary - 따뜻한 앰버 골드 (렌즈/조리개 느낌)
-val Primary = Color(0xFFE8A245)
-val PrimaryLight = Color(0xFFF0B865)
+// ---- V2 Neutral Surface Tier (5단계) ----
+val Surface0 = Color(0xFF0E0E0E)   // 앱 배경
+val Surface1 = Color(0xFF1A1A1A)   // 메인 패널
+val Surface2 = Color(0xFF232323)   // 카드 / 시트
+val Surface3 = Color(0xFF2E2E2E)   // 입력 / 포커스
+val Surface4 = Color(0xFF3A3A3A)   // 호버 / 액티브
+val DividerLine = Color(0xFF2A2A2A)
+
+// ---- V2 Text Tier (4단계) ----
+val TextPrimaryV2 = Color(0xFFF2F2F2)
+val TextSecondaryV2 = Color(0xFFB3B3B3)
+val TextTertiary = Color(0xFF808080)
+val TextDisabled = Color(0xFF4D4D4D)
+
+// ---- V2 Accent (앰버 골드 유지) ----
+val Accent = Color(0xFFE8A245)
+val AccentStrong = Color(0xFFF0B865)
+val AccentMuted = Color(0x2EE8A245)   // 18% alpha
+val OnAccent = Color(0xFF1C1005)
+
+// ---- V2 Semantic (덜 형광) ----
+val SuccessV2 = Color(0xFF5DB075)
+val WarningV2 = Color(0xFFE0A33E)
+val ErrorV2 = Color(0xFFD9534F)
+val Info = Color(0xFF5A93C2)
+
+// ---- V1 호환 토큰 — 같은 이름 유지, 색만 V2로 교체 ----
+val Primary = Accent
+val PrimaryLight = AccentStrong
 val PrimaryDark = Color(0xFFCC8830)
 
-// Background - 근 OLED 블랙
-val Background = Color(0xFF0A0A0E)
-val BackgroundSurface = Color(0xFF0F0F14)
+val Background = Surface0
+val BackgroundSurface = Surface1
+val Surface = Surface1
+val SurfaceElevated = Surface2
 
-// Surface - 차분한 다크
-val Surface = Color(0xFF131317)
-val SurfaceElevated = Color(0xFF1E1E26)
+val TextPrimary = TextPrimaryV2
+val TextSecondary = TextSecondaryV2
+val TextMuted = TextTertiary
 
-// Text - 약간 따뜻한 화이트 (차가운 블루 제거)
-val TextPrimary = Color(0xFFF0EEE9)
-val TextSecondary = Color(0xFF9A9590)
-val TextMuted = Color(0xFF585450)
+val Border = DividerLine
+val OnPrimary = OnAccent
 
-// Border - 반투명 유리 느낌 (rgba 255,255,255, 0.08)
-val Border = Color(0x14FFFFFF)
+val Success = SuccessV2
+val Error = ErrorV2
+val Warning = WarningV2
 
-// On-Primary - 앰버 버튼 위 어두운 텍스트
-val OnPrimary = Color(0xFF1C1005)
+val Overlay = Color(0xB30E0E0E)   // 70% alpha Surface0
 
-// Status
-val Success = Color(0xFF4ADE80)
-val Error = Color(0xFFFB7185)
-val Warning = Color(0xFFFBBF24)
+// ---- V1에서 도입된 Dark* 토큰 — V2 surface/text tier로 흡수 ----
+// 호출처는 DarkThemeComponents.kt 1곳. V2 마이그레이션 중 별칭으로 유지.
+val DarkCardBackground = Surface2
+val DarkCardBorder = DividerLine
+val DarkBodyText = TextSecondaryV2
+val DarkTitleText = Accent
+val DarkIconButtonTint = TextPrimaryV2
+val DarkStatusBadgeText = TextPrimaryV2
+val DarkTabSelectedText = OnAccent
+val DarkTabUnselectedText = TextSecondaryV2
+val DarkBackgroundGradientStart = Surface0
+val DarkBackgroundGradientMid = Surface1
+val DarkBackgroundGradientEnd = Surface0
+val DarkTopBarGradientStart = Surface1
+val DarkTopBarGradientEnd = Surface0
+val DarkIconButtonBackground = Surface3
+val DarkTabRowBackground = Surface1
+val DarkTabRowBorder = DividerLine
+val DarkTabSelectedBackground = Accent
+val DarkFilterChipSelectedBackground = AccentMuted
+val DarkFilterChipUnselectedBackground = Surface2
+val DarkFilterChipSelectedBorder = Accent
+val DarkFilterChipUnselectedBorder = DividerLine
+val DarkFilterChipLockedText = TextDisabled
 
-// Transparent overlays
-val Overlay = Color(0x800A0A0E)
-
-// === DarkThemeComponents 전용 토큰 (Cinema Dark blue-grey 계열) ===
-// 카드 / 텍스트
-val DarkCardBackground = Color(0xE6151C2A)
-val DarkCardBorder = Color(0x44FFD1A8)
-val DarkBodyText = Color(0xFFB8C0CF)
-val DarkTitleText = Color(0xFFFFC892)
-val DarkIconButtonTint = Color(0xFFFFD6AE)
-val DarkStatusBadgeText = Color(0xFFFAF3EA)
-
-// 탭 / 칩 텍스트
-val DarkTabSelectedText = Color(0xFFFFD7B1)
-val DarkTabUnselectedText = Color(0xFFBAC2D2)
-
-// 배경 그라데이션
-val DarkBackgroundGradientStart = Color(0xFF0E121A)
-val DarkBackgroundGradientMid = Color(0xFF151B27)
-val DarkBackgroundGradientEnd = Color(0xFF111722)
-
-// 탑바 그라데이션 (반투명)
-val DarkTopBarGradientStart = Color(0xCC1A2232)
-val DarkTopBarGradientEnd = Color(0xCC131A27)
-
-// 반투명 인터랙션 배경/보더
-val DarkIconButtonBackground = Color(0x55374455)
-val DarkTabRowBackground = Color(0x66131B2A)
-val DarkTabRowBorder = Color(0x66FFD1A8)
-val DarkTabSelectedBackground = Color(0x66A14F1D)
-
-// 필터칩
-val DarkFilterChipSelectedBackground = Color(0x663D4457)
-val DarkFilterChipUnselectedBackground = Color(0x33131B2A)
-val DarkFilterChipSelectedBorder = Color(0x99FFC88C)
-val DarkFilterChipUnselectedBorder = Color(0x558D99AD)
-val DarkFilterChipLockedText = Color(0x66BAC2D2)
-
-// === Feature Badge 데코레이션 색상 ===
-val FeatureBadgeTimeLapse = Color(0xFF9C27B0)
-val FeatureBadgeBurst = Color(0xFFFF9800)
+// ---- FeatureBadge 데코 (V2 시맨틱 톤으로 정제) ----
+val FeatureBadgeTimeLapse = Color(0xFF8A6FB0)   // 차분한 퍼플
+val FeatureBadgeBurst = Color(0xFFD68A3D)       // 앰버 변형
