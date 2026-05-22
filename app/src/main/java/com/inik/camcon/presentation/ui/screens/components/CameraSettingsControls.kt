@@ -43,6 +43,7 @@ import androidx.compose.ui.window.PopupProperties
 import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.domain.model.CameraCapabilities
 import com.inik.camcon.domain.model.CameraSettings
+import com.inik.camcon.domain.model.ExposureCompensation
 import com.inik.camcon.presentation.theme.Background
 import com.inik.camcon.presentation.theme.BadgeText
 import com.inik.camcon.presentation.theme.Border
@@ -64,15 +65,22 @@ fun CameraSettingsControls(
     onSettingChange: (String, String) -> Unit,
     modifier: Modifier = Modifier,
     isEnabled: Boolean = true,
-    contentPadding: PaddingValues = PaddingValues(horizontal = 20.dp)
+    contentPadding: PaddingValues = PaddingValues(horizontal = 20.dp),
+    exposureCompensation: ExposureCompensation? = null,
+    onExposureCompensationChange: ((String) -> Unit)? = null
 ) {
+    val showEvSlot = capabilities?.canExposureCompensation == true &&
+            exposureCompensation != null &&
+            exposureCompensation.available.isNotEmpty() &&
+            onExposureCompensationChange != null
+
     val hasAnySettings = capabilities?.let {
         it.availableIsoSettings.isNotEmpty() ||
         it.availableShutterSpeeds.isNotEmpty() ||
         it.availableApertures.isNotEmpty()
     } ?: false
 
-    if (!hasAnySettings) return
+    if (!hasAnySettings && !showEvSlot) return
 
     Row(
         modifier = modifier
@@ -113,6 +121,19 @@ fun CameraSettingsControls(
                 options = capabilities.availableApertures,
                 onValueChange = { onSettingChange("aperture", it) },
                 isEnabled = isEnabled && capabilities.supportsConfigChange,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        // 노출 보정(EV) — capabilities.canExposureCompensation 일 때만 렌더링.
+        // 현재값 표시는 raw 문자열을 그대로 사용 (예: "0", "+1/3", "-2/3").
+        if (showEvSlot && exposureCompensation != null && onExposureCompensationChange != null) {
+            SettingDropdown(
+                label = "EV",
+                currentValue = exposureCompensation.current,
+                options = exposureCompensation.available,
+                onValueChange = onExposureCompensationChange,
+                isEnabled = isEnabled,
                 modifier = Modifier.weight(1f)
             )
         }

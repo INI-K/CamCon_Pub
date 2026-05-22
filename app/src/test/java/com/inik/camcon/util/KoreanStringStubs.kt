@@ -59,16 +59,46 @@ object KoreanStringStubs {
             "추천인 특별 등급입니다! 모든 기능을 이용하실 수 있습니다.",
         R.string.upgrade_message_admin to
             "관리자 등급입니다! 모든 기능을 이용하실 수 있습니다.",
+        // PR-G7: 통일 게이팅 메시지 + 티어 라벨.
+        R.string.raw_gating_tier_label_FREE to "FREE",
+        R.string.raw_gating_tier_label_BASIC to "BASIC",
+        R.string.raw_gating_tier_label_PRO to "PRO",
+        R.string.raw_gating_tier_label_REFERRER to "REFERRER",
+        R.string.raw_gating_tier_label_ADMIN to "ADMIN",
     )
+
+    /**
+     * PR-G7: 통일 RAW 게이팅 메시지의 한국어 원문 포맷 (`values-ko/strings_preview.xml` 매칭).
+     * `String.format`의 `%1$s`에 티어 라벨이 채워진다.
+     */
+    private const val UNIFIED_GATING_MESSAGE_KO: String =
+        "RAW 파일은 PRO 구독에서 사용 가능합니다. 현재 티어: %1\$s"
+
+    /**
+     * PR-G7: 통일 메시지를 한국어 원문 + 티어 라벨로 포매팅.
+     * 테스트가 `assertEquals`로 비교할 때 사용.
+     */
+    fun unifiedGatingMessageKo(tierLabel: String): String =
+        UNIFIED_GATING_MESSAGE_KO.format(tierLabel)
 
     /**
      * 주어진 [context] mockk 에 [KEYS] 전 항목을 한 번에 stub.
      *
      * 호출자는 사전에 `context = mockk()` 만 준비하면 된다(relaxed 여부 무관).
+     *
+     * PR-G7: `raw_gating_unified_message`는 포맷 인자(`%1$s` 티어 라벨)를 받는
+     * `context.getString(resId, vararg)` 형태로 호출되므로 5 티어 각각에 대응하는
+     * stub을 함께 등록한다.
      */
     fun applyTo(context: Context) {
         KEYS.forEach { (resId, value) ->
             every { context.getString(resId) } returns value
+        }
+        // 통일 메시지(포맷 인자 포함) — 5 티어 라벨에 대응.
+        listOf("FREE", "BASIC", "PRO", "REFERRER", "ADMIN").forEach { label ->
+            every {
+                context.getString(R.string.raw_gating_unified_message, label)
+            } returns unifiedGatingMessageKo(label)
         }
     }
 

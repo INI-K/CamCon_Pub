@@ -4,6 +4,8 @@
     <string name="capture_shutter_sound_subtitle">Systemauslöserton bei Aufnahme abspielen</string>
     <string name="capture_no_liveview_label">Aufnahme ohne Live-View auslösen</string>
     <string name="liveview_grid_toggle">Raster</string>
+    <string name="liveview_histogram_toggle">Histogramm</string>
+    <string name="liveview_focus_peaking_toggle">Focus Peaking</string>
     <string name="liveview_exposure_compensation_label">EV</string>
 
     <string name="coachmark_double_tap_fullscreen">Doppeltippen für Vollbild</string>
@@ -15,6 +17,11 @@
 
     <string name="camera_status_battery_percent">Akku %1$d%%</string>
     <string name="camera_status_sd_free">SD frei %1$s</string>
+    <string name="liveview_ev_label">Belichtungskorrektur</string>
+    <string name="camera_status_sd_format_gb">SD %1$.1fGB</string>
+    <string name="camera_status_sd_format_mb">SD %1$dMB</string>
+    <string name="camera_status_sd_low">SD knapp</string>
+    <string name="camera_status_sd_images_free">%1$d Aufnahmen frei</string>
 
     <string name="timelapse_interval_label">Intervall (Sek)</string>
     <string name="timelapse_count_label">Anzahl Aufnahmen</string>

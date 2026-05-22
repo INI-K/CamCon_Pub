@@ -104,10 +104,12 @@ import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import com.inik.camcon.utils.LogcatManager
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.inik.camcon.di.IoDispatcher
 
 @Composable
 fun CameraConnectionOptimizationDialog(
@@ -730,6 +732,10 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var appPreferences: AppPreferencesDataSource
 
+    @Inject
+    @IoDispatcher
+    lateinit var ioDispatcher: CoroutineDispatcher
+
     // 권한 요청 런처
     private val storagePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -1034,7 +1040,7 @@ class MainActivity : ComponentActivity() {
         requestStoragePermissions()
 
         // USB 디바이스 연결 Intent 처리를 비동기로 수행
-        lifecycleScope.launch(Dispatchers.IO) {
+        lifecycleScope.launch(ioDispatcher) {
             handleUsbIntent(intent)
 
             // 추가: 앱 시작 시 이미 연결된 USB 디바이스 검색
@@ -1119,12 +1125,12 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         // USB Intent 처리를 비동기로 수행
-        lifecycleScope.launch(Dispatchers.IO) {
+        lifecycleScope.launch(ioDispatcher) {
             handleUsbIntent(intent)
         }
     }
 
-    private suspend fun handleUsbIntent(intent: Intent) = withContext(Dispatchers.IO) {
+    private suspend fun handleUsbIntent(intent: Intent) = withContext(ioDispatcher) {
         when (intent.action) {
             UsbManager.ACTION_USB_DEVICE_ATTACHED -> {
                 val device: UsbDevice? =
@@ -1189,7 +1195,7 @@ class MainActivity : ComponentActivity() {
         LogcatManager.d(TAG, " 앱 포그라운드 진입 - 백그라운드 서비스 상태 확인")
 
         // 앱이 다시 활성화될 때 USB 상태만 확인 (디바이스 재검색은 하지 않음)
-        lifecycleScope.launch(Dispatchers.IO) {
+        lifecycleScope.launch(ioDispatcher) {
             checkUsbPermissionStatus()
         }
     }
@@ -1199,7 +1205,7 @@ class MainActivity : ComponentActivity() {
         LogcatManager.d(TAG, " 앱 백그라운드 진입 - 백그라운드 서비스 확인")
 
         // 앱이 백그라운드로 이동할 때 백그라운드 서비스가 실행 중인지 확인
-        lifecycleScope.launch(Dispatchers.IO) {
+        lifecycleScope.launch(ioDispatcher) {
             try {
                 // 백그라운드 서비스가 실행 중인지 확인
                 val isServiceRunning = isServiceRunning(BackgroundSyncService::class.java)
@@ -1237,7 +1243,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private suspend fun checkUsbPermissionStatus() = withContext(Dispatchers.IO) {
+    private suspend fun checkUsbPermissionStatus() = withContext(ioDispatcher) {
         try {
             // 이미 연결된 디바이스가 있는지 확인 (새로 검색하지 않음)
             val currentDevice = usbCameraManager.getCurrentDevice()
@@ -1293,7 +1299,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private suspend fun checkAndInitializeUsbDevices() = withContext(Dispatchers.IO) {
+    private suspend fun checkAndInitializeUsbDevices() = withContext(ioDispatcher) {
         try {
             // USB 매니저를 사용하여 연결된 디바이스 목록 가져오기
             val devices = usbCameraManager.getCameraDevices()

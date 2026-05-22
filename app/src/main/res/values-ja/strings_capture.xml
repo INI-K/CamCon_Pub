@@ -4,6 +4,8 @@
     <string name="capture_shutter_sound_subtitle">撮影時にシステムのシャッター音を鳴らす</string>
     <string name="capture_no_liveview_label">ライブビューなしで撮影</string>
     <string name="liveview_grid_toggle">グリッド</string>
+    <string name="liveview_histogram_toggle">ヒストグラム</string>
+    <string name="liveview_focus_peaking_toggle">フォーカスピーキング</string>
     <string name="liveview_exposure_compensation_label">EV</string>
 
     <string name="coachmark_double_tap_fullscreen">ダブルタップでフルスクリーン</string>
@@ -15,6 +17,11 @@
 
     <string name="camera_status_battery_percent">バッテリー %1$d%%</string>
     <string name="camera_status_sd_free">SD残量 %1$s</string>
+    <string name="liveview_ev_label">露出補正</string>
+    <string name="camera_status_sd_format_gb">SD %1$.1fGB</string>
+    <string name="camera_status_sd_format_mb">SD %1$dMB</string>
+    <string name="camera_status_sd_low">SD残量不足</string>
+    <string name="camera_status_sd_images_free">残り %1$d枚</string>
 
     <string name="timelapse_interval_label">間隔 (秒)</string>
     <string name="timelapse_count_label">総コマ数</string>

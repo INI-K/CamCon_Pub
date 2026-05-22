@@ -6,9 +6,10 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.usecase.ColorTransferUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,7 +24,8 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class ColorTransferViewModel @Inject constructor(
-    private val colorTransferUseCase: ColorTransferUseCase
+    private val colorTransferUseCase: ColorTransferUseCase,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
     private val _isLoading = MutableStateFlow(false)
@@ -150,7 +152,7 @@ class ColorTransferViewModel @Inject constructor(
         referenceImagePath: String,
         targetImagePath: String,
         intensity: Float
-    ): Bitmap? = withContext(Dispatchers.IO) {
+    ): Bitmap? = withContext(ioDispatcher) {
         try {
             android.util.Log.d("ColorTransferViewModel", "Preview color transfer start")
 
@@ -210,7 +212,7 @@ class ColorTransferViewModel @Inject constructor(
         referenceImagePath: String,
         targetImagePath: String,
         intensity: Float
-    ): Bitmap? = withContext(Dispatchers.IO) {
+    ): Bitmap? = withContext(ioDispatcher) {
         try {
             android.util.Log.d("ColorTransferViewModel", "Full-size color transfer start")
 

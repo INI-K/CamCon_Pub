@@ -135,6 +135,7 @@ object ImageProcessingUtils {
             }
 
             // 백그라운드에서 고화질 이미지 우선 처리
+            // TODO(LOW): Dispatchers.IO 하드코딩 — Composable 측에서 dispatcher 주입 또는 ViewModel 위임으로 이동할 것
             scope.launch(Dispatchers.IO) {
                 try {
                     val fullCacheKey = "${photo.path}_full"
