@@ -30,8 +30,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.inik.camcon.R
 import com.inik.camcon.presentation.viewmodel.RawFileRestriction
 import kotlinx.coroutines.delay
@@ -88,8 +88,7 @@ fun RawFileRestrictionNotification(
                         Text(
                             text = stringResource(R.string.camera_control_raw_file_restriction),
                             color = MaterialTheme.colorScheme.onError,
-                            fontSize = 16.sp,
-                            style = MaterialTheme.typography.titleLarge
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         IconButton(onClick = onDismiss) {
@@ -107,7 +106,6 @@ fun RawFileRestrictionNotification(
                     Text(
                         text = restriction.fileName,
                         color = MaterialTheme.colorScheme.onError,
-                        fontSize = 14.sp,
                         style = MaterialTheme.typography.bodyMedium
                     )
 
@@ -116,7 +114,6 @@ fun RawFileRestrictionNotification(
                     Text(
                         text = restriction.message,
                         color = MaterialTheme.colorScheme.onError.copy(alpha = 0.9f),
-                        fontSize = 13.sp,
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }

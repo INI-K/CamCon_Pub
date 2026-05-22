@@ -13,7 +13,6 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -56,8 +55,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.SheetValue
+import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -86,6 +87,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -251,81 +253,91 @@ fun CameraControlScreen(
         // LogcatManager.d("CameraControl", "상태 변경 - 연결: ${uiState.isConnected}, 라이브뷰: ${uiState.isLiveViewActive}, 사진: ${uiState.capturedPhotos.size}")
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        if (showBottomSheet) {
-        ModalBottomSheet(
-            onDismissRequest = {
-                scope.launch {
-                    bottomSheetState.hide()
-                    showBottomSheet = false
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = Background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { scaffoldPadding ->
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (showBottomSheet) {
+                ModalBottomSheet(
+                    onDismissRequest = {
+                        scope.launch {
+                            bottomSheetState.hide()
+                            showBottomSheet = false
+                        }
+                    },
+                    sheetState = bottomSheetState,
+                    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+                ) {
+                    CameraSettingsSheet(
+                        settings = uiState.cameraSettings,
+                        onSettingChange = { key, value ->
+                            viewModel.updateCameraSetting(key, value)
+                        },
+                        onClose = {
+                            scope.launch {
+                                bottomSheetState.hide()
+                                showBottomSheet = false
+                            }
+                        }
+                    )
                 }
-            },
-            sheetState = bottomSheetState,
-            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
-        ) {
-            CameraSettingsSheet(
-                settings = uiState.cameraSettings,
-                onSettingChange = { key, value ->
-                    viewModel.updateCameraSetting(key, value)
-                },
-                onClose = {
-                    scope.launch {
-                        bottomSheetState.hide()
-                        showBottomSheet = false
-                    }
-                }
-            )
-        }
-    }
-        AnimatedContent(
-            targetState = isFullscreen && (appSettings.isCameraControlsEnabled || uiState.capturedPhotos.isNotEmpty()),
-            transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(300)) },
-            label = "fullscreen_content"
-        ) { isFullscreenMode ->
-        if (isFullscreenMode) {
-            LogcatManager.d(
-                "CameraControl",
-                "🌟 전체화면 모드 렌더링 - isFullscreen=$isFullscreen, isCameraControlsEnabled=${appSettings.isCameraControlsEnabled}, capturedPhotos=${uiState.capturedPhotos.size}"
-            )
-            FullscreenCameraLayout(
-                uiState = uiState,
-                liveViewFrame = liveViewFrame,
-                cameraFeed = cameraFeed,
-                viewModel = viewModel,
-                onExitFullscreen = {
-                    isFullscreen = false
-                    onFullscreenChange(false)
-                },
-                isLiveViewEnabled = appSettings.isLiveViewEnabled,
-                onGalleryClick = onGalleryClick
-            )
-        } else {
-            PortraitCameraLayout(
-                uiState = uiState,
-                liveViewFrame = liveViewFrame,
-                cameraFeed = cameraFeed,
-                viewModel = viewModel,
-                scope = scope,
-                bottomSheetState = bottomSheetState,
-                onShowTimelapseDialog = { showTimelapseDialog = true },
-                onEnterFullscreen = {
-                    LogcatManager.d("CameraControl", "🌟 onEnterFullscreen 호출됨 - 전체화면 모드로 전환")
-                    isFullscreen = true
-                    onFullscreenChange(true)
+            }
+            AnimatedContent(
+                targetState = isFullscreen && (appSettings.isCameraControlsEnabled || uiState.capturedPhotos.isNotEmpty()),
+                transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(300)) },
+                label = "fullscreen_content"
+            ) { isFullscreenMode ->
+                if (isFullscreenMode) {
                     LogcatManager.d(
                         "CameraControl",
-                        "🌟 전체화면 상태 설정 완료: isFullscreen=$isFullscreen"
+                        "🌟 전체화면 모드 렌더링 - isFullscreen=$isFullscreen, isCameraControlsEnabled=${appSettings.isCameraControlsEnabled}, capturedPhotos=${uiState.capturedPhotos.size}"
                     )
-                },
-                appSettings = appSettings,
-                onPhotoClick = { photo ->
-                    selectedPhoto = photo
-                    showFullScreenViewer = true
-                },
-                onShowBottomSheet = { showBottomSheet = true },
-                onGalleryClick = onGalleryClick
-            )
-        }
+                    // 전체화면 모드는 scaffoldPadding 무시 (시스템 UI 숨김)
+                    FullscreenCameraLayout(
+                        uiState = uiState,
+                        liveViewFrame = liveViewFrame,
+                        cameraFeed = cameraFeed,
+                        viewModel = viewModel,
+                        onExitFullscreen = {
+                            isFullscreen = false
+                            onFullscreenChange(false)
+                        },
+                        isLiveViewEnabled = appSettings.isLiveViewEnabled,
+                        onGalleryClick = onGalleryClick
+                    )
+                } else {
+                    // 일반 모드는 Scaffold contentPadding 적용
+                    PortraitCameraLayout(
+                        uiState = uiState,
+                        liveViewFrame = liveViewFrame,
+                        cameraFeed = cameraFeed,
+                        viewModel = viewModel,
+                        scope = scope,
+                        bottomSheetState = bottomSheetState,
+                        onShowTimelapseDialog = { showTimelapseDialog = true },
+                        onEnterFullscreen = {
+                            LogcatManager.d("CameraControl", "🌟 onEnterFullscreen 호출됨 - 전체화면 모드로 전환")
+                            isFullscreen = true
+                            onFullscreenChange(true)
+                            LogcatManager.d(
+                                "CameraControl",
+                                "🌟 전체화면 상태 설정 완료: isFullscreen=$isFullscreen"
+                            )
+                        },
+                        appSettings = appSettings,
+                        onPhotoClick = { photo ->
+                            selectedPhoto = photo
+                            showFullScreenViewer = true
+                        },
+                        onShowBottomSheet = { showBottomSheet = true },
+                        onGalleryClick = onGalleryClick,
+                        contentPadding = scaffoldPadding
+                    )
+                }
+            }
         }
     }
 
@@ -445,7 +457,8 @@ private fun PortraitCameraLayout(
     appSettings: AppSettings,
     onPhotoClick: (CapturedPhoto) -> Unit = {},
     onShowBottomSheet: () -> Unit,
-    onGalleryClick: () -> Unit = {}
+    onGalleryClick: () -> Unit = {},
+    contentPadding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.foundation.layout.PaddingValues(0.dp)
 ) {
     val context = LocalContext.current
 
@@ -503,7 +516,7 @@ private fun PortraitCameraLayout(
         modifier = Modifier
             .fillMaxSize()
             .background(Background)
-            .statusBarsPadding()
+            .padding(contentPadding)
             .imePadding()
     ) {
         TopControlsBar(
@@ -604,7 +617,7 @@ private fun PortraitCameraLayout(
                     Text(
                         text = stringResource(R.string.camera_control_double_click_fullscreen),
                         color = TextPrimary,
-                        fontSize = 12.sp
+                        style = MaterialTheme.typography.bodySmall
                     )
                 }
             }
@@ -831,7 +844,7 @@ private fun FullscreenCameraLayout(
                 text = stringResource(R.string.camera_control_double_click_exit),
                 color = TextPrimary,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                fontSize = 14.sp
+                style = MaterialTheme.typography.bodyMedium
             )
         }
 
@@ -1076,7 +1089,7 @@ private fun RecentCaptureItem(
                     Text(
                         text = sizeText,
                         color = TextPrimary,
-                        fontSize = 11.sp,
+                        style = MaterialTheme.typography.labelSmall,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                     )
                 }
@@ -1219,7 +1232,7 @@ private fun AnimatedPhotoSwitcher(
                 Text(
                     stringResource(R.string.camera_control_photo_appear_hint),
                     color = emptyTextColor.copy(alpha = 0.7f),
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(top = 8.dp)
                 )
@@ -1509,8 +1522,7 @@ private fun RawFileRestrictionNotification(
                         Text(
                             text = stringResource(R.string.camera_control_raw_file_restriction),
                             color = MaterialTheme.colorScheme.onError,
-                            fontSize = 16.sp,
-                            style = MaterialTheme.typography.titleLarge
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         IconButton(onClick = onDismiss) {
@@ -1528,7 +1540,6 @@ private fun RawFileRestrictionNotification(
                     Text(
                         text = "${restriction.fileName}",
                         color = MaterialTheme.colorScheme.onError,
-                        fontSize = 14.sp,
                         style = MaterialTheme.typography.bodyMedium
                     )
 
@@ -1537,7 +1548,6 @@ private fun RawFileRestrictionNotification(
                     Text(
                         text = restriction.message,
                         color = MaterialTheme.colorScheme.onError.copy(alpha = 0.9f),
-                        fontSize = 13.sp,
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }

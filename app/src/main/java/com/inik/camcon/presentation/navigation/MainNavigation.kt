@@ -188,8 +188,9 @@ private fun NavItem(
         Text(
             text = label,
             color = if (isSelected) Primary else TextMuted,
-            fontSize = 12.sp,
-            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
+            )
         )
     }
 }
@@ -281,8 +282,9 @@ private fun MainBottomNavigationPreview() {
                         Text(
                             text = label,
                             color = if (index == 1) Primary else TextMuted,
-                            fontSize = 12.sp,
-                            fontWeight = if (index == 1) FontWeight.SemiBold else FontWeight.Medium
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = if (index == 1) FontWeight.SemiBold else FontWeight.Medium
+                            )
                         )
                     }
                 }

@@ -44,6 +44,7 @@ import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.domain.model.CameraCapabilities
 import com.inik.camcon.domain.model.CameraSettings
 import com.inik.camcon.presentation.theme.Background
+import com.inik.camcon.presentation.theme.BadgeText
 import com.inik.camcon.presentation.theme.Border
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.Primary
@@ -137,8 +138,7 @@ private fun SettingDropdown(
         // 레이블
         Text(
             text = label,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Medium,
+            style = BadgeText.copy(fontWeight = FontWeight.Medium),
             color = if (isEnabled) TextSecondary else TextMuted,
             modifier = Modifier.padding(bottom = 2.dp)
         )
@@ -177,8 +177,7 @@ private fun SettingDropdown(
                 ) {
                     Text(
                         text = formatDisplayValue(currentValue),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
+                        style = MaterialTheme.typography.labelMedium,
                         color = if (isEnabled) TextPrimary else TextMuted,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -220,9 +219,10 @@ private fun SettingDropdown(
                                 ) {
                                     Text(
                                         text = formatDisplayValue(option),
-                                        fontSize = 13.sp,
-                                        color = if (isSelected) Primary else TextPrimary,
-                                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                                        ),
+                                        color = if (isSelected) Primary else TextPrimary
                                     )
                                     if (isSelected) {
                                         Icon(

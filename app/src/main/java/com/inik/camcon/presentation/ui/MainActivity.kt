@@ -15,6 +15,13 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.NavigationRailItemDefaults
+import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
+import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -82,6 +89,8 @@ import com.inik.camcon.domain.model.CameraConnectionType
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.LocalWindowSizeClass
+import com.inik.camcon.presentation.theme.isMediumOrWider
 import com.inik.camcon.presentation.ui.screens.CameraControlScreen
 import com.inik.camcon.presentation.ui.screens.MyPhotosScreen
 import com.inik.camcon.presentation.ui.screens.PhotoPreviewScreen
@@ -213,6 +222,10 @@ fun MainScreen(
 
     // 시스템 바 인셋 계산 - 기종별 대응
     val systemBarsPadding = WindowInsets.systemBars.asPaddingValues()
+
+    // WindowSizeClass: Compact → BottomNavigation, Medium/Expanded → NavigationRail
+    val windowSizeClass = LocalWindowSizeClass.current
+    val useNavigationRail = windowSizeClass.isMediumOrWider
 
     Box(
         modifier = Modifier
@@ -405,12 +418,30 @@ fun MainScreen(
             )
         }
 
+        // 탭 클릭 핸들러 — NavigationBar / NavigationRail에서 공유
+        val onTabClick: (BottomNavItem) -> Unit = { screen ->
+            if (screen == BottomNavItem.PhotoPreview && isPtpipConnected) {
+                // PTPIP 연결 시 미리보기 탭 클릭하면 경고 다이얼로그 표시
+                showPtpipWarning = true
+            } else if (screen.route == "settings") {
+                onSettingsClick()
+            } else {
+                navController.navigate(screen.route) {
+                    popUpTo(navController.graph.findStartDestination().id) {
+                        saveState = true
+                    }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            }
+        }
+
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             contentWindowInsets = WindowInsets.safeDrawing,
             bottomBar = {
-                // 전체화면 모드가 아닐 때만 하단 탭 표시
-                if (!isFullscreen) {
+                // Compact 너비 + 전체화면 아님 → 기존 NavigationBar
+                if (!isFullscreen && !useNavigationRail) {
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentDestination = navBackStackEntry?.destination
 
@@ -433,25 +464,7 @@ fun MainScreen(
                                     Text(stringResource(screen.titleRes))
                                 },
                                 selected = selected,
-                                onClick = {
-                                    if (screen == BottomNavItem.PhotoPreview && isPtpipConnected) {
-                                        // PTPIP 연결 시 미리보기 탭 클릭하면 경고 다이얼로그 표시
-                                        showPtpipWarning = true
-                                        return@NavigationBarItem
-                                    }
-
-                                    if (screen.route == "settings") {
-                                        onSettingsClick()
-                                    } else {
-                                        navController.navigate(screen.route) {
-                                            popUpTo(navController.graph.findStartDestination().id) {
-                                                saveState = true
-                                            }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
-                                    }
-                                },
+                                onClick = { onTabClick(screen) },
                                 alwaysShowLabel = true,
                                 colors = NavigationBarItemDefaults.colors(
                                     selectedIconColor = MaterialTheme.colorScheme.primary,
@@ -466,32 +479,82 @@ fun MainScreen(
                 }
             }
         ) { innerPadding ->
-            NavHost(
-                navController,
-                startDestination = BottomNavItem.CameraControl.route,
-                Modifier
-                    .fillMaxSize()
-                    .padding(if (isFullscreen) PaddingValues(0.dp) else innerPadding)
-            ) {
-                composable(BottomNavItem.PhotoPreview.route) { PhotoPreviewScreen() }
-                composable(BottomNavItem.CameraControl.route) {
-                    // AP 모드와 USB 모드 모두 동일한 CameraControlScreen 사용
-                    CameraControlScreen(
-                        viewModel = cameraViewModel, // 전역 ViewModel 전달
-                        onFullscreenChange = { isFullscreen = it },
-                        onGalleryClick = {
-                            navController.navigate(BottomNavItem.ServerPhotos.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
+            val navHostContent: @Composable () -> Unit = {
+                NavHost(
+                    navController,
+                    startDestination = BottomNavItem.CameraControl.route,
+                    Modifier.fillMaxSize()
+                ) {
+                    composable(BottomNavItem.PhotoPreview.route) { PhotoPreviewScreen() }
+                    composable(BottomNavItem.CameraControl.route) {
+                        // AP 모드와 USB 모드 모두 동일한 CameraControlScreen 사용
+                        CameraControlScreen(
+                            viewModel = cameraViewModel, // 전역 ViewModel 전달
+                            onFullscreenChange = { isFullscreen = it },
+                            onGalleryClick = {
+                                navController.navigate(BottomNavItem.ServerPhotos.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
                                 }
-                                launchSingleTop = true
-                                restoreState = true
                             }
-                        }
-                    )
+                        )
+                    }
+                    composable(BottomNavItem.ServerPhotos.route) { MyPhotosScreen() }
+                    // 설정은 별도 액티비티로 처리하므로 여기서 제외
                 }
-                composable(BottomNavItem.ServerPhotos.route) { MyPhotosScreen() }
-                // 설정은 별도 액티비티로 처리하므로 여기서 제외
+            }
+
+            val containerModifier = Modifier
+                .fillMaxSize()
+                .padding(if (isFullscreen) PaddingValues(0.dp) else innerPadding)
+
+            if (useNavigationRail && !isFullscreen) {
+                // Medium / Expanded: NavigationRail 좌측 + content 우측
+                val navBackStackEntry by navController.currentBackStackEntryAsState()
+                val currentDestination = navBackStackEntry?.destination
+
+                Row(modifier = containerModifier) {
+                    NavigationRail(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    ) {
+                        items.forEach { screen ->
+                            val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                            NavigationRailItem(
+                                icon = {
+                                    Icon(
+                                        screen.icon,
+                                        contentDescription = stringResource(screen.titleRes)
+                                    )
+                                },
+                                label = {
+                                    Text(stringResource(screen.titleRes))
+                                },
+                                selected = selected,
+                                onClick = { onTabClick(screen) },
+                                alwaysShowLabel = true,
+                                colors = NavigationRailItemDefaults.colors(
+                                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    indicatorColor = MaterialTheme.colorScheme.secondaryContainer
+                                )
+                            )
+                        }
+                    }
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        navHostContent()
+                    }
+                }
+            } else {
+                // Compact 또는 전체화면: 기존과 동일한 단일 NavHost
+                Box(modifier = containerModifier) {
+                    navHostContent()
+                }
             }
         }
 
@@ -992,29 +1055,36 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            CamConTheme(themeMode = themeMode) {
-                Surface {
-                    if (showBatteryDialog) {
-                        CameraConnectionOptimizationDialog(
-                            onDismissRequest = {
-                                showBatteryDialog = false
-                                markCameraConnectionOptimizationDialogShown()
+            // WindowSizeClass 계산 후 CompositionLocal로 전파.
+            // 다크 테마 고정이므로 CamConTheme은 변경하지 않는다.
+            @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
+            val windowSizeClass: WindowSizeClass = calculateWindowSizeClass(this)
+
+            CompositionLocalProvider(LocalWindowSizeClass provides windowSizeClass) {
+                CamConTheme(themeMode = themeMode) {
+                    Surface {
+                        if (showBatteryDialog) {
+                            CameraConnectionOptimizationDialog(
+                                onDismissRequest = {
+                                    showBatteryDialog = false
+                                    markCameraConnectionOptimizationDialogShown()
+                                },
+                                onGoToSettings = {
+                                    // 배터리 최적화 예외 설정 화면으로 이동
+                                    openBatteryOptimizationSettings()
+                                    showBatteryDialog = false
+                                    markCameraConnectionOptimizationDialogShown()
+                                }
+                            )
+                        }
+                        MainScreen(
+                            onSettingsClick = {
+                                startActivity(Intent(this, SettingsActivity::class.java))
                             },
-                            onGoToSettings = {
-                                // 배터리 최적화 예외 설정 화면으로 이동
-                                openBatteryOptimizationSettings()
-                                showBatteryDialog = false
-                                markCameraConnectionOptimizationDialogShown()
-                            }
+                            globalManager = globalManager,
+                            navigateToCameraControl = navigateToCameraControl
                         )
                     }
-                    MainScreen(
-                        onSettingsClick = {
-                            startActivity(Intent(this, SettingsActivity::class.java))
-                        },
-                        globalManager = globalManager,
-                        navigateToCameraControl = navigateToCameraControl
-                    )
                 }
             }
         }

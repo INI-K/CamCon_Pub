@@ -55,6 +55,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.inik.camcon.R
+import com.inik.camcon.presentation.theme.AppTitle
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.LoginUiEvent
@@ -211,14 +212,13 @@ fun LoginScreen(
 
                 Text(
                     text = stringResource(R.string.app_name),
-                    fontSize = 40.sp,
-                    fontWeight = FontWeight.Bold,
+                    style = AppTitle,
                     color = MaterialTheme.colorScheme.primary
                 )
 
                 Text(
                     text = stringResource(R.string.app_description),
-                    fontSize = 16.sp,
+                    style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
 
@@ -226,7 +226,7 @@ fun LoginScreen(
 
                 Text(
                     text = stringResource(R.string.welcome_message),
-                    fontSize = 14.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                     textAlign = TextAlign.Center
                 )
@@ -273,8 +273,7 @@ fun LoginScreen(
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
                                 text = stringResource(R.string.login_with_google),
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Medium
+                                style = MaterialTheme.typography.titleMedium
                             )
                         }
                     }
@@ -284,7 +283,7 @@ fun LoginScreen(
 
                 Text(
                     text = stringResource(R.string.terms_agreement),
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     textAlign = TextAlign.Center,
                     lineHeight = 18.sp
