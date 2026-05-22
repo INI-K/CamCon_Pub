@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.systemBars
@@ -79,6 +80,7 @@ import com.google.android.gms.location.LocationSettingsRequest
 import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.components.ApModeContent
+import com.inik.camcon.presentation.ui.screens.components.HotspotStaModeContent
 import com.inik.camcon.presentation.ui.screens.components.StaModeContent
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
@@ -105,7 +107,14 @@ fun PtpipConnectionScreen(
     // 구독 티어 체크 (STA 모드는 ADMIN만 보임)
     val isAdmin by appSettingsViewModel.isAdminTier.collectAsStateWithLifecycle()
     // 탭 제목과 탭 수를 동적으로 구성
-    val tabTitles = if (isAdmin) listOf(stringResource(R.string.ptpip_ap_mode), stringResource(R.string.ptpip_sta_mode)) else listOf(stringResource(R.string.ptpip_ap_mode))
+    val tabTitles = if (isAdmin) listOf(
+        stringResource(R.string.ptpip_ap_mode),
+        stringResource(R.string.ptpip_sta_mode),
+        stringResource(R.string.ptpip_sta_hotspot_mode),
+    ) else listOf(
+        stringResource(R.string.ptpip_ap_mode),
+        stringResource(R.string.ptpip_sta_hotspot_mode),
+    )
     val pagerState = rememberPagerState(initialPage = 0) { tabTitles.size }
 
     // Wi‑Fi 스캔 권한 상태 (WifiNetworkHelper 사용)
@@ -358,8 +367,7 @@ fun PtpipConnectionScreen(
             title = {
                 Text(
                     text = "${currentWifiSsid ?: ""}",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                 )
             },
             text = {
@@ -545,10 +553,12 @@ fun PtpipConnectionScreen(
             confirmButton = {
                 Button(onClick = {
                     ptpipViewModel.clearConnectionLostMessage()
-                    // 자동으로 카메라 검색 시작
-                    when (pagerState.currentPage) {
-                        0 -> ptpipViewModel.discoverCamerasAp()
-                        1 -> ptpipViewModel.discoverCamerasSta()
+                    // 자동으로 카메라 검색 시작 (admin: 0=AP, 1=STA, 2=Hotspot / non-admin: 0=AP, 1=Hotspot)
+                    val page = pagerState.currentPage
+                    when {
+                        page == 0 -> ptpipViewModel.discoverCamerasAp()
+                        isAdmin && page == 1 -> ptpipViewModel.discoverCamerasSta()
+                        else -> ptpipViewModel.discoverCamerasHotspot()
                     }
                 }) {
                     Text(stringResource(R.string.ptpip_search_camera))
@@ -579,8 +589,9 @@ fun PtpipConnectionScreen(
                     actions = {
                         IconButton(
                             onClick = {
-                                when (pagerState.currentPage) {
-                                    0 -> if (ptpipViewModel.getWifiHelper()
+                                val page = pagerState.currentPage
+                                when {
+                                    page == 0 -> if (ptpipViewModel.getWifiHelper()
                                             .analyzeWifiScanPermissionStatus().canScan
                                     ) {
                                         Log.d("PtpipConnectionScreen", "Wi-Fi 스캔 실행")
@@ -590,32 +601,26 @@ fun PtpipConnectionScreen(
                                         requestWifiScanPermissions()
                                     }
 
-                                    1 -> if (isAdmin) {
-                                        ptpipViewModel.discoverCamerasSta()
-                                    }
-                                    else -> {}
+                                    isAdmin && page == 1 -> ptpipViewModel.discoverCamerasSta()
+                                    else -> ptpipViewModel.discoverCamerasHotspot()
                                 }
                             },
-                            enabled = !isDiscovering && (pagerState.currentPage == 0 || isAdmin)
+                            enabled = !isDiscovering
                         ) {
                             Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.cd_refresh))
                         }
                         IconButton(onClick = {
-                            if (pagerState.currentPage == 0 || isAdmin) {
-                                val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                    try {
-                                        Intent(Settings.Panel.ACTION_WIFI)
-                                    } catch (e: Exception) {
-                                        Intent(Settings.ACTION_WIFI_SETTINGS)
-                                    }
-                                } else {
+                            val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                try {
+                                    Intent(Settings.Panel.ACTION_WIFI)
+                                } catch (e: Exception) {
                                     Intent(Settings.ACTION_WIFI_SETTINGS)
                                 }
-                                context.startActivity(intent)
+                            } else {
+                                Intent(Settings.ACTION_WIFI_SETTINGS)
                             }
-                        },
-                            enabled = pagerState.currentPage == 0 || isAdmin
-                        ) {
+                            context.startActivity(intent)
+                        }) {
                             Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.cd_wifi_settings))
                         }
                     },
@@ -630,10 +635,18 @@ fun PtpipConnectionScreen(
             snackbarHost = { SnackbarHost(snackbarHostState) },
             contentWindowInsets = WindowInsets.systemBars
         ) { paddingValues ->
+            // 태블릿/Expanded 너비에서 컨텐츠가 너무 늘어지지 않도록 600.dp로 캡 + 중앙 정렬.
+            // Compact 폭에서는 widthIn(max=600.dp)이 영향을 주지 않으므로 동작 보존.
+            androidx.compose.foundation.layout.Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.TopCenter
+            ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
+                    .widthIn(max = 600.dp)
             ) {
                 // 탭 행
                 TabRow(
@@ -676,8 +689,12 @@ fun PtpipConnectionScreen(
                     state = pagerState,
                     modifier = Modifier.weight(1f)
                 ) { page ->
-                    when (page) {
-                        0 -> ApModeContent(
+                    // 탭 인덱스 → 컨텐츠 매핑:
+                    //   admin     : 0=AP, 1=STA_ROUTER, 2=STA_PHONE_HOTSPOT
+                    //   non-admin : 0=AP, 1=STA_PHONE_HOTSPOT
+                    val hotspotTabIndex = if (isAdmin) 2 else 1
+                    when {
+                        page == 0 -> ApModeContent(
                             ptpipViewModel = ptpipViewModel,
                             connectionState = connectionState,
                             discoveredCameras = discoveredCameras,
@@ -698,30 +715,47 @@ fun PtpipConnectionScreen(
                             savedWifiSsids = savedWifiSsids
                         )
 
-                        1 -> if (isAdmin) {
-                            StaModeContent(
-                                ptpipViewModel = ptpipViewModel,
-                                connectionState = connectionState,
-                                discoveredCameras = discoveredCameras,
-                                isDiscovering = isDiscovering,
-                                isConnecting = isConnecting,
-                                selectedCamera = selectedCamera,
-                                cameraInfo = cameraInfo,
-                                isPtpipEnabled = isPtpipEnabled,
-                                isWifiConnected = isWifiConnected,
-                                wifiCapabilities = wifiCapabilities,
-                                wifiNetworkState = wifiNetworkState,
-                                isAutoReconnectEnabled = isAutoReconnectEnabled,
-                                hasLocationPermission = ptpipViewModel.getWifiHelper()
-                                    .analyzeWifiScanPermissionStatus().canScan,
-                                onRequestPermission = { requestWifiScanPermissions() },
-                                nearbyWifiSSIDs = nearbyWifiSSIDs,
-                                onConnectToWifi = { ssid -> onConnectToWifiWithPassword(ssid) }
-                            )
-                        }
+                        isAdmin && page == 1 -> StaModeContent(
+                            ptpipViewModel = ptpipViewModel,
+                            connectionState = connectionState,
+                            discoveredCameras = discoveredCameras,
+                            isDiscovering = isDiscovering,
+                            isConnecting = isConnecting,
+                            selectedCamera = selectedCamera,
+                            cameraInfo = cameraInfo,
+                            isPtpipEnabled = isPtpipEnabled,
+                            isWifiConnected = isWifiConnected,
+                            wifiCapabilities = wifiCapabilities,
+                            wifiNetworkState = wifiNetworkState,
+                            isAutoReconnectEnabled = isAutoReconnectEnabled,
+                            hasLocationPermission = ptpipViewModel.getWifiHelper()
+                                .analyzeWifiScanPermissionStatus().canScan,
+                            onRequestPermission = { requestWifiScanPermissions() },
+                            nearbyWifiSSIDs = nearbyWifiSSIDs,
+                            onConnectToWifi = { ssid -> onConnectToWifiWithPassword(ssid) }
+                        )
+
+                        page == hotspotTabIndex -> HotspotStaModeContent(
+                            ptpipViewModel = ptpipViewModel,
+                            connectionState = connectionState,
+                            discoveredCameras = discoveredCameras,
+                            isDiscovering = isDiscovering,
+                            isConnecting = isConnecting,
+                            selectedCamera = selectedCamera,
+                            cameraInfo = cameraInfo,
+                            isPtpipEnabled = isPtpipEnabled,
+                            isWifiConnected = isWifiConnected,
+                            wifiCapabilities = wifiCapabilities,
+                            wifiNetworkState = wifiNetworkState,
+                            isAutoReconnectEnabled = isAutoReconnectEnabled,
+                            hasLocationPermission = ptpipViewModel.getWifiHelper()
+                                .analyzeWifiScanPermissionStatus().canScan,
+                            onRequestPermission = { requestWifiScanPermissions() },
+                        )
                     }
                 }
             }
+            } // end widthIn Box
         }
     }
 

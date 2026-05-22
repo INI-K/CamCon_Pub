@@ -334,18 +334,80 @@ class WifiNetworkHelper @Inject constructor(
             "172.16.0.1"
         )
 
-        // AP모드 감지를 위한 SSID 패턴들
-        private val CAMERA_AP_PATTERNS = listOf(
-            "CANON",
-            "NIKON",
-            "SONY",
-            "FUJIFILM",
-            "OLYMPUS",
-            "PANASONIC",
-            "PENTAX",
-            "LEICA"
+        // AP모드 감지를 위한 SSID 패턴들 — brand + 모델 prefix 통합 리스트.
+        // 인스턴스 isCameraNetwork와 companion isCameraApSsid가 동일 소스를 사용하도록 단일 진실 지점.
+        internal val CAMERA_AP_PATTERNS = listOf(
+            // Brand
+            "CANON", "Canon",
+            "NIKON", "Nikon",
+            "SONY", "Sony",
+            "FUJIFILM", "Fujifilm", "FUJI",
+            "OLYMPUS", "Olympus",
+            "PANASONIC", "Panasonic", "Lumix", "LUMIX",
+            "PENTAX", "Pentax", "RICOH", "Ricoh",
+            "LEICA", "Leica",
+            "HASSELBLAD", "Hasselblad",
+            // Canon 모델
+            "EOS", "PowerShot", "IXUS", "VIXIA",
+            // Nikon 모델
+            "COOLPIX", "Z_5", "Z_6", "Z_7", "Z8", "Z9", "Z30", "Z50", "Zfc",
+            "D3500", "D5600", "D7500", "D780", "D850", "D500",
+            // Sony 모델
+            "Alpha", "A7R", "A7S", "A7C", "A7IV", "A9",
+            // Fujifilm 모델
+            "X-T4", "X-T5", "X-T30", "X-T50", "X-PRO3", "X-E4", "X-S10", "X-S20",
+            "GFX50", "GFX100",
+            // Olympus 모델
+            "OM-D", "E-M1", "E-M5", "E-M10",
+            // Panasonic 모델
+            "GH5", "GH6"
         )
+
+        /**
+         * 카메라 AP/Wi-Fi Direct 광고로 추정되는 SSID 패턴 매칭.
+         * [CAMERA_AP_PATTERNS] 단일 소스를 사용하므로 인스턴스 isCameraNetwork와 발산하지 않는다.
+         * "AndroidHotspot…" / "Starbucks…" 같은 generic SSID는 명시적으로 제외한다.
+         */
+        fun isCameraApSsid(ssid: String?): Boolean {
+            if (ssid.isNullOrBlank()) return false
+            val direct = ssid.startsWith("DIRECT-", ignoreCase = true)
+            val byPattern = CAMERA_AP_PATTERNS.any { ssid.contains(it, ignoreCase = true) }
+            val isGenericHotspot = ssid.startsWith("Android", ignoreCase = true) && !byPattern
+            if (isGenericHotspot) return false
+            return direct || byPattern
+        }
     }
+
+    /**
+     * 폰의 Wi-Fi 핫스팟 활성 여부.
+     * Android SDK는 공식 API를 노출하지 않으므로 reflection으로 `isWifiApEnabled`에 접근한다.
+     * Android 14+에서 reflection이 차단될 수 있으며 그 경우 false를 반환한다.
+     */
+    fun isHotspotEnabled(): Boolean = runCatching {
+        val m = wifiManager.javaClass.getDeclaredMethod("isWifiApEnabled")
+        m.isAccessible = true
+        (m.invoke(wifiManager) as? Boolean) ?: false
+    }.getOrElse { false }
+
+    /**
+     * 현재 네트워크의 기본 게이트웨이 IPv4 추출.
+     */
+    fun extractGatewayIp(linkProps: android.net.LinkProperties?): String? = linkProps?.routes
+        ?.asSequence()
+        ?.filter { it.isDefaultRoute }
+        ?.mapNotNull { it.gateway }
+        ?.filterIsInstance<java.net.Inet4Address>()
+        ?.map { it.hostAddress }
+        ?.firstOrNull()
+
+    /**
+     * 현재 네트워크의 IPv4 서브넷 prefix 길이 추출.
+     */
+    fun extractSubnetPrefix(linkProps: android.net.LinkProperties?): Int? = linkProps?.linkAddresses
+        ?.asSequence()
+        ?.filter { it.address is java.net.Inet4Address }
+        ?.map(android.net.LinkAddress::getPrefixLength)
+        ?.firstOrNull()
 
     /**
      * Send a broadcast for auto connect suggestion trigger for a given SSID. (For API 26+)
@@ -393,55 +455,27 @@ class WifiNetworkHelper @Inject constructor(
     }
 
     /**
-     * SSID가 카메라 관련 네트워크인지 판단
+     * SSID가 카메라 관련 네트워크인지 판단.
+     * companion [CAMERA_AP_PATTERNS]를 단일 소스로 사용하고, 인스턴스 한정 추가 패턴
+     * (액션캠/드론/구식 모델 등 origin 풍부 리스트)을 합쳐 매칭한다.
      */
     private fun isCameraNetwork(ssid: String): Boolean {
-        // 카메라 브랜드 및 모델 패턴 확인 (더 정확한 패턴)
-        val cameraPatterns = listOf(
-            // 주요 카메라 브랜드
-            "CANON", "Canon",
-            "NIKON", "Nikon",
-            "SONY", "Sony",
-            "FUJIFILM", "Fujifilm", "FUJI",
-            "OLYMPUS", "Olympus",
-            "PANASONIC", "Panasonic", "Lumix", "LUMIX",
-            "PENTAX", "Pentax", "RICOH", "Ricoh",
-            "LEICA", "Leica",
-            "HASSELBLAD", "Hasselblad",
-
-            // 액션카메라 및 드론
+        // 인스턴스 전용 확장 패턴 — companion에서는 강한 시그널만 유지하기 위해 분리.
+        val instanceExtras = listOf(
             "GoPro", "GOPRO", "Hero",
             "DJI", "Dji", "Mavic", "Phantom", "Inspire", "Mini",
             "Insta360", "INSTA360",
-
-            // Canon 모델명
-            "EOS", "PowerShot", "IXUS", "VIXIA",
-
-            // Nikon 모델명  
-            "COOLPIX", "Z_5", "Z_6", "Z_7", "Z8", "Z9", "Z30", "Z50", "Zfc",
-            "D3500", "D5600", "D7500", "D780", "D850", "D500",
-
-            // Sony 모델명
-            "Alpha", "FX30", "FX3", "A7R", "A7S", "A7C", "A7IV", "A9",
-            "RX100", "RX10", "ZV-1", "ZV-E10",
-
-            // Fujifilm 모델명
-            "X-T4", "X-T5", "X-T30", "X-T50", "X-PRO3", "X-E4", "X-S10", "X-S20",
-            "X-A7", "X-H1", "X-H2", "GFX50", "GFX100",
-
-            // Olympus 모델명
-            "OM-D", "E-M1", "E-M5", "E-M10", "PEN", "E-PL", "E-P7",
-
-            // Panasonic 모델명
-            "GH5", "GH6", "GX9", "G9", "G100", "FZ1000", "LX100",
-
-            // 기타 카메라/영상 장비
+            "FX30", "FX3", "RX100", "RX10", "ZV-1", "ZV-E10",
+            "X-A7", "X-H1", "X-H2",
+            "PEN", "E-PL", "E-P7",
+            "GX9", "G9", "G100", "FZ1000", "LX100",
             "GODOX", "Godox", "Flashpoint",
             "Osmo", "OSMO", "Pocket", "Action", "Mobile",
             "SIGMA", "fp", "TAMRON"
         )
 
-        return cameraPatterns.any { pattern ->
+        val merged = CAMERA_AP_PATTERNS + instanceExtras
+        return merged.any { pattern ->
             ssid.contains(pattern, ignoreCase = true)
         }
     }
@@ -514,7 +548,8 @@ class WifiNetworkHelper @Inject constructor(
     }.distinctUntilChanged().flowOn(ioDispatcher)
 
     /**
-     * 현재 네트워크 상태 가져오기
+     * 현재 네트워크 상태 가져오기.
+     * 폰 핫스팟 STA 모드 지원을 위해 LinkProperties 기반 게이트웨이/서브넷 + 핫스팟 활성 상태를 함께 채운다.
      */
     private fun getCurrentNetworkState(): WifiNetworkState {
         val isConnected = isWifiConnected()
@@ -522,11 +557,22 @@ class WifiNetworkHelper @Inject constructor(
         val ssid = getCurrentSSID()
         val cameraIP = if (isAP) detectCameraIPInAPMode() else null
 
+        val activeNetwork = runCatching { connectivityManager.activeNetwork }.getOrNull()
+        val linkProps = activeNetwork?.let {
+            runCatching { connectivityManager.getLinkProperties(it) }.getOrNull()
+        }
+        val gatewayIp = extractGatewayIp(linkProps)
+        val subnetPrefix = extractSubnetPrefix(linkProps)
+        val hotspotEnabled = isHotspotEnabled()
+
         return WifiNetworkState(
             isConnected = isConnected,
             isConnectedToCameraAP = isAP,
             ssid = ssid,
-            detectedCameraIP = cameraIP
+            detectedCameraIP = cameraIP,
+            gatewayIp = gatewayIp,
+            subnetPrefix = subnetPrefix,
+            isHotspotEnabled = hotspotEnabled,
         )
     }
 

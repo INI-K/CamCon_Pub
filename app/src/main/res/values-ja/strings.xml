@@ -276,4 +276,17 @@
     <string name="raw_filter_restriction_free">RAWファイルの表示は準備中です。\nJPGファイルのみ表示できます。</string>
     <string name="raw_filter_restriction_basic">RAWファイルはPROサブスクリプションでのみ表示できます。\nPROにアップグレードしてください！</string>
     <string name="raw_filter_restriction_generic">RAWファイルにアクセスできません。</string>
+
+    <!-- スマートフォンホットスポット STA モード (PtpipConnectionScreen 第3タブ) -->
+    <string name="ptpip_sta_hotspot_mode">STA (スマホテザリング)</string>
+    <string name="ptpip_hotspot_description">ルーターなしで、スマートフォンがホットスポット役となり、カメラがクライアントとして接続します。</string>
+    <string name="ptpip_hotspot_enabled">スマホのテザリングが有効です</string>
+    <string name="ptpip_hotspot_disabled">スマホのテザリングはオフです</string>
+    <string name="ptpip_manual_ip_input">カメラIPを直接入力</string>
+    <string name="ptpip_connect_with_ip">このIPで接続</string>
+    <string name="ptpip_hotspot_step_1">1. スマートフォンのモバイルテザリングを有効にしてください</string>
+    <string name="ptpip_hotspot_step_2">2. カメラのWi-Fi設定でSTAモードを選択してください</string>
+    <string name="ptpip_hotspot_step_3">3. カメラ側でスマホテザリングのSSID/パスワードを入力して接続してください</string>
+    <string name="ptpip_hotspot_step_4">4. カメラが接続されたら「カメラを探す」を押すか、IPを直接入力してください</string>
+    <string name="ptpip_hotspot_step_5">5. mDNS広告が届かない場合はIPを直接入力してください</string>
 </resources>

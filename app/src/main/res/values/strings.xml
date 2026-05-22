@@ -301,6 +301,17 @@
     <!-- PtpipConnectionScreen -->
     <string name="ptpip_ap_mode">AP 모드</string>
     <string name="ptpip_sta_mode">STA 모드</string>
+    <string name="ptpip_sta_hotspot_mode">STA (폰 핫스팟)</string>
+    <string name="ptpip_hotspot_description">공유기 없이, 폰이 핫스팟 역할을 하고 카메라가 폰에 클라이언트로 접속합니다.</string>
+    <string name="ptpip_hotspot_enabled">폰 핫스팟 활성화됨</string>
+    <string name="ptpip_hotspot_disabled">폰 핫스팟 꺼져 있음</string>
+    <string name="ptpip_manual_ip_input">카메라 IP 직접 입력</string>
+    <string name="ptpip_connect_with_ip">이 IP로 연결</string>
+    <string name="ptpip_hotspot_step_1">1. 폰의 모바일 핫스팟(테더링)을 켜세요</string>
+    <string name="ptpip_hotspot_step_2">2. 카메라 Wi-Fi 설정에서 STA 모드를 선택하세요</string>
+    <string name="ptpip_hotspot_step_3">3. 카메라에서 폰 핫스팟의 SSID/비밀번호를 입력해 접속하세요</string>
+    <string name="ptpip_hotspot_step_4">4. 카메라가 접속되면 \'카메라 찾기\' 또는 IP를 직접 입력하세요</string>
+    <string name="ptpip_hotspot_step_5">5. mDNS 광고가 없으면 IP를 직접 입력하세요</string>
     <string name="ptpip_camera_connection">카메라 연결</string>
     <string name="ptpip_permission_needed">권한 필요</string>
     <string name="ptpip_go_to_settings">설정으로 이동</string>
