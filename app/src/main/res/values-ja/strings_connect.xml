@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- USB 接続エラーメッセージ -->
+    <string name="error_usb_help_title">カメラ接続の問題</string>
+    <string name="error_usb_not_found">カメラが見つかりません。次の項目を確認してください：\n1) ケーブル接続\n2) カメラの電源\n3) カメラ側の PC / PTP モード設定</string>
+    <string name="error_usb_io_change_mode">USB I/O エラーです。Mass Storage ではなく PTP / MTP モードに切り替えてください。</string>
+    <string name="error_usb_timeout">応答がタイムアウトしました。別のケーブルでお試しください。</string>
+    <string name="error_usb_permission">USB 権限が拒否されました。ケーブルを差し直して権限を許可してください。</string>
+    <string name="error_usb_unsupported">サポートされていない USB デバイスです。</string>
+    <string name="error_usb_restart">アプリを再起動してください。</string>
+
+    <!-- PTP/IP 自動再接続 -->
+    <string name="connect_auto_reconnect_label">自動再接続</string>
+    <string name="connect_auto_reconnect_subtitle">カメラの Wi-Fi が利用可能になったら自動的に再接続します</string>
+    <string name="autoconnect_notification_required">バックグラウンドで自動再接続を維持するには通知権限が必要です。</string>
+</resources>

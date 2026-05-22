@@ -173,6 +173,11 @@ fun CameraControlScreen(
     val isLiveViewEnabled by appSettingsViewModel.isLiveViewEnabled.collectAsStateWithLifecycle()
     val isAutoStartEventListener by appSettingsViewModel.isAutoStartEventListenerEnabled.collectAsStateWithLifecycle()
     val isShowPreviewInCapture by appSettingsViewModel.isShowLatestPhotoWhenDisabled.collectAsStateWithLifecycle()
+    val isShutterSoundEnabled by appSettingsViewModel.isShutterSoundEnabled.collectAsStateWithLifecycle()
+    val isLiveViewGridEnabled by appSettingsViewModel.isLiveViewGridEnabled.collectAsStateWithLifecycle()
+    val hasSeenCaptureCoachmark by appSettingsViewModel.hasSeenCaptureCoachmark.collectAsStateWithLifecycle()
+    val lastTimelapseInterval by appSettingsViewModel.lastTimelapseInterval.collectAsStateWithLifecycle()
+    val lastTimelapseCount by appSettingsViewModel.lastTimelapseCount.collectAsStateWithLifecycle()
 
     // 다이얼로그 상태들
     var showFolderSelectionDialog by remember { mutableStateOf(false) }
@@ -314,7 +319,12 @@ fun CameraControlScreen(
                             onFullscreenChange(false)
                         },
                         isLiveViewEnabled = appSettings.isLiveViewEnabled,
-                        onGalleryClick = onGalleryClick
+                        onGalleryClick = onGalleryClick,
+                        isShutterSoundEnabled = isShutterSoundEnabled,
+                        isLiveViewGridEnabled = isLiveViewGridEnabled,
+                        onToggleLiveViewGrid = {
+                            appSettingsViewModel.setLiveViewGridEnabled(!isLiveViewGridEnabled)
+                        }
                     )
                 } else {
                     // 일반 모드는 Scaffold contentPadding 적용
@@ -342,7 +352,15 @@ fun CameraControlScreen(
                         },
                         onShowBottomSheet = { showBottomSheet = true },
                         onGalleryClick = onGalleryClick,
-                        contentPadding = scaffoldPadding
+                        contentPadding = scaffoldPadding,
+                        isShutterSoundEnabled = isShutterSoundEnabled,
+                        isLiveViewGridEnabled = isLiveViewGridEnabled,
+                        onToggleLiveViewGrid = {
+                            appSettingsViewModel.setLiveViewGridEnabled(!isLiveViewGridEnabled)
+                        },
+                        onUnsupportedShootingMode = { mode ->
+                            viewModel.setShootingMode(mode)
+                        }
                     )
                 }
             }
@@ -391,10 +409,21 @@ fun CameraControlScreen(
     if (showTimelapseDialog) {
         TimelapseSettingsDialog(
             onConfirm = { interval, shots ->
+                // M7: prefill 값 저장 후 시작
+                appSettingsViewModel.setLastTimelapseSettings(interval, shots)
                 viewModel.startTimelapse(interval, shots)
                 showTimelapseDialog = false
             },
-            onDismiss = { showTimelapseDialog = false }
+            onDismiss = { showTimelapseDialog = false },
+            initialInterval = lastTimelapseInterval,
+            initialCount = lastTimelapseCount
+        )
+    }
+
+    // M5: 첫 실행 코치마크 — 카메라 컨트롤 활성 상태에서 1회 표시
+    if (isCameraControlsEnabled && !hasSeenCaptureCoachmark) {
+        com.inik.camcon.presentation.ui.screens.components.CaptureCoachmarkOverlay(
+            onDismiss = { appSettingsViewModel.setHasSeenCaptureCoachmark(true) }
         )
     }
 
@@ -468,7 +497,11 @@ private fun PortraitCameraLayout(
     onPhotoClick: (CapturedPhoto) -> Unit = {},
     onShowBottomSheet: () -> Unit,
     onGalleryClick: () -> Unit = {},
-    contentPadding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.foundation.layout.PaddingValues(0.dp)
+    contentPadding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.foundation.layout.PaddingValues(0.dp),
+    isShutterSoundEnabled: Boolean = true,
+    isLiveViewGridEnabled: Boolean = false,
+    onToggleLiveViewGrid: () -> Unit = {},
+    onUnsupportedShootingMode: (com.inik.camcon.domain.model.ShootingMode) -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -596,7 +629,9 @@ private fun PortraitCameraLayout(
                         if (canEnterFullscreen) {
                             onEnterFullscreen()
                         }
-                    }
+                    },
+                    isGridOverlayEnabled = isLiveViewGridEnabled,
+                    onToggleGridOverlay = onToggleLiveViewGrid
                 )
             } else {
                 LogcatManager.d(
@@ -676,12 +711,14 @@ private fun PortraitCameraLayout(
             Column(
                 modifier = Modifier.padding(vertical = Padding.sm)
             ) {
-                if (appSettings.isCameraControlsEnabled && appSettings.isLiveViewEnabled) {
+                // H2: 카메라 컨트롤이 켜져 있으면 라이브뷰 여부와 무관하게 모드 선택을 노출
+                if (appSettings.isCameraControlsEnabled) {
                     ShootingModeSelector(
                         captureState = uiState.capture,
                         isConnected = uiState.isConnected,
                         cameraCapabilities = uiState.cameraCapabilities,
                         onModeSelected = { mode -> viewModel.setShootingMode(mode) },
+                        onUnsupportedModeClick = onUnsupportedShootingMode,
                         modifier = Modifier.padding(vertical = 2.dp)
                     )
                 }
@@ -699,7 +736,12 @@ private fun PortraitCameraLayout(
                     )
                 }
 
-                if (appSettings.isCameraControlsEnabled && appSettings.isLiveViewEnabled) {
+                // H2: 카메라 컨트롤이 활성화되어 있고 라이브뷰가 비활성/미지원이어도
+                // 트리거 캡처용 셔터/AF는 항상 노출. CaptureControls 내부 라벨이
+                // "라이브뷰 없이 트리거 캡처"를 표시한다.
+                if (appSettings.isCameraControlsEnabled) {
+                    val supportsLiveView = uiState.cameraCapabilities?.canLiveView ?: false
+                    val liveViewVisuallyActive = appSettings.isLiveViewEnabled && supportsLiveView
                     CaptureControls(
                         captureState = uiState.capture,
                         isConnected = uiState.isConnected,
@@ -707,7 +749,9 @@ private fun PortraitCameraLayout(
                         onAutoFocus = viewModel::performAutoFocus,
                         onShowTimelapseDialog = onShowTimelapseDialog,
                         isVertical = false,
-                        onGalleryClick = onGalleryClick
+                        onGalleryClick = onGalleryClick,
+                        isLiveViewActive = liveViewVisuallyActive,
+                        isShutterSoundEnabled = isShutterSoundEnabled
                     )
                 }
 
@@ -741,7 +785,10 @@ private fun FullscreenCameraLayout(
     viewModel: CameraViewModel,
     onExitFullscreen: () -> Unit,
     isLiveViewEnabled: Boolean,
-    onGalleryClick: () -> Unit = {}
+    onGalleryClick: () -> Unit = {},
+    isShutterSoundEnabled: Boolean = true,
+    isLiveViewGridEnabled: Boolean = false,
+    onToggleLiveViewGrid: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var showTimelapseDialog by remember { mutableStateOf(false) }
@@ -784,7 +831,9 @@ private fun FullscreenCameraLayout(
                 onRefreshUsb = viewModel::refreshUsbDevices,
                 onRequestUsbPermission = viewModel::requestUsbPermission,
                 modifier = Modifier.fillMaxSize(),
-                onDoubleClick = onExitFullscreen
+                onDoubleClick = onExitFullscreen,
+                isGridOverlayEnabled = isLiveViewGridEnabled,
+                onToggleGridOverlay = onToggleLiveViewGrid
             )
         } else {
             Box(
@@ -825,6 +874,7 @@ private fun FullscreenCameraLayout(
                 onExitFullscreen = onExitFullscreen,
                 onRotate = { isRotated = !isRotated },
                 onGalleryClick = onGalleryClick,
+                isShutterSoundEnabled = isShutterSoundEnabled,
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .padding(Padding.lg)
@@ -898,7 +948,7 @@ private fun FullscreenCameraLayout(
         }
     }
 
-    // 타임랩스 설정 다이얼로그
+    // 타임랩스 설정 다이얼로그 (전체화면 모드)
     if (showTimelapseDialog) {
         TimelapseSettingsDialog(
             onConfirm = { interval, shots ->
@@ -925,6 +975,7 @@ private fun FullscreenControlPanel(
     onExitFullscreen: () -> Unit,
     onRotate: (() -> Unit)? = null,
     onGalleryClick: () -> Unit = {},
+    isShutterSoundEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -993,7 +1044,8 @@ private fun FullscreenControlPanel(
                 onAutoFocus = onAutoFocus,
                 onShowTimelapseDialog = onShowTimelapseDialog,
                 isVertical = true,
-                onGalleryClick = onGalleryClick
+                onGalleryClick = onGalleryClick,
+                isShutterSoundEnabled = isShutterSoundEnabled
             )
         }
     }

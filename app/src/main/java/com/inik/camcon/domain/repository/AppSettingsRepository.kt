@@ -24,6 +24,14 @@ interface AppSettingsRepository {
     val subscriptionTierEnum: Flow<SubscriptionTier>
     val themeMode: Flow<ThemeMode>
     val isNativeLogCaptureEnabled: Flow<Boolean>
+    val hasSeenPtpipPreviewWarning: Flow<Boolean>
+
+    // === Capture UX (Group 3) ===
+    val isShutterSoundEnabled: Flow<Boolean>
+    val isLiveViewGridEnabled: Flow<Boolean>
+    val hasSeenCaptureCoachmark: Flow<Boolean>
+    val lastTimelapseInterval: Flow<Int>
+    val lastTimelapseCount: Flow<Int>
 
     // === 쓰기 ===
     suspend fun setCameraControlsEnabled(enabled: Boolean)
@@ -38,5 +46,11 @@ interface AppSettingsRepository {
     suspend fun setRawFileDownloadEnabled(enabled: Boolean)
     suspend fun setThemeMode(mode: ThemeMode)
     suspend fun setNativeLogCaptureEnabled(enabled: Boolean)
+    suspend fun setHasSeenPtpipPreviewWarning(seen: Boolean)
+    suspend fun setShutterSoundEnabled(enabled: Boolean)
+    suspend fun setLiveViewGridEnabled(enabled: Boolean)
+    suspend fun setHasSeenCaptureCoachmark(seen: Boolean)
+    suspend fun setLastTimelapseInterval(seconds: Int)
+    suspend fun setLastTimelapseCount(count: Int)
     suspend fun clearAllSettings()
 }

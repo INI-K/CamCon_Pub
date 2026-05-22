@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Messaggi di errore della connessione USB -->
+    <string name="error_usb_help_title">Problema di connessione della fotocamera</string>
+    <string name="error_usb_not_found">Fotocamera non trovata. Verifica:\n1) Connessione del cavo\n2) Alimentazione della fotocamera\n3) Modalità PC / PTP sulla fotocamera</string>
+    <string name="error_usb_io_change_mode">Errore I/O USB. Passa la fotocamera dalla modalità “Memoria di massa” a PTP / MTP.</string>
+    <string name="error_usb_timeout">Timeout di risposta. Prova un altro cavo USB.</string>
+    <string name="error_usb_permission">Autorizzazione USB negata. Ricollega il cavo e concedi l\'autorizzazione.</string>
+    <string name="error_usb_unsupported">Dispositivo USB non supportato.</string>
+    <string name="error_usb_restart">Riavvia l\'app.</string>
+
+    <!-- Riconnessione automatica PTP/IP -->
+    <string name="connect_auto_reconnect_label">Riconnessione automatica</string>
+    <string name="connect_auto_reconnect_subtitle">Si riconnette automaticamente quando il Wi-Fi della fotocamera è di nuovo disponibile</string>
+    <string name="autoconnect_notification_required">È richiesto il permesso di notifica per mantenere la riconnessione automatica in background.</string>
+</resources>

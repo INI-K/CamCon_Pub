@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="splash_initializing">正在初始化...</string>
+    <string name="splash_library_check">正在检查库状态...</string>
+    <string name="splash_library_failed">库加载失败</string>
+    <string name="splash_env_failed">环境变量设置失败</string>
+    <string name="splash_library_ready">库准备完成 (%1$dms)</string>
+    <string name="splash_library_status_check_failed">库状态检查失败: %1$s</string>
+    <string name="splash_version_check">正在检查版本...</string>
+    <string name="splash_update_required_title">必须更新</string>
+    <string name="splash_update_available_title">有可用更新</string>
+    <string name="splash_update_required_message">必须更新到最新版本才能使用此应用。\n\n当前: %1$s\n最新: %2$s</string>
+    <string name="splash_update_available_message">有新版本可用,是否更新?\n\n当前: %1$s\n最新: %2$s</string>
+    <string name="splash_update_button">更新</string>
+    <string name="splash_later_button">稍后</string>
+    <string name="splash_camera_controller">Camera Controller</string>
+    <string name="splash_subscription_tier">订阅等级: %1$s</string>
+
+    <string name="dialog_restart_required_title">需要重启应用</string>
+    <string name="dialog_restart_preparing_title">正在准备重启...</string>
+    <string name="dialog_restart_preparing_body">正在清理相机连接,请稍候。</string>
+    <string name="dialog_restart_body">由于相机连接问题,需要完全重启应用。</string>
+    <string name="dialog_restart_options">• 立即重启:点击按钮立即重启\n• 退出:仅关闭应用 (需手动重启)</string>
+    <string name="dialog_restart_now">立即重启</string>
+    <string name="dialog_restart_quit">退出</string>
+    <string name="dialog_later">稍后</string>
+    <string name="dialog_confirm">确定</string>
+    <string name="dialog_understood">知道了</string>
+    <string name="dialog_reconnect">重新连接</string>
+
+    <string name="dialog_usb_disconnected_title">USB 设备已断开</string>
+    <string name="dialog_usb_disconnected_body">相机 USB 连接已断开。</string>
+    <string name="dialog_usb_disconnected_hints">• 请检查 USB 数据线\n• 请检查相机电源\n• 请将相机切换到 PC 模式</string>
+
+    <string name="dialog_camera_check_title">需要检查相机状态</string>
+    <string name="dialog_camera_check_body">相机未正常工作。</string>
+    <string name="dialog_camera_check_prompt">请确认以下事项:</string>
+    <string name="dialog_camera_check_hints">• 相机已开机\n• 电池电量充足\n• USB 数据线连接正常\n• 相机已切换到 PC 连接模式\n• 尝试关机后重新开机</string>
+
+    <string name="dialog_wifi_active_title">Wi-Fi 已连接</string>
+    <string name="dialog_wifi_active_body">相机正通过 Wi-Fi 连接,无法使用照片预览。</string>
+    <string name="dialog_wifi_active_steps_title">要使用照片预览:</string>
+    <string name="dialog_wifi_active_steps">1. 断开相机的 Wi-Fi 连接\n2. 通过 USB 数据线连接相机\n3. 将相机切换到 PC 模式</string>
+    <string name="dialog_wifi_active_hint">Wi-Fi 连接时请使用\"相机控制\"标签页。</string>
+
+    <string name="dialog_wifi_disconnected_title">Wi-Fi 已断开</string>
+    <string name="dialog_wifi_disconnected_body">相机的 Wi-Fi 连接已断开,请重新连接。</string>
+
+    <string name="progress_ptpip_connecting">正在连接相机...</string>
+    <string name="progress_ptpip_connection_start">正在启动相机连接...</string>
+    <string name="progress_ptpip_authenticating_nikon">正在认证 Nikon 相机...</string>
+    <string name="progress_ptpip_checking_info">正在检查相机信息...</string>
+    <string name="progress_ptpip_listener_start">正在启动事件监听器...</string>
+    <string name="progress_ptpip_finalizing">正在完成初始化...</string>
+    <string name="progress_ptpip_complete">连接完成!</string>
+    <string name="progress_ptpip_complete_limited">连接完成 (功能受限)</string>
+    <string name="progress_ptpip_listener_error">事件监听器错误</string>
+    <string name="progress_ptpip_setup_error">设置错误</string>
+    <string name="progress_ptpip_failed">连接失败: %1$s</string>
+    <string name="progress_ptpip_error">连接错误: %1$s</string>
+    <string name="progress_wifi_disconnected">Wi-Fi 已断开,请重新连接。</string>
+
+    <string name="progress_wifi_auto_connect_failed">Wi-Fi 自动连接失败: %1$s</string>
+    <string name="progress_wifi_request_exception">请求 Wi-Fi 连接时出现异常: %1$s</string>
+    <string name="progress_camera_connect_failed">连接相机失败。\n请检查网络后重试。</string>
+    <string name="progress_camera_connect_exception">连接相机时发生错误: %1$s</string>
+    <string name="progress_camera_label_connected">%1$s (已连接)</string>
+
+    <string name="notification_settings_title">通知设置</string>
+    <string name="notification_settings_subtitle">推送通知与声音设置</string>
+</resources>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- USB 연결 에러 메시지 -->
+    <string name="error_usb_help_title">카메라 연결 문제</string>
+    <string name="error_usb_not_found">카메라를 찾을 수 없습니다. 다음을 확인해주세요:\n1) 케이블 연결 상태\n2) 카메라 전원\n3) PC/PTP 모드 설정</string>
+    <string name="error_usb_io_change_mode">USB I/O 오류. Mass Storage 대신 PTP/MTP 모드로 변경해주세요.</string>
+    <string name="error_usb_timeout">응답 시간 초과. 다른 케이블을 시도해보세요.</string>
+    <string name="error_usb_permission">USB 권한이 거부되었습니다. 케이블을 다시 꽂아 권한을 부여해주세요.</string>
+    <string name="error_usb_unsupported">지원하지 않는 USB 디바이스입니다.</string>
+    <string name="error_usb_restart">앱 재시작이 필요합니다.</string>
+
+    <!-- PTP/IP 자동 재연결 -->
+    <string name="connect_auto_reconnect_label">자동 재연결</string>
+    <string name="connect_auto_reconnect_subtitle">카메라 Wi-Fi가 다시 잡히면 자동으로 재연결합니다</string>
+    <string name="autoconnect_notification_required">백그라운드 자동 재연결을 위해 알림 권한이 필요합니다.</string>
+</resources>

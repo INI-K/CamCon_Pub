@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="splash_initializing">初期化中...</string>
+    <string name="splash_library_check">ライブラリの状態を確認しています...</string>
+    <string name="splash_library_failed">ライブラリの読み込みに失敗しました</string>
+    <string name="splash_env_failed">環境変数の設定に失敗しました</string>
+    <string name="splash_library_ready">ライブラリの準備完了 (%1$dms)</string>
+    <string name="splash_library_status_check_failed">ライブラリの状態確認に失敗しました: %1$s</string>
+    <string name="splash_version_check">バージョン確認中...</string>
+    <string name="splash_update_required_title">必須アップデート</string>
+    <string name="splash_update_available_title">アップデート可能</string>
+    <string name="splash_update_required_message">アプリを利用するには最新版へのアップデートが必要です。\n\n現在: %1$s\n最新: %2$s</string>
+    <string name="splash_update_available_message">新しいバージョンが利用可能です。アップデートしますか?\n\n現在: %1$s\n最新: %2$s</string>
+    <string name="splash_update_button">アップデート</string>
+    <string name="splash_later_button">あとで</string>
+    <string name="splash_camera_controller">Camera Controller</string>
+    <string name="splash_subscription_tier">サブスクリプション: %1$s</string>
+
+    <string name="dialog_restart_required_title">アプリの再起動が必要</string>
+    <string name="dialog_restart_preparing_title">再起動の準備中...</string>
+    <string name="dialog_restart_preparing_body">カメラの接続を整理しています。少々お待ちください。</string>
+    <string name="dialog_restart_body">カメラ接続の問題のためアプリを完全に再起動する必要があります。</string>
+    <string name="dialog_restart_options">• 即時再起動: ボタンを押すと再起動\n• 終了: アプリ終了 (手動で再起動)</string>
+    <string name="dialog_restart_now">即時再起動</string>
+    <string name="dialog_restart_quit">終了</string>
+    <string name="dialog_later">あとで</string>
+    <string name="dialog_confirm">OK</string>
+    <string name="dialog_understood">了解</string>
+    <string name="dialog_reconnect">再接続</string>
+
+    <string name="dialog_usb_disconnected_title">USBデバイスが切断されました</string>
+    <string name="dialog_usb_disconnected_body">カメラのUSB接続が切れました。</string>
+    <string name="dialog_usb_disconnected_hints">• USBケーブルを確認してください\n• カメラの電源を確認してください\n• カメラをPCモードに設定してください</string>
+
+    <string name="dialog_camera_check_title">カメラの状態確認が必要</string>
+    <string name="dialog_camera_check_body">カメラが正常に動作していません。</string>
+    <string name="dialog_camera_check_prompt">次の項目をご確認ください:</string>
+    <string name="dialog_camera_check_hints">• カメラの電源が入っているか\n• バッテリーが十分か\n• USBケーブル接続状態\n• PC接続モードに設定されているか\n• カメラの電源を入れ直してみてください</string>
+
+    <string name="dialog_wifi_active_title">Wi-Fi接続中です</string>
+    <string name="dialog_wifi_active_body">カメラがWi-Fiで接続されているため、写真プレビューを利用できません。</string>
+    <string name="dialog_wifi_active_steps_title">写真プレビューを使うには:</string>
+    <string name="dialog_wifi_active_steps">1. カメラのWi-Fiを切断してください\n2. USBケーブルでカメラを接続してください\n3. カメラをPCモードに設定してください</string>
+    <string name="dialog_wifi_active_hint">Wi-Fi接続では「カメラ制御」タブをご利用ください。</string>
+
+    <string name="dialog_wifi_disconnected_title">Wi-Fi接続が切れました</string>
+    <string name="dialog_wifi_disconnected_body">カメラのWi-Fi接続が切れました。再接続してください。</string>
+
+    <string name="progress_ptpip_connecting">カメラに接続中...</string>
+    <string name="progress_ptpip_connection_start">カメラ接続を開始しています...</string>
+    <string name="progress_ptpip_authenticating_nikon">Nikonカメラを認証中...</string>
+    <string name="progress_ptpip_checking_info">カメラ情報を確認中...</string>
+    <string name="progress_ptpip_listener_start">イベントリスナーを開始中...</string>
+    <string name="progress_ptpip_finalizing">初期化を完了中...</string>
+    <string name="progress_ptpip_complete">接続完了!</string>
+    <string name="progress_ptpip_complete_limited">接続完了 (機能制限あり)</string>
+    <string name="progress_ptpip_listener_error">イベントリスナーエラー</string>
+    <string name="progress_ptpip_setup_error">設定エラー</string>
+    <string name="progress_ptpip_failed">接続失敗: %1$s</string>
+    <string name="progress_ptpip_error">接続エラー: %1$s</string>
+    <string name="progress_wifi_disconnected">Wi-Fi接続が切れました。再接続してください。</string>
+
+    <string name="progress_wifi_auto_connect_failed">Wi-Fi自動接続に失敗しました: %1$s</string>
+    <string name="progress_wifi_request_exception">Wi-Fi接続要求中に例外が発生しました: %1$s</string>
+    <string name="progress_camera_connect_failed">カメラ接続に失敗しました。\nネットワークを確認して再試行してください。</string>
+    <string name="progress_camera_connect_exception">カメラ接続中にエラーが発生しました: %1$s</string>
+    <string name="progress_camera_label_connected">%1$s (接続済み)</string>
+
+    <string name="notification_settings_title">通知設定</string>
+    <string name="notification_settings_subtitle">プッシュ通知と音声設定</string>
+</resources>

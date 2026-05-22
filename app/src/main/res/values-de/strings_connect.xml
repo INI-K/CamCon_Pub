@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- USB-Verbindungsfehler -->
+    <string name="error_usb_help_title">Problem mit der Kameraverbindung</string>
+    <string name="error_usb_not_found">Kamera nicht gefunden. Bitte prüfen:\n1) Kabelverbindung\n2) Kamerastromversorgung\n3) PC- / PTP-Modus an der Kamera</string>
+    <string name="error_usb_io_change_mode">USB-E/A-Fehler. Bitte stellen Sie die Kamera von „Massenspeicher“ auf PTP- / MTP-Modus um.</string>
+    <string name="error_usb_timeout">Zeitüberschreitung. Versuchen Sie es mit einem anderen USB-Kabel.</string>
+    <string name="error_usb_permission">USB-Berechtigung wurde verweigert. Bitte Kabel erneut anschließen und Berechtigung erteilen.</string>
+    <string name="error_usb_unsupported">Dieses USB-Gerät wird nicht unterstützt.</string>
+    <string name="error_usb_restart">Bitte starten Sie die App neu.</string>
+
+    <!-- PTP/IP automatische Wiederverbindung -->
+    <string name="connect_auto_reconnect_label">Automatisch neu verbinden</string>
+    <string name="connect_auto_reconnect_subtitle">Verbindet automatisch erneut, sobald das Kamera-WLAN wieder verfügbar ist</string>
+    <string name="autoconnect_notification_required">Für die automatische Wiederverbindung im Hintergrund ist die Benachrichtigungsberechtigung erforderlich.</string>
+</resources>

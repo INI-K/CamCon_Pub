@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- USB 连接错误信息 -->
+    <string name="error_usb_help_title">相机连接问题</string>
+    <string name="error_usb_not_found">找不到相机。请检查：\n1) 数据线连接\n2) 相机电源\n3) 相机的 PC / PTP 模式设置</string>
+    <string name="error_usb_io_change_mode">USB I/O 错误。请将相机从“大容量存储”切换到 PTP / MTP 模式。</string>
+    <string name="error_usb_timeout">响应超时。请尝试更换数据线。</string>
+    <string name="error_usb_permission">USB 权限被拒绝。请重新插拔数据线并授予权限。</string>
+    <string name="error_usb_unsupported">不支持的 USB 设备。</string>
+    <string name="error_usb_restart">请重新启动应用。</string>
+
+    <!-- PTP/IP 自动重连 -->
+    <string name="connect_auto_reconnect_label">自动重连</string>
+    <string name="connect_auto_reconnect_subtitle">在相机 Wi-Fi 再次可用时自动重新连接</string>
+    <string name="autoconnect_notification_required">需要通知权限以在后台保持自动重连。</string>
+</resources>

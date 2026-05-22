@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="preview_local_only_banner">En modo Wi-Fi solo se muestran las fotos descargadas localmente. Se recomienda el modo USB para acceder a la tarjeta de la cámara.</string>
+    <string name="preview_ptpip_first_warning">En modo Wi-Fi solo se muestran fotos locales. Cambia a USB para explorar la tarjeta de la cámara.</string>
+    <string name="preview_delete_title">¿Eliminar foto?</string>
+    <string name="preview_delete_confirm">¿Eliminar esta foto? También se eliminará de la memoria de la cámara.</string>
+    <string name="preview_delete_success">Foto eliminada</string>
+    <string name="share_chooser_title">Compartir foto</string>
+    <string name="share_no_image_data">No hay datos de imagen disponibles para compartir.</string>
+    <string name="share_failed">No se pudo compartir la foto.</string>
+    <string name="share_local_unavailable">Archivo local no disponible.</string>
+    <string name="share_in_progress">Compartiendo…</string>
+    <string name="raw_gating_unified_message">Los archivos RAW están disponibles con la suscripción PRO. Nivel actual: %1$s</string>
+    <string name="raw_gating_current_tier">Nivel actual: %1$s</string>
+    <string name="preview_retry_single">Reintentar</string>
+</resources>

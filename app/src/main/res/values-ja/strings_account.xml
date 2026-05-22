@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- アカウント: ログアウト / 削除 -->
+    <string name="account_logout_dialog_title">ログアウトしますか？</string>
+    <string name="account_logout_dialog_message">ローカルの写真キャッシュと自動接続履歴は保持されます。本当にログアウトしますか？</string>
+    <string name="account_logout_confirm">ログアウト</string>
+    <string name="account_logout_cancel">キャンセル</string>
+
+    <string name="account_delete_row_title">アカウントを削除</string>
+    <string name="account_delete_row_subtitle">アカウントと全データを完全に削除します</string>
+    <string name="account_delete_dialog_title">アカウントを削除しますか？</string>
+    <string name="account_delete_dialog_message">アカウントを削除すると、クラウド写真・設定・サブスクリプション情報が完全に消去されます。この操作は取り消せません。</string>
+    <string name="account_delete_continue">続行</string>
+    <string name="account_delete_cancel">キャンセル</string>
+
+    <string name="account_delete_confirm_title">DELETE と入力してください</string>
+    <string name="account_delete_confirm_message">完全削除を確認するには、下のボックスに DELETE と入力してください。</string>
+    <string name="account_delete_confirm_placeholder">DELETE</string>
+    <string name="account_delete_confirm_button">完全に削除</string>
+    <string name="account_delete_confirm_cancel">キャンセル</string>
+    <string name="account_delete_success">アカウントを削除しました</string>
+    <string name="account_delete_failed">アカウント削除に失敗: %s</string>
+
+    <!-- オンボーディング -->
+    <string name="onboarding_skip">スキップ</string>
+    <string name="onboarding_next">次へ</string>
+    <string name="onboarding_start">はじめる</string>
+
+    <string name="onboarding_step1_title">USB OTG で接続</string>
+    <string name="onboarding_step1_description">USB OTG ケーブルで一眼レフ/ミラーレスカメラを接続し、カメラを PC/PTP モードに設定してください。</string>
+
+    <string name="onboarding_step2_title">Wi-Fi PTP-IP で接続</string>
+    <string name="onboarding_step2_description">カメラの内蔵アクセスポイントに接続するか、両方を同じ Wi-Fi ルーターにつなぐとワイヤレスで操作できます。</string>
+
+    <string name="onboarding_step3_title">権限の許可</string>
+    <string name="onboarding_step3_description">Wi-Fi 検出とリアルタイム通知のため、求められたら位置情報・Wi-Fi・通知の権限を許可してください。</string>
+
+    <!-- 言語選択 -->
+    <string name="language_row_title">言語 / Language</string>
+    <string name="language_dialog_title">言語を選択</string>
+    <string name="language_system_default">システム既定</string>
+    <string name="language_option_en">English</string>
+    <string name="language_option_ko">한국어</string>
+    <string name="language_option_ja">日本語</string>
+    <string name="language_option_zh">中文</string>
+    <string name="language_option_de">Deutsch</string>
+    <string name="language_option_es">Español</string>
+    <string name="language_option_fr">Français</string>
+    <string name="language_option_it">Italiano</string>
+
+    <!-- 紹介コード入力 -->
+    <string name="referral_input_label">紹介コード (任意)</string>
+    <string name="referral_input_helper">紹介コードをお持ちの場合は、サインイン前に入力してください。</string>
+</resources>

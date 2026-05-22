@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="capture_shutter_sound_label">快门音</string>
+    <string name="capture_shutter_sound_subtitle">拍摄时播放系统快门声</string>
+    <string name="capture_no_liveview_label">无实时取景触发拍摄</string>
+    <string name="liveview_grid_toggle">网格</string>
+    <string name="liveview_exposure_compensation_label">EV</string>
+
+    <string name="coachmark_double_tap_fullscreen">双击进入全屏</string>
+    <string name="coachmark_shutter_area">点击 88dp 快门区域拍摄</string>
+    <string name="coachmark_recent_double_tap">双击最近照片打开图库</string>
+    <string name="coachmark_got_it">我知道了</string>
+
+    <string name="shooting_unsupported_mode">此相机不支持 %1$s 模式</string>
+
+    <string name="camera_status_battery_percent">电量 %1$d%%</string>
+    <string name="camera_status_sd_free">SD 剩余 %1$s</string>
+
+    <string name="timelapse_interval_label">间隔 (秒)</string>
+    <string name="timelapse_count_label">总张数</string>
+</resources>

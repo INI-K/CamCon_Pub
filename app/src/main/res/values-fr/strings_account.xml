@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Compte : déconnexion / suppression -->
+    <string name="account_logout_dialog_title">Se déconnecter ?</string>
+    <string name="account_logout_dialog_message">Le cache local des photos et l\'historique de connexion automatique seront conservés. Voulez-vous vraiment vous déconnecter ?</string>
+    <string name="account_logout_confirm">Se déconnecter</string>
+    <string name="account_logout_cancel">Annuler</string>
+
+    <string name="account_delete_row_title">Supprimer le compte</string>
+    <string name="account_delete_row_subtitle">Supprimer définitivement votre compte et vos données</string>
+    <string name="account_delete_dialog_title">Supprimer le compte ?</string>
+    <string name="account_delete_dialog_message">La suppression de votre compte effacera définitivement vos photos cloud, vos paramètres et vos informations d\'abonnement. Cette action est irréversible.</string>
+    <string name="account_delete_continue">Continuer</string>
+    <string name="account_delete_cancel">Annuler</string>
+
+    <string name="account_delete_confirm_title">Saisissez DELETE pour confirmer</string>
+    <string name="account_delete_confirm_message">Pour confirmer la suppression définitive, saisissez DELETE dans le champ ci-dessous.</string>
+    <string name="account_delete_confirm_placeholder">DELETE</string>
+    <string name="account_delete_confirm_button">Supprimer définitivement</string>
+    <string name="account_delete_confirm_cancel">Annuler</string>
+    <string name="account_delete_success">Compte supprimé</string>
+    <string name="account_delete_failed">Échec de la suppression du compte : %s</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_skip">Passer</string>
+    <string name="onboarding_next">Suivant</string>
+    <string name="onboarding_start">Commencer</string>
+
+    <string name="onboarding_step1_title">Connexion en USB OTG</string>
+    <string name="onboarding_step1_description">Branchez votre reflex ou hybride avec un câble USB OTG, puis mettez l\'appareil en mode PC/PTP.</string>
+
+    <string name="onboarding_step2_title">Connexion en Wi-Fi PTP-IP</string>
+    <string name="onboarding_step2_description">Connectez-vous au point d\'accès intégré de l\'appareil ou placez les deux appareils sur le même routeur Wi-Fi pour piloter sans fil.</string>
+
+    <string name="onboarding_step3_title">Autorisations</string>
+    <string name="onboarding_step3_description">Pour la découverte Wi-Fi et les notifications en direct, autorisez la localisation, le Wi-Fi et les notifications lorsque cela est demandé.</string>
+
+    <!-- Langue -->
+    <string name="language_row_title">Langue / Language</string>
+    <string name="language_dialog_title">Choisir la langue</string>
+    <string name="language_system_default">Par défaut du système</string>
+    <string name="language_option_en">English</string>
+    <string name="language_option_ko">한국어</string>
+    <string name="language_option_ja">日本語</string>
+    <string name="language_option_zh">中文</string>
+    <string name="language_option_de">Deutsch</string>
+    <string name="language_option_es">Español</string>
+    <string name="language_option_fr">Français</string>
+    <string name="language_option_it">Italiano</string>
+
+    <!-- Code de parrainage -->
+    <string name="referral_input_label">Code de parrainage (facultatif)</string>
+    <string name="referral_input_helper">Si vous avez un code de parrainage, saisissez-le avant de vous connecter.</string>
+</resources>

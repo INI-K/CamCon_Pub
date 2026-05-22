@@ -23,15 +23,20 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,8 +62,39 @@ fun FullScreenTopBar(
     onInfoClick: () -> Unit,
     onDownloadClick: (() -> Unit)?,
     onShareClick: () -> Unit,
+    onDeleteClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteDialog && onDeleteClick != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            icon = {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = { Text(stringResource(R.string.preview_delete_title)) },
+            text = { Text(stringResource(R.string.preview_delete_confirm)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteDialog = false
+                    onDeleteClick()
+                }) {
+                    Text(stringResource(R.string.preview_delete_title))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -129,6 +165,24 @@ fun FullScreenTopBar(
                 tint = TextPrimary
             )
         }
+
+        // H7-A — 삭제 아이콘 (구독·기능 게이팅 통과한 경우만 호출자가 전달)
+        if (onDeleteClick != null) {
+            IconButton(
+                onClick = { showDeleteDialog = true },
+                modifier = Modifier
+                    .background(
+                        Background.copy(alpha = 0.6f),
+                        RoundedCornerShape(20.dp)
+                    )
+            ) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = stringResource(R.string.preview_delete_title),
+                    tint = TextPrimary
+                )
+            }
+        }
     }
 }
 
@@ -180,40 +234,43 @@ fun PhotoPagerImage(
                 onSuccess = { request, result ->
                     Log.d("PhotoPagerImage", "이미지 로딩 성공: ${photo.name}")
 
-                    try {
-                        val exif = when (imageModel) {
-                            is ByteArray -> {
-                                androidx.exifinterface.media.ExifInterface(
-                                    java.io.ByteArrayInputStream(imageModel)
+                    // LOW: EXIF 디버그 로깅은 DEBUG 빌드에서만 수행 (메인 스레드 I/O 회피)
+                    if (com.inik.camcon.BuildConfig.DEBUG) {
+                        try {
+                            val exif = when (imageModel) {
+                                is ByteArray -> {
+                                    androidx.exifinterface.media.ExifInterface(
+                                        java.io.ByteArrayInputStream(imageModel)
+                                    )
+                                }
+                                is java.io.File -> {
+                                    androidx.exifinterface.media.ExifInterface(imageModel.absolutePath)
+                                }
+                                else -> null
+                            }
+
+                            if (exif != null) {
+                                val orientation = exif.getAttributeInt(
+                                    androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION,
+                                    androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
                                 )
+
+                                val rotationNeeded = when (orientation) {
+                                    androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> "90도"
+                                    androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> "180도 (⚠️ Coil은 이 상태에서 상하반전)"
+                                    androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> "270도"
+                                    else -> "없음"
+                                }
+
+                                Log.d("EXIF_CHECK", "=== EXIF 회전 정보 확인 ===")
+                                Log.d("EXIF_CHECK", "파일: ${photo.name}")
+                                Log.d("EXIF_CHECK", "EXIF Orientation: $orientation")
+                                Log.d("EXIF_CHECK", "필요한 회전: $rotationNeeded")
+                                Log.d("EXIF_CHECK", "Coil의 자동 EXIF 회전 활성화 상태: 활성 (180도는 상하 반전됨)")
                             }
-                            is java.io.File -> {
-                                androidx.exifinterface.media.ExifInterface(imageModel.absolutePath)
-                            }
-                            else -> null
+                        } catch (e: Exception) {
+                            Log.e("EXIF_CHECK", "EXIF 정보 확인 실패: ${e.message}", e)
                         }
-
-                        if (exif != null) {
-                            val orientation = exif.getAttributeInt(
-                                androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION,
-                                androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
-                            )
-
-                            val rotationNeeded = when (orientation) {
-                                androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> "90도"
-                                androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> "180도 (⚠️ Coil은 이 상태에서 상하반전)"
-                                androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> "270도"
-                                else -> "없음"
-                            }
-
-                            Log.d("EXIF_CHECK", "=== EXIF 회전 정보 확인 ===")
-                            Log.d("EXIF_CHECK", "파일: ${photo.name}")
-                            Log.d("EXIF_CHECK", "EXIF Orientation: $orientation")
-                            Log.d("EXIF_CHECK", "필요한 회전: $rotationNeeded")
-                            Log.d("EXIF_CHECK", "Coil의 자동 EXIF 회전 활성화 상태: 활성 (180도는 상하 반전됨)")
-                        }
-                    } catch (e: Exception) {
-                        Log.e("EXIF_CHECK", "EXIF 정보 확인 실패: ${e.message}", e)
                     }
                 },
                 onError = { request, error ->

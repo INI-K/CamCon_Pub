@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Splash -->
+    <string name="splash_initializing">초기화 중...</string>
+    <string name="splash_library_check">라이브러리 상태 확인 중...</string>
+    <string name="splash_library_failed">라이브러리 로드 실패</string>
+    <string name="splash_env_failed">환경변수 설정 실패</string>
+    <string name="splash_library_ready">라이브러리 준비 완료 (%1$dms)</string>
+    <string name="splash_library_status_check_failed">라이브러리 상태 확인 실패: %1$s</string>
+    <string name="splash_version_check">버전 확인 중...</string>
+    <string name="splash_update_required_title">필수 업데이트</string>
+    <string name="splash_update_available_title">업데이트 가능</string>
+    <string name="splash_update_required_message">앱을 사용하려면 최신 버전으로 업데이트해야 합니다.\n\n현재 버전: %1$s\n최신 버전: %2$s</string>
+    <string name="splash_update_available_message">새로운 버전이 출시되었습니다. 업데이트하시겠습니까?\n\n현재 버전: %1$s\n최신 버전: %2$s</string>
+    <string name="splash_update_button">업데이트</string>
+    <string name="splash_later_button">나중에</string>
+    <string name="splash_camera_controller">Camera Controller</string>
+    <string name="splash_subscription_tier">구독 티어: %1$s</string>
+
+    <!-- Main dialogs -->
+    <string name="dialog_restart_required_title">앱 재시작 필요</string>
+    <string name="dialog_restart_preparing_title">재시작 준비 중입니다...</string>
+    <string name="dialog_restart_preparing_body">잠시만 기다려주세요. 카메라 연결을 정리하고 있습니다.</string>
+    <string name="dialog_restart_body">카메라 연결 문제로 인해 앱을 완전히 재시작해야 합니다.</string>
+    <string name="dialog_restart_options">• \'즉시 재시작\': 버튼 클릭 즉시 재시작\n• \'종료\': 앱만 종료 (수동 재실행 필요)</string>
+    <string name="dialog_restart_now">즉시 재시작</string>
+    <string name="dialog_restart_quit">종료</string>
+    <string name="dialog_later">나중에</string>
+    <string name="dialog_confirm">확인</string>
+    <string name="dialog_understood">알겠습니다</string>
+    <string name="dialog_reconnect">다시 연결</string>
+
+    <string name="dialog_usb_disconnected_title">USB 디바이스 분리</string>
+    <string name="dialog_usb_disconnected_body">카메라 USB 연결이 끊어졌습니다.</string>
+    <string name="dialog_usb_disconnected_hints">• USB 케이블 연결을 확인해주세요\n• 카메라 전원을 확인해주세요\n• 카메라를 PC 모드로 설정해주세요</string>
+
+    <string name="dialog_camera_check_title">카메라 상태 점검 필요</string>
+    <string name="dialog_camera_check_body">카메라가 정상적으로 동작하지 않습니다.</string>
+    <string name="dialog_camera_check_prompt">다음 사항을 확인해주세요:</string>
+    <string name="dialog_camera_check_hints">• 카메라 전원이 켜져 있는지 확인\n• 카메라 배터리가 충분한지 확인\n• USB 케이블 연결 상태 확인\n• 카메라가 PC 연결 모드로 설정되어 있는지 확인\n• 카메라를 껐다가 다시 켜보세요</string>
+
+    <string name="dialog_wifi_active_title">Wi-Fi 연결 중입니다</string>
+    <string name="dialog_wifi_active_body">현재 카메라가 Wi-Fi로 연결되어 있어 사진 미리보기를 사용할 수 없습니다.</string>
+    <string name="dialog_wifi_active_steps_title">사진 미리보기를 사용하려면:</string>
+    <string name="dialog_wifi_active_steps">1. 카메라의 Wi-Fi 연결을 해제해주세요\n2. USB 케이블로 카메라를 연결해주세요\n3. 카메라를 PC 모드로 설정해주세요</string>
+    <string name="dialog_wifi_active_hint">Wi-Fi 연결에서는 \'카메라 제어\' 탭을 이용해주세요!</string>
+
+    <string name="dialog_wifi_disconnected_title">Wi-Fi 연결이 끊어졌습니다</string>
+    <string name="dialog_wifi_disconnected_body">카메라의 Wi-Fi 연결이 끊어졌습니다. 다시 연결해주세요.</string>
+
+    <!-- PTPIP / Wi-Fi progress -->
+    <string name="progress_ptpip_connecting">카메라에 연결 중...</string>
+    <string name="progress_ptpip_connection_start">카메라 연결 시작...</string>
+    <string name="progress_ptpip_authenticating_nikon">Nikon 카메라 인증 중...</string>
+    <string name="progress_ptpip_checking_info">카메라 정보 확인 중...</string>
+    <string name="progress_ptpip_listener_start">이벤트 리스너 시작 중...</string>
+    <string name="progress_ptpip_finalizing">초기화 완료 중...</string>
+    <string name="progress_ptpip_complete">연결 완료!</string>
+    <string name="progress_ptpip_complete_limited">연결 완료 (기능 제한)</string>
+    <string name="progress_ptpip_listener_error">이벤트 리스너 오류</string>
+    <string name="progress_ptpip_setup_error">설정 오류</string>
+    <string name="progress_ptpip_failed">연결 실패: %1$s</string>
+    <string name="progress_ptpip_error">연결 오류: %1$s</string>
+    <string name="progress_wifi_disconnected">Wi-Fi 연결이 끊어졌습니다. 다시 연결해 주세요.</string>
+
+    <string name="progress_wifi_auto_connect_failed">Wi‑Fi 자동 연결 실패: %1$s</string>
+    <string name="progress_wifi_request_exception">Wi‑Fi 연결 요청 중 예외 발생: %1$s</string>
+    <string name="progress_camera_connect_failed">카메라 연결에 실패했습니다.\n네트워크 상태를 확인하고 다시 시도해주세요.</string>
+    <string name="progress_camera_connect_exception">카메라 연결 과정에서 오류가 발생했습니다: %1$s</string>
+    <string name="progress_camera_label_connected">%1$s (연결됨)</string>
+
+    <!-- Notification settings -->
+    <string name="notification_settings_title">알림 설정</string>
+    <string name="notification_settings_subtitle">푸시 알림 및 소리 설정</string>
+</resources>
