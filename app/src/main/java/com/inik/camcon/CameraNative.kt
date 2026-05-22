@@ -187,6 +187,20 @@ object CameraNative {
     external fun getLatestCameraFile(): String  // 최신 파일만 가져오기 (촬영 후 사용)
     external fun invalidateFileCache()  // 캐시 무효화
     external fun getCameraThumbnail(photoPath: String): ByteArray?
+
+    /**
+     * 다수 경로의 썸네일을 단일 카메라 락 보유 상태에서 순회 처리한다.
+     *
+     * 갤러리 첫 페이지처럼 N장을 빠르게 미리 채워야 할 때 사용한다.
+     * - JNI 진입 1회 + 카메라 락 1회 획득으로 락 경합 / JNI 경계 비용 절감.
+     * - 경로 1건당 [ThumbnailBatchCallback.onThumbnail]이 호출되며 실패 시 `data=null`.
+     * - 호출 스레드는 본 함수 호출 스레드와 동일하므로 IO 디스패처에서 호출할 것.
+     */
+    external fun getCameraThumbnailBatch(
+        paths: Array<String>,
+        callback: ThumbnailBatchCallback
+    )
+
     external fun getCameraPhotoExif(photoPath: String): String? // EXIF 정보를 JSON 문자열로 반환
     external fun downloadCameraPhoto(photoPath: String): ByteArray?
 
@@ -211,6 +225,46 @@ object CameraNative {
         version: String,
         serial: String
     ): Int
+
+    /**
+     * PTP-IP 초기화 변형 — 디바이스 정보(제조사/모델/버전/시리얼) 함께 전달.
+     */
+    external fun initCameraWithDeviceInfo(
+        ipAddress: String,
+        port: Int,
+        libDir: String,
+        manufacturer: String,
+        model: String,
+        version: String,
+        serial: String
+    ): Int
+
+    /**
+     * Nikon STA 인증 직후 libgphoto2 초기화를 이어 수행하는 변형.
+     */
+    external fun initCameraAfterNikonSta(ipAddress: String, port: Int, libDir: String): Int
+
+    // ===== Nikon STA 인증 (camera_nikon_auth.cpp) =====
+
+    /**
+     * Nikon STA 모드 Phase 1 인증. libgphoto2 초기화 전에 호출.
+     * 성공 시 GUID 저장 + 소켓 유지.
+     */
+    external fun performNikonStaAuth(ipAddress: String, port: Int): Boolean
+
+    /**
+     * libgphoto2 경유 Nikon STA 인증(현재 stub: "OK" 반환).
+     */
+    external fun performNikonStaAuthWithLibgphoto2(): String?
+
+    /** 저장된 Nikon 인증 GUID 조회. 미설정 시 빈 문자열. */
+    external fun getNikonAuthGuid(): String?
+
+    /** Nikon 인증 소켓 유지 중인지 여부. */
+    external fun hasNikonAuthSockets(): Boolean
+
+    /** Nikon 인증 소켓 수동 정리. */
+    external fun closeNikonAuthSockets()
 
     // Connection type detection and session management
     external fun maintainSessionForStaMode(): Int
@@ -323,6 +377,41 @@ object CameraNative {
     external fun isRawFileDownloadEnabled(): Boolean
 
     external fun initializeCameraCache() // 카메라 캐시 초기화
+
+    // ===== 네이티브 캐시 무효화 / 진단 =====
+
+    /** 카메라 감지 캐시 무효화 (camera_detection.cpp). */
+    external fun invalidateDetectionCache()
+
+    /** 카메라 abilities 캐시 무효화 (camera_samples_impl.cpp). */
+    external fun invalidateAbilitiesCache()
+
+    /** 라이브뷰 캐시 무효화 (camera_config.cpp). */
+    external fun invalidateLiveViewCache()
+
+    /** 감지 캐시 hit/miss 통계 문자열 조회. */
+    external fun getCacheStatistics(): String?
+
+    // ===== 카메라 설정 일괄/단일 조회 (camera_events.cpp) =====
+
+    /** 모든 카메라 설정값을 JSON 문자열로 반환. */
+    external fun getAllCameraSettings(): String?
+
+    /** 특정 설정의 현재 값 조회. 미지원 시 "error"/"unknown". */
+    external fun getCameraSetting(settingName: String): String?
+
+    // ===== 파일 삭제 변형 (camera_files.cpp) =====
+
+    /** 카메라 사진 삭제(절대 경로). 성공 여부 반환. */
+    external fun deleteCameraPhoto(photoPath: String): Boolean
+
+    // ===== Canon 캡처 / 캡처 타깃 =====
+
+    /** Canon 캡처 모드 활성/비활성 (camera_config.cpp). 결과 메시지 반환. */
+    external fun enableCanonCapture(enable: Boolean): String?
+
+    /** 캡처 타깃 설정 (0: internal, 1: card 등). GP 에러 코드 반환. */
+    external fun setCaptureTarget(targetMode: Int): Int
 
     // ===== 고급 촬영 기능 (새로 추가) =====
 
