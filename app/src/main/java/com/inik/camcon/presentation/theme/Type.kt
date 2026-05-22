@@ -8,7 +8,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.inik.camcon.R
 
-// Pretendard 폰트 패밀리 정의
+/**
+ * CamCon Design System V2 — Typography
+ *
+ * Pretendard 단일 폰트 + 무게 콘트라스트 강조 + 정보 밀도 우선.
+ * 디스플레이 슬롯 폐기(24sp 이상 거의 안 씀), 11~24sp 범위에 9개 슬롯 집중.
+ * 디자인 가이드는 docs/DESIGN_SYSTEM_V2.md §2 참조.
+ */
+
 val PretendardFontFamily = FontFamily(
     Font(R.font.pretendard_regular, FontWeight.Normal),
     Font(R.font.pretendard_medium, FontWeight.Medium),
@@ -16,154 +23,54 @@ val PretendardFontFamily = FontFamily(
     Font(R.font.pretendard_bold, FontWeight.Bold)
 )
 
-// Material3 Typography with Pretendard
+private fun pretendard(
+    size: Int,
+    weight: FontWeight,
+    line: Int,
+    letterSpacing: Double = 0.0
+) = TextStyle(
+    fontFamily = PretendardFontFamily,
+    fontWeight = weight,
+    fontSize = size.sp,
+    lineHeight = line.sp,
+    letterSpacing = letterSpacing.sp
+)
+
+// ---- V2 Typography 슬롯 ----
+val HeadingXL = pretendard(24, FontWeight.Bold, 28)
+val HeadingL = pretendard(20, FontWeight.SemiBold, 26)
+val HeadingM = pretendard(16, FontWeight.SemiBold, 22)
+val Body = pretendard(14, FontWeight.Normal, 20, letterSpacing = 0.1)
+val BodySmall = pretendard(13, FontWeight.Normal, 18, letterSpacing = 0.1)
+val Caption = pretendard(12, FontWeight.Medium, 16, letterSpacing = 0.2)
+val Micro = pretendard(11, FontWeight.Medium, 14, letterSpacing = 0.3)
+val ButtonText = pretendard(14, FontWeight.SemiBold, 16, letterSpacing = 0.2)
+val MonoNumeric = pretendard(12, FontWeight.Normal, 16)
+
+// ---- V1 호환 별칭 ----
+val AppTitle = HeadingXL
+val BadgeText = pretendard(10, FontWeight.Bold, 12, letterSpacing = 0.5)   // V1 그대로
+val CaptionSmall = Micro                                                   // V1 8sp → Micro 11sp
+
+// ---- Material 3 Typography 매핑 ----
 val Typography = Typography(
-    displayLarge = TextStyle(
-        fontFamily = PretendardFontFamily,
-        fontWeight = FontWeight.Bold,
-        fontSize = 57.sp,
-        lineHeight = 64.sp,
-        letterSpacing = (-0.25).sp
-    ),
-    displayMedium = TextStyle(
-        fontFamily = PretendardFontFamily,
-        fontWeight = FontWeight.Bold,
-        fontSize = 45.sp,
-        lineHeight = 52.sp,
-        letterSpacing = 0.sp
-    ),
-    displaySmall = TextStyle(
-        fontFamily = PretendardFontFamily,
-        fontWeight = FontWeight.Bold,
-        fontSize = 36.sp,
-        lineHeight = 44.sp,
-        letterSpacing = 0.sp
-    ),
+    displayLarge = HeadingXL,
+    displayMedium = HeadingXL,
+    displaySmall = HeadingXL,
 
-    headlineLarge = TextStyle(
-        fontFamily = PretendardFontFamily,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 32.sp,
-        lineHeight = 40.sp,
-        letterSpacing = 0.sp
-    ),
-    headlineMedium = TextStyle(
-        fontFamily = PretendardFontFamily,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 28.sp,
-        lineHeight = 36.sp,
-        letterSpacing = 0.sp
-    ),
-    headlineSmall = TextStyle(
-        fontFamily = PretendardFontFamily,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 24.sp,
-        lineHeight = 32.sp,
-        letterSpacing = 0.sp
-    ),
+    headlineLarge = HeadingL,
+    headlineMedium = HeadingM,
+    headlineSmall = HeadingM,
 
-    titleLarge = TextStyle(
-        fontFamily = PretendardFontFamily,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 22.sp,
-        lineHeight = 28.sp,
-        letterSpacing = 0.sp
-    ),
-    titleMedium = TextStyle(
-        fontFamily = PretendardFontFamily,
-        fontWeight = FontWeight.Medium,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.15.sp
-    ),
-    titleSmall = TextStyle(
-        fontFamily = PretendardFontFamily,
-        fontWeight = FontWeight.Medium,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 0.1.sp
-    ),
+    titleLarge = HeadingM,
+    titleMedium = HeadingM,
+    titleSmall = Caption,
 
-    bodyLarge = TextStyle(
-        fontFamily = PretendardFontFamily,
-        fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.5.sp
-    ),
-    bodyMedium = TextStyle(
-        fontFamily = PretendardFontFamily,
-        fontWeight = FontWeight.Normal,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 0.25.sp
-    ),
-    bodySmall = TextStyle(
-        fontFamily = PretendardFontFamily,
-        fontWeight = FontWeight.Normal,
-        fontSize = 12.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.4.sp
-    ),
+    bodyLarge = Body,
+    bodyMedium = Body,
+    bodySmall = BodySmall,
 
-    labelLarge = TextStyle(
-        fontFamily = PretendardFontFamily,
-        fontWeight = FontWeight.Medium,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 0.1.sp
-    ),
-    labelMedium = TextStyle(
-        fontFamily = PretendardFontFamily,
-        fontWeight = FontWeight.Medium,
-        fontSize = 12.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.5.sp
-    ),
-    labelSmall = TextStyle(
-        fontFamily = PretendardFontFamily,
-        fontWeight = FontWeight.Medium,
-        fontSize = 11.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.5.sp
-    )
-)
-
-// === CamCon 확장 TextStyle (Material 3 슬롯 외 자주 쓰는 크기) ===
-// Material 3 Typography는 슬롯 고정이라 신규 사이즈는 별도 TextStyle로 노출.
-
-/** 8sp · Regular · 썸네일 파일크기 배지 등 초소형 텍스트 */
-val CaptionSmall = TextStyle(
-    fontFamily = PretendardFontFamily,
-    fontWeight = FontWeight.Normal,
-    fontSize = 8.sp,
-    lineHeight = 12.sp,
-    letterSpacing = 0.4.sp
-)
-
-/** 9sp · Regular · 로딩 플레이스홀더 / 매우 작은 안내 */
-val Caption = TextStyle(
-    fontFamily = PretendardFontFamily,
-    fontWeight = FontWeight.Normal,
-    fontSize = 9.sp,
-    lineHeight = 12.sp,
-    letterSpacing = 0.4.sp
-)
-
-/** 10sp · Bold · 기능 배지 / 썸네일 파일명 라벨 */
-val BadgeText = TextStyle(
-    fontFamily = PretendardFontFamily,
-    fontWeight = FontWeight.Bold,
-    fontSize = 10.sp,
-    lineHeight = 12.sp,
-    letterSpacing = 0.5.sp
-)
-
-/** 40sp · Bold · 로그인 화면 앱 타이틀 (display 슬롯보다 작고 headline 슬롯보다 큼) */
-val AppTitle = TextStyle(
-    fontFamily = PretendardFontFamily,
-    fontWeight = FontWeight.Bold,
-    fontSize = 40.sp,
-    lineHeight = 48.sp,
-    letterSpacing = 0.sp
+    labelLarge = ButtonText,
+    labelMedium = Caption,
+    labelSmall = Micro
 )
