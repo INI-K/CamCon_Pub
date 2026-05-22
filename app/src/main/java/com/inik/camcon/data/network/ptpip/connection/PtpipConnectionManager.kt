@@ -2,6 +2,7 @@ package com.inik.camcon.data.network.ptpip.connection
 
 import android.util.Log
 import com.inik.camcon.data.constants.PtpipConstants
+import com.inik.camcon.data.network.ptpip.IpAddressValidator
 import com.inik.camcon.domain.model.PtpSessionState
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.PtpipCameraInfo
@@ -88,6 +89,20 @@ class PtpipConnectionManager @Inject constructor(
      * 기본 PTPIP 연결 설정
      */
     suspend fun establishConnection(camera: PtpipCamera): Boolean = withContext(ioDispatcher) {
+        // IP 화이트리스트 검증: 사설망/link-local만 허용. 임의 호스트/도메인은 거부.
+        if (!IpAddressValidator.isAllowedCameraIp(camera.ipAddress)) {
+            Log.e(
+                TAG,
+                "연결 거부: 허용되지 않은 IP 형식/대역 - ${camera.ipAddress.take(45)}"
+            )
+            forceTransition(PtpSessionState.DISCONNECTED)
+            return@withContext false
+        }
+        if (camera.port !in 1..65535) {
+            Log.e(TAG, "연결 거부: 유효하지 않은 포트 ${camera.port}")
+            forceTransition(PtpSessionState.DISCONNECTED)
+            return@withContext false
+        }
         if (!tryTransition(PtpSessionState.SOCKET_CONNECTING)) {
             Log.e(TAG, "연결 시작 불가: 현재 상태 ${sessionState.get()}")
             return@withContext false

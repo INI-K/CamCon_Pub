@@ -294,4 +294,31 @@
     <string name="camera_connection_optimization_details">• Echtzeit-Kamerasteuerung beibehalten\n• Stabilität der automatischen Fotoübertragung verbessern\n• Verbindungsabbrüche im Hintergrund vermeiden\n\n※ Als Kamerazubehör-App gemäß den Google-Play-Richtlinien zulässig.</string>
     <string name="camera_connection_optimization_confirm">Einstellungen öffnen</string>
     <string name="camera_connection_optimization_dismiss">Später</string>
+
+    <!-- Barrierefreiheit — Status/Laden (WCAG 2.2 SC 4.1.3) -->
+    <string name="cd_loading">Wird geladen</string>
+    <string name="cd_button_loading">Wird verarbeitet</string>
+    <string name="cd_status_idle">Inaktiv</string>
+    <string name="cd_status_connecting">Verbindung wird hergestellt</string>
+    <string name="cd_status_connected">Verbunden</string>
+    <string name="cd_status_error">Fehler</string>
+    <!-- %1$s = Dateiname, %2$s = Aufnahmedatum -->
+    <string name="cd_photo_preview">Foto %1$s, %2$s</string>
+    <string name="cd_photo_preview_no_date">Foto %1$s</string>
+
+    <!-- SettingsActivity (developer + logs) -->
+    <string name="settings_toast_logout_failed">Abmeldung fehlgeschlagen: %s</string>
+    <string name="settings_toast_notification_granted">Benachrichtigungsberechtigung erteilt.</string>
+    <string name="settings_toast_notification_denied">Benachrichtigungsberechtigung verweigert.</string>
+    <string name="settings_toast_notification_unsupported">Auf diesem Gerät ist keine Benachrichtigungsberechtigung erforderlich.</string>
+    <string name="settings_toast_battery_settings_error">Einstellungen können nicht geöffnet werden: %s</string>
+    <string name="settings_native_log_dialog_title">Native-Log</string>
+    <string name="settings_native_log_clipboard_label">native_log</string>
+    <string name="settings_native_log_copy_button">Alles kopieren</string>
+    <string name="settings_native_log_copied">Log in Zwischenablage kopiert</string>
+    <string name="settings_native_log_no_files">Keine gespeicherten Log-Dateien.</string>
+    <string name="settings_native_log_toast_enable">Native-Log-Erfassung wird gestartet.\nWährend der Kamera-Initialisierung werden detaillierte Logs aufgezeichnet.</string>
+    <string name="settings_native_log_toast_disable">Native-Log-Erfassung gestoppt.</string>
+    <string name="settings_referral_clipboard_label">referral_code</string>
+    <string name="settings_referral_copied">Empfehlungscode \'%s\' in Zwischenablage kopiert</string>
 </resources>

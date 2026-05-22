@@ -18,7 +18,9 @@ import com.inik.camcon.presentation.viewmodel.photo.PhotoImageManager
 import com.inik.camcon.presentation.viewmodel.photo.PhotoListManager
 import com.inik.camcon.presentation.viewmodel.photo.PhotoSelectionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -155,7 +157,9 @@ class PhotoPreviewViewModel @Inject constructor(
                     cameraRepository.stopCameraEventListener()
                     Log.d(TAG, "✓ 이벤트 리스너 중단 완료")
                 }
-                
+
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.w(TAG, "이벤트 리스너 관리 실패 (무시하고 계속)", e)
             }
@@ -573,6 +577,8 @@ class PhotoPreviewViewModel @Inject constructor(
                         try {
                             resumeNativeOperationsUseCase()
                             Log.d(TAG, "▶️ 네이티브 작업 재개 완료")
+                        } catch (e: CancellationException) {
+                            throw e
                         } catch (e: Exception) {
                             Log.w(TAG, "네이티브 작업 재개 실패 (무시)", e)
                         }
@@ -582,6 +588,8 @@ class PhotoPreviewViewModel @Inject constructor(
 
                         val isStillConnected = try {
                             cameraRepository.isCameraConnected().first()
+                        } catch (e: CancellationException) {
+                            throw e
                         } catch (e: Exception) {
                             Log.w(TAG, "연결 상태 확인 실패", e)
                             false
@@ -593,6 +601,8 @@ class PhotoPreviewViewModel @Inject constructor(
                             try {
                                 cameraRepository.startCameraEventListener()
                                 Log.d(TAG, "✅ 이벤트 리스너 재시작 성공")
+                            } catch (e: CancellationException) {
+                                throw e
                             } catch (e: Exception) {
                                 Log.e(TAG, "이벤트 리스너 재시작 실패", e)
 
@@ -601,6 +611,8 @@ class PhotoPreviewViewModel @Inject constructor(
                                 try {
                                     cameraRepository.startCameraEventListener()
                                     Log.d(TAG, "✅ 이벤트 리스너 재시작 성공 (재시도)")
+                                } catch (e2: CancellationException) {
+                                    throw e2
                                 } catch (e2: Exception) {
                                     Log.e(TAG, "이벤트 리스너 재시작 최종 실패", e2)
                                 }
@@ -612,6 +624,8 @@ class PhotoPreviewViewModel @Inject constructor(
                 } else {
                     Log.d(TAG, "카메라 연결되지 않음, 이벤트 리스너 작업 건너뛰기")
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "탭 이탈 시 이벤트 리스너 관리 실패", e)
             }
@@ -622,8 +636,10 @@ class PhotoPreviewViewModel @Inject constructor(
         super.onCleared()
         Log.d(TAG, "=== PhotoPreviewViewModel 정리 시작 ===")
 
-        // 사진 미리보기 탭에서 나갈 때 이벤트 리스너 재시작
-        viewModelScope.launch {
+        // 사진 미리보기 탭에서 나갈 때 이벤트 리스너 재시작.
+        // onCleared 시점에는 viewModelScope 가 이미 cancel 상태이므로 일반 launch 는
+        // 즉시 취소되어 cleanup 로직이 실행되지 않는다. NonCancellable 로 감싸 정리 보장.
+        viewModelScope.launch(NonCancellable) {
             try {
                 val currentConnected = _uiState.value.isConnected
                 val isPtpipConnected = _uiState.value.isPtpipConnected
@@ -645,6 +661,8 @@ class PhotoPreviewViewModel @Inject constructor(
                         try {
                             resumeNativeOperationsUseCase()
                             Log.d(TAG, "▶️ 네이티브 작업 재개 완료")
+                        } catch (e: CancellationException) {
+                            throw e
                         } catch (e: Exception) {
                             Log.w(TAG, "네이티브 작업 재개 실패 (무시)", e)
                         }
@@ -654,6 +672,8 @@ class PhotoPreviewViewModel @Inject constructor(
 
                         val isStillConnected = try {
                             cameraRepository.isCameraConnected().first()
+                        } catch (e: CancellationException) {
+                            throw e
                         } catch (e: Exception) {
                             Log.w(TAG, "연결 상태 확인 실패", e)
                             false
@@ -665,6 +685,8 @@ class PhotoPreviewViewModel @Inject constructor(
                             try {
                                 cameraRepository.startCameraEventListener()
                                 Log.d(TAG, "✅ 이벤트 리스너 재시작 성공")
+                            } catch (e: CancellationException) {
+                                throw e
                             } catch (e: Exception) {
                                 Log.e(TAG, "이벤트 리스너 재시작 실패", e)
 
@@ -673,6 +695,8 @@ class PhotoPreviewViewModel @Inject constructor(
                                 try {
                                     cameraRepository.startCameraEventListener()
                                     Log.d(TAG, "✅ 이벤트 리스너 재시작 성공 (재시도)")
+                                } catch (e2: CancellationException) {
+                                    throw e2
                                 } catch (e2: Exception) {
                                     Log.e(TAG, "이벤트 리스너 재시작 최종 실패", e2)
                                 }
@@ -684,6 +708,9 @@ class PhotoPreviewViewModel @Inject constructor(
                 } else {
                     Log.d(TAG, "카메라 연결되지 않음, 이벤트 리스너 작업 건너뛰기")
                 }
+            } catch (e: CancellationException) {
+                // NonCancellable 컨텍스트에서는 도달 가능성이 거의 없지만 안전 차원에서 재던짐.
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "PhotoPreview 정리 중 예외 발생", e)
             }
@@ -696,6 +723,7 @@ class PhotoPreviewViewModel @Inject constructor(
             photoSelectionManager.clearSelection()
             Log.d(TAG, "매니저들 정리 완료")
         } catch (e: Exception) {
+            // onCleared 는 일반 함수이므로 CancellationException 재던지기 불필요.
             Log.w(TAG, "매니저 정리 중 예외", e)
         }
 

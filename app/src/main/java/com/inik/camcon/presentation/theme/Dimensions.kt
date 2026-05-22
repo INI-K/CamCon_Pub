@@ -36,9 +36,13 @@ object IconSize {
     val xl = 32.dp
 }
 
-/** Material 3 권장 최소 터치 타깃은 48dp. 보조 컨트롤은 40dp 허용. */
+/**
+ * WCAG 2.2 Success Criterion 2.5.8 (Target Size Minimum) — 최소 24×24px.
+ * Material 3 권장 최소는 48dp. AA 기준 안전선은 44dp.
+ * `min` 은 토글/탭 가능한 모든 인터랙티브 요소의 절대 하한이다.
+ */
 object TouchTarget {
-    val min = 40.dp
+    val min = 44.dp
     val std = 44.dp
     val lg = 48.dp
     val xl = 52.dp

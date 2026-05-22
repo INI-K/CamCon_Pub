@@ -20,6 +20,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.inik.camcon.presentation.theme.CamConTheme
@@ -52,7 +55,14 @@ fun ChipV2(
         .clip(shape)
         .background(Surface2, shape)
 
-    val container = if (onClick != null) base.clickable(onClick = onClick) else base
+    // WCAG 2.2 SC 4.1.2 — onClick 이 있을 때 Role.Button 명시.
+    val container = if (onClick != null) {
+        base
+            .semantics { role = Role.Button }
+            .clickable(onClick = onClick)
+    } else {
+        base
+    }
 
     Row(
         modifier = container.padding(horizontal = Spacing.sm),

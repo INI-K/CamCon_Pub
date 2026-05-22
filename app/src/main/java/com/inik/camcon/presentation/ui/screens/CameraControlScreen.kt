@@ -5,7 +5,6 @@ import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.graphics.ColorSpace
 import android.media.ExifInterface
-import android.util.Log
 import com.inik.camcon.utils.LogcatManager
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -262,12 +261,6 @@ fun CameraControlScreen(
     var showTimelapseDialog by remember { mutableStateOf(false) }
     var showBottomSheet by remember { mutableStateOf(false) }
 
-    // UI 상태 변경 로깅을 하나로 통합하고 필요한 것만 로깅
-    LaunchedEffect(uiState.isConnected, uiState.isLiveViewActive, uiState.capturedPhotos.size) {
-        // 로깅 최소화 - 필요시에만 활성화
-        // LogcatManager.d("CameraControl", "상태 변경 - 연결: ${uiState.isConnected}, 라이브뷰: ${uiState.isLiveViewActive}, 사진: ${uiState.capturedPhotos.size}")
-    }
-
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = Background,
@@ -377,21 +370,23 @@ fun CameraControlScreen(
     )
 
     // FullScreenPhotoViewer 표시
-    if (showFullScreenViewer && selectedPhoto != null) {
-        FullScreenPhotoViewer(
-            photo = selectedPhoto!!.toCameraPhoto(),
-            onDismiss = {
-                showFullScreenViewer = false
-                selectedPhoto = null
-            },
-            onPhotoChanged = { /* 단일 사진이므로 변경 없음 */ },
-            thumbnailData = selectedPhoto!!.getThumbnailData(),
-            fullImageData = selectedPhoto!!.getImageData(),
-            isDownloadingFullImage = false,
-            onDownload = { /* 이미 다운로드됨, 아무 동작 안함 */ },
-            viewModel = null, // PhotoPreviewViewModel 없이 사용
-            hideDownloadButton = true // 다운로드 버튼 숨김
-        )
+    if (showFullScreenViewer) {
+        selectedPhoto?.let { photo ->
+            FullScreenPhotoViewer(
+                photo = photo.toCameraPhoto(),
+                onDismiss = {
+                    showFullScreenViewer = false
+                    selectedPhoto = null
+                },
+                onPhotoChanged = { /* 단일 사진이므로 변경 없음 */ },
+                thumbnailData = photo.getThumbnailData(),
+                fullImageData = photo.getImageData(),
+                isDownloadingFullImage = false,
+                onDownload = { /* 이미 다운로드됨, 아무 동작 안함 */ },
+                viewModel = null, // PhotoPreviewViewModel 없이 사용
+                hideDownloadButton = true // 다운로드 버튼 숨김
+            )
+        }
     }
     if (showTimelapseDialog) {
         TimelapseSettingsDialog(
@@ -477,6 +472,7 @@ private fun PortraitCameraLayout(
 ) {
     val context = LocalContext.current
 
+    // 진입 시 1회만 — 화면 진입 시 portrait 강제 + 시스템 바 표시 동작은 재실행 필요 없음
     LaunchedEffect(Unit) {
         (context as? Activity)?.let { activity ->
             activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
@@ -751,6 +747,7 @@ private fun FullscreenCameraLayout(
     var showTimelapseDialog by remember { mutableStateOf(false) }
     var isRotated by remember { mutableStateOf(false) }
 
+    // 진입 시 1회만 — 전체화면 진입 시 landscape 전환 + 시스템 바 숨김은 재실행 불필요
     LaunchedEffect(Unit) {
         (context as? Activity)?.let { activity ->
             activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
@@ -1180,10 +1177,10 @@ private fun AnimatedPhotoSwitcher(
                         .allowHardware(false) // EXIF 처리를 위해 하드웨어 가속 비활성화
                         .listener(
                             onStart = { request ->
-                                Log.d("CameraPhoto", "수신된 사진 로딩 시작: ${photo.filePath}")
+                                LogcatManager.d("CameraPhoto", "수신된 사진 로딩 시작: ${photo.filePath}")
                             },
                             onSuccess = { request, result ->
-                                Log.d("CameraPhoto", "수신된 사진 로딩 성공: ${photo.filePath}")
+                                LogcatManager.d("CameraPhoto", "수신된 사진 로딩 성공: ${photo.filePath}")
 
                                 // EXIF 디버그 로깅 — 릴리즈에서는 파일 I/O 자체를 건너뜀
                                 if (com.inik.camcon.BuildConfig.DEBUG) {
@@ -1202,21 +1199,21 @@ private fun AnimatedPhotoSwitcher(
                                             else -> "없음"
                                         }
 
-                                        Log.d("EXIF_RECEIVED_PHOTO", "=== 수신 사진 EXIF 정보 ===")
-                                        Log.d("EXIF_RECEIVED_PHOTO", "파일: ${photo.filePath}")
-                                        Log.d("EXIF_RECEIVED_PHOTO", "EXIF Orientation: $orientation")
-                                        Log.d("EXIF_RECEIVED_PHOTO", "회전 정보: $rotationText")
-                                        Log.d(
+                                        LogcatManager.d("EXIF_RECEIVED_PHOTO", "=== 수신 사진 EXIF 정보 ===")
+                                        LogcatManager.d("EXIF_RECEIVED_PHOTO", "파일: ${photo.filePath}")
+                                        LogcatManager.d("EXIF_RECEIVED_PHOTO", "EXIF Orientation: $orientation")
+                                        LogcatManager.d("EXIF_RECEIVED_PHOTO", "회전 정보: $rotationText")
+                                        LogcatManager.d(
                                             "EXIF_RECEIVED_PHOTO",
                                             "Coil이 자동 회전 처리: ${orientation != androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL}"
                                         )
                                     } catch (e: Exception) {
-                                        Log.e("EXIF_RECEIVED_PHOTO", "EXIF 정보 확인 실패: ${e.message}", e)
+                                        LogcatManager.e("EXIF_RECEIVED_PHOTO", "EXIF 정보 확인 실패: ${e.message}", e)
                                     }
                                 }
                             },
                             onError = { request, error ->
-                                Log.e(
+                                LogcatManager.e(
                                     "CameraPhoto",
                                     "수신된 사진 로딩 실패: ${photo.filePath}",
                                     error.throwable
@@ -1236,16 +1233,16 @@ private fun AnimatedPhotoSwitcher(
                         .then(if (isRotated) Modifier.rotate(180f) else Modifier)
                         .combinedClickable(
                             onClick = {
-                                Log.d("CameraControl", "수신 사진 이미지 단일 클릭")
+                                LogcatManager.d("CameraControl", "수신 사진 이미지 단일 클릭")
                             },
                             onDoubleClick = {
-                                Log.d("CameraControl", "🔥 수신 사진 이미지에서 더블클릭 감지!")
-                                Log.d(
+                                LogcatManager.d("CameraControl", "🔥 수신 사진 이미지에서 더블클릭 감지!")
+                                LogcatManager.d(
                                     "CameraControl",
                                     "🔍 onDoubleClick 콜백 호출 시도 - 콜백 존재 여부: ${onDoubleClick != null}"
                                 )
                                 onDoubleClick?.invoke()
-                                Log.d("CameraControl", "✅ onDoubleClick 콜백 호출 완료")
+                                LogcatManager.d("CameraControl", "✅ onDoubleClick 콜백 호출 완료")
                             }
                         ),
                     contentScale = ContentScale.Fit

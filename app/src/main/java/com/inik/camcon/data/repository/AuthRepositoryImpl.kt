@@ -29,6 +29,15 @@ class AuthRepositoryImpl @Inject constructor(
         private const val SUBSCRIPTIONS_COLLECTION = "subscriptions"
         private const val REFERRALS_COLLECTION = "referrals"
         private const val REFERRAL_CODES_COLLECTION = "referral_codes"
+
+        /**
+         * PII(UID/식별자) 마스킹: 앞 4글자만 노출 + ***.
+         * 로그/분석 도구에 식별자 평문이 흘러가지 않도록 사용한다.
+         */
+        private fun maskId(value: String?): String {
+            if (value.isNullOrBlank()) return "<blank>"
+            return if (value.length <= 4) "***" else value.take(4) + "***"
+        }
     }
 
     override suspend fun signInWithGoogle(idToken: String): Result<User> {
@@ -43,14 +52,14 @@ class AuthRepositoryImpl @Inject constructor(
             val authResult = firebaseAuth.signInWithCredential(credential).await()
             val firebaseUser = authResult.user ?: throw Exception("Firebase 사용자 정보가 null입니다")
 
-            Log.i(TAG, "Firebase Auth 로그인 성공: ${firebaseUser.uid}")
+            Log.i(TAG, "Firebase Auth 로그인 성공: ${maskId(firebaseUser.uid)}")
 
             // Firestore에서 사용자 정보 조회
             var user = getUserById(firebaseUser.uid)
 
             // 신규 사용자인 경우 Firestore에 사용자 정보 생성
             if (user == null) {
-                Log.i(TAG, "신규 사용자, Firestore에 정보 생성: ${firebaseUser.uid}")
+                Log.i(TAG, "신규 사용자, Firestore에 정보 생성: ${maskId(firebaseUser.uid)}")
 
                 val newUserData = mapOf(
                     "email" to (firebaseUser.email ?: ""),
@@ -112,7 +121,8 @@ class AuthRepositoryImpl @Inject constructor(
                     .await()
 
                 user = user.copy(lastLoginAt = Date())
-                Log.i(TAG, "기존 사용자 로그인: ${user.displayName}")
+                // displayName은 사용자 PII에 해당하므로 식별자 마스킹만 노출
+                Log.i(TAG, "기존 사용자 로그인: ${maskId(firebaseUser.uid)}")
             }
 
             Result.success(user)
@@ -150,7 +160,7 @@ class AuthRepositoryImpl @Inject constructor(
                 null
             }
         } catch (e: Exception) {
-            Log.e(TAG, "사용자 조회 실패: $userId", e)
+            Log.e(TAG, "사용자 조회 실패: ${maskId(userId)}", e)
             null
         }
     }
@@ -198,10 +208,10 @@ class AuthRepositoryImpl @Inject constructor(
                 .update(userMap)
                 .await()
 
-            Log.i(TAG, "사용자 정보 업데이트 성공: ${user.id}")
+            Log.i(TAG, "사용자 정보 업데이트 성공: ${maskId(user.id)}")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "사용자 정보 업데이트 실패: ${user.id}", e)
+            Log.e(TAG, "사용자 정보 업데이트 실패: ${maskId(user.id)}", e)
             false
         }
     }
@@ -225,10 +235,10 @@ class AuthRepositoryImpl @Inject constructor(
                 .set(subscriptionData)
                 .await()
 
-            Log.i(TAG, "사용자 티어 업데이트 성공: $userId → $tier")
+            Log.i(TAG, "사용자 티어 업데이트 성공: ${maskId(userId)} → $tier")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "사용자 티어 업데이트 실패: $userId", e)
+            Log.e(TAG, "사용자 티어 업데이트 실패: ${maskId(userId)}", e)
             false
         }
     }
@@ -246,10 +256,10 @@ class AuthRepositoryImpl @Inject constructor(
                 )
                 .await()
 
-            Log.i(TAG, "사용자 비활성화 성공: $userId")
+            Log.i(TAG, "사용자 비활성화 성공: ${maskId(userId)}")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "사용자 비활성화 실패: $userId", e)
+            Log.e(TAG, "사용자 비활성화 실패: ${maskId(userId)}", e)
             false
         }
     }
@@ -267,10 +277,10 @@ class AuthRepositoryImpl @Inject constructor(
                 )
                 .await()
 
-            Log.i(TAG, "사용자 재활성화 성공: $userId")
+            Log.i(TAG, "사용자 재활성화 성공: ${maskId(userId)}")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "사용자 재활성화 실패: $userId", e)
+            Log.e(TAG, "사용자 재활성화 실패: ${maskId(userId)}", e)
             false
         }
     }
@@ -309,6 +319,7 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun searchUsers(query: String): List<User> {
+        // query 값 자체가 사용자 검색어(이름 일부)이므로 평문 노출 금지
         return try {
             val snapshot = firestore.collection(USERS_COLLECTION)
                 .orderBy("displayName")
@@ -327,7 +338,8 @@ class AuthRepositoryImpl @Inject constructor(
             }
             users
         } catch (e: Exception) {
-            Log.e(TAG, "사용자 검색 실패: $query", e)
+            // 검색어 자체가 PII일 수 있으므로 길이만 로그
+            Log.e(TAG, "사용자 검색 실패 (queryLen=${query.length})", e)
             emptyList()
         }
     }
@@ -351,7 +363,7 @@ class AuthRepositoryImpl @Inject constructor(
                 "lastUpdated" to Date()
             )
         } catch (e: Exception) {
-            Log.e(TAG, "추천 통계 조회 실패: $userId", e)
+            Log.e(TAG, "추천 통계 조회 실패: ${maskId(userId)}", e)
             emptyMap()
         }
     }
@@ -370,10 +382,11 @@ class AuthRepositoryImpl @Inject constructor(
                 )
                 .await()
 
-            Log.i(TAG, "추천 코드 생성 성공: $userId → $referralCode")
+            // 추천 코드는 비식별 토큰이지만 user 식별자는 마스킹
+            Log.i(TAG, "추천 코드 생성 성공: ${maskId(userId)} → $referralCode")
             referralCode
         } catch (e: Exception) {
-            Log.e(TAG, "추천 코드 생성 실패: $userId", e)
+            Log.e(TAG, "추천 코드 생성 실패: ${maskId(userId)}", e)
             null
         }
     }
@@ -401,10 +414,10 @@ class AuthRepositoryImpl @Inject constructor(
                 )
                 .await()
 
-            Log.i(TAG, "사용자 추천 코드 정보 업데이트 성공: $userId → $referralCode")
+            Log.i(TAG, "사용자 추천 코드 정보 업데이트 성공: ${maskId(userId)} → $referralCode")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "사용자 추천 코드 정보 업데이트 실패: $userId", e)
+            Log.e(TAG, "사용자 추천 코드 정보 업데이트 실패: ${maskId(userId)}", e)
             false
         }
     }
@@ -441,7 +454,7 @@ class AuthRepositoryImpl @Inject constructor(
                     Subscription(tier = SubscriptionTier.FREE)
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "구독 정보 조회 실패: $userId", e)
+                Log.w(TAG, "구독 정보 조회 실패: ${maskId(userId)}", e)
                 Subscription(tier = SubscriptionTier.FREE)
             }
 
@@ -461,7 +474,7 @@ class AuthRepositoryImpl @Inject constructor(
                 appVersion = data["appVersion"] as? String
             )
         } catch (e: Exception) {
-            Log.e(TAG, "문서 매핑 실패: $userId", e)
+            Log.e(TAG, "문서 매핑 실패: ${maskId(userId)}", e)
             null
         }
     }

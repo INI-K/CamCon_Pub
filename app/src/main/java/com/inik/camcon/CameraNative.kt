@@ -223,7 +223,20 @@ object CameraNative {
     external fun readGphotoSettings(): String   // 설정 파일 내용 읽기
     external fun deleteGphotoSettings(): String  // 설정 파일 삭제 (카메라별 독립 설정을 위해)
 
-    // libgphoto2 로그 레벨 설정 함수 추가
+    /**
+     * libgphoto2 로그 레벨을 설정한다.
+     *
+     * 네이티브 측은 `gp_log_add_func((GPLogLevel)level, ...)` 로 등록하며,
+     * libgphoto2의 GPLogLevel enum (gphoto2-port-log.h) 정의는 다음과 같다.
+     *  - `0` = `GP_LOG_ERROR`   (error만)
+     *  - `1` = `GP_LOG_VERBOSE` (error + verbose)
+     *  - `2` = `GP_LOG_DEBUG`   (error + verbose + debug)
+     *  - `3` = `GP_LOG_DATA`    (전체. 헥스덤프 포함, 매우 verbose)
+     *
+     * 상수는 위 `GP_LOG_*` 필드 (`GP_LOG_ALL == GP_LOG_DATA`) 를 사용한다.
+     * 별도의 NONE 레벨은 없으므로, 로그를 완전히 끄려면 [stopLogFile] 등
+     * 콜백 해제 API 를 사용해야 한다.
+     */
     external fun setLogLevel(level: Int): Boolean
     external fun enableVerboseLogging(enabled: Boolean): Boolean
     external fun enableDebugLogging(enabled: Boolean): Boolean

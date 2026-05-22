@@ -48,8 +48,17 @@ val ButtonText = pretendard(14, FontWeight.SemiBold, 16, letterSpacing = 0.2)
 val MonoNumeric = pretendard(12, FontWeight.Normal, 16)
 
 // ---- V1 호환 별칭 ----
+// NOTE: V1 별칭에는 @Deprecated가 부여되어 있다. 호출자는 경고만 받고 컴파일은 통과.
+@Deprecated("Use V2 typography HeadingXL", ReplaceWith("HeadingXL"))
 val AppTitle = HeadingXL
+
+@Deprecated(
+    "Use V2 typography Micro or define a dedicated badge style",
+    ReplaceWith("Micro")
+)
 val BadgeText = pretendard(10, FontWeight.Bold, 12, letterSpacing = 0.5)   // V1 그대로
+
+@Deprecated("Use V2 typography Micro", ReplaceWith("Micro"))
 val CaptionSmall = Micro                                                   // V1 8sp → Micro 11sp
 
 // ---- Material 3 Typography 매핑 ----

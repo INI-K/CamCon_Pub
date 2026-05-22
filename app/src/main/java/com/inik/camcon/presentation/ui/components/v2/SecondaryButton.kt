@@ -22,7 +22,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
+import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.ButtonText
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.DividerLine
@@ -38,8 +42,12 @@ import com.inik.camcon.presentation.theme.TouchTarget
  * V2 디자인 시스템 — Secondary Button.
  *
  * 1px [DividerLine] 보더 / Transparent 배경 / [TextPrimaryV2] 텍스트 /
- * 4dp([Radius.sm]) radius / 40dp([TouchTarget.min]) 높이.
+ * 4dp([Radius.sm]) radius / [TouchTarget.min](44dp) 높이.
  * 보조 액션 (취소, 재시도, 모드 전환) 용도.
+ *
+ * 접근성(WCAG 2.2 SC 4.1.2, SC 2.5.8):
+ * - isLoading=true 일 때 stateDescription 으로 진행 상태 발화.
+ * - 높이는 [TouchTarget.min](44dp) 으로 보장.
  */
 @Composable
 fun SecondaryButton(
@@ -52,9 +60,16 @@ fun SecondaryButton(
 ) {
     val effectivelyEnabled = enabled && !isLoading
     val borderColor = if (effectivelyEnabled) DividerLine else DividerLine.copy(alpha = 0.5f)
+    val loadingLabel = stringResource(R.string.cd_button_loading)
+    val a11y = if (isLoading) {
+        Modifier.semantics { stateDescription = loadingLabel }
+    } else {
+        Modifier
+    }
     OutlinedButton(
         onClick = onClick,
         modifier = modifier
+            .then(a11y)
             .defaultMinSize(minHeight = TouchTarget.min)
             .height(TouchTarget.min),
         enabled = effectivelyEnabled,

@@ -13,6 +13,7 @@ import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.domain.repository.AppSettingsRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -20,11 +21,18 @@ import javax.inject.Singleton
 private val Context.appDataStore: DataStore<Preferences> by preferencesDataStore(name = "app_settings")
 
 /**
- * 앱 설정 정보를 관리하는 DataSource
+ * 앱 설정 정보를 관리하는 DataSource.
+ *
+ * 구독 티어 / RAW 파일 다운로드 플래그처럼 위변조 시 게이팅을 우회당할 수 있는
+ * 민감 플래그는 평문 DataStore가 아닌 [EncryptedAppPreferences]에 저장한다.
+ * 외부 호출자 시그니처(`subscriptionTier`, `subscriptionTierEnum`,
+ * `isRawFileDownloadEnabled`, `setRawFileDownloadEnabled`, `setSubscriptionTier`,
+ * `saveSubscriptionTier`)는 그대로 유지하고 내부 라우팅만 변경한다.
  */
 @Singleton
 class AppPreferencesDataSource @Inject constructor(
-    private val context: Context
+    private val context: Context,
+    private val encryptedPrefs: EncryptedAppPreferences
 ) : AppSettingsRepository {
     companion object {
         private val CAMERA_CONTROLS_ENABLED = booleanPreferencesKey("camera_controls_enabled")
@@ -40,12 +48,40 @@ class AppPreferencesDataSource @Inject constructor(
         private val COLOR_TRANSFER_TARGET_IMAGE_PATH =
             stringPreferencesKey("color_transfer_target_image_path")
         private val COLOR_TRANSFER_INTENSITY = floatPreferencesKey("color_transfer_intensity")
-        private val RAW_FILE_DOWNLOAD_ENABLED = booleanPreferencesKey("raw_file_download_enabled")
-        private val SUBSCRIPTION_TIER = stringPreferencesKey("subscription_tier")
+
+        // 평문 DataStore에서 암호화 저장소로 이관 중인 레거시 키 (read-only, 마이그레이션 후 삭제).
+        private val LEGACY_RAW_FILE_DOWNLOAD_ENABLED =
+            booleanPreferencesKey("raw_file_download_enabled")
+        private val LEGACY_SUBSCRIPTION_TIER = stringPreferencesKey("subscription_tier")
+
         private val ADMIN_NATIVE_LOG_STREAM_ENABLED =
             booleanPreferencesKey("admin_native_log_stream_enabled")
         private val NATIVE_LOG_CAPTURE_ENABLED =
             booleanPreferencesKey("native_log_capture_enabled")
+    }
+
+    /**
+     * 평문 DataStore에 남아있는 레거시 민감 플래그를 암호화 저장소로 1회 이관한다.
+     *
+     * - 이미 암호화 저장소에 키가 있으면 평문 값은 무시한다.
+     * - 이관 후 평문 키를 즉시 제거하여 디스크에 잔존하지 않도록 한다.
+     */
+    private suspend fun migrateSensitiveFlagsIfNeeded() {
+        val snapshot = context.appDataStore.data.first()
+        val legacyTier = snapshot[LEGACY_SUBSCRIPTION_TIER]
+        val legacyRaw = snapshot[LEGACY_RAW_FILE_DOWNLOAD_ENABLED]
+        if (legacyTier == null && legacyRaw == null) return
+
+        if (legacyTier != null && !encryptedPrefs.hasSubscriptionTier()) {
+            encryptedPrefs.setSubscriptionTierString(legacyTier)
+        }
+        if (legacyRaw != null && !encryptedPrefs.hasRawFileDownloadEnabled()) {
+            encryptedPrefs.setRawFileDownloadEnabled(legacyRaw)
+        }
+        context.appDataStore.edit { prefs ->
+            prefs.remove(LEGACY_SUBSCRIPTION_TIER)
+            prefs.remove(LEGACY_RAW_FILE_DOWNLOAD_ENABLED)
+        }
     }
 
     /**
@@ -134,20 +170,22 @@ class AppPreferencesDataSource @Inject constructor(
         }
 
     /**
-     * RAW 파일 다운로드 활성화 여부 (기본값: true)
+     * RAW 파일 다운로드 활성화 여부 (기본값: true).
+     * 암호화 저장소에서 읽는다. 레거시 평문 값이 있으면 1회 이관 후 반환.
      */
-    override val isRawFileDownloadEnabled: Flow<Boolean> = context.appDataStore.data
-        .map { preferences ->
-            preferences[RAW_FILE_DOWNLOAD_ENABLED] ?: true
-        }
+    override val isRawFileDownloadEnabled: Flow<Boolean> = flow {
+        migrateSensitiveFlagsIfNeeded()
+        emit(encryptedPrefs.getRawFileDownloadEnabled(default = true))
+    }
 
     /**
-     * 구독 티어 (기본값: null)
+     * 구독 티어 (기본값: null).
+     * 암호화 저장소에서 읽는다. 레거시 평문 값이 있으면 1회 이관 후 반환.
      */
-    val subscriptionTier: Flow<String?> = context.appDataStore.data
-        .map { preferences ->
-            preferences[SUBSCRIPTION_TIER]
-        }
+    val subscriptionTier: Flow<String?> = flow {
+        migrateSensitiveFlagsIfNeeded()
+        emit(encryptedPrefs.getSubscriptionTierString())
+    }
 
     /**
      * ADMIN 네이티브 로그 스트리밍 활성화 여부 (기본값: false)
@@ -270,12 +308,11 @@ class AppPreferencesDataSource @Inject constructor(
     }
 
     /**
-     * RAW 파일 다운로드 활성화/비활성화
+     * RAW 파일 다운로드 활성화/비활성화 (암호화 저장소에 저장)
      */
     override suspend fun setRawFileDownloadEnabled(enabled: Boolean) {
-        context.appDataStore.edit { preferences ->
-            preferences[RAW_FILE_DOWNLOAD_ENABLED] = enabled
-        }
+        migrateSensitiveFlagsIfNeeded()
+        encryptedPrefs.setRawFileDownloadEnabled(enabled)
     }
 
     /**
@@ -306,16 +343,11 @@ class AppPreferencesDataSource @Inject constructor(
     }
 
     /**
-     * 구독 티어 설정 (String)
+     * 구독 티어 설정 (String) — 암호화 저장소에 저장
      */
     suspend fun setSubscriptionTier(tier: String?) {
-        context.appDataStore.edit { preferences ->
-            if (tier != null) {
-                preferences[SUBSCRIPTION_TIER] = tier
-            } else {
-                preferences.remove(SUBSCRIPTION_TIER)
-            }
-        }
+        migrateSensitiveFlagsIfNeeded()
+        encryptedPrefs.setSubscriptionTierString(tier)
     }
 
     /**
@@ -339,11 +371,15 @@ class AppPreferencesDataSource @Inject constructor(
     }
 
     /**
-     * 모든 앱 설정 초기화 (기본값으로 되돌림)
+     * 모든 앱 설정 초기화 (기본값으로 되돌림).
+     * 평문 DataStore와 암호화 저장소 양쪽을 함께 비운다.
      */
     override suspend fun clearAllSettings() {
         context.appDataStore.edit { preferences ->
             preferences.clear()
         }
+        encryptedPrefs.setSubscriptionTierString(null)
+        // RAW 플래그는 명시적 기본값(true)이 있으므로 명시적으로 다시 기록한다.
+        encryptedPrefs.setRawFileDownloadEnabled(true)
     }
 }
