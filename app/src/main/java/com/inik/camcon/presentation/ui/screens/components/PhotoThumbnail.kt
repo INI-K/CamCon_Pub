@@ -57,6 +57,9 @@ import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.presentation.theme.Background
+import com.inik.camcon.presentation.theme.BadgeText
+import com.inik.camcon.presentation.theme.Caption
+import com.inik.camcon.presentation.theme.CaptionSmall
 import com.inik.camcon.presentation.theme.Overlay
 import com.inik.camcon.presentation.theme.Success
 import com.inik.camcon.presentation.theme.TextPrimary
@@ -225,11 +228,10 @@ fun PhotoThumbnail(
                 Text(
                     text = photo.name,
                     color = TextPrimary,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = BadgeText,
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    fontSize = 10.sp
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 
@@ -247,8 +249,7 @@ fun PhotoThumbnail(
                     Text(
                         text = formatFileSize(photo.size),
                         color = TextPrimary,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontSize = 8.sp
+                        style = CaptionSmall
                     )
                 }
             }
@@ -510,9 +511,8 @@ private fun ThumbnailPlaceholder() {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.server_photos_loading_placeholder),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                fontSize = 9.sp
+                style = Caption,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
         }
     }
@@ -706,11 +706,10 @@ fun FluidPhotoThumbnail(
                 Text(
                     text = photo.name,
                     color = TextPrimary,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = BadgeText,
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    fontSize = 10.sp
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 
@@ -728,8 +727,7 @@ fun FluidPhotoThumbnail(
                     Text(
                         text = formatFileSize(photo.size),
                         color = TextPrimary,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontSize = 8.sp
+                        style = CaptionSmall
                     )
                 }
             }
@@ -1060,8 +1058,7 @@ fun FeaturedPhotoThumbnail(
                         Text(
                             text = formatFileSize(photo.size),
                             color = TextPrimary.copy(alpha = 0.8f),
-                            style = MaterialTheme.typography.bodySmall,
-                            fontSize = 12.sp
+                            style = MaterialTheme.typography.bodySmall
                         )
                     }
                 }

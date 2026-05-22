@@ -66,7 +66,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.inik.camcon.R
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.LocalWindowSizeClass
 import com.inik.camcon.presentation.ui.screens.components.EmptyPhotoState
 import com.inik.camcon.presentation.ui.screens.components.FluidPhotoThumbnail
 import com.inik.camcon.presentation.ui.screens.components.FeaturedPhotoThumbnail
@@ -539,6 +541,14 @@ private fun PhotoGrid(
     val lazyGridState = rememberLazyStaggeredGridState()
     val fullImageCache by viewModel.fullImageCache.collectAsStateWithLifecycle()
 
+    // WindowSizeClass 분기: Compact=2(현재 보존), Medium=3, Expanded=4
+    val widthSizeClass = LocalWindowSizeClass.current.widthSizeClass
+    val gridColumns = when (widthSizeClass) {
+        WindowWidthSizeClass.Expanded -> 4
+        WindowWidthSizeClass.Medium -> 3
+        else -> 2
+    }
+
     // 무한 스크롤 구현 - 푸터 감지 개선
     LaunchedEffect(lazyGridState) {
         snapshotFlow {
@@ -561,7 +571,7 @@ private fun PhotoGrid(
     }
 
     LazyVerticalStaggeredGrid(
-        columns = StaggeredGridCells.Fixed(2), // Pinterest 스타일: 2열 고정
+        columns = StaggeredGridCells.Fixed(gridColumns), // Compact=2 보존, Medium=3, Expanded=4
         state = lazyGridState,
         contentPadding = PaddingValues(12.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),

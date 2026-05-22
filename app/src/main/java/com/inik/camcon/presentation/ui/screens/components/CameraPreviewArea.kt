@@ -219,14 +219,13 @@ fun CameraDisconnectedState(
         Text(
             stringResource(R.string.camera_not_connected),
             color = TextPrimary,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Medium
+            style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp)
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             stringResource(R.string.connect_camera_usb),
             color = TextSecondary,
-            fontSize = 14.sp,
+            style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center
         )
 
@@ -305,14 +304,14 @@ fun CameraConnectedState(
             Text(
                 stringResource(R.string.liveview_not_supported),
                 color = TextSecondary,
-                fontSize = 16.sp,
+                style = MaterialTheme.typography.bodyLarge,
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 stringResource(R.string.liveview_not_supported_detail),
                 color = TextSecondary.copy(alpha = 0.7f),
-                fontSize = 14.sp,
+                style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center
             )
         }

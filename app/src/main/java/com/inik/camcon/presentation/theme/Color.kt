@@ -38,3 +38,42 @@ val Warning = Color(0xFFFBBF24)
 
 // Transparent overlays
 val Overlay = Color(0x800A0A0E)
+
+// === DarkThemeComponents 전용 토큰 (Cinema Dark blue-grey 계열) ===
+// 카드 / 텍스트
+val DarkCardBackground = Color(0xE6151C2A)
+val DarkCardBorder = Color(0x44FFD1A8)
+val DarkBodyText = Color(0xFFB8C0CF)
+val DarkTitleText = Color(0xFFFFC892)
+val DarkIconButtonTint = Color(0xFFFFD6AE)
+val DarkStatusBadgeText = Color(0xFFFAF3EA)
+
+// 탭 / 칩 텍스트
+val DarkTabSelectedText = Color(0xFFFFD7B1)
+val DarkTabUnselectedText = Color(0xFFBAC2D2)
+
+// 배경 그라데이션
+val DarkBackgroundGradientStart = Color(0xFF0E121A)
+val DarkBackgroundGradientMid = Color(0xFF151B27)
+val DarkBackgroundGradientEnd = Color(0xFF111722)
+
+// 탑바 그라데이션 (반투명)
+val DarkTopBarGradientStart = Color(0xCC1A2232)
+val DarkTopBarGradientEnd = Color(0xCC131A27)
+
+// 반투명 인터랙션 배경/보더
+val DarkIconButtonBackground = Color(0x55374455)
+val DarkTabRowBackground = Color(0x66131B2A)
+val DarkTabRowBorder = Color(0x66FFD1A8)
+val DarkTabSelectedBackground = Color(0x66A14F1D)
+
+// 필터칩
+val DarkFilterChipSelectedBackground = Color(0x663D4457)
+val DarkFilterChipUnselectedBackground = Color(0x33131B2A)
+val DarkFilterChipSelectedBorder = Color(0x99FFC88C)
+val DarkFilterChipUnselectedBorder = Color(0x558D99AD)
+val DarkFilterChipLockedText = Color(0x66BAC2D2)
+
+// === Feature Badge 데코레이션 색상 ===
+val FeatureBadgeTimeLapse = Color(0xFF9C27B0)
+val FeatureBadgeBurst = Color(0xFFFF9800)

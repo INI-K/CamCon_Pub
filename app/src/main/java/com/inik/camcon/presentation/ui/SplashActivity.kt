@@ -306,20 +306,19 @@ fun SplashScreen(
             Spacer(modifier = Modifier.height(24.dp))
             Text(
                 text = "CamCon",
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
                 color = Color.White
             )
             Text(
                 text = "Camera Controller",
-                fontSize = 16.sp,
+                style = MaterialTheme.typography.titleMedium,
                 color = Color.White.copy(alpha = 0.8f)
             )
 
             // 라이브러리 로딩 상태 표시
             Text(
                 text = libraryLoadingStatus,
-                fontSize = 14.sp,
+                style = MaterialTheme.typography.bodyMedium,
                 color = Color.White.copy(alpha = 0.8f)
             )
 
@@ -327,7 +326,7 @@ fun SplashScreen(
             if (BuildConfig.DEBUG && subscriptionTier != null) {
                 Text(
                     text = "구독 티어: ${subscriptionTier.name}",
-                    fontSize = 14.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = Color.White.copy(alpha = 0.8f)
                 )
             }
@@ -342,7 +341,7 @@ fun SplashScreen(
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "버전 확인 중...",
-                    fontSize = 14.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = Color.White.copy(alpha = 0.8f)
                 )
             }
