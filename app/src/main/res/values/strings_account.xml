@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Account: Logout / Delete -->
+    <string name="account_logout_dialog_title">Sign out?</string>
+    <string name="account_logout_dialog_message">Your local photo cache and auto-connect history will be kept. Are you sure you want to sign out?</string>
+    <string name="account_logout_confirm">Sign out</string>
+    <string name="account_logout_cancel">Cancel</string>
+
+    <string name="account_delete_row_title">Delete account</string>
+    <string name="account_delete_row_subtitle">Permanently remove your account and data</string>
+    <string name="account_delete_dialog_title">Delete account?</string>
+    <string name="account_delete_dialog_message">Deleting your account will permanently erase your cloud photos, settings, and subscription information. This action cannot be undone.</string>
+    <string name="account_delete_continue">Continue</string>
+    <string name="account_delete_cancel">Cancel</string>
+
+    <string name="account_delete_confirm_title">Type DELETE to confirm</string>
+    <string name="account_delete_confirm_message">To confirm permanent deletion, type DELETE in the box below.</string>
+    <string name="account_delete_confirm_placeholder">DELETE</string>
+    <string name="account_delete_confirm_button">Delete permanently</string>
+    <string name="account_delete_confirm_cancel">Cancel</string>
+    <string name="account_delete_success">Account deleted</string>
+    <string name="account_delete_failed">Failed to delete account: %s</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_start">Get started</string>
+
+    <string name="onboarding_step1_title">Connect via USB OTG</string>
+    <string name="onboarding_step1_description">Plug your DSLR or mirrorless camera into your phone with a USB OTG cable, then switch the camera to PC/PTP mode.</string>
+
+    <string name="onboarding_step2_title">Connect via Wi-Fi PTP-IP</string>
+    <string name="onboarding_step2_description">Join the camera\'s built-in access point or connect both devices to the same Wi-Fi router for wireless control.</string>
+
+    <string name="onboarding_step3_title">Allow permissions</string>
+    <string name="onboarding_step3_description">For Wi-Fi discovery and live notifications, please allow location, Wi-Fi, and notification permissions when prompted.</string>
+
+    <!-- Language selection -->
+    <string name="language_row_title">Language / Language</string>
+    <string name="language_dialog_title">Choose language</string>
+    <string name="language_system_default">System default</string>
+    <string name="language_option_en">English</string>
+    <string name="language_option_ko">한국어</string>
+    <string name="language_option_ja">日本語</string>
+    <string name="language_option_zh">中文</string>
+    <string name="language_option_de">Deutsch</string>
+    <string name="language_option_es">Español</string>
+    <string name="language_option_fr">Français</string>
+    <string name="language_option_it">Italiano</string>
+
+    <!-- Referral code input -->
+    <string name="referral_input_label">Referral code (optional)</string>
+    <string name="referral_input_helper">Have a referral code? Enter it before signing in.</string>
+</resources>

@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -41,6 +42,7 @@ import com.inik.camcon.BuildConfig
 import com.inik.camcon.R
 import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
 import com.inik.camcon.domain.model.SubscriptionTier
+import com.inik.camcon.domain.model.UiText
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.domain.usecase.camera.GetLibGphoto2VersionUseCase
 import com.inik.camcon.domain.usecase.camera.IsNativeLibrariesLoadedUseCase
@@ -91,7 +93,9 @@ class SplashActivity : ComponentActivity() {
     @Inject
     lateinit var getLibGphoto2VersionUseCase: GetLibGphoto2VersionUseCase
 
-    private var libraryLoadingStatus by mutableStateOf("초기화 중...")
+    private var libraryLoadingStatus by mutableStateOf<UiText>(
+        UiText.Resource(R.string.splash_initializing)
+    )
     private var isLibraryLoaded by mutableStateOf(false)
     private var subscriptionTier: SubscriptionTier? = null
 
@@ -147,7 +151,7 @@ class SplashActivity : ComponentActivity() {
             try {
                 LogcatManager.i("SplashActivity", "🚀 라이브러리 상태 확인 프로세스 시작")
                 withContext(Dispatchers.Main) {
-                    libraryLoadingStatus = "라이브러리 상태 확인 중..."
+                    libraryLoadingStatus = UiText.Resource(R.string.splash_library_check)
                 }
 
                 val startTime = System.currentTimeMillis()
@@ -161,7 +165,7 @@ class SplashActivity : ComponentActivity() {
                 if (!isLoaded) {
                     LogcatManager.e("SplashActivity", "❌ 라이브러리가 로드되지 않았습니다")
                     withContext(Dispatchers.Main) {
-                        libraryLoadingStatus = "라이브러리 로드 실패"
+                        libraryLoadingStatus = UiText.Resource(R.string.splash_library_failed)
                         isLibraryLoaded = false
                     }
                     return@launch
@@ -175,7 +179,7 @@ class SplashActivity : ComponentActivity() {
                 if (!envSetupResult) {
                     LogcatManager.e("SplashActivity", "❌ 환경변수 설정 실패")
                     withContext(Dispatchers.Main) {
-                        libraryLoadingStatus = "환경변수 설정 실패"
+                        libraryLoadingStatus = UiText.Resource(R.string.splash_env_failed)
                         isLibraryLoaded = false
                     }
                     return@launch
@@ -186,7 +190,10 @@ class SplashActivity : ComponentActivity() {
                 val totalTime = System.currentTimeMillis() - startTime
 
                 withContext(Dispatchers.Main) {
-                    libraryLoadingStatus = "라이브러리 준비 완료 (${totalTime}ms)"
+                    libraryLoadingStatus = UiText.Resource(
+                        R.string.splash_library_ready,
+                        listOf(totalTime.toInt())
+                    )
                     isLibraryLoaded = true
                 }
 
@@ -201,7 +208,10 @@ class SplashActivity : ComponentActivity() {
             } catch (e: Exception) {
                 LogcatManager.e("SplashActivity", "❌ 라이브러리 상태 확인 실패: ${e.message}", e)
                 withContext(Dispatchers.Main) {
-                    libraryLoadingStatus = "라이브러리 상태 확인 실패: ${e.message}"
+                    libraryLoadingStatus = UiText.Resource(
+                        R.string.splash_library_status_check_failed,
+                        listOf(e.message.orEmpty())
+                    )
                     isLibraryLoaded = false
                 }
             }
@@ -242,9 +252,20 @@ class SplashActivity : ComponentActivity() {
 }
 
 @Composable
+private fun UiText.resolve(): String = when (this) {
+    is UiText.Empty -> ""
+    is UiText.Raw -> value
+    is UiText.Resource -> if (args.isEmpty()) {
+        stringResource(resId)
+    } else {
+        stringResource(resId, *args.toTypedArray())
+    }
+}
+
+@Composable
 fun SplashScreen(
     versionState: AppVersionUiState,
-    libraryLoadingStatus: String,
+    libraryLoadingStatus: UiText,
     isLibraryLoaded: Boolean,
     subscriptionTier: SubscriptionTier?,
     onUpdateApp: () -> Unit,
@@ -260,12 +281,11 @@ fun SplashScreen(
 
     LaunchedEffect(key1 = true) {
         startAnimation = true
-        delay(1500)
+        // H6: 강제 지연 제거 — 페이드 인 애니메이션과 병행하여 라이브러리/버전 체크 완료 즉시 다음으로
     }
 
     LaunchedEffect(versionState.isLoading, versionState.showUpdateDialog) {
         if (!versionState.isLoading && !versionState.showUpdateDialog) {
-            delay(500)
             navigateToNext()
         }
     }
@@ -298,7 +318,7 @@ fun SplashScreen(
             )
             Spacer(modifier = Modifier.height(Spacing.xs))
             Text(
-                text = "Camera Controller",
+                text = stringResource(R.string.splash_camera_controller),
                 style = HeadingL,
                 color = TextSecondaryV2
             )
@@ -315,7 +335,7 @@ fun SplashScreen(
 
             // 라이브러리 로딩 상태 — bodyMedium 정렬
             Text(
-                text = libraryLoadingStatus,
+                text = libraryLoadingStatus.resolve(),
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextSecondaryV2,
                 textAlign = TextAlign.Center
@@ -324,7 +344,7 @@ fun SplashScreen(
             if (versionState.isLoading) {
                 Spacer(modifier = Modifier.height(Spacing.sm))
                 Text(
-                    text = "버전 확인 중...",
+                    text = stringResource(R.string.splash_version_check),
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextTertiary,
                     textAlign = TextAlign.Center
@@ -334,7 +354,7 @@ fun SplashScreen(
             if (BuildConfig.DEBUG && subscriptionTier != null) {
                 Spacer(modifier = Modifier.height(Spacing.sm))
                 Text(
-                    text = "구독 티어: ${subscriptionTier.name}",
+                    text = stringResource(R.string.splash_subscription_tier, subscriptionTier.name),
                     style = BodySmall,
                     color = TextTertiary,
                     textAlign = TextAlign.Center
@@ -354,24 +374,44 @@ fun SplashScreen(
                     },
                     title = {
                         Text(
-                            text = if (versionInfo.isUpdateRequired) "필수 업데이트" else "업데이트 가능"
+                            text = stringResource(
+                                if (versionInfo.isUpdateRequired) {
+                                    R.string.splash_update_required_title
+                                } else {
+                                    R.string.splash_update_available_title
+                                }
+                            )
                         )
                     },
                     text = {
                         Text(
                             text = if (versionInfo.isUpdateRequired) {
-                                "앱을 사용하려면 최신 버전으로 업데이트해야 합니다.\n\n현재 버전: ${versionInfo.currentVersion}\n최신 버전: ${versionInfo.latestVersion}"
+                                stringResource(
+                                    R.string.splash_update_required_message,
+                                    versionInfo.currentVersion,
+                                    versionInfo.latestVersion
+                                )
                             } else {
-                                "새로운 버전이 출시되었습니다. 업데이트하시겠습니까?\n\n현재 버전: ${versionInfo.currentVersion}\n최신 버전: ${versionInfo.latestVersion}"
+                                stringResource(
+                                    R.string.splash_update_available_message,
+                                    versionInfo.currentVersion,
+                                    versionInfo.latestVersion
+                                )
                             }
                         )
                     },
                     confirmButton = {
-                        PrimaryButton(text = "업데이트", onClick = onUpdateApp)
+                        PrimaryButton(
+                            text = stringResource(R.string.splash_update_button),
+                            onClick = onUpdateApp
+                        )
                     },
                     dismissButton = if (!versionInfo.isUpdateRequired) {
                         {
-                            SecondaryButton(text = "나중에", onClick = onDismissUpdateDialog)
+                            SecondaryButton(
+                                text = stringResource(R.string.splash_later_button),
+                                onClick = onDismissUpdateDialog
+                            )
                         }
                     } else null
                 )
@@ -386,7 +426,7 @@ fun SplashScreenPreview() {
     CamConTheme() {
         SplashScreen(
             versionState = AppVersionUiState(),
-            libraryLoadingStatus = "라이브러리 로딩 중...",
+            libraryLoadingStatus = UiText.Resource(R.string.splash_initializing),
             isLibraryLoaded = false,
             subscriptionTier = null,
             onUpdateApp = {},

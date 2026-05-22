@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="capture_shutter_sound_label">シャッター音</string>
+    <string name="capture_shutter_sound_subtitle">撮影時にシステムのシャッター音を鳴らす</string>
+    <string name="capture_no_liveview_label">ライブビューなしで撮影</string>
+    <string name="liveview_grid_toggle">グリッド</string>
+    <string name="liveview_exposure_compensation_label">EV</string>
+
+    <string name="coachmark_double_tap_fullscreen">ダブルタップでフルスクリーン</string>
+    <string name="coachmark_shutter_area">88dpのシャッター領域をタップ</string>
+    <string name="coachmark_recent_double_tap">直近の写真をダブルタップでギャラリーへ</string>
+    <string name="coachmark_got_it">了解しました</string>
+
+    <string name="shooting_unsupported_mode">このカメラは%1$sモードに対応していません</string>
+
+    <string name="camera_status_battery_percent">バッテリー %1$d%%</string>
+    <string name="camera_status_sd_free">SD残量 %1$s</string>
+
+    <string name="timelapse_interval_label">間隔 (秒)</string>
+    <string name="timelapse_count_label">総コマ数</string>
+</resources>

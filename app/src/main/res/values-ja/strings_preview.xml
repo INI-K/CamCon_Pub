@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="preview_local_only_banner">Wi-Fiモードではローカルにダウンロード済みの写真のみ表示されます。カメラカードへのアクセスはUSBモードを推奨します。</string>
+    <string name="preview_ptpip_first_warning">Wi-Fiモードではローカル写真のみ表示されます。カメラカードを閲覧するにはUSBに切り替えてください。</string>
+    <string name="preview_delete_title">写真を削除</string>
+    <string name="preview_delete_confirm">この写真を削除しますか？カメラメモリからも削除されます。</string>
+    <string name="preview_delete_success">写真を削除しました</string>
+    <string name="share_chooser_title">写真を共有</string>
+    <string name="share_no_image_data">共有可能な画像データがありません。</string>
+    <string name="share_failed">写真の共有に失敗しました。</string>
+    <string name="share_local_unavailable">ローカルファイルを利用できません。</string>
+    <string name="share_in_progress">共有中…</string>
+    <string name="raw_gating_unified_message">RAWファイルはPROサブスクリプションでご利用いただけます。現在のティア: %1$s</string>
+    <string name="raw_gating_current_tier">現在のティア: %1$s</string>
+    <string name="preview_retry_single">再試行</string>
+</resources>

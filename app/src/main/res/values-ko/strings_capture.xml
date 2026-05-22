@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="capture_shutter_sound_label">셔터 사운드</string>
+    <string name="capture_shutter_sound_subtitle">촬영 시 시스템 셔터음을 재생합니다</string>
+    <string name="capture_no_liveview_label">라이브뷰 없이 트리거 캡처</string>
+    <string name="liveview_grid_toggle">그리드</string>
+    <string name="liveview_exposure_compensation_label">EV</string>
+
+    <string name="coachmark_double_tap_fullscreen">더블탭하여 전체화면</string>
+    <string name="coachmark_shutter_area">셔터 88dp 영역을 눌러 촬영</string>
+    <string name="coachmark_recent_double_tap">최근 촬영을 더블탭으로 갤러리</string>
+    <string name="coachmark_got_it">이해했어요</string>
+
+    <string name="shooting_unsupported_mode">이 카메라는 %1$s 모드를 지원하지 않습니다</string>
+
+    <string name="camera_status_battery_percent">배터리 %1$d%%</string>
+    <string name="camera_status_sd_free">SD 잔량 %1$s</string>
+
+    <string name="timelapse_interval_label">간격 (초)</string>
+    <string name="timelapse_count_label">총 컷 수</string>
+</resources>

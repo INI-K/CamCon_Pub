@@ -121,6 +121,7 @@ fun PhotoPreviewScreen(
     val isMultiSelectMode by viewModel.isMultiSelectMode.collectAsStateWithLifecycle()
     val selectedPhotos by viewModel.selectedPhotos.collectAsStateWithLifecycle()
     val isPtpipConnected by cameraViewModel.isPtpipConnected.collectAsStateWithLifecycle()
+    val cameraCapabilities by cameraViewModel.cameraCapabilities.collectAsStateWithLifecycle()
 
     val pullToRefreshState = rememberPullToRefreshState()
 
@@ -188,18 +189,23 @@ fun PhotoPreviewScreen(
                         )
                     }
 
-                    isPtpipConnected -> PtpipBlockOverlay()
-                    !uiState.isConnected -> CameraDisconnectedState()
+                    !uiState.isConnected && !isPtpipConnected -> CameraDisconnectedState()
                     isLoadingPhotos && photos.isEmpty() -> PhotoSkeletonGrid()
+                    photos.isEmpty() && isPtpipConnected -> PtpipLocalOnlyEmpty()
                     photos.isEmpty() -> EmptyPhotosV2()
-                    else -> PhotoGrid(
-                        photos = photos,
-                        isLoadingMore = isLoadingMore,
-                        hasNextPage = hasNextPage,
-                        isMultiSelectMode = isMultiSelectMode,
-                        selectedPhotos = selectedPhotos.toSet(),
-                        viewModel = viewModel
-                    )
+                    else -> Column(modifier = Modifier.fillMaxSize()) {
+                        if (isPtpipConnected) {
+                            PtpipLocalOnlyBanner()
+                        }
+                        PhotoGrid(
+                            photos = photos,
+                            isLoadingMore = isLoadingMore,
+                            hasNextPage = hasNextPage,
+                            isMultiSelectMode = isMultiSelectMode,
+                            selectedPhotos = selectedPhotos.toSet(),
+                            viewModel = viewModel
+                        )
+                    }
                 }
             }
 
@@ -250,6 +256,10 @@ fun PhotoPreviewScreen(
             }
         }
 
+        // H7-A — 삭제 액션 게이팅: 카메라 capability + 구독 티어
+        val canDelete = (cameraCapabilities?.canDeleteFiles == true) &&
+                canAccessRawTier(uiState.currentTier)
+
         FullScreenPhotoViewer(
             photo = photo,
             onDismiss = {
@@ -273,7 +283,10 @@ fun PhotoPreviewScreen(
                 viewModel.downloadPhoto(photo)
             },
             viewModel = viewModel,
-            localPhotos = if (photos.any { File(it.path).exists() }) photos else null
+            localPhotos = if (photos.any { File(it.path).exists() }) photos else null,
+            onDeleteRequest = if (canDelete) {
+                { target -> viewModel.deletePhoto(target) }
+            } else null
         )
 
         BackHandler(enabled = !isMultiSelectMode) {
@@ -294,12 +307,19 @@ fun PhotoPreviewScreen(
         }
     }
 
+    val lastFailedDownload by viewModel.lastFailedDownload.collectAsStateWithLifecycle()
+
     showError?.let { error ->
         ErrorToastOverlay(
             error = error,
             onRetry = {
                 showError = null
-                viewModel.loadCameraPhotos()
+                // M12 — 단일 사진 다운로드 실패면 그 사진만 재시도, 아니면 전체 새로고침
+                if (lastFailedDownload != null) {
+                    viewModel.retryDownload(lastFailedDownload)
+                } else {
+                    viewModel.loadCameraPhotos()
+                }
             },
             onDismiss = { showError = null }
         )
@@ -744,63 +764,54 @@ private fun ErrorToastOverlay(
 }
 
 /**
- * PTPIP 모드에서 사진 미리보기 차단 — V2 EmptyState 톤.
+ * H3 — PTPIP 모드에서 로컬 다운로드 사진만 표시되는 경우의 inline 배너.
+ * 전체 차단이 아닌 안내 카드만 그리드 상단에 노출.
  */
 @Composable
-private fun PtpipBlockOverlay() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+private fun PtpipLocalOnlyBanner() {
+    SurfaceV2(
+        tier = 1,
+        border = true,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Spacing.base, vertical = Spacing.sm)
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(Spacing.lg),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+                .padding(Spacing.md),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = Icons.Default.Wifi,
                 contentDescription = null,
-                modifier = Modifier.size(IconSize.xl),
+                modifier = Modifier.size(IconSize.md),
                 tint = Accent
             )
-            Spacer(Modifier.height(Spacing.md))
+            Spacer(Modifier.width(Spacing.sm))
             Text(
-                text = stringResource(R.string.photo_preview_wifi_connected),
-                style = HeadingM,
-                color = TextPrimaryV2,
-                textAlign = TextAlign.Center
-            )
-            Spacer(Modifier.height(Spacing.sm))
-            Text(
-                text = stringResource(R.string.photo_preview_wifi_block_message),
+                text = stringResource(R.string.preview_local_only_banner),
                 style = BodySmall,
-                color = TextSecondaryV2,
-                textAlign = TextAlign.Center
-            )
-            Spacer(Modifier.height(Spacing.md))
-            Text(
-                text = stringResource(R.string.photo_preview_use_photo_preview),
-                style = BodySmall,
-                color = Accent,
-                textAlign = TextAlign.Center
-            )
-            Spacer(Modifier.height(Spacing.xs))
-            Text(
-                text = stringResource(R.string.photo_preview_switch_usb),
-                style = Caption,
-                color = TextSecondaryV2,
-                textAlign = TextAlign.Center
-            )
-            Spacer(Modifier.height(Spacing.sm))
-            Text(
-                text = stringResource(R.string.photo_preview_use_camera_control),
-                style = Caption,
-                color = Accent,
-                textAlign = TextAlign.Center
+                color = TextSecondaryV2
             )
         }
+    }
+}
+
+/**
+ * PTPIP 모드 + 로컬 캐시 없음 — 안내 빈 상태.
+ */
+@Composable
+private fun PtpipLocalOnlyEmpty() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        EmptyState(
+            icon = Icons.Default.Wifi,
+            title = stringResource(R.string.photo_preview_wifi_connected),
+            description = stringResource(R.string.preview_local_only_banner)
+        )
     }
 }
 
@@ -876,7 +887,7 @@ private fun ErrorToastOverlayPreview() {
     CamConTheme {
         SurfaceV2(tier = 0) {
             ErrorToastOverlay(
-                error = "사진을 불러오는 중 오류가 발생했습니다.",
+                error = "Failed to load photos.",
                 onRetry = {},
                 onDismiss = {}
             )

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Messages d'erreur de connexion USB -->
+    <string name="error_usb_help_title">Problème de connexion de l\'appareil photo</string>
+    <string name="error_usb_not_found">Appareil photo introuvable. Vérifiez :\n1) Connexion du câble\n2) Alimentation de l\'appareil\n3) Mode PC / PTP sur l\'appareil</string>
+    <string name="error_usb_io_change_mode">Erreur d\'E/S USB. Basculez l\'appareil de « Stockage de masse » vers le mode PTP / MTP.</string>
+    <string name="error_usb_timeout">Délai de réponse dépassé. Essayez un autre câble USB.</string>
+    <string name="error_usb_permission">Autorisation USB refusée. Rebranchez le câble et accordez l\'autorisation.</string>
+    <string name="error_usb_unsupported">Périphérique USB non pris en charge.</string>
+    <string name="error_usb_restart">Veuillez redémarrer l\'application.</string>
+
+    <!-- Reconnexion automatique PTP/IP -->
+    <string name="connect_auto_reconnect_label">Reconnexion automatique</string>
+    <string name="connect_auto_reconnect_subtitle">Se reconnecte automatiquement dès que le Wi-Fi de l\'appareil est de nouveau disponible</string>
+    <string name="autoconnect_notification_required">L\'autorisation de notifications est requise pour conserver la reconnexion automatique en arrière-plan.</string>
+</resources>

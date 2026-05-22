@@ -16,15 +16,21 @@ import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.domain.model.ThemeMode
 
 /**
- * 타임랩스 촬영 설정을 위한 다이얼로그
+ * 타임랩스 촬영 설정을 위한 다이얼로그.
+ *
+ * @param initialInterval prefill용 초기 간격(초). 기본 5.
+ * @param initialCount prefill용 초기 총 컷 수. 기본 100.
+ * @param onConfirm (간격, 컷수) 콜백 — 호출측에서 저장과 시작 모두 수행한다.
  */
 @Composable
 fun TimelapseSettingsDialog(
     onConfirm: (interval: Int, shots: Int) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    initialInterval: Int = 5,
+    initialCount: Int = 100
 ) {
-    var interval by remember { mutableStateOf("5") }
-    var totalShots by remember { mutableStateOf("100") }
+    var interval by remember { mutableStateOf(initialInterval.toString()) }
+    var totalShots by remember { mutableStateOf(initialCount.toString()) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -34,14 +40,14 @@ fun TimelapseSettingsDialog(
                 OutlinedTextField(
                     value = interval,
                     onValueChange = { interval = it },
-                    label = { Text(stringResource(R.string.interval_seconds)) },
+                    label = { Text(stringResource(R.string.timelapse_interval_label)) },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = totalShots,
                     onValueChange = { totalShots = it },
-                    label = { Text(stringResource(R.string.total_shots)) },
+                    label = { Text(stringResource(R.string.timelapse_count_label)) },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -50,8 +56,8 @@ fun TimelapseSettingsDialog(
             TextButton(
                 onClick = {
                     onConfirm(
-                        interval.toIntOrNull() ?: 5,
-                        totalShots.toIntOrNull() ?: 100
+                        interval.toIntOrNull() ?: initialInterval,
+                        totalShots.toIntOrNull() ?: initialCount
                     )
                 }
             ) {

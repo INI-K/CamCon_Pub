@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Account: disconnessione / eliminazione -->
+    <string name="account_logout_dialog_title">Disconnettersi?</string>
+    <string name="account_logout_dialog_message">La cache locale delle foto e la cronologia di connessione automatica verranno mantenute. Vuoi davvero disconnetterti?</string>
+    <string name="account_logout_confirm">Disconnetti</string>
+    <string name="account_logout_cancel">Annulla</string>
+
+    <string name="account_delete_row_title">Elimina account</string>
+    <string name="account_delete_row_subtitle">Rimuovi definitivamente account e dati</string>
+    <string name="account_delete_dialog_title">Eliminare l\'account?</string>
+    <string name="account_delete_dialog_message">Eliminando l\'account verranno cancellati definitivamente foto cloud, impostazioni e dati di abbonamento. L\'operazione è irreversibile.</string>
+    <string name="account_delete_continue">Continua</string>
+    <string name="account_delete_cancel">Annulla</string>
+
+    <string name="account_delete_confirm_title">Digita DELETE per confermare</string>
+    <string name="account_delete_confirm_message">Per confermare l\'eliminazione definitiva, digita DELETE nel campo seguente.</string>
+    <string name="account_delete_confirm_placeholder">DELETE</string>
+    <string name="account_delete_confirm_button">Elimina definitivamente</string>
+    <string name="account_delete_confirm_cancel">Annulla</string>
+    <string name="account_delete_success">Account eliminato</string>
+    <string name="account_delete_failed">Impossibile eliminare l\'account: %s</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_skip">Salta</string>
+    <string name="onboarding_next">Avanti</string>
+    <string name="onboarding_start">Inizia</string>
+
+    <string name="onboarding_step1_title">Connetti via USB OTG</string>
+    <string name="onboarding_step1_description">Collega la tua reflex o mirrorless con un cavo USB OTG, quindi imposta la fotocamera in modalità PC/PTP.</string>
+
+    <string name="onboarding_step2_title">Connetti via Wi-Fi PTP-IP</string>
+    <string name="onboarding_step2_description">Connettiti al punto di accesso integrato della fotocamera oppure collega entrambi i dispositivi allo stesso router Wi-Fi per il controllo wireless.</string>
+
+    <string name="onboarding_step3_title">Permessi</string>
+    <string name="onboarding_step3_description">Per il rilevamento Wi-Fi e le notifiche in tempo reale, consenti i permessi di posizione, Wi-Fi e notifiche quando richiesto.</string>
+
+    <!-- Lingua -->
+    <string name="language_row_title">Lingua / Language</string>
+    <string name="language_dialog_title">Scegli lingua</string>
+    <string name="language_system_default">Predefinito di sistema</string>
+    <string name="language_option_en">English</string>
+    <string name="language_option_ko">한국어</string>
+    <string name="language_option_ja">日本語</string>
+    <string name="language_option_zh">中文</string>
+    <string name="language_option_de">Deutsch</string>
+    <string name="language_option_es">Español</string>
+    <string name="language_option_fr">Français</string>
+    <string name="language_option_it">Italiano</string>
+
+    <!-- Codice referral -->
+    <string name="referral_input_label">Codice referral (facoltativo)</string>
+    <string name="referral_input_helper">Se hai un codice referral, inseriscilo prima dell\'accesso.</string>
+</resources>

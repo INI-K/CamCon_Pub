@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="capture_shutter_sound_label">Son de l\'obturateur</string>
+    <string name="capture_shutter_sound_subtitle">Jouer le son système à la capture</string>
+    <string name="capture_no_liveview_label">Déclencher sans visée en direct</string>
+    <string name="liveview_grid_toggle">Grille</string>
+    <string name="liveview_exposure_compensation_label">EV</string>
+
+    <string name="coachmark_double_tap_fullscreen">Double-tape pour le plein écran</string>
+    <string name="coachmark_shutter_area">Appuyez sur la zone d\'obturateur 88dp</string>
+    <string name="coachmark_recent_double_tap">Double-tape sur la dernière photo pour la galerie</string>
+    <string name="coachmark_got_it">Compris</string>
+
+    <string name="shooting_unsupported_mode">Cet appareil ne prend pas en charge le mode %1$s</string>
+
+    <string name="camera_status_battery_percent">Batterie %1$d%%</string>
+    <string name="camera_status_sd_free">SD libre %1$s</string>
+
+    <string name="timelapse_interval_label">Intervalle (s)</string>
+    <string name="timelapse_count_label">Nombre total</string>
+</resources>
