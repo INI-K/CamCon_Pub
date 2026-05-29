@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.inik.camcon.di.IoDispatcher
@@ -77,6 +78,11 @@ class CameraViewModel @Inject constructor(
     // ✅ 라이브뷰 Bitmap 디코딩 (IO 디스패처에서 처리) — CRITICAL-1 해결
     private val _decodedLiveViewBitmap = MutableStateFlow<android.graphics.Bitmap?>(null)
     val decodedLiveViewBitmap: StateFlow<android.graphics.Bitmap?> = _decodedLiveViewBitmap.asStateFlow()
+
+    // F25: 라이브뷰 Bitmap 생명주기를 ViewModel 단일 소유로 관리한다.
+    // 새 프레임을 대입할 때 '직전' 프레임을 즉시 recycle하면 RenderThread 드로잉 중
+    // use-after-recycle 가 발생하므로, 한 세대 지연 회수한다(직전이 아니라 그 이전 pending 을 회수).
+    private var pendingRecycleBitmap: android.graphics.Bitmap? = null
 
     // 라이브뷰 히스토그램 데이터 — 토글 OFF 시 null. IO 디스패처에서 계산.
     private val _histogramData =
@@ -390,9 +396,28 @@ class CameraViewModel @Inject constructor(
                 if (frame != null) {
                     decodeLiveViewFrameAsync(frame)
                 } else {
-                    _decodedLiveViewBitmap.value = null
+                    publishLiveViewBitmap(null)
                 }
             }
+        }
+    }
+
+    /**
+     * F25: 라이브뷰 Bitmap 을 한 세대 지연 회수 정책으로 교체한다.
+     * - 현재 표시 중인 비트맵은 RenderThread 가 아직 드로잉 중일 수 있으므로 즉시 recycle하지 않는다.
+     * - 직전(pending) 비트맵만 회수하고, 현재 비트맵을 새 pending 으로 보관한다.
+     */
+    @Synchronized
+    private fun publishLiveViewBitmap(newBitmap: android.graphics.Bitmap?) {
+        val toRecycle = pendingRecycleBitmap
+        pendingRecycleBitmap = _decodedLiveViewBitmap.value
+        _decodedLiveViewBitmap.value = newBitmap
+        try {
+            if (toRecycle != null && toRecycle !== newBitmap && !toRecycle.isRecycled) {
+                toRecycle.recycle()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "라이브뷰 Bitmap recycle 실패", e)
         }
     }
 
@@ -886,7 +911,14 @@ class CameraViewModel @Inject constructor(
                         null
                     }
                 }
-                _decodedLiveViewBitmap.value = decodedBitmap
+
+                // 디코딩 후 취소되었으면(다음 프레임 도착) 방금 만든 비트맵은 대입 없이 즉시 회수.
+                if (!isActive) {
+                    decodedBitmap?.let { if (!it.isRecycled) it.recycle() }
+                    return@launch
+                }
+
+                publishLiveViewBitmap(decodedBitmap)
 
                 if (decodedBitmap != null && appSettingsRepository.isHistogramEnabled.first()) {
                     val hist = withContext(ioDispatcher) {
@@ -922,6 +954,16 @@ class CameraViewModel @Inject constructor(
 
         // RAW 제한 콜백 해제
         cameraRepository.setRawFileRestrictionCallback(null)
+
+        // F25: 라이브뷰 Bitmap 최종 회수 (현재 표시본 + 보관 중인 pending)
+        try {
+            pendingRecycleBitmap?.let { if (!it.isRecycled) it.recycle() }
+            pendingRecycleBitmap = null
+            _decodedLiveViewBitmap.value?.let { if (!it.isRecycled) it.recycle() }
+            _decodedLiveViewBitmap.value = null
+        } catch (e: Exception) {
+            Log.w(TAG, "라이브뷰 Bitmap 최종 회수 실패", e)
+        }
 
         Log.d(TAG, "ViewModel 정리 완료")
     }

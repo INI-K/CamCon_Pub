@@ -218,7 +218,10 @@ class ColorTransferProcessor @Inject constructor() {
         inputBitmap: Bitmap,
         referenceBitmap: Bitmap,
         intensity: Float = 0.3f
-    ): Bitmap? = withContext(Dispatchers.Main) {
+    ): Bitmap? = withContext(Dispatchers.Default) {
+        // GPUImage.getBitmapWithFilterApplied는 호출 스레드에서 자체 오프스크린
+        // EGL 컨텍스트(PixelBuffer)를 생성·소멸하므로 메인 스레드 의존성이 없다.
+        // 풀사이즈 glReadPixels 블로킹을 메인에서 떼어내 ANR을 방지한다.
         return@withContext try {
             val gpu = gpuImage
             if (gpu == null) {
@@ -280,7 +283,9 @@ class ColorTransferProcessor @Inject constructor() {
         inputBitmap: Bitmap,
         referenceStats: Array<FloatArray>,
         intensity: Float = 0.3f
-    ): Bitmap? = withContext(Dispatchers.Main) {
+    ): Bitmap? = withContext(Dispatchers.Default) {
+        // 위 applyColorTransferWithGPU와 동일하게 PixelBuffer가 호출 스레드에서
+        // EGL 컨텍스트를 자체 생성하므로 백그라운드 디스패처에서 실행해 ANR을 방지한다.
         return@withContext try {
             val gpu = gpuImage ?: return@withContext null
 

@@ -24,6 +24,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 
 /**
@@ -49,6 +51,11 @@ class WifiMonitoringService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     private var lastConnectedSSID: String? = null
+
+    // 두 콜백(onAvailable/onCapabilitiesChanged)이 거의 동시에 발동될 때
+    // lastConnectedSSID check-then-act 및 AutoConnectForegroundService 시작을
+    // 단일 진입으로 직렬화해 중복 시작을 방지한다.
+    private val autoConnectMutex = Mutex()
 
     // 네트워크 콜백 중복 방지
     private var lastProcessedNetwork: Network? = null
@@ -206,7 +213,9 @@ class WifiMonitoringService : Service() {
             networkCallback = object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) {
                     Log.d(TAG, "📡 네트워크 사용 가능: $network")
-                    checkAndTriggerAutoConnect(network)
+                    if (shouldProcessNetwork(network)) {
+                        checkAndTriggerAutoConnect(network)
+                    }
                 }
 
                 override fun onCapabilitiesChanged(
@@ -272,6 +281,8 @@ class WifiMonitoringService : Service() {
      */
     private fun checkAndTriggerAutoConnect(network: Network) {
         serviceScope.launch {
+            // check-then-act(lastConnectedSSID) + 서비스 시작을 단일 Mutex로 직렬화
+            autoConnectMutex.withLock {
             try {
                 Log.d(TAG, "========================================")
                 Log.d(TAG, "🔍 자동 연결 조건 확인 시작 (Service)")
@@ -394,6 +405,7 @@ class WifiMonitoringService : Service() {
             } catch (e: Exception) {
                 Log.e(TAG, "❌ 자동 연결 확인 중 오류 (Service)", e)
                 Log.d(TAG, "========================================")
+            }
             }
         }
     }

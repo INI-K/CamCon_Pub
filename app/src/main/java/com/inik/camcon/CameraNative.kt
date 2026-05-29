@@ -121,17 +121,12 @@ object CameraNative {
 
     /**
      * 라이브러리 로딩 상태 확인
+     *
+     * 실제 게이팅은 호출자 레이어(NativeCameraDataSource/PtpipDataSource)에서 이 값을
+     * 확인해 수행한다. init 블록이 로딩 실패 시 RuntimeException을 던지므로,
+     * 라이브러리 미로딩 상태로 external 함수에 진입하는 경로는 존재하지 않는다.
      */
     fun isLibrariesLoaded(): Boolean = librariesLoaded
-
-    /**
-     * 네이티브 메서드 호출 전 라이브러리 로딩 상태 확인
-     */
-    private fun ensureLibrariesLoaded() {
-        if (!librariesLoaded) {
-            throw IllegalStateException("네이티브 라이브러리가 로딩되지 않았습니다. 앱을 재시작해주세요.")
-        }
-    }
 
     /**
      * libgphoto2 환경변수를 설정합니다.

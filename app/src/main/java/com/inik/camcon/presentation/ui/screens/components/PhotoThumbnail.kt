@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,6 +41,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -366,55 +368,24 @@ private fun ExifAwareThumbnail(
                         "원본 비트맵 크기: ${originalBitmap.width}x${originalBitmap.height}"
                     )
 
-                    // 5. 고화질 이미지의 EXIF 정보를 썸네일에 적용 (180도 회전 수정)
+                    // 5. EXIF 표준 회전 적용 (F30: 90→90/180→180/270→270 — 역방향 매핑 수정,
+                    //    ImageProcessingUtils.applyRotationFromExif·PhotoDownloadManager와 통일)
+                    fun rotate(degrees: Float): android.graphics.Bitmap = try {
+                        val matrix = android.graphics.Matrix()
+                        matrix.postRotate(degrees)
+                        android.graphics.Bitmap.createBitmap(
+                            originalBitmap, 0, 0,
+                            originalBitmap.width, originalBitmap.height,
+                            matrix, true
+                        ).also { if (it != originalBitmap) originalBitmap.recycle() }
+                    } catch (e: Exception) {
+                        Log.e("PhotoThumbnail", "${degrees.toInt()}도 회전 실패: ${photo.name}", e)
+                        originalBitmap
+                    }
                     val rotatedBmp = when (fullExif) {
-                        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> {
-                            Log.d("PhotoThumbnail", "90도 회전 수정 적용: ${photo.name} (270도로 변경)")
-                            try {
-                                val matrix = android.graphics.Matrix()
-                                matrix.postRotate(270f) // 90도 대신 270도 적용
-                                android.graphics.Bitmap.createBitmap(
-                                    originalBitmap, 0, 0,
-                                    originalBitmap.width, originalBitmap.height,
-                                    matrix, true
-                                ).also {
-                                    // 원본 비트맵 메모리 해제
-                                    if (it != originalBitmap) {
-                                        originalBitmap.recycle()
-                                    }
-                                }
-                            } catch (e: Exception) {
-                                Log.e("PhotoThumbnail", "90도 회전 실패: ${photo.name}", e)
-                                originalBitmap
-                            }
-                        }
-
-                        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> {
-                            Log.d("PhotoThumbnail", "180도 회전 수정: ${photo.name} (회전하지 않음)")
-                            // 180도 회전이 거꾸로 표시되는 문제 해결 - 일단 회전하지 않음
-                            originalBitmap
-                        }
-
-                        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> {
-                            Log.d("PhotoThumbnail", "270도 회전 수정 적용: ${photo.name} (90도로 변경)")
-                            try {
-                                val matrix = android.graphics.Matrix()
-                                matrix.postRotate(90f) // 270도 대신 90도 적용
-                                android.graphics.Bitmap.createBitmap(
-                                    originalBitmap, 0, 0,
-                                    originalBitmap.width, originalBitmap.height,
-                                    matrix, true
-                                ).also {
-                                    if (it != originalBitmap) {
-                                        originalBitmap.recycle()
-                                    }
-                                }
-                            } catch (e: Exception) {
-                                Log.e("PhotoThumbnail", "270도 회전 실패: ${photo.name}", e)
-                                originalBitmap
-                            }
-                        }
-
+                        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> rotate(90f)
+                        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> rotate(180f)
+                        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> rotate(270f)
                         else -> {
                             Log.d("PhotoThumbnail", "회전 없음: ${photo.name} (orientation: $fullExif)")
                             originalBitmap
@@ -439,6 +410,17 @@ private fun ExifAwareThumbnail(
                 }
             } catch (e: Exception) {
                 Log.e("PhotoThumbnail", "EXIF 썸네일 처리 실패: ${photo.name}", e)
+            }
+        }
+    }
+
+    // F28: 수동 디코딩한 비트맵을 key 변경/컴포지션 이탈 시 명시적으로 recycle
+    DisposableEffect(photo.path, thumbnailData, fullImageData) {
+        onDispose {
+            try {
+                rotatedBitmap?.asAndroidBitmap()?.let { if (!it.isRecycled) it.recycle() }
+            } catch (e: Exception) {
+                Log.w("PhotoThumbnail", "썸네일 Bitmap recycle 실패: ${photo.name}", e)
             }
         }
     }
@@ -828,54 +810,23 @@ private fun FluidExifAwareThumbnail(
                 }
 
                 if (originalBitmap != null) {
-                    // 5. 고화질 이미지의 EXIF 정보를 썸네일에 적용 (180도 회전 수정)
+                    // 5. EXIF 표준 회전 적용 (F30: 90→90/180→180/270→270 — 역방향 매핑 수정)
+                    fun rotate(degrees: Float): android.graphics.Bitmap = try {
+                        val matrix = android.graphics.Matrix()
+                        matrix.postRotate(degrees)
+                        android.graphics.Bitmap.createBitmap(
+                            originalBitmap, 0, 0,
+                            originalBitmap.width, originalBitmap.height,
+                            matrix, true
+                        ).also { if (it != originalBitmap) originalBitmap.recycle() }
+                    } catch (e: Exception) {
+                        Log.e("FluidPhotoThumbnail", "${degrees.toInt()}도 회전 실패: ${photo.name}", e)
+                        originalBitmap
+                    }
                     val rotatedBmp = when (fullExif) {
-                        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> {
-                            Log.d("FluidPhotoThumbnail", "90도 회전 수정 적용: ${photo.name} (270도로 변경)")
-                            try {
-                                val matrix = android.graphics.Matrix()
-                                matrix.postRotate(270f)
-                                android.graphics.Bitmap.createBitmap(
-                                    originalBitmap, 0, 0,
-                                    originalBitmap.width, originalBitmap.height,
-                                    matrix, true
-                                ).also {
-                                    if (it != originalBitmap) {
-                                        originalBitmap.recycle()
-                                    }
-                                }
-                            } catch (e: Exception) {
-                                Log.e("FluidPhotoThumbnail", "90도 회전 실패: ${photo.name}", e)
-                                originalBitmap
-                            }
-                        }
-
-                        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> {
-                            Log.d("FluidPhotoThumbnail", "180도 회전 수정: ${photo.name} (회전하지 않음)")
-                            // 180도 회전이 거꾸로 표시되는 문제 해결 - 일단 회전하지 않음
-                            originalBitmap
-                        }
-
-                        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> {
-                            Log.d("FluidPhotoThumbnail", "270도 회전 수정 적용: ${photo.name} (90도로 변경)")
-                            try {
-                                val matrix = android.graphics.Matrix()
-                                matrix.postRotate(90f) // 270도 대신 90도 적용
-                                android.graphics.Bitmap.createBitmap(
-                                    originalBitmap, 0, 0,
-                                    originalBitmap.width, originalBitmap.height,
-                                    matrix, true
-                                ).also {
-                                    if (it != originalBitmap) {
-                                        originalBitmap.recycle()
-                                    }
-                                }
-                            } catch (e: Exception) {
-                                Log.e("FluidPhotoThumbnail", "270도 회전 실패: ${photo.name}", e)
-                                originalBitmap
-                            }
-                        }
-
+                        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> rotate(90f)
+                        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> rotate(180f)
+                        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> rotate(270f)
                         else -> {
                             Log.d(
                                 "FluidPhotoThumbnail",
@@ -898,6 +849,17 @@ private fun FluidExifAwareThumbnail(
                 }
             } catch (e: Exception) {
                 Log.e("FluidPhotoThumbnail", "유동적 EXIF 썸네일 처리 실패: ${photo.name}", e)
+            }
+        }
+    }
+
+    // F28: 수동 디코딩한 비트맵을 key 변경/컴포지션 이탈 시 명시적으로 recycle
+    DisposableEffect(photo.path, thumbnailData, fullImageData) {
+        onDispose {
+            try {
+                rotatedBitmap?.asAndroidBitmap()?.let { if (!it.isRecycled) it.recycle() }
+            } catch (e: Exception) {
+                Log.w("FluidPhotoThumbnail", "썸네일 Bitmap recycle 실패: ${photo.name}", e)
             }
         }
     }

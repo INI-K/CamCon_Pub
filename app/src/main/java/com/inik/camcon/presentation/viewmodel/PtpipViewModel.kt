@@ -19,6 +19,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -643,7 +644,10 @@ class PtpipViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        viewModelScope.launch {
+        // onCleared 시점엔 viewModelScope가 이미 취소 상태라 일반 launch는 첫 디스패치에서
+        // 취소되어 cleanup(연결 해제·WiFi 락 해제·전역 매니저 정리)이 실행되지 않는다.
+        // NonCancellable로 감싸 정리를 보장한다 (PhotoPreviewViewModel과 동일 패턴).
+        viewModelScope.launch(NonCancellable) {
             connectionHelper.cleanup()
         }
     }

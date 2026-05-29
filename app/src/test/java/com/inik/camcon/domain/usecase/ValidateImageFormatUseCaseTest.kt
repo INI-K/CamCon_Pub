@@ -74,6 +74,8 @@ class ValidateImageFormatUseCaseTest {
         override val hasSeenCaptureCoachmark: Flow<Boolean> = MutableStateFlow(false)
         override val lastTimelapseInterval: Flow<Int> = MutableStateFlow(5)
         override val lastTimelapseCount: Flow<Int> = MutableStateFlow(100)
+        override val isHistogramEnabled: Flow<Boolean> = MutableStateFlow(false)
+        override val isFocusPeakingEnabled: Flow<Boolean> = MutableStateFlow(false)
 
         override suspend fun setCameraControlsEnabled(enabled: Boolean) {}
         override suspend fun setLiveViewEnabled(enabled: Boolean) {}
@@ -95,6 +97,8 @@ class ValidateImageFormatUseCaseTest {
         override suspend fun setHasSeenCaptureCoachmark(seen: Boolean) {}
         override suspend fun setLastTimelapseInterval(seconds: Int) {}
         override suspend fun setLastTimelapseCount(count: Int) {}
+        override suspend fun setHistogramEnabled(enabled: Boolean) {}
+        override suspend fun setFocusPeakingEnabled(enabled: Boolean) {}
         override suspend fun clearAllSettings() {}
     }
 

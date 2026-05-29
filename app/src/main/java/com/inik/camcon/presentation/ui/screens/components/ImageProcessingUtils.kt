@@ -301,56 +301,47 @@ object ImageProcessingUtils {
     }
 
     /**
-     * EXIF 방향 정보에 따른 비트맵 회전 적용 (수정된 회전 로직)
+     * EXIF 방향 정보에 따른 비트맵 회전 적용 (표준 매핑).
+     * PhotoDownloadManager.rotateImageIfRequired 와 동일한 규칙으로 통일(F30):
+     * 90→90f, 180→180f, 270→270f. 90/270 회전 시 width/height 를 swap 한다.
      */
     private fun applyRotationFromExif(
         originalBitmap: Bitmap,
         orientation: Int,
         photoName: String?
     ): Bitmap {
-        return when (orientation) {
-            ExifInterface.ORIENTATION_ROTATE_90 -> {
-                Log.d("ImageProcessing", "90도 회전 수정 적용: $photoName (270도로 변경)")
-                // 90도가 반대로 나오면 270도로 변경
-                val matrix = Matrix()
-                matrix.postRotate(270f) // 90도 대신 270도 적용
-                Bitmap.createBitmap(
-                    originalBitmap,
-                    0,
-                    0,
-                    originalBitmap.width,
-                    originalBitmap.height,
-                    matrix,
-                    true
-                )
-            }
-
-            ExifInterface.ORIENTATION_ROTATE_180 -> {
-                Log.d("ImageProcessing", "180도 회전 수정 적용: $photoName (이전에 거꾸로 표시되던 문제 해결)")
-                // 180도 회전이 거꾸로 되어있었다면, 회전하지 않거나 반대로 회전
-                originalBitmap // 일단 회전하지 않고 테스트
-            }
-
-            ExifInterface.ORIENTATION_ROTATE_270 -> {
-                Log.d("ImageProcessing", "270도 회전 수정 적용: $photoName (90도로 변경)")
-                // 270도가 잘못 표시되면 90도로 변경하여 테스트
-                val matrix = Matrix()
-                matrix.postRotate(90f) // 270도 대신 90도 적용
-                Bitmap.createBitmap(
-                    originalBitmap,
-                    0,
-                    0,
-                    originalBitmap.width,
-                    originalBitmap.height,
-                    matrix,
-                    true
-                )
-            }
-
+        val rotationDegrees = when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+            ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+            ExifInterface.ORIENTATION_ROTATE_270 -> 270f
             else -> {
                 Log.d("ImageProcessing", "회전 없음: $photoName (orientation: $orientation)")
-                originalBitmap
+                return originalBitmap
             }
+        }
+
+        Log.d("ImageProcessing", "EXIF ${rotationDegrees.toInt()}도 회전 적용: $photoName")
+
+        return try {
+            // 90/270 회전 시 회전 중심을 중앙으로 두고 회전하면 createBitmap이 swap된 차원으로 생성한다.
+            val matrix = Matrix()
+            matrix.postRotate(rotationDegrees, originalBitmap.width / 2f, originalBitmap.height / 2f)
+            val rotated = Bitmap.createBitmap(
+                originalBitmap,
+                0,
+                0,
+                originalBitmap.width,
+                originalBitmap.height,
+                matrix,
+                true
+            )
+            if (rotated != originalBitmap) {
+                originalBitmap.recycle()
+            }
+            rotated
+        } catch (e: Exception) {
+            Log.e("ImageProcessing", "EXIF 회전 실패: $photoName", e)
+            originalBitmap
         }
     }
 
