@@ -36,7 +36,11 @@ class PtpipDiscoveryService @Inject constructor(
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
     private val nsdManager = context.getSystemService(Context.NSD_SERVICE) as NsdManager
-    private var discoveryListener: NsdManager.DiscoveryListener? = null
+
+    // 동시 mDNS 검색(서비스 타입별 async)이 서로의 listener를 덮어쓰지 않도록
+    // 단일 필드 대신 스레드세이프 Set으로 활성 listener를 관리한다.
+    private val activeDiscoveryListeners =
+        java.util.Collections.synchronizedSet(mutableSetOf<NsdManager.DiscoveryListener>())
 
     // SharedPreferences for caching last known camera IP
     private val prefs: SharedPreferences = context.getSharedPreferences(
@@ -318,6 +322,9 @@ class PtpipDiscoveryService @Inject constructor(
             var servicesResolved = 0
             var isResumed = false
 
+            // 이 코루틴 전용 listener (공유 필드 대신 로컬 보관 → 동시 검색 간 간섭 제거)
+            var localListener: NsdManager.DiscoveryListener? = null
+
             // 발견된 서비스가 있으면 바로 반환하는 헬퍼 함수
             fun tryResumeWithServices() {
                 synchronized(discoveredServices) {
@@ -327,9 +334,12 @@ class PtpipDiscoveryService @Inject constructor(
                             discoveredServices.isNotEmpty()
                         ) {
                             isResumed = true
-                            // 검색 중지 (리소스 정리)
+                            // 검색 중지 (리소스 정리) — 자기 자신의 listener만 stop
                             try {
-                                discoveryListener?.let { nsdManager.stopServiceDiscovery(it) }
+                                localListener?.let {
+                                    nsdManager.stopServiceDiscovery(it)
+                                    activeDiscoveryListeners.remove(it)
+                                }
                             } catch (e: Exception) {
                                 Log.w(TAG, "검색 완료 후 정리 중 오류: ${e.message}")
                             }
@@ -426,14 +436,16 @@ class PtpipDiscoveryService @Inject constructor(
 
             // 검색 시작
             try {
+                localListener = listener
+                activeDiscoveryListeners.add(listener)
                 nsdManager.discoverServices(
                     serviceType,
                     NsdManager.PROTOCOL_DNS_SD,
                     listener
                 )
-                discoveryListener = listener
             } catch (e: Exception) {
                 Log.e(TAG, "mDNS 검색 시작 중 오류", e)
+                activeDiscoveryListeners.remove(listener)
                 synchronized(discoveredServices) {
                     if (!isResumed && continuation.isActive) {
                         isResumed = true
@@ -443,12 +455,14 @@ class PtpipDiscoveryService @Inject constructor(
                 return@suspendCancellableCoroutine
             }
 
-            // 취소 시 정리 작업 (타임아웃 포함)
+            // 취소 시 정리 작업 (타임아웃 포함) — 자기 listener만 stop
             continuation.invokeOnCancellation {
                 try {
                     nsdManager.stopServiceDiscovery(listener)
                 } catch (e: Exception) {
                     Log.w(TAG, "mDNS 검색 정리 중 오류: ${e.message}")
+                } finally {
+                    activeDiscoveryListeners.remove(listener)
                 }
             }
         }
@@ -544,11 +558,18 @@ class PtpipDiscoveryService @Inject constructor(
      * 발견 중지
      */
     fun stopDiscovery() {
-        try {
-            discoveryListener?.let { nsdManager.stopServiceDiscovery(it) }
-            discoveryListener = null
-        } catch (e: Exception) {
-            Log.w(TAG, "mDNS 검색 중지 중 오류: ${e.message}")
+        // 현재 활성화된 모든 listener를 정리 (동시 검색 전부 중지)
+        val listeners = synchronized(activeDiscoveryListeners) {
+            activeDiscoveryListeners.toList()
+        }
+        listeners.forEach { listener ->
+            try {
+                nsdManager.stopServiceDiscovery(listener)
+            } catch (e: Exception) {
+                Log.w(TAG, "mDNS 검색 중지 중 오류: ${e.message}")
+            } finally {
+                activeDiscoveryListeners.remove(listener)
+            }
         }
     }
 

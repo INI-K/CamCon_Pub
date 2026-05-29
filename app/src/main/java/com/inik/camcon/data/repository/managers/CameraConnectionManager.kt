@@ -121,6 +121,10 @@ class CameraConnectionManager @Inject constructor(
             withContext(Dispatchers.Main) {
                 usbCameraManager.requestPermission(device)
             }
+            // 권한 요청은 예외가 아닌 Result.failure로 반환되므로 connectCamera의 catch가
+            // 동작하지 않는다. 초기화 플래그를 직접 해제해 UI 오버레이 고착을 방지한다.
+            _isInitializing.value = false
+            Log.d("카메라연결매니저", "카메라 초기화 상태 변경: false (USB 권한 없음)")
             return Result.failure(Exception("USB 권한이 필요합니다"))
         }
 
@@ -139,6 +143,9 @@ class CameraConnectionManager @Inject constructor(
             handleInitializationResult(result)
         } else {
             Log.e("카메라연결매니저", "파일 디스크립터를 가져올 수 없음 - USB 연결 실패")
+            // FD null 경로도 예외가 아닌 Result.failure 반환이므로 초기화 플래그를 직접 해제한다.
+            _isInitializing.value = false
+            Log.d("카메라연결매니저", "카메라 초기화 상태 변경: false (FD null)")
             Result.failure(Exception("파일 디스크립터를 가져올 수 없음 - USB 연결 실패"))
         }
     }

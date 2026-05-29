@@ -50,6 +50,9 @@ class PhotoImageManager @Inject constructor(
     private fun createManagerScope(): CoroutineScope =
         CoroutineScope(appScope.coroutineContext + SupervisorJob(appScope.coroutineContext.job))
 
+    // 썸네일 캐시 갱신 직렬화용 단일 락 (F31: launch별 독립 스냅샷 교차 손상 방지)
+    private val thumbnailCacheLock = Any()
+
     // 썸네일 캐시
     private val _thumbnailCache = MutableStateFlow<Map<String, ByteArray>>(emptyMap())
     val thumbnailCache: StateFlow<Map<String, ByteArray>> = _thumbnailCache.asStateFlow()
@@ -91,14 +94,13 @@ class PhotoImageManager @Inject constructor(
                 return@launch
             }
 
-            val currentCache = _thumbnailCache.value.toMutableMap()
             val currentlyLoading = _loadingThumbnails.value.toMutableSet()
 
             // 순차적으로 처리 (동시 실행 방지)
             photos.forEach { photo ->
-                // 이미 캐시에 있거나 로딩 중인 경우 건너뛰기
-                if (currentCache.containsKey(photo.path) || currentlyLoading.contains(photo.path)) {
-                    if (currentCache.containsKey(photo.path)) {
+                // 이미 캐시에 있거나 로딩 중인 경우 건너뛰기 — 캐시는 항상 최신 StateFlow 값 기준으로 판정(F31)
+                if (_thumbnailCache.value.containsKey(photo.path) || currentlyLoading.contains(photo.path)) {
+                    if (_thumbnailCache.value.containsKey(photo.path)) {
                         Log.d(TAG, "♻️ 이미 캐시에 있음: ${photo.name}")
                     } else {
                         Log.d(TAG, "⏳ 이미 로딩 중: ${photo.name}")
@@ -150,25 +152,27 @@ class PhotoImageManager @Inject constructor(
                                     Log.w(TAG, "   - 비정상적인 썸네일 헤더 감지됨")
                                 }
 
-                                synchronized(currentCache) {
+                                val newSize = synchronized(thumbnailCacheLock) {
+                                    val updated = _thumbnailCache.value.toMutableMap()
                                     // LRU 캐시 크기 제한 적용
-                                    if (currentCache.size >= Constants.Cache.MAX_THUMBNAIL_CACHE_SIZE) {
-                                        val oldestKey = currentCache.keys.firstOrNull()
+                                    if (updated.size >= Constants.Cache.MAX_THUMBNAIL_CACHE_SIZE) {
+                                        val oldestKey = updated.keys.firstOrNull()
                                         if (oldestKey != null) {
-                                            currentCache.remove(oldestKey)
+                                            updated.remove(oldestKey)
                                             Log.d(TAG, "캐시 크기 제한 - 가장 오래된 썸네일 제거: $oldestKey")
                                         }
                                     }
-                                    currentCache[photo.path] = thumbnailData
-                                    _thumbnailCache.value = currentCache.toMap()
+                                    updated[photo.path] = thumbnailData
+                                    _thumbnailCache.value = updated
+                                    updated.size
                                 }
-                                Log.d(TAG, "💾 썸네일 캐시 저장 완료: ${photo.name} (캐시 크기: ${currentCache.size})")
+                                Log.d(TAG, "💾 썸네일 캐시 저장 완료: ${photo.name} (캐시 크기: $newSize)")
                             } else {
                                 Log.w(TAG, "⚠️ 빈 썸네일 데이터 수신: ${photo.name}")
                                 // 빈 데이터도 캐시에 저장하여 재시도 방지
-                                synchronized(currentCache) {
-                                    currentCache[photo.path] = ByteArray(0)
-                                    _thumbnailCache.value = currentCache.toMap()
+                                synchronized(thumbnailCacheLock) {
+                                    _thumbnailCache.value =
+                                        _thumbnailCache.value + (photo.path to ByteArray(0))
                                 }
                             }
                         },
@@ -218,9 +222,9 @@ class PhotoImageManager @Inject constructor(
                             }
 
                             // 일반적인 실패한 경우만 빈 데이터로 캐시하여 재시도 방지
-                            synchronized(currentCache) {
-                                currentCache[photo.path] = ByteArray(0)
-                                _thumbnailCache.value = currentCache.toMap()
+                            synchronized(thumbnailCacheLock) {
+                                _thumbnailCache.value =
+                                    _thumbnailCache.value + (photo.path to ByteArray(0))
                             }
                         }
                     )
@@ -229,9 +233,9 @@ class PhotoImageManager @Inject constructor(
                 } catch (exception: Exception) {
                     Log.e(TAG, "💥 썸네일 로딩 중 예외: ${photo.name}", exception)
                     if (isManagerActive) {
-                        synchronized(currentCache) {
-                            currentCache[photo.path] = ByteArray(0)
-                            _thumbnailCache.value = currentCache.toMap()
+                        synchronized(thumbnailCacheLock) {
+                            _thumbnailCache.value =
+                                _thumbnailCache.value + (photo.path to ByteArray(0))
                         }
                     }
                 } finally {
@@ -647,9 +651,11 @@ class PhotoImageManager @Inject constructor(
      * 정리
      */
     fun cleanup() {
+        // 진행 중 작업 취소 → scope 재생성 후 즉시 재활성화하여
+        // @Singleton 재진입(미리보기 재진입) 시 로딩이 영구 차단되지 않도록 한다.(F19/F27)
         managerScope.coroutineContext.job.cancel()
         managerScope = createManagerScope()
-        isManagerActive = false
+        isManagerActive = true
         _thumbnailCache.value = emptyMap()
         _fullImageCache.value = emptyMap()
         _downloadingImages.value = emptySet()

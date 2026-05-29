@@ -110,6 +110,7 @@ class PtpipViewModelHotspotTest {
         discoveryHelper = discoveryHelper,
         debugHelper = debugHelper,
         wifiHelper = wifiHelper,
+        ioDispatcher = testDispatcher,
     )
 
     @Test

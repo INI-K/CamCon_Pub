@@ -547,9 +547,11 @@ class PhotoListManager @Inject constructor(
      * 매니저 정리
      */
     fun cleanup() {
+        // 진행 중 작업 취소 → scope 재생성 후 즉시 재활성화하여
+        // @Singleton 재진입(미리보기 재진입) 시 목록 로딩이 영구 차단되지 않도록 한다.(F20)
         managerScope.coroutineContext.job.cancel()
         managerScope = createManagerScope()
-        isManagerActive = false
+        isManagerActive = true
         _allPhotos.value = emptyList()
         _filteredPhotos.value = emptyList()
         _isLoading.value = false
