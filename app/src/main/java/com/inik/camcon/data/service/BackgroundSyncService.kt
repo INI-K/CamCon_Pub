@@ -172,6 +172,9 @@ class BackgroundSyncService : Service() {
                 PowerManager.PARTIAL_WAKE_LOCK,
                 "CamCon::BackgroundEventListener"
             ).apply {
+                // renewWakeLock가 무조건 재acquire하므로 참조 카운팅 비활성화
+                // (단일 release로 항상 해제되도록 보장)
+                setReferenceCounted(false)
                 acquire(10 * 60 * 1000L /*10 minutes*/) // 10분 제한 설정
                 LogcatManager.d(TAG, " Wake Lock 획득 - 백그라운드 이벤트 리스너 유지")
             }
@@ -198,15 +201,17 @@ class BackgroundSyncService : Service() {
     }
 
     /**
-     * Wake Lock 갱신 (10분마다)
+     * Wake Lock 갱신 (sync 루프 주기마다 = 타임아웃보다 짧은 주기로 무조건 재acquire)
+     *
+     * isHeld 가드를 두면 타임아웃 만료(isHeld=false)부터 다음 갱신까지 락 공백이 생긴다.
+     * SYNC_INTERVAL(30초)이 타임아웃(10분)보다 훨씬 짧으므로, 만료 전에 무조건
+     * 타임아웃을 다시 설정해 공백 없이 락을 유지한다.
      */
     private fun renewWakeLock() {
         try {
             wakeLock?.let { lock ->
-                if (!lock.isHeld) {
-                    lock.acquire(10 * 60 * 1000L) // 다시 10분 연장
-                    LogcatManager.d(TAG, " Wake Lock 갱신됨")
-                }
+                lock.acquire(10 * 60 * 1000L) // 무조건 타임아웃 재설정 (10분 연장)
+                LogcatManager.d(TAG, " Wake Lock 갱신됨")
             }
         } catch (e: Exception) {
             LogcatManager.e(TAG, "Wake Lock 갱신 실패", e)

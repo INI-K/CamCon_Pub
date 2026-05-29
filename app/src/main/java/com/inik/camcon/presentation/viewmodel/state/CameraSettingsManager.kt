@@ -70,11 +70,11 @@ class CameraSettingsManager @Inject constructor(
     private val _storageInfo = MutableStateFlow<StorageInfo?>(null)
     val storageInfo: StateFlow<StorageInfo?> = _storageInfo.asStateFlow()
 
-    // 설정 캐시 (성능 최적화용)
-    private val settingsCache = mutableMapOf<String, String>()
+    // 설정 캐시 (성능 최적화용) — IO 멀티스레드 동시 접근 대비 ConcurrentHashMap(F24)
+    private val settingsCache = java.util.concurrent.ConcurrentHashMap<String, String>()
 
-    // 기능 정보 캐시
-    private val capabilitiesCache = mutableMapOf<String, CameraCapabilities>()
+    // 기능 정보 캐시 — ConcurrentHashMap(F24)
+    private val capabilitiesCache = java.util.concurrent.ConcurrentHashMap<String, CameraCapabilities>()
 
     /**
      * 카메라 설정 로드

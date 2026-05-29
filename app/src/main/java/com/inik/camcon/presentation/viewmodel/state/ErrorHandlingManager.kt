@@ -8,6 +8,7 @@ import com.inik.camcon.domain.manager.ErrorType
 import com.inik.camcon.domain.manager.NativeErrorCallbackRegistrar
 import com.inik.camcon.domain.manager.NativeErrorEvent
 import com.inik.camcon.domain.util.Logger
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -35,16 +36,25 @@ class ErrorHandlingManager @Inject constructor(
         const val ERROR_USB_WRITE_FAILED = -35
     }
 
-    // 에러 이벤트 스트림
-    private val _errorEvent = MutableSharedFlow<ErrorEvent>()
+    // 에러 이벤트 스트림 — 버퍼 보유로 collector 부재/처리 중에도 드롭 방지(F3)
+    private val _errorEvent = MutableSharedFlow<ErrorEvent>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
     val errorEvent: SharedFlow<ErrorEvent> = _errorEvent.asSharedFlow()
 
-    // 네이티브 에러 스트림
-    private val _nativeErrorEvent = MutableSharedFlow<NativeErrorEvent>()
+    // 네이티브 에러 스트림 — 버퍼 보유(F3)
+    private val _nativeErrorEvent = MutableSharedFlow<NativeErrorEvent>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
     val nativeErrorEvent: SharedFlow<NativeErrorEvent> = _nativeErrorEvent.asSharedFlow()
 
-    // USB 분리 이벤트 스트림
-    private val _usbDisconnectedEvent = MutableSharedFlow<Unit>()
+    // USB 분리 이벤트 스트림 — 버퍼 보유(F3)
+    private val _usbDisconnectedEvent = MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
     override val usbDisconnectedEvent: SharedFlow<Unit> = _usbDisconnectedEvent.asSharedFlow()
 
     private var isCallbackRegistered = false
@@ -94,7 +104,9 @@ class ErrorHandlingManager @Inject constructor(
 
             ERROR_USB_DETECTION_FAILED -> {
                 // USB 분리 이벤트 발생 (-52도 USB 분리로 처리)
-                _usbDisconnectedEvent.tryEmit(Unit)
+                if (!_usbDisconnectedEvent.tryEmit(Unit)) {
+                    logger.w(TAG, "USB 분리 이벤트 방출 실패(버퍼 포화): code=$errorCode")
+                }
 
                 NativeErrorEvent(
                     errorCode = errorCode,
@@ -107,7 +119,9 @@ class ErrorHandlingManager @Inject constructor(
 
             ERROR_USB_DISCONNECTED -> {
                 // USB 분리 이벤트 발생
-                _usbDisconnectedEvent.tryEmit(Unit)
+                if (!_usbDisconnectedEvent.tryEmit(Unit)) {
+                    logger.w(TAG, "USB 분리 이벤트 방출 실패(버퍼 포화): code=$errorCode")
+                }
 
                 NativeErrorEvent(
                     errorCode = errorCode,
@@ -139,11 +153,9 @@ class ErrorHandlingManager @Inject constructor(
             }
         }
 
-        // 네이티브 에러 이벤트 발생
-        try {
-            _nativeErrorEvent.tryEmit(errorEvent)
-        } catch (e: Exception) {
-            logger.e(TAG, "네이티브 에러 이벤트 발생 실패", e)
+        // 네이티브 에러 이벤트 발생 (tryEmit은 예외를 던지지 않으므로 반환값으로 판정)
+        if (!_nativeErrorEvent.tryEmit(errorEvent)) {
+            logger.w(TAG, "네이티브 에러 이벤트 방출 실패(버퍼 포화): code=$errorCode")
         }
     }
 
@@ -164,12 +176,11 @@ class ErrorHandlingManager @Inject constructor(
             timestamp = System.currentTimeMillis()
         )
 
-        try {
-            _errorEvent.tryEmit(errorEvent)
-            logger.e(TAG, "에러 발생: $type - $message", exception)
-        } catch (e: Exception) {
-            logger.e(TAG, "에러 이벤트 발생 실패", e)
+        // tryEmit은 예외를 던지지 않으므로 반환값으로 판정
+        if (!_errorEvent.tryEmit(errorEvent)) {
+            logger.w(TAG, "에러 이벤트 방출 실패(버퍼 포화): $type - $message")
         }
+        logger.e(TAG, "에러 발생: $type - $message", exception)
     }
 
     /**

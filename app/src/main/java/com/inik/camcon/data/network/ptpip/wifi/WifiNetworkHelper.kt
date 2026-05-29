@@ -1302,6 +1302,26 @@ class WifiNetworkHelper @Inject constructor(
 
     private var currentNetwork: Network? = null // 현재 바인딩된 네트워크 추적용
 
+    // requestConnectionWithSpecifier로 등록한 NetworkCallback 추적용.
+    // onAvailable 성공분은 바인딩 유지를 위해 unbindNetwork 시점까지 살려두고,
+    // onUnavailable/타임아웃 등 실패분은 즉시 이 필드로 해제한다.
+    @Volatile
+    private var specifierNetworkCallback: ConnectivityManager.NetworkCallback? = null
+
+    /**
+     * requestConnectionWithSpecifier로 등록한 콜백을 한 번만 해제한다.
+     */
+    private fun unregisterSpecifierCallback() {
+        val callback = specifierNetworkCallback ?: return
+        specifierNetworkCallback = null
+        try {
+            connectivityManager.unregisterNetworkCallback(callback)
+            Log.d(TAG, "Specifier NetworkCallback 해제됨")
+        } catch (e: Exception) {
+            Log.w(TAG, "Specifier NetworkCallback 해제 실패: ${e.message}")
+        }
+    }
+
     /**
      * 현재 바인딩된 카메라 네트워크 가져오기
      */
@@ -1318,6 +1338,8 @@ class WifiNetworkHelper @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "네트워크 바인딩 해제 실패", e)
         }
+        // 성공 경로에서 살려둔 콜백을 바인딩 해제 시점에 해제 (누수 방지)
+        unregisterSpecifierCallback()
     }
 
     /**
@@ -1635,6 +1657,8 @@ class WifiNetworkHelper @Inject constructor(
                     Log.e(TAG, "사용자에게 표시할 오류 메시지: $message")
                     onError?.invoke(message)
                     onResult(false)
+                    // 실패 경로: 콜백을 즉시 해제해 누수 방지
+                    unregisterSpecifierCallback()
                 }
 
                 override fun onLost(network: Network) {
@@ -1677,15 +1701,16 @@ class WifiNetworkHelper @Inject constructor(
                     onError?.invoke(message)
                     onResult(false)
 
-                    try {
-                        connectivityManager.unregisterNetworkCallback(callback)
-                    } catch (e: Exception) {
-                        Log.w(TAG, "콜백 등록 해제 실패: ${e.message}")
-                    }
+                    // 타임아웃 경로: 멤버 필드를 통해 일관 해제
+                    unregisterSpecifierCallback()
                 }
             }, 45000) // 45초
 
+            // 이전 호출에서 살아남은 콜백이 있으면 먼저 해제 (반복 자동 연결 누수 방지)
+            unregisterSpecifierCallback()
             connectivityManager.requestNetwork(request, callback)
+            // requestNetwork 성공 후에만 추적 필드에 저장 (미등록 콜백 해제 시도 방지)
+            specifierNetworkCallback = callback
             Log.d(TAG, "✅ WifiNetworkSpecifier 요청 전송 완료")
             Log.d(TAG, "========================================")
 

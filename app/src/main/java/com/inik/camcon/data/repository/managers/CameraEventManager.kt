@@ -623,15 +623,76 @@ class CameraEventManager @Inject constructor(
                 Log.d("카메라이벤트매니저", "🔄 Repository onPhotoDownloaded 콜백 호출: $fileName")
                 Log.d("카메라이벤트매니저", "   onPhotoDownloaded 콜백 null 여부: ${onPhotoDownloaded == null}")
 
-                // Repository의 콜백을 직접 호출 (PhotoDownloadManager 중복 처리 제거)
-                try {
-                    if (onPhotoDownloaded != null) {
-                        Log.d("카메라이벤트매니저", "🚀 실제 콜백 호출 시작: $fileName")
-                        onPhotoDownloaded.invoke(filePath, fileName, imageData)
-                        Log.d("카메라이벤트매니저", "✅ Repository 콜백 호출 완료: $fileName")
-                    } else {
-                        Log.w("카메라이벤트매니저", "⚠️ onPhotoDownloaded 콜백이 null입니다: $fileName")
+                if (onPhotoDownloaded == null) {
+                    Log.w("카메라이벤트매니저", "⚠️ onPhotoDownloaded 콜백이 null입니다: $fileName")
+                    return
+                }
+
+                // RAW 파일 게이팅 — onPhotoCaptured와 동일하게 ValidateImageFormatUseCase 단일 지점 적용.
+                // 실제 RAW 바이트를 운반하는 경로이므로 PRO 미만 티어/제한 시 저장·포워딩을 차단한다.
+                if (validateImageFormatUseCase.isRawFile(fileName)) {
+                    LogcatManager.d("카메라이벤트매니저", "🔍 ${connectionType.name} RAW 직접 다운로드 감지: $fileName")
+                    scope.launch(ioDispatcher) {
+                        try {
+                            val validationResult =
+                                validateImageFormatUseCase.validateRawFileAccess(fileName)
+
+                            if (!validationResult.isSupported) {
+                                LogcatManager.w(
+                                    "카메라이벤트매니저",
+                                    "🚫 ${connectionType.name} RAW 직접 다운로드 차단: $fileName"
+                                )
+                                try {
+                                    withContext(mainDispatcher) {
+                                        onRawFileRestricted?.invoke(
+                                            fileName,
+                                            validationResult.restrictionMessage
+                                                ?: context.getString(R.string.raw_restriction_unknown)
+                                        )
+                                    }
+                                } catch (e: Exception) {
+                                    LogcatManager.w("카메라이벤트매니저", "RAW 파일 제한 콜백 호출 중 예외", e)
+                                }
+                                return@launch
+                            }
+
+                            LogcatManager.d(
+                                "카메라이벤트매니저",
+                                "✅ ${connectionType.name} RAW 직접 다운로드 허용: $fileName"
+                            )
+                            try {
+                                onPhotoDownloaded.invoke(filePath, fileName, imageData)
+                                LogcatManager.d("카메라이벤트매니저", "✅ Repository 콜백 호출 완료: $fileName")
+                            } catch (e: Exception) {
+                                LogcatManager.e("카메라이벤트매니저", "Repository 콜백 호출 중 예외: $fileName", e)
+                            }
+                        } catch (e: Exception) {
+                            LogcatManager.e(
+                                "카메라이벤트매니저",
+                                "${connectionType.name} RAW 직접 다운로드 검증 중 오류 - 기본 차단: $fileName",
+                                e
+                            )
+                            // 검증 실패 시 기본적으로 차단
+                            try {
+                                withContext(mainDispatcher) {
+                                    onRawFileRestricted?.invoke(
+                                        fileName,
+                                        context.getString(R.string.raw_restriction_unknown)
+                                    )
+                                }
+                            } catch (e2: Exception) {
+                                LogcatManager.w("카메라이벤트매니저", "RAW 파일 오류 콜백 호출 중 예외", e2)
+                            }
+                        }
                     }
+                    return
+                }
+
+                // 일반(비-RAW) 파일은 Repository의 콜백을 직접 호출 (PhotoDownloadManager 중복 처리 제거)
+                try {
+                    Log.d("카메라이벤트매니저", "🚀 실제 콜백 호출 시작: $fileName")
+                    onPhotoDownloaded.invoke(filePath, fileName, imageData)
+                    Log.d("카메라이벤트매니저", "✅ Repository 콜백 호출 완료: $fileName")
                 } catch (e: Exception) {
                     Log.e("카메라이벤트매니저", "❌ Repository 콜백 호출 중 예외: $fileName", e)
                 }

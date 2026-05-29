@@ -36,19 +36,19 @@ class ColorTransferRepositoryImpl @Inject constructor(
         intensity: Float,
         maxSize: Int
     ): String? = withContext(Dispatchers.Default) {
+        // finally에서 항상 recycle 하기 위한 추적 변수
+        var inputBitmapToRecycle: Bitmap? = null
         try {
-            val inputBitmap = if (maxSize > 0) {
+            val inputBitmap = (if (maxSize > 0) {
                 loadScaledBitmap(targetImagePath, maxSize)
             } else {
                 loadBitmapFromPath(targetImagePath)
-            } ?: return@withContext null
+            } ?: return@withContext null)
+            inputBitmapToRecycle = inputBitmap
 
             // Get cached reference stats
             val referenceStats = colorTransferProcessor.getCachedReferenceStats(referenceImagePath)
-                ?: run {
-                    inputBitmap.recycle()
-                    return@withContext null
-                }
+                ?: return@withContext null
 
             // Apply GPU-cached color transfer
             val result = colorTransferProcessor.applyColorTransferWithGPUCached(
@@ -64,14 +64,15 @@ class ColorTransferRepositoryImpl @Inject constructor(
                 intensity
             )
 
-            inputBitmap.recycle()
-
             // Save result to temp file
             saveBitmapToTempFile(transferred)
         } catch (e: Exception) {
             Log.e(TAG, "applyColorTransferWithGPUCached failed: ${e.message}")
             e.printStackTrace()
             null
+        } finally {
+            // 예외/조기 반환/성공 모든 경로에서 입력 비트맵 누수 방지
+            inputBitmapToRecycle?.recycle()
         }
     }
 
@@ -81,21 +82,22 @@ class ColorTransferRepositoryImpl @Inject constructor(
         intensity: Float,
         maxSize: Int
     ): String? = withContext(Dispatchers.Default) {
+        var inputBitmapToRecycle: Bitmap? = null
+        var referenceBitmapToRecycle: Bitmap? = null
         try {
-            val inputBitmap = if (maxSize > 0) {
+            val inputBitmap = (if (maxSize > 0) {
                 loadScaledBitmap(targetImagePath, maxSize)
             } else {
                 loadBitmapFromPath(targetImagePath)
-            } ?: return@withContext null
+            } ?: return@withContext null)
+            inputBitmapToRecycle = inputBitmap
 
-            val referenceBitmap = if (maxSize > 0) {
+            val referenceBitmap = (if (maxSize > 0) {
                 loadScaledBitmap(referenceImagePath, maxSize)
             } else {
                 loadBitmapFromPath(referenceImagePath)
-            } ?: run {
-                inputBitmap.recycle()
-                return@withContext null
-            }
+            } ?: return@withContext null)
+            referenceBitmapToRecycle = referenceBitmap
 
             // Try optimized native first, fallback to Kotlin
             val transferred = try {
@@ -108,15 +110,16 @@ class ColorTransferRepositoryImpl @Inject constructor(
                 colorTransferProcessor.applyColorTransfer(inputBitmap, referenceBitmap, intensity)
             }
 
-            inputBitmap.recycle()
-            referenceBitmap.recycle()
-
             // Save result to temp file
             saveBitmapToTempFile(transferred)
         } catch (e: Exception) {
             Log.e(TAG, "applyColorTransfer failed: ${e.message}")
             e.printStackTrace()
             null
+        } finally {
+            // 예외/조기 반환/성공 모든 경로에서 입력·참조 비트맵 누수 방지
+            inputBitmapToRecycle?.recycle()
+            referenceBitmapToRecycle?.recycle()
         }
     }
 
@@ -125,15 +128,17 @@ class ColorTransferRepositoryImpl @Inject constructor(
         referenceImagePath: String,
         intensity: Float
     ): String? = withContext(Dispatchers.Default) {
+        var inputBitmapToRecycle: Bitmap? = null
+        var referenceBitmapToRecycle: Bitmap? = null
         try {
             Log.d(TAG, "GPU color transfer: ${File(inputImagePath).name}")
 
             // Load images with EXIF orientation
             val inputBitmap = loadBitmapWithOrientation(inputImagePath) ?: return@withContext null
-            val referenceBitmap = loadBitmapWithOrientation(referenceImagePath) ?: run {
-                inputBitmap.recycle()
-                return@withContext null
-            }
+            inputBitmapToRecycle = inputBitmap
+            val referenceBitmap =
+                loadBitmapWithOrientation(referenceImagePath) ?: return@withContext null
+            referenceBitmapToRecycle = referenceBitmap
 
             try {
                 // Try GPU-accelerated color transfer
@@ -145,8 +150,6 @@ class ColorTransferRepositoryImpl @Inject constructor(
 
                 if (result != null) {
                     Log.d(TAG, "GPU color transfer succeeded")
-                    referenceBitmap.recycle()
-                    inputBitmap.recycle()
                     return@withContext saveBitmapToTempFile(result)
                 } else {
                     Log.w(TAG, "GPU color transfer failed - CPU fallback")
@@ -163,15 +166,16 @@ class ColorTransferRepositoryImpl @Inject constructor(
                 intensity
             )
 
-            referenceBitmap.recycle()
-            inputBitmap.recycle()
-
             Log.d(TAG, "CPU fallback complete")
             saveBitmapToTempFile(result)
         } catch (e: Exception) {
             Log.e(TAG, "Color transfer failed: ${e.message}")
             e.printStackTrace()
             null
+        } finally {
+            // 성공·실패·조기 반환 모든 경로에서 입력·참조 비트맵 누수 방지
+            inputBitmapToRecycle?.recycle()
+            referenceBitmapToRecycle?.recycle()
         }
     }
 
@@ -182,12 +186,15 @@ class ColorTransferRepositoryImpl @Inject constructor(
         outputPath: String,
         intensity: Float
     ): ColorTransferResult? = withContext(ioDispatcher) {
+        var inputBitmapToRecycle: Bitmap? = null
+        var transferredBitmapToRecycle: Bitmap? = null
         try {
             // Get cached reference stats
             val referenceStats = colorTransferProcessor.getCachedReferenceStats(referenceImagePath)
                 ?: return@withContext null
 
             val inputBitmap = loadBitmapFromPath(inputImagePath) ?: return@withContext null
+            inputBitmapToRecycle = inputBitmap
 
             // Try optimized native first, fallback to Kotlin
             val transferredBitmap = try {
@@ -203,6 +210,7 @@ class ColorTransferRepositoryImpl @Inject constructor(
                     intensity
                 )
             }
+            transferredBitmapToRecycle = transferredBitmap
 
             // Save result to file
             val outputFile = File(outputPath)
@@ -220,20 +228,19 @@ class ColorTransferRepositoryImpl @Inject constructor(
                 Log.w(TAG, "EXIF metadata copy failed: ${e.message}")
             }
 
-            val result = ColorTransferResult(
+            ColorTransferResult(
                 outputPath = outputPath,
                 width = transferredBitmap.width,
                 height = transferredBitmap.height
             )
-
-            inputBitmap.recycle()
-            transferredBitmap.recycle()
-
-            result
         } catch (e: Exception) {
             Log.e(TAG, "applyColorTransferAndSave failed: ${e.message}")
             e.printStackTrace()
             null
+        } finally {
+            // FileOutputStream/compress/EXIF 단계 예외 시에도, 성공 시에도 비트맵 누수 방지
+            inputBitmapToRecycle?.recycle()
+            transferredBitmapToRecycle?.recycle()
         }
     }
 

@@ -137,7 +137,9 @@ fun CameraPreviewArea(
                     }
                     val processed = kotlinx.coroutines.withContext(ioDispatcher) {
                         try {
-                            com.inik.camcon.presentation.util.applyFocusPeaking(decodedBitmap)
+                            // F26: getPixels 전 recycle 가드 — 교체 경합 시 IllegalStateException 방지
+                            if (decodedBitmap.isRecycled) null
+                            else com.inik.camcon.presentation.util.applyFocusPeaking(decodedBitmap)
                         } catch (e: Exception) {
                             Log.w("CameraPreview", "포커스 피킹 처리 실패", e)
                             null
@@ -163,19 +165,9 @@ fun CameraPreviewArea(
                     contentScale = ContentScale.Fit
                 )
 
-                // ✅ DisposableEffect 추가: Bitmap 명시적 회수 (W-2 해결)
-                // Key를 Unit으로 변경하여 교체 중 경합 방지
-                androidx.compose.runtime.DisposableEffect(Unit) {
-                    onDispose {
-                        try {
-                            if (!decodedBitmap.isRecycled) {
-                                decodedBitmap.recycle()
-                            }
-                        } catch (e: Exception) {
-                            Log.w("CameraPreview", "Bitmap recycle 실패", e)
-                        }
-                    }
-                }
+                // F25: decodedBitmap(라이브뷰 프레임) 의 생명주기는 CameraViewModel 이 단일 소유한다.
+                // (새 프레임 대입 시 한 세대 지연 회수 + onCleared 최종 회수)
+                // Compose 측 DisposableEffect 위임은 use-after-recycle 를 유발하므로 제거했다.
 
                 // 포커스 피킹 결과 Bitmap 도 화면에서 사라질 때 회수.
                 androidx.compose.runtime.DisposableEffect(focusPeakingBitmap.value) {
