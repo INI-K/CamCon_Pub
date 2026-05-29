@@ -401,7 +401,10 @@ class PtpipDataSource @Inject constructor(
                     _connectionState.value = PtpipConnectionState.CONNECTING
                     _connectionProgressMessage.value = "카메라에 연결 중..."
 
-                    if (connectToCamera(camera, forceApMode = false)) {
+                    // attemptAutoReconnect는 handleNetworkStateChange의 connectionStateMutex.withLock
+                    // 컨텍스트에서 호출되므로, 락을 재획득하지 않는 내부 함수를 사용한다.
+                    // (connectToCamera는 락을 재획득하여 비재진입 Mutex 데드락 유발)
+                    if (connectToCameraInternal(camera, forceApMode = false)) {
                         Log.i(TAG, "자동 재연결 성공")
                         return
                     }
@@ -566,6 +569,17 @@ class PtpipDataSource @Inject constructor(
      */
     suspend fun connectToCamera(camera: PtpipCamera, forceApMode: Boolean): Boolean =
         connectionStateMutex.withLock {
+            connectToCameraInternal(camera, forceApMode)
+        }
+
+    /**
+     * 스마트 카메라 연결 내부 구현 (이미 connectionStateMutex 보유 상태에서 호출)
+     *
+     * 자동 재연결(attemptAutoReconnect) 경로는 이미 connectionStateMutex를 보유하므로
+     * 락을 재획득하는 connectToCamera 대신 이 내부 함수를 호출해야 한다.
+     * (kotlinx Mutex는 비재진입 — 재획득 시 영구 데드락)
+     */
+    private suspend fun connectToCameraInternal(camera: PtpipCamera, forceApMode: Boolean): Boolean =
         withContext(ioDispatcher) {
         try {
             Log.i(TAG, "============================================")
@@ -739,8 +753,7 @@ class PtpipDataSource @Inject constructor(
             _connectionProgressMessage.value = "연결 오류: ${e.message}"
             return@withContext false
         }
-        } // withContext
-        } // connectionStateMutex.withLock
+        } // withContext (connectToCameraInternal)
 
     /**
      * Abilities JSON 파싱

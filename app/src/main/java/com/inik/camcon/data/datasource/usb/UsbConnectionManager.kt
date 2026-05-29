@@ -38,16 +38,25 @@ class UsbConnectionManager @Inject constructor(
     private val _isNativeCameraConnected = MutableStateFlow(false)
     val isNativeCameraConnected: StateFlow<Boolean> = _isNativeCameraConnected.asStateFlow()
 
+    // #23: 분리 디바운스 우회 판정(hasActiveConnection)이 cross-thread로 읽으므로 가시성 보장 필요
+    @Volatile
     private var currentDevice: UsbDevice? = null
+    @Volatile
     private var currentConnection: UsbDeviceConnection? = null
 
     // 초기화 상태 관리
     private val isInitializingNativeCamera = AtomicBoolean(false)
+    @Volatile
     private var lastInitializedFd = -1
     private val initializationMutex = Mutex()
 
     // USB 분리 처리 상태 추가 (무한 루프 방지)
     private val isHandlingDisconnection = AtomicBoolean(false)
+
+    // 분리 처리 직후 디바운스 (중복 분리 이벤트 폭주 억제). 처리 완료 시점 기준 쿨다운.
+    @Volatile
+    private var lastDisconnectionHandledAt = 0L
+    private val disconnectionDebounceMs = 3000L
 
     // 연결 해제 콜백
     private var disconnectionCallback: (() -> Unit)? = null
@@ -391,6 +400,16 @@ class UsbConnectionManager @Inject constructor(
      * USB 디바이스 분리 처리
      */
     suspend fun handleUsbDisconnection() = withContext(ioDispatcher) {
+        // 직전 분리 처리 완료 후 디바운스 윈도우 내 재진입은 무시 (접점 바운스 폭주 억제).
+        // 단, 그 사이 재연결돼 정리할 활성 연결이 다시 생겼다면 디바운스를 우회해 반드시 정리한다.
+        // (재연결 직후의 '진짜' 재분리가 드롭돼 좀비 연결/네이티브 핸들이 잔존하는 것을 방지 — #23)
+        val sinceLastHandled = System.currentTimeMillis() - lastDisconnectionHandledAt
+        val hasActiveConnection = currentConnection != null || _isNativeCameraConnected.value
+        if (sinceLastHandled < disconnectionDebounceMs && !hasActiveConnection) {
+            Log.d(TAG, "USB 분리 처리 디바운스 중 - 정리 대상 없음, 무시 (${sinceLastHandled}ms 경과)")
+            return@withContext
+        }
+
         // 중복 처리 방지 - 원자적 연산으로 체크
         if (!isHandlingDisconnection.compareAndSet(false, true)) {
             Log.d(TAG, "USB 분리 처리가 이미 진행 중 - 중복 방지")
@@ -441,8 +460,9 @@ class UsbConnectionManager @Inject constructor(
             isInitializingNativeCamera.set(false)
             disconnectionCallback?.invoke()
         } finally {
-            // 처리 완료 후 상태 리셋 (3초 후)
-            delay(3000)
+            // 정리 완료 직후 즉시 리셋해 후속 분리 이벤트를 막지 않음.
+            // 쿨다운은 디바운스 타임스탬프로 분리 (3초 윈도우는 진입부에서 체크).
+            lastDisconnectionHandledAt = System.currentTimeMillis()
             isHandlingDisconnection.set(false)
             Log.d(TAG, "USB 분리 처리 상태 리셋")
         }

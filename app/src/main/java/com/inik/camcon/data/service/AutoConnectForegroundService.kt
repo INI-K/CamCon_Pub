@@ -43,7 +43,8 @@ class AutoConnectForegroundService : Service() {
                 val notification = buildNotification(title, message)
                 notificationManager?.notify(NOTIFICATION_ID, notification)
                 Log.d(TAG, "알림 업데이트: $title - $message")
-                return START_STICKY
+                // null intent 재시작 시 else 분기로 들어가 자동 연결이 재실행되지 않도록 일관화
+                return START_NOT_STICKY
             }
 
             else -> {

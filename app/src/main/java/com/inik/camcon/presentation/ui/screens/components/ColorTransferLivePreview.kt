@@ -27,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -135,6 +136,15 @@ fun ColorTransferLivePreview(
 
         // ColorTransferUseCase 캐시도 초기화
         colorTransferViewModel.clearPerformanceInfo()
+    }
+
+    // 컴포저블 이탈(설정 화면 이탈, 색감전송 토글 off, Activity 종료) 시
+    // 떠 있던 처리 결과 Bitmap을 명시 회수한다 (#27)
+    DisposableEffect(Unit) {
+        onDispose {
+            processedBitmap?.let { if (!it.isRecycled) it.recycle() }
+            fullSizeProcessedBitmap?.let { if (!it.isRecycled) it.recycle() }
+        }
     }
 
     Card(
@@ -253,7 +263,10 @@ fun ColorTransferLivePreview(
                                 )
                                 .clickable {
                                     // 원본 크기로 색감 처리 시작
-                                    if (referenceImagePath != null && targetImagePath != null) {
+                                    // 더블탭 재진입 가드: 처리 중이면 무시 (#26)
+                                    if (referenceImagePath != null && targetImagePath != null &&
+                                        !isProcessingFullSize
+                                    ) {
                                         isProcessingFullSize = true
                                         // 백그라운드에서 원본 크기 처리
                                         coroutineScope.launch {
@@ -264,6 +277,8 @@ fun ColorTransferLivePreview(
                                                     lastProcessedIntensity,
                                                     colorTransferViewModel
                                                 )
+                                                // 직전 풀해상도 Bitmap 회수 후 교체 (#26)
+                                                fullSizeProcessedBitmap?.recycle()
                                                 fullSizeProcessedBitmap = fullSize
                                                 showFullSizeImage = true
                                             } catch (e: Exception) {

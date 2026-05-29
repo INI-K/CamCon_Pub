@@ -585,8 +585,8 @@ class PtpipViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        viewModelScope.launch {
-            connectionHelper.cleanup()
-        }
+        // viewModelScope는 onCleared 시점에 이미 취소되어 있으므로,
+        // 애플리케이션 스코프에서 정리를 보장한다 (TCP 소켓/네이티브 세션/Wi-Fi 락 누수 방지).
+        connectionHelper.cleanupAsync()
     }
 }

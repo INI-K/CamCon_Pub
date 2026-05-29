@@ -31,7 +31,6 @@ import androidx.compose.material.icons.filled.UsbOff
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.VideocamOff
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -102,7 +101,8 @@ fun CameraPreviewArea(
                 onDoubleClick = { onDoubleClick?.invoke() }
             )
     ) {
-        // ✅ 수정 (CRITICAL-1 + W-2 해결): remember 기반 디코딩 제거, DisposableEffect 추가
+        // ✅ 수정 (CRITICAL-1 해결): remember 기반 디코딩 제거, 이미 디코딩된 Bitmap만 표시
+        //   Bitmap 회수는 생산자(CameraViewModel)가 소유 (#11)
         if (liveViewState.isLiveViewActive && liveViewFrame != null && decodedBitmap != null) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -125,19 +125,9 @@ fun CameraPreviewArea(
                     contentScale = ContentScale.Fit
                 )
 
-                // ✅ DisposableEffect 추가: Bitmap 명시적 회수 (W-2 해결)
-                // Key를 Unit으로 변경하여 교체 중 경합 방지
-                androidx.compose.runtime.DisposableEffect(Unit) {
-                    onDispose {
-                        try {
-                            if (!decodedBitmap.isRecycled) {
-                                decodedBitmap.recycle()
-                            }
-                        } catch (e: Exception) {
-                            Log.w("CameraPreview", "Bitmap recycle 실패", e)
-                        }
-                    }
-                }
+                // ✅ Bitmap 회수는 생산자(CameraViewModel)가 소유한다 (#11).
+                //   매 프레임 직전 비트맵을 지연 회수하고, 라이브뷰 종료/ViewModel 정리 시
+                //   마지막 프레임을 회수한다. 여기서 별도 recycle하면 이중 소유가 되므로 두지 않는다.
 
                 // 라이브뷰 중지 버튼 오버레이
                 Button(

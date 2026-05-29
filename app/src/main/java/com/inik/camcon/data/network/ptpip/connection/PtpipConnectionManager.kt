@@ -108,6 +108,7 @@ class PtpipConnectionManager @Inject constructor(
 
             val connectionNumber = performCommandInitialization()
             if (connectionNumber == -1) {
+                closeConnections(closeSession = false)
                 forceTransition(PtpSessionState.DISCONNECTED)
                 return@withContext false
             }
@@ -119,11 +120,13 @@ class PtpipConnectionManager @Inject constructor(
             eventSocket?.connect(InetSocketAddress(camera.ipAddress, camera.port), 5000)
 
             if (!performEventInitialization(connectionNumber)) {
+                closeConnections(closeSession = false)
                 forceTransition(PtpSessionState.DISCONNECTED)
                 return@withContext false
             }
 
             if (!tryTransition(PtpSessionState.SOCKET_CONNECTED)) {
+                closeConnections(closeSession = false)
                 forceTransition(PtpSessionState.DISCONNECTED)
                 return@withContext false
             }
@@ -322,8 +325,11 @@ class PtpipConnectionManager @Inject constructor(
                 closeSession(forceClose = true)
             }
 
-            commandSocket?.close()
-            eventSocket?.close()
+            // 각 소켓을 독립적으로 닫아 한쪽 close 예외가 다른 쪽 close를 건너뛰지 않도록 함
+            runCatching { commandSocket?.close() }
+                .onFailure { Log.w(TAG, "Command 소켓 종료 중 오류: ${it.message}") }
+            runCatching { eventSocket?.close() }
+                .onFailure { Log.w(TAG, "Event 소켓 종료 중 오류: ${it.message}") }
         } catch (e: Exception) {
             Log.w(TAG, "연결 종료 중 오류: ${e.message}")
         } finally {

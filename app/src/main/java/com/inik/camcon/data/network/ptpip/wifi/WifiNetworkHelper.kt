@@ -570,6 +570,7 @@ class WifiNetworkHelper @Inject constructor(
     fun unbindFromCurrentNetwork() {
         try {
             connectivityManager.bindProcessToNetwork(null)
+            releaseSpecifierNetworkCallback()
             Log.d(TAG, "네트워크 바인딩 해제 완료")
         } catch (e: Exception) {
             Log.e(TAG, "네트워크 바인딩 해제 중 오류", e)
@@ -883,18 +884,15 @@ class WifiNetworkHelper @Inject constructor(
         return withContext(ioDispatcher) {
             try {
                 Log.d(TAG, "TCP 포트 확인: $ipAddress:$port")
-                val socket = java.net.Socket()
-                // SO_LINGER 비활성화
-                try {
-                    socket.setSoLinger(false, 0)
-                } catch (_: Exception) {
-                }
-                socket.soTimeout = timeoutMs
-                socket.connect(java.net.InetSocketAddress(ipAddress, port), timeoutMs)
-                // 성공 즉시 종료
-                try {
-                    socket.close()
-                } catch (_: Exception) {
+                java.net.Socket().use { socket ->
+                    // SO_LINGER 비활성화
+                    try {
+                        socket.setSoLinger(false, 0)
+                    } catch (_: Exception) {
+                    }
+                    socket.soTimeout = timeoutMs
+                    socket.connect(java.net.InetSocketAddress(ipAddress, port), timeoutMs)
+                    // use 블록 종료 시 소켓 close
                 }
                 // 소켓 정리 후 짧은 지연으로 NIC 상태 안정화
                 delay(150)
@@ -914,36 +912,36 @@ class WifiNetworkHelper @Inject constructor(
             withContext(ioDispatcher) {
                 Log.d(TAG, "PTP/IP 초기화 테스트 시작: $ipAddress:$port")
 
-                val socket = java.net.Socket()
-                socket.soTimeout = 3000
-                socket.connect(java.net.InetSocketAddress(ipAddress, port), 3000)
+                java.net.Socket().use { socket ->
+                    socket.soTimeout = 3000
+                    socket.connect(java.net.InetSocketAddress(ipAddress, port), 3000)
 
-                // PTP/IP Init Command Request 전송
-                val initPacket = createInitCommandRequest()
-                socket.getOutputStream().write(initPacket)
-                socket.getOutputStream().flush()
+                    // PTP/IP Init Command Request 전송
+                    val initPacket = createInitCommandRequest()
+                    socket.getOutputStream().write(initPacket)
+                    socket.getOutputStream().flush()
 
-                // ACK 응답 대기
-                val response = ByteArray(1024)
-                val bytesRead = socket.getInputStream().read(response)
+                    // ACK 응답 대기
+                    val response = ByteArray(1024)
+                    val bytesRead = socket.getInputStream().read(response)
 
-                socket.close()
+                    // 응답 확인 (use 블록 종료 시 소켓 close)
+                    if (bytesRead >= 8) {
+                        val buffer =
+                            java.nio.ByteBuffer.wrap(response)
+                                .order(java.nio.ByteOrder.LITTLE_ENDIAN)
+                        buffer.position(4)
+                        val responseType = buffer.int
 
-                // 응답 확인
-                if (bytesRead >= 8) {
-                    val buffer =
-                        java.nio.ByteBuffer.wrap(response).order(java.nio.ByteOrder.LITTLE_ENDIAN)
-                    buffer.position(4)
-                    val responseType = buffer.int
-
-                    if (responseType == 0x00000002) { // PTPIP_INIT_COMMAND_ACK
-                        Log.d(TAG, "✅ PTP/IP 초기화 성공: $ipAddress")
-                        return@withContext true
+                        if (responseType == 0x00000002) { // PTPIP_INIT_COMMAND_ACK
+                            Log.d(TAG, "✅ PTP/IP 초기화 성공: $ipAddress")
+                            return@withContext true
+                        }
                     }
-                }
 
-                Log.d(TAG, "❌ PTP/IP 초기화 실패: $ipAddress - 잘못된 응답")
-                false
+                    Log.d(TAG, "❌ PTP/IP 초기화 실패: $ipAddress - 잘못된 응답")
+                    false
+                }
             }
         } catch (e: Exception) {
             Log.d(TAG, "❌ PTP/IP 초기화 실패: $ipAddress - ${e.message}")
@@ -1256,6 +1254,24 @@ class WifiNetworkHelper @Inject constructor(
 
     private var currentNetwork: Network? = null // 현재 바인딩된 네트워크 추적용
 
+    // WifiNetworkSpecifier 요청으로 등록한 NetworkCallback 추적용 (누수 방지)
+    @Volatile
+    private var specifierNetworkCallback: ConnectivityManager.NetworkCallback? = null
+
+    /**
+     * WifiNetworkSpecifier 요청으로 등록한 NetworkCallback 해제
+     */
+    private fun releaseSpecifierNetworkCallback() {
+        val callback = specifierNetworkCallback ?: return
+        specifierNetworkCallback = null
+        try {
+            connectivityManager.unregisterNetworkCallback(callback)
+            Log.d(TAG, "WifiNetworkSpecifier NetworkCallback 해제됨")
+        } catch (e: Exception) {
+            Log.w(TAG, "WifiNetworkSpecifier NetworkCallback 해제 실패: ${e.message}")
+        }
+    }
+
     /**
      * 현재 바인딩된 카메라 네트워크 가져오기
      */
@@ -1268,6 +1284,7 @@ class WifiNetworkHelper @Inject constructor(
         try {
             connectivityManager.bindProcessToNetwork(null)
             currentNetwork = null
+            releaseSpecifierNetworkCallback()
             Log.i(TAG, "네트워크 바인딩 해제됨")
         } catch (e: Exception) {
             Log.e(TAG, "네트워크 바인딩 해제 실패", e)
@@ -1587,6 +1604,15 @@ class WifiNetworkHelper @Inject constructor(
                     }
 
                     Log.e(TAG, "사용자에게 표시할 오류 메시지: $message")
+                    // 연결 실패 시 이 요청의 NetworkCallback 즉시 해제 (누수 방지)
+                    try {
+                        connectivityManager.unregisterNetworkCallback(this)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "콜백 등록 해제 실패: ${e.message}")
+                    }
+                    if (specifierNetworkCallback === this) {
+                        specifierNetworkCallback = null
+                    }
                     onError?.invoke(message)
                     onResult(false)
                 }
@@ -1631,14 +1657,22 @@ class WifiNetworkHelper @Inject constructor(
                     onError?.invoke(message)
                     onResult(false)
 
+                    // 타임아웃 시 이 요청의 NetworkCallback 해제 (누수 방지)
                     try {
                         connectivityManager.unregisterNetworkCallback(callback)
                     } catch (e: Exception) {
                         Log.w(TAG, "콜백 등록 해제 실패: ${e.message}")
                     }
+                    // 추적 필드가 이 콜백을 가리키면 정리
+                    if (specifierNetworkCallback === callback) {
+                        specifierNetworkCallback = null
+                    }
                 }
             }, 45000) // 45초
 
+            // 이전 요청이 남아 있으면 먼저 해제 후 새 콜백 등록·추적
+            releaseSpecifierNetworkCallback()
+            specifierNetworkCallback = callback
             connectivityManager.requestNetwork(request, callback)
             Log.d(TAG, "✅ WifiNetworkSpecifier 요청 전송 완료")
             Log.d(TAG, "========================================")

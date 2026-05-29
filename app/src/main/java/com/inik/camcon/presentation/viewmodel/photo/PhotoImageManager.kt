@@ -17,6 +17,7 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -89,14 +90,14 @@ class PhotoImageManager @Inject constructor(
                 return@launch
             }
 
-            val currentCache = _thumbnailCache.value.toMutableMap()
-            val currentlyLoading = _loadingThumbnails.value.toMutableSet()
-
             // 순차적으로 처리 (동시 실행 방지)
             photos.forEach { photo ->
                 // 이미 캐시에 있거나 로딩 중인 경우 건너뛰기
-                if (currentCache.containsKey(photo.path) || currentlyLoading.contains(photo.path)) {
-                    if (currentCache.containsKey(photo.path)) {
+                // (live StateFlow를 읽어 동시 launch 간 중복 로드 최소화)
+                if (_thumbnailCache.value.containsKey(photo.path) ||
+                    _loadingThumbnails.value.contains(photo.path)
+                ) {
+                    if (_thumbnailCache.value.containsKey(photo.path)) {
                         Log.d(TAG, "♻️ 이미 캐시에 있음: ${photo.name}")
                     } else {
                         Log.d(TAG, "⏳ 이미 로딩 중: ${photo.name}")
@@ -110,9 +111,8 @@ class PhotoImageManager @Inject constructor(
                     return@launch
                 }
 
-                // 로딩 상태에 추가
-                currentlyLoading.add(photo.path)
-                _loadingThumbnails.value = currentlyLoading.toSet()
+                // 로딩 상태에 추가 (원자적 갱신)
+                _loadingThumbnails.update { it + photo.path }
 
                 try {
                     Log.d(TAG, "📷 썸네일 로드 시작: ${photo.name}")
@@ -148,25 +148,30 @@ class PhotoImageManager @Inject constructor(
                                     Log.w(TAG, "   - 비정상적인 썸네일 헤더 감지됨")
                                 }
 
-                                synchronized(currentCache) {
+                                // 원자적 read-modify-write 로 lost-update 경쟁 방지
+                                _thumbnailCache.update { current ->
+                                    val updated = current.toMutableMap()
                                     // LRU 캐시 크기 제한 적용
-                                    if (currentCache.size >= Constants.Cache.MAX_THUMBNAIL_CACHE_SIZE) {
-                                        val oldestKey = currentCache.keys.firstOrNull()
+                                    if (updated.size >= Constants.Cache.MAX_THUMBNAIL_CACHE_SIZE &&
+                                        !updated.containsKey(photo.path)
+                                    ) {
+                                        val oldestKey = updated.keys.firstOrNull()
                                         if (oldestKey != null) {
-                                            currentCache.remove(oldestKey)
+                                            updated.remove(oldestKey)
                                             Log.d(TAG, "캐시 크기 제한 - 가장 오래된 썸네일 제거: $oldestKey")
                                         }
                                     }
-                                    currentCache[photo.path] = thumbnailData
-                                    _thumbnailCache.value = currentCache.toMap()
+                                    updated[photo.path] = thumbnailData
+                                    updated
                                 }
-                                Log.d(TAG, "💾 썸네일 캐시 저장 완료: ${photo.name} (캐시 크기: ${currentCache.size})")
+                                Log.d(TAG, "💾 썸네일 캐시 저장 완료: ${photo.name}")
                             } else {
                                 Log.w(TAG, "⚠️ 빈 썸네일 데이터 수신: ${photo.name}")
                                 // 빈 데이터도 캐시에 저장하여 재시도 방지
-                                synchronized(currentCache) {
-                                    currentCache[photo.path] = ByteArray(0)
-                                    _thumbnailCache.value = currentCache.toMap()
+                                // (단, 정상 데이터가 이미 있으면 빈 데이터로 덮어쓰지 않음)
+                                _thumbnailCache.update { current ->
+                                    if (current[photo.path]?.isNotEmpty() == true) current
+                                    else current + (photo.path to ByteArray(0))
                                 }
                             }
                         },
@@ -216,9 +221,10 @@ class PhotoImageManager @Inject constructor(
                             }
 
                             // 일반적인 실패한 경우만 빈 데이터로 캐시하여 재시도 방지
-                            synchronized(currentCache) {
-                                currentCache[photo.path] = ByteArray(0)
-                                _thumbnailCache.value = currentCache.toMap()
+                            // (단, 정상 데이터가 이미 있으면 빈 데이터로 덮어쓰지 않음)
+                            _thumbnailCache.update { current ->
+                                if (current[photo.path]?.isNotEmpty() == true) current
+                                else current + (photo.path to ByteArray(0))
                             }
                         }
                     )
@@ -227,15 +233,14 @@ class PhotoImageManager @Inject constructor(
                 } catch (exception: Exception) {
                     Log.e(TAG, "💥 썸네일 로딩 중 예외: ${photo.name}", exception)
                     if (isManagerActive) {
-                        synchronized(currentCache) {
-                            currentCache[photo.path] = ByteArray(0)
-                            _thumbnailCache.value = currentCache.toMap()
+                        _thumbnailCache.update { current ->
+                            if (current[photo.path]?.isNotEmpty() == true) current
+                            else current + (photo.path to ByteArray(0))
                         }
                     }
                 } finally {
-                    // 로딩 상태에서 제거
-                    currentlyLoading.remove(photo.path)
-                    _loadingThumbnails.value = currentlyLoading.toSet()
+                    // 로딩 상태에서 제거 (원자적 갱신)
+                    _loadingThumbnails.update { it - photo.path }
                     Log.d(TAG, "🔄 썸네일 로딩 완료 처리: ${photo.name}")
                 }
             }
@@ -275,22 +280,23 @@ class PhotoImageManager @Inject constructor(
                 if (imageData != null && imageData.isNotEmpty()) {
                     Log.d(TAG, "이미지 데이터 확인: 유효함 (${imageData.size} bytes)")
 
-                    val currentCache = _fullImageCache.value.toMutableMap()
-                    if (!currentCache.containsKey(photoPath)) {
+                    val wasAbsent = !_fullImageCache.value.containsKey(photoPath)
+                    // 원자적 read-modify-write 로 lost-update 경쟁 방지
+                    _fullImageCache.update { current ->
+                        if (current.containsKey(photoPath)) return@update current
+                        val updated = current.toMutableMap()
                         // LRU 캐시 크기 제한 적용
-                        while (currentCache.size >= Constants.Cache.MAX_FULL_IMAGE_CACHE_SIZE) {
-                            val oldestKey = currentCache.keys.firstOrNull()
-                            if (oldestKey != null) {
-                                currentCache.remove(oldestKey)
-                                Log.d(TAG, "캐시 크기 제한 - 가장 오래된 이미지 제거: $oldestKey")
-                            } else {
-                                break
-                            }
+                        while (updated.size >= Constants.Cache.MAX_FULL_IMAGE_CACHE_SIZE) {
+                            val oldestKey = updated.keys.firstOrNull() ?: break
+                            updated.remove(oldestKey)
+                            Log.d(TAG, "캐시 크기 제한 - 가장 오래된 이미지 제거: $oldestKey")
                         }
-                        currentCache[photoPath] = imageData
-                        _fullImageCache.value = currentCache.toMap()
+                        updated[photoPath] = imageData
+                        updated
+                    }
 
-                        Log.d(TAG, "실제 파일 다운로드 성공: ${imageData.size} bytes (캐시 크기: ${currentCache.size})")
+                    if (wasAbsent) {
+                        Log.d(TAG, "실제 파일 다운로드 성공: ${imageData.size} bytes")
 
                         // EXIF 파싱
                         if (!_exifCache.value.containsKey(photoPath)) {
@@ -339,10 +345,8 @@ class PhotoImageManager @Inject constructor(
                 if (resizeSuccess && resizedFile.exists()) {
                     val resizedData = resizedFile.readBytes()
 
-                    // 캐시 업데이트 (리사이즈된 이미지로 교체)
-                    val currentCache = _fullImageCache.value.toMutableMap()
-                    currentCache[photoPath] = resizedData
-                    _fullImageCache.value = currentCache
+                    // 캐시 업데이트 (리사이즈된 이미지로 교체) — 원자적 갱신
+                    _fullImageCache.update { it + (photoPath to resizedData) }
 
                     Log.d(TAG, "✅ Free 티어 리사이징 완료: ${resizedData.size} bytes")
                 } else {
@@ -647,7 +651,9 @@ class PhotoImageManager @Inject constructor(
     fun cleanup() {
         managerScope.coroutineContext.job.cancel()
         managerScope = createManagerScope()
-        isManagerActive = false
+        // scope를 재생성했으므로 플래그도 활성 상태로 복원한다.
+        // (false로 두면 재진입 시 썸네일/이미지 로딩이 no-op이 되어 빈 화면 고착)
+        isManagerActive = true
         _thumbnailCache.value = emptyMap()
         _fullImageCache.value = emptyMap()
         _downloadingImages.value = emptySet()

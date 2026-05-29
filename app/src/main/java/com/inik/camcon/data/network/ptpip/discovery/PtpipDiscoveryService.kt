@@ -36,7 +36,25 @@ class PtpipDiscoveryService @Inject constructor(
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
     private val nsdManager = context.getSystemService(Context.NSD_SERVICE) as NsdManager
-    private var discoveryListener: NsdManager.DiscoveryListener? = null
+
+    // 동시 멀티타입 검색 시 각 코루틴의 listener가 공유 필드를 덮어쓰지 않도록
+    // 활성 listener를 스레드세이프 집합으로 추적한다.
+    private val activeDiscoveryListeners =
+        java.util.Collections.newSetFromMap(
+            java.util.concurrent.ConcurrentHashMap<NsdManager.DiscoveryListener, Boolean>()
+        )
+
+    /**
+     * 활성 listener를 안전하게 정지하고 추적 집합에서 제거한다.
+     */
+    private fun stopDiscoveryListener(listener: NsdManager.DiscoveryListener) {
+        if (!activeDiscoveryListeners.remove(listener)) return
+        try {
+            nsdManager.stopServiceDiscovery(listener)
+        } catch (e: Exception) {
+            Log.w(TAG, "mDNS listener 정지 중 오류: ${e.message}")
+        }
+    }
 
     // SharedPreferences for caching last known camera IP
     private val prefs: SharedPreferences = context.getSharedPreferences(
@@ -317,6 +335,8 @@ class PtpipDiscoveryService @Inject constructor(
             var servicesFound = 0
             var servicesResolved = 0
             var isResumed = false
+            // 이 코루틴이 등록한 로컬 listener (공유 필드 대신 코루틴별로 추적)
+            var registeredListener: NsdManager.DiscoveryListener? = null
 
             // 발견된 서비스가 있으면 바로 반환하는 헬퍼 함수
             fun tryResumeWithServices() {
@@ -327,12 +347,8 @@ class PtpipDiscoveryService @Inject constructor(
                             discoveredServices.isNotEmpty()
                         ) {
                             isResumed = true
-                            // 검색 중지 (리소스 정리)
-                            try {
-                                discoveryListener?.let { nsdManager.stopServiceDiscovery(it) }
-                            } catch (e: Exception) {
-                                Log.w(TAG, "검색 완료 후 정리 중 오류: ${e.message}")
-                            }
+                            // 검색 중지 (이 코루틴의 로컬 listener만 정리)
+                            registeredListener?.let { stopDiscoveryListener(it) }
                             val resultList = discoveredServices.toList()
                             Log.d(
                                 TAG,
@@ -411,6 +427,8 @@ class PtpipDiscoveryService @Inject constructor(
 
                 override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {
                     Log.e(TAG, "mDNS 검색 시작 실패: $serviceType, 에러코드: $errorCode")
+                    // 시작 실패한 listener는 stopServiceDiscovery 대상이 아니므로 집합에서만 제거
+                    activeDiscoveryListeners.remove(this)
                     synchronized(discoveredServices) {
                         if (!isResumed && continuation.isActive) {
                             isResumed = true
@@ -431,7 +449,9 @@ class PtpipDiscoveryService @Inject constructor(
                     NsdManager.PROTOCOL_DNS_SD,
                     listener
                 )
-                discoveryListener = listener
+                // 코루틴별 로컬 추적 + 활성 listener 집합 등록 (공유 단일 필드 덮어쓰기 방지)
+                registeredListener = listener
+                activeDiscoveryListeners.add(listener)
             } catch (e: Exception) {
                 Log.e(TAG, "mDNS 검색 시작 중 오류", e)
                 synchronized(discoveredServices) {
@@ -443,13 +463,9 @@ class PtpipDiscoveryService @Inject constructor(
                 return@suspendCancellableCoroutine
             }
 
-            // 취소 시 정리 작업 (타임아웃 포함)
+            // 취소 시 정리 작업 (타임아웃 포함) — 이 코루틴의 로컬 listener만 정리
             continuation.invokeOnCancellation {
-                try {
-                    nsdManager.stopServiceDiscovery(listener)
-                } catch (e: Exception) {
-                    Log.w(TAG, "mDNS 검색 정리 중 오류: ${e.message}")
-                }
+                stopDiscoveryListener(listener)
             }
         }
     }
@@ -544,12 +560,8 @@ class PtpipDiscoveryService @Inject constructor(
      * 발견 중지
      */
     fun stopDiscovery() {
-        try {
-            discoveryListener?.let { nsdManager.stopServiceDiscovery(it) }
-            discoveryListener = null
-        } catch (e: Exception) {
-            Log.w(TAG, "mDNS 검색 중지 중 오류: ${e.message}")
-        }
+        // 활성 listener 전체를 안전하게 정지 (각 코루틴이 등록한 listener 모두)
+        activeDiscoveryListeners.toList().forEach { stopDiscoveryListener(it) }
     }
 
     /**

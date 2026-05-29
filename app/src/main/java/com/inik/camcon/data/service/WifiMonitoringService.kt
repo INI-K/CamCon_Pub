@@ -48,10 +48,16 @@ class WifiMonitoringService : Service() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
+
+    // onLost(콜백 스레드)와 checkAndTriggerAutoConnect(Dispatchers.Default)에서 교차 접근 → 가시성 보장
+    @Volatile
     private var lastConnectedSSID: String? = null
 
-    // 네트워크 콜백 중복 방지
+    // 네트워크 콜백 중복 방지 (콜백 스레드 간 가시성 보장)
+    @Volatile
     private var lastProcessedNetwork: Network? = null
+
+    @Volatile
     private var lastProcessedTime: Long = 0
     private val MIN_PROCESS_INTERVAL_MS = 5000L // 5초 간격으로만 처리
 

@@ -469,6 +469,25 @@ class PtpipConnectionHelper @Inject constructor(
 
     // ── 클린업 ──────────────────────────────────────────
 
+    /**
+     * ViewModel.onCleared()에서 호출하는 정리 엔트리.
+     *
+     * onCleared 시점에는 viewModelScope가 이미 취소돼 있어 그 위에서 launch하면
+     * cleanup이 실행되지 않는다. 따라서 ViewModel 라이프사이클과 무관한
+     * 애플리케이션 스코프([scope])에서 정리를 보장한다.
+     */
+    fun cleanupAsync() {
+        scope.launch {
+            try {
+                cleanup()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "비동기 클린업 중 오류: ${e.message}", e)
+            }
+        }
+    }
+
     suspend fun cleanup() {
         ptpipRepository.disconnect()
         ptpipRepository.cleanup()

@@ -455,7 +455,9 @@ class PhotoListManager @Inject constructor(
     fun cleanup() {
         managerScope.coroutineContext.job.cancel()
         managerScope = createManagerScope()
-        isManagerActive = false
+        // scope를 재생성했으므로 플래그도 활성 상태로 복원한다.
+        // (false로 두면 재진입 시 모든 로딩이 no-op이 되어 빈 화면 고착)
+        isManagerActive = true
         _allPhotos.value = emptyList()
         _filteredPhotos.value = emptyList()
         _isLoading.value = false

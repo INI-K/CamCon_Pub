@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -345,16 +346,22 @@ class CameraViewModel @Inject constructor(
             .launchIn(viewModelScope)
 
         // ✅ 라이브뷰 프레임 Bitmap 디코딩 (IO 디스패처에서 처리) — CRITICAL-1 해결
-        // StateFlow는 이미 최신 값만 유지하므로 conflate() 불필요
-        liveViewFrame
-            .onEach { frame ->
+        // collectLatest: 새 프레임 도착 시 진행 중인 직전 디코딩을 취소해
+        //   완료 순서 역전(구프레임이 최신을 덮어씀, #25)을 방지한다.
+        viewModelScope.launch {
+            liveViewFrame.collectLatest { frame ->
                 if (frame != null) {
-                    decodeLiveViewFrameAsync(frame)
+                    decodeLiveViewFrame(frame)
                 } else {
+                    // 라이브뷰 종료 — 현재 프레임은 아직 그려지는 중일 수 있어 즉시 회수하지 않고
+                    // pending(이미 화면에서 내려간 직전 세대)만 회수, 현재 프레임은 pending으로 이월해
+                    // 다음 세션 첫 프레임 또는 onCleared에서 안전 회수한다(use-after-recycle 방지).
+                    recycleBitmapSafely(pendingRecycleBitmap)
+                    pendingRecycleBitmap = _decodedLiveViewBitmap.value
                     _decodedLiveViewBitmap.value = null
                 }
             }
-            .launchIn(viewModelScope)
+        }
     }
 
     /**
@@ -798,36 +805,74 @@ class CameraViewModel @Inject constructor(
     val memoryPoolStatus get() = diagnosticsManager.memoryPoolStatus
 
     /**
+     * 직전→직전 세대 프레임을 한 프레임 지연 회수하기 위한 보관 변수 (#11)
+     * StateFlow 대입은 재구성만 예약할 뿐 RenderThread draw 완료를 보장하지 않으므로
+     * 직전 프레임을 즉시 recycle하면 use-after-recycle 크래시가 날 수 있다.
+     * 한 세대 더 이전(이미 화면에서 확실히 내려간) 프레임만 회수한다.
+     */
+    private var pendingRecycleBitmap: android.graphics.Bitmap? = null
+
+    /**
      * ✅ 라이브뷰 프레임 Bitmap 디코딩 (IO 디스패처에서 처리)
      *
      * CRITICAL-1 해결:
      * - Bitmap 디코딩을 Compose 렌더 스레드에서 IO 디스패처로 오프로드
      * - 렌더 스레드 블로킹 제거 → 프레임 드롭 50% 이상 감소
-     * - 이전 Bitmap은 DisposableEffect에서 자동 recycle (W-2 해결)
+     *
+     * #11(메모리 churn/누수) 해결:
+     * - 매 프레임 새 Bitmap을 만들고 직전 프레임을 회수하되, RenderThread가 아직
+     *   그리는 중일 수 있는 직전 프레임 대신 한 세대 더 이전 프레임을 회수(한 프레임 지연).
+     * #25(취소 시 누수) 해결:
+     * - collectLatest가 디코딩 직후~대입 전에 취소하면 디코딩된 비트맵이 미아가 되므로
+     *   IO 블록에서 외부 변수에 담아두고, 대입 전 취소/예외 시 회수한다.
      */
-    private fun decodeLiveViewFrameAsync(frame: LiveViewFrame) {
-        viewModelScope.launch {
-            try {
-                val decodedBitmap = withContext(Dispatchers.IO) {
-                    val bitmapOptions = BitmapFactory.Options().apply {
-                        inMutable = true
-                        inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
-                    }
-                    try {
-                        BitmapFactory.decodeByteArray(
-                            frame.data, 0, frame.data.size, bitmapOptions
-                        )
-                    } catch (e: Exception) {
-                        Log.e(TAG, "라이브뷰 Bitmap 디코딩 실패", e)
-                        null
-                    }
+    private suspend fun decodeLiveViewFrame(frame: LiveViewFrame) {
+        var decoded: android.graphics.Bitmap? = null
+        try {
+            withContext(Dispatchers.IO) {
+                val bitmapOptions = BitmapFactory.Options().apply {
+                    inMutable = true
+                    inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
                 }
-                _decodedLiveViewBitmap.value = decodedBitmap
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.e(TAG, "라이브뷰 프레임 처리 중 오류", e)
+                decoded = try {
+                    BitmapFactory.decodeByteArray(
+                        frame.data, 0, frame.data.size, bitmapOptions
+                    )
+                } catch (e: Exception) {
+                    Log.e(TAG, "라이브뷰 Bitmap 디코딩 실패", e)
+                    null
+                }
             }
+            // 디코딩 실패 시 직전 프레임을 유지(빈 화면 깜빡임 방지)
+            val newBitmap = decoded ?: return
+
+            val previous = _decodedLiveViewBitmap.value
+            _decodedLiveViewBitmap.value = newBitmap
+            decoded = null // StateFlow로 소유권 이전 완료
+            // 직전(previous)은 아직 그려지는 중일 수 있어 즉시 회수하지 않고
+            // 한 세대 더 이전(pending) 프레임만 회수한다 (#11 지연 회수)
+            recycleBitmapSafely(pendingRecycleBitmap)
+            pendingRecycleBitmap = previous
+        } catch (e: CancellationException) {
+            // 디코딩됐으나 아직 대입 전이면 회수해 누수 방지 (#25)
+            recycleBitmapSafely(decoded)
+            throw e
+        } catch (e: Exception) {
+            recycleBitmapSafely(decoded)
+            Log.e(TAG, "라이브뷰 프레임 처리 중 오류", e)
+        }
+    }
+
+    /**
+     * 라이브뷰 Bitmap 안전 회수 (이미 회수됐거나 null이면 무시)
+     */
+    private fun recycleBitmapSafely(bitmap: android.graphics.Bitmap?) {
+        try {
+            if (bitmap != null && !bitmap.isRecycled) {
+                bitmap.recycle()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "라이브뷰 Bitmap recycle 실패", e)
         }
     }
 
@@ -842,6 +887,13 @@ class CameraViewModel @Inject constructor(
 
         // RAW 제한 콜백 해제
         cameraRepository.setRawFileRestrictionCallback(null)
+
+        // 라이브뷰 마지막 프레임 + 지연 회수 대기 프레임 Bitmap 회수 (#11)
+        val lastFrame = _decodedLiveViewBitmap.value
+        _decodedLiveViewBitmap.value = null
+        recycleBitmapSafely(lastFrame)
+        recycleBitmapSafely(pendingRecycleBitmap)
+        pendingRecycleBitmap = null
 
         Log.d(TAG, "ViewModel 정리 완료")
     }

@@ -27,9 +27,11 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -48,7 +50,9 @@ import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.presentation.theme.Background
 import com.inik.camcon.presentation.theme.TextPrimary
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun FullScreenTopBar(
@@ -415,13 +419,35 @@ private fun LocalThumbnailItemWrapper(
             )
             .clip(RoundedCornerShape(8.dp))
     ) {
-        val bitmap = remember(photo.path) {
-            android.graphics.BitmapFactory.decodeFile(photo.path)
+        // 메인 스레드 디스크 I/O 방지: IO 디스패처에서 다운샘플 디코딩 (#16)
+        val bitmap by produceState<android.graphics.Bitmap?>(initialValue = null, photo.path) {
+            value = withContext(Dispatchers.IO) {
+                try {
+                    val options = android.graphics.BitmapFactory.Options().apply {
+                        // 80dp 썸네일 표시에 충분한 수준으로 다운샘플
+                        inSampleSize = 4
+                        inPreferredConfig = android.graphics.Bitmap.Config.RGB_565
+                    }
+                    android.graphics.BitmapFactory.decodeFile(photo.path, options)
+                } catch (e: Exception) {
+                    Log.e("LocalThumbnail", "썸네일 디코딩 실패: ${photo.path}", e)
+                    null
+                }
+            }
+        }
+
+        // 컴포저블 이탈/경로 변경 시 디코딩한 Bitmap 명시 회수
+        DisposableEffect(bitmap) {
+            onDispose {
+                bitmap?.let {
+                    if (!it.isRecycled) it.recycle()
+                }
+            }
         }
 
         if (bitmap != null) {
             Image(
-                bitmap = bitmap.asImageBitmap(),
+                bitmap = bitmap!!.asImageBitmap(),
                 contentDescription = photo.name,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop

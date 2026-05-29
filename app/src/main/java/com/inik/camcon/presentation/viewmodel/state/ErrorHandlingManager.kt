@@ -8,6 +8,7 @@ import com.inik.camcon.domain.manager.ErrorType
 import com.inik.camcon.domain.manager.NativeErrorCallbackRegistrar
 import com.inik.camcon.domain.manager.NativeErrorEvent
 import com.inik.camcon.domain.util.Logger
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -28,6 +29,9 @@ class ErrorHandlingManager @Inject constructor(
     companion object {
         private const val TAG = "에러핸들링매니저"
 
+        // 이벤트 SharedFlow 버퍼 용량 (collector 미정지 순간의 이벤트 유실 방지)
+        private const val EVENT_BUFFER_CAPACITY = 8
+
         // 에러 코드 상수
         const val ERROR_USB_TIMEOUT = -10
         const val ERROR_USB_DETECTION_FAILED = -52
@@ -36,15 +40,26 @@ class ErrorHandlingManager @Inject constructor(
     }
 
     // 에러 이벤트 스트림
-    private val _errorEvent = MutableSharedFlow<ErrorEvent>()
+    // 네이티브 스레드에서 tryEmit 발행 — buffer 0 랑데부에서는 collector 미정지 시 조용히 드롭되므로
+    // extraBufferCapacity + DROP_OLDEST 로 이벤트 유실을 방지한다.
+    private val _errorEvent = MutableSharedFlow<ErrorEvent>(
+        extraBufferCapacity = EVENT_BUFFER_CAPACITY,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
     val errorEvent: SharedFlow<ErrorEvent> = _errorEvent.asSharedFlow()
 
     // 네이티브 에러 스트림
-    private val _nativeErrorEvent = MutableSharedFlow<NativeErrorEvent>()
+    private val _nativeErrorEvent = MutableSharedFlow<NativeErrorEvent>(
+        extraBufferCapacity = EVENT_BUFFER_CAPACITY,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
     val nativeErrorEvent: SharedFlow<NativeErrorEvent> = _nativeErrorEvent.asSharedFlow()
 
     // USB 분리 이벤트 스트림
-    private val _usbDisconnectedEvent = MutableSharedFlow<Unit>()
+    private val _usbDisconnectedEvent = MutableSharedFlow<Unit>(
+        extraBufferCapacity = EVENT_BUFFER_CAPACITY,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
     override val usbDisconnectedEvent: SharedFlow<Unit> = _usbDisconnectedEvent.asSharedFlow()
 
     private var isCallbackRegistered = false

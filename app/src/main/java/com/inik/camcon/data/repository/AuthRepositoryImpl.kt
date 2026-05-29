@@ -4,6 +4,7 @@ import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.functions.FirebaseFunctions
 import com.inik.camcon.domain.model.ReferralCode
 import com.inik.camcon.domain.model.Subscription
 import com.inik.camcon.domain.model.SubscriptionTier
@@ -20,7 +21,8 @@ import javax.inject.Singleton
 @Singleton
 class AuthRepositoryImpl @Inject constructor(
     private val firebaseAuth: FirebaseAuth,
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val functions: FirebaseFunctions
 ) : AuthRepository {
 
     companion object {
@@ -29,6 +31,14 @@ class AuthRepositoryImpl @Inject constructor(
         private const val SUBSCRIPTIONS_COLLECTION = "subscriptions"
         private const val REFERRALS_COLLECTION = "referrals"
         private const val REFERRAL_CODES_COLLECTION = "referral_codes"
+
+        // 클라이언트는 subscriptions/referral_codes에 직접 쓸 수 없다(firestore.rules: write if false).
+        // 권한 필요한 쓰기는 모두 Cloud Function 경유. (SubscriptionRepositoryImpl과 동일 보안 모델)
+        private const val REDEEM_REFERRAL_FUNCTION = "redeemReferralCode"
+        private const val ADMIN_SET_TIER_FUNCTION = "adminSetUserTier"
+        private const val ADMIN_CREATE_REFERRAL_FUNCTION = "adminCreateReferralCode"
+        private const val ADMIN_DELETE_REFERRAL_FUNCTION = "adminDeleteReferralCode"
+        private const val ENSURE_SUBSCRIPTION_FUNCTION = "ensureUserSubscription"
     }
 
     override suspend fun signInWithGoogle(idToken: String): Result<User> {
@@ -71,22 +81,15 @@ class AuthRepositoryImpl @Inject constructor(
                     .set(newUserData)
                     .await()
 
-                // 기본 구독 정보 생성 (FREE 티어)
-                val defaultSubscription = mapOf(
-                    "tier" to SubscriptionTier.FREE.name,
-                    "isActive" to true,
-                    "startDate" to Date(),
-                    "endDate" to null,
-                    "updatedAt" to Date(),
-                    "updatedBy" to "system"
-                )
-
-                firestore.collection(USERS_COLLECTION)
-                    .document(firebaseUser.uid)
-                    .collection(SUBSCRIPTIONS_COLLECTION)
-                    .document("current")
-                    .set(defaultSubscription)
-                    .await()
+                // 기본 구독 정보(FREE) 생성은 Cloud Function에 위임한다.
+                // subscriptions는 클라이언트 직접 쓰기가 rules로 차단되므로(write if false)
+                // 서버 Admin SDK가 멱등하게 FREE 문서를 생성한다. 실패해도 조회 경로가 FREE로 폴백하므로
+                // 로그인 자체는 막지 않는다(다음 호출 시 재시도됨).
+                runCatching {
+                    functions.getHttpsCallable(ENSURE_SUBSCRIPTION_FUNCTION).call().await()
+                }.onFailure {
+                    Log.e(TAG, "FREE 구독 문서 생성 위임 실패 — FREE 폴백, 다음 호출 시 재시도", it)
+                }
 
                 // User 객체 생성
                 user = User(
@@ -179,6 +182,9 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun updateUser(user: User): Boolean {
         return try {
+            // 보호 필드(tier/updatedAt/updatedBy)는 클라이언트가 변경할 수 없다(firestore.rules:
+            // protectedFieldsNotChanged). updatedAt을 포함하면 affectedKeys에 잡혀 PERMISSION_DENIED.
+            // 서버 타임스탬프가 필요하면 Cloud Function으로 이전해야 한다.
             val userMap = mapOf(
                 "email" to user.email,
                 "displayName" to user.displayName,
@@ -189,8 +195,7 @@ class AuthRepositoryImpl @Inject constructor(
                 "referredBy" to user.referredBy,
                 "totalReferrals" to user.totalReferrals,
                 "deviceInfo" to user.deviceInfo,
-                "appVersion" to user.appVersion,
-                "updatedAt" to Date()
+                "appVersion" to user.appVersion
             )
 
             firestore.collection(USERS_COLLECTION)
@@ -208,22 +213,14 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun updateUserTier(userId: String, tier: SubscriptionTier): Boolean {
         return try {
-            // 사용자의 구독 정보 업데이트
-            val subscriptionData = mapOf(
-                "tier" to tier.name,
-                "isActive" to true,
-                "startDate" to Date(),
-                "endDate" to null,
-                "updatedAt" to Date(),
-                "updatedBy" to (firebaseAuth.currentUser?.uid ?: "system")
+            // subscriptions는 클라이언트 직접 쓰기가 rules로 차단된다(write if false).
+            // 관리자 티어 변경은 Cloud Function(adminSetUserTier)이 호출자의 ADMIN 권한을 서버에서
+            // 검증한 뒤 Admin SDK로 기록한다. 호출자가 ADMIN이 아니면 CF가 PERMISSION_DENIED를 던진다.
+            val payload = mapOf(
+                "userId" to userId,
+                "tier" to tier.name
             )
-
-            firestore.collection(USERS_COLLECTION)
-                .document(userId)
-                .collection(SUBSCRIPTIONS_COLLECTION)
-                .document("current")
-                .set(subscriptionData)
-                .await()
+            functions.getHttpsCallable(ADMIN_SET_TIER_FUNCTION).call(payload).await()
 
             Log.i(TAG, "사용자 티어 업데이트 성공: $userId → $tier")
             true
@@ -390,13 +387,15 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun updateUserReferralCode(userId: String, referralCode: String): Boolean {
         return try {
+            // 보호 필드(updatedAt)는 제거한다 — 포함 시 protectedFieldsNotChanged 위반으로
+            // PERMISSION_DENIED가 발생한다. referralCode/referralCodeUsedAt은 비보호 필드라 본인 쓰기 허용.
+            // (추천 코드 소비 자체는 redeemReferralCode CF가 사용자 문서에 referralCode를 함께 기록한다.)
             firestore.collection(USERS_COLLECTION)
                 .document(userId)
                 .update(
                     mapOf(
                         "referralCode" to referralCode,
-                        "referralCodeUsedAt" to Date(),
-                        "updatedAt" to Date()
+                        "referralCodeUsedAt" to Date()
                     )
                 )
                 .await()
@@ -473,31 +472,15 @@ class AuthRepositoryImpl @Inject constructor(
         description: String?
     ): Boolean {
         return try {
-            val referralCode = ReferralCode(
-                code = code,
-                isUsed = false,
-                usedBy = null,
-                usedAt = null,
-                createdAt = Date(),
-                createdBy = firebaseAuth.currentUser?.uid ?: "system",
-                tier = tier,
-                description = description
+            // referral_codes는 클라이언트 직접 쓰기가 rules로 차단된다(write if false).
+            // Cloud Function(adminCreateReferralCode)이 호출자의 ADMIN 권한을 서버에서 검증한 뒤
+            // Admin SDK로 생성한다. 호출자가 ADMIN이 아니면 CF가 PERMISSION_DENIED를 던진다.
+            val payload = mapOf(
+                "code" to code,
+                "tier" to tier?.name,
+                "description" to description
             )
-
-            val data = mapOf(
-                "isUsed" to referralCode.isUsed,
-                "usedBy" to referralCode.usedBy,
-                "usedAt" to referralCode.usedAt,
-                "createdAt" to referralCode.createdAt,
-                "createdBy" to referralCode.createdBy,
-                "tier" to referralCode.tier?.name,
-                "description" to referralCode.description
-            )
-
-            firestore.collection(REFERRAL_CODES_COLLECTION)
-                .document(code)
-                .set(data)
-                .await()
+            functions.getHttpsCallable(ADMIN_CREATE_REFERRAL_FUNCTION).call(payload).await()
 
             Log.i(TAG, "추천 코드 생성 성공: $code")
             true
@@ -577,16 +560,12 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun useReferralCode(code: String, userId: String): Boolean {
         return try {
-            val updateData = mapOf(
-                "isUsed" to true,
-                "usedBy" to userId,
-                "usedAt" to Date()
-            )
-
-            firestore.collection(REFERRAL_CODES_COLLECTION)
-                .document(code)
-                .update(updateData)
-                .await()
+            // referral_codes 소비와 그에 따른 티어 부여는 클라이언트가 직접 할 수 없다(write if false).
+            // Cloud Function(redeemReferralCode)이 트랜잭션으로 코드 유효성·중복(1인1회)을 검증하고,
+            // 코드에 설정된 티어를 Admin SDK로 부여한다. 호출자(request.auth.uid)에게만 적용되므로
+            // userId 파라미터는 사용하지 않는다(서버가 인증 주체로 강제). 실패는 false로 호출자에 전달.
+            val payload = mapOf("code" to code)
+            functions.getHttpsCallable(REDEEM_REFERRAL_FUNCTION).call(payload).await()
 
             Log.i(TAG, "추천 코드 사용 처리 성공: $code by $userId")
             true
@@ -598,10 +577,10 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun deleteReferralCode(code: String): Boolean {
         return try {
-            firestore.collection(REFERRAL_CODES_COLLECTION)
-                .document(code)
-                .delete()
-                .await()
+            // referral_codes는 클라이언트 직접 쓰기가 rules로 차단된다(write if false).
+            // Cloud Function(adminDeleteReferralCode)이 호출자의 ADMIN 권한을 서버에서 검증한 뒤 삭제한다.
+            val payload = mapOf("code" to code)
+            functions.getHttpsCallable(ADMIN_DELETE_REFERRAL_FUNCTION).call(payload).await()
 
             Log.i(TAG, "추천 코드 삭제 성공: $code")
             true

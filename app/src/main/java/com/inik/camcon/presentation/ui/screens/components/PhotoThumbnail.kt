@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -269,6 +270,17 @@ private fun ExifAwareThumbnail(
     var rotatedBitmap by remember(photo.path, thumbnailData, fullImageData) {
         mutableStateOf<ImageBitmap?>(null)
     }
+    // 수동 디코딩한 원본 android.graphics.Bitmap 참조 (dispose 시 회수용)
+    var underlyingBitmap by remember(photo.path, thumbnailData, fullImageData) {
+        mutableStateOf<android.graphics.Bitmap?>(null)
+    }
+
+    // 컴포저블 이탈/키 변경 시 수동 디코딩한 Bitmap 명시 회수
+    DisposableEffect(underlyingBitmap) {
+        onDispose {
+            underlyingBitmap?.let { if (!it.isRecycled) it.recycle() }
+        }
+    }
 
     LaunchedEffect(photo.path, thumbnailData, fullImageData) {
         withContext(Dispatchers.IO) {
@@ -417,6 +429,7 @@ private fun ExifAwareThumbnail(
                     // 6. ImageBitmap으로 변환
                     try {
                         rotatedBitmap = rotatedBmp.asImageBitmap()
+                        underlyingBitmap = rotatedBmp
                         Log.d("PhotoThumbnail", "비트맵 디코딩 완료: ${photo.name}, bitmap: true")
                         Log.d(
                             "PhotoThumbnail",
@@ -750,6 +763,17 @@ private fun FluidExifAwareThumbnail(
     var rotatedBitmap by remember(photo.path, thumbnailData, fullImageData) {
         mutableStateOf<ImageBitmap?>(null)
     }
+    // 수동 디코딩한 원본 android.graphics.Bitmap 참조 (dispose 시 회수용)
+    var underlyingBitmap by remember(photo.path, thumbnailData, fullImageData) {
+        mutableStateOf<android.graphics.Bitmap?>(null)
+    }
+
+    // 컴포저블 이탈/키 변경 시 수동 디코딩한 Bitmap 명시 회수
+    DisposableEffect(underlyingBitmap) {
+        onDispose {
+            underlyingBitmap?.let { if (!it.isRecycled) it.recycle() }
+        }
+    }
 
     LaunchedEffect(photo.path, thumbnailData, fullImageData) {
         withContext(Dispatchers.IO) {
@@ -878,6 +902,7 @@ private fun FluidExifAwareThumbnail(
                     // 6. ImageBitmap으로 변환
                     try {
                         rotatedBitmap = rotatedBmp.asImageBitmap()
+                        underlyingBitmap = rotatedBmp
                         Log.d("FluidPhotoThumbnail", "유동적 비트맵 디코딩 완료: ${photo.name}")
                     } catch (e: Exception) {
                         Log.e("FluidPhotoThumbnail", "ImageBitmap 변환 실패: ${photo.name}", e)

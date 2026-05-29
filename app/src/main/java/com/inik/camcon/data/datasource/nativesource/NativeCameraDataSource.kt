@@ -165,7 +165,10 @@ class NativeCameraDataSource @Inject constructor(
     /**
      * USB 카메라 Abilities 저장
      */
+    @Volatile
     private var usbCameraAbilities: CameraAbilitiesInfo? = null
+
+    @Volatile
     private var usbCameraDeviceInfo: PtpDeviceInfo? = null
 
     private fun storeUsbCameraAbilities(

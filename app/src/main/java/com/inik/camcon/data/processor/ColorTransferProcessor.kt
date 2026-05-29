@@ -664,14 +664,14 @@ class ColorTransferProcessor @Inject constructor() {
     suspend fun getCachedReferenceStats(referenceImagePath: String): Array<FloatArray>? =
         withContext(Dispatchers.Default) {
             try {
-                // 캐시에서 확인
-                referenceStatsCache[referenceImagePath]?.let { cachedStats ->
-                    // 캐시 히트 - 액세스 순서 업데이트
-                    synchronized(cacheAccessOrder) {
+                // 캐시에서 확인 — 조회와 액세스 순서 갱신을 단일 임계영역에서 수행해
+                // 동시 미스 시 키 중복 추가/순서 불일치를 방지한다.
+                synchronized(cacheAccessOrder) {
+                    referenceStatsCache[referenceImagePath]?.let { cachedStats ->
                         cacheAccessOrder.remove(referenceImagePath)
                         cacheAccessOrder.add(referenceImagePath)
+                        return@withContext cachedStats
                     }
-                    return@withContext cachedStats
                 }
 
                 // 캐시 미스 - 새로 계산
@@ -693,14 +693,18 @@ class ColorTransferProcessor @Inject constructor() {
 
                     // 캐시에 저장 (LRU 관리)
                     synchronized(cacheAccessOrder) {
-                        // 캐시 크기 제한
-                        while (referenceStatsCache.size >= Constants.Cache.MAX_COLOR_TRANSFER_STATS_CACHE_SIZE) {
-                            val oldestKey = cacheAccessOrder.removeAt(0)
-                            referenceStatsCache.remove(oldestKey)
-                        }
+                        // 계산 중 다른 코루틴이 동일 키를 이미 저장했을 수 있다.
+                        // 키 중복 추가를 막기 위해 미존재 시에만 추가한다.
+                        if (!referenceStatsCache.containsKey(referenceImagePath)) {
+                            // 캐시 크기 제한
+                            while (referenceStatsCache.size >= Constants.Cache.MAX_COLOR_TRANSFER_STATS_CACHE_SIZE) {
+                                val oldestKey = cacheAccessOrder.removeAt(0)
+                                referenceStatsCache.remove(oldestKey)
+                            }
 
-                        referenceStatsCache[referenceImagePath] = referenceStats
-                        cacheAccessOrder.add(referenceImagePath)
+                            referenceStatsCache[referenceImagePath] = referenceStats
+                            cacheAccessOrder.add(referenceImagePath)
+                        }
                     }
 
                     // 메모리 정리
