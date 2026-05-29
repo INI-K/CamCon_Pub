@@ -60,4 +60,21 @@ class CameraStreamingManager @Inject constructor(
             setStreamingParametersUseCase(width, height, fps)
         }
     }
+
+    /**
+     * 스트리밍 정리(F23).
+     * @ApplicationScope 위의 무한 collect Job(streamingJob)을 취소하고 네이티브 스트리밍을 중지한다.
+     *
+     * 주의: 현재 startStreaming/stopStreaming 호출부가 0건인 미배선(dead) 기능이라
+     * onCleared 등에서의 호출 배선은 추가하지 않았다. 기능이 활성화될 때 호출부에서 연결해야 한다.
+     */
+    fun cleanup() {
+        streamingJob?.cancel()
+        streamingJob = null
+        scope.launch {
+            stopStreamingUseCase()
+            _isStreaming.value = false
+            _currentFrame.value = null
+        }
+    }
 }
