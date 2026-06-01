@@ -319,4 +319,8 @@
     <string name="settings_native_log_toast_disable">已停止原生日志捕获。</string>
     <string name="settings_referral_clipboard_label">referral_code</string>
     <string name="settings_referral_copied">推荐码 \'%s\' 已复制到剪贴板</string>
+    <string name="ptpip_hotspot_enable_title">手机热点已关闭</string>
+    <string name="ptpip_hotspot_enable_desc">由于 Android 限制，应用无法直接开启热点，将打开系统设置。开启热点后请返回。</string>
+    <string name="ptpip_hotspot_open_settings">打开热点设置</string>
+    <string name="ptpip_hotspot_compat_note">Nikon Z、富士、佳能(EOS Utility)、松下 Lumix 支持连接手机热点。OM System、宾得/理光仅支持相机自身 AP，无法连接手机热点。</string>
 </resources>

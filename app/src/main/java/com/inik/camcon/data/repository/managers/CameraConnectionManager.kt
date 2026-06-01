@@ -401,6 +401,9 @@ class CameraConnectionManager @Inject constructor(
      * PTPIP 연결 상태 업데이트
      */
     fun updatePtpipConnectionStatus(isConnected: Boolean) {
+        // 동일 상태 중복 호출 무시 — 초기화 시 GlobalManager가 5개 Flow 초깃값마다 false를
+        // 반복 방출하던 로그 폭주/다운스트림 재계산을 차단한다.
+        if (_isPtpipConnected.value == isConnected) return
         Log.d("카메라연결매니저", "PTPIP 연결 상태 업데이트: $isConnected")
         _isPtpipConnected.value = isConnected
 

@@ -321,4 +321,8 @@
     <string name="settings_native_log_toast_disable">Cattura del log nativo interrotta.</string>
     <string name="settings_referral_clipboard_label">referral_code</string>
     <string name="settings_referral_copied">Codice di riferimento \'%s\' copiato negli appunti</string>
+    <string name="ptpip_hotspot_enable_title">L\'hotspot del telefono è disattivato</string>
+    <string name="ptpip_hotspot_enable_desc">A causa delle restrizioni di Android, l\'app non può attivarlo direttamente; verranno aperte le impostazioni. Attiva l\'hotspot e torna indietro.</string>
+    <string name="ptpip_hotspot_open_settings">Apri impostazioni hotspot</string>
+    <string name="ptpip_hotspot_compat_note">Nikon Z, Fujifilm, Canon (EOS Utility) e Panasonic Lumix supportano la connessione all\'hotspot del telefono. OM System e Pentax/Ricoh supportano solo l\'AP della fotocamera e non possono connettersi all\'hotspot del telefono.</string>
 </resources>

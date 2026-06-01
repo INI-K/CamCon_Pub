@@ -363,6 +363,17 @@ class PtpipDataSource @Inject constructor(
     }
 
     /**
+     * 네트워크 상태를 즉시 재평가해 [wifiNetworkState]에 반영한다.
+     * 핫스팟을 OS 설정에서 켜고 돌아온 직후처럼 NetworkCallback이 발화하지 않는 경우의 UI 갱신용.
+     */
+    suspend fun refreshWifiNetworkState() {
+        val snapshot = kotlinx.coroutines.withContext(ioDispatcher) {
+            wifiHelper.getNetworkStateSnapshot()
+        }
+        _wifiNetworkState.value = snapshot
+    }
+
+    /**
      * 네트워크 상태 변화 처리
      */
     private fun handleNetworkStateChange(networkState: WifiNetworkState) {
@@ -761,6 +772,16 @@ class PtpipDataSource @Inject constructor(
                     // 인증 실패해도 계속 진행 (AP 모드일 수 있음)
                 } else {
                     Log.i(TAG, "✅ Nikon STA 인증 성공 - 카메라에서 '연결 허용' 승인됨")
+                    // 페어링에 사용한 GUID를 libgphoto2 연결에도 동일하게 주입.
+                    // (이 단계가 없으면 libgphoto2가 자기 랜덤 GUID로 연결해 카메라가
+                    //  미승인 클라이언트로 보고 PTP/IP InitFail(bad type 5)로 거부함)
+                    runCatching {
+                        CameraNative.setPtpipGuid(NikonAuthenticationService.STA_PAIRING_GUID)
+                    }.onSuccess {
+                        Log.i(TAG, "✅ libgphoto2 GUID를 Nikon 페어링 GUID로 설정: $it")
+                    }.onFailure {
+                        Log.w(TAG, "⚠️ libgphoto2 GUID 주입 실패", it)
+                    }
                 }
             }
 
@@ -796,7 +817,19 @@ class PtpipDataSource @Inject constructor(
                 CameraNative.initCameraForAPMode(camera.ipAddress, camera.port, pluginDir)
             } else {
                 Log.i(TAG, "=== 표준 모드: libgphoto2 초기화 ===")
-                CameraNative.initCameraWithPtpip(camera.ipAddress, camera.port, pluginDir)
+                // 진단: PTP/IP 핸드셰이크(InitCommand/InitEvent) 전체 로그를 logcat + 파일로 저장.
+                // init 구간에만 GP_LOG_DATA(3)로 올리고, 끝나면 ERROR로 복귀해 로그 플러드를 막는다.
+                // 파일: files/libgphoto2_ptpip_latest.txt (연결마다 덮어씀)
+                //   추출: adb shell run-as com.inik.camcon cat files/libgphoto2_ptpip_latest.txt
+                val gphotoLogPath =
+                    "${context.filesDir.absolutePath}/libgphoto2_ptpip_latest.txt"
+                runCatching { CameraNative.startLogFile(gphotoLogPath) }
+                runCatching { CameraNative.setLogLevel(3) }
+                try {
+                    CameraNative.initCameraWithPtpip(camera.ipAddress, camera.port, pluginDir)
+                } finally {
+                    runCatching { CameraNative.setLogLevel(0) }
+                }
             }
 
             val initOk = (initResult == "OK" || initResult == "GP_OK" ||

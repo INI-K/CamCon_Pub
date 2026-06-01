@@ -323,4 +323,8 @@
     <string name="settings_native_log_toast_disable">ネイティブログキャプチャを停止しました。</string>
     <string name="settings_referral_clipboard_label">referral_code</string>
     <string name="settings_referral_copied">紹介コード \'%s\' をクリップボードにコピーしました</string>
+    <string name="ptpip_hotspot_enable_title">スマホのテザリングがオフです</string>
+    <string name="ptpip_hotspot_enable_desc">Androidの制約によりアプリから直接オンにできないため、設定画面を開きます。テザリングをオンにして戻ってください。</string>
+    <string name="ptpip_hotspot_open_settings">テザリング設定を開く</string>
+    <string name="ptpip_hotspot_compat_note">Nikon Z・富士フイルム・キヤノン(EOS Utility)・Panasonic Lumixはスマホのテザリング接続に対応しています。OM System・ペンタックス/リコーはカメラ本体のAPのみ対応で、スマホのテザリングには接続できません。</string>
 </resources>

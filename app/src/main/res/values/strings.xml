@@ -312,6 +312,10 @@
     <string name="ptpip_hotspot_step_3">3. 카메라에서 폰 핫스팟의 SSID/비밀번호를 입력해 접속하세요</string>
     <string name="ptpip_hotspot_step_4">4. 카메라가 접속되면 \'카메라 찾기\' 또는 IP를 직접 입력하세요</string>
     <string name="ptpip_hotspot_step_5">5. mDNS 광고가 없으면 IP를 직접 입력하세요</string>
+    <string name="ptpip_hotspot_enable_title">폰 핫스팟이 꺼져 있어요</string>
+    <string name="ptpip_hotspot_enable_desc">Android 정책상 앱이 핫스팟을 직접 켤 수 없어 설정 화면을 엽니다. 핫스팟을 켠 뒤 돌아오세요.</string>
+    <string name="ptpip_hotspot_open_settings">핫스팟 설정 열기</string>
+    <string name="ptpip_hotspot_compat_note">Nikon Z·후지필름·캐논(EOS Utility)·파나소닉 Lumix는 폰 핫스팟 접속을 지원합니다. OM System·펜탁스/리코는 카메라 자체 AP만 지원해 폰 핫스팟에는 접속할 수 없습니다.</string>
     <string name="ptpip_camera_connection">카메라 연결</string>
     <string name="ptpip_permission_needed">권한 필요</string>
     <string name="ptpip_go_to_settings">설정으로 이동</string>
