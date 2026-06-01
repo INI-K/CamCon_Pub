@@ -983,13 +983,24 @@ fun SettingsScreen(
                                                 accountDeleteSuccessText,
                                                 android.widget.Toast.LENGTH_LONG
                                             ).show()
-                                            // TODO: 도메인 UseCase 추가 시 클라우드 사진/구독/사용자 문서 정리 호출
-                                            val intent = Intent(context, LoginActivity::class.java).apply {
-                                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                                                        Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                            }
-                                            context.startActivity(intent)
-                                            (context as? ComponentActivity)?.finish()
+                                            // Auth 계정은 삭제되었으나 Google 로그인 클라이언트·로컬 auth
+                                            // 상태가 남아 있으므로 signOut 으로 정리한다(이미 로그아웃 상태이면
+                                            // firebaseAuth.signOut() 은 no-op). signOut 의 NavigateToLogin
+                                            // 이벤트가 LoginActivity 이동을 처리한다.
+                                            // 주의: Firestore users/{uid}·subscriptions·클라우드 사진 등
+                                            // 서버측 PII 정리는 클라이언트에서 불가능하다. Auth 삭제 후
+                                            // request.auth 가 사라지고 subscriptions 는 rules 상
+                                            // write:false 이므로, Cloud Function/Admin SDK 선행 + 도메인
+                                            // DeleteAccountUseCase 가 추가되어야 완전 삭제가 가능하다.
+                                            authViewModel?.signOut()
+                                                ?: run {
+                                                    val intent = Intent(context, LoginActivity::class.java).apply {
+                                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                                                                Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                                    }
+                                                    context.startActivity(intent)
+                                                    (context as? ComponentActivity)?.finish()
+                                                }
                                         } else {
                                             val msg = task.exception?.localizedMessage ?: "unknown"
                                             android.widget.Toast.makeText(

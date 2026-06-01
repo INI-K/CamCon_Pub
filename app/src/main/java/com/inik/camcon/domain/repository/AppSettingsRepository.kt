@@ -58,5 +58,6 @@ interface AppSettingsRepository {
     suspend fun setLastTimelapseCount(count: Int)
     suspend fun setHistogramEnabled(enabled: Boolean)
     suspend fun setFocusPeakingEnabled(enabled: Boolean)
+    suspend fun saveSubscriptionTier(tier: SubscriptionTier?)
     suspend fun clearAllSettings()
 }

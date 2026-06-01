@@ -53,6 +53,9 @@ class PhotoImageManager @Inject constructor(
     // 썸네일 캐시 갱신 직렬화용 단일 락 (F31: launch별 독립 스냅샷 교차 손상 방지)
     private val thumbnailCacheLock = Any()
 
+    // 풀이미지 캐시 갱신 직렬화용 단일 락 (서로 다른 path 동시 다운로드 시 lost-update 방지)
+    private val fullImageCacheLock = Any()
+
     // 썸네일 캐시
     private val _thumbnailCache = MutableStateFlow<Map<String, ByteArray>>(emptyMap())
     val thumbnailCache: StateFlow<Map<String, ByteArray>> = _thumbnailCache.asStateFlow()
@@ -94,12 +97,10 @@ class PhotoImageManager @Inject constructor(
                 return@launch
             }
 
-            val currentlyLoading = _loadingThumbnails.value.toMutableSet()
-
             // 순차적으로 처리 (동시 실행 방지)
             photos.forEach { photo ->
-                // 이미 캐시에 있거나 로딩 중인 경우 건너뛰기 — 캐시는 항상 최신 StateFlow 값 기준으로 판정(F31)
-                if (_thumbnailCache.value.containsKey(photo.path) || currentlyLoading.contains(photo.path)) {
+                // 이미 캐시에 있거나 로딩 중인 경우 건너뛰기 — 캐시·로딩 상태 모두 최신 StateFlow 값 기준으로 판정(F31)
+                if (_thumbnailCache.value.containsKey(photo.path) || _loadingThumbnails.value.contains(photo.path)) {
                     if (_thumbnailCache.value.containsKey(photo.path)) {
                         Log.d(TAG, "♻️ 이미 캐시에 있음: ${photo.name}")
                     } else {
@@ -114,9 +115,10 @@ class PhotoImageManager @Inject constructor(
                     return@launch
                 }
 
-                // 로딩 상태에 추가
-                currentlyLoading.add(photo.path)
-                _loadingThumbnails.value = currentlyLoading.toSet()
+                // 로딩 상태에 추가 — 동시 launch 간 손상 방지를 위해 최신 값 기준으로 갱신
+                synchronized(thumbnailCacheLock) {
+                    _loadingThumbnails.value = _loadingThumbnails.value + photo.path
+                }
 
                 try {
                     Log.d(TAG, "📷 썸네일 로드 시작: ${photo.name}")
@@ -154,7 +156,7 @@ class PhotoImageManager @Inject constructor(
 
                                 val newSize = synchronized(thumbnailCacheLock) {
                                     val updated = _thumbnailCache.value.toMutableMap()
-                                    // LRU 캐시 크기 제한 적용
+                                    // 캐시 크기 제한 적용 (삽입 순서 기준 FIFO 축출)
                                     if (updated.size >= Constants.Cache.MAX_THUMBNAIL_CACHE_SIZE) {
                                         val oldestKey = updated.keys.firstOrNull()
                                         if (oldestKey != null) {
@@ -199,6 +201,14 @@ class PhotoImageManager @Inject constructor(
                                 return@fold
                             }
 
+                            // timeout·연결 끊김·빈 데이터 등 일시적/회복 가능 오류는
+                            // 빈 데이터로 굳히지 않고 재시도를 허용한다(영구 빈 썸네일 방지)
+                            val isRecoverableError =
+                                errorMessage.contains("timeout", ignoreCase = true) ||
+                                        errorMessage.contains("연결이 끊어", ignoreCase = true) ||
+                                        errorMessage.contains("끊어짐", ignoreCase = true) ||
+                                        errorMessage.contains("비어있음", ignoreCase = true)
+
                             // 특정 에러 타입에 따른 처리
                             when {
                                 errorMessage.contains(
@@ -221,7 +231,12 @@ class PhotoImageManager @Inject constructor(
                                 }
                             }
 
-                            // 일반적인 실패한 경우만 빈 데이터로 캐시하여 재시도 방지
+                            if (isRecoverableError) {
+                                Log.w(TAG, "⏳ 일시적 오류 - 캐시에 저장하지 않고 나중에 재시도 허용")
+                                return@fold
+                            }
+
+                            // 영구적 실패(파일 없음 등)만 빈 데이터로 캐시하여 재시도 방지
                             synchronized(thumbnailCacheLock) {
                                 _thumbnailCache.value =
                                     _thumbnailCache.value + (photo.path to ByteArray(0))
@@ -239,9 +254,10 @@ class PhotoImageManager @Inject constructor(
                         }
                     }
                 } finally {
-                    // 로딩 상태에서 제거
-                    currentlyLoading.remove(photo.path)
-                    _loadingThumbnails.value = currentlyLoading.toSet()
+                    // 로딩 상태에서 제거 — 최신 값 기준으로 갱신
+                    synchronized(thumbnailCacheLock) {
+                        _loadingThumbnails.value = _loadingThumbnails.value - photo.path
+                    }
                     Log.d(TAG, "🔄 썸네일 로딩 완료 처리: ${photo.name}")
                 }
             }
@@ -281,22 +297,29 @@ class PhotoImageManager @Inject constructor(
                 if (imageData != null && imageData.isNotEmpty()) {
                     Log.d(TAG, "이미지 데이터 확인: 유효함 (${imageData.size} bytes)")
 
-                    val currentCache = _fullImageCache.value.toMutableMap()
-                    if (!currentCache.containsKey(photoPath)) {
-                        // LRU 캐시 크기 제한 적용
-                        while (currentCache.size >= Constants.Cache.MAX_FULL_IMAGE_CACHE_SIZE) {
-                            val oldestKey = currentCache.keys.firstOrNull()
-                            if (oldestKey != null) {
-                                currentCache.remove(oldestKey)
-                                Log.d(TAG, "캐시 크기 제한 - 가장 오래된 이미지 제거: $oldestKey")
-                            } else {
-                                break
+                    val (added, cacheSize) = synchronized(fullImageCacheLock) {
+                        val currentCache = _fullImageCache.value.toMutableMap()
+                        if (currentCache.containsKey(photoPath)) {
+                            false to currentCache.size
+                        } else {
+                            // 캐시 크기 제한 적용 (삽입 순서 기준 FIFO 축출)
+                            while (currentCache.size >= Constants.Cache.MAX_FULL_IMAGE_CACHE_SIZE) {
+                                val oldestKey = currentCache.keys.firstOrNull()
+                                if (oldestKey != null) {
+                                    currentCache.remove(oldestKey)
+                                    Log.d(TAG, "캐시 크기 제한 - 가장 오래된 이미지 제거: $oldestKey")
+                                } else {
+                                    break
+                                }
                             }
+                            currentCache[photoPath] = imageData
+                            _fullImageCache.value = currentCache.toMap()
+                            true to currentCache.size
                         }
-                        currentCache[photoPath] = imageData
-                        _fullImageCache.value = currentCache.toMap()
+                    }
 
-                        Log.d(TAG, "실제 파일 다운로드 성공: ${imageData.size} bytes (캐시 크기: ${currentCache.size})")
+                    if (added) {
+                        Log.d(TAG, "실제 파일 다운로드 성공: ${imageData.size} bytes (캐시 크기: $cacheSize)")
 
                         // EXIF 파싱
                         if (!_exifCache.value.containsKey(photoPath)) {
@@ -326,7 +349,8 @@ class PhotoImageManager @Inject constructor(
      * Free 티어 사용자를 위한 이미지 처리
      */
     private suspend fun processImageForFreeTier(photoPath: String, imageData: ByteArray) {
-        if (!photoPath.endsWith(".jpg", true)) return
+        val extension = File(photoPath).extension.lowercase()
+        if (extension !in Constants.ImageProcessing.JPEG_EXTENSIONS) return
 
         withContext(ioDispatcher) {
             try {
@@ -346,9 +370,11 @@ class PhotoImageManager @Inject constructor(
                     val resizedData = resizedFile.readBytes()
 
                     // 캐시 업데이트 (리사이즈된 이미지로 교체)
-                    val currentCache = _fullImageCache.value.toMutableMap()
-                    currentCache[photoPath] = resizedData
-                    _fullImageCache.value = currentCache
+                    synchronized(fullImageCacheLock) {
+                        val currentCache = _fullImageCache.value.toMutableMap()
+                        currentCache[photoPath] = resizedData
+                        _fullImageCache.value = currentCache
+                    }
 
                     Log.d(TAG, "✅ Free 티어 리사이징 완료: ${resizedData.size} bytes")
                 } else {

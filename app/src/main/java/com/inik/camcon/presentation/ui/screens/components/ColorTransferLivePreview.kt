@@ -27,7 +27,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -136,6 +138,16 @@ fun ColorTransferLivePreview(
 
         // ColorTransferUseCase 캐시도 초기화
         colorTransferViewModel.clearPerformanceInfo()
+    }
+
+    // 컴포지션 이탈(화면 종료) 시 처리된 비트맵을 명시적으로 회수
+    val processedBitmapForDispose by rememberUpdatedState(processedBitmap)
+    val fullSizeProcessedBitmapForDispose by rememberUpdatedState(fullSizeProcessedBitmap)
+    DisposableEffect(Unit) {
+        onDispose {
+            processedBitmapForDispose?.recycle()
+            fullSizeProcessedBitmapForDispose?.recycle()
+        }
     }
 
     Card(
