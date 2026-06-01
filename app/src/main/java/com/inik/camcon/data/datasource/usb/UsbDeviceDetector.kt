@@ -42,6 +42,9 @@ class UsbDeviceDetector @Inject constructor(
     // USB 권한 승인 콜백 (권한이 승인되면 알림)
     private var permissionGrantedCallback: ((UsbDevice) -> Unit)? = null
 
+    // 리시버 등록 상태 (cleanup 후 재진입 시 재등록 누락 방지)
+    private var isReceiverRegistered = false
+
     companion object {
         private const val TAG = "USB디바이스감지기"
         private const val ACTION_USB_PERMISSION = "com.inik.camcon.USB_PERMISSION"
@@ -90,7 +93,12 @@ class UsbDeviceDetector @Inject constructor(
         initializeDeviceList()
     }
 
+    @Synchronized
     private fun registerUsbReceiver() {
+        if (isReceiverRegistered) {
+            return
+        }
+
         // 커스텀 USB 권한 브로드캐스트
         val permissionFilter = IntentFilter(ACTION_USB_PERMISSION)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -114,6 +122,17 @@ class UsbDeviceDetector @Inject constructor(
         } else {
             context.registerReceiver(usbReceiver, systemFilter)
         }
+
+        isReceiverRegistered = true
+    }
+
+    /**
+     * 리시버가 등록되어 있지 않으면 다시 등록한다.
+     * Singleton 인스턴스가 cleanup() 이후에도 살아있는 채로 재사용될 때
+     * (동일 프로세스 재진입 등) USB 브로드캐스트 수신을 복구하기 위한 진입점.
+     */
+    fun ensureReceiverRegistered() {
+        registerUsbReceiver()
     }
 
     private fun handlePermissionResult(intent: Intent) {
@@ -158,8 +177,11 @@ class UsbDeviceDetector @Inject constructor(
                     _hasPermission.value = true
                     currentDevice = it
                 } else {
-                    _hasPermission.value = false
-                    currentDevice = null
+                    // 권한이 없더라도 기존에 추적 중인 다른 디바이스를 덮어쓰지 않는다.
+                    // (현재 연결된 디바이스가 없을 때만 권한 상태를 초기화)
+                    if (currentDevice == null) {
+                        _hasPermission.value = false
+                    }
                 }
 
                 updateDeviceList()
@@ -176,9 +198,16 @@ class UsbDeviceDetector @Inject constructor(
         }
         device?.let {
             LogcatManager.d(TAG, "USB 디바이스가 분리되었습니다: ${it.deviceName}")
-            if (it == currentDevice) {
-                _hasPermission.value = false
-                currentDevice = null
+            // 동일 인스턴스 비교(==)는 attach/permission 시점마다 currentDevice가 갱신/누락되어
+            // 분리 이벤트를 놓칠 수 있으므로 deviceId 기준으로 추적 디바이스 일치를 판단한다.
+            val isTrackedDevice = currentDevice?.deviceId == it.deviceId
+            // 카메라 디바이스가 분리되면 추적 디바이스 여부와 무관하게 연결 매니저에 정리 기회를 준다.
+            // (dangling native connection/FD 잔존 방지)
+            if (isTrackedDevice || isCameraDevice(it)) {
+                if (isTrackedDevice) {
+                    _hasPermission.value = false
+                    currentDevice = null
+                }
                 disconnectionCallback?.invoke(it)
             }
             updateDeviceList()
@@ -191,6 +220,9 @@ class UsbDeviceDetector @Inject constructor(
     }
 
     fun getCameraDevices(): List<UsbDevice> {
+        // cleanup 후 동일 Singleton이 재사용되는 경우를 대비해 리시버 등록을 보장한다.
+        registerUsbReceiver()
+
         val now = System.currentTimeMillis()
 
         // 캐시된 결과가 있고 아직 유효하면 캐시 반환
@@ -254,6 +286,9 @@ class UsbDeviceDetector @Inject constructor(
     }
 
     fun requestPermission(device: UsbDevice) {
+        // cleanup 후 동일 Singleton이 재사용되는 경우를 대비해 리시버 등록을 보장한다.
+        registerUsbReceiver()
+
         LogcatManager.d(TAG, "USB 권한 요청 시작: ${device.deviceName}")
 
         if (usbManager.hasPermission(device)) {
@@ -285,11 +320,15 @@ class UsbDeviceDetector @Inject constructor(
 
     fun getCurrentDevice(): UsbDevice? = currentDevice
 
+    @Synchronized
     fun cleanup() {
         try {
             context.unregisterReceiver(usbReceiver)
         } catch (e: Exception) {
             LogcatManager.w(TAG, "USB 리시버 등록 해제 실패", e)
+        } finally {
+            // 해제 후 재진입 시 ensureReceiverRegistered()로 재등록 가능하도록 상태를 초기화한다.
+            isReceiverRegistered = false
         }
     }
 }

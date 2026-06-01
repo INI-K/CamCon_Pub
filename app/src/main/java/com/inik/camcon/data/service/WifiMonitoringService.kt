@@ -50,6 +50,11 @@ class WifiMonitoringService : Service() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
+
+    // 콜백 스레드(onLost)와 serviceScope 코루틴 워커 스레드 양쪽에서 접근하므로
+    // @Volatile로 cross-thread 가시성을 보장한다. autoConnectMutex는 코루틴 본문만
+    // 직렬화할 뿐 콜백 스레드의 write는 보호하지 못하므로 plain var는 가시성 미보장.
+    @Volatile
     private var lastConnectedSSID: String? = null
 
     // 두 콜백(onAvailable/onCapabilitiesChanged)이 거의 동시에 발동될 때
@@ -57,8 +62,10 @@ class WifiMonitoringService : Service() {
     // 단일 진입으로 직렬화해 중복 시작을 방지한다.
     private val autoConnectMutex = Mutex()
 
-    // 네트워크 콜백 중복 방지
+    // 네트워크 콜백 중복 방지 (콜백 스레드에서 접근, 가시성 보장 위해 @Volatile)
+    @Volatile
     private var lastProcessedNetwork: Network? = null
+    @Volatile
     private var lastProcessedTime: Long = 0
     private val MIN_PROCESS_INTERVAL_MS = 5000L // 5초 간격으로만 처리
 

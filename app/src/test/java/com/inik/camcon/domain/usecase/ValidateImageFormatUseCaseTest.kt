@@ -99,6 +99,7 @@ class ValidateImageFormatUseCaseTest {
         override suspend fun setLastTimelapseCount(count: Int) {}
         override suspend fun setHistogramEnabled(enabled: Boolean) {}
         override suspend fun setFocusPeakingEnabled(enabled: Boolean) {}
+        override suspend fun saveSubscriptionTier(tier: SubscriptionTier?) {}
         override suspend fun clearAllSettings() {}
     }
 
@@ -134,7 +135,7 @@ class ValidateImageFormatUseCaseTest {
         coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(
             Subscription(tier = tier)
         )
-        getSubscriptionUseCase = GetSubscriptionUseCase(subscriptionRepository, logger, scope)
+        getSubscriptionUseCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, logger, scope)
         useCase = ValidateImageFormatUseCase(
             context,
             getSubscriptionUseCase,

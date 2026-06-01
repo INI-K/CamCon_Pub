@@ -212,7 +212,6 @@ class PtpipDiscoveryHelper @Inject constructor(
                     } else {
                         Log.e(TAG, "카메라 연결 실패 ($modeText)")
                         onErrorChanged("카메라 연결에 실패했습니다")
-                        onConnectingChanged(false)
                     }
                 }
 
@@ -224,6 +223,7 @@ class PtpipDiscoveryHelper @Inject constructor(
                 onErrorChanged(errorMsg)
             } finally {
                 onDiscoveringChanged(false)
+                onConnectingChanged(false)
                 Log.d(TAG, "카메라 검색 작업 완료")
             }
         }

@@ -40,7 +40,6 @@ import androidx.lifecycle.lifecycleScope
 import com.google.firebase.auth.FirebaseAuth
 import com.inik.camcon.BuildConfig
 import com.inik.camcon.R
-import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.model.UiText
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
@@ -82,9 +81,6 @@ class SplashActivity : ComponentActivity() {
 
     @Inject
     lateinit var getSubscriptionUseCase: GetSubscriptionUseCase
-
-    @Inject
-    lateinit var appPreferencesDataSource: AppPreferencesDataSource
 
     @Inject
     lateinit var isNativeLibrariesLoadedUseCase: IsNativeLibrariesLoadedUseCase
@@ -232,9 +228,9 @@ class SplashActivity : ComponentActivity() {
                     .firstOrNull()
 
                 if (tier != null) {
+                    getSubscriptionUseCase.persistSubscriptionTier(tier)
                     withContext(Dispatchers.Main) {
                         subscriptionTier = tier
-                        appPreferencesDataSource.saveSubscriptionTier(tier)
                         LogcatManager.d("SplashActivity", "📱 구독 티어 로드 완료: $tier")
                     }
                 }

@@ -186,6 +186,8 @@ fun CameraControlScreen(
     var showFolderSelectionDialog by remember { mutableStateOf(false) }
     var showSaveFormatSelectionDialog by remember { mutableStateOf(false) }
     var showConnectionHelpDialog by remember { mutableStateOf(false) }
+    // 연결 도움말을 이미 표시·처리한 에러 문자열 (동일 에러 중복 표시 방지, 클리어 시 리셋)
+    var handledConnectionError by remember { mutableStateOf<String?>(null) }
 
     // FullScreenPhotoViewer 상태들
     var showFullScreenViewer by remember { mutableStateOf(false) }
@@ -449,12 +451,18 @@ fun CameraControlScreen(
     }
 
     LaunchedEffect(uiState.error) {
-        uiState.error?.let { error ->
-            when {
-                error.contains("Could not find the requested device") -> {
-                    showConnectionHelpDialog = true
-                }
+        val error = uiState.error
+        val isConnectionError = error?.contains("Could not find the requested device") == true
+        if (isConnectionError) {
+            // 아직 표시·처리하지 않은 새 에러일 때만 도움말 표시 (사용자가 닫은 동일 에러는 재오픈하지 않음)
+            if (handledConnectionError != error) {
+                handledConnectionError = error
+                showConnectionHelpDialog = true
             }
+        } else {
+            // 에러가 사라지거나 다른 에러로 바뀌면 도움말을 닫고 처리 기록을 리셋해 재발 시 다시 표시되도록 함
+            showConnectionHelpDialog = false
+            handledConnectionError = null
         }
     }
 
@@ -463,6 +471,8 @@ fun CameraControlScreen(
             onDismiss = { showConnectionHelpDialog = false },
             onRetry = {
                 showConnectionHelpDialog = false
+                // 사용자가 재시도를 요청했으므로 처리 기록을 비워, 재연결이 다시 실패하면 도움말이 다시 표시되게 함
+                handledConnectionError = null
                 viewModel.refreshUsbDevices()
             }
         )
@@ -1606,15 +1616,22 @@ private fun RawFileRestrictionNotification(
     restriction: RawFileRestriction,
     onDismiss: () -> Unit
 ) {
-    // 5초 후 자동으로 사라지게 하기
+    // 내부 visible 상태로 종료 애니메이션을 재생한 뒤 onDismiss 호출
+    var visible by remember(restriction.timestamp) { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    // 진입 시 애니메이션 트리거 + 5초 후 자동으로 사라지게 하기
     LaunchedEffect(restriction.timestamp) {
+        visible = true
         kotlinx.coroutines.delay(5000L)
+        visible = false
+        kotlinx.coroutines.delay(260L) // exit 애니메이션 완료 대기
         onDismiss()
     }
 
     // 화면 상단에 표시 — V2 ToastV2 (Error kind)
     AnimatedVisibility(
-        visible = true,
+        visible = visible,
         enter = slideInVertically(
             initialOffsetY = { -80 }
         ) + fadeIn(animationSpec = tween(260)),
@@ -1632,7 +1649,14 @@ private fun RawFileRestrictionNotification(
                     message = "${stringResource(R.string.camera_control_raw_file_restriction)} · ${restriction.fileName} — ${restriction.message}",
                     kind = StatusKind.Error,
                     leadingIcon = Icons.Outlined.WarningAmber,
-                    modifier = Modifier.clickable { onDismiss() }
+                    modifier = Modifier.clickable {
+                        // 수동 탭도 종료 애니메이션을 재생한 뒤 onDismiss 호출
+                        scope.launch {
+                            visible = false
+                            kotlinx.coroutines.delay(260L)
+                            onDismiss()
+                        }
+                    }
                 )
             }
         }

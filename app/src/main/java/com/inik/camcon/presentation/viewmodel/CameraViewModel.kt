@@ -950,7 +950,10 @@ class CameraViewModel @Inject constructor(
         operationsManager.cleanup()
         usbAutoConnectManager.cleanup()
         settingsManager.cleanup()
-        errorHandlingManager.cleanup()
+        // errorHandlingManager는 @Singleton이며 앱 전역 단일 네이티브 에러 콜백(setErrorCallback)을 보유한다.
+        // 이 콜백의 usbDisconnectedEvent 소비자는 ViewModel이 아니라 프로세스 생명주기 동안 살아있는
+        // CameraLifecycleRepositoryImpl(ApplicationScope)이므로, Activity 스코프 ViewModel의 onCleared에서
+        // cleanup()을 호출하면 앱 전역의 USB 분리/타임아웃 네이티브 에러 수신이 끊긴다. 따라서 여기서 해제하지 않는다.
 
         // RAW 제한 콜백 해제
         cameraRepository.setRawFileRestrictionCallback(null)

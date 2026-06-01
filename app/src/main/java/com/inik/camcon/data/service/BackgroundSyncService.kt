@@ -206,6 +206,9 @@ class BackgroundSyncService : Service() {
      * isHeld 가드를 두면 타임아웃 만료(isHeld=false)부터 다음 갱신까지 락 공백이 생긴다.
      * SYNC_INTERVAL(30초)이 타임아웃(10분)보다 훨씬 짧으므로, 만료 전에 무조건
      * 타임아웃을 다시 설정해 공백 없이 락을 유지한다.
+     *
+     * 단, 연결 해제로 releaseWakeLock()이 호출돼 wakeLock이 null이면 재획득하지 않는다.
+     * (의도적으로 해제된 락을 sync 루프가 되살리는 것을 방지 — 재획득은 재연결 시 ensureWakeLock()이 담당)
      */
     private fun renewWakeLock() {
         try {
@@ -218,6 +221,17 @@ class BackgroundSyncService : Service() {
             // 실패 시 다시 획득 시도
             releaseWakeLock()
             acquireWakeLock()
+        }
+    }
+
+    /**
+     * 카메라 연결 중 Wake Lock 보장 (없으면 획득, 있으면 타임아웃 갱신)
+     */
+    private fun ensureWakeLock() {
+        if (wakeLock == null) {
+            acquireWakeLock()
+        } else {
+            renewWakeLock()
         }
     }
 
@@ -333,6 +347,9 @@ class BackgroundSyncService : Service() {
                             " 카메라 연결됨: ${state.activeConnectionType}, 이벤트 리스너: $isEventListenerActive"
                         )
 
+                        // 카메라 연결 중에만 Wake Lock 유지 (없으면 획득)
+                        ensureWakeLock()
+
                         if (!isEventListenerActive) {
                             LogcatManager.d(TAG, " 카메라는 연결되어 있으나 이벤트 리스너가 비활성 - 재시작 시도")
 
@@ -373,6 +390,9 @@ class BackgroundSyncService : Service() {
                         }
 
                         updateNotificationText("카메라 연결 대기 중...")
+
+                        // 연결이 끊어지면 깨울 카메라가 없으므로 Wake Lock 해제 (배터리 절약)
+                        releaseWakeLock()
 
                         // 카메라 연결이 끊어지면 리스너 관리 루프 중지하고 대기 모드로 전환
                         LogcatManager.d(TAG, " 카메라 연결 끊김 - 이벤트 리스너 관리 대기 모드로 전환")
@@ -472,26 +492,4 @@ class BackgroundSyncService : Service() {
         }
     }
 
-    /**
-     * 카메라 연결 완전 해제 시 서비스 정리
-     */
-    fun cleanupOnCameraDisconnection() {
-        LogcatManager.d(TAG, "카메라 연결 해제로 인한 서비스 정리 시작")
-
-        try {
-            // 이벤트 리스너 관리 작업 중지
-            eventListenerJob?.cancel()
-            LogcatManager.d(TAG, "백그라운드 이벤트 리스너 관리 작업 중지됨")
-
-            // Wake Lock 해제
-            releaseWakeLock()
-
-            // 알림 업데이트
-            updateNotificationText("카메라 연결 해제됨 - 서비스 대기 중")
-
-            LogcatManager.d(TAG, "카메라 연결 해제로 인한 서비스 정리 완료")
-        } catch (e: Exception) {
-            LogcatManager.e(TAG, "카메라 연결 해제 정리 중 오류", e)
-        }
-    }
 }

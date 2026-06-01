@@ -476,6 +476,10 @@ fun PtpipConnectionScreen(
         )
     }
 
+    // 연결 완료 메시지는 locale별로 다르므로 하드코딩 대신 현 locale의 문자열 리소스로 비교한다.
+    val connectCompleteMessage = stringResource(R.string.progress_ptpip_complete)
+    val connectCompleteLimitedMessage = stringResource(R.string.progress_ptpip_complete_limited)
+
     // 연결 진행 상황 업데이트 (isConnecting, connectionState, connectionProgressMessage로 제어)
     LaunchedEffect(isConnecting, connectionState, connectionProgressMessage) {
         Log.d("PtpipConnectionScreen", "🔍 다이얼로그 상태 체크:")
@@ -503,9 +507,11 @@ fun PtpipConnectionScreen(
             }
             com.inik.camcon.domain.model.PtpipConnectionState.CONNECTED -> {
                 Log.d("PtpipConnectionScreen", "   ⏸️ CONNECTED 상태 - 메시지 확인 중")
-                // "연결 완료!" 메시지일 때만 다이얼로그 닫기
-                if (connectionProgressMessage == "연결 완료!") {
-                    Log.d("PtpipConnectionScreen", "   🎉 '연결 완료!' 메시지 확인 - 다이얼로그 닫기")
+                // 연결 완료 메시지(완전/제한)일 때만 다이얼로그 닫기 — locale별 문자열 리소스로 비교
+                if (connectionProgressMessage == connectCompleteMessage ||
+                    connectionProgressMessage == connectCompleteLimitedMessage
+                ) {
+                    Log.d("PtpipConnectionScreen", "   🎉 연결 완료 메시지 확인 - 다이얼로그 닫기")
                     kotlinx.coroutines.delay(500) // 연결 완료 메시지 확인용 최소 대기
                     showConnectionProgressDialog = false
                     Log.d("PtpipConnectionScreen", "   ✅ 다이얼로그 닫힘")
