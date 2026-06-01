@@ -8,6 +8,7 @@ import android.opengl.GLES20
 import androidx.exifinterface.media.ExifInterface
 import jp.co.cyberagent.android.gpuimage.GPUImage
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageFilter
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -420,9 +421,6 @@ class ColorTransferProcessor @Inject constructor() {
             // 병렬 실행 완료 대기
             val (inputStats, referenceStats) = inputStatsDeferred.await() to referenceStatsDeferred.await()
 
-            // 메모리 정리
-            System.gc()
-
             // 고성능 색감 전송 적용
             applyColorTransferToImageParallel(
                 inputBitmap,
@@ -491,9 +489,6 @@ class ColorTransferProcessor @Inject constructor() {
 
             // 병렬 실행 완료 대기
             val (inputStats, referenceStats) = inputStatsDeferred.await() to referenceStatsDeferred.await()
-
-            // 메모리 정리
-            System.gc()
 
             // 네이티브 함수 시도
             val resultBitmap = inputBitmap.copy(inputBitmap.config ?: Bitmap.Config.ARGB_8888, true)
@@ -719,8 +714,10 @@ class ColorTransferProcessor @Inject constructor() {
                     referenceBitmap.recycle()
                     null
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                e.printStackTrace()
+                LogcatManager.e("ColorTransferProcessor", "❌ 참조 통계 캐시 처리 실패: ${e.message}", e)
                 null
             }
         }

@@ -10,6 +10,7 @@ import com.inik.camcon.domain.model.WifiNetworkState
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -25,22 +26,20 @@ class AutoConnectTaskRunner @Inject constructor(
         const val EXTRA_SSID = "extra_auto_connect_ssid"
     }
 
-    // 중복 실행 방지를 위한 플래그
-    @Volatile
-    private var isRunning = false
+    // 중복 실행 방지를 위한 플래그 (check-then-set race 방지를 위해 CAS 사용)
+    private val isRunning = AtomicBoolean(false)
 
     suspend fun handlePostConnection(ssid: String?) = withContext(ioDispatcher) {
-        // 중복 실행 방지
-        if (isRunning) {
+        // 중복 실행 방지 (compareAndSet으로 진입을 원자적으로 직렬화)
+        if (!isRunning.compareAndSet(false, true)) {
             Log.d(TAG, "⚠️ 이미 자동 연결 처리 실행 중 - 중복 요청 무시")
             return@withContext
         }
 
-        isRunning = true
         try {
             handlePostConnectionInternal(ssid)
         } finally {
-            isRunning = false
+            isRunning.set(false)
         }
     }
 

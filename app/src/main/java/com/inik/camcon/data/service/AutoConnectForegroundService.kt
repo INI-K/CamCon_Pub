@@ -13,6 +13,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.inik.camcon.R
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -50,8 +51,15 @@ class AutoConnectForegroundService : Service() {
                 startForegroundService()
                 val ssid = intent?.getStringExtra(AutoConnectTaskRunner.EXTRA_SSID)
                 serviceScope.launch {
-                    autoConnectTaskRunner.handlePostConnection(ssid)
-                    stopSelf()
+                    try {
+                        autoConnectTaskRunner.handlePostConnection(ssid)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Log.e(TAG, "자동 연결 후처리 실패", e)
+                    } finally {
+                        stopSelf()
+                    }
                 }
                 return START_NOT_STICKY
             }

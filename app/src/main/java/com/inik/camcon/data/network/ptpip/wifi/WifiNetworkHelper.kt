@@ -24,11 +24,14 @@ import com.google.android.gms.location.LocationSettingsRequest
 import com.google.android.gms.location.LocationSettingsResponse
 import com.google.android.gms.tasks.Task
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import android.location.LocationManager
@@ -137,6 +140,10 @@ class WifiNetworkHelper @Inject constructor(
     private val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
     private val connectivityManager =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+
+    // @Singleton(앱 생명주기) 범위의 managed scope.
+    // NetworkCallback 콜백 스레드를 블로킹하지 않도록 안정화 지연·로깅 작업을 오프로드한다.
+    private val helperScope = CoroutineScope(SupervisorJob() + ioDispatcher)
 
     // Wi-Fi 퍼포먼스 락 관리
     private var wifiLock: WifiManager.WifiLock? = null
@@ -686,6 +693,9 @@ class WifiNetworkHelper @Inject constructor(
     }
 
     // 카메라 AP 연결 상태 캐싱
+    // networkStateFlow 콜백(메인 Looper)과 PtpipDataSource 등 호출 스레드(IO)가 동시에
+    // 읽고/쓰므로 cacheLock으로 접근을 직렬화한다. (clearCache·캐시 읽기/쓰기 모두 보호)
+    private val cacheLock = Any()
     private var cachedIsConnectedToCameraAP: Boolean? = null
     private var lastCheckedSSID: String? = null
 
@@ -694,16 +704,21 @@ class WifiNetworkHelper @Inject constructor(
      */
     fun isConnectedToCameraAP(): Boolean {
         if (!isWifiConnected()) {
-            cachedIsConnectedToCameraAP = false
-            lastCheckedSSID = null
+            synchronized(cacheLock) {
+                cachedIsConnectedToCameraAP = false
+                lastCheckedSSID = null
+            }
             return false
         }
 
         val ssid = getCurrentSSID()
 
-        // 같은 SSID에 대해서는 캐시된 결과 반환
-        if (ssid == lastCheckedSSID && cachedIsConnectedToCameraAP != null) {
-            return cachedIsConnectedToCameraAP!!
+        // 같은 SSID에 대해서는 캐시된 결과 반환 (락 안에서 스냅샷하여 check-then-use NPE 방지)
+        synchronized(cacheLock) {
+            val cached = cachedIsConnectedToCameraAP
+            if (ssid == lastCheckedSSID && cached != null) {
+                return cached
+            }
         }
 
         // SSID를 가져올 수 없는 경우 (<unknown ssid>)
@@ -725,8 +740,10 @@ class WifiNetworkHelper @Inject constructor(
                     )
                     if (isValidCameraAPIP(gatewayIpStr)) {
                         Log.d(TAG, "SSID를 알 수 없지만 게이트웨이가 카메라 IP 패턴: $gatewayIpStr")
-                        cachedIsConnectedToCameraAP = true
-                        lastCheckedSSID = ssid
+                        synchronized(cacheLock) {
+                            cachedIsConnectedToCameraAP = true
+                            lastCheckedSSID = ssid
+                        }
                         return true
                     }
                 }
@@ -734,8 +751,10 @@ class WifiNetworkHelper @Inject constructor(
                 Log.w(TAG, "게이트웨이 IP 확인 실패: ${e.message}")
             }
 
-            cachedIsConnectedToCameraAP = false
-            lastCheckedSSID = null
+            synchronized(cacheLock) {
+                cachedIsConnectedToCameraAP = false
+                lastCheckedSSID = null
+            }
             return false
         }
 
@@ -745,8 +764,10 @@ class WifiNetworkHelper @Inject constructor(
         } || ssid.startsWith("Z_", ignoreCase = true) // Nikon 카메라 패턴 추가
 
         // 결과 캐싱
-        cachedIsConnectedToCameraAP = isMatch
-        lastCheckedSSID = ssid
+        synchronized(cacheLock) {
+            cachedIsConnectedToCameraAP = isMatch
+            lastCheckedSSID = ssid
+        }
 
         return isMatch
     }
@@ -960,36 +981,36 @@ class WifiNetworkHelper @Inject constructor(
             withContext(ioDispatcher) {
                 Log.d(TAG, "PTP/IP 초기화 테스트 시작: $ipAddress:$port")
 
-                val socket = java.net.Socket()
-                socket.soTimeout = 3000
-                socket.connect(java.net.InetSocketAddress(ipAddress, port), 3000)
+                java.net.Socket().use { socket ->
+                    socket.soTimeout = 3000
+                    socket.connect(java.net.InetSocketAddress(ipAddress, port), 3000)
 
-                // PTP/IP Init Command Request 전송
-                val initPacket = createInitCommandRequest()
-                socket.getOutputStream().write(initPacket)
-                socket.getOutputStream().flush()
+                    // PTP/IP Init Command Request 전송
+                    val initPacket = createInitCommandRequest()
+                    socket.getOutputStream().write(initPacket)
+                    socket.getOutputStream().flush()
 
-                // ACK 응답 대기
-                val response = ByteArray(1024)
-                val bytesRead = socket.getInputStream().read(response)
+                    // ACK 응답 대기
+                    val response = ByteArray(1024)
+                    val bytesRead = socket.getInputStream().read(response)
 
-                socket.close()
+                    // 응답 확인
+                    if (bytesRead >= 8) {
+                        val buffer =
+                            java.nio.ByteBuffer.wrap(response)
+                                .order(java.nio.ByteOrder.LITTLE_ENDIAN)
+                        buffer.position(4)
+                        val responseType = buffer.int
 
-                // 응답 확인
-                if (bytesRead >= 8) {
-                    val buffer =
-                        java.nio.ByteBuffer.wrap(response).order(java.nio.ByteOrder.LITTLE_ENDIAN)
-                    buffer.position(4)
-                    val responseType = buffer.int
-
-                    if (responseType == 0x00000002) { // PTPIP_INIT_COMMAND_ACK
-                        Log.d(TAG, "✅ PTP/IP 초기화 성공: $ipAddress")
-                        return@withContext true
+                        if (responseType == 0x00000002) { // PTPIP_INIT_COMMAND_ACK
+                            Log.d(TAG, "✅ PTP/IP 초기화 성공: $ipAddress")
+                            return@withContext true
+                        }
                     }
-                }
 
-                Log.d(TAG, "❌ PTP/IP 초기화 실패: $ipAddress - 잘못된 응답")
-                false
+                    Log.d(TAG, "❌ PTP/IP 초기화 실패: $ipAddress - 잘못된 응답")
+                    false
+                }
             }
         } catch (e: Exception) {
             Log.d(TAG, "❌ PTP/IP 초기화 실패: $ipAddress - ${e.message}")
@@ -1580,34 +1601,39 @@ class WifiNetworkHelper @Inject constructor(
                                 Log.i(TAG, "🚀 Wi-Fi 퍼포먼스 락 활성화 - PTP/IP 최적화")
                             }
 
-                            // 연결 안정화를 위한 짧은 지연
-                            Thread.sleep(800)
+                            // 안정화 지연 + 주파수 정보 로깅은 콜백 스레드(메인 Looper) 블로킹을
+                            // 피하기 위해 managed scope로 오프로드한다. onResult는 즉시 호출된다.
+                            helperScope.launch {
+                                // 연결 안정화를 위한 짧은 지연
+                                delay(800)
 
-                            // 네트워크 상태 재확인
-                            val capabilities = connectivityManager.getNetworkCapabilities(network)
-                            if (capabilities != null) {
-                                Log.d(
-                                    TAG,
-                                    "네트워크 기능 확인: WiFi=${
-                                        capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
-                                    }"
-                                )
-                            }
+                                // 네트워크 상태 재확인
+                                val capabilities =
+                                    connectivityManager.getNetworkCapabilities(network)
+                                if (capabilities != null) {
+                                    Log.d(
+                                        TAG,
+                                        "네트워크 기능 확인: WiFi=${
+                                            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+                                        }"
+                                    )
+                                }
 
-                            // 연결된 Wi-Fi 주파수 정보 출력 (추가 지연 후)
-                            Thread.sleep(500) // Wi-Fi 정보 완전 설정 대기
-                            val freqInfo = getCurrentWifiFrequencyInfo()
-                            if (freqInfo != null) {
-                                Log.i(TAG, "📶 현재 Wi-Fi 주파수 정보:")
-                                Log.i(TAG, "    - SSID: ${freqInfo.ssid}")
-                                Log.i(
-                                    TAG,
-                                    "    - 주파수: ${freqInfo.frequency} MHz (${freqInfo.band})"
-                                )
-                                Log.i(TAG, "    - 링크 속도: ${freqInfo.linkSpeed} Mbps")
-                                Log.i(TAG, "    - 신호 강도: ${freqInfo.rssi} dBm")
-                            } else {
-                                Log.w(TAG, "⚠️ Wi-Fi 주파수 정보를 가져올 수 없음")
+                                // 연결된 Wi-Fi 주파수 정보 출력 (추가 지연 후)
+                                delay(500) // Wi-Fi 정보 완전 설정 대기
+                                val freqInfo = getCurrentWifiFrequencyInfo()
+                                if (freqInfo != null) {
+                                    Log.i(TAG, "📶 현재 Wi-Fi 주파수 정보:")
+                                    Log.i(TAG, "    - SSID: ${freqInfo.ssid}")
+                                    Log.i(
+                                        TAG,
+                                        "    - 주파수: ${freqInfo.frequency} MHz (${freqInfo.band})"
+                                    )
+                                    Log.i(TAG, "    - 링크 속도: ${freqInfo.linkSpeed} Mbps")
+                                    Log.i(TAG, "    - 신호 강도: ${freqInfo.rssi} dBm")
+                                } else {
+                                    Log.w(TAG, "⚠️ Wi-Fi 주파수 정보를 가져올 수 없음")
+                                }
                             }
 
                         } catch (e: Exception) {
@@ -2264,8 +2290,10 @@ class WifiNetworkHelper @Inject constructor(
      * 네트워크 상태 변화 시 캐시 초기화
      */
     private fun clearCache() {
-        cachedIsConnectedToCameraAP = null
-        lastCheckedSSID = null
+        synchronized(cacheLock) {
+            cachedIsConnectedToCameraAP = null
+            lastCheckedSSID = null
+        }
     }
 
     /**

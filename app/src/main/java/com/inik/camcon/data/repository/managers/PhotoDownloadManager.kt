@@ -21,6 +21,7 @@ import com.inik.camcon.domain.model.PaginatedCameraPhotos
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.usecase.ColorTransferUseCase
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
+import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.domain.usecase.camera.PhotoCaptureEventManager
 import com.inik.camcon.utils.Constants
 import com.inik.camcon.di.IoDispatcher
@@ -48,12 +49,36 @@ class PhotoDownloadManager @Inject constructor(
     private val colorTransferUseCase: ColorTransferUseCase,
     private val photoCaptureEventManager: PhotoCaptureEventManager,
     private val getSubscriptionUseCase: GetSubscriptionUseCase,
+    private val validateImageFormatUseCase: ValidateImageFormatUseCase,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
 
     companion object {
         private const val TAG = "사진다운로드매니저"
         private const val FREE_TIER_MAX_DIMENSION = 2000 // FREE 티어 최대 장축 크기
+    }
+
+    /**
+     * RAW 게이팅 단일 지점 방어선(CLAUDE.md §2).
+     *
+     * capture/liveview 직접 콜백 등 CameraEventManager 게이팅 래퍼를 거치지 않는 경로가
+     * 이 저장 진입부로 직행할 수 있으므로, [ValidateImageFormatUseCase]로 다시 한 번 검증한다.
+     * 차단 대상(미지원 RAW)이면 false 를 반환하여 저장을 중단시킨다. 일반 포맷은 항상 통과.
+     *
+     * @return 저장을 진행해도 되면 true, RAW 게이팅으로 차단해야 하면 false.
+     */
+    private suspend fun isDownloadAllowedByGating(fileName: String): Boolean {
+        if (!validateImageFormatUseCase.isRawFile(fileName)) {
+            return true
+        }
+        val result = validateImageFormatUseCase.validateRawFileAccess(fileName)
+        if (!result.isSupported) {
+            Log.w(
+                TAG,
+                "⛔ RAW 게이팅 차단 — 저장 중단: $fileName (제조사: ${result.manufacturer})"
+            )
+        }
+        return result.isSupported
     }
 
     suspend fun getCameraPhotos(): Result<List<CameraPhoto>> {
@@ -380,6 +405,11 @@ class PhotoDownloadManager @Inject constructor(
                 Log.d(TAG, "📦 Native 다운로드 데이터 처리 시작: $fileName")
                 // Log.d(TAG, "   데이터 크기: ${imageData.size / 1024}KB")
 
+                // RAW 게이팅 단일 지점 방어 — 미지원 RAW 는 저장하지 않는다.
+                if (!isDownloadAllowedByGating(fileName)) {
+                    return@withContext null
+                }
+
                 val startTime = System.currentTimeMillis()
 
                 val extension = fileName.substringAfterLast(".", "").lowercase()
@@ -413,29 +443,30 @@ class PhotoDownloadManager @Inject constructor(
                 if (currentTier == SubscriptionTier.FREE && extension in Constants.ImageProcessing.JPEG_EXTENSIONS) {
                     Log.d(TAG, "🎯 FREE 티어 - 이미지 리사이즈 적용: $fileName")
 
-                    try {
+                    val resizeSuccess = try {
                         val resizedFile =
                             File(tempFile.parent, "${tempFile.nameWithoutExtension}_resized.jpg")
                         processedFile = resizedFile
-                        val resizeSuccess =
-                            resizeImageForFreeTier(tempFile.absolutePath, resizedFile.absolutePath)
-
-                        if (resizeSuccess) {
-                            processedPath = resizedFile.absolutePath
-                            Log.d(TAG, "✅ FREE 티어 리사이즈 완료: ${resizedFile.name}")
-
-                            // 원본 임시 파일 삭제 (공간 절약)
-                            tempFile.delete()
-                            tempFile = null
-                        } else {
-                            Log.w(TAG, "⚠️ FREE 티어 리사이즈 실패, 원본 이미지 사용")
-                        }
+                        resizeImageForFreeTier(tempFile.absolutePath, resizedFile.absolutePath)
                     } catch (e: OutOfMemoryError) {
                         Log.e(TAG, "❌ FREE 티어 리사이즈 중 메모리 부족", e)
-                        // 원본 이미지 사용 
+                        false
                     } catch (e: Exception) {
                         Log.e(TAG, "❌ FREE 티어 리사이즈 처리 중 오류", e)
-                        // 오류 발생 시 원본 이미지 사용
+                        false
+                    }
+
+                    if (resizeSuccess) {
+                        processedPath = (processedFile ?: tempFile).absolutePath
+                        Log.d(TAG, "✅ FREE 티어 리사이즈 완료")
+
+                        // 원본 임시 파일 삭제 (공간 절약)
+                        tempFile.delete()
+                        tempFile = null
+                    } else {
+                        // FREE 티어인데 리사이즈에 실패하면 원본(2000px 초과) 저장은 게이팅 우회이므로 저장을 중단한다.
+                        Log.w(TAG, "⛔ FREE 티어 리사이즈 실패 — 원본 저장 방지, 다운로드 중단: $fileName")
+                        return@withContext null
                     }
                 }
 
@@ -589,6 +620,13 @@ class PhotoDownloadManager @Inject constructor(
                 // PII: 사용자 사진 절대 경로 — DEBUG 빌드에서만 출력
                 Log.d(TAG, "   전체 경로: $fullPath")
             }
+
+            // RAW 게이팅 단일 지점 방어 — 미지원 RAW 는 저장하지 않는다.
+            if (!isDownloadAllowedByGating(fileName)) {
+                onDownloadFailed(fileName)
+                return
+            }
+
             val startTime = System.currentTimeMillis()
 
             // 카메라 내부 경로인지 확인 (/store_로 시작하거나 DCIM이 포함된 경우)
@@ -654,24 +692,29 @@ class PhotoDownloadManager @Inject constructor(
             if (currentTier == SubscriptionTier.FREE && extension in Constants.ImageProcessing.JPEG_EXTENSIONS) {
                 Log.d(TAG, "🎯 FREE 티어 - 이미지 리사이즈 적용: $fileName")
 
-                try {
+                val resizeSuccess = try {
                     val resizedFile = File(file.parent, "${file.nameWithoutExtension}_resized.jpg")
                     processedFile = resizedFile
-                    val resizeSuccess =
-                        resizeImageForFreeTier(file.absolutePath, resizedFile.absolutePath)
-
-                    if (resizeSuccess) {
-                        processedPath = resizedFile.absolutePath
-                        Log.d(TAG, "✅ FREE 티어 리사이즈 완료: ${resizedFile.name}")
-
-                        // 원본 파일 삭제 (공간 절약)
-                        file.delete()
-                    } else {
-                        Log.w(TAG, "⚠️ FREE 티어 리사이즈 실패, 원본 이미지 사용")
-                    }
+                    resizeImageForFreeTier(file.absolutePath, resizedFile.absolutePath)
+                } catch (e: OutOfMemoryError) {
+                    Log.e(TAG, "❌ FREE 티어 리사이즈 중 메모리 부족", e)
+                    false
                 } catch (e: Exception) {
                     Log.e(TAG, "❌ FREE 티어 리사이즈 처리 중 오류", e)
-                    // 오류 발생 시 원본 이미지 사용
+                    false
+                }
+
+                if (resizeSuccess) {
+                    processedPath = (processedFile ?: file).absolutePath
+                    Log.d(TAG, "✅ FREE 티어 리사이즈 완료")
+
+                    // 원본 파일 삭제 (공간 절약)
+                    file.delete()
+                } else {
+                    // FREE 티어인데 리사이즈에 실패하면 원본(2000px 초과) 저장은 게이팅 우회이므로 저장을 중단한다.
+                    Log.w(TAG, "⛔ FREE 티어 리사이즈 실패 — 원본 저장 방지, 다운로드 중단: $fileName")
+                    onDownloadFailed(fileName)
+                    return
                 }
             }
 
@@ -813,11 +856,11 @@ class PhotoDownloadManager @Inject constructor(
                 val availableMemory =
                     runtime.maxMemory() - (runtime.totalMemory() - runtime.freeMemory())
 
-                // 메모리 부족 시 리사이즈 건너뛰기
+                // 메모리 부족 시: 원본을 그대로 복사하면 FREE 2000px 제한이 우회되므로 실패 처리한다.
+                // (호출부는 false 를 받으면 원본 대신 다운로드 자체를 실패로 간주해야 함)
                 if (availableMemory < 30 * 1024 * 1024) { // 30MB 미만
-                    Log.w(TAG, "메모리 부족으로 리사이즈 건너뛰기: 사용가능 ${availableMemory / 1024 / 1024}MB")
-                    return@withContext File(inputPath).copyTo(File(outputPath), overwrite = true)
-                        .exists()
+                    Log.w(TAG, "메모리 부족으로 리사이즈 불가 — 원본 저장 방지: 사용가능 ${availableMemory / 1024 / 1024}MB")
+                    return@withContext false
                 }
 
                 // 원본 이미지 크기 확인

@@ -406,8 +406,11 @@ class NikonAuthenticationService @Inject constructor(
                 }
             }
 
-            LogcatManager.w(TAG, "⚠️ 0x935a 응답 분석 실패 - pairing code 필요 가능성 있음")
-            Pair(false, true)  // 실패 시 pairing code 필요하다고 가정
+            // 응답을 받았으나 pairing code/응답 코드를 식별하지 못한 경우(부분 수신 등).
+            // pairing 필요로 단정하면 매 연결마다 불필요한 30초 블로킹을 강요하므로
+            // "알 수 없는 응답"으로 처리해 상위 로직이 30초 대기 없이 계속 진행하도록 한다.
+            LogcatManager.w(TAG, "⚠️ 0x935a 응답 분석 실패 - 알 수 없는 응답으로 처리")
+            Pair(false, false)
 
         } catch (e: Exception) {
             LogcatManager.e(TAG, "0x935a 전송 실패: ${e.message}")

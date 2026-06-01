@@ -525,7 +525,9 @@ class PtpipDataSource @Inject constructor(
                     _connectionState.value = PtpipConnectionState.CONNECTING
                     setProgress(UiText.Resource(R.string.progress_ptpip_connecting))
 
-                    if (connectToCamera(camera, forceApMode = false)) {
+                    // 호출 경로(handleNetworkStateChange)가 이미 connectionStateMutex를 보유하므로
+                    // 공개 connectToCamera(재획득) 대신 internal을 직접 호출한다 (재진입 데드락 방지).
+                    if (connectToCameraInternal(camera, forceApMode = false)) {
                         Log.i(TAG, "자동 재연결 성공")
                         return
                     }
@@ -687,9 +689,23 @@ class PtpipDataSource @Inject constructor(
     /**
      * 스마트 카메라 연결 (libgphoto2 API 기반)
      * Activity 생명주기와 독립적으로 실행됩니다
+     *
+     * 외부 호출용 — connectionStateMutex 직렬화. 이미 mutex를 보유한 경로
+     * (handleNetworkStateChange → attemptAutoReconnect)에서는 connectToCameraInternal을
+     * 직접 호출해야 한다. kotlinx Mutex는 비재진입이므로 락 보유 중 재획득 시 데드락된다.
      */
     suspend fun connectToCamera(camera: PtpipCamera, forceApMode: Boolean): Boolean =
         connectionStateMutex.withLock {
+            connectToCameraInternal(camera, forceApMode)
+        }
+
+    /**
+     * 카메라 연결 내부 구현 (이미 connectionStateMutex 보유 상태에서 호출)
+     */
+    private suspend fun connectToCameraInternal(
+        camera: PtpipCamera,
+        forceApMode: Boolean
+    ): Boolean =
         withContext(ioDispatcher) {
         try {
             Log.i(TAG, "============================================")
@@ -869,7 +885,6 @@ class PtpipDataSource @Inject constructor(
             return@withContext false
         }
         } // withContext
-        } // connectionStateMutex.withLock
 
     /**
      * Abilities JSON 파싱

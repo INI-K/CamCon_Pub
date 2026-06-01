@@ -54,7 +54,18 @@ class PtpipDiscoveryService @Inject constructor(
         private const val PREF_LAST_CAMERA_NAME = "last_camera_name"
         private const val PREF_LAST_SUCCESS_TIME = "last_success_time"
         private const val CACHE_VALID_DURATION_MS = 24 * 60 * 60 * 1000L // 24시간
+
+        // 동시 mDNS 검색(서비스 타입별 async) 시 NsdManager는 한 번에 하나의
+        // resolveService만 허용하며, 충돌 시 FAILURE_ALREADY_ACTIVE(3)를 반환한다.
+        // 이 경우 카운트만 올리고 누락시키지 않도록 백오프 후 재시도한다.
+        private const val NSD_FAILURE_ALREADY_ACTIVE = 3
+        private const val RESOLVE_RETRY_MAX = 5
+        private const val RESOLVE_RETRY_DELAY_MS = 150L
     }
+
+    // resolveService 재시도 예약용 핸들러 (서비스 타입별 검색 코루틴이 공유)
+    private val resolveRetryHandler =
+        android.os.Handler(android.os.Looper.getMainLooper())
 
     /**
      * PTPIP 지원 카메라 검색 (최적화된 빠른 검색)
@@ -318,6 +329,8 @@ class PtpipDiscoveryService @Inject constructor(
         return suspendCancellableCoroutine { continuation ->
             val discoveredServices = mutableListOf<NsdServiceInfo>()
             val resolvedServices = mutableSetOf<String>()
+            // 서비스별 resolve 재시도 횟수 (serviceName:serviceType 기준)
+            val resolveRetryCounts = mutableMapOf<String, Int>()
             var servicesFound = 0
             var servicesResolved = 0
             var isResumed = false
@@ -354,9 +367,49 @@ class PtpipDiscoveryService @Inject constructor(
                 }
             }
 
+            // resolveService 재시도 시 동일 listener를 명시적으로 재참조하기 위해 보관
+            var localResolveListener: NsdManager.ResolveListener? = null
+
             val resolveListener = object : NsdManager.ResolveListener {
                 override fun onResolveFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
                     Log.w(TAG, "서비스 resolve 실패: ${serviceInfo.serviceName}, 에러코드: $errorCode")
+                    // 동시 resolve 충돌(FAILURE_ALREADY_ACTIVE)이면 카운트만 올려
+                    // 누락시키지 말고 백오프 후 재시도한다.
+                    if (errorCode == NSD_FAILURE_ALREADY_ACTIVE) {
+                        val serviceKey = "${serviceInfo.serviceName}:${serviceInfo.serviceType}"
+                        val retried = synchronized(discoveredServices) {
+                            if (isResumed || !continuation.isActive) {
+                                false
+                            } else {
+                                val attempts = (resolveRetryCounts[serviceKey] ?: 0) + 1
+                                if (attempts > RESOLVE_RETRY_MAX) {
+                                    false
+                                } else {
+                                    resolveRetryCounts[serviceKey] = attempts
+                                    true
+                                }
+                            }
+                        }
+                        if (retried) {
+                            Log.d(TAG, "resolve 충돌, 재시도 예약: ${serviceInfo.serviceName}")
+                            resolveRetryHandler.postDelayed({
+                                val stillActive = synchronized(discoveredServices) {
+                                    !isResumed && continuation.isActive
+                                }
+                                if (!stillActive) return@postDelayed
+                                try {
+                                    nsdManager.resolveService(serviceInfo, localResolveListener!!)
+                                } catch (e: Exception) {
+                                    Log.w(TAG, "resolve 재시도 요청 실패: ${e.message}")
+                                    synchronized(discoveredServices) {
+                                        servicesResolved++
+                                        tryResumeWithServices()
+                                    }
+                                }
+                            }, RESOLVE_RETRY_DELAY_MS)
+                            return
+                        }
+                    }
                     synchronized(discoveredServices) {
                         servicesResolved++
                         tryResumeWithServices()
@@ -375,6 +428,7 @@ class PtpipDiscoveryService @Inject constructor(
                     }
                 }
             }
+            localResolveListener = resolveListener
 
             val listener = object : NsdManager.DiscoveryListener {
                 override fun onDiscoveryStarted(regType: String) {

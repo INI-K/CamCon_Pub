@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import javax.inject.Inject
@@ -42,15 +44,17 @@ class CameraCapabilitiesManager @Inject constructor(
     private var masterWidgetJson: String? = null
     private var lastMasterFetch = 0L
     private val masterCacheTimeout = 300000L // 5분간 유효 (이전: 1분)
-    private var isFetchingMasterData = false
+
+    // 마스터 데이터 fetch 직렬화용 Mutex (중복 JNI 호출/race 방지)
+    private val masterFetchMutex = Mutex()
 
     // 요약 정보 캐시
     private var cachedSummary: String? = null
     private var lastSummaryFetch = 0L
     private val summaryCacheTimeout = 300000L // 5분간 유효
 
-    // 중복 호출 방지 플래그
-    private var isFetchingCapabilities = false
+    // 기능 정보 fetch 직렬화용 Mutex (중복 호출/race 방지)
+    private val capabilitiesFetchMutex = Mutex()
 
     companion object {
         private const val TAG = "카메라기능관리자"
@@ -60,24 +64,23 @@ class CameraCapabilitiesManager @Inject constructor(
      * 카메라 기능 정보를 가져옵니다 (캐시 우선)
      */
     suspend fun fetchCameraCapabilities() = withContext(ioDispatcher) {
-        // 이미 가져오는 중이면 건너뛰기
-        if (isFetchingCapabilities) {
+        // 이미 가져오는 중이면 건너뛰기 (락 비점유 시에만 진입, 중복 호출 방지)
+        if (!capabilitiesFetchMutex.tryLock()) {
             Log.d(TAG, "카메라 기능 정보 가져오기 중복 호출 방지")
             return@withContext
         }
 
-        // 캐시된 결과가 있고 아직 유효하면 캐시 반환
-        val now = System.currentTimeMillis()
-        cachedCapabilities?.let { cached ->
-            if (now - lastCapabilitiesFetch < capabilitiesCacheTimeout) {
-                Log.d(TAG, "캐시에서 카메라 기능 정보 반환: ${cached.model}")
-                _cameraCapabilities.value = cached
-                return@withContext
-            }
-        }
-
-        isFetchingCapabilities = true
         try {
+            // 캐시된 결과가 있고 아직 유효하면 캐시 반환
+            val now = System.currentTimeMillis()
+            cachedCapabilities?.let { cached ->
+                if (now - lastCapabilitiesFetch < capabilitiesCacheTimeout) {
+                    Log.d(TAG, "캐시에서 카메라 기능 정보 반환: ${cached.model}")
+                    _cameraCapabilities.value = cached
+                    return@withContext
+                }
+            }
+
             Log.d(TAG, "카메라 기능 정보 가져오기 시작 (libgphoto2 API 사용)")
 
             // libgphoto2 API로 Abilities 직접 조회
@@ -109,7 +112,7 @@ class CameraCapabilitiesManager @Inject constructor(
             Log.e(TAG, "카메라 기능 정보 가져오기 실패", e)
             _cameraCapabilities.value = null
         } finally {
-            isFetchingCapabilities = false
+            capabilitiesFetchMutex.unlock()
         }
     }
 
@@ -214,28 +217,19 @@ class CameraCapabilitiesManager @Inject constructor(
      */
     private suspend fun ensureMasterCameraData(): Pair<String, String> =
         withContext(ioDispatcher) {
-            val now = System.currentTimeMillis()
+            // Mutex로 직렬화: 동시 진입 코루틴은 대기 후 첫 코루틴이 채운 캐시를 재사용한다.
+            masterFetchMutex.withLock {
+                val now = System.currentTimeMillis()
 
-            // 이미 가져오는 중이면 대기
-            if (isFetchingMasterData) {
-                var attempts = 0
-                while (isFetchingMasterData && attempts < 50) {
-                    kotlinx.coroutines.delay(100)
-                    attempts++
+                // 캐시된 데이터가 있고 유효하면 반환 (락 획득 후 재확인)
+                if (masterCameraAbilities != null && masterWidgetJson != null &&
+                    now - lastMasterFetch < masterCacheTimeout
+                ) {
+                    Log.d(TAG, "마스터 카메라 데이터 캐시 사용 (${(now - lastMasterFetch) / 1000}초 전 생성)")
+                    return@withContext Pair(masterCameraAbilities!!, masterWidgetJson!!)
                 }
-            }
 
-            // 캐시된 데이터가 있고 유효하면 반환
-            if (masterCameraAbilities != null && masterWidgetJson != null &&
-                now - lastMasterFetch < masterCacheTimeout
-            ) {
-                Log.d(TAG, "마스터 카메라 데이터 캐시 사용 (${(now - lastMasterFetch) / 1000}초 전 생성)")
-                return@withContext Pair(masterCameraAbilities!!, masterWidgetJson!!)
-            }
-
-            // 새로 가져오기 (초기화 직후 자동 실행 방지를 위해 지연 추가)
-            isFetchingMasterData = true
-            try {
+                // 새로 가져오기 (초기화 직후 자동 실행 방지를 위해 지연 추가)
                 // 카메라가 완전히 초기화될 때까지 짧은 지연
                 kotlinx.coroutines.delay(500)
 
@@ -252,8 +246,6 @@ class CameraCapabilitiesManager @Inject constructor(
                     "마스터 카메라 데이터 가져오기 완료 (abilities: ${abilities.length}, widgets: ${widgets.length})"
                 )
                 return@withContext Pair(abilities, widgets)
-            } finally {
-                isFetchingMasterData = false
             }
         }
 

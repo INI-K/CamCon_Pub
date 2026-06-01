@@ -15,6 +15,7 @@ import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,9 +37,8 @@ class CameraConnectionGlobalManagerImpl @Inject constructor(
     }
 
     // 앱 scope의 자식 scope — cancelChildren해도 앱 scope에 영향 없음
-    private var managerScope = createManagerScope()
-
-    private fun createManagerScope(): CoroutineScope =
+    // val로 고정해 재할당 race/가시성 문제를 차단한다. 정리 시 scope 자체를 버리지 않고 자식만 취소한다.
+    private val managerScope: CoroutineScope =
         CoroutineScope(appScope.coroutineContext + SupervisorJob(appScope.coroutineContext.job))
 
     private val _globalConnectionState = MutableStateFlow(GlobalCameraConnectionState())
@@ -249,8 +249,9 @@ class CameraConnectionGlobalManagerImpl @Inject constructor(
 
     override fun cleanup() {
         Log.d(TAG, "CameraConnectionGlobalManagerImpl 리소스 정리 시작")
-        managerScope.coroutineContext.job.cancel()
-        managerScope = createManagerScope()
+        // scope 자체는 유지하고 자식 코루틴만 취소 — SupervisorJob은 활성 상태로 남아 재구독 가능하다.
+        // (var 재할당 시 다른 스레드의 launch가 stale 참조를 보던 race를 제거)
+        managerScope.coroutineContext.job.cancelChildren()
         // 정리 후 모니터링 재시작 (Singleton이므로 앱 수명 동안 유지되어야 함)
         startGlobalStateMonitoring()
     }
