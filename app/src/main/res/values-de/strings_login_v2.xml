@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Login v2: klassifizierte Anmeldefehler / Empfehlungscode-Feedback -->
+    <string name="login_error_cancelled">Die Anmeldung wurde abgebrochen.</string>
+    <string name="login_error_network">Netzwerkfehler. Bitte überprüfe deine Verbindung und versuche es erneut.</string>
+    <string name="login_error_auth">Anmeldung fehlgeschlagen. Bitte versuche es erneut.</string>
+    <string name="login_error_unknown">Etwas ist schiefgelaufen. Bitte versuche es erneut.</string>
+
+    <string name="login_referral_applied">Empfehlungscode erfolgreich angewendet!</string>
+    <string name="login_referral_failed">Der Empfehlungscode konnte nicht angewendet werden.</string>
+    <string name="login_referral_error">Bei der Verarbeitung des Empfehlungscodes ist ein Problem aufgetreten.</string>
+
+    <!-- Details zu Abmeldefehlern (das "%s" von settings_toast_logout_failed) -->
+    <string name="auth_error_network_detail">Netzwerkfehler</string>
+    <string name="auth_error_unknown_detail">unbekannter Fehler</string>
+</resources>

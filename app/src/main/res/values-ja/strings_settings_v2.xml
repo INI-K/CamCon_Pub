@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Top bar / common -->
+    <string name="settings_v2_title">設定</string>
+    <string name="settings_v2_back">戻る</string>
+
+    <!-- Section titles -->
+    <string name="settings_v2_section_camera_control">カメラ制御設定（開発版）</string>
+    <string name="settings_v2_section_wifi_ptpip">Wi-Fiカメラ接続（PTPIP）- 開発版</string>
+    <string name="settings_v2_section_color_transfer">カラー転送設定</string>
+    <string name="settings_v2_section_raw_download">RAWファイルダウンロード設定</string>
+    <string name="settings_v2_section_connected_camera">接続中のカメラ情報</string>
+    <string name="settings_v2_section_user_info">ユーザー情報</string>
+    <string name="settings_v2_section_server">サーバー設定（開発版）</string>
+    <string name="settings_v2_section_app">アプリ設定</string>
+    <string name="settings_v2_section_admin">ADMIN専用設定</string>
+    <string name="settings_v2_section_info">情報</string>
+    <string name="settings_v2_section_referral">管理者リファラルコード管理</string>
+
+    <!-- Subscription / upgrade row -->
+    <string name="settings_v2_subscription_title">サブスクリプション管理 / アップグレード</string>
+    <string name="settings_v2_subscription_subtitle_tier">現在のプラン: %s</string>
+    <string name="settings_v2_subscription_subtitle_default">プランを管理してより多くの機能を利用できます</string>
+
+    <!-- Camera control -->
+    <string name="settings_v2_camera_controls_title">カメラコントロール表示</string>
+    <string name="settings_v2_camera_controls_on">ライブビューとカメラコントロールUIを表示</string>
+    <string name="settings_v2_camera_controls_off">無効 - 最新の撮影写真が表示されます</string>
+    <string name="settings_v2_liveview_title">ライブビューを有効化</string>
+    <string name="settings_v2_liveview_subtitle">リアルタイムのカメラ映像を表示（ADMIN専用）</string>
+    <string name="settings_v2_auto_event_title">自動イベント受信</string>
+    <string name="settings_v2_auto_event_subtitle">カメラ制御タブに入ると自動でイベントリスナーを開始</string>
+    <string name="settings_v2_liveview_locked_title">ライブビュー機能</string>
+    <string name="settings_v2_liveview_locked_subtitle">ADMINティアでのみ利用できる機能です</string>
+    <string name="settings_v2_latest_photo_title">最新写真表示</string>
+    <string name="settings_v2_latest_photo_subtitle">カメラコントロール無効時に最近撮影した写真を表示</string>
+
+    <!-- Wi-Fi PTPIP -->
+    <string name="settings_v2_wifi_camera_title">Wi-Fiカメラ接続</string>
+    <string name="settings_v2_wifi_camera_on_last">有効 - 最後の接続: %s</string>
+    <string name="settings_v2_wifi_camera_on_none">有効 - 接続中のカメラなし</string>
+    <string name="settings_v2_wifi_camera_off">Wi-Fi経由でカメラをリモート制御</string>
+    <string name="settings_v2_wifi_connect_title">WIFIで接続する</string>
+    <string name="settings_v2_wifi_connect_subtitle">カメラと同じWi-Fiネットワークで接続（推奨）</string>
+    <string name="settings_v2_auto_discovery_title">自動カメラ検索</string>
+    <string name="settings_v2_auto_discovery_subtitle">ネットワーク上のPTPIPカメラを自動検出</string>
+    <string name="settings_v2_auto_connect_title">自動接続</string>
+    <string name="settings_v2_auto_connect_subtitle">最後に接続したカメラに自動接続</string>
+    <string name="settings_v2_connection_manage_title">カメラ接続管理</string>
+    <string name="settings_v2_connection_manage_subtitle">%s - タップして詳細表示</string>
+
+    <!-- Color transfer -->
+    <string name="settings_v2_color_transfer_title">カラー転送機能</string>
+    <string name="settings_v2_color_transfer_on_ref">有効 - 参照画像を設定済み</string>
+    <string name="settings_v2_color_transfer_on_noref">有効 - 参照画像なし</string>
+    <string name="settings_v2_color_transfer_off">撮影した写真に参照画像のカラーを自動適用</string>
+    <string name="settings_v2_color_transfer_detail_title">詳細設定</string>
+    <string name="settings_v2_color_transfer_detail_subtitle">カラー転送アルゴリズムと高度なオプション設定</string>
+
+    <!-- RAW download -->
+    <string name="settings_v2_raw_download_title">RAWファイルダウンロード</string>
+    <string name="settings_v2_raw_download_on">有効</string>
+    <string name="settings_v2_raw_download_off">無効</string>
+    <string name="settings_v2_raw_download_locked">PRO、ADMIN、REFERRERティアでのみ利用できる機能です</string>
+
+    <!-- Connected camera -->
+    <string name="settings_v2_connection_status_title">接続状態</string>
+    <string name="settings_v2_connection_type_usb">USB接続</string>
+    <string name="settings_v2_connection_type_wifi">Wi-Fi接続（PTPIP）</string>
+    <string name="settings_v2_connection_type_none">未接続</string>
+    <string name="settings_v2_camera_model_title">カメラモデル</string>
+    <string name="settings_v2_camera_model_none">情報なし</string>
+    <string name="settings_v2_camera_limitation_title">機能制限のご案内</string>
+
+    <!-- User -->
+    <string name="settings_v2_user_default_name">ユーザー</string>
+    <string name="settings_v2_user_login_required">ログインが必要です</string>
+    <string name="settings_v2_logout_title">ログアウト</string>
+    <string name="settings_v2_logout_in_progress_title">ログアウト中…</string>
+    <string name="settings_v2_logout_subtitle">現在のアカウントからログアウト</string>
+    <string name="settings_v2_logout_in_progress_subtitle">少々お待ちください…</string>
+
+    <!-- Server -->
+    <string name="settings_v2_storage_title">ストレージ</string>
+    <string name="settings_v2_storage_subtitle">TBD</string>
+    <string name="settings_v2_permissions_title">権限管理</string>
+    <string name="settings_v2_permissions_subtitle">サーバーアクセス権限の設定</string>
+
+    <!-- App -->
+    <string name="settings_v2_battery_title">バッテリー最適化の除外設定</string>
+    <string name="settings_v2_battery_on">バッテリー最適化から除外済み</string>
+    <string name="settings_v2_battery_off">バックグラウンド接続と通知のため除外設定が必要</string>
+
+    <!-- ADMIN -->
+    <string name="settings_v2_mock_camera_title">🧪 仮想カメラ（Mock Camera）</string>
+    <string name="settings_v2_mock_camera_subtitle">開発/テスト用の仮想カメラ機能</string>
+    <string name="settings_v2_camera_abilities_title">🔍 カメラ機能情報</string>
+    <string name="settings_v2_camera_abilities_subtitle">libgphoto2 APIに基づくカメラ対応機能の照会</string>
+    <string name="settings_v2_native_log_title">📝 ネイティブログキャプチャ</string>
+    <string name="settings_v2_native_log_on">有効 - libgphoto2ログをTXTファイルに保存中</string>
+    <string name="settings_v2_native_log_off">PTP/IPデバッグ用の詳細ログ記録</string>
+    <string name="settings_v2_native_log_view_title">ログファイル表示</string>
+    <string name="settings_v2_native_log_view_subtitle">保存されたネイティブログファイルの確認と送信</string>
+
+    <!-- Info -->
+    <string name="settings_v2_oss_license_title">オープンソースライセンス</string>
+    <string name="settings_v2_oss_license_subtitle">使用しているオープンソースライブラリ</string>
+    <string name="settings_v2_app_version_title">アプリバージョン</string>
+
+    <!-- Referral (admin) -->
+    <string name="settings_v2_referral_usage_title">リファラルコード使用量</string>
+    <string name="settings_v2_referral_usage_subtitle">全体: %1$d件 | 利用可能: %2$d件 | 使用済み: %3$d件 (%4$d%%)</string>
+    <string name="settings_v2_referral_generate_title">リファラルコード30件生成</string>
+    <string name="settings_v2_referral_generate_subtitle">新しいリファラルコードを30件生成します</string>
+    <string name="settings_v2_referral_generate_in_progress">生成中…</string>
+    <string name="settings_v2_referral_extract_title">利用可能なコードを1件抽出</string>
+    <string name="settings_v2_referral_extract_subtitle">未使用のリファラルコードを1件クリップボードにコピー</string>
+</resources>

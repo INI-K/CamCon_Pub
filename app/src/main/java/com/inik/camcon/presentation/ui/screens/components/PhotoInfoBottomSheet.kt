@@ -148,9 +148,12 @@ private fun PhotoInfoDateRow(
     isLoading: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val formattedDate by remember(exifInfo, isLoading) {
+    // 필수3 — 날짜 fallback 문자열 i18n (비-Composable formatPhotoDate 에 주입).
+    val unknownDate = stringResource(R.string.gallery_v2_date_unknown)
+    val loadingDate = stringResource(R.string.fullscreen_viewer_loading_date)
+    val formattedDate by remember(exifInfo, isLoading, unknownDate, loadingDate) {
         derivedStateOf {
-            formatPhotoDate(photo, exifInfo, isLoading)
+            formatPhotoDate(photo, exifInfo, isLoading, unknownDate, loadingDate)
         }
     }
 
@@ -224,8 +227,9 @@ private fun PhotoInfoFileRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
+                val internalStorageLabel = stringResource(R.string.gallery_v2_internal_storage)
                 val folderPath = photo.path.substringBeforeLast("/")
-                    .replace("/storage/emulated/0", "/내장 메모리")
+                    .replace("/storage/emulated/0", internalStorageLabel)
 
                 Text(
                     text = folderPath,
@@ -291,8 +295,9 @@ fun ExifInfoContent(
     modifier: Modifier = Modifier
 ) {
     if (exifInfo.isNullOrEmpty() || exifInfo == "{}") {
+        // 필수3 — 미다운로드/데이터 없음은 "불러오는 중"이 아니라 안내 상태로 구분 표시.
         Text(
-            text = stringResource(R.string.fullscreen_viewer_exif_loading),
+            text = stringResource(R.string.gallery_v2_exif_unavailable),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -309,51 +314,71 @@ fun ExifInfoContent(
                 color = MaterialTheme.colorScheme.error
             )
         } else {
-            Column(
-                modifier = modifier
-                    .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                val cameraModel = exifEntries["camera_model"]
-                if (!cameraModel.isNullOrBlank()) {
-                    ExifField("Camera", cameraModel)
-                }
+            ExifEntriesList(exifEntries = exifEntries, modifier = modifier)
+        }
+    }
+}
 
-                val iso = exifEntries["iso"]
-                if (!iso.isNullOrBlank()) {
-                    ExifField("ISO", iso)
-                }
+/**
+ * 파싱된 EXIF 항목을 i18n 라벨로 렌더링(필수3).
+ * ExifInfoContent / PhotoExifPanel 공통 사용으로 중복 제거.
+ */
+@Composable
+fun ExifEntriesList(
+    exifEntries: Map<String, String>,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        val cameraModel = exifEntries["camera_model"]
+        if (!cameraModel.isNullOrBlank()) {
+            ExifField(stringResource(R.string.gallery_v2_exif_camera), cameraModel)
+        }
 
-                val exposureTime = exifEntries["exposure_time"]
-                if (!exposureTime.isNullOrBlank()) {
-                    ExifField("Shutter Speed", formatShutterSpeed(exposureTime))
-                }
+        val iso = exifEntries["iso"]
+        if (!iso.isNullOrBlank()) {
+            ExifField(stringResource(R.string.gallery_v2_exif_iso), iso)
+        }
 
-                val fNumber = exifEntries["f_number"]
-                if (!fNumber.isNullOrBlank()) {
-                    ExifField("Aperture", formatAperture(fNumber))
-                }
+        val exposureTime = exifEntries["exposure_time"]
+        if (!exposureTime.isNullOrBlank()) {
+            ExifField(
+                stringResource(R.string.gallery_v2_exif_shutter),
+                formatShutterSpeed(exposureTime)
+            )
+        }
 
-                val focalLength = exifEntries["focal_length"]
-                if (!focalLength.isNullOrBlank()) {
-                    ExifField("Focal Length", formatFocalLength(focalLength))
-                }
+        val fNumber = exifEntries["f_number"]
+        if (!fNumber.isNullOrBlank()) {
+            ExifField(stringResource(R.string.gallery_v2_exif_aperture), formatAperture(fNumber))
+        }
 
-                val whiteBalance = exifEntries["white_balance"]
-                if (!whiteBalance.isNullOrBlank()) {
-                    ExifField("White Balance", formatWhiteBalance(whiteBalance))
-                }
+        val focalLength = exifEntries["focal_length"]
+        if (!focalLength.isNullOrBlank()) {
+            ExifField(
+                stringResource(R.string.gallery_v2_exif_focal_length),
+                formatFocalLength(focalLength)
+            )
+        }
 
-                val flash = exifEntries["flash"]
-                if (!flash.isNullOrBlank()) {
-                    ExifField("Flash", formatFlash(flash))
-                }
+        val whiteBalance = exifEntries["white_balance"]
+        if (!whiteBalance.isNullOrBlank()) {
+            ExifField(
+                stringResource(R.string.gallery_v2_exif_white_balance),
+                formatWhiteBalanceLabel(whiteBalance)
+            )
+        }
 
-                val dateTimeOriginal = exifEntries["date_time_original"]
-                if (!dateTimeOriginal.isNullOrBlank()) {
-                    ExifField("Date", dateTimeOriginal)
-                }
-            }
+        val flash = exifEntries["flash"]
+        if (!flash.isNullOrBlank()) {
+            ExifField(stringResource(R.string.gallery_v2_exif_flash), formatFlashLabel(flash))
+        }
+
+        val dateTimeOriginal = exifEntries["date_time_original"]
+        if (!dateTimeOriginal.isNullOrBlank()) {
+            ExifField(stringResource(R.string.gallery_v2_exif_date), dateTimeOriginal)
         }
     }
 }
@@ -407,8 +432,12 @@ private fun readExifFromFile(filePath: String): String? {
 private fun formatPhotoDate(
     photo: CameraPhoto,
     exifInfo: String?,
-    isLoading: Boolean
+    isLoading: Boolean,
+    unknownDate: String,
+    loadingDate: String
 ): String {
+    // 표시 포맷은 기기 로케일을 따른다(필수3: 한국어 고정 제거).
+    val displayFormat = SimpleDateFormat("yyyy.MM.dd a h:mm", Locale.getDefault())
     return if (!isLoading && !exifInfo.isNullOrEmpty() && exifInfo != "{}") {
         try {
             val exifEntries = parseExifInfo(exifInfo)
@@ -418,8 +447,6 @@ private fun formatPhotoDate(
                 Log.d("PhotoInfoDialog", "EXIF 날짜 원본: $dateTimeOriginal")
                 val exifFormat =
                     SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.getDefault())
-                val displayFormat =
-                    SimpleDateFormat("yyyy년 M월 d일 a h:mm", Locale.KOREAN)
 
                 try {
                     val parsedDate = exifFormat.parse(dateTimeOriginal)
@@ -429,7 +456,7 @@ private fun formatPhotoDate(
                         result
                     } else {
                         Log.w("PhotoInfoDialog", "EXIF 날짜 파싱 실패, 기본값 사용")
-                        "Unknown date"
+                        unknownDate
                     }
                 } catch (e: Exception) {
                     Log.e(
@@ -437,24 +464,21 @@ private fun formatPhotoDate(
                         "EXIF 날짜 파싱 예외: $dateTimeOriginal",
                         e
                     )
-                    "Unknown date"
+                    unknownDate
                 }
             } else {
                 Log.d("PhotoInfoDialog", "EXIF에 date_time_original 없음, 기본값 사용")
-                SimpleDateFormat("yyyy년 M월 d일 a h:mm", Locale.KOREAN)
-                    .format(Date(photo.date))
+                displayFormat.format(Date(photo.date))
             }
         } catch (e: Exception) {
             Log.w("PhotoInfoDialog", "EXIF 정보 파싱 실패", e)
-            SimpleDateFormat("yyyy년 M월 d일 a h:mm", Locale.KOREAN)
-                .format(Date(photo.date))
+            displayFormat.format(Date(photo.date))
         }
     } else {
         if (isLoading) {
-            "Loading date..."
+            loadingDate
         } else {
-            SimpleDateFormat("yyyy년 M월 d일 a h:mm", Locale.KOREAN)
-                .format(Date(photo.date))
+            displayFormat.format(Date(photo.date))
         }
     }
 }

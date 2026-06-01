@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Camera Control UX v2 — newly added keys only -->
+    <string name="capture_shutter_cd">Disparador</string>
+    <string name="capture_stop_timelapse">Detener time-lapse</string>
+    <string name="unsupported_shooting_mode_message">Esta cámara no admite el modo de disparo %s</string>
+    <string name="liveview_frame_stalled">Vista en vivo detenida</string>
+    <string name="autofocus_completed">Enfoque fijado</string>
+</resources>

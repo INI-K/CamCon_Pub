@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Camera Control UX v2 — newly added keys only -->
+    <string name="capture_shutter_cd">Déclencheur</string>
+    <string name="capture_stop_timelapse">Arrêter le time-lapse</string>
+    <string name="unsupported_shooting_mode_message">Cet appareil ne prend pas en charge le mode de prise de vue %s</string>
+    <string name="liveview_frame_stalled">Visée en direct figée</string>
+    <string name="autofocus_completed">Mise au point verrouillée</string>
+</resources>

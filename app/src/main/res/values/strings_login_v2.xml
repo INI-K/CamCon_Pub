@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Login v2: classified sign-in error / referral feedback -->
+    <string name="login_error_cancelled">Sign-in was cancelled.</string>
+    <string name="login_error_network">Network error. Please check your connection and try again.</string>
+    <string name="login_error_auth">Sign-in failed. Please try again.</string>
+    <string name="login_error_unknown">Something went wrong. Please try again.</string>
+
+    <string name="login_referral_applied">Referral code applied successfully!</string>
+    <string name="login_referral_failed">Could not apply the referral code.</string>
+    <string name="login_referral_error">There was a problem processing the referral code.</string>
+
+    <!-- Auth (sign-out) error details, used as the "%s" of settings_toast_logout_failed -->
+    <string name="auth_error_network_detail">network error</string>
+    <string name="auth_error_unknown_detail">unknown error</string>
+</resources>

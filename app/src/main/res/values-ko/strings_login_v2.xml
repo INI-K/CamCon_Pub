@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Login v2: 분류된 로그인 오류 / 추천 코드 피드백 -->
+    <string name="login_error_cancelled">로그인이 취소되었습니다.</string>
+    <string name="login_error_network">네트워크 오류입니다. 연결 상태를 확인하고 다시 시도해주세요.</string>
+    <string name="login_error_auth">로그인에 실패했습니다. 다시 시도해주세요.</string>
+    <string name="login_error_unknown">문제가 발생했습니다. 다시 시도해주세요.</string>
+
+    <string name="login_referral_applied">추천 코드가 성공적으로 적용되었습니다!</string>
+    <string name="login_referral_failed">추천 코드를 적용하지 못했습니다.</string>
+    <string name="login_referral_error">추천 코드 처리 중 문제가 발생했습니다.</string>
+
+    <!-- 로그아웃 오류 상세 (settings_toast_logout_failed 의 "%s" 자리) -->
+    <string name="auth_error_network_detail">네트워크 오류</string>
+    <string name="auth_error_unknown_detail">알 수 없는 오류</string>
+</resources>

@@ -41,6 +41,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -49,6 +50,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
+import com.inik.camcon.R
 import com.inik.camcon.presentation.viewmodel.ColorTransferViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -175,12 +177,12 @@ fun ColorTransferLivePreview(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "실시간 미리보기",
+                            text = stringResource(R.string.ct_lp_placeholder_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "참조 이미지와 대상 이미지를\n선택하면 미리보기가 표시됩니다",
+                            text = stringResource(R.string.ct_lp_placeholder_desc),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
@@ -200,14 +202,14 @@ fun ColorTransferLivePreview(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "강도: ${(intensity * 100).toInt()}%",
+                            text = stringResource(R.string.ct_lp_intensity_label, (intensity * 100).toInt()),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "슬라이더 조작을 완료하면\n미리보기가 업데이트됩니다",
+                            text = stringResource(R.string.ct_lp_slider_active_desc),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         )
@@ -225,12 +227,12 @@ fun ColorTransferLivePreview(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "색감 전송 처리 중...",
+                            text = stringResource(R.string.ct_lp_processing),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = "강도: ${(intensity * 100).toInt()}%",
+                            text = stringResource(R.string.ct_lp_intensity_label, (intensity * 100).toInt()),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
                         )
@@ -246,7 +248,10 @@ fun ColorTransferLivePreview(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "색감 적용 결과 (${(lastProcessedIntensity * 100).toInt()}%)",
+                            text = stringResource(
+                                R.string.ct_lp_result_title,
+                                (lastProcessedIntensity * 100).toInt()
+                            ),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -290,7 +295,7 @@ fun ColorTransferLivePreview(
                         ) {
                             Image(
                                 bitmap = processedBitmap!!.asImageBitmap(),
-                                contentDescription = "색감 적용된 이미지",
+                                contentDescription = stringResource(R.string.ct_lp_cd_applied),
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
                             )
@@ -306,7 +311,7 @@ fun ColorTransferLivePreview(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = "👆 탭하여 원본 크기로 보기",
+                                        text = stringResource(R.string.ct_lp_tap_for_full),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.primary,
                                         fontWeight = FontWeight.Bold
@@ -331,7 +336,7 @@ fun ColorTransferLivePreview(
                                         )
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Text(
-                                            text = "원본 크기 처리 중...",
+                                            text = stringResource(R.string.ct_lp_processing_full),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onPrimary,
                                             fontWeight = FontWeight.Bold
@@ -343,7 +348,7 @@ fun ColorTransferLivePreview(
 
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "참조 이미지의 색감이 적용된 결과입니다",
+                            text = stringResource(R.string.ct_lp_result_hint),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
@@ -363,7 +368,7 @@ fun ColorTransferLivePreview(
                                         .crossfade(true)
                                         .build()
                                 ),
-                                contentDescription = "대상 이미지",
+                                contentDescription = stringResource(R.string.ct_lp_cd_target),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(200.dp)
@@ -372,7 +377,7 @@ fun ColorTransferLivePreview(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "참조 이미지를 선택하면\n색감 전송 미리보기가 표시됩니다",
+                                text = stringResource(R.string.ct_lp_select_reference_hint),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
@@ -416,7 +421,7 @@ fun ColorTransferLivePreview(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "색감 적용 결과 (원본 크기)",
+                            text = stringResource(R.string.ct_lp_full_result_title),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -430,7 +435,7 @@ fun ColorTransferLivePreview(
                         ) {
                             Icon(
                                 Icons.Default.Close,
-                                contentDescription = "닫기",
+                                contentDescription = stringResource(R.string.ct_cd_close),
                                 tint = MaterialTheme.colorScheme.onSurface
                             )
                         }
@@ -445,7 +450,7 @@ fun ColorTransferLivePreview(
                     ) {
                         ZoomableImageWithDoubleTap(
                             bitmap = fullSizeProcessedBitmap!!,
-                            contentDescription = "원본 크기 색감 적용된 이미지",
+                            contentDescription = stringResource(R.string.ct_lp_cd_full_applied),
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Fit
                         )

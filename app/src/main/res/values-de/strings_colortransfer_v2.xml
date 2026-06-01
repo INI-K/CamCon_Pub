@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ColorTransfer v2: i18n for settings/live-preview/preview-view + progress + picker -->
+
+    <!-- Common / TopBar -->
+    <string name="ct_settings_title">Detaileinstellungen für Farbübertragung</string>
+    <string name="ct_cd_close">Schließen</string>
+    <string name="ct_confirm">OK</string>
+
+    <!-- Disabled banner -->
+    <string name="ct_disabled_title">⚠️ Farbübertragung ist deaktiviert</string>
+    <string name="ct_disabled_message">Bitte aktivieren Sie zuerst die Farbübertragung in den Einstellungen</string>
+
+    <!-- Live preview section -->
+    <string name="ct_live_preview_title">Echtzeit-Vorschau</string>
+
+    <!-- Intensity slider -->
+    <string name="ct_intensity_title">Intensität der Farbübertragung</string>
+    <string name="ct_intensity_percent">%d%%</string>
+    <string name="ct_intensity_weak">Schwach (1%%)</string>
+    <string name="ct_intensity_strong">Stark (100%%)</string>
+    <string name="ct_intensity_recommended">Empfohlen: 3–10%%</string>
+
+    <!-- Image management -->
+    <string name="ct_image_management">Bildverwaltung</string>
+    <string name="ct_reference_image">Referenzbild</string>
+    <string name="ct_target_image">Zielbild</string>
+    <string name="ct_manage_library">Referenzbild-Bibliothek</string>
+    <string name="ct_clear_cache">Cache leeren</string>
+
+    <!-- Error card -->
+    <string name="ct_error_title">Fehler aufgetreten</string>
+
+    <!-- Processing progress -->
+    <string name="ct_processing_title">Farbübertragung wird verarbeitet…</string>
+
+    <!-- LivePreview component -->
+    <string name="ct_lp_placeholder_title">Echtzeit-Vorschau</string>
+    <string name="ct_lp_placeholder_desc">Wählen Sie ein Referenz- und ein Zielbild aus,\num die Vorschau anzuzeigen</string>
+    <string name="ct_lp_slider_active_desc">Die Vorschau wird aktualisiert,\nsobald Sie den Regler loslassen</string>
+    <string name="ct_lp_processing">Farbübertragung wird verarbeitet…</string>
+    <string name="ct_lp_intensity_label">Intensität: %d%%</string>
+    <string name="ct_lp_result_title">Farbergebnis (%d%%)</string>
+    <string name="ct_lp_cd_applied">Bild mit angewendeter Farbe</string>
+    <string name="ct_lp_tap_for_full">👆 Tippen für Originalgröße</string>
+    <string name="ct_lp_processing_full">Originalgröße wird verarbeitet…</string>
+    <string name="ct_lp_result_hint">Ergebnis mit der Farbe des Referenzbilds</string>
+    <string name="ct_lp_cd_target">Zielbild</string>
+    <string name="ct_lp_select_reference_hint">Wählen Sie ein Referenzbild aus,\num die Farbübertragungs-Vorschau anzuzeigen</string>
+    <string name="ct_lp_full_result_title">Farbergebnis (Originalgröße)</string>
+    <string name="ct_lp_cd_full_applied">Bild mit angewendeter Farbe in Originalgröße</string>
+
+    <!-- PreviewView component -->
+    <string name="ct_pv_reference_title">Farbreferenzbild</string>
+    <string name="ct_pv_reference_subtitle">Die Farbe dieses Bildes wird angewendet</string>
+    <string name="ct_pv_reference_placeholder">Wählen Sie ein Referenzbild,\ndessen Farbe übernommen werden soll</string>
+    <string name="ct_pv_transfer_label">Farbübertragung</string>
+    <string name="ct_pv_target_title">Zielbild</string>
+    <string name="ct_pv_target_subtitle">Das Bild, auf das die Farbe angewendet wird</string>
+    <string name="ct_pv_target_placeholder">Wählen Sie das Zielbild,\nauf das die Farbe angewendet wird</string>
+    <string name="ct_pv_file_name">Dateiname: %s</string>
+    <string name="ct_pv_file_size">Größe: %d KB</string>
+    <string name="ct_pv_tap_to_change">Tippen, um ein anderes Bild zu wählen</string>
+    <string name="ct_pv_select">Auswählen</string>
+</resources>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Login v2 : erreurs de connexion classées / messages de code de parrainage -->
+    <string name="login_error_cancelled">La connexion a été annulée.</string>
+    <string name="login_error_network">Erreur réseau. Vérifiez votre connexion et réessayez.</string>
+    <string name="login_error_auth">Échec de la connexion. Veuillez réessayer.</string>
+    <string name="login_error_unknown">Une erreur s\'est produite. Veuillez réessayer.</string>
+
+    <string name="login_referral_applied">Code de parrainage appliqué avec succès !</string>
+    <string name="login_referral_failed">Impossible d\'appliquer le code de parrainage.</string>
+    <string name="login_referral_error">Un problème est survenu lors du traitement du code de parrainage.</string>
+
+    <!-- Détails de l\'erreur de déconnexion (le « %s » de settings_toast_logout_failed) -->
+    <string name="auth_error_network_detail">erreur réseau</string>
+    <string name="auth_error_unknown_detail">erreur inconnue</string>
+</resources>

@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,10 +27,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Photo
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -46,18 +49,23 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.ui.screens.ColorTransferImagePickerScreen
 import com.inik.camcon.presentation.ui.screens.components.ColorTransferLivePreview
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
+import com.inik.camcon.presentation.viewmodel.ColorTransferStage
 import com.inik.camcon.presentation.viewmodel.ColorTransferViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
@@ -71,7 +79,7 @@ class ColorTransferSettingsActivity : ComponentActivity() {
         setContent {
             val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
             val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
-            
+
             CamConTheme() {
                 ColorTransferSettingsScreen(
                     onBackClick = { finish() },
@@ -83,6 +91,15 @@ class ColorTransferSettingsActivity : ComponentActivity() {
     }
 }
 
+/**
+ * 색감 전송 상세 설정 화면 내부 라우팅 상태.
+ * 새 Activity/매니페스트 등록 없이 Composable 토글로 참조 이미지 라이브러리를 노출한다.
+ */
+private enum class ColorTransferRoute {
+    SETTINGS,
+    REFERENCE_PICKER
+}
+
 @Composable
 fun ColorTransferSettingsScreen(
     onBackClick: () -> Unit,
@@ -90,29 +107,38 @@ fun ColorTransferSettingsScreen(
     colorTransferViewModel: ColorTransferViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-    
-    LaunchedEffect(Unit) {
-        android.util.Log.d("ColorTransferSettings", "🎮 GPU 초기화 시작...")
-        try {
-            android.util.Log.d("ColorTransferSettings", "✅ GPU 초기화 완료")
-        } catch (e: Exception) {
-            android.util.Log.e("ColorTransferSettings", "❌ GPU 초기화 실패: ${e.message}")
-        }
-    }
-    
+
+    var route by rememberSaveable { mutableStateOf(ColorTransferRoute.SETTINGS) }
+
     val isColorTransferEnabled by appSettingsViewModel.isColorTransferEnabled.collectAsStateWithLifecycle()
     val colorTransferReferenceImagePath by appSettingsViewModel.colorTransferReferenceImagePath.collectAsStateWithLifecycle()
     val colorTransferTargetImagePath by appSettingsViewModel.colorTransferTargetImagePath.collectAsStateWithLifecycle()
     val colorTransferIntensity by appSettingsViewModel.colorTransferIntensity.collectAsStateWithLifecycle()
-    
+
     // ColorTransferViewModel 상태
     val isLoading by colorTransferViewModel.isLoading.collectAsStateWithLifecycle()
     val processingProgress by colorTransferViewModel.processingProgress.collectAsStateWithLifecycle()
-    val processingStatus by colorTransferViewModel.processingStatus.collectAsStateWithLifecycle()
+    val processingStage by colorTransferViewModel.processingStage.collectAsStateWithLifecycle()
     val errorMessage by colorTransferViewModel.errorMessage.collectAsStateWithLifecycle()
     val performanceInfo by colorTransferViewModel.performanceInfo.collectAsStateWithLifecycle()
 
-    // 이미지 선택 런처들
+    // [권장3] 참조 이미지 라이브러리 화면을 내부 토글로 노출.
+    if (route == ColorTransferRoute.REFERENCE_PICKER) {
+        ColorTransferImagePickerScreen(
+            onBackClick = { route = ColorTransferRoute.SETTINGS },
+            onImageSelected = { selectedPath ->
+                // 이미 앱 내부에 저장된 라이브러리 이미지이므로 중복 복사 없이 경로만 지정한다.
+                appSettingsViewModel.setColorTransferReferenceImagePath(selectedPath)
+                colorTransferViewModel.clearPerformanceInfo()
+                colorTransferViewModel.clearProcessingStatus()
+                route = ColorTransferRoute.SETTINGS
+            },
+            viewModel = colorTransferViewModel
+        )
+        return
+    }
+
+    // 시스템 갤러리에서 새 이미지를 가져오는 런처들
     val referenceImagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
@@ -132,13 +158,10 @@ fun ColorTransferSettingsScreen(
                     }
                 }
 
-                // 설정에 파일 경로 저장
                 appSettingsViewModel.setColorTransferReferenceImagePath(targetFile.absolutePath)
 
-                // 캐시 초기화
                 colorTransferViewModel.clearPerformanceInfo()
                 colorTransferViewModel.clearProcessingStatus()
-
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -164,13 +187,10 @@ fun ColorTransferSettingsScreen(
                     }
                 }
 
-                // 설정에 파일 경로 저장
                 appSettingsViewModel.setColorTransferTargetImagePath(targetFile.absolutePath)
 
-                // 캐시 초기화
                 colorTransferViewModel.clearPerformanceInfo()
                 colorTransferViewModel.clearProcessingStatus()
-
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -181,10 +201,10 @@ fun ColorTransferSettingsScreen(
         topBar = {
             TopAppBar(
                 modifier = Modifier.statusBarsPadding(),
-                title = { Text("색감 전송 상세 설정") },
+                title = { Text(stringResource(R.string.ct_settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "뒤로가기")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -216,13 +236,13 @@ fun ColorTransferSettingsScreen(
                         modifier = Modifier.padding(16.dp)
                     ) {
                         Text(
-                            text = "⚠️ 색감 전송 기능이 비활성화됨",
+                            text = stringResource(R.string.ct_disabled_title),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "설정에서 색감 전송 기능을 먼저 활성화해주세요",
+                            text = stringResource(R.string.ct_disabled_message),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         )
@@ -231,6 +251,67 @@ fun ColorTransferSettingsScreen(
             }
 
             if (isColorTransferEnabled) {
+                // [필수2] 처리 중 진행률 인디케이터 + 상태 텍스트
+                val isProcessingInProgress = isLoading &&
+                        processingStage != null &&
+                        processingStage != ColorTransferStage.DONE
+                AnimatedVisibility(visible = isProcessingInProgress) {
+                    val stageText = when (processingStage) {
+                        ColorTransferStage.PREVIEW_PROCESSING ->
+                            stringResource(R.string.ct_processing_title)
+                        ColorTransferStage.FULL_SIZE_PREPARING ->
+                            stringResource(R.string.ct_lp_processing_full)
+                        ColorTransferStage.FULL_SIZE_APPLYING ->
+                            stringResource(R.string.ct_processing_title)
+                        else -> stringResource(R.string.ct_processing_title)
+                    }
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = stageText,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = stringResource(
+                                        R.string.ct_intensity_percent,
+                                        (processingProgress * 100).toInt()
+                                    ),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            LinearProgressIndicator(
+                                progress = { processingProgress },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(6.dp),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+                            )
+                        }
+                    }
+                }
+
                 // 실시간 미리보기 영역 - 더 크게
                 Card(
                     modifier = Modifier
@@ -242,7 +323,7 @@ fun ColorTransferSettingsScreen(
                         modifier = Modifier.padding(16.dp)
                     ) {
                         Text(
-                            text = "실시간 미리보기",
+                            text = stringResource(R.string.ct_live_preview_title),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
@@ -289,12 +370,15 @@ fun ColorTransferSettingsScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "색감 전송 강도",
+                                text = stringResource(R.string.ct_intensity_title),
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "${(localIntensity * 100).toInt()}%",
+                                text = stringResource(
+                                    R.string.ct_intensity_percent,
+                                    (localIntensity * 100).toInt()
+                                ),
                                 style = MaterialTheme.typography.headlineSmall,
                                 color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold
@@ -326,12 +410,12 @@ fun ColorTransferSettingsScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "약함 (1%)",
+                                text = stringResource(R.string.ct_intensity_weak),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
                             Text(
-                                text = "강함 (100%)",
+                                text = stringResource(R.string.ct_intensity_strong),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
@@ -351,7 +435,7 @@ fun ColorTransferSettingsScreen(
                                 modifier = Modifier.padding(end = 4.dp)
                             )
                             Text(
-                                text = "권장: 3-10%",
+                                text = stringResource(R.string.ct_intensity_recommended),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
                                 fontWeight = FontWeight.Medium
@@ -371,7 +455,7 @@ fun ColorTransferSettingsScreen(
                         modifier = Modifier.padding(16.dp)
                     ) {
                         Text(
-                            text = "이미지 관리",
+                            text = stringResource(R.string.ct_image_management),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -381,7 +465,7 @@ fun ColorTransferSettingsScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            // 참조 이미지 선택
+                            // 참조 이미지 선택 (시스템 갤러리에서 새로 추가)
                             OutlinedButton(
                                 onClick = {
                                     referenceImagePickerLauncher.launch("image/*")
@@ -393,7 +477,7 @@ fun ColorTransferSettingsScreen(
                                     contentDescription = null,
                                     modifier = Modifier.padding(end = 4.dp)
                                 )
-                                Text("참조 이미지")
+                                Text(stringResource(R.string.ct_reference_image))
                             }
 
                             // 대상 이미지 선택
@@ -408,10 +492,27 @@ fun ColorTransferSettingsScreen(
                                     contentDescription = null,
                                     modifier = Modifier.padding(end = 4.dp)
                                 )
-                                Text("대상 이미지")
+                                Text(stringResource(R.string.ct_target_image))
                             }
                         }
-                        
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // [권장3] 등록된 참조 이미지 라이브러리에서 다시 고르기
+                        OutlinedButton(
+                            onClick = {
+                                route = ColorTransferRoute.REFERENCE_PICKER
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                Icons.Default.PhotoLibrary,
+                                contentDescription = null,
+                                modifier = Modifier.padding(end = 4.dp)
+                            )
+                            Text(stringResource(R.string.ct_manage_library))
+                        }
+
                         Spacer(modifier = Modifier.height(8.dp))
 
                         // 캐시 초기화
@@ -427,7 +528,7 @@ fun ColorTransferSettingsScreen(
                                 contentDescription = null,
                                 modifier = Modifier.padding(end = 4.dp)
                             )
-                            Text("캐시 초기화")
+                            Text(stringResource(R.string.ct_clear_cache))
                         }
                     }
                 }
@@ -481,7 +582,7 @@ fun ColorTransferSettingsScreen(
                                     modifier = Modifier.padding(end = 8.dp)
                                 )
                                 Text(
-                                    text = "오류 발생",
+                                    text = stringResource(R.string.ct_error_title),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.error
@@ -498,7 +599,7 @@ fun ColorTransferSettingsScreen(
                                 onClick = { colorTransferViewModel.clearError() },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text("확인")
+                                Text(stringResource(R.string.ct_confirm))
                             }
                         }
                     }
@@ -509,7 +610,6 @@ fun ColorTransferSettingsScreen(
             }
         }
     }
-
 }
 
 /**
@@ -527,10 +627,10 @@ private fun ColorTransferSettingsScreenPreview(
         topBar = {
             TopAppBar(
                 modifier = Modifier.statusBarsPadding(),
-                title = { Text("색감 전송 상세 설정") },
+                title = { Text(stringResource(R.string.ct_settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = {}) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "뒤로가기")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -561,13 +661,13 @@ private fun ColorTransferSettingsScreenPreview(
                         modifier = Modifier.padding(16.dp)
                     ) {
                         Text(
-                            text = "⚠️ 색감 전송 기능이 비활성화됨",
+                            text = stringResource(R.string.ct_disabled_title),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "설정에서 색감 전송 기능을 먼저 활성화해주세요",
+                            text = stringResource(R.string.ct_disabled_message),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         )
@@ -587,7 +687,7 @@ private fun ColorTransferSettingsScreenPreview(
                         modifier = Modifier.padding(16.dp)
                     ) {
                         Text(
-                            text = "실시간 미리보기",
+                            text = stringResource(R.string.ct_live_preview_title),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
@@ -614,12 +714,15 @@ private fun ColorTransferSettingsScreenPreview(
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = "미리보기 영역",
+                                    text = stringResource(R.string.ct_live_preview_title),
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                                 )
                                 Text(
-                                    text = "강도: ${(colorTransferIntensity * 100).toInt()}%",
+                                    text = stringResource(
+                                        R.string.ct_lp_intensity_label,
+                                        (colorTransferIntensity * 100).toInt()
+                                    ),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
                                 )
@@ -643,12 +746,15 @@ private fun ColorTransferSettingsScreenPreview(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "색감 전송 강도",
+                                text = stringResource(R.string.ct_intensity_title),
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "${(colorTransferIntensity * 100).toInt()}%",
+                                text = stringResource(
+                                    R.string.ct_intensity_percent,
+                                    (colorTransferIntensity * 100).toInt()
+                                ),
                                 style = MaterialTheme.typography.headlineSmall,
                                 color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold
@@ -677,12 +783,12 @@ private fun ColorTransferSettingsScreenPreview(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "약함 (1%)",
+                                text = stringResource(R.string.ct_intensity_weak),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
                             Text(
-                                text = "강함 (100%)",
+                                text = stringResource(R.string.ct_intensity_strong),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
@@ -701,7 +807,7 @@ private fun ColorTransferSettingsScreenPreview(
                                 modifier = Modifier.padding(end = 4.dp)
                             )
                             Text(
-                                text = "권장: 3-10%",
+                                text = stringResource(R.string.ct_intensity_recommended),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
                                 fontWeight = FontWeight.Medium
@@ -721,7 +827,7 @@ private fun ColorTransferSettingsScreenPreview(
                         modifier = Modifier.padding(16.dp)
                     ) {
                         Text(
-                            text = "이미지 관리",
+                            text = stringResource(R.string.ct_image_management),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -740,7 +846,7 @@ private fun ColorTransferSettingsScreenPreview(
                                     contentDescription = null,
                                     modifier = Modifier.padding(end = 4.dp)
                                 )
-                                Text("참조 이미지")
+                                Text(stringResource(R.string.ct_reference_image))
                             }
 
                             OutlinedButton(
@@ -752,8 +858,22 @@ private fun ColorTransferSettingsScreenPreview(
                                     contentDescription = null,
                                     modifier = Modifier.padding(end = 4.dp)
                                 )
-                                Text("대상 이미지")
+                                Text(stringResource(R.string.ct_target_image))
                             }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        OutlinedButton(
+                            onClick = {},
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                Icons.Default.PhotoLibrary,
+                                contentDescription = null,
+                                modifier = Modifier.padding(end = 4.dp)
+                            )
+                            Text(stringResource(R.string.ct_manage_library))
                         }
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -767,7 +887,7 @@ private fun ColorTransferSettingsScreenPreview(
                                 contentDescription = null,
                                 modifier = Modifier.padding(end = 4.dp)
                             )
-                            Text("캐시 초기화")
+                            Text(stringResource(R.string.ct_clear_cache))
                         }
                     }
                 }
@@ -821,7 +941,7 @@ private fun ColorTransferSettingsScreenPreview(
                                     modifier = Modifier.padding(end = 8.dp)
                                 )
                                 Text(
-                                    text = "오류 발생",
+                                    text = stringResource(R.string.ct_error_title),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.error
@@ -838,7 +958,7 @@ private fun ColorTransferSettingsScreenPreview(
                                 onClick = {},
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text("확인")
+                                Text(stringResource(R.string.ct_confirm))
                             }
                         }
                     }

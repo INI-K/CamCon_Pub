@@ -2,7 +2,7 @@ package com.inik.camcon.presentation.navigation
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -22,7 +22,7 @@ sealed class BottomNavItem(val route: String, val titleRes: Int, val icon: Image
         BottomNavItem("camera_control", R.string.camera_control, Icons.Default.CameraAlt)
 
     object ServerPhotos :
-        BottomNavItem("server_photos", R.string.server_photos, Icons.Default.CloudDownload)
+        BottomNavItem("server_photos", R.string.gallery, Icons.Default.Collections)
 
     object Settings :
         BottomNavItem("settings", R.string.settings, Icons.Default.Settings)

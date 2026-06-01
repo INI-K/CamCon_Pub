@@ -299,10 +299,14 @@ fun SettingsScreen(
         topBar = {
             TopAppBar(
                 modifier = Modifier.statusBarsPadding(),
-                title = { Text("설정", style = HeadingL, color = TextPrimaryV2) },
+                title = { Text(stringResource(R.string.settings_v2_title), style = HeadingL, color = TextPrimaryV2) },
                 navigationIcon = {
                     androidx.compose.material3.IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = TextPrimaryV2)
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = stringResource(R.string.settings_v2_back),
+                            tint = TextPrimaryV2
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -324,14 +328,14 @@ fun SettingsScreen(
         ) {
             // 카메라 제어 설정
             if (BuildConfig.SHOW_DEVELOPER_FEATURES) {
-                SettingsSection(title = "카메라 제어 설정 (개발 버전)") {
+                SettingsSection(title = stringResource(R.string.settings_v2_section_camera_control)) {
                     SwitchRowV2(
                         icon = Icons.Default.CameraAlt,
-                        title = "카메라 컨트롤 표시",
+                        title = stringResource(R.string.settings_v2_camera_controls_title),
                         subtitle = if (isCameraControlsEnabled) {
-                            "라이브뷰 및 카메라 컨트롤 UI 표시"
+                            stringResource(R.string.settings_v2_camera_controls_on)
                         } else {
-                            "비활성화 - 최신 촬영 사진이 표시됩니다"
+                            stringResource(R.string.settings_v2_camera_controls_off)
                         },
                         checked = isCameraControlsEnabled,
                         onCheckedChange = { appSettingsViewModel.setCameraControlsEnabled(it) }
@@ -340,29 +344,29 @@ fun SettingsScreen(
                     if (isCameraControlsEnabled && isAdminTier) {
                         SwitchRowV2(
                             icon = Icons.Default.Visibility,
-                            title = "라이브뷰 활성화",
-                            subtitle = "실시간 카메라 화면 표시 (ADMIN 전용)",
+                            title = stringResource(R.string.settings_v2_liveview_title),
+                            subtitle = stringResource(R.string.settings_v2_liveview_subtitle),
                             checked = isLiveViewEnabled,
                             onCheckedChange = { appSettingsViewModel.setLiveViewEnabled(it) }
                         )
                         SwitchRowV2(
                             icon = Icons.Default.Settings,
-                            title = "자동 이벤트 수신",
-                            subtitle = "카메라 제어 탭 진입 시 자동으로 이벤트 리스너 시작",
+                            title = stringResource(R.string.settings_v2_auto_event_title),
+                            subtitle = stringResource(R.string.settings_v2_auto_event_subtitle),
                             checked = isAutoStartEventListener,
                             onCheckedChange = { appSettingsViewModel.setAutoStartEventListenerEnabled(it) }
                         )
                     } else if (isCameraControlsEnabled && !isAdminTier) {
                         ClickableRowV2(
                             icon = Icons.Default.Visibility,
-                            title = "라이브뷰 기능",
-                            subtitle = "ADMIN 티어에서만 사용 가능한 기능입니다",
+                            title = stringResource(R.string.settings_v2_liveview_locked_title),
+                            subtitle = stringResource(R.string.settings_v2_liveview_locked_subtitle),
                             onClick = { }
                         )
                         SwitchRowV2(
                             icon = Icons.Default.Settings,
-                            title = "자동 이벤트 수신",
-                            subtitle = "카메라 제어 탭 진입 시 자동으로 이벤트 리스너 시작",
+                            title = stringResource(R.string.settings_v2_auto_event_title),
+                            subtitle = stringResource(R.string.settings_v2_auto_event_subtitle),
                             checked = isAutoStartEventListener,
                             onCheckedChange = { appSettingsViewModel.setAutoStartEventListenerEnabled(it) }
                         )
@@ -371,26 +375,27 @@ fun SettingsScreen(
                     if (!isCameraControlsEnabled) {
                         SwitchRowV2(
                             icon = Icons.Default.Photo,
-                            title = "최신 사진 표시",
-                            subtitle = "카메라 컨트롤 비활성화 시 최근 촬영한 사진 표시",
+                            title = stringResource(R.string.settings_v2_latest_photo_title),
+                            subtitle = stringResource(R.string.settings_v2_latest_photo_subtitle),
                             checked = isShowLatestPhotoWhenDisabled,
                             onCheckedChange = { appSettingsViewModel.setShowLatestPhotoWhenDisabled(it) }
                         )
                     }
                 }
 
-                SettingsSection(title = "Wi-Fi 카메라 연결 (PTPIP) - 개발 버전") {
+                SettingsSection(title = stringResource(R.string.settings_v2_section_wifi_ptpip)) {
                     SwitchRowV2(
                         icon = Icons.Default.Wifi,
-                        title = "Wi-Fi 카메라 연결",
+                        title = stringResource(R.string.settings_v2_wifi_camera_title),
                         subtitle = if (isPtpipEnabled) {
-                            if (lastConnectedName != null) {
-                                "활성화됨 - 마지막 연결: $lastConnectedName"
+                            val connectedName = lastConnectedName
+                            if (connectedName != null) {
+                                stringResource(R.string.settings_v2_wifi_camera_on_last, connectedName)
                             } else {
-                                "활성화됨 - 연결된 카메라 없음"
+                                stringResource(R.string.settings_v2_wifi_camera_on_none)
                             }
                         } else {
-                            "Wi-Fi를 통한 카메라 원격 제어"
+                            stringResource(R.string.settings_v2_wifi_camera_off)
                         },
                         checked = isPtpipEnabled,
                         onCheckedChange = { ptpipViewModel.setPtpipEnabled(it) }
@@ -399,22 +404,22 @@ fun SettingsScreen(
                     if (isPtpipEnabled) {
                         SwitchRowV2(
                             icon = Icons.Default.NetworkWifi,
-                            title = "WIFI 연결 하기",
-                            subtitle = "카메라와 동일한 Wi-Fi 네트워크에서 연결 (권장)",
+                            title = stringResource(R.string.settings_v2_wifi_connect_title),
+                            subtitle = stringResource(R.string.settings_v2_wifi_connect_subtitle),
                             checked = isWifiConnectionModeEnabled,
                             onCheckedChange = { ptpipViewModel.setWifiConnectionModeEnabled(it) }
                         )
                         SwitchRowV2(
                             icon = Icons.Default.Settings,
-                            title = "자동 카메라 검색",
-                            subtitle = "네트워크에서 PTPIP 카메라 자동 찾기",
+                            title = stringResource(R.string.settings_v2_auto_discovery_title),
+                            subtitle = stringResource(R.string.settings_v2_auto_discovery_subtitle),
                             checked = isAutoDiscoveryEnabled,
                             onCheckedChange = { ptpipViewModel.setAutoDiscoveryEnabled(it) }
                         )
                         SwitchRowV2(
                             icon = Icons.Default.CameraAlt,
-                            title = "자동 연결",
-                            subtitle = "마지막 연결된 카메라에 자동 연결",
+                            title = stringResource(R.string.settings_v2_auto_connect_title),
+                            subtitle = stringResource(R.string.settings_v2_auto_connect_subtitle),
                             checked = isAutoConnectEnabled,
                             onCheckedChange = { enabled ->
                                 ptpipViewModel.updateAutoConnectEnabled(
@@ -442,8 +447,11 @@ fun SettingsScreen(
                         )
                         NavigationRowV2(
                             icon = Icons.Default.Info,
-                            title = "카메라 연결 관리",
-                            subtitle = "${ptpipViewModel.getConnectionStatusText()} - 탭하여 자세히 보기",
+                            title = stringResource(R.string.settings_v2_connection_manage_title),
+                            subtitle = stringResource(
+                                R.string.settings_v2_connection_manage_subtitle,
+                                ptpipViewModel.getConnectionStatusText()
+                            ),
                             onClick = {
                                 val intent = Intent(context, PtpipConnectionActivity::class.java)
                                 context.startActivity(intent)
@@ -454,18 +462,18 @@ fun SettingsScreen(
             }
 
             // 색감 전송 설정
-            SettingsSection(title = "색감 전송 설정") {
+            SettingsSection(title = stringResource(R.string.settings_v2_section_color_transfer)) {
                 SwitchRowV2(
                     icon = Icons.Default.Photo,
-                    title = "색감 전송 기능",
+                    title = stringResource(R.string.settings_v2_color_transfer_title),
                     subtitle = if (isColorTransferEnabled) {
                         if (colorTransferReferenceImagePath != null) {
-                            "활성화됨 - 참조 이미지 설정됨"
+                            stringResource(R.string.settings_v2_color_transfer_on_ref)
                         } else {
-                            "활성화됨 - 참조 이미지 없음"
+                            stringResource(R.string.settings_v2_color_transfer_on_noref)
                         }
                     } else {
-                        "촬영된 사진에 참조 이미지의 색감을 자동 적용"
+                        stringResource(R.string.settings_v2_color_transfer_off)
                     },
                     checked = isColorTransferEnabled,
                     onCheckedChange = { appSettingsViewModel.setColorTransferEnabled(it) }
@@ -474,8 +482,8 @@ fun SettingsScreen(
                 if (isColorTransferEnabled) {
                     NavigationRowV2(
                         icon = Icons.Default.Settings,
-                        title = "상세 설정",
-                        subtitle = "색감 전송 알고리즘 및 고급 옵션 설정",
+                        title = stringResource(R.string.settings_v2_color_transfer_detail_title),
+                        subtitle = stringResource(R.string.settings_v2_color_transfer_detail_subtitle),
                         onClick = {
                             val intent = Intent(context, ColorTransferSettingsActivity::class.java)
                             context.startActivity(intent)
@@ -485,34 +493,39 @@ fun SettingsScreen(
             }
 
             // RAW 파일 다운로드 설정
-            SettingsSection(title = "RAW 파일 다운로드 설정") {
+            SettingsSection(title = stringResource(R.string.settings_v2_section_raw_download)) {
                 if (subscriptionTier == SubscriptionTier.PRO ||
                     subscriptionTier == SubscriptionTier.ADMIN ||
                     subscriptionTier == SubscriptionTier.REFERRER
                 ) {
                     SwitchRowV2(
                         icon = Icons.Default.Photo,
-                        title = "RAW 파일 다운로드",
-                        subtitle = if (isRawFileDownloadEnabled) "활성화됨" else "비활성화됨",
+                        title = stringResource(R.string.settings_v2_raw_download_title),
+                        subtitle = if (isRawFileDownloadEnabled) {
+                            stringResource(R.string.settings_v2_raw_download_on)
+                        } else {
+                            stringResource(R.string.settings_v2_raw_download_off)
+                        },
                         checked = isRawFileDownloadEnabled,
                         onCheckedChange = { appSettingsViewModel.setRawFileDownloadEnabled(it) }
                     )
                 } else {
                     ClickableRowV2(
                         icon = Icons.Default.Photo,
-                        title = "RAW 파일 다운로드",
-                        subtitle = "PRO, ADMIN, REFERRER 티어에서만 사용 가능한 기능입니다",
+                        title = stringResource(R.string.settings_v2_raw_download_title),
+                        subtitle = stringResource(R.string.settings_v2_raw_download_locked),
                         onClick = { }
                     )
                 }
             }
 
             // 연결된 카메라 정보
-            SettingsSection(title = "연결된 카메라 정보") {
+            SettingsSection(title = stringResource(R.string.settings_v2_section_connected_camera)) {
+                val cameraModelNone = stringResource(R.string.settings_v2_camera_model_none)
                 val connectionType = when {
-                    isUsbConnected -> "USB 연결"
-                    isPtpipConnected -> "Wi-Fi 연결 (PTPIP)"
-                    else -> "연결 안됨"
+                    isUsbConnected -> stringResource(R.string.settings_v2_connection_type_usb)
+                    isPtpipConnected -> stringResource(R.string.settings_v2_connection_type_wifi)
+                    else -> stringResource(R.string.settings_v2_connection_type_none)
                 }
 
                 val cameraName = when {
@@ -520,12 +533,12 @@ fun SettingsScreen(
                         "${cameraUiState.connectedCameraManufacturer} ${cameraUiState.connectedCameraModel}"
                     cameraUiState.connectedCameraModel != null ->
                         cameraUiState.connectedCameraModel
-                    else -> "정보 없음"
+                    else -> cameraModelNone
                 }
 
                 ClickableRowV2(
                     icon = Icons.Default.CameraAlt,
-                    title = "연결 상태",
+                    title = stringResource(R.string.settings_v2_connection_status_title),
                     subtitle = connectionType,
                     onClick = { }
                 )
@@ -533,14 +546,14 @@ fun SettingsScreen(
                 if (isUsbConnected || isPtpipConnected) {
                     ClickableRowV2(
                         icon = Icons.Default.Info,
-                        title = "카메라 모델",
-                        subtitle = cameraName ?: "정보 없음",
+                        title = stringResource(R.string.settings_v2_camera_model_title),
+                        subtitle = cameraName ?: cameraModelNone,
                         onClick = { }
                     )
                     cameraUiState.cameraFunctionLimitation?.let { limitation ->
                         ClickableRowV2(
                             icon = Icons.Default.Info,
-                            title = "기능 제한 안내",
+                            title = stringResource(R.string.settings_v2_camera_limitation_title),
                             subtitle = limitation,
                             onClick = { }
                         )
@@ -549,16 +562,39 @@ fun SettingsScreen(
             }
 
             // 사용자 정보
-            SettingsSection(title = "사용자 정보") {
+            SettingsSection(title = stringResource(R.string.settings_v2_section_user_info)) {
                 val currentUser = authUiState.currentUser
                 UserProfileItem(user = currentUser, onClick = { })
+
+                // 구독 관리 / 업그레이드 진입점 — 페이월(SubscriptionActivity)로 이동.
+                val tierLabelRes = when (subscriptionTier) {
+                    SubscriptionTier.FREE -> R.string.subscription_tier_free
+                    SubscriptionTier.BASIC -> R.string.subscription_tier_basic
+                    SubscriptionTier.PRO -> R.string.subscription_tier_pro
+                    SubscriptionTier.REFERRER -> R.string.subscription_tier_referrer
+                    SubscriptionTier.ADMIN -> R.string.subscription_tier_admin
+                }
+                NavigationRowV2(
+                    icon = Icons.Default.Update,
+                    title = stringResource(R.string.settings_v2_subscription_title),
+                    subtitle = stringResource(
+                        R.string.settings_v2_subscription_subtitle_tier,
+                        stringResource(tierLabelRes)
+                    ),
+                    onClick = { SubscriptionActivity.start(context) }
+                )
+
                 ClickableRowV2(
                     icon = Icons.Default.Logout,
-                    title = if (authUiState.isLoading) "로그아웃 중..." else "로그아웃",
-                    subtitle = if (authUiState.isLoading) {
-                        "잠시만 기다려주세요..."
+                    title = if (authUiState.isLoading) {
+                        stringResource(R.string.settings_v2_logout_in_progress_title)
                     } else {
-                        "현재 계정에서 로그아웃"
+                        stringResource(R.string.settings_v2_logout_title)
+                    },
+                    subtitle = if (authUiState.isLoading) {
+                        stringResource(R.string.settings_v2_logout_in_progress_subtitle)
+                    } else {
+                        stringResource(R.string.settings_v2_logout_subtitle)
                     },
                     onClick = {
                         if (!authUiState.isLoading) {
@@ -580,18 +616,18 @@ fun SettingsScreen(
 
             // 서버 설정
             if (BuildConfig.SHOW_DEVELOPER_FEATURES) {
-                SettingsSection(title = "서버 설정 (개발 버전)") {
+                SettingsSection(title = stringResource(R.string.settings_v2_section_server)) {
                     ClickableRowV2(
                         icon = Icons.Default.Storage,
-                        title = "저장 공간",
+                        title = stringResource(R.string.settings_v2_storage_title),
                         // TBD: 실제 quota API 연결 전까지 placeholder. 하드코딩 mock 표기 금지.
-                        subtitle = "TBD",
+                        subtitle = stringResource(R.string.settings_v2_storage_subtitle),
                         onClick = { }
                     )
                     ClickableRowV2(
                         icon = Icons.Default.Security,
-                        title = "권한 관리",
-                        subtitle = "서버 접근 권한 설정",
+                        title = stringResource(R.string.settings_v2_permissions_title),
+                        subtitle = stringResource(R.string.settings_v2_permissions_subtitle),
                         onClick = { }
                     )
                 }
@@ -599,7 +635,7 @@ fun SettingsScreen(
 
             // 앱 설정
             val isShutterSoundEnabled by appSettingsViewModel.isShutterSoundEnabled.collectAsStateWithLifecycle()
-            SettingsSection(title = "앱 설정") {
+            SettingsSection(title = stringResource(R.string.settings_v2_section_app)) {
                 SwitchRowV2(
                     icon = Icons.Default.CameraAlt,
                     title = stringResource(R.string.capture_shutter_sound_label),
@@ -639,11 +675,11 @@ fun SettingsScreen(
                 val isIgnoringOptimizations = pm.isIgnoringBatteryOptimizations(packageName)
                 ClickableRowV2(
                     icon = Icons.Default.Settings,
-                    title = "배터리 최적화 예외 설정",
+                    title = stringResource(R.string.settings_v2_battery_title),
                     subtitle = if (isIgnoringOptimizations) {
-                        "배터리 사용량 최적화 예외 처리됨"
+                        stringResource(R.string.settings_v2_battery_on)
                     } else {
-                        "백그라운드 연결 및 알림을 위해 예외로 설정 필요"
+                        stringResource(R.string.settings_v2_battery_off)
                     },
                     onClick = {
                         try {
@@ -664,30 +700,30 @@ fun SettingsScreen(
             if (isAdminTier) {
                 val isNativeLogCaptureEnabled by appSettingsViewModel.isNativeLogCaptureEnabled.collectAsStateWithLifecycle()
 
-                SettingsSection(title = "ADMIN 전용 설정") {
+                SettingsSection(title = stringResource(R.string.settings_v2_section_admin)) {
                     ClickableRowV2(
                         icon = Icons.Default.CameraAlt,
-                        title = "🧪 가상 카메라 (Mock Camera)",
-                        subtitle = "개발/테스트용 가상 카메라 기능",
+                        title = stringResource(R.string.settings_v2_mock_camera_title),
+                        subtitle = stringResource(R.string.settings_v2_mock_camera_subtitle),
                         onClick = {
                             context.startActivity(Intent(context, MockCameraActivity::class.java))
                         }
                     )
                     ClickableRowV2(
                         icon = Icons.Default.Info,
-                        title = "🔍 카메라 기능 정보",
-                        subtitle = "libgphoto2 API 기반 카메라 지원 기능 조회",
+                        title = stringResource(R.string.settings_v2_camera_abilities_title),
+                        subtitle = stringResource(R.string.settings_v2_camera_abilities_subtitle),
                         onClick = {
                             context.startActivity(Intent(context, CameraAbilitiesActivity::class.java))
                         }
                     )
                     SwitchRowV2(
                         icon = Icons.Default.Info,
-                        title = "📝 네이티브 로그 캡처",
+                        title = stringResource(R.string.settings_v2_native_log_title),
                         subtitle = if (isNativeLogCaptureEnabled) {
-                            "활성화됨 - libgphoto2 로그를 TXT 파일로 저장 중"
+                            stringResource(R.string.settings_v2_native_log_on)
                         } else {
-                            "PTP/IP 디버깅을 위한 상세 로그 기록"
+                            stringResource(R.string.settings_v2_native_log_off)
                         },
                         checked = isNativeLogCaptureEnabled,
                         onCheckedChange = {
@@ -700,8 +736,8 @@ fun SettingsScreen(
                     if (isNativeLogCaptureEnabled) {
                         ClickableRowV2(
                             icon = Icons.Default.Storage,
-                            title = "로그 파일 보기",
-                            subtitle = "저장된 네이티브 로그 파일 확인 및보내기",
+                            title = stringResource(R.string.settings_v2_native_log_view_title),
+                            subtitle = stringResource(R.string.settings_v2_native_log_view_subtitle),
                             onClick = {
                                 val logFiles = appSettingsViewModel.getLogFiles()
                                 if (logFiles.isEmpty()) {
@@ -759,11 +795,11 @@ fun SettingsScreen(
             }
 
             // 정보
-            SettingsSection(title = "정보") {
+            SettingsSection(title = stringResource(R.string.settings_v2_section_info)) {
                 ClickableRowV2(
                     icon = Icons.Default.Info,
-                    title = "오픈소스 라이선스",
-                    subtitle = "사용된 오픈소스 라이브러리",
+                    title = stringResource(R.string.settings_v2_oss_license_title),
+                    subtitle = stringResource(R.string.settings_v2_oss_license_subtitle),
                     onClick = {
                         val intent = Intent(context, OpenSourceLicensesActivity::class.java)
                         context.startActivity(intent)
@@ -771,7 +807,7 @@ fun SettingsScreen(
                 )
                 ClickableRowV2(
                     icon = Icons.Default.Update,
-                    title = "앱 버전",
+                    title = stringResource(R.string.settings_v2_app_version_title),
                     subtitle = BuildConfig.VERSION_NAME,
                     onClick = { }
                 )
@@ -781,7 +817,7 @@ fun SettingsScreen(
             // 개발자 빌드 분기는 ADMIN 권한과 중복되어 동일 화면이 두 번 보이는 문제가 있어 삭제.
             // 관리자 레퍼럴 코드 관리는 SHOW_DEVELOPER_FEATURES 기준으로 유지.
             if (BuildConfig.SHOW_DEVELOPER_FEATURES) {
-                SettingsSection(title = "관리자 레퍼럴 코드 관리") {
+                SettingsSection(title = stringResource(R.string.settings_v2_section_referral)) {
                     val totalCodes = adminReferralState.statistics["totalCodes"] as? Int ?: 0
                     val availableCodes = adminReferralState.statistics["availableCodes"] as? Int ?: 0
                     val usedCodes = adminReferralState.statistics["usedCodes"] as? Int ?: 0
@@ -789,14 +825,24 @@ fun SettingsScreen(
 
                     ClickableRowV2(
                         icon = Icons.Default.Info,
-                        title = "레퍼럴 코드 사용량",
-                        subtitle = "전체: ${totalCodes}개 | 사용 가능: ${availableCodes}개 | 사용됨: ${usedCodes}개 (${usageRate}%)",
+                        title = stringResource(R.string.settings_v2_referral_usage_title),
+                        subtitle = stringResource(
+                            R.string.settings_v2_referral_usage_subtitle,
+                            totalCodes,
+                            availableCodes,
+                            usedCodes,
+                            usageRate
+                        ),
                         onClick = { adminReferralCodeViewModel.refreshData() }
                     )
                     ClickableRowV2(
                         icon = Icons.Default.Settings,
-                        title = "레퍼럴 코드 30개 생성",
-                        subtitle = if (adminReferralState.isLoading) "생성 중..." else "새로운 레퍼럴 코드 30개를 생성합니다",
+                        title = stringResource(R.string.settings_v2_referral_generate_title),
+                        subtitle = if (adminReferralState.isLoading) {
+                            stringResource(R.string.settings_v2_referral_generate_in_progress)
+                        } else {
+                            stringResource(R.string.settings_v2_referral_generate_subtitle)
+                        },
                         onClick = {
                             if (!adminReferralState.isLoading) {
                                 adminReferralCodeViewModel.generateReferralCodes(30)
@@ -805,8 +851,8 @@ fun SettingsScreen(
                     )
                     ClickableRowV2(
                         icon = Icons.Default.ContentCopy,
-                        title = "사용 가능한 코드 하나 추출",
-                        subtitle = "사용하지 않은 레퍼럴 코드 하나를 클립보드에 복사",
+                        title = stringResource(R.string.settings_v2_referral_extract_title),
+                        subtitle = stringResource(R.string.settings_v2_referral_extract_subtitle),
                         onClick = {
                             val code = adminReferralCodeViewModel.extractOneAvailableCode()
                             if (code != null) {
@@ -1278,8 +1324,8 @@ fun UserProfileItem(
 ) {
     Column {
         RowItem(
-            label = user?.displayName ?: "사용자",
-            description = user?.email ?: "로그인이 필요합니다",
+            label = user?.displayName ?: stringResource(R.string.settings_v2_user_default_name),
+            description = user?.email ?: stringResource(R.string.settings_v2_user_login_required),
             leadingContent = {
                 if (user?.photoUrl != null) {
                     AsyncImage(
