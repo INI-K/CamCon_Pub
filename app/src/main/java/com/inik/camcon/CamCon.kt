@@ -7,10 +7,12 @@ import android.os.Bundle
 import android.util.Log
 import androidx.core.view.WindowCompat
 import com.google.firebase.FirebaseApp
+import com.inik.camcon.data.activity.ActivityProviderImpl
 import com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.data.service.WifiMonitoringService
 import com.inik.camcon.di.ApplicationScope
+import com.inik.camcon.domain.usecase.ColorTransferUseCase
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,6 +32,13 @@ class CamCon : Application() {
     @Inject
     @ApplicationScope
     lateinit var applicationScope: CoroutineScope
+
+    @Inject
+    lateinit var colorTransferUseCase: ColorTransferUseCase
+
+    // 결제 시트 등 Activity 컨텍스트가 필요한 시점에 현재 resumed Activity를 제공
+    @Inject
+    lateinit var activityProvider: ActivityProviderImpl
 
     // 현재 활성 Activity 추적 (포그라운드 상태 확인용)
     private var activeActivityCount = 0
@@ -53,15 +62,22 @@ class CamCon : Application() {
                 activeActivityCount++
             }
 
-            override fun onActivityResumed(activity: Activity) {}
-            override fun onActivityPaused(activity: Activity) {}
+            override fun onActivityResumed(activity: Activity) {
+                activityProvider.onResumed(activity)
+            }
+
+            override fun onActivityPaused(activity: Activity) {
+                activityProvider.onPaused(activity)
+            }
 
             override fun onActivityStopped(activity: Activity) {
                 activeActivityCount--
             }
 
             override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
-            override fun onActivityDestroyed(activity: Activity) {}
+            override fun onActivityDestroyed(activity: Activity) {
+                activityProvider.onDestroyed(activity)
+            }
         })
 
         // libgphoto2 플러그인 디렉토리 구조 생성
@@ -304,6 +320,14 @@ class CamCon : Application() {
             }
         } catch (e: Exception) {
             Log.w(TAG, "네이티브 리소스 정리 스레드 시작 중 오류", e)
+        }
+
+        try {
+            // 앱 전역 색감전송 GPU/EGL 자원 해제 (앱당 1회, 종료 시점)
+            colorTransferUseCase.releaseGpu()
+            Log.d(TAG, "색감전송 GPU 자원 정리 완료")
+        } catch (e: Exception) {
+            Log.w(TAG, "색감전송 GPU 자원 정리 중 오류", e)
         }
 
         super.onTerminate()

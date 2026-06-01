@@ -87,4 +87,11 @@ interface ColorTransferRepository {
      * but is typed as Any to keep the domain layer free of Android dependencies.
      */
     fun initializeGPU(contextProvider: Any)
+
+    /**
+     * Releases GPU/EGL resources held by the processor.
+     * Should only be called at application teardown (e.g. Application.onTerminate),
+     * not per-screen, because the processor and GPU are app-scoped singletons.
+     */
+    fun releaseGpu()
 }

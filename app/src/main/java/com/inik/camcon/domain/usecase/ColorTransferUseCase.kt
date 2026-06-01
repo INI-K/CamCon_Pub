@@ -95,4 +95,10 @@ class ColorTransferUseCase @Inject constructor(
      */
     fun initializeGPU(contextProvider: Any) =
         colorTransferRepository.initializeGPU(contextProvider)
+
+    /**
+     * Releases GPU/EGL resources. Call only at application teardown.
+     */
+    fun releaseGpu() =
+        colorTransferRepository.releaseGpu()
 }

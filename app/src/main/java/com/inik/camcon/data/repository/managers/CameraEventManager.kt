@@ -11,15 +11,16 @@ import com.inik.camcon.data.repository.managers.PhotoDownloadManager
 import com.inik.camcon.domain.manager.ErrorNotifier
 import com.inik.camcon.domain.manager.ErrorSeverity
 import com.inik.camcon.domain.manager.ErrorType
+import com.inik.camcon.domain.model.resolve
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.utils.Constants
 import com.inik.camcon.utils.LogcatManager
 import com.inik.camcon.di.IoDispatcher
+import com.inik.camcon.di.MainDispatcher
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -49,7 +50,7 @@ class CameraEventManager @Inject constructor(
     private val errorHandlingManager: ErrorNotifier,
     @ApplicationScope private val scope: CoroutineScope,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
-    private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main
+    @MainDispatcher private val mainDispatcher: CoroutineDispatcher
 ) {
     // 카메라 이벤트 리스너 상태 추적
     private val _isEventListenerActive = MutableStateFlow(false)
@@ -513,7 +514,7 @@ class CameraEventManager @Inject constructor(
                                         withContext(mainDispatcher) {
                                             onRawFileRestricted?.invoke(
                                                 fileName,
-                                                validationResult.restrictionMessage
+                                                validationResult.restrictionMessage?.resolve(context)
                                                     ?: context.getString(R.string.raw_restriction_unknown)
                                             )
                                         }
@@ -646,7 +647,7 @@ class CameraEventManager @Inject constructor(
                                     withContext(mainDispatcher) {
                                         onRawFileRestricted?.invoke(
                                             fileName,
-                                            validationResult.restrictionMessage
+                                            validationResult.restrictionMessage?.resolve(context)
                                                 ?: context.getString(R.string.raw_restriction_unknown)
                                         )
                                     }

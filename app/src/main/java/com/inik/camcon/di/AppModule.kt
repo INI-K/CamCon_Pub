@@ -48,6 +48,10 @@ annotation class IoDispatcher
 
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
+annotation class MainDispatcher
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
 annotation class PtpDispatcher
 
 @Module
@@ -63,6 +67,10 @@ object AppModule {
     @Provides
     @IoDispatcher
     fun provideIoDispatcher(): CoroutineDispatcher = Dispatchers.IO
+
+    @Provides
+    @MainDispatcher
+    fun provideMainDispatcher(): CoroutineDispatcher = Dispatchers.Main
 
     @Provides
     @Singleton
@@ -221,7 +229,8 @@ object AppModule {
         photoDownloadManager: PhotoDownloadManager,
         errorHandlingManager: com.inik.camcon.domain.manager.ErrorNotifier,
         @ApplicationScope scope: CoroutineScope,
-        @IoDispatcher ioDispatcher: CoroutineDispatcher
+        @IoDispatcher ioDispatcher: CoroutineDispatcher,
+        @MainDispatcher mainDispatcher: CoroutineDispatcher
     ): CameraEventManager =
         CameraEventManager(
             context,
@@ -231,7 +240,8 @@ object AppModule {
             photoDownloadManager,
             errorHandlingManager,
             scope,
-            ioDispatcher
+            ioDispatcher,
+            mainDispatcher
         )
 
     @Provides

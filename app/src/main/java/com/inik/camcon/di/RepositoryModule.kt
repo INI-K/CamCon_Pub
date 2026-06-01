@@ -23,7 +23,10 @@ import com.inik.camcon.data.repository.SubscriptionRepositoryImpl
 import com.inik.camcon.data.repository.ColorTransferRepositoryImpl
 import com.inik.camcon.data.repository.UsbDeviceRepositoryImpl
 import com.inik.camcon.data.repository.managers.CameraConnectionGlobalManagerImpl
+import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
+import com.inik.camcon.data.activity.ActivityProviderImpl
 import com.inik.camcon.data.util.AndroidLogger
+import com.inik.camcon.domain.manager.ActivityProvider
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
 import com.inik.camcon.domain.manager.CameraStateObserver
@@ -43,6 +46,7 @@ import com.inik.camcon.domain.repository.CameraMockRepository
 import com.inik.camcon.domain.repository.PtpipDebugRepository
 import com.inik.camcon.domain.repository.PtpipPreferencesRepository
 import com.inik.camcon.domain.repository.PtpipRepository
+import com.inik.camcon.domain.repository.WifiCapabilityProvider
 import com.inik.camcon.domain.repository.CameraStreamingRepository
 import com.inik.camcon.domain.repository.ColorTransferRepository
 import com.inik.camcon.domain.repository.CameraRepository
@@ -96,6 +100,12 @@ abstract class RepositoryModule {
     abstract fun bindBillingDataSource(
         billingDataSourceImpl: BillingDataSourceImpl
     ): BillingDataSource
+
+    @Binds
+    @Singleton
+    abstract fun bindActivityProvider(
+        impl: ActivityProviderImpl
+    ): ActivityProvider
 
     @Binds
     @Singleton
@@ -203,5 +213,11 @@ abstract class RepositoryModule {
     abstract fun bindErrorNotifier(
         impl: ErrorHandlingManager
     ): ErrorNotifier
+
+    @Binds
+    @Singleton
+    abstract fun bindWifiCapabilityProvider(
+        impl: WifiNetworkHelper
+    ): WifiCapabilityProvider
 
 }
