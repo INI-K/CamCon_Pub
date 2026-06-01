@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Login v2: errori di accesso classificati / messaggi del codice di invito -->
+    <string name="login_error_cancelled">Accesso annullato.</string>
+    <string name="login_error_network">Errore di rete. Controlla la connessione e riprova.</string>
+    <string name="login_error_auth">Accesso non riuscito. Riprova.</string>
+    <string name="login_error_unknown">Si è verificato un errore. Riprova.</string>
+
+    <string name="login_referral_applied">Codice di invito applicato correttamente!</string>
+    <string name="login_referral_failed">Impossibile applicare il codice di invito.</string>
+    <string name="login_referral_error">Si è verificato un problema durante l\'elaborazione del codice di invito.</string>
+
+    <!-- Dettagli dell\'errore di disconnessione (il "%s" di settings_toast_logout_failed) -->
+    <string name="auth_error_network_detail">errore di rete</string>
+    <string name="auth_error_unknown_detail">errore sconosciuto</string>
+</resources>

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Camera Abilities screen -->
+    <string name="diag_abilities_title">カメラ機能情報</string>
+    <string name="diag_abilities_loading">カメラ情報を取得中…</string>
+    <string name="diag_abilities_retry">再試行</string>
+    <string name="diag_abilities_not_connected">カメラが接続されていません</string>
+    <string name="diag_abilities_refresh">更新</string>
+    <string name="diag_abilities_section_camera">📸 カメラ情報</string>
+    <string name="diag_abilities_section_connection">🔌 接続情報</string>
+    <string name="diag_abilities_section_capture">📷 撮影機能</string>
+    <string name="diag_abilities_section_file">📁 ファイル操作</string>
+    <string name="diag_abilities_section_folder">📂 フォルダ操作</string>
+    <string name="diag_abilities_section_config">⚙️ 設定機能</string>
+    <string name="diag_abilities_section_raw">🔧 生の値 (開発者向け)</string>
+    <string name="diag_abilities_section_summary">総合評価</string>
+
+    <string name="diag_abilities_label_manufacturer">メーカー</string>
+    <string name="diag_abilities_label_model">モデル</string>
+    <string name="diag_abilities_label_version">バージョン</string>
+    <string name="diag_abilities_label_serial">シリアル</string>
+    <string name="diag_abilities_label_manufacturer_detected">メーカー (検出)</string>
+    <string name="diag_abilities_label_driver_status">ドライバ状態</string>
+    <string name="diag_abilities_label_port_type">ポートタイプ</string>
+    <string name="diag_abilities_label_connection_type">接続タイプ</string>
+    <string name="diag_abilities_label_usb_vendor">USB Vendor ID</string>
+    <string name="diag_abilities_label_usb_product">USB Product ID</string>
+    <string name="diag_abilities_label_usb_class">USB Class</string>
+
+    <string name="diag_abilities_value_usb">USB</string>
+    <string name="diag_abilities_value_wifi_ptpip">Wi-Fi (PTP/IP)</string>
+    <string name="diag_abilities_value_unknown">不明</string>
+
+    <string name="diag_abilities_feature_capture_image">リモート写真撮影</string>
+    <string name="diag_abilities_feature_capture_video">リモート動画撮影</string>
+    <string name="diag_abilities_feature_capture_audio">音声録音</string>
+    <string name="diag_abilities_feature_capture_preview">ライブビュープレビュー</string>
+    <string name="diag_abilities_feature_trigger_capture">トリガー撮影</string>
+    <string name="diag_abilities_feature_delete">ファイル削除</string>
+    <string name="diag_abilities_feature_preview">ファイルプレビュー</string>
+    <string name="diag_abilities_feature_raw">RAW ファイル</string>
+    <string name="diag_abilities_feature_audio">音声ファイル</string>
+    <string name="diag_abilities_feature_exif">EXIF 情報</string>
+    <string name="diag_abilities_feature_delete_all">すべて削除</string>
+    <string name="diag_abilities_feature_put_file">ファイルアップロード</string>
+    <string name="diag_abilities_feature_make_dir">ディレクトリ作成</string>
+    <string name="diag_abilities_feature_remove_dir">ディレクトリ削除</string>
+    <string name="diag_abilities_feature_config">カメラ設定の変更</string>
+
+    <string name="diag_abilities_feature_supported">対応</string>
+    <string name="diag_abilities_feature_unsupported">非対応</string>
+
+    <string name="diag_abilities_summary_full">✅ 完全なリモート制御が可能\n\nこのカメラはすべての機能に対応しています:\n• リモート撮影\n• ライブビュー\n• 設定変更\n• ファイル管理</string>
+    <string name="diag_abilities_summary_download_only">⚠️ ダウンロードのみ可能\n\nこのカメラはファイルのダウンロードのみ対応しています。\nリモート撮影とライブビューは利用できません。\n\n💡 メーカー: %1$s\n一部の %2$s モデルは PTP 機能が制限されています。</string>
+    <string name="diag_abilities_summary_partial">ℹ️ 部分対応\n\nライブビューは非対応ですが、リモート撮影は可能です。</string>
+    <string name="diag_abilities_summary_some">ℹ️ 一部機能に対応\n\nカメラ機能の一部が制限される場合があります。</string>
+
+    <!-- Diagnostics section (ADMIN) -->
+    <string name="diag_section_title">🩺 診断 (ADMIN)</string>
+    <string name="diag_run_button">診断を実行</string>
+    <string name="diag_running">診断を実行中…</string>
+    <string name="diag_report_camera_issues">カメラの問題</string>
+    <string name="diag_report_usb">USB 診断</string>
+    <string name="diag_error_history_title">エラー履歴</string>
+    <string name="diag_error_history_load">エラー履歴を読み込む</string>
+    <string name="diag_error_history_clear">エラー履歴を消去</string>
+    <string name="diag_error_history_empty">エラー履歴がありません</string>
+    <string name="diag_memory_title">メモリプール状態</string>
+    <string name="diag_memory_refresh">メモリ状態を更新</string>
+    <string name="diag_memory_active_count">アクティブ数</string>
+    <string name="diag_memory_total_allocated">総割り当て量</string>
+    <string name="diag_memory_details">詳細</string>
+    <string name="diag_memory_clear_pool">ファイルプールをクリア</string>
+    <string name="diag_report_empty">まだレポートがありません。診断を実行してください。</string>
+
+    <!-- RAW restriction upgrade action -->
+    <string name="diag_raw_upgrade">アップグレード</string>
+
+    <!-- Camera restart dialog -->
+    <string name="diag_restart_needed">アプリの再起動が必要です</string>
+    <string name="diag_restart_message">USB デバイスが正しく切断されなかったか、システムエラー (-52) が発生しました。\n\n正常に使用するにはアプリを再起動する必要があります。\n\n今すぐアプリを再起動しますか?</string>
+    <string name="diag_restart_confirm">アプリを再起動</string>
+    <string name="diag_restart_cancel">キャンセル</string>
+    <string name="diag_close">閉じる</string>
+</resources>

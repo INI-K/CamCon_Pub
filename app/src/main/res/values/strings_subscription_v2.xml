@@ -1,0 +1,33 @@
+<resources>
+    <!-- Subscription paywall (default / English) -->
+    <string name="subscription_title">Subscription</string>
+    <string name="subscription_back">Back</string>
+    <string name="subscription_current_plan">Current plan</string>
+    <string name="subscription_choose_plan">Choose a plan</string>
+    <string name="subscription_upgrade">Upgrade</string>
+    <string name="subscription_restore">Restore purchases</string>
+    <string name="subscription_disclaimer">Subscriptions renew automatically and can be managed or canceled in the Google Play Store.</string>
+    <string name="subscription_badge_current">Current</string>
+
+    <!-- Tier names -->
+    <string name="subscription_tier_free">Free</string>
+    <string name="subscription_tier_basic">Basic</string>
+    <string name="subscription_tier_pro">Pro</string>
+    <string name="subscription_tier_referrer">Referrer</string>
+    <string name="subscription_tier_admin">Admin</string>
+
+    <!-- Benefits -->
+    <string name="subscription_benefit_jpg">JPG / JPEG capture</string>
+    <string name="subscription_benefit_basic_control">Basic camera control</string>
+    <string name="subscription_benefit_free_resolution">Downloads limited to 2000 px</string>
+    <string name="subscription_benefit_png">Adds PNG support</string>
+    <string name="subscription_benefit_batch">Batch processing</string>
+    <string name="subscription_benefit_original_download">Original-resolution downloads</string>
+    <string name="subscription_benefit_raw">All formats including RAW</string>
+    <string name="subscription_benefit_advanced_control">Advanced camera control</string>
+    <string name="subscription_benefit_raw_download">RAW original downloads</string>
+
+    <!-- Snackbar -->
+    <string name="subscription_snackbar_purchase_started">Purchase started. It will be applied once verified.</string>
+    <string name="subscription_snackbar_error">Could not process the request. Please try again.</string>
+</resources>

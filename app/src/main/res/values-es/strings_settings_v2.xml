@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Top bar / common -->
+    <string name="settings_v2_title">Ajustes</string>
+    <string name="settings_v2_back">Atrás</string>
+
+    <!-- Section titles -->
+    <string name="settings_v2_section_camera_control">Control de cámara (versión de desarrollo)</string>
+    <string name="settings_v2_section_wifi_ptpip">Conexión de cámara por Wi-Fi (PTPIP) - versión de desarrollo</string>
+    <string name="settings_v2_section_color_transfer">Transferencia de color</string>
+    <string name="settings_v2_section_raw_download">Descarga de archivos RAW</string>
+    <string name="settings_v2_section_connected_camera">Cámara conectada</string>
+    <string name="settings_v2_section_user_info">Usuario</string>
+    <string name="settings_v2_section_server">Servidor (versión de desarrollo)</string>
+    <string name="settings_v2_section_app">Aplicación</string>
+    <string name="settings_v2_section_admin">Solo ADMIN</string>
+    <string name="settings_v2_section_info">Información</string>
+    <string name="settings_v2_section_referral">Códigos de referido de administrador</string>
+
+    <!-- Subscription / upgrade row -->
+    <string name="settings_v2_subscription_title">Gestionar suscripción / Mejorar</string>
+    <string name="settings_v2_subscription_subtitle_tier">Plan actual: %s</string>
+    <string name="settings_v2_subscription_subtitle_default">Gestiona tu plan y desbloquea más funciones</string>
+
+    <!-- Camera control -->
+    <string name="settings_v2_camera_controls_title">Mostrar controles de cámara</string>
+    <string name="settings_v2_camera_controls_on">Mostrar la vista en directo y la interfaz de control de cámara</string>
+    <string name="settings_v2_camera_controls_off">Desactivado: se muestra la última foto capturada</string>
+    <string name="settings_v2_liveview_title">Activar vista en directo</string>
+    <string name="settings_v2_liveview_subtitle">Mostrar la imagen de la cámara en tiempo real (solo ADMIN)</string>
+    <string name="settings_v2_auto_event_title">Recepción automática de eventos</string>
+    <string name="settings_v2_auto_event_subtitle">Iniciar automáticamente el detector de eventos al entrar en la pestaña de control de cámara</string>
+    <string name="settings_v2_liveview_locked_title">Función de vista en directo</string>
+    <string name="settings_v2_liveview_locked_subtitle">Disponible solo en el nivel ADMIN</string>
+    <string name="settings_v2_latest_photo_title">Mostrar última foto</string>
+    <string name="settings_v2_latest_photo_subtitle">Mostrar la foto capturada más reciente cuando los controles de cámara están desactivados</string>
+
+    <!-- Wi-Fi PTPIP -->
+    <string name="settings_v2_wifi_camera_title">Conexión de cámara por Wi-Fi</string>
+    <string name="settings_v2_wifi_camera_on_last">Activado: última conexión: %s</string>
+    <string name="settings_v2_wifi_camera_on_none">Activado: ninguna cámara conectada</string>
+    <string name="settings_v2_wifi_camera_off">Control remoto de la cámara por Wi-Fi</string>
+    <string name="settings_v2_wifi_connect_title">Conectar por WIFI</string>
+    <string name="settings_v2_wifi_connect_subtitle">Conectar en la misma red Wi-Fi que la cámara (recomendado)</string>
+    <string name="settings_v2_auto_discovery_title">Búsqueda automática de cámaras</string>
+    <string name="settings_v2_auto_discovery_subtitle">Buscar automáticamente cámaras PTPIP en la red</string>
+    <string name="settings_v2_auto_connect_title">Conexión automática</string>
+    <string name="settings_v2_auto_connect_subtitle">Conectar automáticamente con la última cámara conectada</string>
+    <string name="settings_v2_connection_manage_title">Gestionar conexión de cámara</string>
+    <string name="settings_v2_connection_manage_subtitle">%s: toca para ver detalles</string>
+
+    <!-- Color transfer -->
+    <string name="settings_v2_color_transfer_title">Transferencia de color</string>
+    <string name="settings_v2_color_transfer_on_ref">Activado: imagen de referencia establecida</string>
+    <string name="settings_v2_color_transfer_on_noref">Activado: sin imagen de referencia</string>
+    <string name="settings_v2_color_transfer_off">Aplicar automáticamente el color de la imagen de referencia a las fotos capturadas</string>
+    <string name="settings_v2_color_transfer_detail_title">Ajustes avanzados</string>
+    <string name="settings_v2_color_transfer_detail_subtitle">Algoritmo de transferencia de color y opciones avanzadas</string>
+
+    <!-- RAW download -->
+    <string name="settings_v2_raw_download_title">Descarga de archivos RAW</string>
+    <string name="settings_v2_raw_download_on">Activado</string>
+    <string name="settings_v2_raw_download_off">Desactivado</string>
+    <string name="settings_v2_raw_download_locked">Disponible solo en los niveles PRO, ADMIN y REFERRER</string>
+
+    <!-- Connected camera -->
+    <string name="settings_v2_connection_status_title">Estado de la conexión</string>
+    <string name="settings_v2_connection_type_usb">Conectado por USB</string>
+    <string name="settings_v2_connection_type_wifi">Conectado por Wi-Fi (PTPIP)</string>
+    <string name="settings_v2_connection_type_none">Sin conexión</string>
+    <string name="settings_v2_camera_model_title">Modelo de cámara</string>
+    <string name="settings_v2_camera_model_none">Sin información</string>
+    <string name="settings_v2_camera_limitation_title">Limitación de funciones</string>
+
+    <!-- User -->
+    <string name="settings_v2_user_default_name">Usuario</string>
+    <string name="settings_v2_user_login_required">Se requiere iniciar sesión</string>
+    <string name="settings_v2_logout_title">Cerrar sesión</string>
+    <string name="settings_v2_logout_in_progress_title">Cerrando sesión…</string>
+    <string name="settings_v2_logout_subtitle">Cerrar sesión de la cuenta actual</string>
+    <string name="settings_v2_logout_in_progress_subtitle">Espera un momento…</string>
+
+    <!-- Server -->
+    <string name="settings_v2_storage_title">Almacenamiento</string>
+    <string name="settings_v2_storage_subtitle">TBD</string>
+    <string name="settings_v2_permissions_title">Gestión de permisos</string>
+    <string name="settings_v2_permissions_subtitle">Configurar los permisos de acceso al servidor</string>
+
+    <!-- App -->
+    <string name="settings_v2_battery_title">Excepción de optimización de batería</string>
+    <string name="settings_v2_battery_on">Excluido de la optimización de batería</string>
+    <string name="settings_v2_battery_off">Se requiere excepción para la conexión en segundo plano y las notificaciones</string>
+
+    <!-- ADMIN -->
+    <string name="settings_v2_mock_camera_title">🧪 Cámara virtual (Mock Camera)</string>
+    <string name="settings_v2_mock_camera_subtitle">Cámara virtual para desarrollo y pruebas</string>
+    <string name="settings_v2_camera_abilities_title">🔍 Funciones de la cámara</string>
+    <string name="settings_v2_camera_abilities_subtitle">Consultar las funciones compatibles mediante la API de libgphoto2</string>
+    <string name="settings_v2_native_log_title">📝 Captura de registros nativos</string>
+    <string name="settings_v2_native_log_on">Activado: guardando los registros de libgphoto2 en un archivo TXT</string>
+    <string name="settings_v2_native_log_off">Registro detallado para la depuración de PTP/IP</string>
+    <string name="settings_v2_native_log_view_title">Ver archivos de registro</string>
+    <string name="settings_v2_native_log_view_subtitle">Ver y enviar los archivos de registro nativos guardados</string>
+
+    <!-- Info -->
+    <string name="settings_v2_oss_license_title">Licencias de código abierto</string>
+    <string name="settings_v2_oss_license_subtitle">Bibliotecas de código abierto utilizadas</string>
+    <string name="settings_v2_app_version_title">Versión de la aplicación</string>
+
+    <!-- Referral (admin) -->
+    <string name="settings_v2_referral_usage_title">Uso de códigos de referido</string>
+    <string name="settings_v2_referral_usage_subtitle">Total: %1$d | Disponibles: %2$d | Usados: %3$d (%4$d%%)</string>
+    <string name="settings_v2_referral_generate_title">Generar 30 códigos de referido</string>
+    <string name="settings_v2_referral_generate_subtitle">Generar 30 nuevos códigos de referido</string>
+    <string name="settings_v2_referral_generate_in_progress">Generando…</string>
+    <string name="settings_v2_referral_extract_title">Extraer un código disponible</string>
+    <string name="settings_v2_referral_extract_subtitle">Copiar un código de referido sin usar al portapapeles</string>
+</resources>

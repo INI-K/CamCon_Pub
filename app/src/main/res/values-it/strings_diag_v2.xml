@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Camera Abilities screen -->
+    <string name="diag_abilities_title">Funzioni della fotocamera</string>
+    <string name="diag_abilities_loading">Caricamento informazioni fotocamera…</string>
+    <string name="diag_abilities_retry">Riprova</string>
+    <string name="diag_abilities_not_connected">Nessuna fotocamera connessa</string>
+    <string name="diag_abilities_refresh">Aggiorna</string>
+    <string name="diag_abilities_section_camera">📸 Informazioni fotocamera</string>
+    <string name="diag_abilities_section_connection">🔌 Informazioni connessione</string>
+    <string name="diag_abilities_section_capture">📷 Funzioni di scatto</string>
+    <string name="diag_abilities_section_file">📁 Operazioni sui file</string>
+    <string name="diag_abilities_section_folder">📂 Operazioni sulle cartelle</string>
+    <string name="diag_abilities_section_config">⚙️ Impostazioni</string>
+    <string name="diag_abilities_section_raw">🔧 Valori grezzi (Sviluppatore)</string>
+    <string name="diag_abilities_section_summary">Riepilogo</string>
+
+    <string name="diag_abilities_label_manufacturer">Produttore</string>
+    <string name="diag_abilities_label_model">Modello</string>
+    <string name="diag_abilities_label_version">Versione</string>
+    <string name="diag_abilities_label_serial">Numero di serie</string>
+    <string name="diag_abilities_label_manufacturer_detected">Produttore (rilevato)</string>
+    <string name="diag_abilities_label_driver_status">Stato driver</string>
+    <string name="diag_abilities_label_port_type">Tipo di porta</string>
+    <string name="diag_abilities_label_connection_type">Tipo di connessione</string>
+    <string name="diag_abilities_label_usb_vendor">USB Vendor ID</string>
+    <string name="diag_abilities_label_usb_product">USB Product ID</string>
+    <string name="diag_abilities_label_usb_class">USB Class</string>
+
+    <string name="diag_abilities_value_usb">USB</string>
+    <string name="diag_abilities_value_wifi_ptpip">Wi-Fi (PTP/IP)</string>
+    <string name="diag_abilities_value_unknown">Sconosciuto</string>
+
+    <string name="diag_abilities_feature_capture_image">Scatto foto da remoto</string>
+    <string name="diag_abilities_feature_capture_video">Ripresa video da remoto</string>
+    <string name="diag_abilities_feature_capture_audio">Registrazione audio</string>
+    <string name="diag_abilities_feature_capture_preview">Anteprima Live View</string>
+    <string name="diag_abilities_feature_trigger_capture">Scatto con trigger</string>
+    <string name="diag_abilities_feature_delete">Elimina file</string>
+    <string name="diag_abilities_feature_preview">Anteprima file</string>
+    <string name="diag_abilities_feature_raw">File RAW</string>
+    <string name="diag_abilities_feature_audio">File audio</string>
+    <string name="diag_abilities_feature_exif">Informazioni EXIF</string>
+    <string name="diag_abilities_feature_delete_all">Elimina tutto</string>
+    <string name="diag_abilities_feature_put_file">Caricamento file</string>
+    <string name="diag_abilities_feature_make_dir">Crea directory</string>
+    <string name="diag_abilities_feature_remove_dir">Rimuovi directory</string>
+    <string name="diag_abilities_feature_config">Modifica impostazioni fotocamera</string>
+
+    <string name="diag_abilities_feature_supported">Supportato</string>
+    <string name="diag_abilities_feature_unsupported">Non supportato</string>
+
+    <string name="diag_abilities_summary_full">✅ Controllo remoto completo disponibile\n\nQuesta fotocamera supporta tutte le funzioni:\n• Scatto da remoto\n• Live View\n• Controllo impostazioni\n• Gestione file</string>
+    <string name="diag_abilities_summary_download_only">⚠️ Solo download\n\nQuesta fotocamera supporta solo il download dei file.\nLo scatto da remoto e la Live View non sono disponibili.\n\n💡 Produttore: %1$s\nAlcuni modelli %2$s hanno un supporto PTP limitato.</string>
+    <string name="diag_abilities_summary_partial">ℹ️ Supporto parziale\n\nLa Live View non è supportata, ma lo scatto da remoto è disponibile.</string>
+    <string name="diag_abilities_summary_some">ℹ️ Alcune funzioni supportate\n\nAlcune funzioni della fotocamera potrebbero essere limitate.</string>
+
+    <!-- Diagnostics section (ADMIN) -->
+    <string name="diag_section_title">🩺 Diagnostica (ADMIN)</string>
+    <string name="diag_run_button">Esegui diagnostica</string>
+    <string name="diag_running">Diagnostica in corso…</string>
+    <string name="diag_report_camera_issues">Problemi fotocamera</string>
+    <string name="diag_report_usb">Diagnostica USB</string>
+    <string name="diag_error_history_title">Cronologia errori</string>
+    <string name="diag_error_history_load">Carica cronologia errori</string>
+    <string name="diag_error_history_clear">Cancella cronologia errori</string>
+    <string name="diag_error_history_empty">Nessuna cronologia errori</string>
+    <string name="diag_memory_title">Stato pool di memoria</string>
+    <string name="diag_memory_refresh">Aggiorna stato memoria</string>
+    <string name="diag_memory_active_count">Conteggio attivo</string>
+    <string name="diag_memory_total_allocated">Totale allocato</string>
+    <string name="diag_memory_details">Dettagli</string>
+    <string name="diag_memory_clear_pool">Svuota pool di file</string>
+    <string name="diag_report_empty">Nessun report ancora. Esegui la diagnostica.</string>
+
+    <!-- RAW restriction upgrade action -->
+    <string name="diag_raw_upgrade">Aggiorna piano</string>
+
+    <!-- Camera restart dialog -->
+    <string name="diag_restart_needed">Riavvio dell\'app richiesto</string>
+    <string name="diag_restart_message">Il dispositivo USB non è stato disconnesso correttamente oppure si è verificato un errore di sistema (-52).\n\nL\'app deve essere riavviata per funzionare correttamente.\n\nRiavviare l\'app ora?</string>
+    <string name="diag_restart_confirm">Riavvia app</string>
+    <string name="diag_restart_cancel">Annulla</string>
+    <string name="diag_close">Chiudi</string>
+</resources>

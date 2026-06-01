@@ -1,0 +1,33 @@
+<resources>
+    <!-- 订阅付费墙 (中文) -->
+    <string name="subscription_title">订阅</string>
+    <string name="subscription_back">返回</string>
+    <string name="subscription_current_plan">当前方案</string>
+    <string name="subscription_choose_plan">选择方案</string>
+    <string name="subscription_upgrade">升级</string>
+    <string name="subscription_restore">恢复购买</string>
+    <string name="subscription_disclaimer">订阅会自动续期，可在 Google Play 商店中管理或取消。</string>
+    <string name="subscription_badge_current">当前</string>
+
+    <!-- 等级名称 -->
+    <string name="subscription_tier_free">免费</string>
+    <string name="subscription_tier_basic">基础</string>
+    <string name="subscription_tier_pro">专业</string>
+    <string name="subscription_tier_referrer">推荐人</string>
+    <string name="subscription_tier_admin">管理员</string>
+
+    <!-- 权益 -->
+    <string name="subscription_benefit_jpg">JPG / JPEG 拍摄</string>
+    <string name="subscription_benefit_basic_control">基础相机控制</string>
+    <string name="subscription_benefit_free_resolution">下载限制为 2000 像素</string>
+    <string name="subscription_benefit_png">新增 PNG 支持</string>
+    <string name="subscription_benefit_batch">批量处理</string>
+    <string name="subscription_benefit_original_download">原始分辨率下载</string>
+    <string name="subscription_benefit_raw">包含 RAW 的所有格式</string>
+    <string name="subscription_benefit_advanced_control">高级相机控制</string>
+    <string name="subscription_benefit_raw_download">RAW 原始文件下载</string>
+
+    <!-- 提示条 -->
+    <string name="subscription_snackbar_purchase_started">已开始购买，验证后生效。</string>
+    <string name="subscription_snackbar_error">无法处理请求，请重试。</string>
+</resources>

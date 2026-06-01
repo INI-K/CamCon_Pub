@@ -1,0 +1,33 @@
+<resources>
+    <!-- Paywall dell'abbonamento (Italiano) -->
+    <string name="subscription_title">Abbonamento</string>
+    <string name="subscription_back">Indietro</string>
+    <string name="subscription_current_plan">Piano attuale</string>
+    <string name="subscription_choose_plan">Scegli un piano</string>
+    <string name="subscription_upgrade">Aggiorna</string>
+    <string name="subscription_restore">Ripristina acquisti</string>
+    <string name="subscription_disclaimer">Gli abbonamenti si rinnovano automaticamente e possono essere gestiti o annullati nel Google Play Store.</string>
+    <string name="subscription_badge_current">Attuale</string>
+
+    <!-- Nomi dei livelli -->
+    <string name="subscription_tier_free">Gratuito</string>
+    <string name="subscription_tier_basic">Base</string>
+    <string name="subscription_tier_pro">Pro</string>
+    <string name="subscription_tier_referrer">Referente</string>
+    <string name="subscription_tier_admin">Amministratore</string>
+
+    <!-- Vantaggi -->
+    <string name="subscription_benefit_jpg">Scatto JPG / JPEG</string>
+    <string name="subscription_benefit_basic_control">Controllo base della fotocamera</string>
+    <string name="subscription_benefit_free_resolution">Download limitati a 2000 px</string>
+    <string name="subscription_benefit_png">Aggiunge il supporto PNG</string>
+    <string name="subscription_benefit_batch">Elaborazione in batch</string>
+    <string name="subscription_benefit_original_download">Download alla risoluzione originale</string>
+    <string name="subscription_benefit_raw">Tutti i formati incluso RAW</string>
+    <string name="subscription_benefit_advanced_control">Controllo avanzato della fotocamera</string>
+    <string name="subscription_benefit_raw_download">Download degli originali RAW</string>
+
+    <!-- Snackbar -->
+    <string name="subscription_snackbar_purchase_started">Acquisto avviato. Verrà applicato dopo la verifica.</string>
+    <string name="subscription_snackbar_error">Impossibile elaborare la richiesta. Riprova.</string>
+</resources>

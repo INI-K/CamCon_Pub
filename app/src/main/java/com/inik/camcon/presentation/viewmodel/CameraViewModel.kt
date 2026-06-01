@@ -75,6 +75,10 @@ class CameraViewModel @Inject constructor(
     /** 라이브뷰 프레임 — 초당 수십 회 업데이트되므로 uiState와 분리 */
     val liveViewFrame: StateFlow<LiveViewFrame?> = uiStateManager.liveViewFrame
 
+    /** 1-shot 정보 메시지(예: AF 성공) — 에러 채널과 분리. UI가 snackbar로 소비한다. */
+    val infoMessage: kotlinx.coroutines.flow.SharedFlow<com.inik.camcon.presentation.viewmodel.state.InfoMessage> =
+        uiStateManager.infoMessage
+
     // ✅ 라이브뷰 Bitmap 디코딩 (IO 디스패처에서 처리) — CRITICAL-1 해결
     private val _decodedLiveViewBitmap = MutableStateFlow<android.graphics.Bitmap?>(null)
     val decodedLiveViewBitmap: StateFlow<android.graphics.Bitmap?> = _decodedLiveViewBitmap.asStateFlow()

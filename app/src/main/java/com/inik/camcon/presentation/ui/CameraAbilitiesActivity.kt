@@ -17,16 +17,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.inik.camcon.R
 import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.CameraAbilitiesViewModel
+import com.inik.camcon.presentation.viewmodel.CameraDiagnosticsManager
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 /**
  * 카메라 기능 정보 화면 (ADMIN 전용)
@@ -39,6 +44,11 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class CameraAbilitiesActivity : ComponentActivity() {
 
+    // CameraDiagnosticsManager는 @Singleton 이므로 Activity 필드 주입으로 직접 접근 가능
+    // (CameraAbilitiesViewModel은 소유 밖이라 거기에 주입하지 않고 매니저를 직접 전달)
+    @Inject
+    lateinit var diagnosticsManager: CameraDiagnosticsManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -48,6 +58,7 @@ class CameraAbilitiesActivity : ComponentActivity() {
 
             CamConTheme() {
                 CameraAbilitiesScreen(
+                    diagnosticsManager = diagnosticsManager,
                     onBackClick = { finish() }
                 )
             }
@@ -58,8 +69,9 @@ class CameraAbilitiesActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CameraAbilitiesScreen(
-    viewModel: CameraAbilitiesViewModel = hiltViewModel(),
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    diagnosticsManager: CameraDiagnosticsManager? = null,
+    viewModel: CameraAbilitiesViewModel = hiltViewModel()
 ) {
     val abilities by viewModel.abilities.collectAsState()
     val deviceInfo by viewModel.deviceInfo.collectAsState()
@@ -70,12 +82,12 @@ fun CameraAbilitiesScreen(
         topBar = {
             TopAppBar(
                 modifier = Modifier.statusBarsPadding(),
-                title = { Text("카메라 기능 정보") },
+                title = { Text(stringResource(R.string.diag_abilities_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "뒤로"
+                            contentDescription = stringResource(R.string.diag_abilities_title)
                         )
                     }
                 },
@@ -100,7 +112,7 @@ fun CameraAbilitiesScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         CircularProgressIndicator()
-                        Text("카메라 정보 조회 중...")
+                        Text(stringResource(R.string.diag_abilities_loading))
                     }
                 }
             }
@@ -129,7 +141,7 @@ fun CameraAbilitiesScreen(
                             color = MaterialTheme.colorScheme.error
                         )
                         Button(onClick = { viewModel.refresh() }) {
-                            Text("다시 시도")
+                            Text(stringResource(R.string.diag_abilities_retry))
                         }
                     }
                 }
@@ -152,9 +164,9 @@ fun CameraAbilitiesScreen(
                             modifier = Modifier.size(64.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Text("카메라가 연결되지 않았습니다")
+                        Text(stringResource(R.string.diag_abilities_not_connected))
                         OutlinedButton(onClick = { viewModel.refresh() }) {
-                            Text("새로고침")
+                            Text(stringResource(R.string.diag_abilities_refresh))
                         }
                     }
                 }
@@ -164,6 +176,7 @@ fun CameraAbilitiesScreen(
                 CameraAbilitiesContent(
                     abilities = abilities!!,
                     deviceInfo = deviceInfo,
+                    diagnosticsManager = diagnosticsManager,
                     modifier = Modifier.padding(paddingValues)
                 )
             }
@@ -175,7 +188,8 @@ fun CameraAbilitiesScreen(
 private fun CameraAbilitiesContent(
     abilities: com.inik.camcon.domain.model.CameraAbilitiesInfo,
     deviceInfo: com.inik.camcon.domain.model.PtpDeviceInfo?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    diagnosticsManager: CameraDiagnosticsManager? = null
 ) {
     LazyColumn(
         modifier = modifier
@@ -197,29 +211,33 @@ private fun CameraAbilitiesContent(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "📸 카메라 정보",
+                        text = stringResource(R.string.diag_abilities_section_camera),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                     HorizontalDivider()
 
                     if (deviceInfo != null) {
-                        InfoRow("제조사", deviceInfo.manufacturer)
-                        InfoRow("모델", deviceInfo.model)
-                        InfoRow("버전", deviceInfo.version)
+                        InfoRow(stringResource(R.string.diag_abilities_label_manufacturer), deviceInfo.manufacturer)
+                        InfoRow(stringResource(R.string.diag_abilities_label_model), deviceInfo.model)
+                        InfoRow(stringResource(R.string.diag_abilities_label_version), deviceInfo.version)
                         if (deviceInfo.hasValidSerialNumber()) {
-                            InfoRow("시리얼", deviceInfo.serialNumber)
+                            InfoRow(stringResource(R.string.diag_abilities_label_serial), deviceInfo.serialNumber)
                         }
                     } else {
-                        InfoRow("모델", abilities.model)
+                        InfoRow(stringResource(R.string.diag_abilities_label_model), abilities.model)
                     }
 
-                    InfoRow("제조사 (감지)", abilities.getManufacturer())
-                    InfoRow("드라이버 상태", abilities.status)
                     InfoRow(
-                        "포트 타입", when (abilities.portType) {
-                            1 -> "USB"
-                            else -> "Unknown"
+                        stringResource(R.string.diag_abilities_label_manufacturer_detected),
+                        abilities.getManufacturer()
+                    )
+                    InfoRow(stringResource(R.string.diag_abilities_label_driver_status), abilities.status)
+                    InfoRow(
+                        stringResource(R.string.diag_abilities_label_port_type),
+                        when (abilities.portType) {
+                            1 -> stringResource(R.string.diag_abilities_value_usb)
+                            else -> stringResource(R.string.diag_abilities_value_unknown)
                         }
                     )
                 }
@@ -236,21 +254,21 @@ private fun CameraAbilitiesContent(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "🔌 연결 정보",
+                        text = stringResource(R.string.diag_abilities_section_connection),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                     HorizontalDivider()
 
                     val portType = when {
-                        abilities.isUsbConnection() -> "USB"
-                        abilities.isPtpipConnection() -> "Wi-Fi (PTP/IP)"
-                        else -> "알 수 없음"
+                        abilities.isUsbConnection() -> stringResource(R.string.diag_abilities_value_usb)
+                        abilities.isPtpipConnection() -> stringResource(R.string.diag_abilities_value_wifi_ptpip)
+                        else -> stringResource(R.string.diag_abilities_value_unknown)
                     }
-                    InfoRow("연결 타입", portType)
-                    InfoRow("USB Vendor ID", abilities.usbVendor)
-                    InfoRow("USB Product ID", abilities.usbProduct)
-                    InfoRow("USB Class", abilities.usbClass.toString())
+                    InfoRow(stringResource(R.string.diag_abilities_label_connection_type), portType)
+                    InfoRow(stringResource(R.string.diag_abilities_label_usb_vendor), abilities.usbVendor)
+                    InfoRow(stringResource(R.string.diag_abilities_label_usb_product), abilities.usbProduct)
+                    InfoRow(stringResource(R.string.diag_abilities_label_usb_class), abilities.usbClass.toString())
                 }
             }
         }
@@ -258,25 +276,33 @@ private fun CameraAbilitiesContent(
         // 지원 기능 (촬영)
         item {
             FeatureCard(
-                title = "📷 촬영 기능",
+                title = stringResource(R.string.diag_abilities_section_capture),
                 features = listOf(
                     FeatureItem(
-                        "원격 사진 촬영",
+                        stringResource(R.string.diag_abilities_feature_capture_image),
                         abilities.supports.captureImage,
                         Icons.Default.CameraAlt
                     ),
                     FeatureItem(
-                        "원격 비디오 촬영",
+                        stringResource(R.string.diag_abilities_feature_capture_video),
                         abilities.supports.captureVideo,
                         Icons.Default.Videocam
                     ),
-                    FeatureItem("오디오 녹음", abilities.supports.captureAudio, Icons.Default.Mic),
                     FeatureItem(
-                        "라이브뷰 미리보기",
+                        stringResource(R.string.diag_abilities_feature_capture_audio),
+                        abilities.supports.captureAudio,
+                        Icons.Default.Mic
+                    ),
+                    FeatureItem(
+                        stringResource(R.string.diag_abilities_feature_capture_preview),
                         abilities.supports.capturePreview,
                         Icons.Default.Preview
                     ),
-                    FeatureItem("트리거 촬영", abilities.supports.triggerCapture, Icons.Default.FlashOn)
+                    FeatureItem(
+                        stringResource(R.string.diag_abilities_feature_trigger_capture),
+                        abilities.supports.triggerCapture,
+                        Icons.Default.FlashOn
+                    )
                 )
             )
         }
@@ -284,14 +310,38 @@ private fun CameraAbilitiesContent(
         // 지원 기능 (파일)
         item {
             FeatureCard(
-                title = "📁 파일 작업",
+                title = stringResource(R.string.diag_abilities_section_file),
                 features = listOf(
-                    FeatureItem("파일 삭제", abilities.supports.delete, Icons.Default.Delete),
-                    FeatureItem("파일 미리보기", abilities.supports.preview, Icons.Default.Visibility),
-                    FeatureItem("RAW 파일", abilities.supports.raw, Icons.Default.PhotoLibrary),
-                    FeatureItem("오디오 파일", abilities.supports.audio, Icons.Default.AudioFile),
-                    FeatureItem("EXIF 정보", abilities.supports.exif, Icons.Default.Info),
-                    FeatureItem("전체 삭제", abilities.supports.deleteAll, Icons.Default.DeleteSweep)
+                    FeatureItem(
+                        stringResource(R.string.diag_abilities_feature_delete),
+                        abilities.supports.delete,
+                        Icons.Default.Delete
+                    ),
+                    FeatureItem(
+                        stringResource(R.string.diag_abilities_feature_preview),
+                        abilities.supports.preview,
+                        Icons.Default.Visibility
+                    ),
+                    FeatureItem(
+                        stringResource(R.string.diag_abilities_feature_raw),
+                        abilities.supports.raw,
+                        Icons.Default.PhotoLibrary
+                    ),
+                    FeatureItem(
+                        stringResource(R.string.diag_abilities_feature_audio),
+                        abilities.supports.audio,
+                        Icons.Default.AudioFile
+                    ),
+                    FeatureItem(
+                        stringResource(R.string.diag_abilities_feature_exif),
+                        abilities.supports.exif,
+                        Icons.Default.Info
+                    ),
+                    FeatureItem(
+                        stringResource(R.string.diag_abilities_feature_delete_all),
+                        abilities.supports.deleteAll,
+                        Icons.Default.DeleteSweep
+                    )
                 )
             )
         }
@@ -299,15 +349,23 @@ private fun CameraAbilitiesContent(
         // 지원 기능 (폴더)
         item {
             FeatureCard(
-                title = "📂 폴더 작업",
+                title = stringResource(R.string.diag_abilities_section_folder),
                 features = listOf(
-                    FeatureItem("파일 업로드", abilities.supports.putFile, Icons.Default.Upload),
                     FeatureItem(
-                        "디렉토리 생성",
+                        stringResource(R.string.diag_abilities_feature_put_file),
+                        abilities.supports.putFile,
+                        Icons.Default.Upload
+                    ),
+                    FeatureItem(
+                        stringResource(R.string.diag_abilities_feature_make_dir),
                         abilities.supports.makeDir,
                         Icons.Default.CreateNewFolder
                     ),
-                    FeatureItem("디렉토리 삭제", abilities.supports.removeDir, Icons.Default.FolderDelete)
+                    FeatureItem(
+                        stringResource(R.string.diag_abilities_feature_remove_dir),
+                        abilities.supports.removeDir,
+                        Icons.Default.FolderDelete
+                    )
                 )
             )
         }
@@ -315,9 +373,13 @@ private fun CameraAbilitiesContent(
         // 설정 기능
         item {
             FeatureCard(
-                title = "⚙️ 설정 기능",
+                title = stringResource(R.string.diag_abilities_section_config),
                 features = listOf(
-                    FeatureItem("카메라 설정 변경", abilities.supports.config, Icons.Default.Settings)
+                    FeatureItem(
+                        stringResource(R.string.diag_abilities_feature_config),
+                        abilities.supports.config,
+                        Icons.Default.Settings
+                    )
                 )
             )
         }
@@ -336,7 +398,7 @@ private fun CameraAbilitiesContent(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "🔧 원시 값 (개발자용)",
+                        text = stringResource(R.string.diag_abilities_section_raw),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -400,7 +462,7 @@ private fun CameraAbilitiesContent(
                             }
                         )
                         Text(
-                            text = "종합 평가",
+                            text = stringResource(R.string.diag_abilities_section_summary),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
@@ -411,28 +473,20 @@ private fun CameraAbilitiesContent(
                     Text(
                         text = when {
                             abilities.supports.isFullyControllable() ->
-                                "✅ 완전한 원격 제어 가능\n\n" +
-                                        "이 카메라는 모든 기능을 지원합니다:\n" +
-                                        "• 원격 촬영\n" +
-                                        "• 라이브뷰\n" +
-                                        "• 설정 변경\n" +
-                                        "• 파일 관리"
+                                stringResource(R.string.diag_abilities_summary_full)
 
                             abilities.supports.isDownloadOnly() ->
-                                "⚠️ 다운로드만 가능\n\n" +
-                                        "이 카메라는 파일 다운로드만 지원합니다.\n" +
-                                        "원격 촬영 및 라이브뷰는 사용할 수 없습니다.\n\n" +
-                                        "💡 제조사: ${abilities.getManufacturer()}\n" +
-                                        "일부 ${abilities.getManufacturer()} 모델은 PTP 기능이 제한적입니다."
+                                stringResource(
+                                    R.string.diag_abilities_summary_download_only,
+                                    abilities.getManufacturer(),
+                                    abilities.getManufacturer()
+                                )
 
                             !abilities.supports.capturePreview ->
-                                "ℹ️ 부분 지원\n\n" +
-                                        "라이브뷰는 지원되지 않지만,\n" +
-                                        "원격 촬영은 가능합니다."
+                                stringResource(R.string.diag_abilities_summary_partial)
 
                             else ->
-                                "ℹ️ 일부 기능 지원\n\n" +
-                                        "카메라 기능이 일부 제한될 수 있습니다."
+                                stringResource(R.string.diag_abilities_summary_some)
                         },
                         style = MaterialTheme.typography.bodyMedium
                     )
@@ -440,9 +494,159 @@ private fun CameraAbilitiesContent(
             }
         }
 
+        // 진단 섹션 (ADMIN) — CameraDiagnosticsManager가 주입된 경우에만 노출
+        if (diagnosticsManager != null) {
+            item {
+                DiagnosticsSection(diagnosticsManager = diagnosticsManager)
+            }
+        }
+
         // Spacer
         item {
             Spacer(modifier = Modifier.height(32.dp))
+        }
+    }
+}
+
+@Composable
+private fun DiagnosticsSection(
+    diagnosticsManager: CameraDiagnosticsManager
+) {
+    val scope = rememberCoroutineScope()
+    val report by diagnosticsManager.diagnosticsReport.collectAsState()
+    val memoryStatus by diagnosticsManager.memoryPoolStatus.collectAsState()
+    var errorHistory by remember { mutableStateOf<String?>(null) }
+
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.diag_section_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            HorizontalDivider()
+
+            // 진단 실행
+            Button(
+                onClick = { diagnosticsManager.runFullDiagnostics() },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PlayArrow,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.diag_run_button))
+            }
+
+            // 진단 리포트
+            val currentReport = report
+            if (currentReport == null) {
+                Text(
+                    text = stringResource(R.string.diag_report_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                InfoRow(
+                    stringResource(R.string.diag_report_camera_issues),
+                    currentReport.cameraIssues
+                )
+                InfoRow(
+                    stringResource(R.string.diag_report_usb),
+                    currentReport.usbDiagnostics
+                )
+            }
+
+            HorizontalDivider()
+
+            // 에러 히스토리
+            Text(
+                text = stringResource(R.string.diag_error_history_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        scope.launch {
+                            errorHistory = diagnosticsManager.getErrorHistory(50).getOrDefault("")
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(stringResource(R.string.diag_error_history_load))
+                }
+                OutlinedButton(
+                    onClick = {
+                        diagnosticsManager.clearErrorHistory()
+                        errorHistory = ""
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(stringResource(R.string.diag_error_history_clear))
+                }
+            }
+            errorHistory?.let { history ->
+                Text(
+                    text = history.ifBlank { stringResource(R.string.diag_error_history_empty) },
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            HorizontalDivider()
+
+            // 메모리 풀 상태
+            Text(
+                text = stringResource(R.string.diag_memory_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = { diagnosticsManager.refreshMemoryPoolStatus() },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(stringResource(R.string.diag_memory_refresh))
+                }
+                OutlinedButton(
+                    onClick = { diagnosticsManager.clearCameraFilePool() },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(stringResource(R.string.diag_memory_clear_pool))
+                }
+            }
+            memoryStatus?.let { status ->
+                InfoRow(
+                    stringResource(R.string.diag_memory_active_count),
+                    status.activeCount.toString()
+                )
+                InfoRow(
+                    stringResource(R.string.diag_memory_total_allocated),
+                    status.totalAllocated.toString()
+                )
+                if (status.details.isNotBlank()) {
+                    InfoRow(stringResource(R.string.diag_memory_details), status.details)
+                }
+            }
         }
     }
 }
@@ -494,7 +698,10 @@ private fun FeatureCard(
 
                     Icon(
                         imageVector = if (feature.supported) Icons.Default.Check else Icons.Default.Close,
-                        contentDescription = if (feature.supported) "지원" else "미지원",
+                        contentDescription = if (feature.supported)
+                            stringResource(R.string.diag_abilities_feature_supported)
+                        else
+                            stringResource(R.string.diag_abilities_feature_unsupported),
                         tint = if (feature.supported)
                             com.inik.camcon.presentation.theme.Success
                         else

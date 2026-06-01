@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,8 +20,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Photo
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -40,12 +43,16 @@ import kotlinx.coroutines.delay
 fun RawFileRestrictionNotification(
     restriction: RawFileRestriction,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showUpgradeAction: Boolean = false,
+    onUpgradeClick: () -> Unit = {}
 ) {
-    // 5초 후 자동으로 사라지게 하기
-    LaunchedEffect(restriction.timestamp) {
-        delay(5000L)
-        onDismiss()
+    // 업그레이드 액션이 없을 때만 5초 후 자동 소멸. 액션 버튼이 있으면 사용자가 닫을 때까지 유지.
+    if (!showUpgradeAction) {
+        LaunchedEffect(restriction.timestamp) {
+            delay(5000L)
+            onDismiss()
+        }
     }
 
     // 화면 상단에 표시
@@ -116,6 +123,24 @@ fun RawFileRestrictionNotification(
                         color = MaterialTheme.colorScheme.onError.copy(alpha = 0.9f),
                         style = MaterialTheme.typography.bodyMedium
                     )
+
+                    if (showUpgradeAction) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            FilledTonalButton(
+                                onClick = onUpgradeClick,
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.onError,
+                                    contentColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Text(text = stringResource(R.string.diag_raw_upgrade))
+                            }
+                        }
+                    }
                 }
             }
         }

@@ -1,0 +1,33 @@
+<resources>
+    <!-- Mur de paiement de l'abonnement (Français) -->
+    <string name="subscription_title">Abonnement</string>
+    <string name="subscription_back">Retour</string>
+    <string name="subscription_current_plan">Forfait actuel</string>
+    <string name="subscription_choose_plan">Choisir un forfait</string>
+    <string name="subscription_upgrade">Améliorer</string>
+    <string name="subscription_restore">Restaurer les achats</string>
+    <string name="subscription_disclaimer">Les abonnements se renouvellent automatiquement et peuvent être gérés ou résiliés dans le Google Play Store.</string>
+    <string name="subscription_badge_current">Actuel</string>
+
+    <!-- Noms des niveaux -->
+    <string name="subscription_tier_free">Gratuit</string>
+    <string name="subscription_tier_basic">Basique</string>
+    <string name="subscription_tier_pro">Pro</string>
+    <string name="subscription_tier_referrer">Parrain</string>
+    <string name="subscription_tier_admin">Administrateur</string>
+
+    <!-- Avantages -->
+    <string name="subscription_benefit_jpg">Capture JPG / JPEG</string>
+    <string name="subscription_benefit_basic_control">Contrôle basique de l\'appareil</string>
+    <string name="subscription_benefit_free_resolution">Téléchargements limités à 2000 px</string>
+    <string name="subscription_benefit_png">Ajoute la prise en charge PNG</string>
+    <string name="subscription_benefit_batch">Traitement par lots</string>
+    <string name="subscription_benefit_original_download">Téléchargements en résolution d\'origine</string>
+    <string name="subscription_benefit_raw">Tous les formats, RAW inclus</string>
+    <string name="subscription_benefit_advanced_control">Contrôle avancé de l\'appareil</string>
+    <string name="subscription_benefit_raw_download">Téléchargements RAW originaux</string>
+
+    <!-- Snackbar -->
+    <string name="subscription_snackbar_purchase_started">Achat lancé. Il sera appliqué après vérification.</string>
+    <string name="subscription_snackbar_error">Impossible de traiter la demande. Veuillez réessayer.</string>
+</resources>

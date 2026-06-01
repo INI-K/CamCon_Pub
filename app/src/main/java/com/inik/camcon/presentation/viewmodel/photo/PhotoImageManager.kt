@@ -15,8 +15,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -75,6 +78,19 @@ class PhotoImageManager @Inject constructor(
     // EXIF 정보 캐시
     private val _exifCache = MutableStateFlow<Map<String, String>>(emptyMap())
     val exifCache: StateFlow<Map<String, String>> = _exifCache.asStateFlow()
+
+    // 풀이미지 다운로드 결과 이벤트 — 조용한 실패 제거(필수1).
+    // 호출자(ViewModel)가 구독하여 성공/실패 피드백 및 다중선택 진행 집계를 처리한다.
+    private val _downloadResult = MutableSharedFlow<DownloadResult>(
+        replay = 0,
+        extraBufferCapacity = 16
+    )
+    val downloadResult: SharedFlow<DownloadResult> = _downloadResult.asSharedFlow()
+
+    /**
+     * 풀이미지 다운로드 결과. path 기준으로 어떤 사진인지 식별 가능.
+     */
+    data class DownloadResult(val photoPath: String, val isSuccess: Boolean)
 
     // 작업 취소를 위한 플래그
     private var isManagerActive = true
@@ -274,6 +290,8 @@ class PhotoImageManager @Inject constructor(
 
         if (_fullImageCache.value.containsKey(photoPath)) {
             Log.d(TAG, "이미 캐시에 있음, 다운로드 생략")
+            // 이미 성공적으로 캐시된 상태 — 다중선택 진행 집계가 멈추지 않도록 성공으로 통지.
+            _downloadResult.tryEmit(DownloadResult(photoPath, isSuccess = true))
             return
         }
 
@@ -286,6 +304,8 @@ class PhotoImageManager @Inject constructor(
         }
 
         managerScope.launch {
+            // 다운로드 성공 여부 — finally 에서 결과 이벤트 emit.
+            var downloadSucceeded = false
             try {
                 Log.d(TAG, "실제 파일 다운로드 시작: $photoPath")
 
@@ -295,6 +315,7 @@ class PhotoImageManager @Inject constructor(
                 }
 
                 if (imageData != null && imageData.isNotEmpty()) {
+                    downloadSucceeded = true
                     Log.d(TAG, "이미지 데이터 확인: 유효함 (${imageData.size} bytes)")
 
                     val (added, cacheSize) = synchronized(fullImageCacheLock) {
@@ -340,7 +361,9 @@ class PhotoImageManager @Inject constructor(
                 Log.e(TAG, "실제 파일 다운로드 중 예외", e)
             } finally {
                 _downloadingImages.value = _downloadingImages.value - photoPath
-                Log.d(TAG, "다운로드 상태 정리 완료: $photoPath")
+                // 성공/실패 결과 통지 — 실패·빈 결과는 캐시에 넣지 않으므로 재시도 가능(필수1).
+                _downloadResult.tryEmit(DownloadResult(photoPath, isSuccess = downloadSucceeded))
+                Log.d(TAG, "다운로드 상태 정리 완료: $photoPath (성공: $downloadSucceeded)")
             }
         }
     }

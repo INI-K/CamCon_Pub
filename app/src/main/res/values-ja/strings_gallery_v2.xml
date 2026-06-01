@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ギャラリーヘッダー: 写真枚数 / ページ -->
+    <plurals name="gallery_v2_photo_count">
+        <item quantity="other">写真 %d枚</item>
+    </plurals>
+    <string name="gallery_v2_photo_count_with_page">%1$s（ページ %2$d/%3$d）</string>
+
+    <!-- EXIF ラベル -->
+    <string name="gallery_v2_exif_camera">カメラ</string>
+    <string name="gallery_v2_exif_iso">ISO</string>
+    <string name="gallery_v2_exif_shutter">シャッタースピード</string>
+    <string name="gallery_v2_exif_aperture">絞り</string>
+    <string name="gallery_v2_exif_focal_length">焦点距離</string>
+    <string name="gallery_v2_exif_white_balance">ホワイトバランス</string>
+    <string name="gallery_v2_exif_flash">フラッシュ</string>
+    <string name="gallery_v2_exif_date">日付</string>
+
+    <!-- EXIF ホワイトバランス値 -->
+    <string name="gallery_v2_wb_auto">オート</string>
+    <string name="gallery_v2_wb_manual">マニュアル</string>
+    <string name="gallery_v2_wb_daylight">晴天</string>
+    <string name="gallery_v2_wb_cloudy">曇天</string>
+    <string name="gallery_v2_wb_tungsten">電球</string>
+    <string name="gallery_v2_wb_fluorescent">蛍光灯</string>
+
+    <!-- EXIF フラッシュ値 -->
+    <string name="gallery_v2_flash_on">発光</string>
+    <string name="gallery_v2_flash_off">非発光</string>
+
+    <!-- EXIF 空 / 未ダウンロード状態 -->
+    <string name="gallery_v2_exif_unavailable">情報なし — 先に写真をダウンロードしてください</string>
+    <string name="gallery_v2_date_unknown">撮影日時が不明です</string>
+    <string name="gallery_v2_internal_storage">/内部ストレージ</string>
+
+    <!-- ダウンロードフィードバック -->
+    <string name="gallery_v2_download_success">写真をダウンロードしました</string>
+    <string name="gallery_v2_download_failed">写真をダウンロードできませんでした。もう一度お試しください</string>
+    <string name="gallery_v2_download_progress">%1$d/%2$d枚をダウンロード中…</string>
+    <string name="gallery_v2_download_all_done">%1$d枚すべてダウンロードしました</string>
+    <string name="gallery_v2_download_partial">%2$d枚中 %1$d枚をダウンロードしました</string>
+
+    <!-- FREE ティア解像度制限の案内 -->
+    <string name="gallery_v2_free_resolution_notice">無料版は写真を2000pxに縮小して保存します。オリジナルはPROでダウンロードできます</string>
+    <string name="gallery_v2_upgrade">アップグレード</string>
+</resources>

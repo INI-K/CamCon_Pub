@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ColorTransfer v2: i18n for settings/live-preview/preview-view + progress + picker -->
+
+    <!-- Common / TopBar -->
+    <string name="ct_settings_title">カラー転送の詳細設定</string>
+    <string name="ct_cd_close">閉じる</string>
+    <string name="ct_confirm">確認</string>
+
+    <!-- Disabled banner -->
+    <string name="ct_disabled_title">⚠️ カラー転送機能が無効です</string>
+    <string name="ct_disabled_message">設定でカラー転送機能を先に有効にしてください</string>
+
+    <!-- Live preview section -->
+    <string name="ct_live_preview_title">リアルタイムプレビュー</string>
+
+    <!-- Intensity slider -->
+    <string name="ct_intensity_title">カラー転送の強度</string>
+    <string name="ct_intensity_percent">%d%%</string>
+    <string name="ct_intensity_weak">弱い (1%%)</string>
+    <string name="ct_intensity_strong">強い (100%%)</string>
+    <string name="ct_intensity_recommended">推奨: 3〜10%%</string>
+
+    <!-- Image management -->
+    <string name="ct_image_management">画像の管理</string>
+    <string name="ct_reference_image">参照画像</string>
+    <string name="ct_target_image">対象画像</string>
+    <string name="ct_manage_library">参照画像ライブラリ</string>
+    <string name="ct_clear_cache">キャッシュをクリア</string>
+
+    <!-- Error card -->
+    <string name="ct_error_title">エラーが発生しました</string>
+
+    <!-- Processing progress -->
+    <string name="ct_processing_title">カラー転送を処理中…</string>
+
+    <!-- LivePreview component -->
+    <string name="ct_lp_placeholder_title">リアルタイムプレビュー</string>
+    <string name="ct_lp_placeholder_desc">参照画像と対象画像を\n選択するとプレビューが表示されます</string>
+    <string name="ct_lp_slider_active_desc">スライダーの操作を終えると\nプレビューが更新されます</string>
+    <string name="ct_lp_processing">カラー転送を処理中…</string>
+    <string name="ct_lp_intensity_label">強度: %d%%</string>
+    <string name="ct_lp_result_title">カラー適用結果 (%d%%)</string>
+    <string name="ct_lp_cd_applied">カラーが適用された画像</string>
+    <string name="ct_lp_tap_for_full">👆 タップして原寸大で表示</string>
+    <string name="ct_lp_processing_full">原寸大で処理中…</string>
+    <string name="ct_lp_result_hint">参照画像のカラーが適用された結果です</string>
+    <string name="ct_lp_cd_target">対象画像</string>
+    <string name="ct_lp_select_reference_hint">参照画像を選択すると\nカラー転送プレビューが表示されます</string>
+    <string name="ct_lp_full_result_title">カラー適用結果 (原寸大)</string>
+    <string name="ct_lp_cd_full_applied">原寸大でカラーが適用された画像</string>
+
+    <!-- PreviewView component -->
+    <string name="ct_pv_reference_title">カラー参照画像</string>
+    <string name="ct_pv_reference_subtitle">この画像のカラーが適用されます</string>
+    <string name="ct_pv_reference_placeholder">カラーを取得する\n参照画像を選択してください</string>
+    <string name="ct_pv_transfer_label">カラー転送</string>
+    <string name="ct_pv_target_title">適用対象画像</string>
+    <string name="ct_pv_target_subtitle">カラーが適用される画像です</string>
+    <string name="ct_pv_target_placeholder">カラーが適用される\n対象画像を選択してください</string>
+    <string name="ct_pv_file_name">ファイル名: %s</string>
+    <string name="ct_pv_file_size">サイズ: %d KB</string>
+    <string name="ct_pv_tap_to_change">タップして別の画像を選択</string>
+    <string name="ct_pv_select">選択する</string>
+</resources>

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Camera Abilities screen -->
+    <string name="diag_abilities_title">相机功能信息</string>
+    <string name="diag_abilities_loading">正在获取相机信息…</string>
+    <string name="diag_abilities_retry">重试</string>
+    <string name="diag_abilities_not_connected">未连接相机</string>
+    <string name="diag_abilities_refresh">刷新</string>
+    <string name="diag_abilities_section_camera">📸 相机信息</string>
+    <string name="diag_abilities_section_connection">🔌 连接信息</string>
+    <string name="diag_abilities_section_capture">📷 拍摄功能</string>
+    <string name="diag_abilities_section_file">📁 文件操作</string>
+    <string name="diag_abilities_section_folder">📂 文件夹操作</string>
+    <string name="diag_abilities_section_config">⚙️ 设置功能</string>
+    <string name="diag_abilities_section_raw">🔧 原始值 (开发者)</string>
+    <string name="diag_abilities_section_summary">综合评估</string>
+
+    <string name="diag_abilities_label_manufacturer">制造商</string>
+    <string name="diag_abilities_label_model">型号</string>
+    <string name="diag_abilities_label_version">版本</string>
+    <string name="diag_abilities_label_serial">序列号</string>
+    <string name="diag_abilities_label_manufacturer_detected">制造商 (检测)</string>
+    <string name="diag_abilities_label_driver_status">驱动状态</string>
+    <string name="diag_abilities_label_port_type">端口类型</string>
+    <string name="diag_abilities_label_connection_type">连接类型</string>
+    <string name="diag_abilities_label_usb_vendor">USB Vendor ID</string>
+    <string name="diag_abilities_label_usb_product">USB Product ID</string>
+    <string name="diag_abilities_label_usb_class">USB Class</string>
+
+    <string name="diag_abilities_value_usb">USB</string>
+    <string name="diag_abilities_value_wifi_ptpip">Wi-Fi (PTP/IP)</string>
+    <string name="diag_abilities_value_unknown">未知</string>
+
+    <string name="diag_abilities_feature_capture_image">远程拍照</string>
+    <string name="diag_abilities_feature_capture_video">远程录像</string>
+    <string name="diag_abilities_feature_capture_audio">录音</string>
+    <string name="diag_abilities_feature_capture_preview">实时取景预览</string>
+    <string name="diag_abilities_feature_trigger_capture">触发拍摄</string>
+    <string name="diag_abilities_feature_delete">删除文件</string>
+    <string name="diag_abilities_feature_preview">文件预览</string>
+    <string name="diag_abilities_feature_raw">RAW 文件</string>
+    <string name="diag_abilities_feature_audio">音频文件</string>
+    <string name="diag_abilities_feature_exif">EXIF 信息</string>
+    <string name="diag_abilities_feature_delete_all">全部删除</string>
+    <string name="diag_abilities_feature_put_file">文件上传</string>
+    <string name="diag_abilities_feature_make_dir">创建目录</string>
+    <string name="diag_abilities_feature_remove_dir">删除目录</string>
+    <string name="diag_abilities_feature_config">更改相机设置</string>
+
+    <string name="diag_abilities_feature_supported">支持</string>
+    <string name="diag_abilities_feature_unsupported">不支持</string>
+
+    <string name="diag_abilities_summary_full">✅ 可完全远程控制\n\n此相机支持所有功能:\n• 远程拍摄\n• 实时取景\n• 设置控制\n• 文件管理</string>
+    <string name="diag_abilities_summary_download_only">⚠️ 仅支持下载\n\n此相机仅支持文件下载。\n无法使用远程拍摄和实时取景。\n\n💡 制造商: %1$s\n部分 %2$s 型号的 PTP 功能有限。</string>
+    <string name="diag_abilities_summary_partial">ℹ️ 部分支持\n\n不支持实时取景，但可远程拍摄。</string>
+    <string name="diag_abilities_summary_some">ℹ️ 支持部分功能\n\n部分相机功能可能受限。</string>
+
+    <!-- Diagnostics section (ADMIN) -->
+    <string name="diag_section_title">🩺 诊断 (ADMIN)</string>
+    <string name="diag_run_button">运行诊断</string>
+    <string name="diag_running">正在运行诊断…</string>
+    <string name="diag_report_camera_issues">相机问题</string>
+    <string name="diag_report_usb">USB 诊断</string>
+    <string name="diag_error_history_title">错误历史</string>
+    <string name="diag_error_history_load">加载错误历史</string>
+    <string name="diag_error_history_clear">清除错误历史</string>
+    <string name="diag_error_history_empty">没有错误历史</string>
+    <string name="diag_memory_title">内存池状态</string>
+    <string name="diag_memory_refresh">刷新内存状态</string>
+    <string name="diag_memory_active_count">活动数量</string>
+    <string name="diag_memory_total_allocated">总分配量</string>
+    <string name="diag_memory_details">详情</string>
+    <string name="diag_memory_clear_pool">清空文件池</string>
+    <string name="diag_report_empty">尚无报告。请运行诊断。</string>
+
+    <!-- RAW restriction upgrade action -->
+    <string name="diag_raw_upgrade">升级</string>
+
+    <!-- Camera restart dialog -->
+    <string name="diag_restart_needed">需要重启应用</string>
+    <string name="diag_restart_message">USB 设备未正确断开连接，或发生系统错误 (-52)。\n\n必须重启应用才能正常使用。\n\n现在重启应用吗?</string>
+    <string name="diag_restart_confirm">重启应用</string>
+    <string name="diag_restart_cancel">取消</string>
+    <string name="diag_close">关闭</string>
+</resources>

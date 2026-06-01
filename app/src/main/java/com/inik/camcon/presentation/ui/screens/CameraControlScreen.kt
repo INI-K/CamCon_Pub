@@ -85,6 +85,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -98,6 +99,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.size.Scale
 import com.inik.camcon.R
+import com.inik.camcon.presentation.ui.SubscriptionActivity
 import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.domain.model.CameraPhoto
@@ -400,7 +402,11 @@ fun CameraControlScreen(
     uiState.rawFileRestriction?.let { restriction ->
         RawFileRestrictionNotification(
             restriction = restriction,
-            onDismiss = { viewModel.clearRawFileRestriction() }
+            onDismiss = { viewModel.clearRawFileRestriction() },
+            onUpgradeClick = {
+                viewModel.clearRawFileRestriction()
+                SubscriptionActivity.start(context)
+            }
         )
     }
 
@@ -443,6 +449,20 @@ fun CameraControlScreen(
         )
     }
 
+    // AF 성공 등 1-shot 정보 메시지를 Snackbar로 표시 (에러 채널과 분리)
+    val autoFocusCompletedMsg = stringResource(R.string.autofocus_completed)
+    LaunchedEffect(viewModel, lifecycleOwner) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            viewModel.infoMessage.collect { info ->
+                val message = when (info) {
+                    com.inik.camcon.presentation.viewmodel.state.InfoMessage.AutoFocusCompleted ->
+                        autoFocusCompletedMsg
+                }
+                snackbarHostState.showSnackbar(message)
+            }
+        }
+    }
+
     // M5: 첫 실행 코치마크 — 카메라 컨트롤 활성 상태에서 1회 표시
     if (isCameraControlsEnabled && !hasSeenCaptureCoachmark) {
         com.inik.camcon.presentation.ui.screens.components.CaptureCoachmarkOverlay(
@@ -463,6 +483,16 @@ fun CameraControlScreen(
             // 에러가 사라지거나 다른 에러로 바뀌면 도움말을 닫고 처리 기록을 리셋해 재발 시 다시 표시되도록 함
             showConnectionHelpDialog = false
             handledConnectionError = null
+
+            // 전용 UI(연결 도움말/USB 분리/PTP 타임아웃)가 없는 일반 에러는
+            // 본문을 Snackbar로 노출하고 1-shot으로 소비한다.
+            if (!error.isNullOrBlank() &&
+                !uiState.connection.isUsbDisconnected &&
+                !uiState.isPtpTimeout
+            ) {
+                snackbarHostState.showSnackbar(error)
+                viewModel.clearError()
+            }
         }
     }
 
@@ -800,7 +830,9 @@ private fun PortraitCameraLayout(
                         isVertical = false,
                         onGalleryClick = onGalleryClick,
                         isLiveViewActive = liveViewVisuallyActive,
-                        isShutterSoundEnabled = isShutterSoundEnabled
+                        isShutterSoundEnabled = isShutterSoundEnabled,
+                        isTimelapseRunning = uiState.shootingMode == com.inik.camcon.domain.model.ShootingMode.TIMELAPSE && uiState.isCapturing,
+                        onStopTimelapse = viewModel::stopTimelapse
                     )
                 }
 
@@ -934,6 +966,7 @@ private fun FullscreenCameraLayout(
                 onRotate = { isRotated = !isRotated },
                 onGalleryClick = onGalleryClick,
                 isShutterSoundEnabled = isShutterSoundEnabled,
+                onStopTimelapse = viewModel::stopTimelapse,
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .padding(Padding.lg)
@@ -1035,6 +1068,7 @@ private fun FullscreenControlPanel(
     onRotate: (() -> Unit)? = null,
     onGalleryClick: () -> Unit = {},
     isShutterSoundEnabled: Boolean = true,
+    onStopTimelapse: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -1104,7 +1138,9 @@ private fun FullscreenControlPanel(
                 onShowTimelapseDialog = onShowTimelapseDialog,
                 isVertical = true,
                 onGalleryClick = onGalleryClick,
-                isShutterSoundEnabled = isShutterSoundEnabled
+                isShutterSoundEnabled = isShutterSoundEnabled,
+                isTimelapseRunning = captureState.shootingMode == com.inik.camcon.domain.model.ShootingMode.TIMELAPSE && captureState.isCapturing,
+                onStopTimelapse = onStopTimelapse
             )
         }
     }
@@ -1614,16 +1650,17 @@ private fun CapturedPhoto.getExifData(): String? {
 @Composable
 private fun RawFileRestrictionNotification(
     restriction: RawFileRestriction,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onUpgradeClick: () -> Unit = {}
 ) {
     // 내부 visible 상태로 종료 애니메이션을 재생한 뒤 onDismiss 호출
     var visible by remember(restriction.timestamp) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    // 진입 시 애니메이션 트리거 + 5초 후 자동으로 사라지게 하기
+    // 진입 시 애니메이션 트리거 + 자동으로 사라지게 하기 (업그레이드 탭 여유를 위해 7초)
     LaunchedEffect(restriction.timestamp) {
         visible = true
-        kotlinx.coroutines.delay(5000L)
+        kotlinx.coroutines.delay(7000L)
         visible = false
         kotlinx.coroutines.delay(260L) // exit 애니메이션 완료 대기
         onDismiss()
@@ -1646,15 +1683,15 @@ private fun RawFileRestrictionNotification(
         ) {
             Box(modifier = Modifier.align(Alignment.TopCenter)) {
                 ToastV2(
-                    message = "${stringResource(R.string.camera_control_raw_file_restriction)} · ${restriction.fileName} — ${restriction.message}",
+                    message = "${stringResource(R.string.camera_control_raw_file_restriction)} · ${restriction.fileName} — ${restriction.message} · ${stringResource(R.string.subscription_upgrade)} →",
                     kind = StatusKind.Error,
                     leadingIcon = Icons.Outlined.WarningAmber,
                     modifier = Modifier.clickable {
-                        // 수동 탭도 종료 애니메이션을 재생한 뒤 onDismiss 호출
+                        // 탭하면 종료 애니메이션 후 구독(업그레이드) 화면으로 이동
                         scope.launch {
                             visible = false
                             kotlinx.coroutines.delay(260L)
-                            onDismiss()
+                            onUpgradeClick()
                         }
                     }
                 )

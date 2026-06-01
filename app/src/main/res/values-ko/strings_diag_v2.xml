@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Camera Abilities screen -->
+    <string name="diag_abilities_title">카메라 기능 정보</string>
+    <string name="diag_abilities_loading">카메라 정보 조회 중…</string>
+    <string name="diag_abilities_retry">다시 시도</string>
+    <string name="diag_abilities_not_connected">카메라가 연결되지 않았습니다</string>
+    <string name="diag_abilities_refresh">새로고침</string>
+    <string name="diag_abilities_section_camera">📸 카메라 정보</string>
+    <string name="diag_abilities_section_connection">🔌 연결 정보</string>
+    <string name="diag_abilities_section_capture">📷 촬영 기능</string>
+    <string name="diag_abilities_section_file">📁 파일 작업</string>
+    <string name="diag_abilities_section_folder">📂 폴더 작업</string>
+    <string name="diag_abilities_section_config">⚙️ 설정 기능</string>
+    <string name="diag_abilities_section_raw">🔧 원시 값 (개발자용)</string>
+    <string name="diag_abilities_section_summary">종합 평가</string>
+
+    <string name="diag_abilities_label_manufacturer">제조사</string>
+    <string name="diag_abilities_label_model">모델</string>
+    <string name="diag_abilities_label_version">버전</string>
+    <string name="diag_abilities_label_serial">시리얼</string>
+    <string name="diag_abilities_label_manufacturer_detected">제조사 (감지)</string>
+    <string name="diag_abilities_label_driver_status">드라이버 상태</string>
+    <string name="diag_abilities_label_port_type">포트 타입</string>
+    <string name="diag_abilities_label_connection_type">연결 타입</string>
+    <string name="diag_abilities_label_usb_vendor">USB Vendor ID</string>
+    <string name="diag_abilities_label_usb_product">USB Product ID</string>
+    <string name="diag_abilities_label_usb_class">USB Class</string>
+
+    <string name="diag_abilities_value_usb">USB</string>
+    <string name="diag_abilities_value_wifi_ptpip">Wi-Fi (PTP/IP)</string>
+    <string name="diag_abilities_value_unknown">알 수 없음</string>
+
+    <string name="diag_abilities_feature_capture_image">원격 사진 촬영</string>
+    <string name="diag_abilities_feature_capture_video">원격 비디오 촬영</string>
+    <string name="diag_abilities_feature_capture_audio">오디오 녹음</string>
+    <string name="diag_abilities_feature_capture_preview">라이브뷰 미리보기</string>
+    <string name="diag_abilities_feature_trigger_capture">트리거 촬영</string>
+    <string name="diag_abilities_feature_delete">파일 삭제</string>
+    <string name="diag_abilities_feature_preview">파일 미리보기</string>
+    <string name="diag_abilities_feature_raw">RAW 파일</string>
+    <string name="diag_abilities_feature_audio">오디오 파일</string>
+    <string name="diag_abilities_feature_exif">EXIF 정보</string>
+    <string name="diag_abilities_feature_delete_all">전체 삭제</string>
+    <string name="diag_abilities_feature_put_file">파일 업로드</string>
+    <string name="diag_abilities_feature_make_dir">디렉토리 생성</string>
+    <string name="diag_abilities_feature_remove_dir">디렉토리 삭제</string>
+    <string name="diag_abilities_feature_config">카메라 설정 변경</string>
+
+    <string name="diag_abilities_feature_supported">지원</string>
+    <string name="diag_abilities_feature_unsupported">미지원</string>
+
+    <string name="diag_abilities_summary_full">✅ 완전한 원격 제어 가능\n\n이 카메라는 모든 기능을 지원합니다:\n• 원격 촬영\n• 라이브뷰\n• 설정 변경\n• 파일 관리</string>
+    <string name="diag_abilities_summary_download_only">⚠️ 다운로드만 가능\n\n이 카메라는 파일 다운로드만 지원합니다.\n원격 촬영 및 라이브뷰는 사용할 수 없습니다.\n\n💡 제조사: %1$s\n일부 %2$s 모델은 PTP 기능이 제한적입니다.</string>
+    <string name="diag_abilities_summary_partial">ℹ️ 부분 지원\n\n라이브뷰는 지원되지 않지만, 원격 촬영은 가능합니다.</string>
+    <string name="diag_abilities_summary_some">ℹ️ 일부 기능 지원\n\n카메라 기능이 일부 제한될 수 있습니다.</string>
+
+    <!-- Diagnostics section (ADMIN) -->
+    <string name="diag_section_title">🩺 진단 (ADMIN)</string>
+    <string name="diag_run_button">진단 실행</string>
+    <string name="diag_running">진단 실행 중…</string>
+    <string name="diag_report_camera_issues">카메라 문제</string>
+    <string name="diag_report_usb">USB 진단</string>
+    <string name="diag_error_history_title">에러 히스토리</string>
+    <string name="diag_error_history_load">에러 히스토리 불러오기</string>
+    <string name="diag_error_history_clear">에러 히스토리 지우기</string>
+    <string name="diag_error_history_empty">에러 히스토리가 없습니다</string>
+    <string name="diag_memory_title">메모리 풀 상태</string>
+    <string name="diag_memory_refresh">메모리 상태 새로고침</string>
+    <string name="diag_memory_active_count">활성 개수</string>
+    <string name="diag_memory_total_allocated">총 할당량</string>
+    <string name="diag_memory_details">상세</string>
+    <string name="diag_memory_clear_pool">파일 풀 비우기</string>
+    <string name="diag_report_empty">아직 리포트가 없습니다. 진단을 실행하세요.</string>
+
+    <!-- RAW restriction upgrade action -->
+    <string name="diag_raw_upgrade">업그레이드</string>
+
+    <!-- Camera restart dialog -->
+    <string name="diag_restart_needed">앱 재시작 필요</string>
+    <string name="diag_restart_message">USB 장치 연결이 제대로 해제되지 않았거나 시스템 오류(-52)가 발생했습니다.\n\n앱을 재시작해야 정상적으로 사용할 수 있습니다.\n\n지금 앱을 재시작하시겠습니까?</string>
+    <string name="diag_restart_confirm">앱 재시작</string>
+    <string name="diag_restart_cancel">취소</string>
+    <string name="diag_close">닫기</string>
+</resources>

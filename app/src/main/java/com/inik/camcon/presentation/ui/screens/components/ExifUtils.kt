@@ -7,10 +7,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import android.util.Log
 import com.google.gson.Gson
+import com.inik.camcon.R
 
 /**
  * EXIF 메타데이터 파싱 및 포맷팅 유틸리티 함수들
@@ -95,6 +97,35 @@ fun formatFlash(flash: String): String {
     return when {
         flash.contains("1") -> "Flash On"
         flash.contains("0") -> "Flash Off"
+        else -> flash
+    }
+}
+
+/**
+ * EXIF 화이트밸런스 코드를 로컬라이즈된 문자열로 변환(필수3).
+ * 인식되지 않는 코드면 원본 값 반환(JNI 코드 노출 방지를 위해 fallback 유지).
+ */
+@Composable
+fun formatWhiteBalanceLabel(whiteBalance: String): String {
+    return when (whiteBalance) {
+        "0" -> stringResource(R.string.gallery_v2_wb_auto)
+        "1" -> stringResource(R.string.gallery_v2_wb_manual)
+        "2" -> stringResource(R.string.gallery_v2_wb_daylight)
+        "3" -> stringResource(R.string.gallery_v2_wb_cloudy)
+        "4" -> stringResource(R.string.gallery_v2_wb_tungsten)
+        "5" -> stringResource(R.string.gallery_v2_wb_fluorescent)
+        else -> whiteBalance
+    }
+}
+
+/**
+ * EXIF 플래시 코드를 로컬라이즈된 문자열로 변환(필수3).
+ */
+@Composable
+fun formatFlashLabel(flash: String): String {
+    return when {
+        flash.contains("1") -> stringResource(R.string.gallery_v2_flash_on)
+        flash.contains("0") -> stringResource(R.string.gallery_v2_flash_off)
         else -> flash
     }
 }

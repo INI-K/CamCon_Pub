@@ -1,0 +1,33 @@
+<resources>
+    <!-- Muro de pago de suscripción (Español) -->
+    <string name="subscription_title">Suscripción</string>
+    <string name="subscription_back">Atrás</string>
+    <string name="subscription_current_plan">Plan actual</string>
+    <string name="subscription_choose_plan">Elige un plan</string>
+    <string name="subscription_upgrade">Mejorar</string>
+    <string name="subscription_restore">Restaurar compras</string>
+    <string name="subscription_disclaimer">Las suscripciones se renuevan automáticamente y se pueden gestionar o cancelar en Google Play Store.</string>
+    <string name="subscription_badge_current">Actual</string>
+
+    <!-- Nombres de nivel -->
+    <string name="subscription_tier_free">Gratis</string>
+    <string name="subscription_tier_basic">Básico</string>
+    <string name="subscription_tier_pro">Pro</string>
+    <string name="subscription_tier_referrer">Referente</string>
+    <string name="subscription_tier_admin">Administrador</string>
+
+    <!-- Ventajas -->
+    <string name="subscription_benefit_jpg">Captura JPG / JPEG</string>
+    <string name="subscription_benefit_basic_control">Control básico de la cámara</string>
+    <string name="subscription_benefit_free_resolution">Descargas limitadas a 2000 px</string>
+    <string name="subscription_benefit_png">Añade compatibilidad con PNG</string>
+    <string name="subscription_benefit_batch">Procesamiento por lotes</string>
+    <string name="subscription_benefit_original_download">Descargas en resolución original</string>
+    <string name="subscription_benefit_raw">Todos los formatos, incluido RAW</string>
+    <string name="subscription_benefit_advanced_control">Control avanzado de la cámara</string>
+    <string name="subscription_benefit_raw_download">Descargas de originales RAW</string>
+
+    <!-- Snackbar -->
+    <string name="subscription_snackbar_purchase_started">Compra iniciada. Se aplicará tras la verificación.</string>
+    <string name="subscription_snackbar_error">No se pudo procesar la solicitud. Inténtalo de nuevo.</string>
+</resources>

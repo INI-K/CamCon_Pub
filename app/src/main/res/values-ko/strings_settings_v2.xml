@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Top bar / common -->
+    <string name="settings_v2_title">설정</string>
+    <string name="settings_v2_back">뒤로</string>
+
+    <!-- Section titles -->
+    <string name="settings_v2_section_camera_control">카메라 제어 설정 (개발 버전)</string>
+    <string name="settings_v2_section_wifi_ptpip">Wi-Fi 카메라 연결 (PTPIP) - 개발 버전</string>
+    <string name="settings_v2_section_color_transfer">색감 전송 설정</string>
+    <string name="settings_v2_section_raw_download">RAW 파일 다운로드 설정</string>
+    <string name="settings_v2_section_connected_camera">연결된 카메라 정보</string>
+    <string name="settings_v2_section_user_info">사용자 정보</string>
+    <string name="settings_v2_section_server">서버 설정 (개발 버전)</string>
+    <string name="settings_v2_section_app">앱 설정</string>
+    <string name="settings_v2_section_admin">ADMIN 전용 설정</string>
+    <string name="settings_v2_section_info">정보</string>
+    <string name="settings_v2_section_referral">관리자 레퍼럴 코드 관리</string>
+
+    <!-- Subscription / upgrade row -->
+    <string name="settings_v2_subscription_title">구독 관리 / 업그레이드</string>
+    <string name="settings_v2_subscription_subtitle_tier">현재 플랜: %s</string>
+    <string name="settings_v2_subscription_subtitle_default">플랜을 관리하고 더 많은 기능을 사용하세요</string>
+
+    <!-- Camera control -->
+    <string name="settings_v2_camera_controls_title">카메라 컨트롤 표시</string>
+    <string name="settings_v2_camera_controls_on">라이브뷰 및 카메라 컨트롤 UI 표시</string>
+    <string name="settings_v2_camera_controls_off">비활성화 - 최신 촬영 사진이 표시됩니다</string>
+    <string name="settings_v2_liveview_title">라이브뷰 활성화</string>
+    <string name="settings_v2_liveview_subtitle">실시간 카메라 화면 표시 (ADMIN 전용)</string>
+    <string name="settings_v2_auto_event_title">자동 이벤트 수신</string>
+    <string name="settings_v2_auto_event_subtitle">카메라 제어 탭 진입 시 자동으로 이벤트 리스너 시작</string>
+    <string name="settings_v2_liveview_locked_title">라이브뷰 기능</string>
+    <string name="settings_v2_liveview_locked_subtitle">ADMIN 티어에서만 사용 가능한 기능입니다</string>
+    <string name="settings_v2_latest_photo_title">최신 사진 표시</string>
+    <string name="settings_v2_latest_photo_subtitle">카메라 컨트롤 비활성화 시 최근 촬영한 사진 표시</string>
+
+    <!-- Wi-Fi PTPIP -->
+    <string name="settings_v2_wifi_camera_title">Wi-Fi 카메라 연결</string>
+    <string name="settings_v2_wifi_camera_on_last">활성화됨 - 마지막 연결: %s</string>
+    <string name="settings_v2_wifi_camera_on_none">활성화됨 - 연결된 카메라 없음</string>
+    <string name="settings_v2_wifi_camera_off">Wi-Fi를 통한 카메라 원격 제어</string>
+    <string name="settings_v2_wifi_connect_title">WIFI 연결 하기</string>
+    <string name="settings_v2_wifi_connect_subtitle">카메라와 동일한 Wi-Fi 네트워크에서 연결 (권장)</string>
+    <string name="settings_v2_auto_discovery_title">자동 카메라 검색</string>
+    <string name="settings_v2_auto_discovery_subtitle">네트워크에서 PTPIP 카메라 자동 찾기</string>
+    <string name="settings_v2_auto_connect_title">자동 연결</string>
+    <string name="settings_v2_auto_connect_subtitle">마지막 연결된 카메라에 자동 연결</string>
+    <string name="settings_v2_connection_manage_title">카메라 연결 관리</string>
+    <string name="settings_v2_connection_manage_subtitle">%s - 탭하여 자세히 보기</string>
+
+    <!-- Color transfer -->
+    <string name="settings_v2_color_transfer_title">색감 전송 기능</string>
+    <string name="settings_v2_color_transfer_on_ref">활성화됨 - 참조 이미지 설정됨</string>
+    <string name="settings_v2_color_transfer_on_noref">활성화됨 - 참조 이미지 없음</string>
+    <string name="settings_v2_color_transfer_off">촬영된 사진에 참조 이미지의 색감을 자동 적용</string>
+    <string name="settings_v2_color_transfer_detail_title">상세 설정</string>
+    <string name="settings_v2_color_transfer_detail_subtitle">색감 전송 알고리즘 및 고급 옵션 설정</string>
+
+    <!-- RAW download -->
+    <string name="settings_v2_raw_download_title">RAW 파일 다운로드</string>
+    <string name="settings_v2_raw_download_on">활성화됨</string>
+    <string name="settings_v2_raw_download_off">비활성화됨</string>
+    <string name="settings_v2_raw_download_locked">PRO, ADMIN, REFERRER 티어에서만 사용 가능한 기능입니다</string>
+
+    <!-- Connected camera -->
+    <string name="settings_v2_connection_status_title">연결 상태</string>
+    <string name="settings_v2_connection_type_usb">USB 연결</string>
+    <string name="settings_v2_connection_type_wifi">Wi-Fi 연결 (PTPIP)</string>
+    <string name="settings_v2_connection_type_none">연결 안됨</string>
+    <string name="settings_v2_camera_model_title">카메라 모델</string>
+    <string name="settings_v2_camera_model_none">정보 없음</string>
+    <string name="settings_v2_camera_limitation_title">기능 제한 안내</string>
+
+    <!-- User -->
+    <string name="settings_v2_user_default_name">사용자</string>
+    <string name="settings_v2_user_login_required">로그인이 필요합니다</string>
+    <string name="settings_v2_logout_title">로그아웃</string>
+    <string name="settings_v2_logout_in_progress_title">로그아웃 중…</string>
+    <string name="settings_v2_logout_subtitle">현재 계정에서 로그아웃</string>
+    <string name="settings_v2_logout_in_progress_subtitle">잠시만 기다려주세요…</string>
+
+    <!-- Server -->
+    <string name="settings_v2_storage_title">저장 공간</string>
+    <string name="settings_v2_storage_subtitle">TBD</string>
+    <string name="settings_v2_permissions_title">권한 관리</string>
+    <string name="settings_v2_permissions_subtitle">서버 접근 권한 설정</string>
+
+    <!-- App -->
+    <string name="settings_v2_battery_title">배터리 최적화 예외 설정</string>
+    <string name="settings_v2_battery_on">배터리 사용량 최적화 예외 처리됨</string>
+    <string name="settings_v2_battery_off">백그라운드 연결 및 알림을 위해 예외로 설정 필요</string>
+
+    <!-- ADMIN -->
+    <string name="settings_v2_mock_camera_title">🧪 가상 카메라 (Mock Camera)</string>
+    <string name="settings_v2_mock_camera_subtitle">개발/테스트용 가상 카메라 기능</string>
+    <string name="settings_v2_camera_abilities_title">🔍 카메라 기능 정보</string>
+    <string name="settings_v2_camera_abilities_subtitle">libgphoto2 API 기반 카메라 지원 기능 조회</string>
+    <string name="settings_v2_native_log_title">📝 네이티브 로그 캡처</string>
+    <string name="settings_v2_native_log_on">활성화됨 - libgphoto2 로그를 TXT 파일로 저장 중</string>
+    <string name="settings_v2_native_log_off">PTP/IP 디버깅을 위한 상세 로그 기록</string>
+    <string name="settings_v2_native_log_view_title">로그 파일 보기</string>
+    <string name="settings_v2_native_log_view_subtitle">저장된 네이티브 로그 파일 확인 및 보내기</string>
+
+    <!-- Info -->
+    <string name="settings_v2_oss_license_title">오픈소스 라이선스</string>
+    <string name="settings_v2_oss_license_subtitle">사용된 오픈소스 라이브러리</string>
+    <string name="settings_v2_app_version_title">앱 버전</string>
+
+    <!-- Referral (admin) -->
+    <string name="settings_v2_referral_usage_title">레퍼럴 코드 사용량</string>
+    <string name="settings_v2_referral_usage_subtitle">전체: %1$d개 | 사용 가능: %2$d개 | 사용됨: %3$d개 (%4$d%%)</string>
+    <string name="settings_v2_referral_generate_title">레퍼럴 코드 30개 생성</string>
+    <string name="settings_v2_referral_generate_subtitle">새로운 레퍼럴 코드 30개를 생성합니다</string>
+    <string name="settings_v2_referral_generate_in_progress">생성 중…</string>
+    <string name="settings_v2_referral_extract_title">사용 가능한 코드 하나 추출</string>
+    <string name="settings_v2_referral_extract_subtitle">사용하지 않은 레퍼럴 코드 하나를 클립보드에 복사</string>
+</resources>

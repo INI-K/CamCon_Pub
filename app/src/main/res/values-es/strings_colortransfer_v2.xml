@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ColorTransfer v2: i18n for settings/live-preview/preview-view + progress + picker -->
+
+    <!-- Common / TopBar -->
+    <string name="ct_settings_title">Ajustes detallados de transferencia de color</string>
+    <string name="ct_cd_close">Cerrar</string>
+    <string name="ct_confirm">Aceptar</string>
+
+    <!-- Disabled banner -->
+    <string name="ct_disabled_title">⚠️ La transferencia de color está desactivada</string>
+    <string name="ct_disabled_message">Active primero la transferencia de color en los ajustes</string>
+
+    <!-- Live preview section -->
+    <string name="ct_live_preview_title">Vista previa en tiempo real</string>
+
+    <!-- Intensity slider -->
+    <string name="ct_intensity_title">Intensidad de transferencia de color</string>
+    <string name="ct_intensity_percent">%d%%</string>
+    <string name="ct_intensity_weak">Débil (1%%)</string>
+    <string name="ct_intensity_strong">Fuerte (100%%)</string>
+    <string name="ct_intensity_recommended">Recomendado: 3-10%%</string>
+
+    <!-- Image management -->
+    <string name="ct_image_management">Gestión de imágenes</string>
+    <string name="ct_reference_image">Imagen de referencia</string>
+    <string name="ct_target_image">Imagen de destino</string>
+    <string name="ct_manage_library">Biblioteca de imágenes de referencia</string>
+    <string name="ct_clear_cache">Borrar caché</string>
+
+    <!-- Error card -->
+    <string name="ct_error_title">Se ha producido un error</string>
+
+    <!-- Processing progress -->
+    <string name="ct_processing_title">Procesando transferencia de color…</string>
+
+    <!-- LivePreview component -->
+    <string name="ct_lp_placeholder_title">Vista previa en tiempo real</string>
+    <string name="ct_lp_placeholder_desc">Seleccione una imagen de referencia y otra de destino\npara mostrar la vista previa</string>
+    <string name="ct_lp_slider_active_desc">La vista previa se actualizará\ncuando suelte el control deslizante</string>
+    <string name="ct_lp_processing">Procesando transferencia de color…</string>
+    <string name="ct_lp_intensity_label">Intensidad: %d%%</string>
+    <string name="ct_lp_result_title">Resultado de color (%d%%)</string>
+    <string name="ct_lp_cd_applied">Imagen con color aplicado</string>
+    <string name="ct_lp_tap_for_full">👆 Toque para ver a tamaño original</string>
+    <string name="ct_lp_processing_full">Procesando a tamaño original…</string>
+    <string name="ct_lp_result_hint">Resultado con el color de la imagen de referencia</string>
+    <string name="ct_lp_cd_target">Imagen de destino</string>
+    <string name="ct_lp_select_reference_hint">Seleccione una imagen de referencia\npara mostrar la vista previa de transferencia de color</string>
+    <string name="ct_lp_full_result_title">Resultado de color (tamaño original)</string>
+    <string name="ct_lp_cd_full_applied">Imagen con color aplicado a tamaño original</string>
+
+    <!-- PreviewView component -->
+    <string name="ct_pv_reference_title">Imagen de referencia de color</string>
+    <string name="ct_pv_reference_subtitle">Se aplicará el color de esta imagen</string>
+    <string name="ct_pv_reference_placeholder">Seleccione la imagen de referencia\nde la que tomar el color</string>
+    <string name="ct_pv_transfer_label">Transferencia de color</string>
+    <string name="ct_pv_target_title">Imagen de destino</string>
+    <string name="ct_pv_target_subtitle">La imagen a la que se aplicará el color</string>
+    <string name="ct_pv_target_placeholder">Seleccione la imagen de destino\na la que aplicar el color</string>
+    <string name="ct_pv_file_name">Nombre del archivo: %s</string>
+    <string name="ct_pv_file_size">Tamaño: %d KB</string>
+    <string name="ct_pv_tap_to_change">Toque para elegir otra imagen</string>
+    <string name="ct_pv_select">Seleccionar</string>
+</resources>

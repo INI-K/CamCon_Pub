@@ -1,6 +1,8 @@
 package com.inik.camcon.presentation.viewmodel
 
 import app.cash.turbine.test
+import com.inik.camcon.R
+import com.inik.camcon.domain.model.UiText
 import com.inik.camcon.domain.model.User
 import com.inik.camcon.domain.usecase.auth.SignInWithGoogleUseCase
 import com.inik.camcon.domain.usecase.auth.UserReferralUseCase
@@ -118,7 +120,11 @@ class LoginViewModelTest {
             viewModel.signInWithGoogle("test-id-token")
             val event = awaitItem()
             assertTrue(event is LoginUiEvent.ShowError)
-            assertTrue((event as LoginUiEvent.ShowError).message.contains(errorMessage))
+            // 에러 메시지는 raw 문자열 대신 분류된 UiText(인증 에러)로 노출된다 (raw는 logcat 한정)
+            assertEquals(
+                UiText.Resource(R.string.login_error_auth),
+                (event as LoginUiEvent.ShowError).message
+            )
             cancelAndIgnoreRemainingEvents()
         }
     }

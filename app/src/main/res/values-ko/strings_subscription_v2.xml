@@ -1,0 +1,33 @@
+<resources>
+    <!-- 구독 페이월 (한국어) -->
+    <string name="subscription_title">구독</string>
+    <string name="subscription_back">뒤로</string>
+    <string name="subscription_current_plan">현재 플랜</string>
+    <string name="subscription_choose_plan">플랜 선택</string>
+    <string name="subscription_upgrade">업그레이드</string>
+    <string name="subscription_restore">구매 복원</string>
+    <string name="subscription_disclaimer">구독은 자동으로 갱신되며 Google Play 스토어에서 관리하거나 해지할 수 있습니다.</string>
+    <string name="subscription_badge_current">현재</string>
+
+    <!-- 티어 이름 -->
+    <string name="subscription_tier_free">무료</string>
+    <string name="subscription_tier_basic">베이직</string>
+    <string name="subscription_tier_pro">프로</string>
+    <string name="subscription_tier_referrer">추천인</string>
+    <string name="subscription_tier_admin">관리자</string>
+
+    <!-- 혜택 -->
+    <string name="subscription_benefit_jpg">JPG / JPEG 촬영</string>
+    <string name="subscription_benefit_basic_control">기본 카메라 제어</string>
+    <string name="subscription_benefit_free_resolution">다운로드 2000px 제한</string>
+    <string name="subscription_benefit_png">PNG 지원 추가</string>
+    <string name="subscription_benefit_batch">배치 처리</string>
+    <string name="subscription_benefit_original_download">원본 해상도 다운로드</string>
+    <string name="subscription_benefit_raw">RAW 포함 모든 포맷</string>
+    <string name="subscription_benefit_advanced_control">고급 카메라 제어</string>
+    <string name="subscription_benefit_raw_download">RAW 원본 다운로드</string>
+
+    <!-- 스낵바 -->
+    <string name="subscription_snackbar_purchase_started">결제를 시작했습니다. 검증 후 적용됩니다.</string>
+    <string name="subscription_snackbar_error">요청을 처리하지 못했습니다. 다시 시도해 주세요.</string>
+</resources>
