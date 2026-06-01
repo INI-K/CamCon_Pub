@@ -4,8 +4,6 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.hardware.usb.UsbDevice
-import android.hardware.usb.UsbManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -15,6 +13,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.NavigationRailItemDefaults
@@ -62,7 +61,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -82,8 +80,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.inik.camcon.R
-import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
-import com.inik.camcon.data.datasource.usb.UsbCameraManager
 import com.inik.camcon.data.service.BackgroundSyncService
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.domain.model.CameraConnectionType
@@ -101,12 +97,12 @@ import com.inik.camcon.presentation.ui.screens.components.PtpTimeoutDialog
 import com.inik.camcon.presentation.ui.screens.components.UsbInitializationOverlay
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
+import com.inik.camcon.presentation.viewmodel.MainActivityViewModel
 import com.inik.camcon.utils.LogcatManager
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.inik.camcon.di.IoDispatcher
@@ -720,17 +716,13 @@ class MainActivity : ComponentActivity() {
 
     private var batteryDialogShown = false
 
-    @Inject
-    lateinit var usbCameraManager: UsbCameraManager
+    private val viewModel: MainActivityViewModel by viewModels()
 
     @Inject
     lateinit var globalManager: CameraConnectionGlobalManager
 
     @Inject
     lateinit var getSubscriptionUseCase: GetSubscriptionUseCase
-
-    @Inject
-    lateinit var appPreferences: AppPreferencesDataSource
 
     @Inject
     @IoDispatcher
@@ -1039,14 +1031,8 @@ class MainActivity : ComponentActivity() {
         // 저장소 권한 요청
         requestStoragePermissions()
 
-        // USB 디바이스 연결 Intent 처리를 비동기로 수행
-        lifecycleScope.launch(ioDispatcher) {
-            handleUsbIntent(intent)
-
-            // 추가: 앱 시작 시 이미 연결된 USB 디바이스 검색
-            delay(500) // UI 초기화 대기
-            checkAndInitializeUsbDevices()
-        }
+        // USB 디바이스 연결 Intent 처리 + 기존 연결 디바이스 검색을 ViewModel에 위임
+        viewModel.initializeUsbState(intent)
 
         setContent {
             val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
@@ -1064,9 +1050,8 @@ class MainActivity : ComponentActivity() {
             }
 
             // 첫 사용자 온보딩 표시 여부 — DataStore 초깃값(null) 동안 깜빡임을 막기 위해 null 상태 유지.
-            val onboardingCompleted by appPreferences.isOnboardingCompleted
-                .collectAsStateWithLifecycle(initialValue = null as Boolean?)
-            val scope = rememberCoroutineScope()
+            val onboardingCompleted by appSettingsViewModel.isOnboardingCompleted
+                .collectAsStateWithLifecycle()
 
             // WindowSizeClass 계산 후 CompositionLocal로 전파.
             // 다크 테마 고정이므로 CamConTheme은 변경하지 않는다.
@@ -1084,9 +1069,7 @@ class MainActivity : ComponentActivity() {
                             false -> {
                                 OnboardingScreen(
                                     onFinish = {
-                                        scope.launch {
-                                            appPreferences.setOnboardingCompleted(true)
-                                        }
+                                        appSettingsViewModel.setOnboardingCompleted(true)
                                     }
                                 )
                             }
@@ -1124,70 +1107,8 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        // USB Intent 처리를 비동기로 수행
-        lifecycleScope.launch(ioDispatcher) {
-            handleUsbIntent(intent)
-        }
-    }
-
-    private suspend fun handleUsbIntent(intent: Intent) = withContext(ioDispatcher) {
-        when (intent.action) {
-            UsbManager.ACTION_USB_DEVICE_ATTACHED -> {
-                val device: UsbDevice? =
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
-                    } else {
-                        @Suppress("DEPRECATION")
-                        intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
-                    }
-                device?.let {
-                    LogcatManager.d(TAG, "USB 카메라 디바이스가 연결됨: ${it.deviceName}")
-                    LogcatManager.d(
-                        TAG,
-                        "제조사ID: 0x${it.vendorId.toString(16)}, 제품ID: 0x${it.productId.toString(16)}"
-                    )
-
-                    // 즉시 권한 요청
-                    if (!isUsbCameraDevice(it)) {
-                        LogcatManager.d(TAG, "카메라 디바이스가 아님")
-                        return@withContext
-                    }
-
-                    LogcatManager.d(TAG, "카메라 디바이스 확인됨, 권한 요청")
-
-                    withContext(Dispatchers.Main) {
-                        usbCameraManager.requestPermission(it)
-                    }
-                }
-            }
-            UsbManager.ACTION_USB_DEVICE_DETACHED -> {
-                val device: UsbDevice? =
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
-                    } else {
-                        @Suppress("DEPRECATION")
-                        intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
-                    }
-                device?.let {
-                    LogcatManager.d(TAG, "USB 디바이스가 분리됨: ${it.deviceName}")
-                }
-            }
-        }
-    }
-
-    private fun isUsbCameraDevice(device: UsbDevice): Boolean {
-        // PTP 클래스 확인
-        for (i in 0 until device.interfaceCount) {
-            val usbInterface = device.getInterface(i)
-            if (usbInterface.interfaceClass == 6) { // Still Image Capture Device
-                return true
-            }
-        }
-
-        // 알려진 카메라 제조사 확인
-        val knownCameraVendors =
-            listOf(0x04A9, 0x04B0, 0x054C, 0x04CB) // Canon, Nikon, Sony, Fujifilm
-        return device.vendorId in knownCameraVendors
+        // USB Intent 처리를 ViewModel에 위임
+        viewModel.handleUsbIntent(intent)
     }
 
     override fun onResume() {
@@ -1195,9 +1116,7 @@ class MainActivity : ComponentActivity() {
         LogcatManager.d(TAG, " 앱 포그라운드 진입 - 백그라운드 서비스 상태 확인")
 
         // 앱이 다시 활성화될 때 USB 상태만 확인 (디바이스 재검색은 하지 않음)
-        lifecycleScope.launch(ioDispatcher) {
-            checkUsbPermissionStatus()
-        }
+        viewModel.checkUsbPermissionStatus()
 
         // 포그라운드 진입 시점은 FGS 시작이 OS 정책상 허용되므로,
         // onPause 백그라운드 시점에 재시작하지 못한 서비스를 여기서 보장한다.
@@ -1277,97 +1196,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private suspend fun checkUsbPermissionStatus() = withContext(ioDispatcher) {
-        try {
-            // 이미 연결된 디바이스가 있는지 확인 (새로 검색하지 않음)
-            val currentDevice = usbCameraManager.getCurrentDevice()
-
-            if (currentDevice != null) {
-                LogcatManager.d(TAG, "앱 재개 시 기존 연결된 디바이스 확인: ${currentDevice.deviceName}")
-
-                // 권한 상태만 확인
-                if (!usbCameraManager.hasUsbPermission.value) {
-                    LogcatManager.d(TAG, "기존 디바이스의 권한이 없음, 권한 요청: ${currentDevice.deviceName}")
-                    withContext(Dispatchers.Main) {
-                        usbCameraManager.requestPermission(currentDevice)
-                    }
-                } else {
-                    LogcatManager.d(TAG, "기존 디바이스에 권한이 있음: ${currentDevice.deviceName}")
-                    // 권한 있음 + 아직 네이티브 연결이 없다면 자동 초기화 트리거
-                    if (!usbCameraManager.isNativeCameraConnected.value) {
-                        LogcatManager.d(TAG, "네이티브 연결 없음 - 자동 초기화 시작: ${currentDevice.deviceName}")
-                        withContext(Dispatchers.Main) {
-                            usbCameraManager.connectToCamera(currentDevice)
-                        }
-                    }
-                }
-            } else {
-                // 연결된 디바이스가 없으면 StateFlow를 통해 확인
-                // 캐시된 목록이 있을 것이므로 빠르게 처리됨
-                val devices = usbCameraManager.getCameraDevices()
-                if (devices.isNotEmpty()) {
-                    LogcatManager.d(TAG, "앱 재개 시 캐시된 디바이스 목록 확인: ${devices.size}개")
-
-                    val device = devices.first()
-                    if (!usbCameraManager.hasUsbPermission.value) {
-                        LogcatManager.d(TAG, "권한이 없는 디바이스 발견, 권한 요청: ${device.deviceName}")
-                        withContext(Dispatchers.Main) {
-                            usbCameraManager.requestPermission(device)
-                        }
-                    } else {
-                        LogcatManager.d(TAG, "카메라 디바이스 연결됨")
-                        // 권한 있음 + 아직 네이티브 연결이 없다면 자동 초기화 트리거
-                        if (!usbCameraManager.isNativeCameraConnected.value) {
-                            LogcatManager.d(TAG, "네이티브 연결 없음 - 자동 초기화 시작: ${device.deviceName}")
-                            withContext(Dispatchers.Main) {
-                                usbCameraManager.connectToCamera(device)
-                            }
-                        }
-                    }
-                } else {
-                    LogcatManager.d(TAG, "앱 재개 시 USB 카메라 디바이스 없음")
-                }
-            }
-        } catch (e: Exception) {
-            LogcatManager.e(TAG, "USB 권한 상태 확인 중 오류", e)
-        }
-    }
-
-    private suspend fun checkAndInitializeUsbDevices() = withContext(ioDispatcher) {
-        try {
-            // USB 매니저를 사용하여 연결된 디바이스 목록 가져오기
-            val devices = usbCameraManager.getCameraDevices()
-
-            // 연결된 디바이스 목록이 비어 있으면 종료
-            if (devices.isEmpty()) {
-                LogcatManager.d(TAG, "연결된 USB 카메라 디바이스 없음")
-                return@withContext
-            }
-
-            // 연결된 디바이스 중 첫 번째 디바이스를 선택
-            val device = devices.first()
-
-            // 디바이스에 대한 권한이 있는지 확인
-            if (!usbCameraManager.hasUsbPermission.value) {
-                LogcatManager.d(TAG, "디바이스에 대한 권한이 없음, 권한 요청: ${device.deviceName}")
-                withContext(Dispatchers.Main) {
-                    usbCameraManager.requestPermission(device)
-                }
-            } else {
-                LogcatManager.d(TAG, "디바이스에 대한 권한이 있음: ${device.deviceName}")
-                // 권한 있음 + 아직 네이티브 연결이 없다면 자동 초기화 트리거
-                if (!usbCameraManager.isNativeCameraConnected.value) {
-                    LogcatManager.d(TAG, "네이티브 연결 없음 - 자동 초기화 시작: ${device.deviceName}")
-                    withContext(Dispatchers.Main) {
-                        usbCameraManager.connectToCamera(device)
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            LogcatManager.e(TAG, "USB 디바이스 초기화 중 오류", e)
-        }
-    }
-
     /**
      * 저장소 권한 요청
      */
@@ -1405,13 +1233,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // Activity가 종료될 때 USB 매니저 정리
+        // Activity가 종료될 때 매니저 정리
         try {
-            // 명시적으로 카메라 세션 종료 + 로그 파일 닫기 - 백그라운드에서 안전하게 수행
+            // 명시적으로 카메라 세션 종료 + 로그 파일 닫기 - 백그라운드에서 안전하게 수행.
+            // ViewModel.cleanup 에는 없는 네이티브 정리이므로 Activity 에 유지한다.
             cleanupNativeResources("onDestroy")
 
-            usbCameraManager.cleanup()
-            globalManager.cleanup()
+            // USB 매니저 + 전역 연결 매니저 정리를 ViewModel 에 위임
+            viewModel.cleanup()
         } catch (e: Exception) {
             LogcatManager.w(TAG, "매니저 정리 중 오류", e)
         }

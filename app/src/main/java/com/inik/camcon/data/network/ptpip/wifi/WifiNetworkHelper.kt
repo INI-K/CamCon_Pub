@@ -17,6 +17,8 @@ import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.model.AutoConnectNetworkConfig
 import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
+import com.inik.camcon.domain.model.WifiScanPermissionStatus
+import com.inik.camcon.domain.repository.WifiCapabilityProvider
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
@@ -136,7 +138,7 @@ import javax.inject.Singleton
 class WifiNetworkHelper @Inject constructor(
     private val context: Context,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
-) {
+) : WifiCapabilityProvider {
     private val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
     private val connectivityManager =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -2449,7 +2451,7 @@ class WifiNetworkHelper @Inject constructor(
     /**
      * Wi-Fi 스캔에 필요한 권한들을 확인
      */
-    fun getRequiredWifiScanPermissions(): List<String> {
+    override fun getRequiredWifiScanPermissions(): List<String> {
         val permissions = mutableListOf<String>()
 
         // 기본 위치 권한 (모든 Android 버전)
@@ -2510,7 +2512,7 @@ class WifiNetworkHelper @Inject constructor(
     /**
      * Wi-Fi 스캔 권한 상태를 상세히 분석
      */
-    fun analyzeWifiScanPermissionStatus(): WifiScanPermissionStatus {
+    override fun analyzeWifiScanPermissionStatus(): WifiScanPermissionStatus {
         val hasFineLocation = ContextCompat.checkSelfPermission(
             context, android.Manifest.permission.ACCESS_FINE_LOCATION
         ) == android.content.pm.PackageManager.PERMISSION_GRANTED
@@ -2538,7 +2540,7 @@ class WifiNetworkHelper @Inject constructor(
     /**
      * Wi-Fi 스캔 권한 요청을 위한 설명 메시지 생성
      */
-    fun getPermissionRationaleMessage(): String {
+    override fun getPermissionRationaleMessage(): String {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             "카메라와 Wi-Fi 연결을 위해 다음 권한이 필요합니다:\n\n" +
                     "• 위치 권한: 주변 Wi-Fi 네트워크를 검색하기 위해\n" +
@@ -2713,16 +2715,6 @@ class WifiNetworkHelper @Inject constructor(
         }
     }
 }
-
-data class WifiScanPermissionStatus(
-    val hasFineLocationPermission: Boolean,
-    val hasNearbyWifiDevicesPermission: Boolean,
-    val isWifiEnabled: Boolean,
-    val isLocationEnabled: Boolean,
-    val canScan: Boolean,
-    val androidVersion: Int,
-    val missingPermissions: List<String>
-)
 
 /**
  * Wi-Fi 주파수 정보 데이터 모델

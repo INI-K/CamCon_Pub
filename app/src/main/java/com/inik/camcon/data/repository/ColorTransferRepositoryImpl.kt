@@ -269,6 +269,10 @@ class ColorTransferRepositoryImpl @Inject constructor(
         colorTransferProcessor.initializeGPUImage(context)
     }
 
+    override fun releaseGpu() {
+        colorTransferProcessor.cleanup()
+    }
+
     // ---- Private helpers ----
 
     private fun loadBitmapFromPath(imagePath: String): Bitmap? {

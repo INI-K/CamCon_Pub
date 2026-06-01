@@ -1,7 +1,9 @@
 package com.inik.camcon.domain.repository
 
 import com.inik.camcon.domain.model.file.CameraFileInfoModel
+import com.inik.camcon.domain.model.file.CameraThumbnailResult
 import com.inik.camcon.domain.model.file.StorageInfo
+import kotlinx.coroutines.flow.Flow
 
 interface CameraFileRepository {
     suspend fun downloadRawFile(folder: String, filename: String): Result<ByteArray>
@@ -21,4 +23,5 @@ interface CameraFileRepository {
     suspend fun getRecentCapturedPaths(maxCount: Int): Result<List<String>>
     suspend fun clearRecentCapturedPaths(): Result<Boolean>
     suspend fun setFileInfo(folder: String, filename: String, info: CameraFileInfoModel): Result<Boolean>
+    fun getThumbnailsBatch(paths: List<String>): Flow<CameraThumbnailResult>
 }
