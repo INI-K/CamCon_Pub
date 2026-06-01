@@ -1,11 +1,11 @@
 package com.inik.camcon.domain.usecase
 
-import android.content.Context
 import android.util.Log
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.ImageFormat
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.model.ThemeMode
+import com.inik.camcon.domain.model.UiText
 import kotlinx.coroutines.flow.Flow
 import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.util.Logger
@@ -32,7 +32,6 @@ import org.junit.Before
 import org.junit.Test
 import com.inik.camcon.domain.model.Subscription
 import com.inik.camcon.domain.repository.SubscriptionRepository
-import com.inik.camcon.util.KoreanStringStubs
 import io.mockk.coEvery
 import kotlinx.coroutines.flow.first
 
@@ -40,15 +39,14 @@ import kotlinx.coroutines.flow.first
 class ValidateImageFormatUseCaseTest {
 
     private lateinit var useCase: ValidateImageFormatUseCase
-    private lateinit var context: Context
     private lateinit var getSubscriptionUseCase: GetSubscriptionUseCase
     private lateinit var subscriptionRepository: SubscriptionRepository
     private lateinit var appSettingsRepository: FakeAppSettingsRepository
     private lateinit var logger: Logger
 
-    // PR-7 i18n: UseCase 내부 메시지가 R.string.* 자원에서 가져오므로 test 환경에서는
-    // KoreanStringStubs.applyTo(context) 한 번 호출로 11 개 키를 모두 한국어 원문으로 stub.
-    // 한국어 부분 매칭 검증("비활성화", "PRO" 등)은 stub 값에 자연스럽게 포함되어 무수정 통과.
+    // UiText 전환: UseCase 는 더 이상 Context 를 보유하지 않고 restrictionMessage 를
+    // UiText.Resource(resId, args) 구조로 반환한다. 따라서 본 테스트는 메시지를 한국어 원문
+    // String 으로 비교하지 않고 UiText.Resource 구조(resId + 중첩 라벨 args)로 검증한다.
 
     private val testDispatcher = StandardTestDispatcher()
 
@@ -76,6 +74,7 @@ class ValidateImageFormatUseCaseTest {
         override val lastTimelapseCount: Flow<Int> = MutableStateFlow(100)
         override val isHistogramEnabled: Flow<Boolean> = MutableStateFlow(false)
         override val isFocusPeakingEnabled: Flow<Boolean> = MutableStateFlow(false)
+        override val isOnboardingCompleted: Flow<Boolean> = flowOf(true)
 
         override suspend fun setCameraControlsEnabled(enabled: Boolean) {}
         override suspend fun setLiveViewEnabled(enabled: Boolean) {}
@@ -92,6 +91,7 @@ class ValidateImageFormatUseCaseTest {
         override suspend fun setThemeMode(mode: ThemeMode) {}
         override suspend fun setNativeLogCaptureEnabled(enabled: Boolean) {}
         override suspend fun setHasSeenPtpipPreviewWarning(seen: Boolean) {}
+        override suspend fun setOnboardingCompleted(completed: Boolean) {}
         override suspend fun setShutterSoundEnabled(enabled: Boolean) {}
         override suspend fun setLiveViewGridEnabled(enabled: Boolean) {}
         override suspend fun setHasSeenCaptureCoachmark(seen: Boolean) {}
@@ -114,11 +114,6 @@ class ValidateImageFormatUseCaseTest {
         subscriptionRepository = mockk()
         appSettingsRepository = FakeAppSettingsRepository()
         logger = mockk(relaxed = true)
-
-        // PR-7 i18n: R.string.* 자원을 한국어 원문으로 stub (values-ko 매칭).
-        // 키 ↔ 한국어 원문 매핑의 단일 진실은 KoreanStringStubs.KEYS.
-        context = mockk()
-        KoreanStringStubs.applyTo(context)
     }
 
     @After
@@ -137,7 +132,6 @@ class ValidateImageFormatUseCaseTest {
         )
         getSubscriptionUseCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, logger, scope)
         useCase = ValidateImageFormatUseCase(
-            context,
             getSubscriptionUseCase,
             appSettingsRepository,
             logger
@@ -282,7 +276,10 @@ class ValidateImageFormatUseCaseTest {
         assertFalse(result.isSupported)
         assertFalse(result.needsUpgrade)
         assertTrue(result.isRawFile)
-        assertTrue(result.restrictionMessage!!.contains("비활성화"))
+        assertEquals(
+            UiText.Resource(R.string.raw_restriction_download_disabled),
+            result.restrictionMessage
+        )
     }
 
     @Test
@@ -331,7 +328,13 @@ class ValidateImageFormatUseCaseTest {
         assertTrue(result.needsUpgrade)
         assertTrue(result.isRawFile)
         assertEquals("Sony", result.manufacturer)
-        assertTrue(result.restrictionMessage!!.contains("PRO"))
+        assertEquals(
+            UiText.Resource(
+                R.string.raw_gating_unified_message,
+                listOf(UiText.Resource(R.string.raw_gating_tier_label_BASIC))
+            ),
+            result.restrictionMessage
+        )
     }
 
     // --- isFormatSupportedForTier ---
@@ -598,8 +601,14 @@ class ValidateImageFormatUseCaseTest {
         assertTrue(result.needsUpgrade)
         assertTrue(result.isRawFile)
         assertEquals("Nikon", result.manufacturer)
-        // PR-G7: 통일 RAW 게이팅 메시지(FREE 티어 라벨 포맷).
-        assertEquals(KoreanStringStubs.unifiedGatingMessageKo("FREE"), result.restrictionMessage)
+        // PR-G7: 통일 RAW 게이팅 메시지(FREE 티어 라벨 중첩 args 구조).
+        assertEquals(
+            UiText.Resource(
+                R.string.raw_gating_unified_message,
+                listOf(UiText.Resource(R.string.raw_gating_tier_label_FREE))
+            ),
+            result.restrictionMessage
+        )
     }
 
     @Test
@@ -612,8 +621,14 @@ class ValidateImageFormatUseCaseTest {
         assertTrue(result.needsUpgrade)
         assertTrue(result.isRawFile)
         assertEquals("Sony", result.manufacturer)
-        // PR-G7: 통일 RAW 게이팅 메시지(BASIC 티어 라벨 포맷).
-        assertEquals(KoreanStringStubs.unifiedGatingMessageKo("BASIC"), result.restrictionMessage)
+        // PR-G7: 통일 RAW 게이팅 메시지(BASIC 티어 라벨 중첩 args 구조).
+        assertEquals(
+            UiText.Resource(
+                R.string.raw_gating_unified_message,
+                listOf(UiText.Resource(R.string.raw_gating_tier_label_BASIC))
+            ),
+            result.restrictionMessage
+        )
     }
 
     @Test
@@ -626,12 +641,19 @@ class ValidateImageFormatUseCaseTest {
         assertFalse(pro.isSupported)
         assertFalse("rawDownload 설정 비활성화는 업그레이드 권유 케이스가 아님", pro.needsUpgrade)
         assertTrue(pro.isRawFile)
-        assertTrue("설정 비활성화 메시지 포함", pro.restrictionMessage!!.contains("비활성화"))
+        assertEquals(
+            "설정 비활성화 메시지",
+            UiText.Resource(R.string.raw_restriction_download_disabled),
+            pro.restrictionMessage
+        )
 
         // FREE 도 동일 차단 (메시지는 설정 비활성화 우선 — 업그레이드 권유 없음).
         val free = useCase.resolveRawAccess("photo.nef", SubscriptionTier.FREE, isRawDownloadEnabled = false)
         assertFalse(free.isSupported)
         assertFalse(free.needsUpgrade)
-        assertTrue(free.restrictionMessage!!.contains("비활성화"))
+        assertEquals(
+            UiText.Resource(R.string.raw_restriction_download_disabled),
+            free.restrictionMessage
+        )
     }
 }

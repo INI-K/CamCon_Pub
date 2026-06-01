@@ -89,6 +89,22 @@ data class WifiCapabilities(
 )
 
 /**
+ * Wi-Fi 스캔 권한 및 전제조건 상태.
+ *
+ * 권한 보유 여부와 Wi-Fi/위치 서비스 활성화 여부를 종합해 스캔 가능 여부를 표현한다.
+ * 시스템 권한/설정 조회 결과를 담는 framework-독립 도메인 모델이다.
+ */
+data class WifiScanPermissionStatus(
+    val hasFineLocationPermission: Boolean,
+    val hasNearbyWifiDevicesPermission: Boolean,
+    val isWifiEnabled: Boolean,
+    val isLocationEnabled: Boolean,
+    val canScan: Boolean,
+    val androidVersion: Int,
+    val missingPermissions: List<String>
+)
+
+/**
  * PTP 세션 상태머신
  *
  * 소켓 연결부터 세션 준비까지의 전이를 정의한다.

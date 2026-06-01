@@ -81,7 +81,7 @@ class AppPreferencesDataSource @Inject constructor(
      * 첫 사용자 온보딩 완료 여부 (기본값: false).
      * 신규 사용자에게 USB / Wi-Fi / 권한 안내 3-스텝 페이저를 1회 보여주기 위한 플래그.
      */
-    val isOnboardingCompleted: Flow<Boolean> = context.appDataStore.data
+    override val isOnboardingCompleted: Flow<Boolean> = context.appDataStore.data
         .map { preferences ->
             preferences[ONBOARDING_COMPLETED] ?: false
         }
@@ -89,7 +89,7 @@ class AppPreferencesDataSource @Inject constructor(
     /**
      * 온보딩 완료 표시 — true 로 저장하면 다음 실행부터 페이저를 건너뛴다.
      */
-    suspend fun setOnboardingCompleted(completed: Boolean) {
+    override suspend fun setOnboardingCompleted(completed: Boolean) {
         context.appDataStore.edit { preferences ->
             preferences[ONBOARDING_COMPLETED] = completed
         }

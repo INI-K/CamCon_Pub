@@ -4,17 +4,18 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.domain.model.CameraCaptureCallback
 import com.inik.camcon.domain.model.ConnectionMethod
 import com.inik.camcon.domain.repository.PtpipPreferencesRepository
 import com.inik.camcon.domain.repository.PtpipRepository
+import com.inik.camcon.domain.repository.WifiCapabilityProvider
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
+import com.inik.camcon.domain.model.WifiScanPermissionStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -51,7 +52,7 @@ class PtpipViewModel @Inject constructor(
     private val connectionHelper: PtpipConnectionHelper,
     private val discoveryHelper: PtpipDiscoveryHelper,
     private val debugHelper: PtpipDebugHelper,
-    private val wifiHelper: WifiNetworkHelper,
+    private val wifiCapabilityProvider: WifiCapabilityProvider,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
@@ -602,7 +603,18 @@ class PtpipViewModel @Inject constructor(
         _lastDownloadedFile.value = null
     }
 
-    fun getWifiHelper() = wifiHelper
+    // ── Wi-Fi 스캔 권한 조회 (WifiCapabilityProvider 위임) ──
+    // 권한 상태는 시스템 설정/런타임 권한 변화에 의존하는 동기 조회라
+    // 호출 시점마다 재조회하는 위임 메서드가 정확하다(StateFlow화 시 stale 위험).
+
+    fun analyzeWifiScanPermissionStatus(): WifiScanPermissionStatus =
+        wifiCapabilityProvider.analyzeWifiScanPermissionStatus()
+
+    fun getRequiredWifiScanPermissions(): List<String> =
+        wifiCapabilityProvider.getRequiredWifiScanPermissions()
+
+    fun getPermissionRationaleMessage(): String =
+        wifiCapabilityProvider.getPermissionRationaleMessage()
 
     // ── 디버그/테스트 (DebugHelper) ──
 

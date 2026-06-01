@@ -8,9 +8,11 @@ import com.inik.camcon.domain.repository.SubscriptionRepository
 import com.inik.camcon.domain.util.Logger
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -36,6 +38,8 @@ class GetSubscriptionUseCaseTest {
         Dispatchers.setMain(testDispatcher)
         subscriptionRepository = mockk()
         appSettingsRepository = mockk(relaxed = true)
+        // seedFromCache()가 first()에서 멈추지 않도록 캐시 티어 기본 stub.
+        every { appSettingsRepository.subscriptionTierEnum } returns flowOf(SubscriptionTier.FREE)
         logger = mockk(relaxed = true)
     }
 
@@ -147,5 +151,37 @@ class GetSubscriptionUseCaseTest {
 
         // Then
         coVerify { subscriptionRepository.syncSubscriptionStatus() }
+    }
+
+    @Test
+    fun `캐시가 PRO면 Firestore 갱신 전 초기값이 PRO`() = runTest {
+        // Given: 캐시 티어는 PRO, Firestore 조회는 끝나지 않는 Flow(아직 갱신 전 상황 모사)
+        every { appSettingsRepository.subscriptionTierEnum } returns flowOf(SubscriptionTier.PRO)
+        coEvery { subscriptionRepository.getUserSubscription() } returns emptyFlow()
+
+        // When
+        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, logger, this)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then: Firestore가 값을 주지 않았으므로 seed된 PRO가 유지
+        val result = useCase().value
+        assertEquals(SubscriptionTier.PRO, result.tier)
+    }
+
+    @Test
+    fun `캐시 PRO여도 Firestore가 FREE면 최종 FREE로 수렴`() = runTest {
+        // Given: 캐시는 PRO지만 Firestore 실값은 FREE
+        every { appSettingsRepository.subscriptionTierEnum } returns flowOf(SubscriptionTier.PRO)
+        coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(
+            Subscription(tier = SubscriptionTier.FREE)
+        )
+
+        // When
+        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, logger, this)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then: refresh가 seed를 덮어써 최종 FREE
+        val result = useCase().value
+        assertEquals(SubscriptionTier.FREE, result.tier)
     }
 }

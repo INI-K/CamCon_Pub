@@ -2,7 +2,6 @@ package com.inik.camcon.presentation.viewmodel
 
 import android.content.Context
 import app.cash.turbine.test
-import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.domain.model.CameraConnectionType
 import com.inik.camcon.domain.model.ConnectionMethod
@@ -14,6 +13,7 @@ import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
 import com.inik.camcon.domain.repository.PtpipPreferencesRepository
 import com.inik.camcon.domain.repository.PtpipRepository
+import com.inik.camcon.domain.repository.WifiCapabilityProvider
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -52,7 +52,7 @@ class PtpipViewModelHotspotTest {
     private lateinit var connectionHelper: PtpipConnectionHelper
     private lateinit var discoveryHelper: PtpipDiscoveryHelper
     private lateinit var debugHelper: PtpipDebugHelper
-    private lateinit var wifiHelper: WifiNetworkHelper
+    private lateinit var wifiCapabilityProvider: WifiCapabilityProvider
     private lateinit var appContext: Context
 
     private val testDispatcher = UnconfinedTestDispatcher()
@@ -67,7 +67,7 @@ class PtpipViewModelHotspotTest {
         connectionHelper = mockk(relaxed = true)
         discoveryHelper = mockk(relaxed = true)
         debugHelper = mockk(relaxed = true)
-        wifiHelper = mockk(relaxed = true)
+        wifiCapabilityProvider = mockk(relaxed = true)
         appContext = mockk(relaxed = true)
 
         // PtpipRepository에서 ViewModel이 직접 노출하는 StateFlow들 셋업
@@ -109,7 +109,7 @@ class PtpipViewModelHotspotTest {
         connectionHelper = connectionHelper,
         discoveryHelper = discoveryHelper,
         debugHelper = debugHelper,
-        wifiHelper = wifiHelper,
+        wifiCapabilityProvider = wifiCapabilityProvider,
         ioDispatcher = testDispatcher,
     )
 

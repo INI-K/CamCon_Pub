@@ -1,5 +1,6 @@
 package com.inik.camcon.presentation.viewmodel
 
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -7,6 +8,7 @@ import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.presentation.viewmodel.state.ErrorHandlingManager
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.SubscriptionTier
+import com.inik.camcon.domain.model.resolve
 import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
@@ -19,6 +21,7 @@ import com.inik.camcon.presentation.viewmodel.photo.PhotoImageManager
 import com.inik.camcon.presentation.viewmodel.photo.PhotoListManager
 import com.inik.camcon.presentation.viewmodel.photo.PhotoSelectionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -60,6 +63,7 @@ sealed class PhotoPreviewUiEvent {
  */
 @HiltViewModel
 class PhotoPreviewViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val cameraRepository: CameraRepository,
     private val photoCaptureEventManager: PhotoCaptureEventManager,
     private val globalManager: CameraConnectionGlobalManager,
@@ -618,7 +622,7 @@ class PhotoPreviewViewModel @Inject constructor(
             isRawDownloadEnabled = _isRawDownloadEnabled.value
         )
         if (!result.isSupported) {
-            result.restrictionMessage?.let { emitError(it) }
+            result.restrictionMessage?.let { emitError(it.resolve(context)) }
             return false
         }
         return true

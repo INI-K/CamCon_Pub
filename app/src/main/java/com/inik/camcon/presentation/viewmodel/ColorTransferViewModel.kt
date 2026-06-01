@@ -263,4 +263,11 @@ class ColorTransferViewModel @Inject constructor(
             null
         }
     }
+
+    override fun onCleared() {
+        super.onCleared()
+        // 화면 단위 참조 통계 캐시만 정리한다.
+        // GPU/EGL 자원은 앱 전역 싱글톤이므로 여기서 해제하지 않는다(앱 종료 시 CamCon.onTerminate에서 해제).
+        colorTransferUseCase.clearReferenceCache()
+    }
 }
