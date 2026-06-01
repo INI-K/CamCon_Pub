@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Camera Abilities screen -->
+    <string name="diag_abilities_title">Fonctions de l\'appareil</string>
+    <string name="diag_abilities_loading">Chargement des informations de l\'appareil…</string>
+    <string name="diag_abilities_retry">Réessayer</string>
+    <string name="diag_abilities_not_connected">Aucun appareil photo connecté</string>
+    <string name="diag_abilities_refresh">Actualiser</string>
+    <string name="diag_abilities_section_camera">📸 Informations de l\'appareil</string>
+    <string name="diag_abilities_section_connection">🔌 Informations de connexion</string>
+    <string name="diag_abilities_section_capture">📷 Fonctions de capture</string>
+    <string name="diag_abilities_section_file">📁 Opérations sur les fichiers</string>
+    <string name="diag_abilities_section_folder">📂 Opérations sur les dossiers</string>
+    <string name="diag_abilities_section_config">⚙️ Paramètres</string>
+    <string name="diag_abilities_section_raw">🔧 Valeurs brutes (Développeur)</string>
+    <string name="diag_abilities_section_summary">Résumé</string>
+
+    <string name="diag_abilities_label_manufacturer">Fabricant</string>
+    <string name="diag_abilities_label_model">Modèle</string>
+    <string name="diag_abilities_label_version">Version</string>
+    <string name="diag_abilities_label_serial">Numéro de série</string>
+    <string name="diag_abilities_label_manufacturer_detected">Fabricant (détecté)</string>
+    <string name="diag_abilities_label_driver_status">État du pilote</string>
+    <string name="diag_abilities_label_port_type">Type de port</string>
+    <string name="diag_abilities_label_connection_type">Type de connexion</string>
+    <string name="diag_abilities_label_usb_vendor">USB Vendor ID</string>
+    <string name="diag_abilities_label_usb_product">USB Product ID</string>
+    <string name="diag_abilities_label_usb_class">USB Class</string>
+
+    <string name="diag_abilities_value_usb">USB</string>
+    <string name="diag_abilities_value_wifi_ptpip">Wi-Fi (PTP/IP)</string>
+    <string name="diag_abilities_value_unknown">Inconnu</string>
+
+    <string name="diag_abilities_feature_capture_image">Capture photo à distance</string>
+    <string name="diag_abilities_feature_capture_video">Capture vidéo à distance</string>
+    <string name="diag_abilities_feature_capture_audio">Enregistrement audio</string>
+    <string name="diag_abilities_feature_capture_preview">Aperçu en direct</string>
+    <string name="diag_abilities_feature_trigger_capture">Déclenchement de capture</string>
+    <string name="diag_abilities_feature_delete">Supprimer le fichier</string>
+    <string name="diag_abilities_feature_preview">Aperçu du fichier</string>
+    <string name="diag_abilities_feature_raw">Fichier RAW</string>
+    <string name="diag_abilities_feature_audio">Fichier audio</string>
+    <string name="diag_abilities_feature_exif">Informations EXIF</string>
+    <string name="diag_abilities_feature_delete_all">Tout supprimer</string>
+    <string name="diag_abilities_feature_put_file">Envoi de fichier</string>
+    <string name="diag_abilities_feature_make_dir">Créer un répertoire</string>
+    <string name="diag_abilities_feature_remove_dir">Supprimer le répertoire</string>
+    <string name="diag_abilities_feature_config">Modifier les réglages de l\'appareil</string>
+
+    <string name="diag_abilities_feature_supported">Pris en charge</string>
+    <string name="diag_abilities_feature_unsupported">Non pris en charge</string>
+
+    <string name="diag_abilities_summary_full">✅ Contrôle à distance complet disponible\n\nCet appareil prend en charge toutes les fonctions :\n• Capture à distance\n• Aperçu en direct\n• Contrôle des réglages\n• Gestion des fichiers</string>
+    <string name="diag_abilities_summary_download_only">⚠️ Téléchargement uniquement\n\nCet appareil ne prend en charge que le téléchargement de fichiers.\nLa capture à distance et l\'aperçu en direct ne sont pas disponibles.\n\n💡 Fabricant : %1$s\nCertains modèles %2$s ont une prise en charge PTP limitée.</string>
+    <string name="diag_abilities_summary_partial">ℹ️ Prise en charge partielle\n\nL\'aperçu en direct n\'est pas pris en charge, mais la capture à distance est disponible.</string>
+    <string name="diag_abilities_summary_some">ℹ️ Certaines fonctions prises en charge\n\nCertaines fonctions de l\'appareil peuvent être limitées.</string>
+
+    <!-- Diagnostics section (ADMIN) -->
+    <string name="diag_section_title">🩺 Diagnostic (ADMIN)</string>
+    <string name="diag_run_button">Lancer le diagnostic</string>
+    <string name="diag_running">Diagnostic en cours…</string>
+    <string name="diag_report_camera_issues">Problèmes de l\'appareil</string>
+    <string name="diag_report_usb">Diagnostic USB</string>
+    <string name="diag_error_history_title">Historique des erreurs</string>
+    <string name="diag_error_history_load">Charger l\'historique des erreurs</string>
+    <string name="diag_error_history_clear">Effacer l\'historique des erreurs</string>
+    <string name="diag_error_history_empty">Aucun historique d\'erreurs</string>
+    <string name="diag_memory_title">État du pool mémoire</string>
+    <string name="diag_memory_refresh">Actualiser l\'état de la mémoire</string>
+    <string name="diag_memory_active_count">Nombre actif</string>
+    <string name="diag_memory_total_allocated">Total alloué</string>
+    <string name="diag_memory_details">Détails</string>
+    <string name="diag_memory_clear_pool">Vider le pool de fichiers</string>
+    <string name="diag_report_empty">Aucun rapport pour l\'instant. Lancez le diagnostic.</string>
+
+    <!-- RAW restriction upgrade action -->
+    <string name="diag_raw_upgrade">Mettre à niveau</string>
+
+    <!-- Camera restart dialog -->
+    <string name="diag_restart_needed">Redémarrage de l\'application requis</string>
+    <string name="diag_restart_message">Le périphérique USB n\'a pas été déconnecté correctement, ou une erreur système (-52) s\'est produite.\n\nL\'application doit être redémarrée pour fonctionner correctement.\n\nRedémarrer l\'application maintenant ?</string>
+    <string name="diag_restart_confirm">Redémarrer l\'application</string>
+    <string name="diag_restart_cancel">Annuler</string>
+    <string name="diag_close">Fermer</string>
+</resources>

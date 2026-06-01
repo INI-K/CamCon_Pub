@@ -49,12 +49,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.BodySmall
@@ -120,6 +124,7 @@ fun PhotoPreviewScreen(
     val totalPages by viewModel.totalPages.collectAsStateWithLifecycle()
     val isMultiSelectMode by viewModel.isMultiSelectMode.collectAsStateWithLifecycle()
     val selectedPhotos by viewModel.selectedPhotos.collectAsStateWithLifecycle()
+    val multiDownloadProgress by viewModel.multiDownloadProgress.collectAsStateWithLifecycle()
     val isPtpipConnected by cameraViewModel.isPtpipConnected.collectAsStateWithLifecycle()
     val cameraCapabilities by cameraViewModel.cameraCapabilities.collectAsStateWithLifecycle()
 
@@ -209,10 +214,19 @@ fun PhotoPreviewScreen(
                 }
             }
 
+            // === 다중선택 다운로드 진행 표시 (필수1) ===
+            if (multiDownloadProgress.inProgress) {
+                MultiDownloadProgressRow(
+                    completed = multiDownloadProgress.completed,
+                    total = multiDownloadProgress.total
+                )
+            }
+
             // === Bottom Action Bar (다중 선택 모드 시) ===
             if (isMultiSelectMode) {
                 MultiSelectBottomBar(
-                    hasSelection = selectedPhotos.isNotEmpty(),
+                    hasSelection = selectedPhotos.isNotEmpty() &&
+                            !multiDownloadProgress.inProgress,
                     onSelectAll = { viewModel.selectAllPhotos() },
                     onDeselectAll = { viewModel.deselectAllPhotos() },
                     onDownload = { viewModel.downloadSelectedPhotos() },
@@ -279,8 +293,9 @@ fun PhotoPreviewScreen(
             fullImageData = fullImageCache[photo.path],
             isDownloadingFullImage = downloadingImages.contains(photo.path),
             onDownload = {
+                // 명시적 다운로드 버튼 — 성공/실패 토스트 + FREE 고지(필수1/4).
                 // RAW 게이팅은 ValidateImageFormatUseCase 단일 지점.
-                viewModel.downloadPhoto(photo)
+                viewModel.downloadPhotoExplicit(photo)
             },
             viewModel = viewModel,
             localPhotos = if (photos.any { File(it.path).exists() }) photos else null,
@@ -294,24 +309,45 @@ fun PhotoPreviewScreen(
         }
     }
 
-    // === Error Toast (SharedFlow 수집) ===
+    // === Toast / 안내 오버레이 (SharedFlow 수집) ===
+    val context = androidx.compose.ui.platform.LocalContext.current
     var showError by remember { mutableStateOf<String?>(null) }
+    var showInfo by remember { mutableStateOf<String?>(null) }
+    var showFreeNotice by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(Unit) {
-        viewModel.uiEvent.collect { event ->
-            when (event) {
-                is PhotoPreviewUiEvent.ShowError -> {
-                    showError = event.message
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            viewModel.uiEvent.collect { event ->
+                when (event) {
+                    is PhotoPreviewUiEvent.ShowError -> showError = event.message
+                    is PhotoPreviewUiEvent.ShowInfo -> showInfo = event.message
+                    is PhotoPreviewUiEvent.ShowFreeTierNotice -> showFreeNotice = event.message
                 }
             }
         }
     }
 
+    // 성공/안내 토스트는 일정 시간 후 자동 사라짐.
+    LaunchedEffect(showInfo) {
+        if (showInfo != null) {
+            delay(2500)
+            showInfo = null
+        }
+    }
+    LaunchedEffect(showFreeNotice) {
+        if (showFreeNotice != null) {
+            delay(5000)
+            showFreeNotice = null
+        }
+    }
+
     val lastFailedDownload by viewModel.lastFailedDownload.collectAsStateWithLifecycle()
 
-    showError?.let { error ->
-        ErrorToastOverlay(
-            error = error,
+    // 우선순위: 에러(재시도) > FREE 안내(업그레이드) > 정보 토스트.
+    when {
+        showError != null -> ErrorToastOverlay(
+            error = showError!!,
             onRetry = {
                 showError = null
                 // M12 — 단일 사진 다운로드 실패면 그 사진만 재시도, 아니면 전체 새로고침
@@ -323,6 +359,17 @@ fun PhotoPreviewScreen(
             },
             onDismiss = { showError = null }
         )
+
+        showFreeNotice != null -> FreeTierNoticeOverlay(
+            message = showFreeNotice!!,
+            onUpgrade = {
+                showFreeNotice = null
+                com.inik.camcon.presentation.ui.SubscriptionActivity.start(context)
+            },
+            onDismiss = { showFreeNotice = null }
+        )
+
+        showInfo != null -> InfoToastOverlay(message = showInfo!!)
     }
 }
 
@@ -396,11 +443,25 @@ private fun PhotoListHeader(
             )
         }
     ) {
-        // 사진 개수 / 페이지 표시
+        // 사진 개수 / 페이지 표시 (필수2: i18n + plurals + 숫자 포맷)
         if (photoCount > 0) {
+            val countText = pluralStringResource(
+                R.plurals.gallery_v2_photo_count,
+                photoCount,
+                photoCount
+            )
+            val headerText = if (totalPages > 0) {
+                stringResource(
+                    R.string.gallery_v2_photo_count_with_page,
+                    countText,
+                    currentPage + 1,
+                    totalPages
+                )
+            } else {
+                countText
+            }
             Text(
-                text = "${photoCount}장의 사진" +
-                        if (totalPages > 0) " (페이지 ${currentPage + 1}/${totalPages})" else "",
+                text = headerText,
                 style = Caption,
                 color = TextSecondaryV2
             )
@@ -757,6 +818,94 @@ private fun ErrorToastOverlay(
                 PrimaryButton(
                     text = stringResource(R.string.server_photos_retry),
                     onClick = onRetry
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 다중선택 다운로드 진행 표시 (필수1) — "n/m 다운로드 중" + indeterminate 바.
+ */
+@Composable
+private fun MultiDownloadProgressRow(
+    completed: Int,
+    total: Int
+) {
+    SurfaceV2(tier = 1, border = true, modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Spacing.base, vertical = Spacing.sm)
+        ) {
+            Text(
+                text = stringResource(
+                    R.string.gallery_v2_download_progress,
+                    completed,
+                    total
+                ),
+                style = Caption,
+                color = TextSecondaryV2
+            )
+            Spacer(Modifier.height(Spacing.xs))
+            ProgressBarV2(progress = null, modifier = Modifier.fillMaxWidth())
+        }
+    }
+}
+
+/**
+ * 정보/성공 토스트 오버레이 (필수1) — 하단, 재시도 버튼 없음.
+ */
+@Composable
+private fun InfoToastOverlay(message: String) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        ToastV2(
+            message = message,
+            kind = StatusKind.Connected,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(Spacing.base)
+        )
+    }
+}
+
+/**
+ * FREE 티어 2000px 축소 사전 고지 오버레이 (필수4) — 업그레이드 CTA + 닫기.
+ */
+@Composable
+private fun FreeTierNoticeOverlay(
+    message: String,
+    onUpgrade: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(Spacing.base),
+            horizontalAlignment = Alignment.End
+        ) {
+            ToastV2(
+                message = message,
+                kind = StatusKind.Idle,
+                leadingIcon = Icons.Default.Lock,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(Spacing.sm))
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                SecondaryButton(
+                    text = stringResource(R.string.cancel),
+                    onClick = onDismiss
+                )
+                PrimaryButton(
+                    text = stringResource(R.string.gallery_v2_upgrade),
+                    onClick = onUpgrade
                 )
             }
         }

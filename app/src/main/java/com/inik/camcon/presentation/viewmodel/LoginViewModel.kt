@@ -3,10 +3,13 @@ package com.inik.camcon.presentation.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.inik.camcon.R
+import com.inik.camcon.domain.model.UiText
 import com.inik.camcon.domain.model.User
 import com.inik.camcon.domain.usecase.auth.SignInWithGoogleUseCase
 import com.inik.camcon.domain.usecase.auth.UserReferralUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -15,6 +18,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.io.IOException
 import javax.inject.Inject
 
 data class LoginUiState(
@@ -27,9 +31,18 @@ data class LoginUiState(
  * SharedFlow로 emit되어 스크린 회전 후에도 중복 표시되지 않음
  */
 sealed class LoginUiEvent {
-    data class ShowError(val message: String) : LoginUiEvent()
-    data class ShowReferralMessage(val message: String) : LoginUiEvent()
+    data class ShowError(val message: UiText) : LoginUiEvent()
+    data class ShowReferralMessage(val message: UiText) : LoginUiEvent()
     object NavigateToHome : LoginUiEvent()
+}
+
+/**
+ * 로그인 흐름에서 사용자에게 보여줄 친화 메시지로 raw 에러를 분류한다.
+ * raw `error.message`는 로그캣에만 남기고 사용자에겐 분류된 메시지(네트워크/인증/알수없음)만 노출한다.
+ */
+private fun classifyLoginError(error: Throwable): UiText = when (error) {
+    is IOException -> UiText.Resource(R.string.login_error_network)
+    else -> UiText.Resource(R.string.login_error_auth)
 }
 
 @HiltViewModel
@@ -70,22 +83,27 @@ class LoginViewModel @Inject constructor(
                         onFailure = { error ->
                             Log.e("LoginViewModel", "Sign in failed", error)
                             _uiState.update { it.copy(isLoading = false) }
-                            _uiEvent.emit(
-                                LoginUiEvent.ShowError(
-                                    "로그인 실패: ${error.message ?: "알 수 없는 오류가 발생했습니다"}"
-                                )
-                            )
+                            _uiEvent.emit(LoginUiEvent.ShowError(classifyLoginError(error)))
                         }
                     )
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e("LoginViewModel", "Unexpected error during sign in", e)
                 _uiState.update { it.copy(isLoading = false) }
-                _uiEvent.emit(
-                    LoginUiEvent.ShowError(
-                        "예상치 못한 오류: ${e.message ?: "알 수 없는 오류가 발생했습니다"}"
-                    )
-                )
+                _uiEvent.emit(LoginUiEvent.ShowError(UiText.Resource(R.string.login_error_unknown)))
             }
+        }
+    }
+
+    /**
+     * Activity 측(GoogleSignInLauncher 콜백)에서 발생한 로그인 취소/실패를 사용자에게 알리는 진입점.
+     * ViewModel 의 SharedFlow 단일 채널로 모아 일관된 snackbar 표시를 보장한다.
+     */
+    fun onSignInUiError(message: UiText) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = false) }
+            _uiEvent.emit(LoginUiEvent.ShowError(message))
         }
     }
 
@@ -98,12 +116,16 @@ class LoginViewModel @Inject constructor(
                         if (success) {
                             Log.i("LoginViewModel", "추천 코드 사용 성공: $referralCode")
                             _uiEvent.emit(
-                                LoginUiEvent.ShowReferralMessage("추천 코드가 성공적으로 적용되었습니다!")
+                                LoginUiEvent.ShowReferralMessage(
+                                    UiText.Resource(R.string.login_referral_applied)
+                                )
                             )
                         } else {
                             Log.w("LoginViewModel", "추천 코드 사용 실패: $referralCode")
                             _uiEvent.emit(
-                                LoginUiEvent.ShowReferralMessage("추천 코드 처리에 실패했습니다.")
+                                LoginUiEvent.ShowReferralMessage(
+                                    UiText.Resource(R.string.login_referral_failed)
+                                )
                             )
                         }
                         _uiEvent.emit(LoginUiEvent.NavigateToHome)
@@ -112,16 +134,22 @@ class LoginViewModel @Inject constructor(
                         Log.e("LoginViewModel", "추천 코드 처리 오류: $referralCode", error)
                         _uiState.update { it.copy(isLoading = false, isLoggedIn = true) }
                         _uiEvent.emit(
-                            LoginUiEvent.ShowReferralMessage("추천 코드 오류: ${error.message}")
+                            LoginUiEvent.ShowReferralMessage(
+                                UiText.Resource(R.string.login_referral_error)
+                            )
                         )
                         _uiEvent.emit(LoginUiEvent.NavigateToHome)
                     }
                 )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e("LoginViewModel", "추천 코드 처리 예외: $referralCode", e)
             _uiState.update { it.copy(isLoading = false, isLoggedIn = true) }
             _uiEvent.emit(
-                LoginUiEvent.ShowReferralMessage("추천 코드 처리 중 오류가 발생했습니다.")
+                LoginUiEvent.ShowReferralMessage(
+                    UiText.Resource(R.string.login_referral_error)
+                )
             )
             _uiEvent.emit(LoginUiEvent.NavigateToHome)
         }

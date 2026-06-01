@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.inik.camcon.R
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.presentation.viewmodel.state.ErrorHandlingManager
 import com.inik.camcon.domain.model.CameraPhoto
@@ -50,11 +51,32 @@ data class PhotoPreviewUiState(
 )
 
 /**
- * 일회성 UI 이벤트 (스낵바 메시지)
+ * 일회성 UI 이벤트 (스낵바/토스트 메시지)
+ *
+ * - [ShowError]    : 에러 토스트(재시도 버튼 노출 대상).
+ * - [ShowInfo]     : 성공/안내 토스트(재시도 없음).
+ * - [ShowFreeTierNotice] : FREE 티어 2000px 축소 사전 고지 — '업그레이드' 액션 동반(필수4).
  */
 sealed class PhotoPreviewUiEvent {
     data class ShowError(val message: String) : PhotoPreviewUiEvent()
+    data class ShowInfo(val message: String) : PhotoPreviewUiEvent()
+    data class ShowFreeTierNotice(val message: String) : PhotoPreviewUiEvent()
 }
+
+/**
+ * 다중선택 다운로드 진행 상태(필수1).
+ *
+ * @param inProgress 진행 중 여부. false 면 UI 에서 진행 표시 숨김.
+ * @param completed  완료(성공+실패)된 항목 수.
+ * @param total      이번 배치 전체 항목 수.
+ * @param failed     실패한 항목 수.
+ */
+data class MultiDownloadProgress(
+    val inProgress: Boolean = false,
+    val completed: Int = 0,
+    val total: Int = 0,
+    val failed: Int = 0
+)
 
 /**
  * 사진 미리보기를 위한 ViewModel - MVVM 패턴 준수
@@ -97,6 +119,35 @@ class PhotoPreviewViewModel @Inject constructor(
             _uiEvent.emit(PhotoPreviewUiEvent.ShowError(message))
         }
     }
+
+    private fun emitInfo(message: String) {
+        viewModelScope.launch {
+            _uiEvent.emit(PhotoPreviewUiEvent.ShowInfo(message))
+        }
+    }
+
+    private fun emitFreeTierNotice(message: String) {
+        viewModelScope.launch {
+            _uiEvent.emit(PhotoPreviewUiEvent.ShowFreeTierNotice(message))
+        }
+    }
+
+    // 다중선택 다운로드 진행 상태(필수1).
+    private val _multiDownloadProgress = MutableStateFlow(MultiDownloadProgress())
+    val multiDownloadProgress: StateFlow<MultiDownloadProgress> =
+        _multiDownloadProgress.asStateFlow()
+
+    // 이번 다중선택 배치에서 결과를 기다리는 경로 집합. 비면 배치 완료.
+    private val pendingBatchPaths = mutableSetOf<String>()
+
+    // 단발(단일 사진) 다운로드 결과 통지를 받을 경로. 다중선택 배치와 구분.
+    private var singleDownloadPath: String? = null
+
+    // FREE 티어 축소 사전 고지는 세션당 1회만 노출(반복 방해 방지).
+    private var freeTierNoticeShown = false
+
+    // 다운로드 결과 구독 Job
+    private var downloadResultObserveJob: Job? = null
 
     // 매니저들의 상태 노출 (읽기 전용)
     val photos = photoListManager.filteredPhotos
@@ -207,8 +258,87 @@ class PhotoPreviewViewModel @Inject constructor(
         // 에러 이벤트 관찰
         observeErrorEvents()
 
+        // 다운로드 결과 관찰 (성공/실패 피드백·다중선택 진행 집계)
+        observeDownloadResults()
+
         // 사진 목록 변화 감지 및 썸네일 로드 (한 번만 설정)
         observePhotosAndLoadThumbnails()
+    }
+
+    /**
+     * 풀이미지 다운로드 결과 관찰(필수1).
+     *
+     * - 다중선택 배치 경로면 진행/완료 집계.
+     * - 단일 사진 다운로드면 성공 토스트 / 실패 토스트(재시도 가능).
+     * - 인접 프리로드 등 추적되지 않는 경로의 결과는 조용히 무시(UX 노이즈 방지).
+     */
+    private fun observeDownloadResults() {
+        if (downloadResultObserveJob?.isActive == true) return
+
+        downloadResultObserveJob = viewModelScope.launch {
+            photoImageManager.downloadResult.collect { result ->
+                when {
+                    pendingBatchPaths.contains(result.photoPath) ->
+                        handleBatchDownloadResult(result)
+
+                    singleDownloadPath == result.photoPath ->
+                        handleSingleDownloadResult(result)
+                }
+            }
+        }
+    }
+
+    /**
+     * 다중선택 배치 항목 1건 완료 처리. 모두 끝나면 요약 토스트 + 선택 모드 종료.
+     */
+    private fun handleBatchDownloadResult(result: PhotoImageManager.DownloadResult) {
+        pendingBatchPaths.remove(result.photoPath)
+
+        val updated = _multiDownloadProgress.updateAndGetBatch(
+            succeeded = result.isSuccess
+        )
+
+        if (pendingBatchPaths.isEmpty()) {
+            // 배치 완료 — 요약 통지 후 진행 상태/선택 모드 정리.
+            val total = updated.total
+            val failed = updated.failed
+            if (failed == 0) {
+                emitInfo(context.getString(R.string.gallery_v2_download_all_done, total))
+            } else {
+                val ok = total - failed
+                emitError(context.getString(R.string.gallery_v2_download_partial, ok, total))
+            }
+            _multiDownloadProgress.value = MultiDownloadProgress()
+            photoSelectionManager.exitMultiSelectMode()
+        }
+    }
+
+    /**
+     * 단일 사진 다운로드 결과 처리.
+     */
+    private fun handleSingleDownloadResult(result: PhotoImageManager.DownloadResult) {
+        singleDownloadPath = null
+        if (result.isSuccess) {
+            _lastFailedDownload.value = null
+            emitInfo(context.getString(R.string.gallery_v2_download_success))
+        } else {
+            // 실패는 재시도 대상으로 유지(_lastFailedDownload). 친화적 메시지.
+            emitError(context.getString(R.string.gallery_v2_download_failed))
+        }
+    }
+
+    /**
+     * MultiDownloadProgress 1건 진행 반영(불변 갱신).
+     */
+    private fun MutableStateFlow<MultiDownloadProgress>.updateAndGetBatch(
+        succeeded: Boolean
+    ): MultiDownloadProgress {
+        val next = value.copy(
+            completed = value.completed + 1,
+            failed = value.failed + if (succeeded) 0 else 1
+        )
+        value = next
+        return next
     }
 
     /**
@@ -423,16 +553,51 @@ class PhotoPreviewViewModel @Inject constructor(
     }
 
     /**
-     * 사진 다운로드 (PhotoImageManager에 위임)
+     * 사진 다운로드 (PhotoImageManager에 위임).
+     *
+     * 주의: 이 경로는 풀스크린 진입 자동 프리로드·인접 프리로드에서도 호출되므로
+     * 성공/실패 토스트나 FREE 고지를 띄우지 않는다(노이즈 방지). 사용자가 다운로드
+     * 버튼을 명시적으로 누른 경우는 [downloadPhotoExplicit] 를 사용한다(필수1/4).
      */
     fun downloadPhoto(photo: CameraPhoto) {
         if (!handleRawFileAccess(photo)) {
             return
         }
+        photoImageManager.downloadFullImage(photo.path, _uiState.value.currentTier)
+    }
+
+    /**
+     * 사용자가 다운로드 버튼을 명시적으로 누른 단일 다운로드(필수1/4).
+     *
+     * - 성공/실패 토스트를 노출하고, 실패 시 재시도 대상으로 보존.
+     * - FREE 티어면 2000px 축소를 사전 고지(세션당 1회).
+     */
+    fun downloadPhotoExplicit(photo: CameraPhoto) {
+        if (!handleRawFileAccess(photo)) {
+            return
+        }
+
+        maybeNotifyFreeTierResolution()
 
         // M12 — 단일 사진 재시도용 추적
         _lastFailedDownload.value = photo
+        // 다중선택 배치가 진행 중이 아닐 때만 단일 결과 추적(배치 경로와 충돌 방지).
+        if (!_multiDownloadProgress.value.inProgress) {
+            singleDownloadPath = photo.path
+        }
         photoImageManager.downloadFullImage(photo.path, _uiState.value.currentTier)
+    }
+
+    /**
+     * 필수4 — FREE 티어 사용자에게 원본이 2000px 로 축소됨을 사전 고지.
+     * 세션당 1회만 노출하여 반복 방해를 막는다. '업그레이드' CTA 는 UI 측에서 처리.
+     */
+    private fun maybeNotifyFreeTierResolution() {
+        if (freeTierNoticeShown) return
+        if (_uiState.value.currentTier == SubscriptionTier.FREE) {
+            freeTierNoticeShown = true
+            emitFreeTierNotice(context.getString(R.string.gallery_v2_free_resolution_notice))
+        }
     }
 
     /**
@@ -583,7 +748,10 @@ class PhotoPreviewViewModel @Inject constructor(
         val target = photo ?: _lastFailedDownload.value
         if (target != null) {
             Log.d(TAG, "단일 사진 재시도: ${target.name}")
-            _lastFailedDownload.value = null
+            // 재시도도 명시적 액션이므로 단일 결과 추적으로 성공/실패 토스트 노출(필수1).
+            if (!_multiDownloadProgress.value.inProgress) {
+                singleDownloadPath = target.path
+            }
             photoImageManager.downloadFullImage(target.path, _uiState.value.currentTier)
         } else {
             Log.d(TAG, "마지막 실패 다운로드 없음 - 전체 새로고침 폴백")
@@ -874,23 +1042,53 @@ class PhotoPreviewViewModel @Inject constructor(
     }
 
     /**
-     * 선택된 사진들 다운로드
+     * 선택된 사진들 다운로드(필수1).
+     *
+     * RAW 게이팅을 통과한 항목만 배치 대상에 포함시키고, 진행 상태(n/m)를 노출한다.
+     * 모든 항목의 다운로드 결과가 수신되면 [handleBatchDownloadResult] 가 요약 토스트와
+     * 선택 모드 자동 종료를 처리한다. 게이팅으로 0개가 남으면 즉시 종료.
+     * FREE 티어면 축소 사전 고지(세션당 1회).
      */
     fun downloadSelectedPhotos() {
         val selectedPaths = photoSelectionManager.getSelectedPaths()
         Log.d(TAG, "선택된 사진들 다운로드 시작: ${selectedPaths.size}개")
 
-        selectedPaths.forEach { photoPath ->
+        // 이미 진행 중인 배치가 있으면 중복 시작 방지.
+        if (_multiDownloadProgress.value.inProgress) {
+            Log.d(TAG, "이미 다중 다운로드 진행 중 - 중복 요청 무시")
+            return
+        }
+
+        maybeNotifyFreeTierResolution()
+
+        // RAW 게이팅 통과 항목만 배치 대상으로 수집(차단 항목은 handleRawFileAccess 가 에러 emit).
+        val eligiblePaths = selectedPaths.filter { photoPath ->
             val tempPhoto = CameraPhoto(
                 path = photoPath,
                 name = photoPath.substringAfterLast("/"),
                 size = 0L,
                 date = System.currentTimeMillis()
             )
+            handleRawFileAccess(tempPhoto)
+        }
 
-            if (handleRawFileAccess(tempPhoto)) {
-                photoImageManager.downloadFullImage(photoPath, _uiState.value.currentTier)
-            }
+        if (eligiblePaths.isEmpty()) {
+            Log.d(TAG, "다운로드 가능한 선택 항목이 없음 - 선택 모드 종료")
+            photoSelectionManager.exitMultiSelectMode()
+            return
+        }
+
+        pendingBatchPaths.clear()
+        pendingBatchPaths.addAll(eligiblePaths)
+        _multiDownloadProgress.value = MultiDownloadProgress(
+            inProgress = true,
+            completed = 0,
+            total = eligiblePaths.size,
+            failed = 0
+        )
+
+        eligiblePaths.forEach { photoPath ->
+            photoImageManager.downloadFullImage(photoPath, _uiState.value.currentTier)
         }
     }
 }

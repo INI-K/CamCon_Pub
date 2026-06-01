@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Camera Abilities screen -->
+    <string name="diag_abilities_title">Camera Capabilities</string>
+    <string name="diag_abilities_loading">Loading camera information…</string>
+    <string name="diag_abilities_retry">Retry</string>
+    <string name="diag_abilities_not_connected">No camera connected</string>
+    <string name="diag_abilities_refresh">Refresh</string>
+    <string name="diag_abilities_section_camera">📸 Camera Information</string>
+    <string name="diag_abilities_section_connection">🔌 Connection Information</string>
+    <string name="diag_abilities_section_capture">📷 Capture Features</string>
+    <string name="diag_abilities_section_file">📁 File Operations</string>
+    <string name="diag_abilities_section_folder">📂 Folder Operations</string>
+    <string name="diag_abilities_section_config">⚙️ Configuration</string>
+    <string name="diag_abilities_section_raw">🔧 Raw Values (Developer)</string>
+    <string name="diag_abilities_section_summary">Summary</string>
+
+    <string name="diag_abilities_label_manufacturer">Manufacturer</string>
+    <string name="diag_abilities_label_model">Model</string>
+    <string name="diag_abilities_label_version">Version</string>
+    <string name="diag_abilities_label_serial">Serial</string>
+    <string name="diag_abilities_label_manufacturer_detected">Manufacturer (detected)</string>
+    <string name="diag_abilities_label_driver_status">Driver Status</string>
+    <string name="diag_abilities_label_port_type">Port Type</string>
+    <string name="diag_abilities_label_connection_type">Connection Type</string>
+    <string name="diag_abilities_label_usb_vendor">USB Vendor ID</string>
+    <string name="diag_abilities_label_usb_product">USB Product ID</string>
+    <string name="diag_abilities_label_usb_class">USB Class</string>
+
+    <string name="diag_abilities_value_usb">USB</string>
+    <string name="diag_abilities_value_wifi_ptpip">Wi-Fi (PTP/IP)</string>
+    <string name="diag_abilities_value_unknown">Unknown</string>
+
+    <string name="diag_abilities_feature_capture_image">Remote Photo Capture</string>
+    <string name="diag_abilities_feature_capture_video">Remote Video Capture</string>
+    <string name="diag_abilities_feature_capture_audio">Audio Recording</string>
+    <string name="diag_abilities_feature_capture_preview">Live View Preview</string>
+    <string name="diag_abilities_feature_trigger_capture">Trigger Capture</string>
+    <string name="diag_abilities_feature_delete">Delete File</string>
+    <string name="diag_abilities_feature_preview">File Preview</string>
+    <string name="diag_abilities_feature_raw">RAW File</string>
+    <string name="diag_abilities_feature_audio">Audio File</string>
+    <string name="diag_abilities_feature_exif">EXIF Information</string>
+    <string name="diag_abilities_feature_delete_all">Delete All</string>
+    <string name="diag_abilities_feature_put_file">File Upload</string>
+    <string name="diag_abilities_feature_make_dir">Create Directory</string>
+    <string name="diag_abilities_feature_remove_dir">Remove Directory</string>
+    <string name="diag_abilities_feature_config">Change Camera Settings</string>
+
+    <string name="diag_abilities_feature_supported">Supported</string>
+    <string name="diag_abilities_feature_unsupported">Not supported</string>
+
+    <string name="diag_abilities_summary_full">✅ Full remote control available\n\nThis camera supports all features:\n• Remote capture\n• Live view\n• Settings control\n• File management</string>
+    <string name="diag_abilities_summary_download_only">⚠️ Download only\n\nThis camera supports file download only.\nRemote capture and live view are not available.\n\n💡 Manufacturer: %1$s\nSome %2$s models have limited PTP support.</string>
+    <string name="diag_abilities_summary_partial">ℹ️ Partial support\n\nLive view is not supported, but remote capture is available.</string>
+    <string name="diag_abilities_summary_some">ℹ️ Some features supported\n\nSome camera features may be limited.</string>
+
+    <!-- Diagnostics section (ADMIN) -->
+    <string name="diag_section_title">🩺 Diagnostics (ADMIN)</string>
+    <string name="diag_run_button">Run Diagnostics</string>
+    <string name="diag_running">Running diagnostics…</string>
+    <string name="diag_report_camera_issues">Camera Issues</string>
+    <string name="diag_report_usb">USB Diagnostics</string>
+    <string name="diag_error_history_title">Error History</string>
+    <string name="diag_error_history_load">Load Error History</string>
+    <string name="diag_error_history_clear">Clear Error History</string>
+    <string name="diag_error_history_empty">No error history</string>
+    <string name="diag_memory_title">Memory Pool Status</string>
+    <string name="diag_memory_refresh">Refresh Memory Status</string>
+    <string name="diag_memory_active_count">Active Count</string>
+    <string name="diag_memory_total_allocated">Total Allocated</string>
+    <string name="diag_memory_details">Details</string>
+    <string name="diag_memory_clear_pool">Clear File Pool</string>
+    <string name="diag_report_empty">No report yet. Run diagnostics.</string>
+
+    <!-- RAW restriction upgrade action -->
+    <string name="diag_raw_upgrade">Upgrade</string>
+
+    <!-- Camera restart dialog -->
+    <string name="diag_restart_needed">App restart required</string>
+    <string name="diag_restart_message">The USB device was not disconnected properly, or a system error (-52) occurred.\n\nThe app must be restarted to work correctly.\n\nRestart the app now?</string>
+    <string name="diag_restart_confirm">Restart App</string>
+    <string name="diag_restart_cancel">Cancel</string>
+    <string name="diag_close">Close</string>
+</resources>

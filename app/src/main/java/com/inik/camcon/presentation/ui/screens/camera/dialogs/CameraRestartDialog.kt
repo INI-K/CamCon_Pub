@@ -24,27 +24,27 @@ fun CameraRestartDialog(
         icon = {
             Icon(
                 Icons.Default.Close,
-                contentDescription = stringResource(R.string.cd_close),
+                contentDescription = stringResource(R.string.diag_close),
                 tint = MaterialTheme.colorScheme.error
             )
         },
         title = {
-            Text(stringResource(R.string.camera_control_app_restart_needed))
+            Text(stringResource(R.string.diag_restart_needed))
         },
         text = {
             Text(
-                stringResource(R.string.camera_control_app_restart_message),
+                stringResource(R.string.diag_restart_message),
                 style = MaterialTheme.typography.bodyMedium
             )
         },
         confirmButton = {
             Button(onClick = onRestart) {
-                Text(stringResource(R.string.camera_control_app_restart))
+                Text(stringResource(R.string.diag_restart_confirm))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.cancel))
+                Text(stringResource(R.string.diag_restart_cancel))
             }
         },
         modifier = modifier

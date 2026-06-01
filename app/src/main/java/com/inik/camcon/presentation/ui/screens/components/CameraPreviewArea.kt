@@ -165,6 +165,16 @@ fun CameraPreviewArea(
                     contentScale = ContentScale.Fit
                 )
 
+                // 라이브뷰 프레임 정지/끊김 감지 — 마지막 프레임 수신 후 일정 시간 새 프레임이
+                // 안 오면 "프레임 정지" 배지를 표시한다. 멈춘 마지막 프레임을 라이브로 오인하지 않게.
+                LiveViewStaleBadge(
+                    liveViewFrame = liveViewFrame,
+                    decodedBitmap = decodedBitmap,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = Spacing.md)
+                )
+
                 // F25: decodedBitmap(라이브뷰 프레임) 의 생명주기는 CameraViewModel 이 단일 소유한다.
                 // (새 프레임 대입 시 한 세대 지연 회수 + onCleared 최종 회수)
                 // Compose 측 DisposableEffect 위임은 use-after-recycle 를 유발하므로 제거했다.
@@ -539,6 +549,59 @@ fun CameraConnectionButtons(
         }
     }
 }
+
+/**
+ * 라이브뷰 프레임 정지/끊김 배지.
+ *
+ * liveViewFrame 또는 decodedBitmap이 새 인스턴스로 바뀔 때마다 수신 시각을 갱신하고,
+ * 주기적으로 경과 시간을 검사해 [STALE_THRESHOLD_MS] 를 초과하면 배지를 노출한다.
+ * 수신 시각은 클라이언트 측 시계(System.currentTimeMillis)를 사용한다.
+ */
+@Composable
+private fun LiveViewStaleBadge(
+    liveViewFrame: LiveViewFrame?,
+    decodedBitmap: android.graphics.Bitmap?,
+    modifier: Modifier = Modifier
+) {
+    val lastFrameTime = remember {
+        androidx.compose.runtime.mutableStateOf(System.currentTimeMillis())
+    }
+    val isStale = remember { androidx.compose.runtime.mutableStateOf(false) }
+
+    // 새 프레임이 도착하면 수신 시각 갱신 + stale 해제
+    androidx.compose.runtime.LaunchedEffect(liveViewFrame, decodedBitmap) {
+        lastFrameTime.value = System.currentTimeMillis()
+        isStale.value = false
+    }
+
+    // 주기적으로 경과 시간 검사
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(STALE_CHECK_INTERVAL_MS)
+            val elapsed = System.currentTimeMillis() - lastFrameTime.value
+            isStale.value = elapsed > STALE_THRESHOLD_MS
+        }
+    }
+
+    if (isStale.value) {
+        androidx.compose.material3.Surface(
+            color = Warning.copy(alpha = 0.9f),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(Spacing.sm),
+            modifier = modifier
+        ) {
+            Text(
+                text = stringResource(R.string.liveview_frame_stalled),
+                color = TextPrimary,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm)
+            )
+        }
+    }
+}
+
+private const val STALE_THRESHOLD_MS = 3000L
+private const val STALE_CHECK_INTERVAL_MS = 1000L
 
 @Preview(name = "Camera Preview - Connected", showBackground = true)
 @Composable

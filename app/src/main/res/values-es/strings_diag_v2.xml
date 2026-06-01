@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Camera Abilities screen -->
+    <string name="diag_abilities_title">Funciones de la cámara</string>
+    <string name="diag_abilities_loading">Cargando información de la cámara…</string>
+    <string name="diag_abilities_retry">Reintentar</string>
+    <string name="diag_abilities_not_connected">No hay ninguna cámara conectada</string>
+    <string name="diag_abilities_refresh">Actualizar</string>
+    <string name="diag_abilities_section_camera">📸 Información de la cámara</string>
+    <string name="diag_abilities_section_connection">🔌 Información de conexión</string>
+    <string name="diag_abilities_section_capture">📷 Funciones de captura</string>
+    <string name="diag_abilities_section_file">📁 Operaciones de archivo</string>
+    <string name="diag_abilities_section_folder">📂 Operaciones de carpeta</string>
+    <string name="diag_abilities_section_config">⚙️ Configuración</string>
+    <string name="diag_abilities_section_raw">🔧 Valores en bruto (Desarrollador)</string>
+    <string name="diag_abilities_section_summary">Resumen</string>
+
+    <string name="diag_abilities_label_manufacturer">Fabricante</string>
+    <string name="diag_abilities_label_model">Modelo</string>
+    <string name="diag_abilities_label_version">Versión</string>
+    <string name="diag_abilities_label_serial">Número de serie</string>
+    <string name="diag_abilities_label_manufacturer_detected">Fabricante (detectado)</string>
+    <string name="diag_abilities_label_driver_status">Estado del controlador</string>
+    <string name="diag_abilities_label_port_type">Tipo de puerto</string>
+    <string name="diag_abilities_label_connection_type">Tipo de conexión</string>
+    <string name="diag_abilities_label_usb_vendor">USB Vendor ID</string>
+    <string name="diag_abilities_label_usb_product">USB Product ID</string>
+    <string name="diag_abilities_label_usb_class">USB Class</string>
+
+    <string name="diag_abilities_value_usb">USB</string>
+    <string name="diag_abilities_value_wifi_ptpip">Wi-Fi (PTP/IP)</string>
+    <string name="diag_abilities_value_unknown">Desconocido</string>
+
+    <string name="diag_abilities_feature_capture_image">Captura remota de fotos</string>
+    <string name="diag_abilities_feature_capture_video">Captura remota de vídeo</string>
+    <string name="diag_abilities_feature_capture_audio">Grabación de audio</string>
+    <string name="diag_abilities_feature_capture_preview">Vista previa en directo</string>
+    <string name="diag_abilities_feature_trigger_capture">Captura por disparador</string>
+    <string name="diag_abilities_feature_delete">Eliminar archivo</string>
+    <string name="diag_abilities_feature_preview">Vista previa de archivo</string>
+    <string name="diag_abilities_feature_raw">Archivo RAW</string>
+    <string name="diag_abilities_feature_audio">Archivo de audio</string>
+    <string name="diag_abilities_feature_exif">Información EXIF</string>
+    <string name="diag_abilities_feature_delete_all">Eliminar todo</string>
+    <string name="diag_abilities_feature_put_file">Subir archivo</string>
+    <string name="diag_abilities_feature_make_dir">Crear directorio</string>
+    <string name="diag_abilities_feature_remove_dir">Eliminar directorio</string>
+    <string name="diag_abilities_feature_config">Cambiar ajustes de la cámara</string>
+
+    <string name="diag_abilities_feature_supported">Compatible</string>
+    <string name="diag_abilities_feature_unsupported">No compatible</string>
+
+    <string name="diag_abilities_summary_full">✅ Control remoto completo disponible\n\nEsta cámara admite todas las funciones:\n• Captura remota\n• Vista en directo\n• Control de ajustes\n• Gestión de archivos</string>
+    <string name="diag_abilities_summary_download_only">⚠️ Solo descarga\n\nEsta cámara solo admite la descarga de archivos.\nLa captura remota y la vista en directo no están disponibles.\n\n💡 Fabricante: %1$s\nAlgunos modelos %2$s tienen compatibilidad PTP limitada.</string>
+    <string name="diag_abilities_summary_partial">ℹ️ Compatibilidad parcial\n\nLa vista en directo no es compatible, pero la captura remota está disponible.</string>
+    <string name="diag_abilities_summary_some">ℹ️ Algunas funciones compatibles\n\nAlgunas funciones de la cámara pueden estar limitadas.</string>
+
+    <!-- Diagnostics section (ADMIN) -->
+    <string name="diag_section_title">🩺 Diagnóstico (ADMIN)</string>
+    <string name="diag_run_button">Ejecutar diagnóstico</string>
+    <string name="diag_running">Ejecutando diagnóstico…</string>
+    <string name="diag_report_camera_issues">Problemas de la cámara</string>
+    <string name="diag_report_usb">Diagnóstico USB</string>
+    <string name="diag_error_history_title">Historial de errores</string>
+    <string name="diag_error_history_load">Cargar historial de errores</string>
+    <string name="diag_error_history_clear">Borrar historial de errores</string>
+    <string name="diag_error_history_empty">No hay historial de errores</string>
+    <string name="diag_memory_title">Estado del grupo de memoria</string>
+    <string name="diag_memory_refresh">Actualizar estado de memoria</string>
+    <string name="diag_memory_active_count">Recuento activo</string>
+    <string name="diag_memory_total_allocated">Total asignado</string>
+    <string name="diag_memory_details">Detalles</string>
+    <string name="diag_memory_clear_pool">Vaciar grupo de archivos</string>
+    <string name="diag_report_empty">Aún no hay informe. Ejecute el diagnóstico.</string>
+
+    <!-- RAW restriction upgrade action -->
+    <string name="diag_raw_upgrade">Mejorar</string>
+
+    <!-- Camera restart dialog -->
+    <string name="diag_restart_needed">Es necesario reiniciar la app</string>
+    <string name="diag_restart_message">El dispositivo USB no se desconectó correctamente o se produjo un error del sistema (-52).\n\nEs necesario reiniciar la app para que funcione correctamente.\n\n¿Reiniciar la app ahora?</string>
+    <string name="diag_restart_confirm">Reiniciar app</string>
+    <string name="diag_restart_cancel">Cancelar</string>
+    <string name="diag_close">Cerrar</string>
+</resources>

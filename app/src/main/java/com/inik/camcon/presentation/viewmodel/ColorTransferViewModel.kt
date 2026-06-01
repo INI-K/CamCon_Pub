@@ -20,6 +20,16 @@ import java.io.FileOutputStream
 import javax.inject.Inject
 
 /**
+ * 색감 전송 처리 단계. 화면에서 stringResource 로 매핑하기 위한 로케일 독립 키.
+ */
+enum class ColorTransferStage {
+    PREVIEW_PROCESSING,
+    FULL_SIZE_PREPARING,
+    FULL_SIZE_APPLYING,
+    DONE
+}
+
+/**
  * ViewModel for color transfer functionality.
  */
 @HiltViewModel
@@ -37,6 +47,9 @@ class ColorTransferViewModel @Inject constructor(
     private val _processingStatus = MutableStateFlow<String?>(null)
     val processingStatus: StateFlow<String?> = _processingStatus.asStateFlow()
 
+    private val _processingStage = MutableStateFlow<ColorTransferStage?>(null)
+    val processingStage: StateFlow<ColorTransferStage?> = _processingStage.asStateFlow()
+
     private val _performanceInfo = MutableStateFlow<String?>(null)
     val performanceInfo: StateFlow<String?> = _performanceInfo.asStateFlow()
 
@@ -49,9 +62,16 @@ class ColorTransferViewModel @Inject constructor(
     private val _selectedImagePath = MutableStateFlow<String?>(null)
     val selectedImagePath: StateFlow<String?> = _selectedImagePath.asStateFlow()
 
-    private fun updateProcessingStatus(status: String, progress: Float = 0f) {
+    private fun updateProcessingStatus(
+        status: String,
+        progress: Float = 0f,
+        stage: ColorTransferStage? = null
+    ) {
         _processingStatus.value = status
         _processingProgress.value = progress
+        if (stage != null) {
+            _processingStage.value = stage
+        }
     }
 
     private fun updatePerformanceInfo(processingTime: Long, isNativeUsed: Boolean) {
@@ -141,6 +161,7 @@ class ColorTransferViewModel @Inject constructor(
     fun clearProcessingStatus() {
         _processingStatus.value = null
         _processingProgress.value = 0f
+        _processingStage.value = null
     }
 
     /**
@@ -156,7 +177,8 @@ class ColorTransferViewModel @Inject constructor(
         try {
             android.util.Log.d("ColorTransferViewModel", "Preview color transfer start")
 
-            updateProcessingStatus("색감 전송 처리 중...", 0.5f)
+            _isLoading.value = true
+            updateProcessingStatus("색감 전송 처리 중...", 0.5f, ColorTransferStage.PREVIEW_PROCESSING)
 
             val startTime = System.currentTimeMillis()
 
@@ -189,7 +211,7 @@ class ColorTransferViewModel @Inject constructor(
                 if (bitmap != null) {
                     android.util.Log.d("ColorTransferViewModel", "Color transfer succeeded (${processingTime}ms)")
                     updatePerformanceInfo(processingTime, true)
-                    updateProcessingStatus("처리 완료", 1f)
+                    updateProcessingStatus("처리 완료", 1f, ColorTransferStage.DONE)
                     return@withContext bitmap
                 }
             }
@@ -201,6 +223,8 @@ class ColorTransferViewModel @Inject constructor(
             android.util.Log.e("ColorTransferViewModel", "Color transfer exception: ${e.message}")
             _errorMessage.value = "색감 전송 처리 중 오류가 발생했습니다: ${e.message}"
             null
+        } finally {
+            _isLoading.value = false
         }
     }
 
@@ -216,9 +240,10 @@ class ColorTransferViewModel @Inject constructor(
         try {
             android.util.Log.d("ColorTransferViewModel", "Full-size color transfer start")
 
-            updateProcessingStatus("원본 크기로 색감 전송 처리 중...", 0.3f)
+            _isLoading.value = true
+            updateProcessingStatus("원본 크기로 색감 전송 처리 중...", 0.3f, ColorTransferStage.FULL_SIZE_PREPARING)
 
-            updateProcessingStatus("GPU 가속 색감 전송 적용 중...", 0.7f)
+            updateProcessingStatus("GPU 가속 색감 전송 적용 중...", 0.7f, ColorTransferStage.FULL_SIZE_APPLYING)
 
             val startTime = System.currentTimeMillis()
 
@@ -249,7 +274,7 @@ class ColorTransferViewModel @Inject constructor(
                 if (bitmap != null) {
                     android.util.Log.d("ColorTransferViewModel", "Full-size color transfer succeeded (${processingTime}ms)")
                     updatePerformanceInfo(processingTime, true)
-                    updateProcessingStatus("처리 완료", 1f)
+                    updateProcessingStatus("처리 완료", 1f, ColorTransferStage.DONE)
                     return@withContext bitmap
                 }
             }
@@ -261,6 +286,8 @@ class ColorTransferViewModel @Inject constructor(
             android.util.Log.e("ColorTransferViewModel", "Full-size color transfer exception: ${e.message}")
             _errorMessage.value = "원본 크기 색감 전송 중 오류가 발생했습니다: ${e.message}"
             null
+        } finally {
+            _isLoading.value = false
         }
     }
 

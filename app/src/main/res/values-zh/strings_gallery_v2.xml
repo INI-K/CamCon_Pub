@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 图库标题：照片数量 / 页码 -->
+    <plurals name="gallery_v2_photo_count">
+        <item quantity="other">%d 张照片</item>
+    </plurals>
+    <string name="gallery_v2_photo_count_with_page">%1$s（第 %2$d/%3$d 页）</string>
+
+    <!-- EXIF 标签 -->
+    <string name="gallery_v2_exif_camera">相机</string>
+    <string name="gallery_v2_exif_iso">ISO</string>
+    <string name="gallery_v2_exif_shutter">快门速度</string>
+    <string name="gallery_v2_exif_aperture">光圈</string>
+    <string name="gallery_v2_exif_focal_length">焦距</string>
+    <string name="gallery_v2_exif_white_balance">白平衡</string>
+    <string name="gallery_v2_exif_flash">闪光灯</string>
+    <string name="gallery_v2_exif_date">日期</string>
+
+    <!-- EXIF 白平衡值 -->
+    <string name="gallery_v2_wb_auto">自动</string>
+    <string name="gallery_v2_wb_manual">手动</string>
+    <string name="gallery_v2_wb_daylight">日光</string>
+    <string name="gallery_v2_wb_cloudy">阴天</string>
+    <string name="gallery_v2_wb_tungsten">白炽灯</string>
+    <string name="gallery_v2_wb_fluorescent">荧光灯</string>
+
+    <!-- EXIF 闪光灯值 -->
+    <string name="gallery_v2_flash_on">已开启</string>
+    <string name="gallery_v2_flash_off">已关闭</string>
+
+    <!-- EXIF 空 / 未下载状态 -->
+    <string name="gallery_v2_exif_unavailable">暂无信息 — 请先下载照片</string>
+    <string name="gallery_v2_date_unknown">拍摄日期未知</string>
+    <string name="gallery_v2_internal_storage">/内部存储</string>
+
+    <!-- 下载反馈 -->
+    <string name="gallery_v2_download_success">照片已下载</string>
+    <string name="gallery_v2_download_failed">照片下载失败，请重试</string>
+    <string name="gallery_v2_download_progress">正在下载 %1$d/%2$d 张…</string>
+    <string name="gallery_v2_download_all_done">已下载全部 %1$d 张照片</string>
+    <string name="gallery_v2_download_partial">已下载 %2$d 张中的 %1$d 张</string>
+
+    <!-- FREE 套餐分辨率限制提示 -->
+    <string name="gallery_v2_free_resolution_notice">免费版会将照片缩小至 2000px 保存。原图可在 PRO 中下载</string>
+    <string name="gallery_v2_upgrade">升级</string>
+</resources>

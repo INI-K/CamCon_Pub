@@ -26,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -50,6 +51,7 @@ import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.presentation.theme.Background
 import com.inik.camcon.presentation.theme.Border
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.Error
 import com.inik.camcon.presentation.theme.Primary
 import com.inik.camcon.presentation.theme.PrimaryDark
 import com.inik.camcon.presentation.theme.Spacing
@@ -74,6 +76,8 @@ import com.inik.camcon.presentation.theme.OnPrimary
  * @param onGalleryClick 갤러리 클릭 콜백
  * @param isLiveViewActive 라이브뷰 활성 여부. false면 트리거 캡처 라벨을 함께 표시한다.
  * @param isShutterSoundEnabled 셔터 사운드 토글 (기본 true)
+ * @param isTimelapseRunning 타임랩스가 진행 중인지. true면 메인 버튼을 중지 버튼으로 렌더한다.
+ * @param onStopTimelapse 타임랩스 중지 콜백
  */
 @Composable
 fun CaptureControls(
@@ -86,6 +90,8 @@ fun CaptureControls(
     onGalleryClick: () -> Unit = {},
     isLiveViewActive: Boolean = true,
     isShutterSoundEnabled: Boolean = true,
+    isTimelapseRunning: Boolean = false,
+    onStopTimelapse: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (isVertical) {
@@ -102,7 +108,9 @@ fun CaptureControls(
                 onShowTimelapseDialog = onShowTimelapseDialog,
                 onGalleryClick = onGalleryClick,
                 isLiveViewActive = isLiveViewActive,
-                isShutterSoundEnabled = isShutterSoundEnabled
+                isShutterSoundEnabled = isShutterSoundEnabled,
+                isTimelapseRunning = isTimelapseRunning,
+                onStopTimelapse = onStopTimelapse
             )
         }
     } else {
@@ -135,7 +143,9 @@ fun CaptureControls(
                     onShowTimelapseDialog = onShowTimelapseDialog,
                     onGalleryClick = onGalleryClick,
                     isLiveViewActive = isLiveViewActive,
-                    isShutterSoundEnabled = isShutterSoundEnabled
+                    isShutterSoundEnabled = isShutterSoundEnabled,
+                    isTimelapseRunning = isTimelapseRunning,
+                    onStopTimelapse = onStopTimelapse
                 )
             }
         }
@@ -151,7 +161,9 @@ private fun CaptureControlsContent(
     onShowTimelapseDialog: () -> Unit,
     onGalleryClick: () -> Unit = {},
     isLiveViewActive: Boolean = true,
-    isShutterSoundEnabled: Boolean = true
+    isShutterSoundEnabled: Boolean = true,
+    isTimelapseRunning: Boolean = false,
+    onStopTimelapse: () -> Unit = {}
 ) {
     val haptic = LocalHapticFeedback.current
 
@@ -199,7 +211,20 @@ private fun CaptureControlsContent(
         label = "capture_button_scale"
     )
 
-    val isEnabled = isConnected && !captureState.isCapturing
+    // 타임랩스 진행 중이면 메인 버튼을 활성 중지 버튼으로 전환한다.
+    val isStopMode = isTimelapseRunning &&
+            captureState.shootingMode == ShootingMode.TIMELAPSE &&
+            captureState.isCapturing
+    val isEnabled = if (isStopMode) {
+        // 중지 모드에서는 진행 중이어도 항상 누를 수 있어야 한다.
+        isConnected
+    } else {
+        isConnected && !captureState.isCapturing
+    }
+
+    val captureCd = stringResource(R.string.capture_shutter_cd)
+    val stopTimelapseCd = stringResource(R.string.capture_stop_timelapse)
+    val buttonCd = if (isStopMode) stopTimelapseCd else captureCd
 
     // 바깥 장식 링
     Box(
@@ -209,7 +234,11 @@ private fun CaptureControlsContent(
             .scale(scale)
             .border(
                 width = 1.5.dp,
-                color = if (isEnabled) Primary.copy(alpha = 0.3f) else TextMuted.copy(alpha = 0.12f),
+                color = when {
+                    isStopMode -> Error.copy(alpha = 0.4f)
+                    isEnabled -> Primary.copy(alpha = 0.3f)
+                    else -> TextMuted.copy(alpha = 0.12f)
+                },
                 shape = CircleShape
             )
     ) {
@@ -220,20 +249,29 @@ private fun CaptureControlsContent(
                 .shadow(
                     elevation = if (isEnabled) 20.dp else 0.dp,
                     shape = CircleShape,
-                    ambientColor = Primary.copy(alpha = 0.4f),
-                    spotColor = Primary.copy(alpha = 0.6f)
+                    ambientColor = (if (isStopMode) Error else Primary).copy(alpha = 0.4f),
+                    spotColor = (if (isStopMode) Error else Primary).copy(alpha = 0.6f)
                 )
                 .clip(CircleShape)
                 .background(
-                    color = if (isEnabled) Primary else TextMuted.copy(alpha = 0.25f)
+                    color = when {
+                        isStopMode -> Error
+                        isEnabled -> Primary
+                        else -> TextMuted.copy(alpha = 0.25f)
+                    }
                 )
                 .semantics {
                     role = Role.Button
-                    contentDescription = "촬영"
+                    contentDescription = buttonCd
                 }
                 .clickable(enabled = isEnabled) {
                     // H1: 햅틱·셔터음
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    if (isStopMode) {
+                        // 타임랩스 중지 — 셔터음 없이 즉시 중지
+                        onStopTimelapse()
+                        return@clickable
+                    }
                     if (isShutterSoundEnabled) {
                         try {
                             shutterSound.play(MediaActionSound.SHUTTER_CLICK)
@@ -248,7 +286,15 @@ private fun CaptureControlsContent(
                 },
             contentAlignment = Alignment.Center
         ) {
-            if (captureState.isCapturing) {
+            if (isStopMode) {
+                // 중지 아이콘 표시 (스피너 대신)
+                Icon(
+                    Icons.Default.Stop,
+                    contentDescription = null,
+                    tint = OnPrimary,
+                    modifier = Modifier.size(36.dp)
+                )
+            } else if (captureState.isCapturing) {
                 CircularProgressIndicator(
                     color = OnPrimary,
                     modifier = Modifier.size(36.dp),

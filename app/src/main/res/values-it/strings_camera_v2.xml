@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Camera Control UX v2 — newly added keys only -->
+    <string name="capture_shutter_cd">Scatto</string>
+    <string name="capture_stop_timelapse">Interrompi time-lapse</string>
+    <string name="unsupported_shooting_mode_message">Questa fotocamera non supporta la modalità di scatto %s</string>
+    <string name="liveview_frame_stalled">Live view bloccata</string>
+    <string name="autofocus_completed">Messa a fuoco completata</string>
+</resources>

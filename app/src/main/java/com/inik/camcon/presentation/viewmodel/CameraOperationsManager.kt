@@ -10,12 +10,12 @@ import com.inik.camcon.domain.usecase.camera.StartLiveViewUseCase
 import com.inik.camcon.domain.usecase.camera.StartTimelapseUseCase
 import com.inik.camcon.domain.usecase.camera.StopLiveViewUseCase
 import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
+import com.inik.camcon.presentation.viewmodel.state.InfoMessage
 import com.inik.camcon.di.ApplicationScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
@@ -38,6 +38,13 @@ class CameraOperationsManager @Inject constructor(
 
     companion object {
         private const val TAG = "카메라작업매니저"
+
+        /**
+         * 미지원 촬영 모드 식별 마커 prefix.
+         * ViewModel 레이어는 Context가 없으므로 raw 메시지 대신 이 prefix + ShootingMode.name 형태로
+         * shootingModeError에 저장하고, UI 레이어에서 stringResource로 i18n 변환한다.
+         */
+        const val UNSUPPORTED_MODE_PREFIX = "UNSUPPORTED_MODE:"
     }
 
     // 앱 scope의 자식 scope — cleanup해도 앱 scope에 영향 없음
@@ -83,7 +90,8 @@ class CameraOperationsManager @Inject constructor(
                     .onFailure { error ->
                         if (error is UnsupportedShootingModeException) {
                             Log.w(TAG, "지원하지 않는 촬영 모드: ${error.message}")
-                            uiStateManager.setShootingModeError(error.message ?: "지원하지 않는 촬영 모드입니다")
+                            // raw 영어 메시지 대신 모드 식별 마커를 전달 → UI가 stringResource로 i18n 처리
+                            uiStateManager.setShootingModeError(UNSUPPORTED_MODE_PREFIX + error.mode.name)
                         } else {
                             Log.e(TAG, "사진 촬영 실패", error)
                             uiStateManager.setError("사진 촬영 실패: ${error.message ?: "알 수 없는 오류"}")
@@ -218,7 +226,8 @@ class CameraOperationsManager @Inject constructor(
                     .catch { error ->
                         if (error is UnsupportedShootingModeException) {
                             Log.w(TAG, "지원하지 않는 촬영 모드: ${error.message}")
-                            uiStateManager.setShootingModeError(error.message ?: "지원하지 않는 촬영 모드입니다")
+                            // raw 영어 메시지 대신 모드 식별 마커를 전달 → UI가 stringResource로 i18n 처리
+                            uiStateManager.setShootingModeError(UNSUPPORTED_MODE_PREFIX + error.mode.name)
                         } else {
                             Log.e(TAG, "타임랩스 실행 중 오류", error)
                             uiStateManager.setError("타임랩스 시작 실패: ${error.message ?: "알 수 없는 오류"}")
@@ -260,10 +269,8 @@ class CameraOperationsManager @Inject constructor(
                 performAutoFocusUseCase()
                     .onSuccess {
                         uiStateManager.updateFocusingState(false)
-                        uiStateManager.setError("초점 맞춤 완료")
-
-                        delay(1000)
-                        uiStateManager.clearError()
+                        // 성공은 에러 채널이 아닌 1-shot 정보 메시지로 전달 (의미 오용 제거)
+                        uiStateManager.emitInfoMessage(InfoMessage.AutoFocusCompleted)
                     }
                     .onFailure { error ->
                         Log.e(TAG, "자동초점 실패", error)

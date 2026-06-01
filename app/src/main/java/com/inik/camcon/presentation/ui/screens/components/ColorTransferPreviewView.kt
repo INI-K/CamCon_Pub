@@ -36,12 +36,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
+import com.inik.camcon.R
 import java.io.File
 
 /**
@@ -79,9 +81,9 @@ fun ColorTransferPreviewView(
                 val referenceClick = if (enabled) onReferenceImageClick else ({})
                 ColorTransferImageSection(
                     imagePath = referenceImagePath,
-                    title = "색감 참조 이미지",
-                    subtitle = "이 이미지의 색감이 적용됩니다",
-                    placeholder = "색감을 가져올\n참조 이미지를 선택하세요",
+                    title = stringResource(R.string.ct_pv_reference_title),
+                    subtitle = stringResource(R.string.ct_pv_reference_subtitle),
+                    placeholder = stringResource(R.string.ct_pv_reference_placeholder),
                     onClick = referenceClick,
                     enabled = enabled,
                     modifier = Modifier.fillMaxSize()
@@ -107,7 +109,7 @@ fun ColorTransferPreviewView(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "색감 전송",
+                        text = stringResource(R.string.ct_pv_transfer_label),
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
@@ -141,9 +143,9 @@ fun ColorTransferPreviewView(
                 val targetClick = if (enabled) onTargetImageClick else ({})
                 ColorTransferImageSection(
                     imagePath = targetImagePath,
-                    title = "적용 대상 이미지",
-                    subtitle = "색감이 적용될 이미지입니다",
-                    placeholder = "색감이 적용될\n대상 이미지를 선택하세요",
+                    title = stringResource(R.string.ct_pv_target_title),
+                    subtitle = stringResource(R.string.ct_pv_target_subtitle),
+                    placeholder = stringResource(R.string.ct_pv_target_placeholder),
                     onClick = targetClick,
                     enabled = enabled,
                     modifier = Modifier.fillMaxSize()
@@ -239,23 +241,23 @@ private fun ColorTransferImageSection(
                     
                     val file = File(imagePath)
                     Text(
-                        text = "파일명: ${file.name}",
+                        text = stringResource(R.string.ct_pv_file_name, file.name),
                         style = MaterialTheme.typography.bodySmall,
                         color = if (enabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                                 else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                     )
-                    
+
                     Text(
-                        text = "크기: ${file.length() / 1024} KB",
+                        text = stringResource(R.string.ct_pv_file_size, file.length() / 1024),
                         style = MaterialTheme.typography.bodySmall,
                         color = if (enabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                                 else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                     )
-                    
+
                     if (enabled) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "탭하여 다른 이미지 선택",
+                            text = stringResource(R.string.ct_pv_tap_to_change),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
                         )
@@ -312,7 +314,7 @@ private fun ColorTransferImageSection(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("선택하기")
+                        Text(stringResource(R.string.ct_pv_select))
                     }
                 }
             }

@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Top bar / common -->
+    <string name="settings_v2_title">Settings</string>
+    <string name="settings_v2_back">Back</string>
+
+    <!-- Section titles -->
+    <string name="settings_v2_section_camera_control">Camera control (dev build)</string>
+    <string name="settings_v2_section_wifi_ptpip">Wi-Fi camera connection (PTPIP) - dev build</string>
+    <string name="settings_v2_section_color_transfer">Color transfer</string>
+    <string name="settings_v2_section_raw_download">RAW file download</string>
+    <string name="settings_v2_section_connected_camera">Connected camera</string>
+    <string name="settings_v2_section_user_info">User</string>
+    <string name="settings_v2_section_server">Server (dev build)</string>
+    <string name="settings_v2_section_app">App</string>
+    <string name="settings_v2_section_admin">ADMIN only</string>
+    <string name="settings_v2_section_info">About</string>
+    <string name="settings_v2_section_referral">Admin referral codes</string>
+
+    <!-- Subscription / upgrade row -->
+    <string name="settings_v2_subscription_title">Subscription / Upgrade</string>
+    <string name="settings_v2_subscription_subtitle_tier">Current plan: %s</string>
+    <string name="settings_v2_subscription_subtitle_default">Manage your plan and unlock more features</string>
+
+    <!-- Camera control -->
+    <string name="settings_v2_camera_controls_title">Show camera controls</string>
+    <string name="settings_v2_camera_controls_on">Show live view and camera control UI</string>
+    <string name="settings_v2_camera_controls_off">Disabled - the latest captured photo is shown</string>
+    <string name="settings_v2_liveview_title">Enable live view</string>
+    <string name="settings_v2_liveview_subtitle">Show the real-time camera feed (ADMIN only)</string>
+    <string name="settings_v2_auto_event_title">Auto event listening</string>
+    <string name="settings_v2_auto_event_subtitle">Start the event listener automatically when entering the camera control tab</string>
+    <string name="settings_v2_liveview_locked_title">Live view feature</string>
+    <string name="settings_v2_liveview_locked_subtitle">Available only on the ADMIN tier</string>
+    <string name="settings_v2_latest_photo_title">Show latest photo</string>
+    <string name="settings_v2_latest_photo_subtitle">Show the most recently captured photo when camera controls are off</string>
+
+    <!-- Wi-Fi PTPIP -->
+    <string name="settings_v2_wifi_camera_title">Wi-Fi camera connection</string>
+    <string name="settings_v2_wifi_camera_on_last">Enabled - last connected: %s</string>
+    <string name="settings_v2_wifi_camera_on_none">Enabled - no connected camera</string>
+    <string name="settings_v2_wifi_camera_off">Remote camera control over Wi-Fi</string>
+    <string name="settings_v2_wifi_connect_title">Connect over Wi-Fi</string>
+    <string name="settings_v2_wifi_connect_subtitle">Connect on the same Wi-Fi network as the camera (recommended)</string>
+    <string name="settings_v2_auto_discovery_title">Auto camera discovery</string>
+    <string name="settings_v2_auto_discovery_subtitle">Automatically find PTPIP cameras on the network</string>
+    <string name="settings_v2_auto_connect_title">Auto connect</string>
+    <string name="settings_v2_auto_connect_subtitle">Automatically connect to the last connected camera</string>
+    <string name="settings_v2_connection_manage_title">Manage camera connection</string>
+    <string name="settings_v2_connection_manage_subtitle">%s - tap for details</string>
+
+    <!-- Color transfer -->
+    <string name="settings_v2_color_transfer_title">Color transfer</string>
+    <string name="settings_v2_color_transfer_on_ref">Enabled - reference image set</string>
+    <string name="settings_v2_color_transfer_on_noref">Enabled - no reference image</string>
+    <string name="settings_v2_color_transfer_off">Automatically apply the reference image\'s color to captured photos</string>
+    <string name="settings_v2_color_transfer_detail_title">Advanced settings</string>
+    <string name="settings_v2_color_transfer_detail_subtitle">Color transfer algorithm and advanced options</string>
+
+    <!-- RAW download -->
+    <string name="settings_v2_raw_download_title">RAW file download</string>
+    <string name="settings_v2_raw_download_on">Enabled</string>
+    <string name="settings_v2_raw_download_off">Disabled</string>
+    <string name="settings_v2_raw_download_locked">Available only on the PRO, ADMIN, and REFERRER tiers</string>
+
+    <!-- Connected camera -->
+    <string name="settings_v2_connection_status_title">Connection status</string>
+    <string name="settings_v2_connection_type_usb">USB connected</string>
+    <string name="settings_v2_connection_type_wifi">Wi-Fi connected (PTPIP)</string>
+    <string name="settings_v2_connection_type_none">Not connected</string>
+    <string name="settings_v2_camera_model_title">Camera model</string>
+    <string name="settings_v2_camera_model_none">No information</string>
+    <string name="settings_v2_camera_limitation_title">Feature limitation</string>
+
+    <!-- User -->
+    <string name="settings_v2_user_default_name">User</string>
+    <string name="settings_v2_user_login_required">Sign in required</string>
+    <string name="settings_v2_logout_title">Log out</string>
+    <string name="settings_v2_logout_in_progress_title">Logging out…</string>
+    <string name="settings_v2_logout_subtitle">Log out of the current account</string>
+    <string name="settings_v2_logout_in_progress_subtitle">Please wait a moment…</string>
+
+    <!-- Server -->
+    <string name="settings_v2_storage_title">Storage</string>
+    <string name="settings_v2_storage_subtitle">TBD</string>
+    <string name="settings_v2_permissions_title">Permissions</string>
+    <string name="settings_v2_permissions_subtitle">Configure server access permissions</string>
+
+    <!-- App -->
+    <string name="settings_v2_battery_title">Battery optimization exception</string>
+    <string name="settings_v2_battery_on">Excluded from battery optimization</string>
+    <string name="settings_v2_battery_off">Exception required for background connection and notifications</string>
+
+    <!-- ADMIN -->
+    <string name="settings_v2_mock_camera_title">🧪 Mock camera</string>
+    <string name="settings_v2_mock_camera_subtitle">Virtual camera for development and testing</string>
+    <string name="settings_v2_camera_abilities_title">🔍 Camera capabilities</string>
+    <string name="settings_v2_camera_abilities_subtitle">Inspect supported features via the libgphoto2 API</string>
+    <string name="settings_v2_native_log_title">📝 Native log capture</string>
+    <string name="settings_v2_native_log_on">Enabled - saving libgphoto2 logs to a TXT file</string>
+    <string name="settings_v2_native_log_off">Detailed logging for PTP/IP debugging</string>
+    <string name="settings_v2_native_log_view_title">View log files</string>
+    <string name="settings_v2_native_log_view_subtitle">Check and share saved native log files</string>
+
+    <!-- Info -->
+    <string name="settings_v2_oss_license_title">Open-source licenses</string>
+    <string name="settings_v2_oss_license_subtitle">Open-source libraries in use</string>
+    <string name="settings_v2_app_version_title">App version</string>
+
+    <!-- Referral (admin) -->
+    <string name="settings_v2_referral_usage_title">Referral code usage</string>
+    <string name="settings_v2_referral_usage_subtitle">Total: %1$d | Available: %2$d | Used: %3$d (%4$d%%)</string>
+    <string name="settings_v2_referral_generate_title">Generate 30 referral codes</string>
+    <string name="settings_v2_referral_generate_subtitle">Create 30 new referral codes</string>
+    <string name="settings_v2_referral_generate_in_progress">Generating…</string>
+    <string name="settings_v2_referral_extract_title">Extract one available code</string>
+    <string name="settings_v2_referral_extract_subtitle">Copy one unused referral code to the clipboard</string>
+</resources>

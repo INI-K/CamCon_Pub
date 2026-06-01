@@ -15,10 +15,12 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.io.IOException
 import javax.inject.Inject
 
 data class AuthUiState(
@@ -74,15 +76,29 @@ class AuthViewModel @Inject constructor(
                         _uiEvent.emit(AuthUiEvent.NavigateToLogin)
                     },
                     onFailure = { error ->
+                        android.util.Log.e("AuthViewModel", "로그아웃 실패", error)
                         _uiState.update { it.copy(isLoading = false) }
-                        _uiEvent.emit(AuthUiEvent.ShowError(error.message ?: "로그아웃 실패"))
+                        _uiEvent.emit(AuthUiEvent.ShowError(signOutErrorDetail(error)))
                     }
                 )
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
+                android.util.Log.e("AuthViewModel", "로그아웃 예외", e)
                 _uiState.update { it.copy(isLoading = false) }
-                _uiEvent.emit(AuthUiEvent.ShowError(e.message ?: "로그아웃 실패"))
+                _uiEvent.emit(AuthUiEvent.ShowError(signOutErrorDetail(e)))
             }
         }
+    }
+
+    /**
+     * 로그아웃 실패 사유를 사용자 친화 메시지로 분류한다.
+     * raw `error.message`는 로그캣에만 남기고, 여기서는 i18n 가능한 분류 메시지만 반환한다.
+     * 이 문자열은 `settings_toast_logout_failed`("…: %s")의 %s 자리에 들어간다.
+     */
+    private fun signOutErrorDetail(error: Throwable): String = when (error) {
+        is IOException -> context.getString(R.string.auth_error_network_detail)
+        else -> context.getString(R.string.auth_error_unknown_detail)
     }
 
     private fun signOutFromGoogle() {
