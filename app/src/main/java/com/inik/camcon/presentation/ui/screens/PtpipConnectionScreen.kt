@@ -127,9 +127,9 @@ fun PtpipConnectionScreen(
     )
     val pagerState = rememberPagerState(initialPage = 0) { tabTitles.size }
 
-    // Wi‑Fi 스캔 권한 상태 (WifiNetworkHelper 사용)
+    // Wi‑Fi 스캔 권한 상태 (ViewModel 위임)
     var wifiScanPermissionStatus by remember {
-        mutableStateOf(ptpipViewModel.getWifiHelper().analyzeWifiScanPermissionStatus())
+        mutableStateOf(ptpipViewModel.analyzeWifiScanPermissionStatus())
     }
 
     var showPermissionDialog by remember { mutableStateOf(false) }
@@ -140,7 +140,7 @@ fun PtpipConnectionScreen(
     ) { results ->
         Log.d("PtpipConnectionScreen", "권한 요청 결과: $results")
         // 권한 상태 업데이트
-        wifiScanPermissionStatus = ptpipViewModel.getWifiHelper().analyzeWifiScanPermissionStatus()
+        wifiScanPermissionStatus = ptpipViewModel.analyzeWifiScanPermissionStatus()
 
         if (!wifiScanPermissionStatus.canScan) {
             if (wifiScanPermissionStatus.missingPermissions.isNotEmpty()) {
@@ -166,8 +166,7 @@ fun PtpipConnectionScreen(
 
     fun requestWifiScanPermissions() {
         Log.d("PtpipConnectionScreen", "Wi-Fi 스캔 권한 요청 시작")
-        val wifiHelper = ptpipViewModel.getWifiHelper()
-        val requiredPermissions = wifiHelper.getRequiredWifiScanPermissions()
+        val requiredPermissions = ptpipViewModel.getRequiredWifiScanPermissions()
 
         Log.d("PtpipConnectionScreen", "필요한 권한: $requiredPermissions")
         permissionLauncher.launch(requiredPermissions.toTypedArray())
@@ -243,15 +242,18 @@ fun PtpipConnectionScreen(
             onDismissRequest = { showPermissionDialog = false },
             title = { Text(stringResource(R.string.ptpip_permission_needed)) },
             text = {
-                Text(ptpipViewModel.getWifiHelper().getPermissionRationaleMessage())
+                Text(ptpipViewModel.getPermissionRationaleMessage())
             },
             confirmButton = {
                 PrimaryButton(
                     text = stringResource(R.string.ptpip_go_to_settings),
                     onClick = {
                         showPermissionDialog = false
-                        // 설정으로 이동
-                        val intent = ptpipViewModel.getWifiHelper().createAppSettingsIntent()
+                        // 설정으로 이동 (Intent 생성은 Screen에서 Context로 직접 처리)
+                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = android.net.Uri.fromParts("package", context.packageName, null)
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
                         context.startActivity(intent)
                     }
                 )
@@ -280,9 +282,18 @@ fun PtpipConnectionScreen(
                         // Google Play Services를 통한 위치 설정 확인 및 요청
                         ptpipViewModel.checkLocationSettings()
 
-                        // WifiNetworkHelper를 통해 위치 설정 요청
-                        val wifiHelper = ptpipViewModel.getWifiHelper()
-                        wifiHelper.checkLocationSettingsForScan()
+                        // 위치 설정 확인은 Screen에서 LocationServices로 직접 처리
+                        val locationSettingsRequest = LocationSettingsRequest.Builder()
+                            .addLocationRequest(
+                                LocationRequest.create().apply {
+                                    interval = 0L
+                                    fastestInterval = 0L
+                                    priority = LocationRequest.PRIORITY_LOW_POWER
+                                }
+                            )
+                            .build()
+                        LocationServices.getSettingsClient(context)
+                            .checkLocationSettings(locationSettingsRequest)
                             .addOnSuccessListener {
                                 // 이미 설정되어 있음
                                 Log.d("PtpipConnectionScreen", "위치 설정이 이미 활성화됨")
@@ -619,7 +630,7 @@ fun PtpipConnectionScreen(
                             onClick = {
                                 val page = pagerState.currentPage
                                 when {
-                                    page == 0 -> if (ptpipViewModel.getWifiHelper()
+                                    page == 0 -> if (ptpipViewModel
                                             .analyzeWifiScanPermissionStatus().canScan
                                     ) {
                                         Log.d("PtpipConnectionScreen", "Wi-Fi 스캔 실행")
@@ -804,7 +815,7 @@ fun PtpipConnectionScreen(
                             wifiCapabilities = wifiCapabilities,
                             wifiNetworkState = wifiNetworkState,
                             isAutoReconnectEnabled = isAutoReconnectEnabled,
-                            hasLocationPermission = ptpipViewModel.getWifiHelper()
+                            hasLocationPermission = ptpipViewModel
                                 .analyzeWifiScanPermissionStatus().canScan,
                             onRequestPermission = { requestWifiScanPermissions() },
                             nearbyWifiSSIDs = nearbyWifiSSIDs,
@@ -825,7 +836,7 @@ fun PtpipConnectionScreen(
                             wifiCapabilities = wifiCapabilities,
                             wifiNetworkState = wifiNetworkState,
                             isAutoReconnectEnabled = isAutoReconnectEnabled,
-                            hasLocationPermission = ptpipViewModel.getWifiHelper()
+                            hasLocationPermission = ptpipViewModel
                                 .analyzeWifiScanPermissionStatus().canScan,
                             onRequestPermission = { requestWifiScanPermissions() },
                             nearbyWifiSSIDs = nearbyWifiSSIDs,
@@ -845,7 +856,7 @@ fun PtpipConnectionScreen(
                             wifiCapabilities = wifiCapabilities,
                             wifiNetworkState = wifiNetworkState,
                             isAutoReconnectEnabled = isAutoReconnectEnabled,
-                            hasLocationPermission = ptpipViewModel.getWifiHelper()
+                            hasLocationPermission = ptpipViewModel
                                 .analyzeWifiScanPermissionStatus().canScan,
                             onRequestPermission = { requestWifiScanPermissions() },
                         )

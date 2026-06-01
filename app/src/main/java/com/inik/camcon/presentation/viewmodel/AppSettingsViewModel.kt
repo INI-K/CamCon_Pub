@@ -302,6 +302,25 @@ class AppSettingsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 첫 사용자 온보딩 완료 여부.
+     * 첫 emit 전(DataStore 초기값) 동안 깜빡임을 막기 위해 initialValue=null 로 유지한다.
+     */
+    val isOnboardingCompleted: StateFlow<Boolean?> =
+        appSettingsRepository.isOnboardingCompleted
+            .map { it }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = null
+            )
+
+    fun setOnboardingCompleted(completed: Boolean) {
+        viewModelScope.launch {
+            appSettingsRepository.setOnboardingCompleted(completed)
+        }
+    }
+
     // 로그 파일 경로 생성
     private fun getLogFilePath(): String {
         val logDir = context.filesDir

@@ -1,13 +1,8 @@
 package com.inik.camcon.domain.usecase.camera
 
-import com.inik.camcon.data.datasource.nativesource.NativeFileDataSource
-import com.inik.camcon.di.IoDispatcher
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.channels.trySendBlocking
+import com.inik.camcon.domain.model.file.CameraThumbnailResult
+import com.inik.camcon.domain.repository.CameraFileRepository
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
 
 /**
@@ -20,46 +15,15 @@ import javax.inject.Inject
  *
  * - paths 비어있으면 즉시 종료.
  * - data == null 이면 실패 / 미지원.
- * - 본 UseCase는 [ioDispatcher]로 오프로드되며, 호출자는 본인 scope에서 collect한다.
+ * - IO 오프로드는 [CameraFileRepository] 구현이 담당하며, 호출자는 본인 scope에서 collect한다.
  */
 class GetThumbnailsBatchUseCase @Inject constructor(
-    private val nativeFileDataSource: NativeFileDataSource,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    private val cameraFileRepository: CameraFileRepository
 ) {
     /**
      * @param paths 카메라 사진 경로 목록 (예: "/store_00010001/DCIM/100NIKON/DSC_0001.JPG")
      * @return 경로별 썸네일 결과 Flow. `data == null`이면 실패.
      */
-    operator fun invoke(paths: List<String>): Flow<Result> = callbackFlow {
-        if (paths.isEmpty()) {
-            close()
-            return@callbackFlow
-        }
-
-        nativeFileDataSource.getCameraThumbnailBatch(paths) { path, data ->
-            // callback은 네이티브 호출 스레드 = collector(IO) 스레드에서 동기 호출됨.
-            // trySendBlocking으로 backpressure 대응.
-            trySendBlocking(Result(path, data))
-        }
-        close()
-        awaitClose { /* 네이티브 호출은 동기 완료. 별도 정리 불필요. */ }
-    }.flowOn(ioDispatcher)
-
-    /** 배치 썸네일 결과 1건. */
-    data class Result(val path: String, val data: ByteArray?) {
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other !is Result) return false
-            if (path != other.path) return false
-            if (data == null) return other.data == null
-            if (other.data == null) return false
-            return data.contentEquals(other.data)
-        }
-
-        override fun hashCode(): Int {
-            var result = path.hashCode()
-            result = 31 * result + (data?.contentHashCode() ?: 0)
-            return result
-        }
-    }
+    operator fun invoke(paths: List<String>): Flow<CameraThumbnailResult> =
+        cameraFileRepository.getThumbnailsBatch(paths)
 }

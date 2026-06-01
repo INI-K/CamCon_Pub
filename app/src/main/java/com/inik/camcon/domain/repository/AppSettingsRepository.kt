@@ -25,6 +25,7 @@ interface AppSettingsRepository {
     val themeMode: Flow<ThemeMode>
     val isNativeLogCaptureEnabled: Flow<Boolean>
     val hasSeenPtpipPreviewWarning: Flow<Boolean>
+    val isOnboardingCompleted: Flow<Boolean>
 
     // === Capture UX (Group 3) ===
     val isShutterSoundEnabled: Flow<Boolean>
@@ -51,6 +52,7 @@ interface AppSettingsRepository {
     suspend fun setThemeMode(mode: ThemeMode)
     suspend fun setNativeLogCaptureEnabled(enabled: Boolean)
     suspend fun setHasSeenPtpipPreviewWarning(seen: Boolean)
+    suspend fun setOnboardingCompleted(completed: Boolean)
     suspend fun setShutterSoundEnabled(enabled: Boolean)
     suspend fun setLiveViewGridEnabled(enabled: Boolean)
     suspend fun setHasSeenCaptureCoachmark(seen: Boolean)
