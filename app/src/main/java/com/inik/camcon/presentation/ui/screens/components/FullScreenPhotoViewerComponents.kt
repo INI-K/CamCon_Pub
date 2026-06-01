@@ -31,6 +31,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -430,6 +431,17 @@ private fun ServerThumbnailItemWrapper(
                 )
             }
 
+            // F28: 수동 디코딩한 비트맵을 key 변경/컴포지션 이탈 시 명시적으로 recycle
+            DisposableEffect(thumbnailData) {
+                onDispose {
+                    try {
+                        bitmap?.let { if (!it.isRecycled) it.recycle() }
+                    } catch (e: Exception) {
+                        Log.w("FullScreenThumbnail", "썸네일 Bitmap recycle 실패: ${photo.name}", e)
+                    }
+                }
+            }
+
             if (bitmap != null) {
                 Image(
                     bitmap = bitmap.asImageBitmap(),
@@ -474,6 +486,17 @@ private fun LocalThumbnailItemWrapper(
     ) {
         val bitmap = remember(photo.path) {
             android.graphics.BitmapFactory.decodeFile(photo.path)
+        }
+
+        // F28: 수동 디코딩한 비트맵을 key 변경/컴포지션 이탈 시 명시적으로 recycle
+        DisposableEffect(photo.path) {
+            onDispose {
+                try {
+                    bitmap?.let { if (!it.isRecycled) it.recycle() }
+                } catch (e: Exception) {
+                    Log.w("FullScreenThumbnail", "썸네일 Bitmap recycle 실패: ${photo.name}", e)
+                }
+            }
         }
 
         if (bitmap != null) {

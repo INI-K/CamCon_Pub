@@ -662,8 +662,9 @@ class CameraCaptureRepositoryImpl @Inject constructor(
         )
         com.inik.camcon.utils.LogcatManager.d(TAG, "  🎯 총 사진 개수: ${_capturedPhotos.value.size}개")
 
+        val downloadedFileName = downloadedPhoto.filePath.substringAfterLast("/")
         val sameNamePhotos = _capturedPhotos.value.filter {
-            it.filePath.contains(downloadedPhoto.filePath.substringAfterLast("/"))
+            it.filePath.substringAfterLast("/") == downloadedFileName
         }
         if (sameNamePhotos.size > 1) {
             Log.w(TAG, "⚠️ 같은 파일명의 사진이 ${sameNamePhotos.size}개 발견됨!")

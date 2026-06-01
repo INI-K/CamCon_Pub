@@ -525,7 +525,7 @@ class AppPreferencesDataSource @Inject constructor(
     /**
      * SubscriptionTier enum으로 구독 티어 저장 (헬퍼 메서드)
      */
-    suspend fun saveSubscriptionTier(tier: com.inik.camcon.domain.model.SubscriptionTier?) {
+    override suspend fun saveSubscriptionTier(tier: com.inik.camcon.domain.model.SubscriptionTier?) {
         if (tier == null) {
             setSubscriptionTier(null)
             return

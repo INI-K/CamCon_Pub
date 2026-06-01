@@ -1198,6 +1198,22 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch(ioDispatcher) {
             checkUsbPermissionStatus()
         }
+
+        // 포그라운드 진입 시점은 FGS 시작이 OS 정책상 허용되므로,
+        // onPause 백그라운드 시점에 재시작하지 못한 서비스를 여기서 보장한다.
+        lifecycleScope.launch(ioDispatcher) {
+            try {
+                val isServiceRunning = isServiceRunning(BackgroundSyncService::class.java)
+                if (!isServiceRunning) {
+                    LogcatManager.d(TAG, " 포그라운드 진입 - 백그라운드 서비스 재시작")
+                    withContext(Dispatchers.Main) {
+                        BackgroundSyncService.startService(this@MainActivity)
+                    }
+                }
+            } catch (e: Exception) {
+                LogcatManager.w(TAG, "포그라운드 백그라운드 서비스 재시작 실패", e)
+            }
+        }
     }
 
     override fun onPause() {
@@ -1212,7 +1228,25 @@ class MainActivity : ComponentActivity() {
                 if (!isServiceRunning) {
                     LogcatManager.d(TAG, " 백그라운드 서비스 재시작 필요")
                     withContext(Dispatchers.Main) {
-                        BackgroundSyncService.startService(this@MainActivity)
+                        try {
+                            BackgroundSyncService.startService(this@MainActivity)
+                        } catch (e: Exception) {
+                            // Android 12+에서 앱이 완전히 백그라운드 상태이면
+                            // startForegroundService가 ForegroundServiceStartNotAllowedException을
+                            // 던진다. onPause 시점에 FGS 재시작은 OS 정책상 보장되지 않으므로
+                            // 실패를 명시적으로 기록하고 다음 포그라운드 진입(onResume) 시 재시도에 맡긴다.
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                                e is android.app.ForegroundServiceStartNotAllowedException
+                            ) {
+                                LogcatManager.w(
+                                    TAG,
+                                    "백그라운드 상태에서 포그라운드 서비스 시작 불가 - 다음 포그라운드 진입 시 재시도",
+                                    e
+                                )
+                            } else {
+                                throw e
+                            }
+                        }
                     }
                 } else {
                     LogcatManager.d(TAG, " 백그라운드 서비스 이미 실행 중")

@@ -37,16 +37,20 @@ class PlayStoreVersionDataSource @Inject constructor(
                     readTimeout = 10000
                 }
 
-                val responseCode = connection.responseCode
-                if (responseCode == HttpURLConnection.HTTP_OK) {
-                    val reader = BufferedReader(InputStreamReader(connection.inputStream))
-                    val response = reader.readText()
-                    reader.close()
+                try {
+                    val responseCode = connection.responseCode
+                    if (responseCode == HttpURLConnection.HTTP_OK) {
+                        val response = BufferedReader(
+                            InputStreamReader(connection.inputStream)
+                        ).use { it.readText() }
 
-                    return@withContext parsePlayStoreResponse(response, packageName)
-                } else {
-                    Log.e("PlayStoreVersion", "HTTP 오류: $responseCode")
-                    null
+                        return@withContext parsePlayStoreResponse(response, packageName)
+                    } else {
+                        Log.e("PlayStoreVersion", "HTTP 오류: $responseCode")
+                        null
+                    }
+                } finally {
+                    connection.disconnect()
                 }
             } catch (e: Exception) {
                 Log.e("PlayStoreVersion", "Play Store 버전 조회 실패", e)
@@ -73,12 +77,16 @@ class PlayStoreVersionDataSource @Inject constructor(
                     readTimeout = 10000
                 }
 
-                if (connection.responseCode == HttpURLConnection.HTTP_OK) {
-                    val response = connection.inputStream.bufferedReader().readText()
-                    return@withContext parsePlayStoreHtml(response)
-                } else {
-                    Log.e("PlayStoreVersion", "API 오류: ${connection.responseCode}")
-                    null
+                try {
+                    if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                        val response = connection.inputStream.bufferedReader().use { it.readText() }
+                        return@withContext parsePlayStoreHtml(response)
+                    } else {
+                        Log.e("PlayStoreVersion", "API 오류: ${connection.responseCode}")
+                        null
+                    }
+                } finally {
+                    connection.disconnect()
                 }
             } catch (e: Exception) {
                 Log.e("PlayStoreVersion", "JSON API 조회 실패", e)

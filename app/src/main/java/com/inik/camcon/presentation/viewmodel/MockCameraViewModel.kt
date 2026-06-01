@@ -4,8 +4,9 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.CameraNative
+import com.inik.camcon.di.IoDispatcher
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -40,7 +41,8 @@ sealed class MockCameraUiEvent {
 
 @HiltViewModel
 class MockCameraViewModel @Inject constructor(
-    private val cameraNative: CameraNative
+    private val cameraNative: CameraNative,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
     companion object {
@@ -117,7 +119,7 @@ class MockCameraViewModel @Inject constructor(
             try {
                 _uiState.update { it.copy(isLoading = true) }
 
-                val info = withContext(Dispatchers.IO) {
+                val info = withContext(ioDispatcher) {
                     cameraNative.getMockCameraInfo()
                 }
 
@@ -156,7 +158,7 @@ class MockCameraViewModel @Inject constructor(
             try {
                 _uiState.update { it.copy(isLoading = true) }
 
-                val result = withContext(Dispatchers.IO) {
+                val result = withContext(ioDispatcher) {
                     cameraNative.enableMockCamera(enable)
                 }
 
@@ -181,7 +183,7 @@ class MockCameraViewModel @Inject constructor(
             try {
                 _uiState.update { it.copy(isLoading = true) }
 
-                val result = withContext(Dispatchers.IO) {
+                val result = withContext(ioDispatcher) {
                     cameraNative.setMockCameraImages(paths.toTypedArray())
                 }
 
@@ -206,7 +208,7 @@ class MockCameraViewModel @Inject constructor(
             try {
                 _uiState.update { it.copy(isLoading = true) }
 
-                val result = withContext(Dispatchers.IO) {
+                val result = withContext(ioDispatcher) {
                     cameraNative.clearMockCameraImages()
                 }
 
@@ -229,7 +231,7 @@ class MockCameraViewModel @Inject constructor(
     fun setDelay(delayMs: Int) {
         viewModelScope.launch {
             try {
-                val result = withContext(Dispatchers.IO) {
+                val result = withContext(ioDispatcher) {
                     cameraNative.setMockCameraDelay(delayMs)
                 }
 
@@ -252,7 +254,7 @@ class MockCameraViewModel @Inject constructor(
             try {
                 _uiState.update { it.copy(isLoading = true) }
 
-                val result = withContext(Dispatchers.IO) {
+                val result = withContext(ioDispatcher) {
                     cameraNative.setMockCameraAutoCapture(enable, intervalMs)
                 }
 
@@ -281,7 +283,7 @@ class MockCameraViewModel @Inject constructor(
     fun simulateError(errorCode: Int, message: String) {
         viewModelScope.launch {
             try {
-                val result = withContext(Dispatchers.IO) {
+                val result = withContext(ioDispatcher) {
                     cameraNative.simulateCameraError(errorCode, message)
                 }
 
@@ -311,7 +313,7 @@ class MockCameraViewModel @Inject constructor(
     fun setMockCameraModel(manufacturer: String, model: String) {
         viewModelScope.launch {
             try {
-                val result = withContext(Dispatchers.IO) {
+                val result = withContext(ioDispatcher) {
                     cameraNative.setMockCameraModel(manufacturer, model)
                 }
 

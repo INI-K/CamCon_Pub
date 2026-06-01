@@ -93,6 +93,12 @@ class PhotoListManager @Inject constructor(
     private val _currentFilter = MutableStateFlow(FileTypeFilter.JPG)
     val currentFilter: StateFlow<FileTypeFilter> = _currentFilter.asStateFlow()
 
+    // 현재 구독 티어 — 페이징/초기 로드 시 RAW 게이팅에 사용한다.
+    // 티어를 명확히 아는 경로(changeFileTypeFilter / loadLocalPhotos / load*PhotosTier)에서 갱신하며,
+    // 페이징 경로는 이 값을 사용해 FREE 하드코딩으로 인한 PRO/ADMIN RAW 누락을 방지한다.
+    @Volatile
+    private var currentTier: SubscriptionTier = SubscriptionTier.FREE
+
     // 프리로딩 상태
     private val _prefetchedPage = MutableStateFlow(0)
 
@@ -102,8 +108,13 @@ class PhotoListManager @Inject constructor(
     /**
      * 초기 사진 목록 로드
      */
-    fun loadInitialPhotos(isConnected: Boolean, isPtpipConnected: Boolean = false) {
-        Log.d(TAG, "=== loadInitialPhotos 호출 ===")
+    fun loadInitialPhotos(
+        isConnected: Boolean,
+        isPtpipConnected: Boolean = false,
+        tier: SubscriptionTier = currentTier
+    ) {
+        Log.d(TAG, "=== loadInitialPhotos 호출 (티어=$tier) ===")
+        currentTier = tier
         managerScope.launch {
             Log.d(TAG, "loadInitialPhotos 코루틴 시작")
 
@@ -158,7 +169,7 @@ class PhotoListManager @Inject constructor(
 
                     Log.d(TAG, "사진 목록 불러오기 성공: ${paginatedPhotos.photos.size}개")
                     _allPhotos.value = paginatedPhotos.photos
-                    updateFilteredPhotos(SubscriptionTier.FREE) // 기본값으로 FREE 티어 사용
+                    updateFilteredPhotos(currentTier)
 
                     _currentPage.value = paginatedPhotos.currentPage
                     _totalPages.value = paginatedPhotos.totalPages
@@ -187,12 +198,10 @@ class PhotoListManager @Inject constructor(
     /**
      * 다음 페이지 로드
      */
-    fun loadNextPage(isPtpipConnected: Boolean = false) {
-        if (_isLoadingMore.value || !_hasNextPage.value) {
-            Log.d(
-                TAG,
-                "loadNextPage 건너뛰기: isLoadingMore=${_isLoadingMore.value}, hasNextPage=${_hasNextPage.value}"
-            )
+    fun loadNextPage(isPtpipConnected: Boolean = false, tier: SubscriptionTier = currentTier) {
+        currentTier = tier
+        if (!_hasNextPage.value) {
+            Log.d(TAG, "loadNextPage 건너뛰기: hasNextPage=false")
             return
         }
 
@@ -213,53 +222,56 @@ class PhotoListManager @Inject constructor(
             return
         }
 
+        // 가드+잠금을 원자적으로 수행 — loadNextPage/prefetchNextPage 동시 호출 시 중복 페이지 로딩 방지.
+        if (!_isLoadingMore.compareAndSet(expect = false, update = true)) {
+            Log.d(TAG, "loadNextPage 건너뛰기: 이미 로딩 중")
+            return
+        }
+
         Log.d(TAG, "=== loadNextPage 시작 ===")
         managerScope.launch {
-            _isLoadingMore.value = true
-            Log.d(TAG, "isLoadingMore = true 설정됨")
-
-            if (!isManagerActive) {
-                Log.d(TAG, "⛔ loadNextPage 중단됨 (시작 후)")
-                return@launch
-            }
-
-            val nextPage = _currentPage.value + 1
-            getCameraPhotosPagedUseCase(page = nextPage, pageSize = PREFETCH_PAGE_SIZE).fold(
-                onSuccess = { paginatedPhotos ->
-                    if (!isManagerActive) {
-                        Log.d(TAG, "⛔ loadNextPage 중단됨 (성공 후)")
-                        return@launch
-                    }
-
-                    Log.d(TAG, "loadNextPage 성공: ${paginatedPhotos.photos.size}개 추가")
-                    val currentPhotos = _allPhotos.value
-                    val newPhotos = currentPhotos + paginatedPhotos.photos
-
-                    _allPhotos.value = newPhotos
-                    updateFilteredPhotos(SubscriptionTier.FREE) // 기본값으로 FREE 티어 사용
-
-                    _currentPage.value = paginatedPhotos.currentPage
-                    _totalPages.value = paginatedPhotos.totalPages
-                    _hasNextPage.value = paginatedPhotos.hasNext
-
-                    Log.d(TAG, "isLoadingMore = false 설정됨")
-                },
-                onFailure = { exception ->
-                    if (isManagerActive) {
-                        Log.e(TAG, "loadNextPage 실패", exception)
-                        val errorMessage =
-                            errorHandlingManager.handleFileError(exception, "추가 사진 로딩")
-                        errorHandlingManager.emitError(
-                            ErrorType.FILE_SYSTEM,
-                            errorMessage,
-                            exception,
-                            ErrorSeverity.MEDIUM
-                        )
-                    }
+            try {
+                if (!isManagerActive) {
+                    Log.d(TAG, "⛔ loadNextPage 중단됨 (시작 후)")
+                    return@launch
                 }
-            )
 
-            _isLoadingMore.value = false
+                val nextPage = _currentPage.value + 1
+                getCameraPhotosPagedUseCase(page = nextPage, pageSize = PREFETCH_PAGE_SIZE).fold(
+                    onSuccess = { paginatedPhotos ->
+                        if (!isManagerActive) {
+                            Log.d(TAG, "⛔ loadNextPage 중단됨 (성공 후)")
+                            return@fold
+                        }
+
+                        Log.d(TAG, "loadNextPage 성공: ${paginatedPhotos.photos.size}개 추가")
+                        val currentPhotos = _allPhotos.value
+                        val newPhotos = currentPhotos + paginatedPhotos.photos
+
+                        _allPhotos.value = newPhotos
+                        updateFilteredPhotos(currentTier)
+
+                        _currentPage.value = paginatedPhotos.currentPage
+                        _totalPages.value = paginatedPhotos.totalPages
+                        _hasNextPage.value = paginatedPhotos.hasNext
+                    },
+                    onFailure = { exception ->
+                        if (isManagerActive) {
+                            Log.e(TAG, "loadNextPage 실패", exception)
+                            val errorMessage =
+                                errorHandlingManager.handleFileError(exception, "추가 사진 로딩")
+                            errorHandlingManager.emitError(
+                                ErrorType.FILE_SYSTEM,
+                                errorMessage,
+                                exception,
+                                ErrorSeverity.MEDIUM
+                            )
+                        }
+                    }
+                )
+            } finally {
+                _isLoadingMore.value = false
+            }
         }
     }
 
@@ -269,6 +281,7 @@ class PhotoListManager @Inject constructor(
     fun changeFileTypeFilter(filter: FileTypeFilter, currentTier: SubscriptionTier) {
         Log.d(TAG, "파일 타입 필터 변경: ${_currentFilter.value} -> $filter")
 
+        this.currentTier = currentTier
         _currentFilter.value = filter
         updateFilteredPhotos(currentTier)
 
@@ -344,7 +357,12 @@ class PhotoListManager @Inject constructor(
     /**
      * 프리로딩 체크 (사용자가 특정 인덱스에 도달했을 때)
      */
-    fun onPhotoIndexReached(currentIndex: Int, isPtpipConnected: Boolean = false) {
+    fun onPhotoIndexReached(
+        currentIndex: Int,
+        isPtpipConnected: Boolean = false,
+        tier: SubscriptionTier = currentTier
+    ) {
+        currentTier = tier
         val filteredPhotos = _filteredPhotos.value
         val totalFilteredPhotos = filteredPhotos.size
         val currentPage = _currentPage.value
@@ -375,18 +393,20 @@ class PhotoListManager @Inject constructor(
 
         if (shouldPrefetch) {
             Log.d(TAG, "🚀 프리로드 트리거: 현재 인덱스 $currentIndex")
-            prefetchNextPage(isPtpipConnected)
-            _prefetchedPage.value = currentPage + 1
+            // prefetch가 실제로 잠금에 성공해 시작된 경우에만 prefetchedPage를 전진시킨다.
+            if (prefetchNextPage(isPtpipConnected)) {
+                _prefetchedPage.value = currentPage + 1
+            }
         }
     }
 
     /**
      * 백그라운드에서 다음 페이지를 미리 로드
      */
-    private fun prefetchNextPage(isPtpipConnected: Boolean = false) {
-        if (_isLoadingMore.value || !_hasNextPage.value) {
-            Log.d(TAG, "프리로드 건너뛰기")
-            return
+    private fun prefetchNextPage(isPtpipConnected: Boolean = false): Boolean {
+        if (!_hasNextPage.value) {
+            Log.d(TAG, "프리로드 건너뛰기: hasNextPage=false")
+            return false
         }
 
         // PTPIP 연결 상태 체크 (프리로딩도 차단)
@@ -398,51 +418,62 @@ class PhotoListManager @Inject constructor(
                 null,
                 ErrorSeverity.LOW
             )
-            return
+            return false
+        }
+
+        // 가드+잠금을 원자적으로 수행 — loadNextPage/prefetchNextPage 동시 호출 시 중복 페이지 로딩 방지.
+        if (!_isLoadingMore.compareAndSet(expect = false, update = true)) {
+            Log.d(TAG, "프리로드 건너뛰기: 이미 로딩 중")
+            return false
         }
 
         Log.d(TAG, "=== prefetchNextPage 시작 ===")
         managerScope.launch {
-            _isLoadingMore.value = true
+            try {
+                val nextPage = _currentPage.value + 1
+                getCameraPhotosPagedUseCase(page = nextPage, pageSize = PREFETCH_PAGE_SIZE).fold(
+                    onSuccess = { paginatedPhotos ->
+                        val currentPhotos = _allPhotos.value
+                        val newPhotos = currentPhotos + paginatedPhotos.photos
 
-            val nextPage = _currentPage.value + 1
-            getCameraPhotosPagedUseCase(page = nextPage, pageSize = PREFETCH_PAGE_SIZE).fold(
-                onSuccess = { paginatedPhotos ->
-                    val currentPhotos = _allPhotos.value
-                    val newPhotos = currentPhotos + paginatedPhotos.photos
+                        _allPhotos.value = newPhotos
+                        updateFilteredPhotos(currentTier)
 
-                    _allPhotos.value = newPhotos
-                    updateFilteredPhotos(SubscriptionTier.FREE) // 기본값 사용
+                        _currentPage.value = paginatedPhotos.currentPage
+                        _totalPages.value = paginatedPhotos.totalPages
+                        _hasNextPage.value = paginatedPhotos.hasNext
 
-                    _currentPage.value = paginatedPhotos.currentPage
-                    _totalPages.value = paginatedPhotos.totalPages
-                    _hasNextPage.value = paginatedPhotos.hasNext
-
-                    Log.d(TAG, "백그라운드 프리로드 완료: 추가된 사진 ${paginatedPhotos.photos.size}개")
-                },
-                onFailure = { exception ->
-                    Log.e(TAG, "백그라운드 프리로드 실패", exception)
-                    val errorMessage = errorHandlingManager.handleFileError(exception, "백그라운드 로딩")
-                    errorHandlingManager.emitError(
-                        ErrorType.FILE_SYSTEM,
-                        errorMessage,
-                        exception,
-                        ErrorSeverity.LOW
-                    )
-                }
-            )
-
-            _isLoadingMore.value = false
+                        Log.d(TAG, "백그라운드 프리로드 완료: 추가된 사진 ${paginatedPhotos.photos.size}개")
+                    },
+                    onFailure = { exception ->
+                        Log.e(TAG, "백그라운드 프리로드 실패", exception)
+                        val errorMessage = errorHandlingManager.handleFileError(exception, "백그라운드 로딩")
+                        errorHandlingManager.emitError(
+                            ErrorType.FILE_SYSTEM,
+                            errorMessage,
+                            exception,
+                            ErrorSeverity.LOW
+                        )
+                    }
+                )
+            } finally {
+                _isLoadingMore.value = false
+            }
         }
+        return true
     }
 
     /**
      * 사진 목록 새로고침
      */
-    fun refreshPhotos(isConnected: Boolean, isPtpipConnected: Boolean = false) {
+    fun refreshPhotos(
+        isConnected: Boolean,
+        isPtpipConnected: Boolean = false,
+        tier: SubscriptionTier = currentTier
+    ) {
         Log.d(TAG, "사진 목록 새로고침")
         _prefetchedPage.value = 0
-        loadInitialPhotos(isConnected, isPtpipConnected)
+        loadInitialPhotos(isConnected, isPtpipConnected, tier)
     }
 
     /**
@@ -475,8 +506,9 @@ class PhotoListManager @Inject constructor(
      *
      * RAW 게이팅은 [ValidateImageFormatUseCase] 단일 지점에 위임한다.
      */
-    fun loadLocalPhotos(currentTier: SubscriptionTier = SubscriptionTier.FREE) {
+    fun loadLocalPhotos(currentTier: SubscriptionTier = this.currentTier) {
         Log.d(TAG, "=== loadLocalPhotos 호출 (티어=$currentTier) ===")
+        this.currentTier = currentTier
         managerScope.launch {
             if (!isManagerActive) {
                 Log.d(TAG, "⛔ loadLocalPhotos 작업 중단됨 (매니저 비활성)")

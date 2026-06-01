@@ -6,12 +6,13 @@ import com.inik.camcon.data.network.ptpip.IpAddressValidator
 import com.inik.camcon.domain.model.PtpSessionState
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.PtpipCameraInfo
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.nio.ByteBuffer
@@ -81,7 +82,12 @@ class PtpipConnectionManager @Inject constructor(
 
     fun getSessionState(): PtpSessionState = sessionState.get()
 
-    fun isSessionReady(): Boolean = sessionState.get() == PtpSessionState.READY
+    fun isSessionReady(): Boolean {
+        // 세션이 열려 있으면 준비된 것으로 간주.
+        // READY 상태로의 전이 경로가 없어 OPEN도 포함한다.
+        val current = sessionState.get()
+        return current == PtpSessionState.OPEN || current == PtpSessionState.READY
+    }
 
     // endregion
 
@@ -123,6 +129,7 @@ class PtpipConnectionManager @Inject constructor(
 
             val connectionNumber = performCommandInitialization()
             if (connectionNumber == -1) {
+                closeConnections(closeSession = false)
                 forceTransition(PtpSessionState.DISCONNECTED)
                 return@withContext false
             }
@@ -134,11 +141,13 @@ class PtpipConnectionManager @Inject constructor(
             eventSocket?.connect(InetSocketAddress(camera.ipAddress, camera.port), 5000)
 
             if (!performEventInitialization(connectionNumber)) {
+                closeConnections(closeSession = false)
                 forceTransition(PtpSessionState.DISCONNECTED)
                 return@withContext false
             }
 
             if (!tryTransition(PtpSessionState.SOCKET_CONNECTED)) {
+                closeConnections(closeSession = false)
                 forceTransition(PtpSessionState.DISCONNECTED)
                 return@withContext false
             }
@@ -166,12 +175,12 @@ class PtpipConnectionManager @Inject constructor(
 
         ptpTransactionMutex.withLock {
             try {
-                return@withContext withTimeout(10_000) {
+                return@withContext withTimeoutOrNull(10_000) {
                     Log.d(TAG, "GetDeviceInfo 요청")
 
                     val socket = commandSocket ?: run {
                         Log.e(TAG, "GetDeviceInfo 실패: Command 소켓이 null")
-                        return@withTimeout null
+                        return@withTimeoutOrNull null
                     }
 
                     val output = socket.getOutputStream()
@@ -192,7 +201,7 @@ class PtpipConnectionManager @Inject constructor(
                             Log.d(TAG, "디바이스 데이터 패킷 크기: ${deviceDataPacket.size} bytes")
                             val deviceInfo = parseDeviceInfo(deviceDataPacket)
                             Log.i(TAG, "파싱된 카메라 정보: ${deviceInfo.manufacturer}")
-                            return@withTimeout deviceInfo
+                            return@withTimeoutOrNull deviceInfo
                         } else {
                             Log.e(TAG, "GetDeviceInfo 실패: 유효한 디바이스 데이터 패킷 없음")
                         }
@@ -200,8 +209,10 @@ class PtpipConnectionManager @Inject constructor(
                         Log.e(TAG, "GetDeviceInfo 실패: 응답 패킷 없음")
                     }
 
-                    return@withTimeout null
+                    return@withTimeoutOrNull null
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "GetDeviceInfo 실패: ${e.message}")
                 return@withContext null
@@ -563,12 +574,24 @@ class PtpipConnectionManager @Inject constructor(
                 val remainingBytes = ByteArray(remainingLength)
                 var totalRead = 0
                 while (totalRead < remainingLength) {
-                    val read = input.read(remainingBytes, totalRead, remainingLength - totalRead)
+                    val read = try {
+                        input.read(remainingBytes, totalRead, remainingLength - totalRead)
+                    } catch (e: java.net.SocketTimeoutException) {
+                        // 본문 수신 도중 타임아웃: 부분 패킷이므로 손상 처리
+                        Log.e(TAG, "패킷 본문 수신 타임아웃: 예상 $remainingLength, 실제 $totalRead")
+                        -1
+                    }
                     if (read <= 0) {
                         Log.e(TAG, "패킷 읽기 중단: 예상 $remainingLength, 실제 $totalRead")
                         break
                     }
                     totalRead += read
+                }
+
+                // 4-1. 부분 수신(손상) 패킷은 조립/추가하지 않고 중단
+                if (totalRead < remainingLength) {
+                    Log.e(TAG, "손상된 패킷 폐기: 예상 $remainingLength, 실제 $totalRead")
+                    break
                 }
 
                 // 5. 전체 패킷 조립

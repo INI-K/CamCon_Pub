@@ -159,51 +159,48 @@ class ServerPhotosViewModel @Inject constructor(
     private fun loadPhotosFromFileSystem(): List<CapturedPhoto> {
         val photos = mutableListOf<CapturedPhoto>()
 
-        try {
-            // 가능한 외부 저장소 경로들
-            val possiblePaths = listOf(
-                "/storage/emulated/0/DCIM/CamCon",
-                "/storage/self/primary/DCIM/CamCon",
-                "/sdcard/DCIM/CamCon"
-            )
+        // 가능한 외부 저장소 경로들
+        val possiblePaths = listOf(
+            "/storage/emulated/0/DCIM/CamCon",
+            "/storage/self/primary/DCIM/CamCon",
+            "/sdcard/DCIM/CamCon"
+        )
 
-            for (path in possiblePaths) {
-                val photoDir = File(path)
-                if (photoDir.exists() && photoDir.isDirectory) {
-                    Log.d("ServerPhotosViewModel", "DCIM/CamCon 폴더 발견: $path")
+        // 예외를 삼키지 않고 상위로 전파해, 폴백마저 실패하면 loadLocalPhotos()의
+        // catch에서 uiState.error를 설정하도록 한다(빈 목록과 로딩 실패를 구분).
+        for (path in possiblePaths) {
+            val photoDir = File(path)
+            if (photoDir.exists() && photoDir.isDirectory) {
+                Log.d("ServerPhotosViewModel", "DCIM/CamCon 폴더 발견: $path")
 
-                    val imageExtensions =
-                        setOf("jpg", "jpeg", "png", "webp", "bmp", "nef", "cr2", "arw", "dng")
-                    val photoFiles = photoDir.listFiles { file ->
-                        file.isFile && file.extension.lowercase() in imageExtensions
-                    } ?: continue
+                val imageExtensions =
+                    setOf("jpg", "jpeg", "png", "webp", "bmp", "nef", "cr2", "arw", "dng")
+                val photoFiles = photoDir.listFiles { file ->
+                    file.isFile && file.extension.lowercase() in imageExtensions
+                } ?: continue
 
-                    photos.addAll(
-                        photoFiles
-                            .sortedByDescending { it.lastModified() }
-                            .map { file ->
-                                CapturedPhoto(
-                                    id = UUID.randomUUID().toString(),
-                                    filePath = file.absolutePath,
-                                    thumbnailPath = null,
-                                    captureTime = file.lastModified(),
-                                    cameraModel = "Unknown",
-                                    settings = null,
-                                    size = file.length(),
-                                    width = 0,
-                                    height = 0,
-                                    isDownloading = false
-                                )
-                            }
-                    )
+                photos.addAll(
+                    photoFiles
+                        .sortedByDescending { it.lastModified() }
+                        .map { file ->
+                            CapturedPhoto(
+                                id = UUID.randomUUID().toString(),
+                                filePath = file.absolutePath,
+                                thumbnailPath = null,
+                                captureTime = file.lastModified(),
+                                cameraModel = "Unknown",
+                                settings = null,
+                                size = file.length(),
+                                width = 0,
+                                height = 0,
+                                isDownloading = false
+                            )
+                        }
+                )
 
-                    Log.d("ServerPhotosViewModel", "직접 파일 시스템에서 사진 로드: ${photos.size}개")
-                    break // 첫 번째로 발견된 경로에서 로드
-                }
+                Log.d("ServerPhotosViewModel", "직접 파일 시스템에서 사진 로드: ${photos.size}개")
+                break // 첫 번째로 발견된 경로에서 로드
             }
-
-        } catch (e: Exception) {
-            Log.e("ServerPhotosViewModel", "직접 파일 시스템 접근 실패", e)
         }
 
         return photos

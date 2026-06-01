@@ -153,26 +153,16 @@ class CameraConnectionManager @Inject constructor(
     private suspend fun connectGeneralCamera(): Result<Boolean> {
         // USB 연결이 안되면 일반 초기화 시도
         Log.d("카메라연결매니저", "일반 카메라 초기화 시도")
+        // 네이티브 initCamera()는 성공 시 정확히 "OK"를, 실패 시 gphoto2 에러 문자열을 반환한다.
+        // 부분 일치(contains)는 우연한 매칭/누락 위험이 있으므로 성공 토큰을 정확히 비교한다.
         val result = nativeDataSource.initCamera()
-        return if (result.contains("success", ignoreCase = true)) {
+        return if (result.trim().equals("OK", ignoreCase = true)) {
             Log.d("카메라연결매니저", "일반 카메라 초기화 성공")
             _isConnected.value = true
             _isInitializing.value = false  // 초기화 완료 시 상태 해제
             Log.d("카메라연결매니저", "카메라 초기화 상태 변경: false (일반 카메라 연결 성공)")
             updateCameraList()
             Result.success(true)
-        } else if (result.contains("-2000")) {
-            // PTP 타임아웃 오류 감지 (문자열 형태)
-            Log.e("카메라연결매니저", "일반 초기화에서 PTP 타임아웃 오류 감지: $result")
-            _isInitializing.value = false  // 실패 시에도 상태 해제
-            Log.d("카메라연결매니저", "카메라 초기화 상태 변경: false (일반 PTP 타임아웃)")
-            Result.failure(PtpTimeoutException("카메라 연결 시 PTP 타임아웃이 발생했습니다. 앱을 재시작해주세요."))
-        } else if (result.contains("-10")) {
-            // -10 타임아웃 오류 감지 - 재시도 없이 바로 재시작 요청
-            Log.e("카메라연결매니저", "일반 초기화에서 -10 타임아웃 오류 감지: $result")
-            _isInitializing.value = false  // 실패 시에도 상태 해제
-            Log.d("카메라연결매니저", "카메라 초기화 상태 변경: false (일반 -10 타임아웃)")
-            Result.failure(PtpTimeoutException("카메라 연결에 실패했습니다.\n연결 상태를 확인하고 앱을 재시작해주세요."))
         } else {
             Log.e("카메라연결매니저", "일반 카메라 초기화 실패: $result")
             _isInitializing.value = false  // 실패 시에도 상태 해제

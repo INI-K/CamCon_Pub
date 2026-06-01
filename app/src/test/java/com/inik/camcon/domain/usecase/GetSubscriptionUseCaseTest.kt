@@ -3,6 +3,7 @@ package com.inik.camcon.domain.usecase
 import app.cash.turbine.test
 import com.inik.camcon.domain.model.Subscription
 import com.inik.camcon.domain.model.SubscriptionTier
+import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.repository.SubscriptionRepository
 import com.inik.camcon.domain.util.Logger
 import io.mockk.coEvery
@@ -25,6 +26,7 @@ class GetSubscriptionUseCaseTest {
 
     private lateinit var useCase: GetSubscriptionUseCase
     private lateinit var subscriptionRepository: SubscriptionRepository
+    private lateinit var appSettingsRepository: AppSettingsRepository
     private lateinit var logger: Logger
 
     private val testDispatcher = StandardTestDispatcher()
@@ -33,6 +35,7 @@ class GetSubscriptionUseCaseTest {
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         subscriptionRepository = mockk()
+        appSettingsRepository = mockk(relaxed = true)
         logger = mockk(relaxed = true)
     }
 
@@ -49,7 +52,7 @@ class GetSubscriptionUseCaseTest {
         )
 
         // When
-        useCase = GetSubscriptionUseCase(subscriptionRepository, logger, this)
+        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, logger, this)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
@@ -63,7 +66,7 @@ class GetSubscriptionUseCaseTest {
         val proSubscription = Subscription(tier = SubscriptionTier.PRO)
         coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(proSubscription)
 
-        useCase = GetSubscriptionUseCase(subscriptionRepository, logger, this)
+        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, logger, this)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // When & Then
@@ -80,7 +83,7 @@ class GetSubscriptionUseCaseTest {
         val nullTierSubscription = Subscription(tier = null)
         coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(nullTierSubscription)
 
-        useCase = GetSubscriptionUseCase(subscriptionRepository, logger, this)
+        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, logger, this)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // When & Then
@@ -99,7 +102,7 @@ class GetSubscriptionUseCaseTest {
         )
         coEvery { subscriptionRepository.syncSubscriptionStatus() } returns Unit
 
-        useCase = GetSubscriptionUseCase(subscriptionRepository, logger, this)
+        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, logger, this)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // When
@@ -116,7 +119,7 @@ class GetSubscriptionUseCaseTest {
         val adminSubscription = Subscription(tier = SubscriptionTier.ADMIN, isActive = true)
         coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(adminSubscription)
 
-        useCase = GetSubscriptionUseCase(subscriptionRepository, logger, this)
+        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, logger, this)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // When
@@ -135,7 +138,7 @@ class GetSubscriptionUseCaseTest {
         )
         coEvery { subscriptionRepository.syncSubscriptionStatus() } returns Unit
 
-        useCase = GetSubscriptionUseCase(subscriptionRepository, logger, this)
+        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, logger, this)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // When

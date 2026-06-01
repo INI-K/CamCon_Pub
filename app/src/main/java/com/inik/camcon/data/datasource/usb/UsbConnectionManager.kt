@@ -229,35 +229,42 @@ class UsbConnectionManager @Inject constructor(
                     return@launch
                 }
 
-                // 초기화 중이거나 이미 연결되어 있으면 중복 연결 방지
-                if (isInitializingNativeCamera.get()) {
-                    Log.d(TAG, "네이티브 카메라가 이미 초기화 중 - 중복 연결 방지")
-                    return@launch
-                }
-
                 if (_isNativeCameraConnected.value) {
                     Log.d(TAG, "네이티브 카메라가 이미 연결되어 있음 - 중복 연결 방지")
                     return@launch
                 }
 
+                // 초기화 게이트를 원자적으로 선점해 동시 진입 시 openDevice 중복 호출(USB 연결 누수) 방지.
+                // 선점 실패(이미 다른 코루틴이 초기화 중)면 즉시 종료한다.
+                if (!isInitializingNativeCamera.compareAndSet(false, true)) {
+                    Log.d(TAG, "네이티브 카메라가 이미 초기화 중 - 중복 연결 방지")
+                    return@launch
+                }
+
+                // 이 시점부터 isInitializingNativeCamera=true 를 점유하므로,
+                // 초기화에 도달하지 못하는 모든 경로에서 게이트를 직접 해제해야 한다.
                 val connection = usbManager.openDevice(device)
-                connection?.let {
-                    currentConnection = it
-                    currentDevice = device
-                    val fd = it.fileDescriptor
-
-                    Log.d(TAG, "USB 디바이스 연결 성공. FD: $fd")
-                    logDeviceInfo(device)
-
-                    // 네이티브 카메라 초기화 시도
-                    initializeNativeCamera(fd)
-                } ?: run {
+                if (connection == null) {
                     Log.e(TAG, "USB 디바이스 열기 실패: ${device.deviceName}")
+                    isInitializingNativeCamera.set(false)
                     reportError(UsbErrorKind.PermissionDenied)
                     updateConnectionState(false, "USB 디바이스 열기 실패")
+                    return@launch
                 }
+
+                currentConnection = connection
+                currentDevice = device
+                val fd = connection.fileDescriptor
+
+                Log.d(TAG, "USB 디바이스 연결 성공. FD: $fd")
+                logDeviceInfo(device)
+
+                // 네이티브 카메라 초기화 시도 (finally 에서 게이트 해제)
+                initializeNativeCamera(fd)
             } catch (e: Exception) {
                 Log.e(TAG, "카메라 연결 실패", e)
+                // 게이트를 점유한 채 예외로 빠져나가는 경우를 대비해 해제한다.
+                isInitializingNativeCamera.set(false)
                 reportError(UsbErrorKind.Restart)
                 updateConnectionState(false, "카메라 연결 실패")
             }
@@ -286,20 +293,15 @@ class UsbConnectionManager @Inject constructor(
                     return@withLock
                 }
 
-                // 초기화 진행 중 체크
-                if (isInitializingNativeCamera.get()) {
-                    Log.d(TAG, "네이티브 카메라 초기화가 이미 진행 중 - 대기: $fd")
-                    return@withLock
-                }
-
                 // 이미 카메라가 연결되어 있으면 재초기화 차단
                 if (_isNativeCameraConnected.value) {
                     Log.d(TAG, "카메라가 이미 연결되어 있음 - 재초기화 차단: $fd")
                     return@withLock
                 }
 
+                // isInitializingNativeCamera 게이트는 connectToCamera 진입 시
+                // compareAndSet(false, true)로 이미 선점되어 있고, 본 함수의 finally 에서 해제한다.
                 Log.d(TAG, "네이티브 카메라 초기화 시작: fd=$fd")
-                isInitializingNativeCamera.set(true)
                 lastInitializedFd = fd
 
                 // libgphoto2 플러그인 디렉토리 확인 및 생성 (앱 private 디렉토리에)
@@ -512,8 +514,8 @@ class UsbConnectionManager @Inject constructor(
             isInitializingNativeCamera.set(false)
             disconnectionCallback?.invoke()
         } finally {
-            // 처리 완료 후 상태 리셋 (3초 후)
-            delay(3000)
+            // 정리 완료 즉시 게이트 해제. 진입 시 compareAndSet 이 동시 중복 진입을 이미 막으므로
+            // 별도 쿨다운(delay) 없이 리셋해야 빠른 재연결 중 후속 분리/에러 처리가 누락되지 않는다.
             isHandlingDisconnection.set(false)
             Log.d(TAG, "USB 분리 처리 상태 리셋")
         }

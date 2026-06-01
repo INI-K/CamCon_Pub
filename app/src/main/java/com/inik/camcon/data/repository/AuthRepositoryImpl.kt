@@ -9,6 +9,9 @@ import com.inik.camcon.domain.model.Subscription
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.model.User
 import com.inik.camcon.domain.repository.AuthRepository
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
@@ -288,30 +291,29 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun getUsersByTier(tier: SubscriptionTier): List<User> {
         return try {
             // 구독 정보에서 특정 티어의 사용자들을 찾기
-            val users = mutableListOf<User>()
             val usersSnapshot = firestore.collection(USERS_COLLECTION).get().await()
 
-            for (userDoc in usersSnapshot.documents) {
-                val subscriptionDoc = firestore.collection(USERS_COLLECTION)
-                    .document(userDoc.id)
-                    .collection(SUBSCRIPTIONS_COLLECTION)
-                    .document("current")
-                    .get()
-                    .await()
+            // 사용자별 구독 조회를 직렬 await(N+1)하지 않고 병렬로 수행해 라운드트립을 단축
+            coroutineScope {
+                usersSnapshot.documents.map { userDoc ->
+                    async {
+                        val subscriptionDoc = firestore.collection(USERS_COLLECTION)
+                            .document(userDoc.id)
+                            .collection(SUBSCRIPTIONS_COLLECTION)
+                            .document("current")
+                            .get()
+                            .await()
 
-                if (subscriptionDoc.exists()) {
-                    val tierString = subscriptionDoc.getString("tier")
-                    if (tierString == tier.name) {
-                        userDoc.data?.let { data ->
-                            mapDocumentToUser(userDoc.id, data)?.let { user ->
-                                users.add(user)
-                            }
+                        if (subscriptionDoc.exists() &&
+                            subscriptionDoc.getString("tier") == tier.name
+                        ) {
+                            userDoc.data?.let { data -> mapDocumentToUser(userDoc.id, data) }
+                        } else {
+                            null
                         }
                     }
-                }
+                }.awaitAll().filterNotNull()
             }
-
-            users
         } catch (e: Exception) {
             Log.e(TAG, "티어별 사용자 조회 실패: $tier", e)
             emptyList()
