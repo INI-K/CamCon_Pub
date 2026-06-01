@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Camera Control UX v2 — newly added keys only -->
+    <string name="capture_shutter_cd">Auslöser</string>
+    <string name="capture_stop_timelapse">Zeitraffer stoppen</string>
+    <string name="unsupported_shooting_mode_message">Diese Kamera unterstützt den Aufnahmemodus %s nicht</string>
+    <string name="liveview_frame_stalled">Live-Ansicht angehalten</string>
+    <string name="autofocus_completed">Fokus eingestellt</string>
+</resources>

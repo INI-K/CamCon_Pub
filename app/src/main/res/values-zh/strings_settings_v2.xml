@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Top bar / common -->
+    <string name="settings_v2_title">设置</string>
+    <string name="settings_v2_back">返回</string>
+
+    <!-- Section titles -->
+    <string name="settings_v2_section_camera_control">相机控制设置（开发版）</string>
+    <string name="settings_v2_section_wifi_ptpip">Wi-Fi 相机连接（PTPIP）- 开发版</string>
+    <string name="settings_v2_section_color_transfer">色彩传输设置</string>
+    <string name="settings_v2_section_raw_download">RAW 文件下载设置</string>
+    <string name="settings_v2_section_connected_camera">已连接相机信息</string>
+    <string name="settings_v2_section_user_info">用户信息</string>
+    <string name="settings_v2_section_server">服务器设置（开发版）</string>
+    <string name="settings_v2_section_app">应用设置</string>
+    <string name="settings_v2_section_admin">ADMIN 专用设置</string>
+    <string name="settings_v2_section_info">信息</string>
+    <string name="settings_v2_section_referral">管理员推荐码管理</string>
+
+    <!-- Subscription / upgrade row -->
+    <string name="settings_v2_subscription_title">订阅管理 / 升级</string>
+    <string name="settings_v2_subscription_subtitle_tier">当前套餐: %s</string>
+    <string name="settings_v2_subscription_subtitle_default">管理套餐并解锁更多功能</string>
+
+    <!-- Camera control -->
+    <string name="settings_v2_camera_controls_title">显示相机控制</string>
+    <string name="settings_v2_camera_controls_on">显示实时取景和相机控制界面</string>
+    <string name="settings_v2_camera_controls_off">已禁用 - 将显示最新拍摄的照片</string>
+    <string name="settings_v2_liveview_title">启用实时取景</string>
+    <string name="settings_v2_liveview_subtitle">显示实时相机画面（ADMIN 专用）</string>
+    <string name="settings_v2_auto_event_title">自动接收事件</string>
+    <string name="settings_v2_auto_event_subtitle">进入相机控制标签时自动启动事件监听器</string>
+    <string name="settings_v2_liveview_locked_title">实时取景功能</string>
+    <string name="settings_v2_liveview_locked_subtitle">仅 ADMIN 级别可用的功能</string>
+    <string name="settings_v2_latest_photo_title">显示最新照片</string>
+    <string name="settings_v2_latest_photo_subtitle">关闭相机控制时显示最近拍摄的照片</string>
+
+    <!-- Wi-Fi PTPIP -->
+    <string name="settings_v2_wifi_camera_title">Wi-Fi 相机连接</string>
+    <string name="settings_v2_wifi_camera_on_last">已启用 - 上次连接: %s</string>
+    <string name="settings_v2_wifi_camera_on_none">已启用 - 无已连接相机</string>
+    <string name="settings_v2_wifi_camera_off">通过 Wi-Fi 远程控制相机</string>
+    <string name="settings_v2_wifi_connect_title">进行 WIFI 连接</string>
+    <string name="settings_v2_wifi_connect_subtitle">在与相机相同的 Wi-Fi 网络上连接（推荐）</string>
+    <string name="settings_v2_auto_discovery_title">自动搜索相机</string>
+    <string name="settings_v2_auto_discovery_subtitle">在网络中自动查找 PTPIP 相机</string>
+    <string name="settings_v2_auto_connect_title">自动连接</string>
+    <string name="settings_v2_auto_connect_subtitle">自动连接到上次连接的相机</string>
+    <string name="settings_v2_connection_manage_title">相机连接管理</string>
+    <string name="settings_v2_connection_manage_subtitle">%s - 点按查看详情</string>
+
+    <!-- Color transfer -->
+    <string name="settings_v2_color_transfer_title">色彩传输功能</string>
+    <string name="settings_v2_color_transfer_on_ref">已启用 - 已设置参考图像</string>
+    <string name="settings_v2_color_transfer_on_noref">已启用 - 无参考图像</string>
+    <string name="settings_v2_color_transfer_off">自动将参考图像的色彩应用到拍摄的照片</string>
+    <string name="settings_v2_color_transfer_detail_title">详细设置</string>
+    <string name="settings_v2_color_transfer_detail_subtitle">色彩传输算法和高级选项设置</string>
+
+    <!-- RAW download -->
+    <string name="settings_v2_raw_download_title">RAW 文件下载</string>
+    <string name="settings_v2_raw_download_on">已启用</string>
+    <string name="settings_v2_raw_download_off">已禁用</string>
+    <string name="settings_v2_raw_download_locked">仅 PRO、ADMIN、REFERRER 级别可用的功能</string>
+
+    <!-- Connected camera -->
+    <string name="settings_v2_connection_status_title">连接状态</string>
+    <string name="settings_v2_connection_type_usb">USB 连接</string>
+    <string name="settings_v2_connection_type_wifi">Wi-Fi 连接（PTPIP）</string>
+    <string name="settings_v2_connection_type_none">未连接</string>
+    <string name="settings_v2_camera_model_title">相机型号</string>
+    <string name="settings_v2_camera_model_none">无信息</string>
+    <string name="settings_v2_camera_limitation_title">功能限制说明</string>
+
+    <!-- User -->
+    <string name="settings_v2_user_default_name">用户</string>
+    <string name="settings_v2_user_login_required">需要登录</string>
+    <string name="settings_v2_logout_title">退出登录</string>
+    <string name="settings_v2_logout_in_progress_title">正在退出登录…</string>
+    <string name="settings_v2_logout_subtitle">退出当前账户</string>
+    <string name="settings_v2_logout_in_progress_subtitle">请稍候…</string>
+
+    <!-- Server -->
+    <string name="settings_v2_storage_title">存储空间</string>
+    <string name="settings_v2_storage_subtitle">TBD</string>
+    <string name="settings_v2_permissions_title">权限管理</string>
+    <string name="settings_v2_permissions_subtitle">设置服务器访问权限</string>
+
+    <!-- App -->
+    <string name="settings_v2_battery_title">电池优化例外设置</string>
+    <string name="settings_v2_battery_on">已从电池优化中排除</string>
+    <string name="settings_v2_battery_off">为后台连接和通知需设置为例外</string>
+
+    <!-- ADMIN -->
+    <string name="settings_v2_mock_camera_title">🧪 虚拟相机（Mock Camera）</string>
+    <string name="settings_v2_mock_camera_subtitle">用于开发/测试的虚拟相机功能</string>
+    <string name="settings_v2_camera_abilities_title">🔍 相机功能信息</string>
+    <string name="settings_v2_camera_abilities_subtitle">基于 libgphoto2 API 查询相机支持的功能</string>
+    <string name="settings_v2_native_log_title">📝 原生日志捕获</string>
+    <string name="settings_v2_native_log_on">已启用 - 正在将 libgphoto2 日志保存为 TXT 文件</string>
+    <string name="settings_v2_native_log_off">用于 PTP/IP 调试的详细日志记录</string>
+    <string name="settings_v2_native_log_view_title">查看日志文件</string>
+    <string name="settings_v2_native_log_view_subtitle">查看并发送已保存的原生日志文件</string>
+
+    <!-- Info -->
+    <string name="settings_v2_oss_license_title">开源许可证</string>
+    <string name="settings_v2_oss_license_subtitle">使用的开源库</string>
+    <string name="settings_v2_app_version_title">应用版本</string>
+
+    <!-- Referral (admin) -->
+    <string name="settings_v2_referral_usage_title">推荐码使用量</string>
+    <string name="settings_v2_referral_usage_subtitle">总计: %1$d 个 | 可用: %2$d 个 | 已使用: %3$d 个 (%4$d%%)</string>
+    <string name="settings_v2_referral_generate_title">生成 30 个推荐码</string>
+    <string name="settings_v2_referral_generate_subtitle">生成 30 个新的推荐码</string>
+    <string name="settings_v2_referral_generate_in_progress">正在生成…</string>
+    <string name="settings_v2_referral_extract_title">提取一个可用代码</string>
+    <string name="settings_v2_referral_extract_subtitle">将一个未使用的推荐码复制到剪贴板</string>
+</resources>

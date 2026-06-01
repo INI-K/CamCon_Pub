@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Camera Control UX v2 — newly added keys only -->
+    <string name="capture_shutter_cd">촬영</string>
+    <string name="capture_stop_timelapse">타임랩스 중지</string>
+    <string name="unsupported_shooting_mode_message">이 카메라는 %s 촬영 모드를 지원하지 않습니다</string>
+    <string name="liveview_frame_stalled">라이브뷰 정지됨</string>
+    <string name="autofocus_completed">초점 맞춤 완료</string>
+</resources>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- En-tête de galerie : nombre de photos / page -->
+    <plurals name="gallery_v2_photo_count">
+        <item quantity="one">%d photo</item>
+        <item quantity="other">%d photos</item>
+    </plurals>
+    <string name="gallery_v2_photo_count_with_page">%1$s (page %2$d/%3$d)</string>
+
+    <!-- Libellés EXIF -->
+    <string name="gallery_v2_exif_camera">Appareil photo</string>
+    <string name="gallery_v2_exif_iso">ISO</string>
+    <string name="gallery_v2_exif_shutter">Vitesse d\'obturation</string>
+    <string name="gallery_v2_exif_aperture">Ouverture</string>
+    <string name="gallery_v2_exif_focal_length">Distance focale</string>
+    <string name="gallery_v2_exif_white_balance">Balance des blancs</string>
+    <string name="gallery_v2_exif_flash">Flash</string>
+    <string name="gallery_v2_exif_date">Date</string>
+
+    <!-- Valeurs de balance des blancs EXIF -->
+    <string name="gallery_v2_wb_auto">Automatique</string>
+    <string name="gallery_v2_wb_manual">Manuel</string>
+    <string name="gallery_v2_wb_daylight">Lumière du jour</string>
+    <string name="gallery_v2_wb_cloudy">Nuageux</string>
+    <string name="gallery_v2_wb_tungsten">Tungstène</string>
+    <string name="gallery_v2_wb_fluorescent">Fluorescent</string>
+
+    <!-- Valeurs de flash EXIF -->
+    <string name="gallery_v2_flash_on">Activé</string>
+    <string name="gallery_v2_flash_off">Désactivé</string>
+
+    <!-- EXIF vide / non téléchargé -->
+    <string name="gallery_v2_exif_unavailable">Aucune information — téléchargez d\'abord la photo</string>
+    <string name="gallery_v2_date_unknown">Date de prise de vue inconnue</string>
+    <string name="gallery_v2_internal_storage">/Stockage interne</string>
+
+    <!-- Retour de téléchargement -->
+    <string name="gallery_v2_download_success">Photo téléchargée</string>
+    <string name="gallery_v2_download_failed">Échec du téléchargement de la photo. Veuillez réessayer</string>
+    <string name="gallery_v2_download_progress">Téléchargement %1$d/%2$d…</string>
+    <string name="gallery_v2_download_all_done">Les %1$d photos ont été téléchargées</string>
+    <string name="gallery_v2_download_partial">%1$d photo(s) sur %2$d téléchargée(s)</string>
+
+    <!-- Avis de limite de résolution de l\'offre FREE -->
+    <string name="gallery_v2_free_resolution_notice">La version gratuite enregistre les photos réduites à 2000 px. Les originaux sont disponibles avec PRO</string>
+    <string name="gallery_v2_upgrade">Mettre à niveau</string>
+</resources>

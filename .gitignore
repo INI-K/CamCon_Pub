@@ -69,3 +69,6 @@ app/build/
 # 중요: app/src/main/java/com/inik/camcon/data 폴더는 추적해야 함
 !app/src/main/java/com/inik/camcon/data/
 !app/src/main/java/com/inik/camcon/data/**
+
+# OMC 툴링 상태 (소스 트리에 커밋 금지)
+.omc/

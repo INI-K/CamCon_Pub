@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Camera Control UX v2 — newly added keys only -->
+    <string name="capture_shutter_cd">撮影</string>
+    <string name="capture_stop_timelapse">タイムラプスを停止</string>
+    <string name="unsupported_shooting_mode_message">このカメラは%s撮影モードに対応していません</string>
+    <string name="liveview_frame_stalled">ライブビュー停止中</string>
+    <string name="autofocus_completed">ピント合わせ完了</string>
+</resources>

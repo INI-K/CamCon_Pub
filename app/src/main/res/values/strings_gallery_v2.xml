@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 갤러리 헤더: 사진 개수 / 페이지 -->
+    <plurals name="gallery_v2_photo_count">
+        <item quantity="other">사진 %d장</item>
+    </plurals>
+    <string name="gallery_v2_photo_count_with_page">%1$s (페이지 %2$d/%3$d)</string>
+
+    <!-- EXIF 라벨 -->
+    <string name="gallery_v2_exif_camera">카메라</string>
+    <string name="gallery_v2_exif_iso">ISO</string>
+    <string name="gallery_v2_exif_shutter">셔터 속도</string>
+    <string name="gallery_v2_exif_aperture">조리개</string>
+    <string name="gallery_v2_exif_focal_length">초점 거리</string>
+    <string name="gallery_v2_exif_white_balance">화이트밸런스</string>
+    <string name="gallery_v2_exif_flash">플래시</string>
+    <string name="gallery_v2_exif_date">날짜</string>
+
+    <!-- EXIF 화이트밸런스 값 -->
+    <string name="gallery_v2_wb_auto">자동</string>
+    <string name="gallery_v2_wb_manual">수동</string>
+    <string name="gallery_v2_wb_daylight">주광</string>
+    <string name="gallery_v2_wb_cloudy">흐림</string>
+    <string name="gallery_v2_wb_tungsten">백열등</string>
+    <string name="gallery_v2_wb_fluorescent">형광등</string>
+
+    <!-- EXIF 플래시 값 -->
+    <string name="gallery_v2_flash_on">사용함</string>
+    <string name="gallery_v2_flash_off">사용 안 함</string>
+
+    <!-- EXIF 빈/미다운로드 상태 -->
+    <string name="gallery_v2_exif_unavailable">정보 없음 — 사진을 먼저 다운로드하세요</string>
+    <string name="gallery_v2_date_unknown">촬영 날짜를 알 수 없습니다</string>
+    <string name="gallery_v2_internal_storage">/내장 메모리</string>
+
+    <!-- 다운로드 피드백 -->
+    <string name="gallery_v2_download_success">사진을 다운로드했습니다</string>
+    <string name="gallery_v2_download_failed">사진을 다운로드하지 못했습니다. 다시 시도해 주세요</string>
+    <string name="gallery_v2_download_progress">%1$d/%2$d장 다운로드 중…</string>
+    <string name="gallery_v2_download_all_done">%1$d장 모두 다운로드했습니다</string>
+    <string name="gallery_v2_download_partial">%2$d장 중 %1$d장을 다운로드했습니다</string>
+
+    <!-- FREE 티어 해상도 제한 안내 -->
+    <string name="gallery_v2_free_resolution_notice">무료 버전은 사진을 2000px로 축소해 저장합니다. 원본은 PRO에서 받을 수 있습니다</string>
+    <string name="gallery_v2_upgrade">업그레이드</string>
+</resources>

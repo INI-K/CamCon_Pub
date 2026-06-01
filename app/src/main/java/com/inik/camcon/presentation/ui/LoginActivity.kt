@@ -48,8 +48,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes
 import com.google.android.gms.common.api.ApiException
 import com.inik.camcon.R
+import com.inik.camcon.domain.model.UiText
+import com.inik.camcon.domain.model.resolve
 import com.inik.camcon.presentation.theme.BodySmall
 import com.inik.camcon.presentation.theme.ButtonText
 import com.inik.camcon.presentation.theme.CamConTheme
@@ -78,6 +81,14 @@ class LoginActivity : ComponentActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         Log.d("LoginActivity", "Google Sign-In result received with code: ${result.resultCode}")
+
+        // 사용자가 계정 선택 화면에서 취소한 경우
+        if (result.resultCode == RESULT_CANCELED) {
+            Log.d("LoginActivity", "Google Sign-In cancelled by user (RESULT_CANCELED)")
+            loginViewModel?.onSignInUiError(UiText.Resource(R.string.login_error_cancelled))
+            return@registerForActivityResult
+        }
+
         val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
         try {
             val account = task.getResult(ApiException::class.java)
@@ -89,9 +100,17 @@ class LoginActivity : ComponentActivity() {
                 loginViewModel?.signInWithGoogle(idToken, currentReferralCode.ifBlank { null })
             } ?: run {
                 Log.e("LoginActivity", "ID Token is null")
+                loginViewModel?.onSignInUiError(UiText.Resource(R.string.login_error_auth))
             }
         } catch (e: ApiException) {
             Log.e("LoginActivity", "Google Sign-In failed with code: ${e.statusCode}", e)
+            // statusCode 12501(SIGN_IN_CANCELLED) 은 취소로 분류, 그 외는 일반 실패로 분류
+            val message = if (e.statusCode == GoogleSignInStatusCodes.SIGN_IN_CANCELLED) {
+                UiText.Resource(R.string.login_error_cancelled)
+            } else {
+                UiText.Resource(R.string.login_error_auth)
+            }
+            loginViewModel?.onSignInUiError(message)
         }
     }
 
@@ -116,12 +135,14 @@ class LoginActivity : ComponentActivity() {
                     viewModel.uiEvent.collect { event ->
                         when (event) {
                             is LoginUiEvent.ShowError -> {
-                                Log.e("LoginActivity", "Error: ${event.message}")
-                                snackbarHostState.showSnackbar(event.message)
+                                val text = event.message.resolve(this@LoginActivity)
+                                Log.e("LoginActivity", "Error: $text")
+                                snackbarHostState.showSnackbar(text)
                             }
                             is LoginUiEvent.ShowReferralMessage -> {
-                                Log.d("LoginActivity", "Referral message: ${event.message}")
-                                snackbarHostState.showSnackbar(event.message)
+                                val text = event.message.resolve(this@LoginActivity)
+                                Log.d("LoginActivity", "Referral message: $text")
+                                snackbarHostState.showSnackbar(text)
                             }
                             is LoginUiEvent.NavigateToHome -> {
                                 Log.d("LoginActivity", "User logged in, navigating to MainActivity")

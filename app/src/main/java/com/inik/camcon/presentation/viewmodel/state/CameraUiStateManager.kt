@@ -12,8 +12,11 @@ import com.inik.camcon.domain.model.LiveViewFrame
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.presentation.viewmodel.CameraUiState
 import com.inik.camcon.presentation.viewmodel.RawFileRestriction
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import javax.inject.Inject
@@ -34,6 +37,17 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
     /** 라이브뷰 프레임 — 초당 수십 회 업데이트되므로 uiState와 분리 */
     private val _liveViewFrame = MutableStateFlow<LiveViewFrame?>(null)
     val liveViewFrame: StateFlow<LiveViewFrame?> = _liveViewFrame.asStateFlow()
+
+    /**
+     * 1-shot 정보 메시지 채널 — AF 성공 등 에러가 아닌 일시적 안내를 전달한다.
+     * 에러 채널(uiState.error)과 분리해 의미 오용을 막는다.
+     * replay=0, extraBufferCapacity로 구독자가 없어도 emit이 블로킹되지 않게 한다.
+     */
+    private val _infoMessage = MutableSharedFlow<InfoMessage>(
+        replay = 0,
+        extraBufferCapacity = 4
+    )
+    val infoMessage: SharedFlow<InfoMessage> = _infoMessage.asSharedFlow()
 
     companion object {
         private const val TAG = "카메라UI상태관리자"
@@ -254,6 +268,17 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
 
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    // ── Info (1-shot, 에러 아님) ──
+
+    /**
+     * 1-shot 정보 메시지 방출. 구독자(UI)가 stringResource로 변환해 표시한다.
+     * 에러가 아닌 성공/안내 메시지 전용.
+     */
+    fun emitInfoMessage(message: InfoMessage) {
+        val delivered = _infoMessage.tryEmit(message)
+        Log.d(TAG, "정보 메시지 방출: $message (delivered=$delivered)")
     }
 
     /**
@@ -611,4 +636,14 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
         Log.i(TAG, "   삭제 버튼: ${abilities.supports.delete}")
         Log.i(TAG, "   기능 제한: ${_uiState.value.cameraFunctionLimitation != null}")
     }
+}
+
+/**
+ * 1-shot 정보 메시지 종류.
+ * ViewModel/Data 레이어는 Context가 없으므로 의미만 전달하고,
+ * UI 레이어에서 stringResource로 실제 문자열을 결정한다.
+ */
+sealed interface InfoMessage {
+    /** 자동초점 성공 */
+    data object AutoFocusCompleted : InfoMessage
 }

@@ -1,18 +1,11 @@
 package com.inik.camcon.presentation.ui.screens.components
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import android.util.Log
 import com.inik.camcon.R
 
@@ -26,8 +19,9 @@ fun PhotoExifPanel(
     modifier: Modifier = Modifier
 ) {
     if (exifInfo.isNullOrEmpty() || exifInfo == "{}") {
+        // 필수3 — 미다운로드/데이터 없음은 안내 상태로 표시(영구 "불러오는 중" 제거).
         Text(
-            text = stringResource(R.string.fullscreen_viewer_exif_loading),
+            text = stringResource(R.string.gallery_v2_exif_unavailable),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -44,51 +38,8 @@ fun PhotoExifPanel(
                 color = MaterialTheme.colorScheme.error
             )
         } else {
-            Column(
-                modifier = modifier
-                    .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                val cameraModel = exifEntries["camera_model"]
-                if (!cameraModel.isNullOrBlank()) {
-                    ExifField("Camera", cameraModel)
-                }
-
-                val iso = exifEntries["iso"]
-                if (!iso.isNullOrBlank()) {
-                    ExifField("ISO", iso)
-                }
-
-                val exposureTime = exifEntries["exposure_time"]
-                if (!exposureTime.isNullOrBlank()) {
-                    ExifField("Shutter Speed", formatShutterSpeed(exposureTime))
-                }
-
-                val fNumber = exifEntries["f_number"]
-                if (!fNumber.isNullOrBlank()) {
-                    ExifField("Aperture", formatAperture(fNumber))
-                }
-
-                val focalLength = exifEntries["focal_length"]
-                if (!focalLength.isNullOrBlank()) {
-                    ExifField("Focal Length", formatFocalLength(focalLength))
-                }
-
-                val whiteBalance = exifEntries["white_balance"]
-                if (!whiteBalance.isNullOrBlank()) {
-                    ExifField("White Balance", formatWhiteBalance(whiteBalance))
-                }
-
-                val flash = exifEntries["flash"]
-                if (!flash.isNullOrBlank()) {
-                    ExifField("Flash", formatFlash(flash))
-                }
-
-                val dateTimeOriginal = exifEntries["date_time_original"]
-                if (!dateTimeOriginal.isNullOrBlank()) {
-                    ExifField("Date", dateTimeOriginal)
-                }
-            }
+            // i18n 라벨 렌더링은 PhotoInfoBottomSheet.ExifEntriesList 공통 사용(중복 제거).
+            ExifEntriesList(exifEntries = exifEntries, modifier = modifier)
         }
     }
 }
