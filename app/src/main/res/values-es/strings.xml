@@ -319,4 +319,8 @@
     <string name="settings_native_log_toast_disable">Captura de registros nativos detenida.</string>
     <string name="settings_referral_clipboard_label">referral_code</string>
     <string name="settings_referral_copied">Código de referido \'%s\' copiado al portapapeles</string>
+    <string name="ptpip_hotspot_enable_title">El punto de acceso del teléfono está desactivado</string>
+    <string name="ptpip_hotspot_enable_desc">Por las restricciones de Android, la app no puede activarlo directamente; se abrirán los ajustes. Activa el punto de acceso y vuelve.</string>
+    <string name="ptpip_hotspot_open_settings">Abrir ajustes del punto de acceso</string>
+    <string name="ptpip_hotspot_compat_note">Nikon Z, Fujifilm, Canon (EOS Utility) y Panasonic Lumix admiten la conexión al punto de acceso del teléfono. OM System y Pentax/Ricoh solo admiten el AP propio de la cámara y no pueden conectarse al punto de acceso del teléfono.</string>
 </resources>

@@ -83,6 +83,9 @@ interface PtpipRepository {
     fun getWifiCapabilities(): WifiCapabilities
     fun getCurrentWifiNetworkState(): WifiNetworkState
 
+    /** 네트워크 상태를 즉시 재평가해 [wifiNetworkState]에 반영(핫스팟 토글 후 UI 갱신용). */
+    suspend fun refreshWifiNetworkState()
+
     // ── Wi-Fi 연결 관리 ──
 
     /**

@@ -23,6 +23,12 @@ class AppUpdateRepositoryImpl @Inject constructor(
         context.getSharedPreferences("app_version_config", Context.MODE_PRIVATE)
     }
 
+    private companion object {
+        const val VERSION_CACHE_TTL_MS = 6 * 60 * 60 * 1000L // 6시간
+        const val KEY_LAST_CHECK = "last_version_check_millis"
+        const val KEY_CACHED_LATEST = "cached_latest_version_name"
+    }
+
     override suspend fun checkForUpdate(): Result<AppVersionInfo> {
         return try {
             Log.d("AppUpdateRepository", "앱 업데이트 확인 중...")
@@ -30,6 +36,17 @@ class AppUpdateRepositoryImpl @Inject constructor(
             val currentVersionCode = BuildConfig.VERSION_CODE
             val currentVersionName = BuildConfig.VERSION_NAME
             val packageName = context.packageName
+
+            // 0단계: TTL 캐시 적중 시 매 시작 네트워크 스크래핑을 생략한다.
+            val now = System.currentTimeMillis()
+            val cachedLatest = prefs.getString(KEY_CACHED_LATEST, null)
+            val lastCheck = prefs.getLong(KEY_LAST_CHECK, 0L)
+            if (cachedLatest != null && (now - lastCheck) in 0 until VERSION_CACHE_TTL_MS) {
+                Log.d("AppUpdateRepository", "버전 캐시 적중($cachedLatest) - 네트워크 생략")
+                return Result.success(
+                    buildVersionInfo(currentVersionCode, currentVersionName, cachedLatest)
+                )
+            }
 
             // 1단계: Play Store에서 실제 최신 버전 정보 가져오기 시도
             val playStoreInfo = playStoreVersionDataSource.getPlayStoreVersionInfo(packageName)
@@ -50,6 +67,12 @@ class AppUpdateRepositoryImpl @Inject constructor(
 
                 val isUpdateRequired =
                     forceUpdateEnabled && (currentVersionCode < minimumVersionCode)
+
+                // 성공 응답을 TTL 캐시에 저장 (다음 시작들의 네트워크 호출 절약)
+                prefs.edit()
+                    .putLong(KEY_LAST_CHECK, System.currentTimeMillis())
+                    .putString(KEY_CACHED_LATEST, playStoreInfo.versionName)
+                    .apply()
 
                 val versionInfo = AppVersionInfo(
                     currentVersion = currentVersionName,
@@ -87,6 +110,26 @@ class AppUpdateRepositoryImpl @Inject constructor(
             // 에러 발생 시 로컬 설정으로 폴백
             return checkVersionWithLocalConfig(BuildConfig.VERSION_CODE, BuildConfig.VERSION_NAME)
         }
+    }
+
+    /**
+     * Play Store 최신 버전명으로부터 [AppVersionInfo]를 구성한다(캐시 적중/성공 응답 공용).
+     */
+    private fun buildVersionInfo(
+        currentVersionCode: Int,
+        currentVersionName: String,
+        latestVersionName: String
+    ): AppVersionInfo {
+        val isUpdateAvailable = compareVersions(latestVersionName, currentVersionName) > 0
+        val forceUpdateEnabled = prefs.getBoolean("force_update_enabled", false)
+        val minimumVersionCode = prefs.getInt("minimum_version_code", 1)
+        val isUpdateRequired = forceUpdateEnabled && (currentVersionCode < minimumVersionCode)
+        return AppVersionInfo(
+            currentVersion = currentVersionName,
+            latestVersion = latestVersionName,
+            isUpdateRequired = isUpdateRequired,
+            isUpdateAvailable = isUpdateAvailable
+        )
     }
 
     private fun checkVersionWithLocalConfig(

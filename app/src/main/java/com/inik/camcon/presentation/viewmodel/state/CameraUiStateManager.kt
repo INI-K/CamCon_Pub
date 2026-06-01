@@ -521,6 +521,8 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
      * PTPIP 연결 상태 업데이트
      */
     override fun updatePtpipConnectionState(isConnected: Boolean) {
+        // 동일 상태 중복 호출 무시 (네이티브 연결 변화는 별도 경로에서 isConnected를 재계산한다).
+        if (_uiState.value.connection.isPtpipConnected == isConnected) return
         _uiState.update {
             it.copy(
                 connection = it.connection.copy(

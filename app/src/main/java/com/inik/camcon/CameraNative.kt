@@ -212,6 +212,7 @@ object CameraNative {
     // PTP/IP 연결 안정성을 위한 함수들
     external fun clearPtpipSettings(): Boolean // libgphoto2의 ptp2_ip 설정을 모두 삭제하여 새로운 GUID 생성 강제
     external fun resetPtpipGuid(): Boolean // GUID만 특별히 초기화
+    external fun setPtpipGuid(guid: String): Boolean // 지정 GUID를 libgphoto2 ptp2_ip/guid에 주입 (Nikon STA 페어링 GUID 일치용)
 
     // PtpipConnectionManager에서 받은 카메라 정보를 libgphoto2에 전달
     external fun setCameraInfoFromPtpip(
