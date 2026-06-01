@@ -388,15 +388,48 @@ class WifiNetworkHelper @Inject constructor(
     }
 
     /**
-     * 폰의 Wi-Fi 핫스팟 활성 여부.
-     * Android SDK는 공식 API를 노출하지 않으므로 reflection으로 `isWifiApEnabled`에 접근한다.
-     * Android 14+에서 reflection이 차단될 수 있으며 그 경우 false를 반환한다.
+     * 폰의 Wi-Fi 핫스팟(테더링) 활성 여부.
+     *
+     * targetSdk 30+에서 hidden API `isWifiApEnabled` reflection은 blocklist로 차단되어
+     * 대부분 false로 폴백된다(신뢰 불가). 따라서 먼저 비차단 경로인 NetworkInterface 열거로
+     * AP/softAP 인터페이스(ap0/swlan0/softap…)를 탐지하고, 못 찾으면 구형 기기용 reflection을
+     * 폴백으로 시도한다.
      */
-    fun isHotspotEnabled(): Boolean = runCatching {
-        val m = wifiManager.javaClass.getDeclaredMethod("isWifiApEnabled")
-        m.isAccessible = true
-        (m.invoke(wifiManager) as? Boolean) ?: false
-    }.getOrElse { false }
+    fun isHotspotEnabled(): Boolean {
+        if (detectHotspotByInterfaces()) return true
+        return runCatching {
+            val m = wifiManager.javaClass.getDeclaredMethod("isWifiApEnabled")
+            m.isAccessible = true
+            (m.invoke(wifiManager) as? Boolean) ?: false
+        }.getOrElse { false }
+    }
+
+    /**
+     * 폰이 AP(softAP) 역할을 하면 ap0/swlan0/softap 같은 별도 인터페이스가 IPv4를 갖고 up 상태가 된다.
+     * hidden API를 쓰지 않으므로 targetSdk 36에서도 차단되지 않는다.
+     */
+    private fun detectHotspotByInterfaces(): Boolean = runCatching {
+        val interfaces = java.net.NetworkInterface.getNetworkInterfaces() ?: return false
+        for (nif in interfaces) {
+            val name = nif.name?.lowercase() ?: continue
+            // ap0 / swlan0 / softap0 처럼 prefix 뒤 숫자가 오는 softAP 인터페이스만 매칭.
+            // "apcli0"(일부 라우터 클라이언트 모드) 같은 무관 인터페이스 오탐 방지.
+            val isApName = name.matches(Regex("^(ap|swlan|softap)\\d.*"))
+            if (!isApName) continue
+            if (!runCatching { nif.isUp }.getOrDefault(false)) continue
+            val hasIpv4 = nif.inetAddresses.asSequence().any {
+                it is java.net.Inet4Address && !it.isLoopbackAddress
+            }
+            if (hasIpv4) return true
+        }
+        false
+    }.getOrDefault(false)
+
+    /**
+     * 현재 네트워크 상태 스냅샷(외부 강제 갱신 트리거용).
+     * 핫스팟을 OS 설정에서 켜고 돌아온 직후처럼 NetworkCallback이 발화하지 않는 경우 UI 갱신에 사용한다.
+     */
+    fun getNetworkStateSnapshot(): WifiNetworkState = getCurrentNetworkState()
 
     /**
      * 현재 네트워크의 기본 게이트웨이 IPv4 추출.
@@ -531,8 +564,10 @@ class WifiNetworkHelper @Inject constructor(
                 network: Network,
                 linkProperties: android.net.LinkProperties
             ) {
+                // 핫스팟 on/off·게이트웨이 변화도 통과시키도록 전체 상태 변화 기준으로 비교한다.
+                // (distinctUntilChanged가 최종 중복을 제거하므로 안전)
                 val state = getCurrentNetworkState()
-                if (state.isConnectedToCameraAP != lastState?.isConnectedToCameraAP) {
+                if (state != lastState) {
                     lastState = state
                     trySend(state)
                     clearCache()
@@ -706,6 +741,18 @@ class WifiNetworkHelper @Inject constructor(
      */
     fun isConnectedToCameraAP(): Boolean {
         if (!isWifiConnected()) {
+            synchronized(cacheLock) {
+                cachedIsConnectedToCameraAP = false
+                lastCheckedSSID = null
+            }
+            return false
+        }
+
+        // 폰 핫스팟이 켜져 있으면 폰 자신이 AP다 — 카메라 AP의 클라이언트일 수 없다.
+        // STA+AP 동시 동작 시 활성 네트워크 게이트웨이가 폰/공유기(예: 192.168.0.1)라
+        // <unknown ssid> 게이트웨이 패턴 폴백이 이를 카메라 AP로 오탐하던 것을 차단한다.
+        // 이 오탐이 discoverCameras를 AP 경로로 몰아 게이트웨이만 찍고 실패시키던 원인.
+        if (isHotspotEnabled()) {
             synchronized(cacheLock) {
                 cachedIsConnectedToCameraAP = false
                 lastCheckedSSID = null

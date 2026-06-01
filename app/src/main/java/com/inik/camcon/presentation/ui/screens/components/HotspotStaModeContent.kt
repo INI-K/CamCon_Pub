@@ -1,5 +1,8 @@
 package com.inik.camcon.presentation.ui.screens.components
 
+import android.content.Context
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -29,9 +32,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.PtpipCameraInfo
@@ -67,6 +73,12 @@ fun HotspotStaModeContent(
 ) {
     val state = HotspotStaContentState.fromWifiState(wifiNetworkState)
     val manualIp by ptpipViewModel.manualIp.collectAsState()
+    val context = LocalContext.current
+
+    // 핫스팟 설정을 켜고 화면으로 돌아오면 상태를 다시 읽어 카드/검색 활성을 갱신한다.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        ptpipViewModel.refreshHotspotState()
+    }
 
     LazyColumn(
         modifier = modifier
@@ -76,6 +88,18 @@ fun HotspotStaModeContent(
         item {
             HotspotStatusCard(state = state)
             Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        if (state.status == HotspotStaContentState.HotspotStatus.DISABLED) {
+            item {
+                HotspotEnableCard(
+                    onOpenSettings = {
+                        openHotspotSettings(context)
+                        ptpipViewModel.refreshHotspotState()
+                    }
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
         }
 
         item {
@@ -120,6 +144,80 @@ fun HotspotStaModeContent(
                 onSearchClick = { ptpipViewModel.discoverCamerasHotspot() }
             )
         }
+    }
+}
+
+/**
+ * 폰 핫스팟이 꺼져 있을 때 노출되는 카드.
+ *
+ * Android 정책상 일반 앱은 표준 모바일 핫스팟을 코드로 직접 켤 수 없으므로
+ * (TETHER_PRIVILEGED = signature 권한), 테더링 설정 화면으로 사용자를 안내한다.
+ */
+@Composable
+private fun HotspotEnableCard(onOpenSettings: () -> Unit) {
+    Card(
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = SurfaceElevated),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Filled.WifiOff,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.ptpip_hotspot_enable_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.ptpip_hotspot_enable_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = onOpenSettings,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Wifi,
+                    contentDescription = null
+                )
+                Text(
+                    text = stringResource(R.string.ptpip_hotspot_open_settings),
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 테더링 설정 화면으로 이동한다.
+ * 공개·보장된 단일 API가 없어 [후보 인텐트들]을 순서대로 시도하고 실패 시 다음으로 폴백한다.
+ * 1) OS가 쓰는 정식 컴포넌트(OEM 파편화 위험) → 2) 액션 문자열 → 3) 무선 설정 → 4) 일반 설정.
+ */
+private fun openHotspotSettings(context: Context) {
+    val candidates = listOf(
+        Intent().setClassName(
+            "com.android.settings",
+            "com.android.settings.TetherSettings"
+        ),
+        Intent("com.android.settings.TETHER_SETTINGS"),
+        Intent(Settings.ACTION_WIRELESS_SETTINGS),
+        Intent(Settings.ACTION_SETTINGS),
+    )
+    for (intent in candidates) {
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (runCatching { context.startActivity(intent) }.isSuccess) return
     }
 }
 
@@ -299,6 +397,12 @@ private fun HotspotGuideCard() {
                     modifier = Modifier.padding(vertical = 2.dp)
                 )
             }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.ptpip_hotspot_compat_note),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

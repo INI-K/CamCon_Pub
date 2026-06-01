@@ -31,6 +31,14 @@ class NikonAuthenticationService @Inject constructor(
         private const val NIKON_935A_COMMAND = 0x935a
         private const val NIKON_935B_COMMAND = 0x935b  // Pairing code 전송
         private const val MAX_RETRIES = 3
+
+        /**
+         * PTP/IP InitCommandRequest에 사용하는 고정 GUID(콜론 hex).
+         * libgphoto2의 실제 연결도 반드시 이 GUID를 써야 카메라가 페어링된 클라이언트로 인식한다.
+         * 불일치 시 카메라가 InitFail(bad type 5)로 거부하므로, [PtpipDataSource]가 인증 성공 직후
+         * `CameraNative.setPtpipGuid(STA_PAIRING_GUID)`로 libgphoto2 설정(ptp2_ip/guid)에 주입한다.
+         */
+        const val STA_PAIRING_GUID = "d5:b4:6b:cb:d6:2a:4d:bb:b0:97:87:20:cf:83:e0:84"
     }
 
     /**
@@ -388,20 +396,24 @@ class NikonAuthenticationService @Inject constructor(
                 }
                 LogcatManager.d(TAG, "0x935a 전체 응답 ($totalBytesRead bytes): $hexDump")
 
-                // Pairing code 확인
-                val pairingCode = extractPairingCode(response, totalBytesRead)
-                if (pairingCode != null) {
-                    LogcatManager.i(TAG, "⚠️ Pairing Code 감지: $pairingCode")
+                // 0x935a 정상 응답은 [DATA 패킷][OPERATION_RESPONSE] 2-패킷 구조다.
+                // DATA payload를 pairing code로 먼저 해석하면 자동 승인(RC=0x2001)을
+                // "pairing code 필요"로 오탐해 불필요한 30초 대기를 강요한다.
+                // 따라서 OPERATION_RESPONSE의 ResponseCode를 먼저 확인한다.
+                val responseCode = findResponseCode(response, totalBytesRead)
+                if (responseCode == 0x2001) {
+                    LogcatManager.i(TAG, "✅ 0x935a 자동 승인 성공 (RC=0x2001)")
+                    return Pair(true, false)
+                } else if (responseCode == 0x2019) {
+                    LogcatManager.i(TAG, "⏳ 카메라가 pairing code 입력 대기 중 (RC=0x2019)")
                     return Pair(false, true)
                 }
 
-                // 성공 응답 확인
-                val responseCode = findResponseCode(response, totalBytesRead)
-                if (responseCode == 0x2001) {
-                    LogcatManager.i(TAG, "✅ 0x935a 자동 승인 성공")
-                    return Pair(true, false)
-                } else if (responseCode == 0x2019) {
-                    LogcatManager.i(TAG, "⏳ 카메라가 pairing code 입력 대기 중")
+                // OPERATION_RESPONSE로 승인/대기 판정이 안 될 때에만 pairing code 추출 시도
+                // (최초 페어링 등 실제로 코드 입력이 필요한 경우).
+                val pairingCode = extractPairingCode(response, totalBytesRead)
+                if (pairingCode != null) {
+                    LogcatManager.i(TAG, "⚠️ Pairing Code 감지: $pairingCode")
                     return Pair(false, true)
                 }
             }
@@ -776,12 +788,10 @@ class NikonAuthenticationService @Inject constructor(
      * 기본 패킷 생성 함수들
      */
     private fun createInitCommandRequest(): ByteArray {
-        val commandGuid = byteArrayOf(
-            0xd5.toByte(), 0xb4.toByte(), 0x6b.toByte(), 0xcb.toByte(),
-            0xd6.toByte(), 0x2a.toByte(), 0x4d.toByte(), 0xbb.toByte(),
-            0xb0.toByte(), 0x97.toByte(), 0x87.toByte(), 0x20.toByte(),
-            0xcf.toByte(), 0x83.toByte(), 0xe0.toByte(), 0x84.toByte()
-        )
+        // libgphoto2 연결과 동일한 GUID를 보장하기 위해 단일 소스([STA_PAIRING_GUID])에서 파생한다.
+        val commandGuid = STA_PAIRING_GUID.split(":")
+            .map { it.toInt(16).toByte() }
+            .toByteArray()
 
         val hostNameBytes = byteArrayOf(
             0x41, 0x00, 0x6e, 0x00, 0x64, 0x00, 0x72, 0x00,

@@ -53,6 +53,13 @@ class CameraConnectionGlobalManagerImpl @Inject constructor(
     override val connectionStatusMessage: StateFlow<String> =
         _connectionStatusMessage.asStateFlow()
 
+    // 마지막으로 CameraConnectionManager에 푸시한 PTPIP 연결 상태.
+    // 초기화 시 5개 Flow 초깃값이 한꺼번에 emit되며 동일한 false를 수~십수 회 재방출하던
+    // 코루틴 launch 자체를 막기 위한 dedup (수신부 멱등 가드와 이중 안전장치).
+    // 여러 Flow 컬렉터가 updateGlobalState를 호출할 수 있어 가시성 보장 위해 @Volatile.
+    @Volatile
+    private var lastPushedPtpipConnected: Boolean? = null
+
     init {
         startGlobalStateMonitoring()
     }
@@ -99,26 +106,23 @@ class CameraConnectionGlobalManagerImpl @Inject constructor(
             else -> null
         }
 
-        if (activeConnection == CameraConnectionType.AP_MODE) {
+        // AP 연결이면 true, PTPIP 미연결이면 false를 단 한 번만 푸시한다.
+        // (STA 연결은 연결 흐름에서 직접 갱신하므로 여기선 null=무시)
+        val ptpipStatusToPush: Boolean? = when {
+            activeConnection == CameraConnectionType.AP_MODE -> true
+            ptpipState != PtpipConnectionState.CONNECTED -> false
+            else -> null
+        }
+        if (ptpipStatusToPush != null && ptpipStatusToPush != lastPushedPtpipConnected) {
+            lastPushedPtpipConnected = ptpipStatusToPush
             managerScope.launch {
                 try {
-                    cameraConnectionManager.updatePtpipConnectionStatus(true)
-                    Log.d(TAG, "AP 모드 연결 감지: CameraConnectionManager를 통해 PTPIP 상태 업데이트")
+                    cameraConnectionManager.updatePtpipConnectionStatus(ptpipStatusToPush)
+                    Log.d(TAG, "PTPIP 상태 업데이트: $ptpipStatusToPush")
                 } catch (e: CancellationException) {
                     throw e
                 } catch (error: Exception) {
-                    Log.e(TAG, "AP 모드 PTPIP 상태 업데이트 실패", error)
-                }
-            }
-        } else if (ptpipState != PtpipConnectionState.CONNECTED) {
-            managerScope.launch {
-                try {
-                    cameraConnectionManager.updatePtpipConnectionStatus(false)
-                    Log.d(TAG, "PTPIP 연결 해제 상태 업데이트")
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (error: Exception) {
-                    Log.e(TAG, "PTPIP 연결 해제 상태 업데이트 실패", error)
+                    Log.e(TAG, "PTPIP 상태 업데이트 실패", error)
                 }
             }
         }
@@ -225,26 +229,9 @@ class CameraConnectionGlobalManagerImpl @Inject constructor(
     }
 
     private fun performDisconnectionCleanup() {
+        // PTPIP false 상태 반영은 updateGlobalState의 dedup된 단일 경로가 담당한다.
+        // (과거 여기서 중복 updatePtpipConnectionStatus(false)를 매 emit마다 launch하던 것을 제거)
         Log.d(TAG, "연결 해제 시 정리 수행")
-
-        managerScope.launch {
-            try {
-                try {
-                    cameraConnectionManager.updatePtpipConnectionStatus(false)
-                    Log.d(TAG, "카메라 연결 매니저 PTPIP 상태 정리 완료")
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (error: Exception) {
-                    Log.e(TAG, "카메라 연결 매니저 정리 실패", error)
-                }
-
-                Log.d(TAG, "전역 카메라 연결 상태 정리 완료")
-            } catch (e: CancellationException) {
-                throw e
-            } catch (error: Exception) {
-                Log.e(TAG, "연결 해제 정리 중 오류", error)
-            }
-        }
     }
 
     override fun cleanup() {
@@ -252,6 +239,9 @@ class CameraConnectionGlobalManagerImpl @Inject constructor(
         // scope 자체는 유지하고 자식 코루틴만 취소 — SupervisorJob은 활성 상태로 남아 재구독 가능하다.
         // (var 재할당 시 다른 스레드의 launch가 stale 참조를 보던 race를 제거)
         managerScope.coroutineContext.job.cancelChildren()
+        // dedup 상태를 리셋해 재모니터링 첫 updateGlobalState가 실제 상태를 무조건 1회 재푸시하도록 한다.
+        // (dedup var와 StateFlow가 어긋난 채 남는 two-sources-of-truth 취약성 제거)
+        lastPushedPtpipConnected = null
         // 정리 후 모니터링 재시작 (Singleton이므로 앱 수명 동안 유지되어야 함)
         startGlobalStateMonitoring()
     }

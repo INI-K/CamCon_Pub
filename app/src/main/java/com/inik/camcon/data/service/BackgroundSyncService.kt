@@ -87,8 +87,9 @@ class BackgroundSyncService : Service() {
         serviceScope = CoroutineScope(SupervisorJob() + ioDispatcher)
         createNotificationChannel()
 
-        // Wake Lock 획득 (화면이 꺼져도 이벤트 리스너 유지)
-        acquireWakeLock()
+        // Wake Lock은 카메라가 실제로 연결됐을 때만 startBackgroundEventListenerManager()의
+        // ensureWakeLock()으로 획득한다. (연결도 없는데 onCreate에서 무조건 잡았다가 곧장 해제하던
+        // idle 낭비 제거 — 연결 없으면 깨워야 할 이벤트도 없으므로 락 불필요)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

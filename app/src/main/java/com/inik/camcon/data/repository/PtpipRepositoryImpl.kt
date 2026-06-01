@@ -101,6 +101,9 @@ class PtpipRepositoryImpl @Inject constructor(
     override fun getCurrentWifiNetworkState(): WifiNetworkState =
         ptpipDataSource.getCurrentWifiNetworkState()
 
+    override suspend fun refreshWifiNetworkState() =
+        ptpipDataSource.refreshWifiNetworkState()
+
     // ── Wi-Fi 연결 관리 ──
 
     override fun requestWifiConnection(
