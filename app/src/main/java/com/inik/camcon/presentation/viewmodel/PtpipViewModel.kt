@@ -49,6 +49,7 @@ class PtpipViewModel @Inject constructor(
     private val ptpipRepository: PtpipRepository,
     private val preferencesRepository: PtpipPreferencesRepository,
     private val globalManager: CameraConnectionGlobalManager,
+    private val handoffTracker: ConnectionHandoffTracker,
     private val connectionHelper: PtpipConnectionHelper,
     private val discoveryHelper: PtpipDiscoveryHelper,
     private val debugHelper: PtpipDebugHelper,
@@ -353,10 +354,20 @@ class PtpipViewModel @Inject constructor(
     fun discoverCamerasAp() = discoverCameras(true)
     fun discoverCamerasSta() = discoverCameras(false)
     fun discoverCamerasHotspot() {
-        viewModelScope.launch {
-            ptpipRepository.setActiveConnectionMethod(ConnectionMethod.STA_PHONE_HOTSPOT)
-            ptpipRepository.discoverCameras(forceApMode = false)
+        if (_isDiscovering.value) {
+            Log.w(TAG, "이미 카메라 검색 중입니다")
+            return
         }
+        // AP/STA 탭과 동일하게 discoveryHelper 경로를 타서 검색→자동선택→자동연결까지 수행한다.
+        // (기존엔 repository.discoverCameras만 직접 호출해 검색만 되고 연결 단계가 빠져 있었음)
+        ptpipRepository.setActiveConnectionMethod(ConnectionMethod.STA_PHONE_HOTSPOT)
+        discoveryHelper.discoverCameras(
+            forceApMode = false,
+            onDiscoveringChanged = { _isDiscovering.value = it },
+            onConnectingChanged = { _isConnecting.value = it },
+            onErrorChanged = { _errorMessage.value = it },
+            onCameraSelected = { camera -> _selectedCamera.value = camera }
+        )
     }
 
     // ── 폰 핫스팟 STA 모드 신규 API ──
@@ -364,6 +375,14 @@ class PtpipViewModel @Inject constructor(
     /** 사용자가 선택한 시나리오를 repository에 전달한다. */
     fun selectConnectionMethod(method: ConnectionMethod) {
         ptpipRepository.setActiveConnectionMethod(method)
+    }
+
+    /** OS 설정에서 핫스팟을 켜고 돌아온 뒤 등, 네트워크 상태를 강제로 다시 읽어 UI에 반영한다. */
+    fun refreshHotspotState() {
+        viewModelScope.launch {
+            runCatching { ptpipRepository.refreshWifiNetworkState() }
+                .onFailure { Log.w(TAG, "핫스팟 상태 새로고침 실패", it) }
+        }
     }
 
     /** 사용자 입력 IP를 repository에 전달한다 (UI TextField에서 호출). */
@@ -438,6 +457,8 @@ class PtpipViewModel @Inject constructor(
     fun connectToCameraSta(camera: PtpipCamera) = connectToCamera(camera, false)
 
     fun disconnect() {
+        // 사용자가 명시적으로 끊으면 핸드오프 보호 해제 — 이후 정리가 정상 동작하도록.
+        handoffTracker.clear()
         viewModelScope.launch {
             try {
                 _autoDownloadEnabled.value = false
@@ -654,8 +675,22 @@ class PtpipViewModel @Inject constructor(
 
     // ── 라이프사이클 ──
 
+    /**
+     * 연결에 성공해 카메라 컨트롤 화면으로 핸드오프하기 직전 호출한다.
+     * PtpipConnectionActivity가 finish되거나 CLEAR_TOP으로 중간 Activity가 파괴되며 각
+     * ViewModel(PtpipViewModel/CameraViewModel)의 onCleared가 방금 맺은 (싱글톤) 연결을
+     * disconnect로 끊어버리는 것을, 공유 [ConnectionHandoffTracker]로 막는다.
+     */
+    fun markConnectionHandoff() {
+        handoffTracker.begin()
+    }
+
     override fun onCleared() {
         super.onCleared()
+        if (handoffTracker.isActive) {
+            Log.d(TAG, "연결 핸드오프 중 - onCleared 정리 생략(연결 유지)")
+            return
+        }
         // onCleared 시점엔 viewModelScope가 이미 취소 상태라 일반 launch는 첫 디스패치에서
         // 취소되어 cleanup(연결 해제·WiFi 락 해제·전역 매니저 정리)이 실행되지 않는다.
         // NonCancellable로 감싸 정리를 보장한다 (PhotoPreviewViewModel과 동일 패턴).

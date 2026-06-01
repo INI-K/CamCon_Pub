@@ -52,6 +52,7 @@ class CameraViewModel @Inject constructor(
     private val operationsManager: CameraOperationsManager,
     private val settingsManager: CameraSettingsManager,
     private val errorHandlingManager: ErrorHandlingManager,
+    private val handoffTracker: ConnectionHandoffTracker,
     private val appSettingsRepository: AppSettingsRepository,
 
     // 신규 매니저 의존성 주입
@@ -477,6 +478,9 @@ class CameraViewModel @Inject constructor(
      * 카메라 연결 해제 (UsbAutoConnectManager에 위임)
      */
     fun disconnectCamera() {
+        // 사용자가 명시적으로 끊으면 핸드오프 보호 해제 — 이후 onCleared 정리가 정상 동작하도록.
+        handoffTracker.clear()
+
         // 진행 중인 작업들 먼저 중단
         operationsManager.cleanup()
 
@@ -950,10 +954,18 @@ class CameraViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
 
-        // 매니저들 정리
-        operationsManager.cleanup()
-        usbAutoConnectManager.cleanup()
-        settingsManager.cleanup()
+        // 핸드오프 중(연결 성공 직후 카메라 컨트롤로 이동하며 중간 Activity가 파괴되는 구간)에는
+        // 싱글톤 매니저 정리를 건너뛴다. 정리하면 방금 맺은 싱글톤 카메라 연결이 끊긴다.
+        // (operations/usbAutoConnect/settings 매니저는 모두 @Singleton이라 다른 Activity의
+        //  CameraViewModel이 동일 인스턴스를 계속 사용하므로 스킵해도 누수 없음)
+        if (!handoffTracker.isActive) {
+            // 매니저들 정리
+            operationsManager.cleanup()
+            usbAutoConnectManager.cleanup()
+            settingsManager.cleanup()
+        } else {
+            Log.d(TAG, "연결 핸드오프 중 - CameraViewModel 매니저 정리 생략(연결 유지)")
+        }
         // errorHandlingManager는 @Singleton이며 앱 전역 단일 네이티브 에러 콜백(setErrorCallback)을 보유한다.
         // 이 콜백의 usbDisconnectedEvent 소비자는 ViewModel이 아니라 프로세스 생명주기 동안 살아있는
         // CameraLifecycleRepositoryImpl(ApplicationScope)이므로, Activity 스코프 ViewModel의 onCleared에서

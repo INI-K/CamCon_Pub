@@ -531,6 +531,8 @@ fun PtpipConnectionScreen(
                     Log.d("PtpipConnectionScreen", "   🚀 카메라 컨트롤 화면으로 이동")
                     kotlinx.coroutines.delay(300)
                     Log.d("PtpipConnectionScreen", "   ✅ 카메라 컨트롤 화면으로 이동")
+                    // 핸드오프 표시 — Activity finish 시 onCleared가 연결을 끊지 않도록 한다.
+                    ptpipViewModel.markConnectionHandoff()
                     onBackClick()
                 } else {
                     Log.d("PtpipConnectionScreen", "   ⏳ 아직 '연결 완료!' 아님 - 다이얼로그 유지")
