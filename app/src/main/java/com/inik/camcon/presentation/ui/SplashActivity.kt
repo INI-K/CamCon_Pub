@@ -42,10 +42,12 @@ import com.inik.camcon.BuildConfig
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.model.UiText
+import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.domain.usecase.camera.GetLibGphoto2VersionUseCase
 import com.inik.camcon.domain.usecase.camera.IsNativeLibrariesLoadedUseCase
 import com.inik.camcon.domain.usecase.camera.SetupNativeEnvironmentUseCase
+import com.inik.camcon.domain.usecase.camera.StartNativeLogUseCase
 import com.inik.camcon.presentation.theme.BodySmall
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.HeadingL
@@ -69,6 +71,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -94,6 +97,12 @@ class SplashActivity : ComponentActivity() {
     @Inject
     @IoDispatcher
     lateinit var ioDispatcher: CoroutineDispatcher
+
+    @Inject
+    lateinit var startNativeLogUseCase: StartNativeLogUseCase
+
+    @Inject
+    lateinit var appSettingsRepository: AppSettingsRepository
 
     private var libraryLoadingStatus by mutableStateOf<UiText>(
         UiText.Resource(R.string.splash_initializing)
@@ -188,6 +197,17 @@ class SplashActivity : ComponentActivity() {
                 }
 
                 LogcatManager.i("SplashActivity", "✅ 환경변수 설정 완료")
+
+                // 디버그 빌드에서는 네이티브 로그 캡처를 기본 활성화 (설정에서 끌 수 있음)
+                if (BuildConfig.DEBUG && appSettingsRepository.isNativeLogCaptureEnabled.first()) {
+                    val logPath =
+                        "${applicationContext.filesDir}/libgphoto2_debug_${System.currentTimeMillis()}.txt"
+                    val logStarted = startNativeLogUseCase(logPath)
+                    LogcatManager.i(
+                        "SplashActivity",
+                        "디버그 네이티브 로그 자동 시작: $logStarted ($logPath)"
+                    )
+                }
 
                 val totalTime = System.currentTimeMillis() - startTime
 
