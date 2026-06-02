@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
@@ -43,6 +44,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Visibility
@@ -233,6 +235,14 @@ fun PtpipConnectionScreen(
         errorMessage?.let {
             snackbarHostState.showSnackbar(it)
             ptpipViewModel.clearError()
+        }
+    }
+
+    // 🧪 전송목록 다운로드 테스트 상태 + 결과(Toast)
+    val isTransferTestRunning by ptpipViewModel.isTransferTestRunning.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) {
+        ptpipViewModel.transferTestMessage.collect { message ->
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
         }
     }
 
@@ -624,6 +634,27 @@ fun PtpipConnectionScreen(
                         }
                     },
                     actions = {
+                        // 🧪 전송목록 다운로드 테스트 (ADMIN 전용 디버그 액션)
+                        if (isAdmin) {
+                            IconButtonV2(
+                                icon = Icons.Filled.CloudDownload,
+                                contentDescription = "전송목록 다운로드 테스트",
+                                tint = MaterialTheme.colorScheme.secondary,
+                                enabled = !isTransferTestRunning,
+                                onClick = {
+                                    val target = selectedCamera ?: discoveredCameras.firstOrNull()
+                                    if (target == null) {
+                                        Toast.makeText(
+                                            context,
+                                            "카메라가 없습니다 — 먼저 STA 모드에서 카메라를 검색하세요",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    } else {
+                                        ptpipViewModel.testDownloadTransferList(target)
+                                    }
+                                }
+                            )
+                        }
                         IconButtonV2(
                             icon = Icons.Filled.Refresh,
                             contentDescription = stringResource(R.string.cd_refresh),
