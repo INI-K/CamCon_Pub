@@ -725,6 +725,19 @@ class PtpipDataSource @Inject constructor(
             Log.i(TAG, "IP: ${camera.ipAddress}:${camera.port}")
             Log.i(TAG, "============================================")
 
+            // 멱등 가드: 이미 동일 카메라(IP·포트 기준)에 연결돼 있으면 재연결하지 않는다.
+            // 검색→자동선택→연결 경로가 중복 호출될 때(예: 검색 버튼 재탭) connectionStateMutex로
+            // 직렬화된 두 번째 연결이 살아있는 PTP/IP 세션을 끊고 재연결하면서
+            // ptp_ptpip_generic_read "End of stream"가 폭주하던 문제를 막는다.
+            val alreadyConnectedCamera = connectedCamera
+            if (_connectionState.value == PtpipConnectionState.CONNECTED &&
+                alreadyConnectedCamera?.ipAddress == camera.ipAddress &&
+                alreadyConnectedCamera.port == camera.port
+            ) {
+                Log.i(TAG, "이미 동일 카메라에 연결됨 - 재연결 건너뜀 (멱등): ${camera.name}")
+                return@withContext true
+            }
+
             // 연결 시작 시 상태를 CONNECTING으로 변경
             _connectionState.value = PtpipConnectionState.CONNECTING
             setProgress(UiText.Resource(R.string.progress_ptpip_connection_start))
@@ -754,34 +767,29 @@ class PtpipDataSource @Inject constructor(
             Log.d(TAG, "네트워크 바인딩 상태에서 연결 시도")
 
             // =========================
-            // Step 0: Nikon 카메라 사전 인증 (STA 모드)
+            // Step 0: Nikon STA 인증 (0x952b/0x935a) — libgphoto2 연결 전 필수
             // =========================
-            // mDNS 서비스 이름으로 Nikon 카메라 감지
-            // Z_6_... , D_850_... , Nikon_Z8 등의 형식
+            // mDNS 서비스 이름으로 Nikon 카메라 감지 (Z_6_..., D_850_..., Nikon_Z8 등)
             val isNikonCamera = camera.name.contains("Nikon", ignoreCase = true) ||
                     camera.name.startsWith("Z_", ignoreCase = true) ||
                     camera.name.startsWith("D_", ignoreCase = true)
 
+            // ⚠️ Nikon은 세션마다 0x935a 승인을 거쳐야 카메라가 전체 PTP opcode를 노출한다.
+            // 승인 전엔 DeviceInfo에 0x952b/0x935a만 보이고 모든 실제 명령이 0x2005(Not Supported)로 거부된다.
+            // (GUID 기억만으로 InitCommand는 통과해 "연결됨"처럼 보이지만 실제 동작은 전부 실패 → 빈 껍데기 연결.
+            //  따라서 반드시 선인증 후 같은 GUID를 libgphoto2에 주입한다.)
             if (isNikonCamera && !forceApMode) {
-                Log.i(TAG, "=== Nikon 카메라 감지 (${camera.name}) - STA 인증 시도 ===")
+                Log.i(TAG, "=== Nikon STA 인증 시도 (${camera.name}) ===")
                 setProgress(UiText.Resource(R.string.progress_ptpip_authenticating_nikon))
-
-                // STA 인증 시도
-                if (!nikonAuthService.performStaAuthentication(camera)) {
-                    Log.w(TAG, "⚠️ Nikon STA 인증 실패 - AP 모드로 계속 진행")
-                    // 인증 실패해도 계속 진행 (AP 모드일 수 있음)
+                if (nikonAuthService.performStaAuthentication(camera)) {
+                    Log.i(TAG, "✅ Nikon STA 인증 성공 - 카메라 '연결 허용' 승인됨")
                 } else {
-                    Log.i(TAG, "✅ Nikon STA 인증 성공 - 카메라에서 '연결 허용' 승인됨")
-                    // 페어링에 사용한 GUID를 libgphoto2 연결에도 동일하게 주입.
-                    // (이 단계가 없으면 libgphoto2가 자기 랜덤 GUID로 연결해 카메라가
-                    //  미승인 클라이언트로 보고 PTP/IP InitFail(bad type 5)로 거부함)
-                    runCatching {
-                        CameraNative.setPtpipGuid(NikonAuthenticationService.STA_PAIRING_GUID)
-                    }.onSuccess {
-                        Log.i(TAG, "✅ libgphoto2 GUID를 Nikon 페어링 GUID로 설정: $it")
-                    }.onFailure {
-                        Log.w(TAG, "⚠️ libgphoto2 GUID 주입 실패", it)
-                    }
+                    Log.w(TAG, "⚠️ Nikon STA 인증 실패 - 그래도 연결 시도 진행")
+                }
+                runCatching {
+                    CameraNative.setPtpipGuid(NikonAuthenticationService.STA_PAIRING_GUID)
+                }.onFailure {
+                    Log.w(TAG, "⚠️ libgphoto2 GUID 주입 실패", it)
                 }
             }
 
@@ -812,28 +820,75 @@ class PtpipDataSource @Inject constructor(
                 Log.w(TAG, "⚠️ 환경 변수 설정 중 오류 (계속 진행): ${e.message}")
             }
 
-            val initResult = if (forceApMode) {
-                Log.i(TAG, "=== AP 모드 강제: libgphoto2 초기화 ===")
-                CameraNative.initCameraForAPMode(camera.ipAddress, camera.port, pluginDir)
-            } else {
-                Log.i(TAG, "=== 표준 모드: libgphoto2 초기화 ===")
-                // 진단: PTP/IP 핸드셰이크(InitCommand/InitEvent) 전체 로그를 logcat + 파일로 저장.
-                // init 구간에만 GP_LOG_DATA(3)로 올리고, 끝나면 ERROR로 복귀해 로그 플러드를 막는다.
-                // 파일: files/libgphoto2_ptpip_latest.txt (연결마다 덮어씀)
-                //   추출: adb shell run-as com.inik.camcon cat files/libgphoto2_ptpip_latest.txt
-                val gphotoLogPath =
-                    "${context.filesDir.absolutePath}/libgphoto2_ptpip_latest.txt"
-                runCatching { CameraNative.startLogFile(gphotoLogPath) }
-                runCatching { CameraNative.setLogLevel(3) }
-                try {
-                    CameraNative.initCameraWithPtpip(camera.ipAddress, camera.port, pluginDir)
-                } finally {
-                    runCatching { CameraNative.setLogLevel(0) }
+            // libgphoto2가 설정(GUID 등)을 영속화하는 $HOME/.config/gphoto 디렉토리 보장.
+            // (없으면 save_settings가 "Can't open settings file for writing"으로 실패해 GUID가 디스크에 안 남음)
+            runCatching { java.io.File(context.filesDir, ".config/gphoto").mkdirs() }
+
+            // libgphoto2 초기화 1회 실행 람다 (forceApMode/표준 분기). 폴백 재시도에서 재사용.
+            val runLibGphotoInit: () -> String? = {
+                if (forceApMode) {
+                    Log.i(TAG, "=== AP 모드 강제: libgphoto2 초기화 ===")
+                    CameraNative.initCameraForAPMode(camera.ipAddress, camera.port, pluginDir)
+                } else {
+                    Log.i(TAG, "=== 표준 모드: libgphoto2 초기화 ===")
+                    // init 구간에만 GP_LOG_DATA(3)로 올리고 끝나면 ERROR로 복귀
+                    // 파일: files/libgphoto2_ptpip_latest.txt (연결마다 덮어씀)
+                    val gphotoLogPath =
+                        "${context.filesDir.absolutePath}/libgphoto2_ptpip_latest.txt"
+                    runCatching { CameraNative.startLogFile(gphotoLogPath) }
+                    runCatching { CameraNative.setLogLevel(3) }
+                    try {
+                        CameraNative.initCameraWithPtpip(camera.ipAddress, camera.port, pluginDir)
+                    } finally {
+                        runCatching { CameraNative.setLogLevel(0) }
+                    }
                 }
             }
+            fun isInitOk(r: String?): Boolean =
+                r == "OK" || r == "GP_OK" || r?.contains("Success", ignoreCase = true) == true
 
-            val initOk = (initResult == "OK" || initResult == "GP_OK" ||
-                    initResult?.contains("Success", ignoreCase = true) == true)
+            // HEALTHY 프로브: 미승인(HOLLOW) 상태면 카메라가 실제 opcode를 0x2005로 거부한다.
+            // getCameraAbilities류는 정적 드라이버표라 HOLLOW/HEALTHY 동일 → 무의미. HOLLOW에서만 실패하는
+            // "실제 동작"을 쏴서 판별한다:
+            //  (1) 단일 config 조회(get_single_config, 메모리카드 무관·경량) → 성공("성공:")이면 HEALTHY
+            //  (2) 스토리지 조회(0x1004) → OR 결합(카드 없을 때 (1)이, 카드 있을 때 (2)가 커버)
+            // ⚠️ queryConfig(전체 설정 트리)는 Nikon ~수백 프로퍼티를 PTP로 일일이 왕복해 18초+ 큐 타임아웃까지
+            //    유발하므로 프로브에선 금지. getConfigString 단독은 get_single_config 우선이라 트리 빌드 없이 경량.
+            // ⚠️ getConfigString은 실패 시에도 "실패: ..." 비-blank 문자열을 반환하므로 반드시 "성공" 접두로 판정한다
+            //    (단순 isNotBlank 판정은 HOLLOW의 "실패:"까지 HEALTHY로 오판 → 미승인 연결 통과 버그).
+            fun probeCameraHealthy(): Boolean {
+                val cfgOk = runCatching {
+                    CameraNative.getConfigString("batterylevel")?.startsWith("성공") == true
+                }.getOrDefault(false)
+                if (cfgOk) return true
+                return runCatching { CameraNative.getStorageInfoNative() != null }.getOrDefault(false)
+            }
+
+            // 연결 준비 판정 = init 성공 + (Nikon STA면) 카메라가 전체 opcode 노출(=0x935a 승인 전환 완료).
+            // ⚠️ 고정 delay 제거: 승인 전환은 비동기·시간 가변(핫스팟 RTT/펌웨어 의존)이라 "기다릴 시간"을
+            // 못 정한다(너무 짧으면 미승인 연결=실패, 너무 길면 느림). 유일한 관측 신호는 "실제 op가 동작하는가"
+            // 이므로 짧은 간격으로 재init+프로브를 폴링해 준비되는 즉시 진행하고, 안전망으로만 타임아웃을 둔다.
+            // (콜백/이벤트 신호는 불가 — 0x935a가 libgphoto2 이벤트 큐에 안 잡힘. 워크플로 조사 결론.)
+            val requireHealthy = isNikonCamera && !forceApMode
+            val readyDeadlineMs = android.os.SystemClock.elapsedRealtime() + 15_000L
+            var backoffMs = 300L
+            var initResult = runLibGphotoInit()
+            var initOk = isInitOk(initResult)
+            var ready = initOk && (!requireHealthy || probeCameraHealthy())
+            while (!ready && android.os.SystemClock.elapsedRealtime() < readyDeadlineMs) {
+                Log.i(TAG, "연결 준비 폴링 — initOk=$initOk, 승인 전환 대기 중 (재시도): $initResult")
+                // 승인 전환은 새 세션 init에서 반영되므로 닫고 재init한다(GUID는 유지됨).
+                runCatching { CameraNative.closeCamera() }
+                delay(backoffMs)
+                backoffMs = (backoffMs * 2).coerceAtMost(1500L)
+                initResult = runLibGphotoInit()
+                initOk = isInitOk(initResult)
+                ready = initOk && (!requireHealthy || probeCameraHealthy())
+            }
+            if (ready && requireHealthy) {
+                Log.i(TAG, "✅ Nikon 승인 확인됨 - 카메라가 전체 opcode 노출")
+            }
+            initOk = ready
 
             if (!initOk) {
                 Log.e(TAG, "❌ libgphoto2 초기화 실패: $initResult")
@@ -856,19 +911,27 @@ class PtpipDataSource @Inject constructor(
                 null
             }
 
-            val deviceInfoJson = try {
-                CameraNative.getCameraDeviceInfo()
-            } catch (e: Exception) {
-                Log.e(TAG, "DeviceInfo 조회 중 오류", e)
-                null
-            }
+            // ⚠️ getCameraDeviceInfo()는 내부적으로 gp_camera_get_summary(전체 요약)를 호출해
+            // Nikon PTP/IP에서 ~6초가 걸린다(스토리지·다수 device property를 PTP로 일일이 조회).
+            // 정작 필요한 manufacturer/model/version/serial 4개는 PTP DeviceInfo 캐시 기반
+            // status 위젯이라 get_single_config(getConfigString)로 즉시 반환되므로 그걸 쓴다.
+            // (무거운 summary 경로는 USB(NativeCameraDataSource)에서만 유지)
+            fun deviceField(key: String): String =
+                runCatching { CameraNative.getConfigString(key) }.getOrNull()
+                    ?.takeIf { it.startsWith("성공") }
+                    ?.removePrefix("성공: ") ?: ""
+            val deviceInfo = PtpDeviceInfo(
+                manufacturer = deviceField("manufacturer"),
+                model = deviceField("cameramodel"),
+                version = deviceField("deviceversion"),
+                serialNumber = deviceField("serialnumber")
+            )
 
-            if (abilitiesJson == null || deviceInfoJson == null) {
+            if (abilitiesJson == null) {
                 Log.w(TAG, "⚠️ 카메라 정보 조회 실패 (하지만 연결은 성공)")
                 // 정보 없어도 계속 진행
             } else {
                 val abilities = parseAbilities(abilitiesJson)
-                val deviceInfo = parseDeviceInfo(deviceInfoJson)
 
                 Log.i(TAG, "📸 연결된 카메라 정보:")
                 Log.i(TAG, "   제조사: ${deviceInfo.manufacturer}")
@@ -957,24 +1020,6 @@ class PtpipDataSource @Inject constructor(
             )
         } catch (e: Exception) {
             Log.e(TAG, "Abilities 파싱 실패", e)
-            throw e
-        }
-    }
-
-    /**
-     * DeviceInfo JSON 파싱
-     */
-    private fun parseDeviceInfo(json: String): PtpDeviceInfo {
-        try {
-            val obj = org.json.JSONObject(json)
-            return PtpDeviceInfo(
-                manufacturer = obj.getString("manufacturer"),
-                model = obj.getString("model"),
-                version = obj.getString("version"),
-                serialNumber = obj.getString("serial_number")
-            )
-        } catch (e: Exception) {
-            Log.e(TAG, "DeviceInfo 파싱 실패", e)
             throw e
         }
     }
