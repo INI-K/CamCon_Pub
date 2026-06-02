@@ -55,12 +55,9 @@ class NikonAuthenticationService @Inject constructor(
                     return@withContext false
                 }
 
-                // Phase 1 완료 후 libgphoto2 연결 준비 대기
-                LogcatManager.i(TAG, "libgphoto2 연결 준비 대기 중... (5초)")
-                delay(5000)  // 카메라가 준비될 시간 필요
-
-                LogcatManager.i(TAG, "✅ 니콘 STA 모드 인증 완료!")
-                LogcatManager.i(TAG, "→ 카메라가 인증된 상태로 libgphoto2 연결 대기 중")
+                // 승인 전환(전체 opcode 노출) 대기는 호출부(PtpipDataSource)가 "실제 op 동작 프로브"를
+                // 폴링해 판정한다. 고정 delay(5000)는 제거 — 너무 짧으면 미승인 연결, 너무 길면 느림.
+                LogcatManager.i(TAG, "✅ 니콘 STA 모드 인증 완료! (연결 준비는 호출부가 조건 기반으로 확인)")
                 return@withContext true
 
             } catch (e: Exception) {
@@ -83,9 +80,12 @@ class NikonAuthenticationService @Inject constructor(
                     LogcatManager.i(TAG, "Phase 1: 승인 요청 임시 연결 시작")
                     LogcatManager.d(TAG, "연결 대상: ${camera.ipAddress}:${camera.port}")
 
-                    // 연결 전 대기 시간 추가 (기존 연결과의 충돌 방지)
-                    LogcatManager.d(TAG, "기존 연결 해제 대기 중... (2초)")
-                    delay(2000)
+                    // 재시도일 때만 짧은 백오프 (1차 시도는 즉시 — 고정 2초 대기 제거)
+                    if (retryCount > 0) {
+                        val backoff = 400L * retryCount
+                        LogcatManager.d(TAG, "재시도 전 대기: ${backoff}ms")
+                        delay(backoff)
+                    }
 
                     // 1-1: Command 소켓 연결 및 초기화
                     LogcatManager.d(TAG, "Step 1-1: Command 소켓 연결 시도")
@@ -188,11 +188,11 @@ class NikonAuthenticationService @Inject constructor(
 
                     LogcatManager.i(TAG, "✅ Phase 1 완료")
 
-                    // 소켓을 닫지 않고 일정 시간 유지 (카메라가 세션을 열어둠)
+                    // 0x935a 승인 직후 소켓을 잠시 유지해 카메라가 승인을 세션 내에서 처리하도록 한다.
+                    // (너무 빨리 닫으면 승인이 적용되지 않아 다음 연결이 미승인 상태가 될 수 있음)
                     LogcatManager.i(TAG, "⏳ 세션 유지 대기 중... (카메라 내부 처리)")
-                    delay(2000) // 2초 대기
+                    delay(2000)
 
-                    // 이제 소켓을 닫아도 카메라는 인증 상태를 유지
                     LogcatManager.d(TAG, "Phase 1 소켓 정리 시작 (인증 상태는 유지됨)")
                     try {
                         commandSocket?.close()
