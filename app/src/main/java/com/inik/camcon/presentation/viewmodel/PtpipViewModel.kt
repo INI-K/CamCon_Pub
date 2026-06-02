@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.inik.camcon.data.network.ptpip.NikonWifiTransferService
 import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.domain.model.CameraCaptureCallback
@@ -21,8 +22,11 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -54,6 +58,7 @@ class PtpipViewModel @Inject constructor(
     private val discoveryHelper: PtpipDiscoveryHelper,
     private val debugHelper: PtpipDebugHelper,
     private val wifiCapabilityProvider: WifiCapabilityProvider,
+    private val nikonWifiTransferService: NikonWifiTransferService,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
@@ -131,6 +136,14 @@ class PtpipViewModel @Inject constructor(
 
     private val _lastDownloadedFile = MutableStateFlow<String?>(null)
     val lastDownloadedFile: StateFlow<String?> = _lastDownloadedFile.asStateFlow()
+
+    // 전송목록 다운로드 테스트의 일회성 결과 메시지 (Toast 용)
+    private val _transferTestMessage = MutableSharedFlow<String>(extraBufferCapacity = 4)
+    val transferTestMessage: SharedFlow<String> = _transferTestMessage.asSharedFlow()
+
+    // 전송목록 다운로드 테스트 진행 중 여부 (버튼 중복 클릭 방지)
+    private val _isTransferTestRunning = MutableStateFlow(false)
+    val isTransferTestRunning: StateFlow<Boolean> = _isTransferTestRunning.asStateFlow()
 
     // 주변 Wi-Fi SSID 목록 (스캔 결과)
     private val _nearbyWifiSSIDs = MutableStateFlow<List<String>>(emptyList())
@@ -661,6 +674,51 @@ class PtpipViewModel @Inject constructor(
 
     fun testPortScan(ipAddress: String) {
         debugHelper.testPortScan(ipAddress, debugCallback)
+    }
+
+    /**
+     * 🧪 니콘 전송목록(Transfer List) 다운로드 테스트.
+     *
+     * 카메라는 PTP/IP 세션을 1개만 허용하므로, 기존 libgphoto2 연결을 먼저 끊은 뒤
+     * [NikonWifiTransferService]가 단독 세션으로 GetTransferList→GetObject 시퀀스를 수행한다.
+     * 결과는 [transferTestMessage]로 일회성 방출한다(화면에서 Toast).
+     *
+     * @param camera 검색/선택된 카메라(없으면 호출부가 막아야 함)
+     */
+    fun testDownloadTransferList(camera: PtpipCamera) {
+        if (_isTransferTestRunning.value) return
+        viewModelScope.launch {
+            _isTransferTestRunning.value = true
+            try {
+                // 단독 연결 보장: 기존 libgphoto2/PTPIP 연결을 먼저 정리한다.
+                Log.i(TAG, "전송목록 테스트 — 기존 연결 정리 후 단독 세션 시작")
+                try {
+                    handoffTracker.clear()
+                    connectionHelper.disconnect()
+                } catch (e: Exception) {
+                    Log.w(TAG, "기존 연결 정리 중 경고: ${e.message}")
+                }
+
+                _transferTestMessage.emit("전송목록 다운로드 시작: ${camera.ipAddress}")
+                val result = nikonWifiTransferService.downloadTransferList(camera)
+                result.fold(
+                    onSuccess = { items ->
+                        val msg = if (items.isEmpty()) {
+                            "전송목록 비어있음 — 카메라에서 사진을 '전송 표시' 했는지 확인하세요 (로그 확인)"
+                        } else {
+                            val total = items.sumOf { it.sizeBytes.toLong() }
+                            "다운로드 ${items.size}건 완료 (총 ${total / 1024}KB)\n${items.joinToString("\n") { "${it.fileName} (${it.sizeBytes / 1024}KB)" }}"
+                        }
+                        _transferTestMessage.emit(msg)
+                    },
+                    onFailure = { e ->
+                        _transferTestMessage.emit("전송목록 다운로드 실패: ${e.message}")
+                    }
+                )
+            } finally {
+                _isTransferTestRunning.value = false
+            }
+        }
     }
 
     // ── 미사용 (스텁 유지) ──
