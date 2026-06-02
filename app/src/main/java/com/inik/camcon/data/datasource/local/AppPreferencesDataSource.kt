@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.inik.camcon.BuildConfig
 import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.domain.repository.AppSettingsRepository
 import kotlinx.coroutines.flow.Flow
@@ -231,11 +232,11 @@ class AppPreferencesDataSource @Inject constructor(
         }
 
     /**
-     * 네이티브 로그 캡처 활성화 여부 (기본값: false)
+     * 네이티브 로그 캡처 활성화 여부 (기본값: 디버그 빌드 true, 릴리스 false)
      */
     override val isNativeLogCaptureEnabled: Flow<Boolean> = context.appDataStore.data
         .map { preferences ->
-            preferences[NATIVE_LOG_CAPTURE_ENABLED] ?: false
+            preferences[NATIVE_LOG_CAPTURE_ENABLED] ?: BuildConfig.DEBUG
         }
 
     /**
