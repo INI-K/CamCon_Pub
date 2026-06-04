@@ -304,6 +304,17 @@ class PtpipConnectionHelper @Inject constructor(
         Log.d(TAG, "수동 촬영 명령 전송 완료")
     }
 
+    /** 물리 셔터 무선 수신 모드 시작/중지 (니콘 STA vendor 풀해상도). */
+    fun startShutterListening(camera: PtpipCamera) {
+        ptpipRepository.startShutterListening(camera)
+        Log.i(TAG, "물리 셔터 무선 수신 시작: ${camera.name}")
+    }
+
+    fun stopShutterListening() {
+        ptpipRepository.stopShutterListening()
+        Log.i(TAG, "물리 셔터 무선 수신 중지")
+    }
+
     // ── 설정 관리 ──────────────────────────────────────────
 
     suspend fun setPtpipEnabled(enabled: Boolean) {

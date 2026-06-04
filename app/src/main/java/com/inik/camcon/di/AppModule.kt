@@ -13,6 +13,7 @@ import com.inik.camcon.data.datasource.usb.CameraCapabilitiesManager
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
 import com.inik.camcon.data.datasource.usb.UsbConnectionManager
 import com.inik.camcon.data.datasource.usb.UsbDeviceDetector
+import com.inik.camcon.data.network.ptpip.PtpipTetherService
 import com.inik.camcon.data.network.ptpip.authentication.NikonAuthenticationService
 import com.inik.camcon.data.network.ptpip.connection.PtpipConnectionManager
 import com.inik.camcon.data.network.ptpip.discovery.PtpipDiscoveryService
@@ -182,6 +183,7 @@ object AppModule {
         autoConnectManager: AutoConnectManager,
         autoConnectTaskRunner: Lazy<AutoConnectTaskRunner>,
         ptpipPreferencesDataSource: PtpipPreferencesDataSource,
+        tetherService: PtpipTetherService,
         @ApplicationScope scope: CoroutineScope,
         @IoDispatcher ioDispatcher: CoroutineDispatcher
     ): PtpipDataSource {
@@ -197,6 +199,7 @@ object AppModule {
             autoConnectManager,
             autoConnectTaskRunner,
             ptpipPreferencesDataSource,
+            tetherService,
             scope,
             ioDispatcher
         )
