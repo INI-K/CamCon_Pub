@@ -74,6 +74,10 @@ interface PtpipRepository {
     /** 수동 사진 촬영 */
     suspend fun capturePhoto(callback: CameraCaptureCallback?)
 
+    /** 물리 셔터 무선 수신 모드 시작/중지 (니콘 STA vendor 0x9421/0x9431 풀해상도). */
+    fun startShutterListening(camera: PtpipCamera)
+    fun stopShutterListening()
+
     // ── 네트워크 상태 조회 ──
 
     fun isWifiConnected(): Boolean

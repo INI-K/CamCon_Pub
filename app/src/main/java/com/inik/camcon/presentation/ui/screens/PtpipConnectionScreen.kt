@@ -44,6 +44,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
@@ -210,6 +211,11 @@ fun PtpipConnectionScreen(
     var showConnectionProgressDialog by remember { mutableStateOf(false) }
     val connectionProgressMessage by ptpipViewModel.connectionProgressMessage.collectAsStateWithLifecycle()
 
+    // 신규 연결(CONNECTING→CONNECTED) 시에만 자동으로 카메라 컨트롤 화면으로 이동한다.
+    // 이미 연결된 상태로 이 화면에 재진입하면(예: ADMIN 전송목록 테스트 버튼 사용) 자동 이동을 막아
+    // 화면이 즉시 닫혀버리지 않도록 한다.
+    var sawConnectingThisSession by remember { mutableStateOf(false) }
+
     // === 추가: Wi-Fi 패스워드 입력 다이얼로그 & 상태 ===
     var showPasswordDialog by remember { mutableStateOf(false) }
     var passwordForSsid by remember { mutableStateOf("") }
@@ -238,10 +244,10 @@ fun PtpipConnectionScreen(
         }
     }
 
-    // 🧪 전송목록 다운로드 테스트 상태 + 결과(Toast)
-    val isTransferTestRunning by ptpipViewModel.isTransferTestRunning.collectAsStateWithLifecycle()
+    // 📡 물리 셔터 무선 수신 모드 상태 + 안내(Toast)
+    val isShutterListening by ptpipViewModel.isShutterListening.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) {
-        ptpipViewModel.transferTestMessage.collect { message ->
+        ptpipViewModel.shutterListenMessage.collect { message ->
             Toast.makeText(context, message, Toast.LENGTH_LONG).show()
         }
     }
@@ -524,6 +530,7 @@ fun PtpipConnectionScreen(
         when (connectionState) {
             com.inik.camcon.domain.model.PtpipConnectionState.CONNECTING -> {
                 Log.d("PtpipConnectionScreen", "   ✅ CONNECTING 상태 - 다이얼로그 열기")
+                sawConnectingThisSession = true
                 showConnectionProgressDialog = true
             }
             com.inik.camcon.domain.model.PtpipConnectionState.CONNECTED -> {
@@ -537,13 +544,18 @@ fun PtpipConnectionScreen(
                     showConnectionProgressDialog = false
                     Log.d("PtpipConnectionScreen", "   ✅ 다이얼로그 닫힘")
 
-                    // 카메라 컨트롤 화면으로 이동
-                    Log.d("PtpipConnectionScreen", "   🚀 카메라 컨트롤 화면으로 이동")
-                    kotlinx.coroutines.delay(300)
-                    Log.d("PtpipConnectionScreen", "   ✅ 카메라 컨트롤 화면으로 이동")
-                    // 핸드오프 표시 — Activity finish 시 onCleared가 연결을 끊지 않도록 한다.
-                    ptpipViewModel.markConnectionHandoff()
-                    onBackClick()
+                    if (sawConnectingThisSession) {
+                        // 신규 연결 완료 → 카메라 컨트롤 화면으로 이동
+                        Log.d("PtpipConnectionScreen", "   🚀 카메라 컨트롤 화면으로 이동")
+                        kotlinx.coroutines.delay(300)
+                        Log.d("PtpipConnectionScreen", "   ✅ 카메라 컨트롤 화면으로 이동")
+                        // 핸드오프 표시 — Activity finish 시 onCleared가 연결을 끊지 않도록 한다.
+                        ptpipViewModel.markConnectionHandoff()
+                        onBackClick()
+                    } else {
+                        // 이미 연결된 상태로 재진입(예: ADMIN 전송목록 테스트 버튼) — 자동 이동 생략, 화면 유지
+                        Log.d("PtpipConnectionScreen", "   ⏸️ 이미 연결됨(재진입) - 자동 이동 생략, 화면 유지")
+                    }
                 } else {
                     Log.d("PtpipConnectionScreen", "   ⏳ 아직 '연결 완료!' 아님 - 다이얼로그 유지")
                 }
@@ -634,13 +646,12 @@ fun PtpipConnectionScreen(
                         }
                     },
                     actions = {
-                        // 🧪 전송목록 다운로드 테스트 (ADMIN 전용 디버그 액션)
+                        // 📡 물리 셔터 무선 수신 토글 (니콘 STA vendor 풀해상도)
                         if (isAdmin) {
                             IconButtonV2(
-                                icon = Icons.Filled.CloudDownload,
-                                contentDescription = "전송목록 다운로드 테스트",
-                                tint = MaterialTheme.colorScheme.secondary,
-                                enabled = !isTransferTestRunning,
+                                icon = if (isShutterListening) Icons.Filled.CloudDone else Icons.Filled.CloudDownload,
+                                contentDescription = if (isShutterListening) "무선 수신 중지" else "물리 셔터 무선 수신 시작",
+                                tint = if (isShutterListening) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
                                 onClick = {
                                     val target = selectedCamera ?: discoveredCameras.firstOrNull()
                                     if (target == null) {
@@ -650,7 +661,7 @@ fun PtpipConnectionScreen(
                                             Toast.LENGTH_SHORT
                                         ).show()
                                     } else {
-                                        ptpipViewModel.testDownloadTransferList(target)
+                                        ptpipViewModel.toggleShutterListening(target)
                                     }
                                 }
                             )

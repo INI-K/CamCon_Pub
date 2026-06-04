@@ -49,6 +49,7 @@ class PtpipViewModelHotspotTest {
     private lateinit var ptpipRepository: PtpipRepository
     private lateinit var preferencesRepository: PtpipPreferencesRepository
     private lateinit var globalManager: CameraConnectionGlobalManager
+    private lateinit var handoffTracker: ConnectionHandoffTracker
     private lateinit var connectionHelper: PtpipConnectionHelper
     private lateinit var discoveryHelper: PtpipDiscoveryHelper
     private lateinit var debugHelper: PtpipDebugHelper
@@ -64,6 +65,7 @@ class PtpipViewModelHotspotTest {
         ptpipRepository = mockk(relaxed = true)
         preferencesRepository = mockk(relaxed = true)
         globalManager = mockk(relaxed = true)
+        handoffTracker = mockk(relaxed = true)
         connectionHelper = mockk(relaxed = true)
         discoveryHelper = mockk(relaxed = true)
         debugHelper = mockk(relaxed = true)
@@ -106,6 +108,7 @@ class PtpipViewModelHotspotTest {
         ptpipRepository = ptpipRepository,
         preferencesRepository = preferencesRepository,
         globalManager = globalManager,
+        handoffTracker = handoffTracker,
         connectionHelper = connectionHelper,
         discoveryHelper = discoveryHelper,
         debugHelper = debugHelper,
