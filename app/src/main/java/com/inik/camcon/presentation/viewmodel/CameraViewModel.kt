@@ -286,8 +286,8 @@ class CameraViewModel @Inject constructor(
                     // settingsManager.loadCameraSettings()
                     // settingsManager.loadCameraCapabilities()
 
-                    // EV/Storage 칩은 캡쳐 화면에서 항상 노출되므로 연결 시 한 번 로드.
-                    // 둘 다 단일 widget/storage 호출이라 비용 작음.
+                    // EV/Storage 칩 로드. EV 조회는 네이티브에서 단일 config(get_single_config)로
+                    // 처리되어 PTP/IP에서도 가볍다(전체 config walk 제거 — camera_widget_access.cpp).
                     launch {
                         try {
                             settingsManager.loadExposureCompensation()
