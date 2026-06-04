@@ -215,7 +215,6 @@ class BackgroundSyncService : Service() {
         try {
             wakeLock?.let { lock ->
                 lock.acquire(10 * 60 * 1000L) // 무조건 타임아웃 재설정 (10분 연장)
-                LogcatManager.d(TAG, " Wake Lock 갱신됨")
             }
         } catch (e: Exception) {
             LogcatManager.e(TAG, "Wake Lock 갱신 실패", e)
@@ -371,7 +370,6 @@ class BackgroundSyncService : Service() {
                             }
 
                         } else if (isEventListenerActive) {
-                            LogcatManager.d(TAG, " 카메라 연결 및 이벤트 리스너 정상 작동 중")
                             updateNotificationText("카메라 이벤트 리스너 활성 - 사진 수신 대기 중")
                         }
                     } else {
@@ -460,13 +458,9 @@ class BackgroundSyncService : Service() {
             val currentUser = firebaseAuth.currentUser
 
             if (currentUser != null) {
-                LogcatManager.d(TAG, "Firebase 사용자 인증 유지됨: ${currentUser.uid}")
-
-                // 필요시 토큰 갱신
+                // 필요시 토큰 갱신 (실패 시에만 로그)
                 currentUser.getIdToken(false).addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        LogcatManager.d(TAG, "Firebase 토큰 갱신 성공")
-                    } else {
+                    if (!task.isSuccessful) {
                         LogcatManager.w(TAG, "Firebase 토큰 갱신 실패", task.exception)
                     }
                 }
@@ -486,7 +480,6 @@ class BackgroundSyncService : Service() {
         try {
             // 실제 구현에서는 필요한 동기화 작업 수행
             // 예: 대기 중인 업로드 파일 확인, 클라우드 상태 동기화 등
-            LogcatManager.d(TAG, "파일 동기화 상태 확인 완료")
 
         } catch (e: Exception) {
             LogcatManager.w(TAG, "파일 동기화 상태 확인 실패", e)

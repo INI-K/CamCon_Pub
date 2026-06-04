@@ -83,6 +83,7 @@ class PtpipDataSource @Inject constructor(
     private val autoConnectManager: AutoConnectManager,
     private val autoConnectTaskRunnerProvider: Lazy<AutoConnectTaskRunner>,
     private val ptpipPreferencesDataSource: com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource,
+    private val tetherService: com.inik.camcon.data.network.ptpip.PtpipTetherService,
     @ApplicationScope private val coroutineScope: CoroutineScope,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
@@ -595,6 +596,9 @@ class PtpipDataSource @Inject constructor(
             }
         }
 
+        // 물리 셔터 리스너 중지 (누수 방지)
+        stopShutterListening()
+
         // 콜백 초기화
         onPhotoCapturedCallback = null
         onPhotoDownloadedCallback = null
@@ -871,7 +875,9 @@ class PtpipDataSource @Inject constructor(
             // (콜백/이벤트 신호는 불가 — 0x935a가 libgphoto2 이벤트 큐에 안 잡힘. 워크플로 조사 결론.)
             val requireHealthy = isNikonCamera && !forceApMode
             val readyDeadlineMs = android.os.SystemClock.elapsedRealtime() + 15_000L
-            var backoffMs = 300L
+            // 첫 backoff를 300→800ms로 상향(A-3): close 직후 너무 빨리 재init하면 Nikon이
+            // "TCP만 수락하고 응답 안 함" 상태에 빠진다(airnef 문서화). ≥1s 간격 권고에 맞춤.
+            var backoffMs = 800L
             var initResult = runLibGphotoInit()
             var initOk = isInitOk(initResult)
             var ready = initOk && (!requireHealthy || probeCameraHealthy())
@@ -1729,6 +1735,51 @@ class PtpipDataSource @Inject constructor(
     fun setPhotoDownloadedCallback(callback: (String, String, ByteArray) -> Unit) {
         onPhotoDownloadedCallback = callback
         Log.d(TAG, "PTPIP 파일 다운로드 콜백 설정 완료")
+    }
+
+    // ── 물리 셔터 무선 수신 모드 (제조사 자동 판별: 니콘=vendor 잠금우회, 그 외=표준 PTP) ──
+    // 단일 PTP/IP 세션 제약상 libgphoto2(원격촬영/라이브뷰)와 공존 불가. 이 모드는 libgphoto2
+    // 연결을 끊은 뒤(호출부 책임) 단독 세션으로 카드 핸들을 폴링해 새로 찍힌 컷만 풀해상도로
+    // 받는다. 받은 bytes는 기존 PhotoDownloadManager(RAW게이팅·FREE축소·EXIF·MediaStore) →
+    // onPhotoDownloadedCallback 체인으로 흘려보내 capturedPhotos/미리보기에 동일하게 등장시킨다.
+    private var shutterListenerJob: Job? = null
+
+    val isShutterListening: Boolean
+        get() = shutterListenerJob?.isActive == true
+
+    fun startShutterListening(camera: PtpipCamera) {
+        if (shutterListenerJob?.isActive == true) {
+            Log.w(TAG, "물리 셔터 리스너가 이미 실행 중")
+            return
+        }
+        Log.i(TAG, "물리 셔터 리스너 시작 요청: ${camera.name}")
+        shutterListenerJob = coroutineScope.launch(ioDispatcher) {
+            tetherService.listenForNewShots(camera) { fileName, bytes ->
+                try {
+                    val saved = photoDownloadManager.handleNativePhotoDownload(
+                        filePath = fileName,
+                        fileName = fileName,
+                        imageData = bytes,
+                        cameraCapabilities = null,
+                        cameraSettings = null
+                    )
+                    if (saved != null) {
+                        Log.i(TAG, "📥 새 컷 수신·저장: ${saved.filePath}")
+                        onPhotoDownloadedCallback?.invoke(saved.filePath, fileName, bytes)
+                    } else {
+                        Log.w(TAG, "새 컷 저장 차단/실패(게이팅 등): $fileName")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "새 컷 처리 오류: ${e.message}")
+                }
+            }
+        }
+    }
+
+    fun stopShutterListening() {
+        shutterListenerJob?.cancel()
+        shutterListenerJob = null
+        Log.i(TAG, "물리 셔터 리스너 중지")
     }
 
     /**

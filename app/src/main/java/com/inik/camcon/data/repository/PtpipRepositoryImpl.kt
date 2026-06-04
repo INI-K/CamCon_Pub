@@ -86,6 +86,11 @@ class PtpipRepositoryImpl @Inject constructor(
         ptpipDataSource.capturePhoto(withAF = true)
     }
 
+    override fun startShutterListening(camera: PtpipCamera) =
+        ptpipDataSource.startShutterListening(camera)
+
+    override fun stopShutterListening() = ptpipDataSource.stopShutterListening()
+
     // ── 네트워크 상태 조회 ──
 
     override fun isWifiConnected(): Boolean = ptpipDataSource.isWifiConnected()

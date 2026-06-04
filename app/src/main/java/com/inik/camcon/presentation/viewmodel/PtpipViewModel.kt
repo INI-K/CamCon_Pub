@@ -4,7 +4,6 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.inik.camcon.data.network.ptpip.NikonWifiTransferService
 import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.domain.model.CameraCaptureCallback
@@ -58,7 +57,6 @@ class PtpipViewModel @Inject constructor(
     private val discoveryHelper: PtpipDiscoveryHelper,
     private val debugHelper: PtpipDebugHelper,
     private val wifiCapabilityProvider: WifiCapabilityProvider,
-    private val nikonWifiTransferService: NikonWifiTransferService,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
@@ -137,13 +135,13 @@ class PtpipViewModel @Inject constructor(
     private val _lastDownloadedFile = MutableStateFlow<String?>(null)
     val lastDownloadedFile: StateFlow<String?> = _lastDownloadedFile.asStateFlow()
 
-    // 전송목록 다운로드 테스트의 일회성 결과 메시지 (Toast 용)
-    private val _transferTestMessage = MutableSharedFlow<String>(extraBufferCapacity = 4)
-    val transferTestMessage: SharedFlow<String> = _transferTestMessage.asSharedFlow()
+    // 물리 셔터 무선 수신 모드의 일회성 안내 메시지 (Toast 용)
+    private val _shutterListenMessage = MutableSharedFlow<String>(extraBufferCapacity = 4)
+    val shutterListenMessage: SharedFlow<String> = _shutterListenMessage.asSharedFlow()
 
-    // 전송목록 다운로드 테스트 진행 중 여부 (버튼 중복 클릭 방지)
-    private val _isTransferTestRunning = MutableStateFlow(false)
-    val isTransferTestRunning: StateFlow<Boolean> = _isTransferTestRunning.asStateFlow()
+    // 물리 셔터 무선 수신 모드 활성 여부
+    private val _isShutterListening = MutableStateFlow(false)
+    val isShutterListening: StateFlow<Boolean> = _isShutterListening.asStateFlow()
 
     // 주변 Wi-Fi SSID 목록 (스캔 결과)
     private val _nearbyWifiSSIDs = MutableStateFlow<List<String>>(emptyList())
@@ -677,46 +675,40 @@ class PtpipViewModel @Inject constructor(
     }
 
     /**
-     * 🧪 니콘 전송목록(Transfer List) 다운로드 테스트.
+     * 📡 물리 셔터 무선 수신 모드 토글.
      *
-     * 카메라는 PTP/IP 세션을 1개만 허용하므로, 기존 libgphoto2 연결을 먼저 끊은 뒤
-     * [NikonWifiTransferService]가 단독 세션으로 GetTransferList→GetObject 시퀀스를 수행한다.
-     * 결과는 [transferTestMessage]로 일회성 방출한다(화면에서 Toast).
+     * 카메라는 PTP/IP 세션을 1개만 허용하므로, 시작 시 기존 libgphoto2 연결을 먼저 끊은 뒤
+     * 니콘 STA vendor 시퀀스(0x9421/0x9431)로 단독 세션을 열어 새 컷만 폴링 수신한다.
+     * 수신된 바이트는 기존 사진 수신 경로(PhotoDownloadManager → capturedPhotos)로 흘러
+     * 미리보기/수신목록에 그대로 나타난다.
      *
      * @param camera 검색/선택된 카메라(없으면 호출부가 막아야 함)
      */
-    fun testDownloadTransferList(camera: PtpipCamera) {
-        if (_isTransferTestRunning.value) return
+    fun toggleShutterListening(camera: PtpipCamera) {
+        if (_isShutterListening.value) {
+            viewModelScope.launch {
+                connectionHelper.stopShutterListening()
+                _isShutterListening.value = false
+                _shutterListenMessage.emit("무선 수신 중지")
+            }
+            return
+        }
         viewModelScope.launch {
-            _isTransferTestRunning.value = true
             try {
-                // 단독 연결 보장: 기존 libgphoto2/PTPIP 연결을 먼저 정리한다.
-                Log.i(TAG, "전송목록 테스트 — 기존 연결 정리 후 단독 세션 시작")
+                // 단독 세션 보장: 기존 libgphoto2/PTPIP 연결을 먼저 정리한다.
+                Log.i(TAG, "무선 수신 시작 — 기존 연결 정리 후 단독 vendor 세션")
                 try {
                     handoffTracker.clear()
                     connectionHelper.disconnect()
                 } catch (e: Exception) {
                     Log.w(TAG, "기존 연결 정리 중 경고: ${e.message}")
                 }
-
-                _transferTestMessage.emit("전송목록 다운로드 시작: ${camera.ipAddress}")
-                val result = nikonWifiTransferService.downloadTransferList(camera)
-                result.fold(
-                    onSuccess = { items ->
-                        val msg = if (items.isEmpty()) {
-                            "전송목록 비어있음 — 카메라에서 사진을 '전송 표시' 했는지 확인하세요 (로그 확인)"
-                        } else {
-                            val total = items.sumOf { it.sizeBytes.toLong() }
-                            "다운로드 ${items.size}건 완료 (총 ${total / 1024}KB)\n${items.joinToString("\n") { "${it.fileName} (${it.sizeBytes / 1024}KB)" }}"
-                        }
-                        _transferTestMessage.emit(msg)
-                    },
-                    onFailure = { e ->
-                        _transferTestMessage.emit("전송목록 다운로드 실패: ${e.message}")
-                    }
-                )
-            } finally {
-                _isTransferTestRunning.value = false
+                connectionHelper.startShutterListening(camera)
+                _isShutterListening.value = true
+                _shutterListenMessage.emit("무선 수신 시작 — 카메라 셔터를 누르면 그 컷이 자동 수신됩니다")
+            } catch (e: Exception) {
+                _isShutterListening.value = false
+                _shutterListenMessage.emit("무선 수신 시작 실패: ${e.message}")
             }
         }
     }

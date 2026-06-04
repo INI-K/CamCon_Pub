@@ -190,8 +190,10 @@ class NikonAuthenticationService @Inject constructor(
 
                     // 0x935a 승인 직후 소켓을 잠시 유지해 카메라가 승인을 세션 내에서 처리하도록 한다.
                     // (너무 빨리 닫으면 승인이 적용되지 않아 다음 연결이 미승인 상태가 될 수 있음)
+                    // Z6(FW V3.80) 관측상 2초로는 1차 init이 End of stream(-1)으로 거부되는 경우가 많아
+                    // 3초로 상향(A-1). ioDispatcher 위에서 실행되므로 UI 블로킹 없음.
                     LogcatManager.i(TAG, "⏳ 세션 유지 대기 중... (카메라 내부 처리)")
-                    delay(2000)
+                    delay(3000)
 
                     LogcatManager.d(TAG, "Phase 1 소켓 정리 시작 (인증 상태는 유지됨)")
                     try {
