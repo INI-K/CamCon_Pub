@@ -124,6 +124,14 @@ class CamCon : Application() {
             var iolibCount = 0
             var camlibCount = 0
 
+            // 앱이 업데이트되면(APK 재설치) 기존 복사본을 덮어쓴다.
+            // 이게 없으면 .so를 새로 빌드/설치해도 옛 플러그인이 계속 로드된다.
+            val apkLastUpdate = try {
+                packageManager.getPackageInfo(packageName, 0).lastUpdateTime
+            } catch (e: Exception) {
+                0L
+            }
+
             // APK의 lib/arm64-v8a 경로에서 라이브러리 목록 조회
             val apkFile = java.util.zip.ZipFile(applicationInfo.sourceDir)
             try {
@@ -143,7 +151,7 @@ class CamCon : Application() {
                         fileName.startsWith("libgphoto2_port_iolib_") -> {
                             val targetName = fileName.replace("libgphoto2_port_iolib_", "")
                             val targetFile = java.io.File(portVersionDir, targetName)
-                            if (!targetFile.exists()) {
+                            if (!targetFile.exists() || targetFile.lastModified() < apkLastUpdate) {
                                 apkFile.getInputStream(entry).use { input ->
                                     targetFile.outputStream().use { output ->
                                         input.copyTo(output)
@@ -156,7 +164,7 @@ class CamCon : Application() {
                         fileName.startsWith("libgphoto2_camlib_") -> {
                             val targetName = fileName.replace("libgphoto2_camlib_", "")
                             val targetFile = java.io.File(gphoto2VersionDir, targetName)
-                            if (!targetFile.exists()) {
+                            if (!targetFile.exists() || targetFile.lastModified() < apkLastUpdate) {
                                 apkFile.getInputStream(entry).use { input ->
                                     targetFile.outputStream().use { output ->
                                         input.copyTo(output)
