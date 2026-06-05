@@ -12,6 +12,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -75,6 +76,10 @@ class CameraLifecycleRepositoryImpl @Inject constructor(
             // libgphoto2(AP 강제) 경로에서도 이벤트 리스너가 활성화되어 있으면 연결로 간주
             isConnected || isListenerActive
         }
+            // 이벤트 리스너 활성 토글로 combine이 같은 true를 반복 방출하면
+            // observeCameraConnection이 EV/스토리지 전체 config walk를 ~12초마다 재실행해
+            // 이벤트 폴을 굶긴다. 값이 바뀔 때만 흘려보내 연결당 1회 로드로 제한.
+            .distinctUntilChanged()
 
     fun isInitializing(): Flow<Boolean> =
         connectionManager.isInitializing
