@@ -518,45 +518,50 @@ else
 fi
 echo ">> libgphoto2 HEAD: $(cd "$BUILD_DIR/libgphoto2" && git log --oneline -1)"
 
-# CamCon 커스텀 패치 적용 (로컬 수정 사항 반영)
-# 패치 목록:
-#   - library.c:  find_child PTP 캐시 우선 탐색 + Nikon GetPartialObjectEx 확대
+# CamCon 커스텀 패치 적용 — repo 내 단일 .patch (외부 PATCH_SRC 의존 제거)
+# patches/camcon-libgphoto2.patch:
+#   - library.c:  0x9010 AdvancedTransfer pull + same-handle 드레인 가드,
+#                 find_child PTP 캐시 우선, capture_preview ChangeCameraMode 건너뜀
+#   - ptp.c/ptp.h: ptp_nikon_advancedtransfer(0x9010) 구현/선언  ← 기존 cp 방식이 누락하던 핵심
 #   - ptpip.c:    TCP 소켓 최적화
-#   - gphoto2-filesys.c: lookup_folder lazy creation + lookup_folder_file 캐시 우선 검색
-#                         + append_to_folder 재귀 생성 + gp_filesystem_append dirty 열거 스킵
-PATCH_SRC="/Users/ini-k/libgphoto2"
-if [ -d "$PATCH_SRC/camlibs/ptp2" ]; then
-    echo ">> CamCon 패치 적용 중..."
-    cp -v "$PATCH_SRC/camlibs/ptp2/library.c" "$BUILD_DIR/libgphoto2/camlibs/ptp2/library.c"
-    cp -v "$PATCH_SRC/camlibs/ptp2/ptpip.c"   "$BUILD_DIR/libgphoto2/camlibs/ptp2/ptpip.c"
-    [ -f "$PATCH_SRC/libgphoto2/gphoto2-filesys.c" ] && \
-        cp -v "$PATCH_SRC/libgphoto2/gphoto2-filesys.c" "$BUILD_DIR/libgphoto2/libgphoto2/gphoto2-filesys.c"
+#   - gphoto2-filesys.c: lazy creation + 캐시 우선 + dirty 열거 스킵
+# 어느 머신에서든 동일 재현: git clone master -> git apply 이 patch -> build.
+PATCH_FILE="$BASE_DIR/patches/camcon-libgphoto2.patch"
+if [ -f "$PATCH_FILE" ]; then
+    echo ">> CamCon 패치 적용: $PATCH_FILE"
+    if ! git -C "$BUILD_DIR/libgphoto2" apply --check "$PATCH_FILE" 2>/dev/null; then
+        echo ""
+        echo "ERROR: 패치가 현재 libgphoto2 master에 깨끗이 적용되지 않습니다."
+        echo "  (master 업데이트로 충돌 시 patches/camcon-libgphoto2.patch 를 재생성하세요:"
+        echo "   빌드트리 libgphoto2_src 에서 git diff > patches/camcon-libgphoto2.patch)"
+        exit 1
+    fi
+    git -C "$BUILD_DIR/libgphoto2" apply "$PATCH_FILE"
 
-    # 패치 검증 — 핵심 패치가 누락되면 빌드 중단
+    # 핵심 패치 반영 검증 — 누락 시 빌드 중단
     echo ">> 패치 검증 중..."
     patch_ok=true
-    grep -q 'cache hit' "$BUILD_DIR/libgphoto2/camlibs/ptp2/library.c" \
-        && echo "  ✓ find_child 캐시 우선 탐색" \
-        || { echo "  ✗ find_child 패치 누락!"; patch_ok=false; }
-    grep -q 'returning NULL for lazy creation' "$BUILD_DIR/libgphoto2/libgphoto2/gphoto2-filesys.c" \
-        && echo "  ✓ lookup_folder lazy creation" \
-        || { echo "  ✗ lookup_folder 패치 누락!"; patch_ok=false; }
-    grep -q 'First check if the file' "$BUILD_DIR/libgphoto2/libgphoto2/gphoto2-filesys.c" \
-        && echo "  ✓ lookup_folder_file 캐시 우선 검색" \
-        || { echo "  ✗ lookup_folder_file 패치 누락!"; patch_ok=false; }
+    grep -q 'camcon_at_last_handle' "$BUILD_DIR/libgphoto2/camlibs/ptp2/library.c" \
+        && echo "  ✓ 0x9010 same-handle 드레인 가드" \
+        || { echo "  ✗ library.c 드레인 가드 누락!"; patch_ok=false; }
+    grep -q 'ptp_nikon_advancedtransfer' "$BUILD_DIR/libgphoto2/camlibs/ptp2/ptp.c" \
+        && echo "  ✓ ptp_nikon_advancedtransfer(0x9010) 구현" \
+        || { echo "  ✗ ptp.c 구현 누락!"; patch_ok=false; }
+    grep -q 'skipping ChangeCameraMode' "$BUILD_DIR/libgphoto2/camlibs/ptp2/library.c" \
+        && echo "  ✓ capture_preview ChangeCameraMode 건너뜀" \
+        || { echo "  ✗ ChangeCameraMode 패치 누락!"; patch_ok=false; }
     grep -q 'Skip full enumeration' "$BUILD_DIR/libgphoto2/libgphoto2/gphoto2-filesys.c" \
         && echo "  ✓ gp_filesystem_append dirty 열거 스킵" \
-        || { echo "  ✗ gp_filesystem_append 패치 누락!"; patch_ok=false; }
-    grep -q 'skipping ChangeCameraMode' "$BUILD_DIR/libgphoto2/camlibs/ptp2/library.c" \
-        && echo "  ✓ PTP/IP capture_preview ChangeCameraMode 건너뜀 (물리 셔터 활성화)" \
-        || { echo "  ✗ capture_preview ChangeCameraMode 패치 누락!"; patch_ok=false; }
+        || { echo "  ✗ gphoto2-filesys 패치 누락!"; patch_ok=false; }
 
     if [ "$patch_ok" = false ]; then
         echo ""
-        echo "ERROR: 패치 검증 실패. $PATCH_SRC 디렉토리의 패치 파일을 확인하세요."
+        echo "ERROR: 패치 검증 실패."
         exit 1
     fi
     echo ">> 패치 적용 및 검증 완료"
+else
+    echo "WARNING: $PATCH_FILE 없음 — 순정 master 빌드 (CamCon 패치 미적용)"
 fi
 
 fetch "https://ftp.gnu.org/gnu/libtool/libtool-${LIBTOOL_VER}.tar.gz"

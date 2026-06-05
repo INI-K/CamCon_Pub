@@ -1,0 +1,423 @@
+diff --git a/camlibs/ptp2/library.c b/camlibs/ptp2/library.c
+index cdf0b35..7e3eea9 100644
+--- a/camlibs/ptp2/library.c
++++ b/camlibs/ptp2/library.c
+@@ -3740,13 +3740,19 @@ camera_capture_preview (Camera *camera, CameraFile *file, GPContext *context)
+ 		}
+ 		SET_CONTEXT_P(params, context);
+ 
+-		/* Nilon V and J seem to like that */
++		/* Nikon V and J seem to like that — but skip for PTP/IP (Wi-Fi)
++		 * to allow physical shutter operation during live view.
++		 * ChangeCameraMode(1) locks the camera into PC-only control mode. */
+ 		if (!params->controlmode && ptp_operation_issupported(params,PTP_OC_NIKON_ChangeCameraMode)) {
+-			ret = ptp_nikon_changecameramode (params, 1);
+-			/* FIXME: PTP_RC_NIKON_ChangeCameraModeFailed does not seem to be problematic */
+-			if (ret != PTP_RC_NIKON_ChangeCameraModeFailed)
+-				C_PTP_REP (ret);
+-			params->controlmode = 1;
++			if (camera->port->type != GP_PORT_PTPIP) {
++				ret = ptp_nikon_changecameramode (params, 1);
++				/* FIXME: PTP_RC_NIKON_ChangeCameraModeFailed does not seem to be problematic */
++				if (ret != PTP_RC_NIKON_ChangeCameraModeFailed)
++					C_PTP_REP (ret);
++				params->controlmode = 1;
++			} else {
++				GP_LOG_D ("PTP/IP: skipping ChangeCameraMode(1) to allow physical shutter");
++			}
+ 		}
+ 
+ 		ret = ptp_getdevicepropvalue (params, PTP_DPC_NIKON_LiveViewStatus, &value, PTP_DTC_UINT8);
+@@ -6627,6 +6633,10 @@ camera_trigger_capture (Camera *camera, GPContext *context)
+ 	return GP_OK;
+ }
+ 
++/* CamCon: 0x9010 AdvancedTransfer same-handle storm guard state. */
++static uint32_t   camcon_at_last_handle = 0;
++static PTPParams *camcon_at_last_params = NULL;
++
+ static int
+ camera_wait_for_event (Camera *camera, int timeout,
+ 		       CameraEventType *eventtype, void **eventdata,
+@@ -6939,7 +6949,25 @@ camera_wait_for_event (Camera *camera, int timeout,
+ 		ptp_operation_issupported(params, PTP_OC_NIKON_GetEvent)
+ 	) {
+ 		do {
+-			C_PTP_REP (ptp_check_event (params));
++			{
++				/* camcon_check_event_timeout: STA(PC connection) WTU 모드에선 전송할 게 없을 때
++				 * GetEvent가 PTP_ERROR_TIMEOUT(0x02fa)을 내지만 이는 연결 끊김이 아니라 '이벤트
++				 * 없음'이다. 기존 C_PTP_REP는 이를 치명적으로 보고 -10을 return해 아래 0x9010
++				 * AdvancedTransfer 전송큐 pull에 도달하지 못하고 앱이 '연결 끊김'으로 오인했다.
++				 * PTP/IP + Nikon AdvancedTransfer + 비라이브뷰일 때만 Timeout을 무시하고 0x9010
++				 * pull로 진행한다. 그 외(USB/타벤더/라이브뷰/Timeout이 아닌 실제 에러)는 기존대로 전파. */
++				uint16_t cevt = ptp_check_event (params);
++				if (cevt != PTP_RC_OK) {
++					if ((camera->port->type == GP_PORT_PTPIP) &&
++					    !params->inliveview &&
++					    ptp_operation_issupported(params, PTP_OC_NIKON_AdvancedTransfer) &&
++					    cevt == PTP_ERROR_TIMEOUT) {
++						GP_LOG_D ("CamCon: GetEvent timeout (no event) on STA WTU - continue to 0x9010 pull");
++					} else {
++						C_PTP_REP (cevt);
++					}
++				}
++			}
+ 			while (ptp_get_one_event (params, &event)) {
+ 				back_off_wait = 0;
+ 				GP_LOG_D ("event.Code is %x / param %lx", event.Code, (unsigned long)event.Param1);
+@@ -7056,6 +7084,67 @@ downloadnow:
+ 					goto handleregular;
+ 				}
+ 			}
++			/* CamCon: Nikon "PC connection" (infrastructure/STA) physical-shutter Wi-Fi
++			 * receive - implemented like Nikon's Wireless Transmitter Utility (WTU).
++			 * On STA the per-shot ObjectAdded event is AccessLocked (GetObjectInfo ->
++			 * 0x200F) and is dropped during a download, so bursts get lost on the regular
++			 * path above. Instead we PULL from the camera's transfer queue with
++			 * AdvancedTransfer (0x9010): each call long-polls (returns the instant a shot
++			 * is queued, else blocks to the ~2.5s socket timeout) and pops the next item
++			 *   [u8 0x02][u32 LE object handle][counted UTF-16 path][counted UTF-16 dates]
++			 * while releasing that handle's AccessLock, so the standard download then
++			 * succeeds. The queue persists, so a rapid burst is drained one shot per poll
++			 * without loss. Verified against a WTU wire capture (Z6 V3.80): handles
++			 * increment a1,a2,a3,... Strictly gated to PTP/IP + Nikon + AdvancedTransfer +
++			 * not-liveview, so USB and all other vendors are unaffected. */
++			if (	(camera->port->type == GP_PORT_PTPIP) &&
++				!params->inliveview &&
++				ptp_operation_issupported(params, PTP_OC_NIKON_AdvancedTransfer)
++			) {
++				unsigned char	*atdata = NULL;
++				unsigned int	atlen = 0;
++				uint16_t	atret;
++
++				atret = ptp_nikon_advancedtransfer (params, 0x2001, &atdata, &atlen);
++				if (atret == PTP_RC_OK && atdata && atlen >= 5 && atdata[0] == 0x02) {
++					uint32_t	handle =  (uint32_t)atdata[1]        |
++							 ((uint32_t)atdata[2] <<  8) |
++							 ((uint32_t)atdata[3] << 16) |
++							 ((uint32_t)atdata[4] << 24);
++					int		addret;
++
++					free (atdata);
++					atdata = NULL;
++
++					/* CamCon storm guard: 0x9010 only PEEKS the transfer queue head; the head is
++					 * consumed only when that handle is actually downloaded (gp_camera_file_get
++					 * -> 0x101b). Until then every poll returns the SAME handle, spinning this
++					 * loop at TCP-roundtrip speed (~33ms) and flooding logs. Suppress the repeat
++					 * by keeping the back-off growing and falling through to the timeout. A NEW
++					 * handle (burst a1->a2->a3) passes immediately so bursts stay lossless; the
++					 * params pointer scopes the guard to one PTP/IP session. */
++					if (handle == camcon_at_last_handle && params == camcon_at_last_params) {
++						GP_LOG_D ("CamCon AdvancedTransfer: same handle 0x%08x still queued, backing off", handle);
++					} else {
++						GP_LOG_D ("CamCon AdvancedTransfer: dequeued handle 0x%08x (atlen=%u)", handle, atlen);
++						camcon_at_last_handle = handle;
++						camcon_at_last_params = params;
++						back_off_wait = 0;
++						C_MEM (path = calloc(1, sizeof(CameraFilePath)));
++						addret = add_object_to_fs_and_path (camera, handle, path, context);
++						if (addret >= GP_OK) {
++							*eventtype = GP_EVENT_FILE_ADDED;
++							*eventdata = path;
++							return GP_OK;
++						}
++						GP_LOG_E ("CamCon AdvancedTransfer: add_object 0x%08x failed (%d)", handle, addret);
++						free (path);
++						path = NULL;
++					}
++				} else {
++					free (atdata);
++				}
++			}
+ 			gp_context_idle (context);
+ 		} while (waiting_for_timeout (&back_off_wait, event_start, timeout));
+ 
+@@ -8048,6 +8137,30 @@ find_child (PTPParams *params, const char *path, uint32_t storage, uint32_t hand
+ 	const char *slash = strchr (path, '/');
+ 	size_t filename_len = slash ? (size_t)(slash - path) : strlen(path);
+ 
++	/* Fast path: check if target is already in the PTP object cache.
++	 * This avoids expensive ptp_list_folder + per-object GetObjectInfo
++	 * when the object was already loaded (e.g. via ObjectAdded event). */
++	{
++		unsigned int i;
++		for (i = 0; i < params->objects.len; i++) {
++			PTPObject *ob = &params->objects.val[i];
++			if (!(ob->flags & PTPOBJECT_OBJECTINFO_LOADED))
++				continue;
++			if (ob->oi.ParentObject != handle)
++				continue;
++			if (!ob->oi.Filename)
++				continue;
++			if (strlen(ob->oi.Filename) == filename_len &&
++			    !strncmp (ob->oi.Filename, path, filename_len)) {
++				GP_LOG_D ("find_child: cache hit for '%.*s' (handle=0x%08x)", (int)filename_len, path, ob->oid);
++				if (retob)
++					*retob = ob;
++				return ob->oid;
++			}
++		}
++	}
++
++	/* Slow path: enumerate folder via PTP */
+ 	PTPObjectHandles handles = {0};
+ 	ret = ptp_list_folder (params, storage, handle, &handles);
+ 	if (ret != PTP_RC_OK)
+@@ -8891,11 +9004,15 @@ get_file_func (CameraFilesystem *fs, const char *folder, const char *filename,
+ 
+ 		size=ob->oi.ObjectSize;
+ #define BLOBSIZE 1*1024*1024
+-		if (size > 0xffffffffUL) {	/* larger than 4GB */
+-			if (	(params->deviceinfo.VendorExtensionID == PTP_VENDOR_NIKON) &&
+-				(ptp_operation_issupported(params,PTP_OC_NIKON_GetPartialObjectEx))
+-			) {
+-#define NIKONBLOBSIZE 10*1024*1024
++		/* Nikon PTP/IP: 정품(WTU)과 동일하게 표준 GetPartialObject(0x101b) 8MB 청크.
++		 * 와이어 캡처상 0x101b 가 GetPartialObjectEx(0x9431)보다 ~2배 빠름(Z6 V3.80,
++		 * 0.94->~1.8MB/s). 32bit offset 한계로 4GB 이하 객체에만 적용. */
++		if (	(params->deviceinfo.VendorExtensionID == PTP_VENDOR_NIKON) &&
++			(ptp_operation_issupported(params,PTP_OC_GetPartialObject)) &&
++			(size <= 0xffffffffUL) &&
++			(size > BLOBSIZE)
++		) {
++#define NIKONBLOBSIZE 8*1024*1024
+ 				unsigned char	*ximage = NULL;
+ 				uint64_t 	offset = 0;
+ 
+@@ -8905,7 +9022,7 @@ get_file_func (CameraFilesystem *fs, const char *folder, const char *filename,
+ 
+ 					if (xsize > NIKONBLOBSIZE)
+ 						xsize = NIKONBLOBSIZE;
+-					C_PTP_REP (ptp_nikon_getpartialobjectex (params, handle, offset, xsize, &ximage, &xlen));
++					C_PTP_REP (ptp_getpartialobject (params, handle, (uint32_t)offset, (uint32_t)xsize, &ximage, &xlen));
+ 					gp_file_append (file, (char*)ximage, xlen);
+ 					free (ximage);
+ 					ximage = NULL;
+@@ -8916,8 +9033,9 @@ get_file_func (CameraFilesystem *fs, const char *folder, const char *filename,
+ 					}
+ 				}
+ 				goto done;
+-			}
+-			/* fallthrough to the ptp_getobject method */
++		}
++		if (size > 0xffffffffUL) {
++			/* larger than 4GB, non-Nikon: fallthrough to getobject */
+ 		}
+ 		/* We also need this for Nikon D850 and very big RAWs (>40 MB) */
+ 		/* Try the generic method first, EOS R does not like the second for some reason */
+diff --git a/camlibs/ptp2/ptp.c b/camlibs/ptp2/ptp.c
+index 4cf4601..7d4a2dd 100644
+--- a/camlibs/ptp2/ptp.c
++++ b/camlibs/ptp2/ptp.c
+@@ -2468,6 +2468,30 @@ ptp_nikon_getpartialobjectex (PTPParams* params, uint32_t handle, uint64_t offse
+ 	return ptp_transaction(params, &ptp, PTP_DP_GETDATA, 0, object, len);
+ }
+ 
++/**
++ * ptp_nikon_advancedtransfer:
++ * params:	PTPParams*
++ *		p1			- request parameter (observed 0x2001 from Wireless Transmitter Utility)
++ *		data			- pointer to newly allocated response data
++ *		len			- length of response data
++ *
++ * Nikon "PC connection" transfer-queue pull (OC 0x9010). Returns the next queued
++ * transfer item: [u32 objecthandle][counted UTF-16LE path][counted UTF-16 capture/mod dates].
++ * Crucially, issuing this releases the infrastructure/STA AccessLock for that handle, so a
++ * subsequent standard GetObjectInfo/GetPartialObject succeeds (CamCon: physical-shutter Wi-Fi
++ * receive without 0x200F). Verified against WTU wire capture on Nikon Z6 V3.80.
++ *
++ * Return values: Some PTP_RC_* code.
++ **/
++uint16_t
++ptp_nikon_advancedtransfer (PTPParams* params, uint32_t p1, unsigned char** data, unsigned int *len)
++{
++	PTPContainer ptp;
++
++	PTP_CNT_INIT(ptp, PTP_OC_NIKON_AdvancedTransfer, p1);
++	return ptp_transaction(params, &ptp, PTP_DP_GETDATA, 0, data, len);
++}
++
+ 
+ /**
+  * ptp_getthumb:
+diff --git a/camlibs/ptp2/ptp.h b/camlibs/ptp2/ptp.h
+index 864535f..a70eb3b 100644
+--- a/camlibs/ptp2/ptp.h
++++ b/camlibs/ptp2/ptp.h
+@@ -4607,6 +4607,7 @@ uint16_t ptp_nikon_getlargethumb (PTPParams *params, uint32_t handle,
+ 				unsigned char** object, unsigned int *len);
+ uint16_t ptp_nikon_getobjectsize (PTPParams* params, uint32_t handle, uint64_t *objectsize);
+ uint16_t ptp_nikon_getpartialobjectex (PTPParams* params, uint32_t handle, uint64_t offset, uint64_t maxbytes, unsigned char** object, uint32_t *len);
++uint16_t ptp_nikon_advancedtransfer (PTPParams* params, uint32_t p1, unsigned char** data, unsigned int *len);
+ uint16_t ptp_nikon_getptpipinfo (PTPParams* params, unsigned char **data, unsigned int *size);
+ uint16_t ptp_nikon_getwifiprofilelist (PTPParams* params);
+ uint16_t ptp_nikon_writewifiprofile (PTPParams* params, PTPNIKONWifiProfile* profile);
+diff --git a/camlibs/ptp2/ptpip.c b/camlibs/ptp2/ptpip.c
+index dfaa6ae..e6e02ae 100644
+--- a/camlibs/ptp2/ptpip.c
++++ b/camlibs/ptp2/ptpip.c
+@@ -51,6 +51,7 @@
+ #else
+ # include <sys/socket.h>
+ # include <netinet/in.h>
++# include <netinet/tcp.h>
+ # include <arpa/inet.h>
+ # include <fcntl.h>
+ #endif
+@@ -767,6 +768,17 @@ ptp_ptpip_connect (PTPParams* params, const char *address) {
+ 		ptpip_perror ("socket cmd");
+ 		return GP_ERROR_BAD_PARAMETERS;
+ 	}
++	/* PTP/IP 전송 속도 최적화: TCP 소켓 버퍼 확대 + Nagle 비활성화 */
++	{
++		int rcvbuf = 2 * 1024 * 1024;	/* 2MB receive buffer */
++		int sndbuf = 256 * 1024;	/* 256KB send buffer */
++		int nodelay = 1;
++		setsockopt(cmdfd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf));
++		setsockopt(cmdfd, SOL_SOCKET, SO_SNDBUF, &sndbuf, sizeof(sndbuf));
++#ifndef WIN32
++		setsockopt(cmdfd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay));
++#endif
++	}
+ 	if (ptpip_set_nonblock(cmdfd) == -1) {
+ 		ptpip_perror("cmdfd set nonblocking");
+ 		PTPSOCK_CLOSE (params->cmdfd);
+@@ -895,6 +907,12 @@ ptpip_read_with_timeout (int fd, void *buf, size_t nbytes, int seconds, int mill
+ 	struct timeval tv;
+ 	fd_set fds;
+ 
++	/* 지연 ACK off (recv마다 재설정 필요): Nikon 송신윈도우가 ~44KB로 작아 ACK-clocked다.
++	 * 폰의 delayed ACK(~40ms)가 카메라를 매 버스트마다 멈춰 throughput을 절반으로 떨군다.
++	 * 즉시 ACK를 보내 WTU 수준(~2MB/s)을 노린다. */
++#ifdef TCP_QUICKACK
++	{ int _qa = 1; (void)setsockopt(fd, IPPROTO_TCP, TCP_QUICKACK, &_qa, sizeof(_qa)); }
++#endif
+ 	res = PTPSOCK_READ(fd, buf, nbytes);
+ 	if (res == -1 && (ptpip_get_socket_error() == EAGAIN || ptpip_get_socket_error() == EWOULDBLOCK)) {
+ 		tv.tv_sec = seconds;
+diff --git a/libgphoto2/gphoto2-filesys.c b/libgphoto2/gphoto2-filesys.c
+index 45f9572..1f6c505 100644
+--- a/libgphoto2/gphoto2-filesys.c
++++ b/libgphoto2/gphoto2-filesys.c
+@@ -368,29 +368,8 @@ lookup_folder (
+ 		}
+ 
+ 		s = strchr(curpt,'/');
+-		/* Check if we need to load the folder ... */
+-		if (folder->folders_dirty) {
+-			CameraList	*list;
+-			char		*copy = strdup (foldername);
+-			int		ret;
+-			/*
+-			 * The parent folder is dirty. List the folders in the parent
+-			 * folder to make it clean.
+-			 */
+-			/* the character _before_ curpt is a /, overwrite it temporary with \0 */
+-			copy[curpt-foldername] = '\0';
+-			GP_LOG_D ("Folder %s is dirty. "
+-				"Listing folders in there to make folder clean...", copy);
+-			ret = gp_list_new (&list);
+-			if (ret == GP_OK) {
+-				ret = gp_filesystem_list_folders (fs, copy, list, context);
+-				gp_list_free (list);
+-				GP_LOG_D ("Done making folder %s clean...", copy);
+-			} else {
+-				GP_LOG_D ("Making folder %s clean failed: %d", copy, ret);
+-			}
+-			free (copy);
+-		}
++
++		/* Try to find the child folder in the existing (possibly partial) cache */
+ 		f = folder->folders;
+ 		while (f) {
+ 			if (s) {
+@@ -407,7 +386,21 @@ lookup_folder (
+ 			}
+ 			f = f->next;
+ 		}
+-		folder = f;
++		if (f) {
++			/* Found in cache, continue traversal */
++			continue;
++		}
++
++		/* Not found in cache and folder is clean — folder truly doesn't exist */
++		if (!folder->folders_dirty) {
++			GP_LOG_D ("Folder not found in clean cache, returning NULL");
++			return NULL;
++		}
++
++		/* Not found and folder is dirty — return NULL so caller can
++		 * create the path via append_folder() without full enumeration. */
++		GP_LOG_D ("Folder not found, parent dirty — returning NULL for lazy creation");
++		return NULL;
+ 	}
+ 	return NULL;
+ }
+@@ -425,13 +418,22 @@ lookup_folder_file (
+ 	GP_LOG_D ("Lookup folder %s file %s", folder, filename);
+ 	xf = lookup_folder (fs, fs->rootfolder, folder, context);
+ 	if (!xf) return GP_ERROR_DIRECTORY_NOT_FOUND;
+-	/* Check if we need to load the filelist of the folder ... */
++
++	/* First check if the file is already in the (possibly partial) cache */
++	f = xf->files;
++	while (f) {
++		if (!strcmp (f->name, filename)) {
++			*xfile = f;
++			*xfolder = xf;
++			return GP_OK;
++		}
++		f = f->next;
++	}
++
++	/* Not found in cache. If dirty, enumerate to populate the file list */
+ 	if (xf->files_dirty) {
+ 		CameraList	*list;
+ 		int		ret;
+-		/*
+-		 * The folder is dirty. List the files in it to make it clean.
+-		 */
+ 		GP_LOG_D ("Folder %s is dirty. "
+ 			"Listing files in there to make folder clean...", folder);
+ 		ret = gp_list_new (&list);
+@@ -548,14 +550,16 @@ append_to_folder (CameraFilesystemFolder *folder,
+ 		}
+ 		f = f->next;
+ 	}
+-	/* Not found ... create new folder */
++	/* Not found ... create new folder and recurse into remaining path */
+ 	if (s) {
+ 		char *x;
++		CameraFilesystemFolder *newf;
+ 		C_MEM (x = calloc ((s-foldername)+1,1));
+ 		memcpy (x, foldername, (s-foldername));
+ 		x[s-foldername] = 0;
+-		CR (append_folder_one (folder, x, newfolder));
++		CR (append_folder_one (folder, x, &newf));
+ 		free (x);
++		return append_to_folder (newf, s+1, newfolder);
+ 	} else {
+ 		CR (append_folder_one (folder, foldername, newfolder));
+ 	}
+@@ -743,15 +747,9 @@ gp_filesystem_append (CameraFilesystem *fs, const char *folder,
+ 	f = lookup_folder (fs, fs->rootfolder, folder, context);
+ 	if (!f)
+ 		CR (append_folder (fs, folder, &f, context));
+-	if (f->files_dirty) { /* Need to load folder from driver first ... capture case */
+-		CameraList	*xlist;
+-		int ret;
+-
+-		CR (gp_list_new (&xlist));
+-		ret = gp_filesystem_list_files (fs, folder, xlist, context);
+-		gp_list_free (xlist);
+-		CR (ret);
+-	}
++	/* Skip full enumeration here — just append the new file directly.
++	 * The file list remains dirty for lazy loading when full listing is needed.
++	 * This avoids O(n) GetObjectInfo calls for every ObjectAdded event. */
+ 	ret = internal_append (fs, f, filename, context);
+ 	if (ret == GP_ERROR_FILE_EXISTS) /* not an error here ... just in case we add files twice to the list */
+ 		ret = GP_OK;
