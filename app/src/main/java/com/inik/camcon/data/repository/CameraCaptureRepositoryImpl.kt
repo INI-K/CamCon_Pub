@@ -600,7 +600,7 @@ class CameraCaptureRepositoryImpl @Inject constructor(
         com.inik.camcon.utils.LogcatManager.d(TAG, "🎯 handleNativePhotoDownload 호출됨: $fileName")
         com.inik.camcon.utils.LogcatManager.d(TAG, "  📁 fullPath: $fullPath")
         com.inik.camcon.utils.LogcatManager.d(TAG, "  📊 imageData size: ${imageData.size} bytes")
-        com.inik.camcon.utils.LogcatManager.d(TAG, "  🧵 스레드: ${Thread.currentThread().name}")
+        // com.inik.camcon.utils.LogcatManager.d(TAG, "  🧵 스레드: ${Thread.currentThread().name}")
 
         val extension = fileName.substringAfterLast(".", "").lowercase()
         if (extension !in Constants.ImageProcessing.SUPPORTED_IMAGE_EXTENSIONS) {
@@ -650,8 +650,8 @@ class CameraCaptureRepositoryImpl @Inject constructor(
         com.inik.camcon.utils.LogcatManager.d(TAG, "  📷 사진 ID: ${downloadedPhoto.id}")
         com.inik.camcon.utils.LogcatManager.d(TAG, "  📁 파일 경로: ${downloadedPhoto.filePath}")
         com.inik.camcon.utils.LogcatManager.d(TAG, "  📊 파일 크기: ${downloadedPhoto.size} bytes")
-        com.inik.camcon.utils.LogcatManager.d(TAG, "  📋 현재 StateFlow 크기: $beforeCount 개")
-        com.inik.camcon.utils.LogcatManager.d(TAG, "  🧵 스레드: ${Thread.currentThread().name}")
+        // com.inik.camcon.utils.LogcatManager.d(TAG, "  📋 현재 StateFlow 크기: $beforeCount 개")
+        // com.inik.camcon.utils.LogcatManager.d(TAG, "  🧵 스레드: ${Thread.currentThread().name}")
 
         _capturedPhotos.update { current -> current + downloadedPhoto }
         val afterCount = _capturedPhotos.value.size
@@ -660,7 +660,7 @@ class CameraCaptureRepositoryImpl @Inject constructor(
             TAG,
             "✅ StateFlow 업데이트 완료: $beforeCount -> $afterCount 개"
         )
-        com.inik.camcon.utils.LogcatManager.d(TAG, "  🎯 총 사진 개수: ${_capturedPhotos.value.size}개")
+        // com.inik.camcon.utils.LogcatManager.d(TAG, "  🎯 총 사진 개수: ${_capturedPhotos.value.size}개")
 
         val downloadedFileName = downloadedPhoto.filePath.substringAfterLast("/")
         val sameNamePhotos = _capturedPhotos.value.filter {
@@ -673,11 +673,11 @@ class CameraCaptureRepositoryImpl @Inject constructor(
             }
         }
 
-        com.inik.camcon.utils.LogcatManager.d(TAG, "=== 사진 StateFlow 업데이트 ===")
-        com.inik.camcon.utils.LogcatManager.d(TAG, "업데이트 전: ${beforeCount}개")
-        com.inik.camcon.utils.LogcatManager.d(TAG, "업데이트 후: ${afterCount}개")
-        com.inik.camcon.utils.LogcatManager.d(TAG, "추가된 사진 ID: ${downloadedPhoto.id}")
-        com.inik.camcon.utils.LogcatManager.d(TAG, "추가된 사진 경로: ${downloadedPhoto.filePath}")
+        // com.inik.camcon.utils.LogcatManager.d(TAG, "=== 사진 StateFlow 업데이트 ===")
+        // com.inik.camcon.utils.LogcatManager.d(TAG, "업데이트 전: ${beforeCount}개")
+        // com.inik.camcon.utils.LogcatManager.d(TAG, "업데이트 후: ${afterCount}개")
+        // com.inik.camcon.utils.LogcatManager.d(TAG, "추가된 사진 ID: ${downloadedPhoto.id}")
+        // com.inik.camcon.utils.LogcatManager.d(TAG, "추가된 사진 경로: ${downloadedPhoto.filePath}")
         com.inik.camcon.utils.LogcatManager.d(TAG, "✅ _capturedPhotos StateFlow 업데이트 완료")
     }
 
