@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Compte : déconnexion / suppression -->
+    <!-- 계정: 로그아웃 / 삭제 -->
     <string name="account_logout_dialog_title">Se déconnecter ?</string>
     <string name="account_logout_dialog_message">Le cache local des photos et l\'historique de connexion automatique seront conservés. Voulez-vous vraiment vous déconnecter ?</string>
     <string name="account_logout_confirm">Se déconnecter</string>
@@ -21,7 +21,7 @@
     <string name="account_delete_success">Compte supprimé</string>
     <string name="account_delete_failed">Échec de la suppression du compte : %s</string>
 
-    <!-- Onboarding -->
+    <!-- 온보딩 -->
     <string name="onboarding_skip">Passer</string>
     <string name="onboarding_next">Suivant</string>
     <string name="onboarding_start">Commencer</string>
@@ -35,7 +35,7 @@
     <string name="onboarding_step3_title">Autorisations</string>
     <string name="onboarding_step3_description">Pour la découverte Wi-Fi et les notifications en direct, autorisez la localisation, le Wi-Fi et les notifications lorsque cela est demandé.</string>
 
-    <!-- Langue -->
+    <!-- 언어 -->
     <string name="language_row_title">Langue / Language</string>
     <string name="language_dialog_title">Choisir la langue</string>
     <string name="language_system_default">Par défaut du système</string>
@@ -48,7 +48,7 @@
     <string name="language_option_fr">Français</string>
     <string name="language_option_it">Italiano</string>
 
-    <!-- Code de parrainage -->
+    <!-- 추천 코드 -->
     <string name="referral_input_label">Code de parrainage (facultatif)</string>
     <string name="referral_input_helper">Si vous avez un code de parrainage, saisissez-le avant de vous connecter.</string>
 </resources>

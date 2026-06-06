@@ -6,6 +6,7 @@ import com.inik.camcon.data.network.ptpip.IpAddressValidator
 import com.inik.camcon.domain.model.PtpSessionState
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.PtpipCameraInfo
+import com.inik.camcon.utils.LogMask
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -97,10 +98,11 @@ class PtpipConnectionManager @Inject constructor(
     suspend fun establishConnection(camera: PtpipCamera): Boolean = withContext(ioDispatcher) {
         // IP 화이트리스트 검증: 사설망/link-local만 허용. 임의 호스트/도메인은 거부.
         if (!IpAddressValidator.isAllowedCameraIp(camera.ipAddress)) {
-            Log.e(
-                TAG,
-                "연결 거부: 허용되지 않은 IP 형식/대역 - ${camera.ipAddress.take(45)}"
-            )
+            if (com.inik.camcon.BuildConfig.DEBUG) {
+                Log.e(TAG, "연결 거부: 허용되지 않은 IP 형식/대역 - ${camera.ipAddress.take(45)}")
+            } else {
+                Log.e(TAG, "연결 거부: 허용되지 않은 IP 형식/대역")
+            }
             forceTransition(PtpSessionState.DISCONNECTED)
             return@withContext false
         }
@@ -115,7 +117,7 @@ class PtpipConnectionManager @Inject constructor(
         }
 
         try {
-            Log.d(TAG, "PTPIP 연결 시작: ${camera.ipAddress}:${camera.port}")
+            Log.d(TAG, "PTPIP 연결 시작: ${LogMask.id(camera.ipAddress)}:${camera.port}")
 
             // 포트 연결 확인
             if (!isPortReachable(camera.ipAddress, camera.port)) {
@@ -374,13 +376,13 @@ class PtpipConnectionManager @Inject constructor(
     private suspend fun isPortReachable(ipAddress: String, port: Int): Boolean =
         withContext(ioDispatcher) {
             return@withContext try {
-                Log.d(TAG, "포트 연결 확인: $ipAddress:$port")
+                Log.d(TAG, "포트 연결 확인: ${LogMask.id(ipAddress)}:$port")
                 Socket().use { socket ->
                     socket.connect(InetSocketAddress(ipAddress, port), 2000)
                     true
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "포트 연결 실패: $ipAddress:$port - ${e.message}")
+                Log.w(TAG, "포트 연결 실패: ${LogMask.id(ipAddress)}:$port - ${e.message}")
                 false
             }
         }
@@ -624,24 +626,8 @@ class PtpipConnectionManager @Inject constructor(
         return try {
             Log.d(TAG, "디바이스 정보 파싱 시작: ${data.size} bytes")
 
-            // 전체 바이너리 데이터 분석
-            val hexDump = data.take(200).chunked(16).mapIndexed { index, bytes ->
-                val offset = "%04X".format(index * 16)
-                val hex = bytes.joinToString(" ") { "%02X".format(it) }
-                "$offset: $hex"
-            }.joinToString("\n")
-            Log.d(TAG, "바이너리 덤프:\n$hexDump")
-
-            // PTPIP 헤더 정보 확인
-            val buffer = ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN)
-            val packetLength = buffer.int
-            val packetType = buffer.int
-            Log.d(TAG, "패킷 길이: $packetLength, 타입: $packetType")
-
             // 문자열 패턴 직접 검색
             val deviceInfo = extractDeviceInfoFromStrings(data)
-
-            Log.d(TAG, "추출된 디바이스 정보: $deviceInfo")
             return deviceInfo
 
         } catch (e: Exception) {
@@ -677,7 +663,6 @@ class PtpipConnectionManager @Inject constructor(
                             utf16String.all { it.code in 32..126 }) {
 
                             deviceStrings.add(utf16String)
-                            Log.d(TAG, "발견된 문자열 at $i: '$utf16String'")
                         }
                     } catch (e: Exception) {
                         // 무시하고 계속
@@ -686,11 +671,7 @@ class PtpipConnectionManager @Inject constructor(
             }
         }
 
-        Log.d(TAG, "=== 전체 발견된 문자열 목록 (${deviceStrings.size}개) ===")
-        deviceStrings.forEachIndexed { idx, str ->
-            Log.d(TAG, "[$idx] '$str'")
-        }
-        Log.d(TAG, "=== 문자열 목록 끝 ===")
+        Log.d(TAG, "발견된 디바이스 문자열 ${deviceStrings.size}개")
 
         // 제조사 찾기
         val manufacturer = deviceStrings.find { str ->
@@ -755,7 +736,7 @@ class PtpipConnectionManager @Inject constructor(
             !str.matches(Regex("^0+\\d{1,4}$")) // 00000...3869 같은 패턴 제외
         } ?: "Unknown"
 
-        Log.d(TAG, "최종 파싱 결과 - 제조사: '$manufacturer', 모델: '$model', 버전: '$version', 시리얼: '$serialNumber'")
+        Log.d(TAG, "최종 파싱 결과 - 제조사: '$manufacturer', 모델: '$model', 버전: '$version', 시리얼: '${LogMask.serial(serialNumber)}'")
 
         return PtpipCameraInfo(
             manufacturer = manufacturer,
@@ -808,10 +789,6 @@ class PtpipConnectionManager @Inject constructor(
 
             val stringBytes = ByteArray(length * 2)
             buffer.get(stringBytes)
-
-            // 원본 바이트 데이터 로그 출력 (디버깅용)
-            val hexString = stringBytes.take(20).joinToString(" ") { "%02x".format(it) }
-            Log.d(TAG, "PTP 문자열 원본 바이트: $hexString")
 
             // UTF-16LE 디코딩 시도
             val utf16Result = try {

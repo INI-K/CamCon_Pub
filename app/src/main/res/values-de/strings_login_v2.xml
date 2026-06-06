@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Login v2: klassifizierte Anmeldefehler / Empfehlungscode-Feedback -->
+    <!-- Login v2: 분류된 로그인 오류 / 추천 코드 피드백 -->
     <string name="login_error_cancelled">Die Anmeldung wurde abgebrochen.</string>
     <string name="login_error_network">Netzwerkfehler. Bitte überprüfe deine Verbindung und versuche es erneut.</string>
     <string name="login_error_auth">Anmeldung fehlgeschlagen. Bitte versuche es erneut.</string>
@@ -10,7 +10,7 @@
     <string name="login_referral_failed">Der Empfehlungscode konnte nicht angewendet werden.</string>
     <string name="login_referral_error">Bei der Verarbeitung des Empfehlungscodes ist ein Problem aufgetreten.</string>
 
-    <!-- Details zu Abmeldefehlern (das "%s" von settings_toast_logout_failed) -->
+    <!-- 로그아웃 오류 세부 내용 (settings_toast_logout_failed의 "%s") -->
     <string name="auth_error_network_detail">Netzwerkfehler</string>
     <string name="auth_error_unknown_detail">unbekannter Fehler</string>
 </resources>

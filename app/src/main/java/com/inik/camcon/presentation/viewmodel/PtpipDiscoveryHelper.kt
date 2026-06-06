@@ -4,6 +4,7 @@ import android.util.Log
 import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.repository.PtpipRepository
+import com.inik.camcon.utils.LogMask
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -77,10 +78,6 @@ class PtpipDiscoveryHelper @Inject constructor(
 
                 val ssids = ptpipRepository.scanNearbyWifiSSIDs()
                 Log.d(TAG, "Wi-Fi 스캔 결과: ${ssids.size}개 SSID 발견")
-
-                ssids.forEach { ssid ->
-                    Log.d(TAG, "  발견된 SSID: $ssid")
-                }
 
                 onNearbyWifiUpdated(ssids)
 
@@ -160,8 +157,7 @@ class PtpipDiscoveryHelper @Inject constructor(
 
                 val networkState = ptpipRepository.getCurrentWifiNetworkState()
                 if (networkState.isConnectedToCameraAP) {
-                    Log.i(TAG, "AP 모드 연결 감지됨: ${networkState.ssid}")
-                    Log.i(TAG, "카메라 IP: ${networkState.detectedCameraIP}")
+                    Log.i(TAG, "AP 모드 연결 감지됨: ${LogMask.ssid(networkState.ssid)}")
                 } else {
                     Log.i(TAG, "STA 모드 또는 일반 네트워크 연결")
                 }
@@ -181,13 +177,6 @@ class PtpipDiscoveryHelper @Inject constructor(
                     Log.w(TAG, errorMsg)
                     onErrorChanged(errorMsg)
                 } else {
-                    Log.i(TAG, "카메라 검색 성공:")
-                    cameras.forEachIndexed { index, camera ->
-                        Log.i(
-                            TAG,
-                            "  ${index + 1}. ${camera.name} (${camera.ipAddress}:${camera.port})"
-                        )
-                    }
                     onErrorChanged(null)
 
                     val firstCamera = cameras.first()

@@ -30,10 +30,10 @@ class WifiLockManager @Inject constructor(
                 wifiLock = wifiManager.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, tag)
                 wifiLock?.setReferenceCounted(false)
                 wifiLock?.acquire()
-                Log.d(TAG, "✅ Wi-Fi high performance 락 획득")
+                Log.d(TAG, "Wi-Fi high performance 락 획득")
                 true
             } catch (e: Exception) {
-                Log.e(TAG, "Wi-Fi 락 획득 실패: ${e.message}")
+                Log.e(TAG, "Wi-Fi 락 획득 실패", e)
                 false
             }
         }
@@ -48,11 +48,11 @@ class WifiLockManager @Inject constructor(
                 wifiLock?.let {
                     if (it.isHeld) {
                         it.release()
-                        Log.d(TAG, "✅ Wi-Fi 락 해제")
+                        Log.d(TAG, "Wi-Fi 락 해제")
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Wi-Fi 락 해제 실패: ${e.message}")
+                Log.e(TAG, "Wi-Fi 락 해제 실패", e)
             } finally {
                 wifiLock = null
             }

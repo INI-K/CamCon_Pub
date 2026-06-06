@@ -22,15 +22,15 @@ enum class ShootingMode {
 
 // 타임랩스 설정
 data class TimelapseSettings(
-    val interval: Int, // seconds
+    val interval: Int, // 초
     val totalShots: Int,
-    val duration: Int // minutes
+    val duration: Int // 분
 )
 
 // 브라켓팅 설정
 data class BracketingSettings(
     val shots: Int,
-    val evStep: Float // EV step size
+    val evStep: Float // EV 스텝 크기
 )
 
 // 라이브뷰 프레임

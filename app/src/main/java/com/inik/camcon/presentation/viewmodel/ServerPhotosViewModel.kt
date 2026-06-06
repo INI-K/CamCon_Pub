@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.domain.repository.CameraRepository
+import com.inik.camcon.utils.LogMask
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
@@ -171,7 +172,7 @@ class ServerPhotosViewModel @Inject constructor(
         for (path in possiblePaths) {
             val photoDir = File(path)
             if (photoDir.exists() && photoDir.isDirectory) {
-                Log.d("ServerPhotosViewModel", "DCIM/CamCon 폴더 발견: $path")
+                Log.d("ServerPhotosViewModel", "DCIM/CamCon 폴더 발견: ${LogMask.path(path)}")
 
                 val imageExtensions =
                     setOf("jpg", "jpeg", "png", "webp", "bmp", "nef", "cr2", "arw", "dng")
@@ -223,7 +224,7 @@ class ServerPhotosViewModel @Inject constructor(
                         _uiState.value = _uiState.value.copy(
                             photos = _uiState.value.photos.filter { it.id != photoId }
                         )
-                        Log.d("ServerPhotosViewModel", "사진 파일 삭제 완료: ${photo.filePath}")
+                        Log.d("ServerPhotosViewModel", "사진 파일 삭제 완료: ${LogMask.path(photo.filePath)}")
                     } else {
                         throw Exception("MediaStore를 통한 파일 삭제 실패: ${photo.filePath}")
                     }
@@ -265,13 +266,13 @@ class ServerPhotosViewModel @Inject constructor(
                     try {
                         val deletedRows = context.contentResolver.delete(imageUri, null, null)
                         if (deletedRows > 0) {
-                            Log.d("ServerPhotosViewModel", "MediaStore를 통해 파일 삭제 성공: $filePath")
+                            Log.d("ServerPhotosViewModel", "MediaStore를 통해 파일 삭제 성공: ${LogMask.path(filePath)}")
                             return true
                         }
                     } catch (securityException: SecurityException) {
                         Log.w(
                             "ServerPhotosViewModel",
-                            "MediaStore 삭제 권한 부족: $filePath",
+                            "MediaStore 삭제 권한 부족: ${LogMask.path(filePath)}",
                             securityException
                         )
 
@@ -280,7 +281,7 @@ class ServerPhotosViewModel @Inject constructor(
                             if (securityException is android.app.RecoverableSecurityException) {
                                 Log.i(
                                     "ServerPhotosViewModel",
-                                    "RecoverableSecurityException - 사용자 권한 요청 필요: $filePath"
+                                    "RecoverableSecurityException - 사용자 권한 요청 필요: ${LogMask.path(filePath)}"
                                 )
                                 _uiState.value = _uiState.value.copy(
                                     pendingDeleteRequest = securityException,
@@ -295,10 +296,10 @@ class ServerPhotosViewModel @Inject constructor(
                 }
             }
 
-            Log.w("ServerPhotosViewModel", "MediaStore에서 파일을 찾을 수 없음: $filePath")
+            Log.w("ServerPhotosViewModel", "MediaStore에서 파일을 찾을 수 없음: ${LogMask.path(filePath)}")
             false
         } catch (e: Exception) {
-            Log.e("ServerPhotosViewModel", "파일 삭제 중 예외 발생: $filePath", e)
+            Log.e("ServerPhotosViewModel", "파일 삭제 중 예외 발생: ${LogMask.path(filePath)}", e)
             false
         }
     }
@@ -438,12 +439,12 @@ class ServerPhotosViewModel @Inject constructor(
                                 idsMapping[uri] = photoId
                                 Log.d(
                                     "ServerPhotosViewModel",
-                                    "삭제 대상 URI 추가: $uri (${photo.filePath})"
+                                    "삭제 대상 URI 추가: $uri (${LogMask.path(photo.filePath)})"
                                 )
                             }
                         }
                     } catch (e: Exception) {
-                        Log.w("ServerPhotosViewModel", "URI 수집 실패: ${photo.filePath}", e)
+                        Log.w("ServerPhotosViewModel", "URI 수집 실패: ${LogMask.path(photo.filePath)}", e)
                     }
                 }
             }
@@ -534,7 +535,7 @@ class ServerPhotosViewModel @Inject constructor(
                             // 나머지 삭제 작업도 대기 상태로 설정
                         } else {
                             failedIds.add(photoId)
-                            Log.w("ServerPhotosViewModel", "파일 삭제 실패: ${photo.filePath}")
+                            Log.w("ServerPhotosViewModel", "파일 삭제 실패: ${LogMask.path(photo.filePath)}")
                         }
                     }
                 }

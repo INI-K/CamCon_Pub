@@ -263,10 +263,10 @@ class UsbDeviceDetector @Inject constructor(
         // USB 인터페이스 클래스 확인
         for (i in 0 until device.interfaceCount) {
             val usbInterface = device.getInterface(i)
-            if (usbInterface.interfaceClass == 6 || // Still Image Capture Device (PTP)
-                usbInterface.interfaceClass == 255 || // Vendor Specific
+            if (usbInterface.interfaceClass == 6 || // 정지 영상 캡처 디바이스 (PTP)
+                usbInterface.interfaceClass == 255 || // 벤더 전용
                 usbInterface.interfaceClass == 8
-            ) { // Mass Storage
+            ) { // 대용량 저장소
                 return true
             }
         }

@@ -684,7 +684,7 @@ class PtpipTetherService @Inject constructor(
             .putInt(TCPIP_REQ_INIT_CMD_REQ)
             .put(guid)
             .put(hostNameUtf16.array())
-            .putInt(0x00010001) // host protocol version
+            .putInt(0x00010001) // 호스트 프로토콜 버전
         writeFrame(sock, payload.array())
 
         val input = DataInputStream(sock.getInputStream())

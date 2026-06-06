@@ -61,7 +61,7 @@ class CameraAdvancedCaptureRepositoryImpl @Inject constructor(
     }
 
     override suspend fun captureAudio(): Result<Boolean> = runCatching {
-        // Will be implemented when C++ JNI binding for audio capture is added
+        // 오디오 캡처용 C++ JNI 바인딩이 추가되면 구현 예정
         throw UnsupportedOperationException("Audio capture C++ binding not yet implemented")
     }
 }

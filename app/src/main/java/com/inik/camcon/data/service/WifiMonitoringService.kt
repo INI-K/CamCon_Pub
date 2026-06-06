@@ -18,6 +18,7 @@ import androidx.core.app.NotificationCompat
 import com.inik.camcon.R
 import com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
+import com.inik.camcon.utils.LogMask
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -99,9 +100,7 @@ class WifiMonitoringService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG, "========================================")
         Log.d(TAG, "📡 WiFi 모니터링 Service 시작")
-        Log.d(TAG, "========================================")
 
         startForegroundService()
         startWifiMonitoring()
@@ -132,9 +131,7 @@ class WifiMonitoringService : Service() {
     }
 
     override fun onDestroy() {
-        Log.d(TAG, "========================================")
         Log.d(TAG, "📡 WiFi 모니터링 Service 종료")
-        Log.d(TAG, "========================================")
 
         stopWifiMonitoring()
         serviceScope.cancel()
@@ -291,7 +288,6 @@ class WifiMonitoringService : Service() {
             // check-then-act(lastConnectedSSID) + 서비스 시작을 단일 Mutex로 직렬화
             autoConnectMutex.withLock {
             try {
-                Log.d(TAG, "========================================")
                 Log.d(TAG, "🔍 자동 연결 조건 확인 시작 (Service)")
 
                 // 0. WiFi 연결 상태 먼저 확인 (매우 중요!)
@@ -299,7 +295,6 @@ class WifiMonitoringService : Service() {
                 Log.d(TAG, "  0. WiFi 연결 상태: $isWifiConnected")
                 if (!isWifiConnected) {
                     Log.d(TAG, "❌ WiFi가 연결되어 있지 않음 - NetworkCallback이 너무 빨리 발동됨")
-                    Log.d(TAG, "========================================")
                     return@launch
                 }
 
@@ -308,16 +303,14 @@ class WifiMonitoringService : Service() {
                 Log.d(TAG, "  1. 자동 연결 활성화: $isAutoConnectEnabled")
                 if (!isAutoConnectEnabled) {
                     Log.d(TAG, "❌ 자동 연결이 비활성화되어 있음")
-                    Log.d(TAG, "========================================")
                     return@launch
                 }
 
                 // 1-2. 저장된 자동 연결 설정 확인 (먼저 확인)
                 val autoConnectConfig = preferencesDataSource.getAutoConnectNetworkConfig()
-                Log.d(TAG, "  1-2. 저장된 설정 SSID: ${autoConnectConfig?.ssid ?: "(없음)"}")
+                Log.d(TAG, "  1-2. 저장된 설정 SSID: ${LogMask.ssid(autoConnectConfig?.ssid)}")
                 if (autoConnectConfig == null) {
                     Log.d(TAG, "❌ 저장된 자동 연결 설정 없음")
-                    Log.d(TAG, "========================================")
                     return@launch
                 }
 
@@ -327,7 +320,7 @@ class WifiMonitoringService : Service() {
                 try {
                     currentSSID = wifiNetworkHelper.getSSIDFromNetwork(network)
                     if (currentSSID != null) {
-                        Log.d(TAG, "  2-a. Network 객체에서 SSID 획득 성공: $currentSSID")
+                        Log.d(TAG, "  2-a. Network 객체에서 SSID 획득 성공: ${LogMask.ssid(currentSSID)}")
                     } else {
                         Log.w(TAG, "  2-a. Network 객체에서 SSID를 가져올 수 없음")
                     }
@@ -338,7 +331,7 @@ class WifiMonitoringService : Service() {
                 // Network 방식이 실패한 경우 기존 방식 시도
                 if (currentSSID.isNullOrEmpty()) {
                     currentSSID = wifiNetworkHelper.getCurrentSSID()
-                    Log.d(TAG, "  2-b. WifiNetworkHelper에서 SSID 획득: ${currentSSID ?: "(null)"}")
+                    Log.d(TAG, "  2-b. WifiNetworkHelper에서 SSID 획득: ${LogMask.ssid(currentSSID)}")
                 }
 
                 // 재시도 로직 (1회만, 2초 대기)
@@ -350,40 +343,37 @@ class WifiMonitoringService : Service() {
                     if (currentSSID == null) {
                         currentSSID = wifiNetworkHelper.getCurrentSSID()
                     }
-                    Log.d(TAG, "  2-d. 재시도 후 SSID: ${currentSSID ?: "(null)"}")
+                    Log.d(TAG, "  2-d. 재시도 후 SSID: ${LogMask.ssid(currentSSID)}")
                 }
 
                 // SSID를 여전히 가져올 수 없는 경우, 저장된 설정의 SSID를 사용
                 if (currentSSID.isNullOrEmpty() || currentSSID == "<unknown ssid>") {
                     Log.w(TAG, "  2-e. SSID를 가져올 수 없음 - 저장된 설정의 SSID 사용")
                     currentSSID = autoConnectConfig.ssid
-                    Log.d(TAG, "  2-f. 저장된 설정 SSID 사용: $currentSSID")
+                    Log.d(TAG, "  2-f. 저장된 설정 SSID 사용: ${LogMask.ssid(currentSSID)}")
 
                     // 저장된 SSID를 사용할 때는 실제로 WiFi에 연결되었는지 재확인
                     val recheckWifiConnected = wifiNetworkHelper.isWifiConnected()
                     Log.d(TAG, "  2-g. WiFi 재확인: $recheckWifiConnected")
                     if (!recheckWifiConnected) {
                         Log.w(TAG, "❌ SSID를 확인할 수 없고, WiFi도 연결되지 않음 - 건너뜀")
-                        Log.d(TAG, "========================================")
                         return@launch
                     }
                 }
 
-                Log.d(TAG, "  2. 최종 SSID: $currentSSID")
+                Log.d(TAG, "  2. 최종 SSID: ${LogMask.ssid(currentSSID)}")
 
                 // 3. 이미 처리한 SSID인지 확인 (중복 방지)
-                Log.d(TAG, "  3. 마지막 처리된 SSID: ${lastConnectedSSID ?: "(없음)"}")
+                Log.d(TAG, "  3. 마지막 처리된 SSID: ${LogMask.ssid(lastConnectedSSID)}")
                 if (currentSSID == lastConnectedSSID) {
-                    Log.d(TAG, "❌ 이미 처리된 SSID: $currentSSID")
-                    Log.d(TAG, "========================================")
+                    Log.d(TAG, "❌ 이미 처리된 SSID: ${LogMask.ssid(currentSSID)}")
                     return@launch
                 }
 
                 // 4. SSID 일치 확인 (저장된 설정과 비교)
-                Log.d(TAG, "  4. SSID 비교: '$currentSSID' vs '${autoConnectConfig.ssid}'")
+                Log.d(TAG, "  4. SSID 비교: '${LogMask.ssid(currentSSID)}' vs '${LogMask.ssid(autoConnectConfig.ssid)}'")
                 if (currentSSID != autoConnectConfig.ssid) {
                     Log.d(TAG, "❌ SSID 불일치")
-                    Log.d(TAG, "========================================")
                     return@launch
                 }
 
@@ -391,16 +381,11 @@ class WifiMonitoringService : Service() {
                 val isCameraSSID = isCameraNetwork(currentSSID)
                 Log.d(TAG, "  5. 카메라 SSID 패턴: $isCameraSSID")
                 if (!isCameraSSID) {
-                    Log.d(TAG, "❌ 카메라 AP가 아님: $currentSSID")
-                    Log.d(TAG, "========================================")
+                    Log.d(TAG, "❌ 카메라 AP가 아님: ${LogMask.ssid(currentSSID)}")
                     return@launch
                 }
 
-                Log.d(TAG, "========================================")
-                Log.d(TAG, "✅✅✅ 자동 연결 조건 충족! (Service) ✅✅✅")
-                Log.d(TAG, "  - SSID: $currentSSID")
-                Log.d(TAG, "  - 카메라 SSID 패턴 일치: true")
-                Log.d(TAG, "========================================")
+                Log.d(TAG, "✅ 자동 연결 조건 충족 (Service) - SSID: ${LogMask.ssid(currentSSID)}, 카메라 패턴 일치")
 
                 // 6. 중복 실행 방지
                 lastConnectedSSID = currentSSID
@@ -411,7 +396,6 @@ class WifiMonitoringService : Service() {
 
             } catch (e: Exception) {
                 Log.e(TAG, "❌ 자동 연결 확인 중 오류 (Service)", e)
-                Log.d(TAG, "========================================")
             }
             }
         }

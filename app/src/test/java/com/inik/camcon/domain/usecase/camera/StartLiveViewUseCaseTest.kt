@@ -39,7 +39,7 @@ class StartLiveViewUseCaseTest {
     }
 
     /**
-     * Helper function to create test LiveViewFrame instances
+     * 테스트용 LiveViewFrame 인스턴스를 생성하는 헬퍼 함수
      */
     private fun createTestFrame(
         width: Int = 1920,
@@ -55,7 +55,7 @@ class StartLiveViewUseCaseTest {
     }
 
     /**
-     * Happy Path Tests - 라이브뷰 시작 성공
+     * 정상 경로 테스트 - 라이브뷰 시작 성공
      */
 
     @Test
@@ -129,7 +129,7 @@ class StartLiveViewUseCaseTest {
         // Given
         val baseTime = 1000L
         val frames = (0..9).map { i ->
-            createTestFrame(1920, 1080, baseTime + (i * 33L)) // 30fps simulation
+            createTestFrame(1920, 1080, baseTime + (i * 33L)) // 30fps 시뮬레이션
         }
         every { cameraRepository.startLiveView() } returns flowOf(*frames.toTypedArray())
         useCase = StartLiveViewUseCase(cameraRepository)
@@ -169,7 +169,7 @@ class StartLiveViewUseCaseTest {
     }
 
     /**
-     * Edge Cases - 경계값, 특수 입력
+     * 엣지 케이스 - 경계값, 특수 입력
      */
 
     @Test
@@ -211,7 +211,7 @@ class StartLiveViewUseCaseTest {
     @Test
     fun `라이브뷰 시작 - 최대 해상도 (8K)`() = runTest {
         // Given
-        val frame = createTestFrame(7680, 4320) // 8K resolution
+        val frame = createTestFrame(7680, 4320) // 8K 해상도
         every { cameraRepository.startLiveView() } returns flowOf(frame)
         useCase = StartLiveViewUseCase(cameraRepository)
 
@@ -255,7 +255,7 @@ class StartLiveViewUseCaseTest {
     }
 
     /**
-     * Error Cases - 라이브뷰 실패 시나리오
+     * 에러 케이스 - 라이브뷰 실패 시나리오
      */
 
     @Test
@@ -355,7 +355,7 @@ class StartLiveViewUseCaseTest {
     }
 
     /**
-     * Multiple Call Tests - 연속 호출, 중복 시작
+     * 다중 호출 테스트 - 연속 호출, 중복 시작
      */
 
     @Test
@@ -367,17 +367,17 @@ class StartLiveViewUseCaseTest {
         every { cameraRepository.startLiveView() } returns flowOf(frame1)
         useCase = StartLiveViewUseCase(cameraRepository)
 
-        // When & Then - First call
+        // When & Then - 첫 번째 호출
         useCase().test {
             val received1 = awaitItem()
             assertEquals(1920, received1.width)
             awaitComplete()
         }
 
-        // Update mock for second call
+        // 두 번째 호출을 위한 목 업데이트
         every { cameraRepository.startLiveView() } returns flowOf(frame2)
 
-        // When & Then - Second call
+        // When & Then - 두 번째 호출
         useCase().test {
             val received2 = awaitItem()
             assertEquals(1280, received2.width)
@@ -401,7 +401,7 @@ class StartLiveViewUseCaseTest {
             val frame1 = awaitItem()
             assertEquals(100L, frame1.timestamp)
 
-            // Cancel subscription after first frame
+            // 첫 번째 프레임 이후 구독 취소
             cancelAndIgnoreRemainingEvents()
         }
     }

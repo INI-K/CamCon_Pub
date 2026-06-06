@@ -72,7 +72,7 @@ class CameraDiagnosticsRepositoryImpl @Inject constructor(
     override suspend fun registerHookCallback(): Result<Boolean> = runCatching {
         val callback = object : CameraNative.HookEventCallback {
             override fun onHookEvent(action: String, argument: String) {
-                // Hook events can be processed here
+                // 훅 이벤트는 여기서 처리할 수 있음
             }
         }
         nativeDataSource.registerHookCallback(callback) == 0

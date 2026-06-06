@@ -19,32 +19,22 @@ class BootCompletedReceiver : BroadcastReceiver() {
             return
         }
 
-        Log.d(TAG, "========================================")
-        Log.d(TAG, "📱 기기 재부팅 완료")
-        Log.d(TAG, "🔄 Application 초기화 시작")
-        Log.d(TAG, "========================================")
+        Log.d(TAG, "기기 재부팅 완료 - Application 초기화 시작")
 
         try {
             // Application 컨텍스트 접근하여 초기화 트리거
             val application = context.applicationContext as? CamCon
 
             if (application != null) {
-                Log.d(TAG, " Application 초기화 완료")
-                Log.d(TAG, "   - NetworkCallback: 자동 등록됨")
-
                 // Application.onCreate()가 자동으로 호출되어
                 // NetworkCallback이 등록됩니다.
-
+                Log.d(TAG, "재부팅 후 초기화 완료 - NetworkCallback 자동 등록됨")
             } else {
-                Log.e(TAG, "❌ Application을 가져올 수 없습니다")
+                Log.w(TAG, "Application을 가져올 수 없습니다")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "❌ 재부팅 후 초기화 실패", e)
+            Log.e(TAG, "재부팅 후 초기화 실패", e)
         }
-
-        Log.d(TAG, "✅ 재부팅 후 초기화 완료")
-        Log.d(TAG, "   이제 카메라 WiFi 연결 시 자동으로 감지됩니다")
-        Log.d(TAG, "========================================")
     }
 
     companion object {

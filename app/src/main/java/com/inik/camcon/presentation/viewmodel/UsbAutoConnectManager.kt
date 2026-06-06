@@ -11,6 +11,7 @@ import com.inik.camcon.domain.usecase.usb.RefreshUsbDevicesUseCase
 import com.inik.camcon.domain.usecase.usb.RequestUsbPermissionUseCase
 import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
 import com.inik.camcon.utils.Constants
+import com.inik.camcon.utils.LogMask
 import com.inik.camcon.di.ApplicationScope
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -191,7 +192,7 @@ class UsbAutoConnectManager @Inject constructor(
                     return@launch
                 }
 
-                Log.d(TAG, "✅ 자동 연결 완료 - 이벤트 리스너 자동 시작 시도")
+                Log.d(TAG, "자동 연결 완료 - 이벤트 리스너 자동 시작 시도")
 
                 // 추가 안정화 대기 (네이티브 초기화 완료 확보)
                 kotlinx.coroutines.delay(100)
@@ -201,10 +202,7 @@ class UsbAutoConnectManager @Inject constructor(
                 val isNativeCameraConnected = usbDeviceRepository.isNativeCameraConnected.value
                 val isPtpipConnected = uiStateManager.uiState.value.isPtpipConnected
 
-                Log.d(TAG, "연결 상태 재확인:")
-                Log.d(TAG, "  - isConnected (UI): $isConnected")
-                Log.d(TAG, "  - isNativeCameraConnected (Direct): $isNativeCameraConnected")
-                Log.d(TAG, "  - isPtpipConnected: $isPtpipConnected")
+                Log.d(TAG, "연결 상태 재확인: UI=$isConnected, native=$isNativeCameraConnected, ptpip=$isPtpipConnected")
 
                 val isAnyConnectionActive = isNativeCameraConnected || isPtpipConnected
                 if (!isConnected || !isAnyConnectionActive) {
@@ -224,13 +222,13 @@ class UsbAutoConnectManager @Inject constructor(
                     tempDir.mkdirs()
                 }
                 val saveDirectory = tempDir.absolutePath
-                Log.d(TAG, "이벤트 리스너 저장 디렉토리: $saveDirectory")
+                Log.d(TAG, "이벤트 리스너 저장 디렉토리: ${LogMask.path(saveDirectory)}")
 
                 // 이벤트 리스너 시작 - CameraRepository를 통해 시작
                 val result = cameraRepository.startCameraEventListener()
 
                 result.onSuccess {
-                    Log.d(TAG, "🎉 자동 연결 완료 후 이벤트 리스너 자동 시작 성공!")
+                    Log.d(TAG, "자동 연결 완료 후 이벤트 리스너 자동 시작 성공")
                 }.onFailure { error ->
                     Log.e(TAG, "자동 연결 완료 후 이벤트 리스너 시작 실패", error)
                 }

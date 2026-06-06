@@ -1,16 +1,16 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
+    <!-- 기본 애플리케이션 테마. -->
     <style name="Theme.CamCon" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <!-- Primary brand color. -->
+        <!-- 기본 브랜드 색상. -->
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryVariant">@color/colorPrimaryVariant</item>
         <item name="colorOnPrimary">@color/colorOnPrimary</item>
-        <!-- Secondary brand color. -->
+        <!-- 보조 브랜드 색상. -->
         <item name="colorSecondary">@color/colorSecondary</item>
         <item name="colorSecondaryVariant">@color/colorSecondaryVariant</item>
         <item name="colorOnSecondary">@color/colorOnSecondary</item>
-        <!-- Status bar color. -->
+        <!-- 상태 표시줄 색상. -->
         <item name="android:statusBarColor">@color/colorPrimary</item>
-        <!-- Customize your theme here. -->
+        <!-- 여기에서 테마를 커스터마이즈하세요. -->
     </style>
 </resources>

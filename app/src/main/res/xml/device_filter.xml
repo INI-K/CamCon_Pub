@@ -23,5 +23,5 @@
     <usb-device
         class="6"
         subclass="1"
-        protocol="1" />   <!-- Still Image Capture Device -->
+        protocol="1" />   <!-- 정지 영상 캡처 장치 -->
 </resources>

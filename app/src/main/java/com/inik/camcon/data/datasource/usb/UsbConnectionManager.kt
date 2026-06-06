@@ -8,6 +8,7 @@ import android.util.Log
 import com.inik.camcon.CameraNative
 import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.di.IoDispatcher
+import com.inik.camcon.utils.LogMask
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -107,26 +108,14 @@ class UsbConnectionManager @Inject constructor(
                 val camlibExists = gphoto2VersionDir.listFiles()?.isNotEmpty() == true
                 val iolibExists = portVersionDir.listFiles()?.isNotEmpty() == true
                 if (camlibExists && iolibExists) {
-                    Log.d(TAG, "✅ libgphoto2 플러그인 디렉토리 이미 존재: ${gphoto2BaseDir.absolutePath}")
-
-                    // 🔍 실제 파일 구조 확인 로그 (디버깅용)
-                    Log.d(TAG, "📂 기존 플러그인 디렉토리 구조 확인:")
-                    Log.d(TAG, "  베이스: ${gphoto2BaseDir.absolutePath}")
-                    Log.d(TAG, "  IOLIB: ${portVersionDir.absolutePath}")
-                    portVersionDir.listFiles()?.forEach { file ->
-                        Log.d(TAG, "    - ${file.name} (${file.length()} bytes)")
-                    }
-                    Log.d(TAG, "  CAMLIB: ${gphoto2VersionDir.absolutePath}")
-                    gphoto2VersionDir.listFiles()?.take(5)?.forEach { file ->
-                        Log.d(TAG, "    - ${file.name} (${file.length()} bytes)")
-                    }
+                    Log.d(TAG, "libgphoto2 플러그인 디렉토리 이미 존재: ${LogMask.path(gphoto2BaseDir.absolutePath)}")
 
                     // libgphoto2에 버전 디렉토리를 직접 전달 (세미콜론 구분)
                     return "${portVersionDir.absolutePath}:${gphoto2VersionDir.absolutePath}"
                 }
             }
 
-            Log.d(TAG, "🔧 libgphoto2 플러그인 디렉토리 생성: ${gphoto2BaseDir.absolutePath}")
+            Log.d(TAG, "libgphoto2 플러그인 디렉토리 생성: ${LogMask.path(gphoto2BaseDir.absolutePath)}")
 
             gphoto2VersionDir.mkdirs()
             portVersionDir.mkdirs()
@@ -185,19 +174,7 @@ class UsbConnectionManager @Inject constructor(
                 apkFile.close()
             }
 
-            Log.d(TAG, "✅ 플러그인 복사 완료: I/O=$iolibCount, Camera=$camlibCount")
-
-            // 실제 파일 구조 확인 로그
-            Log.d(TAG, "📂 플러그인 디렉토리 구조 확인:")
-            Log.d(TAG, "  베이스: ${gphoto2BaseDir.absolutePath}")
-            Log.d(TAG, "  IOLIB: ${portVersionDir.absolutePath}")
-            portVersionDir.listFiles()?.forEach { file ->
-                Log.d(TAG, "    - ${file.name} (${file.length()} bytes)")
-            }
-            Log.d(TAG, "  CAMLIB: ${gphoto2VersionDir.absolutePath}")
-            gphoto2VersionDir.listFiles()?.take(5)?.forEach { file ->
-                Log.d(TAG, "    - ${file.name} (${file.length()} bytes)")
-            }
+            Log.d(TAG, "플러그인 복사 완료: I/O=$iolibCount, Camera=$camlibCount")
 
             // libgphoto2에 버전 디렉토리를 직접 전달 (세미콜론 구분)
             return "${portVersionDir.absolutePath}:${gphoto2VersionDir.absolutePath}"
@@ -216,7 +193,7 @@ class UsbConnectionManager @Inject constructor(
     fun connectToCamera(device: UsbDevice) {
         scope.launch(ioDispatcher) {
             try {
-                Log.d(TAG, "카메라 연결 시작: ${device.deviceName}")
+                Log.d(TAG, "카메라 연결 시작: ${LogMask.path(device.deviceName)}")
 
                 if (!isAllowedCameraVendor(device)) {
                     Log.w(
@@ -245,7 +222,7 @@ class UsbConnectionManager @Inject constructor(
                 // 초기화에 도달하지 못하는 모든 경로에서 게이트를 직접 해제해야 한다.
                 val connection = usbManager.openDevice(device)
                 if (connection == null) {
-                    Log.e(TAG, "USB 디바이스 열기 실패: ${device.deviceName}")
+                    Log.e(TAG, "USB 디바이스 열기 실패: ${LogMask.path(device.deviceName)}")
                     isInitializingNativeCamera.set(false)
                     reportError(UsbErrorKind.PermissionDenied)
                     updateConnectionState(false, "USB 디바이스 열기 실패")
@@ -470,7 +447,7 @@ class UsbConnectionManager @Inject constructor(
             return@withContext
         }
 
-        Log.e(TAG, "USB 디바이스 분리 이벤트 처리 시작")
+        Log.d(TAG, "USB 디바이스 분리 이벤트 처리 시작")
 
         try {
             // 즉시 연결 상태를 false로 업데이트 (UI 반영)
@@ -577,22 +554,13 @@ class UsbConnectionManager @Inject constructor(
     }
 
     private fun logDeviceInfo(device: UsbDevice) {
-        Log.d(TAG, "디바이스 정보:")
-        Log.d(TAG, "  이름: ${device.deviceName}")
-        Log.d(TAG, "  제조사ID: 0x${device.vendorId.toString(16)}")
-        Log.d(TAG, "  제품ID: 0x${device.productId.toString(16)}")
-        Log.d(TAG, "  클래스: ${device.deviceClass}")
-        Log.d(TAG, "  서브클래스: ${device.deviceSubclass}")
-        Log.d(TAG, "  프로토콜: ${device.deviceProtocol}")
-
-        for (i in 0 until device.interfaceCount) {
-            val intf = device.getInterface(i)
-            Log.d(TAG, "  인터페이스 $i:")
-            Log.d(TAG, "    클래스: ${intf.interfaceClass}")
-            Log.d(TAG, "    서브클래스: ${intf.interfaceSubclass}")
-            Log.d(TAG, "    프로토콜: ${intf.interfaceProtocol}")
-            Log.d(TAG, "    엔드포인트 수: ${intf.endpointCount}")
-        }
+        Log.d(
+            TAG,
+            "디바이스 정보: 이름=${LogMask.path(device.deviceName)} " +
+                    "VID=0x${device.vendorId.toString(16)} PID=0x${device.productId.toString(16)} " +
+                    "클래스=${device.deviceClass}/${device.deviceSubclass}/${device.deviceProtocol} " +
+                    "인터페이스수=${device.interfaceCount}"
+        )
     }
 
     fun cleanup() {

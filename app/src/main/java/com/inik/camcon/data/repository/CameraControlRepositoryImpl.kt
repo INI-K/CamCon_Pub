@@ -270,34 +270,34 @@ class CameraControlRepositoryImpl @Inject constructor(
             com.inik.camcon.domain.model.SubscriptionTier.ADMIN -> 2
         }
         nativeDataSource.setSubscriptionTier(tierInt)
-        Log.d(TAG, "✅ 구독 티어 설정 완료: $tier (네이티브: $tierInt)")
+        Log.d(TAG, "구독 티어 설정 완료: $tier (네이티브: $tierInt)")
         Result.success(Unit)
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
-        Log.e(TAG, "❌ 구독 티어 설정 실패", e)
+        Log.e(TAG, "구독 티어 설정 실패", e)
         Result.failure(e)
     }
 
     suspend fun setRawFileDownloadEnabled(enabled: Boolean): Result<Unit> = try {
         nativeDataSource.setRawFileDownloadEnabled(enabled)
-        Log.d(TAG, "✅ RAW 파일 다운로드 설정 완료: $enabled")
+        Log.d(TAG, "RAW 파일 다운로드 설정 완료: $enabled")
         Result.success(Unit)
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
-        Log.e(TAG, "❌ RAW 파일 다운로드 설정 실패", e)
+        Log.e(TAG, "RAW 파일 다운로드 설정 실패", e)
         Result.failure(e)
     }
 
     suspend fun getCameraFileListNow(): Result<List<String>> = try {
         val fileList = nativeDataSource.getCameraFileListNow()
-        Log.d(TAG, "✅ 카메라 파일 목록 조회 완료: ${fileList.size}개")
+        Log.d(TAG, "카메라 파일 목록 조회 완료: ${fileList.size}개")
         Result.success(fileList)
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
-        Log.e(TAG, "❌ 카메라 파일 목록 조회 실패", e)
+        Log.e(TAG, "카메라 파일 목록 조회 실패", e)
         Result.failure(e)
     }
 

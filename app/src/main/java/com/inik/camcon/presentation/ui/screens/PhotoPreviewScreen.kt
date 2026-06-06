@@ -1,6 +1,6 @@
 package com.inik.camcon.presentation.ui.screens
 
-// Multi-select feature: Required imports
+// 멀티 선택 기능: 필요한 import
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -621,14 +621,14 @@ private fun PhotoSkeletonGrid() {
     ) {
         ProgressBarV2(progress = null)
         Spacer(Modifier.height(Spacing.md))
-        // Featured (full width)
+        // Featured (전체 너비)
         SkeletonLoader(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(180.dp)
         )
         Spacer(Modifier.height(Spacing.sm))
-        // Grid rows
+        // 그리드 행
         repeat(3) {
             Row(
                 modifier = Modifier.fillMaxWidth(),

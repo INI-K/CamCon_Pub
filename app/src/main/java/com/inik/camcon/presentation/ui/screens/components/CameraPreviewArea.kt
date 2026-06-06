@@ -1,6 +1,6 @@
 package com.inik.camcon.presentation.ui.screens.components
 
-// Coil imports for image loading
+// 이미지 로딩을 위한 Coil import
 import android.graphics.BitmapFactory
 import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -158,7 +158,6 @@ fun CameraPreviewArea(
                         .combinedClickable(
                             onClick = { /* 단일 클릭 처리 */ },
                             onDoubleClick = {
-                                Log.d("CameraPreview", "라이브뷰 이미지 더블클릭 감지")
                                 onDoubleClick?.invoke()
                             }
                         ),
@@ -199,12 +198,12 @@ fun CameraPreviewArea(
                         val stroke = 1.dp.toPx()
                         val color = androidx.compose.ui.graphics.Color(DividerLine.value)
                             .copy(alpha = 0.7f)
-                        // 2 vertical lines at 1/3 and 2/3
+                        // 1/3, 2/3 지점의 수직선 2개
                         drawLine(color, androidx.compose.ui.geometry.Offset(w / 3f, 0f),
                             androidx.compose.ui.geometry.Offset(w / 3f, h), strokeWidth = stroke)
                         drawLine(color, androidx.compose.ui.geometry.Offset(2f * w / 3f, 0f),
                             androidx.compose.ui.geometry.Offset(2f * w / 3f, h), strokeWidth = stroke)
-                        // 2 horizontal lines at 1/3 and 2/3
+                        // 1/3, 2/3 지점의 수평선 2개
                         drawLine(color, androidx.compose.ui.geometry.Offset(0f, h / 3f),
                             androidx.compose.ui.geometry.Offset(w, h / 3f), strokeWidth = stroke)
                         drawLine(color, androidx.compose.ui.geometry.Offset(0f, 2f * h / 3f),
@@ -300,7 +299,6 @@ fun CameraPreviewArea(
                 // 라이브뷰 중지 버튼 오버레이
                 Button(
                     onClick = {
-                        Log.d("CameraControl", "Stop live view button clicked")
                         onStopLiveView()
                     },
                     modifier = Modifier
@@ -495,7 +493,7 @@ fun CameraConnectionButtons(
     ) {
         Button(
             onClick = {
-                // Try to reconnect or show camera list
+                // 재연결을 시도하거나 카메라 목록을 표시
                 cameraFeed.firstOrNull()?.let { camera ->
                     onConnectCamera(camera.id)
                 } ?: run {

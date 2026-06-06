@@ -603,7 +603,7 @@ class AuthRepositoryImpl @Inject constructor(
                 .update(updateData)
                 .await()
 
-            Log.i(TAG, "추천 코드 사용 처리 성공: $code by $userId")
+            Log.i(TAG, "추천 코드 사용 처리 성공: $code by ${maskId(userId)}")
             true
         } catch (e: Exception) {
             Log.e(TAG, "추천 코드 사용 처리 실패: $code", e)

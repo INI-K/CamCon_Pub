@@ -2,6 +2,7 @@ package com.inik.camcon.presentation.viewmodel.photo
 
 import android.content.Context
 import android.util.Log
+import com.inik.camcon.BuildConfig
 import com.inik.camcon.R
 import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.di.IoDispatcher
@@ -13,6 +14,7 @@ import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.domain.usecase.camera.GetCameraPhotosPagedUseCase
 import com.inik.camcon.presentation.viewmodel.state.ErrorHandlingManager
 import com.inik.camcon.utils.Constants
+import com.inik.camcon.utils.LogMask
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -113,13 +115,11 @@ class PhotoListManager @Inject constructor(
         isPtpipConnected: Boolean = false,
         tier: SubscriptionTier = currentTier
     ) {
-        Log.d(TAG, "=== loadInitialPhotos 호출 (티어=$tier) ===")
+        Log.d(TAG, "loadInitialPhotos 호출 (티어=$tier)")
         currentTier = tier
         managerScope.launch {
-            Log.d(TAG, "loadInitialPhotos 코루틴 시작")
-
             if (!isManagerActive) {
-                Log.d(TAG, "⛔ loadInitialPhotos 작업 중단됨 (매니저 비활성)")
+                Log.d(TAG, "loadInitialPhotos 작업 중단됨 (매니저 비활성)")
                 return@launch
             }
 
@@ -155,15 +155,14 @@ class PhotoListManager @Inject constructor(
             }
 
             if (!isManagerActive) {
-                Log.d(TAG, "⛔ loadInitialPhotos 중단됨 (카메라 확인 후)")
+                Log.d(TAG, "loadInitialPhotos 중단됨 (카메라 확인 후)")
                 return@launch
             }
 
-            Log.d(TAG, "getCameraPhotosPagedUseCase 호출 시작")
             getCameraPhotosPagedUseCase(page = 0, pageSize = PREFETCH_PAGE_SIZE).fold(
                 onSuccess = { paginatedPhotos ->
                     if (!isManagerActive) {
-                        Log.d(TAG, "⛔ loadInitialPhotos 중단됨 (사진 목록 로딩 후)")
+                        Log.d(TAG, "loadInitialPhotos 중단됨 (사진 목록 로딩 후)")
                         return@launch
                     }
 
@@ -191,7 +190,6 @@ class PhotoListManager @Inject constructor(
             )
 
             _isLoading.value = false
-            Log.d(TAG, "loadInitialPhotos 코루틴 완료")
         }
     }
 
@@ -206,7 +204,7 @@ class PhotoListManager @Inject constructor(
         }
 
         if (!isManagerActive) {
-            Log.d(TAG, "⛔ loadNextPage 작업 중단됨 (매니저 비활성)")
+            Log.d(TAG, "loadNextPage 작업 중단됨 (매니저 비활성)")
             return
         }
 
@@ -228,11 +226,11 @@ class PhotoListManager @Inject constructor(
             return
         }
 
-        Log.d(TAG, "=== loadNextPage 시작 ===")
+        Log.d(TAG, "loadNextPage 시작")
         managerScope.launch {
             try {
                 if (!isManagerActive) {
-                    Log.d(TAG, "⛔ loadNextPage 중단됨 (시작 후)")
+                    Log.d(TAG, "loadNextPage 중단됨 (시작 후)")
                     return@launch
                 }
 
@@ -240,7 +238,7 @@ class PhotoListManager @Inject constructor(
                 getCameraPhotosPagedUseCase(page = nextPage, pageSize = PREFETCH_PAGE_SIZE).fold(
                     onSuccess = { paginatedPhotos ->
                         if (!isManagerActive) {
-                            Log.d(TAG, "⛔ loadNextPage 중단됨 (성공 후)")
+                            Log.d(TAG, "loadNextPage 중단됨 (성공 후)")
                             return@fold
                         }
 
@@ -308,11 +306,7 @@ class PhotoListManager @Inject constructor(
             allPhotos
         } else {
             allPhotos.filter { photo ->
-                val isRaw = validateImageFormatUseCase.isRawFile(photo.path)
-                if (isRaw) {
-                    Log.v(TAG, "RAW 파일 숨김 (권한없음): ${photo.path}")
-                }
-                !isRaw
+                !validateImageFormatUseCase.isRawFile(photo.path)
             }
         }
 
@@ -320,9 +314,7 @@ class PhotoListManager @Inject constructor(
         val filtered = when (filter) {
             FileTypeFilter.ALL -> accessiblePhotos
             FileTypeFilter.JPG -> accessiblePhotos.filter {
-                val isJpg = it.path.endsWith(".jpg", true) || it.path.endsWith(".jpeg", true)
-                Log.v(TAG, "JPG 필터 확인: ${it.path} -> $isJpg")
-                isJpg
+                it.path.endsWith(".jpg", true) || it.path.endsWith(".jpeg", true)
             }
 
             FileTypeFilter.RAW -> {
@@ -342,9 +334,7 @@ class PhotoListManager @Inject constructor(
                     emptyList()
                 } else {
                     accessiblePhotos.filter {
-                        val isRaw = validateImageFormatUseCase.isRawFile(it.path)
-                        Log.v(TAG, "RAW 필터 확인: ${it.path} -> $isRaw")
-                        isRaw
+                        validateImageFormatUseCase.isRawFile(it.path)
                     }
                 }
             }
@@ -382,17 +372,12 @@ class PhotoListManager @Inject constructor(
                 totalFilteredPhotos >= 20
 
         Log.d(
-            TAG, """
-            프리로딩 체크:
-            - 현재 인덱스: $currentIndex
-            - 필터링된 사진 수: $totalFilteredPhotos
-            - 동적 임계값: $dynamicThreshold
-            - 프리로드 조건 만족: $shouldPrefetch
-        """.trimIndent()
+            TAG,
+            "프리로딩 체크: 인덱스=$currentIndex, 사진수=$totalFilteredPhotos, 임계값=$dynamicThreshold, 조건만족=$shouldPrefetch"
         )
 
         if (shouldPrefetch) {
-            Log.d(TAG, "🚀 프리로드 트리거: 현재 인덱스 $currentIndex")
+            Log.d(TAG, "프리로드 트리거: 현재 인덱스 $currentIndex")
             // prefetch가 실제로 잠금에 성공해 시작된 경우에만 prefetchedPage를 전진시킨다.
             if (prefetchNextPage(isPtpipConnected)) {
                 _prefetchedPage.value = currentPage + 1
@@ -427,7 +412,7 @@ class PhotoListManager @Inject constructor(
             return false
         }
 
-        Log.d(TAG, "=== prefetchNextPage 시작 ===")
+        Log.d(TAG, "prefetchNextPage 시작")
         managerScope.launch {
             try {
                 val nextPage = _currentPage.value + 1
@@ -480,19 +465,21 @@ class PhotoListManager @Inject constructor(
      * 현재 상태 정보 로깅 (디버깅용)
      */
     fun logCurrentState() {
-        Log.d(
-            TAG, """
-            현재 사진 목록 상태:
-            - 전체 사진: ${_allPhotos.value.size}개
-            - 필터링된 사진: ${_filteredPhotos.value.size}개
-            - 현재 페이지: ${_currentPage.value}
-            - 전체 페이지: ${_totalPages.value}
-            - 다음 페이지 있음: ${_hasNextPage.value}
-            - 현재 필터: ${_currentFilter.value}
-            - 로딩 중: ${_isLoading.value}
-            - 추가 로딩 중: ${_isLoadingMore.value}
-        """.trimIndent()
-        )
+        if (BuildConfig.DEBUG) {
+            Log.d(
+                TAG, """
+                현재 사진 목록 상태:
+                - 전체 사진: ${_allPhotos.value.size}개
+                - 필터링된 사진: ${_filteredPhotos.value.size}개
+                - 현재 페이지: ${_currentPage.value}
+                - 전체 페이지: ${_totalPages.value}
+                - 다음 페이지 있음: ${_hasNextPage.value}
+                - 현재 필터: ${_currentFilter.value}
+                - 로딩 중: ${_isLoading.value}
+                - 추가 로딩 중: ${_isLoadingMore.value}
+            """.trimIndent()
+            )
+        }
     }
 
     /**
@@ -507,11 +494,11 @@ class PhotoListManager @Inject constructor(
      * RAW 게이팅은 [ValidateImageFormatUseCase] 단일 지점에 위임한다.
      */
     fun loadLocalPhotos(currentTier: SubscriptionTier = this.currentTier) {
-        Log.d(TAG, "=== loadLocalPhotos 호출 (티어=$currentTier) ===")
+        Log.d(TAG, "loadLocalPhotos 호출 (티어=$currentTier)")
         this.currentTier = currentTier
         managerScope.launch {
             if (!isManagerActive) {
-                Log.d(TAG, "⛔ loadLocalPhotos 작업 중단됨 (매니저 비활성)")
+                Log.d(TAG, "loadLocalPhotos 작업 중단됨 (매니저 비활성)")
                 return@launch
             }
             _isLoading.value = true
@@ -523,7 +510,7 @@ class PhotoListManager @Inject constructor(
             Log.d(TAG, "로컬 디렉터리 스캔 결과: ${photos.size}개")
 
             if (!isManagerActive) {
-                Log.d(TAG, "⛔ loadLocalPhotos 중단됨 (스캔 후)")
+                Log.d(TAG, "loadLocalPhotos 중단됨 (스캔 후)")
                 return@launch
             }
             _allPhotos.value = photos
@@ -568,7 +555,7 @@ class PhotoListManager @Inject constructor(
                     }
             } catch (t: Throwable) {
                 // 권한 부족 등으로 스캔 실패 — 다른 디렉터리는 계속 시도.
-                Log.w(TAG, "로컬 디렉터리 스캔 실패: ${root.absolutePath}", t)
+                Log.w(TAG, "로컬 디렉터리 스캔 실패: ${LogMask.path(root.absolutePath)}", t)
             }
         }
 

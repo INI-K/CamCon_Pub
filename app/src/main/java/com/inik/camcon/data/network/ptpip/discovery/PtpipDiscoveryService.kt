@@ -9,6 +9,7 @@ import com.inik.camcon.data.constants.PtpipConstants
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.model.PtpipCamera
+import com.inik.camcon.utils.LogMask
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -42,7 +43,7 @@ class PtpipDiscoveryService @Inject constructor(
     private val activeDiscoveryListeners =
         java.util.Collections.synchronizedSet(mutableSetOf<NsdManager.DiscoveryListener>())
 
-    // SharedPreferences for caching last known camera IP
+    // 마지막으로 알려진 카메라 IP 캐싱용 SharedPreferences
     private val prefs: SharedPreferences = context.getSharedPreferences(
         "camera_discovery_cache",
         Context.MODE_PRIVATE
@@ -74,9 +75,7 @@ class PtpipDiscoveryService @Inject constructor(
         withContext(ioDispatcher) {
             val cameras = mutableListOf<PtpipCamera>()
 
-            Log.i(TAG, "========================================")
-            Log.i(TAG, "=== 카메라 검색 시작 (최적화 모드) ===")
-            Log.i(TAG, "========================================")
+            Log.i(TAG, "카메라 검색 시작 (최적화 모드)")
 
             try {
                 // 1단계: 캐시된 IP로 빠른 시도 (STA 모드에서만) - 디버깅용 비활성화
@@ -86,8 +85,8 @@ class PtpipDiscoveryService @Inject constructor(
                     val cachedName = prefs.getString(PREF_LAST_CAMERA_NAME, null)
 
                     if (cachedIP != null && cachedName != null) {
-                        Log.d(TAG, "캐시된 IP 정보: $cachedIP ($cachedName)")
-                        Log.w(TAG, "⚠️ 캐시 무시하고 mDNS 검색 진행 (디버깅 모드)")
+                        Log.d(TAG, "캐시된 IP 정보: ${LogMask.id(cachedIP)} (${LogMask.id(cachedName)})")
+                        Log.w(TAG, "캐시 무시하고 mDNS 검색 진행 (디버깅 모드)")
                     } else {
                         Log.d(TAG, "캐시된 IP 정보 없음")
                     }
@@ -99,10 +98,10 @@ class PtpipDiscoveryService @Inject constructor(
 
                     val gatewayIP = wifiHelper.detectCameraIPInAPMode()
                     if (gatewayIP != null) {
-                        Log.i(TAG, "게이트웨이 IP 발견: $gatewayIP")
+                        Log.i(TAG, "게이트웨이 IP 발견: ${LogMask.id(gatewayIP)}")
 
                         if (testPtpipConnection(gatewayIP, 15740)) {
-                            Log.i(TAG, "✅ AP 모드: 게이트웨이 PTP-IP 연결 성공!")
+                            Log.i(TAG, "AP 모드: 게이트웨이 PTP-IP 연결 성공")
                             val networkName = wifiHelper.getCurrentSSID() ?: "카메라 AP"
 
                             val apCamera = PtpipCamera(
@@ -122,7 +121,7 @@ class PtpipDiscoveryService @Inject constructor(
                     // 게이트웨이 실패 시 기본 IP들 시도
                     for (ip in PtpipConstants.DEFAULT_CAMERA_IPS) {
                         if (testPtpipConnection(ip, 15740)) {
-                            Log.i(TAG, "✅ 기본 IP PTP-IP 연결 성공: $ip")
+                            Log.i(TAG, "기본 IP PTP-IP 연결 성공: ${LogMask.id(ip)}")
                             val networkName = wifiHelper.getCurrentSSID() ?: "카메라 AP"
 
                             val apCamera = PtpipCamera(
@@ -138,7 +137,7 @@ class PtpipDiscoveryService @Inject constructor(
                     }
 
                     if (cameras.isEmpty()) {
-                        Log.w(TAG, "❌ AP 모드에서 PTP-IP 연결 가능한 카메라를 찾을 수 없음")
+                        Log.w(TAG, "AP 모드에서 PTP-IP 연결 가능한 카메라를 찾을 수 없음")
                     }
 
                     return@withContext cameras
@@ -161,8 +160,6 @@ class PtpipDiscoveryService @Inject constructor(
                         val serviceName = serviceInfo.serviceName
 
                         if (hostAddress != null && port > 0) {
-                            Log.d(TAG, "서비스 정보: $serviceName ($hostAddress:$port)")
-
                             val cameraName = extractCameraName(serviceName, hostAddress)
 
                             val camera = PtpipCamera(
@@ -173,15 +170,14 @@ class PtpipDiscoveryService @Inject constructor(
                                 discoveredServiceType = serviceInfo.serviceType  // mDNS 서비스 타입 저장
                             )
                             cameras.add(camera)
+                            Log.i(TAG, "카메라 발견: ${LogMask.id(cameraName)} (${LogMask.id(hostAddress)}:$port)")
 
                             // 첫 번째 발견된 카메라를 캐시에 저장
                             if (cameras.size == 1) {
                                 saveCachedIP(hostAddress, cameraName)
                             }
-
-                            Log.i(TAG, "카메라 발견: $cameraName ($hostAddress:$port)")
                         } else {
-                            Log.w(TAG, "유효하지 않은 서비스 정보: $serviceName")
+                            Log.w(TAG, "유효하지 않은 서비스 정보: ${LogMask.id(serviceName)}")
                         }
                     } catch (e: Exception) {
                         Log.w(TAG, "서비스 정보 처리 중 오류: ${e.message}")
@@ -194,18 +190,9 @@ class PtpipDiscoveryService @Inject constructor(
                     // 기본 IP 시도 비활성화 - 불필요한 타임아웃 방지
                 }
 
-                Log.i(TAG, "========================================")
                 Log.i(TAG, "카메라 검색 완료: ${cameras.size}개 발견")
-                Log.i(TAG, "========================================")
 
-                if (cameras.isNotEmpty()) {
-                    cameras.forEachIndexed { index, camera ->
-                        Log.i(
-                            TAG,
-                            "  ${index + 1}. ${camera.name} (${camera.ipAddress}:${camera.port})"
-                        )
-                    }
-                } else {
+                if (cameras.isEmpty()) {
                     Log.w(TAG, "카메라를 찾을 수 없습니다")
                 }
 
@@ -236,7 +223,7 @@ class PtpipDiscoveryService @Inject constructor(
             return@withContext null
         }
 
-        Log.d(TAG, "캐시된 IP 시도: $cachedIP ($cachedName)")
+        Log.d(TAG, "캐시된 IP 시도: ${LogMask.id(cachedIP)} (${LogMask.id(cachedName)})")
 
         // 짧은 타임아웃으로 빠르게 시도
         val success = withTimeoutOrNull(PtpipConstants.CACHED_IP_TIMEOUT) {
@@ -244,7 +231,7 @@ class PtpipDiscoveryService @Inject constructor(
         } ?: false
 
         if (success) {
-            Log.i(TAG, "✅ 캐시된 IP 연결 성공!")
+            Log.i(TAG, "캐시된 IP 연결 성공")
             PtpipCamera(
                 ipAddress = cachedIP,
                 port = 15740,
@@ -267,7 +254,7 @@ class PtpipDiscoveryService @Inject constructor(
             putLong(PREF_LAST_SUCCESS_TIME, System.currentTimeMillis())
             apply()
         }
-        Log.d(TAG, "캐시 저장: $ipAddress ($cameraName)")
+        Log.d(TAG, "캐시 저장: ${LogMask.id(ipAddress)} (${LogMask.id(cameraName)})")
     }
 
     /**
@@ -281,10 +268,7 @@ class PtpipDiscoveryService @Inject constructor(
             val searchJobs = PtpipConstants.SERVICE_TYPES.map { serviceType ->
                 async {
                     try {
-                        Log.d(TAG, "mDNS 검색 시작: $serviceType")
-                        val services = discoverPtpServices(serviceType, timeoutMs = 5000L)
-                        Log.d(TAG, "$serviceType 반환 결과: ${services.size}개")
-                        services
+                        discoverPtpServices(serviceType, timeoutMs = 5000L)
                     } catch (e: Exception) {
                         Log.w(TAG, "mDNS 검색 실패: $serviceType - ${e.message}")
                         emptyList<NsdServiceInfo>()
@@ -294,8 +278,7 @@ class PtpipDiscoveryService @Inject constructor(
 
             // 모든 검색 결과를 기다림
             val results = searchJobs.awaitAll()
-            results.forEachIndexed { index, services ->
-                Log.d(TAG, "결과[${index}] 추가: ${services.size}개 서비스")
+            results.forEach { services ->
                 allServices.addAll(services)
             }
 
@@ -372,7 +355,7 @@ class PtpipDiscoveryService @Inject constructor(
 
             val resolveListener = object : NsdManager.ResolveListener {
                 override fun onResolveFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
-                    Log.w(TAG, "서비스 resolve 실패: ${serviceInfo.serviceName}, 에러코드: $errorCode")
+                    Log.w(TAG, "서비스 resolve 실패: ${LogMask.id(serviceInfo.serviceName)}, 에러코드: $errorCode")
                     // 동시 resolve 충돌(FAILURE_ALREADY_ACTIVE)이면 카운트만 올려
                     // 누락시키지 말고 백오프 후 재시도한다.
                     if (errorCode == NSD_FAILURE_ALREADY_ACTIVE) {
@@ -391,7 +374,7 @@ class PtpipDiscoveryService @Inject constructor(
                             }
                         }
                         if (retried) {
-                            Log.d(TAG, "resolve 충돌, 재시도 예약: ${serviceInfo.serviceName}")
+                            Log.d(TAG, "resolve 충돌, 재시도 예약: ${LogMask.id(serviceInfo.serviceName)}")
                             resolveRetryHandler.postDelayed({
                                 val stillActive = synchronized(discoveredServices) {
                                     !isResumed && continuation.isActive
@@ -417,9 +400,10 @@ class PtpipDiscoveryService @Inject constructor(
                 }
 
                 override fun onServiceResolved(serviceInfo: NsdServiceInfo) {
-                    Log.d(TAG, "서비스 resolve 성공: ${serviceInfo.serviceName}")
-                    Log.d(TAG, "  - Host: ${serviceInfo.host}")
-                    Log.d(TAG, "  - Port: ${serviceInfo.port}")
+                    Log.d(
+                        TAG,
+                        "서비스 resolve 성공: ${LogMask.id(serviceInfo.serviceName)} (${LogMask.id(serviceInfo.host?.hostAddress)}:${serviceInfo.port})"
+                    )
 
                     synchronized(discoveredServices) {
                         discoveredServices.add(serviceInfo)
@@ -436,7 +420,7 @@ class PtpipDiscoveryService @Inject constructor(
                 }
 
                 override fun onServiceFound(service: NsdServiceInfo) {
-                    Log.d(TAG, "서비스 발견: ${service.serviceName}")
+                    Log.d(TAG, "서비스 발견: ${LogMask.id(service.serviceName)}")
                     synchronized(discoveredServices) {
                         val serviceKey = "${service.serviceName}:${service.serviceType}"
                         if (!resolvedServices.contains(serviceKey)) {
@@ -454,7 +438,7 @@ class PtpipDiscoveryService @Inject constructor(
                 }
 
                 override fun onServiceLost(service: NsdServiceInfo) {
-                    Log.d(TAG, "서비스 손실: ${service.serviceName}")
+                    Log.d(TAG, "서비스 손실: ${LogMask.id(service.serviceName)}")
                     synchronized(discoveredServices) {
                         val serviceKey = "${service.serviceName}:${service.serviceType}"
                         resolvedServices.remove(serviceKey)
@@ -484,7 +468,7 @@ class PtpipDiscoveryService @Inject constructor(
                 }
 
                 override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) {
-                    Log.e(TAG, "mDNS 검색 중지 실패: $serviceType, 에러코드: $errorCode")
+                    Log.w(TAG, "mDNS 검색 중지 실패: $serviceType, 에러코드: $errorCode")
                 }
             }
 
@@ -537,7 +521,7 @@ class PtpipDiscoveryService @Inject constructor(
      */
     private suspend fun testPtpipConnection(ipAddress: String, port: Int): Boolean {
         return try {
-            Log.d(TAG, "PTP-IP 연결 테스트: $ipAddress:$port")
+            Log.d(TAG, "PTP-IP 연결 테스트: ${LogMask.id(ipAddress)}:$port")
 
             java.net.Socket().use { socket ->
                 socket.soTimeout = 3000
@@ -560,19 +544,19 @@ class PtpipDiscoveryService @Inject constructor(
                     val responseType = buffer.int
 
                     if (responseType == PtpipConstants.PTPIP_INIT_COMMAND_ACK) {
-                        Log.d(TAG, "✅ PTP-IP 연결 성공: $ipAddress")
+                        Log.d(TAG, "PTP-IP 연결 성공: ${LogMask.id(ipAddress)}")
                         return true
                     } else {
-                        Log.d(TAG, "❌ PTP-IP 응답 타입 불일치: $responseType")
+                        Log.d(TAG, "PTP-IP 응답 타입 불일치: $responseType")
                     }
                 } else {
-                    Log.d(TAG, "❌ PTP-IP 응답 길이 부족: $bytesRead bytes")
+                    Log.d(TAG, "PTP-IP 응답 길이 부족: $bytesRead bytes")
                 }
 
                 false
             }
         } catch (e: Exception) {
-            Log.d(TAG, "❌ PTP-IP 연결 실패: $ipAddress - ${e.message}")
+            Log.d(TAG, "PTP-IP 연결 실패: ${LogMask.id(ipAddress)} - ${e.message}")
             false
         }
     }
@@ -598,12 +582,12 @@ class PtpipDiscoveryService @Inject constructor(
             java.nio.ByteBuffer.allocate(totalLength).order(java.nio.ByteOrder.LITTLE_ENDIAN)
 
         // 패킷 구성
-        buffer.putInt(totalLength) // Length
-        buffer.putInt(PtpipConstants.PTPIP_INIT_COMMAND_REQUEST) // Type
+        buffer.putInt(totalLength) // 길이
+        buffer.putInt(PtpipConstants.PTPIP_INIT_COMMAND_REQUEST) // 타입
         buffer.put(commandGuid) // Connection Number GUID
-        buffer.put(hostNameBytes) // Friendly Name
-        buffer.put(nullTerminator) // Null terminator
-        buffer.putInt(0x00010001) // Protocol Version
+        buffer.put(hostNameBytes) // 표시 이름
+        buffer.put(nullTerminator) // 널 종단
+        buffer.putInt(0x00010001) // 프로토콜 버전
 
         return buffer.array()
     }

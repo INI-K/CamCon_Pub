@@ -7,6 +7,7 @@ import android.hardware.usb.UsbManager
 import android.util.Log
 import com.inik.camcon.CameraNative
 import com.inik.camcon.di.IoDispatcher
+import com.inik.camcon.utils.LogMask
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers // for Dispatchers.Default — IO 하드코딩 아님
 import kotlinx.coroutines.delay
@@ -57,19 +58,19 @@ class UsbConnectionRecovery @Inject constructor(
             Log.d(TAG, "복구 후 발견된 디바이스: ${devices.size}개")
 
             if (devices.isEmpty()) {
-                Log.e(TAG, "복구 후 디바이스를 찾을 수 없음")
+                Log.w(TAG, "복구 후 디바이스를 찾을 수 없음")
                 return@withContext RecoveryResult.failure("디바이스 없음")
             }
 
             val device = devices.first()
-            Log.d(TAG, "복구 대상 디바이스: ${device.deviceName}")
+            Log.d(TAG, "복구 대상 디바이스: ${LogMask.path(device.deviceName)}")
 
             // 5단계: 권한 상태 확인
             val hasPermission = usbManager.hasPermission(device)
             Log.d(TAG, "현재 권한 상태: $hasPermission")
 
             if (!hasPermission) {
-                Log.e(TAG, "권한이 없음 - 사용자가 권한을 재요청해야 함")
+                Log.w(TAG, "권한이 없음 - 사용자가 권한을 재요청해야 함")
                 return@withContext RecoveryResult.failure("권한 필요 - 사용자 권한 재요청 필요")
             }
 
@@ -94,7 +95,7 @@ class UsbConnectionRecovery @Inject constructor(
             if (!newConnection.fileDescriptor.toString().contains("-1")) {
                 Log.d(TAG, "✅ USB 연결 상태 검증 완료 - FD는 유효함")
             } else {
-                Log.e(TAG, "❌ USB 연결 상태 검증 실패 - FD가 유효하지 않음")
+                Log.w(TAG, "❌ USB 연결 상태 검증 실패 - FD가 유효하지 않음")
                 newConnection.close()
                 return@withContext RecoveryResult.failure("USB 연결 검증 실패")
             }
@@ -115,18 +116,8 @@ class UsbConnectionRecovery @Inject constructor(
 
                 // -7 오류인 경우 권한 재요청을 권장
                 if (initResult == -7) {
-                    Log.w(TAG, "⚠️ libgphoto2 커널 드라이버 접근 실패 - 안드로이드 시스템 한계")
-                    Log.i(TAG, "💡 해결방안:")
-                    Log.i(TAG, "  1) 카메라 USB 모드를 'Mass Storage'에서 'PTP/MTP'로 변경")
-                    Log.i(TAG, "  2) 다른 USB 케이블 사용 (데이터 전송 지원 케이블)")
-                    Log.i(TAG, "  3) 카메라 전원을 완전히 끈 후 다시 켜기")
-                    Log.i(TAG, "  4) 안드로이드 개발자 옵션에서 'USB 디버깅' 비활성화")
-                    Log.i(TAG, "  5) 앱 재시작 후 다시 시도")
+                    Log.w(TAG, "libgphoto2 커널 드라이버 접근 실패(-7, 안드로이드 시스템 한계) - 고급 복구 모드로 전환 후 FD 없는 일반 초기화 시도")
 
-                    Log.i(TAG, "🔄 고급 복구 모드로 전환 - 이것은 오류가 아닌 정상적인 복구 과정입니다")
-
-                    // 먼저 일반 초기화 시도 (FD 없이)
-                    Log.i(TAG, "🔄 Fallback: 일반 초기화 시도 (FD 없이)")
                     try {
                         val fallbackResult = CameraNative.initCamera()
                         Log.d(TAG, "일반 초기화 결과: $fallbackResult")
@@ -238,15 +229,6 @@ class UsbConnectionRecovery @Inject constructor(
 
                             if (usbInterface.interfaceClass == 6) {
                                 ptpInterfaceClaimed = true
-                            }
-
-                            // 인터페이스의 모든 엔드포인트 정보 로깅
-                            for (j in 0 until usbInterface.endpointCount) {
-                                val endpoint = usbInterface.getEndpoint(j)
-                                Log.d(
-                                    TAG,
-                                    "  엔드포인트 $j: 주소=0x${endpoint.address.toString(16)}, 타입=${endpoint.type}, 방향=${endpoint.direction}"
-                                )
                             }
                         } else {
                             Log.w(TAG, "❌ 인터페이스 $i 클레임 실패")

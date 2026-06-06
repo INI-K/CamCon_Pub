@@ -131,8 +131,8 @@ fun formatFlashLabel(flash: String): String {
 }
 
 /**
- * Single EXIF field row with label and value.
- * Stateless, receives both label and formatted value.
+ * 라벨과 값을 가진 단일 EXIF 필드 행.
+ * Stateless이며, 라벨과 포맷된 값을 모두 전달받는다.
  */
 @Composable
 fun ExifField(

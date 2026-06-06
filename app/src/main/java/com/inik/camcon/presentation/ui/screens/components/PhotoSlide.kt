@@ -50,25 +50,12 @@ fun PhotoSlide(
     val screenWidth = with(density) { configuration.screenWidthDp.dp.roundToPx() }
     val screenHeight = with(density) { configuration.screenHeightDp.dp.roundToPx() }
 
-    // 이미지 데이터 상태 로깅
-    android.util.Log.d("PhotoSlide", "=== PhotoSlide 렌더링: ${photo.name} ===")
-    android.util.Log.d("PhotoSlide", "썸네일 데이터: ${thumbnailData?.size ?: 0} bytes")
-    android.util.Log.d("PhotoSlide", "실제 파일 데이터: ${fullImageData?.size ?: 0} bytes")
-    android.util.Log.d("PhotoSlide", "다운로드 중: $isDownloadingFullImage")
-    android.util.Log.d("PhotoSlide", "화면 크기: ${screenWidth}x${screenHeight}")
-
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         // 실제 파일 데이터가 있으면 우선 사용, 없으면 썸네일, 그것도 없으면 파일 경로 사용
         val imageData = fullImageData ?: thumbnailData ?: photo.path
-        val isFullQuality = fullImageData != null
-
-        android.util.Log.d(
-            "PhotoSlide",
-            "사용할 이미지 데이터: ${if (isFullQuality) "고화질" else if (thumbnailData != null) "썸네일" else "파일 경로"}"
-        )
 
         // WCAG 2.2 SC 1.1.1 — 사진은 의미를 가진 콘텐츠이므로 파일명 + 촬영 일시를
         // 결합한 의미 있는 contentDescription 을 제공한다.

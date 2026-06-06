@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- USB connection error messages (Group 5 - H4) -->
+    <!-- USB 연결 오류 메시지 (Group 5 - H4) -->
     <string name="error_usb_help_title">Camera connection problem</string>
     <string name="error_usb_not_found">Camera not found. Please check:\n1) Cable connection\n2) Camera power\n3) PC / PTP mode on the camera</string>
     <string name="error_usb_io_change_mode">USB I/O error. Please switch the camera from Mass Storage to PTP / MTP mode.</string>
@@ -9,7 +9,7 @@
     <string name="error_usb_unsupported">This USB device is not supported.</string>
     <string name="error_usb_restart">Please restart the app and try again.</string>
 
-    <!-- PTP/IP auto-reconnect (Group 5 - M3) -->
+    <!-- PTP/IP 자동 재연결 (Group 5 - M3) -->
     <string name="connect_auto_reconnect_label">Auto-reconnect</string>
     <string name="connect_auto_reconnect_subtitle">Automatically reconnect when the camera Wi-Fi is available again</string>
     <string name="autoconnect_notification_required">Notification permission is required to keep auto-reconnect running in the background.</string>

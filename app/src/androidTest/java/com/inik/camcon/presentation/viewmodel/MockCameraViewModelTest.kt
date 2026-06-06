@@ -24,7 +24,7 @@ import org.junit.Rule
 import org.junit.Test
 
 /**
- * MockCameraViewModel instrumented test
+ * MockCameraViewModel 계측 테스트
  * androidTest로 이관됨 (JVM 단위 테스트 환경에서 native library 로드 불가)
  *
  * 원인: CameraNative.kt 싱글톤이 초기화될 때 arm64-v8a libnative-lib.so 로드 시도

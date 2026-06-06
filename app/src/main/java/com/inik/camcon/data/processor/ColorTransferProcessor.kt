@@ -267,8 +267,7 @@ class ColorTransferProcessor @Inject constructor() {
             result
 
         } catch (e: Exception) {
-            LogcatManager.w("ColorTransferProcessor", "❌ MKL GPU 색감 전송 실패: ${e.message}")
-            e.printStackTrace()
+            LogcatManager.w("ColorTransferProcessor", "MKL GPU 색감 전송 실패", e)
             null
         }
     }
@@ -315,8 +314,7 @@ class ColorTransferProcessor @Inject constructor() {
             result
 
         } catch (e: Exception) {
-            LogcatManager.w("ColorTransferProcessor", "❌ MKL GPU 색감 전송 실패: ${e.message}")
-            e.printStackTrace()
+            LogcatManager.w("ColorTransferProcessor", "MKL GPU 색감 전송 실패 (캐시된 통계)", e)
             null
         }
     }
@@ -557,7 +555,7 @@ class ColorTransferProcessor @Inject constructor() {
 
             transferredBitmap
         } catch (e: Exception) {
-            e.printStackTrace()
+            LogcatManager.e("ColorTransferProcessor", "색감 전송 저장 실패", e)
             null
         }
     }
@@ -1425,7 +1423,7 @@ class ColorTransferProcessor @Inject constructor() {
             resultExif.saveAttributes()
         } catch (e: Exception) {
             // EXIF 복사 실패는 크리티컬하지 않으므로 로그만 출력
-            println("EXIF 메타데이터 복사 실패: ${e.message}")
+            LogcatManager.w("ColorTransferProcessor", "EXIF 메타데이터 복사 실패", e)
         }
     }
 }

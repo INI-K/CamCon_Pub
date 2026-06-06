@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Camera Abilities screen -->
+    <!-- 카메라 기능 정보 화면 -->
     <string name="diag_abilities_title">カメラ機能情報</string>
     <string name="diag_abilities_loading">カメラ情報を取得中…</string>
     <string name="diag_abilities_retry">再試行</string>
@@ -55,7 +55,7 @@
     <string name="diag_abilities_summary_partial">ℹ️ 部分対応\n\nライブビューは非対応ですが、リモート撮影は可能です。</string>
     <string name="diag_abilities_summary_some">ℹ️ 一部機能に対応\n\nカメラ機能の一部が制限される場合があります。</string>
 
-    <!-- Diagnostics section (ADMIN) -->
+    <!-- 진단 섹션 (ADMIN) -->
     <string name="diag_section_title">🩺 診断 (ADMIN)</string>
     <string name="diag_run_button">診断を実行</string>
     <string name="diag_running">診断を実行中…</string>
@@ -73,10 +73,10 @@
     <string name="diag_memory_clear_pool">ファイルプールをクリア</string>
     <string name="diag_report_empty">まだレポートがありません。診断を実行してください。</string>
 
-    <!-- RAW restriction upgrade action -->
+    <!-- RAW 제한 업그레이드 동작 -->
     <string name="diag_raw_upgrade">アップグレード</string>
 
-    <!-- Camera restart dialog -->
+    <!-- 카메라 재시작 다이얼로그 -->
     <string name="diag_restart_needed">アプリの再起動が必要です</string>
     <string name="diag_restart_message">USB デバイスが正しく切断されなかったか、システムエラー (-52) が発生しました。\n\n正常に使用するにはアプリを再起動する必要があります。\n\n今すぐアプリを再起動しますか?</string>
     <string name="diag_restart_confirm">アプリを再起動</string>

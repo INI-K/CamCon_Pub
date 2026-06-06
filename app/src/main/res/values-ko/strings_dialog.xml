@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Splash -->
+    <!-- 스플래시 -->
     <string name="splash_initializing">초기화 중...</string>
     <string name="splash_library_check">라이브러리 상태 확인 중...</string>
     <string name="splash_library_failed">라이브러리 로드 실패</string>
@@ -17,7 +17,7 @@
     <string name="splash_camera_controller">Camera Controller</string>
     <string name="splash_subscription_tier">구독 티어: %1$s</string>
 
-    <!-- Main dialogs -->
+    <!-- 메인 다이얼로그 -->
     <string name="dialog_restart_required_title">앱 재시작 필요</string>
     <string name="dialog_restart_preparing_title">재시작 준비 중입니다...</string>
     <string name="dialog_restart_preparing_body">잠시만 기다려주세요. 카메라 연결을 정리하고 있습니다.</string>
@@ -48,7 +48,7 @@
     <string name="dialog_wifi_disconnected_title">Wi-Fi 연결이 끊어졌습니다</string>
     <string name="dialog_wifi_disconnected_body">카메라의 Wi-Fi 연결이 끊어졌습니다. 다시 연결해주세요.</string>
 
-    <!-- PTPIP / Wi-Fi progress -->
+    <!-- PTPIP / Wi-Fi 진행 상태 -->
     <string name="progress_ptpip_connecting">카메라에 연결 중...</string>
     <string name="progress_ptpip_connection_start">카메라 연결 시작...</string>
     <string name="progress_ptpip_authenticating_nikon">Nikon 카메라 인증 중...</string>
@@ -70,7 +70,7 @@
     <string name="progress_camera_connect_exception">카메라 연결 과정에서 오류가 발생했습니다: %1$s</string>
     <string name="progress_camera_label_connected">%1$s (연결됨)</string>
 
-    <!-- Notification settings -->
+    <!-- 알림 설정 -->
     <string name="notification_settings_title">알림 설정</string>
     <string name="notification_settings_subtitle">푸시 알림 및 소리 설정</string>
 </resources>

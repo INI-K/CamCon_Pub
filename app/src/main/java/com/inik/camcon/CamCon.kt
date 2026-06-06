@@ -13,6 +13,7 @@ import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.data.service.WifiMonitoringService
 import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.domain.usecase.ColorTransferUseCase
+import com.inik.camcon.utils.LogMask
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -278,23 +279,19 @@ class CamCon : Application() {
         applicationScope.launch {
             try {
                 val isAutoConnectEnabled = preferencesDataSource.isAutoConnectEnabledNow()
-                Log.d(TAG, "========================================")
-                Log.d(TAG, "🔍 WiFi 모니터링 Service 시작 확인")
-                Log.d(TAG, "  - 자동 연결 활성화: $isAutoConnectEnabled")
+                Log.d(TAG, "WiFi 모니터링 Service 시작 확인 - 자동 연결 활성화: $isAutoConnectEnabled")
 
                 if (isAutoConnectEnabled) {
                     val autoConnectConfig = preferencesDataSource.getAutoConnectNetworkConfig()
                     if (autoConnectConfig != null) {
-                        Log.d(TAG, "  - 저장된 네트워크: ${autoConnectConfig.ssid}")
-                        Log.d(TAG, "✅ WifiMonitoringService 시작")
+                        Log.d(TAG, "WifiMonitoringService 시작 - 저장된 네트워크: ${LogMask.ssid(autoConnectConfig.ssid)}")
                         WifiMonitoringService.start(applicationContext)
                     } else {
-                        Log.w(TAG, "⚠️ 자동 연결이 켜져있지만 네트워크 설정이 없음")
+                        Log.w(TAG, "자동 연결이 켜져있지만 네트워크 설정이 없음")
                     }
                 } else {
-                    Log.d(TAG, "❌ 자동 연결이 비활성화되어 있음 - Service 시작 안 함")
+                    Log.d(TAG, "자동 연결이 비활성화되어 있음 - Service 시작 안 함")
                 }
-                Log.d(TAG, "========================================")
             } catch (e: Exception) {
                 Log.e(TAG, "❌ WiFi 모니터링 Service 시작 확인 중 오류", e)
             }

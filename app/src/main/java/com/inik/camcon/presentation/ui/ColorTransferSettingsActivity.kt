@@ -1,6 +1,7 @@
 package com.inik.camcon.presentation.ui
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -163,7 +164,7 @@ fun ColorTransferSettingsScreen(
                 colorTransferViewModel.clearPerformanceInfo()
                 colorTransferViewModel.clearProcessingStatus()
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("ColorTransferSettings", "참조 이미지 복사 실패", e)
             }
         }
     }
@@ -192,7 +193,7 @@ fun ColorTransferSettingsScreen(
                 colorTransferViewModel.clearPerformanceInfo()
                 colorTransferViewModel.clearProcessingStatus()
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("ColorTransferSettings", "대상 이미지 복사 실패", e)
             }
         }
     }

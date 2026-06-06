@@ -84,6 +84,7 @@ import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
 import com.inik.camcon.presentation.viewmodel.ServerPhotosViewModel
 import com.inik.camcon.domain.model.ThemeMode
+import com.inik.camcon.utils.LogMask
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -200,10 +201,10 @@ fun MyPhotosScreen(
 
             // 파일 존재 여부 로그
             val file = File(currentCameraPhoto.path)
-            Log.d("MyPhotosScreen", "선택된 사진: ${currentCameraPhoto.name}")
-            Log.d("MyPhotosScreen", "파일 경로: ${currentCameraPhoto.path}")
-            Log.d("MyPhotosScreen", "파일 존재: ${file.exists()}")
-            Log.d("MyPhotosScreen", "파일 크기: ${file.length()} bytes")
+            Log.d(
+                "MyPhotosScreen",
+                "선택된 사진: ${LogMask.path(currentCameraPhoto.path)}, 존재=${file.exists()}, 크기=${file.length()}bytes"
+            )
 
             FullScreenPhotoViewer(
                 photo = currentCameraPhoto,

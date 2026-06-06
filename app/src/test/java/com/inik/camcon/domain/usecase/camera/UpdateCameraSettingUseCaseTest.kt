@@ -383,14 +383,14 @@ class UpdateCameraSettingUseCaseTest {
         coEvery { cameraRepository.updateCameraSetting("aperture", "f/4.0") } returns Result.success(true)
         useCase = UpdateCameraSettingUseCase(cameraRepository)
 
-        // When - Change ISO
+        // When - ISO 변경
         val result1 = useCase("iso", "400")
         testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
         assertTrue(result1.isSuccess)
 
-        // When - Change Aperture
+        // When - 조리개 변경
         val result2 = useCase("aperture", "f/4.0")
         testDispatcher.scheduler.advanceUntilIdle()
 
@@ -424,14 +424,14 @@ class UpdateCameraSettingUseCaseTest {
         coEvery { cameraRepository.updateCameraSetting("iso", "400") } returns Result.failure(exception)
         useCase = UpdateCameraSettingUseCase(cameraRepository)
 
-        // When - First call fails
+        // When - 첫 호출은 실패
         val result1 = useCase("iso", "400")
         testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
         assertTrue(result1.isFailure)
 
-        // When - Update mock and retry
+        // When - mock 갱신 후 재시도
         coEvery { cameraRepository.updateCameraSetting("iso", "400") } returns Result.success(true)
         val result2 = useCase("iso", "400")
         testDispatcher.scheduler.advanceUntilIdle()

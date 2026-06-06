@@ -1,12 +1,12 @@
 <resources>
-    <!-- 应用信息 -->
+    <!-- 앱 정보 -->
     <string name="app_name">CamCon</string>
     <string name="app_description">Android专业相机控制</string>
 
     <!-- Google Sign-In -->
     <string name="default_web_client_id">527188051661-b9cru75i7min570psfn47fmd04hh2qn6.apps.googleusercontent.com</string>
 
-    <!-- 通用 -->
+    <!-- 공통 -->
     <string name="ok">确定</string>
     <string name="cancel">取消</string>
     <string name="retry">重试</string>
@@ -21,7 +21,7 @@
     <string name="error">错误</string>
     <string name="success">成功</string>
 
-    <!-- 身份验证 -->
+    <!-- 인증 -->
     <string name="login">登录</string>
     <string name="logout">退出登录</string>
     <string name="login_with_google">使用Google登录</string>
@@ -33,7 +33,7 @@
     <string name="logout_success">退出登录成功</string>
     <string name="terms_agreement">登录即表示您同意我们的服务条款和隐私政策。</string>
 
-    <!-- 相机连接 -->
+    <!-- 카메라 연결 -->
     <string name="camera_connected">已连接</string>
     <string name="camera_disconnected">已断开连接</string>
     <string name="camera_not_connected">相机未连接</string>
@@ -45,7 +45,7 @@
     <string name="camera_detected">检测到相机：%s</string>
     <string name="no_camera_detected">未检测到相机</string>
 
-    <!-- 相机控制 -->
+    <!-- 카메라 컨트롤 -->
     <string name="capture">拍摄</string>
     <string name="capture_photo">拍照</string>
     <string name="start_live_view">开始实时取景</string>
@@ -57,7 +57,7 @@
     <string name="gallery">图库</string>
     <string name="photo_library">照片库</string>
 
-    <!-- 拍摄模式 -->
+    <!-- 촬영 모드 -->
     <string name="shooting_mode">拍摄模式</string>
     <string name="single_shot">单张</string>
     <string name="burst_mode">连拍</string>
@@ -65,7 +65,7 @@
     <string name="bulb_mode">手动曝光</string>
     <string name="hdr_bracket">HDR</string>
 
-    <!-- 相机设置 -->
+    <!-- 카메라 설정 -->
     <string name="camera_settings">相机设置</string>
     <string name="iso">ISO</string>
     <string name="shutter_speed">快门速度</string>
@@ -78,7 +78,7 @@
     <string name="image_quality">图像质量</string>
     <string name="file_format">文件格式</string>
 
-    <!-- 延时摄影 -->
+    <!-- 타임랩스 -->
     <string name="timelapse_settings">延时摄影设置</string>
     <string name="interval_seconds">间隔（秒）</string>
     <string name="total_shots">总拍摄数</string>
@@ -89,7 +89,7 @@
     <string name="timelapse_completed">延时摄影完成</string>
     <string name="shots_remaining">剩余拍摄：%d</string>
 
-    <!-- 照片管理 -->
+    <!-- 사진 관리 -->
     <string name="recent_captures">最近拍摄</string>
     <string name="camera_photo_list">相机照片列表</string>
     <string name="captured_photos">已拍摄照片</string>
@@ -102,7 +102,7 @@
     <string name="edit_photo">编辑照片</string>
     <string name="photo_details">照片详情</string>
 
-    <!-- 服务器/云端 -->
+    <!-- 서버/클라우드 -->
     <string name="server_photos">我的照片</string>
     <string name="upload_to_cloud">上传到云端</string>
     <string name="download_from_cloud">从云端下载</string>
@@ -114,7 +114,7 @@
     <string name="download_success">下载成功</string>
     <string name="download_failed">下载失败</string>
 
-    <!-- 设置 -->
+    <!-- 설정 -->
     <string name="app_settings">应用设置</string>
     <string name="language">语言</string>
     <string name="theme">主题</string>
@@ -129,7 +129,7 @@
     <string name="privacy_policy">隐私政策</string>
     <string name="terms_of_service">服务条款</string>
 
-    <!-- 错误消息 -->
+    <!-- 오류 메시지 -->
     <string name="error_camera_init">相机初始化失败</string>
     <string name="error_camera_capture">照片拍摄失败</string>
     <string name="error_live_view">实时取景启动失败</string>
@@ -142,7 +142,7 @@
     <string name="error_camera_busy">相机忙碌中</string>
     <string name="error_unsupported_shooting_mode">不支持的拍摄模式: %1$s。支持的模式: %2$s</string>
 
-    <!-- 拍摄模式名称 -->
+    <!-- 촬영 모드 이름 -->
     <string name="shooting_mode_single">单次拍摄</string>
     <string name="shooting_mode_continuous">连续</string>
     <string name="shooting_mode_timelapse">延时拍摄</string>
@@ -150,20 +150,20 @@
     <string name="shooting_mode_hdr_bracket">HDR包围</string>
     <string name="shooting_mode_bulb">长曝光</string>
 
-    <!-- 权限 -->
+    <!-- 권한 -->
     <string name="permission_camera">需要相机权限</string>
     <string name="permission_storage">需要存储权限</string>
     <string name="permission_internet">需要网络权限</string>
     <string name="grant_permission">授予权限</string>
 
-    <!-- 导航 -->
+    <!-- 내비게이션 -->
     <string name="camera_control">相机控制</string>
     <string name="photo_preview">照片预览</string>
     <string name="settings">设置</string>
     <string name="splash_screen">启动页面</string>
     <string name="main_screen">主页面</string>
 
-    <!-- 状态 -->
+    <!-- 상태 -->
     <string name="ready">就绪</string>
     <string name="busy">忙碌</string>
     <string name="capturing">拍摄中...</string>
@@ -171,14 +171,14 @@
     <string name="connecting">连接中...</string>
     <string name="initialized">已初始化</string>
 
-    <!-- 文件大小/质量 -->
+    <!-- 파일 크기/품질 -->
     <string name="high_quality">高质量</string>
     <string name="medium_quality">中等质量</string>
     <string name="low_quality">低质量</string>
     <string name="raw_format">RAW</string>
     <string name="jpeg_format">JPEG</string>
 
-    <!-- 时间/日期 -->
+    <!-- 시간/날짜 -->
     <string name="today">今天</string>
     <string name="yesterday">昨天</string>
     <string name="this_week">本周</string>
@@ -186,17 +186,17 @@
     <string name="hours_ago">%d小时前</string>
     <string name="days_ago">%d天前</string>
 
-    <!-- 空状态 -->
+    <!-- 빈 상태 -->
     <string name="no_photos">没有照片</string>
     <string name="connect_camera_and_capture">通过USB连接您的相机\n并拍摄照片</string>
     <string name="check_camera_connection">• 检查相机是否已连接\n• 下滑刷新</string>
     <string name="image_load_failed">无法加载图像</string>
 
-    <!-- USB连接 -->
+    <!-- USB 연결 -->
     <string name="usb_refresh">USB刷新</string>
     <string name="usb_permission_request">USB权限请求</string>
 
-    <!-- Wi-Fi连接 -->
+    <!-- Wi-Fi 연결 -->
     <string name="wifi_camera_connection">Wi-Fi相机连接</string>
     <string name="color_transfer_settings">颜色传输设置</string>
     <string name="not_connected_to_camera_ap">未连接到相机AP</string>
@@ -209,7 +209,7 @@
     <string name="manual_connection_management">手动管理相机连接</string>
     <string name="wifi_feature_info_area">Wi-Fi功能信息卡区域</string>
 
-    <!-- 照片信息 -->
+    <!-- 사진 정보 -->
     <string name="resolution">分辨率</string>
     <string name="capture_date">拍摄日期</string>
     <string name="file_path">路径</string>
@@ -222,7 +222,7 @@
     <string name="focus_auto">自动</string>
     <string name="focus_manual">手动</string>
 
-    <!-- 实时取景 -->
+    <!-- 라이브뷰 -->
     <string name="live_view_not_supported">不支持实时取景</string>
     <string name="camera_does_not_support_live_view">此相机型号不支持实时取景</string>
     <string name="liveview_not_supported">不支持实时取景</string>
@@ -232,7 +232,7 @@
     <string name="capturing_photo">正在拍摄照片...</string>
     <string name="starting_liveview">正在启动实时取景...</string>
 
-    <!-- 功能标识 -->
+    <!-- 기능 배지 -->
     <string name="live_view">实时取景</string>
     <string name="time_lapse">延时摄影</string>
     <string name="burst">连拍</string>
@@ -241,7 +241,7 @@
     <string name="remote_control">遥控</string>
     <string name="bracketing">包围曝光</string>
 
-    <!-- 相机帮助 -->
+    <!-- 카메라 도움말 -->
     <string name="check_other_apps_not_using_camera">检查没有其他应用正在使用相机。</string>
     <string name="camera_specific_settings">相机特定设置：</string>
     <string name="canon_usb_setting">• Canon：菜单 > 通信设置 > USB连接 > PC遥控拍摄</string>
@@ -256,7 +256,7 @@
     <string name="nikon_camera_settings">• Nikon：菜单 > USB > PTP/MTP模式</string>
     <string name="sony_camera_settings">• Sony：菜单 > USB连接 > PC遥控</string>
 
-    <!-- RAW gating + filter messages (i18n PR-7 + PR-8, M2 중국어 번역, 2026-05-13). -->
+    <!-- RAW 게이팅 + 필터 메시지 (i18n PR-7 + PR-8, M2 중국어 번역, 2026-05-13). -->
     <string name="raw_restriction_free">RAW文件传输正在准备中。\n请仅使用JPG拍摄！</string>
     <string name="raw_restriction_basic">RAW文件仅在PRO订阅中可用。\n升级到PRO以使用高级RAW编辑功能！</string>
     <string name="raw_restriction_download_disabled">设置中已禁用RAW文件下载。</string>
@@ -273,7 +273,7 @@
     <string name="raw_filter_restriction_basic">RAW文件仅在PRO订阅中可查看。\n请升级到PRO！</string>
     <string name="raw_filter_restriction_generic">无法访问RAW文件。</string>
 
-    <!-- 手机热点 STA 模式 (PtpipConnectionScreen 第三标签页) -->
+    <!-- 휴대폰 핫스팟 STA 모드 (PtpipConnectionScreen 세 번째 탭) -->
     <string name="ptpip_sta_hotspot_mode">STA (手机热点)</string>
     <string name="ptpip_hotspot_description">无需路由器，手机作为热点，相机以客户端身份连接到手机。</string>
     <string name="ptpip_hotspot_enabled">手机热点已开启</string>
@@ -286,25 +286,25 @@
     <string name="ptpip_hotspot_step_4">4. 相机连接成功后，点击\"查找相机\"或直接输入 IP</string>
     <string name="ptpip_hotspot_step_5">5. 如果未收到 mDNS 广播，请直接输入 IP</string>
 
-    <!-- 相机连接优化对话框 (MainActivity, 2026-05-22) -->
+    <!-- 카메라 연결 최적화 다이얼로그 (MainActivity, 2026-05-22) -->
     <string name="camera_connection_optimization_title">相机连接优化设置</string>
     <string name="camera_connection_optimization_message">为了与相机保持稳定连接，建议将本应用从电池优化中排除。</string>
     <string name="camera_connection_optimization_details">• 保持实时相机控制\n• 提升照片自动传输稳定性\n• 防止后台连接中断\n\n※ 作为相机外设连接应用，符合 Google Play 政策。</string>
     <string name="camera_connection_optimization_confirm">前往设置</string>
     <string name="camera_connection_optimization_dismiss">稍后</string>
 
-    <!-- 无障碍 — 状态/加载 (WCAG 2.2 SC 4.1.3) -->
+    <!-- 접근성 — 상태/로딩 (WCAG 2.2 SC 4.1.3) -->
     <string name="cd_loading">加载中</string>
     <string name="cd_button_loading">处理中</string>
     <string name="cd_status_idle">待机中</string>
     <string name="cd_status_connecting">连接中</string>
     <string name="cd_status_connected">已连接</string>
     <string name="cd_status_error">错误</string>
-    <!-- %1$s = 文件名, %2$s = 拍摄时间 -->
+    <!-- %1$s = 파일명, %2$s = 촬영 시간 -->
     <string name="cd_photo_preview">照片 %1$s，%2$s</string>
     <string name="cd_photo_preview_no_date">照片 %1$s</string>
 
-    <!-- SettingsActivity (developer + logs) -->
+    <!-- SettingsActivity (개발자 + 로그) -->
     <string name="settings_toast_logout_failed">退出登录失败: %s</string>
     <string name="settings_toast_notification_granted">已授予通知权限。</string>
     <string name="settings_toast_notification_denied">通知权限被拒绝。</string>

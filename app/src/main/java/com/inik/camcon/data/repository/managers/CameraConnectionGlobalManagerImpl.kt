@@ -65,24 +65,26 @@ class CameraConnectionGlobalManagerImpl @Inject constructor(
     }
 
     private fun startGlobalStateMonitoring() {
+        // 각 소스의 per-emit "상태 변경" 로그는 제거 — 변경 결과는 updateGlobalState가
+        // 단일 "전역 상태 업데이트" 로그로 요약한다.
         usbCameraManager.isNativeCameraConnected
-            .onEach { Log.d(TAG, "USB 카메라 연결 상태 변경: $it"); updateGlobalState() }
+            .onEach { updateGlobalState() }
             .launchIn(managerScope)
 
         ptpipDataSource.connectionState
-            .onEach { Log.d(TAG, "PTPIP 연결 상태 변경: $it"); updateGlobalState() }
+            .onEach { updateGlobalState() }
             .launchIn(managerScope)
 
         ptpipDataSource.wifiNetworkState
-            .onEach { Log.d(TAG, "WiFi 네트워크 상태 변경: $it"); updateGlobalState() }
+            .onEach { updateGlobalState() }
             .launchIn(managerScope)
 
         ptpipDataSource.isApModeForced
-            .onEach { Log.d(TAG, "AP 모드 강제 플래그 변경: $it"); updateGlobalState() }
+            .onEach { updateGlobalState() }
             .launchIn(managerScope)
 
         ptpipDataSource.discoveredCameras
-            .onEach { Log.d(TAG, "발견된 카메라 목록 변경: ${it.size}개"); updateGlobalState() }
+            .onEach { updateGlobalState() }
             .launchIn(managerScope)
     }
 
@@ -158,10 +160,8 @@ class CameraConnectionGlobalManagerImpl @Inject constructor(
             _activeConnectionType.value = activeConnection
             _connectionStatusMessage.value = statusMessage
 
-            Log.d(
-                TAG,
-                "전역 상태 업데이트: activeConnection=$activeConnection, statusMessage=$statusMessage"
-            )
+            // statusMessage에는 Wi-Fi SSID가 포함될 수 있어 연결 종류만 로깅한다.
+            Log.d(TAG, "전역 상태 업데이트: activeConnection=$activeConnection")
         }
     }
 

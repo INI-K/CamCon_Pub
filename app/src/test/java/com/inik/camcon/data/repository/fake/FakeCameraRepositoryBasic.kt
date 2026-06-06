@@ -282,7 +282,7 @@ class FakeCameraRepositoryBasic : CameraRepository {
     }
 
     override fun setPhotoPreviewMode(enabled: Boolean) {
-        // No-op for testing
+        // 테스트용 no-op
     }
 
     override fun isEventListenerActive(): Flow<Boolean> = isEventListenerActiveFlow
@@ -294,17 +294,17 @@ class FakeCameraRepositoryBasic : CameraRepository {
     }
 
     override fun startBurstCapture(count: Int): Flow<CapturedPhoto> {
-        // Returns empty flow for test; can be overridden by subclass if needed
+        // 테스트용 빈 Flow 반환; 필요 시 서브클래스에서 재정의 가능
         return emptyFlow()
     }
 
     override fun startTimelapse(settings: TimelapseSettings): Flow<CapturedPhoto> {
-        // Returns empty flow for test; can be overridden by subclass if needed
+        // 테스트용 빈 Flow 반환; 필요 시 서브클래스에서 재정의 가능
         return emptyFlow()
     }
 
     override fun startBracketing(settings: BracketingSettings): Flow<CapturedPhoto> {
-        // Returns empty flow for test; can be overridden by subclass if needed
+        // 테스트용 빈 Flow 반환; 필요 시 서브클래스에서 재정의 가능
         return emptyFlow()
     }
 
@@ -385,7 +385,7 @@ class FakeCameraRepositoryBasic : CameraRepository {
     }
 
     override fun setRawFileRestrictionCallback(callback: ((fileName: String, restrictionMessage: String) -> Unit)?) {
-        // No-op for testing
+        // 테스트용 no-op
     }
 
     override fun getCameraAbilitiesInfo(): CameraAbilitiesInfo? {

@@ -37,7 +37,7 @@ class CameraStreamingRepositoryImpl @Inject constructor(
                     )
                 )
             }
-            delay(16) // ~60fps polling
+            delay(16) // ~60fps 폴링
         }
     }
 

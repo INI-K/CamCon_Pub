@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Encabezado de galería: número de fotos / página -->
+    <!-- 갤러리 헤더: 사진 개수 / 페이지 -->
     <plurals name="gallery_v2_photo_count">
         <item quantity="one">%d foto</item>
         <item quantity="other">%d fotos</item>
     </plurals>
     <string name="gallery_v2_photo_count_with_page">%1$s (página %2$d/%3$d)</string>
 
-    <!-- Etiquetas EXIF -->
+    <!-- EXIF 라벨 -->
     <string name="gallery_v2_exif_camera">Cámara</string>
     <string name="gallery_v2_exif_iso">ISO</string>
     <string name="gallery_v2_exif_shutter">Velocidad de obturación</string>
@@ -17,7 +17,7 @@
     <string name="gallery_v2_exif_flash">Flash</string>
     <string name="gallery_v2_exif_date">Fecha</string>
 
-    <!-- Valores de balance de blancos EXIF -->
+    <!-- EXIF 화이트 밸런스 값 -->
     <string name="gallery_v2_wb_auto">Automático</string>
     <string name="gallery_v2_wb_manual">Manual</string>
     <string name="gallery_v2_wb_daylight">Luz de día</string>
@@ -25,23 +25,23 @@
     <string name="gallery_v2_wb_tungsten">Tungsteno</string>
     <string name="gallery_v2_wb_fluorescent">Fluorescente</string>
 
-    <!-- Valores de flash EXIF -->
+    <!-- EXIF 플래시 값 -->
     <string name="gallery_v2_flash_on">Activado</string>
     <string name="gallery_v2_flash_off">Desactivado</string>
 
-    <!-- EXIF vacío / no descargado -->
+    <!-- EXIF 없음 / 미다운로드 -->
     <string name="gallery_v2_exif_unavailable">Sin información — descarga la foto primero</string>
     <string name="gallery_v2_date_unknown">Fecha de captura desconocida</string>
     <string name="gallery_v2_internal_storage">/Almacenamiento interno</string>
 
-    <!-- Comentarios de descarga -->
+    <!-- 다운로드 안내 -->
     <string name="gallery_v2_download_success">Foto descargada</string>
     <string name="gallery_v2_download_failed">No se pudo descargar la foto. Inténtalo de nuevo</string>
     <string name="gallery_v2_download_progress">Descargando %1$d/%2$d…</string>
     <string name="gallery_v2_download_all_done">Se descargaron las %1$d fotos</string>
     <string name="gallery_v2_download_partial">Se descargaron %1$d de %2$d fotos</string>
 
-    <!-- Aviso de límite de resolución del plan FREE -->
+    <!-- FREE 플랜 해상도 제한 안내 -->
     <string name="gallery_v2_free_resolution_notice">La versión gratuita guarda las fotos reducidas a 2000 px. Los originales están disponibles en PRO</string>
     <string name="gallery_v2_upgrade">Mejorar</string>
 </resources>
