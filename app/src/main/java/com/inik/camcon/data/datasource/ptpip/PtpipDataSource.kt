@@ -782,14 +782,12 @@ class PtpipDataSource @Inject constructor(
             // 승인 전엔 DeviceInfo에 0x952b/0x935a만 보이고 모든 실제 명령이 0x2005(Not Supported)로 거부된다.
             // (GUID 기억만으로 InitCommand는 통과해 "연결됨"처럼 보이지만 실제 동작은 전부 실패 → 빈 껍데기 연결.
             //  따라서 반드시 선인증 후 같은 GUID를 libgphoto2에 주입한다.)
+            // libgphoto2에 페어링 GUID 주입. Nikon STA 연결 승인(0x952b/0x935a)은 이제 libgphoto2
+            // camera_init 내부에서 hollow(미승인) 연결일 때 '같은 세션'으로 자동 수행한다(공식 Wireless
+            // Transmitter Utility와 동일, teardown 없음 — WTU 와이어 캡처로 검증). 그래서 여기선 GUID만
+            // 주입하고 별도 Phase1 선인증/모델분기는 하지 않는다. (과거 별도-소켓 Phase1은 단일 PTP/IP
+            // 세션을 점유·오염시켜 Z8을 -7로, Z6를 hollow로 깨뜨렸다 → in-session 승인으로 대체.)
             if (isNikonCamera && !forceApMode) {
-                Log.i(TAG, "=== Nikon STA 인증 시도 (${camera.name}) ===")
-                setProgress(UiText.Resource(R.string.progress_ptpip_authenticating_nikon))
-                if (nikonAuthService.performStaAuthentication(camera)) {
-                    Log.i(TAG, "✅ Nikon STA 인증 성공 - 카메라 '연결 허용' 승인됨")
-                } else {
-                    Log.w(TAG, "⚠️ Nikon STA 인증 실패 - 그래도 연결 시도 진행")
-                }
                 runCatching {
                     CameraNative.setPtpipGuid(NikonAuthenticationService.STA_PAIRING_GUID)
                 }.onFailure {
@@ -860,13 +858,16 @@ class PtpipDataSource @Inject constructor(
             //    유발하므로 프로브에선 금지. getConfigString 단독은 get_single_config 우선이라 트리 빌드 없이 경량.
             // ⚠️ getConfigString은 실패 시에도 "실패: ..." 비-blank 문자열을 반환하므로 반드시 "성공" 접두로 판정한다
             //    (단순 isNotBlank 판정은 HOLLOW의 "실패:"까지 HEALTHY로 오판 → 미승인 연결 통과 버그).
-            fun probeCameraHealthy(): Boolean {
+            fun probeOnce(): Boolean {
                 val cfgOk = runCatching {
                     CameraNative.getConfigString("batterylevel")?.startsWith("성공") == true
                 }.getOrDefault(false)
                 if (cfgOk) return true
                 return runCatching { CameraNative.getStorageInfoNative() != null }.getOrDefault(false)
             }
+            // 1회 성공이면 HEALTHY. 실패 시 1회 더 확인 → Z8의 일시적 프로브 실패(배터리 조회 순간
+            // 타임아웃 등)가 HOLLOW로 오판돼 불필요한 Phase1(세션 소모)을 타는 것을 막는다.
+            fun probeCameraHealthy(): Boolean = probeOnce() || probeOnce()
 
             // 연결 준비 판정 = init 성공 + (Nikon STA면) 카메라가 전체 opcode 노출(=0x935a 승인 전환 완료).
             // ⚠️ 고정 delay 제거: 승인 전환은 비동기·시간 가변(핫스팟 RTT/펌웨어 의존)이라 "기다릴 시간"을
@@ -874,17 +875,35 @@ class PtpipDataSource @Inject constructor(
             // 이므로 짧은 간격으로 재init+프로브를 폴링해 준비되는 즉시 진행하고, 안전망으로만 타임아웃을 둔다.
             // (콜백/이벤트 신호는 불가 — 0x935a가 libgphoto2 이벤트 큐에 안 잡힘. 워크플로 조사 결론.)
             val requireHealthy = isNikonCamera && !forceApMode
-            val readyDeadlineMs = android.os.SystemClock.elapsedRealtime() + 15_000L
+            // 최초 페어링: 카메라가 화면에 "연결 허용?"을 띄우고 사용자가 본체에서 OK를 눌러야
+            // GUID 등록이 끝난다(공식 WTU도 동일 — 0x952b 후 ~7s 무신호=사용자 확인, z8cap1 검증).
+            // 누르기 전엔 카메라가 새 TCP를 -7로 거부하므로, 사용자가 카메라까지 가서 누를 시간을
+            // 확보하려 승인 대기 경로(requireHealthy)는 데드라인을 60s로 둔다. 이미 등록된 GUID는
+            // 첫 init이 풀로 떠 즉시 통과(대기·안내 없음).
+            val readyDeadlineMs = android.os.SystemClock.elapsedRealtime() +
+                (if (requireHealthy) 60_000L else 20_000L)
             // 첫 backoff를 300→800ms로 상향(A-3): close 직후 너무 빨리 재init하면 Nikon이
             // "TCP만 수락하고 응답 안 함" 상태에 빠진다(airnef 문서화). ≥1s 간격 권고에 맞춤.
             var backoffMs = 800L
+            var directRetries = 0
+            // 직접 연결. Nikon STA 승인(0x952b/0x935a)은 libgphoto2 camera_init 내부에서 hollow일 때
+            // '같은 세션'으로 자동 수행되므로(공식 WTU와 동일), init이 끝나면 healthy(풀 opcode)로 올라온다.
+            // 여기선 init + healthy 프로브만 하고, 일시적 핸드셰이크 실패(-7)나 승인 직후 일시 hollow면 backoff 재시도.
             var initResult = runLibGphotoInit()
             var initOk = isInitOk(initResult)
             var ready = initOk && (!requireHealthy || probeCameraHealthy())
             while (!ready && android.os.SystemClock.elapsedRealtime() < readyDeadlineMs) {
-                Log.i(TAG, "연결 준비 폴링 — initOk=$initOk, 승인 전환 대기 중 (재시도): $initResult")
-                // 승인 전환은 새 세션 init에서 반영되므로 닫고 재init한다(GUID는 유지됨).
                 runCatching { CameraNative.closeCamera() }
+                directRetries++
+                // 최초 페어링이면 승인 전까지 카메라가 -7로 거부한다. 일시 핸드셰이크 블립(1회)은
+                // 넘기고 2번째 재시도부터 "카메라 본체에서 연결 허용을 누르세요"를 안내한다.
+                // >=2로 매 폴링마다 재확정해, 중간에 다른 진행 메시지가 끼어도 안내가 유지되게 한다
+                // (StateFlow는 동일값이면 재방출 안 하므로 비용 없음). 이미 등록된 카메라는 첫 시도에
+                // 붙어 이 루프에 도달하지 않으므로 오안내가 나지 않는다.
+                if (requireHealthy && directRetries >= 2) {
+                    setProgress(UiText.Resource(R.string.progress_ptpip_camera_confirm))
+                }
+                Log.i(TAG, "연결 준비 폴링 — 재시도 $directRetries (initOk=$initOk): $initResult")
                 delay(backoffMs)
                 backoffMs = (backoffMs * 2).coerceAtMost(1500L)
                 initResult = runLibGphotoInit()

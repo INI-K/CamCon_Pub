@@ -1,5 +1,5 @@
 diff --git a/camlibs/ptp2/library.c b/camlibs/ptp2/library.c
-index cdf0b35..7e3eea9 100644
+index cdf0b35..4819f99 100644
 --- a/camlibs/ptp2/library.c
 +++ b/camlibs/ptp2/library.c
 @@ -3740,13 +3740,19 @@ camera_capture_preview (Camera *camera, CameraFile *file, GPContext *context)
@@ -207,11 +207,48 @@ index cdf0b35..7e3eea9 100644
  		}
  		/* We also need this for Nikon D850 and very big RAWs (>40 MB) */
  		/* Try the generic method first, EOS R does not like the second for some reason */
+@@ -9808,6 +9926,36 @@ camera_init (Camera *camera, GPContext *context)
+ 
+ 	print_debug_deviceinfo(params, &params->deviceinfo);
+ 
++	/* CamCon: Nikon STA(Wi-Fi) in-session connect approval — same 0x952b/0x935a
++	 * handshake as Nikon's Wireless Transmitter Utility (WTU wire capture, Z8 V3.10).
++	 * An UNAPPROVED STA client gets a "hollow" DeviceInfo: it advertises the approval
++	 * opcode 0x935a but NOT GetStorageIDs (0x1004) and no real control opcodes, so
++	 * every real command is rejected with 0x2005. Approve on THIS session (the camera
++	 * allows only one PTP/IP session, so a separate-socket approve+teardown would lock
++	 * it), then re-read DeviceInfo so the Nikon setup in fixup_cached_deviceinfo()
++	 * below sees the now-unlocked full opcode/property set. A pre-approved GUID comes
++	 * up full (GetStorageIDs present) and skips this. Strictly gated to PTP/IP, so USB
++	 * and all other vendors are unaffected. */
++	if (	(camera->port->type == GP_PORT_PTPIP)				&&
++		ptp_operation_issupported(params, PTP_OC_NIKON_StaApprove)	&&
++		!ptp_operation_issupported(params, PTP_OC_GetStorageIDs)
++	) {
++		uint16_t apret;
++		GP_LOG_D ("CamCon: hollow Nikon STA - in-session 0x952b/0x935a approval (WTU-style)");
++		apret = ptp_nikon_sta_approve (params);
++		GP_LOG_D ("CamCon: STA approve result 0x%04x", apret);
++		/* The approval makes the camera fire DeviceInfoChanged and tear down THIS PTP/IP
++		 * session. On bodies that require it (e.g. Z8 V3.10) the camera then shows an
++		 * on-screen "allow connection" prompt and refuses new connections until the user
++		 * confirms on the camera — exactly like Nikon's WTU, whose wire capture shows a
++		 * ~7s silent gap after 0x952b (= the user pressing OK on the camera body). So the
++		 * session is dead here: do NOT keep using it (re-reading DeviceInfo just hits
++		 * End-of-stream). Fail this camera_init so the app reconnects; once the GUID is
++		 * registered the fresh session comes up with full opcodes (older bodies such as
++		 * Z6 V3.80 self-recover without a button press). */
++		return GP_ERROR_IO;
++	}
++
+ 	CR (fixup_cached_deviceinfo (camera,&params->deviceinfo));
+ 
+ 	print_debug_deviceinfo(params, &params->deviceinfo);
 diff --git a/camlibs/ptp2/ptp.c b/camlibs/ptp2/ptp.c
-index 4cf4601..7d4a2dd 100644
+index 4cf4601..6aae234 100644
 --- a/camlibs/ptp2/ptp.c
 +++ b/camlibs/ptp2/ptp.c
-@@ -2468,6 +2468,30 @@ ptp_nikon_getpartialobjectex (PTPParams* params, uint32_t handle, uint64_t offse
+@@ -2468,6 +2468,64 @@ ptp_nikon_getpartialobjectex (PTPParams* params, uint32_t handle, uint64_t offse
  	return ptp_transaction(params, &ptp, PTP_DP_GETDATA, 0, object, len);
  }
  
@@ -239,18 +276,62 @@ index 4cf4601..7d4a2dd 100644
 +	return ptp_transaction(params, &ptp, PTP_DP_GETDATA, 0, data, len);
 +}
 +
++
++/**
++ * ptp_nikon_sta_approve:
++ * params:	PTPParams*
++ *
++ * Nikon STA(Wi-Fi / "PC connection") in-session connect approval, identical to
++ * Nikon's Wireless Transmitter Utility (verified by WTU wire capture, Z8 V3.10):
++ *	0x952b	StaMode init (data-in; returned list discarded)
++ *	0x935a	connect-approval request, param 0x2001
++ * On an unapproved client the camera returns a "hollow" DeviceInfo until this runs;
++ * afterwards it fires DeviceInfoChanged and exposes the full opcode/property set on
++ * THIS same session (only one PTP/IP session is allowed, so a separate-socket
++ * approve+teardown would lock the camera). Caller must re-read DeviceInfo after.
++ *
++ * Return values: the 0x935a (approval) PTP_RC_* code (PTP_RC_OK on success).
++ **/
++uint16_t
++ptp_nikon_sta_approve (PTPParams* params)
++{
++	PTPContainer	ptp;
++	unsigned char	*data = NULL;
++	unsigned int	len = 0;
++	uint16_t	ret;
++
++	PTP_CNT_INIT(ptp, PTP_OC_NIKON_StaModeInit);
++	ret = ptp_transaction(params, &ptp, PTP_DP_GETDATA, 0, &data, &len);
++	free (data);
++	if (ret != PTP_RC_OK)
++		return ret;
++
++	PTP_CNT_INIT(ptp, PTP_OC_NIKON_StaApprove, 0x2001);
++	return ptp_transaction(params, &ptp, PTP_DP_NODATA, 0, NULL, NULL);
++}
++
  
  /**
   * ptp_getthumb:
 diff --git a/camlibs/ptp2/ptp.h b/camlibs/ptp2/ptp.h
-index 864535f..a70eb3b 100644
+index 864535f..e9f18e4 100644
 --- a/camlibs/ptp2/ptp.h
 +++ b/camlibs/ptp2/ptp.h
-@@ -4607,6 +4607,7 @@ uint16_t ptp_nikon_getlargethumb (PTPParams *params, uint32_t handle,
+@@ -577,6 +577,8 @@ typedef struct _PTPIPHeader PTPIPHeader;
+ #define PTP_OC_NIKON_DeleteProfile	0x9008
+ #define PTP_OC_NIKON_SetProfileData	0x9009
+ #define PTP_OC_NIKON_AdvancedTransfer	0x9010
++#define PTP_OC_NIKON_StaModeInit	0x952b	/* CamCon: STA/WTU mode init (data-in) */
++#define PTP_OC_NIKON_StaApprove		0x935a	/* CamCon: STA connect-approval (param 0x2001) */
+ #define PTP_OC_NIKON_GetFileInfoInBlock	0x9011
+ #define PTP_OC_NIKON_InitiateCaptureRecInSdram		0x90C0	/* 1 param,   no data */
+ #define PTP_OC_NIKON_AfDrive		0x90C1	/* no params, no data */
+@@ -4607,6 +4609,8 @@ uint16_t ptp_nikon_getlargethumb (PTPParams *params, uint32_t handle,
  				unsigned char** object, unsigned int *len);
  uint16_t ptp_nikon_getobjectsize (PTPParams* params, uint32_t handle, uint64_t *objectsize);
  uint16_t ptp_nikon_getpartialobjectex (PTPParams* params, uint32_t handle, uint64_t offset, uint64_t maxbytes, unsigned char** object, uint32_t *len);
 +uint16_t ptp_nikon_advancedtransfer (PTPParams* params, uint32_t p1, unsigned char** data, unsigned int *len);
++uint16_t ptp_nikon_sta_approve (PTPParams* params);
  uint16_t ptp_nikon_getptpipinfo (PTPParams* params, unsigned char **data, unsigned int *size);
  uint16_t ptp_nikon_getwifiprofilelist (PTPParams* params);
  uint16_t ptp_nikon_writewifiprofile (PTPParams* params, PTPNIKONWifiProfile* profile);
