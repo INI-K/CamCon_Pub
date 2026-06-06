@@ -41,7 +41,7 @@ import com.inik.camcon.presentation.theme.TextPrimaryV2
 /**
  * V2 토스트 — Surface3 배경 + 좌측 4dp 컬러 bar(kind 매핑).
  *
- * Kind → bar color:
+ * Kind → bar 색상:
  * - Idle      → Info
  * - Connecting→ Accent
  * - Connected → SuccessV2

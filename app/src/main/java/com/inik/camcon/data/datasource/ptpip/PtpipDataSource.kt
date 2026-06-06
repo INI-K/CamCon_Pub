@@ -37,6 +37,7 @@ import com.inik.camcon.domain.model.UiText
 import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
 import com.inik.camcon.domain.model.toForceApMode
+import com.inik.camcon.utils.LogMask
 import com.inik.camcon.utils.LogcatManager
 import dagger.Lazy
 import java.util.concurrent.ConcurrentHashMap
@@ -101,7 +102,7 @@ class PtpipDataSource @Inject constructor(
     private var onPhotoDownloadedCallback: ((String, String, ByteArray) -> Unit)? = null
     private var onConnectionLostCallback: (() -> Unit)? = null // Wi-Fi 연결 끊어짐 알림용
 
-    // StateFlow for UI observation
+    // UI 관찰용 StateFlow
     private val _connectionState = MutableStateFlow(PtpipConnectionState.DISCONNECTED)
     val connectionState: StateFlow<PtpipConnectionState> = _connectionState.asStateFlow()
 
@@ -169,7 +170,7 @@ class PtpipDataSource @Inject constructor(
             return
         }
         if (!com.inik.camcon.data.network.ptpip.IpAddressValidator.isAllowedCameraIp(ip)) {
-            Log.w(TAG, "setManualIp 거부: 허용되지 않은 IP 형식/대역 - ${ip.take(45)}")
+            Log.w(TAG, "setManualIp 거부: 허용되지 않은 IP 형식/대역 - ${LogMask.id(ip)}")
             return
         }
         _manualIp.value = ip
@@ -270,7 +271,7 @@ class PtpipDataSource @Inject constructor(
      */
     fun initCameraWithSessionMaintenance(ipAddress: String, port: Int, libDir: String): Int {
         val result = CameraNative.initCameraWithSessionMaintenance(ipAddress, port, libDir)
-        LogcatManager.d(TAG, "세션 유지 카메라 초기화: result=$result (ip=$ipAddress, port=$port)")
+        LogcatManager.d(TAG, "세션 유지 카메라 초기화: result=$result (ip=${LogMask.id(ipAddress)}, port=$port)")
         return result
     }
 
@@ -338,7 +339,7 @@ class PtpipDataSource @Inject constructor(
                         name = name ?: "Last camera",
                         isOnline = false
                     )
-                    Log.d(TAG, "마지막 연결 카메라 복원: ip=$ip, name=$name")
+                    Log.d(TAG, "마지막 연결 카메라 복원: ip=${LogMask.id(ip)}, name=${LogMask.serial(name)}")
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "마지막 연결 카메라 복원 실패: ${e.message}")
@@ -352,7 +353,11 @@ class PtpipDataSource @Inject constructor(
     private fun startNetworkMonitoring() {
         networkMonitoringJob = wifiHelper.networkStateFlow
             .onEach { networkState ->
-                Log.d(TAG, "네트워크 상태 변화: $networkState")
+                Log.d(
+                    TAG,
+                    "네트워크 상태 변화: connected=${networkState.isConnected}, ap=${networkState.isConnectedToCameraAP}, " +
+                        "ssid=${LogMask.ssid(networkState.ssid)}, ip=${LogMask.id(networkState.detectedCameraIP)}"
+                )
                 _wifiNetworkState.value = networkState
                 maybeTriggerAutoConnect(networkState)
                 
@@ -495,7 +500,7 @@ class PtpipDataSource @Inject constructor(
                     return@launch
                 }
 
-                Log.i(TAG, "네트워크 상태 감지 기반 자동 연결 브로드캐스트 발송: ${networkState.ssid}")
+                Log.i(TAG, "네트워크 상태 감지 기반 자동 연결 브로드캐스트 발송: ${LogMask.ssid(networkState.ssid)}")
                 wifiHelper.sendAutoConnectBroadcast(storedConfig.ssid)
                 lastAutoConnectBroadcastSsid = networkState.ssid
                 lastAutoConnectBroadcastBssid = currentBssid ?: storedConfig.bssid
@@ -533,7 +538,7 @@ class PtpipDataSource @Inject constructor(
             var attempts = 0
             while (attempts < maxAttempts) {
                 try {
-                    Log.i(TAG, "자동 재연결 시도 ${attempts + 1}/$maxAttempts: ${camera.name} (${camera.ipAddress})")
+                    Log.i(TAG, "자동 재연결 시도 ${attempts + 1}/$maxAttempts: ${LogMask.serial(camera.name)} (${LogMask.id(camera.ipAddress)})")
                     _connectionState.value = PtpipConnectionState.CONNECTING
                     setProgress(UiText.Resource(R.string.progress_ptpip_connecting))
 
@@ -640,7 +645,7 @@ class PtpipDataSource @Inject constructor(
                 Log.d(TAG, "AP모드 감지: libgphoto2 기반 카메라 IP 검색 시작")
                 val cameraIP = wifiHelper.findAvailableCameraIP()
                 if (cameraIP != null) {
-                    Log.i(TAG, "✅ AP모드: libgphoto2로 검증된 카메라 IP $cameraIP 발견")
+                    Log.i(TAG, "AP모드: libgphoto2로 검증된 카메라 IP ${LogMask.id(cameraIP)} 발견")
                     val networkName = wifiHelper.getCurrentSSID() ?: "카메라 AP"
                     val apCamera = PtpipCamera(
                         ipAddress = cameraIP,
@@ -678,7 +683,7 @@ class PtpipDataSource @Inject constructor(
     suspend fun detectNikonConnectionMode(camera: PtpipCamera): NikonConnectionMode = 
         withContext(ioDispatcher) {
             try {
-                Log.d(TAG, "니콘 카메라 연결 모드 감지 시작: ${camera.name}")
+                Log.d(TAG, "니콘 카메라 연결 모드 감지 시작: ${LogMask.serial(camera.name)}")
 
                 // 기본 연결 시도 - AP 모드는 즉시 연결 가능
                 if (connectionManager.establishConnection(camera)) {
@@ -723,11 +728,7 @@ class PtpipDataSource @Inject constructor(
     ): Boolean =
         withContext(ioDispatcher) {
         try {
-            Log.i(TAG, "============================================")
-            Log.i(TAG, "=== 스마트 카메라 연결 시작 (독립 스코프) ===")
-            Log.i(TAG, "카메라: ${camera.name}")
-            Log.i(TAG, "IP: ${camera.ipAddress}:${camera.port}")
-            Log.i(TAG, "============================================")
+            Log.i(TAG, "스마트 카메라 연결 시작: ${LogMask.serial(camera.name)} (${LogMask.id(camera.ipAddress)}:${camera.port})")
 
             // 멱등 가드: 이미 동일 카메라(IP·포트 기준)에 연결돼 있으면 재연결하지 않는다.
             // 검색→자동선택→연결 경로가 중복 호출될 때(예: 검색 버튼 재탭) connectionStateMutex로
@@ -738,7 +739,7 @@ class PtpipDataSource @Inject constructor(
                 alreadyConnectedCamera?.ipAddress == camera.ipAddress &&
                 alreadyConnectedCamera.port == camera.port
             ) {
-                Log.i(TAG, "이미 동일 카메라에 연결됨 - 재연결 건너뜀 (멱등): ${camera.name}")
+                Log.i(TAG, "이미 동일 카메라에 연결됨 - 재연결 건너뜀 (멱등): ${LogMask.serial(camera.name)}")
                 return@withContext true
             }
 
@@ -805,21 +806,22 @@ class PtpipDataSource @Inject constructor(
 
             // 버전 디렉토리를 콜론(:)으로 구분하여 전달
             val pluginDir = "${portVersionDir.absolutePath}:${gphoto2VersionDir.absolutePath}"
-            Log.i(TAG, "플러그인 디렉토리: $pluginDir")
+            if (com.inik.camcon.BuildConfig.DEBUG) {
+                Log.i(TAG, "플러그인 디렉토리: $pluginDir")
+            }
 
             setProgress(UiText.Resource(R.string.progress_ptpip_connecting))
 
             // 환경 변수 설정 (중요!)
-            Log.i(TAG, "=== libgphoto2 환경 변수 설정 ===")
             try {
                 val envSetupResult = CameraNative.setupEnvironmentPaths(pluginDir)
                 if (envSetupResult) {
-                    Log.i(TAG, "✅ 환경 변수 설정 완료")
+                    Log.i(TAG, "환경 변수 설정 완료")
                 } else {
-                    Log.w(TAG, "⚠️ 환경 변수 설정 실패 (계속 진행)")
+                    Log.w(TAG, "환경 변수 설정 실패 (계속 진행)")
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "⚠️ 환경 변수 설정 중 오류 (계속 진행): ${e.message}")
+                Log.w(TAG, "환경 변수 설정 중 오류 (계속 진행): ${e.message}")
             }
 
             // libgphoto2가 설정(GUID 등)을 영속화하는 $HOME/.config/gphoto 디렉토리 보장.
@@ -829,10 +831,10 @@ class PtpipDataSource @Inject constructor(
             // libgphoto2 초기화 1회 실행 람다 (forceApMode/표준 분기). 폴백 재시도에서 재사용.
             val runLibGphotoInit: () -> String? = {
                 if (forceApMode) {
-                    Log.i(TAG, "=== AP 모드 강제: libgphoto2 초기화 ===")
+                    Log.i(TAG, "AP 모드 강제: libgphoto2 초기화")
                     CameraNative.initCameraForAPMode(camera.ipAddress, camera.port, pluginDir)
                 } else {
-                    Log.i(TAG, "=== 표준 모드: libgphoto2 초기화 ===")
+                    Log.i(TAG, "표준 모드: libgphoto2 초기화")
                     // init 구간에만 GP_LOG_DATA(3)로 올리고 끝나면 ERROR로 복귀
                     // 파일: files/libgphoto2_ptpip_latest.txt (연결마다 덮어씀)
                     val gphotoLogPath =
@@ -958,26 +960,19 @@ class PtpipDataSource @Inject constructor(
             } else {
                 val abilities = parseAbilities(abilitiesJson)
 
-                Log.i(TAG, "📸 연결된 카메라 정보:")
-                Log.i(TAG, "   제조사: ${deviceInfo.manufacturer}")
-                Log.i(TAG, "   모델: ${deviceInfo.model}")
-                Log.i(TAG, "   드라이버: ${abilities.status}")
-                Log.i(TAG, "   지원 기능:")
-                Log.i(TAG, "     - 원격 촬영: ${abilities.supports.captureImage}")
-                Log.i(TAG, "     - 라이브뷰: ${abilities.supports.capturePreview}")
-                Log.i(TAG, "     - 설정 변경: ${abilities.supports.config}")
-                Log.i(TAG, "     - 트리거: ${abilities.supports.triggerCapture}")
+                Log.i(
+                    TAG,
+                    "연결된 카메라 정보: 제조사=${deviceInfo.manufacturer}, 모델=${deviceInfo.model}, 드라이버=${abilities.status}, " +
+                        "촬영=${abilities.supports.captureImage}, 라이브뷰=${abilities.supports.capturePreview}, " +
+                        "설정=${abilities.supports.config}, 트리거=${abilities.supports.triggerCapture}"
+                )
 
                 // 상태 저장
                 storeAbilities(abilities, deviceInfo)
 
-                // DeviceInfo에서 제조사 정보 로그 출력 (검증용)
-                Log.i(TAG, "=== 제조사: ${deviceInfo.manufacturer} (DeviceInfo 확인) ===")
-
                 // 기능 제한 경고
                 if (abilities.supports.isDownloadOnly()) {
-                    Log.w(TAG, "⚠️ 이 카메라는 다운로드만 지원합니다")
-                    Log.w(TAG, "   원격 촬영 및 라이브뷰는 지원되지 않습니다")
+                    Log.w(TAG, "이 카메라는 다운로드만 지원합니다 (원격 촬영·라이브뷰 미지원)")
                     setProgress(UiText.Resource(R.string.progress_ptpip_complete_limited))
                 }
             }
@@ -1117,15 +1112,11 @@ class PtpipDataSource @Inject constructor(
         }
     }
 
-    // ... existing code ...
-
     /**
      * AP 모드 연결 성공 시 이벤트 리스너 시작 (CameraEventManager 활용)
      */
     private suspend fun startAutomaticFileReceiving(camera: PtpipCamera) {
-        Log.i(TAG, "PTPIP AP 모드 이벤트 리스너 시작: ${camera.name}")
-        com.inik.camcon.utils.LogcatManager.d(TAG, "=== PTPIP 자동 파일 수신 시작 ===")
-        com.inik.camcon.utils.LogcatManager.d(TAG, "카메라: ${camera.name}")
+        Log.i(TAG, "PTPIP AP 모드 이벤트 리스너 시작: ${LogMask.serial(camera.name)}")
         com.inik.camcon.utils.LogcatManager.d(
             TAG,
             "Repository 콜백 설정 상태: ${onPhotoCapturedCallback != null}"
@@ -1139,12 +1130,10 @@ class PtpipDataSource @Inject constructor(
 
         try {
             // 파일 목록 조회 생략 - 사진이 많으면 스캔 중 연결 끊김 방지
-            Log.i(TAG, "=== PTPIP 연결 후 파일 목록 조회 생략 (성능 최적화) ===")
-            com.inik.camcon.utils.LogcatManager.d(TAG, "⚡ 파일 목록 조회 건너뜀 - 이벤트 리스너만 시작")
+            Log.i(TAG, "PTPIP 연결 후 파일 목록 조회 생략 (성능 최적화) - 이벤트 리스너만 시작")
 
             // 이벤트 리스너 시작
             setProgress(UiText.Resource(R.string.progress_ptpip_listener_start))
-            com.inik.camcon.utils.LogcatManager.d(TAG, "🎧 CameraEventManager를 통한 이벤트 리스너 시작")
 
             // CameraEventManager를 통해 PTPIP 이벤트 리스너 시작
             val result = cameraEventManager.startCameraEventListener(
@@ -1154,11 +1143,8 @@ class PtpipDataSource @Inject constructor(
                 onPhotoCaptured = { filePath, fileName ->
                     com.inik.camcon.utils.LogcatManager.d(
                         TAG,
-                        "🎯 PTPIP onPhotoCaptured 콜백 호출됨: $fileName"
+                        "PTPIP onPhotoCaptured 파일 감지: $fileName"
                     )
-                    // Repository 콜백 호출 제거
-                    com.inik.camcon.utils.LogcatManager.d(TAG, "📋 파일 감지 알림만 처리: $fileName")
-
                     // 네이티브 처리 완료 알림만 로그로 기록
                     handleAutomaticDownload(filePath, fileName)
                 },
@@ -1194,7 +1180,7 @@ class PtpipDataSource @Inject constructor(
                                 val realPath = savedPhoto.filePath
                                 com.inik.camcon.utils.LogcatManager.d(
                                     TAG,
-                                    "📁 실제 저장된 파일 경로: $realPath"
+                                    "실제 저장된 파일: ${LogMask.path(realPath)}"
                                 )
 
                                 // 파일 저장 완료 후 알림 업데이트
@@ -1316,7 +1302,7 @@ class PtpipDataSource @Inject constructor(
      * 기존 방식의 파일 수신 리스너 (폴백용)
      */
     private fun startFileReceiveListenerFallback(camera: PtpipCamera) {
-        Log.i(TAG, "기존 방식 파일 수신 리스너 시작: ${camera.name}")
+        Log.i(TAG, "기존 방식 파일 수신 리스너 시작: ${LogMask.serial(camera.name)}")
 
         try {
             // 파일 수신 전용 리스너 (촬영 명령 없음)
@@ -1326,8 +1312,7 @@ class PtpipDataSource @Inject constructor(
                 }
 
                 override fun onPhotoCaptured(filePath: String, fileName: String) {
-                    Log.i(TAG, "파일 수신: 외부 촬영 파일 자동 다운로드 완료 - $fileName")
-                    Log.i(TAG, "파일 경로: $filePath")
+                    Log.i(TAG, "파일 수신: 외부 촬영 파일 자동 다운로드 완료 - $fileName (${LogMask.path(filePath)})")
                     handleAutomaticDownload(filePath, fileName)
                 }
 
@@ -1559,21 +1544,16 @@ class PtpipDataSource @Inject constructor(
                     return@launch
                 }
 
-                // 파일 정보만 로그 출력 - 네이티브에서 모든 처리(다운로드, 리사이즈, 저장)가 완료됨
+                // 네이티브에서 모든 처리(다운로드, 리사이즈, 저장)가 완료됨
                 val ext = fileName.substringAfterLast('.', "").lowercase()
-                Log.d(TAG, "   파일 확장자: $ext")
 
                 if (ext in listOf("jpg", "jpeg", "png", "cr2", "nef", "arw", "dng")) {
-                    Log.d(TAG, "✅ 이미지 파일 - 네이티브에서 처리 완료됨")
-
                     // Repository에 촬영 완료 알림 - 네이티브가 이미 저장 완료함
-                    Log.d(TAG, "🔔 Repository에 촬영 완료 알림: $fileName")
+                    Log.d(TAG, "Repository에 촬영 완료 알림: $fileName (ext=$ext)")
                     onPhotoCapturedCallback?.invoke(filePath, fileName)
                 } else {
-                    Log.d(TAG, "❌ 지원하지 않는 파일 형식: $ext")
+                    Log.d(TAG, "지원하지 않는 파일 형식: $ext")
                 }
-
-                Log.i(TAG, "✅ 파일 처리 완료 알림: $fileName (네이티브 처리 완료)")
 
             } catch (e: Exception) {
                 Log.e(TAG, "파일 처리 완료 알림 중 오류", e)
@@ -1771,7 +1751,7 @@ class PtpipDataSource @Inject constructor(
             Log.w(TAG, "물리 셔터 리스너가 이미 실행 중")
             return
         }
-        Log.i(TAG, "물리 셔터 리스너 시작 요청: ${camera.name}")
+        Log.i(TAG, "물리 셔터 리스너 시작 요청: ${LogMask.serial(camera.name)}")
         shutterListenerJob = coroutineScope.launch(ioDispatcher) {
             tetherService.listenForNewShots(camera) { fileName, bytes ->
                 try {
@@ -1783,7 +1763,7 @@ class PtpipDataSource @Inject constructor(
                         cameraSettings = null
                     )
                     if (saved != null) {
-                        Log.i(TAG, "📥 새 컷 수신·저장: ${saved.filePath}")
+                        Log.i(TAG, "새 컷 수신·저장: ${LogMask.path(saved.filePath)}")
                         onPhotoDownloadedCallback?.invoke(saved.filePath, fileName, bytes)
                     } else {
                         Log.w(TAG, "새 컷 저장 차단/실패(게이팅 등): $fileName")

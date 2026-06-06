@@ -10,8 +10,8 @@ import android.util.Log
 import com.inik.camcon.R
 
 /**
- * Stateless Composable for displaying EXIF metadata information.
- * Receives parsed EXIF JSON and renders formatted camera/exposure settings.
+ * EXIF 메타데이터 정보를 표시하는 Stateless Composable.
+ * 파싱된 EXIF JSON을 전달받아 포맷된 카메라/노출 설정을 렌더링한다.
  */
 @Composable
 fun PhotoExifPanel(
@@ -44,7 +44,7 @@ fun PhotoExifPanel(
     }
 }
 
-// ==================== EXIF Formatting Utilities ====================
+// ==================== EXIF 포맷팅 유틸리티 ====================
 
 // EXIF 파싱 및 포맷팅 함수들은 ExifUtils.kt로 중앙화됨 (공유 유틸리티)
 // ExifField Composable도 ExifUtils.kt의 공개 버전 사용

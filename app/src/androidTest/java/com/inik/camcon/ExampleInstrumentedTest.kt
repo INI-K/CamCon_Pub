@@ -9,15 +9,15 @@ import org.junit.runner.RunWith
 import org.junit.Assert.*
 
 /**
- * Instrumented test, which will execute on an Android device.
+ * 안드로이드 기기에서 실행되는 계측 테스트.
  *
- * See [testing documentation](http://d.android.com/tools/testing).
+ * [테스트 문서](http://d.android.com/tools/testing) 참고.
  */
 @RunWith(AndroidJUnit4::class)
 class ExampleInstrumentedTest {
     @Test
     fun useAppContext() {
-        // Context of the app under test.
+        // 테스트 대상 앱의 컨텍스트.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
         assertEquals("com.inik.camcon", appContext.packageName)
     }

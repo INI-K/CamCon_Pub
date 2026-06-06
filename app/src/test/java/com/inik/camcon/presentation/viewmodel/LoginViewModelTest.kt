@@ -96,7 +96,7 @@ class LoginViewModelTest {
 
         viewModel = createViewModel()
 
-        // When/Then - collect uiEvent BEFORE signing in (SharedFlow replay=0)
+        // When/Then - 로그인 전에 uiEvent를 먼저 수집한다 (SharedFlow replay=0)
         viewModel.uiEvent.test {
             viewModel.signInWithGoogle("test-id-token")
             val event = awaitItem()
@@ -115,7 +115,7 @@ class LoginViewModelTest {
 
         viewModel = createViewModel()
 
-        // When/Then - collect uiEvent BEFORE signing in (SharedFlow replay=0)
+        // When/Then - 로그인 전에 uiEvent를 먼저 수집한다 (SharedFlow replay=0)
         viewModel.uiEvent.test {
             viewModel.signInWithGoogle("test-id-token")
             val event = awaitItem()
@@ -138,7 +138,7 @@ class LoginViewModelTest {
 
         viewModel = createViewModel()
 
-        // When/Then - collect uiEvent BEFORE signing in (SharedFlow replay=0)
+        // When/Then - 로그인 전에 uiEvent를 먼저 수집한다 (SharedFlow replay=0)
         viewModel.uiEvent.test {
             viewModel.signInWithGoogle("test-id-token", referralCode)
             val event1 = awaitItem()
@@ -165,7 +165,7 @@ class LoginViewModelTest {
         // Then
         viewModel.uiState.test {
             val state = awaitItem()
-            assertTrue(state.isLoggedIn) // Still logged in even with invalid referral
+            assertTrue(state.isLoggedIn) // 잘못된 추천 코드여도 로그인은 유지된다
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -175,11 +175,11 @@ class LoginViewModelTest {
         // Given
         viewModel = createViewModel()
 
-        // When - this method should not throw and should do nothing
+        // When - 이 메서드는 예외를 던지지 않고 아무 동작도 하지 않아야 한다
         @Suppress("DEPRECATION")
         viewModel.clearError()
 
-        // Then - no state change expected (method is deprecated and empty)
+        // Then - 상태 변화 없음 예상 (deprecated 되었고 비어 있는 메서드)
         viewModel.uiState.test {
             val state = awaitItem()
             assertFalse(state.isLoading)

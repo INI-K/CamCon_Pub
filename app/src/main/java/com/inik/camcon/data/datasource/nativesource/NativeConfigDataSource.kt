@@ -44,7 +44,7 @@ class NativeConfigDataSource @Inject constructor(
         CameraNative.readGphotoSettings()
     }
 
-    // Manufacturer-specific wrappers (convenience -- internally use config system)
+    // 제조사별 래퍼 (편의용 -- 내부적으로는 config 시스템 사용)
     suspend fun setCanonColorTemperature(kelvin: Int): Int = withContext(ioDispatcher) {
         CameraNative.setCanonColorTemperature(kelvin)
     }

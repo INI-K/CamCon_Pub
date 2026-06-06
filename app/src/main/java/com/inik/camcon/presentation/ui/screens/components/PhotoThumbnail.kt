@@ -1,6 +1,6 @@
 package com.inik.camcon.presentation.ui.screens.components
 
-// Import for FluidPhotoThumbnail and helpers
+// FluidPhotoThumbnail 및 헬퍼를 위한 import
 
 import android.graphics.ColorSpace
 import android.util.Log
@@ -66,6 +66,7 @@ import com.inik.camcon.presentation.theme.Overlay
 import com.inik.camcon.presentation.theme.Success
 import com.inik.camcon.presentation.theme.TextPrimary
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.utils.LogMask
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayInputStream
@@ -87,16 +88,9 @@ fun PhotoThumbnail(
 ) {
     // remember를 사용하여 photo.path가 변경될 때만 로그 출력 (중복 방지)
     remember(photo.path) {
-        Log.d("PhotoThumbnail", "=== 썸네일 어댑터 처리 시작: ${photo.name} ===")
-        Log.d("PhotoThumbnail", "photo.path: ${photo.path}")
-        Log.d("PhotoThumbnail", "thumbnailData size: ${thumbnailData?.size ?: 0} bytes")
         Log.d(
             "PhotoThumbnail",
-            "fullImageData size: ${fullImageCache[photo.path]?.size ?: 0} bytes"
-        )
-        Log.d(
-            "PhotoThumbnail",
-            "파일 존재 여부: ${!photo.path.isNullOrEmpty() && File(photo.path).exists()}"
+            "썸네일 처리: ${photo.name} (path=${LogMask.path(photo.path)}, thumb=${thumbnailData?.size ?: 0}B, full=${fullImageCache[photo.path]?.size ?: 0}B)"
         )
         photo.path
     }
@@ -282,9 +276,6 @@ private fun ExifAwareThumbnail(
     LaunchedEffect(photo.path, thumbnailData, fullImageData) {
         withContext(Dispatchers.IO) {
             try {
-                Log.d("PhotoThumbnail", "비트맵 디코딩 시작: ${photo.name}")
-                Log.d("PhotoThumbnail", "고화질 데이터에서 EXIF 읽어서 썸네일에 적용: ${photo.name}")
-
                 // 1. 썸네일 데이터 유효성 검사
                 if (thumbnailData.isEmpty()) {
                     Log.w("PhotoThumbnail", "썸네일 데이터가 비어있음: ${photo.name}")
@@ -293,10 +284,6 @@ private fun ExifAwareThumbnail(
 
                 // 2. 고화질 이미지에서 EXIF 정보 읽기 (한 번만)
                 val fullExif = try {
-                    Log.d("PhotoThumbnail", "=== EXIF 디코딩 시작: ${photo.name} ===")
-                    Log.d("PhotoThumbnail", "imageData size: ${fullImageData.size} bytes")
-                    Log.d("PhotoThumbnail", "photo.path: ${photo.path}")
-
                     val exif = androidx.exifinterface.media.ExifInterface(
                         ByteArrayInputStream(fullImageData)
                     )
@@ -305,12 +292,7 @@ private fun ExifAwareThumbnail(
                         androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
                     )
 
-                    Log.d("PhotoThumbnail", "원본 비트맵 크기: reading from fullImage")
-                    Log.d("PhotoThumbnail", "바이트 스트림에서 EXIF 읽기 시도")
-                    Log.d("PhotoThumbnail", "파일 존재 여부: false")
-                    Log.d("PhotoThumbnail", "바이트 스트림 EXIF 읽기 성공: orientation = $orientation")
-                    Log.d("PhotoThumbnail", "최종 EXIF Orientation: $orientation (${photo.name})")
-
+                    Log.d("PhotoThumbnail", "EXIF Orientation: $orientation (${photo.name})")
                     orientation
                 } catch (e: Exception) {
                     Log.e("PhotoThumbnail", "고화질 EXIF 읽기 실패: ${photo.name}", e)
@@ -351,23 +333,10 @@ private fun ExifAwareThumbnail(
                     }
                 } catch (e: Exception) {
                     Log.e("PhotoThumbnail", "비트맵 디코딩 실패: ${photo.name}", e)
-                    // 'unimplemented' 에러나 기타 디코딩 에러 처리
-                    if (e.message?.contains("unimplemented") == true) {
-                        Log.e(
-                            "PhotoThumbnail",
-                            "--- Failed to create image decoder with message 'unimplemented'"
-                        )
-                        Log.e("PhotoThumbnail", "썸네일 비트맵 디코딩 실패: ${photo.name}")
-                    }
                     null
                 }
 
                 if (originalBitmap != null) {
-                    Log.d(
-                        "PhotoThumbnail",
-                        "원본 비트맵 크기: ${originalBitmap.width}x${originalBitmap.height}"
-                    )
-
                     // 5. EXIF 표준 회전 적용 (F30: 90→90/180→180/270→270 — 역방향 매핑 수정,
                     //    ImageProcessingUtils.applyRotationFromExif·PhotoDownloadManager와 통일)
                     fun rotate(degrees: Float): android.graphics.Bitmap = try {
@@ -386,20 +355,12 @@ private fun ExifAwareThumbnail(
                         androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> rotate(90f)
                         androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> rotate(180f)
                         androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> rotate(270f)
-                        else -> {
-                            Log.d("PhotoThumbnail", "회전 없음: ${photo.name} (orientation: $fullExif)")
-                            originalBitmap
-                        }
+                        else -> originalBitmap
                     }
 
                     // 6. ImageBitmap으로 변환
                     try {
                         rotatedBitmap = rotatedBmp.asImageBitmap()
-                        Log.d("PhotoThumbnail", "비트맵 디코딩 완료: ${photo.name}, bitmap: true")
-                        Log.d(
-                            "PhotoThumbnail",
-                            "썸네일 비트맵 적용 성공: ${photo.name} (${rotatedBmp.width}x${rotatedBmp.height})"
-                        )
                     } catch (e: Exception) {
                         Log.e("PhotoThumbnail", "ImageBitmap 변환 실패: ${photo.name}", e)
                         // 변환 실패 시 비트맵 메모리 해제
@@ -549,18 +510,10 @@ fun FluidPhotoThumbnail(
 
     // remember를 사용하여 photo.path가 변경될 때만 로그 출력 (중복 방지)
     remember(photo.path) {
-        Log.d("FluidPhotoThumbnail", "=== 유동적 썸네일 어댑터 처리 시작: ${photo.name} ===")
-        Log.d("FluidPhotoThumbnail", "photo.path: ${photo.path}")
-        Log.d("FluidPhotoThumbnail", "thumbnailData size: ${thumbnailData?.size ?: 0} bytes")
         Log.d(
             "FluidPhotoThumbnail",
-            "fullImageData size: ${fullImageCache[photo.path]?.size ?: 0} bytes"
+            "썸네일 처리: ${photo.name} (path=${LogMask.path(photo.path)}, thumb=${thumbnailData?.size ?: 0}B, full=${fullImageCache[photo.path]?.size ?: 0}B, ratio=$aspectRatio)"
         )
-        Log.d(
-            "FluidPhotoThumbnail",
-            "파일 존재 여부: ${!photo.path.isNullOrEmpty() && File(photo.path).exists()}"
-        )
-        Log.d("FluidPhotoThumbnail", "계산된 비율: $aspectRatio (${photo.width}x${photo.height})")
         photo.path
     }
 
@@ -746,9 +699,6 @@ private fun FluidExifAwareThumbnail(
     LaunchedEffect(photo.path, thumbnailData, fullImageData) {
         withContext(Dispatchers.IO) {
             try {
-                Log.d("FluidPhotoThumbnail", "유동적 비트맵 디코딩 시작: ${photo.name}")
-                Log.d("FluidPhotoThumbnail", "고화질 데이터에서 EXIF 읽어서 썸네일에 적용: ${photo.name}")
-
                 // 1. 썸네일 데이터 유효성 검사
                 if (thumbnailData.isEmpty()) {
                     Log.w("FluidPhotoThumbnail", "썸네일 데이터가 비어있음: ${photo.name}")
@@ -827,19 +777,12 @@ private fun FluidExifAwareThumbnail(
                         androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> rotate(90f)
                         androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> rotate(180f)
                         androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> rotate(270f)
-                        else -> {
-                            Log.d(
-                                "FluidPhotoThumbnail",
-                                "회전 없음: ${photo.name} (orientation: $fullExif)"
-                            )
-                            originalBitmap
-                        }
+                        else -> originalBitmap
                     }
 
                     // 6. ImageBitmap으로 변환
                     try {
                         rotatedBitmap = rotatedBmp.asImageBitmap()
-                        Log.d("FluidPhotoThumbnail", "유동적 비트맵 디코딩 완료: ${photo.name}")
                     } catch (e: Exception) {
                         Log.e("FluidPhotoThumbnail", "ImageBitmap 변환 실패: ${photo.name}", e)
                         rotatedBmp.recycle()

@@ -7,6 +7,7 @@ import android.util.Log
 import android.widget.ImageView
 import androidx.exifinterface.media.ExifInterface
 import com.inik.camcon.domain.model.CameraPhoto
+import com.inik.camcon.utils.LogMask
 import java.io.File
 
 /**
@@ -23,8 +24,6 @@ object ImageProcessingUtils {
         photo: CameraPhoto? = null
     ): Bitmap? {
         return try {
-            Log.d("ImageProcessing", "=== EXIF 디코딩 시작: ${photo?.name ?: "unknown"} ===")
-
             // 1. 기본 비트맵 디코딩
             val originalBitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.size)
                 ?: return null
@@ -48,7 +47,7 @@ object ImageProcessingUtils {
             try {
                 BitmapFactory.decodeByteArray(imageData, 0, imageData.size)
             } catch (ex: Exception) {
-                Log.e("ImageProcessing", "❌ 비트맵 디코딩 완전 실패", ex)
+                Log.e("ImageProcessing", "비트맵 디코딩 완전 실패", ex)
                 null
             }
         }
@@ -89,7 +88,7 @@ object ImageProcessingUtils {
         return try {
             // 원본 파일이 있고 존재하는 경우 파일에서 직접 읽기
             if (!photo?.path.isNullOrEmpty() && File(photo?.path ?: "").exists()) {
-                Log.d("ImageProcessing", "원본 파일에서 EXIF 읽기 시도: ${photo!!.path}")
+                Log.d("ImageProcessing", "원본 파일에서 EXIF 읽기 시도: ${LogMask.path(photo!!.path)}")
                 val exif = ExifInterface(photo.path)
                 val orientation = exif.getAttributeInt(
                     ExifInterface.TAG_ORIENTATION,

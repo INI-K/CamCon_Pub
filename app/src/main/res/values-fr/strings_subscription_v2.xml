@@ -1,5 +1,5 @@
 <resources>
-    <!-- Mur de paiement de l'abonnement (Français) -->
+    <!-- 구독 결제 화면 (프랑스어) -->
     <string name="subscription_title">Abonnement</string>
     <string name="subscription_back">Retour</string>
     <string name="subscription_current_plan">Forfait actuel</string>
@@ -9,14 +9,14 @@
     <string name="subscription_disclaimer">Les abonnements se renouvellent automatiquement et peuvent être gérés ou résiliés dans le Google Play Store.</string>
     <string name="subscription_badge_current">Actuel</string>
 
-    <!-- Noms des niveaux -->
+    <!-- 티어 이름 -->
     <string name="subscription_tier_free">Gratuit</string>
     <string name="subscription_tier_basic">Basique</string>
     <string name="subscription_tier_pro">Pro</string>
     <string name="subscription_tier_referrer">Parrain</string>
     <string name="subscription_tier_admin">Administrateur</string>
 
-    <!-- Avantages -->
+    <!-- 혜택 -->
     <string name="subscription_benefit_jpg">Capture JPG / JPEG</string>
     <string name="subscription_benefit_basic_control">Contrôle basique de l\'appareil</string>
     <string name="subscription_benefit_free_resolution">Téléchargements limités à 2000 px</string>
@@ -27,7 +27,7 @@
     <string name="subscription_benefit_advanced_control">Contrôle avancé de l\'appareil</string>
     <string name="subscription_benefit_raw_download">Téléchargements RAW originaux</string>
 
-    <!-- Snackbar -->
+    <!-- 스낵바 -->
     <string name="subscription_snackbar_purchase_started">Achat lancé. Il sera appliqué après vérification.</string>
     <string name="subscription_snackbar_error">Impossible de traiter la demande. Veuillez réessayer.</string>
 </resources>

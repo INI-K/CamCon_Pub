@@ -21,7 +21,7 @@ class NikonMakerNoteFileNameTest {
         // TIFF 헤더
         buf.put(0, 'I'.code.toByte()); buf.put(1, 'I'.code.toByte())
         buf.putShort(2, 0x2A); buf.putInt(4, 8)
-        // IFD0 @8: ExifIFDPointer(0x8769) LONG inline = 26
+        // IFD0 @8: ExifIFDPointer(0x8769) LONG 인라인 값 = 26
         buf.putShort(8, 1)
         buf.putShort(10, 0x8769.toShort()); buf.putShort(12, 4); buf.putInt(14, 1); buf.putInt(18, 26)
         buf.putInt(22, 0)
@@ -37,8 +37,8 @@ class NikonMakerNoteFileNameTest {
         buf.put(82, 0x02); buf.put(83, 0x10); buf.put(84, 0); buf.put(85, 0)
         // 임베디드 TIFF 헤더 @86 (base) — 내부 오프셋의 기준
         buf.put(86, 'I'.code.toByte()); buf.put(87, 'I'.code.toByte())
-        buf.putShort(88, 0x2A); buf.putInt(90, 8) // mn IFD rel embBase=8 → abs 94
-        // MakerNote IFD @94: FileInfo(0x00B8) UNDEFINED count=10, rel offset 26 → abs 112
+        buf.putShort(88, 0x2A); buf.putInt(90, 8) // mn IFD 상대 embBase=8 → 절대 94
+        // MakerNote IFD @94: FileInfo(0x00B8) UNDEFINED count=10, 상대 offset 26 → 절대 112
         buf.putShort(94, 1)
         buf.putShort(96, 0x00B8.toShort()); buf.putShort(98, 7); buf.putInt(100, 10); buf.putInt(104, 26)
         buf.putInt(108, 0)

@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Top bar / common -->
+    <!-- 상단 바 / 공통 -->
     <string name="settings_v2_title">設定</string>
     <string name="settings_v2_back">戻る</string>
 
-    <!-- Section titles -->
+    <!-- 섹션 제목 -->
     <string name="settings_v2_section_camera_control">カメラ制御設定（開発版）</string>
     <string name="settings_v2_section_wifi_ptpip">Wi-Fiカメラ接続（PTPIP）- 開発版</string>
     <string name="settings_v2_section_color_transfer">カラー転送設定</string>
@@ -17,12 +17,12 @@
     <string name="settings_v2_section_info">情報</string>
     <string name="settings_v2_section_referral">管理者リファラルコード管理</string>
 
-    <!-- Subscription / upgrade row -->
+    <!-- 구독 / 업그레이드 행 -->
     <string name="settings_v2_subscription_title">サブスクリプション管理 / アップグレード</string>
     <string name="settings_v2_subscription_subtitle_tier">現在のプラン: %s</string>
     <string name="settings_v2_subscription_subtitle_default">プランを管理してより多くの機能を利用できます</string>
 
-    <!-- Camera control -->
+    <!-- 카메라 컨트롤 -->
     <string name="settings_v2_camera_controls_title">カメラコントロール表示</string>
     <string name="settings_v2_camera_controls_on">ライブビューとカメラコントロールUIを表示</string>
     <string name="settings_v2_camera_controls_off">無効 - 最新の撮影写真が表示されます</string>
@@ -49,7 +49,7 @@
     <string name="settings_v2_connection_manage_title">カメラ接続管理</string>
     <string name="settings_v2_connection_manage_subtitle">%s - タップして詳細表示</string>
 
-    <!-- Color transfer -->
+    <!-- 컬러 트랜스퍼 -->
     <string name="settings_v2_color_transfer_title">カラー転送機能</string>
     <string name="settings_v2_color_transfer_on_ref">有効 - 参照画像を設定済み</string>
     <string name="settings_v2_color_transfer_on_noref">有効 - 参照画像なし</string>
@@ -57,13 +57,13 @@
     <string name="settings_v2_color_transfer_detail_title">詳細設定</string>
     <string name="settings_v2_color_transfer_detail_subtitle">カラー転送アルゴリズムと高度なオプション設定</string>
 
-    <!-- RAW download -->
+    <!-- RAW 다운로드 -->
     <string name="settings_v2_raw_download_title">RAWファイルダウンロード</string>
     <string name="settings_v2_raw_download_on">有効</string>
     <string name="settings_v2_raw_download_off">無効</string>
     <string name="settings_v2_raw_download_locked">PRO、ADMIN、REFERRERティアでのみ利用できる機能です</string>
 
-    <!-- Connected camera -->
+    <!-- 연결된 카메라 -->
     <string name="settings_v2_connection_status_title">接続状態</string>
     <string name="settings_v2_connection_type_usb">USB接続</string>
     <string name="settings_v2_connection_type_wifi">Wi-Fi接続（PTPIP）</string>
@@ -72,7 +72,7 @@
     <string name="settings_v2_camera_model_none">情報なし</string>
     <string name="settings_v2_camera_limitation_title">機能制限のご案内</string>
 
-    <!-- User -->
+    <!-- 사용자 -->
     <string name="settings_v2_user_default_name">ユーザー</string>
     <string name="settings_v2_user_login_required">ログインが必要です</string>
     <string name="settings_v2_logout_title">ログアウト</string>
@@ -80,13 +80,13 @@
     <string name="settings_v2_logout_subtitle">現在のアカウントからログアウト</string>
     <string name="settings_v2_logout_in_progress_subtitle">少々お待ちください…</string>
 
-    <!-- Server -->
+    <!-- 서버 -->
     <string name="settings_v2_storage_title">ストレージ</string>
     <string name="settings_v2_storage_subtitle">TBD</string>
     <string name="settings_v2_permissions_title">権限管理</string>
     <string name="settings_v2_permissions_subtitle">サーバーアクセス権限の設定</string>
 
-    <!-- App -->
+    <!-- 앱 -->
     <string name="settings_v2_battery_title">バッテリー最適化の除外設定</string>
     <string name="settings_v2_battery_on">バッテリー最適化から除外済み</string>
     <string name="settings_v2_battery_off">バックグラウンド接続と通知のため除外設定が必要</string>
@@ -102,12 +102,12 @@
     <string name="settings_v2_native_log_view_title">ログファイル表示</string>
     <string name="settings_v2_native_log_view_subtitle">保存されたネイティブログファイルの確認と送信</string>
 
-    <!-- Info -->
+    <!-- 정보 -->
     <string name="settings_v2_oss_license_title">オープンソースライセンス</string>
     <string name="settings_v2_oss_license_subtitle">使用しているオープンソースライブラリ</string>
     <string name="settings_v2_app_version_title">アプリバージョン</string>
 
-    <!-- Referral (admin) -->
+    <!-- 추천 코드 (admin) -->
     <string name="settings_v2_referral_usage_title">リファラルコード使用量</string>
     <string name="settings_v2_referral_usage_subtitle">全体: %1$d件 | 利用可能: %2$d件 | 使用済み: %3$d件 (%4$d%%)</string>
     <string name="settings_v2_referral_generate_title">リファラルコード30件生成</string>

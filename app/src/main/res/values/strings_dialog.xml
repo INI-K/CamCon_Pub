@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Splash screen progress messages -->
+    <!-- 스플래시 화면 진행 메시지 -->
     <string name="splash_initializing">Initializing...</string>
     <string name="splash_library_check">Checking library status...</string>
     <string name="splash_library_failed">Library load failed</string>
@@ -17,7 +17,7 @@
     <string name="splash_camera_controller">Camera Controller</string>
     <string name="splash_subscription_tier">Subscription tier: %1$s</string>
 
-    <!-- Main dialogs -->
+    <!-- 메인 다이얼로그 -->
     <string name="dialog_restart_required_title">App restart required</string>
     <string name="dialog_restart_preparing_title">Preparing to restart...</string>
     <string name="dialog_restart_preparing_body">Please wait while the camera connection is being cleaned up.</string>
@@ -48,7 +48,7 @@
     <string name="dialog_wifi_disconnected_title">Wi-Fi disconnected</string>
     <string name="dialog_wifi_disconnected_body">The camera Wi-Fi connection has been lost. Please reconnect.</string>
 
-    <!-- PTPIP / Wi-Fi progress messages (DataSource → UI) -->
+    <!-- PTPIP / Wi-Fi 진행 메시지 (DataSource → UI) -->
     <string name="progress_ptpip_connecting">Connecting to camera...</string>
     <string name="progress_ptpip_connection_start">Starting camera connection...</string>
     <string name="progress_ptpip_authenticating_nikon">Authenticating Nikon camera...</string>
@@ -70,7 +70,7 @@
     <string name="progress_camera_connect_exception">Error during camera connection: %1$s</string>
     <string name="progress_camera_label_connected">%1$s (connected)</string>
 
-    <!-- Notification settings -->
+    <!-- 알림 설정 -->
     <string name="notification_settings_title">Notification settings</string>
     <string name="notification_settings_subtitle">Push notifications and sound</string>
 </resources>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 账户：登出 / 删除 -->
+    <!-- 계정: 로그아웃 / 삭제 -->
     <string name="account_logout_dialog_title">要登出吗？</string>
     <string name="account_logout_dialog_message">本地照片缓存与自动连接记录将会保留。确定要登出吗？</string>
     <string name="account_logout_confirm">登出</string>
@@ -21,7 +21,7 @@
     <string name="account_delete_success">账户已删除</string>
     <string name="account_delete_failed">账户删除失败:%s</string>
 
-    <!-- 引导 -->
+    <!-- 온보딩 -->
     <string name="onboarding_skip">跳过</string>
     <string name="onboarding_next">下一步</string>
     <string name="onboarding_start">开始使用</string>
@@ -35,7 +35,7 @@
     <string name="onboarding_step3_title">权限授予</string>
     <string name="onboarding_step3_description">为了实现 Wi-Fi 发现与实时通知,请在弹出时允许位置、Wi-Fi 和通知权限。</string>
 
-    <!-- 语言选择 -->
+    <!-- 언어 선택 -->
     <string name="language_row_title">语言 / Language</string>
     <string name="language_dialog_title">选择语言</string>
     <string name="language_system_default">系统默认</string>
@@ -48,7 +48,7 @@
     <string name="language_option_fr">Français</string>
     <string name="language_option_it">Italiano</string>
 
-    <!-- 推荐码输入 -->
+    <!-- 추천 코드 입력 -->
     <string name="referral_input_label">推荐码(可选)</string>
     <string name="referral_input_helper">如果有推荐码,请在登录前输入。</string>
 </resources>

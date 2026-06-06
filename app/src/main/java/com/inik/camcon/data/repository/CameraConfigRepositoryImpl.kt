@@ -54,7 +54,7 @@ class CameraConfigRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getCameraAbout(): Result<String> = runCatching {
-        // Will be implemented when C++ JNI binding for getCameraAbout is added
+        // getCameraAbout용 C++ JNI 바인딩이 추가되면 구현 예정
         throw UnsupportedOperationException("getCameraAbout C++ binding not yet implemented")
     }
 

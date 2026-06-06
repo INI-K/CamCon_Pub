@@ -1,40 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- ColorTransfer v2: i18n for settings/live-preview/preview-view + progress + picker -->
+    <!-- ColorTransfer v2: 설정/실시간 미리보기/미리보기 화면 + 진행률 + 선택기 i18n -->
 
-    <!-- Common / TopBar -->
+    <!-- 공통 / 상단 바 -->
     <string name="ct_settings_title">Detaileinstellungen für Farbübertragung</string>
     <string name="ct_cd_close">Schließen</string>
     <string name="ct_confirm">OK</string>
 
-    <!-- Disabled banner -->
+    <!-- 비활성화 배너 -->
     <string name="ct_disabled_title">⚠️ Farbübertragung ist deaktiviert</string>
     <string name="ct_disabled_message">Bitte aktivieren Sie zuerst die Farbübertragung in den Einstellungen</string>
 
-    <!-- Live preview section -->
+    <!-- 실시간 미리보기 섹션 -->
     <string name="ct_live_preview_title">Echtzeit-Vorschau</string>
 
-    <!-- Intensity slider -->
+    <!-- 강도 슬라이더 -->
     <string name="ct_intensity_title">Intensität der Farbübertragung</string>
     <string name="ct_intensity_percent">%d%%</string>
     <string name="ct_intensity_weak">Schwach (1%%)</string>
     <string name="ct_intensity_strong">Stark (100%%)</string>
     <string name="ct_intensity_recommended">Empfohlen: 3–10%%</string>
 
-    <!-- Image management -->
+    <!-- 이미지 관리 -->
     <string name="ct_image_management">Bildverwaltung</string>
     <string name="ct_reference_image">Referenzbild</string>
     <string name="ct_target_image">Zielbild</string>
     <string name="ct_manage_library">Referenzbild-Bibliothek</string>
     <string name="ct_clear_cache">Cache leeren</string>
 
-    <!-- Error card -->
+    <!-- 오류 카드 -->
     <string name="ct_error_title">Fehler aufgetreten</string>
 
-    <!-- Processing progress -->
+    <!-- 처리 진행률 -->
     <string name="ct_processing_title">Farbübertragung wird verarbeitet…</string>
 
-    <!-- LivePreview component -->
+    <!-- LivePreview 컴포넌트 -->
     <string name="ct_lp_placeholder_title">Echtzeit-Vorschau</string>
     <string name="ct_lp_placeholder_desc">Wählen Sie ein Referenz- und ein Zielbild aus,\num die Vorschau anzuzeigen</string>
     <string name="ct_lp_slider_active_desc">Die Vorschau wird aktualisiert,\nsobald Sie den Regler loslassen</string>
@@ -50,7 +50,7 @@
     <string name="ct_lp_full_result_title">Farbergebnis (Originalgröße)</string>
     <string name="ct_lp_cd_full_applied">Bild mit angewendeter Farbe in Originalgröße</string>
 
-    <!-- PreviewView component -->
+    <!-- PreviewView 컴포넌트 -->
     <string name="ct_pv_reference_title">Farbreferenzbild</string>
     <string name="ct_pv_reference_subtitle">Die Farbe dieses Bildes wird angewendet</string>
     <string name="ct_pv_reference_placeholder">Wählen Sie ein Referenzbild,\ndessen Farbe übernommen werden soll</string>

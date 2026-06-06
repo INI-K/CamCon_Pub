@@ -37,7 +37,7 @@ class GetCameraSettingsUseCaseTest {
     }
 
     /**
-     * Happy Path Tests - 정상 동작
+     * 정상 경로 테스트 - 정상 동작
      */
 
     @Test
@@ -161,7 +161,7 @@ class GetCameraSettingsUseCaseTest {
     }
 
     /**
-     * Edge Cases - 경계값, 빈 상태 등
+     * 엣지 케이스 - 경계값, 빈 상태 등
      */
 
     @Test
@@ -214,7 +214,7 @@ class GetCameraSettingsUseCaseTest {
     }
 
     /**
-     * Error Cases - 에러 처리
+     * 에러 케이스 - 에러 처리
      */
 
     @Test
@@ -266,7 +266,7 @@ class GetCameraSettingsUseCaseTest {
     }
 
     /**
-     * Repository Interaction Tests - Repository 호출 검증
+     * Repository 상호작용 테스트 - Repository 호출 검증
      */
 
     @Test
@@ -293,7 +293,7 @@ class GetCameraSettingsUseCaseTest {
     }
 
     /**
-     * Multi-call Tests - 여러 번 호출
+     * 다중 호출 테스트 - 여러 번 호출
      */
 
     @Test
@@ -319,7 +319,7 @@ class GetCameraSettingsUseCaseTest {
         coEvery { cameraRepository.getCameraSettings() } returns Result.success(settings1)
         useCase = GetCameraSettingsUseCase(cameraRepository)
 
-        // When - first call
+        // When - 첫 번째 호출
         val result1 = useCase()
         testDispatcher.scheduler.advanceUntilIdle()
 
@@ -327,7 +327,7 @@ class GetCameraSettingsUseCaseTest {
         assertTrue(result1.isSuccess)
         assertEquals("100", result1.getOrNull()?.iso)
 
-        // When - update mock and second call
+        // When - 목 업데이트 후 두 번째 호출
         coEvery { cameraRepository.getCameraSettings() } returns Result.success(settings2)
         val result2 = useCase()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -344,14 +344,14 @@ class GetCameraSettingsUseCaseTest {
         coEvery { cameraRepository.getCameraSettings() } returns Result.failure(exception)
         useCase = GetCameraSettingsUseCase(cameraRepository)
 
-        // When - first call fails
+        // When - 첫 번째 호출 실패
         val result1 = useCase()
         testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
         assertTrue(result1.isFailure)
 
-        // When - update mock to success
+        // When - 목을 성공으로 업데이트
         val settings = CameraSettings(
             iso = "200",
             shutterSpeed = "1/500",

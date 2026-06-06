@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Login v2: classified sign-in error / referral feedback -->
+    <!-- 로그인 v2: 분류된 로그인 오류 / 추천인 피드백 -->
     <string name="login_error_cancelled">Sign-in was cancelled.</string>
     <string name="login_error_network">Network error. Please check your connection and try again.</string>
     <string name="login_error_auth">Sign-in failed. Please try again.</string>
@@ -10,7 +10,7 @@
     <string name="login_referral_failed">Could not apply the referral code.</string>
     <string name="login_referral_error">There was a problem processing the referral code.</string>
 
-    <!-- Auth (sign-out) error details, used as the "%s" of settings_toast_logout_failed -->
+    <!-- 인증(로그아웃) 오류 상세, settings_toast_logout_failed의 "%s"로 사용됨 -->
     <string name="auth_error_network_detail">network error</string>
     <string name="auth_error_unknown_detail">unknown error</string>
 </resources>

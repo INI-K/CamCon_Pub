@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Camera Abilities screen -->
+    <!-- 카메라 기능 화면 -->
     <string name="diag_abilities_title">Fonctions de l\'appareil</string>
     <string name="diag_abilities_loading">Chargement des informations de l\'appareil…</string>
     <string name="diag_abilities_retry">Réessayer</string>
@@ -55,7 +55,7 @@
     <string name="diag_abilities_summary_partial">ℹ️ Prise en charge partielle\n\nL\'aperçu en direct n\'est pas pris en charge, mais la capture à distance est disponible.</string>
     <string name="diag_abilities_summary_some">ℹ️ Certaines fonctions prises en charge\n\nCertaines fonctions de l\'appareil peuvent être limitées.</string>
 
-    <!-- Diagnostics section (ADMIN) -->
+    <!-- 진단 섹션 (ADMIN) -->
     <string name="diag_section_title">🩺 Diagnostic (ADMIN)</string>
     <string name="diag_run_button">Lancer le diagnostic</string>
     <string name="diag_running">Diagnostic en cours…</string>
@@ -73,10 +73,10 @@
     <string name="diag_memory_clear_pool">Vider le pool de fichiers</string>
     <string name="diag_report_empty">Aucun rapport pour l\'instant. Lancez le diagnostic.</string>
 
-    <!-- RAW restriction upgrade action -->
+    <!-- RAW 제한 업그레이드 액션 -->
     <string name="diag_raw_upgrade">Mettre à niveau</string>
 
-    <!-- Camera restart dialog -->
+    <!-- 카메라 재시작 대화상자 -->
     <string name="diag_restart_needed">Redémarrage de l\'application requis</string>
     <string name="diag_restart_message">Le périphérique USB n\'a pas été déconnecté correctement, ou une erreur système (-52) s\'est produite.\n\nL\'application doit être redémarrée pour fonctionner correctement.\n\nRedémarrer l\'application maintenant ?</string>
     <string name="diag_restart_confirm">Redémarrer l\'application</string>

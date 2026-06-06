@@ -24,7 +24,7 @@ class CapturePhotoUseCaseTest {
         useCase = CapturePhotoUseCase(fakeRepository)
     }
 
-    // ====== Happy Path Tests ======
+    // ====== 정상 경로 테스트 ======
 
     @Test
     fun singleModeSuccessfullyCapturesPhoto() = runTest {
@@ -124,7 +124,7 @@ class CapturePhotoUseCaseTest {
         assertEquals("Height must match", 4000, photo?.height)
     }
 
-    // ====== Unsupported Shooting Modes Tests ======
+    // ====== 미지원 촬영 모드 테스트 ======
 
     @Test
     fun burstModeThrowsUnsupportedShootingModeException() = runTest {
@@ -234,7 +234,7 @@ class CapturePhotoUseCaseTest {
         }
     }
 
-    // ====== Error Scenarios Tests ======
+    // ====== 에러 시나리오 테스트 ======
 
     @Test
     fun cameraNotConnectedReturnsFailure() = runTest {
@@ -285,7 +285,7 @@ class CapturePhotoUseCaseTest {
         assertEquals("Error message must be preserved", errorMessage, capturedException?.message)
     }
 
-    // ====== Edge Cases Tests ======
+    // ====== 엣지 케이스 테스트 ======
 
     @Test
     fun multipleCaptureCallsTrackSeparately() = runTest {
@@ -314,14 +314,14 @@ class CapturePhotoUseCaseTest {
         )
         fakeRepository.capturePhotoResult = Result.success(photo1)
 
-        // when - first call
+        // when - 첫 번째 호출
         val result1 = useCase(ShootingMode.SINGLE)
 
         // then
         assertTrue("First result must be success", result1.isSuccess)
         assertEquals("Call count must be 1 after first call", 1, fakeRepository.capturePhotoCallCount)
 
-        // when - update mock and second call
+        // when - 목 업데이트 후 두 번째 호출
         fakeRepository.capturePhotoResult = Result.success(photo2)
         val result2 = useCase(ShootingMode.SINGLE)
 
@@ -338,14 +338,14 @@ class CapturePhotoUseCaseTest {
         val exception = RuntimeException("Temporary capture failure")
         fakeRepository.capturePhotoResult = Result.failure(exception)
 
-        // when - first call fails
+        // when - 첫 번째 호출 실패
         val result1 = useCase(ShootingMode.SINGLE)
 
         // then
         assertTrue("First result must be failure", result1.isFailure)
         assertEquals("Call count must be 1 after failure", 1, fakeRepository.capturePhotoCallCount)
 
-        // when - update mock to success
+        // when - 목을 성공으로 업데이트
         val recoveryPhoto = CapturedPhoto(
             id = "photo-recovery",
             filePath = "/sdcard/recovery.jpg",
@@ -382,11 +382,11 @@ class CapturePhotoUseCaseTest {
         )
         fakeRepository.capturePhotoResult = Result.success(testPhoto)
 
-        // when - call with SINGLE
+        // when - SINGLE 모드로 호출
         useCase(ShootingMode.SINGLE)
         val mode1 = fakeRepository.lastCapturePhotoMode
 
-        // when - call with BURST (even though unsupported)
+        // when - BURST 모드로 호출 (미지원이지만)
         val exception = UnsupportedShootingModeException(
             mode = ShootingMode.BURST,
             supportedModes = listOf(ShootingMode.SINGLE)

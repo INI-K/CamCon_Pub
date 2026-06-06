@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?><!--
-   Sample backup rules file; uncomment and customize as necessary.
-   See https://developer.android.com/guide/topics/data/autobackup
-   for details.
-   Note: This file is ignored for devices older that API 31
-   See https://developer.android.com/about/versions/12/backup-restore
+   백업 규칙 파일 샘플. 필요에 따라 주석을 해제하고 수정해서 사용한다.
+   자세한 내용은 https://developer.android.com/guide/topics/data/autobackup 참고.
+   참고: 이 파일은 API 31보다 오래된 기기에서는 무시된다.
+   https://developer.android.com/about/versions/12/backup-restore 참고
 -->
 <full-backup-content>
     <!--

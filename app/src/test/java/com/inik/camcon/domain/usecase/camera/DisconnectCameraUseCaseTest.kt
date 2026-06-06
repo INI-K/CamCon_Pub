@@ -35,7 +35,7 @@ class DisconnectCameraUseCaseTest {
     }
 
     /**
-     * Happy Path - 정상 연결 해제
+     * 정상 경로 - 정상 연결 해제
      */
 
     @Test
@@ -70,7 +70,7 @@ class DisconnectCameraUseCaseTest {
     }
 
     /**
-     * Error Cases - 연결 해제 실패
+     * 에러 케이스 - 연결 해제 실패
      */
 
     @Test
@@ -138,7 +138,7 @@ class DisconnectCameraUseCaseTest {
     }
 
     /**
-     * Multiple Call Tests - 여러 번 호출
+     * 다중 호출 테스트 - 여러 번 호출
      */
 
     @Test
@@ -147,14 +147,14 @@ class DisconnectCameraUseCaseTest {
         coEvery { cameraRepository.disconnectCamera() } returns Result.success(true)
         useCase = DisconnectCameraUseCase(cameraRepository)
 
-        // When - First call succeeds
+        // When - 첫 번째 호출 성공
         val result1 = useCase()
         testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
         assertTrue(result1.isSuccess)
 
-        // When - Second call fails (already disconnected)
+        // When - 두 번째 호출 실패 (이미 연결 해제됨)
         coEvery { cameraRepository.disconnectCamera() } returns Result.failure(
             IllegalStateException("Camera already disconnected")
         )
@@ -172,14 +172,14 @@ class DisconnectCameraUseCaseTest {
         coEvery { cameraRepository.disconnectCamera() } returns Result.failure(exception)
         useCase = DisconnectCameraUseCase(cameraRepository)
 
-        // When - First call fails
+        // When - 첫 번째 호출 실패
         val result1 = useCase()
         testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
         assertTrue(result1.isFailure)
 
-        // When - Update mock to success
+        // When - 목을 성공으로 업데이트
         coEvery { cameraRepository.disconnectCamera() } returns Result.success(true)
         val result2 = useCase()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -189,7 +189,7 @@ class DisconnectCameraUseCaseTest {
     }
 
     /**
-     * Idempotency Tests - 멱등성 검사
+     * 멱등성 테스트 - 멱등성 검사
      */
 
     @Test
@@ -207,7 +207,7 @@ class DisconnectCameraUseCaseTest {
     }
 
     /**
-     * State Verification Tests
+     * 상태 검증 테스트
      */
 
     @Test
@@ -243,7 +243,7 @@ class DisconnectCameraUseCaseTest {
     }
 
     /**
-     * Exception Message Verification
+     * 예외 메시지 검증
      */
 
     @Test
@@ -265,7 +265,7 @@ class DisconnectCameraUseCaseTest {
     }
 
     /**
-     * Repository Interaction Tests
+     * Repository 상호작용 테스트
      */
 
     @Test

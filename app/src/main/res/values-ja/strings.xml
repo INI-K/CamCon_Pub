@@ -1,12 +1,12 @@
 <resources>
-    <!-- アプリ情報 -->
+    <!-- 앱 정보 -->
     <string name="app_name">CamCon</string>
     <string name="app_description">Android用プロフェッショナルカメラコントロール</string>
 
     <!-- Google Sign-In -->
     <string name="default_web_client_id">527188051661-b9cru75i7min570psfn47fmd04hh2qn6.apps.googleusercontent.com</string>
 
-    <!-- 共通 -->
+    <!-- 공통 -->
     <string name="ok">OK</string>
     <string name="cancel">キャンセル</string>
     <string name="retry">再試行</string>
@@ -22,7 +22,7 @@
     <string name="error">エラー</string>
     <string name="success">成功</string>
 
-    <!-- 認証 -->
+    <!-- 인증 -->
     <string name="login">ログイン</string>
     <string name="logout">ログアウト</string>
     <string name="login_with_google">Googleでログイン</string>
@@ -34,7 +34,7 @@
     <string name="logout_success">ログアウト成功</string>
     <string name="terms_agreement">ログインすることで、利用規約およびプライバシーポリシーに同意したものとみなされます。</string>
 
-    <!-- カメラ接続 -->
+    <!-- 카메라 연결 -->
     <string name="camera_connected">接続済み</string>
     <string name="camera_disconnected">切断済み</string>
     <string name="camera_not_connected">カメラが接続されていません</string>
@@ -46,7 +46,7 @@
     <string name="camera_detected">カメラを検出しました: %s</string>
     <string name="no_camera_detected">カメラが検出されませんでした</string>
 
-    <!-- カメラコントロール -->
+    <!-- 카메라 컨트롤 -->
     <string name="capture">撮影</string>
     <string name="capture_photo">写真撮影</string>
     <string name="start_live_view">ライブビュー開始</string>
@@ -58,7 +58,7 @@
     <string name="gallery">ギャラリー</string>
     <string name="photo_library">フォトライブラリ</string>
 
-    <!-- 撮影モード -->
+    <!-- 촬영 모드 -->
     <string name="shooting_mode">撮影モード</string>
     <string name="single_shot">単写</string>
     <string name="burst_mode">連写</string>
@@ -66,7 +66,7 @@
     <string name="bulb_mode">バルブ</string>
     <string name="hdr_bracket">HDR</string>
 
-    <!-- カメラ設定 -->
+    <!-- 카메라 설정 -->
     <string name="camera_settings">カメラ設定</string>
     <string name="iso">ISO</string>
     <string name="shutter_speed">シャッタースピード</string>
@@ -79,7 +79,7 @@
     <string name="image_quality">画質</string>
     <string name="file_format">ファイル形式</string>
 
-    <!-- タイムラプス -->
+    <!-- 타임랩스 -->
     <string name="timelapse_settings">タイムラプス設定</string>
     <string name="interval_seconds">間隔（秒）</string>
     <string name="total_shots">総撮影数</string>
@@ -90,7 +90,7 @@
     <string name="timelapse_completed">タイムラプス完了</string>
     <string name="shots_remaining">残り撮影数: %d</string>
 
-    <!-- 写真管理 -->
+    <!-- 사진 관리 -->
     <string name="recent_captures">最近の撮影</string>
     <string name="camera_photo_list">カメラ写真一覧</string>
     <string name="captured_photos">撮影された写真</string>
@@ -103,7 +103,7 @@
     <string name="edit_photo">写真を編集</string>
     <string name="photo_details">写真の詳細</string>
 
-    <!-- サーバー/クラウド -->
+    <!-- 서버/클라우드 -->
     <string name="server_photos">マイ写真</string>
     <string name="upload_to_cloud">クラウドにアップロード</string>
     <string name="download_from_cloud">クラウドからダウンロード</string>
@@ -115,7 +115,7 @@
     <string name="download_success">ダウンロード成功</string>
     <string name="download_failed">ダウンロード失敗</string>
 
-    <!-- 設定 -->
+    <!-- 설정 -->
     <string name="app_settings">アプリ設定</string>
     <string name="language">言語</string>
     <string name="theme">テーマ</string>
@@ -130,7 +130,7 @@
     <string name="privacy_policy">プライバシーポリシー</string>
     <string name="terms_of_service">利用規約</string>
 
-    <!-- エラーメッセージ -->
+    <!-- 오류 메시지 -->
     <string name="error_camera_init">カメラの初期化に失敗しました</string>
     <string name="error_camera_capture">写真撮影に失敗しました</string>
     <string name="error_live_view">ライブビューの開始に失敗しました</string>
@@ -143,7 +143,7 @@
     <string name="error_camera_busy">カメラがビジー状態です</string>
     <string name="error_unsupported_shooting_mode">サポートされていない撮影モード: %1$s。サポートモード: %2$s</string>
 
-    <!-- 撮影モード名 -->
+    <!-- 촬영 모드 이름 -->
     <string name="shooting_mode_single">シングルショット</string>
     <string name="shooting_mode_continuous">連続</string>
     <string name="shooting_mode_timelapse">タイムラプス</string>
@@ -151,19 +151,19 @@
     <string name="shooting_mode_hdr_bracket">HDRブラケット</string>
     <string name="shooting_mode_bulb">バルブ</string>
 
-    <!-- 権限 -->
+    <!-- 권한 -->
     <string name="permission_camera">カメラ権限が必要です</string>
     <string name="permission_storage">ストレージ権限が必要です</string>
     <string name="permission_internet">インターネット権限が必要です</string>
     <string name="grant_permission">権限を許可</string>
 
-    <!-- ナビゲーション -->
+    <!-- 내비게이션 -->
     <string name="camera_control">カメラコントロール</string>
     <string name="photo_preview">写真プレビュー</string>
     <string name="splash_screen">スプラッシュ画面</string>
     <string name="main_screen">メイン画面</string>
 
-    <!-- ステータス -->
+    <!-- 상태 -->
     <string name="ready">準備完了</string>
     <string name="busy">使用中</string>
     <string name="capturing">撮影中...</string>
@@ -171,14 +171,14 @@
     <string name="connecting">接続中...</string>
     <string name="initialized">初期化済み</string>
 
-    <!-- ファイルサイズ/品質 -->
+    <!-- 파일 크기/품질 -->
     <string name="high_quality">高品質</string>
     <string name="medium_quality">中品質</string>
     <string name="low_quality">低品質</string>
     <string name="raw_format">RAW</string>
     <string name="jpeg_format">JPEG</string>
 
-    <!-- 時間/日付 -->
+    <!-- 시간/날짜 -->
     <string name="today">今日</string>
     <string name="yesterday">昨日</string>
     <string name="this_week">今週</string>
@@ -186,17 +186,17 @@
     <string name="hours_ago">%d時間前</string>
     <string name="days_ago">%d日前</string>
 
-    <!-- 空の状態 -->
+    <!-- 빈 상태 -->
     <string name="no_photos">写真がありません</string>
     <string name="connect_camera_and_capture">USB経由でカメラを接続し\n写真を撮影してください</string>
     <string name="check_camera_connection">• カメラが接続されているか確認してください\n• 下にスワイプして更新</string>
     <string name="image_load_failed">画像を読み込めません</string>
 
-    <!-- USB接続 -->
+    <!-- USB 연결 -->
     <string name="usb_refresh">USB更新</string>
     <string name="usb_permission_request">USB権限リクエスト</string>
 
-    <!-- Wi-Fi接続 -->
+    <!-- Wi-Fi 연결 -->
     <string name="wifi_camera_connection">Wi-Fiカメラ接続</string>
     <string name="color_transfer_settings">カラー転送設定</string>
     <string name="not_connected_to_camera_ap">カメラAPに接続されていません</string>
@@ -209,7 +209,7 @@
     <string name="manual_connection_management">カメラ接続を手動で管理</string>
     <string name="wifi_feature_info_area">Wi-Fi機能情報カードエリア</string>
 
-    <!-- 写真情報 -->
+    <!-- 사진 정보 -->
     <string name="resolution">解像度</string>
     <string name="capture_date">撮影日時</string>
     <string name="file_path">パス</string>
@@ -222,7 +222,7 @@
     <string name="focus_auto">オート</string>
     <string name="focus_manual">マニュアル</string>
 
-    <!-- ライブビュー -->
+    <!-- 라이브뷰 -->
     <string name="live_view_not_supported">ライブビューはサポートされていません</string>
     <string name="camera_does_not_support_live_view">このカメラモデルはライブビューをサポートしていません</string>
     <string name="liveview_not_supported">ライブビューはサポートされていません</string>
@@ -232,7 +232,7 @@
     <string name="capturing_photo">写真を撮影中...</string>
     <string name="starting_liveview">ライブビューを開始中...</string>
 
-    <!-- 機能バッジ -->
+    <!-- 기능 배지 -->
     <string name="live_view">ライブビュー</string>
     <string name="time_lapse">タイムラプス</string>
     <string name="burst">連写</string>
@@ -241,7 +241,7 @@
     <string name="remote_control">リモートコントロール</string>
     <string name="bracketing">ブラケット撮影</string>
 
-    <!-- カメラヘルプ -->
+    <!-- 카메라 도움말 -->
     <string name="check_other_apps_not_using_camera">他のアプリがカメラを使用していないことを確認してください。</string>
     <string name="camera_specific_settings">カメラ固有の設定:</string>
     <string name="canon_usb_setting">• Canon: メニュー > 通信設定 > USB接続 > PCリモート撮影</string>
@@ -256,11 +256,11 @@
     <string name="nikon_camera_settings">• Nikon: メニュー > USB > PTP/MTPモード</string>
     <string name="sony_camera_settings">• Sony: メニュー > USB接続 > PCリモート</string>
 
-    <!-- USB Connection -->
+    <!-- USB 연결 -->
     <string name="refresh_usb">USBを更新</string>
     <string name="request_usb_permission">USB権限を要求</string>
 
-    <!-- RAW gating + filter messages (i18n PR-7 + PR-8, M2 일본어 번역, 2026-05-13). -->
+    <!-- RAW 게이팅 + 필터 메시지 (i18n PR-7 + PR-8, M2 일본어 번역, 2026-05-13). -->
     <string name="raw_restriction_free">RAWファイル転送は準備中です。\nJPGのみで撮影してください！</string>
     <string name="raw_restriction_basic">RAWファイルはPROサブスクリプションでのみご利用いただけます。\nPROにアップグレードして高度なRAW編集機能をお試しください！</string>
     <string name="raw_restriction_download_disabled">設定でRAWファイルのダウンロードが無効になっています。</string>
@@ -277,7 +277,7 @@
     <string name="raw_filter_restriction_basic">RAWファイルはPROサブスクリプションでのみ表示できます。\nPROにアップグレードしてください！</string>
     <string name="raw_filter_restriction_generic">RAWファイルにアクセスできません。</string>
 
-    <!-- スマートフォンホットスポット STA モード (PtpipConnectionScreen 第3タブ) -->
+    <!-- 스마트폰 핫스팟 STA 모드 (PtpipConnectionScreen 세 번째 탭) -->
     <string name="ptpip_sta_hotspot_mode">STA (スマホテザリング)</string>
     <string name="ptpip_hotspot_description">ルーターなしで、スマートフォンがホットスポット役となり、カメラがクライアントとして接続します。</string>
     <string name="ptpip_hotspot_enabled">スマホのテザリングが有効です</string>
@@ -290,25 +290,25 @@
     <string name="ptpip_hotspot_step_4">4. カメラが接続されたら「カメラを探す」を押すか、IPを直接入力してください</string>
     <string name="ptpip_hotspot_step_5">5. mDNS広告が届かない場合はIPを直接入力してください</string>
 
-    <!-- カメラ接続最適化ダイアログ (MainActivity, 2026-05-22) -->
+    <!-- 카메라 연결 최적화 다이얼로그 (MainActivity, 2026-05-22) -->
     <string name="camera_connection_optimization_title">カメラ接続最適化設定</string>
     <string name="camera_connection_optimization_message">カメラとの安定した接続のため、バッテリー最適化の除外設定を推奨します。</string>
     <string name="camera_connection_optimization_details">• リアルタイムカメラ制御の維持\n• 写真自動転送の安定性向上\n• バックグラウンド切断の防止\n\n※ カメラ周辺機器接続アプリとしてGoogle Playポリシーにより許可されています。</string>
     <string name="camera_connection_optimization_confirm">設定する</string>
     <string name="camera_connection_optimization_dismiss">後で</string>
 
-    <!-- アクセシビリティ — ステータス/読み込み (WCAG 2.2 SC 4.1.3) -->
+    <!-- 접근성 — 상태/로딩 (WCAG 2.2 SC 4.1.3) -->
     <string name="cd_loading">読み込み中</string>
     <string name="cd_button_loading">処理中</string>
     <string name="cd_status_idle">待機中</string>
     <string name="cd_status_connecting">接続中</string>
     <string name="cd_status_connected">接続済み</string>
     <string name="cd_status_error">エラー</string>
-    <!-- %1$s = ファイル名, %2$s = 撮影日時 -->
+    <!-- %1$s = 파일명, %2$s = 촬영 일시 -->
     <string name="cd_photo_preview">写真 %1$s、%2$s</string>
     <string name="cd_photo_preview_no_date">写真 %1$s</string>
 
-    <!-- SettingsActivity (developer + logs) -->
+    <!-- SettingsActivity (개발자 + 로그) -->
     <string name="settings_toast_logout_failed">ログアウトに失敗しました: %s</string>
     <string name="settings_toast_notification_granted">通知権限が許可されました。</string>
     <string name="settings_toast_notification_denied">通知権限が拒否されました。</string>

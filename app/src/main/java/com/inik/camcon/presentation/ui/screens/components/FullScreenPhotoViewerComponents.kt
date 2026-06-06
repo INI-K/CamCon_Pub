@@ -54,6 +54,7 @@ import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.presentation.theme.Background
 import com.inik.camcon.presentation.theme.TextPrimary
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
+import com.inik.camcon.utils.LogMask
 import kotlinx.coroutines.launch
 
 @Composable
@@ -200,7 +201,7 @@ fun PhotoPagerImage(
 
     val imageModel: Any? = when {
         isLocalPhoto || java.io.File(photo.path).exists() -> {
-            Log.d("PhotoPagerImage", "로컬 파일 사용: ${photo.path}")
+            Log.d("PhotoPagerImage", "로컬 파일 사용: ${LogMask.path(photo.path)}")
             java.io.File(photo.path)
         }
 
@@ -263,11 +264,10 @@ fun PhotoPagerImage(
                                     else -> "없음"
                                 }
 
-                                Log.d("EXIF_CHECK", "=== EXIF 회전 정보 확인 ===")
-                                Log.d("EXIF_CHECK", "파일: ${photo.name}")
-                                Log.d("EXIF_CHECK", "EXIF Orientation: $orientation")
-                                Log.d("EXIF_CHECK", "필요한 회전: $rotationNeeded")
-                                Log.d("EXIF_CHECK", "Coil의 자동 EXIF 회전 활성화 상태: 활성 (180도는 상하 반전됨)")
+                                Log.d(
+                                    "EXIF_CHECK",
+                                    "EXIF 회전: ${photo.name} orientation=$orientation 필요회전=$rotationNeeded (Coil 자동회전 활성, 180도는 상하반전)"
+                                )
                             }
                         } catch (e: Exception) {
                             Log.e("EXIF_CHECK", "EXIF 정보 확인 실패: ${e.message}", e)

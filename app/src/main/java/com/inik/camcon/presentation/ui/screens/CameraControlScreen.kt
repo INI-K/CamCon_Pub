@@ -1449,7 +1449,7 @@ private fun CameraSettingsSheet(
 
         Spacer(modifier = Modifier.height(Spacing.base))
 
-        // Settings would be dynamically loaded based on camera capabilities
+        // 설정은 카메라 능력에 따라 동적으로 로드될 예정
 //        settings?.let {
 //            Text("ISO: ${it.iso}")
 //            Text("셔터 속도: ${it.shutterSpeed}")
@@ -1641,8 +1641,6 @@ private fun CapturedPhoto.getExifData(): String? {
         null
     }
 }
-
-// ... existing code ...
 
 /**
  * RAW 파일 제한 알림 컴포넌트 (슬라이드 인/아웃 + 페이드)

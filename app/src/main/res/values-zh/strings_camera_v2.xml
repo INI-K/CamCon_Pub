@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Camera Control UX v2 — newly added keys only -->
+    <!-- 카메라 컨트롤 UX v2 — 신규 추가 키만 -->
     <string name="capture_shutter_cd">拍摄</string>
     <string name="capture_stop_timelapse">停止延时摄影</string>
     <string name="unsupported_shooting_mode_message">此相机不支持%s拍摄模式</string>

@@ -69,7 +69,7 @@ class PtpipDebugHelper @Inject constructor(
                     callback.onErrorChanged(result.message)
                     Log.d(TAG, "연결 유지 (카메라 Wi-Fi 종료 방지)")
                 } else {
-                    Log.e(TAG, "기본 PTPIP 연결 실패")
+                    Log.w(TAG, "기본 PTPIP 연결 실패")
                     callback.onErrorChanged(result.message)
                 }
 
@@ -101,7 +101,7 @@ class PtpipDebugHelper @Inject constructor(
                     Log.i(TAG, "니콘 Phase 1 인증 성공")
                     callback.onErrorChanged("Phase 1 인증 성공")
                 } else {
-                    Log.e(TAG, "니콘 Phase 1 인증 실패")
+                    Log.w(TAG, "니콘 Phase 1 인증 실패")
                     callback.onErrorChanged("Phase 1 인증 실패")
                 }
 
@@ -133,7 +133,7 @@ class PtpipDebugHelper @Inject constructor(
                     Log.i(TAG, "니콘 Phase 2 인증 성공")
                     callback.onErrorChanged("Phase 2 인증 성공")
                 } else {
-                    Log.e(TAG, "니콘 Phase 2 인증 실패")
+                    Log.w(TAG, "니콘 Phase 2 인증 실패")
                     callback.onErrorChanged("Phase 2 인증 실패")
                 }
 
@@ -165,7 +165,7 @@ class PtpipDebugHelper @Inject constructor(
                     Log.i(TAG, "니콘 명령 ($command) 성공")
                     callback.onErrorChanged("$command 명령 성공")
                 } else {
-                    Log.e(TAG, "니콘 명령 ($command) 실패")
+                    Log.w(TAG, "니콘 명령 ($command) 실패")
                     callback.onErrorChanged("$command 명령 실패")
                 }
 
@@ -197,7 +197,7 @@ class PtpipDebugHelper @Inject constructor(
                     Log.i(TAG, "소켓 연결 성공")
                     callback.onErrorChanged("소켓 연결 성공")
                 } else {
-                    Log.e(TAG, "소켓 연결 실패")
+                    Log.w(TAG, "소켓 연결 실패")
                     callback.onErrorChanged("소켓 연결 실패")
                 }
 

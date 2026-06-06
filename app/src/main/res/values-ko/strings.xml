@@ -322,7 +322,7 @@
     <string name="cd_photo_preview">사진 %1$s, %2$s</string>
     <string name="cd_photo_preview_no_date">사진 %1$s</string>
 
-    <!-- SettingsActivity (developer + logs) -->
+    <!-- SettingsActivity (개발자 + 로그) -->
     <string name="settings_toast_logout_failed">로그아웃 실패: %s</string>
     <string name="settings_toast_notification_granted">알림 권한이 허용되었습니다.</string>
     <string name="settings_toast_notification_denied">알림 권한이 거부되었습니다.</string>

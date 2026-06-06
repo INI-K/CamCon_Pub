@@ -16,6 +16,7 @@ import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
 import com.inik.camcon.domain.model.WifiScanPermissionStatus
+import com.inik.camcon.utils.LogMask
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -261,10 +262,10 @@ class PtpipViewModel @Inject constructor(
         viewModelScope.launch(ioDispatcher) {
             val passphrase = connectionHelper.getSavedCredentialPassphrase(ssid)
             if (passphrase != null) {
-                Log.d(TAG, "저장된 비밀번호로 Wi-Fi 연결 시도: $ssid")
+                Log.d(TAG, "저장된 비밀번호로 Wi-Fi 연결 시도: ${LogMask.ssid(ssid)}")
                 connectToWifiSsid(ssid, passphrase)
             } else {
-                Log.w(TAG, "저장된 비밀번호 없음: $ssid")
+                Log.w(TAG, "저장된 비밀번호 없음: ${LogMask.ssid(ssid)}")
                 _errorMessage.value = "저장된 비밀번호가 없습니다: $ssid"
             }
         }
@@ -526,11 +527,10 @@ class PtpipViewModel @Inject constructor(
 
             override fun onPhotoCaptured(filePath: String, fileName: String) {
                 if (_autoDownloadEnabled.value) {
-                    Log.i(TAG, "수동 촬영: 사진 자동 저장됨 - $fileName")
-                    Log.i(TAG, "저장 경로: $filePath")
+                    Log.i(TAG, "수동 촬영: 사진 자동 저장됨 - $fileName (${LogMask.path(filePath)})")
                     _lastDownloadedFile.value = fileName
                 } else {
-                    Log.i(TAG, "수동 촬영: 성공 $fileName -> $filePath")
+                    Log.i(TAG, "수동 촬영: 성공 $fileName -> ${LogMask.path(filePath)}")
                 }
                 _errorMessage.value = null
                 externalListener?.onPhotoCaptured(filePath, fileName)
@@ -541,8 +541,7 @@ class PtpipViewModel @Inject constructor(
                 fileName: String,
                 imageData: ByteArray
             ) {
-                Log.i(TAG, "수동 촬영: Native 다운로드 완료 - $fileName")
-                Log.i(TAG, "데이터 크기: ${imageData.size / 1024}KB")
+                Log.i(TAG, "수동 촬영: Native 다운로드 완료 - $fileName (${imageData.size / 1024}KB)")
                 _lastDownloadedFile.value = fileName
                 _errorMessage.value = null
                 if (externalListener is CameraCaptureCallback) {

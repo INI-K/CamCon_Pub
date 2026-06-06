@@ -53,7 +53,7 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
         private const val TAG = "카메라UI상태관리자"
     }
 
-    // ── Connection ──
+    // ── 연결 ──
 
     /**
      * 연결 상태 업데이트
@@ -109,7 +109,7 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
         Log.d(TAG, "USB 디바이스 상태 업데이트: 개수=$deviceCount, 권한=$hasPermission")
     }
 
-    // ── Settings / Capabilities ──
+    // ── 설정 / 기능 ──
 
     /**
      * 카메라 기능 정보 업데이트
@@ -135,7 +135,7 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
         Log.d(TAG, "카메라 설정 업데이트")
     }
 
-    // ── Capture ──
+    // ── 촬영 ──
 
     /**
      * 촬영된 사진 목록 업데이트
@@ -175,7 +175,7 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
         }
     }
 
-    // ── LiveView ──
+    // ── LiveView (라이브뷰) ──
 
     /**
      * 라이브뷰 상태 업데이트
@@ -200,7 +200,7 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
         _liveViewFrame.value = frame
     }
 
-    // ── Global / Misc ──
+    // ── 전역 / 기타 ──
 
     /**
      * 이벤트 리스너 상태 업데이트
@@ -217,12 +217,6 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
         val previousState = _uiState.value.isCameraInitializing
         _uiState.update { it.copy(isCameraInitializing = isInitializing) }
         Log.d(TAG, "카메라 초기화 상태 업데이트: $previousState -> $isInitializing")
-
-        if (!isInitializing && previousState) {
-            Log.d(TAG, " 카메라 초기화 완료! UI 블로킹 해제됨")
-        } else if (isInitializing && !previousState) {
-            Log.d(TAG, " 카메라 초기화 시작 - UI 블로킹 활성화")
-        }
     }
 
     /**
@@ -254,7 +248,7 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
         Log.d(TAG, "USB 초기화 상태 업데이트: $isInitializing, 메시지: $message")
     }
 
-    // ── Error ──
+    // ── 에러 ──
 
     /**
      * 에러 상태 관리
@@ -270,7 +264,7 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
         _uiState.update { it.copy(error = null) }
     }
 
-    // ── Info (1-shot, 에러 아님) ──
+    // ── 정보 (1-shot, 에러 아님) ──
 
     /**
      * 1-shot 정보 메시지 방출. 구독자(UI)가 stringResource로 변환해 표시한다.
@@ -306,7 +300,7 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
         Log.d(TAG, "PTP 타임아웃 상태 초기화")
     }
 
-    // ── USB Disconnection ──
+    // ── USB 분리 ──
 
     /**
      * USB 분리 상태 처리
@@ -337,7 +331,7 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
             )
         }
         _liveViewFrame.value = null
-        Log.e(TAG, "USB 분리 상태 처리 완료")
+        Log.w(TAG, "USB 분리 상태 처리 완료")
     }
 
     fun clearUsbDisconnection() {
@@ -347,7 +341,7 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
         Log.d(TAG, "USB 분리 상태 초기화")
     }
 
-    // ── Dialogs ──
+    // ── 다이얼로그 ──
 
     /**
      * 앱 재시작 다이얼로그 관리
@@ -368,7 +362,7 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
         Log.d(TAG, "카메라 상태 점검 다이얼로그 상태 업데이트: $show")
     }
 
-    // ── Connection Success / Failure ──
+    // ── 연결 성공 / 실패 ──
 
     /**
      * 연결 성공 시 상태 초기화
@@ -444,7 +438,7 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
         Log.d(TAG, "카메라 연결 해제 상태로 업데이트")
     }
 
-    // ── RAW File Restriction ──
+    // ── RAW 파일 제한 ──
 
     /**
      * RAW 파일 촬영 제한 상태 업데이트
@@ -542,7 +536,7 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
         Log.d(TAG, "사진 미리보기 탭 블록 상태 업데이트: $blocked")
     }
 
-    // ── UI Visibility / Abilities ──
+    // ── UI 가시성 / Abilities ──
 
     /**
      * 카메라 기능 제한 안내 닫기
@@ -568,10 +562,7 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
      * 카메라 Abilities 기반 UI 업데이트
      */
     override fun updateCameraAbilities(abilities: CameraAbilitiesInfo) {
-        Log.i(TAG, "=== 카메라 Abilities 기반 UI 업데이트 ===")
-        Log.i(TAG, "모델: ${abilities.model}")
-        Log.i(TAG, "제조사: ${abilities.getManufacturer()}")
-        Log.i(TAG, "드라이버 상태: ${abilities.status}")
+        Log.i(TAG, "카메라 Abilities UI 업데이트: 모델=${abilities.model}, 제조사=${abilities.getManufacturer()}, 드라이버=${abilities.status}")
 
         _uiState.update { currentState ->
             currentState.copy(
@@ -592,13 +583,10 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
                 // 다이얼로그 / 경고
                 dialog = currentState.dialog.copy(
                     cameraFunctionLimitation = when {
-                        abilities.supports.isFullyControllable() -> {
-                            Log.i(TAG, " 완전한 원격 제어 가능")
-                            null
-                        }
+                        abilities.supports.isFullyControllable() -> null
 
                         abilities.supports.isDownloadOnly() -> {
-                            Log.w(TAG, " 다운로드만 가능 (원격 제어 불가)")
+                            Log.w(TAG, "다운로드만 가능 (원격 제어 불가)")
                             "이 카메라는 파일 다운로드만 지원합니다\n" +
                                     "원격 촬영 및 라이브뷰는 사용할 수 없습니다\n\n" +
                                     "제조사: ${abilities.getManufacturer()}\n" +
@@ -606,13 +594,13 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
                         }
 
                         !abilities.supports.capturePreview -> {
-                            Log.w(TAG, " 라이브뷰 미지원")
+                            Log.w(TAG, "라이브뷰 미지원")
                             "이 카메라는 라이브뷰를 지원하지 않습니다\n" +
                                     "촬영은 가능하지만 실시간 미리보기는 불가능합니다"
                         }
 
                         !abilities.supports.config -> {
-                            Log.w(TAG, " 설정 변경 미지원")
+                            Log.w(TAG, "설정 변경 미지원")
                             "이 카메라는 설정 변경을 지원하지 않습니다\n" +
                                     "촬영은 가능하지만 ISO, 셔터속도 등 설정은 카메라에서 직접 조정해주세요"
                         }
@@ -630,13 +618,12 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
             )
         }
 
-        Log.i(TAG, " UI 상태 업데이트 완료:")
-        Log.i(TAG, "   촬영 버튼: ${abilities.supports.captureImage}")
-        Log.i(TAG, "   라이브뷰 탭: ${abilities.supports.capturePreview}")
-        Log.i(TAG, "   비디오 버튼: ${abilities.supports.captureVideo}")
-        Log.i(TAG, "   설정 탭: ${abilities.supports.config}")
-        Log.i(TAG, "   삭제 버튼: ${abilities.supports.delete}")
-        Log.i(TAG, "   기능 제한: ${_uiState.value.cameraFunctionLimitation != null}")
+        Log.i(
+            TAG,
+            "UI 상태 업데이트 완료: 촬영=${abilities.supports.captureImage}, 라이브뷰=${abilities.supports.capturePreview}, " +
+                    "비디오=${abilities.supports.captureVideo}, 설정=${abilities.supports.config}, 삭제=${abilities.supports.delete}, " +
+                    "기능제한=${_uiState.value.cameraFunctionLimitation != null}"
+        )
     }
 }
 

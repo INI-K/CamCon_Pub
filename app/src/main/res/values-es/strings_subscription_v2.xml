@@ -1,5 +1,5 @@
 <resources>
-    <!-- Muro de pago de suscripción (Español) -->
+    <!-- 구독 결제 화면 (스페인어) -->
     <string name="subscription_title">Suscripción</string>
     <string name="subscription_back">Atrás</string>
     <string name="subscription_current_plan">Plan actual</string>
@@ -9,14 +9,14 @@
     <string name="subscription_disclaimer">Las suscripciones se renuevan automáticamente y se pueden gestionar o cancelar en Google Play Store.</string>
     <string name="subscription_badge_current">Actual</string>
 
-    <!-- Nombres de nivel -->
+    <!-- 등급 이름 -->
     <string name="subscription_tier_free">Gratis</string>
     <string name="subscription_tier_basic">Básico</string>
     <string name="subscription_tier_pro">Pro</string>
     <string name="subscription_tier_referrer">Referente</string>
     <string name="subscription_tier_admin">Administrador</string>
 
-    <!-- Ventajas -->
+    <!-- 혜택 -->
     <string name="subscription_benefit_jpg">Captura JPG / JPEG</string>
     <string name="subscription_benefit_basic_control">Control básico de la cámara</string>
     <string name="subscription_benefit_free_resolution">Descargas limitadas a 2000 px</string>
@@ -27,7 +27,7 @@
     <string name="subscription_benefit_advanced_control">Control avanzado de la cámara</string>
     <string name="subscription_benefit_raw_download">Descargas de originales RAW</string>
 
-    <!-- Snackbar -->
+    <!-- 스낵바 -->
     <string name="subscription_snackbar_purchase_started">Compra iniciada. Se aplicará tras la verificación.</string>
     <string name="subscription_snackbar_error">No se pudo procesar la solicitud. Inténtalo de nuevo.</string>
 </resources>

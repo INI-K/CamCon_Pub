@@ -37,9 +37,9 @@ object CameraNative {
         try {
             loadNativeLibraries()
             librariesLoaded = true
-            Log.d(TAG, "✅ 모든 네이티브 라이브러리 로딩 완료")
+            Log.d(TAG, "모든 네이티브 라이브러리 로딩 완료")
         } catch (e: Throwable) {
-            Log.e(TAG, "🔴 네이티브 라이브러리 로딩 실패", e)
+            Log.e(TAG, "네이티브 라이브러리 로딩 실패", e)
             librariesLoaded = false
             // 라이브러리 로딩 실패를 앱에서 감지할 수 있도록 예외를 다시 던짐
             throw RuntimeException("네이티브 라이브러리 로딩 실패: ${e.message}", e)
@@ -64,10 +64,8 @@ object CameraNative {
 
         for ((libName, description) in libraries) {
             try {
-                Log.d(TAG, "📦 $description 로딩 중... (lib$libName.so)")
                 System.loadLibrary(libName)
                 successList.add(description)
-                Log.d(TAG, "✅ $description 로딩 완료")
 
                 // 각 라이브러리 로딩 후 약간의 대기 시간 (릴리즈 모드 안정성)
                 Thread.sleep(10)
@@ -75,8 +73,7 @@ object CameraNative {
             } catch (e: UnsatisfiedLinkError) {
                 val errorMsg = e.message ?: "알 수 없는 오류"
                 failureList.add(description to errorMsg)
-                Log.e(TAG, "🔴 $description 로딩 실패: $libName", e)
-                Log.e(TAG, "🔴 에러 상세: $errorMsg")
+                Log.e(TAG, "$description 로딩 실패: $libName", e)
 
                 // 중요한 라이브러리 로딩 실패 시 예외 발생
                 throw RuntimeException(
@@ -90,8 +87,7 @@ object CameraNative {
             } catch (e: SecurityException) {
                 val errorMsg = e.message ?: "알 수 없는 보안 오류"
                 failureList.add(description to errorMsg)
-                Log.e(TAG, "🔴 $description 로딩 권한 오류: $libName", e)
-                Log.e(TAG, "🔴 에러 상세: $errorMsg")
+                Log.e(TAG, "$description 로딩 권한 오류: $libName", e)
 
                 throw RuntimeException(
                     "$description 로딩 권한 오류\n" +
@@ -102,8 +98,7 @@ object CameraNative {
             } catch (e: Exception) {
                 val errorMsg = e.message ?: "알 수 없는 예외"
                 failureList.add(description to errorMsg)
-                Log.e(TAG, "🔴 $description 로딩 중 예외 발생: $libName", e)
-                Log.e(TAG, "🔴 에러 상세: $errorMsg")
+                Log.e(TAG, "$description 로딩 중 예외 발생: $libName", e)
 
                 throw RuntimeException(
                     "$description 로딩 중 예외 발생\n" +
@@ -115,8 +110,7 @@ object CameraNative {
         }
 
         // 모든 라이브러리 로딩 성공 시 로그
-        Log.i(TAG, "✅✅✅ 모든 네이티브 라이브러리 로딩 성공! ✅✅✅")
-        Log.i(TAG, "로딩된 라이브러리: ${successList.joinToString(", ")}")
+        Log.i(TAG, "모든 네이티브 라이브러리 로딩 성공 (${successList.size}개)")
     }
 
     /**
@@ -158,7 +152,7 @@ object CameraNative {
     external fun buildWidgetJson(): String
     external fun queryConfig()
 
-    // Generic config access (C++ exists in camera_config.cpp)
+    // 범용 설정 접근 (C++ 구현은 camera_config.cpp에 존재)
     external fun getConfigString(key: String): String?
     external fun setConfigString(key: String, value: String): Int
     external fun getConfigInt(key: String): Int
@@ -199,7 +193,7 @@ object CameraNative {
     external fun getCameraPhotoExif(photoPath: String): String? // EXIF 정보를 JSON 문자열로 반환
     external fun downloadCameraPhoto(photoPath: String): ByteArray?
 
-    // Fast Path: ObjectHandle 기반 다운로드 및 캐시/매핑 API
+    // 빠른 경로: ObjectHandle 기반 다운로드 및 캐시/매핑 API
     external fun downloadByObjectHandle(handle: Long): ByteArray?
     external fun setHandlePathMapping(handle: Long, path: String)
     external fun clearHandlePathMapping()
@@ -262,7 +256,7 @@ object CameraNative {
     /** Nikon 인증 소켓 수동 정리. */
     external fun closeNikonAuthSockets()
 
-    // Connection type detection and session management
+    // 연결 타입 감지 및 세션 관리
     external fun maintainSessionForStaMode(): Int
 
     // 로그 파일 관련 함수들
@@ -307,10 +301,10 @@ object CameraNative {
      * @return JSON 문자열: {
      *   "model": "Canon EOS R5",
      *   "manufacturer": "Canon Inc.",
-     *   "operations": 127,  // bit mask
-     *   "file_operations": 62,  // bit mask
-     *   "folder_operations": 15,  // bit mask
-     *   "port_type": 4,  // GP_PORT_USB or GP_PORT_PTPIP
+     *   "operations": 127,  // 비트 마스크
+     *   "file_operations": 62,  // 비트 마스크
+     *   "folder_operations": 15,  // 비트 마스크
+     *   "port_type": 4,  // GP_PORT_USB 또는 GP_PORT_PTPIP
      *   "status": "PRODUCTION",
      *   "usb_vendor": "0x04a9",
      *   "usb_product": "0x32f0",
@@ -447,7 +441,7 @@ object CameraNative {
 
     // Canon EOS 전용 설정
     external fun setCanonColorTemperature(kelvin: Int): Int
-    external fun getCanonColorTemperature(): Int // -1 on error
+    external fun getCanonColorTemperature(): Int // 오류 시 -1
     external fun setCanonPictureStyle(style: String): Int
     external fun setCanonWhiteBalanceAdjust(adjustBA: Int, adjustGM: Int): Int
 
@@ -455,7 +449,7 @@ object CameraNative {
     external fun setNikonActiveSlot(slot: String): Int
     external fun setNikonVideoMode(enable: Boolean): Int
     external fun setNikonExposureDelayMode(enable: Boolean): Int
-    external fun getNikonBatteryLevel(): Int // -1 on error
+    external fun getNikonBatteryLevel(): Int // 오류 시 -1
 
     // Sony Alpha 전용 설정
     external fun setSonyFocusArea(area: String): Int
@@ -465,7 +459,7 @@ object CameraNative {
     // Fuji X 전용 설정
     external fun setFujiFilmSimulation(simulation: String): Int
     external fun setFujiColorSpace(colorSpace: String): Int
-    external fun getFujiShutterCounter(): Int // -1 on error
+    external fun getFujiShutterCounter(): Int // 오류 시 -1
 
     // Panasonic Lumix 전용 설정
     external fun setPanasonicMovieRecording(enable: Boolean): Int
@@ -589,7 +583,7 @@ object CameraNative {
      */
     external fun getDetailedStorageInfo(): String
 
-    // Camera about info (to be implemented in C++)
+    // 카메라 about 정보 (C++에서 구현 예정)
     external fun getCameraAbout(): String
 
     // ===== Widget 확장: 노출 보정 / 배터리 / 스토리지 / 파일 삭제 =====
@@ -612,19 +606,19 @@ object CameraNative {
     /** 카메라 내 파일 삭제. 반환은 libgphoto2 GP 에러 코드(GP_OK=0) */
     external fun deleteCameraFileNative(folder: String, filename: String): Int
 
-    // Audio capture (to be implemented in C++)
+    // 오디오 캡처 (C++에서 구현 예정)
     external fun captureAudio(): Int
 
-    // File info setting (to be implemented in C++)
+    // 파일 정보 설정 (C++에서 구현 예정)
     external fun setFileInfo(folder: String, filename: String, permissions: Int, mtime: Long): Int
 
-    // Context progress callback (to be implemented in C++)
+    // Context progress 콜백 (C++에서 구현 예정)
     external fun setProgressCallback(enabled: Boolean): Int
 
-    // Context status callback (to be implemented in C++)
+    // Context status 콜백 (C++에서 구현 예정)
     external fun setStatusCallback(enabled: Boolean): Int
 
-    // Context cancel callback (to be implemented in C++)
+    // Context cancel 콜백 (C++에서 구현 예정)
     external fun setCancelCallback(enabled: Boolean): Int
 
 }

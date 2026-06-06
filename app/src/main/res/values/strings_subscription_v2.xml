@@ -1,5 +1,5 @@
 <resources>
-    <!-- Subscription paywall (default / English) -->
+    <!-- 구독 페이월 (기본 / 영어) -->
     <string name="subscription_title">Subscription</string>
     <string name="subscription_back">Back</string>
     <string name="subscription_current_plan">Current plan</string>
@@ -9,14 +9,14 @@
     <string name="subscription_disclaimer">Subscriptions renew automatically and can be managed or canceled in the Google Play Store.</string>
     <string name="subscription_badge_current">Current</string>
 
-    <!-- Tier names -->
+    <!-- 티어 이름 -->
     <string name="subscription_tier_free">Free</string>
     <string name="subscription_tier_basic">Basic</string>
     <string name="subscription_tier_pro">Pro</string>
     <string name="subscription_tier_referrer">Referrer</string>
     <string name="subscription_tier_admin">Admin</string>
 
-    <!-- Benefits -->
+    <!-- 혜택 -->
     <string name="subscription_benefit_jpg">JPG / JPEG capture</string>
     <string name="subscription_benefit_basic_control">Basic camera control</string>
     <string name="subscription_benefit_free_resolution">Downloads limited to 2000 px</string>
@@ -27,7 +27,7 @@
     <string name="subscription_benefit_advanced_control">Advanced camera control</string>
     <string name="subscription_benefit_raw_download">RAW original downloads</string>
 
-    <!-- Snackbar -->
+    <!-- 스낵바 -->
     <string name="subscription_snackbar_purchase_started">Purchase started. It will be applied once verified.</string>
     <string name="subscription_snackbar_error">Could not process the request. Please try again.</string>
 </resources>

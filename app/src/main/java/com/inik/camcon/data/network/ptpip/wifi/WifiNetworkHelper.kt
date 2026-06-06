@@ -19,6 +19,7 @@ import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
 import com.inik.camcon.domain.model.WifiScanPermissionStatus
 import com.inik.camcon.domain.repository.WifiCapabilityProvider
+import com.inik.camcon.utils.LogMask
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
@@ -213,20 +214,14 @@ class WifiNetworkHelper @Inject constructor(
                 return null
             }
 
-            Log.d(TAG, "✅ ConnectionInfo 획득 성공")
-            Log.d(TAG, "  - NetworkId: ${connectionInfo.networkId}")
-            Log.d(TAG, "  - BSSID: ${connectionInfo.bssid}")
+            Log.d(TAG, "ConnectionInfo 획득 성공: networkId=${connectionInfo.networkId}, bssid=${LogMask.bssid(connectionInfo.bssid)}")
 
             // 연결 정보가 있으면 Wi-Fi에 연결된 것으로 간주
             val rawSSID = connectionInfo.ssid
             val ssid = rawSSID?.removeSurrounding("\"")
 
-            Log.d(TAG, "SSID 정보:")
-            Log.d(TAG, "  - Raw SSID: '$rawSSID'")
-            Log.d(TAG, "  - Cleaned SSID: '$ssid'")
-
             if (ssid.isNullOrEmpty() || ssid == "<unknown ssid>") {
-                Log.w(TAG, "❌ SSID 정보가 유효하지 않음: $ssid")
+                Log.w(TAG, "SSID 정보가 유효하지 않음: ${LogMask.ssid(ssid)}")
                 return null
             }
 
@@ -236,11 +231,6 @@ class WifiNetworkHelper @Inject constructor(
                 val linkSpeed = connectionInfo.linkSpeed
                 val rssi = connectionInfo.rssi
 
-                Log.d(TAG, "연결 상세 정보:")
-                Log.d(TAG, "  - 주파수: ${frequency}MHz")
-                Log.d(TAG, "  - 링크 속도: ${linkSpeed}Mbps")
-                Log.d(TAG, "  - 신호 강도: ${rssi}dBm")
-
                 if (frequency > 0) {
                     val band = when {
                         frequency in 2412..2484 -> "2.4GHz"
@@ -249,12 +239,7 @@ class WifiNetworkHelper @Inject constructor(
                         else -> "Unknown"
                     }
 
-                    Log.d(TAG, "✅ 주파수 정보 조회 성공")
-                    Log.d(TAG, "현재 Wi-Fi 주파수 정보:")
-                    Log.d(TAG, "  - SSID: $ssid")
-                    Log.d(TAG, "  - 주파수: ${frequency}MHz ($band)")
-                    Log.d(TAG, "  - 링크 속도: ${linkSpeed}Mbps")
-                    Log.d(TAG, "  - 신호 강도: ${rssi}dBm")
+                    Log.d(TAG, "Wi-Fi 주파수 조회 성공: ssid=${LogMask.ssid(ssid)}, ${frequency}MHz($band), ${linkSpeed}Mbps, ${rssi}dBm")
 
                     return WifiFrequencyInfo(
                         frequency = frequency,
@@ -296,9 +281,7 @@ class WifiNetworkHelper @Inject constructor(
                     else -> "Unknown"
                 }
 
-                Log.d(TAG, "SSID '$ssid' 주파수 정보:")
-                Log.d(TAG, "  - 주파수: ${frequency}MHz ($band)")
-                Log.d(TAG, "  - 신호 강도: ${targetNetwork.level}dBm")
+                Log.d(TAG, "SSID '${LogMask.ssid(ssid)}' 주파수: ${frequency}MHz($band), ${targetNetwork.level}dBm")
 
                 return WifiFrequencyInfo(
                     frequency = frequency,
@@ -308,7 +291,7 @@ class WifiNetworkHelper @Inject constructor(
                     ssid = ssid
                 )
             } else {
-                Log.w(TAG, "SSID '$ssid'를 스캔 결과에서 찾을 수 없음")
+                Log.w(TAG, "SSID '${LogMask.ssid(ssid)}'를 스캔 결과에서 찾을 수 없음")
                 return null
             }
         } catch (e: SecurityException) {
@@ -452,7 +435,7 @@ class WifiNetworkHelper @Inject constructor(
         ?.firstOrNull()
 
     /**
-     * Send a broadcast for auto connect suggestion trigger for a given SSID. (For API 26+)
+     * 지정한 SSID에 대해 자동 연결 제안 트리거 브로드캐스트를 전송한다. (API 26+ 용)
      */
     fun sendAutoConnectBroadcast(ssid: String) {
         val intent = Intent(ACTION_AUTO_CONNECT_TRIGGER).apply {
@@ -460,7 +443,7 @@ class WifiNetworkHelper @Inject constructor(
             setPackage(context.packageName)
         }
 
-        Log.d(TAG, "자동 연결 브로드캐스트 전송 요청: ssid=$ssid")
+        Log.d(TAG, "자동 연결 브로드캐스트 전송 요청: ssid=${LogMask.ssid(ssid)}")
         context.sendBroadcast(intent, WIFI_AUTO_CONNECT_PERMISSION)
     }
 
@@ -474,7 +457,7 @@ class WifiNetworkHelper @Inject constructor(
             setPackage(context.packageName)
         }
 
-        Log.d(TAG, "✅ 자동 연결 성공 브로드캐스트 전송: ssid=$ssid, ip=$cameraIp")
+        Log.d(TAG, "자동 연결 성공 브로드캐스트 전송: ssid=${LogMask.ssid(ssid)}, ip=${LogMask.id(cameraIp)}")
         context.sendBroadcast(intent, WIFI_AUTO_CONNECT_PERMISSION)
     }
 
@@ -482,16 +465,11 @@ class WifiNetworkHelper @Inject constructor(
      * 카메라 관련 네트워크만 필터링
      */
     private fun filterCameraNetworks(ssidList: List<String>): List<String> {
-        Log.d(TAG, "=== 카메라 네트워크 필터링 시작 ===")
-
         val cameraNetworks = ssidList.filter { ssid ->
-            val isCamera = isCameraNetwork(ssid)
-            Log.d(TAG, "네트워크 '$ssid': ${if (isCamera) "카메라 ✅" else "일반 ❌"}")
-            isCamera
+            isCameraNetwork(ssid)
         }
 
-        Log.d(TAG, "필터링 결과: ${cameraNetworks.size}/${ssidList.size}개가 카메라 관련")
-        Log.d(TAG, "=== 카메라 네트워크 필터링 완료 ===")
+        Log.d(TAG, "카메라 네트워크 필터링 결과: ${cameraNetworks.size}/${ssidList.size}개가 카메라 관련")
 
         return cameraNetworks
     }
@@ -788,7 +766,7 @@ class WifiNetworkHelper @Inject constructor(
                         gatewayIP shr 24 and 0xff
                     )
                     if (isValidCameraAPIP(gatewayIpStr)) {
-                        Log.d(TAG, "SSID를 알 수 없지만 게이트웨이가 카메라 IP 패턴: $gatewayIpStr")
+                        Log.d(TAG, "SSID를 알 수 없지만 게이트웨이가 카메라 IP 패턴: ${LogMask.id(gatewayIpStr)}")
                         synchronized(cacheLock) {
                             cachedIsConnectedToCameraAP = true
                             lastCheckedSSID = ssid
@@ -845,10 +823,10 @@ class WifiNetworkHelper @Inject constructor(
 
                     // <unknown ssid>가 아니고 유효한 경우에만 반환
                     if (!ssid.isNullOrEmpty() && ssid != "<unknown ssid>") {
-                        Log.d(TAG, "Network에서 SSID 추출 성공: $ssid")
+                        Log.d(TAG, "Network에서 SSID 추출 성공: ${LogMask.ssid(ssid)}")
                         return ssid
                     } else {
-                        Log.w(TAG, "Network에서 SSID가 <unknown ssid> 또는 null: $rawSSID")
+                        Log.w(TAG, "Network에서 SSID가 <unknown ssid> 또는 null: ${LogMask.ssid(rawSSID)}")
                     }
                 }
             }
@@ -929,7 +907,7 @@ class WifiNetworkHelper @Inject constructor(
         // 1. 게이트웨이 IP 우선 확인
         val gatewayIP = detectCameraIPInAPMode()
         if (gatewayIP != null) {
-            Log.d(TAG, "✅ 게이트웨이 IP 발견: $gatewayIP")
+            Log.d(TAG, "게이트웨이 IP 발견: ${LogMask.id(gatewayIP)}")
             return if (testTcpPort(gatewayIP, 15740)) gatewayIP else null
         }
 
@@ -946,7 +924,7 @@ class WifiNetworkHelper @Inject constructor(
                         serverIp shr 16 and 0xff,
                         serverIp shr 24 and 0xff
                     )
-                    Log.d(TAG, "✅ DHCP 서버 IP 발견: $serverIpStr")
+                    Log.d(TAG, "DHCP 서버 IP 발견: ${LogMask.id(serverIpStr)}")
                     return if (testTcpPort(serverIpStr, 15740)) serverIpStr else null
                 }
             }
@@ -967,12 +945,12 @@ class WifiNetworkHelper @Inject constructor(
                         ipAddress shr 16 and 0xff,
                         ipAddress shr 24 and 0xff
                     )
-                    Log.d(TAG, "내 IP 주소: $myIpStr")
+                    Log.d(TAG, "내 IP 주소: ${LogMask.id(myIpStr)}")
 
                     // 같은 서브넷의 .1 주소 시도
                     val networkBase = myIpStr.substringBeforeLast(".")
                     val guessedCameraIP = "$networkBase.1"
-                    Log.d(TAG, "✅ 추정 카메라 IP: $guessedCameraIP")
+                    Log.d(TAG, "추정 카메라 IP: ${LogMask.id(guessedCameraIP)}")
                     return if (testTcpPort(guessedCameraIP, 15740)) guessedCameraIP else null
                 }
             }
@@ -998,7 +976,7 @@ class WifiNetworkHelper @Inject constructor(
     private suspend fun testTcpPort(ipAddress: String, port: Int, timeoutMs: Int = 1500): Boolean {
         return withContext(ioDispatcher) {
             try {
-                Log.d(TAG, "TCP 포트 확인: $ipAddress:$port")
+                Log.d(TAG, "TCP 포트 확인: ${LogMask.id(ipAddress)}:$port")
                 val socket = java.net.Socket()
                 // SO_LINGER 비활성화
                 try {
@@ -1016,7 +994,7 @@ class WifiNetworkHelper @Inject constructor(
                 delay(150)
                 true
             } catch (e: Exception) {
-                Log.d(TAG, "TCP 포트 확인 실패: $ipAddress:$port - ${e.message}")
+                Log.d(TAG, "TCP 포트 확인 실패: ${LogMask.id(ipAddress)}:$port - ${e.message}")
                 false
             }
         }
@@ -1028,7 +1006,7 @@ class WifiNetworkHelper @Inject constructor(
     private suspend fun testPtpipConnection(ipAddress: String, port: Int = 15740): Boolean {
         return try {
             withContext(ioDispatcher) {
-                Log.d(TAG, "PTP/IP 초기화 테스트 시작: $ipAddress:$port")
+                Log.d(TAG, "PTP/IP 초기화 테스트 시작: ${LogMask.id(ipAddress)}:$port")
 
                 java.net.Socket().use { socket ->
                     socket.soTimeout = 3000
@@ -1052,17 +1030,17 @@ class WifiNetworkHelper @Inject constructor(
                         val responseType = buffer.int
 
                         if (responseType == 0x00000002) { // PTPIP_INIT_COMMAND_ACK
-                            Log.d(TAG, "✅ PTP/IP 초기화 성공: $ipAddress")
+                            Log.d(TAG, "PTP/IP 초기화 성공: ${LogMask.id(ipAddress)}")
                             return@withContext true
                         }
                     }
 
-                    Log.d(TAG, "❌ PTP/IP 초기화 실패: $ipAddress - 잘못된 응답")
+                    Log.d(TAG, "PTP/IP 초기화 실패: ${LogMask.id(ipAddress)} - 잘못된 응답")
                     false
                 }
             }
         } catch (e: Exception) {
-            Log.d(TAG, "❌ PTP/IP 초기화 실패: $ipAddress - ${e.message}")
+            Log.d(TAG, "PTP/IP 초기화 실패: ${LogMask.id(ipAddress)} - ${e.message}")
             false
         }
     }
@@ -1116,7 +1094,7 @@ class WifiNetworkHelper @Inject constructor(
      */
     suspend fun scanNearbyWifiSSIDs(): List<String> = withContext(ioDispatcher) {
         try {
-            Log.d(TAG, "=== Wi-Fi 스캔 시작 (Android ${Build.VERSION.SDK_INT}) ===")
+            Log.d(TAG, "Wi-Fi 스캔 시작 (Android ${Build.VERSION.SDK_INT})")
 
             // 스캔 환경 진단 실행
             logWifiScanDiagnosis()
@@ -1124,69 +1102,49 @@ class WifiNetworkHelper @Inject constructor(
             // 통합 권한 체크
             val permissionStatus = analyzeWifiScanPermissionStatus()
 
-            Log.d(TAG, "권한 상태 분석:")
-            Log.d(TAG, "  - 위치 권한: ${permissionStatus.hasFineLocationPermission}")
-            Log.d(TAG, "  - 근처 Wi-Fi 장치 권한: ${permissionStatus.hasNearbyWifiDevicesPermission}")
-            Log.d(TAG, "  - Wi-Fi 활성화: ${permissionStatus.isWifiEnabled}")
-            Log.d(TAG, "  - 위치 서비스 활성화: ${permissionStatus.isLocationEnabled}")
-            Log.d(TAG, "  - 스캔 가능: ${permissionStatus.canScan}")
+            Log.d(TAG, "권한 상태 분석: 위치=${permissionStatus.hasFineLocationPermission}, 근처Wi-Fi=${permissionStatus.hasNearbyWifiDevicesPermission}, Wi-Fi활성=${permissionStatus.isWifiEnabled}, 위치서비스=${permissionStatus.isLocationEnabled}, 스캔가능=${permissionStatus.canScan}")
 
             if (permissionStatus.missingPermissions.isNotEmpty()) {
-                Log.e(TAG, "❌ 부족한 권한: ${permissionStatus.missingPermissions}")
+                Log.e(TAG, "부족한 권한: ${permissionStatus.missingPermissions}")
                 return@withContext emptyList()
             }
 
             if (!permissionStatus.canScan) {
-                Log.e(TAG, "❌ Wi-Fi 스캔 조건이 충족되지 않음")
+                Log.w(TAG, "Wi-Fi 스캔 조건이 충족되지 않음")
                 return@withContext emptyList()
             }
 
             val results = mutableListOf<String>()
 
             // 방법 1: 실제 스캔 시도 (유일한 방법)
-            Log.d(TAG, "방법 1: 실제 Wi-Fi 스캔 시도...")
             val scanResults = performConditionalScan()
             if (scanResults.isNotEmpty()) {
                 results.addAll(scanResults)
-                Log.d(TAG, "✅ 실제 스캔에서 ${scanResults.size}개 발견")
+                Log.d(TAG, "실제 스캔에서 ${scanResults.size}개 발견")
             }
 
             // 방법 2: Android 13+ 전용 실험적 스캔
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && results.isEmpty()) {
-                Log.d(TAG, "방법 2: Android 13+ 실험적 스캔 시도...")
                 val android13Results = experimentalScanForAndroid13()
                 android13Results.forEach { ssid ->
                     if (!results.contains(ssid)) {
                         results.add(ssid)
-                        Log.d(TAG, "✅ Android 13+ 실험적 스캔에서 추가: '$ssid'")
                     }
                 }
             }
 
             // 방법 3: 현재 연결된 네트워크 정보만 (스캔 실패 시에만)
             if (results.isEmpty()) {
-                Log.d(TAG, "방법 3: 현재 연결된 네트워크 정보 확인...")
                 val currentNetwork = getCurrentNetworkSSID()
                 if (currentNetwork != null) {
                     results.add(currentNetwork)
-                    Log.d(TAG, "✅ 현재 네트워크 추가: '$currentNetwork'")
                 }
             }
 
             // 카메라 관련 네트워크만 필터링
             val filteredResults = filterCameraNetworks(results.distinct())
 
-            Log.d(TAG, "=== Wi-Fi 스캔 완료 ===")
-            Log.d(TAG, "전체 발견: ${results.distinct().size}개")
-            Log.d(TAG, "카메라 관련: ${filteredResults.size}개")
-
-            if (filteredResults.size != results.distinct().size) {
-                Log.d(TAG, "필터링된 네트워크: ${results.distinct().size - filteredResults.size}개")
-            }
-
-            filteredResults.forEachIndexed { index, ssid ->
-                Log.d(TAG, "  ${index + 1}. '$ssid'")
-            }
+            Log.d(TAG, "Wi-Fi 스캔 완료: 전체 ${results.distinct().size}개, 카메라 관련 ${filteredResults.size}개")
 
             return@withContext filteredResults
 
@@ -1204,39 +1162,29 @@ class WifiNetworkHelper @Inject constructor(
             val connectionInfo = wifiManager.connectionInfo
             val rawSSID = connectionInfo?.ssid
 
-            Log.d(TAG, "현재 네트워크 정보:")
-            Log.d(TAG, "  - Raw SSID: '$rawSSID'")
-            Log.d(TAG, "  - BSSID: ${connectionInfo?.bssid}")
-            Log.d(TAG, "  - 신호 강도: ${connectionInfo?.rssi}dBm")
-            Log.d(TAG, "  - 네트워크 ID: ${connectionInfo?.networkId}")
+            Log.d(TAG, "현재 네트워크 정보: ssid=${LogMask.ssid(rawSSID)}, bssid=${LogMask.bssid(connectionInfo?.bssid)}, ${connectionInfo?.rssi}dBm, networkId=${connectionInfo?.networkId}")
 
             when {
                 rawSSID == null -> {
-                    Log.d(TAG, "  ❌ SSID가 null")
                     null
                 }
                 rawSSID == "<unknown ssid>" -> {
-                    Log.d(TAG, "  ⚠️ unknown SSID - 보안 정책으로 숨겨짐")
                     // BSSID를 기반으로 추정 시도
                     val bssid = connectionInfo?.bssid
                     if (bssid != null && bssid != "02:00:00:00:00:00") {
                         val estimatedSSID = "WiFi_${bssid.takeLast(5).replace(":", "")}"
-                        Log.d(TAG, "  💡 BSSID 기반 추정: '$estimatedSSID'")
+                        Log.d(TAG, "unknown SSID - BSSID 기반 추정 사용")
                         estimatedSSID
                     } else {
-                        Log.d(TAG, "  ❌ BSSID도 유효하지 않음")
                         null
                     }
                 }
 
                 rawSSID.startsWith("\"") && rawSSID.endsWith("\"") -> {
-                    val cleaned = rawSSID.removeSurrounding("\"")
-                    Log.d(TAG, "  ✅ 정리된 SSID: '$cleaned'")
-                    cleaned
+                    rawSSID.removeSurrounding("\"")
                 }
 
                 else -> {
-                    Log.d(TAG, "  ✅ 현재 SSID: '$rawSSID'")
                     rawSSID
                 }
             }
@@ -1479,20 +1427,16 @@ class WifiNetworkHelper @Inject constructor(
             // 현재 연결 상태 확인 및 로깅
             val currentSSID = getCurrentSSID()
             val currentlyConnected = isWifiConnected()
-            Log.d(TAG, "현재 WiFi 상태:")
-            Log.d(TAG, "  - WiFi 활성화: ${wifiManager.isWifiEnabled}")
-            Log.d(TAG, "  - WiFi 연결됨: $currentlyConnected")
-            Log.d(TAG, "  - 현재 SSID: $currentSSID")
+            Log.d(TAG, "현재 WiFi 상태: 활성화=${wifiManager.isWifiEnabled}, 연결됨=$currentlyConnected, ssid=${LogMask.ssid(currentSSID)}")
 
             // 이미 목표 네트워크에 연결되어 있는지 확인
             if (currentSSID == ssid) {
-                Log.i(TAG, "이미 '$ssid'에 연결되어 있음 - 즉시 성공 처리")
+                Log.i(TAG, "이미 '${LogMask.ssid(ssid)}'에 연결되어 있음 - 즉시 성공 처리")
                 onResult(true)
                 return
             }
 
             // 연결 전 해당 SSID가 스캔 결과에 있는지 확인
-            Log.d(TAG, "WifiNetworkSpecifier 연결 전 SSID 확인: $ssid")
             val availableSSIDs = try {
                 wifiManager.scanResults?.map { it.SSID?.removeSurrounding("\"") } ?: emptyList()
             } catch (e: SecurityException) {
@@ -1500,8 +1444,7 @@ class WifiNetworkHelper @Inject constructor(
                 emptyList()
             }
 
-            Log.d(TAG, "현재 스캔 결과에서 발견된 SSID: ${availableSSIDs.size}개")
-            availableSSIDs.forEach { Log.d(TAG, "  - $it") }
+            Log.d(TAG, "WifiNetworkSpecifier 연결 전 SSID 확인: ${LogMask.ssid(ssid)}, 스캔 발견 ${availableSSIDs.size}개")
 
             val isSSIDAvailable = availableSSIDs.any { it == ssid || it?.contains(ssid) == true }
             if (!isSSIDAvailable && availableSSIDs.isNotEmpty()) {
@@ -1511,7 +1454,7 @@ class WifiNetworkHelper @Inject constructor(
                         "2. 카메라가 AP 모드로 설정되어 있는지 확인\n" +
                         "3. 거리가 너무 멀지 않은지 확인\n\n" +
                         "또는 Wi-Fi 설정에서 수동으로 연결해보세요."
-                Log.w(TAG, "SSID '$ssid'가 스캔 결과에 없음")
+                Log.w(TAG, "SSID '${LogMask.ssid(ssid)}'가 스캔 결과에 없음")
                 onError?.invoke(message)
                 onResult(false)
                 return
@@ -1520,10 +1463,7 @@ class WifiNetworkHelper @Inject constructor(
             // 보안 타입 확인
             val securityType = getWifiSecurityType(ssid)
             val requiresPassword = requiresPassword(ssid)
-            Log.d(TAG, "SSID '$ssid' 보안 정보: $securityType")
-            Log.d(TAG, "  - 보안 타입: ${securityType ?: "알 수 없음"}")
-            Log.d(TAG, "  - 패스워드 필요: $requiresPassword")
-            Log.d(TAG, "  - 제공된 패스워드: ${if (passphrase.isNullOrEmpty()) "없음" else "있음"}")
+            Log.d(TAG, "SSID '${LogMask.ssid(ssid)}' 보안: ${securityType ?: "알 수 없음"}, 패스워드필요=$requiresPassword, 제공됨=${!passphrase.isNullOrEmpty()}")
 
             // 패스워드가 필요한데 제공되지 않은 경우 사용자에게 알림
             if (requiresPassword && passphrase.isNullOrEmpty()) {
@@ -1531,19 +1471,13 @@ class WifiNetworkHelper @Inject constructor(
                         "보안 타입: ${securityType ?: "WPA/WPA2"}\n\n" +
                         "카메라의 Wi-Fi 패스워드를 확인하고 다시 시도하거나,\n" +
                         "시스템 Wi-Fi 설정에서 '$ssid'에 수동 연결해주세요."
-                Log.w(TAG, "SSID '$ssid'는 패스워드가 필요하지만 제공되지 않음")
+                Log.w(TAG, "SSID '${LogMask.ssid(ssid)}'는 패스워드가 필요하지만 제공되지 않음")
                 onError?.invoke(message)
                 onResult(false)
                 return
             }
 
-            Log.d(TAG, "========================================")
-            Log.d(TAG, "🔌 WifiNetworkSpecifier 연결 시도")
-            Log.d(TAG, "  - SSID: $ssid")
-            Log.d(TAG, "  - 보안: ${securityType ?: "OPEN"}")
-            Log.d(TAG, "  - 패스워드 길이: ${passphrase?.length ?: 0}자")
-            Log.d(TAG, "  - 인터넷 제외: $requireNoInternet")
-            Log.d(TAG, "========================================")
+            Log.d(TAG, "WifiNetworkSpecifier 연결 시도: ssid=${LogMask.ssid(ssid)}, 보안=${securityType ?: "OPEN"}, 패스워드길이=${passphrase?.length ?: 0}, 인터넷제외=$requireNoInternet")
 
             // BSSID 가져오기 (더 정확한 네트워크 지정)
             val targetBssid = try {
@@ -1555,7 +1489,7 @@ class WifiNetworkHelper @Inject constructor(
             }
 
             if (targetBssid != null) {
-                Log.d(TAG, "  - Target BSSID: $targetBssid (더 정확한 네트워크 지정)")
+                Log.d(TAG, "  - Target BSSID: ${LogMask.bssid(targetBssid)} (더 정확한 네트워크 지정)")
             }
 
             val builder = WifiNetworkSpecifier.Builder()
@@ -1566,7 +1500,7 @@ class WifiNetworkHelper @Inject constructor(
                 try {
                     val macAddress = MacAddress.fromString(targetBssid)
                     builder.setBssid(macAddress)
-                    Log.d(TAG, "  - BSSID 지정 완료: $targetBssid")
+                    Log.d(TAG, "  - BSSID 지정 완료: ${LogMask.bssid(targetBssid)}")
                 } catch (e: Exception) {
                     Log.w(TAG, "  - BSSID 지정 실패: ${e.message}")
                 }
@@ -1631,11 +1565,7 @@ class WifiNetworkHelper @Inject constructor(
                     isCallbackInvoked = true
                     timeoutHandler.removeCallbacksAndMessages(null)
 
-                    Log.i(TAG, "✅ WifiNetworkSpecifier 연결 성공: $ssid")
-                    Log.i(TAG, "네트워크 정보:")
-                    Log.i(TAG, "  - Network ID: $network")
-                    Log.i(TAG, "  - SSID: $ssid")
-                    Log.i(TAG, "  - 프로세스 바인딩: $bindProcess")
+                    Log.i(TAG, "WifiNetworkSpecifier 연결 성공: ssid=${LogMask.ssid(ssid)}, network=$network, 바인딩=$bindProcess")
 
                     if (bindProcess) {
                         try {
@@ -1672,16 +1602,9 @@ class WifiNetworkHelper @Inject constructor(
                                 delay(500) // Wi-Fi 정보 완전 설정 대기
                                 val freqInfo = getCurrentWifiFrequencyInfo()
                                 if (freqInfo != null) {
-                                    Log.i(TAG, "📶 현재 Wi-Fi 주파수 정보:")
-                                    Log.i(TAG, "    - SSID: ${freqInfo.ssid}")
-                                    Log.i(
-                                        TAG,
-                                        "    - 주파수: ${freqInfo.frequency} MHz (${freqInfo.band})"
-                                    )
-                                    Log.i(TAG, "    - 링크 속도: ${freqInfo.linkSpeed} Mbps")
-                                    Log.i(TAG, "    - 신호 강도: ${freqInfo.rssi} dBm")
+                                    Log.i(TAG, "현재 Wi-Fi 주파수: ssid=${LogMask.ssid(freqInfo.ssid)}, ${freqInfo.frequency}MHz(${freqInfo.band}), ${freqInfo.linkSpeed}Mbps, ${freqInfo.rssi}dBm")
                                 } else {
-                                    Log.w(TAG, "⚠️ Wi-Fi 주파수 정보를 가져올 수 없음")
+                                    Log.w(TAG, "Wi-Fi 주파수 정보를 가져올 수 없음")
                                 }
                             }
 
@@ -1697,14 +1620,8 @@ class WifiNetworkHelper @Inject constructor(
                     isCallbackInvoked = true
                     timeoutHandler.removeCallbacksAndMessages(null)
 
-                    Log.w(TAG, "❌ WifiNetworkSpecifier 연결 불가: $ssid")
-                    Log.w(TAG, "연결 실패 상세 정보:")
-                    Log.w(TAG, "  - SSID: $ssid")
-                    Log.w(TAG, "  - 패스워드 제공됨: ${!passphrase.isNullOrEmpty()}")
                     val detectedSecurity = getWifiSecurityType(ssid)
-                    Log.d(TAG, "SSID '$ssid' 보안 정보: $detectedSecurity")
-                    Log.w(TAG, "  - 보안 타입: $detectedSecurity")
-                    Log.w(TAG, "  - 인터넷 제외: $requireNoInternet")
+                    Log.w(TAG, "WifiNetworkSpecifier 연결 불가: ssid=${LogMask.ssid(ssid)}, 패스워드제공=${!passphrase.isNullOrEmpty()}, 보안=$detectedSecurity, 인터넷제외=$requireNoInternet")
 
                     val message = buildString {
                         appendLine("자동 연결에 실패했습니다.")
@@ -1729,7 +1646,6 @@ class WifiNetworkHelper @Inject constructor(
                         appendLine("• 카메라의 Wi-Fi 패스워드를 다시 확인")
                     }
 
-                    Log.e(TAG, "사용자에게 표시할 오류 메시지: $message")
                     onError?.invoke(message)
                     onResult(false)
                     // 실패 경로: 콜백을 즉시 해제해 누수 방지
@@ -1737,7 +1653,7 @@ class WifiNetworkHelper @Inject constructor(
                 }
 
                 override fun onLost(network: Network) {
-                    Log.w(TAG, "⚠️ WifiNetworkSpecifier 연결 손실: $ssid (Network: $network)")
+                    Log.w(TAG, "WifiNetworkSpecifier 연결 손실: ssid=${LogMask.ssid(ssid)} (Network: $network)")
                     // 연결 손실 시 재연결 시도하지 않고 로그만 남김
                 }
 
@@ -1745,10 +1661,6 @@ class WifiNetworkHelper @Inject constructor(
                     network: Network,
                     networkCapabilities: NetworkCapabilities
                 ) {
-                    Log.d(TAG, "🔄 네트워크 기능 변화: $ssid")
-                    if (networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
-                        Log.d(TAG, "  - Wi-Fi 전송 유지됨")
-                    }
                 }
             }
 
@@ -1786,8 +1698,7 @@ class WifiNetworkHelper @Inject constructor(
             connectivityManager.requestNetwork(request, callback)
             // requestNetwork 성공 후에만 추적 필드에 저장 (미등록 콜백 해제 시도 방지)
             specifierNetworkCallback = callback
-            Log.d(TAG, "✅ WifiNetworkSpecifier 요청 전송 완료")
-            Log.d(TAG, "========================================")
+            Log.d(TAG, "WifiNetworkSpecifier 요청 전송 완료")
 
         } catch (e: SecurityException) {
             val message = when {
@@ -1835,70 +1746,57 @@ class WifiNetworkHelper @Inject constructor(
         }
 
         return try {
-            Log.d(TAG, "========================================")
-            Log.d(TAG, "🔧 WiFi Suggestion 등록 시작")
-            Log.d(
-                TAG,
-                "  - SSID: ${config.ssid}"
-            )
-            Log.d(TAG, "  - Hidden: ${config.isHidden}")
-            Log.d(TAG, "  - BSSID: ${config.bssid}")
-            Log.d(TAG, "  - Security: ${config.securityType}")
-            Log.d(TAG, "  - Password 제공: ${!config.passphrase.isNullOrEmpty()}")
-            Log.d(TAG, "========================================")
+            Log.d(TAG, "WiFi Suggestion 등록 시작: ssid=${LogMask.ssid(config.ssid)}, hidden=${config.isHidden}, bssid=${LogMask.bssid(config.bssid)}, security=${config.securityType}, 패스워드제공=${!config.passphrase.isNullOrEmpty()}")
 
             val suggestion = buildWifiNetworkSuggestion(config) ?: return SuggestionResult(
                 success = false,
                 message = "지원되지 않는 보안 방식으로 인해 자동 연결을 설정할 수 없습니다."
             )
 
-            Log.d(TAG, "✅ WifiNetworkSuggestion 빌드 완료")
-            Log.d(TAG, "🔄 시스템에 suggestion 등록 중...")
-
             val status = wifiManager.addNetworkSuggestions(listOf(suggestion))
-            Log.d(TAG, "📊 addNetworkSuggestions 결과 코드: $status")
+            Log.d(TAG, "addNetworkSuggestions 결과 코드: $status")
 
             when (status) {
                 WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS -> {
-                    Log.d(TAG, "✅✅✅ WiFi Suggestion 등록 성공! ✅✅✅")
+                    Log.d(TAG, "WiFi Suggestion 등록 성공")
                     SuggestionResult(true, "카메라 Wi-Fi 자동 연결이 설정되었습니다.")
                 }
 
                 WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_ADD_EXCEEDS_MAX_PER_APP -> {
-                    Log.w(TAG, "❌ 등록 실패: 최대 개수 초과")
+                    Log.w(TAG, "등록 실패: 최대 개수 초과")
                     SuggestionResult(false, "자동 연결 가능한 네트워크 수를 초과했습니다. 다른 제안을 제거한 뒤 다시 시도해주세요.")
                 }
 
                 WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_ADD_DUPLICATE -> {
-                    Log.w(TAG, "⚠️ 중복: 이미 등록된 suggestion")
+                    Log.w(TAG, "중복: 이미 등록된 suggestion")
                     SuggestionResult(true, "이미 카메라 자동 연결이 등록되어 있습니다.")
                 }
 
                 WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_INTERNAL -> {
-                    Log.e(TAG, "❌ 등록 실패: 시스템 내부 오류")
+                    Log.e(TAG, "등록 실패: 시스템 내부 오류")
                     SuggestionResult(false, "시스템 내부 오류로 자동 연결을 등록하지 못했습니다.")
                 }
 
                 WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_APP_DISALLOWED -> {
-                    Log.e(TAG, "❌ 등록 실패: 앱 권한 거부")
+                    Log.e(TAG, "등록 실패: 앱 권한 거부")
                     SuggestionResult(false, "시스템에서 자동 연결 권한을 거부했습니다. 설정 앱에서 권한을 다시 허용해주세요.")
                 }
 
                 WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_ADD_NOT_ALLOWED -> {
-                    Log.e(TAG, "❌ 등록 실패: 현재 상태에서 등록 불가")
+                    Log.e(TAG, "등록 실패: 현재 상태에서 등록 불가")
                     SuggestionResult(false, "현재 상태에서는 자동 연결 제안을 추가할 수 없습니다. 잠시 후 다시 시도해주세요.")
                 }
 
                 else -> {
-                    Log.e(TAG, "❌ 등록 실패: 알 수 없는 오류 (코드: $status)")
+                    Log.e(TAG, "등록 실패: 알 수 없는 오류 (코드: $status)")
                     SuggestionResult(false, "알 수 없는 이유로 자동 연결 등록에 실패했습니다. (코드: $status)")
                 }
             }
         } catch (e: SecurityException) {
-            Log.e(TAG, "❌ 등록 실패: 권한 부족", e)
+            Log.e(TAG, "등록 실패: 권한 부족", e)
             SuggestionResult(false, "자동 연결 등록에 필요한 권한이 부족합니다.")
         } catch (e: Exception) {
-            Log.e(TAG, "❌ WifiNetworkSuggestion 등록 실패", e)
+            Log.e(TAG, "WifiNetworkSuggestion 등록 실패", e)
             SuggestionResult(false, "자동 연결 등록 중 오류가 발생했습니다: ${e.message}")
         }
     }
@@ -1914,7 +1812,7 @@ class WifiNetworkHelper @Inject constructor(
         return try {
             Log.d(
                 TAG,
-                "자동 연결 제안 제거 시도: ssid=${config.ssid}, bssid=${config.bssid}, security=${config.securityType}"
+                "자동 연결 제안 제거 시도: ssid=${LogMask.ssid(config.ssid)}, bssid=${LogMask.bssid(config.bssid)}, security=${config.securityType}"
             )
             val suggestion = buildWifiNetworkSuggestion(config) ?: return SuggestionResult(
                 true,
@@ -1997,7 +1895,7 @@ class WifiNetworkHelper @Inject constructor(
                 val macAddress = MacAddress.fromString(config.bssid)
                 builder.setBssid(macAddress)
             } catch (error: IllegalArgumentException) {
-                Log.w(TAG, "잘못된 BSSID 형식으로 인해 설정할 수 없습니다: ${config.bssid}")
+                Log.w(TAG, "잘못된 BSSID 형식으로 인해 설정할 수 없습니다: ${LogMask.bssid(config.bssid)}")
             }
         }
 
@@ -2068,12 +1966,7 @@ class WifiNetworkHelper @Inject constructor(
 
         return try {
             val suggestion = builder.build()
-            Log.d(TAG, "✅ WifiNetworkSuggestion 빌드 성공")
-            Log.d(TAG, "  - SSID: ${config.ssid}")
-            Log.d(TAG, "  - Priority: ${Int.MAX_VALUE}")
-            Log.d(TAG, "  - AppInteractionRequired: false")
-            Log.d(TAG, "  - UserInteractionRequired: false (브로드캐스트 트리거 조건)")
-            Log.d(TAG, "  - Android Version: ${Build.VERSION.SDK_INT}")
+            Log.d(TAG, "WifiNetworkSuggestion 빌드 성공: ssid=${LogMask.ssid(config.ssid)}, priority=${Int.MAX_VALUE}, API=${Build.VERSION.SDK_INT}")
             suggestion
         } catch (e: IllegalStateException) {
             Log.e(TAG, "❌ WifiNetworkSuggestion 빌드 실패: ${e.message}", e)
@@ -2376,7 +2269,7 @@ class WifiNetworkHelper @Inject constructor(
 
             // 네트워크 정보
             diagnosis["wifi_connected"] = isWifiConnected()
-            diagnosis["current_ssid"] = getCurrentSSID() ?: "null"
+            diagnosis["current_ssid"] = LogMask.ssid(getCurrentSSID())
 
             // 스캔 캐시 정보
             try {
@@ -2411,11 +2304,7 @@ class WifiNetworkHelper @Inject constructor(
     fun logWifiScanDiagnosis() {
         val diagnosis = diagnoseWifiScanEnvironment()
 
-        Log.d(TAG, "=== Wi-Fi 스캔 환경 진단 ===")
-        diagnosis.forEach { (key, value) ->
-            Log.d(TAG, "  $key: $value")
-        }
-        Log.d(TAG, "=== 진단 완료 ===")
+        Log.d(TAG, "Wi-Fi 스캔 환경 진단: $diagnosis")
     }
 
     /**
@@ -2428,22 +2317,17 @@ class WifiNetworkHelper @Inject constructor(
         }
 
         try {
-            Log.d(TAG, "=== Android 13+ 실험적 스캔 시작 ===")
+            Log.d(TAG, "Android 13+ 실험적 스캔 시작")
 
             // NEARBY_WIFI_DEVICES 권한만 확인
             val hasNearbyWifiDevices = ContextCompat.checkSelfPermission(
                 context, android.Manifest.permission.NEARBY_WIFI_DEVICES
             ) == android.content.pm.PackageManager.PERMISSION_GRANTED
 
-            Log.d(TAG, "NEARBY_WIFI_DEVICES 권한: $hasNearbyWifiDevices")
-
             if (!hasNearbyWifiDevices) {
-                Log.e(TAG, "❌ NEARBY_WIFI_DEVICES 권한이 없음")
+                Log.w(TAG, "NEARBY_WIFI_DEVICES 권한이 없음")
                 return@withContext emptyList()
             }
-
-            // 강제 스캔 시도 (위치 권한 무시)
-            Log.d(TAG, "강제 스캔 시도 중...")
 
             var scanSuccess = false
             try {
@@ -2466,11 +2350,6 @@ class WifiNetworkHelper @Inject constructor(
                 Log.d(TAG, "스캔 결과 개수: ${scanResults?.size ?: 0}")
 
                 scanResults?.forEach { result ->
-                    Log.d(
-                        TAG,
-                        "  발견: SSID='${result.SSID}', BSSID=${result.BSSID}, Level=${result.level}dBm"
-                    )
-
                     if (!result.SSID.isNullOrBlank() && result.SSID != "<unknown ssid>") {
                         val cleanSSID = result.SSID.removeSurrounding("\"")
                         if (!results.contains(cleanSSID)) {
@@ -2486,7 +2365,7 @@ class WifiNetworkHelper @Inject constructor(
                 return@withContext emptyList()
             }
 
-            Log.d(TAG, "=== 실험적 스캔 완료: ${results.size}개 발견 ===")
+            Log.d(TAG, "실험적 스캔 완료: ${results.size}개 발견")
             return@withContext results
 
         } catch (e: Exception) {
@@ -2667,7 +2546,7 @@ class WifiNetworkHelper @Inject constructor(
 
             if (targetNetwork != null) {
                 val capabilities = targetNetwork.capabilities
-                Log.d(TAG, "SSID '$ssid' 보안 정보: $capabilities")
+                Log.d(TAG, "SSID '${LogMask.ssid(ssid)}' 보안 정보: $capabilities")
 
                 // WPA2/WPA3 혼합 모드 감지
                 val hasWPA2 = capabilities.contains("WPA2", ignoreCase = true) ||
@@ -2691,7 +2570,7 @@ class WifiNetworkHelper @Inject constructor(
                     else -> "OPEN"
                 }
             } else {
-                Log.w(TAG, "SSID '$ssid'를 스캔 결과에서 찾을 수 없음")
+                Log.w(TAG, "SSID '${LogMask.ssid(ssid)}'를 스캔 결과에서 찾을 수 없음")
                 null
             }
         } catch (e: SecurityException) {
@@ -2730,7 +2609,7 @@ class WifiNetworkHelper @Inject constructor(
                         gatewayIP shr 16 and 0xff,
                         gatewayIP shr 24 and 0xff
                     )
-                    Log.d(TAG, "게이트웨이 IP 감지: $gatewayIpStr")
+                    Log.d(TAG, "게이트웨이 IP 감지: ${LogMask.id(gatewayIpStr)}")
                     return gatewayIpStr
                 }
             }
@@ -2747,7 +2626,7 @@ class WifiNetworkHelper @Inject constructor(
                         ipAddress shr 16 and 0xff
                     )
                     val cameraIP = "$networkBase.1"
-                    Log.d(TAG, "추정 카메라 IP: $cameraIP")
+                    Log.d(TAG, "추정 카메라 IP: ${LogMask.id(cameraIP)}")
                     return cameraIP
                 }
             }
