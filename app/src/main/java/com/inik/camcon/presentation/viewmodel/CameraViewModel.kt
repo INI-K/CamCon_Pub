@@ -136,8 +136,6 @@ class CameraViewModel @Inject constructor(
      * ViewModel 초기화 - 매니저들 설정
      */
     private fun initializeViewModel() {
-        Log.d(TAG, "ViewModel 초기화 시작")
-
         // 에러 처리 시스템 초기화
         errorHandlingManager.initialize()
 

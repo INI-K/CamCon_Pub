@@ -10,6 +10,7 @@ import com.inik.camcon.domain.model.CameraSupports
 import com.inik.camcon.domain.model.PtpDeviceInfo
 import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.domain.manager.CameraStateObserver
+import com.inik.camcon.utils.LogMask
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -108,16 +109,11 @@ class NativeCameraDataSource @Inject constructor(
                 throw IllegalStateException("네이티브 라이브러리가 로딩되지 않았습니다")
             }
 
-            Log.i(TAG, "============================================")
-            Log.i(TAG, "=== USB 카메라 초기화 시작 ===")
-            Log.i(TAG, "FD: $fd")
-            Log.i(TAG, "LibDir: $nativeLibDir")
-            Log.i(TAG, "============================================")
+            Log.i(TAG, "USB 카메라 초기화 시작 (FD=$fd)")
 
             // 올바른 네이티브 라이브러리 경로 설정
             val applicationInfo = context.applicationInfo
             val correctNativeLibDir = applicationInfo.nativeLibraryDir
-            Log.d(TAG, "실제 네이티브 라이브러리 경로: $correctNativeLibDir")
 
             val result = CameraNative.initCameraWithFd(fd, correctNativeLibDir)
             Log.d(TAG, "카메라 초기화 (FD 기반) 완료: 결과 코드=$result")
@@ -127,8 +123,6 @@ class NativeCameraDataSource @Inject constructor(
 
                 // 카메라 기능 조회
                 try {
-                    Log.i(TAG, "=== USB 카메라 기능 조회 ===")
-
                     val abilitiesJson = CameraNative.getCameraAbilities()
                     val deviceInfoJson = CameraNative.getCameraDeviceInfo()
 
@@ -136,16 +130,16 @@ class NativeCameraDataSource @Inject constructor(
                         val abilities = parseAbilities(abilitiesJson)
                         val deviceInfo = parseDeviceInfo(deviceInfoJson)
 
-                        Log.i(TAG, "USB 연결된 카메라:")
-                        Log.i(TAG, "   제조사: ${deviceInfo.manufacturer}")
-                        Log.i(TAG, "   모델: ${deviceInfo.model}")
-                        Log.i(TAG, "   시리얼: ${deviceInfo.serialNumber}")
-                        Log.i(TAG, "   지원 기능:")
-                        Log.i(TAG, "     - 원격 촬영: ${abilities.supports.captureImage}")
-                        Log.i(TAG, "     - 라이브뷰: ${abilities.supports.capturePreview}")
-                        Log.i(TAG, "     - 비디오: ${abilities.supports.captureVideo}")
-                        Log.i(TAG, "     - 설정: ${abilities.supports.config}")
-                        Log.i(TAG, "     - 트리거: ${abilities.supports.triggerCapture}")
+                        Log.i(
+                            TAG,
+                            "USB 카메라: ${deviceInfo.manufacturer} ${deviceInfo.model} " +
+                                "(시리얼=${LogMask.serial(deviceInfo.serialNumber)}), " +
+                                "촬영=${abilities.supports.captureImage} " +
+                                "라이브뷰=${abilities.supports.capturePreview} " +
+                                "비디오=${abilities.supports.captureVideo} " +
+                                "설정=${abilities.supports.config} " +
+                                "트리거=${abilities.supports.triggerCapture}"
+                        )
 
                         // UI 상태 업데이트를 위해 기능 정보 저장
                         storeUsbCameraAbilities(abilities, deviceInfo)
@@ -255,17 +249,13 @@ class NativeCameraDataSource @Inject constructor(
     fun getCameraSummary(): Camera {
         // 네이티브에서 카메라 요약 정보 가져오기
         val summary = CameraNative.getCameraSummary()
-        Log.d(TAG, "=== 카메라 요약 정보 ===")
-        Log.d(TAG, summary)
-        Log.d(TAG, "========================")
+        Log.d(TAG, "카메라 요약 정보: $summary")
 
         // 카메라 전원 상태 확인
         val isPoweredOff = isCameraPoweredOff(summary)
         if (isPoweredOff) {
-            Log.w(TAG, "🔴 카메라가 꺼진 상태로 감지됨 - 사용자에게 카메라 상태 점검 알러트 표시")
+            Log.w(TAG, "카메라가 꺼진 상태로 감지됨 - 카메라 상태 점검 알러트 표시")
             showCameraStatusAlert()
-        } else {
-            Log.d(TAG, "🟢 카메라가 켜진 상태")
         }
 
         return try {
@@ -313,14 +303,7 @@ class NativeCameraDataSource @Inject constructor(
      * 카메라 상태 점검 알러트를 사용자에게 표시
      */
     private fun showCameraStatusAlert() {
-        Log.e(TAG, "🚨 카메라 상태 점검이 필요합니다")
-        Log.e(TAG, "📋 다음 사항을 확인해주세요:")
-        Log.e(TAG, "   1. 카메라 전원이 켜져 있는지 확인")
-        Log.e(TAG, "   2. 카메라 배터리가 충분한지 확인")
-        Log.e(TAG, "   3. USB 케이블 연결 상태 확인")
-        Log.e(TAG, "   4. 카메라가 PC 연결 모드로 설정되어 있는지 확인")
-        Log.e(TAG, "   5. 카메라를 껐다가 다시 켜보세요")
-        Log.e(TAG, "문제가 계속되면 카메라를 재연결해주세요")
+        Log.w(TAG, "카메라 상태 점검 필요 - 점검 다이얼로그 표시")
         cameraStateObserver.showCameraStatusCheckDialog(true)
     }
 
@@ -408,7 +391,7 @@ class NativeCameraDataSource @Inject constructor(
     // 페이징을 지원하는 카메라 사진 목록 가져오기
     suspend fun getCameraPhotosPaged(page: Int, pageSize: Int = 20): PaginatedCameraPhotos {
         return try {
-            Log.d(TAG, "=== 페이징 카메라 사진 목록 가져오기 시작 (페이지: $page, 크기: $pageSize) ===")
+            Log.d(TAG, "페이징 카메라 사진 목록 가져오기 시작 (페이지: $page, 크기: $pageSize)")
 
             // 카메라 초기화 상태 확인 (타임아웃 없음)
             val isInitialized = try {
@@ -450,8 +433,6 @@ class NativeCameraDataSource @Inject constructor(
                 null
             }
 
-            Log.d(TAG, "카메라 파일 목록 JSON: $photoListJson")
-
             if (photoListJson.isNullOrEmpty() || photoListJson == "null") {
                 Log.d(TAG, "카메라에 사진이 없거나 목록을 가져올 수 없음")
                 return PaginatedCameraPhotos(
@@ -468,7 +449,7 @@ class NativeCameraDataSource @Inject constructor(
             val json = try {
                 JSONObject(photoListJson)
             } catch (e: Exception) {
-                Log.e(TAG, "JSON 파싱 실패: $photoListJson", e)
+                Log.e(TAG, "카메라 파일 목록 JSON 파싱 실패 (len=${photoListJson.length}, head=${photoListJson.take(20)})", e)
                 return PaginatedCameraPhotos(
                     photos = emptyList(),
                     currentPage = page,
@@ -521,7 +502,6 @@ class NativeCameraDataSource @Inject constructor(
 
                         if (photo.path.isNotEmpty() && photo.name.isNotEmpty()) {
                             photos.add(photo)
-                            Log.d(TAG, "사진 추가: ${photo.name} (${photo.size} bytes)")
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "파일 항목 $i 처리 중 오류", e)
@@ -531,7 +511,7 @@ class NativeCameraDataSource @Inject constructor(
 
             Log.d(
                 TAG,
-                "=== 페이징 카메라 사진 목록 가져오기 완료: ${photos.size}개 (페이지 $currentPage/$totalPages) ==="
+                "페이징 카메라 사진 목록 가져오기 완료: ${photos.size}개 (페이지 $currentPage/$totalPages)"
             )
 
             PaginatedCameraPhotos(
@@ -567,7 +547,7 @@ class NativeCameraDataSource @Inject constructor(
     // 썸네일 가져오기 함수 (타임아웃 없음)
     fun getCameraThumbnail(photoPath: String): ByteArray? {
         return try {
-            Log.d(TAG, "썸네일 가져오기: $photoPath")
+            Log.d(TAG, "썸네일 가져오기: ${LogMask.path(photoPath)}")
 
             // 카메라 초기화 상태 확인
             if (!isCameraInitialized()) {
@@ -594,7 +574,7 @@ class NativeCameraDataSource @Inject constructor(
     // 실제 파일 다운로드 함수 (타임아웃 없음)
     fun downloadCameraPhoto(photoPath: String): ByteArray? {
         return try {
-            Log.d(TAG, "실제 파일 다운로드: $photoPath")
+            Log.d(TAG, "실제 파일 다운로드: ${LogMask.path(photoPath)}")
 
             // 카메라 초기화 상태 확인
             if (!isCameraInitialized()) {
@@ -641,8 +621,6 @@ class NativeCameraDataSource @Inject constructor(
     // 카메라 기능 정보를 가져오는 새로운 함수
     fun getCameraCapabilities(): CameraCapabilities? {
         return try {
-            Log.d(TAG, "=== 카메라 기능 정보 가져오기 시작 ===")
-
             // getCameraAbilities()를 사용하여 정확한 정보 가져오기
             val abilitiesJson = CameraNative.getCameraAbilities()
             if (abilitiesJson == null) {
@@ -705,14 +683,11 @@ class NativeCameraDataSource @Inject constructor(
             val canDelete = supportsObj.optBoolean("delete", false)
             val canPreview = supportsObj.optBoolean("preview", false)
 
-            Log.d(TAG, "=== 파싱된 카메라 기능 정보 ===")
-            Log.d(TAG, "  모델: $model")
-            Log.d(TAG, "  사진 촬영: $canCaptureImage")
-            Log.d(TAG, "  비디오 촬영: $canCaptureVideo")
-            Log.d(TAG, "  라이브뷰: $canLiveView  ✅")
-            Log.d(TAG, "  설정 변경: $canConfig")
-            Log.d(TAG, "  트리거: $canTriggerCapture")
-            Log.d(TAG, "==============================")
+            Log.d(
+                TAG,
+                "파싱된 카메라 기능: 모델=$model 사진=$canCaptureImage 비디오=$canCaptureVideo " +
+                    "라이브뷰=$canLiveView 설정=$canConfig 트리거=$canTriggerCapture"
+            )
 
             val capabilities = CameraCapabilities(
                 model = model,
@@ -739,7 +714,6 @@ class NativeCameraDataSource @Inject constructor(
                 batteryLevel = null
             )
 
-            Log.d(TAG, "✅ 카메라 기능 정보 파싱 완료")
             capabilities
         } catch (e: Exception) {
             Log.e(TAG, "카메라 기능 정보 가져오기 실패", e)
@@ -768,7 +742,7 @@ class NativeCameraDataSource @Inject constructor(
             val json = try {
                 JSONObject(latestFileJson)
             } catch (e: Exception) {
-                Log.e(TAG, "최신 파일 JSON 파싱 실패: $latestFileJson", e)
+                Log.e(TAG, "최신 파일 JSON 파싱 실패 (len=${latestFileJson.length}, head=${latestFileJson.take(20)})", e)
                 return null
             }
 

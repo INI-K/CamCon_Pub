@@ -1,6 +1,7 @@
 package com.inik.camcon.presentation.ui.screens.components
 
 import android.graphics.Bitmap
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -58,6 +59,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
+private const val TAG = "ColorTransferLivePreview"
+
 /**
  * 실시간 색감 전송 미리보기 컴포넌트
  */
@@ -113,7 +116,7 @@ fun ColorTransferLivePreview(
                         lastProcessedIntensity = intensity
                     }
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    Log.e(TAG, "미리보기 색감 전송 실패", e)
                 } finally {
                     isProcessing = false
                 }
@@ -285,7 +288,7 @@ fun ColorTransferLivePreview(
                                                 fullSizeProcessedBitmap = fullSize
                                                 showFullSizeImage = true
                                             } catch (e: Exception) {
-                                                e.printStackTrace()
+                                                Log.e(TAG, "원본 크기 색감 전송 실패", e)
                                             } finally {
                                                 isProcessingFullSize = false
                                             }
@@ -482,7 +485,7 @@ private suspend fun processColorTransferPreview(
             )
             result
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "미리보기 색감 전송 처리 실패", e)
             null
         }
     }
@@ -509,7 +512,7 @@ private suspend fun processColorTransferFullSize(
             )
             result
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "원본 크기 색감 전송 처리 실패", e)
             null
         }
     }

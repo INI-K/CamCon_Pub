@@ -1,12 +1,12 @@
 <resources>
-    <!-- App-Informationen -->
+    <!-- 앱 정보 -->
     <string name="app_name">CamCon</string>
     <string name="app_description">Professionelle Kamera-Steuerung für Android</string>
 
     <!-- Google Sign-In -->
     <string name="default_web_client_id">527188051661-b9cru75i7min570psfn47fmd04hh2qn6.apps.googleusercontent.com</string>
 
-    <!-- Allgemein -->
+    <!-- 일반 -->
     <string name="ok">OK</string>
     <string name="cancel">Abbrechen</string>
     <string name="retry">Wiederholen</string>
@@ -22,7 +22,7 @@
     <string name="error">Fehler</string>
     <string name="success">Erfolgreich</string>
 
-    <!-- Authentifizierung -->
+    <!-- 인증 -->
     <string name="login">Anmelden</string>
     <string name="logout">Abmelden</string>
     <string name="login_with_google">Mit Google anmelden</string>
@@ -34,7 +34,7 @@
     <string name="logout_success">Abmeldung erfolgreich</string>
     <string name="terms_agreement">Durch die Anmeldung stimmen Sie unseren Nutzungsbedingungen und Datenschutzrichtlinien zu.</string>
 
-    <!-- Kamera-Verbindung -->
+    <!-- 카메라 연결 -->
     <string name="camera_connected">Verbunden</string>
     <string name="camera_disconnected">Getrennt</string>
     <string name="camera_not_connected">Kamera Nicht Verbunden</string>
@@ -46,7 +46,7 @@
     <string name="camera_detected">Kamera erkannt: %s</string>
     <string name="no_camera_detected">Keine Kamera erkannt</string>
 
-    <!-- Kamera-Steuerung -->
+    <!-- 카메라 컨트롤 -->
     <string name="capture">Aufnehmen</string>
     <string name="capture_photo">Foto Aufnehmen</string>
     <string name="start_live_view">Live View Starten</string>
@@ -58,7 +58,7 @@
     <string name="gallery">Galerie</string>
     <string name="photo_library">Fotobibliothek</string>
 
-    <!-- Aufnahmemodi -->
+    <!-- 촬영 모드 -->
     <string name="shooting_mode">Aufnahmemodus</string>
     <string name="single_shot">Einzelaufnahme</string>
     <string name="burst_mode">Serienaufnahme</string>
@@ -66,7 +66,7 @@
     <string name="bulb_mode">Bulb-Modus</string>
     <string name="hdr_bracket">HDR</string>
 
-    <!-- Kamera-Einstellungen -->
+    <!-- 카메라 설정 -->
     <string name="camera_settings">Kamera-Einstellungen</string>
     <string name="iso">ISO</string>
     <string name="shutter_speed">Verschlusszeit</string>
@@ -79,7 +79,7 @@
     <string name="image_quality">Bildqualität</string>
     <string name="file_format">Dateiformat</string>
 
-    <!-- Zeitraffer -->
+    <!-- 타임랩스 -->
     <string name="timelapse_settings">Zeitraffer-Einstellungen</string>
     <string name="interval_seconds">Intervall (Sekunden)</string>
     <string name="total_shots">Gesamtaufnahmen</string>
@@ -90,7 +90,7 @@
     <string name="timelapse_completed">Zeitraffer Abgeschlossen</string>
     <string name="shots_remaining">Verbleibende Aufnahmen: %d</string>
 
-    <!-- Foto-Verwaltung -->
+    <!-- 사진 관리 -->
     <string name="recent_captures">Aktuelle Aufnahmen</string>
     <string name="camera_photo_list">Kamera-Fotoliste</string>
     <string name="captured_photos">Aufgenommene Fotos</string>
@@ -103,7 +103,7 @@
     <string name="edit_photo">Foto Bearbeiten</string>
     <string name="photo_details">Foto-Details</string>
 
-    <!-- Server/Cloud -->
+    <!-- 서버/클라우드 -->
     <string name="server_photos">Meine Fotos</string>
     <string name="upload_to_cloud">In Cloud Hochladen</string>
     <string name="download_from_cloud">Aus Cloud Herunterladen</string>
@@ -115,7 +115,7 @@
     <string name="download_success">Download erfolgreich</string>
     <string name="download_failed">Download fehlgeschlagen</string>
 
-    <!-- Einstellungen -->
+    <!-- 설정 -->
     <string name="app_settings">App-Einstellungen</string>
     <string name="language">Sprache</string>
     <string name="theme">Design</string>
@@ -130,7 +130,7 @@
     <string name="privacy_policy">Datenschutzrichtlinie</string>
     <string name="terms_of_service">Nutzungsbedingungen</string>
 
-    <!-- Fehlermeldungen -->
+    <!-- 오류 메시지 -->
     <string name="error_camera_init">Kamera-Initialisierung fehlgeschlagen</string>
     <string name="error_camera_capture">Foto-Aufnahme fehlgeschlagen</string>
     <string name="error_live_view">Live View Start fehlgeschlagen</string>
@@ -143,7 +143,7 @@
     <string name="error_camera_busy">Kamera ist beschäftigt</string>
     <string name="error_unsupported_shooting_mode">Nicht unterstützter Aufnahmemodus: %1$s. Unterstützte Modi: %2$s</string>
 
-    <!-- Aufnahmemodus-Namen -->
+    <!-- 촬영 모드 이름 -->
     <string name="shooting_mode_single">Einzelaufnahme</string>
     <string name="shooting_mode_continuous">Serienbild</string>
     <string name="shooting_mode_timelapse">Zeitraffer</string>
@@ -151,19 +151,19 @@
     <string name="shooting_mode_hdr_bracket">HDR-Reihe</string>
     <string name="shooting_mode_bulb">Bulb</string>
 
-    <!-- Berechtigungen -->
+    <!-- 권한 -->
     <string name="permission_camera">Kamera-Berechtigung erforderlich</string>
     <string name="permission_storage">Speicher-Berechtigung erforderlich</string>
     <string name="permission_internet">Internet-Berechtigung erforderlich</string>
     <string name="grant_permission">Berechtigung Erteilen</string>
 
-    <!-- Navigation -->
+    <!-- 내비게이션 -->
     <string name="camera_control">Kamera-Steuerung</string>
     <string name="photo_preview">Foto-Vorschau</string>
     <string name="splash_screen">Startbildschirm</string>
     <string name="main_screen">Hauptbildschirm</string>
 
-    <!-- Status -->
+    <!-- 상태 -->
     <string name="ready">Bereit</string>
     <string name="busy">Beschäftigt</string>
     <string name="capturing">Aufnahme...</string>
@@ -171,14 +171,14 @@
     <string name="connecting">Verbindung...</string>
     <string name="initialized">Initialisiert</string>
 
-    <!-- Dateigröße/Qualität -->
+    <!-- 파일 크기/품질 -->
     <string name="high_quality">Hohe Qualität</string>
     <string name="medium_quality">Mittlere Qualität</string>
     <string name="low_quality">Niedrige Qualität</string>
     <string name="raw_format">RAW</string>
     <string name="jpeg_format">JPEG</string>
 
-    <!-- Zeit/Datum -->
+    <!-- 시간/날짜 -->
     <string name="today">Heute</string>
     <string name="yesterday">Gestern</string>
     <string name="this_week">Diese Woche</string>
@@ -186,19 +186,19 @@
     <string name="hours_ago">vor %d Stunden</string>
     <string name="days_ago">vor %d Tagen</string>
 
-    <!-- Leere Zustände -->
+    <!-- 빈 상태 -->
     <string name="no_photos">Keine Fotos</string>
     <string name="connect_camera_and_capture">Verbinden Sie Ihre Kamera über USB\nund nehmen Sie Fotos auf</string>
     <string name="check_camera_connection">• Prüfen Sie, ob die Kamera verbunden ist\n• Nach unten wischen zum Aktualisieren</string>
     <string name="image_load_failed">Bild kann nicht geladen werden</string>
 
-    <!-- USB-Verbindung -->
+    <!-- USB 연결 -->
     <string name="usb_refresh">USB Aktualisieren</string>
     <string name="usb_permission_request">USB-Berechtigungsanfrage</string>
     <string name="refresh_usb">USB Aktualisieren</string>
     <string name="request_usb_permission">USB-Berechtigung Anfordern</string>
 
-    <!-- Wi-Fi-Verbindung -->
+    <!-- Wi-Fi 연결 -->
     <string name="wifi_camera_connection">Wi-Fi Kamera-Verbindung</string>
     <string name="color_transfer_settings">Farbübertragungseinstellungen</string>
     <string name="not_connected_to_camera_ap">Nicht mit Kamera-AP verbunden</string>
@@ -211,7 +211,7 @@
     <string name="manual_connection_management">Kamera-Verbindung manuell verwalten</string>
     <string name="wifi_feature_info_area">Wi-Fi-Funktionsinfo-Kartenbereich</string>
 
-    <!-- Foto-Informationen -->
+    <!-- 사진 정보 -->
     <string name="resolution">Auflösung</string>
     <string name="capture_date">Aufnahmedatum</string>
     <string name="file_path">Pfad</string>
@@ -224,7 +224,7 @@
     <string name="focus_auto">Automatisch</string>
     <string name="focus_manual">Manuell</string>
 
-    <!-- Live View -->
+    <!-- 라이브뷰 -->
     <string name="live_view_not_supported">Live View Nicht Unterstützt</string>
     <string name="camera_does_not_support_live_view">Dieses Kameramodell unterstützt kein Live View</string>
     <string name="liveview_not_supported">Live View Nicht Unterstützt</string>
@@ -234,7 +234,7 @@
     <string name="capturing_photo">Foto wird aufgenommen...</string>
     <string name="starting_liveview">Live View wird gestartet...</string>
 
-    <!-- Funktions-Badges -->
+    <!-- 기능 배지 -->
     <string name="live_view">Live View</string>
     <string name="time_lapse">Zeitraffer</string>
     <string name="burst">Serie</string>
@@ -243,7 +243,7 @@
     <string name="remote_control">Fernsteuerung</string>
     <string name="bracketing">Belichtungsreihe</string>
 
-    <!-- Kamera-Hilfe -->
+    <!-- 카메라 도움말 -->
     <string name="check_other_apps_not_using_camera">Prüfen Sie, dass keine andere App die Kamera verwendet.</string>
     <string name="camera_specific_settings">Kamera-spezifische Einstellungen:</string>
     <string name="canon_usb_setting">• Canon: Menü > Kommunikationseinstellungen > USB-Verbindung > PC-Fernsteuerung</string>
@@ -258,7 +258,7 @@
     <string name="nikon_camera_settings">• Nikon: Menü > USB > PTP/MTP-Modus</string>
     <string name="sony_camera_settings">• Sony: Menü > USB-Verbindung > PC-Fernsteuerung</string>
 
-    <!-- RAW gating + filter messages (i18n PR-7 + PR-8, M2 독일어 번역, 2026-05-13). -->
+    <!-- RAW 게이팅 + 필터 메시지 (i18n PR-7 + PR-8, M2 독일어 번역, 2026-05-13). -->
     <string name="raw_restriction_free">RAW-Dateiübertragung wird vorbereitet.\nBitte nur in JPG aufnehmen!</string>
     <string name="raw_restriction_basic">RAW-Dateien sind nur mit dem PRO-Abonnement verfügbar.\nUpgrade auf PRO für erweiterte RAW-Bearbeitung!</string>
     <string name="raw_restriction_download_disabled">RAW-Datei-Download ist in den Einstellungen deaktiviert.</string>
@@ -275,7 +275,7 @@
     <string name="raw_filter_restriction_basic">RAW-Dateien können nur mit dem PRO-Abonnement angezeigt werden.\nBitte upgraden Sie auf PRO!</string>
     <string name="raw_filter_restriction_generic">Sie können nicht auf RAW-Dateien zugreifen.</string>
 
-    <!-- Telefon-Hotspot STA-Modus (PtpipConnectionScreen, 3. Tab) -->
+    <!-- 휴대폰 핫스팟 STA 모드 (PtpipConnectionScreen, 3번째 탭) -->
     <string name="ptpip_sta_hotspot_mode">STA (Telefon-Hotspot)</string>
     <string name="ptpip_hotspot_description">Ohne Router fungiert das Telefon als Hotspot, und die Kamera verbindet sich als Client.</string>
     <string name="ptpip_hotspot_enabled">Telefon-Hotspot aktiviert</string>
@@ -288,25 +288,25 @@
     <string name="ptpip_hotspot_step_4">4. Tippen Sie nach erfolgreicher Verbindung auf \"Kamera suchen\" oder geben Sie die IP direkt ein</string>
     <string name="ptpip_hotspot_step_5">5. Wenn keine mDNS-Bekanntmachung eintrifft, geben Sie die IP direkt ein</string>
 
-    <!-- Dialog zur Kameraverbindungs-Optimierung (MainActivity, 2026-05-22) -->
+    <!-- 카메라 연결 최적화 대화상자 (MainActivity, 2026-05-22) -->
     <string name="camera_connection_optimization_title">Kameraverbindung optimieren</string>
     <string name="camera_connection_optimization_message">Für eine stabile Kameraverbindung empfehlen wir, die Akku-Optimierung für diese App zu deaktivieren.</string>
     <string name="camera_connection_optimization_details">• Echtzeit-Kamerasteuerung beibehalten\n• Stabilität der automatischen Fotoübertragung verbessern\n• Verbindungsabbrüche im Hintergrund vermeiden\n\n※ Als Kamerazubehör-App gemäß den Google-Play-Richtlinien zulässig.</string>
     <string name="camera_connection_optimization_confirm">Einstellungen öffnen</string>
     <string name="camera_connection_optimization_dismiss">Später</string>
 
-    <!-- Barrierefreiheit — Status/Laden (WCAG 2.2 SC 4.1.3) -->
+    <!-- 접근성 — 상태/로딩 (WCAG 2.2 SC 4.1.3) -->
     <string name="cd_loading">Wird geladen</string>
     <string name="cd_button_loading">Wird verarbeitet</string>
     <string name="cd_status_idle">Inaktiv</string>
     <string name="cd_status_connecting">Verbindung wird hergestellt</string>
     <string name="cd_status_connected">Verbunden</string>
     <string name="cd_status_error">Fehler</string>
-    <!-- %1$s = Dateiname, %2$s = Aufnahmedatum -->
+    <!-- %1$s = 파일명, %2$s = 촬영 날짜 -->
     <string name="cd_photo_preview">Foto %1$s, %2$s</string>
     <string name="cd_photo_preview_no_date">Foto %1$s</string>
 
-    <!-- SettingsActivity (developer + logs) -->
+    <!-- SettingsActivity (개발자 + 로그) -->
     <string name="settings_toast_logout_failed">Abmeldung fehlgeschlagen: %s</string>
     <string name="settings_toast_notification_granted">Benachrichtigungsberechtigung erteilt.</string>
     <string name="settings_toast_notification_denied">Benachrichtigungsberechtigung verweigert.</string>

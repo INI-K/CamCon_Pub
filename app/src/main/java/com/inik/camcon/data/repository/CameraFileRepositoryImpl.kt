@@ -96,7 +96,7 @@ class CameraFileRepositoryImpl @Inject constructor(
     }
 
     override suspend fun setFileInfo(folder: String, filename: String, info: CameraFileInfoModel): Result<Boolean> = runCatching {
-        // Will be implemented when C++ JNI binding for setFileInfo is added
+        // setFileInfo C++ JNI 바인딩이 추가되면 구현 예정
         throw UnsupportedOperationException("setFileInfo C++ binding not yet implemented")
     }
 

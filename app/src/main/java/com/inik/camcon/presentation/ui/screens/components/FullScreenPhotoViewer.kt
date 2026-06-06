@@ -25,6 +25,7 @@ import com.inik.camcon.R
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.presentation.theme.Background
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
+import com.inik.camcon.utils.LogMask
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -61,7 +62,7 @@ private fun shareCurrentPhoto(
             val isLocalFile = java.io.File(photo.path).exists()
 
             if (isLocalFile) {
-                Log.d("PhotoShare", "로컬 파일 직접 공유: ${photo.path}")
+                Log.d("PhotoShare", "로컬 파일 직접 공유: ${LogMask.path(photo.path)}")
 
                 withContext(Dispatchers.Main) {
                     try {

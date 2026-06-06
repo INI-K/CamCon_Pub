@@ -3,19 +3,19 @@ package com.inik.camcon.domain.repository
 import com.inik.camcon.domain.model.ColorTransferResult
 
 /**
- * Color transfer repository interface.
- * All methods use primitive/domain types only (no Android-specific types like Bitmap, Context).
+ * 컬러 트랜스퍼 Repository 인터페이스.
+ * 모든 메서드는 원시/도메인 타입만 사용한다 (Bitmap, Context 같은 Android 전용 타입 없음).
  */
 interface ColorTransferRepository {
 
     /**
-     * Applies color transfer using GPU acceleration with cached reference stats.
-     * Loads input from targetImagePath, applies cached reference stats, saves result to a temp file.
-     * @param targetImagePath path to the input image
-     * @param referenceImagePath path to the reference image (for cached stats)
-     * @param intensity color transfer intensity (0.0 ~ 1.0)
-     * @param maxSize optional max size to scale the input bitmap (0 = no scaling)
-     * @return path to the result image file, or null on failure
+     * 캐시된 레퍼런스 통계를 활용해 GPU 가속으로 컬러 트랜스퍼를 적용한다.
+     * targetImagePath에서 입력을 로드하고 캐시된 레퍼런스 통계를 적용한 뒤 결과를 임시 파일로 저장한다.
+     * @param targetImagePath 입력 이미지 경로
+     * @param referenceImagePath 레퍼런스 이미지 경로 (캐시된 통계용)
+     * @param intensity 컬러 트랜스퍼 강도 (0.0 ~ 1.0)
+     * @param maxSize 입력 비트맵을 스케일할 최대 크기 (선택, 0 = 스케일 안 함)
+     * @return 결과 이미지 파일 경로, 실패 시 null
      */
     suspend fun applyColorTransferWithGPUCached(
         targetImagePath: String,
@@ -25,12 +25,12 @@ interface ColorTransferRepository {
     ): String?
 
     /**
-     * Applies color transfer between two images (CPU path).
-     * @param targetImagePath path to the input image
-     * @param referenceImagePath path to the reference image
-     * @param intensity color transfer intensity (0.0 ~ 1.0)
-     * @param maxSize optional max size to scale both bitmaps (0 = no scaling)
-     * @return path to the result image file, or null on failure
+     * 두 이미지 사이에 컬러 트랜스퍼를 적용한다 (CPU 경로).
+     * @param targetImagePath 입력 이미지 경로
+     * @param referenceImagePath 레퍼런스 이미지 경로
+     * @param intensity 컬러 트랜스퍼 강도 (0.0 ~ 1.0)
+     * @param maxSize 두 비트맵을 스케일할 최대 크기 (선택, 0 = 스케일 안 함)
+     * @return 결과 이미지 파일 경로, 실패 시 null
      */
     suspend fun applyColorTransfer(
         targetImagePath: String,
@@ -40,12 +40,12 @@ interface ColorTransferRepository {
     ): String?
 
     /**
-     * Applies color transfer using GPU acceleration.
-     * Loads images from paths, applies transfer, saves result.
-     * @param inputImagePath path to the input image
-     * @param referenceImagePath path to the reference image
-     * @param intensity color transfer intensity (0.0 ~ 1.0)
-     * @return path to the result image file, or null on failure
+     * GPU 가속으로 컬러 트랜스퍼를 적용한다.
+     * 경로에서 이미지를 로드하고 트랜스퍼를 적용한 뒤 결과를 저장한다.
+     * @param inputImagePath 입력 이미지 경로
+     * @param referenceImagePath 레퍼런스 이미지 경로
+     * @param intensity 컬러 트랜스퍼 강도 (0.0 ~ 1.0)
+     * @return 결과 이미지 파일 경로, 실패 시 null
      */
     suspend fun applyColorTransferWithGPU(
         inputImagePath: String,
@@ -54,13 +54,13 @@ interface ColorTransferRepository {
     ): String?
 
     /**
-     * Applies color transfer and saves result with EXIF metadata preservation.
-     * @param inputImagePath path to the input image
-     * @param referenceImagePath path to the reference image
-     * @param originalImagePath path to the original image for EXIF metadata copy
-     * @param outputPath path to save the result
-     * @param intensity color transfer intensity (0.0 ~ 1.0)
-     * @return result info, or null on failure
+     * 컬러 트랜스퍼를 적용하고 EXIF 메타데이터를 보존하며 결과를 저장한다.
+     * @param inputImagePath 입력 이미지 경로
+     * @param referenceImagePath 레퍼런스 이미지 경로
+     * @param originalImagePath EXIF 메타데이터 복사를 위한 원본 이미지 경로
+     * @param outputPath 결과를 저장할 경로
+     * @param intensity 컬러 트랜스퍼 강도 (0.0 ~ 1.0)
+     * @return 결과 정보, 실패 시 null
      */
     suspend fun applyColorTransferAndSave(
         inputImagePath: String,
@@ -71,27 +71,27 @@ interface ColorTransferRepository {
     ): ColorTransferResult?
 
     /**
-     * Validates whether the file at the given path is a valid image.
-     * @param imagePath path to the image file
-     * @return true if the image is valid
+     * 주어진 경로의 파일이 유효한 이미지인지 검증한다.
+     * @param imagePath 이미지 파일 경로
+     * @return 이미지가 유효하면 true
      */
     fun isValidImageFile(imagePath: String): Boolean
 
     /**
-     * Clears the cached reference image statistics.
+     * 캐시된 레퍼런스 이미지 통계를 비운다.
      */
     fun clearReferenceCache()
 
     /**
-     * Initializes GPU processing. The contextProvider is expected to be an Android Context
-     * but is typed as Any to keep the domain layer free of Android dependencies.
+     * GPU 처리를 초기화한다. contextProvider는 Android Context로 기대되지만,
+     * 도메인 레이어가 Android 의존성을 갖지 않도록 Any 타입으로 선언한다.
      */
     fun initializeGPU(contextProvider: Any)
 
     /**
-     * Releases GPU/EGL resources held by the processor.
-     * Should only be called at application teardown (e.g. Application.onTerminate),
-     * not per-screen, because the processor and GPU are app-scoped singletons.
+     * 프로세서가 보유한 GPU/EGL 리소스를 해제한다.
+     * 프로세서와 GPU가 앱 범위 싱글톤이므로, 화면 단위가 아니라
+     * 애플리케이션 종료 시점(예: Application.onTerminate)에만 호출해야 한다.
      */
     fun releaseGpu()
 }

@@ -24,6 +24,7 @@ import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.domain.usecase.camera.PhotoCaptureEventManager
 import com.inik.camcon.utils.Constants
+import com.inik.camcon.utils.LogMask
 import com.inik.camcon.di.IoDispatcher
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -189,7 +190,7 @@ class PhotoDownloadManager @Inject constructor(
     ): Result<ByteArray> {
         return withContext(ioDispatcher) {
             try {
-                Log.d("사진다운로드매니저", "썸네일 가져오기 시작: $photoPath")
+                Log.d("사진다운로드매니저", "썸네일 가져오기 시작: ${LogMask.path(photoPath)}")
 
                 // 카메라가 현재 초기화 중인지 확인 (초기화 중에는 대기)
                 if (isInitializing) {
@@ -209,15 +210,11 @@ class PhotoDownloadManager @Inject constructor(
                     return@withContext Result.failure(Exception("카메라가 연결되지 않음"))
                 }
 
-                Log.d("사진다운로드매니저", "isCameraInitialized 호출")
-                Log.d("사진다운로드매니저", "카메라 초기화 상태: 초기화됨")
-                Log.d("사진다운로드매니저", "getCameraThumbnail 호출")
-
                 // 폴더와 파일명 분리
                 val file = File(photoPath)
                 val folderPath = file.parent ?: ""
                 val fileName = file.name
-                Log.d("사진다운로드매니저", "썸네일 요청: 폴더=$folderPath, 파일=$fileName")
+                Log.d("사진다운로드매니저", "썸네일 요청: 폴더=${LogMask.path(folderPath)}, 파일=$fileName")
 
                 // 카메라 사용 중 상황을 고려한 재시도 로직 개선
                 var retryCount = 0
@@ -265,7 +262,7 @@ class PhotoDownloadManager @Inject constructor(
 
                             // 카메라 상태 재확인
                             if (!isConnected) {
-                                Log.e("사진다운로드매니저", "카메라 연결이 끊어져서 썸네일 재시도 중단")
+                                Log.w("사진다운로드매니저", "카메라 연결이 끊어져서 썸네일 재시도 중단")
                                 break
                             }
                         }
@@ -273,9 +270,7 @@ class PhotoDownloadManager @Inject constructor(
                 }
 
                 // 모든 재시도 실패
-                Log.w("사진다운로드매니저", "썸네일이 없거나 가져오기 실패")
-                Log.w("사진다운로드매니저", "썸네일 가져오기 실패: $photoPath")
-                Log.e("사진다운로드매니저", "썸네일 재시도 $maxRetries 실패: $photoPath", lastException)
+                Log.e("사진다운로드매니저", "썸네일 재시도 $maxRetries 실패: ${LogMask.path(photoPath)}", lastException)
 
                 return@withContext Result.failure(lastException ?: Exception("썸네일을 가져올 수 없습니다"))
 
@@ -295,7 +290,7 @@ class PhotoDownloadManager @Inject constructor(
     ): Result<CapturedPhoto> {
         return withContext(ioDispatcher) {
             try {
-                Log.d("사진다운로드매니저", "=== 카메라에서 사진 다운로드 시작: $photoId ===")
+                Log.d("사진다운로드매니저", "카메라에서 사진 다운로드 시작: ${LogMask.path(photoId)}")
 
                 // 네이티브 코드를 통해 실제 파일 데이터 다운로드
                 val imageData = nativeDataSource.downloadCameraPhoto(photoId)
@@ -311,12 +306,12 @@ class PhotoDownloadManager @Inject constructor(
                     if (!tempFile.parentFile?.exists()!!) {
                         val created = tempFile.parentFile?.mkdirs() ?: false
                         if (!created) {
-                            Log.w("사진다운로드매니저", "디렉토리 생성 실패, 캐시 루트 사용: ${context.cacheDir}")
+                            Log.w("사진다운로드매니저", "디렉토리 생성 실패, 캐시 루트 사용")
                             val fallbackFile = File(context.cacheDir, fileName)
                             // 데이터를 파일로 저장 - 안전한 쓰기
                             try {
                                 fallbackFile.writeBytes(imageData)
-                                Log.d("사진다운로드매니저", "대체 경로 파일 저장 완료: ${fallbackFile.absolutePath}")
+                                Log.d("사진다운로드매니저", "대체 경로 파일 저장 완료: ${LogMask.path(fallbackFile.absolutePath)}")
                             } catch (e: Exception) {
                                 Log.e("사진다운로드매니저", "대체 경로 파일 저장 실패", e)
                                 return@withContext Result.failure(Exception("파일 저장 실패: ${e.message}"))
@@ -339,7 +334,7 @@ class PhotoDownloadManager @Inject constructor(
                                 downloadCompleteTime = System.currentTimeMillis()
                             )
 
-                            Log.d("사진다운로드매니저", "✅ 카메라에서 사진 다운로드 완료: $finalPath")
+                            Log.d("사진다운로드매니저", "✅ 카메라에서 사진 다운로드 완료: ${LogMask.path(finalPath)}")
                             return@withContext Result.success(capturedPhoto)
                         }
                     }
@@ -347,7 +342,7 @@ class PhotoDownloadManager @Inject constructor(
                     // 데이터를 파일로 저장 - 안전한 쓰기
                     try {
                         tempFile.writeBytes(imageData)
-                        Log.d("사진다운로드매니저", "임시 파일 저장 완료: ${tempFile.absolutePath}")
+                        Log.d("사진다운로드매니저", "임시 파일 저장 완료: ${LogMask.path(tempFile.absolutePath)}")
                     } catch (e: Exception) {
                         Log.e("사진다운로드매니저", "임시 파일 저장 실패", e)
                         return@withContext Result.failure(Exception("파일 저장 실패: ${e.message}"))
@@ -370,7 +365,7 @@ class PhotoDownloadManager @Inject constructor(
                         downloadCompleteTime = System.currentTimeMillis()
                     )
 
-                    Log.d("사진다운로드매니저", "✅ 카메라에서 사진 다운로드 완료: $finalPath")
+                    Log.d("사진다운로드매니저", "✅ 카메라에서 사진 다운로드 완료: ${LogMask.path(finalPath)}")
                     Result.success(capturedPhoto)
                 } else {
                     Log.e("사진다운로드매니저", "네이티브 다운로드 실패: 데이터가 비어있음")
@@ -541,7 +536,7 @@ class PhotoDownloadManager @Inject constructor(
                 // Log.d(TAG, "   임시 파일 경로: $processedPath")
 
                 val finalPath = postProcessPhoto(processedPath!!, fileNameWithFolder)
-                Log.d(TAG, "✅ Native 사진 후처리 완료: $finalPath")
+                Log.d(TAG, "✅ Native 사진 후처리 완료: ${LogMask.path(finalPath)}")
 
                 val capturedPhoto = CapturedPhoto(
                     id = UUID.randomUUID().toString(),
@@ -633,7 +628,7 @@ class PhotoDownloadManager @Inject constructor(
             val isCameraInternalPath = fullPath.startsWith("/store_") || fullPath.contains("/DCIM/")
 
             if (isCameraInternalPath) {
-                Log.d(TAG, "카메라 내부 경로 감지 - 네이티브 다운로드 사용: $fullPath")
+                Log.d(TAG, "카메라 내부 경로 감지 - 네이티브 다운로드 사용: ${LogMask.path(fullPath)}")
 
                 // 네이티브 데이터소스를 통해 카메라에서 직접 다운로드
                 val downloadResult = downloadPhotoFromCamera(
@@ -657,17 +652,17 @@ class PhotoDownloadManager @Inject constructor(
             }
 
             // 로컬 파일 시스템 경로인 경우 기존 로직 사용
-            Log.d(TAG, "📁 로컬 파일 시스템 경로 처리: $fullPath")
+            Log.d(TAG, "📁 로컬 파일 시스템 경로 처리: ${LogMask.path(fullPath)}")
             val file = File(fullPath)
             if (!file.exists()) {
-                Log.e(TAG, "❌ 사진 파일을 찾을 수 없음: $fullPath")
+                Log.e(TAG, "❌ 사진 파일을 찾을 수 없음: ${LogMask.path(fullPath)}")
                 onDownloadFailed(fileName)
                 return
             }
 
             val fileSize = file.length()
             if (fileSize == 0L) {
-                Log.e(TAG, "❌ 사진 파일이 비어있음: $fullPath")
+                Log.e(TAG, "❌ 사진 파일이 비어있음: ${LogMask.path(fullPath)}")
                 onDownloadFailed(fileName)
                 return
             }
@@ -728,19 +723,6 @@ class PhotoDownloadManager @Inject constructor(
                 Log.d(TAG, "   색감 전송 강도: $colorTransferIntensity")
 
                 try {
-                    // 메모리 효율성을 위한 사전 검사
-                    val runtime = Runtime.getRuntime()
-                    val freeMemory = runtime.freeMemory()
-                    val totalMemory = runtime.totalMemory()
-                    val maxMemory = runtime.maxMemory()
-                    val usedMemory = totalMemory - freeMemory
-                    val availableMemory = maxMemory - usedMemory
-
-                    Log.d(
-                        TAG,
-                        "메모리 상태 - 사용중: ${usedMemory / 1024 / 1024}MB, 사용가능: ${availableMemory / 1024 / 1024}MB"
-                    )
-
                     // 색감 전송 적용
                     val processedFile = File(processedPath)
                     val colorTransferredFile = File(
@@ -782,7 +764,7 @@ class PhotoDownloadManager @Inject constructor(
 
             // SAF를 사용한 후처리 (Android 10+에서 MediaStore로 이동)
             val finalPath = postProcessPhoto(processedPath, fileName)
-            Log.d(TAG, "✅ 사진 후처리 완료: $finalPath")
+            Log.d(TAG, "✅ 사진 후처리 완료: ${LogMask.path(finalPath)}")
 
             // 즉시 UI에 임시 사진 정보 추가 (썸네일 없이)
             val tempPhoto = photo.copy(
@@ -849,7 +831,7 @@ class PhotoDownloadManager @Inject constructor(
             var rotatedBitmap: Bitmap? = null
 
             try {
-                Log.d(TAG, "🔧 FREE 티어 이미지 리사이즈 시작: $inputPath")
+                Log.d(TAG, "🔧 FREE 티어 이미지 리사이즈 시작: ${LogMask.path(inputPath)}")
 
                 // 메모리 상태 확인 (간소화)
                 val runtime = Runtime.getRuntime()
@@ -901,7 +883,7 @@ class PhotoDownloadManager @Inject constructor(
 
                 originalBitmap = BitmapFactory.decodeFile(inputPath, options)
                 if (originalBitmap == null) {
-                    Log.e(TAG, "이미지 디코딩 실패: $inputPath")
+                    Log.e(TAG, "이미지 디코딩 실패: ${LogMask.path(inputPath)}")
                     return@withContext false
                 }
 
@@ -994,7 +976,7 @@ class PhotoDownloadManager @Inject constructor(
         newHeight: Int
     ) {
         try {
-            Log.d(TAG, "EXIF 정보 복사 시작: $originalPath -> $newPath")
+            Log.d(TAG, "EXIF 정보 복사 시작: ${LogMask.path(originalPath)} -> ${LogMask.path(newPath)}")
 
             val originalExif = ExifInterface(originalPath)
             val newExif = ExifInterface(newPath)
@@ -1132,7 +1114,7 @@ class PhotoDownloadManager @Inject constructor(
         try {
             val file = File(filePath)
             if (!file.exists()) {
-                Log.w(TAG, "EXIF 회전: 파일 미존재 - $filePath")
+                Log.w(TAG, "EXIF 회전: 파일 미존재 - ${LogMask.path(filePath)}")
                 return
             }
 
@@ -1234,7 +1216,7 @@ class PhotoDownloadManager @Inject constructor(
             )
             newExif.saveAttributes()
 
-            Log.d(TAG, "회전된 이미지 저장 완료 (EXIF 보존): $filePath")
+            Log.d(TAG, "회전된 이미지 저장 완료 (EXIF 보존): ${LogMask.path(filePath)}")
             bitmap.recycle()
         } catch (e: Exception) {
             Log.e(TAG, "회전된 이미지 저장 중 오류", e)
@@ -1415,7 +1397,7 @@ class PhotoDownloadManager @Inject constructor(
                 if (!tempDir.exists()) {
                     tempDir.mkdirs()
                 }
-                Log.d("사진다운로드매니저", "✅ SAF 사용 - 임시 디렉토리: ${tempDir.absolutePath}")
+                Log.d("사진다운로드매니저", "✅ SAF 사용 - 임시 디렉토리: ${LogMask.path(tempDir.absolutePath)}")
                 tempDir.absolutePath
             } else {
                 // Android 9 이하: 직접 외부 저장소 접근 - 우선순위 시스템 사용
@@ -1428,7 +1410,7 @@ class PhotoDownloadManager @Inject constructor(
 
                 if (externalDir.exists() && externalDir.canWrite()) {
                     val storageType = Constants.FilePaths.getStorageType(externalPath)
-                    Log.d("사진다운로드매니저", "✅ 외부 저장소 사용: $externalPath (타입: $storageType)")
+                    Log.d("사진다운로드매니저", "✅ 외부 저장소 사용: ${LogMask.path(externalPath)} (타입: $storageType)")
                     externalPath
                 } else {
                     // 외부 저장소를 사용할 수 없으면 내부 저장소
@@ -1436,7 +1418,7 @@ class PhotoDownloadManager @Inject constructor(
                     if (!internalDir.exists()) {
                         internalDir.mkdirs()
                     }
-                    Log.w("사진다운로드매니저", "⚠️ 내부 저장소 사용: ${internalDir.absolutePath}")
+                    Log.w("사진다운로드매니저", "⚠️ 내부 저장소 사용: ${LogMask.path(internalDir.absolutePath)}")
                     internalDir.absolutePath
                 }
             }
@@ -1452,19 +1434,15 @@ class PhotoDownloadManager @Inject constructor(
     private suspend fun postProcessPhoto(tempFilePath: String, fileName: String): String {
         return withContext(ioDispatcher) {
             try {
-                Log.d(TAG, "📝 postProcessPhoto 시작")
-                Log.d(TAG, "   임시 파일: $tempFilePath")
-                Log.d(TAG, "   파일명: $fileName")
-                Log.d(TAG, "   Android SDK: ${Build.VERSION.SDK_INT}")
+                Log.d(TAG, "📝 postProcessPhoto 시작: 임시=${LogMask.path(tempFilePath)}, 파일명=$fileName, SDK=${Build.VERSION.SDK_INT}")
 
                 // Issue 1: EXIF 회전 역방향 — non-resize 경로에서 회전 적용
                 rotateImageIfRequired(tempFilePath)
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     // Android 10+: MediaStore API 사용
-                    Log.d(TAG, "   → Android 10+ MediaStore 경로 사용")
                     val result = saveToMediaStore(tempFilePath, fileName)
-                    Log.d(TAG, "   ✅ MediaStore 저장 결과: $result")
+                    Log.d(TAG, "   ✅ MediaStore 저장 결과: ${LogMask.path(result)}")
                     result
                 } else {
                     // Android 9 이하: 이미 올바른 위치에 저장되어 있음
@@ -1485,27 +1463,18 @@ class PhotoDownloadManager @Inject constructor(
      */
     private fun saveToMediaStore(tempFilePath: String, fileName: String): String {
         return try {
-            Log.d(TAG, "💾 saveToMediaStore 시작")
-            Log.d(TAG, "   임시 파일: $tempFilePath")
-            Log.d(TAG, "   파일명: $fileName")
+            Log.d(TAG, "💾 saveToMediaStore 시작: 임시=${LogMask.path(tempFilePath)}, 파일명=$fileName")
 
             val tempFile = File(tempFilePath)
             if (!tempFile.exists()) {
-                Log.e(TAG, "❌ 임시 파일이 존재하지 않음: $tempFilePath")
+                Log.e(TAG, "❌ 임시 파일이 존재하지 않음: ${LogMask.path(tempFilePath)}")
                 return tempFilePath
             }
-
-            Log.d(TAG, "   ✅ 임시 파일 존재 확인: ${tempFile.length()} bytes")
 
             // 카메라 폴더 구조 분석 (예: 105KAY_1/KY6_0035.JPG)
             val file = File(fileName)
             val subFolderPath = file.parent ?: ""
             val baseFileName = file.name
-
-            Log.d(TAG, "📁 폴더 구조 분석:")
-            Log.d(TAG, "   전체 경로: $fileName")
-            Log.d(TAG, "   서브폴더: $subFolderPath")
-            Log.d(TAG, "   파일명: $baseFileName")
 
             // 파일 확장자에 따른 MIME 타입 결정
             val extension = baseFileName.substringAfterLast(".", "").lowercase()
@@ -1574,7 +1543,7 @@ class PhotoDownloadManager @Inject constructor(
 
                 // 실제 저장된 파일 경로 생성 (폴더 구조 포함)
                 val savedPath = buildActualSavedPath(fileName)
-                Log.d(TAG, "✅ MediaStore 저장 성공 (폴더 구조 유지): $savedPath")
+                Log.d(TAG, "✅ MediaStore 저장 성공 (폴더 구조 유지): ${LogMask.path(savedPath)}")
                 savedPath
             } else {
                 Log.e(TAG, "MediaStore URI 생성 실패")
@@ -1685,14 +1654,14 @@ class PhotoDownloadManager @Inject constructor(
 
             if (dcimIndex >= 0 && dcimIndex + 1 < pathParts.size) {
                 val subFolder = pathParts[dcimIndex + 1]
-                Log.d(TAG, "카메라 서브폴더 추출: $filePath → $subFolder")
+                Log.d(TAG, "카메라 서브폴더 추출: ${LogMask.path(filePath)} → $subFolder")
                 subFolder
             } else {
-                Log.w(TAG, "DCIM 폴더를 찾을 수 없음: $filePath")
+                Log.w(TAG, "DCIM 폴더를 찾을 수 없음: ${LogMask.path(filePath)}")
                 ""
             }
         } catch (e: Exception) {
-            Log.e(TAG, "카메라 서브폴더 추출 실패: $filePath", e)
+            Log.e(TAG, "카메라 서브폴더 추출 실패: ${LogMask.path(filePath)}", e)
             ""
         }
     }

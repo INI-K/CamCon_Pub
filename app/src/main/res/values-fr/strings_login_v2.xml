@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Login v2 : erreurs de connexion classées / messages de code de parrainage -->
+    <!-- Login v2: 분류된 로그인 오류 / 추천 코드 메시지 -->
     <string name="login_error_cancelled">La connexion a été annulée.</string>
     <string name="login_error_network">Erreur réseau. Vérifiez votre connexion et réessayez.</string>
     <string name="login_error_auth">Échec de la connexion. Veuillez réessayer.</string>
@@ -10,7 +10,7 @@
     <string name="login_referral_failed">Impossible d\'appliquer le code de parrainage.</string>
     <string name="login_referral_error">Un problème est survenu lors du traitement du code de parrainage.</string>
 
-    <!-- Détails de l\'erreur de déconnexion (le « %s » de settings_toast_logout_failed) -->
+    <!-- 로그아웃 오류 상세 (settings_toast_logout_failed의 «%s») -->
     <string name="auth_error_network_detail">erreur réseau</string>
     <string name="auth_error_unknown_detail">erreur inconnue</string>
 </resources>

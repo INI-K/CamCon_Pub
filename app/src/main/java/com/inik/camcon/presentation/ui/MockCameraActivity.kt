@@ -90,7 +90,7 @@ fun MockCameraScreen(
 
                     targetFile.absolutePath
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    android.util.Log.e("MockCameraActivity", "Mock 이미지 복사 실패", e)
                     null
                 }
             }

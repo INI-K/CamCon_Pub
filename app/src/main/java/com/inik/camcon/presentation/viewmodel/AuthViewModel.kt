@@ -112,7 +112,7 @@ class AuthViewModel @Inject constructor(
             googleSignInClient.signOut()
         } catch (e: Exception) {
             // Google 로그아웃 실패는 치명적이지 않으므로 로그만 남김
-            e.printStackTrace()
+            android.util.Log.w("AuthViewModel", "Google 로그아웃 실패 (비치명적)", e)
         }
     }
 

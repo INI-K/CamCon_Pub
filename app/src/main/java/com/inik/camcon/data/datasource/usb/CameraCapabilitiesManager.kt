@@ -447,50 +447,11 @@ class CameraCapabilitiesManager @Inject constructor(
                 "전원 상태 확인: PTP 에러 개수=$errorCount, 촬영불가=$hasNoCaptureCapability, 배터리=$hasBatteryLevel, 시리얼=$hasSerialNumber"
             )
 
-            // 디버깅을 위한 상세 로그
-            Log.d(TAG, "=== 전원 상태 디버깅 ===")
-            Log.d(TAG, "PTP 에러 개수: $errorCount")
-            Log.d(TAG, "촬영 불가: $hasNoCaptureCapability")
-            Log.d(TAG, "배터리 정보 있음: $hasBatteryLevel")
-            Log.d(TAG, "시리얼 정보 있음: $hasSerialNumber")
-
-            if (hasBatteryLevel) {
-                val batteryStart = summaryText.indexOf("Battery Level")
-                val batteryEnd = summaryText.indexOf("\n", batteryStart)
-                val batteryLine = if (batteryEnd > 0) summaryText.substring(
-                    batteryStart,
-                    batteryEnd
-                ) else "찾을 수 없음"
-                Log.d(TAG, "배터리 라인: $batteryLine")
-            }
-
-            if (hasSerialNumber) {
-                val serialStart = summaryText.indexOf("Serial Number:")
-                val serialEnd = summaryText.indexOf("\n", serialStart)
-                val serialLine =
-                    if (serialEnd > 0) summaryText.substring(serialStart, serialEnd) else "찾을 수 없음"
-                Log.d(TAG, "시리얼 라인: $serialLine")
-            }
-
-            Log.d(
-                TAG,
-                "판단 조건: errorCount >= 10 && hasNoCaptureCapability && (!hasBatteryLevel || !hasSerialNumber)"
-            )
-            Log.d(
-                TAG,
-                "실제 값: $errorCount >= 10 && $hasNoCaptureCapability && (!$hasBatteryLevel || !$hasSerialNumber)"
-            )
-            Log.d(
-                TAG,
-                "계산 결과: ${errorCount >= 10} && $hasNoCaptureCapability && ${!hasBatteryLevel || !hasSerialNumber}"
-            )
-
             // 더 엄격한 판단: 에러가 많고 + 촬영불가 + 배터리/시리얼 정보도 없을 때만 꺼진 것으로 판단
             val isPoweredOff =
                 errorCount >= 10 && hasNoCaptureCapability && (!hasBatteryLevel || !hasSerialNumber)
 
-            Log.d(TAG, "최종 판단: isPoweredOff = $isPoweredOff")
-            Log.d(TAG, "========================")
+            Log.d(TAG, "전원 상태 판단: isPoweredOff=$isPoweredOff")
 
             if (isPoweredOff) {
                 Log.w(TAG, "🔴 카메라가 꺼진 상태로 감지됨 - 사용자에게 카메라 상태 점검 알러트 표시")
@@ -507,17 +468,9 @@ class CameraCapabilitiesManager @Inject constructor(
      * 카메라 상태 점검 알러트를 사용자에게 표시
      */
     private fun showCameraStatusAlert() {
-        Log.e(TAG, "🚨 카메라 상태 점검이 필요합니다")
-        Log.e(TAG, "📋 다음 사항을 확인해주세요:")
-        Log.e(TAG, "   1. 카메라 전원이 켜져 있는지 확인")
-        Log.e(TAG, "   2. 카메라 배터리가 충분한지 확인")
-        Log.e(TAG, "   3. USB 케이블 연결 상태 확인")
-        Log.e(TAG, "   4. 카메라가 PC 연결 모드로 설정되어 있는지 확인")
-        Log.e(TAG, "   5. 카메라를 껐다가 다시 켜보세요")
-        Log.e(TAG, "🔄 문제가 계속되면 카메라를 재��결해주세요")
+        Log.w(TAG, "카메라 상태 점검 필요 - 상태 점검 다이얼로그 표시")
 
-        // 실제 UI 알러트는 ViewModel이나 Activity에서 처리해야 하므로
-        // 여기서는 로그로만 표시하고 상태를 업데이트
+        // 실제 안내 텍스트는 UI 다이얼로그가 담당. 여기서는 상태만 업데이트
         cameraStateObserver.showCameraStatusCheckDialog(true)
     }
 
@@ -612,15 +565,10 @@ class CameraCapabilitiesManager @Inject constructor(
                 val totalFiles = json.optInt("totalFiles", 0)
                 val currentPageFiles = if (filesArray != null) filesArray.length() else 0
 
-                Log.d(TAG, "📁 === 꺼진 카메라 파일 목록 결과 ===")
-                Log.d(TAG, "📁 전체 파일 수: ${totalFiles}개")
-                Log.d(TAG, "📁 현재 페이지 파일 수: ${currentPageFiles}개")
-                Log.d(TAG, "📁 ==============================")
+                Log.d(TAG, "꺼진 카메라 파일 목록 결과: 전체=${totalFiles}개, 현재 페이지=${currentPageFiles}개")
 
                 if (filesArray != null && filesArray.length() > 0) {
                     var jpgFound = false
-
-                    Log.d(TAG, "😲 놀랍게도 카메라가 꺼진 상태에서도 파일 목록 접근 가능!")
 
                     // 5. 모든 파일을 확인해서 첫 번째 JPG 파일 찾기
                     for (i in 0 until filesArray.length()) {
@@ -629,8 +577,6 @@ class CameraCapabilitiesManager @Inject constructor(
                             val fileName = fileObj.optString("name", "")
                             val filePath = fileObj.optString("path", "")
                             val fileSize = fileObj.optLong("size", 0)
-
-                            Log.d(TAG, "📁 파일 ${i + 1}: $fileName (${fileSize} bytes)")
 
                             // JPG 파일인지 확인 (대소문자 구분 없이)
                             if (!jpgFound && fileName.lowercase().endsWith(".jpg")) {

@@ -10,6 +10,7 @@ import android.util.Log
 import com.inik.camcon.CamCon
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.data.service.AutoConnectForegroundService
+import com.inik.camcon.utils.LogMask
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -31,67 +32,49 @@ class WifiSuggestionBroadcastReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action ?: return
 
-        Log.d(TAG, "========================================")
-        Log.d(TAG, "📡 브로드캐스트 수신! (앱 종료 상태)")
-        Log.d(TAG, "  - Action: $action")
-        Log.d(TAG, "  - Time: ${System.currentTimeMillis()}")
-        Log.d(TAG, "========================================")
+        Log.d(TAG, "브로드캐스트 수신 (앱 종료 상태): $action")
 
         // Application에서 의존성 가져오기
         val application = context.applicationContext as? CamCon
         if (application == null) {
-            Log.e(TAG, "❌ Application을 가져올 수 없습니다")
+            Log.e(TAG, "Application을 가져올 수 없습니다")
             return
-        }
-
-        // 인텐트 정보 로깅
-        intent.extras?.let { extras ->
-            Log.d(TAG, "Extras:")
-            for (key in extras.keySet()) {
-                Log.d(TAG, "  $key = ${extras.get(key)}")
-            }
         }
 
         when (action) {
             // 자동 연결 성공 (커스텀 브로드캐스트)
             WifiNetworkHelper.ACTION_AUTO_CONNECT_SUCCESS -> {
                 val ssid = intent.getStringExtra(WifiNetworkHelper.EXTRA_AUTO_CONNECT_SSID)
-                val cameraIp = intent.getStringExtra(WifiNetworkHelper.EXTRA_CAMERA_IP)
-                Log.i(TAG, "✅ 자동 연결 성공! SSID: $ssid, IP: $cameraIp")
+                Log.i(TAG, "자동 연결 성공: SSID=${LogMask.ssid(ssid)}")
                 return@onReceive
             }
 
             // WiFi 네트워크 상태 변화 (실제로 연결/해제될 때)
             "android.net.wifi.STATE_CHANGE" -> {
-                Log.d(TAG, "📡 WiFi 네트워크 상태 변화")
                 handleNetworkChangeAsync(context, application)
                 return@onReceive
             }
 
             // WiFi Supplicant 연결 변화
             "android.net.wifi.supplicant.CONNECTION_CHANGE" -> {
-                Log.d(TAG, "📡 WiFi Supplicant 연결 변화")
                 handleNetworkChangeAsync(context, application)
                 return@onReceive
             }
 
             // WiFi Suggestion 연결 (시스템 브로드캐스트 - 잘 안 옴)
             WifiManager.ACTION_WIFI_NETWORK_SUGGESTION_POST_CONNECTION -> {
-                Log.d(TAG, "📡 WiFi Suggestion 연결 (시스템)")
                 handleNetworkChangeAsync(context, application)
                 return@onReceive
             }
 
             // 커스텀 트리거
             WifiNetworkHelper.ACTION_AUTO_CONNECT_TRIGGER -> {
-                val targetSsid = intent.getStringExtra(WifiNetworkHelper.EXTRA_AUTO_CONNECT_SSID)
-                Log.d(TAG, "📡 커스텀 트리거 (ssid=$targetSsid)")
                 handleNetworkChangeAsync(context, application)
                 return@onReceive
             }
 
             else -> {
-                Log.d(TAG, "❌ 알 수 없는 액션: $action")
+                Log.d(TAG, "알 수 없는 액션: $action")
             }
         }
     }
@@ -114,8 +97,6 @@ class WifiSuggestionBroadcastReceiver : BroadcastReceiver() {
             try {
                 // 5초 타임아웃: goAsync() 제한 시간 내 완료 보장
                 kotlinx.coroutines.withTimeoutOrNull(5000) {
-                    Log.d(TAG, "🔍 자동 연결 조건 확인 시작")
-
                     // Application에서 preferencesDataSource 가져오기
                     val wifiNetworkHelper = application.wifiNetworkHelper
                     val preferencesDataSource = application.preferencesDataSource
@@ -154,36 +135,28 @@ class WifiSuggestionBroadcastReceiver : BroadcastReceiver() {
 
                     // 5. SSID 일치 확인
                     if (currentSSID != autoConnectConfig.ssid) {
-                        Log.d(TAG, "SSID 불일치: 현재=$currentSSID, 설정=${autoConnectConfig.ssid}")
+                        Log.d(TAG, "SSID 불일치: 현재=${LogMask.ssid(currentSSID)}, 설정=${LogMask.ssid(autoConnectConfig.ssid)}")
                         return@withTimeoutOrNull
                     }
 
                     // 6. 카메라 AP 확인
                     val isCameraAP = wifiNetworkHelper.isConnectedToCameraAP()
                     if (!isCameraAP) {
-                        Log.d(TAG, "카메라 AP가 아님: $currentSSID")
+                        Log.d(TAG, "카메라 AP가 아님: ${LogMask.ssid(currentSSID)}")
                         return@withTimeoutOrNull
                     }
 
-                    Log.d(TAG, "========================================")
-                    Log.d(TAG, "✅✅✅ 자동 연결 조건 충족! (브로드캐스트) ✅✅✅")
-                    Log.d(TAG, "  - SSID: $currentSSID")
-                    Log.d(TAG, "  - 카메라 AP: true")
-                    Log.d(TAG, "========================================")
+                    Log.d(TAG, "자동 연결 조건 충족 (브로드캐스트): SSID=${LogMask.ssid(currentSSID)}")
 
                     // 7. AutoConnectForegroundService 시작
-                    Log.d(TAG, "🚀 AutoConnectForegroundService 시작 (브로드캐스트)")
                     AutoConnectForegroundService.start(context.applicationContext, currentSSID)
-
-                    Log.d(TAG, "✅ 자동 연결 처리 완료")
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "❌ 자동 연결 처리 중 오류", e)
+                Log.e(TAG, "자동 연결 처리 중 오류", e)
             } finally {
                 // 반드시 finish 호출 (한 번만!) - scope 정리 전
                 try {
                     pendingResult.finish()
-                    Log.d(TAG, "✅ pendingResult.finish() 호출 완료")
                 } catch (e: Exception) {
                     Log.w(TAG, "pendingResult.finish() 호출 실패: ${e.message}")
                 }

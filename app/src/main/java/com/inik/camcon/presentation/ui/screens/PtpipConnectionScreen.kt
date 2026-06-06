@@ -99,6 +99,7 @@ import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
 import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
 import com.inik.camcon.presentation.ui.components.v2.StatusIndicator
 import com.inik.camcon.presentation.ui.components.v2.StatusKind
+import com.inik.camcon.utils.LogMask
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -455,24 +456,17 @@ fun PtpipConnectionScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        Log.d("PtpipConnectionScreen", "🚀 Wi-Fi 연결 버튼 클릭 - 즉시 로딩 다이얼로그 표시")
-
                         // 1. 즉시 로딩 다이얼로그 표시
                         showConnectionProgressDialog = true
-                        Log.d(
-                            "PtpipConnectionScreen",
-                            "   ✅ showConnectionProgressDialog = true 설정 완료"
-                        )
 
                         // 2. 다이얼로그 닫기
                         showPasswordDialog = false
-                        Log.d("PtpipConnectionScreen", "   ✅ 비밀번호 다이얼로그 닫힘")
 
                         // 3. 실제 Wi-Fi 연결 시작
                         currentWifiSsid?.let { ssid ->
                             Log.d(
                                 "PtpipConnectionScreen",
-                                "   🌐 ViewModel.connectToWifiSsidWithPassword 호출: $ssid"
+                                "Wi-Fi 연결 시작: ${LogMask.ssid(ssid)}"
                             )
                             ptpipViewModel.connectToWifiSsidWithPassword(ssid, passwordForSsid)
                         }
@@ -480,7 +474,6 @@ fun PtpipConnectionScreen(
                         // 4. 상태 초기화
                         passwordForSsid = ""
                         currentWifiSsid = null
-                        Log.d("PtpipConnectionScreen", "   ✅ 상태 초기화 완료")
                     },
                     enabled = passwordForSsid.isNotEmpty(),
                     modifier = Modifier.height(36.dp)
@@ -509,19 +502,9 @@ fun PtpipConnectionScreen(
 
     // 연결 진행 상황 업데이트 (isConnecting, connectionState, connectionProgressMessage로 제어)
     LaunchedEffect(isConnecting, connectionState, connectionProgressMessage) {
-        Log.d("PtpipConnectionScreen", "🔍 다이얼로그 상태 체크:")
-        Log.d("PtpipConnectionScreen", "   - isConnecting: $isConnecting")
-        Log.d("PtpipConnectionScreen", "   - connectionState: $connectionState")
-        Log.d("PtpipConnectionScreen", "   - connectionProgressMessage: $connectionProgressMessage")
-        Log.d("PtpipConnectionScreen", "   - 현재 다이얼로그 상태: $showConnectionProgressDialog")
-
         // isConnecting이 false면 무조건 다이얼로그 닫기 (Wi-Fi 연결 실패 포함)
         if (!isConnecting) {
             if (connectionState != com.inik.camcon.domain.model.PtpipConnectionState.CONNECTED) {
-                Log.d(
-                    "PtpipConnectionScreen",
-                    "   ❌ isConnecting=false & NOT CONNECTED - 다이얼로그 즉시 닫기"
-                )
                 showConnectionProgressDialog = false
                 return@LaunchedEffect
             }
@@ -529,58 +512,35 @@ fun PtpipConnectionScreen(
 
         when (connectionState) {
             com.inik.camcon.domain.model.PtpipConnectionState.CONNECTING -> {
-                Log.d("PtpipConnectionScreen", "   ✅ CONNECTING 상태 - 다이얼로그 열기")
                 sawConnectingThisSession = true
                 showConnectionProgressDialog = true
             }
             com.inik.camcon.domain.model.PtpipConnectionState.CONNECTED -> {
-                Log.d("PtpipConnectionScreen", "   ⏸️ CONNECTED 상태 - 메시지 확인 중")
                 // 연결 완료 메시지(완전/제한)일 때만 다이얼로그 닫기 — locale별 문자열 리소스로 비교
                 if (connectionProgressMessage == connectCompleteMessage ||
                     connectionProgressMessage == connectCompleteLimitedMessage
                 ) {
-                    Log.d("PtpipConnectionScreen", "   🎉 연결 완료 메시지 확인 - 다이얼로그 닫기")
                     kotlinx.coroutines.delay(500) // 연결 완료 메시지 확인용 최소 대기
                     showConnectionProgressDialog = false
-                    Log.d("PtpipConnectionScreen", "   ✅ 다이얼로그 닫힘")
 
                     if (sawConnectingThisSession) {
                         // 신규 연결 완료 → 카메라 컨트롤 화면으로 이동
-                        Log.d("PtpipConnectionScreen", "   🚀 카메라 컨트롤 화면으로 이동")
                         kotlinx.coroutines.delay(300)
-                        Log.d("PtpipConnectionScreen", "   ✅ 카메라 컨트롤 화면으로 이동")
                         // 핸드오프 표시 — Activity finish 시 onCleared가 연결을 끊지 않도록 한다.
                         ptpipViewModel.markConnectionHandoff()
                         onBackClick()
-                    } else {
-                        // 이미 연결된 상태로 재진입(예: ADMIN 전송목록 테스트 버튼) — 자동 이동 생략, 화면 유지
-                        Log.d("PtpipConnectionScreen", "   ⏸️ 이미 연결됨(재진입) - 자동 이동 생략, 화면 유지")
                     }
-                } else {
-                    Log.d("PtpipConnectionScreen", "   ⏳ 아직 '연결 완료!' 아님 - 다이얼로그 유지")
+                    // else: 이미 연결된 상태로 재진입(예: ADMIN 전송목록 테스트 버튼) — 자동 이동 생략, 화면 유지
                 }
             }
             com.inik.camcon.domain.model.PtpipConnectionState.DISCONNECTED,
             com.inik.camcon.domain.model.PtpipConnectionState.ERROR -> {
                 // Wi-Fi 연결 직후 짧은 DISCONNECTED 상태 방지 - isConnecting 체크
-                if (isConnecting) {
-                    Log.d(
-                        "PtpipConnectionScreen",
-                        "   ⏳ DISCONNECTED/ERROR 상태지만 isConnecting=true - 다이얼로그 유지 (Wi-Fi 연결 중)"
-                    )
-                    // 다이얼로그 유지 - 아무것도 하지 않음
-                } else {
-                    Log.d(
-                        "PtpipConnectionScreen",
-                        "   ❌ DISCONNECTED/ERROR 상태 & isConnecting=false - 0.5초 후 다이얼로그 닫기"
-                    )
+                if (!isConnecting) {
                     kotlinx.coroutines.delay(500) // 짧은 대기로 순간적인 상태 변화 방지
                     // 다시 한번 체크
                     if (!isConnecting && connectionState != com.inik.camcon.domain.model.PtpipConnectionState.CONNECTING) {
-                        Log.d("PtpipConnectionScreen", "   ✅ 진짜 DISCONNECTED/ERROR 확인 - 다이얼로그 닫기")
                         showConnectionProgressDialog = false
-                    } else {
-                        Log.d("PtpipConnectionScreen", "   ⏳ 상태가 변경됨 - 다이얼로그 유지")
                     }
                 }
             }

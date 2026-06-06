@@ -85,7 +85,7 @@ class PtpipDataSourceConnectMethodTest {
     fun `addManualCamera signature accepts ip name and port`() {
         val fn = PtpipDataSource::class.functions.firstOrNull { it.name == "addManualCamera" }
         requireNotNull(fn) { "addManualCamera must be declared" }
-        // receiver + (ip, name, port) — 4 parameters total.
+        // receiver + (ip, name, port) — 총 4개 파라미터.
         assertEquals(4, fn.parameters.size)
         assertTrue(
             "addManualCamera must return PtpipCamera",

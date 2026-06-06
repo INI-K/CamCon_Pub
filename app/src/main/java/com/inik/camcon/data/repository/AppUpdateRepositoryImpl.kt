@@ -82,15 +82,8 @@ class AppUpdateRepositoryImpl @Inject constructor(
                 )
 
                 Log.d(
-                    "AppUpdateRepository", """
-                    Play Store 버전 확인 결과:
-                    현재 버전: $currentVersionName (코드: $currentVersionCode)
-                    최신 버전: ${playStoreInfo.versionName}
-                    업데이트 가능: $isUpdateAvailable
-                    업데이트 필수: $isUpdateRequired
-                    마지막 업데이트: ${playStoreInfo.lastUpdated}
-                    설치 수: ${playStoreInfo.installs}
-                """.trimIndent()
+                    "AppUpdateRepository",
+                    "Play Store 버전 확인 결과: 현재 $currentVersionName($currentVersionCode), 최신 ${playStoreInfo.versionName}, 업데이트가능=$isUpdateAvailable, 필수=$isUpdateRequired"
                 )
 
                 return Result.success(versionInfo)

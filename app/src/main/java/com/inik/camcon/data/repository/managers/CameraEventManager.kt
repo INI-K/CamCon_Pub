@@ -15,6 +15,7 @@ import com.inik.camcon.domain.model.resolve
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.utils.Constants
+import com.inik.camcon.utils.LogMask
 import com.inik.camcon.utils.LogcatManager
 import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.di.MainDispatcher
@@ -109,7 +110,7 @@ class CameraEventManager @Inject constructor(
 
                     // 카메라 연결 상태 확인
                     if (!isConnected) {
-                        LogcatManager.e("카메라이벤트매니저", "카메라가 연결되지 않은 상태에서 이벤트 리스너 시작 불가 (public)")
+                        LogcatManager.w("카메라이벤트매니저", "카메라가 연결되지 않은 상태에서 이벤트 리스너 시작 불가 (public)")
                         return@withContext Result.failure(Exception("카메라가 연결되지 않음"))
                     }
 
@@ -118,7 +119,7 @@ class CameraEventManager @Inject constructor(
                         ConnectionType.USB -> {
                             // USB 전용 체크
                             if (!usbCameraManager.isNativeCameraConnected.value) {
-                                LogcatManager.e(
+                                LogcatManager.w(
                                     "카메라이벤트매니저",
                                     "USB 네이티브 카메라가 연결되지 않은 상태에서 이벤트 리스너 시작 불가"
                                 )
@@ -139,7 +140,7 @@ class CameraEventManager @Inject constructor(
 
                     LogcatManager.d(
                         "카메라이벤트매니저",
-                        "=== 카메라 이벤트 리스너 시작 (${connectionType.name} 모드) ==="
+                        "카메라 이벤트 리스너 시작 (${connectionType.name} 모드)"
                     )
 
                     // 내부 함수 호출
@@ -219,8 +220,7 @@ class CameraEventManager @Inject constructor(
                 return
             }
 
-            LogcatManager.d("카메라이벤트매니저", "이벤트 리스너 저장 디렉토리: $saveDirectory")
-            LogcatManager.d("카메라이벤트매니저", "=== ${connectionType.name} 카메라 이벤트 리스너 시작 ===")
+            LogcatManager.d("카메라이벤트매니저", "이벤트 리스너 저장 디렉토리: ${LogMask.path(saveDirectory)}")
 
             // 이벤트 리스너를 백그라운드 스레드에서 시작
             scope.launch(ioDispatcher) {
@@ -476,8 +476,7 @@ class CameraEventManager @Inject constructor(
             }
 
             override fun onPhotoCaptured(filePath: String, fileName: String) {
-                LogcatManager.d("카메라이벤트매니저", "🎉 ${connectionType.name} 외부 셔터 사진 촬영 감지: $fileName")
-                LogcatManager.d("카메라이벤트매니저", "${connectionType.name} 외부 촬영 저장됨: $filePath")
+                LogcatManager.d("카메라이벤트매니저", "${connectionType.name} 외부 셔터 사진 촬영 감지: $fileName")
 
                 try {
                     // 파일 확장자 확인 
@@ -603,12 +602,11 @@ class CameraEventManager @Inject constructor(
             override fun onUsbDisconnected() {
                 when (connectionType) {
                     ConnectionType.USB -> {
-                        LogcatManager.e("카메라이벤트매니저", "❌ USB 디바이스 분리 감지됨")
                         handleUsbDisconnection()
                     }
 
                     ConnectionType.PTPIP -> {
-                        LogcatManager.e("카메라이벤트매니저", "❌ PTPIP 네트워크 연결 끊김 감지됨")
+                        LogcatManager.w("카메라이벤트매니저", "PTPIP 네트워크 연결 끊김 감지됨")
                         handlePtpipDisconnection()
                     }
                 }
@@ -619,13 +617,13 @@ class CameraEventManager @Inject constructor(
                 fileName: String,
                 imageData: ByteArray
             ) {
-                Log.d("카메라이벤트매니저", "📦 ${connectionType.name} 네이티브 직접 다운로드 완료: $fileName")
-                Log.d("카메라이벤트매니저", "   데이터 크기: ${imageData.size / 1024}KB")
-                Log.d("카메라이벤트매니저", "🔄 Repository onPhotoDownloaded 콜백 호출: $fileName")
-                Log.d("카메라이벤트매니저", "   onPhotoDownloaded 콜백 null 여부: ${onPhotoDownloaded == null}")
+                Log.d(
+                    "카메라이벤트매니저",
+                    "${connectionType.name} 네이티브 직접 다운로드 완료: $fileName (${imageData.size / 1024}KB)"
+                )
 
                 if (onPhotoDownloaded == null) {
-                    Log.w("카메라이벤트매니저", "⚠️ onPhotoDownloaded 콜백이 null입니다: $fileName")
+                    Log.w("카메라이벤트매니저", "onPhotoDownloaded 콜백이 null입니다: $fileName")
                     return
                 }
 
@@ -691,11 +689,10 @@ class CameraEventManager @Inject constructor(
 
                 // 일반(비-RAW) 파일은 Repository의 콜백을 직접 호출 (PhotoDownloadManager 중복 처리 제거)
                 try {
-                    Log.d("카메라이벤트매니저", "🚀 실제 콜백 호출 시작: $fileName")
                     onPhotoDownloaded.invoke(filePath, fileName, imageData)
-                    Log.d("카메라이벤트매니저", "✅ Repository 콜백 호출 완료: $fileName")
+                    Log.d("카메라이벤트매니저", "Repository 콜백 호출 완료: $fileName")
                 } catch (e: Exception) {
-                    Log.e("카메라이벤트매니저", "❌ Repository 콜백 호출 중 예외: $fileName", e)
+                    Log.e("카메라이벤트매니저", "Repository 콜백 호출 중 예외: $fileName", e)
                 }
             }
         }
@@ -712,7 +709,7 @@ class CameraEventManager @Inject constructor(
         }
 
         try {
-            LogcatManager.e("카메라이벤트매니저", "❌ USB 디바이스 분리 감지됨 - 완전한 정리 수행")
+            LogcatManager.w("카메라이벤트매니저", "USB 디바이스 분리 감지됨 - 완전한 정리 수행")
 
             // 완전한 이벤트 리스너 정리 수행
             performCompleteCleanup()

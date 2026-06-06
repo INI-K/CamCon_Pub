@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Camera Control UX v2 — newly added keys only -->
+    <!-- 카메라 컨트롤 UX v2 — 새로 추가된 키만 -->
     <string name="capture_shutter_cd">Scatto</string>
     <string name="capture_stop_timelapse">Interrompi time-lapse</string>
     <string name="unsupported_shooting_mode_message">Questa fotocamera non supporta la modalità di scatto %s</string>

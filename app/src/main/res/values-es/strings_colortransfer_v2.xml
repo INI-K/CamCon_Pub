@@ -1,40 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- ColorTransfer v2: i18n for settings/live-preview/preview-view + progress + picker -->
+    <!-- ColorTransfer v2: 설정/실시간 미리보기/미리보기 화면 + 진행 상태 + 선택기 i18n -->
 
-    <!-- Common / TopBar -->
+    <!-- 공통 / 상단 바 -->
     <string name="ct_settings_title">Ajustes detallados de transferencia de color</string>
     <string name="ct_cd_close">Cerrar</string>
     <string name="ct_confirm">Aceptar</string>
 
-    <!-- Disabled banner -->
+    <!-- 비활성화 배너 -->
     <string name="ct_disabled_title">⚠️ La transferencia de color está desactivada</string>
     <string name="ct_disabled_message">Active primero la transferencia de color en los ajustes</string>
 
-    <!-- Live preview section -->
+    <!-- 실시간 미리보기 섹션 -->
     <string name="ct_live_preview_title">Vista previa en tiempo real</string>
 
-    <!-- Intensity slider -->
+    <!-- 강도 슬라이더 -->
     <string name="ct_intensity_title">Intensidad de transferencia de color</string>
     <string name="ct_intensity_percent">%d%%</string>
     <string name="ct_intensity_weak">Débil (1%%)</string>
     <string name="ct_intensity_strong">Fuerte (100%%)</string>
     <string name="ct_intensity_recommended">Recomendado: 3-10%%</string>
 
-    <!-- Image management -->
+    <!-- 이미지 관리 -->
     <string name="ct_image_management">Gestión de imágenes</string>
     <string name="ct_reference_image">Imagen de referencia</string>
     <string name="ct_target_image">Imagen de destino</string>
     <string name="ct_manage_library">Biblioteca de imágenes de referencia</string>
     <string name="ct_clear_cache">Borrar caché</string>
 
-    <!-- Error card -->
+    <!-- 오류 카드 -->
     <string name="ct_error_title">Se ha producido un error</string>
 
-    <!-- Processing progress -->
+    <!-- 처리 진행 상태 -->
     <string name="ct_processing_title">Procesando transferencia de color…</string>
 
-    <!-- LivePreview component -->
+    <!-- LivePreview 컴포넌트 -->
     <string name="ct_lp_placeholder_title">Vista previa en tiempo real</string>
     <string name="ct_lp_placeholder_desc">Seleccione una imagen de referencia y otra de destino\npara mostrar la vista previa</string>
     <string name="ct_lp_slider_active_desc">La vista previa se actualizará\ncuando suelte el control deslizante</string>
@@ -50,7 +50,7 @@
     <string name="ct_lp_full_result_title">Resultado de color (tamaño original)</string>
     <string name="ct_lp_cd_full_applied">Imagen con color aplicado a tamaño original</string>
 
-    <!-- PreviewView component -->
+    <!-- PreviewView 컴포넌트 -->
     <string name="ct_pv_reference_title">Imagen de referencia de color</string>
     <string name="ct_pv_reference_subtitle">Se aplicará el color de esta imagen</string>
     <string name="ct_pv_reference_placeholder">Seleccione la imagen de referencia\nde la que tomar el color</string>

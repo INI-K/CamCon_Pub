@@ -89,11 +89,6 @@ fun PhotoViewerContent(
         }
     }
 
-    Log.d(
-        "PhotoViewer",
-        "HorizontalPager 렌더링: 총 ${photos.size}개, 현재 페이지: ${pagerState.currentPage}, userScrollEnabled: ${scale <= 1.1f}"
-    )
-
     HorizontalPager(
         state = pagerState,
         modifier = Modifier.fillMaxSize(),
@@ -103,11 +98,6 @@ fun PhotoViewerContent(
     ) { pageIndex ->
         val pagePhoto = photos[pageIndex]
         val isCurrentPage = pageIndex == pagerState.currentPage
-
-        Log.d(
-            "PhotoViewer",
-            "페이지 $pageIndex 렌더링: ${pagePhoto.name}, 현재 페이지인가? $isCurrentPage, 스와이프 활성화: ${scale <= 1.1f}"
-        )
 
         Box(
             modifier = Modifier

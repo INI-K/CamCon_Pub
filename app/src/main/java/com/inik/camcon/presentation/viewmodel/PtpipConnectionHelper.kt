@@ -19,6 +19,7 @@ import com.inik.camcon.domain.model.WifiNetworkState
 import com.inik.camcon.domain.repository.PtpipPreferencesRepository
 import com.inik.camcon.domain.repository.PtpipRepository
 import com.inik.camcon.domain.usecase.camera.DeleteGphotoSettingsUseCase
+import com.inik.camcon.utils.LogMask
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -75,7 +76,7 @@ class PtpipConnectionHelper @Inject constructor(
         onErrorChanged: (String?) -> Unit,
         onCameraCreated: (PtpipCamera) -> Unit
     ) {
-        Log.d(TAG, "Wi-Fi 연결 시작: ssid='$ssid', 패스워드 제공=${!passphrase.isNullOrEmpty()}")
+        Log.d(TAG, "Wi-Fi 연결 시작: ssid='${LogMask.ssid(ssid)}', 패스워드 제공=${!passphrase.isNullOrEmpty()}")
 
         onConnectionStateChanged(true)
         onErrorChanged(null)
@@ -83,11 +84,9 @@ class PtpipConnectionHelper @Inject constructor(
         scope.launch(ioDispatcher) {
             // libgphoto2 설정 초기화
             try {
-                Log.i(TAG, "=== libgphoto2 설정 초기화 시작 ===")
-                val deleteResult = deleteGphotoSettingsUseCase()
-                Log.i(TAG, "설정 삭제 결과:\n$deleteResult")
+                deleteGphotoSettingsUseCase()
                 delay(500)
-                Log.i(TAG, "=== libgphoto2 설정 초기화 완료 ===")
+                Log.i(TAG, "libgphoto2 설정 초기화 완료")
             } catch (e: Exception) {
                 Log.w(TAG, "설정 삭제 중 오류 (계속 진행): ${e.message}")
             }
@@ -123,7 +122,7 @@ class PtpipConnectionHelper @Inject constructor(
                                     Log.w(TAG, "연결 정리 중 오류: ${e.message}")
                                 }
                             } else {
-                                Log.i(TAG, "Wi-Fi 연결 성공: $ssid - 카메라 정보 직접 생성")
+                                Log.i(TAG, "Wi-Fi 연결 성공: ${LogMask.ssid(ssid)} - 카메라 정보 직접 생성")
                                 onErrorChanged(null)
 
                                 val nextBssid =
@@ -148,7 +147,7 @@ class PtpipConnectionHelper @Inject constructor(
                                             lastConnectedAt = System.currentTimeMillis()
                                         )
                                     )
-                                    Log.d(TAG, "Wi-Fi 자격 증명 저장 완료: $ssid")
+                                    Log.d(TAG, "Wi-Fi 자격 증명 저장 완료: ${LogMask.ssid(ssid)}")
                                 }
 
                                 val autoConnectEnabled =
@@ -265,7 +264,7 @@ class PtpipConnectionHelper @Inject constructor(
      */
     suspend fun deleteSavedWifiCredential(ssid: String) {
         preferencesRepository.deleteSavedWifiCredential(ssid)
-        Log.d(TAG, "저장된 Wi-Fi 자격 증명 삭제: $ssid")
+        Log.d(TAG, "저장된 Wi-Fi 자격 증명 삭제: ${LogMask.ssid(ssid)}")
     }
 
     // ── 카메라 연결/해제 ──────────────────────────────────────────

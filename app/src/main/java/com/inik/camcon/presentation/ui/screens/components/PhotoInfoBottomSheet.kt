@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
+import com.inik.camcon.utils.LogMask
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
@@ -56,15 +57,12 @@ fun PhotoInfoBottomSheetContent(
     LaunchedEffect(photo.path) {
         withContext(Dispatchers.IO) {
             try {
-                Log.d("PhotoInfoDialog", "EXIF 정보 가져오기 시작: ${photo.path}")
-
                 val info = if (viewModel != null) {
                     viewModel.getCameraPhotoExif(photo.path)
                 } else {
                     readExifFromFile(photo.path)
                 }
 
-                Log.d("PhotoInfoDialog", "EXIF 정보 가져오기 완료: $info")
                 exifInfo.value = info
             } catch (e: Exception) {
                 Log.e("PhotoInfoDialog", "EXIF 정보 로드 실패", e)
@@ -424,7 +422,7 @@ private fun readExifFromFile(filePath: String): String? {
 
         com.google.gson.Gson().toJson(exifMap)
     } catch (e: Exception) {
-        Log.e("readExifFromFile", "Failed to read EXIF from file: $filePath", e)
+        Log.e("readExifFromFile", "Failed to read EXIF from file: ${LogMask.path(filePath)}", e)
         null
     }
 }
@@ -444,30 +442,21 @@ private fun formatPhotoDate(
             val dateTimeOriginal = exifEntries["date_time_original"]
 
             if (dateTimeOriginal != null) {
-                Log.d("PhotoInfoDialog", "EXIF 날짜 원본: $dateTimeOriginal")
                 val exifFormat =
                     SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.getDefault())
 
                 try {
                     val parsedDate = exifFormat.parse(dateTimeOriginal)
                     if (parsedDate != null) {
-                        val result = displayFormat.format(parsedDate)
-                        Log.d("PhotoInfoDialog", "EXIF 날짜 파싱 성공: $result")
-                        result
+                        displayFormat.format(parsedDate)
                     } else {
-                        Log.w("PhotoInfoDialog", "EXIF 날짜 파싱 실패, 기본값 사용")
                         unknownDate
                     }
                 } catch (e: Exception) {
-                    Log.e(
-                        "PhotoInfoDialog",
-                        "EXIF 날짜 파싱 예외: $dateTimeOriginal",
-                        e
-                    )
+                    Log.e("PhotoInfoDialog", "EXIF 날짜 파싱 예외", e)
                     unknownDate
                 }
             } else {
-                Log.d("PhotoInfoDialog", "EXIF에 date_time_original 없음, 기본값 사용")
                 displayFormat.format(Date(photo.date))
             }
         } catch (e: Exception) {

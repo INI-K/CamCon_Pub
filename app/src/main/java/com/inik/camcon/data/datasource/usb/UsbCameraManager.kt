@@ -5,6 +5,7 @@ import android.hardware.usb.UsbDevice
 import android.util.Log
 import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.domain.model.CameraCapabilities
+import com.inik.camcon.utils.LogMask
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -47,7 +48,7 @@ class UsbCameraManager @Inject constructor(
         // USB 권한 승인 시 자동 연결 트리거
         deviceDetector.setPermissionGrantedCallback { device ->
             try {
-                Log.d(TAG, "권한 승인 콜백 수신 - 자동 연결 시도: ${device.deviceName}")
+                Log.d(TAG, "권한 승인 콜백 수신 - 자동 연결 시도: ${LogMask.path(device.deviceName)}")
                 if (!isNativeCameraConnected.value) {
                     connectToCamera(device)
                 } else {
@@ -62,7 +63,7 @@ class UsbCameraManager @Inject constructor(
     private fun setupDisconnectionCallbacks() {
         // 디바이스 감지기의 분리 콜백
         deviceDetector.setDisconnectionCallback { device ->
-            Log.d(TAG, "USB 디바이스 분리 감지: ${device.deviceName}")
+            Log.d(TAG, "USB 디바이스 분리 감지: ${LogMask.path(device.deviceName)}")
             // 연결 매니저에서 분리 처리
             scope.launch {
                 connectionManager.handleUsbDisconnection()

@@ -277,7 +277,7 @@ fun SettingsScreen(
                 }
                 appSettingsViewModel.setColorTransferReferenceImagePath(targetFile.absolutePath)
             } catch (e: Exception) {
-                e.printStackTrace()
+                android.util.Log.e("SettingsActivity", "참조 이미지 복사 실패", e)
             }
         }
     }

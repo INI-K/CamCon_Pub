@@ -1,5 +1,5 @@
 <resources>
-    <!-- サブスクリプション ペイウォール (日本語) -->
+    <!-- 구독 페이월 (일본어) -->
     <string name="subscription_title">サブスクリプション</string>
     <string name="subscription_back">戻る</string>
     <string name="subscription_current_plan">現在のプラン</string>
@@ -9,14 +9,14 @@
     <string name="subscription_disclaimer">サブスクリプションは自動的に更新され、Google Play ストアで管理または解約できます。</string>
     <string name="subscription_badge_current">現在</string>
 
-    <!-- ティア名 -->
+    <!-- 티어 이름 -->
     <string name="subscription_tier_free">無料</string>
     <string name="subscription_tier_basic">ベーシック</string>
     <string name="subscription_tier_pro">プロ</string>
     <string name="subscription_tier_referrer">紹介者</string>
     <string name="subscription_tier_admin">管理者</string>
 
-    <!-- 特典 -->
+    <!-- 혜택 -->
     <string name="subscription_benefit_jpg">JPG / JPEG 撮影</string>
     <string name="subscription_benefit_basic_control">基本的なカメラ制御</string>
     <string name="subscription_benefit_free_resolution">ダウンロードは 2000px に制限</string>
@@ -27,7 +27,7 @@
     <string name="subscription_benefit_advanced_control">高度なカメラ制御</string>
     <string name="subscription_benefit_raw_download">RAW オリジナルのダウンロード</string>
 
-    <!-- スナックバー -->
+    <!-- 스낵바 -->
     <string name="subscription_snackbar_purchase_started">購入を開始しました。確認後に適用されます。</string>
     <string name="subscription_snackbar_error">リクエストを処理できませんでした。もう一度お試しください。</string>
 </resources>

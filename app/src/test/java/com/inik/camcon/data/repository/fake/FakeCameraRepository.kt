@@ -37,7 +37,7 @@ class FakeCameraRepository : CameraRepository {
     val capturedPhotos = _capturedPhotos.asStateFlow()
 
     // 처리된 파일 LRU (1000개 제한)
-    private val processedFiles = LinkedHashMap<String, Long>(16, 0.75f, true) // access order
+    private val processedFiles = LinkedHashMap<String, Long>(16, 0.75f, true) // 접근 순서
     private val MAX_PROCESSED_FILES = 1000
 
     /**
@@ -286,7 +286,7 @@ class FakeCameraRepository : CameraRepository {
         return Result.success(emptyList())
     }
 
-    // ============== Helper Methods ==============
+    // ============== 헬퍼 메서드 ==============
 
     private fun addProcessedFile(fileName: String) {
         processedFiles[fileName] = System.currentTimeMillis()

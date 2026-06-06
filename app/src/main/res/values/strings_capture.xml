@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Capture UX (Group 3) -->
+    <!-- 촬영 UX (Group 3) -->
     <string name="capture_shutter_sound_label">Shutter sound</string>
     <string name="capture_shutter_sound_subtitle">Play system shutter sound when capturing</string>
     <string name="capture_no_liveview_label">Trigger capture without live view</string>
@@ -9,16 +9,16 @@
     <string name="liveview_focus_peaking_toggle">Focus peaking</string>
     <string name="liveview_exposure_compensation_label">EV</string>
 
-    <!-- Coachmark -->
+    <!-- 코치마크 -->
     <string name="coachmark_double_tap_fullscreen">Double tap to enter fullscreen</string>
     <string name="coachmark_shutter_area">Tap the 88dp shutter to capture</string>
     <string name="coachmark_recent_double_tap">Double tap a recent shot to open gallery</string>
     <string name="coachmark_got_it">Got it</string>
 
-    <!-- Shooting mode -->
+    <!-- 촬영 모드 -->
     <string name="shooting_unsupported_mode">This camera does not support %1$s mode</string>
 
-    <!-- Camera status badges -->
+    <!-- 카메라 상태 배지 -->
     <string name="camera_status_battery_percent">Battery %1$d%%</string>
     <string name="camera_status_sd_free">SD free %1$s</string>
     <string name="liveview_ev_label">Exposure compensation</string>
@@ -27,7 +27,7 @@
     <string name="camera_status_sd_low">SD low</string>
     <string name="camera_status_sd_images_free">%1$d shots left</string>
 
-    <!-- Timelapse labels (already exist in main strings; keep capture-scoped keys) -->
+    <!-- 타임랩스 라벨 (메인 strings에 이미 존재; capture 범위 키는 유지) -->
     <string name="timelapse_interval_label">Interval (seconds)</string>
     <string name="timelapse_count_label">Total shots</string>
 </resources>

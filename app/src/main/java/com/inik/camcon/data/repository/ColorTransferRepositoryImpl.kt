@@ -46,29 +46,28 @@ class ColorTransferRepositoryImpl @Inject constructor(
             } ?: return@withContext null)
             inputBitmapToRecycle = inputBitmap
 
-            // Get cached reference stats
+            // 캐시된 참조 통계 가져오기
             val referenceStats = colorTransferProcessor.getCachedReferenceStats(referenceImagePath)
                 ?: return@withContext null
 
-            // Apply GPU-cached color transfer
+            // GPU 캐시 색감 전송 적용
             val result = colorTransferProcessor.applyColorTransferWithGPUCached(
                 inputBitmap,
                 referenceStats,
                 intensity
             )
 
-            // GPU fallback to CPU if needed
+            // 필요 시 GPU에서 CPU로 폴백
             val transferred = result ?: colorTransferProcessor.applyColorTransferWithCachedStatsOptimized(
                 inputBitmap,
                 referenceStats,
                 intensity
             )
 
-            // Save result to temp file
+            // 결과를 임시 파일로 저장
             saveBitmapToTempFile(transferred)
         } catch (e: Exception) {
-            Log.e(TAG, "applyColorTransferWithGPUCached failed: ${e.message}")
-            e.printStackTrace()
+            Log.e(TAG, "applyColorTransferWithGPUCached failed", e)
             null
         } finally {
             // 예외/조기 반환/성공 모든 경로에서 입력 비트맵 누수 방지
@@ -99,7 +98,7 @@ class ColorTransferRepositoryImpl @Inject constructor(
             } ?: return@withContext null)
             referenceBitmapToRecycle = referenceBitmap
 
-            // Try optimized native first, fallback to Kotlin
+            // 최적화된 네이티브 먼저 시도, 실패 시 Kotlin으로 폴백
             val transferred = try {
                 colorTransferProcessor.applyColorTransferOptimized(
                     inputBitmap,
@@ -110,11 +109,10 @@ class ColorTransferRepositoryImpl @Inject constructor(
                 colorTransferProcessor.applyColorTransfer(inputBitmap, referenceBitmap, intensity)
             }
 
-            // Save result to temp file
+            // 결과를 임시 파일로 저장
             saveBitmapToTempFile(transferred)
         } catch (e: Exception) {
-            Log.e(TAG, "applyColorTransfer failed: ${e.message}")
-            e.printStackTrace()
+            Log.e(TAG, "applyColorTransfer failed", e)
             null
         } finally {
             // 예외/조기 반환/성공 모든 경로에서 입력·참조 비트맵 누수 방지
@@ -133,7 +131,7 @@ class ColorTransferRepositoryImpl @Inject constructor(
         try {
             Log.d(TAG, "GPU color transfer: ${File(inputImagePath).name}")
 
-            // Load images with EXIF orientation
+            // EXIF 방향 정보를 반영하여 이미지 로드
             val inputBitmap = loadBitmapWithOrientation(inputImagePath) ?: return@withContext null
             inputBitmapToRecycle = inputBitmap
             val referenceBitmap =
@@ -141,7 +139,7 @@ class ColorTransferRepositoryImpl @Inject constructor(
             referenceBitmapToRecycle = referenceBitmap
 
             try {
-                // Try GPU-accelerated color transfer
+                // GPU 가속 색감 전송 시도
                 val result = colorTransferProcessor.applyColorTransferWithGPU(
                     inputBitmap,
                     referenceBitmap,
@@ -158,7 +156,7 @@ class ColorTransferRepositoryImpl @Inject constructor(
                 Log.w(TAG, "GPU color transfer exception - CPU fallback: ${e.message}")
             }
 
-            // CPU fallback
+            // CPU 폴백
             Log.d(TAG, "CPU fallback processing")
             val result = colorTransferProcessor.applyColorTransferOptimized(
                 inputBitmap,
@@ -169,8 +167,7 @@ class ColorTransferRepositoryImpl @Inject constructor(
             Log.d(TAG, "CPU fallback complete")
             saveBitmapToTempFile(result)
         } catch (e: Exception) {
-            Log.e(TAG, "Color transfer failed: ${e.message}")
-            e.printStackTrace()
+            Log.e(TAG, "Color transfer failed", e)
             null
         } finally {
             // 성공·실패·조기 반환 모든 경로에서 입력·참조 비트맵 누수 방지
@@ -189,14 +186,14 @@ class ColorTransferRepositoryImpl @Inject constructor(
         var inputBitmapToRecycle: Bitmap? = null
         var transferredBitmapToRecycle: Bitmap? = null
         try {
-            // Get cached reference stats
+            // 캐시된 참조 통계 가져오기
             val referenceStats = colorTransferProcessor.getCachedReferenceStats(referenceImagePath)
                 ?: return@withContext null
 
             val inputBitmap = loadBitmapFromPath(inputImagePath) ?: return@withContext null
             inputBitmapToRecycle = inputBitmap
 
-            // Try optimized native first, fallback to Kotlin
+            // 최적화된 네이티브 먼저 시도, 실패 시 Kotlin으로 폴백
             val transferredBitmap = try {
                 colorTransferProcessor.applyColorTransferWithCachedStatsOptimized(
                     inputBitmap,
@@ -212,7 +209,7 @@ class ColorTransferRepositoryImpl @Inject constructor(
             }
             transferredBitmapToRecycle = transferredBitmap
 
-            // Save result to file
+            // 결과를 파일로 저장
             val outputFile = File(outputPath)
             outputFile.parentFile?.mkdirs()
 
@@ -220,7 +217,7 @@ class ColorTransferRepositoryImpl @Inject constructor(
                 transferredBitmap.compress(Bitmap.CompressFormat.JPEG, 95, outputStream)
             }
 
-            // Copy EXIF metadata from original image
+            // 원본 이미지의 EXIF 메타데이터 복사
             try {
                 copyExifMetadata(originalImagePath, outputPath)
                 Log.d(TAG, "EXIF metadata copied successfully")
@@ -234,8 +231,7 @@ class ColorTransferRepositoryImpl @Inject constructor(
                 height = transferredBitmap.height
             )
         } catch (e: Exception) {
-            Log.e(TAG, "applyColorTransferAndSave failed: ${e.message}")
-            e.printStackTrace()
+            Log.e(TAG, "applyColorTransferAndSave failed", e)
             null
         } finally {
             // FileOutputStream/compress/EXIF 단계 예외 시에도, 성공 시에도 비트맵 누수 방지
@@ -273,7 +269,7 @@ class ColorTransferRepositoryImpl @Inject constructor(
         colorTransferProcessor.cleanup()
     }
 
-    // ---- Private helpers ----
+    // ---- 내부 헬퍼 ----
 
     private fun loadBitmapFromPath(imagePath: String): Bitmap? {
         val options = BitmapFactory.Options().apply {
@@ -313,17 +309,17 @@ class ColorTransferRepositoryImpl @Inject constructor(
 
     private fun loadScaledBitmap(imagePath: String, maxSize: Int): Bitmap? {
         return try {
-            // Get image dimensions first
+            // 먼저 이미지 크기 가져오기
             val options = BitmapFactory.Options().apply {
                 inJustDecodeBounds = true
             }
             BitmapFactory.decodeFile(imagePath, options)
 
-            // Calculate scaling
+            // 스케일 계산
             val scale = maxOf(options.outWidth, options.outHeight) / maxSize.toFloat()
             val sampleSize = if (scale > 1f) scale.toInt() else 1
 
-            // Load bitmap with sample size
+            // 샘플 크기를 적용하여 비트맵 로드
             val loadOptions = BitmapFactory.Options().apply {
                 inSampleSize = sampleSize
                 inPreferredConfig = Bitmap.Config.ARGB_8888
@@ -331,7 +327,7 @@ class ColorTransferRepositoryImpl @Inject constructor(
 
             val bitmap = BitmapFactory.decodeFile(imagePath, loadOptions) ?: return null
 
-            // Resize to exact max size if needed
+            // 필요 시 정확한 최대 크기로 리사이즈
             if (bitmap.width > maxSize || bitmap.height > maxSize) {
                 val aspectRatio = bitmap.width.toFloat() / bitmap.height.toFloat()
                 val (newWidth, newHeight) = if (aspectRatio > 1) {

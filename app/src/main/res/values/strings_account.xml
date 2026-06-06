@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Account: Logout / Delete -->
+    <!-- 계정: 로그아웃 / 삭제 -->
     <string name="account_logout_dialog_title">Sign out?</string>
     <string name="account_logout_dialog_message">Your local photo cache and auto-connect history will be kept. Are you sure you want to sign out?</string>
     <string name="account_logout_confirm">Sign out</string>
@@ -21,7 +21,7 @@
     <string name="account_delete_success">Account deleted</string>
     <string name="account_delete_failed">Failed to delete account: %s</string>
 
-    <!-- Onboarding -->
+    <!-- 온보딩 -->
     <string name="onboarding_skip">Skip</string>
     <string name="onboarding_next">Next</string>
     <string name="onboarding_start">Get started</string>
@@ -35,7 +35,7 @@
     <string name="onboarding_step3_title">Allow permissions</string>
     <string name="onboarding_step3_description">For Wi-Fi discovery and live notifications, please allow location, Wi-Fi, and notification permissions when prompted.</string>
 
-    <!-- Language selection -->
+    <!-- 언어 선택 -->
     <string name="language_row_title">Language / Language</string>
     <string name="language_dialog_title">Choose language</string>
     <string name="language_system_default">System default</string>
@@ -48,7 +48,7 @@
     <string name="language_option_fr">Français</string>
     <string name="language_option_it">Italiano</string>
 
-    <!-- Referral code input -->
+    <!-- 추천인 코드 입력 -->
     <string name="referral_input_label">Referral code (optional)</string>
     <string name="referral_input_helper">Have a referral code? Enter it before signing in.</string>
 </resources>

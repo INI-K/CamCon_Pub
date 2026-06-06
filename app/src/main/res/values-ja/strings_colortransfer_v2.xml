@@ -1,40 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- ColorTransfer v2: i18n for settings/live-preview/preview-view + progress + picker -->
+    <!-- ColorTransfer v2: 설정/실시간 미리보기/미리보기 뷰 + 진행률 + 선택기 i18n -->
 
-    <!-- Common / TopBar -->
+    <!-- 공통 / 상단 바 -->
     <string name="ct_settings_title">カラー転送の詳細設定</string>
     <string name="ct_cd_close">閉じる</string>
     <string name="ct_confirm">確認</string>
 
-    <!-- Disabled banner -->
+    <!-- 비활성화 배너 -->
     <string name="ct_disabled_title">⚠️ カラー転送機能が無効です</string>
     <string name="ct_disabled_message">設定でカラー転送機能を先に有効にしてください</string>
 
-    <!-- Live preview section -->
+    <!-- 실시간 미리보기 섹션 -->
     <string name="ct_live_preview_title">リアルタイムプレビュー</string>
 
-    <!-- Intensity slider -->
+    <!-- 강도 슬라이더 -->
     <string name="ct_intensity_title">カラー転送の強度</string>
     <string name="ct_intensity_percent">%d%%</string>
     <string name="ct_intensity_weak">弱い (1%%)</string>
     <string name="ct_intensity_strong">強い (100%%)</string>
     <string name="ct_intensity_recommended">推奨: 3〜10%%</string>
 
-    <!-- Image management -->
+    <!-- 이미지 관리 -->
     <string name="ct_image_management">画像の管理</string>
     <string name="ct_reference_image">参照画像</string>
     <string name="ct_target_image">対象画像</string>
     <string name="ct_manage_library">参照画像ライブラリ</string>
     <string name="ct_clear_cache">キャッシュをクリア</string>
 
-    <!-- Error card -->
+    <!-- 오류 카드 -->
     <string name="ct_error_title">エラーが発生しました</string>
 
-    <!-- Processing progress -->
+    <!-- 처리 진행률 -->
     <string name="ct_processing_title">カラー転送を処理中…</string>
 
-    <!-- LivePreview component -->
+    <!-- LivePreview 컴포넌트 -->
     <string name="ct_lp_placeholder_title">リアルタイムプレビュー</string>
     <string name="ct_lp_placeholder_desc">参照画像と対象画像を\n選択するとプレビューが表示されます</string>
     <string name="ct_lp_slider_active_desc">スライダーの操作を終えると\nプレビューが更新されます</string>
@@ -50,7 +50,7 @@
     <string name="ct_lp_full_result_title">カラー適用結果 (原寸大)</string>
     <string name="ct_lp_cd_full_applied">原寸大でカラーが適用された画像</string>
 
-    <!-- PreviewView component -->
+    <!-- PreviewView 컴포넌트 -->
     <string name="ct_pv_reference_title">カラー参照画像</string>
     <string name="ct_pv_reference_subtitle">この画像のカラーが適用されます</string>
     <string name="ct_pv_reference_placeholder">カラーを取得する\n参照画像を選択してください</string>

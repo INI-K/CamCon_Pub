@@ -35,7 +35,7 @@ class ConnectCameraUseCaseTest {
     }
 
     /**
-     * Happy Path Tests - USB/Wi-Fi 연결 성공
+     * 정상 경로 테스트 - USB/Wi-Fi 연결 성공
      */
 
     @Test
@@ -93,7 +93,7 @@ class ConnectCameraUseCaseTest {
     }
 
     /**
-     * Edge Cases - 경계값, 특수 입력
+     * 엣지 케이스 - 경계값, 특수 입력
      */
 
     @Test
@@ -144,7 +144,7 @@ class ConnectCameraUseCaseTest {
     }
 
     /**
-     * Error Cases - 연결 실패 시나리오
+     * 에러 케이스 - 연결 실패 시나리오
      */
 
     @Test
@@ -250,7 +250,7 @@ class ConnectCameraUseCaseTest {
     }
 
     /**
-     * Multiple Call Tests - 연속 호출, 재연결, 중복 연결
+     * 다중 호출 테스트 - 연속 호출, 재연결, 중복 연결
      */
 
     @Test
@@ -282,12 +282,12 @@ class ConnectCameraUseCaseTest {
         coEvery { cameraRepository.connectCamera(cameraId) } returns Result.failure(failureException)
         useCase = ConnectCameraUseCase(cameraRepository)
 
-        // When - first call fails
+        // When - 첫 번째 호출 실패
         val result1 = useCase(cameraId)
         testDispatcher.scheduler.advanceUntilIdle()
         assertTrue(result1.isFailure)
 
-        // When - update mock to success and try again
+        // When - 목을 성공으로 업데이트 후 재시도
         coEvery { cameraRepository.connectCamera(cameraId) } returns Result.success(true)
         val result2 = useCase(cameraId)
         testDispatcher.scheduler.advanceUntilIdle()
@@ -304,7 +304,7 @@ class ConnectCameraUseCaseTest {
         coEvery { cameraRepository.connectCamera(cameraId) } returns Result.success(true)
         useCase = ConnectCameraUseCase(cameraRepository)
 
-        // When - call 3 times
+        // When - 3회 호출
         val result1 = useCase(cameraId)
         testDispatcher.scheduler.advanceUntilIdle()
 
@@ -321,7 +321,7 @@ class ConnectCameraUseCaseTest {
     }
 
     /**
-     * Repository Interaction Tests - Repository 호출 검증
+     * Repository 상호작용 테스트 - Repository 호출 검증
      */
 
     @Test
@@ -335,7 +335,7 @@ class ConnectCameraUseCaseTest {
         useCase(cameraId)
         testDispatcher.scheduler.advanceUntilIdle()
 
-        // Then - repository method was called (verified by mockk behavior)
+        // Then - repository 메서드가 호출됨 (mockk 동작으로 검증)
         val result = useCase(cameraId)
         assertTrue(result.isSuccess)
     }
