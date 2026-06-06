@@ -197,6 +197,12 @@ class NikonAuthenticationService @Inject constructor(
 
                     LogcatManager.d(TAG, "Phase 1 소켓 정리 시작 (인증 상태는 유지됨)")
                     try {
+                        // CloseSession을 먼저 보내 카메라가 PTP/IP 세션 슬롯을 깨끗이 비우게 한다.
+                        // (Z8은 abrupt close 시 세션을 안 놓아줘 직후 libgphoto2 재연결이 I/O -7로 거부됨)
+                        commandSocket?.let { sock ->
+                            val closed = sendCloseSession(sock)
+                            LogcatManager.d(TAG, "Phase 1 CloseSession 전송: ${if (closed) "응답 수신" else "응답 없음(무시)"}")
+                        }
                         commandSocket?.close()
                         eventSocket?.close()
                         LogcatManager.d(TAG, "Phase 1 소켓 정리 완료")
@@ -712,6 +718,35 @@ class NikonAuthenticationService @Inject constructor(
             bytesRead > 0
         } catch (e: Exception) {
             LogcatManager.e(TAG, "OpenSession 실패: ${e.message}")
+            false
+        }
+    }
+
+    /**
+     * CloseSession(0x1003) 전송 — Phase1 종료 전 세션 정리
+     *
+     * OpenSession을 연 채 소켓만 abrupt close하면 Z8은 PTP/IP 세션 슬롯을 안 놓아줘서,
+     * 직후 libgphoto2의 재연결 InitCommand를 거부한다(I/O -7, 11회 재시도 전부 실패).
+     * Z6는 abrupt close를 관용하지만 Z8은 안 한다. 명시적 CloseSession으로 카메라가 세션을
+     * 깨끗이 비우게 한다. 0x935a 페어링 승인(GUID 화이트리스트)은 세션과 별개라 유지된다.
+     * 실패해도 무방하므로 best-effort(예외 무시).
+     */
+    private fun sendCloseSession(socket: Socket): Boolean {
+        return try {
+            val output = socket.getOutputStream()
+            val packet = createOperationRequest(PtpipConstants.PTP_OC_CloseSession, 1)
+
+            output.write(packet)
+            output.flush()
+
+            // 응답 수신 (짧은 타임아웃, 결과 무관하게 세션 종료 요청은 전달됨)
+            socket.soTimeout = 3000
+            val response = ByteArray(256)
+            val bytesRead = socket.getInputStream().read(response)
+
+            bytesRead > 0
+        } catch (e: Exception) {
+            LogcatManager.e(TAG, "CloseSession 실패: ${e.message}")
             false
         }
     }

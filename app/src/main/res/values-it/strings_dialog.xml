@@ -49,6 +49,7 @@
     <string name="progress_ptpip_connecting">Connessione alla fotocamera...</string>
     <string name="progress_ptpip_connection_start">Avvio connessione fotocamera...</string>
     <string name="progress_ptpip_authenticating_nikon">Autenticazione Nikon...</string>
+    <string name="progress_ptpip_camera_confirm">📷 Premi “Consenti connessione (OK)” sullo schermo della fotocamera</string>
     <string name="progress_ptpip_checking_info">Verifica informazioni fotocamera...</string>
     <string name="progress_ptpip_listener_start">Avvio listener eventi...</string>
     <string name="progress_ptpip_finalizing">Completamento inizializzazione...</string>
