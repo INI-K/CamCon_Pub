@@ -17,6 +17,7 @@ import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.domain.usecase.camera.DeleteCameraFileUseCase
 import com.inik.camcon.domain.usecase.camera.PhotoCaptureEventManager
 import com.inik.camcon.domain.usecase.camera.ResumeNativeOperationsUseCase
+import com.inik.camcon.utils.LogMask
 import com.inik.camcon.presentation.viewmodel.photo.FileTypeFilter
 import com.inik.camcon.presentation.viewmodel.photo.PhotoImageManager
 import com.inik.camcon.presentation.viewmodel.photo.PhotoListManager
@@ -194,8 +195,6 @@ class PhotoPreviewViewModel @Inject constructor(
      * ViewModel 초기화
      */
     private fun initializeViewModel() {
-        Log.d(TAG, "=== PhotoPreviewViewModel 초기화 시작 ===")
-
         // 초기 상태 설정
         _uiState.update { it.copy(isInitializing = true) }
 
@@ -228,8 +227,6 @@ class PhotoPreviewViewModel @Inject constructor(
 
         // 옵저버들 설정
         setupObservers()
-
-        Log.d(TAG, "=== PhotoPreviewViewModel 초기화 완료 ===")
     }
 
     /**
@@ -348,7 +345,6 @@ class PhotoPreviewViewModel @Inject constructor(
         // 이미 active인 Job이 있으면 재실행하지 않음
         if (connectionObserveJob?.isActive == true) return
 
-        Log.d(TAG, "=== observeCameraConnection 시작 ===")
         connectionObserveJob = viewModelScope.launch {
             globalManager.globalConnectionState.collect { connectionState ->
                 val isConnected = connectionState.isAnyConnectionActive
@@ -416,16 +412,8 @@ class PhotoPreviewViewModel @Inject constructor(
         // 이미 active인 Job이 있으면 재실행하지 않음
         if (photosObserveJob?.isActive == true) return
 
-        Log.d(TAG, "[TRACE] observePhotosAndLoadThumbnails() 호출됨")
-
         photosObserveJob = viewModelScope.launch {
-            Log.d(TAG, "[TRACE] photoListManager.filteredPhotos.collect 시작")
-            var collectCount = 0
-
             photoListManager.filteredPhotos.collect { photos ->
-                collectCount++
-                Log.d(TAG, "[TRACE] filteredPhotos collect 실행 #$collectCount - 사진 ${photos.size}개")
-
                 if (photos.isNotEmpty()) {
                     Log.d(TAG, "사진 목록 변화 감지 (${photos.size}개) - 썸네일 로딩 시작")
                     photoImageManager.loadThumbnailsForPhotos(photos)
@@ -484,7 +472,7 @@ class PhotoPreviewViewModel @Inject constructor(
         }
     }
 
-    // MARK: - Public Methods (UI에서 호출)
+    // MARK: - 공개 메서드 (UI에서 호출)
 
     /**
      * 초기 사진 목록 로드 (PhotoListManager에 위임)
@@ -610,7 +598,7 @@ class PhotoPreviewViewModel @Inject constructor(
     fun deletePhoto(photo: CameraPhoto) {
         viewModelScope.launch {
             try {
-                Log.d(TAG, "사진 삭제 시도: ${photo.name}")
+                Log.d(TAG, "사진 삭제 시도: ${LogMask.path(photo.name)}")
 
                 val lastSlash = photo.path.lastIndexOf('/')
                 if (lastSlash > 0 && lastSlash < photo.path.length - 1) {
@@ -618,14 +606,14 @@ class PhotoPreviewViewModel @Inject constructor(
                     val filename = photo.path.substring(lastSlash + 1)
                     deleteCameraFileUseCase(folder, filename).fold(
                         onSuccess = {
-                            Log.d(TAG, "카메라 측 사진 삭제 성공: $folder / $filename")
+                            Log.d(TAG, "카메라 측 사진 삭제 성공: ${LogMask.path(folder)} / ${LogMask.path(filename)}")
                         },
                         onFailure = { e ->
-                            Log.w(TAG, "카메라 측 사진 삭제 실패 (로컬 정리는 계속): ${photo.name}", e)
+                            Log.w(TAG, "카메라 측 사진 삭제 실패 (로컬 정리는 계속): ${LogMask.path(photo.name)}", e)
                         }
                     )
                 } else {
-                    Log.w(TAG, "카메라 path 형식이 예상과 다름 — 카메라 측 삭제 스킵: ${photo.path}")
+                    Log.w(TAG, "카메라 path 형식이 예상과 다름 — 카메라 측 삭제 스킵: ${LogMask.path(photo.path)}")
                 }
 
                 // 로컬 파일도 정리.
@@ -747,7 +735,7 @@ class PhotoPreviewViewModel @Inject constructor(
     fun retryDownload(photo: CameraPhoto?) {
         val target = photo ?: _lastFailedDownload.value
         if (target != null) {
-            Log.d(TAG, "단일 사진 재시도: ${target.name}")
+            Log.d(TAG, "단일 사진 재시도: ${LogMask.path(target.name)}")
             // 재시도도 명시적 액션이므로 단일 결과 추적으로 성공/실패 토스트 노출(필수1).
             if (!_multiDownloadProgress.value.inProgress) {
                 singleDownloadPath = target.path
@@ -772,7 +760,7 @@ class PhotoPreviewViewModel @Inject constructor(
         photoListManager.loadLocalPhotos(_uiState.value.currentTier)
     }
 
-    // MARK: - Private Helper Methods
+    // MARK: - 비공개 헬퍼 메서드
 
     /**
      * RAW 파일 접근 권한 처리.
@@ -811,7 +799,7 @@ class PhotoPreviewViewModel @Inject constructor(
             - 연결됨: ${_uiState.value.isConnected}
             - 초기화중: ${_uiState.value.isInitializing}
             - 구독 티어: ${_uiState.value.currentTier}
-            - 선택된 사진: ${_uiState.value.selectedPhoto?.name}
+            - 선택된 사진: ${LogMask.path(_uiState.value.selectedPhoto?.name)}
             - PTPIP 연결 상태: ${_uiState.value.isPtpipConnected}
         """.trimIndent()
         )
@@ -906,7 +894,6 @@ class PhotoPreviewViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        Log.d(TAG, "=== PhotoPreviewViewModel 정리 시작 ===")
 
         // 사진 미리보기 탭에서 나갈 때 이벤트 리스너 재시작.
         // onCleared 시점에는 viewModelScope 가 이미 cancel 상태이므로 일반 launch 는
@@ -998,8 +985,6 @@ class PhotoPreviewViewModel @Inject constructor(
             // onCleared 는 일반 함수이므로 CancellationException 재던지기 불필요.
             Log.w(TAG, "매니저 정리 중 예외", e)
         }
-
-        Log.d(TAG, "=== PhotoPreviewViewModel 정리 완료 ===")
     }
 
     // MARK: - 멀티 선택 관련 메서드들 (PhotoSelectionManager에 위임)

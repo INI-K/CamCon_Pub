@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Camera Abilities screen -->
+    <!-- 카메라 기능 화면 -->
     <string name="diag_abilities_title">Funzioni della fotocamera</string>
     <string name="diag_abilities_loading">Caricamento informazioni fotocamera…</string>
     <string name="diag_abilities_retry">Riprova</string>
@@ -55,7 +55,7 @@
     <string name="diag_abilities_summary_partial">ℹ️ Supporto parziale\n\nLa Live View non è supportata, ma lo scatto da remoto è disponibile.</string>
     <string name="diag_abilities_summary_some">ℹ️ Alcune funzioni supportate\n\nAlcune funzioni della fotocamera potrebbero essere limitate.</string>
 
-    <!-- Diagnostics section (ADMIN) -->
+    <!-- 진단 섹션 (ADMIN) -->
     <string name="diag_section_title">🩺 Diagnostica (ADMIN)</string>
     <string name="diag_run_button">Esegui diagnostica</string>
     <string name="diag_running">Diagnostica in corso…</string>
@@ -73,10 +73,10 @@
     <string name="diag_memory_clear_pool">Svuota pool di file</string>
     <string name="diag_report_empty">Nessun report ancora. Esegui la diagnostica.</string>
 
-    <!-- RAW restriction upgrade action -->
+    <!-- RAW 제한 업그레이드 동작 -->
     <string name="diag_raw_upgrade">Aggiorna piano</string>
 
-    <!-- Camera restart dialog -->
+    <!-- 카메라 재시작 대화상자 -->
     <string name="diag_restart_needed">Riavvio dell\'app richiesto</string>
     <string name="diag_restart_message">Il dispositivo USB non è stato disconnesso correttamente oppure si è verificato un errore di sistema (-52).\n\nL\'app deve essere riavviata per funzionare correttamente.\n\nRiavviare l\'app ora?</string>
     <string name="diag_restart_confirm">Riavvia app</string>

@@ -25,6 +25,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import com.inik.camcon.utils.Constants
+import com.inik.camcon.utils.LogMask
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -99,17 +100,11 @@ class PhotoImageManager @Inject constructor(
      * 썸네일 로드
      */
     fun loadThumbnailsForPhotos(photos: List<CameraPhoto>) {
-        val stackTrace = Thread.currentThread().stackTrace
-            .take(5)
-            .joinToString("\n") { "    at ${it.className}.${it.methodName}(${it.fileName}:${it.lineNumber})" }
-
-        Log.d(TAG, "🔍 loadThumbnailsForPhotos 호출됨!")
-        Log.d(TAG, "🔍 호출 스택:\n$stackTrace")
-        Log.d(TAG, "=== 썸네일 로딩 시작: ${photos.size}개 사진 ===")
+        Log.d(TAG, "썸네일 로딩 시작: ${photos.size}개 사진")
 
         managerScope.launch {
             if (!isManagerActive) {
-                Log.d(TAG, "⛔ 썸네일 로딩 중단됨 (매니저 비활성)")
+                Log.d(TAG, "썸네일 로딩 중단됨 (매니저 비활성)")
                 return@launch
             }
 
@@ -117,17 +112,11 @@ class PhotoImageManager @Inject constructor(
             photos.forEach { photo ->
                 // 이미 캐시에 있거나 로딩 중인 경우 건너뛰기 — 캐시·로딩 상태 모두 최신 StateFlow 값 기준으로 판정(F31)
                 if (_thumbnailCache.value.containsKey(photo.path) || _loadingThumbnails.value.contains(photo.path)) {
-                    if (_thumbnailCache.value.containsKey(photo.path)) {
-                        Log.d(TAG, "♻️ 이미 캐시에 있음: ${photo.name}")
-                    } else {
-                        Log.d(TAG, "⏳ 이미 로딩 중: ${photo.name}")
-                    }
                     return@forEach
                 }
 
                 // 매니저 비활성화 체크
                 if (!isManagerActive) {
-                    Log.d(TAG, "⛔ 썸네일 로딩 중단됨 (매니저 비활성)")
                     return@launch
                 }
 
@@ -137,37 +126,21 @@ class PhotoImageManager @Inject constructor(
                 }
 
                 try {
-                    Log.d(TAG, "📷 썸네일 로드 시작: ${photo.name}")
-                    Log.d(TAG, "   - 경로: ${photo.path}")
-                    Log.d(TAG, "   - 파일크기: ${photo.size} bytes")
-
                     // 네이티브 썸네일 호출
                     getCameraThumbnailUseCase(photo.path).fold(
                         onSuccess = { thumbnailData ->
                             if (!isManagerActive) {
-                                Log.d(TAG, "매니저 비활성화됨, 결과 무시: ${photo.name}")
                                 return@fold
                             }
 
-                            Log.d(TAG, "✅ 썸네일 데이터 받음: ${photo.name}")
-                            Log.d(TAG, "   - 썸네일 크기: ${thumbnailData.size} bytes")
-                            Log.d(TAG, "   - 썸네일 비어있음: ${thumbnailData.isEmpty()}")
-
                             if (thumbnailData.isNotEmpty()) {
-                                // 썸네일 데이터의 헤더 확인 (JPEG인지 등)
-                                val header = thumbnailData.take(8).map { "%02X".format(it) }
-                                    .joinToString(" ")
-                                Log.d(TAG, "   - 썸네일 헤더: $header")
-
                                 // JPEG 헤더 확인 (FF D8 FF로 시작해야 함)
-                                if (thumbnailData.size >= 3 &&
-                                    thumbnailData[0] == 0xFF.toByte() &&
-                                    thumbnailData[1] == 0xD8.toByte() &&
-                                    thumbnailData[2] == 0xFF.toByte()
+                                if (!(thumbnailData.size >= 3 &&
+                                            thumbnailData[0] == 0xFF.toByte() &&
+                                            thumbnailData[1] == 0xD8.toByte() &&
+                                            thumbnailData[2] == 0xFF.toByte())
                                 ) {
-                                    Log.d(TAG, "   - 유효한 JPEG 썸네일 확인됨")
-                                } else {
-                                    Log.w(TAG, "   - 비정상적인 썸네일 헤더 감지됨")
+                                    Log.w(TAG, "비정상적인 썸네일 헤더 감지됨: ${photo.name}")
                                 }
 
                                 val newSize = synchronized(thumbnailCacheLock) {
@@ -177,16 +150,15 @@ class PhotoImageManager @Inject constructor(
                                         val oldestKey = updated.keys.firstOrNull()
                                         if (oldestKey != null) {
                                             updated.remove(oldestKey)
-                                            Log.d(TAG, "캐시 크기 제한 - 가장 오래된 썸네일 제거: $oldestKey")
                                         }
                                     }
                                     updated[photo.path] = thumbnailData
                                     _thumbnailCache.value = updated
                                     updated.size
                                 }
-                                Log.d(TAG, "💾 썸네일 캐시 저장 완료: ${photo.name} (캐시 크기: $newSize)")
+                                Log.d(TAG, "썸네일 캐시 저장 완료: ${photo.name} (캐시 크기: $newSize)")
                             } else {
-                                Log.w(TAG, "⚠️ 빈 썸네일 데이터 수신: ${photo.name}")
+                                Log.w(TAG, "빈 썸네일 데이터 수신: ${photo.name}")
                                 // 빈 데이터도 캐시에 저장하여 재시도 방지
                                 synchronized(thumbnailCacheLock) {
                                     _thumbnailCache.value =
@@ -196,14 +168,14 @@ class PhotoImageManager @Inject constructor(
                         },
                         onFailure = { exception ->
                             if (!isManagerActive) {
-                                Log.d(TAG, "매니저 비활성화됨, 에러 무시: ${photo.name}")
                                 return@fold
                             }
 
                             val errorMessage = exception.message ?: "알 수 없는 오류"
-                            Log.e(TAG, "❌ 썸네일 로드 실패: ${photo.path}")
-                            Log.d(TAG, "   - 에러 메시지: $errorMessage")
-                            Log.d(TAG, "   - 에러 타입: ${exception.javaClass.simpleName}")
+                            Log.e(
+                                TAG,
+                                "썸네일 로드 실패: ${LogMask.path(photo.path)} (${exception.javaClass.simpleName}): $errorMessage"
+                            )
 
                             // 카메라 사용 중 오류에 대해 더 관대하게 처리
                             val isCameraBusyError =
@@ -212,7 +184,7 @@ class PhotoImageManager @Inject constructor(
                                         errorMessage.contains("카메라가 연결되지 않음", ignoreCase = true)
 
                             if (isCameraBusyError) {
-                                Log.w(TAG, "⏳ 카메라 사용 중/초기화 중 오류 - 캐시에 저장하지 않고 나중에 재시도 허용")
+                                Log.w(TAG, "카메라 사용 중/초기화 중 오류 - 캐시 저장 없이 재시도 허용")
                                 // 카메라 사용 중인 경우 캐시에 저장하지 않음 (자연스러운 재시도 허용)
                                 return@fold
                             }
@@ -225,30 +197,8 @@ class PhotoImageManager @Inject constructor(
                                         errorMessage.contains("끊어짐", ignoreCase = true) ||
                                         errorMessage.contains("비어있음", ignoreCase = true)
 
-                            // 특정 에러 타입에 따른 처리
-                            when {
-                                errorMessage.contains(
-                                    "camera not initialized",
-                                    ignoreCase = true
-                                ) -> {
-                                    Log.e(TAG, "   - 카메라 초기화 문제")
-                                }
-
-                                errorMessage.contains("file not found", ignoreCase = true) -> {
-                                    Log.e(TAG, "   - 파일을 찾을 수 없음")
-                                }
-
-                                errorMessage.contains("timeout", ignoreCase = true) -> {
-                                    Log.e(TAG, "   - 타임아웃 발생")
-                                }
-
-                                else -> {
-                                    Log.e(TAG, "   - 기타 오류: $errorMessage")
-                                }
-                            }
-
                             if (isRecoverableError) {
-                                Log.w(TAG, "⏳ 일시적 오류 - 캐시에 저장하지 않고 나중에 재시도 허용")
+                                Log.w(TAG, "일시적 오류 - 캐시 저장 없이 재시도 허용")
                                 return@fold
                             }
 
@@ -262,7 +212,7 @@ class PhotoImageManager @Inject constructor(
                 } catch (exception: CancellationException) {
                     throw exception
                 } catch (exception: Exception) {
-                    Log.e(TAG, "💥 썸네일 로딩 중 예외: ${photo.name}", exception)
+                    Log.e(TAG, "썸네일 로딩 중 예외: ${photo.name}", exception)
                     if (isManagerActive) {
                         synchronized(thumbnailCacheLock) {
                             _thumbnailCache.value =
@@ -274,11 +224,10 @@ class PhotoImageManager @Inject constructor(
                     synchronized(thumbnailCacheLock) {
                         _loadingThumbnails.value = _loadingThumbnails.value - photo.path
                     }
-                    Log.d(TAG, "🔄 썸네일 로딩 완료 처리: ${photo.name}")
                 }
             }
 
-            Log.d(TAG, "=== 썸네일 로딩 완료: ${photos.size}개 사진 ===")
+            Log.d(TAG, "썸네일 로딩 완료: ${photos.size}개 사진")
         }
     }
 
@@ -286,10 +235,9 @@ class PhotoImageManager @Inject constructor(
      * 고해상도 이미지 다운로드
      */
     fun downloadFullImage(photoPath: String, currentTier: SubscriptionTier) {
-        Log.d(TAG, "=== downloadFullImage 호출: $photoPath ===")
+        Log.d(TAG, "downloadFullImage 호출: ${LogMask.path(photoPath)}")
 
         if (_fullImageCache.value.containsKey(photoPath)) {
-            Log.d(TAG, "이미 캐시에 있음, 다운로드 생략")
             // 이미 성공적으로 캐시된 상태 — 다중선택 진행 집계가 멈추지 않도록 성공으로 통지.
             _downloadResult.tryEmit(DownloadResult(photoPath, isSuccess = true))
             return
@@ -297,7 +245,6 @@ class PhotoImageManager @Inject constructor(
 
         synchronized(this) {
             if (_downloadingImages.value.contains(photoPath)) {
-                Log.d(TAG, "이미 다운로드 중, 중복 요청 무시")
                 return
             }
             _downloadingImages.value = _downloadingImages.value + photoPath
@@ -307,16 +254,12 @@ class PhotoImageManager @Inject constructor(
             // 다운로드 성공 여부 — finally 에서 결과 이벤트 emit.
             var downloadSucceeded = false
             try {
-                Log.d(TAG, "실제 파일 다운로드 시작: $photoPath")
-
                 val imageData = withContext(ioDispatcher) {
-                    Log.d(TAG, "downloadCameraPhoto 호출")
                     downloadCameraPhotoUseCase(photoPath)
                 }
 
                 if (imageData != null && imageData.isNotEmpty()) {
                     downloadSucceeded = true
-                    Log.d(TAG, "이미지 데이터 확인: 유효함 (${imageData.size} bytes)")
 
                     val (added, cacheSize) = synchronized(fullImageCacheLock) {
                         val currentCache = _fullImageCache.value.toMutableMap()
@@ -328,7 +271,6 @@ class PhotoImageManager @Inject constructor(
                                 val oldestKey = currentCache.keys.firstOrNull()
                                 if (oldestKey != null) {
                                     currentCache.remove(oldestKey)
-                                    Log.d(TAG, "캐시 크기 제한 - 가장 오래된 이미지 제거: $oldestKey")
                                 } else {
                                     break
                                 }
@@ -363,7 +305,7 @@ class PhotoImageManager @Inject constructor(
                 _downloadingImages.value = _downloadingImages.value - photoPath
                 // 성공/실패 결과 통지 — 실패·빈 결과는 캐시에 넣지 않으므로 재시도 가능(필수1).
                 _downloadResult.tryEmit(DownloadResult(photoPath, isSuccess = downloadSucceeded))
-                Log.d(TAG, "다운로드 상태 정리 완료: $photoPath (성공: $downloadSucceeded)")
+                Log.d(TAG, "다운로드 상태 정리 완료: ${LogMask.path(photoPath)} (성공: $downloadSucceeded)")
             }
         }
     }
@@ -377,7 +319,7 @@ class PhotoImageManager @Inject constructor(
 
         withContext(ioDispatcher) {
             try {
-                Log.d(TAG, "🎯 Free 티어 사용자 - 리사이징 처리 시작")
+                Log.d(TAG, "Free 티어 사용자 - 리사이징 처리 시작")
 
                 val tempFile = File.createTempFile("temp_resize", ".jpg")
                 tempFile.writeBytes(imageData)
@@ -399,9 +341,9 @@ class PhotoImageManager @Inject constructor(
                         _fullImageCache.value = currentCache
                     }
 
-                    Log.d(TAG, "✅ Free 티어 리사이징 완료: ${resizedData.size} bytes")
+                    Log.d(TAG, "Free 티어 리사이징 완료: ${resizedData.size} bytes")
                 } else {
-                    Log.w(TAG, "⚠️ Free 티어 리사이징 실패, 원본 유지")
+                    Log.w(TAG, "Free 티어 리사이징 실패, 원본 유지")
                 }
 
                 // 임시 파일 정리
@@ -411,7 +353,7 @@ class PhotoImageManager @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e(TAG, "❌ Free 티어 리사이징 처리 중 오류", e)
+                Log.e(TAG, "Free 티어 리사이징 처리 중 오류", e)
             }
         }
     }
@@ -422,7 +364,7 @@ class PhotoImageManager @Inject constructor(
     private suspend fun resizeImageForFreeTier(inputPath: String, outputPath: String): Boolean {
         return withContext(ioDispatcher) {
             try {
-                Log.d(TAG, "🔧 Free 티어 이미지 리사이즈 시작: $inputPath")
+                Log.d(TAG, "Free 티어 이미지 리사이즈 시작: ${LogMask.path(inputPath)}")
 
                 val options = android.graphics.BitmapFactory.Options().apply {
                     inJustDecodeBounds = true
@@ -482,20 +424,20 @@ class PhotoImageManager @Inject constructor(
 
                     copyAllExifData(inputPath, outputPath, newWidth, newHeight)
 
-                    Log.d(TAG, "✅ Free 티어 리사이즈 완료 (EXIF 보존)")
+                    Log.d(TAG, "Free 티어 리사이즈 완료 (EXIF 보존)")
                     true
                 } finally {
                     bitmap.recycle()
                 }
 
             } catch (e: OutOfMemoryError) {
-                Log.e(TAG, "❌ 메모리 부족으로 리사이즈 실패", e)
+                Log.e(TAG, "메모리 부족으로 리사이즈 실패", e)
                 System.gc()
                 false
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e(TAG, "❌ 이미지 리사이즈 실패", e)
+                Log.e(TAG, "이미지 리사이즈 실패", e)
                 false
             }
         }
@@ -507,7 +449,7 @@ class PhotoImageManager @Inject constructor(
     private fun parseExifFromImageData(photoPath: String, imageData: ByteArray) {
         managerScope.launch {
             try {
-                Log.d(TAG, "EXIF 파싱 시작: $photoPath")
+                Log.d(TAG, "EXIF 파싱 시작: ${LogMask.path(photoPath)}")
 
                 val tempFile = File.createTempFile("temp_exif", ".jpg")
                 tempFile.writeBytes(imageData)
@@ -560,7 +502,7 @@ class PhotoImageManager @Inject constructor(
                     }
 
                     val exifJson = jsonObject.toString()
-                    Log.d(TAG, "EXIF 파싱 완료: $exifJson")
+                    Log.d(TAG, "EXIF 파싱 완료: ${exifMap.size}개 태그")
 
                     _exifCache.value = _exifCache.value + (photoPath to exifJson)
 
@@ -689,10 +631,10 @@ class PhotoImageManager @Inject constructor(
             newExif.setAttribute(ExifInterface.TAG_SOFTWARE, "CamCon (Free Tier Resize)")
 
             newExif.saveAttributes()
-            Log.d(TAG, "✅ EXIF 정보 복사 완료: ${copiedCount}개 태그 복사됨")
+            Log.d(TAG, "EXIF 정보 복사 완료: ${copiedCount}개 태그 복사됨")
 
         } catch (e: Exception) {
-            Log.e(TAG, "❌ EXIF 정보 복사 실패", e)
+            Log.e(TAG, "EXIF 정보 복사 실패", e)
         }
     }
 

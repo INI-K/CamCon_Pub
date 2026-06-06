@@ -8,6 +8,7 @@ import com.inik.camcon.domain.model.UiText
 import com.inik.camcon.domain.model.User
 import com.inik.camcon.domain.usecase.auth.SignInWithGoogleUseCase
 import com.inik.camcon.domain.usecase.auth.UserReferralUseCase
+import com.inik.camcon.utils.LogMask
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -114,14 +115,14 @@ class LoginViewModel @Inject constructor(
                     onSuccess = { success ->
                         _uiState.update { it.copy(isLoading = false, isLoggedIn = true) }
                         if (success) {
-                            Log.i("LoginViewModel", "추천 코드 사용 성공: $referralCode")
+                            Log.i("LoginViewModel", "추천 코드 사용 성공: ${LogMask.id(referralCode)}")
                             _uiEvent.emit(
                                 LoginUiEvent.ShowReferralMessage(
                                     UiText.Resource(R.string.login_referral_applied)
                                 )
                             )
                         } else {
-                            Log.w("LoginViewModel", "추천 코드 사용 실패: $referralCode")
+                            Log.w("LoginViewModel", "추천 코드 사용 실패: ${LogMask.id(referralCode)}")
                             _uiEvent.emit(
                                 LoginUiEvent.ShowReferralMessage(
                                     UiText.Resource(R.string.login_referral_failed)
@@ -131,7 +132,7 @@ class LoginViewModel @Inject constructor(
                         _uiEvent.emit(LoginUiEvent.NavigateToHome)
                     },
                     onFailure = { error ->
-                        Log.e("LoginViewModel", "추천 코드 처리 오류: $referralCode", error)
+                        Log.e("LoginViewModel", "추천 코드 처리 오류: ${LogMask.id(referralCode)}", error)
                         _uiState.update { it.copy(isLoading = false, isLoggedIn = true) }
                         _uiEvent.emit(
                             LoginUiEvent.ShowReferralMessage(
@@ -144,7 +145,7 @@ class LoginViewModel @Inject constructor(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.e("LoginViewModel", "추천 코드 처리 예외: $referralCode", e)
+            Log.e("LoginViewModel", "추천 코드 처리 예외: ${LogMask.id(referralCode)}", e)
             _uiState.update { it.copy(isLoading = false, isLoggedIn = true) }
             _uiEvent.emit(
                 LoginUiEvent.ShowReferralMessage(

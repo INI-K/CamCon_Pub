@@ -6,8 +6,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Thin UseCase wrapper that delegates all color transfer logic to the repository.
- * Domain layer remains free of Android dependencies.
+ * 모든 컬러 트랜스퍼 로직을 Repository에 위임하는 얇은 UseCase 래퍼.
+ * 도메인 레이어는 Android 의존성을 갖지 않는다.
  */
 @Singleton
 class ColorTransferUseCase @Inject constructor(
@@ -15,12 +15,12 @@ class ColorTransferUseCase @Inject constructor(
 ) {
 
     /**
-     * Applies color transfer using GPU acceleration with cached reference stats.
-     * @param targetImagePath path to the input image
-     * @param referenceImagePath path to the reference image
-     * @param intensity color transfer intensity (0.0 ~ 1.0)
-     * @param maxSize optional max size to scale the input bitmap (0 = no scaling)
-     * @return path to the result image file, or null on failure
+     * 캐시된 레퍼런스 통계를 활용해 GPU 가속으로 컬러 트랜스퍼를 적용한다.
+     * @param targetImagePath 입력 이미지 경로
+     * @param referenceImagePath 레퍼런스 이미지 경로
+     * @param intensity 컬러 트랜스퍼 강도 (0.0 ~ 1.0)
+     * @param maxSize 입력 비트맵을 스케일할 최대 크기 (선택, 0 = 스케일 안 함)
+     * @return 결과 이미지 파일 경로, 실패 시 null
      */
     suspend fun applyColorTransferWithGPUCached(
         targetImagePath: String,
@@ -33,12 +33,12 @@ class ColorTransferUseCase @Inject constructor(
         )
 
     /**
-     * Applies color transfer between two images (CPU path).
-     * @param targetImagePath path to the input image
-     * @param referenceImagePath path to the reference image
-     * @param intensity color transfer intensity (0.0 ~ 1.0)
-     * @param maxSize optional max size to scale both bitmaps (0 = no scaling)
-     * @return path to the result image file, or null on failure
+     * 두 이미지 사이에 컬러 트랜스퍼를 적용한다 (CPU 경로).
+     * @param targetImagePath 입력 이미지 경로
+     * @param referenceImagePath 레퍼런스 이미지 경로
+     * @param intensity 컬러 트랜스퍼 강도 (0.0 ~ 1.0)
+     * @param maxSize 두 비트맵을 스케일할 최대 크기 (선택, 0 = 스케일 안 함)
+     * @return 결과 이미지 파일 경로, 실패 시 null
      */
     suspend fun applyColorTransfer(
         targetImagePath: String,
@@ -51,11 +51,11 @@ class ColorTransferUseCase @Inject constructor(
         )
 
     /**
-     * Applies color transfer using GPU acceleration.
-     * @param inputImagePath path to the input image
-     * @param referenceImagePath path to the reference image
-     * @param intensity color transfer intensity (0.0 ~ 1.0)
-     * @return path to the result image file, or null on failure
+     * GPU 가속으로 컬러 트랜스퍼를 적용한다.
+     * @param inputImagePath 입력 이미지 경로
+     * @param referenceImagePath 레퍼런스 이미지 경로
+     * @param intensity 컬러 트랜스퍼 강도 (0.0 ~ 1.0)
+     * @return 결과 이미지 파일 경로, 실패 시 null
      */
     suspend fun applyColorTransferWithGPU(
         inputImagePath: String,
@@ -65,7 +65,7 @@ class ColorTransferUseCase @Inject constructor(
         colorTransferRepository.applyColorTransferWithGPU(inputImagePath, referenceImagePath, intensity)
 
     /**
-     * Applies color transfer and saves result with EXIF metadata preservation.
+     * 컬러 트랜스퍼를 적용하고 EXIF 메타데이터를 보존하며 결과를 저장한다.
      */
     suspend fun applyColorTransferAndSave(
         inputImagePath: String,
@@ -79,25 +79,25 @@ class ColorTransferUseCase @Inject constructor(
         )
 
     /**
-     * Validates whether the file at the given path is a valid image.
+     * 주어진 경로의 파일이 유효한 이미지인지 검증한다.
      */
     fun isValidImageFile(imagePath: String): Boolean =
         colorTransferRepository.isValidImageFile(imagePath)
 
     /**
-     * Clears the cached reference image statistics.
+     * 캐시된 레퍼런스 이미지 통계를 비운다.
      */
     fun clearReferenceCache() =
         colorTransferRepository.clearReferenceCache()
 
     /**
-     * Initializes GPU processing.
+     * GPU 처리를 초기화한다.
      */
     fun initializeGPU(contextProvider: Any) =
         colorTransferRepository.initializeGPU(contextProvider)
 
     /**
-     * Releases GPU/EGL resources. Call only at application teardown.
+     * GPU/EGL 리소스를 해제한다. 애플리케이션 종료 시점에만 호출한다.
      */
     fun releaseGpu() =
         colorTransferRepository.releaseGpu()

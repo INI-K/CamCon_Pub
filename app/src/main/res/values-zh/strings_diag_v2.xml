@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Camera Abilities screen -->
+    <!-- 카메라 기능 화면 -->
     <string name="diag_abilities_title">相机功能信息</string>
     <string name="diag_abilities_loading">正在获取相机信息…</string>
     <string name="diag_abilities_retry">重试</string>
@@ -55,7 +55,7 @@
     <string name="diag_abilities_summary_partial">ℹ️ 部分支持\n\n不支持实时取景，但可远程拍摄。</string>
     <string name="diag_abilities_summary_some">ℹ️ 支持部分功能\n\n部分相机功能可能受限。</string>
 
-    <!-- Diagnostics section (ADMIN) -->
+    <!-- 진단 섹션 (ADMIN) -->
     <string name="diag_section_title">🩺 诊断 (ADMIN)</string>
     <string name="diag_run_button">运行诊断</string>
     <string name="diag_running">正在运行诊断…</string>
@@ -73,10 +73,10 @@
     <string name="diag_memory_clear_pool">清空文件池</string>
     <string name="diag_report_empty">尚无报告。请运行诊断。</string>
 
-    <!-- RAW restriction upgrade action -->
+    <!-- RAW 제한 업그레이드 액션 -->
     <string name="diag_raw_upgrade">升级</string>
 
-    <!-- Camera restart dialog -->
+    <!-- 카메라 재시작 다이얼로그 -->
     <string name="diag_restart_needed">需要重启应用</string>
     <string name="diag_restart_message">USB 设备未正确断开连接，或发生系统错误 (-52)。\n\n必须重启应用才能正常使用。\n\n现在重启应用吗?</string>
     <string name="diag_restart_confirm">重启应用</string>

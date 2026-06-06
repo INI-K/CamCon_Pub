@@ -63,6 +63,7 @@ import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.AppVersionUiState
 import com.inik.camcon.presentation.viewmodel.AppVersionViewModel
+import com.inik.camcon.utils.LogMask
 import com.inik.camcon.utils.LogcatManager
 import com.inik.camcon.di.IoDispatcher
 import dagger.hilt.android.AndroidEntryPoint
@@ -113,7 +114,7 @@ class SplashActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        LogcatManager.i("SplashActivity", "=== 스플래시 화면 시작 ===")
+        LogcatManager.i("SplashActivity", "스플래시 화면 시작")
 
         loadLibrariesInBackground()
         loadSubscriptionTierInBackground()
@@ -184,7 +185,7 @@ class SplashActivity : ComponentActivity() {
 
                 val pluginDir =
                     applicationContext.getDir("gphoto2_plugins", MODE_PRIVATE).absolutePath
-                LogcatManager.d("SplashActivity", "플러그인 디렉토리 경로: $pluginDir")
+                LogcatManager.d("SplashActivity", "플러그인 디렉토리 경로: ${LogMask.path(pluginDir)}")
 
                 val envSetupResult = setupNativeEnvironmentUseCase(pluginDir)
                 if (!envSetupResult) {
@@ -205,7 +206,7 @@ class SplashActivity : ComponentActivity() {
                     val logStarted = startNativeLogUseCase(logPath)
                     LogcatManager.i(
                         "SplashActivity",
-                        "디버그 네이티브 로그 자동 시작: $logStarted ($logPath)"
+                        "디버그 네이티브 로그 자동 시작: $logStarted (${LogMask.path(logPath)})"
                     )
                 }
 

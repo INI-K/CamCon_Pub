@@ -12,6 +12,7 @@ import com.inik.camcon.domain.usecase.camera.StopLiveViewUseCase
 import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
 import com.inik.camcon.presentation.viewmodel.state.InfoMessage
 import com.inik.camcon.di.ApplicationScope
+import com.inik.camcon.utils.LogMask
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -85,7 +86,7 @@ class CameraOperationsManager @Inject constructor(
 
                 capturePhotoUseCase(shootingMode)
                     .onSuccess { photo ->
-                        Log.d(TAG, "사진 촬영 성공: ${photo.filePath}")
+                        Log.d(TAG, "사진 촬영 성공: ${LogMask.path(photo.filePath)}")
                     }
                     .onFailure { error ->
                         if (error is UnsupportedShootingModeException) {
@@ -235,7 +236,7 @@ class CameraOperationsManager @Inject constructor(
                         uiStateManager.updateCapturingState(false)
                     }
                     .collect { photo ->
-                        Log.d(TAG, "타임랩스 사진 촬영: ${photo.filePath}")
+                        Log.d(TAG, "타임랩스 사진 촬영: ${LogMask.path(photo.filePath)}")
                     }
 
                 uiStateManager.updateCapturingState(false)

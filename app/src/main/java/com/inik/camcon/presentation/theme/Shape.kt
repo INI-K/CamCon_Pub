@@ -7,7 +7,7 @@ import androidx.compose.ui.unit.dp
 /**
  * CamCon Design System V2 — Shape
  *
- * Tight radius (4-12dp). 큰 라운드 폐기.
+ * 타이트한 라운드(4-12dp). 큰 라운드 폐기.
  * 디자인 가이드는 docs/DESIGN_SYSTEM_V2.md §5 참조.
  */
 

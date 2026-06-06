@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Cuenta: Cerrar sesión / Eliminar -->
+    <!-- 계정: 로그아웃 / 삭제 -->
     <string name="account_logout_dialog_title">¿Cerrar sesión?</string>
     <string name="account_logout_dialog_message">La caché local de fotos y el historial de conexión automática se conservarán. ¿Seguro que quieres cerrar sesión?</string>
     <string name="account_logout_confirm">Cerrar sesión</string>
@@ -21,7 +21,7 @@
     <string name="account_delete_success">Cuenta eliminada</string>
     <string name="account_delete_failed">No se pudo eliminar la cuenta: %s</string>
 
-    <!-- Bienvenida -->
+    <!-- 온보딩 -->
     <string name="onboarding_skip">Omitir</string>
     <string name="onboarding_next">Siguiente</string>
     <string name="onboarding_start">Comenzar</string>
@@ -35,7 +35,7 @@
     <string name="onboarding_step3_title">Permisos</string>
     <string name="onboarding_step3_description">Para la detección Wi-Fi y las notificaciones en directo, permite los permisos de ubicación, Wi-Fi y notificaciones cuando se solicite.</string>
 
-    <!-- Idioma -->
+    <!-- 언어 -->
     <string name="language_row_title">Idioma / Language</string>
     <string name="language_dialog_title">Elegir idioma</string>
     <string name="language_system_default">Predeterminado del sistema</string>
@@ -48,7 +48,7 @@
     <string name="language_option_fr">Français</string>
     <string name="language_option_it">Italiano</string>
 
-    <!-- Código de referido -->
+    <!-- 추천인 코드 -->
     <string name="referral_input_label">Código de referido (opcional)</string>
     <string name="referral_input_helper">Si tienes un código de referido, introdúcelo antes de iniciar sesión.</string>
 </resources>

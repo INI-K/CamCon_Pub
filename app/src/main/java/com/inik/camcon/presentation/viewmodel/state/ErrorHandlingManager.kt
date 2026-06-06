@@ -32,7 +32,7 @@ class ErrorHandlingManager @Inject constructor(
         // 에러 코드 상수
         const val ERROR_USB_TIMEOUT = -10
         const val ERROR_USB_DETECTION_FAILED = -52
-        const val ERROR_USB_DISCONNECTED = -4  // libusb device disconnected
+        const val ERROR_USB_DISCONNECTED = -4  // libusb 장치 연결 끊김
         const val ERROR_USB_WRITE_FAILED = -35
     }
 

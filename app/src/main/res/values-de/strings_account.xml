@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Konto: Abmelden / Löschen -->
+    <!-- 계정: 로그아웃 / 삭제 -->
     <string name="account_logout_dialog_title">Abmelden?</string>
     <string name="account_logout_dialog_message">Lokaler Foto-Cache und Verbindungsverlauf bleiben erhalten. Möchten Sie sich wirklich abmelden?</string>
     <string name="account_logout_confirm">Abmelden</string>
@@ -21,7 +21,7 @@
     <string name="account_delete_success">Konto gelöscht</string>
     <string name="account_delete_failed">Konto konnte nicht gelöscht werden: %s</string>
 
-    <!-- Onboarding -->
+    <!-- 온보딩 -->
     <string name="onboarding_skip">Überspringen</string>
     <string name="onboarding_next">Weiter</string>
     <string name="onboarding_start">Loslegen</string>
@@ -35,7 +35,7 @@
     <string name="onboarding_step3_title">Berechtigungen</string>
     <string name="onboarding_step3_description">Für WLAN-Erkennung und Live-Benachrichtigungen erteilen Sie bitte die Standort-, WLAN- und Benachrichtigungsberechtigungen.</string>
 
-    <!-- Sprache -->
+    <!-- 언어 -->
     <string name="language_row_title">Sprache / Language</string>
     <string name="language_dialog_title">Sprache auswählen</string>
     <string name="language_system_default">Systemstandard</string>
@@ -48,7 +48,7 @@
     <string name="language_option_fr">Français</string>
     <string name="language_option_it">Italiano</string>
 
-    <!-- Empfehlungscode -->
+    <!-- 추천 코드 -->
     <string name="referral_input_label">Empfehlungscode (optional)</string>
     <string name="referral_input_helper">Falls Sie einen Empfehlungscode haben, geben Sie ihn vor der Anmeldung ein.</string>
 </resources>

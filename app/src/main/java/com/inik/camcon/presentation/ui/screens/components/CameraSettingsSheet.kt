@@ -58,7 +58,7 @@ fun CameraSettingsSheet(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Settings would be dynamically loaded based on camera capabilities
+        // 설정은 카메라 능력에 따라 동적으로 로드될 예정
         // 향후 구현 예정: settings?.let { ... } 패턴
     }
 }

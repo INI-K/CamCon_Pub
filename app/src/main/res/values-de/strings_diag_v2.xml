@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Camera Abilities screen -->
+    <!-- 카메라 기능 화면 -->
     <string name="diag_abilities_title">Kamerafunktionen</string>
     <string name="diag_abilities_loading">Kamerainformationen werden geladen…</string>
     <string name="diag_abilities_retry">Erneut versuchen</string>
@@ -55,7 +55,7 @@
     <string name="diag_abilities_summary_partial">ℹ️ Teilweise Unterstützung\n\nLive-View wird nicht unterstützt, aber Fernauslösung ist möglich.</string>
     <string name="diag_abilities_summary_some">ℹ️ Einige Funktionen unterstützt\n\nEinige Kamerafunktionen können eingeschränkt sein.</string>
 
-    <!-- Diagnostics section (ADMIN) -->
+    <!-- 진단 섹션 (ADMIN) -->
     <string name="diag_section_title">🩺 Diagnose (ADMIN)</string>
     <string name="diag_run_button">Diagnose ausführen</string>
     <string name="diag_running">Diagnose wird ausgeführt…</string>
@@ -73,10 +73,10 @@
     <string name="diag_memory_clear_pool">Datei-Pool leeren</string>
     <string name="diag_report_empty">Noch kein Bericht. Diagnose ausführen.</string>
 
-    <!-- RAW restriction upgrade action -->
+    <!-- RAW 제한 업그레이드 동작 -->
     <string name="diag_raw_upgrade">Upgrade</string>
 
-    <!-- Camera restart dialog -->
+    <!-- 카메라 재시작 대화상자 -->
     <string name="diag_restart_needed">App-Neustart erforderlich</string>
     <string name="diag_restart_message">Das USB-Gerät wurde nicht ordnungsgemäß getrennt oder es ist ein Systemfehler (-52) aufgetreten.\n\nDie App muss neu gestartet werden, um korrekt zu funktionieren.\n\nApp jetzt neu starten?</string>
     <string name="diag_restart_confirm">App neu starten</string>

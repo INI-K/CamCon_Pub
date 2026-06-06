@@ -88,7 +88,7 @@ private fun IndeterminateFill(color: Color) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
         val totalWidth = maxWidth
         val barWidth = totalWidth * 0.3f
-        // start position: -barWidth → totalWidth
+        // 시작 위치: -barWidth → totalWidth
         val travel = totalWidth + barWidth
         val xOffset = (-barWidth) + travel * translate
 

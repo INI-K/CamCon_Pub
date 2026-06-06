@@ -1042,7 +1042,7 @@ class MainActivity : ComponentActivity() {
 
             // 한번만 다이얼로그를 띄움
             LaunchedEffect(Unit) {
-                // check immediately after Compose composition
+                // Compose 컴포지션 직후 즉시 확인
                 if (shouldShowCameraConnectionOptimizationDialog() && !batteryDialogShown) {
                     showBatteryDialog = true
                     batteryDialogShown = true

@@ -1,6 +1,7 @@
 package com.inik.camcon.presentation.viewmodel.photo
 
 import android.util.Log
+import com.inik.camcon.utils.LogMask
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,7 +32,7 @@ class PhotoSelectionManager @Inject constructor() {
      * 일반적으로 사진을 롱클릭했을 때 호출됩니다.
      */
     fun startMultiSelectMode(initialPhotoPath: String) {
-        Log.d(TAG, "멀티 선택 모드 시작: $initialPhotoPath")
+        Log.d(TAG, "멀티 선택 모드 시작: ${LogMask.path(initialPhotoPath)}")
         _isMultiSelectMode.value = true
         _selectedPhotos.value = setOf(initialPhotoPath)
     }
@@ -57,7 +58,7 @@ class PhotoSelectionManager @Inject constructor() {
             currentSelection + photoPath
         }
 
-        Log.d(TAG, "사진 선택 토글: $photoPath, 선택된 사진 수: ${newSelection.size}")
+        Log.d(TAG, "사진 선택 토글: ${LogMask.path(photoPath)}, 선택된 사진 수: ${newSelection.size}")
 
         // 선택된 사진이 하나도 없으면 멀티 선택 모드를 종료
         if (newSelection.isEmpty()) {
@@ -135,12 +136,8 @@ class PhotoSelectionManager @Inject constructor() {
      */
     fun logCurrentState() {
         Log.d(
-            TAG, """
-            현재 선택 상태:
-            - 멀티 선택 모드: ${_isMultiSelectMode.value}
-            - 선택된 사진 수: ${_selectedPhotos.value.size}
-            - 선택된 사진들: ${_selectedPhotos.value.joinToString { it.substringAfterLast("/") }}
-        """.trimIndent()
+            TAG,
+            "현재 선택 상태: 멀티선택=${_isMultiSelectMode.value}, 선택된 사진 수=${_selectedPhotos.value.size}"
         )
     }
 }

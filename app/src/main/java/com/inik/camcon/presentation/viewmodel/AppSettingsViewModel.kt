@@ -12,6 +12,7 @@ import com.inik.camcon.domain.usecase.camera.ReadNativeLogUseCase
 import com.inik.camcon.domain.usecase.camera.StartNativeLogUseCase
 import com.inik.camcon.domain.usecase.camera.StopNativeLogUseCase
 import com.inik.camcon.domain.model.SubscriptionTier
+import com.inik.camcon.utils.LogMask
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.SharingStarted
@@ -441,7 +442,7 @@ class AppSettingsViewModel @Inject constructor(
                 val result = startNativeLogUseCase(logPath)
 
                 if (result) {
-                    Log.i(TAG, "네이티브 로그 캡처 시작: $logPath")
+                    Log.i(TAG, "네이티브 로그 캡처 시작: ${LogMask.path(logPath)}")
                 } else {
                     Log.e(TAG, "네이티브 로그 파일 시작 실패")
                     // 실패 시 설정 원복

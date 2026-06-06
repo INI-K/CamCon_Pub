@@ -43,9 +43,9 @@ import com.inik.camcon.presentation.theme.TextSecondaryV2
  * CamCon V2 — FilterChipV2
  *
  * 토글 가능한 필터 칩. 28dp 높이, Radius.sm(4dp).
- * - Unselected: 1px DividerLine border, transparent bg, TextSecondaryV2.
- * - Selected: Accent bg, OnAccent text, no border.
- * - Disabled: alpha 0.4, 클릭 무효.
+ * - 선택 안 됨: 1px DividerLine border, 투명 배경, TextSecondaryV2.
+ * - 선택됨: Accent 배경, OnAccent 텍스트, border 없음.
+ * - 비활성: alpha 0.4, 클릭 무효.
  *
  * 디자인 가이드: docs/DESIGN_SYSTEM_V2.md §7 Chip 계열.
  */

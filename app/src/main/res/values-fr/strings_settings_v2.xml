@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Top bar / common -->
+    <!-- 상단 바 / 공통 -->
     <string name="settings_v2_title">Paramètres</string>
     <string name="settings_v2_back">Retour</string>
 
-    <!-- Section titles -->
+    <!-- 섹션 제목 -->
     <string name="settings_v2_section_camera_control">Contrôle de l\'appareil photo (version de développement)</string>
     <string name="settings_v2_section_wifi_ptpip">Connexion de l\'appareil photo par Wi-Fi (PTPIP) - version de développement</string>
     <string name="settings_v2_section_color_transfer">Transfert de couleur</string>
@@ -17,12 +17,12 @@
     <string name="settings_v2_section_info">À propos</string>
     <string name="settings_v2_section_referral">Codes de parrainage administrateur</string>
 
-    <!-- Subscription / upgrade row -->
+    <!-- 구독 / 업그레이드 행 -->
     <string name="settings_v2_subscription_title">Gérer l\'abonnement / Mettre à niveau</string>
     <string name="settings_v2_subscription_subtitle_tier">Forfait actuel : %s</string>
     <string name="settings_v2_subscription_subtitle_default">Gérez votre forfait et débloquez plus de fonctionnalités</string>
 
-    <!-- Camera control -->
+    <!-- 카메라 컨트롤 -->
     <string name="settings_v2_camera_controls_title">Afficher les commandes de l\'appareil photo</string>
     <string name="settings_v2_camera_controls_on">Afficher la visée en direct et l\'interface de commande de l\'appareil photo</string>
     <string name="settings_v2_camera_controls_off">Désactivé - la dernière photo prise est affichée</string>
@@ -49,7 +49,7 @@
     <string name="settings_v2_connection_manage_title">Gérer la connexion de l\'appareil photo</string>
     <string name="settings_v2_connection_manage_subtitle">%s - touchez pour plus de détails</string>
 
-    <!-- Color transfer -->
+    <!-- 컬러 전송 -->
     <string name="settings_v2_color_transfer_title">Transfert de couleur</string>
     <string name="settings_v2_color_transfer_on_ref">Activé - image de référence définie</string>
     <string name="settings_v2_color_transfer_on_noref">Activé - aucune image de référence</string>
@@ -57,13 +57,13 @@
     <string name="settings_v2_color_transfer_detail_title">Paramètres avancés</string>
     <string name="settings_v2_color_transfer_detail_subtitle">Algorithme de transfert de couleur et options avancées</string>
 
-    <!-- RAW download -->
+    <!-- RAW 다운로드 -->
     <string name="settings_v2_raw_download_title">Téléchargement de fichiers RAW</string>
     <string name="settings_v2_raw_download_on">Activé</string>
     <string name="settings_v2_raw_download_off">Désactivé</string>
     <string name="settings_v2_raw_download_locked">Disponible uniquement avec les niveaux PRO, ADMIN et REFERRER</string>
 
-    <!-- Connected camera -->
+    <!-- 연결된 카메라 -->
     <string name="settings_v2_connection_status_title">État de la connexion</string>
     <string name="settings_v2_connection_type_usb">Connecté en USB</string>
     <string name="settings_v2_connection_type_wifi">Connecté en Wi-Fi (PTPIP)</string>
@@ -72,7 +72,7 @@
     <string name="settings_v2_camera_model_none">Aucune information</string>
     <string name="settings_v2_camera_limitation_title">Limitation des fonctions</string>
 
-    <!-- User -->
+    <!-- 사용자 -->
     <string name="settings_v2_user_default_name">Utilisateur</string>
     <string name="settings_v2_user_login_required">Connexion requise</string>
     <string name="settings_v2_logout_title">Se déconnecter</string>
@@ -80,13 +80,13 @@
     <string name="settings_v2_logout_subtitle">Se déconnecter du compte actuel</string>
     <string name="settings_v2_logout_in_progress_subtitle">Veuillez patienter un instant…</string>
 
-    <!-- Server -->
+    <!-- 서버 -->
     <string name="settings_v2_storage_title">Stockage</string>
     <string name="settings_v2_storage_subtitle">TBD</string>
     <string name="settings_v2_permissions_title">Gestion des autorisations</string>
     <string name="settings_v2_permissions_subtitle">Configurer les autorisations d\'accès au serveur</string>
 
-    <!-- App -->
+    <!-- 앱 -->
     <string name="settings_v2_battery_title">Exception d\'optimisation de la batterie</string>
     <string name="settings_v2_battery_on">Exclu de l\'optimisation de la batterie</string>
     <string name="settings_v2_battery_off">Exception requise pour la connexion en arrière-plan et les notifications</string>
@@ -102,12 +102,12 @@
     <string name="settings_v2_native_log_view_title">Afficher les fichiers journaux</string>
     <string name="settings_v2_native_log_view_subtitle">Consulter et envoyer les fichiers journaux natifs enregistrés</string>
 
-    <!-- Info -->
+    <!-- 정보 -->
     <string name="settings_v2_oss_license_title">Licences open source</string>
     <string name="settings_v2_oss_license_subtitle">Bibliothèques open source utilisées</string>
     <string name="settings_v2_app_version_title">Version de l\'application</string>
 
-    <!-- Referral (admin) -->
+    <!-- 추천인 (admin) -->
     <string name="settings_v2_referral_usage_title">Utilisation des codes de parrainage</string>
     <string name="settings_v2_referral_usage_subtitle">Total : %1$d | Disponibles : %2$d | Utilisés : %3$d (%4$d%%)</string>
     <string name="settings_v2_referral_generate_title">Générer 30 codes de parrainage</string>

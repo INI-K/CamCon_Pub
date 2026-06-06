@@ -1,40 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- ColorTransfer v2: i18n for settings/live-preview/preview-view + progress + picker -->
+    <!-- ColorTransfer v2: 설정/실시간 미리보기/미리보기 화면 + 진행률 + 선택기 i18n -->
 
-    <!-- Common / TopBar -->
+    <!-- 공통 / 상단 바 -->
     <string name="ct_settings_title">色彩转移详细设置</string>
     <string name="ct_cd_close">关闭</string>
     <string name="ct_confirm">确定</string>
 
-    <!-- Disabled banner -->
+    <!-- 비활성화 배너 -->
     <string name="ct_disabled_title">⚠️ 色彩转移功能已禁用</string>
     <string name="ct_disabled_message">请先在设置中启用色彩转移功能</string>
 
-    <!-- Live preview section -->
+    <!-- 실시간 미리보기 섹션 -->
     <string name="ct_live_preview_title">实时预览</string>
 
-    <!-- Intensity slider -->
+    <!-- 강도 슬라이더 -->
     <string name="ct_intensity_title">色彩转移强度</string>
     <string name="ct_intensity_percent">%d%%</string>
     <string name="ct_intensity_weak">弱 (1%%)</string>
     <string name="ct_intensity_strong">强 (100%%)</string>
     <string name="ct_intensity_recommended">推荐: 3-10%%</string>
 
-    <!-- Image management -->
+    <!-- 이미지 관리 -->
     <string name="ct_image_management">图片管理</string>
     <string name="ct_reference_image">参考图片</string>
     <string name="ct_target_image">目标图片</string>
     <string name="ct_manage_library">参考图片库</string>
     <string name="ct_clear_cache">清除缓存</string>
 
-    <!-- Error card -->
+    <!-- 오류 카드 -->
     <string name="ct_error_title">发生错误</string>
 
-    <!-- Processing progress -->
+    <!-- 처리 진행률 -->
     <string name="ct_processing_title">正在处理色彩转移…</string>
 
-    <!-- LivePreview component -->
+    <!-- LivePreview 컴포넌트 -->
     <string name="ct_lp_placeholder_title">实时预览</string>
     <string name="ct_lp_placeholder_desc">选择参考图片和目标图片后\n将显示预览</string>
     <string name="ct_lp_slider_active_desc">完成滑块操作后\n预览将会更新</string>
@@ -50,7 +50,7 @@
     <string name="ct_lp_full_result_title">色彩应用结果 (原始尺寸)</string>
     <string name="ct_lp_cd_full_applied">以原始尺寸应用色彩的图片</string>
 
-    <!-- PreviewView component -->
+    <!-- PreviewView 컴포넌트 -->
     <string name="ct_pv_reference_title">色彩参考图片</string>
     <string name="ct_pv_reference_subtitle">将应用此图片的色彩</string>
     <string name="ct_pv_reference_placeholder">请选择要提取色彩的\n参考图片</string>
