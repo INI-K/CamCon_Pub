@@ -49,6 +49,7 @@
     <string name="progress_ptpip_connecting">カメラに接続中...</string>
     <string name="progress_ptpip_connection_start">カメラ接続を開始しています...</string>
     <string name="progress_ptpip_authenticating_nikon">Nikonカメラを認証中...</string>
+    <string name="progress_ptpip_camera_confirm">📷 カメラの画面で「接続を許可（OK）」を押してください</string>
     <string name="progress_ptpip_checking_info">カメラ情報を確認中...</string>
     <string name="progress_ptpip_listener_start">イベントリスナーを開始中...</string>
     <string name="progress_ptpip_finalizing">初期化を完了中...</string>

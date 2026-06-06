@@ -49,6 +49,7 @@
     <string name="progress_ptpip_connecting">正在连接相机...</string>
     <string name="progress_ptpip_connection_start">正在启动相机连接...</string>
     <string name="progress_ptpip_authenticating_nikon">正在认证 Nikon 相机...</string>
+    <string name="progress_ptpip_camera_confirm">📷 请在相机屏幕上点按“允许连接（OK）”</string>
     <string name="progress_ptpip_checking_info">正在检查相机信息...</string>
     <string name="progress_ptpip_listener_start">正在启动事件监听器...</string>
     <string name="progress_ptpip_finalizing">正在完成初始化...</string>
