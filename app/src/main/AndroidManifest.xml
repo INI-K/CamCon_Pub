@@ -226,7 +226,7 @@
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="connectedDevice"
-            android:stopWithTask="true" />
+            android:stopWithTask="false" />
 
     </application>
 
