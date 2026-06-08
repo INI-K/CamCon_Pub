@@ -266,6 +266,8 @@ class ColorTransferProcessor @Inject constructor() {
             LogcatManager.d("ColorTransferProcessor", "✅ MKL GPU 색감 전송 완료")
             result
 
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e // 코루틴 취소는 삼키지 않고 전파 (슬라이더 디바운스 취소가 무력화되던 버그)
         } catch (e: Exception) {
             LogcatManager.w("ColorTransferProcessor", "MKL GPU 색감 전송 실패", e)
             null
@@ -313,6 +315,8 @@ class ColorTransferProcessor @Inject constructor() {
             LogcatManager.d("ColorTransferProcessor", "✅ MKL GPU 색감 전송 완료 (캐시된 통계)")
             result
 
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e // 코루틴 취소는 삼키지 않고 전파
         } catch (e: Exception) {
             LogcatManager.w("ColorTransferProcessor", "MKL GPU 색감 전송 실패 (캐시된 통계)", e)
             null
