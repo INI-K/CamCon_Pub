@@ -267,6 +267,12 @@ fun CameraControlScreen(
 
     // 상태 변화들을 remember로 캐싱하여 불필요한 리컴포지션 방지
     var isFullscreen by rememberSaveable { mutableStateOf(false) }
+
+    // 전체화면 라이브뷰에서 기기 뒤로가기를 가로채 전체화면만 해제한다(화면/앱 종료·시스템바 잔존 방지).
+    BackHandler(enabled = isFullscreen) {
+        isFullscreen = false
+        onFullscreenChange(false)
+    }
     val scope = rememberCoroutineScope()
     val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val snackbarHostState = remember { SnackbarHostState() }

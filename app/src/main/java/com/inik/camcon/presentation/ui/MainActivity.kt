@@ -1233,6 +1233,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        // 구성 변경(언어/다크모드/글꼴/밀도/회전 등)에 의한 재생성에서는 네이티브/USB 세션을 정리하지 않는다.
+        // 정리하면 촬영 도중 USB 카메라 연결이 끊기고 USB attach/detach 브로드캐스트 수신까지 해제된다.
+        // (manifest configChanges 로 대부분 재생성을 막지만, 목록 밖 구성 변경에 대한 방어선)
+        if (isChangingConfigurations) {
+            LogcatManager.d(TAG, "구성 변경에 의한 재생성 - 네이티브/USB 정리 건너뜀")
+            return
+        }
         // Activity가 종료될 때 매니저 정리
         try {
             // 명시적으로 카메라 세션 종료 + 로그 파일 닫기 - 백그라운드에서 안전하게 수행.
