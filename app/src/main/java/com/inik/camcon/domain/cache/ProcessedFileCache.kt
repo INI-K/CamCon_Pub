@@ -51,4 +51,10 @@ interface ProcessedFileCache {
 
     /** 모든 키 제거. */
     fun clear()
+
+    /**
+     * key 를 보관에서 제거. 후속 처리(다운로드/저장)가 실패해 동일 키의 재수신·재시도를 허용해야 할 때 호출.
+     * @return 보관 중이던 키를 제거했으면 true.
+     */
+    fun remove(key: String): Boolean
 }

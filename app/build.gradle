@@ -70,7 +70,9 @@ def getAppVersionCode() {
     // 메이저(2자리) + 마이너(2자리) + 패치(2자리) + 빌드번호 조합
     def baseVersionCode = project.ext.majorVersion * 1000000 + project.ext.minorVersion * 10000 + project.ext.patchVersion * 100
     def buildNumber = getBuildNumber()
-    return baseVersionCode + (buildNumber % 100) // 빌드번호는 99까지만 사용
+    // baseVersionCode·buildNumber 모두 시간에 따라 단조증가하므로 합도 단조증가.
+    // (% 100 절단은 커밋 100개마다 versionCode가 역행·충돌해 Play 업로드가 거부되던 버그)
+    return baseVersionCode + buildNumber
 }
 
 android {

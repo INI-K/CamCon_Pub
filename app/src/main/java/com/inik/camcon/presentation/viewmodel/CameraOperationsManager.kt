@@ -234,6 +234,8 @@ class CameraOperationsManager @Inject constructor(
                             uiStateManager.setError("타임랩스 시작 실패: ${error.message ?: "알 수 없는 오류"}")
                         }
                         uiStateManager.updateCapturingState(false)
+                        // 실패 시 모드를 SINGLE로 되돌려 셔터가 TIMELAPSE 무한 실패 루프에 묶이지 않게 한다.
+                        uiStateManager.setShootingMode(ShootingMode.SINGLE)
                     }
                     .collect { photo ->
                         Log.d(TAG, "타임랩스 사진 촬영: ${LogMask.path(photo.filePath)}")

@@ -54,6 +54,8 @@ class TtlLruProcessedFileCache @Inject constructor(
 
     override fun size(): Int = lock.withLock { entries.size }
 
+    override fun remove(key: String): Boolean = lock.withLock { entries.remove(key) != null }
+
     override fun sweepExpired() {
         lock.withLock {
             val now = clock.millis()

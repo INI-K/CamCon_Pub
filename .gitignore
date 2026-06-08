@@ -72,3 +72,6 @@ app/build/
 
 # OMC 툴링 상태 (소스 트리에 커밋 금지)
 .omc/
+
+# 릴리스 서명 (로컬 전용 — 절대 커밋 금지). *.jks/*.keystore는 위에서 이미 ignore
+Key/upload_certificate.pem

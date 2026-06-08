@@ -73,6 +73,9 @@ class CameraCaptureRepositoryImpl @Inject constructor(
 ) {
     companion object {
         private const val TAG = "카메라캡처레포"
+
+        /** 세션 내 capturedPhotos StateFlow 상한 (장시간 테더링 메모리 누수 방지) */
+        private const val MAX_CAPTURED_PHOTOS = 1000
     }
 
     /**
@@ -623,6 +626,8 @@ class CameraCaptureRepositoryImpl @Inject constructor(
                 updateDownloadedPhoto(capturedPhoto)
             } else {
                 Log.e(TAG, "네이티브 사진 저장 실패: $fileName")
+                // 저장 실패 시 dedup 키를 제거해 동일 컷의 재수신/재시도가 24h 동안 차단되지 않게 한다(사진 유실 방지).
+                processedFileCache.remove("$fullPath|$fileName|${imageData.size}")
                 updatePhotoDownloadFailed(fileName)
             }
         }
@@ -636,7 +641,11 @@ class CameraCaptureRepositoryImpl @Inject constructor(
             "updateDownloadedPhoto: id=${downloadedPhoto.id}, ${LogMask.path(downloadedPhoto.filePath)}, ${downloadedPhoto.size} bytes"
         )
 
-        _capturedPhotos.update { current -> current + downloadedPhoto }
+        _capturedPhotos.update { current ->
+            val appended = current + downloadedPhoto
+            // 장시간 테더링 세션에서 무한 증가하지 않도록 최근 N개만 유지
+            if (appended.size > MAX_CAPTURED_PHOTOS) appended.takeLast(MAX_CAPTURED_PHOTOS) else appended
+        }
         val afterCount = _capturedPhotos.value.size
 
         com.inik.camcon.utils.LogcatManager.d(
