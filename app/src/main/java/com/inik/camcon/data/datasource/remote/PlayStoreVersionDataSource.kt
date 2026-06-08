@@ -97,26 +97,18 @@ class PlayStoreVersionDataSource @Inject constructor(
 
     private fun parsePlayStoreResponse(html: String, packageName: String): PlayStoreVersionInfo? {
         return try {
-            // Play Store HTML에서 버전 정보 추출
-            // 패턴: "Current Version","3.1.0"
-            val versionPattern = """"Current Version","([^"]+)"""".toRegex()
-            val versionMatch = versionPattern.find(html)
+            // 현행 Play Store 페이지는 더 이상 "Current Version","x.y.z" 형태를 노출하지 않는다.
+            // 견고한 버전 추출은 extractVersionName으로 위임하고, 실패 시 안전 폴백(null)한다(H25).
+            val version = extractVersionName(html)
 
-            // 패턴: "Installs","1,000,000+"
-            val installsPattern = """"Installs","([^"]+)"""".toRegex()
-            val installsMatch = installsPattern.find(html)
+            // 부가 정보(설치 수/업데이트일)는 best-effort. 못 찾으면 Unknown.
+            val installs = """"Installs","([^"]+)"""".toRegex().find(html)
+                ?.groupValues?.getOrNull(1) ?: "Unknown"
+            val lastUpdated = """"Updated","([^"]+)"""".toRegex().find(html)
+                ?.groupValues?.getOrNull(1) ?: "Unknown"
 
-            // 패턴: "Updated","March 15, 2024"
-            val updatedPattern = """"Updated","([^"]+)"""".toRegex()
-            val updatedMatch = updatedPattern.find(html)
-
-            if (versionMatch != null) {
-                val version = versionMatch.groupValues[1]
-                val installs = installsMatch?.groupValues?.get(1) ?: "Unknown"
-                val lastUpdated = updatedMatch?.groupValues?.get(1) ?: "Unknown"
-
+            if (version != null) {
                 Log.d("PlayStoreVersion", "버전 발견: $version")
-
                 PlayStoreVersionInfo(
                     versionName = version,
                     installs = installs,
@@ -124,7 +116,7 @@ class PlayStoreVersionDataSource @Inject constructor(
                     isAvailable = true
                 )
             } else {
-                Log.w("PlayStoreVersion", "HTML 응답에서 버전을 찾을 수 없습니다")
+                Log.w("PlayStoreVersion", "HTML 응답에서 버전을 찾을 수 없습니다 - 폴백 처리")
                 null
             }
         } catch (e: Exception) {
@@ -135,34 +127,63 @@ class PlayStoreVersionDataSource @Inject constructor(
 
     private fun parsePlayStoreHtml(html: String): PlayStoreVersionInfo? {
         return try {
-            // 더 정확한 버전 정보 추출 시도
-            val patterns = listOf(
-                """"softwareVersion":"([^"]+)"""".toRegex(),
-                """"Current Version.*?([0-9]+\.[0-9]+\.[0-9]+)"""".toRegex(),
-                """Version ([0-9]+\.[0-9]+\.[0-9]+)""".toRegex()
-            )
-
-            for (pattern in patterns) {
-                val match = pattern.find(html)
-                if (match != null) {
-                    val version = match.groupValues[1]
-                    Log.d("PlayStoreVersion", "버전 추출 성공: $version")
-
-                    return PlayStoreVersionInfo(
-                        versionName = version,
-                        installs = "Unknown",
-                        lastUpdated = "Unknown",
-                        isAvailable = true
-                    )
-                }
+            val version = extractVersionName(html)
+            if (version != null) {
+                Log.d("PlayStoreVersion", "버전 추출 성공: $version")
+                return PlayStoreVersionInfo(
+                    versionName = version,
+                    installs = "Unknown",
+                    lastUpdated = "Unknown",
+                    isAvailable = true
+                )
             }
-
-            Log.w("PlayStoreVersion", "버전 패턴과 일치하는 항목이 없습니다")
+            Log.w("PlayStoreVersion", "버전 패턴과 일치하는 항목이 없습니다 - 폴백 처리")
             null
         } catch (e: Exception) {
             Log.e("PlayStoreVersion", "HTML 파싱 실패", e)
             null
         }
+    }
+
+    /**
+     * 현행 Play Store 페이지 구조에 맞춰 버전명을 추출한다(H25).
+     *
+     * 신뢰 순서로 패턴을 시도하되, 본문/리뷰/변경 이력 텍스트에 흔한 "Version x.y.z" 같은
+     * 느슨한 패턴은 사용하지 않아 오탐(엉뚱한 최신 버전 표시)을 방지한다.
+     * 어떤 패턴과도 매칭되지 않으면 null을 반환하고 상위 호출자가 로컬 설정으로 안전 폴백한다.
+     *
+     * 주의: Play Store HTML 스크래핑은 페이지 구조 변경에 취약하고 ToS 리스크가 있다.
+     * 정식 In-App Update API(com.google.android.play:app-update)로의 전환을 권장한다.
+     */
+    private fun extractVersionName(html: String): String? {
+        // 현행 Play Store는 버전을 JS 데이터 블롭에 [[["x.y.z"]]] 형태로 임베드한다.
+        // 라벨 기반(softwareVersion 등) 패턴을 우선 시도하고, 그다음 구조적 블롭을 시도한다.
+        val labeledPatterns = listOf(
+            """"softwareVersion"\s*:\s*"([0-9]+(?:\.[0-9]+){1,3})"""".toRegex(),
+            """\[\["Current Version"\],\[\["([0-9]+(?:\.[0-9]+){1,3})"\]\]""".toRegex(),
+            """Current Version[^0-9]{0,40}?([0-9]+(?:\.[0-9]+){2,3})""".toRegex()
+        )
+        for (pattern in labeledPatterns) {
+            val version = pattern.find(html)?.groupValues?.getOrNull(1)
+            if (isValidVersionName(version)) return version
+        }
+
+        // 라벨 기반 실패 시 구조적 블롭 [[["x.y.z"]]] 후보들 중 유효한 첫 버전을 채택한다.
+        val blobPattern = """\[\[\["([0-9]+(?:\.[0-9]+){1,3})"\]\]\]""".toRegex()
+        for (match in blobPattern.findAll(html)) {
+            val candidate = match.groupValues.getOrNull(1)
+            if (isValidVersionName(candidate)) return candidate
+        }
+        return null
+    }
+
+    /**
+     * x.y 또는 x.y.z(.w) 형태의 숫자 버전명만 유효로 간주한다.
+     * 빈 문자열·날짜·임의 텍스트를 걸러 오탐을 막는다.
+     */
+    private fun isValidVersionName(version: String?): Boolean {
+        if (version.isNullOrBlank()) return false
+        return version.matches("""[0-9]+(\.[0-9]+){1,3}""".toRegex())
     }
 }
 

@@ -525,19 +525,28 @@ class AppPreferencesDataSource @Inject constructor(
 
     /**
      * SubscriptionTier enum으로 구독 티어 저장 (헬퍼 메서드)
+     *
+     * authoritative=false(기본)일 때만 "상위 티어를 FREE로 덮어쓰지 않음" 가드를 적용한다.
+     * 권위있는 출처(서버/Play 확인)에서 온 FREE 강등은 가드를 우회해 실제 강등을 반영한다
+     * (만료/환불 후 PRO 영구 잔존 방지 — H10/H11).
      */
-    override suspend fun saveSubscriptionTier(tier: com.inik.camcon.domain.model.SubscriptionTier?) {
+    override suspend fun saveSubscriptionTier(
+        tier: com.inik.camcon.domain.model.SubscriptionTier?,
+        authoritative: Boolean
+    ) {
         if (tier == null) {
             setSubscriptionTier(null)
             return
         }
 
-        val currentTier = subscriptionTierEnum.first()
-        if (tier == com.inik.camcon.domain.model.SubscriptionTier.FREE &&
-            currentTier != com.inik.camcon.domain.model.SubscriptionTier.FREE
-        ) {
-            // 유지 중인 상위 티어를 오프라인 FREE 폴백으로 덮어쓰지 않음
-            return
+        if (!authoritative) {
+            val currentTier = subscriptionTierEnum.first()
+            if (tier == com.inik.camcon.domain.model.SubscriptionTier.FREE &&
+                currentTier != com.inik.camcon.domain.model.SubscriptionTier.FREE
+            ) {
+                // 비권위(오프라인 폴백) FREE 로는 유지 중인 상위 티어를 덮어쓰지 않음
+                return
+            }
         }
 
         setSubscriptionTier(tier.name)

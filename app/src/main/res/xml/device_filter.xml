@@ -16,7 +16,7 @@
     <usb-device vendor-id="1242" />  <!-- Panasonic   0x04DA -->
     <usb-device vendor-id="1972" />  <!-- Olympus     0x07B4 -->
     <usb-device vendor-id="9723" />  <!-- Pentax/Ricoh 0x25FB -->
-    <usb-device vendor-id="6808" />  <!-- Leica       0x1A98 -->
+    <usb-device vendor-id="6211" />  <!-- Leica       0x1843 -->
     <usb-device vendor-id="7899" />  <!-- Blackmagic  0x1EDB -->
 
     <!-- 일반적인 PTP 카메라 클래스 (벤더 미상 카메라용) -->

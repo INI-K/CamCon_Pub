@@ -59,7 +59,7 @@ class UsbDeviceDetector @Inject constructor(
             0x04DA, // Panasonic/Lumix
             0x07B4, // Olympus/OM System
             0x0A03, // Pentax/Ricoh
-            0x0471, // Leica
+            0x1843, // Leica
             0x05AB, // Sigma
             0x0483, // Fujifilm
             0x0711, // Hasselblad
@@ -69,7 +69,7 @@ class UsbDeviceDetector @Inject constructor(
             0x2731, // GoPro
             0x27C6, // Garmin VIRB
             0x2B1E, // YI Technology
-            0x1B8C, // Blackmagic Design
+            0x1EDB, // Blackmagic Design
             0x1954, // RED Digital Cinema
             0x2040, // ARRI
             0x3D8D, // Z CAM

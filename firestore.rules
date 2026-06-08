@@ -75,12 +75,14 @@ service cloud.firestore {
     }
 
     // ==================== REFERRAL_CODES 컬렉션 ====================
-    // 추천 코드 - 인증된 사용자는 읽기 가능
-    // (사용자가 추천 코드 조회 및 입력용)
+    // 추천 코드 - 클라이언트 read 금지(코드 열거/저엔트로피 코드 무단 수집 방지).
+    // 추천코드 적용·검증·소비·티어부여는 전부 Cloud Function(redeemReferralCode)이
+    // 단일 트랜잭션으로 Admin SDK를 통해 처리하므로 클라이언트 직접 read/write는 불필요.
+    // 관리자 콘솔의 코드 목록 조회만 허용.
     match /referral_codes/{codeDoc} {
-      allow read: if isAuthenticated();
+      allow read: if currentUserIsAdmin();
 
-      // 쓰기는 백엔드(Admin SDK/관리자 기능)에서만 가능
+      // 쓰기는 백엔드(Admin SDK/Cloud Function)에서만 가능
       allow write: if false;
     }
 
