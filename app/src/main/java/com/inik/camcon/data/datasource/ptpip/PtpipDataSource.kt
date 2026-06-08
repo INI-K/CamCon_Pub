@@ -799,6 +799,13 @@ class PtpipDataSource @Inject constructor(
             // =========================
             // Step 1: libgphoto2로 연결
             // =========================
+            // 콜드 스타트/업데이트 직후 플러그인(camlib) 추출이 아직 끝나지 않았을 수 있으므로 완료를 대기한다.
+            // (H26 회귀 방지: USB 경로와 달리 PTP-IP는 자체 재추출 가드가 없어 추출 미완 시 드라이버 로드 실패.
+            //  CamCon.onCreate의 finally가 항상 complete 하므로 await는 멈추지 않으나, 안전망으로 타임아웃을 둔다.)
+            kotlinx.coroutines.withTimeoutOrNull(8_000) {
+                (context.applicationContext as? com.inik.camcon.CamCon)?.pluginExtractionDeferred?.await()
+            }
+
             // 플러그인 디렉토리 사용 (USB와 동일한 방식 - 버전 디렉토리까지 포함)
             val gphoto2BaseDir = context.getDir("gphoto2_plugins", Context.MODE_PRIVATE)
             val gphoto2VersionDir = java.io.File(gphoto2BaseDir, "libgphoto2/2.5.33.1")
@@ -989,7 +996,20 @@ class PtpipDataSource @Inject constructor(
             connectedCamera = camera
             lastConnectedCamera = camera
 
-            Log.i(TAG, "🎉 카메라 연결 설정 완료! 초기 플러시 대기 중...")
+            // 연결 완료 전이 안전망 (H4): 정상 경로는 onFlushComplete 콜백이 _connectionState를
+            // CONNECTED로 올린다(startAutomaticFileReceiving 내부에서 최대 10초 대기). 그러나 특정
+            // 카메라/펌웨어/타이밍에서 플러시 완료 콜백이 끝내 오지 않으면 CONNECTING에 영구 고착되어
+            // (촬영해도 사진이 안 들어오는 무증상 실패) UI가 '연결 중'에서 멈춘다.
+            // 여기 도달했다는 것은 init·healthy 프로브·이벤트 리스너 시작이 모두 성공했다는 뜻이므로,
+            // 콜백이 미수신(여전히 CONNECTING)이면 안전하게 CONNECTED로 폴백 전이한다.
+            if (_connectionState.value == PtpipConnectionState.CONNECTING) {
+                Log.w(TAG, "⚠️ onFlushComplete 콜백 미수신 - CONNECTED 안전 폴백 전이 (H4)")
+                isInitialFlushCompleted = true
+                _connectionState.value = PtpipConnectionState.CONNECTED
+                setProgress(UiText.Resource(R.string.progress_ptpip_complete))
+            }
+
+            Log.i(TAG, "🎉 카메라 연결 설정 완료!")
             return@withContext true
 
         } catch (e: CancellationException) {
@@ -1478,6 +1498,11 @@ class PtpipDataSource @Inject constructor(
     private suspend fun disconnectInternal(keepSession: Boolean = false) = withContext(ioDispatcher) {
         try {
             Log.d(TAG, "카메라 연결 해제 시작 (keepSession: $keepSession)")
+
+            // 물리 셔터 무선 수신 리스너 중지 (H3): tetherService.listenForNewShots가 단일 PTP/IP
+            // 세션의 소켓을 점유하므로, disconnect 시 이 Job을 취소하지 않으면 고아 소켓이 살아남아
+            // 재연결 시 카메라가 새 TCP를 -7/End-of-stream으로 거부한다(앱 재시작 전까지 재연결 불가).
+            stopShutterListening()
 
             // 자동 파일 수신 중지 (내부에서 완전한 대기 처리됨)
             stopAutomaticFileReceiving()

@@ -86,10 +86,16 @@ android {
         keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
     }
 
+    // 릴리스 서명에 필요한 key.properties 존재·필드 완비 여부.
+    // 부재 시 release signingConfig를 비워 두는 대신, 실제 release 빌드 시점에 명확히 실패시킨다(H20).
+    def hasReleaseSigning = keystorePropertiesFile.exists() &&
+            keystoreProperties['keyAlias'] && keystoreProperties['keyPassword'] &&
+            keystoreProperties['storeFile'] && keystoreProperties['storePassword']
+
     signingConfigs {
         // debug 키는 Android Gradle Plugin 기본 디버그 키 사용
         release {
-            if (keystorePropertiesFile.exists()) {
+            if (hasReleaseSigning) {
                 keyAlias keystoreProperties['keyAlias']
                 keyPassword keystoreProperties['keyPassword']
                 storeFile file(keystoreProperties['storeFile'])
@@ -129,7 +135,9 @@ android {
             minifyEnabled true
             shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.release
+            // key.properties가 없으면 release를 무서명으로 조용히 통과시키지 않고
+            // 디버그 서명으로도 대체하지 않는다(H20). 서명 미구성 release는 빌드 그래프에서 명확히 실패한다.
+            signingConfig hasReleaseSigning ? signingConfigs.release : null
             buildConfigField "boolean", "SHOW_DEVELOPER_FEATURES", "false"
         }
 
@@ -228,6 +236,21 @@ android {
         }
     }
 
+}
+
+// release 빌드인데 서명이 구성되지 않았으면 즉시 실패시킨다(H20).
+// 무서명 또는 디버그 서명 AAB가 Play에 올라가 리젝되는 사고를 빌드 단계에서 차단한다.
+gradle.taskGraph.whenReady { graph ->
+    def buildingRelease = graph.allTasks.any { task ->
+        def n = task.name
+        (n.contains('Release') && (n.startsWith('assemble') || n.startsWith('bundle')))
+    }
+    if (buildingRelease && !hasReleaseSigning) {
+        throw new GradleException(
+                "release 서명 미구성: rootProject의 key.properties(keyAlias/keyPassword/storeFile/storePassword)가 없거나 불완전합니다. " +
+                        "무서명/디버그 서명 release 빌드를 차단합니다. key.properties를 구성한 뒤 다시 빌드하세요."
+        )
+    }
 }
 
 // KSP configuration for better performance

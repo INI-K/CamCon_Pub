@@ -99,7 +99,7 @@ class ValidateImageFormatUseCaseTest {
         override suspend fun setLastTimelapseCount(count: Int) {}
         override suspend fun setHistogramEnabled(enabled: Boolean) {}
         override suspend fun setFocusPeakingEnabled(enabled: Boolean) {}
-        override suspend fun saveSubscriptionTier(tier: SubscriptionTier?) {}
+        override suspend fun saveSubscriptionTier(tier: SubscriptionTier?, authoritative: Boolean) {}
         override suspend fun clearAllSettings() {}
     }
 
@@ -231,7 +231,7 @@ class ValidateImageFormatUseCaseTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertFalse(useCase.isFormatSupported("photo.bmp"))
-        assertFalse(useCase.isFormatSupported("photo.png"))
+        // photo.png 는 H12 이후 BASIC 이상에서 지원되므로 더 이상 미지원 케이스가 아님(PRO 기준 true)
     }
 
     // --- validateFormat: 상세 검증 ---

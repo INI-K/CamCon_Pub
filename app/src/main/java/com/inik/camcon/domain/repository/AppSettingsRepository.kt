@@ -60,6 +60,15 @@ interface AppSettingsRepository {
     suspend fun setLastTimelapseCount(count: Int)
     suspend fun setHistogramEnabled(enabled: Boolean)
     suspend fun setFocusPeakingEnabled(enabled: Boolean)
-    suspend fun saveSubscriptionTier(tier: SubscriptionTier?)
+    /**
+     * 구독 티어를 영속 캐시에 저장한다.
+     *
+     * @param authoritative 권위있는 출처(온라인 서버/Play 확인)에서 온 값이면 true.
+     *   - false(기본): 오프라인 폴백 등 비권위 경로. 유지 중인 상위 티어를 FREE로 덮어쓰지 않는다
+     *     (부팅 race / 일시적 read 실패에서 게이팅이 FREE로 깜빡이는 것을 방지).
+     *   - true: 서버가 확인한 실제 강등을 반영하기 위해 FREE 다운그레이드를 허용한다
+     *     (만료/환불 후 PRO 영구 잔존 방지).
+     */
+    suspend fun saveSubscriptionTier(tier: SubscriptionTier?, authoritative: Boolean = false)
     suspend fun clearAllSettings()
 }

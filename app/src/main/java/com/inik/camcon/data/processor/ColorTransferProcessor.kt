@@ -12,6 +12,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
@@ -259,9 +261,8 @@ class ColorTransferProcessor @Inject constructor() {
             // MKL GPU 필터 생성
             val mklFilter = createMKLColorTransferFilter(inputStats, referenceStats, intensity)
 
-            // GPU에서 MKL 색감 전송 적용
-            gpu.setFilter(mklFilter)
-            val result = gpu.getBitmapWithFilterApplied(inputBitmap)
+            // GPU에서 MKL 색감 전송 적용 (단일 GPUImage 직렬화 + OOM 폴백)
+            val result = runGpuFilterApply(gpu, mklFilter, inputBitmap)
 
             LogcatManager.d("ColorTransferProcessor", "✅ MKL GPU 색감 전송 완료")
             result
@@ -308,9 +309,8 @@ class ColorTransferProcessor @Inject constructor() {
             // MKL GPU 필터 생성
             val mklFilter = createMKLColorTransferFilter(inputStats, referenceStats, intensity)
 
-            // GPU에서 MKL 색감 전송 적용
-            gpu.setFilter(mklFilter)
-            val result = gpu.getBitmapWithFilterApplied(inputBitmap)
+            // GPU에서 MKL 색감 전송 적용 (단일 GPUImage 직렬화 + OOM 폴백)
+            val result = runGpuFilterApply(gpu, mklFilter, inputBitmap)
 
             LogcatManager.d("ColorTransferProcessor", "✅ MKL GPU 색감 전송 완료 (캐시된 통계)")
             result
@@ -323,8 +323,49 @@ class ColorTransferProcessor @Inject constructor() {
         }
     }
 
+    /**
+     * 단일 GPUImage 싱글톤을 직렬화(Mutex)하여 setFilter+getBitmapWithFilterApplied를 적용한다.
+     * (H21) 멀티스레드 코루틴 동시 사용 시 발생하던 EGL/필터 상태 race를 차단.
+     * (H23) OOM 발생 시 입력 비트맵을 다운스케일해 1회 재시도하고, 그래도 실패하면 null을 반환해
+     *       호출부(Repository)의 CPU 폴백 경로로 안전하게 넘긴다.
+     */
+    private suspend fun runGpuFilterApply(
+        gpu: GPUImage,
+        filter: GPUImageFilter,
+        inputBitmap: Bitmap
+    ): Bitmap? = gpuMutex.withLock {
+        try {
+            gpu.setFilter(filter)
+            gpu.getBitmapWithFilterApplied(inputBitmap)
+        } catch (oom: OutOfMemoryError) {
+            // GPU 풀사이즈 처리에서 OOM → 다운스케일 1회 재시도
+            LogcatManager.w(
+                "ColorTransferProcessor",
+                "GPU 색감 전송 OOM - 다운스케일 재시도 (${inputBitmap.width}x${inputBitmap.height})"
+            )
+            System.gc()
+            val scaled = scaleDownBitmap(inputBitmap, GPU_OOM_RETRY_MAX_SIZE)
+            try {
+                gpu.setFilter(filter)
+                gpu.getBitmapWithFilterApplied(scaled)
+            } catch (oom2: OutOfMemoryError) {
+                // 재시도도 OOM이면 null 반환 → 호출부 CPU 폴백
+                LogcatManager.w("ColorTransferProcessor", "GPU 색감 전송 재시도도 OOM - CPU 폴백")
+                null
+            } finally {
+                if (scaled != inputBitmap) {
+                    scaled.recycle()
+                }
+            }
+        }
+    }
+
     // GPUImage 인스턴스 (지연 초기화)
     private var gpuImage: GPUImage? = null
+
+    // 단일 GPUImage 싱글톤을 여러 코루틴이 동시 사용하면 EGL/필터 상태 race가 발생한다.
+    // setFilter+getBitmapWithFilterApplied 구간을 이 Mutex로 직렬화해 GLES 호출 충돌·필터 race를 차단한다.
+    private val gpuMutex = Mutex()
 
     /**
      * GPUImage를 초기화합니다.
@@ -352,6 +393,9 @@ class ColorTransferProcessor @Inject constructor() {
         // 병렬 처리를 위한 청크 크기
         private const val CHUNK_SIZE = 5000 // 더 큰 청크 크기로 오버헤드 감소
         // 캐시 크기 제한은 Constants.Cache.MAX_COLOR_TRANSFER_STATS_CACHE_SIZE 사용
+
+        // GPU 경로 OOM 폴백 시 재시도용 다운스케일 한도 (긴 변 기준 px)
+        private const val GPU_OOM_RETRY_MAX_SIZE = 2048
     }
 
     // 네이티브 함수 선언

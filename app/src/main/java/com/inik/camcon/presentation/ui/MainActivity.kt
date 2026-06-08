@@ -103,6 +103,8 @@ import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.inik.camcon.di.IoDispatcher
@@ -1009,14 +1011,10 @@ class MainActivity : ComponentActivity() {
         val intent = intent
         val navigateToCameraControl = intent.getBooleanExtra("navigate_to_camera_control", false)
 
-        // 백그라운드 서비스(이벤트 리스너 유지) 시작
-        try {
-            val serviceIntent = Intent(this, BackgroundSyncService::class.java)
-            ContextCompat.startForegroundService(this, serviceIntent)
-            LogcatManager.d(TAG, "BackgroundSyncService 시작 요청됨")
-        } catch (e: Exception) {
-            LogcatManager.w(TAG, "BackgroundSyncService 시작 실패", e)
-        }
+        // C6: connectedDevice FGS는 카메라가 실제로 연결됐을 때만 기동한다.
+        // (연결도 없는데 onCreate에서 무조건 startForegroundService → Play 정책 위반·상시 알림·전력 점유)
+        // 연결이 성립/해제되는 것을 lifecycle 동안 관찰하여, 활성 연결이 생기면 시작·끊기면 시작 안 함.
+        observeConnectionForBackgroundService()
 
         // 사용자 구독 티어 로그 출력
         lifecycleScope.launch {
@@ -1120,8 +1118,12 @@ class MainActivity : ComponentActivity() {
 
         // 포그라운드 진입 시점은 FGS 시작이 OS 정책상 허용되므로,
         // onPause 백그라운드 시점에 재시작하지 못한 서비스를 여기서 보장한다.
+        // C6: 단, 카메라가 실제로 연결돼 있을 때만 재시작한다(미연결 idle FGS 방지).
         lifecycleScope.launch(ioDispatcher) {
             try {
+                if (!globalManager.globalConnectionState.value.isAnyConnectionActive) {
+                    return@launch
+                }
                 val isServiceRunning = isServiceRunning(BackgroundSyncService::class.java)
                 if (!isServiceRunning) {
                     LogcatManager.d(TAG, " 포그라운드 진입 - 백그라운드 서비스 재시작")
@@ -1142,6 +1144,11 @@ class MainActivity : ComponentActivity() {
         // 앱이 백그라운드로 이동할 때 백그라운드 서비스가 실행 중인지 확인
         lifecycleScope.launch(ioDispatcher) {
             try {
+                // C6: 카메라가 실제로 연결돼 있을 때만 백그라운드 수신 서비스를 유지/재시작한다.
+                // (미연결 상태에서 FGS를 살려두면 Play 정책 위반·상시 알림·전력 점유)
+                if (!globalManager.globalConnectionState.value.isAnyConnectionActive) {
+                    return@launch
+                }
                 // 백그라운드 서비스가 실행 중인지 확인
                 val isServiceRunning = isServiceRunning(BackgroundSyncService::class.java)
                 if (!isServiceRunning) {
@@ -1173,6 +1180,31 @@ class MainActivity : ComponentActivity() {
             } catch (e: Exception) {
                 LogcatManager.w(TAG, "백그라운드 서비스 상태 확인 실패", e)
             }
+        }
+    }
+
+    /**
+     * C6: 활성 카메라 연결이 생겼을 때만 BackgroundSyncService(connectedDevice FGS)를 기동한다.
+     * 연결 상태를 lifecycle 동안 관찰하여 false→true 전이에서만 startForegroundService를 호출하고,
+     * 미연결 상태에서는 시작하지 않는다. (연결 해제 시 서비스의 self-stop 로직이 정리를 담당)
+     * 앱이 이미 활성 연결 상태로 진입(USB attach intent 등)했다면 즉시 시작된다.
+     */
+    private fun observeConnectionForBackgroundService() {
+        lifecycleScope.launch {
+            globalManager.globalConnectionState
+                .map { it.isAnyConnectionActive }
+                .distinctUntilChanged()
+                .collect { isConnected ->
+                    if (!isConnected) return@collect
+                    try {
+                        if (!isServiceRunning(BackgroundSyncService::class.java)) {
+                            BackgroundSyncService.startService(this@MainActivity)
+                            LogcatManager.d(TAG, "카메라 연결 감지 - BackgroundSyncService 시작 요청됨")
+                        }
+                    } catch (e: Exception) {
+                        LogcatManager.w(TAG, "BackgroundSyncService 시작 실패", e)
+                    }
+                }
         }
     }
 
