@@ -26,6 +26,9 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -51,6 +54,12 @@ class BackgroundSyncService : Service() {
     private var syncJob: Job? = null
     private var eventListenerJob: Job? = null
     private var wakeLock: PowerManager.WakeLock? = null
+
+    // 카메라 연결 상태에서 앱이 최근앱에서 제거(onTaskRemoved)돼 서비스가 존속한 상황 표시.
+    // 이 상태에서 이후 카메라 연결까지 끊기면 idle FGS·영구 알림 잔존을 막기 위해 self-stop 한다.
+    // 앱이 (재)실행돼 onStartCommand가 다시 호출되면 false로 리셋된다.
+    @Volatile
+    private var taskRemovedWhileConnected = false
 
     companion object {
         private const val TAG = "BackgroundSyncService"
@@ -113,14 +122,19 @@ class BackgroundSyncService : Service() {
             return START_NOT_STICKY
         }
 
+        // 앱이 (재)실행되어 onStartCommand가 다시 호출되면 "스와이프 후 존속" 표시를 해제한다.
+        // (전경 복귀 시 disconnect로 인한 의도치 않은 self-stop 방지)
+        taskRemovedWhileConnected = false
+
         // 백그라운드 동기화 작업 시작
         startBackgroundSync()
 
         // 백그라운드 이벤트 리스너 관리 시작
         startBackgroundEventListenerManager()
 
-        // 앱이 종료되면 재시작되지 않도록 설정
-        return START_NOT_STICKY
+        // OS가 메모리 부족으로 서비스를 죽이면 재생성해 포그라운드+이벤트 리스너를 복원한다.
+        // (스와이프 제거 시: 카메라 연결 중이면 onTaskRemoved가 존속시키고, 미연결이면 stopSelf로 종료)
+        return START_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -145,7 +159,22 @@ class BackgroundSyncService : Service() {
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        LogcatManager.d(TAG, "Task removed - 앱 종료로 서비스 정리")
+        // 카메라가 연결된 상태에서 앱을 최근앱에서 스와이프로 닫아도 백그라운드 수신을 끊지 않는다.
+        // (manifest stopWithTask="false"와 함께 동작 — 서비스를 존속시켜 무인 테더링 수신 유지)
+        val cameraConnected = try {
+            globalConnectionManager.globalConnectionState.value.isAnyConnectionActive
+        } catch (e: Exception) {
+            false
+        }
+
+        if (cameraConnected) {
+            LogcatManager.d(TAG, "Task removed - 카메라 연결 유지 중: 백그라운드 수신 지속(서비스 존속)")
+            taskRemovedWhileConnected = true
+            return
+        }
+
+        // 연결이 없으면 살려둘 이유가 없으므로 정리 후 종료
+        LogcatManager.d(TAG, "Task removed - 카메라 미연결: 서비스 정리 후 종료")
         try {
             syncJob?.cancel()
             eventListenerJob?.cancel()
@@ -337,55 +366,69 @@ class BackgroundSyncService : Service() {
             try {
                 LogcatManager.d(TAG, " 백그라운드 이벤트 리스너 관리자 시작")
 
-                globalConnectionManager.globalConnectionState.collect { state ->
-                    if (state.isAnyConnectionActive) {
-                        // 카메라 연결된 경우 - 이벤트 리스너 상태 확인
-                        val isEventListenerActive = cameraRepository.isEventListenerActive().first()
-
-                        LogcatManager.d(
-                            TAG,
-                            " 카메라 연결됨: ${state.activeConnectionType}, 이벤트 리스너: $isEventListenerActive"
-                        )
-
+                // 연결 상태만이 아니라 이벤트 리스너 활성 여부·사진 미리보기 모드까지 함께
+                // 관찰하는 레벨 트리거. "연결은 살아있는데 리스너만 꺼진" 경우(미리보기 탭이 USB
+                // 리스너를 중단한 뒤 탭 이탈 등)를 감지해 자동 재시작한다. 미리보기 탭 체류 중
+                // (previewMode=true)에는 USB 버스 경합 방지를 위해 재시작을 억제한다.
+                combine(
+                    globalConnectionManager.globalConnectionState
+                        .map { it.isAnyConnectionActive }
+                        .distinctUntilChanged(),
+                    cameraRepository.isEventListenerActive(),
+                    cameraRepository.isPhotoPreviewMode()
+                ) { connected, listenerActive, previewMode ->
+                    Triple(connected, listenerActive, previewMode)
+                }.distinctUntilChanged()
+                .collect { (isConnected, isListenerActive, isPreviewMode) ->
+                    if (isConnected) {
                         // 카메라 연결 중에만 Wake Lock 유지 (없으면 획득)
                         ensureWakeLock()
 
-                        if (!isEventListenerActive) {
-                            LogcatManager.d(TAG, " 카메라는 연결되어 있으나 이벤트 리스너가 비활성 - 재시작 시도")
-
-                            try {
-                                val result = cameraRepository.startCameraEventListener()
-                                if (result.isSuccess) {
-                                    LogcatManager.d(TAG, " 백그라운드에서 이벤트 리스너 재시작 성공")
-                                    updateNotificationText("카메라 이벤트 리스너 활성 - 사진 수신 대기 중")
-                                } else {
-                                    LogcatManager.w(TAG, " 백그라운드에서 이벤트 리스너 재시작 실패")
-                                    updateNotificationText("카메라 연결 확인 중...")
-                                }
-                            } catch (e: kotlinx.coroutines.CancellationException) {
-                                LogcatManager.d(TAG, "이벤트 리스너 재시작 작업이 취소됨")
-                                throw e
-                            } catch (e: Exception) {
-                                LogcatManager.e(TAG, "백그라운드 이벤트 리스너 시작 중 예외", e)
+                        when {
+                            isPreviewMode -> {
+                                // 사진 미리보기 모드 - USB 버스 경합 방지로 재시작 억제
+                                LogcatManager.d(TAG, " 사진 미리보기 모드 - 이벤트 리스너 재시작 억제")
                             }
 
-                        } else if (isEventListenerActive) {
-                            updateNotificationText("카메라 이벤트 리스너 활성 - 사진 수신 대기 중")
+                            !isListenerActive -> {
+                                LogcatManager.d(TAG, " 카메라 연결됨 + 리스너 비활성 + 미리보기 아님 - 재시작 시도")
+                                try {
+                                    val result = cameraRepository.startCameraEventListener()
+                                    if (result.isSuccess) {
+                                        LogcatManager.d(TAG, " 백그라운드에서 이벤트 리스너 재시작 성공")
+                                        updateNotificationText("카메라 이벤트 리스너 활성 - 사진 수신 대기 중")
+                                    } else {
+                                        LogcatManager.w(TAG, " 백그라운드에서 이벤트 리스너 재시작 실패")
+                                        updateNotificationText("카메라 연결 확인 중...")
+                                    }
+                                } catch (e: kotlinx.coroutines.CancellationException) {
+                                    LogcatManager.d(TAG, "이벤트 리스너 재시작 작업이 취소됨")
+                                    throw e
+                                } catch (e: Exception) {
+                                    LogcatManager.e(TAG, "백그라운드 이벤트 리스너 시작 중 예외", e)
+                                }
+                            }
+
+                            else -> {
+                                updateNotificationText("카메라 이벤트 리스너 활성 - 사진 수신 대기 중")
+                            }
                         }
                     } else {
-                        // 카메라 연결이 끊어지면 모든 이벤트 리스너 완전 정리
-                        try {
-                            val stopResult = cameraRepository.stopCameraEventListener()
-                            if (stopResult.isSuccess) {
-                                LogcatManager.d(TAG, " 백그라운드에서 이벤트 리스너 정리 성공")
-                            } else {
-                                LogcatManager.w(TAG, " 백그라운드에서 이벤트 리스너 정리 실패")
+                        // 카메라 연결이 끊어진 경우 - 리스너가 남아있을 때만 정리(중복 호출 방지)
+                        if (isListenerActive) {
+                            try {
+                                val stopResult = cameraRepository.stopCameraEventListener()
+                                if (stopResult.isSuccess) {
+                                    LogcatManager.d(TAG, " 백그라운드에서 이벤트 리스너 정리 성공")
+                                } else {
+                                    LogcatManager.w(TAG, " 백그라운드에서 이벤트 리스너 정리 실패")
+                                }
+                            } catch (e: kotlinx.coroutines.CancellationException) {
+                                LogcatManager.d(TAG, "이벤트 리스너 정리 작업이 취소됨")
+                                throw e
+                            } catch (e: Exception) {
+                                LogcatManager.e(TAG, "백그라운드 이벤트 리스너 정리 중 예외", e)
                             }
-                        } catch (e: kotlinx.coroutines.CancellationException) {
-                            LogcatManager.d(TAG, "이벤트 리스너 정리 작업이 취소됨")
-                            throw e
-                        } catch (e: Exception) {
-                            LogcatManager.e(TAG, "백그라운드 이벤트 리스너 정리 중 예외", e)
                         }
 
                         updateNotificationText("카메라 연결 대기 중...")
@@ -393,8 +436,14 @@ class BackgroundSyncService : Service() {
                         // 연결이 끊어지면 깨울 카메라가 없으므로 Wake Lock 해제 (배터리 절약)
                         releaseWakeLock()
 
-                        // 카메라 연결이 끊어지면 리스너 관리 루프 중지하고 대기 모드로 전환
                         LogcatManager.d(TAG, " 카메라 연결 끊김 - 이벤트 리스너 관리 대기 모드로 전환")
+
+                        // 앱이 이미 최근앱에서 제거된 상태(스와이프 후 연결로 존속)에서 연결까지 끊기면
+                        // idle FGS·영구 알림이 무한 잔존하지 않도록 서비스를 종료한다(onDestroy가 정리).
+                        if (taskRemovedWhileConnected) {
+                            LogcatManager.d(TAG, "태스크 제거 후 연결 끊김 - idle 잔존 방지로 서비스 종료")
+                            stopSelf()
+                        }
                     }
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {

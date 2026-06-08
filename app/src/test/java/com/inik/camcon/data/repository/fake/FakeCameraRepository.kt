@@ -117,6 +117,8 @@ class FakeCameraRepository : CameraRepository {
         return flowOf(false)
     }
 
+    override fun isPhotoPreviewMode(): Flow<Boolean> = flowOf(false)
+
     override suspend fun capturePhoto(mode: ShootingMode): Result<CapturedPhoto> {
         return Result.success(
             CapturedPhoto(
