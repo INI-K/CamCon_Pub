@@ -114,6 +114,9 @@ class CameraCaptureRepositoryImpl @Inject constructor(
     fun isEventListenerActive(): Flow<Boolean> =
         eventManager.isEventListenerActive
 
+    fun isPhotoPreviewMode(): Flow<Boolean> =
+        eventManager.isPhotoPreviewModeFlow
+
     fun setPhotoPreviewMode(enabled: Boolean) {
         eventManager.setPhotoPreviewMode(enabled)
     }

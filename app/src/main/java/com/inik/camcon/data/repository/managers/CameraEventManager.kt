@@ -64,6 +64,9 @@ class CameraEventManager @Inject constructor(
     // 사진 미리보기 모드 상태 추가 (이벤트 리스너 자동 시작 방지용)
     private val _isPhotoPreviewMode = MutableStateFlow(false)
 
+    // 백그라운드 감독자(BackgroundSyncService)가 레벨 트리거로 관찰하기 위한 노출
+    val isPhotoPreviewModeFlow = _isPhotoPreviewMode.asStateFlow()
+
     // USB 분리 처리 상태 추가 (무한 루프 방지)
     private val isHandlingUsbDisconnection = AtomicBoolean(false)
 
