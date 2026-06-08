@@ -38,6 +38,12 @@ import com.inik.camcon.presentation.viewmodel.CameraCaptureState
 import com.inik.camcon.domain.model.ThemeMode
 
 /**
+ * 앱이 실제로 구현한 촬영 모드. 여기에 없는 모드는 카메라가 지원해도 UI에서 비활성화된다.
+ * (BURST/TIMELAPSE/BULB/HDR는 미구현 — CameraCaptureRepositoryImpl에서 throw)
+ */
+private val APP_IMPLEMENTED_SHOOTING_MODES = setOf(ShootingMode.SINGLE)
+
+/**
  * 촬영 모드 선택 -- state+callback 패턴
  *
  * @param captureState 촬영 sub-state (현재 모드 포함)
@@ -65,13 +71,17 @@ fun ShootingModeSelector(
             items = ShootingMode.entries.toTypedArray(),
             key = { mode -> mode.name }
         ) { mode ->
-            val isSupported = when (mode) {
+            // 카메라가 지원하더라도 앱이 아직 구현하지 않은 모드는 비활성화한다.
+            // (BURST/TIMELAPSE/BULB/HDR는 현재 CameraCaptureRepositoryImpl에서
+            //  UnsupportedShootingModeException을 던지므로 선택 시 항상 실패 — 허위 기능 노출 방지)
+            val isCameraCapable = when (mode) {
                 ShootingMode.SINGLE -> true
                 ShootingMode.BURST -> cameraCapabilities?.supportsBurstMode ?: false
                 ShootingMode.TIMELAPSE -> cameraCapabilities?.supportsTimelapse ?: false
                 ShootingMode.BULB -> cameraCapabilities?.supportsBulbMode ?: false
                 ShootingMode.HDR_BRACKET -> cameraCapabilities?.supportsBracketing ?: false
             }
+            val isSupported = isCameraCapable && mode in APP_IMPLEMENTED_SHOOTING_MODES
             val isEnabled = isConnected && isSupported
 
             ModeButton(
