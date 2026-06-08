@@ -42,6 +42,11 @@ interface CameraRepository {
     fun setPhotoPreviewMode(enabled: Boolean)
     fun isEventListenerActive(): Flow<Boolean>
 
+    /**
+     * 사진 미리보기 모드 상태 관찰 (백그라운드 이벤트 리스너 감독자용)
+     */
+    fun isPhotoPreviewMode(): Flow<Boolean>
+
     // 촬영 관련
     suspend fun capturePhoto(mode: ShootingMode = ShootingMode.SINGLE): Result<CapturedPhoto>
     fun startBurstCapture(count: Int): Flow<CapturedPhoto>

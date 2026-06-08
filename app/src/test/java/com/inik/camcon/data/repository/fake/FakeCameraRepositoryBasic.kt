@@ -285,6 +285,8 @@ class FakeCameraRepositoryBasic : CameraRepository {
         // 테스트용 no-op
     }
 
+    override fun isPhotoPreviewMode(): Flow<Boolean> = flowOf(false)
+
     override fun isEventListenerActive(): Flow<Boolean> = isEventListenerActiveFlow
 
     override suspend fun capturePhoto(mode: ShootingMode): Result<CapturedPhoto> {
