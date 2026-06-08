@@ -28,6 +28,11 @@ class ColorTransferRepositoryImpl @Inject constructor(
 
     companion object {
         private const val TAG = "ColorTransferRepo"
+
+        // GPU(EGL pbuffer) 경로에서 허용하는 최대 긴 변 px.
+        // 고화소 원본을 그대로 EGL pbuffer로 만들면 GL_MAX_TEXTURE_SIZE/메모리 초과로
+        // 결과가 검게/깨져 나오거나 네이티브 크래시가 난다. 이 한도로 다운스케일해 방지한다.
+        private const val MAX_GPU_DIMENSION = 4096
     }
 
     override suspend fun applyColorTransferWithGPUCached(
@@ -138,11 +143,19 @@ class ColorTransferRepositoryImpl @Inject constructor(
                 loadBitmapWithOrientation(referenceImagePath) ?: return@withContext null
             referenceBitmapToRecycle = referenceBitmap
 
+            // 고화소 원본을 그대로 EGL pbuffer로 만들면 텍스처 한도/메모리 초과로 손상·크래시가 난다.
+            // GPU 경로에 한해 한도 내로 다운스케일한 사본을 사용하고, 사본은 GPU 시도 후 즉시 회수한다.
+            // (원본 inputBitmap/referenceBitmap은 CPU 폴백에서 재사용하므로 건드리지 않는다.)
+            var gpuInputScaled: Bitmap? = null
+            var gpuReferenceScaled: Bitmap? = null
             try {
+                gpuInputScaled = scaleDownForGpu(inputBitmap)
+                gpuReferenceScaled = scaleDownForGpu(referenceBitmap)
+
                 // GPU 가속 색감 전송 시도
                 val result = colorTransferProcessor.applyColorTransferWithGPU(
-                    inputBitmap,
-                    referenceBitmap,
+                    gpuInputScaled,
+                    gpuReferenceScaled,
                     intensity
                 )
 
@@ -154,6 +167,10 @@ class ColorTransferRepositoryImpl @Inject constructor(
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "GPU color transfer exception - CPU fallback: ${e.message}")
+            } finally {
+                // 다운스케일 사본만 회수 (원본과 동일 인스턴스면 회수하지 않음)
+                gpuInputScaled?.let { if (it != inputBitmap) it.recycle() }
+                gpuReferenceScaled?.let { if (it != referenceBitmap) it.recycle() }
             }
 
             // CPU 폴백
@@ -305,6 +322,21 @@ class ColorTransferRepositoryImpl @Inject constructor(
         val matrix = Matrix()
         matrix.postRotate(degrees.toFloat())
         return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    }
+
+    /**
+     * GPU(EGL pbuffer) 경로 입력을 텍스처/메모리 한도 내로 다운스케일한다.
+     * 한도 이내면 원본 인스턴스를 그대로 반환하므로 호출부는 == 비교로 사본 여부를 구분한다.
+     */
+    private fun scaleDownForGpu(bitmap: Bitmap): Bitmap {
+        val longest = maxOf(bitmap.width, bitmap.height)
+        if (longest <= MAX_GPU_DIMENSION) {
+            return bitmap
+        }
+        val scale = MAX_GPU_DIMENSION.toFloat() / longest
+        val newWidth = (bitmap.width * scale).toInt().coerceAtLeast(1)
+        val newHeight = (bitmap.height * scale).toInt().coerceAtLeast(1)
+        return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
     }
 
     private fun loadScaledBitmap(imagePath: String, maxSize: Int): Bitmap? {

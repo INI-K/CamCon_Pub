@@ -27,6 +27,43 @@ class AppUpdateRepositoryImpl @Inject constructor(
         const val VERSION_CACHE_TTL_MS = 6 * 60 * 60 * 1000L // 6시간
         const val KEY_LAST_CHECK = "last_version_check_millis"
         const val KEY_CACHED_LATEST = "cached_latest_version_name"
+
+        // 강제 업데이트 정책 키. 원격(Remote Config/서버)에서 동기화해 prefs에 기록하면 즉시 반영된다.
+        const val KEY_FORCE_UPDATE_ENABLED = "force_update_enabled"
+        const val KEY_MINIMUM_VERSION_CODE = "minimum_version_code"
+        const val KEY_MINIMUM_VERSION_NAME = "minimum_version_name"
+        const val KEY_LATEST_VERSION_CODE = "latest_version_code"
+        const val KEY_LATEST_VERSION_NAME = "latest_version_name"
+    }
+
+    /**
+     * 강제 업데이트 필요 여부를 실제 버전 비교로 판정한다(H24).
+     *
+     * - force_update_enabled가 켜져 있고
+     * - 현재 versionCode가 minimum_version_code 미만이거나
+     * - 현재 versionName이 minimum_version_name 미만이면(이름 기반 비교)
+     * 강제 업데이트로 판정한다. minimum_version_name이 비어 있으면 코드 비교만 사용한다.
+     *
+     * minimum_version_code 기본값을 1이 아니라 현재 versionCode로 두어,
+     * 원격 정책이 아직 동기화되지 않은 상태에서 의도치 않게 강제 업데이트가 뜨지 않도록 한다.
+     * (정책 미설정 시에는 force_update_enabled=false라 어차피 false이지만 방어적으로 정렬)
+     */
+    private fun computeIsUpdateRequired(
+        currentVersionCode: Int,
+        currentVersionName: String
+    ): Boolean {
+        val forceUpdateEnabled = prefs.getBoolean(KEY_FORCE_UPDATE_ENABLED, false)
+        if (!forceUpdateEnabled) return false
+
+        val minimumVersionCode = prefs.getInt(KEY_MINIMUM_VERSION_CODE, currentVersionCode)
+        if (currentVersionCode < minimumVersionCode) return true
+
+        val minimumVersionName = prefs.getString(KEY_MINIMUM_VERSION_NAME, null)
+        if (!minimumVersionName.isNullOrBlank()) {
+            // 현재 버전이 최소 지원 버전보다 낮으면(-1) 강제 업데이트.
+            if (compareVersions(currentVersionName, minimumVersionName) < 0) return true
+        }
+        return false
     }
 
     override suspend fun checkForUpdate(): Result<AppVersionInfo> {
@@ -61,12 +98,9 @@ class AppUpdateRepositoryImpl @Inject constructor(
                 val isUpdateAvailable =
                     compareVersions(playStoreInfo.versionName, currentVersionName) > 0
 
-                // 강제 업데이트 정책은 로컬 설정에서 관리
-                val forceUpdateEnabled = prefs.getBoolean("force_update_enabled", false)
-                val minimumVersionCode = prefs.getInt("minimum_version_code", 1)
-
+                // 강제 업데이트는 실제 버전 비교로 판정(H24)
                 val isUpdateRequired =
-                    forceUpdateEnabled && (currentVersionCode < minimumVersionCode)
+                    computeIsUpdateRequired(currentVersionCode, currentVersionName)
 
                 // 성공 응답을 TTL 캐시에 저장 (다음 시작들의 네트워크 호출 절약)
                 prefs.edit()
@@ -114,9 +148,7 @@ class AppUpdateRepositoryImpl @Inject constructor(
         latestVersionName: String
     ): AppVersionInfo {
         val isUpdateAvailable = compareVersions(latestVersionName, currentVersionName) > 0
-        val forceUpdateEnabled = prefs.getBoolean("force_update_enabled", false)
-        val minimumVersionCode = prefs.getInt("minimum_version_code", 1)
-        val isUpdateRequired = forceUpdateEnabled && (currentVersionCode < minimumVersionCode)
+        val isUpdateRequired = computeIsUpdateRequired(currentVersionCode, currentVersionName)
         return AppVersionInfo(
             currentVersion = currentVersionName,
             latestVersion = latestVersionName,
@@ -130,23 +162,22 @@ class AppUpdateRepositoryImpl @Inject constructor(
         currentVersionName: String
     ): Result<AppVersionInfo> {
         return try {
-            val minimumVersionCode = prefs.getInt("minimum_version_code", 1)
-            val latestVersionCode = prefs.getInt("latest_version_code", currentVersionCode)
+            val latestVersionCode = prefs.getInt(KEY_LATEST_VERSION_CODE, currentVersionCode)
             val latestVersionName =
-                prefs.getString("latest_version_name", currentVersionName) ?: currentVersionName
-            val forceUpdateEnabled = prefs.getBoolean("force_update_enabled", false)
+                prefs.getString(KEY_LATEST_VERSION_NAME, currentVersionName) ?: currentVersionName
 
-            // 기본값 설정 (처음 실행 시)
-            if (!prefs.contains("minimum_version_code")) {
+            // 기본값 설정 (처음 실행 시). minimum_version_code 기본을 현재 버전으로 두어
+            // 정책 미동기화 상태에서 강제 업데이트 오탐을 방지한다(H24).
+            if (!prefs.contains(KEY_MINIMUM_VERSION_CODE)) {
                 prefs.edit()
-                    .putInt("minimum_version_code", 1)
-                    .putInt("latest_version_code", currentVersionCode)
-                    .putString("latest_version_name", currentVersionName)
-                    .putBoolean("force_update_enabled", false)
+                    .putInt(KEY_MINIMUM_VERSION_CODE, currentVersionCode)
+                    .putInt(KEY_LATEST_VERSION_CODE, currentVersionCode)
+                    .putString(KEY_LATEST_VERSION_NAME, currentVersionName)
+                    .putBoolean(KEY_FORCE_UPDATE_ENABLED, false)
                     .apply()
             }
 
-            val isUpdateRequired = forceUpdateEnabled && (currentVersionCode < minimumVersionCode)
+            val isUpdateRequired = computeIsUpdateRequired(currentVersionCode, currentVersionName)
             val isUpdateAvailable = currentVersionCode < latestVersionCode
 
             val versionInfo = AppVersionInfo(
@@ -221,19 +252,25 @@ class AppUpdateRepositoryImpl @Inject constructor(
         }
     }
 
-    // 개발/테스트용 로컬 정책 설정 메서드들
+    // 강제 업데이트 정책 설정 메서드들.
+    // 원격(Remote Config/서버)에서 정책을 받아 이 메서드들로 prefs에 반영하면
+    // computeIsUpdateRequired가 즉시 그 값으로 강제 업데이트를 판정한다(H24).
     fun setMinimumVersionCode(versionCode: Int) {
-        prefs.edit().putInt("minimum_version_code", versionCode).apply()
+        prefs.edit().putInt(KEY_MINIMUM_VERSION_CODE, versionCode).apply()
+    }
+
+    fun setMinimumVersionName(versionName: String?) {
+        prefs.edit().putString(KEY_MINIMUM_VERSION_NAME, versionName).apply()
     }
 
     fun setLatestVersion(versionCode: Int, versionName: String) {
         prefs.edit()
-            .putInt("latest_version_code", versionCode)
-            .putString("latest_version_name", versionName)
+            .putInt(KEY_LATEST_VERSION_CODE, versionCode)
+            .putString(KEY_LATEST_VERSION_NAME, versionName)
             .apply()
     }
 
     fun setForceUpdateEnabled(enabled: Boolean) {
-        prefs.edit().putBoolean("force_update_enabled", enabled).apply()
+        prefs.edit().putBoolean(KEY_FORCE_UPDATE_ENABLED, enabled).apply()
     }
 }

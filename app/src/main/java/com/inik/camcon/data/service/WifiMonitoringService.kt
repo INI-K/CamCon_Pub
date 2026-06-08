@@ -102,8 +102,32 @@ class WifiMonitoringService : Service() {
         super.onCreate()
         Log.d(TAG, "📡 WiFi 모니터링 Service 시작")
 
+        // Android 14+는 onCreate~onStartCommand 사이 startForeground가 필수이므로 일단 FGS로 승격한다.
         startForegroundService()
         startWifiMonitoring()
+
+        // H14: 자동 연결 토글이 실제로 켜져 있을 때만 connectedDevice FGS를 유지한다.
+        // 토글이 꺼져 있으면(직접 시작·시스템 재기동 등) idle FGS·상시 알림을 남기지 않도록 즉시 종료.
+        ensureAutoConnectEnabledOrStop()
+    }
+
+    /**
+     * H14: 자동 연결 토글이 꺼져 있으면 FGS를 유지하지 않고 서비스를 종료한다.
+     * (연결도 아닌 단순 스캔 대기 상태의 상시 connectedDevice FGS 방지)
+     */
+    private fun ensureAutoConnectEnabledOrStop() {
+        serviceScope.launch {
+            try {
+                if (!preferencesDataSource.isAutoConnectEnabledNow()) {
+                    Log.d(TAG, "⏹️ 자동 연결 토글 OFF - FGS 유지 안 함, 서비스 종료")
+                    stopWifiMonitoring()
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "자동 연결 토글 확인 실패", e)
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -112,6 +136,9 @@ class WifiMonitoringService : Service() {
         // 서비스가 재시작된 경우 (시스템에 의해 종료 후)
         if (intent == null) {
             Log.w(TAG, "⚠️ 시스템에 의한 서비스 재시작 감지")
+            // H14: START_STICKY 재기동 시에도 자동 연결 토글이 여전히 켜져 있을 때만 유지한다.
+            // (재기동 사이 토글이 꺼졌다면 idle FGS·상시 알림이 잔존하지 않도록 종료)
+            ensureAutoConnectEnabledOrStop()
             // 네트워크 모니터링이 중지되었을 수 있으므로 재시작
             if (networkCallback == null) {
                 Log.d(TAG, "📡 네트워크 모니터링 재시작")
@@ -265,6 +292,9 @@ class WifiMonitoringService : Service() {
             }
         } catch (e: Exception) {
             Log.e(TAG, "❌ NetworkCallback 해제 중 오류", e)
+        } finally {
+            // 재해제 시 IllegalArgumentException(이미 unregister된 콜백) 방지
+            networkCallback = null
         }
     }
 

@@ -12,10 +12,14 @@ import com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.data.service.WifiMonitoringService
 import com.inik.camcon.di.ApplicationScope
+import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.usecase.ColorTransferUseCase
 import com.inik.camcon.utils.LogMask
 import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -35,6 +39,10 @@ class CamCon : Application() {
     lateinit var applicationScope: CoroutineScope
 
     @Inject
+    @IoDispatcher
+    lateinit var ioDispatcher: CoroutineDispatcher
+
+    @Inject
     lateinit var colorTransferUseCase: ColorTransferUseCase
 
     // 결제 시트 등 Activity 컨텍스트가 필요한 시점에 현재 resumed Activity를 제공
@@ -43,6 +51,13 @@ class CamCon : Application() {
 
     // 현재 활성 Activity 추적 (포그라운드 상태 확인용)
     private var activeActivityCount = 0
+
+    // libgphoto2 플러그인 추출 완료 신호.
+    // onCreate에서 백그라운드로 추출을 시작하고, 추출 결과를 처음 쓰는 지점이
+    // await() 해 추출이 끝났음을 보장할 수 있다. (USB/PTP-IP 연결 경로는 각자
+    // 멱등 재추출 가드를 가지므로 이 신호 없이도 안전하지만, 중복 I/O를 피한다.)
+    private val _pluginExtractionDeferred = CompletableDeferred<Unit>()
+    val pluginExtractionDeferred: Deferred<Unit> get() = _pluginExtractionDeferred
 
     companion object {
         private const val TAG = "CamCon"
@@ -81,8 +96,16 @@ class CamCon : Application() {
             }
         })
 
-        // libgphoto2 플러그인 디렉토리 구조 생성
-        createLibgphoto2PluginDirs()
+        // libgphoto2 플러그인 디렉토리 구조 생성 (ZipFile I/O → 백그라운드 추출).
+        // 메인스레드 onCreate에서 동기 실행하면 콜드 스타트/업데이트 직후 ANR이 발생하므로
+        // IO 디스패처로 옮기고, 완료 신호는 pluginExtractionDeferred로 노출한다.
+        applicationScope.launch(ioDispatcher) {
+            try {
+                createLibgphoto2PluginDirs()
+            } finally {
+                _pluginExtractionDeferred.complete(Unit)
+            }
+        }
 
         // 네이티브 라이브러리 로딩 상태 확인
         checkNativeLibraryStatus()
@@ -181,6 +204,9 @@ class CamCon : Application() {
             }
 
             Log.d(TAG, "✅ 플러그인 복사 완료: I/O=$iolibCount, Camera=$camlibCount")
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // 코루틴 취소는 항상 재던지기
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "❌ 플러그인 디렉토리 생성 실패", e)
         }

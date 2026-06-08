@@ -122,6 +122,22 @@ class BackgroundSyncService : Service() {
             return START_NOT_STICKY
         }
 
+        // H15: OS의 START_STICKY 재기동(intent == null)으로 되살아났는데 이미 연결이 없으면
+        // 즉시 self-stop 한다. (combine 레벨트리거의 첫 방출을 기다리는 사이 idle FGS·영구 알림이
+        // 잔존하는 창을 없앤다 — Android 14+는 startForeground 후 stopSelf가 정상 종료 경로다.)
+        if (intent == null) {
+            val cameraConnected = try {
+                globalConnectionManager.globalConnectionState.value.isAnyConnectionActive
+            } catch (e: Exception) {
+                false
+            }
+            if (!cameraConnected) {
+                LogcatManager.d(TAG, "시스템 재기동 + 카메라 미연결 - idle FGS 잔존 방지로 즉시 종료")
+                stopSelf()
+                return START_NOT_STICKY
+            }
+        }
+
         // 앱이 (재)실행되어 onStartCommand가 다시 호출되면 "스와이프 후 존속" 표시를 해제한다.
         // (전경 복귀 시 disconnect로 인한 의도치 않은 self-stop 방지)
         taskRemovedWhileConnected = false

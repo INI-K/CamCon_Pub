@@ -9,7 +9,6 @@ import com.inik.camcon.data.datasource.usb.UsbCameraManager
 import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.domain.model.CameraCapabilities
 import com.inik.camcon.di.ApplicationScope
-import com.inik.camcon.domain.model.PtpTimeoutException
 import com.inik.camcon.di.IoDispatcher
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
@@ -17,6 +16,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
@@ -34,6 +34,12 @@ class CameraConnectionManager @Inject constructor(
     @ApplicationScope private val scope: CoroutineScope,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
+    private companion object {
+        // connectToCamera 비동기 초기화 완료(isNativeCameraConnected=true) 대기 한도.
+        // 내부 initializeNativeCamera 가 delay(500)+네이티브 초기화를 수행하므로 넉넉히 잡는다.
+        private const val INIT_AWAIT_TIMEOUT_MS = 20_000L
+    }
+
     // Mutex 동기화 추가(중복 connectCamera 방지)
     private val connectCameraMutex = Mutex()
 
@@ -126,24 +132,38 @@ class CameraConnectionManager @Inject constructor(
             return Result.failure(Exception("USB 권한이 필요합니다"))
         }
 
-        // 중요: 먼저 USB 디바이스에 연결하여 currentDevice와 currentConnection을 설정
-        Log.d("카메라연결매니저", "USB 디바이스 연결 시작: ${LogMask.path(device.deviceName)}")
+        // 중요: USB 연결 + 네이티브 초기화(initCameraWithFd)는 전적으로
+        // UsbConnectionManager.connectToCamera 단일 경로에 위임한다.
+        // (C1) 과거에는 여기서 getFileDescriptor()+initCameraWithFd를 직접 한 번 더 호출해
+        // 동일 FD에 대해 서로 다른 Mutex로 initCameraWithFd가 이중 호출되어
+        // libusb 더블오픈/세션 손상(-7/-53)이 간헐 발생했다. 직접 호출을 제거하고
+        // connectToCamera가 세팅하는 isNativeCameraConnected StateFlow의 완료만 대기한다.
+        Log.d("카메라연결매니저", "USB 디바이스 연결 시작(단일 초기화 경로 위임): ${LogMask.path(device.deviceName)}")
         usbCameraManager.connectToCamera(device)
 
-        // 연결 안정화를 위한 짧은 대기
-        kotlinx.coroutines.delay(100)
+        // connectToCamera는 비동기(scope.launch)로 초기화를 수행하므로
+        // isNativeCameraConnected=true 가 될 때까지(또는 타임아웃까지) 대기한다.
+        val connected = kotlinx.coroutines.withTimeoutOrNull(INIT_AWAIT_TIMEOUT_MS) {
+            usbCameraManager.isNativeCameraConnected.first { it }
+        } ?: false
 
-        // 파일 디스크립터를 사용한 네이티브 초기화
-        val fd = usbCameraManager.getFileDescriptor()
-        return if (fd != null) {
-            Log.d("카메라연결매니저", "파일 디스크립터로 카메라 초기화: $fd")
-            val result = nativeDataSource.initCameraWithFd(fd, context.applicationInfo.nativeLibraryDir)
-            handleInitializationResult(result)
-        } else {
-            Log.e("카메라연결매니저", "파일 디스크립터를 가져올 수 없음 - USB 연결 실패")
-            // FD null 경로도 예외가 아닌 Result.failure 반환이므로 초기화 플래그를 직접 해제한다.
+        return if (connected) {
+            Log.d("카메라연결매니저", "네이티브 카메라 초기화 성공(connectToCamera 경로)")
+            _isConnected.value = true
             _isInitializing.value = false
-            Result.failure(Exception("파일 디스크립터를 가져올 수 없음 - USB 연결 실패"))
+            updateCameraList()
+            Result.success(true)
+        } else {
+            Log.e("카메라연결매니저", "네이티브 카메라 초기화 완료 대기 타임아웃 - USB 연결 실패")
+            // 초기화 완료 신호를 받지 못함. 실패 사유는 UsbConnectionManager.lastErrorKind에 담긴다.
+            // PtpTimeoutException으로 반환해야 UsbAutoConnectManager가 '앱 재시작' 안내 다이얼로그를
+            // 띄운다(C1 회귀 방지: generic Exception은 해당 분기를 타지 못해 안내가 사라짐).
+            _isInitializing.value = false
+            Result.failure(
+                com.inik.camcon.domain.model.PtpTimeoutException(
+                    "USB 카메라 초기화에 실패했습니다.\n케이블 재연결 후 다시 시도해주세요."
+                )
+            )
         }
     }
 
@@ -163,62 +183,6 @@ class CameraConnectionManager @Inject constructor(
             Log.e("카메라연결매니저", "일반 카메라 초기화 실패: $result")
             _isInitializing.value = false  // 실패 시에도 상태 해제
             Result.failure(Exception("카메라 연결 실패: $result"))
-        }
-    }
-
-    private suspend fun handleInitializationResult(result: Int): Result<Boolean> {
-        return when {
-            result == 0 -> {
-                Log.d("카메라연결매니저", "네이티브 카메라 초기화 성공")
-                _isConnected.value = true
-                _isInitializing.value = false  // 초기화 완료 시 상태 해제
-                updateCameraList()
-                Result.success(true)
-            }
-
-            result == -52 -> {
-                // GP_ERROR_IO_USB_FIND - USB 포트에서 카메라를 찾을 수 없음
-                Log.e("카메라연결매니저", "USB 포트에서 카메라를 찾을 수 없음: $result")
-                _isConnected.value = false
-                _isInitializing.value = false
-
-                // USB 연결은 유지되므로 재시도 가능함을 알림
-                Result.failure(Exception("USB 카메라 인식 실패\n\n가능한 해결 방법:\n1. 카메라 전원이 켜져있는지 확인\n2. 카메라를 PTP/MTP 모드로 설정\n3. 화면 하단의 '새로고침' 버튼을 눌러 재시도\n\n문제가 지속되면 USB 케이블을 재연결해주세요"))
-            }
-
-            result == -7 -> {
-                // I/O 오류 감지 - USB 권한/커널 드라이버 문제로 앱 재시작 필요
-                Log.e("카메라연결매니저", "USB I/O 오류 감지: $result")
-                _isInitializing.value = false  // 실패 시에도 상태 해제
-                Result.failure(PtpTimeoutException("USB I/O 오류가 발생했습니다.\n\n가능한 해결 방법:\n1. USB 권한을 다시 허용해주세요\n2. USB 케이블을 분리 후 재연결\n3. 카메라 전원을 껐다 켜기\n4. 앱을 완전히 재시작해주세요\n\n문제가 지속되면 카메라의 USB 모드를 PTP/MTP로 변경해보세요."))
-            }
-
-            result == -10 -> {
-                // -10 타임아웃 오류 감지 - 재시도 없이 바로 재시작 요청
-                Log.e("카메라연결매니저", "-10 타임아웃 오류 감지: $result")
-                _isInitializing.value = false  // 실패 시에도 상태 해제
-                Result.failure(PtpTimeoutException("카메라 연결에 실패했습니다.\n연결 상태를 확인하고 앱을 재시작해주세요."))
-            }
-
-            result == -2000 -> {
-                // PTP 타임아웃 오류 감지 - 더 구체적인 안내
-                Log.e("카메라연결매니저", "PTP 타임아웃 오류 감지: $result")
-                _isInitializing.value = false  // 실패 시에도 상태 해제
-                Result.failure(PtpTimeoutException("카메라와의 PTP 통신에서 타임아웃이 발생했습니다.\n\n가능한 해결 방법:\n1. USB 케이블을 분리 후 재연결\n2. 카메라 전원을 껐다 켜기\n3. 앱 완전 종료 후 재시작\n\n그래도 문제가 지속되면 카메라를 PC 모드에서 해제해보세요."))
-            }
-
-            result == -1000 -> {
-                // 일반적인 재시작 요청
-                Log.e("카메라연결매니저", "시스템 오류로 인한 재시작 요청: $result")
-                _isInitializing.value = false  // 실패 시에도 상태 해제
-                Result.failure(Exception("USB 디바이스 감지에 실패했습니다.\n앱을 재시작해주세요."))
-            }
-
-            else -> {
-                Log.e("카메라연결매니저", "네이티브 카메라 초기화 실패: $result")
-                _isInitializing.value = false  // 실패 시에도 상태 해제
-                Result.failure(Exception("카메라 연결 실패 (오류 코드: $result)"))
-            }
         }
     }
 
