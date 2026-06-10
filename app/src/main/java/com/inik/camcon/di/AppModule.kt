@@ -91,11 +91,10 @@ object AppModule {
     @Provides
     @Singleton
     fun provideNativeCameraDataSource(
-        @ApplicationContext context: Context,
         cameraStateObserver: CameraStateObserver,
         @ApplicationScope scope: CoroutineScope,
         @IoDispatcher ioDispatcher: CoroutineDispatcher
-    ) = NativeCameraDataSource(context, cameraStateObserver, scope, ioDispatcher)
+    ) = NativeCameraDataSource(cameraStateObserver, scope, ioDispatcher)
 
     @Provides
     @Singleton
