@@ -1,17 +1,14 @@
 package com.inik.camcon.data.datasource.nativesource
 
-import android.content.Context
 import android.util.Log
 import com.inik.camcon.CameraNative
 import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.domain.model.CameraAbilitiesInfo
 import com.inik.camcon.domain.model.CameraCapabilities
-import com.inik.camcon.domain.model.CameraSupports
 import com.inik.camcon.domain.model.PtpDeviceInfo
 import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.domain.manager.CameraStateObserver
 import com.inik.camcon.utils.LogMask
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -31,22 +28,12 @@ import javax.inject.Singleton
  */
 @Singleton
 class NativeCameraDataSource @Inject constructor(
-    @ApplicationContext private val context: Context,
     private val cameraStateObserver: CameraStateObserver,
     @ApplicationScope private val scope: CoroutineScope,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
     companion object {
         private const val TAG = "네이티브_카메라_데이터소스"
-    }
-
-    // initCameraWithFd 중복 호출 방지용 Mutex
-    private val initCameraWithFdMutex = Mutex()
-
-    // 카메라 이벤트 리스닝 시작
-    fun listenCameraEvents(callback: CameraCaptureListener) {
-        Log.d(TAG, "카메라 이벤트 리스닝 시작")
-        CameraNative.listenCameraEvents(callback)
     }
 
     // 이벤트 리스너 중복 호출 방지용
@@ -101,77 +88,11 @@ class NativeCameraDataSource @Inject constructor(
         return result
     }
 
-    // 파일 디스크립터 기반 초기화 (USB 연결)
-    suspend fun initCameraWithFd(fd: Int, nativeLibDir: String): Int =
-        initCameraWithFdMutex.withLock {
-            // 라이브러리 확인
-            if (!CameraNative.isLibrariesLoaded()) {
-                throw IllegalStateException("네이티브 라이브러리가 로딩되지 않았습니다")
-            }
-
-            Log.i(TAG, "USB 카메라 초기화 시작 (FD=$fd)")
-
-            // 올바른 네이티브 라이브러리 경로 설정
-            val applicationInfo = context.applicationInfo
-            val correctNativeLibDir = applicationInfo.nativeLibraryDir
-
-            val result = CameraNative.initCameraWithFd(fd, correctNativeLibDir)
-            Log.d(TAG, "카메라 초기화 (FD 기반) 완료: 결과 코드=$result")
-
-            if (result >= 0) {
-                Log.i(TAG, "USB 카메라 초기화 성공")
-
-                // 카메라 기능 조회
-                try {
-                    val abilitiesJson = CameraNative.getCameraAbilities()
-                    val deviceInfoJson = CameraNative.getCameraDeviceInfo()
-
-                    if (abilitiesJson != null && deviceInfoJson != null) {
-                        val abilities = parseAbilities(abilitiesJson)
-                        val deviceInfo = parseDeviceInfo(deviceInfoJson)
-
-                        Log.i(
-                            TAG,
-                            "USB 카메라: ${deviceInfo.manufacturer} ${deviceInfo.model} " +
-                                "(시리얼=${LogMask.serial(deviceInfo.serialNumber)}), " +
-                                "촬영=${abilities.supports.captureImage} " +
-                                "라이브뷰=${abilities.supports.capturePreview} " +
-                                "비디오=${abilities.supports.captureVideo} " +
-                                "설정=${abilities.supports.config} " +
-                                "트리거=${abilities.supports.triggerCapture}"
-                        )
-
-                        // UI 상태 업데이트를 위해 기능 정보 저장
-                        storeUsbCameraAbilities(abilities, deviceInfo)
-                    } else {
-                        Log.w(TAG, "카메라 정보 조회 실패 (하지만 연결은 성공)")
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "USB 카메라 기능 조회 중 오류", e)
-                }
-            } else {
-                Log.e(TAG, "USB 카메라 초기화 실패: $result")
-        }
-
-            result
-    }
-
     /**
      * USB 카메라 Abilities 저장
      */
     private var usbCameraAbilities: CameraAbilitiesInfo? = null
     private var usbCameraDeviceInfo: PtpDeviceInfo? = null
-
-    private fun storeUsbCameraAbilities(
-        abilities: CameraAbilitiesInfo,
-        deviceInfo: PtpDeviceInfo
-    ) {
-        usbCameraAbilities = abilities
-        usbCameraDeviceInfo = deviceInfo
-
-        // UI 상태 매니저에 기능 정보 전달
-        cameraStateObserver.updateCameraAbilities(abilities)
-    }
 
     /**
      * 현재 USB 카메라 Abilities 조회
@@ -184,48 +105,6 @@ class NativeCameraDataSource @Inject constructor(
      */
     fun getUsbCameraDeviceInfo(): PtpDeviceInfo? =
         usbCameraDeviceInfo
-
-    /**
-     * Abilities JSON 파싱
-     */
-    private fun parseAbilities(json: String): CameraAbilitiesInfo {
-        try {
-            val obj = JSONObject(json)
-            val supportsObj = obj.getJSONObject("supports")
-
-            return CameraAbilitiesInfo(
-                model = obj.getString("model"),
-                status = obj.getString("status"),
-                portType = obj.getInt("port_type"),
-                usbVendor = obj.getString("usb_vendor"),
-                usbProduct = obj.getString("usb_product"),
-                usbClass = obj.getInt("usb_class"),
-                operations = obj.getInt("operations"),
-                fileOperations = obj.getInt("file_operations"),
-                folderOperations = obj.getInt("folder_operations"),
-                supports = CameraSupports(
-                    captureImage = supportsObj.getBoolean("capture_image"),
-                    captureVideo = supportsObj.getBoolean("capture_video"),
-                    captureAudio = supportsObj.getBoolean("capture_audio"),
-                    capturePreview = supportsObj.getBoolean("capture_preview"),
-                    triggerCapture = supportsObj.getBoolean("trigger_capture"),
-                    config = supportsObj.getBoolean("config"),
-                    delete = supportsObj.getBoolean("delete"),
-                    preview = supportsObj.getBoolean("preview"),
-                    raw = supportsObj.getBoolean("raw"),
-                    audio = supportsObj.getBoolean("audio"),
-                    exif = supportsObj.getBoolean("exif"),
-                    deleteAll = supportsObj.getBoolean("delete_all"),
-                    putFile = supportsObj.getBoolean("put_file"),
-                    makeDir = supportsObj.getBoolean("make_dir"),
-                    removeDir = supportsObj.getBoolean("remove_dir")
-                )
-            )
-        } catch (e: Exception) {
-            Log.e(TAG, "Abilities 파싱 실패", e)
-            throw e
-        }
-    }
 
     /**
      * DeviceInfo JSON 파싱

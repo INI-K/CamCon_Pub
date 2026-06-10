@@ -96,7 +96,7 @@ class UsbConnectionManager @Inject constructor(
      *
      * nativeLibDir는 read-only이므로, 앱의 private 디렉토리에 복사합니다.
      */
-    internal fun ensureLibgphoto2PluginDirs(nativeLibDir: String): String {
+    private fun ensureLibgphoto2PluginDirs(nativeLibDir: String): String {
         try {
             // 앱의 private 디렉토리에 플러그인 저장
             val gphoto2BaseDir = context.getDir("gphoto2_plugins", Context.MODE_PRIVATE)
