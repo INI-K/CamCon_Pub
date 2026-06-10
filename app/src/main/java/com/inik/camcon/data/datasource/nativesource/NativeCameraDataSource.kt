@@ -404,45 +404,22 @@ class NativeCameraDataSource @Inject constructor(
 
             Log.d(TAG, "카메라 초기화 상태: $isInitialized")
 
+            // 인프라 오류는 빈 목록으로 위장하지 않고 예외로 전파한다.
+            // (빈 갤러리는 "사진 0장"의 정상 응답에만 사용 — 호출 체인이 Result로 감싸
+            // ViewModel이 오류 상태를 표시할 수 있다. 무음 빈 화면 방지.)
             if (!isInitialized) {
-                Log.w(TAG, "카메라가 초기화되지 않음")
-                return PaginatedCameraPhotos(
-                    photos = emptyList(),
-                    currentPage = page,
-                    pageSize = pageSize,
-                    totalItems = 0,
-                    totalPages = 0,
-                    hasNext = false
-                )
+                throw IllegalStateException("카메라가 초기화되지 않아 사진 목록을 가져올 수 없습니다")
             }
 
             // 페이징된 네이티브 메서드 호출 (타임아웃 없음)
-            val photoListJson = try {
-                Log.d(TAG, "CameraNative.getCameraFileListPaged() 호출 (페이지: $page, 크기: $pageSize)")
+            Log.d(TAG, "CameraNative.getCameraFileListPaged() 호출 (페이지: $page, 크기: $pageSize)")
+            val photoListJson = CameraNative.getCameraFileListPaged(page, pageSize)
+            Log.d(TAG, "페이징 네이티브 메서드 호출 성공, 결과 길이: ${photoListJson.length}")
 
-                // 직접 호출 (타임아웃 제거)
-                val result = CameraNative.getCameraFileListPaged(page, pageSize)
-
-                Log.d(TAG, "페이징 네이티브 메서드 호출 성공, 결과 길이: ${result.length}")
-                result
-            } catch (e: UnsatisfiedLinkError) {
-                Log.e(TAG, "네이티브 메서드 getCameraFileListPaged가 구현되지 않음", e)
-                null
-            } catch (e: Exception) {
-                Log.e(TAG, "페이징 네이티브 메서드 호출 중 예외 발생", e)
-                null
-            }
-
-            if (photoListJson.isNullOrEmpty() || photoListJson == "null") {
-                Log.d(TAG, "카메라에 사진이 없거나 목록을 가져올 수 없음")
-                return PaginatedCameraPhotos(
-                    photos = emptyList(),
-                    currentPage = page,
-                    pageSize = pageSize,
-                    totalItems = 0,
-                    totalPages = 0,
-                    hasNext = false
-                )
+            // 네이티브는 항상 JSON(성공 데이터 또는 {"error":...})을 반환하므로
+            // 빈 문자열/"null"은 비정상 응답이다.
+            if (photoListJson.isEmpty() || photoListJson == "null") {
+                throw IllegalStateException("네이티브 파일 목록 응답이 비어 있음")
             }
 
             // JSON 파싱
@@ -450,27 +427,13 @@ class NativeCameraDataSource @Inject constructor(
                 JSONObject(photoListJson)
             } catch (e: Exception) {
                 Log.e(TAG, "카메라 파일 목록 JSON 파싱 실패 (len=${photoListJson.length}, head=${photoListJson.take(20)})", e)
-                return PaginatedCameraPhotos(
-                    photos = emptyList(),
-                    currentPage = page,
-                    pageSize = pageSize,
-                    totalItems = 0,
-                    totalPages = 0,
-                    hasNext = false
-                )
+                throw IllegalStateException("카메라 파일 목록 응답 파싱 실패", e)
             }
 
             if (json.has("error")) {
                 val error = json.getString("error")
                 Log.e(TAG, "카메라 사진 목록 가져오기 오류: $error")
-                return PaginatedCameraPhotos(
-                    photos = emptyList(),
-                    currentPage = page,
-                    pageSize = pageSize,
-                    totalItems = 0,
-                    totalPages = 0,
-                    hasNext = false
-                )
+                throw IllegalStateException("카메라 사진 목록 오류: $error")
             }
 
             // 페이징 정보 추출
@@ -526,15 +489,10 @@ class NativeCameraDataSource @Inject constructor(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            // 인프라 오류를 빈 목록으로 위장하면 갤러리가 무음으로 빈 화면이 된다 —
+            // 호출 체인(PhotoDownloadManager)이 Result.failure 로 감싸 UI에 오류를 전달한다.
             Log.e(TAG, "페이징 카메라 사진 목록 가져오기 실패", e)
-            PaginatedCameraPhotos(
-                photos = emptyList(),
-                currentPage = page,
-                pageSize = pageSize,
-                totalItems = 0,
-                totalPages = 0,
-                hasNext = false
-            )
+            throw e
         }
     }
 

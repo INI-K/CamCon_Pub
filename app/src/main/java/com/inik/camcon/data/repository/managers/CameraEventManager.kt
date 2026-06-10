@@ -554,6 +554,10 @@ class CameraEventManager @Inject constructor(
                                         )
                                     }
                                 }
+                            } catch (e: CancellationException) {
+                                // 취소는 삼키지 않는다 — 진행 큐만 정리 후 전파
+                                transferProgressTracker.markDone(fileName)
+                                throw e
                             } catch (e: Exception) {
                                 LogcatManager.e(
                                     "카메라이벤트매니저",
@@ -592,12 +596,10 @@ class CameraEventManager @Inject constructor(
                         e
                     )
 
-                    // 예외 발생 시에도 최소한 파일 정보는 전달 시도
-                    try {
-                        onPhotoCaptured(filePath, fileName)
-                    } catch (e2: Exception) {
-                        LogcatManager.e("카메라이벤트매니저", "긴급 콜백 호출도 실패", e2)
-                    }
+                    // fail-closed: 여기서 콜백을 재호출하면 (1) isRawFile 검증이 던진 경우
+                    // RAW 게이팅을 우회하고 (2) 콜백이 이미 성공한 경우 사진이 이중 처리된다.
+                    // 재호출 대신 진행 큐만 정리해 배지 고착을 막는다.
+                    transferProgressTracker.markDone(fileName)
                 }
             }
 
@@ -665,6 +667,9 @@ class CameraEventManager @Inject constructor(
                                     }
                                 } catch (e: Exception) {
                                     LogcatManager.w("카메라이벤트매니저", "RAW 파일 제한 콜백 호출 중 예외", e)
+                                } finally {
+                                    // 차단된 RAW 는 다운로드 매니저로 가지 않으므로 진행 큐 정리(배지 고착 방지)
+                                    transferProgressTracker.markDone(fileName)
                                 }
                                 return@launch
                             }
@@ -678,7 +683,13 @@ class CameraEventManager @Inject constructor(
                                 LogcatManager.d("카메라이벤트매니저", "✅ Repository 콜백 호출 완료: $fileName")
                             } catch (e: Exception) {
                                 LogcatManager.e("카메라이벤트매니저", "Repository 콜백 호출 중 예외: $fileName", e)
+                                // 다운로드 매니저에 도달하지 못했으므로 진행 큐 정리(배지 고착 방지)
+                                transferProgressTracker.markDone(fileName)
                             }
+                        } catch (e: CancellationException) {
+                            // 취소는 삼키지 않는다 — 진행 큐만 정리 후 전파
+                            transferProgressTracker.markDone(fileName)
+                            throw e
                         } catch (e: Exception) {
                             LogcatManager.e(
                                 "카메라이벤트매니저",
@@ -695,6 +706,9 @@ class CameraEventManager @Inject constructor(
                                 }
                             } catch (e2: Exception) {
                                 LogcatManager.w("카메라이벤트매니저", "RAW 파일 오류 콜백 호출 중 예외", e2)
+                            } finally {
+                                // 차단으로 종료 — 진행 큐 정리(배지 고착 방지)
+                                transferProgressTracker.markDone(fileName)
                             }
                         }
                     }
@@ -707,6 +721,8 @@ class CameraEventManager @Inject constructor(
                     Log.d("카메라이벤트매니저", "Repository 콜백 호출 완료: $fileName")
                 } catch (e: Exception) {
                     Log.e("카메라이벤트매니저", "Repository 콜백 호출 중 예외: $fileName", e)
+                    // 다운로드 매니저에 도달하지 못했으므로 진행 큐 정리(배지 고착 방지)
+                    transferProgressTracker.markDone(fileName)
                 }
             }
         }
