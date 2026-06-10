@@ -154,7 +154,9 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun providePtpipConnectionManager() = PtpipConnectionManager()
+    fun providePtpipConnectionManager(
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
+    ) = PtpipConnectionManager(ioDispatcher)
 
     @Provides
     @Singleton

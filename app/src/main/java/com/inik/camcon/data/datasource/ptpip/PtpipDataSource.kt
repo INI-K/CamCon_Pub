@@ -100,6 +100,7 @@ class PtpipDataSource @Inject constructor(
     // Repository 콜백 저장용 - Singleton이므로 일반 참조 사용 (메모리 누수 방지 불필요)
     private var onPhotoCapturedCallback: ((String, String) -> Unit)? = null
     private var onPhotoDownloadedCallback: ((String, String, ByteArray) -> Unit)? = null
+    private var onPhotoDownloadFailedCallback: ((String) -> Unit)? = null
     private var onConnectionLostCallback: (() -> Unit)? = null // Wi-Fi 연결 끊어짐 알림용
 
     // UI 관찰용 StateFlow
@@ -384,29 +385,56 @@ class PtpipDataSource @Inject constructor(
      */
     private fun handleNetworkStateChange(networkState: WifiNetworkState) {
         coroutineScope.launch(ioDispatcher) {
+            // 1차: 짧은 잠금으로 상태 전이/재연결 필요 여부만 판단.
+            // (이전에는 delay(3초)까지 잠금 안에서 수행해 connectToCamera/disconnect 등
+            //  connectionStateMutex 를 쓰는 모든 API가 그동안 블로킹됐다.)
+            var shouldScheduleReconnect = false
             connectionStateMutex.withLock {
-            val currentState = _connectionState.value
+                val currentState = _connectionState.value
 
-            when {
-                // Wi-Fi 연결 해제됨
-                !networkState.isConnected -> {
-                    if (currentState == PtpipConnectionState.CONNECTED) {
-                        Log.i(TAG, "Wi-Fi 연결 해제됨 - 카메라 연결 해제")
-                        _connectionState.value = PtpipConnectionState.DISCONNECTED
-                        connectedCamera = null
-                        _connectionLostMessage.value =
-                            context.getString(R.string.progress_wifi_disconnected)
-                        onConnectionLostCallback?.invoke()
+                when {
+                    // Wi-Fi 연결 해제됨
+                    !networkState.isConnected -> {
+                        if (currentState == PtpipConnectionState.CONNECTED) {
+                            Log.i(TAG, "Wi-Fi 연결 해제됨 - 카메라 연결 해제")
+                            _connectionState.value = PtpipConnectionState.DISCONNECTED
+                            connectedCamera = null
+                            _connectionLostMessage.value =
+                                context.getString(R.string.progress_wifi_disconnected)
+                            onConnectionLostCallback?.invoke()
+                        }
+                    }
+
+                    // Wi-Fi 연결되고 자동 재연결이 활성화되어 있으며 이전에 연결된 카메라가 있는 경우
+                    networkState.isConnected && isAutoReconnectEnabled &&
+                            lastConnectedCamera != null && currentState == PtpipConnectionState.DISCONNECTED -> {
+                        Log.i(TAG, "Wi-Fi 연결됨 - 이전 카메라 자동 재연결 예약")
+                        shouldScheduleReconnect = true
+                    }
+
+                    // 이미 연결된 상태에서 카메라 IP가 변경된 경우 (AP 모드에서)
+                    networkState.isConnected && networkState.isConnectedToCameraAP &&
+                            networkState.detectedCameraIP != null &&
+                            connectedCamera?.ipAddress != networkState.detectedCameraIP &&
+                            currentState == PtpipConnectionState.CONNECTED -> {
+                        Log.i(TAG, "AP 모드에서 카메라 IP 변경 감지 - 재연결 시도")
+                        val currentCamera = connectedCamera
+                        if (currentCamera != null) {
+                            val updatedCamera =
+                                currentCamera.copy(ipAddress = networkState.detectedCameraIP)
+                            if (isAutoReconnectEnabled) {
+                                attemptAutoReconnect(updatedCamera)
+                            }
+                        }
                     }
                 }
+            }
 
-                // Wi-Fi 연결되고 자동 재연결이 활성화되어 있으며 이전에 연결된 카메라가 있는 경우
-                networkState.isConnected && isAutoReconnectEnabled &&
-                        lastConnectedCamera != null && currentState == PtpipConnectionState.DISCONNECTED -> {
-                    Log.i(TAG, "Wi-Fi 연결됨 - 이전 카메라 자동 재연결 시도")
-                    delay(RECONNECT_DELAY_MS)
-
-                    // 연결 해제 상태에서만 재연결 시도
+            // 2차: 안정화 대기는 잠금 밖에서 수행하고, 재연결 자체는 다시 잠금 안에서
+            // 상태를 재확인한 뒤 시도한다 (연결 시도 직렬화는 유지).
+            if (shouldScheduleReconnect) {
+                delay(RECONNECT_DELAY_MS)
+                connectionStateMutex.withLock {
                     if (_connectionState.value == PtpipConnectionState.DISCONNECTED) {
                         // race condition 방지를 위해 로컬 변수로 저장
                         val lastCamera = lastConnectedCamera
@@ -425,24 +453,7 @@ class PtpipDataSource @Inject constructor(
                         }
                     }
                 }
-
-                // 이미 연결된 상태에서 카메라 IP가 변경된 경우 (AP 모드에서)
-                networkState.isConnected && networkState.isConnectedToCameraAP && 
-                networkState.detectedCameraIP != null &&
-                        connectedCamera?.ipAddress != networkState.detectedCameraIP &&
-                        currentState == PtpipConnectionState.CONNECTED -> {
-                    Log.i(TAG, "AP 모드에서 카메라 IP 변경 감지 - 재연결 시도")
-                    val currentCamera = connectedCamera
-                    if (currentCamera != null) {
-                        val updatedCamera =
-                            currentCamera.copy(ipAddress = networkState.detectedCameraIP)
-                        if (isAutoReconnectEnabled) {
-                            attemptAutoReconnect(updatedCamera)
-                        }
-                    }
-                }
             }
-            } // connectionStateMutex.withLock
         }
     }
 
@@ -607,6 +618,7 @@ class PtpipDataSource @Inject constructor(
         // 콜백 초기화
         onPhotoCapturedCallback = null
         onPhotoDownloadedCallback = null
+        onPhotoDownloadFailedCallback = null
         onConnectionLostCallback = null
 
         if (autoConnectReceiverRegistered) {
@@ -1221,6 +1233,9 @@ class PtpipDataSource @Inject constructor(
                                     TAG,
                                     "❌ MediaStore 저장 실패: $fileName"
                                 )
+                                // 무음 유실 방지 — 실패를 Repository에 전파해
+                                // UI placeholder 제거 + dedup 해제(재시도 허용)
+                                onPhotoDownloadFailedCallback?.invoke(fileName)
                             }
                         } catch (e: Exception) {
                             com.inik.camcon.utils.LogcatManager.e(
@@ -1228,6 +1243,7 @@ class PtpipDataSource @Inject constructor(
                                 "MediaStore 저장 중 오류: ${e.message}",
                                 e
                             )
+                            onPhotoDownloadFailedCallback?.invoke(fileName)
                         }
                     }
                 },
@@ -1759,6 +1775,12 @@ class PtpipDataSource @Inject constructor(
     fun setPhotoDownloadedCallback(callback: (String, String, ByteArray) -> Unit) {
         onPhotoDownloadedCallback = callback
         Log.d(TAG, "PTPIP 파일 다운로드 콜백 설정 완료")
+    }
+
+    /** 다운로드/저장 실패 시 fileName 을 전달 — 무음 유실 방지(UI placeholder 제거·재시도 허용) */
+    fun setPhotoDownloadFailedCallback(callback: (String) -> Unit) {
+        onPhotoDownloadFailedCallback = callback
+        Log.d(TAG, "PTPIP 파일 다운로드 실패 콜백 설정 완료")
     }
 
     // ── 물리 셔터 무선 수신 모드 (제조사 자동 판별: 니콘=vendor 잠금우회, 그 외=표준 PTP) ──
