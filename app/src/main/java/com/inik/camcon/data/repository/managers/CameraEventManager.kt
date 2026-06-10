@@ -48,6 +48,7 @@ class CameraEventManager @Inject constructor(
     private val usbCameraManager: UsbCameraManager,
     private val validateImageFormatUseCase: ValidateImageFormatUseCase,
     private val photoDownloadManager: PhotoDownloadManager,
+    private val transferProgressTracker: TransferProgressTracker,
     private val errorHandlingManager: ErrorNotifier,
     @ApplicationScope private val scope: CoroutineScope,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
@@ -481,6 +482,9 @@ class CameraEventManager @Inject constructor(
             override fun onPhotoCaptured(filePath: String, fileName: String) {
                 LogcatManager.d("카메라이벤트매니저", "${connectionType.name} 외부 셔터 사진 촬영 감지: $fileName")
 
+                // 전송 진행 카운트(요구 E3): 촬영 감지 = 다운로드 단계 시작.
+                transferProgressTracker.markDownloading(fileName)
+
                 try {
                     // 파일 확장자 확인 
                     val extension = fileName.substringAfterLast(".", "").lowercase()
@@ -490,6 +494,8 @@ class CameraEventManager @Inject constructor(
                             "카메라이벤트매니저",
                             "지원하지 않는 파일 무시: $fileName (확장자: $extension)"
                         )
+                        // 이 파일은 다운로드로 넘어가지 않으므로 진행 큐에서 즉시 제거(누수 방지).
+                        transferProgressTracker.markDone(fileName)
                         return
                     }
 
@@ -528,6 +534,8 @@ class CameraEventManager @Inject constructor(
                                         "카메라이벤트매니저",
                                         "📵 ${connectionType.name} RAW 파일 수신 중단: $fileName"
                                     )
+                                    // 접근 제한된 RAW 는 다운로드로 넘어가지 않으므로 진행 큐에서 제거(누수 방지).
+                                    transferProgressTracker.markDone(fileName)
                                     return@launch
                                 } else {
                                     LogcatManager.d(
@@ -562,6 +570,9 @@ class CameraEventManager @Inject constructor(
                                     }
                                 } catch (e: Exception) {
                                     LogcatManager.w("카메라이벤트매니저", "RAW 파일 오류 콜백 호출 중 예외", e)
+                                } finally {
+                                    // 검증 오류로 차단되어 다운로드로 넘어가지 않으므로 진행 큐에서 제거(누수 방지).
+                                    transferProgressTracker.markDone(fileName)
                                 }
                             }
                         }
@@ -823,6 +834,11 @@ class CameraEventManager @Inject constructor(
 
             // USB 분리 처리 상태도 리셋
             isHandlingUsbDisconnection.set(false)
+
+            // 전송 진행 큐 비우기: 네이티브 이벤트 스레드 정지(join)·취소 플래그 설정 이후에 실행해,
+            // clear 직후 네이티브가 onPhotoCaptured를 한 번 더 발사하는 경쟁을 차단한다.
+            // 잔존 항목(예: 다운로드 도중 끊겨 onPhotoDownloaded 미도착)을 flush 해 진행 배지가 멈추지 않게 한다.
+            transferProgressTracker.clear()
 
             LogcatManager.d("카메라이벤트매니저", "✓ 완전한 이벤트 리스너 정리 완료")
 

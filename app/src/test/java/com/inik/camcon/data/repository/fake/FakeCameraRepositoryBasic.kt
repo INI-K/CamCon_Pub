@@ -11,6 +11,7 @@ import com.inik.camcon.domain.model.PtpDeviceInfo
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.model.TimelapseSettings
+import com.inik.camcon.domain.model.TransferQueueState
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.PaginatedCameraPhotos
 import com.inik.camcon.domain.repository.CameraRepository
@@ -351,6 +352,10 @@ class FakeCameraRepositoryBasic : CameraRepository {
 
     override fun getCapturedPhotos(): Flow<List<CapturedPhoto>> {
         return flowOf(emptyList())
+    }
+
+    override fun getTransferQueue(): Flow<TransferQueueState> {
+        return flowOf(TransferQueueState())
     }
 
     override suspend fun getCameraPhotos(): Result<List<CameraPhoto>> {

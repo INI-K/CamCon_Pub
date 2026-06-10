@@ -11,6 +11,7 @@ import com.inik.camcon.domain.model.LiveViewFrame
 import com.inik.camcon.domain.model.PaginatedCameraPhotos
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.domain.model.TimelapseSettings
+import com.inik.camcon.domain.model.TransferQueueState
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.repository.ColorTransferRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -105,6 +106,7 @@ class CameraRepositoryImpl @Inject constructor(
     override fun startLiveView(): Flow<LiveViewFrame> = captureRepo.startLiveView()
     override suspend fun stopLiveView(): Result<Boolean> = captureRepo.stopLiveView()
     override fun getCapturedPhotos(): Flow<List<CapturedPhoto>> = captureRepo.getCapturedPhotos()
+    override fun getTransferQueue(): Flow<TransferQueueState> = captureRepo.getTransferQueue()
     override suspend fun deletePhoto(photoId: String): Result<Boolean> = captureRepo.deletePhoto(photoId)
     override fun setRawFileRestrictionCallback(
         callback: ((fileName: String, restrictionMessage: String) -> Unit)?

@@ -8,6 +8,7 @@ import com.inik.camcon.data.datasource.usb.UsbCameraManager
 import com.inik.camcon.data.repository.managers.CameraConnectionManager
 import com.inik.camcon.data.repository.managers.CameraEventManager
 import com.inik.camcon.data.repository.managers.PhotoDownloadManager
+import com.inik.camcon.data.repository.managers.TransferProgressTracker
 import com.inik.camcon.domain.cache.ProcessedFileCache
 import com.inik.camcon.domain.manager.CameraStateObserver
 import com.inik.camcon.domain.model.ShootingMode
@@ -46,6 +47,7 @@ class CameraRepositoryImplShootingModeTest {
         val connectionManager = mockk<CameraConnectionManager>(relaxed = true)
         val eventManager = mockk<CameraEventManager>(relaxed = true)
         val downloadManager = mockk<PhotoDownloadManager>(relaxed = true)
+        val transferProgressTracker = mockk<TransferProgressTracker>(relaxed = true)
         val scope = mockk<CoroutineScope>(relaxed = true)
         val ioDispatcher: CoroutineDispatcher = StandardTestDispatcher()
 
@@ -62,6 +64,7 @@ class CameraRepositoryImplShootingModeTest {
             connectionManager = connectionManager,
             eventManager = eventManager,
             downloadManager = downloadManager,
+            transferProgressTracker = transferProgressTracker,
             processedFileCache = processedFileCache,
             cacheSweeper = cacheSweeper,
             scope = scope,

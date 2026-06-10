@@ -5,6 +5,7 @@ import com.inik.camcon.domain.manager.CameraStateObserver
 import com.inik.camcon.domain.model.CameraAbilitiesInfo
 import com.inik.camcon.domain.model.CameraCapabilities
 import com.inik.camcon.domain.model.CameraSupports
+import com.inik.camcon.domain.model.TransferQueueState
 import io.mockk.every
 import io.mockk.mockkStatic
 import io.mockk.unmockkStatic
@@ -194,6 +195,41 @@ class CameraUiStateManagerTest {
 
         assertFalse(manager.uiState.value.isConnected)
         assertEquals("연결 실패", manager.uiState.value.error)
+    }
+
+    // --- updateTransferQueue (요구 E6) ---
+
+    @Test
+    fun `updateTransferQueue 후 capture transferQueue 가 전달한 큐와 동일`() {
+        // Given
+        val queue = TransferQueueState(
+            downloading = 2,
+            processing = 1,
+            currentFileName = "KAY_1200.NEF"
+        )
+
+        // When
+        manager.updateTransferQueue(queue)
+
+        // Then
+        assertEquals(queue, manager.uiState.value.capture.transferQueue)
+        assertEquals(2, manager.uiState.value.capture.transferQueue.downloading)
+        assertEquals(1, manager.uiState.value.capture.transferQueue.processing)
+        assertTrue(manager.uiState.value.capture.transferQueue.isActive)
+    }
+
+    @Test
+    fun `updateTransferQueue 에 빈 큐 전달 시 isActive false`() {
+        // Given: 활성 큐로 먼저 채운 뒤
+        manager.updateTransferQueue(TransferQueueState(downloading = 3))
+        assertTrue(manager.uiState.value.capture.transferQueue.isActive)
+
+        // When: 빈 큐로 초기화(전송 완료/연결 해제)
+        manager.updateTransferQueue(TransferQueueState())
+
+        // Then
+        assertEquals(TransferQueueState(), manager.uiState.value.capture.transferQueue)
+        assertFalse(manager.uiState.value.capture.transferQueue.isActive)
     }
 
     // --- USB 분리 처리 ---

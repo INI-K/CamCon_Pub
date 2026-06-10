@@ -109,6 +109,7 @@
     <string name="sync_photos">同步照片</string>
     <string name="uploading">上传中...</string>
     <string name="downloading">下载中...</string>
+    <string name="camera_control_downloading_count">下载 %1$d 张</string>
     <string name="upload_success">上传成功</string>
     <string name="upload_failed">上传失败</string>
     <string name="download_success">下载成功</string>
@@ -168,6 +169,7 @@
     <string name="busy">忙碌</string>
     <string name="capturing">拍摄中...</string>
     <string name="processing">处理中...</string>
+    <string name="camera_control_processing_count">处理 %1$d 张</string>
     <string name="connecting">连接中...</string>
     <string name="initialized">已初始化</string>
 

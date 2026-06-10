@@ -236,6 +236,9 @@ class CameraViewModel @Inject constructor(
         // 촬영된 사진 관찰
         observeCapturedPhotos()
 
+        // 다운로드/처리 진행 카운트 관찰 (요구 E5)
+        observeTransferQueue()
+
         // USB 디바이스 상태 관찰 (UsbAutoConnectManager에 위임)
         usbAutoConnectManager.observeUsbDevices(viewModelScope, uiStateManager)
 
@@ -329,6 +332,18 @@ class CameraViewModel @Inject constructor(
         cameraRepository.getCapturedPhotos()
             .onEach { photos ->
                 uiStateManager.updateCapturedPhotos(photos)
+            }
+            .launchIn(viewModelScope)
+    }
+
+    /**
+     * 다운로드/처리 진행 카운트 관찰 (요구 E5).
+     * capturedPhotos 와 동일한 repo Flow → UiState 경로.
+     */
+    private fun observeTransferQueue() {
+        cameraRepository.getTransferQueue()
+            .onEach { queue ->
+                uiStateManager.updateTransferQueue(queue)
             }
             .launchIn(viewModelScope)
     }
