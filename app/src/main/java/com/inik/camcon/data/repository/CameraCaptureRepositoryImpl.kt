@@ -32,7 +32,10 @@ import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.channels.onFailure
+import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -43,6 +46,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
@@ -80,6 +84,13 @@ class CameraCaptureRepositoryImpl @Inject constructor(
 
         /** 세션 내 capturedPhotos StateFlow 상한 (장시간 테더링 메모리 누수 방지) */
         private const val MAX_CAPTURED_PHOTOS = 1000
+
+        /** capturedPhotos 정렬 기준 — captureTime 오름차순, 동률이면 basename·확장자 순 */
+        private val PHOTO_ORDER_COMPARATOR = compareBy<CapturedPhoto>(
+            { it.captureTime },
+            { it.filePath.substringAfterLast("/").substringBeforeLast(".") },
+            { it.filePath.substringAfterLast(".") }
+        )
     }
 
     /**
@@ -93,6 +104,40 @@ class CameraCaptureRepositoryImpl @Inject constructor(
     var onFlushCompleteCallback: (() -> Unit)? = null
 
     private val _capturedPhotos = MutableStateFlow<List<CapturedPhoto>>(emptyList())
+
+    /** 네이티브 사진 다운로드 잡 — 유계 큐 항목 */
+    private class NativeDownloadJob(
+        val fullPath: String,
+        val fileName: String,
+        val imageData: ByteArray
+    )
+
+    // 연사 버스트 시 콜백마다 코루틴을 띄우면 25-30MB ByteArray가 코루틴 수만큼
+    // 동시에 적체되어 OOM이 난다. 유계 큐(3) + 단일 컨슈머로 동시 보유 메모리를 캡한다.
+    private val nativeDownloadQueue = Channel<NativeDownloadJob>(capacity = 3)
+    private val nativeDownloadConsumerStarted = AtomicBoolean(false)
+
+    /**
+     * 첫 잡 투입 시 1회만 컨슈머 코루틴을 기동한다.
+     * (생성자(init)에서 launch 하면 테스트의 모킹된 scope 에서 생성 자체가 실패하므로 지연 기동)
+     */
+    private fun ensureNativeDownloadConsumer() {
+        if (!nativeDownloadConsumerStarted.compareAndSet(false, true)) return
+        // 단일 컨슈머 — 잡 단위 예외 격리로 루프 생존 보장
+        scope.launch(ioDispatcher) {
+            for (job in nativeDownloadQueue) {
+                try {
+                    processNativePhotoDownload(job)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.e(TAG, "네이티브 사진 처리 실패: ${job.fileName}", e)
+                    processedFileCache.remove(job.fileName)
+                    updatePhotoDownloadFailed(job.fileName)
+                }
+            }
+        }
+    }
 
     // ── 테스트 헬퍼 (Issue C5 dedup 캐시 회귀 테스트) ──
     // 외부 시그니처 보존, 내부는 ProcessedFileCache(LRU 1000 + TTL 24h) 직접 위임.
@@ -576,6 +621,13 @@ class CameraCaptureRepositoryImpl @Inject constructor(
     // ── PTPIP 사진 다운로드 콜백 설치 (Facade init에서 1회 호출) ──
 
     fun installPtpipDownloadCallback() {
+        // Wi-Fi 경로 저장 실패도 USB 경로와 동일하게 처리 — 무음 유실 방지
+        ptpipDataSource.setPhotoDownloadFailedCallback { fileName ->
+            Log.e(TAG, "PTPIP 사진 저장 실패: $fileName")
+            processedFileCache.remove(fileName)
+            updatePhotoDownloadFailed(fileName)
+        }
+
         ptpipDataSource.setPhotoDownloadedCallback { filePath, fileName, imageData ->
             com.inik.camcon.utils.LogcatManager.d(
                 TAG,
@@ -634,28 +686,39 @@ class CameraCaptureRepositoryImpl @Inject constructor(
             return
         }
 
-        scope.launch(ioDispatcher) {
-            val capturedPhoto = downloadManager.handleNativePhotoDownload(
-                filePath = fullPath,
-                fileName = fileName,
-                imageData = imageData,
-                cameraCapabilities = connectionManager.cameraCapabilities.value,
-                cameraSettings = cameraSettingsProvider()
-            )
+        // 유계 큐로 전달. 큐가 가득 차면 네이티브 이벤트 스레드가 여기서 대기하여
+        // 카메라 측으로 자연스러운 백프레셔가 걸린다 (사진 유실 없음).
+        ensureNativeDownloadConsumer()
+        nativeDownloadQueue.trySendBlocking(
+            NativeDownloadJob(fullPath, fileName, imageData)
+        ).onFailure { e ->
+            Log.e(TAG, "네이티브 다운로드 큐 전달 실패: $fileName", e)
+            processedFileCache.remove(fileName)
+            updatePhotoDownloadFailed(fileName)
+        }
+    }
 
-            if (capturedPhoto != null) {
-                com.inik.camcon.utils.LogcatManager.d(
-                    TAG,
-                    "네이티브 사진 저장 성공: ${LogMask.path(capturedPhoto.filePath)}"
-                )
-                updateDownloadedPhoto(capturedPhoto)
-            } else {
-                Log.e(TAG, "네이티브 사진 저장 실패: $fileName")
-                // 저장 실패 시 dedup 키를 제거해 동일 컷의 재수신/재시도가 24h 동안 차단되지 않게 한다(사진 유실 방지).
-                // handlePhotoDownloadCallback 의 fileKey 와 동일하게 fileName 단독으로 맞춘다(미동기화 시 재시도 차단 해제가 no-op).
-                processedFileCache.remove(fileName)
-                updatePhotoDownloadFailed(fileName)
-            }
+    private suspend fun processNativePhotoDownload(job: NativeDownloadJob) {
+        val capturedPhoto = downloadManager.handleNativePhotoDownload(
+            filePath = job.fullPath,
+            fileName = job.fileName,
+            imageData = job.imageData,
+            cameraCapabilities = connectionManager.cameraCapabilities.value,
+            cameraSettings = cameraSettingsProvider()
+        )
+
+        if (capturedPhoto != null) {
+            com.inik.camcon.utils.LogcatManager.d(
+                TAG,
+                "네이티브 사진 저장 성공: ${LogMask.path(capturedPhoto.filePath)}"
+            )
+            updateDownloadedPhoto(capturedPhoto)
+        } else {
+            Log.e(TAG, "네이티브 사진 저장 실패: ${job.fileName}")
+            // 저장 실패 시 dedup 키를 제거해 동일 컷의 재수신/재시도가 24h 동안 차단되지 않게 한다(사진 유실 방지).
+            // handlePhotoDownloadCallback 의 fileKey 와 동일하게 fileName 단독으로 맞춘다(미동기화 시 재시도 차단 해제가 no-op).
+            processedFileCache.remove(job.fileName)
+            updatePhotoDownloadFailed(job.fileName)
         }
     }
 
@@ -678,15 +741,15 @@ class CameraCaptureRepositoryImpl @Inject constructor(
                 return@update current
             }
 
-            // (2) 정렬 — captureTime 오름차순(최신=꼬리). UI 가 takeLast/lastOrNull 로 최신을 꼬리에서 읽으므로 반드시 오름차순.
-            //     captureTime 동률이면 basename, 확장자 순으로 안정 정렬한다.
-            val sorted = (current + downloadedPhoto).sortedWith(
-                compareBy(
-                    { it.captureTime },
-                    { it.filePath.substringAfterLast("/").substringBeforeLast(".") },
-                    { it.filePath.substringAfterLast(".") }
-                )
-            )
+            // (2) 정렬 삽입 — captureTime 오름차순(최신=꼬리). UI 가 takeLast/lastOrNull 로 최신을 꼬리에서 읽으므로 반드시 오름차순.
+            //     리스트는 이 함수로만 갱신되어 항상 PHOTO_ORDER_COMPARATOR 순서가 유지되므로,
+            //     매 이벤트 전체 재정렬(O(n log n) + 비교마다 substring 할당) 대신 이진 탐색 삽입을 쓴다.
+            val searchResult = current.binarySearch(downloadedPhoto, PHOTO_ORDER_COMPARATOR)
+            val insertIndex = if (searchResult < 0) -(searchResult + 1) else searchResult + 1
+            val sorted = ArrayList<CapturedPhoto>(current.size + 1).apply {
+                addAll(current)
+                add(insertIndex, downloadedPhoto)
+            }
 
             // (3) 장시간 테더링 세션에서 무한 증가하지 않도록 최근 N개만 유지
             if (sorted.size > MAX_CAPTURED_PHOTOS) sorted.takeLast(MAX_CAPTURED_PHOTOS) else sorted

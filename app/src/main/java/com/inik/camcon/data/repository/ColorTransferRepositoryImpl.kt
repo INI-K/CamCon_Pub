@@ -308,9 +308,9 @@ class ColorTransferRepositoryImpl @Inject constructor(
     }
 
     private fun loadBitmapWithOrientation(imagePath: String): Bitmap? {
-        val bitmap = BitmapFactory.decodeFile(imagePath, BitmapFactory.Options().apply {
-            inPreferredConfig = Bitmap.Config.ARGB_8888
-        }) ?: return null
+        // 풀해상도 ARGB_8888 디코딩은 고화소(45MP=180MB)에서 OOM 위험.
+        // applyColorTransferAndSave와 동일하게 4096px 한도로 다운스케일 디코딩한다.
+        val bitmap = loadScaledBitmap(imagePath, MAX_CT_DIMENSION) ?: return null
 
         val exif = ExifInterface(imagePath)
         val orientation = exif.getAttributeInt(
@@ -329,7 +329,12 @@ class ColorTransferRepositoryImpl @Inject constructor(
     private fun rotateBitmap(bitmap: Bitmap, degrees: Int): Bitmap {
         val matrix = Matrix()
         matrix.postRotate(degrees.toFloat())
-        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        val rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        // 회전 사본이 생성됐으면 원본은 즉시 회수해 순간 2× 메모리 피크를 줄인다
+        if (rotated != bitmap) {
+            bitmap.recycle()
+        }
+        return rotated
     }
 
     /**
@@ -355,9 +360,12 @@ class ColorTransferRepositoryImpl @Inject constructor(
             }
             BitmapFactory.decodeFile(imagePath, options)
 
-            // 스케일 계산
-            val scale = maxOf(options.outWidth, options.outHeight) / maxSize.toFloat()
-            val sampleSize = if (scale > 1f) scale.toInt() else 1
+            // 스케일 계산 — 디코더는 inSampleSize를 2의 거듭제곱으로 내림하므로 명시적으로 계산
+            val longest = maxOf(options.outWidth, options.outHeight)
+            var sampleSize = 1
+            while (longest / (sampleSize * 2) >= maxSize) {
+                sampleSize *= 2
+            }
 
             // 샘플 크기를 적용하여 비트맵 로드
             val loadOptions = BitmapFactory.Options().apply {
@@ -432,8 +440,9 @@ class ColorTransferRepositoryImpl @Inject constructor(
     }
 
     private fun saveBitmapToTempFile(bitmap: Bitmap): String? {
+        var tempFile: File? = null
         return try {
-            val tempFile = File.createTempFile("color_transfer_", ".jpg")
+            tempFile = File.createTempFile("color_transfer_", ".jpg")
             FileOutputStream(tempFile).use { outputStream ->
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 95, outputStream)
             }
@@ -442,6 +451,8 @@ class ColorTransferRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "Failed to save bitmap to temp file: ${e.message}")
             bitmap.recycle()
+            // 압축/쓰기 실패 시 잔존 임시파일 정리 (캐시 디렉토리 누적 방지)
+            tempFile?.delete()
             null
         }
     }
