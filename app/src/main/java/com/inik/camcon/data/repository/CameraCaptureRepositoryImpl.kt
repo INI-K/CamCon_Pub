@@ -12,6 +12,7 @@ import com.inik.camcon.data.datasource.usb.UsbCameraManager
 import com.inik.camcon.data.repository.managers.CameraConnectionManager
 import com.inik.camcon.data.repository.managers.CameraEventManager
 import com.inik.camcon.data.repository.managers.PhotoDownloadManager
+import com.inik.camcon.data.util.ExifCaptureTime
 import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.cache.ProcessedFileCache
@@ -112,6 +113,16 @@ class CameraCaptureRepositoryImpl @Inject constructor(
         processedFileCache.clear()
     }
 
+    /**
+     * 정렬/중복 회귀 테스트용 시드(요구: captureTime 오름차순·동일 파일명 dedup).
+     * 프로덕션의 [updateDownloadedPhoto] 동일 경로를 그대로 통과시켜 정렬·중복 안전망을 검증한다.
+     * 동작 변경 없음 — 기존 private 로직에 대한 테스트 진입점만 노출한다.
+     */
+    @VisibleForTesting
+    fun seedDownloadedPhotoForTest(photo: CapturedPhoto) {
+        updateDownloadedPhoto(photo)
+    }
+
     // ── Event Listener ──
 
     fun isEventListenerActive(): Flow<Boolean> =
@@ -163,7 +174,10 @@ class CameraCaptureRepositoryImpl @Inject constructor(
             "onPhotoDownloaded 콜백 호출됨: $fileName (size=${imageData.size})"
         )
 
-        val fileKey = "$fullPath|$fileName|${imageData.size}"
+        // USB 경로 중복 방지 키 — fileName 단독.
+        // (fullPath/size 조합은 동일 컷이 경로/크기 미세 차이로 중복 통과할 수 있어 fileName 으로 강화.)
+        // 실패 복구 remove 키(handleNativePhotoDownload)와 반드시 동일해야 재시도 차단 해제가 동작한다.
+        val fileKey = fileName
 
         if (shouldProcessFile(fileKey)) {
             com.inik.camcon.utils.LogcatManager.d(TAG, "handleNativePhotoDownload 호출: $fileName")
@@ -569,7 +583,8 @@ class CameraCaptureRepositoryImpl @Inject constructor(
                     id = java.util.UUID.randomUUID().toString(),
                     filePath = filePath,
                     thumbnailPath = null,
-                    captureTime = System.currentTimeMillis(),
+                    // 정렬 기준 안정화: PtpipDataSource 가 넘긴 원본 바이트의 EXIF 촬영 시각 사용, 실패 시 현재 시각 폴백
+                    captureTime = ExifCaptureTime.parseMillis(imageData) ?: System.currentTimeMillis(),
                     cameraModel = connectionManager.cameraCapabilities.value?.model ?: "알 수 없음",
                     settings = cameraSettingsProvider(),
                     size = actualSize,
@@ -627,7 +642,8 @@ class CameraCaptureRepositoryImpl @Inject constructor(
             } else {
                 Log.e(TAG, "네이티브 사진 저장 실패: $fileName")
                 // 저장 실패 시 dedup 키를 제거해 동일 컷의 재수신/재시도가 24h 동안 차단되지 않게 한다(사진 유실 방지).
-                processedFileCache.remove("$fullPath|$fileName|${imageData.size}")
+                // handlePhotoDownloadCallback 의 fileKey 와 동일하게 fileName 단독으로 맞춘다(미동기화 시 재시도 차단 해제가 no-op).
+                processedFileCache.remove(fileName)
                 updatePhotoDownloadFailed(fileName)
             }
         }
@@ -642,9 +658,28 @@ class CameraCaptureRepositoryImpl @Inject constructor(
         )
 
         _capturedPhotos.update { current ->
-            val appended = current + downloadedPhoto
-            // 장시간 테더링 세션에서 무한 증가하지 않도록 최근 N개만 유지
-            if (appended.size > MAX_CAPTURED_PHOTOS) appended.takeLast(MAX_CAPTURED_PHOTOS) else appended
+            // (1) 중복 안전망 — 동일 파일명(확장자 포함)이 이미 있으면 추가하지 않음.
+            //     Z8 듀얼슬롯(store_00010001/00020001)이 같은 fileName 으로 두 번 내려보내는 중복을 제거한다.
+            //     RAW+JPG 는 확장자가 달라 통과한다(별개 컷 아님, 동일 컷의 다른 포맷).
+            val newSegment = downloadedPhoto.filePath.substringAfterLast("/")
+            val isDuplicate = current.any { it.filePath.substringAfterLast("/") == newSegment }
+            if (isDuplicate) {
+                com.inik.camcon.utils.LogcatManager.d(TAG, "중복 파일명 감지 - 추가 건너뜀: $newSegment")
+                return@update current
+            }
+
+            // (2) 정렬 — captureTime 오름차순(최신=꼬리). UI 가 takeLast/lastOrNull 로 최신을 꼬리에서 읽으므로 반드시 오름차순.
+            //     captureTime 동률이면 basename, 확장자 순으로 안정 정렬한다.
+            val sorted = (current + downloadedPhoto).sortedWith(
+                compareBy(
+                    { it.captureTime },
+                    { it.filePath.substringAfterLast("/").substringBeforeLast(".") },
+                    { it.filePath.substringAfterLast(".") }
+                )
+            )
+
+            // (3) 장시간 테더링 세션에서 무한 증가하지 않도록 최근 N개만 유지
+            if (sorted.size > MAX_CAPTURED_PHOTOS) sorted.takeLast(MAX_CAPTURED_PHOTOS) else sorted
         }
         val afterCount = _capturedPhotos.value.size
 
@@ -653,6 +688,7 @@ class CameraCaptureRepositoryImpl @Inject constructor(
             "StateFlow 업데이트 완료: $beforeCount -> $afterCount 개"
         )
 
+        // (4) 위 (1) 중복 안전망으로 같은 파일명은 1개만 유지되므로 경고만 남긴다(제거는 안전망이 담당).
         val downloadedFileName = downloadedPhoto.filePath.substringAfterLast("/")
         val sameNamePhotos = _capturedPhotos.value.filter {
             it.filePath.substringAfterLast("/") == downloadedFileName

@@ -13,6 +13,7 @@ import com.inik.camcon.BuildConfig
 import android.util.Log
 import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
 import com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource
+import com.inik.camcon.data.util.ExifCaptureTime
 import com.inik.camcon.domain.model.CameraCapabilities
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.CameraSettings
@@ -32,6 +33,8 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
@@ -58,6 +61,15 @@ class PhotoDownloadManager @Inject constructor(
         private const val TAG = "사진다운로드매니저"
         private const val FREE_TIER_MAX_DIMENSION = 2000 // FREE 티어 최대 장축 크기
     }
+
+    /**
+     * 색감 전송 직렬화 게이트.
+     *
+     * @Singleton 이므로 연사/듀얼슬롯에서 색감 전송이 동시에 여러 건 실행되면
+     * 각 건이 4096px 비트맵을 디코딩해 동시 메모리 사용이 누적, OOM 위험이 커진다.
+     * 한 번에 한 건만 처리하도록 직렬화한다.
+     */
+    private val colorTransferSemaphore = Semaphore(1)
 
     /**
      * RAW 게이팅 단일 지점 방어선(CLAUDE.md §2).
@@ -324,7 +336,9 @@ class PhotoDownloadManager @Inject constructor(
                                 id = UUID.randomUUID().toString(),
                                 filePath = finalPath,
                                 thumbnailPath = null,
-                                captureTime = System.currentTimeMillis(),
+                                // 정렬 기준 안정화: 원본 바이트의 EXIF 촬영 시각 사용, 실패 시 현재 시각 폴백
+                                captureTime = ExifCaptureTime.parseMillis(imageData)
+                                    ?: System.currentTimeMillis(),
                                 cameraModel = cameraCapabilities?.model ?: "알 수 없음",
                                 settings = cameraSettings,
                                 size = imageData.size.toLong(),
@@ -355,7 +369,9 @@ class PhotoDownloadManager @Inject constructor(
                         id = UUID.randomUUID().toString(),
                         filePath = finalPath,
                         thumbnailPath = null,
-                        captureTime = System.currentTimeMillis(),
+                        // 정렬 기준 안정화: 원본 바이트의 EXIF 촬영 시각 사용, 실패 시 현재 시각 폴백
+                        captureTime = ExifCaptureTime.parseMillis(imageData)
+                            ?: System.currentTimeMillis(),
                         cameraModel = cameraCapabilities?.model ?: "알 수 없음",
                         settings = cameraSettings,
                         size = imageData.size.toLong(),
@@ -489,23 +505,28 @@ class PhotoDownloadManager @Inject constructor(
                         } else {
                             // 색감 전송 적용
                             val currentProcessedFile = File(processedPath)
-                            colorTransferredFile = File(
+                            // 캡처 클로저(withPermit) 안에서 non-null 스마트캐스트가 불가능한
+                            // var colorTransferredFile 를 안전하게 쓰기 위해 지역 val 로 고정한다.
+                            val ctOutputFile = File(
                                 currentProcessedFile.parent,
                                 "${currentProcessedFile.nameWithoutExtension}_color_transferred.jpg"
                             )
+                            colorTransferredFile = ctOutputFile
 
                             val transferResult =
-                                colorTransferUseCase.applyColorTransferAndSave(
-                                    currentProcessedFile.absolutePath,
-                                    referenceImagePath,
-                                    currentProcessedFile.absolutePath,
-                                    colorTransferredFile.absolutePath,
-                                    colorTransferIntensity
-                                )
+                                colorTransferSemaphore.withPermit {
+                                    colorTransferUseCase.applyColorTransferAndSave(
+                                        currentProcessedFile.absolutePath,
+                                        referenceImagePath,
+                                        currentProcessedFile.absolutePath,
+                                        ctOutputFile.absolutePath,
+                                        colorTransferIntensity
+                                    )
+                                }
 
                             if (transferResult != null) {
-                                processedPath = colorTransferredFile.absolutePath
-                                Log.d(TAG, "✅ 색감 전송 적용 완료: ${colorTransferredFile.name}")
+                                processedPath = ctOutputFile.absolutePath
+                                Log.d(TAG, "✅ 색감 전송 적용 완료: ${ctOutputFile.name}")
 
                                 // 이전 처리된 파일 삭제 (공간 절약)
                                 if (currentProcessedFile.absolutePath != tempFile?.absolutePath) {
@@ -542,7 +563,8 @@ class PhotoDownloadManager @Inject constructor(
                     id = UUID.randomUUID().toString(),
                     filePath = finalPath,
                     thumbnailPath = null,
-                    captureTime = System.currentTimeMillis(),
+                    // 정렬 기준 안정화: 원본 바이트(재인코딩 이전)의 EXIF 촬영 시각 사용, 실패 시 현재 시각 폴백
+                    captureTime = ExifCaptureTime.parseMillis(imageData) ?: System.currentTimeMillis(),
                     cameraModel = cameraCapabilities?.model ?: "알 수 없음",
                     settings = cameraSettings,
                     size = imageData.size.toLong(),
@@ -730,13 +752,15 @@ class PhotoDownloadManager @Inject constructor(
                         "${processedFile.nameWithoutExtension}_color_transferred.jpg"
                     )
 
-                    val transferResult = colorTransferUseCase.applyColorTransferAndSave(
-                        processedFile.absolutePath, // 입력 파일 경로 (리사이즈된 이미지 또는 원본)
-                        referenceImagePath, // 참조 이미지 경로
-                        processedFile.absolutePath, // 원본 이미지 경로 (EXIF 메타데이터 복사용)
-                        colorTransferredFile.absolutePath, // 출력 파일 경로
-                        colorTransferIntensity // 사용자 설정 강도
-                    )
+                    val transferResult = colorTransferSemaphore.withPermit {
+                        colorTransferUseCase.applyColorTransferAndSave(
+                            processedFile.absolutePath, // 입력 파일 경로 (리사이즈된 이미지 또는 원본)
+                            referenceImagePath, // 참조 이미지 경로
+                            processedFile.absolutePath, // 원본 이미지 경로 (EXIF 메타데이터 복사용)
+                            colorTransferredFile.absolutePath, // 출력 파일 경로
+                            colorTransferIntensity // 사용자 설정 강도
+                        )
+                    }
 
                     if (transferResult != null) {
                         processedPath = colorTransferredFile.absolutePath
