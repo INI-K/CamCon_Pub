@@ -126,6 +126,7 @@ import com.inik.camcon.presentation.ui.components.v2.EmptyState
 import com.inik.camcon.presentation.ui.components.v2.StatusIndicator
 import com.inik.camcon.presentation.ui.components.v2.StatusKind
 import com.inik.camcon.presentation.ui.components.v2.ToastV2
+import com.inik.camcon.presentation.ui.components.v2.TransferProgressBadge
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.WarningAmber
@@ -656,7 +657,7 @@ private fun PortraitCameraLayout(
             .padding(contentPadding)
             .imePadding()
     ) {
-        // V2 StatusBar Row (32dp) — 연결 상태 표시 + 토스트 슬롯
+        // V2 StatusBar Row (32dp) — 연결 상태 표시 + 토스트 슬롯 + 전송 진행 배지
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -665,6 +666,9 @@ private fun PortraitCameraLayout(
             verticalAlignment = Alignment.CenterVertically
         ) {
             StatusIndicator(kind = statusKind, label = statusLabel)
+            Spacer(modifier = Modifier.weight(1f))
+            // 다운로드/처리 진행 카운트 배지 (요구 E7). 비활성 시 내부에서 early-return 으로 미표시.
+            TransferProgressBadge(queue = uiState.capture.transferQueue)
         }
 
         val cameraStorageInfo by viewModel.cameraStorageInfo.collectAsStateWithLifecycle()

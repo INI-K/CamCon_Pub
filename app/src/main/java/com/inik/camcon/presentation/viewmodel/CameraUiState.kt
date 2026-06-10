@@ -7,6 +7,7 @@ import com.inik.camcon.domain.model.CameraSettings
 import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.domain.model.LiveViewFrame
 import com.inik.camcon.domain.model.ShootingMode
+import com.inik.camcon.domain.model.TransferQueueState
 
 /**
  * 카메라 연결 관련 상태
@@ -46,7 +47,8 @@ data class CameraCaptureState(
     val isCapturing: Boolean = false,
     val isFocusing: Boolean = false,
     val shootingMode: ShootingMode = ShootingMode.SINGLE,
-    val capturedPhotos: List<CapturedPhoto> = emptyList()
+    val capturedPhotos: List<CapturedPhoto> = emptyList(),
+    val transferQueue: TransferQueueState = TransferQueueState()
 )
 
 /**
@@ -131,6 +133,7 @@ data class CameraUiState(
     inline val isFocusing: Boolean get() = capture.isFocusing
     inline val shootingMode: ShootingMode get() = capture.shootingMode
     inline val capturedPhotos: List<CapturedPhoto> get() = capture.capturedPhotos
+    inline val transferQueue: TransferQueueState get() = capture.transferQueue
 
     inline val cameraSettings: CameraSettings? get() = settings.cameraSettings
     inline val cameraCapabilities: CameraCapabilities? get() = settings.cameraCapabilities

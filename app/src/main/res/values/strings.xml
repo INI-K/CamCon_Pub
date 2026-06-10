@@ -109,6 +109,7 @@
     <string name="sync_photos">Sync Photos</string>
     <string name="uploading">Uploading...</string>
     <string name="downloading">Downloading...</string>
+    <string name="camera_control_downloading_count">Download %1$d</string>
     <string name="upload_success">Upload successful</string>
     <string name="upload_failed">Upload failed</string>
     <string name="download_success">Download successful</string>
@@ -168,6 +169,7 @@
     <string name="busy">Busy</string>
     <string name="capturing">Capturing...</string>
     <string name="processing">Processing...</string>
+    <string name="camera_control_processing_count">Process %1$d</string>
     <string name="connecting">Connecting...</string>
     <string name="initialized">Initialized</string>
 

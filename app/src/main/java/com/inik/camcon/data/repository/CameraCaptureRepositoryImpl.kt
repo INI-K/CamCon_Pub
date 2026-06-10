@@ -12,6 +12,7 @@ import com.inik.camcon.data.datasource.usb.UsbCameraManager
 import com.inik.camcon.data.repository.managers.CameraConnectionManager
 import com.inik.camcon.data.repository.managers.CameraEventManager
 import com.inik.camcon.data.repository.managers.PhotoDownloadManager
+import com.inik.camcon.data.repository.managers.TransferProgressTracker
 import com.inik.camcon.data.util.ExifCaptureTime
 import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.di.IoDispatcher
@@ -22,6 +23,7 @@ import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.domain.model.LiveViewFrame
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.domain.model.TimelapseSettings
+import com.inik.camcon.domain.model.TransferQueueState
 import com.inik.camcon.domain.model.UnsupportedShootingModeException
 import com.inik.camcon.utils.Constants
 import com.inik.camcon.utils.LogMask
@@ -67,6 +69,7 @@ class CameraCaptureRepositoryImpl @Inject constructor(
     private val connectionManager: CameraConnectionManager,
     private val eventManager: CameraEventManager,
     private val downloadManager: PhotoDownloadManager,
+    private val transferProgressTracker: TransferProgressTracker,
     private val processedFileCache: ProcessedFileCache,
     @Suppress("unused") private val cacheSweeper: CacheSweeper,
     @ApplicationScope private val scope: CoroutineScope,
@@ -184,6 +187,9 @@ class CameraCaptureRepositoryImpl @Inject constructor(
             handleNativePhotoDownload(fullPath, fileName, imageData)
         } else {
             com.inik.camcon.utils.LogcatManager.d(TAG, "중복으로 인해 처리 건너뜀: $fileName")
+            // 중복 스킵 파일은 handleNativePhotoDownload 로 넘어가지 않으므로,
+            // onPhotoCaptured 가 미리 markDownloading 한 듀얼슬롯/중복 파일을 진행 큐에서 제거(누수 방지).
+            transferProgressTracker.markDone(fileName)
         }
     }
 
@@ -541,6 +547,10 @@ class CameraCaptureRepositoryImpl @Inject constructor(
 
     fun getCapturedPhotos(): Flow<List<CapturedPhoto>> =
         _capturedPhotos.asStateFlow()
+
+    /** 다운로드/처리 진행 카운트 (요구 E4). Tracker 의 StateFlow 를 그대로 노출. */
+    fun getTransferQueue(): Flow<TransferQueueState> =
+        transferProgressTracker.state
 
     suspend fun deletePhoto(photoId: String): Result<Boolean> {
         return withContext(ioDispatcher) {
