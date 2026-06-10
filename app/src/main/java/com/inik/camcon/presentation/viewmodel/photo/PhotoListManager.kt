@@ -104,7 +104,8 @@ class PhotoListManager @Inject constructor(
     // 프리로딩 상태
     private val _prefetchedPage = MutableStateFlow(0)
 
-    // 작업 중단 플래그
+    // 작업 중단 플래그 — 해제 스레드와 코루틴 워커 간 가시성 보장
+    @Volatile
     private var isManagerActive = true
 
     /**
