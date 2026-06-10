@@ -18,6 +18,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -187,12 +188,25 @@ class PtpipViewModelHotspotTest {
         }
 
     @Test
-    fun `discoverCamerasHotspot delegates to repository with forceApMode false`() = runTest {
+    fun `discoverCamerasHotspot delegates to discoveryHelper with forceApMode false`() = runTest {
+        // ViewModel이 repository 직접 호출 대신 discoveryHelper(검색→자동선택→자동연결)로
+        // 위임하도록 변경됨 — 핫스팟 모드 고정(setActiveConnectionMethod)과 위임 호출을 검증한다.
         val viewModel = createViewModel()
 
         viewModel.discoverCamerasHotspot()
 
-        coVerify { ptpipRepository.discoverCameras(forceApMode = false) }
+        verify {
+            ptpipRepository.setActiveConnectionMethod(ConnectionMethod.STA_PHONE_HOTSPOT)
+        }
+        verify {
+            discoveryHelper.discoverCameras(
+                forceApMode = false,
+                onDiscoveringChanged = any(),
+                onConnectingChanged = any(),
+                onErrorChanged = any(),
+                onCameraSelected = any()
+            )
+        }
     }
 
     @Test

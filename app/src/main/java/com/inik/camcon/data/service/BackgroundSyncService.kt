@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -141,6 +142,13 @@ class BackgroundSyncService : Service() {
         // 앱이 (재)실행되어 onStartCommand가 다시 호출되면 "스와이프 후 존속" 표시를 해제한다.
         // (전경 복귀 시 disconnect로 인한 의도치 않은 self-stop 방지)
         taskRemovedWhileConnected = false
+
+        // onTaskRemoved(미연결 정리)→onDestroy 사이에 onStartCommand가 끼어드는 레이스 가드:
+        // 취소된 scope에 launch하면 무음으로 무시되어 동기화가 죽는다 — 활성 아니면 재생성.
+        if (serviceScope?.isActive != true) {
+            LogcatManager.w(TAG, "serviceScope 비활성 감지 - 재생성")
+            serviceScope = CoroutineScope(SupervisorJob() + ioDispatcher)
+        }
 
         // 백그라운드 동기화 작업 시작
         startBackgroundSync()

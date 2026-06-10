@@ -44,7 +44,9 @@ class AutoConnectForegroundService : Service() {
                 val notification = buildNotification(title, message)
                 notificationManager?.notify(NOTIFICATION_ID, notification)
                 Log.d(TAG, "알림 업데이트: $title - $message")
-                return START_STICKY
+                // 알림 갱신 전용 호출 — sticky 재기동 대상이 아니다
+                // (STICKY면 종료 후 null intent로 재기동되어 불필요한 자동연결 후처리가 돈다)
+                return START_NOT_STICKY
             }
 
             else -> {

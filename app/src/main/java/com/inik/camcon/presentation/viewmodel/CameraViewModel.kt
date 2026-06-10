@@ -32,6 +32,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.coroutineContext
 import com.inik.camcon.di.IoDispatcher
 import javax.inject.Inject
 
@@ -206,21 +207,21 @@ class CameraViewModel @Inject constructor(
     private fun observeRawDownloadSetting() {
         appSettingsRepository.isRawFileDownloadEnabled
             .onEach { enabled ->
-                // C-3 수정: Repository를 통한 간접 호출
-                viewModelScope.launch {
-                    try {
-                        cameraRepository.setRawFileDownloadEnabled(enabled)
-                            .onSuccess {
-                                Log.d(TAG, "🎯 RAW 파일 다운로드 설정 업데이트: $enabled")
-                            }
-                            .onFailure { e ->
-                                Log.e(TAG, "❌ RAW 파일 다운로드 설정 업데이트 실패", e)
-                            }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        Log.e(TAG, "RAW 파일 설정 업데이트 중 예외 발생", e)
-                    }
+                // C-3 수정: Repository를 통한 간접 호출.
+                // onEach 본문이 이미 suspend 컨텍스트이므로 내부 launch 불필요 —
+                // 별도 launch 는 토글 연타 시 순서 보장이 깨지고 코루틴만 누적시킨다.
+                try {
+                    cameraRepository.setRawFileDownloadEnabled(enabled)
+                        .onSuccess {
+                            Log.d(TAG, "🎯 RAW 파일 다운로드 설정 업데이트: $enabled")
+                        }
+                        .onFailure { e ->
+                            Log.e(TAG, "❌ RAW 파일 다운로드 설정 업데이트 실패", e)
+                        }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.e(TAG, "RAW 파일 설정 업데이트 중 예외 발생", e)
                 }
             }
             .launchIn(viewModelScope)
@@ -903,6 +904,15 @@ class CameraViewModel @Inject constructor(
     val memoryPoolStatus get() = diagnosticsManager.memoryPoolStatus
 
     /**
+     * 라이브뷰 핫패스(프레임당 1회, ~33ms 주기)에서 매번 DataStore 디스크 읽기
+     * (`isHistogramEnabled.first()`)를 하지 않도록 토글을 StateFlow 로 캐시한다.
+     */
+    private val isHistogramEnabledCached: StateFlow<Boolean> by lazy {
+        appSettingsRepository.isHistogramEnabled
+            .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    }
+
+    /**
      * ✅ 라이브뷰 프레임 Bitmap 디코딩 (IO 디스패처에서 처리)
      *
      * CRITICAL-1 해결:
@@ -910,57 +920,59 @@ class CameraViewModel @Inject constructor(
      * - 렌더 스레드 블로킹 제거 → 프레임 드롭 50% 이상 감소
      * - 이전 Bitmap은 DisposableEffect에서 자동 recycle (W-2 해결)
      *
+     * suspend 로 collectLatest 블록 안에서 직접 실행된다 — 이전에는 내부에서
+     * viewModelScope.launch 를 별도로 띄워 collectLatest 의 취소(최신 프레임 우선)가
+     * 디코딩 작업에 전파되지 않았고, 프레임마다 코루틴이 누적됐다.
+     *
      * 추가로 히스토그램 토글이 ON 이면 동일 디스패처에서 히스토그램까지 계산한다.
      * 토글 OFF 면 히스토그램 계산을 스킵하여 비용 제로.
      */
-    private fun decodeLiveViewFrameAsync(frame: LiveViewFrame) {
-        viewModelScope.launch {
-            try {
-                val decodedBitmap = withContext(ioDispatcher) {
-                    val bitmapOptions = BitmapFactory.Options().apply {
-                        inMutable = true
-                        inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
-                    }
+    private suspend fun decodeLiveViewFrameAsync(frame: LiveViewFrame) {
+        try {
+            val decodedBitmap = withContext(ioDispatcher) {
+                val bitmapOptions = BitmapFactory.Options().apply {
+                    inMutable = true
+                    inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
+                }
+                try {
+                    BitmapFactory.decodeByteArray(
+                        frame.data, 0, frame.data.size, bitmapOptions
+                    )
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.e(TAG, "라이브뷰 Bitmap 디코딩 실패", e)
+                    null
+                }
+            }
+
+            // 디코딩 후 취소되었으면(다음 프레임 도착) 방금 만든 비트맵은 대입 없이 즉시 회수.
+            if (!coroutineContext.isActive) {
+                decodedBitmap?.let { if (!it.isRecycled) it.recycle() }
+                return
+            }
+
+            publishLiveViewBitmap(decodedBitmap)
+
+            if (decodedBitmap != null && isHistogramEnabledCached.value) {
+                val hist = withContext(ioDispatcher) {
                     try {
-                        BitmapFactory.decodeByteArray(
-                            frame.data, 0, frame.data.size, bitmapOptions
-                        )
+                        com.inik.camcon.presentation.util.computeHistogram(decodedBitmap)
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
-                        Log.e(TAG, "라이브뷰 Bitmap 디코딩 실패", e)
+                        Log.e(TAG, "히스토그램 계산 실패", e)
                         null
                     }
                 }
-
-                // 디코딩 후 취소되었으면(다음 프레임 도착) 방금 만든 비트맵은 대입 없이 즉시 회수.
-                if (!isActive) {
-                    decodedBitmap?.let { if (!it.isRecycled) it.recycle() }
-                    return@launch
-                }
-
-                publishLiveViewBitmap(decodedBitmap)
-
-                if (decodedBitmap != null && appSettingsRepository.isHistogramEnabled.first()) {
-                    val hist = withContext(ioDispatcher) {
-                        try {
-                            com.inik.camcon.presentation.util.computeHistogram(decodedBitmap)
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (e: Exception) {
-                            Log.e(TAG, "히스토그램 계산 실패", e)
-                            null
-                        }
-                    }
-                    _histogramData.value = hist
-                } else {
-                    _histogramData.value = null
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.e(TAG, "라이브뷰 프레임 처리 중 오류", e)
+                _histogramData.value = hist
+            } else {
+                _histogramData.value = null
             }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e(TAG, "라이브뷰 프레임 처리 중 오류", e)
         }
     }
 
