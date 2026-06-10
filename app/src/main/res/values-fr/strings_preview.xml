@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="preview_local_only_banner">En mode Wi-Fi, seules les photos téléchargées localement sont affichées. Le mode USB est recommandé pour accéder à la carte de l\'appareil photo.</string>
-    <string name="preview_ptpip_first_warning">En mode Wi-Fi, seules les photos locales sont affichées. Passez en USB pour parcourir la carte de l\'appareil photo.</string>
     <string name="preview_delete_title">Supprimer la photo ?</string>
     <string name="preview_delete_confirm">Supprimer cette photo ? Elle sera également retirée de la mémoire de l\'appareil photo.</string>
     <string name="preview_delete_success">Photo supprimée</string>

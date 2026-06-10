@@ -30,7 +30,6 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SelectAll
-import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -60,12 +59,10 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.inik.camcon.R
-import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.BodySmall
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.Caption
 import com.inik.camcon.presentation.theme.HeadingM
-import com.inik.camcon.presentation.theme.IconSize
 import com.inik.camcon.presentation.theme.LocalWindowSizeClass
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.TextPrimaryV2
@@ -196,12 +193,8 @@ fun PhotoPreviewScreen(
 
                     !uiState.isConnected && !isPtpipConnected -> CameraDisconnectedState()
                     isLoadingPhotos && photos.isEmpty() -> PhotoSkeletonGrid()
-                    photos.isEmpty() && isPtpipConnected -> PtpipLocalOnlyEmpty()
                     photos.isEmpty() -> EmptyPhotosV2()
                     else -> Column(modifier = Modifier.fillMaxSize()) {
-                        if (isPtpipConnected) {
-                            PtpipLocalOnlyBanner()
-                        }
                         PhotoGrid(
                             photos = photos,
                             isLoadingMore = isLoadingMore,
@@ -909,58 +902,6 @@ private fun FreeTierNoticeOverlay(
                 )
             }
         }
-    }
-}
-
-/**
- * H3 — PTPIP 모드에서 로컬 다운로드 사진만 표시되는 경우의 inline 배너.
- * 전체 차단이 아닌 안내 카드만 그리드 상단에 노출.
- */
-@Composable
-private fun PtpipLocalOnlyBanner() {
-    SurfaceV2(
-        tier = 1,
-        border = true,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = Spacing.base, vertical = Spacing.sm)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(Spacing.md),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.Wifi,
-                contentDescription = null,
-                modifier = Modifier.size(IconSize.md),
-                tint = Accent
-            )
-            Spacer(Modifier.width(Spacing.sm))
-            Text(
-                text = stringResource(R.string.preview_local_only_banner),
-                style = BodySmall,
-                color = TextSecondaryV2
-            )
-        }
-    }
-}
-
-/**
- * PTPIP 모드 + 로컬 캐시 없음 — 안내 빈 상태.
- */
-@Composable
-private fun PtpipLocalOnlyEmpty() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        EmptyState(
-            icon = Icons.Default.Wifi,
-            title = stringResource(R.string.photo_preview_wifi_connected),
-            description = stringResource(R.string.preview_local_only_banner)
-        )
     }
 }
 

@@ -5,7 +5,6 @@ import android.util.Log
 import com.inik.camcon.BuildConfig
 import com.inik.camcon.R
 import com.inik.camcon.di.ApplicationScope
-import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.manager.ErrorSeverity
 import com.inik.camcon.domain.manager.ErrorType
 import com.inik.camcon.domain.model.CameraPhoto
@@ -13,10 +12,7 @@ import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.domain.usecase.camera.GetCameraPhotosPagedUseCase
 import com.inik.camcon.presentation.viewmodel.state.ErrorHandlingManager
-import com.inik.camcon.utils.Constants
-import com.inik.camcon.utils.LogMask
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,8 +21,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -41,22 +35,12 @@ class PhotoListManager @Inject constructor(
     private val getCameraPhotosPagedUseCase: GetCameraPhotosPagedUseCase,
     private val validateImageFormatUseCase: ValidateImageFormatUseCase,
     private val errorHandlingManager: ErrorHandlingManager,
-    @ApplicationScope private val appScope: CoroutineScope,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @ApplicationScope private val appScope: CoroutineScope
 ) {
 
     companion object {
         private const val TAG = "사진목록매니저"
         private const val PREFETCH_PAGE_SIZE = 50
-
-        /** 로컬 사진으로 인정하는 확장자 집합. */
-        private val LOCAL_PHOTO_EXTENSIONS: Set<String> = setOf(
-            "jpg", "jpeg", "png", "heic", "heif",
-            "nef", "cr2", "arw", "dng", "orf", "rw2", "raf"
-        )
-
-        /** 로컬 디렉터리 재귀 스캔 최대 깊이 (DCIM/CamCon/서브폴더/파일 구조 커버). */
-        private const val MAX_LOCAL_SCAN_DEPTH = 3
     }
 
     // 앱 scope의 자식 scope — cancelChildren해도 앱 scope에 영향 없음
@@ -96,7 +80,7 @@ class PhotoListManager @Inject constructor(
     val currentFilter: StateFlow<FileTypeFilter> = _currentFilter.asStateFlow()
 
     // 현재 구독 티어 — 페이징/초기 로드 시 RAW 게이팅에 사용한다.
-    // 티어를 명확히 아는 경로(changeFileTypeFilter / loadLocalPhotos / load*PhotosTier)에서 갱신하며,
+    // 티어를 명확히 아는 경로(changeFileTypeFilter / load*PhotosTier)에서 갱신하며,
     // 페이징 경로는 이 값을 사용해 FREE 하드코딩으로 인한 PRO/ADMIN RAW 누락을 방지한다.
     @Volatile
     private var currentTier: SubscriptionTier = SubscriptionTier.FREE
@@ -113,7 +97,6 @@ class PhotoListManager @Inject constructor(
      */
     fun loadInitialPhotos(
         isConnected: Boolean,
-        isPtpipConnected: Boolean = false,
         tier: SubscriptionTier = currentTier
     ) {
         Log.d(TAG, "loadInitialPhotos 호출 (티어=$tier)")
@@ -136,19 +119,6 @@ class PhotoListManager @Inject constructor(
                 errorHandlingManager.emitError(
                     ErrorType.CONNECTION,
                     "카메라가 연결되지 않았습니다. 카메라를 연결해주세요.",
-                    null,
-                    ErrorSeverity.MEDIUM
-                )
-                return@launch
-            }
-
-            // PTPIP 연결 상태 확인
-            if (isPtpipConnected) {
-                Log.w(TAG, "PTPIP 연결 상태: 파일 목록 로딩 차단")
-                _isLoading.value = false
-                errorHandlingManager.emitError(
-                    ErrorType.OPERATION,
-                    "PTPIP 연결 시 사진 미리보기는 지원되지 않습니다.\nUSB 케이블 연결을 사용해주세요.",
                     null,
                     ErrorSeverity.MEDIUM
                 )
@@ -197,7 +167,7 @@ class PhotoListManager @Inject constructor(
     /**
      * 다음 페이지 로드
      */
-    fun loadNextPage(isPtpipConnected: Boolean = false, tier: SubscriptionTier = currentTier) {
+    fun loadNextPage(tier: SubscriptionTier = currentTier) {
         currentTier = tier
         if (!_hasNextPage.value) {
             Log.d(TAG, "loadNextPage 건너뛰기: hasNextPage=false")
@@ -206,18 +176,6 @@ class PhotoListManager @Inject constructor(
 
         if (!isManagerActive) {
             Log.d(TAG, "loadNextPage 작업 중단됨 (매니저 비활성)")
-            return
-        }
-
-        // PTPIP 연결 상태 체크 (페이징도 차단)
-        if (isPtpipConnected) {
-            Log.w(TAG, "PTPIP 연결 상태: 파일 목록 로딩 차단")
-            errorHandlingManager.emitError(
-                ErrorType.OPERATION,
-                "PTPIP 연결 시 사진 미리보기는 지원되지 않습니다.\nUSB 케이블 연결을 사용해주세요.",
-                null,
-                ErrorSeverity.MEDIUM
-            )
             return
         }
 
@@ -350,7 +308,6 @@ class PhotoListManager @Inject constructor(
      */
     fun onPhotoIndexReached(
         currentIndex: Int,
-        isPtpipConnected: Boolean = false,
         tier: SubscriptionTier = currentTier
     ) {
         currentTier = tier
@@ -380,7 +337,7 @@ class PhotoListManager @Inject constructor(
         if (shouldPrefetch) {
             Log.d(TAG, "프리로드 트리거: 현재 인덱스 $currentIndex")
             // prefetch가 실제로 잠금에 성공해 시작된 경우에만 prefetchedPage를 전진시킨다.
-            if (prefetchNextPage(isPtpipConnected)) {
+            if (prefetchNextPage()) {
                 _prefetchedPage.value = currentPage + 1
             }
         }
@@ -389,21 +346,9 @@ class PhotoListManager @Inject constructor(
     /**
      * 백그라운드에서 다음 페이지를 미리 로드
      */
-    private fun prefetchNextPage(isPtpipConnected: Boolean = false): Boolean {
+    private fun prefetchNextPage(): Boolean {
         if (!_hasNextPage.value) {
             Log.d(TAG, "프리로드 건너뛰기: hasNextPage=false")
-            return false
-        }
-
-        // PTPIP 연결 상태 체크 (프리로딩도 차단)
-        if (isPtpipConnected) {
-            Log.w(TAG, "PTPIP 연결 상태: 파일 목록 프리로드 차단")
-            errorHandlingManager.emitError(
-                ErrorType.OPERATION,
-                "PTPIP 연결 시 사진 미리보기는 지원되지 않습니다.\nUSB 케이블 연결을 사용해주세요.",
-                null,
-                ErrorSeverity.LOW
-            )
             return false
         }
 
@@ -454,12 +399,11 @@ class PhotoListManager @Inject constructor(
      */
     fun refreshPhotos(
         isConnected: Boolean,
-        isPtpipConnected: Boolean = false,
         tier: SubscriptionTier = currentTier
     ) {
         Log.d(TAG, "사진 목록 새로고침")
         _prefetchedPage.value = 0
-        loadInitialPhotos(isConnected, isPtpipConnected, tier)
+        loadInitialPhotos(isConnected, tier)
     }
 
     /**
@@ -481,86 +425,6 @@ class PhotoListManager @Inject constructor(
             """.trimIndent()
             )
         }
-    }
-
-    /**
-     * PTPIP 모드 전용: 카메라 fetch 없이 로컬 다운로드 디렉터리만 스캔하여 사진 목록을 적재한다.
-     *
-     * 스캔 위치(존재하는 디렉터리만 사용):
-     *  - [Constants.FilePaths.findAvailableExternalStoragePath] — 메인 다운로드 경로 (예: DCIM/CamCon)
-     *  - `context.filesDir/photos` — 내부 폴백
-     *  - `context.cacheDir/<TEMP_DOWNLOADS_DIR>` — 임시 다운로드 결과
-     *  - `context.cacheDir/<COLOR_TRANSFER_DIR>` — 색감 전송 결과
-     *
-     * RAW 게이팅은 [ValidateImageFormatUseCase] 단일 지점에 위임한다.
-     */
-    fun loadLocalPhotos(currentTier: SubscriptionTier = this.currentTier) {
-        Log.d(TAG, "loadLocalPhotos 호출 (티어=$currentTier)")
-        this.currentTier = currentTier
-        managerScope.launch {
-            if (!isManagerActive) {
-                Log.d(TAG, "loadLocalPhotos 작업 중단됨 (매니저 비활성)")
-                return@launch
-            }
-            _isLoading.value = true
-            _currentPage.value = 0
-            _totalPages.value = 1
-            _hasNextPage.value = false
-
-            val photos = withContext(ioDispatcher) { scanLocalDirectories() }
-            Log.d(TAG, "로컬 디렉터리 스캔 결과: ${photos.size}개")
-
-            if (!isManagerActive) {
-                Log.d(TAG, "loadLocalPhotos 중단됨 (스캔 후)")
-                return@launch
-            }
-            _allPhotos.value = photos
-            updateFilteredPhotos(currentTier)
-            _isLoading.value = false
-            Log.d(TAG, "loadLocalPhotos 완료: 전체 ${photos.size}, 필터링 ${_filteredPhotos.value.size}")
-        }
-    }
-
-    /**
-     * 로컬 디렉터리들을 순회하며 [CameraPhoto] 목록을 만든다. IO 디스패처에서 호출되어야 한다.
-     *
-     * 중복 경로는 path 키로 제거하며 `lastModified` 내림차순으로 정렬한다.
-     */
-    private fun scanLocalDirectories(): List<CameraPhoto> {
-        val candidates: List<File> = buildList {
-            add(File(Constants.FilePaths.findAvailableExternalStoragePath()))
-            add(File(context.filesDir, "photos"))
-            add(File(context.cacheDir, Constants.FilePaths.TEMP_DOWNLOADS_DIR))
-            add(File(context.cacheDir, Constants.FilePaths.COLOR_TRANSFER_DIR))
-        }
-
-        val collected = linkedMapOf<String, CameraPhoto>()
-        for (root in candidates) {
-            if (!root.exists() || !root.isDirectory) continue
-            try {
-                root.walkTopDown()
-                    .maxDepth(MAX_LOCAL_SCAN_DEPTH)
-                    .filter { f ->
-                        f.isFile && f.extension.lowercase() in LOCAL_PHOTO_EXTENSIONS
-                    }
-                    .forEach { file ->
-                        val path = file.absolutePath
-                        if (path !in collected) {
-                            collected[path] = CameraPhoto(
-                                path = path,
-                                name = file.name,
-                                size = file.length(),
-                                date = file.lastModified()
-                            )
-                        }
-                    }
-            } catch (t: Throwable) {
-                // 권한 부족 등으로 스캔 실패 — 다른 디렉터리는 계속 시도.
-                Log.w(TAG, "로컬 디렉터리 스캔 실패: ${LogMask.path(root.absolutePath)}", t)
-            }
-        }
-
-        return collected.values.sortedByDescending { it.date }
     }
 
     /**

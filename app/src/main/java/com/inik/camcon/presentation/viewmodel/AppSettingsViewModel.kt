@@ -287,23 +287,6 @@ class AppSettingsViewModel @Inject constructor(
             )
 
     /**
-     * H3 — PTPIP 미리보기 안내 1회 표시 플래그 (기본값: false)
-     */
-    val hasSeenPtpipPreviewWarning: StateFlow<Boolean> =
-        appSettingsRepository.hasSeenPtpipPreviewWarning
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5000),
-                initialValue = false
-            )
-
-    fun markPtpipPreviewWarningSeen() {
-        viewModelScope.launch {
-            appSettingsRepository.setHasSeenPtpipPreviewWarning(true)
-        }
-    }
-
-    /**
      * 첫 사용자 온보딩 완료 여부.
      * 첫 emit 전(DataStore 초기값) 동안 깜빡임을 막기 위해 initialValue=null 로 유지한다.
      */
