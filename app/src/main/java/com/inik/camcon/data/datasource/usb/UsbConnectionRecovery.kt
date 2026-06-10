@@ -22,7 +22,8 @@ import javax.inject.Singleton
 @Singleton
 class UsbConnectionRecovery @Inject constructor(
     private val context: Context,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+    private val connectionManager: UsbConnectionManager
 ) {
     private val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
 
@@ -101,9 +102,11 @@ class UsbConnectionRecovery @Inject constructor(
             }
 
             // 10단계: 네이티브 카메라 초기화 (1번만 시도)
+            // ⚠️ nativeLibraryDir가 아닌 플러그인 디렉토리(camlib/iolib 복사본)를 전달해야
+            // libgphoto2가 카메라 드라이버를 찾을 수 있다 (정상 연결 경로와 동일).
             Log.d(TAG, "🚀 네이티브 카메라 초기화 시도 (FD=$fd)")
-            val initResult =
-                CameraNative.initCameraWithFd(fd, context.applicationInfo.nativeLibraryDir)
+            val pluginDir = connectionManager.ensureLibgphoto2PluginDirs("")
+            val initResult = CameraNative.initCameraWithFd(fd, pluginDir)
             Log.d(TAG, "단순 복구 초기화 결과: $initResult")
 
             if (initResult == 0) {
@@ -170,10 +173,7 @@ class UsbConnectionRecovery @Inject constructor(
             withContext(Dispatchers.Default) {
                 try {
                     // 카메라 완전 종료 (gp_camera_exit + gp_context_unref + libusb_close)
-                    CameraNative.closeCamera()
-                    delay(1000)
-
-                    // 추가로 한번 더 호출하여 확실히 정리
+                    // 네이티브 closeCamera는 idempotent하므로 1회 호출로 충분
                     CameraNative.closeCamera()
                     Log.d(TAG, "네이티브 완전 정리 완료")
                 } catch (e: Exception) {
@@ -216,10 +216,11 @@ class UsbConnectionRecovery @Inject constructor(
                 )
 
                 // PTP 인터페이스 (클래스 6) 또는 Vendor Specific (클래스 255)을 강제로 클레임
+                // ⚠️ Mass Storage(클래스 8)는 절대 강제 클레임하지 않는다 —
+                // 마운트된 저장소에서 커널 드라이버를 강제 분리하면 파일시스템 손상 위험.
                 if (usbInterface.interfaceClass == 6 ||
-                    usbInterface.interfaceClass == 255 ||
-                    usbInterface.interfaceClass == 8
-                ) { // Mass Storage도 포함
+                    usbInterface.interfaceClass == 255
+                ) {
 
                     try {
                         // 강제로 인터페이스 클레임 (다른 드라이버로부터 해제)
