@@ -57,7 +57,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -1191,20 +1193,24 @@ class MainActivity : ComponentActivity() {
      */
     private fun observeConnectionForBackgroundService() {
         lifecycleScope.launch {
-            globalManager.globalConnectionState
-                .map { it.isAnyConnectionActive }
-                .distinctUntilChanged()
-                .collect { isConnected ->
-                    if (!isConnected) return@collect
-                    try {
-                        if (!isServiceRunning(BackgroundSyncService::class.java)) {
-                            BackgroundSyncService.startService(this@MainActivity)
-                            LogcatManager.d(TAG, "카메라 연결 감지 - BackgroundSyncService 시작 요청됨")
+            // STARTED 동안만 수집 — 백그라운드에서 startForegroundService를 호출하면
+            // Android 12+에서 ForegroundServiceStartNotAllowedException 위험이 있다.
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                globalManager.globalConnectionState
+                    .map { it.isAnyConnectionActive }
+                    .distinctUntilChanged()
+                    .collect { isConnected ->
+                        if (!isConnected) return@collect
+                        try {
+                            if (!isServiceRunning(BackgroundSyncService::class.java)) {
+                                BackgroundSyncService.startService(this@MainActivity)
+                                LogcatManager.d(TAG, "카메라 연결 감지 - BackgroundSyncService 시작 요청됨")
+                            }
+                        } catch (e: Exception) {
+                            LogcatManager.w(TAG, "BackgroundSyncService 시작 실패", e)
                         }
-                    } catch (e: Exception) {
-                        LogcatManager.w(TAG, "BackgroundSyncService 시작 실패", e)
                     }
-                }
+            }
         }
     }
 
