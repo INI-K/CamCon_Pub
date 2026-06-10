@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="preview_local_only_banner">Wi-Fi 모드에서는 로컬에 다운로드된 사진만 표시됩니다. 카메라 카드 접근은 USB 모드를 권장합니다.</string>
-    <string name="preview_ptpip_first_warning">Wi-Fi 모드에서는 로컬에 다운로드된 사진만 표시됩니다. 카메라 카드를 보려면 USB로 전환하세요.</string>
     <string name="preview_delete_title">사진 삭제</string>
     <string name="preview_delete_confirm">이 사진을 삭제하시겠습니까? 카메라 메모리에서도 제거됩니다.</string>
     <string name="preview_delete_success">사진이 삭제되었습니다</string>

@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="preview_local_only_banner">Wi-Fi 模式下仅显示已下载到本地的照片。建议使用 USB 模式访问相机存储卡。</string>
-    <string name="preview_ptpip_first_warning">Wi-Fi 模式下仅显示本地照片。要浏览相机存储卡，请切换到 USB。</string>
     <string name="preview_delete_title">删除照片？</string>
     <string name="preview_delete_confirm">确定要删除这张照片吗？它也会从相机存储中移除。</string>
     <string name="preview_delete_success">照片已删除</string>

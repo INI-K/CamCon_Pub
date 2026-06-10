@@ -172,8 +172,7 @@ fun MainScreen(
     // 전체화면 상태 관리
     var isFullscreen by remember { mutableStateOf(false) }
 
-    // PTPIP 연결 상태 및 경고 다이얼로그 상태
-    val isPtpipConnected by cameraViewModel.isPtpipConnected.collectAsStateWithLifecycle()
+    // PTPIP 경고 다이얼로그 상태
     // H3 — 다이얼로그 차단 제거 (1회 Toast로 대체).
     var showPtpipWarning by remember { mutableStateOf(false) }
 
@@ -403,32 +402,9 @@ fun MainScreen(
             )
         }
 
-        // H3 — PTPIP 미리보기 첫 진입 1회 안내용 플래그
-        val hasSeenPtpipPreviewWarning by appSettingsViewModel.hasSeenPtpipPreviewWarning
-            .collectAsStateWithLifecycle()
-        val ptpipFirstWarningMessage = stringResource(R.string.preview_ptpip_first_warning)
-        val ptpipToastContext = LocalContext.current
-
         // 탭 클릭 핸들러 — NavigationBar / NavigationRail에서 공유
         val onTabClick: (BottomNavItem) -> Unit = { screen ->
-            if (screen == BottomNavItem.PhotoPreview && isPtpipConnected) {
-                // H3 — 다이얼로그 차단 제거. 첫 1회만 Toast로 안내하고 탭 진입은 항상 허용.
-                if (!hasSeenPtpipPreviewWarning) {
-                    android.widget.Toast.makeText(
-                        ptpipToastContext,
-                        ptpipFirstWarningMessage,
-                        android.widget.Toast.LENGTH_LONG
-                    ).show()
-                    appSettingsViewModel.markPtpipPreviewWarningSeen()
-                }
-                navController.navigate(screen.route) {
-                    popUpTo(navController.graph.findStartDestination().id) {
-                        saveState = true
-                    }
-                    launchSingleTop = true
-                    restoreState = true
-                }
-            } else if (screen.route == "settings") {
+            if (screen.route == "settings") {
                 onSettingsClick()
             } else {
                 navController.navigate(screen.route) {

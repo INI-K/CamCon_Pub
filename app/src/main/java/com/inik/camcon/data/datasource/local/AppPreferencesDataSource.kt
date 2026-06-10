@@ -59,8 +59,6 @@ class AppPreferencesDataSource @Inject constructor(
             booleanPreferencesKey("admin_native_log_stream_enabled")
         private val NATIVE_LOG_CAPTURE_ENABLED =
             booleanPreferencesKey("native_log_capture_enabled")
-        private val HAS_SEEN_PTPIP_PREVIEW_WARNING =
-            booleanPreferencesKey("has_seen_ptpip_preview_warning")
 
         // Capture UX (Group 3)
         private val SHUTTER_SOUND_ENABLED = booleanPreferencesKey("shutter_sound_enabled")
@@ -237,15 +235,6 @@ class AppPreferencesDataSource @Inject constructor(
     override val isNativeLogCaptureEnabled: Flow<Boolean> = context.appDataStore.data
         .map { preferences ->
             preferences[NATIVE_LOG_CAPTURE_ENABLED] ?: BuildConfig.DEBUG
-        }
-
-    /**
-     * 사용자가 PTPIP 미리보기 안내를 한 번 본 적이 있는지 여부 (기본값: false).
-     * H3 — Wi-Fi 모드 첫 진입 시 1회 안내 후 다시 표시하지 않기 위해 사용.
-     */
-    override val hasSeenPtpipPreviewWarning: Flow<Boolean> = context.appDataStore.data
-        .map { preferences ->
-            preferences[HAS_SEEN_PTPIP_PREVIEW_WARNING] ?: false
         }
 
     /**
@@ -431,15 +420,6 @@ class AppPreferencesDataSource @Inject constructor(
     override suspend fun setNativeLogCaptureEnabled(enabled: Boolean) {
         context.appDataStore.edit { preferences ->
             preferences[NATIVE_LOG_CAPTURE_ENABLED] = enabled
-        }
-    }
-
-    /**
-     * PTPIP 미리보기 안내 표시 여부 저장.
-     */
-    override suspend fun setHasSeenPtpipPreviewWarning(seen: Boolean) {
-        context.appDataStore.edit { preferences ->
-            preferences[HAS_SEEN_PTPIP_PREVIEW_WARNING] = seen
         }
     }
 
