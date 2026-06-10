@@ -1166,7 +1166,9 @@ class PhotoDownloadManager @Inject constructor(
 
             Log.d(TAG, "EXIF 회전: orientation=$orientation")
 
-            // 이미지 디코딩
+            // 이미지 디코딩 (원본 경로이므로 화질 보존을 위해 풀해상도 유지.
+            // 픽셀 회전은 원본+회전본 2× 피크가 불가피하므로 OOM 시 회전을 생략한다 —
+            // EXIF orientation 태그는 남아 있어 뷰어가 자동 회전으로 올바르게 표시한다.)
             val bitmap = BitmapFactory.decodeFile(filePath)
             if (bitmap == null) {
                 Log.w(TAG, "EXIF 회전: 비트맵 디코딩 실패")
@@ -1183,6 +1185,9 @@ class PhotoDownloadManager @Inject constructor(
             } else {
                 bitmap.recycle()
             }
+        } catch (e: OutOfMemoryError) {
+            // 고화소(45MP=183MB×2) 회전 중 OOM — 크래시 대신 회전 생략 (EXIF로 표시 보정됨)
+            Log.e(TAG, "EXIF 회전 중 메모리 부족 - 픽셀 회전 생략", e)
         } catch (e: Exception) {
             Log.e(TAG, "EXIF 회전 처리 중 오류", e)
         }
