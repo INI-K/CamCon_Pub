@@ -56,7 +56,7 @@
 |------|------------|------|----------|
 | USB OTG 연결 | `ConnectCameraUseCase`, `UsbCameraManager`, `UsbConnectionManager` | USB 케이블 PTP 프로토콜 연결 | 무료 |
 | USB 자동 감지 | `SplashActivity` (`USB_DEVICE_ATTACHED`) | USB 카메라 연결 시 앱 자동 실행 | 무료 |
-| USB 연결 복구 | `UsbConnectionRecovery` | 연결 끊김 시 자동 재연결 | 무료 |
+| USB 연결 복구 | `UsbCameraManager` (attach 이벤트) | 케이블 재연결 시 일반 연결 플로우 재진입 (전담 복구 클래스 `UsbConnectionRecovery`는 미배선 死코드로 삭제됨) | 무료 |
 | Wi-Fi AP 모드 | `PtpipConnectionManager`, `ApModeContent` | 카메라 AP에 직접 연결 | 무료 |
 | Wi-Fi STA 모드 | `PtpipConnectionManager`, `NikonAuthenticationService` | 공유기 경유 연결 (Nikon STA 인증 포함) | 무료 |
 | mDNS 자동 검색 | `PtpipDiscoveryService` | UDP 브로드캐스트, mDNS 카메라 발견 | 무료 |
