@@ -184,6 +184,16 @@ class CameraCaptureRepositoryImpl @Inject constructor(
     }
 
     suspend fun startCameraEventListener(): Result<Boolean> {
+        // Wi-Fi(PTPIP) 연결은 PtpipDataSource의 자체 저장 콜백 경로로 재시작해야 한다.
+        // (아래 USB 경로는 usbCameraManager 연결 검증 때문에 Wi-Fi에서 항상 실패 —
+        //  BackgroundSyncService 감독 루프가 Wi-Fi 리스너를 복구하지 못하던 원인)
+        if (connectionManager.isPtpipConnected.value &&
+            !usbCameraManager.isNativeCameraConnected.value
+        ) {
+            com.inik.camcon.utils.LogcatManager.d(TAG, "startCameraEventListener 호출됨 (PTPIP 연결용)")
+            return ptpipDataSource.restartEventListenerIfNeeded()
+        }
+
         com.inik.camcon.utils.LogcatManager.d(TAG, "startCameraEventListener 호출됨 (USB 연결용)")
 
         return eventManager.startCameraEventListener(
@@ -247,7 +257,14 @@ class CameraCaptureRepositoryImpl @Inject constructor(
     /** Facade가 Control의 getCameraPhotos(Paged) 콜백으로 주입. */
     suspend fun restartEventListenerIfNeeded() {
         if (!eventManager.isRunning()) {
-            startEventListenerInternal()
+            // Wi-Fi(PTPIP)는 자체 콜백 경로로 복구 (USB 내부 시작은 Wi-Fi에서 항상 실패)
+            if (connectionManager.isPtpipConnected.value &&
+                !usbCameraManager.isNativeCameraConnected.value
+            ) {
+                ptpipDataSource.restartEventListenerIfNeeded()
+            } else {
+                startEventListenerInternal()
+            }
         }
     }
 
