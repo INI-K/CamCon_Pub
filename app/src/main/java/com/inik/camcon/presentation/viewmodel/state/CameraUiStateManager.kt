@@ -10,6 +10,7 @@ import com.inik.camcon.domain.model.CameraSettings
 import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.domain.model.LiveViewFrame
 import com.inik.camcon.domain.model.ShootingMode
+import com.inik.camcon.domain.model.TransferQueueState
 import com.inik.camcon.presentation.viewmodel.CameraUiState
 import com.inik.camcon.presentation.viewmodel.RawFileRestriction
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -145,6 +146,16 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
             it.copy(capture = it.capture.copy(capturedPhotos = photos))
         }
         Log.d(TAG, "촬영된 사진 목록 업데이트: ${photos.size}개")
+    }
+
+    /**
+     * 다운로드/처리 진행 카운트 업데이트 (요구 E6).
+     */
+    fun updateTransferQueue(queue: TransferQueueState) {
+        _uiState.update {
+            it.copy(capture = it.capture.copy(transferQueue = queue))
+        }
+        Log.d(TAG, "전송 진행 카운트 업데이트: 다운로드=${queue.downloading}, 처리=${queue.processing}")
     }
 
     /**
