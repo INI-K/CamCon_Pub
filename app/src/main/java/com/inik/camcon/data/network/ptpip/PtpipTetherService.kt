@@ -373,7 +373,13 @@ class PtpipTetherService @Inject constructor(
         LogcatManager.i(TAG, "객체 크기 handle=0x%08x size=%d".format(handle, objectSize))
 
         // 2) GetPartialObjectEx (0x9431) 청크 다운로드 — 잠금 비대상 vendor op
-        val out = ByteArrayOutputStream()
+        // objectSize 를 미리 알므로 사전 할당 버퍼에 직접 기록한다.
+        // (ByteArrayOutputStream 누적 후 toByteArray() 복사는 RAW(60MB급)에서 순간 2× 메모리 피크)
+        if (objectSize > Int.MAX_VALUE) {
+            LogcatManager.e(TAG, "객체가 너무 큼(%d bytes) handle=0x%08x — 스킵".format(objectSize, handle))
+            return null
+        }
+        val buf = ByteArray(objectSize.toInt())
         var offset = 0L
         while (offset < objectSize) {
             val remaining = objectSize - offset
@@ -395,10 +401,12 @@ class PtpipTetherService @Inject constructor(
                 LogcatManager.w(TAG, "GetPartialObjectEx 0바이트 반환 off=%d — 중단".format(offset))
                 break
             }
-            out.write(res.data)
-            offset += res.data.size
+            val copyLen = minOf(res.data.size.toLong(), objectSize - offset).toInt()
+            System.arraycopy(res.data, 0, buf, offset.toInt(), copyLen)
+            offset += copyLen
         }
-        return finalize(out.toByteArray(), fileName, handle, PtpVendor.NIKON)
+        val bytes = if (offset == objectSize) buf else buf.copyOf(offset.toInt())
+        return finalize(bytes, fileName, handle, PtpVendor.NIKON)
     }
 
     /**
@@ -429,7 +437,12 @@ class PtpipTetherService @Inject constructor(
         }
         LogcatManager.i(TAG, "객체 크기 handle=0x%08x size=%d".format(handle, objectSize))
 
-        val out = ByteArrayOutputStream()
+        // objectSize 사전 할당 버퍼 — toByteArray() 2× 복사 피크 방지 (니콘 경로와 동일)
+        if (objectSize > Int.MAX_VALUE) {
+            LogcatManager.e(TAG, "객체가 너무 큼(%d bytes) handle=0x%08x — 스킵".format(objectSize, handle))
+            return null
+        }
+        val buf = ByteArray(objectSize.toInt())
         var offset = 0L
         while (offset < objectSize) {
             val remaining = objectSize - offset
@@ -440,16 +453,14 @@ class PtpipTetherService @Inject constructor(
                 DATA_DIR_CAMERA_TO_HOST_OR_NONE
             )
             if (res.respCode == RC_OperationNotSupported && offset == 0L) {
-                // 부분 전송 미지원 → 전체(0x1009) 폴백.
+                // 부분 전송 미지원 → 전체(0x1009) 폴백. 받은 배열을 복사 없이 그대로 사용.
                 LogcatManager.w(TAG, "GetPartialObject 미지원 — GetObject(0x1009) 전체 폴백 handle=0x%08x".format(handle))
                 val whole = execMtpOp(sock, OP_GetObject, intArrayOf(handle), DATA_DIR_CAMERA_TO_HOST_OR_NONE)
                 if (whole.respCode != RC_OK) {
                     LogcatManager.e(TAG, "❌ GetObject 실패(0x%04x) handle=0x%08x".format(whole.respCode, handle))
                     return null
                 }
-                out.write(whole.data)
-                offset = objectSize
-                break
+                return finalize(whole.data, fileName, handle, vendor)
             }
             if (res.respCode != RC_OK) {
                 LogcatManager.e(TAG, "❌ GetPartialObject 실패(0x%04x) handle=0x%08x off=%d".format(res.respCode, handle, offset))
@@ -459,10 +470,12 @@ class PtpipTetherService @Inject constructor(
                 LogcatManager.w(TAG, "GetPartialObject 0바이트 반환 off=%d — 중단".format(offset))
                 break
             }
-            out.write(res.data)
-            offset += res.data.size
+            val copyLen = minOf(res.data.size.toLong(), objectSize - offset).toInt()
+            System.arraycopy(res.data, 0, buf, offset.toInt(), copyLen)
+            offset += copyLen
         }
-        return finalize(out.toByteArray(), fileName, handle, vendor)
+        val bytes = if (offset == objectSize) buf else buf.copyOf(offset.toInt())
+        return finalize(bytes, fileName, handle, vendor)
     }
 
     /**
