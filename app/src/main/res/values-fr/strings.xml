@@ -110,6 +110,7 @@
     <string name="sync_photos">Synchroniser Photos</string>
     <string name="uploading">Téléversement...</string>
     <string name="downloading">Téléchargement...</string>
+    <string name="camera_control_downloading_count">Téléch. %1$d</string>
     <string name="upload_success">Téléversement réussi</string>
     <string name="upload_failed">Téléversement échoué</string>
     <string name="download_success">Téléchargement réussi</string>
@@ -168,6 +169,7 @@
     <string name="busy">Occupé</string>
     <string name="capturing">Capture...</string>
     <string name="processing">Traitement...</string>
+    <string name="camera_control_processing_count">Traitem. %1$d</string>
     <string name="connecting">Connexion...</string>
     <string name="initialized">Initialisé</string>
 

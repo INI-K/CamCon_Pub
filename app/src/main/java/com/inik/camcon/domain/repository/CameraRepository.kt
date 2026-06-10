@@ -11,6 +11,7 @@ import com.inik.camcon.domain.model.PtpDeviceInfo
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.model.TimelapseSettings
+import com.inik.camcon.domain.model.TransferQueueState
 import kotlinx.coroutines.flow.Flow
 
 interface CameraRepository {
@@ -66,6 +67,9 @@ interface CameraRepository {
 
     // 사진 관리
     fun getCapturedPhotos(): Flow<List<CapturedPhoto>>
+
+    /** 다운로드/처리 진행 카운트 관찰 (요구 E). capturedPhotos 와 동일 UDF 경로. */
+    fun getTransferQueue(): Flow<TransferQueueState>
     suspend fun getCameraPhotos(): Result<List<com.inik.camcon.domain.model.CameraPhoto>>
     suspend fun getCameraPhotosPaged(
         page: Int,

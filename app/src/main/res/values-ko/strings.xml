@@ -110,6 +110,7 @@
     <string name="sync_photos">사진 동기화</string>
     <string name="uploading">업로드중...</string>
     <string name="downloading">다운로드중...</string>
+    <string name="camera_control_downloading_count">다운로드 %1$d장</string>
     <string name="upload_success">업로드 성공</string>
     <string name="upload_failed">업로드 실패</string>
     <string name="download_success">다운로드 성공</string>
@@ -168,6 +169,7 @@
     <string name="busy">사용중</string>
     <string name="capturing">촬영중...</string>
     <string name="processing">처리중...</string>
+    <string name="camera_control_processing_count">처리 %1$d장</string>
     <string name="connecting">연결중...</string>
     <string name="initialized">초기화됨</string>
 

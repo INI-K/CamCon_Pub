@@ -54,6 +54,7 @@ class PhotoDownloadManager @Inject constructor(
     private val photoCaptureEventManager: PhotoCaptureEventManager,
     private val getSubscriptionUseCase: GetSubscriptionUseCase,
     private val validateImageFormatUseCase: ValidateImageFormatUseCase,
+    private val transferProgressTracker: TransferProgressTracker,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
 
@@ -413,6 +414,11 @@ class PhotoDownloadManager @Inject constructor(
             var processedPath: String? = null
 
             try {
+                // 전송 진행 카운트(요구 E3): 후처리·저장 단계 시작. 동일 fileName 이 DOWNLOADING 이었다면 PROCESSING 으로 전이.
+                // markProcessing 과 아래 finally 의 markDone 을 동일 try/finally 경계에 두어
+                // 디스패치 취소 시에도 markDone 이 반드시 짝지어지게 한다(누수 방지).
+                transferProgressTracker.markProcessing(fileName)
+
                 Log.d(TAG, "📦 Native 다운로드 데이터 처리 시작: $fileName")
                 // Log.d(TAG, "   데이터 크기: ${imageData.size / 1024}KB")
 
@@ -590,6 +596,9 @@ class PhotoDownloadManager @Inject constructor(
                 Log.e(TAG, "❌ Native 사진 저장 실패: $fileName", e)
                 null
             } finally {
+                // 전송 진행 카운트(요구 E3): 성공·실패·OOM 무관 처리 종료 → 큐에서 제거.
+                transferProgressTracker.markDone(fileName)
+
                 // 메모리 정리 - 모든 임시 객체 해제
                 try {
                     // 임시 파일들 정리

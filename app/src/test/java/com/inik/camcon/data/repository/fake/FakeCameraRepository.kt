@@ -13,6 +13,7 @@ import com.inik.camcon.domain.model.PtpDeviceInfo
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.model.TimelapseSettings
+import com.inik.camcon.domain.model.TransferQueueState
 import com.inik.camcon.domain.repository.CameraRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -205,6 +206,10 @@ class FakeCameraRepository : CameraRepository {
 
     override fun getCapturedPhotos(): Flow<List<CapturedPhoto>> {
         return _capturedPhotos.asSharedFlow()
+    }
+
+    override fun getTransferQueue(): Flow<TransferQueueState> {
+        return flowOf(TransferQueueState())
     }
 
     override suspend fun getCameraPhotos(): Result<List<CameraPhoto>> {
