@@ -78,17 +78,16 @@ class PtpipDiscoveryService @Inject constructor(
             Log.i(TAG, "카메라 검색 시작 (최적화 모드)")
 
             try {
-                // 1단계: 캐시된 IP로 빠른 시도 (STA 모드에서만) - 디버깅용 비활성화
+                // 1단계: 캐시된 IP로 빠른 시도 (STA 모드에서만, 0.5-1초)
+                // 성공 시 5초+ 걸리는 mDNS 검색을 생략해 재연결을 크게 단축한다.
+                // (한동안 디버깅용으로 비활성화되어 매 재연결마다 mDNS 풀스캔이 강제됐었음)
                 if (!forceApMode && !wifiHelper.isConnectedToCameraAP()) {
                     Log.d(TAG, "1단계: 캐시된 IP 확인 시도...")
-                    val cachedIP = prefs.getString(PREF_LAST_CAMERA_IP, null)
-                    val cachedName = prefs.getString(PREF_LAST_CAMERA_NAME, null)
-
-                    if (cachedIP != null && cachedName != null) {
-                        Log.d(TAG, "캐시된 IP 정보: ${LogMask.id(cachedIP)} (${LogMask.id(cachedName)})")
-                        Log.w(TAG, "캐시 무시하고 mDNS 검색 진행 (디버깅 모드)")
-                    } else {
-                        Log.d(TAG, "캐시된 IP 정보 없음")
+                    val cachedCamera = tryCachedIP()
+                    if (cachedCamera != null) {
+                        Log.i(TAG, "캐시된 IP 연결 성공 - mDNS 검색 생략")
+                        cameras.add(cachedCamera)
+                        return@withContext cameras
                     }
                 }
 

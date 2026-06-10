@@ -248,21 +248,19 @@ class PtpipConnectionManager @Inject constructor(
                 output.write(packet)
                 output.flush()
 
-                // 응답 대기
-                socket.soTimeout = 5000
-                val response = ByteArray(1024)
-                val bytesRead = socket.getInputStream().read(response)
+                // 응답 대기 — 단일 read()는 TCP 단편화/선행 이벤트 패킷에 취약하므로
+                // 패킷 단위 수신 루프를 재사용한다 (OPERATION_RESPONSE 까지 수신).
+                val responses = readCompleteResponseDynamic(socket, timeoutMs = 5000)
+                val hasOperationResponse = responses.any { packet ->
+                    packet.size >= 8 &&
+                        ByteBuffer.wrap(packet, 4, 4).order(ByteOrder.LITTLE_ENDIAN).int ==
+                        PtpipConstants.PTPIP_OPERATION_RESPONSE
+                }
 
-                if (bytesRead >= 8) {
-                    val buffer = ByteBuffer.wrap(response).order(ByteOrder.LITTLE_ENDIAN)
-                    buffer.position(4)
-                    val responseType = buffer.int
-
-                    if (responseType == PtpipConstants.PTPIP_OPERATION_RESPONSE) {
-                        sessionState.set(PtpSessionState.OPEN)
-                        Log.d(TAG, "OpenSession 성공 (sessionId=$newSessionId)")
-                        return@withContext true
-                    }
+                if (hasOperationResponse) {
+                    sessionState.set(PtpSessionState.OPEN)
+                    Log.d(TAG, "OpenSession 성공 (sessionId=$newSessionId)")
+                    return@withContext true
                 }
 
                 // 실패 시 롤백
@@ -539,13 +537,16 @@ class PtpipConnectionManager @Inject constructor(
      * PTP 패킷 헤더의 길이 필드를 먼저 읽고 정확한 크기만큼 데이터를 수신한다.
      * 대용량 패킷(GetDeviceInfo 등)에서 데이터 잘림을 방지한다.
      */
-    private fun readCompleteResponseDynamic(socket: Socket): List<ByteArray> {
+    private fun readCompleteResponseDynamic(
+        socket: Socket,
+        timeoutMs: Int = 2000
+    ): List<ByteArray> {
         try {
             val input = socket.getInputStream()
             val responses = mutableListOf<ByteArray>()
             var operationResponseReceived = false
 
-            socket.soTimeout = 2000
+            socket.soTimeout = timeoutMs
 
             while (!operationResponseReceived) {
                 // 1. 패킷 길이 4바이트 읽기
