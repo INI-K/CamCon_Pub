@@ -59,6 +59,9 @@ class CameraControlRepositoryImpl @Inject constructor(
 
                 val widgetJson = getWidgetJsonFromSource()
                 val settings = parseWidgetJsonToSettings(widgetJson)
+                    ?: return@withContext Result.failure(
+                        UnsupportedOperationException("위젯 JSON 값 파싱 미구현 - 설정을 확인할 수 없습니다")
+                    )
 
                 withContext(Dispatchers.Main) {
                     _cameraSettings.value = settings
@@ -102,17 +105,13 @@ class CameraControlRepositoryImpl @Inject constructor(
 
     /**
      * 위젯 JSON을 CameraSettings로 변환. (TODO: 실제 파싱)
+     *
+     * 현재 네이티브 buildWidgetJson 은 value 필드를 직렬화하지 않아 실제 값 파싱이 불가능하다.
+     * 과거에는 하드코딩 더미(ISO 100, 1/125, F2.8)를 반환해 설정 UI와 촬영 사진 메타데이터에
+     * 가짜 값이 기록됐다 — 구현 전까지 null(설정 미상)을 반환해 정직하게 실패시킨다.
      */
-    private fun parseWidgetJsonToSettings(widgetJson: String): CameraSettings {
-        // TODO: JSON 파싱하여 설정 추출
-        return CameraSettings(
-            iso = "100",
-            shutterSpeed = "1/125",
-            aperture = "2.8",
-            whiteBalance = "자동",
-            focusMode = "AF-S",
-            exposureCompensation = "0"
-        )
+    private fun parseWidgetJsonToSettings(widgetJson: String): CameraSettings? {
+        return null
     }
 
     suspend fun getCameraInfo(): Result<String> {
