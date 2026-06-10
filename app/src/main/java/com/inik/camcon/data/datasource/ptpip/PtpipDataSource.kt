@@ -1145,6 +1145,29 @@ class PtpipDataSource @Inject constructor(
     }
 
     /**
+     * Wi-Fi(PTPIP) 이벤트 리스너 재시작 — 연결은 살아있는데 리스너만 꺼진 경우 복구용.
+     *
+     * BackgroundSyncService 감독 루프·미리보기 탭 이탈 등에서 호출되는
+     * CameraRepository.startCameraEventListener()는 USB 전용 경로라 Wi-Fi 리스너를
+     * 되살릴 수 없었다. PTPIP은 자체 onPhotoDownloaded 저장 콜백(MediaStore 경로)이
+     * 필요하므로 여기서 startAutomaticFileReceiving을 재사용해 복구한다.
+     *
+     * @return 호출 후 리스너가 실행 중이면 true.
+     */
+    suspend fun restartEventListenerIfNeeded(): Result<Boolean> {
+        val camera = connectedCamera
+        if (camera == null || _connectionState.value != PtpipConnectionState.CONNECTED) {
+            return Result.failure(Exception("PTPIP 카메라가 연결되지 않음"))
+        }
+        if (cameraEventManager.isRunning()) {
+            return Result.success(true)
+        }
+        Log.i(TAG, "PTPIP 이벤트 리스너 재시작 시도: ${LogMask.serial(camera.name)}")
+        startAutomaticFileReceiving(camera)
+        return Result.success(cameraEventManager.isRunning())
+    }
+
+    /**
      * AP 모드 연결 성공 시 이벤트 리스너 시작 (CameraEventManager 활용)
      */
     private suspend fun startAutomaticFileReceiving(camera: PtpipCamera) {
