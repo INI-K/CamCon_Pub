@@ -290,7 +290,7 @@ SplashActivity (LAUNCHER)
 #### PhotoPreviewScreen
 - **그리드**: LazyVerticalStaggeredGrid 2열, 첫 번째 사진 전체 너비 강조
 - **기능**: Pull-to-refresh, 무한 스크롤(페이징), 멀티 선택/다운로드, 파일 타입 필터(ALL/RAW/JPG)
-- **PTPIP 연결 시**: 미리보기 탭 차단 오버레이
+- **연결 모드**: USB·Wi-Fi(PTPIP) 공통으로 카메라 카드 파일 목록 조회 (네이티브 커맨드 큐가 FILE_LIST↔EVENT_POLL 직렬화. 과거 PTPIP 차단·로컬 전용 스캔은 2026-06-11 제거)
 
 #### MyPhotosScreen
 - **그리드**: LazyVerticalStaggeredGrid 4열, LRU 썸네일 캐시 (64MB)

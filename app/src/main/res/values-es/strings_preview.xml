@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="preview_local_only_banner">En modo Wi-Fi solo se muestran las fotos descargadas localmente. Se recomienda el modo USB para acceder a la tarjeta de la cámara.</string>
-    <string name="preview_ptpip_first_warning">En modo Wi-Fi solo se muestran fotos locales. Cambia a USB para explorar la tarjeta de la cámara.</string>
     <string name="preview_delete_title">¿Eliminar foto?</string>
     <string name="preview_delete_confirm">¿Eliminar esta foto? También se eliminará de la memoria de la cámara.</string>
     <string name="preview_delete_success">Foto eliminada</string>

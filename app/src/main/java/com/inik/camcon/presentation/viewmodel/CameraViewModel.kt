@@ -262,12 +262,6 @@ class CameraViewModel @Inject constructor(
         viewModelScope.launch {
             isPtpipConnected.collectLatest { isConnected ->
                 uiStateManager.updatePtpipConnectionState(isConnected)
-                if (isConnected) {
-                    // PTPIP 연결 상태에 따라 사진 미리보기 탭을 블록합니다.
-                    uiStateManager.blockPreviewTab(true)
-                } else {
-                    uiStateManager.blockPreviewTab(false)
-                }
             }
         }
     }

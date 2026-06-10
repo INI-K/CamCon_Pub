@@ -107,8 +107,7 @@ data class CameraUiState(
     val isLoading: Boolean = false,
     val isInitializing: Boolean = false,
     val isCameraInitializing: Boolean = false,
-    val isEventListenerActive: Boolean = false,
-    val isPreviewTabBlocked: Boolean = false
+    val isEventListenerActive: Boolean = false
 ) {
     // === 하위 호환 편의 프로퍼티 ===
     // 기존 코드에서 uiState.isConnected 패턴으로 접근하던 곳을 지원

@@ -238,11 +238,14 @@ class CameraControlRepositoryImpl @Inject constructor(
     }
 
     suspend fun getCameraThumbnail(photoPath: String): Result<ByteArray> {
+        // Wi-Fi(PTPIP)에서도 네이티브 세션이 살아있으므로 썸네일 조회를 허용한다.
+        // (USB 전용 플래그만 보면 PTPIP에서 항상 "카메라 연결 안됨"으로 실패)
+        val isPtpip = connectionManager.isPtpipConnected.value
         return downloadManager.getCameraThumbnail(
             photoPath = photoPath,
-            isConnected = connectionManager.isConnected.value,
+            isConnected = connectionManager.isConnected.value || isPtpip,
             isInitializing = connectionManager.isInitializing.value,
-            isNativeCameraConnected = usbCameraManager.isNativeCameraConnected.value
+            isNativeCameraConnected = usbCameraManager.isNativeCameraConnected.value || isPtpip
         )
     }
 
