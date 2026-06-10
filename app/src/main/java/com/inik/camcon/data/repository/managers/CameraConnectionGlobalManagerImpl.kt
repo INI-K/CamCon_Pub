@@ -108,14 +108,12 @@ class CameraConnectionGlobalManagerImpl @Inject constructor(
             else -> null
         }
 
-        // AP 연결이면 true, PTPIP 미연결이면 false를 단 한 번만 푸시한다.
-        // (STA 연결은 연결 흐름에서 직접 갱신하므로 여기선 null=무시)
-        val ptpipStatusToPush: Boolean? = when {
-            activeConnection == CameraConnectionType.AP_MODE -> true
-            ptpipState != PtpipConnectionState.CONNECTED -> false
-            else -> null
-        }
-        if (ptpipStatusToPush != null && ptpipStatusToPush != lastPushedPtpipConnected) {
+        // PTPIP 연결(AP/STA 공통)이면 true, 미연결이면 false를 단 한 번만 푸시한다.
+        // 과거 "STA는 연결 흐름에서 직접 갱신"을 전제로 STA를 제외(null)했으나 실제 갱신
+        // 코드가 존재하지 않아 STA에서 isPtpipConnected가 영원히 false로 남았다 — 이로 인해
+        // 미리보기 탭 진입 시 USB 분기로 빠져 Wi-Fi 이벤트 리스너를 중단시키는 버그가 있었다.
+        val ptpipStatusToPush: Boolean = ptpipState == PtpipConnectionState.CONNECTED
+        if (ptpipStatusToPush != lastPushedPtpipConnected) {
             lastPushedPtpipConnected = ptpipStatusToPush
             managerScope.launch {
                 try {
