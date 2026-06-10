@@ -33,6 +33,11 @@ class ColorTransferRepositoryImpl @Inject constructor(
         // 고화소 원본을 그대로 EGL pbuffer로 만들면 GL_MAX_TEXTURE_SIZE/메모리 초과로
         // 결과가 검게/깨져 나오거나 네이티브 크래시가 난다. 이 한도로 다운스케일해 방지한다.
         private const val MAX_GPU_DIMENSION = 4096
+
+        // CPU(캐시 통계) 색감 전송 경로에서 허용하는 최대 긴 변 px.
+        // 풀해상도 ARGB_8888 원본을 그대로 디코딩하면 고화소 카메라에서 100MB+ 비트맵이 되어
+        // OOM 위험이 크다. GPU 한도와 동일한 4096px 로 다운스케일해 메모리를 제한한다.
+        private const val MAX_CT_DIMENSION = 4096
     }
 
     override suspend fun applyColorTransferWithGPUCached(
@@ -207,7 +212,10 @@ class ColorTransferRepositoryImpl @Inject constructor(
             val referenceStats = colorTransferProcessor.getCachedReferenceStats(referenceImagePath)
                 ?: return@withContext null
 
-            val inputBitmap = loadBitmapFromPath(inputImagePath) ?: return@withContext null
+            // 풀해상도 원본을 그대로 디코딩하면 고화소에서 100MB+ ARGB_8888 비트맵이 되어 OOM.
+            // 4096px 한도로 다운스케일 디코딩해 메모리(~16MB)를 제한한다.
+            val inputBitmap =
+                loadScaledBitmap(inputImagePath, MAX_CT_DIMENSION) ?: return@withContext null
             inputBitmapToRecycle = inputBitmap
 
             // 최적화된 네이티브 먼저 시도, 실패 시 Kotlin으로 폴백
