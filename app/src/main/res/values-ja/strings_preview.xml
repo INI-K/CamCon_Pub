@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="preview_local_only_banner">Wi-Fiモードではローカルにダウンロード済みの写真のみ表示されます。カメラカードへのアクセスはUSBモードを推奨します。</string>
-    <string name="preview_ptpip_first_warning">Wi-Fiモードではローカル写真のみ表示されます。カメラカードを閲覧するにはUSBに切り替えてください。</string>
     <string name="preview_delete_title">写真を削除</string>
     <string name="preview_delete_confirm">この写真を削除しますか？カメラメモリからも削除されます。</string>
     <string name="preview_delete_success">写真を削除しました</string>

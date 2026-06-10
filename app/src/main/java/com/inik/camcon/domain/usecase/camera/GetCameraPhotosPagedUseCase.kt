@@ -3,7 +3,6 @@ package com.inik.camcon.domain.usecase.camera
 import com.inik.camcon.domain.model.PaginatedCameraPhotos
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.util.Logger
-import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
 class GetCameraPhotosPagedUseCase @Inject constructor(
@@ -16,13 +15,8 @@ class GetCameraPhotosPagedUseCase @Inject constructor(
 
     suspend operator fun invoke(page: Int, pageSize: Int = 20): Result<PaginatedCameraPhotos> {
         return try {
-            // PTPIP 연결 상태 확인 - 연결된 경우 차단
-            val isPtpipConnected = cameraRepository.isPtpipConnected().first()
-            if (isPtpipConnected) {
-                logger.w(TAG, "PTPIP 연결 상태 - 파일 목록 가져오기 차단 (페이지: $page)")
-                return Result.failure(Exception("PTPIP 연결 시 사진 미리보기는 지원되지 않습니다.\nUSB 케이블 연결을 사용해주세요."))
-            }
-
+            // PTPIP(Wi-Fi)에서도 네이티브 커맨드 큐가 FILE_LIST와 EVENT_POLL을 직렬화하므로
+            // 파일 목록 조회를 허용한다 (과거 차단은 큐 도입 이전의 레거시 제약).
             logger.d(TAG, "파일 목록 가져오기 시작 (페이지: $page, 크기: $pageSize)")
             cameraRepository.getCameraPhotosPaged(page, pageSize)
         } catch (e: Exception) {

@@ -206,7 +206,9 @@ class PhotoPreviewViewModel @Inject constructor(
                 Log.d(TAG, "📸 사진 미리보기 탭 진입 - PTPIP 연결 상태: $isPtpipConnected")
 
                 if (isPtpipConnected) {
-                    Log.d(TAG, "PTPIP 연결 상태 - 이벤트 리스너 유지 (파일 목록만 차단)")
+                    // Wi-Fi(PTPIP)는 이벤트 리스너를 유지한 채 파일 목록을 조회한다.
+                    // 네이티브 커맨드 큐가 FILE_LIST와 EVENT_POLL을 직렬화하므로 안전.
+                    Log.d(TAG, "PTPIP 연결 상태 - 이벤트 리스너 유지")
                 } else {
                     Log.d(TAG, "USB 연결 상태 - 이벤트 리스너 중지")
 
@@ -354,20 +356,9 @@ class PhotoPreviewViewModel @Inject constructor(
                 _uiState.update { it.copy(isConnected = isConnected) }
 
                 if (isConnected && !previousConnected) {
-                    Log.d(TAG, "카메라 연결됨 - PTPIP 상태 확인 후 사진 목록 처리")
-
-                    // PTPIP 연결 상태를 확인하여 파일 목록 로딩 여부 결정
-                    val isPtpipConnected = _uiState.value.isPtpipConnected
-                    if (isPtpipConnected) {
-                        Log.d(TAG, "PTPIP 연결 상태 - 로컬 다운로드 디렉터리 전용 스캔")
-                        loadLocalOnlyPhotos()
-                    } else {
-                        Log.d(TAG, "USB 연결 상태 - 파일 목록 불러오기")
-                        photoListManager.loadInitialPhotos(
-                            _uiState.value.isConnected,
-                            _uiState.value.isPtpipConnected
-                        )
-                    }
+                    // USB/PTPIP 공통 — 카메라 파일 목록 불러오기
+                    Log.d(TAG, "카메라 연결됨 - 파일 목록 불러오기")
+                    photoListManager.loadInitialPhotos(_uiState.value.isConnected)
 
                     // observePhotosAndLoadThumbnails()는 이미 setupObservers()에서 설정됨
                     // 여기서 별도로 호출하지 않음
@@ -396,10 +387,10 @@ class PhotoPreviewViewModel @Inject constructor(
             cameraRepository.isPtpipConnected().collect { isPtpipConnected ->
                 val previous = _uiState.value.isPtpipConnected
                 _uiState.update { it.copy(isPtpipConnected = isPtpipConnected) }
-                // PTPIP 활성 전환 시 로컬 디렉터리 즉시 스캔 (카메라 연결 이벤트 후행 케이스 대비).
+                // PTPIP 활성 전환 시 카메라 파일 목록 로드 (카메라 연결 이벤트 후행 케이스 대비).
                 if (isPtpipConnected && !previous) {
-                    Log.d(TAG, "PTPIP 활성 전환 감지 - 로컬 스캔 트리거")
-                    loadLocalOnlyPhotos()
+                    Log.d(TAG, "PTPIP 활성 전환 감지 - 파일 목록 로드 트리거")
+                    photoListManager.loadInitialPhotos(isConnected = true)
                 }
             }
         }
@@ -478,25 +469,14 @@ class PhotoPreviewViewModel @Inject constructor(
      * 초기 사진 목록 로드 (PhotoListManager에 위임)
      */
     fun loadInitialPhotos() {
-        if (_uiState.value.isPtpipConnected) {
-            Log.d(TAG, "PTPIP 연결 상태로 인해 파일 목록 로딩 차단")
-            return
-        }
-        photoListManager.loadInitialPhotos(
-            _uiState.value.isConnected,
-            _uiState.value.isPtpipConnected
-        )
+        photoListManager.loadInitialPhotos(_uiState.value.isConnected)
     }
 
     /**
      * 다음 페이지 로드 (PhotoListManager에 위임)
      */
     fun loadNextPage() {
-        if (_uiState.value.isPtpipConnected) {
-            Log.d(TAG, "PTPIP 연결 상태로 인해 파일 목록 로딩 차단")
-            return
-        }
-        photoListManager.loadNextPage(_uiState.value.isPtpipConnected)
+        photoListManager.loadNextPage()
 
         // 다음 페이지 로드 시에는 observePhotosAndLoadThumbnails()의 collect가
         // 자동으로 filteredPhotos 변화를 감지하여 썸네일 로딩을 처리함
@@ -507,12 +487,8 @@ class PhotoPreviewViewModel @Inject constructor(
      * 사진 목록 새로고침 (PhotoListManager에 위임)
      */
     fun refreshPhotos() {
-        if (_uiState.value.isPtpipConnected) {
-            Log.d(TAG, "PTPIP 연결 상태로 인해 파일 목록 로딩 차단")
-            return
-        }
         Log.d(TAG, "사진 목록 새로고침")
-        photoListManager.refreshPhotos(_uiState.value.isConnected, _uiState.value.isPtpipConnected)
+        photoListManager.refreshPhotos(_uiState.value.isConnected)
     }
 
     /**
@@ -526,7 +502,7 @@ class PhotoPreviewViewModel @Inject constructor(
      * 프리로딩 체크 (PhotoListManager에 위임)
      */
     fun onPhotoIndexReached(currentIndex: Int) {
-        photoListManager.onPhotoIndexReached(currentIndex, _uiState.value.isPtpipConnected)
+        photoListManager.onPhotoIndexReached(currentIndex)
     }
 
     /**
@@ -626,12 +602,7 @@ class PhotoPreviewViewModel @Inject constructor(
                 if (_uiState.value.selectedPhoto?.path == photo.path) {
                     _uiState.update { it.copy(selectedPhoto = null) }
                 }
-                if (!_uiState.value.isPtpipConnected) {
-                    photoListManager.refreshPhotos(
-                        _uiState.value.isConnected,
-                        _uiState.value.isPtpipConnected
-                    )
-                }
+                photoListManager.refreshPhotos(_uiState.value.isConnected)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -710,16 +681,10 @@ class PhotoPreviewViewModel @Inject constructor(
     }
 
     /**
-     * 카메라 사진 로드 (별칭).
-     *
-     * PTPIP 활성 시에는 카메라 fetch 대신 로컬 디렉터리 스캔으로 분기한다 (G4 후속).
+     * 카메라 사진 로드 (별칭). USB/PTPIP 공통 카메라 파일 목록 경로.
      */
     fun loadCameraPhotos() {
-        if (_uiState.value.isPtpipConnected) {
-            loadLocalOnlyPhotos()
-        } else {
-            loadInitialPhotos()
-        }
+        loadInitialPhotos()
     }
 
     /**
@@ -745,19 +710,6 @@ class PhotoPreviewViewModel @Inject constructor(
             Log.d(TAG, "마지막 실패 다운로드 없음 - 전체 새로고침 폴백")
             loadCameraPhotos()
         }
-    }
-
-    /**
-     * H3 — PTPIP 활성 시 카메라 fetch는 스킵, 로컬 다운로드 디렉터리만 스캔.
-     *
-     * PhotoListManager 의 카메라 페이지 fetch 경로는 PTPIP 시 차단되므로, 본 함수는
-     * 로컬 디렉터리(외부 DCIM/CamCon · 내부 photos · 임시 다운로드 · 색감 전송 결과)를
-     * 직접 스캔하여 그리드에 표시한다. RAW 게이팅은 ValidateImageFormatUseCase 단일 지점에
-     * 의해 [PhotoListManager.updateFilteredPhotos] 내부에서 처리된다.
-     */
-    fun loadLocalOnlyPhotos() {
-        Log.d(TAG, "loadLocalOnlyPhotos 호출 - PTPIP 모드 로컬 전용 스캔")
-        photoListManager.loadLocalPhotos(_uiState.value.currentTier)
     }
 
     // MARK: - 비공개 헬퍼 메서드
@@ -825,7 +777,10 @@ class PhotoPreviewViewModel @Inject constructor(
                 if (currentConnected) {
                     if (isPtpipConnected) {
                         Log.d(TAG, "PTPIP 연결 상태 - 이벤트 리스너 재시작 불필요")
-                        // PTPIP에서는 이벤트 리스너가 계속 실행 중이므로 재시작 불필요
+                        // PTPIP에서는 이벤트 리스너가 계속 실행 중이므로 재시작 불필요.
+                        // 단, USB 상태로 탭에 진입했다가 PTPIP로 전환된 경우 previewMode가 남아
+                        // BackgroundSyncService 재시작 감독을 영구 억제하는 누수를 방지한다.
+                        cameraRepository.setPhotoPreviewMode(false)
                     } else {
                         Log.d(TAG, "USB 연결 상태 - 이벤트 리스너 재시작 처리")
 
@@ -908,7 +863,10 @@ class PhotoPreviewViewModel @Inject constructor(
                 if (currentConnected) {
                     if (isPtpipConnected) {
                         Log.d(TAG, "PTPIP 연결 상태 - 이벤트 리스너 재시작 불필요")
-                        // PTPIP에서는 이벤트 리스너가 계속 실행 중이므로 재시작 불필요
+                        // PTPIP에서는 이벤트 리스너가 계속 실행 중이므로 재시작 불필요.
+                        // 단, USB 상태로 탭에 진입했다가 PTPIP로 전환된 경우 previewMode가 남아
+                        // BackgroundSyncService 재시작 감독을 영구 억제하는 누수를 방지한다.
+                        cameraRepository.setPhotoPreviewMode(false)
                     } else {
                         Log.d(TAG, "USB 연결 상태 - 이벤트 리스너 재시작 처리")
 

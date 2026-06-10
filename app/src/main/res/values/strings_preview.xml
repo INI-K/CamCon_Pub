@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- PhotoPreview group 4 — UX 개선 -->
-    <string name="preview_local_only_banner">Wi-Fi mode shows only locally downloaded photos. USB mode is recommended for camera card access.</string>
-    <string name="preview_ptpip_first_warning">Wi-Fi mode shows only locally downloaded photos. Switch to USB to browse the camera card.</string>
     <string name="preview_delete_title">Delete photo?</string>
     <string name="preview_delete_confirm">Delete this photo? It will be removed from camera memory as well.</string>
     <string name="preview_delete_success">Photo deleted</string>
