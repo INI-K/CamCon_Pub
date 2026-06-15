@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -48,6 +47,7 @@ import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.ui.components.v2.AppDialog
 import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.Elevation
 import com.inik.camcon.presentation.theme.Surface2
@@ -372,7 +372,7 @@ private fun SavedWifiNetworksCard(
     }
 
     ssidToDelete?.let { ssid ->
-        AlertDialog(
+        AppDialog(
             onDismissRequest = { ssidToDelete = null },
             title = { Text(stringResource(R.string.ap_mode_delete_saved_network)) },
             text = { Text(stringResource(R.string.ap_mode_delete_saved_network_confirm, ssid)) },

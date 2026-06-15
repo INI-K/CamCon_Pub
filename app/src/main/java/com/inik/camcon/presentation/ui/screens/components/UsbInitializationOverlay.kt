@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -32,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.inik.camcon.domain.model.ThemeMode
+import com.inik.camcon.presentation.ui.components.v2.AppDialog
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.Elevation
 import com.inik.camcon.presentation.theme.Radius
@@ -164,7 +164,7 @@ fun PtpTimeoutDialog(
     onDismissRequest: () -> Unit = {},
     onRestartRequest: () -> Unit
 ) {
-    AlertDialog(
+    AppDialog(
         onDismissRequest = onDismissRequest,
         title = {
             Text(

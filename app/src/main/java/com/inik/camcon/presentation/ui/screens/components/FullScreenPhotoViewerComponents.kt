@@ -27,7 +27,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -51,6 +50,7 @@ import com.github.panpf.zoomimage.CoilZoomAsyncImage
 import com.github.panpf.zoomimage.rememberCoilZoomState
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.CameraPhoto
+import com.inik.camcon.presentation.ui.components.v2.AppDialog
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Surface0
 import com.inik.camcon.presentation.theme.TextPrimaryV2
@@ -71,7 +71,7 @@ fun FullScreenTopBar(
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     if (showDeleteDialog && onDeleteClick != null) {
-        AlertDialog(
+        AppDialog(
             onDismissRequest = { showDeleteDialog = false },
             icon = {
                 Icon(
