@@ -84,6 +84,7 @@ class CameraRepositoryImplLruCacheTest {
         repository = CameraRepositoryImpl(
             context = context,
             colorTransferRepository = colorTransferRepository,
+            filmLutRepository = mockk(relaxed = true),
             cameraStateObserver = cameraStateObserver,
             lifecycleRepo = lifecycleRepo,
             captureRepo = captureRepo,

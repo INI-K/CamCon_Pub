@@ -115,4 +115,13 @@
     <string name="settings_v2_referral_generate_in_progress">正在生成…</string>
     <string name="settings_v2_referral_extract_title">提取一个可用代码</string>
     <string name="settings_v2_referral_extract_subtitle">将一个未使用的推荐码复制到剪贴板</string>
+
+    <!-- 필름 시뮬레이션 -->
+    <string name="settings_v2_section_film_simulation">胶片模拟</string>
+    <string name="settings_v2_film_simulation_title">胶片模拟</string>
+    <string name="settings_v2_film_simulation_on">已开启 · 已选择 LUT</string>
+    <string name="settings_v2_film_simulation_on_nolut">已开启 · 请选择 LUT</string>
+    <string name="settings_v2_film_simulation_off">已关闭</string>
+    <string name="settings_v2_film_simulation_detail_title">胶片 LUT 设置</string>
+    <string name="settings_v2_film_simulation_detail_subtitle">选择 LUT · 实时预览 · 导出</string>
 </resources>

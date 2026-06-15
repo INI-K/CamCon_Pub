@@ -14,6 +14,7 @@ import com.inik.camcon.domain.model.TimelapseSettings
 import com.inik.camcon.domain.model.TransferQueueState
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.repository.ColorTransferRepository
+import com.inik.camcon.domain.repository.FilmLutRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
@@ -40,6 +41,7 @@ import javax.inject.Singleton
 class CameraRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val colorTransferRepository: ColorTransferRepository,
+    private val filmLutRepository: FilmLutRepository,
     private val cameraStateObserver: com.inik.camcon.domain.manager.CameraStateObserver,
     private val lifecycleRepo: CameraLifecycleRepositoryImpl,
     private val captureRepo: CameraCaptureRepositoryImpl,
@@ -69,6 +71,7 @@ class CameraRepositoryImpl @Inject constructor(
      */
     private fun initializeRepository() {
         colorTransferRepository.initializeGPU(context)
+        filmLutRepository.initializeGPU(context)
 
         captureRepo.cameraSettingsProvider = { controlRepo.getCachedSettings() }
         captureRepo.onFlushCompleteCallback = {

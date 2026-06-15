@@ -14,6 +14,7 @@ import com.inik.camcon.data.service.WifiMonitoringService
 import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.usecase.ColorTransferUseCase
+import com.inik.camcon.domain.usecase.FilmLutUseCase
 import com.inik.camcon.utils.LogMask
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CompletableDeferred
@@ -44,6 +45,9 @@ class CamCon : Application() {
 
     @Inject
     lateinit var colorTransferUseCase: ColorTransferUseCase
+
+    @Inject
+    lateinit var filmLutUseCase: FilmLutUseCase
 
     // 결제 시트 등 Activity 컨텍스트가 필요한 시점에 현재 resumed Activity를 제공
     @Inject
@@ -356,9 +360,10 @@ class CamCon : Application() {
         try {
             // 앱 전역 색감전송 GPU/EGL 자원 해제 (앱당 1회, 종료 시점)
             colorTransferUseCase.releaseGpu()
-            Log.d(TAG, "색감전송 GPU 자원 정리 완료")
+            filmLutUseCase.releaseGpu()
+            Log.d(TAG, "색감전송/필름 시뮬 GPU 자원 정리 완료")
         } catch (e: Exception) {
-            Log.w(TAG, "색감전송 GPU 자원 정리 중 오류", e)
+            Log.w(TAG, "색감전송/필름 시뮬 GPU 자원 정리 중 오류", e)
         }
 
         super.onTerminate()

@@ -21,6 +21,7 @@ import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.domain.model.PaginatedCameraPhotos
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.usecase.ColorTransferUseCase
+import com.inik.camcon.domain.usecase.FilmLutUseCase
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.domain.usecase.camera.PhotoCaptureEventManager
@@ -51,6 +52,7 @@ class PhotoDownloadManager @Inject constructor(
     private val nativeDataSource: NativeCameraDataSource,
     private val appPreferencesDataSource: AppPreferencesDataSource,
     private val colorTransferUseCase: ColorTransferUseCase,
+    private val filmLutUseCase: FilmLutUseCase,
     private val photoCaptureEventManager: PhotoCaptureEventManager,
     private val getSubscriptionUseCase: GetSubscriptionUseCase,
     private val validateImageFormatUseCase: ValidateImageFormatUseCase,
@@ -411,6 +413,7 @@ class PhotoDownloadManager @Inject constructor(
             var tempFile: File? = null
             var processedFile: File? = null
             var colorTransferredFile: File? = null
+            var filmLutFile: File? = null
             var processedPath: String? = null
 
             try {
@@ -550,6 +553,57 @@ class PhotoDownloadManager @Inject constructor(
                     }
                 }
 
+                // 필름 시뮬레이션 적용 (색감 전송 결과 또는 이전 단계 산출물에 LUT 적용)
+                val isFilmSimEnabled = appPreferencesDataSource.isFilmSimulationEnabled.first()
+                val selectedFilmLutId = appPreferencesDataSource.selectedFilmLutId.first()
+                val filmSimIntensity = appPreferencesDataSource.filmSimulationIntensity.first()
+                val filmInputPath = processedPath
+                if (isFilmSimEnabled &&
+                    selectedFilmLutId.isNotEmpty() &&
+                    filmInputPath != null &&
+                    extension in Constants.ImageProcessing.JPEG_EXTENSIONS
+                ) {
+                    Log.d(TAG, "🎞️ 필름 시뮬레이션 적용 시작: $fileName (강도=$filmSimIntensity)")
+                    try {
+                        val runtime = Runtime.getRuntime()
+                        val availableMemory =
+                            runtime.maxMemory() - (runtime.totalMemory() - runtime.freeMemory())
+                        if (availableMemory < 50 * 1024 * 1024) { // 50MB 미만
+                            Log.w(TAG, "⚠️ 메모리 부족으로 필름 시뮬레이션 스킵")
+                        } else {
+                            val currentProcessedFile = File(filmInputPath)
+                            val filmOutputFile = File(
+                                currentProcessedFile.parent,
+                                "${currentProcessedFile.nameWithoutExtension}_film.jpg"
+                            )
+                            filmLutFile = filmOutputFile
+
+                            val filmResult = colorTransferSemaphore.withPermit {
+                                filmLutUseCase.applyFilmLutAndSave(
+                                    currentProcessedFile.absolutePath,
+                                    selectedFilmLutId,
+                                    currentProcessedFile.absolutePath,
+                                    filmOutputFile.absolutePath,
+                                    filmSimIntensity
+                                )
+                            }
+
+                            if (filmResult != null) {
+                                processedPath = filmOutputFile.absolutePath
+                                Log.d(TAG, "✅ 필름 시뮬레이션 적용 완료: ${filmOutputFile.name}")
+                            } else {
+                                Log.w(TAG, "⚠️ 필름 시뮬레이션 실패, 이전 처리된 이미지 사용")
+                            }
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: OutOfMemoryError) {
+                        Log.e(TAG, "❌ 메모리 부족으로 필름 시뮬레이션 실패", e)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "❌ 필름 시뮬레이션 처리 중 오류", e)
+                    }
+                }
+
                 // SAF를 사용한 후처리 (Android 10+에서 MediaStore로 이동)
                 val fileNameWithFolder = if (cameraSubFolder.isNotEmpty()) {
                     "$cameraSubFolder/$fileName"
@@ -611,6 +665,13 @@ class PhotoDownloadManager @Inject constructor(
                         } ?: true
                     }?.delete()
                     colorTransferredFile?.takeIf {
+                        it.exists() && processedPath?.let { path ->
+                            it != File(
+                                path
+                            )
+                        } ?: true
+                    }?.delete()
+                    filmLutFile?.takeIf {
                         it.exists() && processedPath?.let { path ->
                             it != File(
                                 path
@@ -792,6 +853,57 @@ class PhotoDownloadManager @Inject constructor(
             } else {
                 if (isColorTransferEnabled) {
                     Log.d(TAG, "⚠️ 색감 전송 활성화되어 있지만 참조 이미지가 없음")
+                }
+            }
+
+            // 필름 시뮬레이션 적용 (색감 전송 결과 또는 이전 단계 산출물에 LUT 적용)
+            val isFilmSimEnabled = appPreferencesDataSource.isFilmSimulationEnabled.first()
+            val selectedFilmLutId = appPreferencesDataSource.selectedFilmLutId.first()
+            val filmSimIntensity = appPreferencesDataSource.filmSimulationIntensity.first()
+            if (isFilmSimEnabled &&
+                selectedFilmLutId.isNotEmpty() &&
+                extension in Constants.ImageProcessing.JPEG_EXTENSIONS
+            ) {
+                Log.d(TAG, "🎞️ 필름 시뮬레이션 적용 시작: $fileName (강도=$filmSimIntensity)")
+                try {
+                    val currentFilmFile = File(processedPath)
+                    val filmOutputFile = File(
+                        currentFilmFile.parent,
+                        "${currentFilmFile.nameWithoutExtension}_film.jpg"
+                    )
+
+                    val filmResult = colorTransferSemaphore.withPermit {
+                        filmLutUseCase.applyFilmLutAndSave(
+                            currentFilmFile.absolutePath,
+                            selectedFilmLutId,
+                            currentFilmFile.absolutePath,
+                            filmOutputFile.absolutePath,
+                            filmSimIntensity
+                        )
+                    }
+
+                    if (filmResult != null) {
+                        processedPath = filmOutputFile.absolutePath
+                        Log.d(TAG, "✅ 필름 시뮬레이션 적용 완료: ${filmOutputFile.name}")
+
+                        // 이전 처리된 파일 삭제 (원본은 보존)
+                        if (currentFilmFile.absolutePath != fullPath) {
+                            currentFilmFile.delete()
+                        }
+                    } else {
+                        Log.w(TAG, "⚠️ 필름 시뮬레이션 실패, 이전 처리된 이미지 사용")
+                        // 실패(예: 기록 중 I/O 오류)로 부분 생성된 출력 파일을 정리.
+                        // 이 오버로드는 finally 가 없어 명시적으로 삭제한다.
+                        if (filmOutputFile.exists()) {
+                            filmOutputFile.delete()
+                        }
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: OutOfMemoryError) {
+                    Log.e(TAG, "❌ 메모리 부족으로 필름 시뮬레이션 실패", e)
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ 필름 시뮬레이션 처리 중 오류", e)
                 }
             }
 

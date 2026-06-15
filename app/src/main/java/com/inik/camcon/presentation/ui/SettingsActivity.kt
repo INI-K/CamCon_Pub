@@ -237,6 +237,8 @@ fun SettingsScreen(
 
     val isColorTransferEnabled by appSettingsViewModel.isColorTransferEnabled.collectAsStateWithLifecycle()
     val colorTransferReferenceImagePath by appSettingsViewModel.colorTransferReferenceImagePath.collectAsStateWithLifecycle()
+    val isFilmSimulationEnabled by appSettingsViewModel.isFilmSimulationEnabled.collectAsStateWithLifecycle()
+    val selectedFilmLutId by appSettingsViewModel.selectedFilmLutId.collectAsStateWithLifecycle()
     val isRawFileDownloadEnabled by appSettingsViewModel.isRawFileDownloadEnabled.collectAsStateWithLifecycle()
 
     val subscriptionTier by appSettingsViewModel.subscriptionTier.collectAsStateWithLifecycle()
@@ -486,6 +488,37 @@ fun SettingsScreen(
                         subtitle = stringResource(R.string.settings_v2_color_transfer_detail_subtitle),
                         onClick = {
                             val intent = Intent(context, ColorTransferSettingsActivity::class.java)
+                            context.startActivity(intent)
+                        }
+                    )
+                }
+            }
+
+            // 필름 시뮬레이션 설정
+            SettingsSection(title = stringResource(R.string.settings_v2_section_film_simulation)) {
+                SwitchRowV2(
+                    icon = Icons.Default.Photo,
+                    title = stringResource(R.string.settings_v2_film_simulation_title),
+                    subtitle = if (isFilmSimulationEnabled) {
+                        if (selectedFilmLutId.isNotEmpty()) {
+                            stringResource(R.string.settings_v2_film_simulation_on)
+                        } else {
+                            stringResource(R.string.settings_v2_film_simulation_on_nolut)
+                        }
+                    } else {
+                        stringResource(R.string.settings_v2_film_simulation_off)
+                    },
+                    checked = isFilmSimulationEnabled,
+                    onCheckedChange = { appSettingsViewModel.setFilmSimulationEnabled(it) }
+                )
+
+                if (isFilmSimulationEnabled) {
+                    NavigationRowV2(
+                        icon = Icons.Default.Settings,
+                        title = stringResource(R.string.settings_v2_film_simulation_detail_title),
+                        subtitle = stringResource(R.string.settings_v2_film_simulation_detail_subtitle),
+                        onClick = {
+                            val intent = Intent(context, FilmSimulationSettingsActivity::class.java)
                             context.startActivity(intent)
                         }
                     )

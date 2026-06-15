@@ -157,6 +157,36 @@ class AppSettingsViewModel @Inject constructor(
             )
 
     /**
+     * 필름 시뮬레이션(필름 LUT) 기능 활성화 여부
+     */
+    val isFilmSimulationEnabled: StateFlow<Boolean> = appSettingsRepository.isFilmSimulationEnabled
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
+
+    /**
+     * 선택된 필름 LUT id (빈 문자열이면 선택 없음)
+     */
+    val selectedFilmLutId: StateFlow<String> = appSettingsRepository.selectedFilmLutId
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = ""
+        )
+
+    /**
+     * 필름 시뮬레이션 강도 (0.0 ~ 1.0)
+     */
+    val filmSimulationIntensity: StateFlow<Float> = appSettingsRepository.filmSimulationIntensity
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = 1.0f
+        )
+
+    /**
      * RAW 파일 다운로드 활성화 여부
      */
     val isRawFileDownloadEnabled: StateFlow<Boolean> =
@@ -390,6 +420,33 @@ class AppSettingsViewModel @Inject constructor(
     fun setColorTransferTargetImagePath(path: String?) {
         viewModelScope.launch {
             appSettingsRepository.setColorTransferTargetImagePath(path)
+        }
+    }
+
+    /**
+     * 필름 시뮬레이션 기능 활성화/비활성화
+     */
+    fun setFilmSimulationEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            appSettingsRepository.setFilmSimulationEnabled(enabled)
+        }
+    }
+
+    /**
+     * 선택된 필름 LUT id 설정 (빈 문자열이면 선택 해제)
+     */
+    fun setSelectedFilmLutId(id: String) {
+        viewModelScope.launch {
+            appSettingsRepository.setSelectedFilmLutId(id)
+        }
+    }
+
+    /**
+     * 필름 시뮬레이션 강도 설정 (0.0 ~ 1.0)
+     */
+    fun setFilmSimulationIntensity(intensity: Float) {
+        viewModelScope.launch {
+            appSettingsRepository.setFilmSimulationIntensity(intensity)
         }
     }
 
