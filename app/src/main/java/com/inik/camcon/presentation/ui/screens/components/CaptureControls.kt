@@ -48,21 +48,19 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.ShootingMode
-import com.inik.camcon.presentation.theme.Background
-import com.inik.camcon.presentation.theme.Border
+import com.inik.camcon.presentation.theme.Surface0
+import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.CamConTheme
-import com.inik.camcon.presentation.theme.Error
-import com.inik.camcon.presentation.theme.Primary
-import com.inik.camcon.presentation.theme.PrimaryDark
+import com.inik.camcon.presentation.theme.ErrorV2
+import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.Spacing
-import com.inik.camcon.presentation.theme.SurfaceElevated
-import com.inik.camcon.presentation.theme.TextMuted
-import com.inik.camcon.presentation.theme.TextPrimary
-import com.inik.camcon.presentation.theme.TextSecondary
+import com.inik.camcon.presentation.theme.Surface2
+import com.inik.camcon.presentation.theme.TextTertiary
+import com.inik.camcon.presentation.theme.TextSecondaryV2
 import com.inik.camcon.presentation.viewmodel.CameraCaptureState
 import com.inik.camcon.presentation.viewmodel.CameraUiState
 import com.inik.camcon.domain.model.ThemeMode
-import com.inik.camcon.presentation.theme.OnPrimary
+import com.inik.camcon.presentation.theme.OnAccent
 
 /**
  * 단순화된 촬영 컨트롤 컴포넌트 — state+callback 패턴
@@ -123,7 +121,7 @@ fun CaptureControls(
                 Text(
                     text = stringResource(R.string.capture_no_liveview_label),
                     style = MaterialTheme.typography.labelMedium,
-                    color = TextSecondary,
+                    color = TextSecondaryV2,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(top = Spacing.sm, bottom = Spacing.xs)
                 )
@@ -183,9 +181,9 @@ private fun CaptureControlsContent(
 
     // 갤러리 버튼
     Surface(
-        color = SurfaceElevated,
+        color = Surface2,
         shape = CircleShape,
-        border = BorderStroke(1.dp, Border),
+        border = BorderStroke(1.dp, DividerLine),
         modifier = Modifier.size(52.dp)
     ) {
         IconButton(
@@ -195,7 +193,7 @@ private fun CaptureControlsContent(
             Icon(
                 Icons.Default.PhotoLibrary,
                 contentDescription = stringResource(R.string.gallery),
-                tint = TextSecondary,
+                tint = TextSecondaryV2,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -235,9 +233,9 @@ private fun CaptureControlsContent(
             .border(
                 width = 1.5.dp,
                 color = when {
-                    isStopMode -> Error.copy(alpha = 0.4f)
-                    isEnabled -> Primary.copy(alpha = 0.3f)
-                    else -> TextMuted.copy(alpha = 0.12f)
+                    isStopMode -> ErrorV2.copy(alpha = 0.4f)
+                    isEnabled -> Accent.copy(alpha = 0.3f)
+                    else -> TextTertiary.copy(alpha = 0.12f)
                 },
                 shape = CircleShape
             )
@@ -249,15 +247,15 @@ private fun CaptureControlsContent(
                 .shadow(
                     elevation = if (isEnabled) 20.dp else 0.dp,
                     shape = CircleShape,
-                    ambientColor = (if (isStopMode) Error else Primary).copy(alpha = 0.4f),
-                    spotColor = (if (isStopMode) Error else Primary).copy(alpha = 0.6f)
+                    ambientColor = (if (isStopMode) ErrorV2 else Accent).copy(alpha = 0.4f),
+                    spotColor = (if (isStopMode) ErrorV2 else Accent).copy(alpha = 0.6f)
                 )
                 .clip(CircleShape)
                 .background(
                     color = when {
-                        isStopMode -> Error
-                        isEnabled -> Primary
-                        else -> TextMuted.copy(alpha = 0.25f)
+                        isStopMode -> ErrorV2
+                        isEnabled -> Accent
+                        else -> TextTertiary.copy(alpha = 0.25f)
                     }
                 )
                 .semantics {
@@ -291,12 +289,12 @@ private fun CaptureControlsContent(
                 Icon(
                     Icons.Default.Stop,
                     contentDescription = null,
-                    tint = OnPrimary,
+                    tint = OnAccent,
                     modifier = Modifier.size(36.dp)
                 )
             } else if (captureState.isCapturing) {
                 CircularProgressIndicator(
-                    color = OnPrimary,
+                    color = OnAccent,
                     modifier = Modifier.size(36.dp),
                     strokeWidth = 2.5.dp
                 )
@@ -306,11 +304,11 @@ private fun CaptureControlsContent(
 
     // 포커스 버튼
     Surface(
-        color = if (isConnected) SurfaceElevated else SurfaceElevated.copy(alpha = 0.5f),
+        color = if (isConnected) Surface2 else Surface2.copy(alpha = 0.5f),
         shape = CircleShape,
         border = BorderStroke(
             1.dp,
-            if (isConnected) Border else TextMuted.copy(alpha = 0.1f)
+            if (isConnected) DividerLine else TextTertiary.copy(alpha = 0.1f)
         ),
         modifier = Modifier.size(52.dp)
     ) {
@@ -321,7 +319,7 @@ private fun CaptureControlsContent(
         ) {
             if (captureState.isFocusing) {
                 CircularProgressIndicator(
-                    color = Primary,
+                    color = Accent,
                     modifier = Modifier.size(22.dp),
                     strokeWidth = 2.dp
                 )
@@ -329,7 +327,7 @@ private fun CaptureControlsContent(
                 Icon(
                     Icons.Default.CenterFocusStrong,
                     contentDescription = stringResource(R.string.focus),
-                    tint = if (isConnected) TextSecondary else TextMuted,
+                    tint = if (isConnected) TextSecondaryV2 else TextTertiary,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -343,7 +341,7 @@ private fun CaptureControlsPreview() {
     CamConTheme() {
         Column(
             modifier = Modifier
-                .background(Background)
+                .background(Surface0)
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(32.dp)
         ) {

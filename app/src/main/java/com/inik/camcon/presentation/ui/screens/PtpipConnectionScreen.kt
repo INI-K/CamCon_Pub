@@ -90,7 +90,7 @@ import com.inik.camcon.presentation.ui.screens.components.StaModeContent
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.domain.model.ThemeMode
-import com.inik.camcon.presentation.theme.SurfaceElevated
+import com.inik.camcon.presentation.theme.Surface2
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.Surface1
 import com.inik.camcon.presentation.theme.CameraSpec
@@ -763,7 +763,7 @@ fun PtpipConnectionScreen(
                 // 탭 행
                 TabRow(
                     selectedTabIndex = pagerState.currentPage,
-                    containerColor = SurfaceElevated,
+                    containerColor = Surface2,
                     contentColor = MaterialTheme.colorScheme.onSurface,
                     indicator = { tabPositions ->
                         if (pagerState.currentPage < tabPositions.size) {
@@ -884,7 +884,7 @@ fun PtpipConnectionScreen(
                 shape = MaterialTheme.shapes.medium,
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = SurfaceElevated
+                    containerColor = Surface2
                 ),
                 modifier = Modifier.padding(16.dp)
             ) {
@@ -950,7 +950,7 @@ private fun PtpipConnectionScreenPreview() {
             // 탭 영역 표시
             TabRow(
                 selectedTabIndex = 0,
-                containerColor = SurfaceElevated,
+                containerColor = Surface2,
                 contentColor = MaterialTheme.colorScheme.onSurface
             ) {
                 Tab(

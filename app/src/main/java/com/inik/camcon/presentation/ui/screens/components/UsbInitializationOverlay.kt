@@ -26,15 +26,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import com.inik.camcon.R
-import com.inik.camcon.presentation.theme.Overlay
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.inik.camcon.domain.model.ThemeMode
-import com.inik.camcon.presentation.theme.Background
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.Elevation
+import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.Surface0
 
 /**
  * 간단한 로딩 오버레이
@@ -47,13 +48,13 @@ fun LoadingOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Overlay),
+            .background(Surface0.copy(alpha = 0.7f)),
         contentAlignment = Alignment.Center
     ) {
         Card(
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(Radius.xl),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = Elevation.medium),
             modifier = Modifier.padding(24.dp)
         ) {
             Column(
@@ -100,13 +101,13 @@ fun UsbInitializationOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Overlay.copy(alpha = 0.7f)),
+            .background(Surface0.copy(alpha = 0.7f)),
         contentAlignment = Alignment.Center
     ) {
         Card(
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(Radius.xl),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = Elevation.medium),
             modifier = Modifier
                 .padding(32.dp)
                 .width(300.dp)
@@ -219,7 +220,7 @@ fun PtpTimeoutDialog(
 @Composable
 private fun LoadingOverlayPreview() {
     CamConTheme() {
-        Box(modifier = Modifier.background(Background).fillMaxSize()) {
+        Box(modifier = Modifier.background(Surface0).fillMaxSize()) {
             LoadingOverlay(message = "카메라 연결 중...")
         }
     }
@@ -229,7 +230,7 @@ private fun LoadingOverlayPreview() {
 @Composable
 private fun UsbInitializationOverlayPreview() {
     CamConTheme() {
-        Box(modifier = Modifier.background(Background).fillMaxSize()) {
+        Box(modifier = Modifier.background(Surface0).fillMaxSize()) {
             UsbInitializationOverlay(message = "USB 카메라 초기화 중...", progress = 0.6f)
         }
     }

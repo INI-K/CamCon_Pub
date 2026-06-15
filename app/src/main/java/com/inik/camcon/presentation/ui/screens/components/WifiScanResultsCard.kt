@@ -30,10 +30,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.ThemeMode
-import com.inik.camcon.presentation.theme.Background
-import com.inik.camcon.presentation.theme.Border
 import com.inik.camcon.presentation.theme.CamConTheme
-import com.inik.camcon.presentation.theme.SurfaceElevated
+import com.inik.camcon.presentation.theme.DividerLine
+import com.inik.camcon.presentation.theme.Surface2
 
 /**
  * 주변 Wi‑Fi 스캔 결과 카드 (AP/STA 모드 공용)
@@ -70,11 +69,11 @@ fun WifiScanResultsCard(
             .fillMaxWidth()
             .border(
                 width = 1.dp,
-                color = Border,
+                color = DividerLine,
                 shape = MaterialTheme.shapes.medium
             ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceElevated)
+        colors = CardDefaults.cardColors(containerColor = Surface2)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)

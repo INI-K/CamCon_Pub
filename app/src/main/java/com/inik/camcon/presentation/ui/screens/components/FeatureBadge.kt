@@ -18,10 +18,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.ThemeMode
-import com.inik.camcon.presentation.theme.BadgeText
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.FeatureBadgeBurst
 import com.inik.camcon.presentation.theme.FeatureBadgeTimeLapse
+import com.inik.camcon.presentation.theme.Micro
+import com.inik.camcon.presentation.theme.Radius
 
 /**
  * 카메라 기능을 표시하는 배지 컴포넌트
@@ -34,14 +35,14 @@ fun FeatureBadge(
 ) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(Radius.sm))
             .background(color.copy(alpha = 0.2f))
             .padding(horizontal = 8.dp, vertical = 4.dp)
     ) {
         Text(
             text = text,
             color = color,
-            style = BadgeText
+            style = Micro
         )
     }
 }
@@ -63,7 +64,7 @@ private fun FeatureBadgesPreview() {
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FeatureBadge(context.getString(R.string.video_4k), MaterialTheme.colorScheme.error)
-                FeatureBadge(context.getString(R.string.remote_control), com.inik.camcon.presentation.theme.Success)
+                FeatureBadge(context.getString(R.string.remote_control), com.inik.camcon.presentation.theme.SuccessV2)
                 FeatureBadge(context.getString(R.string.bracketing), Color.Cyan)
             }
         }
