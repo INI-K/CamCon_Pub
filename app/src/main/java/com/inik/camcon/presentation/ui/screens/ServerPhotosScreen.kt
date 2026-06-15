@@ -33,7 +33,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Text
@@ -81,6 +80,7 @@ import com.inik.camcon.domain.model.CapturedPhoto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.ui.components.v2.AppDialog
 import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
 import com.inik.camcon.presentation.viewmodel.ServerPhotosViewModel
 import com.inik.camcon.domain.model.ThemeMode
@@ -225,7 +225,7 @@ fun MyPhotosScreen(
 
     // 삭제 확인 다이얼로그
     if (showDeleteConfirmDialog) {
-        AlertDialog(
+        AppDialog(
             onDismissRequest = { showDeleteConfirmDialog = false },
             title = { Text(stringResource(R.string.server_photos_delete_photos)) },
             text = { Text(stringResource(R.string.server_photos_delete_confirm, uiState.selectedPhotos.size)) },

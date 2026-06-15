@@ -45,7 +45,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -72,6 +71,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.inik.camcon.presentation.theme.DividerLine
+import com.inik.camcon.presentation.ui.components.v2.AppDialog
 import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
 import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
 import androidx.core.content.ContextCompat
@@ -118,7 +118,7 @@ fun CameraConnectionOptimizationDialog(
     onDismissRequest: () -> Unit,
     onGoToSettings: () -> Unit
 ) {
-    AlertDialog(
+    AppDialog(
         onDismissRequest = onDismissRequest,
         icon = { androidx.compose.material3.Icon(Icons.Default.Settings, contentDescription = null) },
         title = {
@@ -240,7 +240,7 @@ fun MainScreen(
         if (showRestartDialog) {
             var isRestarting by remember { mutableStateOf(false) }
 
-            AlertDialog(
+            AppDialog(
                 onDismissRequest = {
                     if (!isRestarting) {
                         showRestartDialog = false
@@ -305,7 +305,7 @@ fun MainScreen(
 
         // USB 분리 다이얼로그 표시
         if (cameraUiState.isUsbDisconnected == true) {
-            AlertDialog(
+            AppDialog(
                 onDismissRequest = { cameraViewModel.clearUsbDisconnection() },
                 icon = {
                     Icon(
@@ -348,7 +348,7 @@ fun MainScreen(
             !cameraUiState.isUsbInitializing &&
             !cameraUiState.isCameraInitializing
         ) {
-            AlertDialog(
+            AppDialog(
                 onDismissRequest = { cameraViewModel.dismissCameraStatusCheckDialog() },
                 icon = {
                     Icon(
@@ -554,7 +554,7 @@ fun MainScreen(
 
         // PTPIP 경고 다이얼로그
         if (showPtpipWarning) {
-            AlertDialog(
+            AppDialog(
                 onDismissRequest = { showPtpipWarning = false },
                 icon = { Icon(Icons.Default.CameraAlt, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                 title = {
@@ -632,7 +632,7 @@ fun MainScreen(
         }
 
         if (showWifiDisconnectedDialog) {
-            AlertDialog(
+            AppDialog(
                 onDismissRequest = { showWifiDisconnectedDialog = false },
                 icon = {
                     Icon(

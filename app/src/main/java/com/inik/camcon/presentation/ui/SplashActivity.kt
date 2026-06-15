@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -57,6 +56,7 @@ import com.inik.camcon.presentation.theme.Surface0
 import com.inik.camcon.presentation.theme.TextPrimaryV2
 import com.inik.camcon.presentation.theme.TextSecondaryV2
 import com.inik.camcon.presentation.theme.TextTertiary
+import com.inik.camcon.presentation.ui.components.v2.AppDialog
 import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
 import com.inik.camcon.presentation.ui.components.v2.ProgressBarV2
 import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
@@ -389,7 +389,7 @@ fun SplashScreen(
         if (versionState.showUpdateDialog) {
             val versionInfo = versionState.versionInfo
             if (versionInfo != null) {
-                AlertDialog(
+                AppDialog(
                     onDismissRequest = {
                         if (!versionInfo.isUpdateRequired) {
                             onDismissUpdateDialog()

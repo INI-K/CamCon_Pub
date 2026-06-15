@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -94,6 +93,7 @@ import com.inik.camcon.presentation.theme.Surface2
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.Surface1
 import com.inik.camcon.presentation.theme.CameraSpec
+import com.inik.camcon.presentation.ui.components.v2.AppDialog
 import com.inik.camcon.presentation.ui.components.v2.IconButtonV2
 import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
 import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
@@ -255,7 +255,7 @@ fun PtpipConnectionScreen(
 
     // 권한 다이얼로그
     if (showPermissionDialog) {
-        AlertDialog(
+        AppDialog(
             onDismissRequest = { showPermissionDialog = false },
             title = { Text(stringResource(R.string.ptpip_permission_needed)) },
             text = {
@@ -286,7 +286,7 @@ fun PtpipConnectionScreen(
 
     // 위치 설정 다이얼로그
     if (needLocationSettings) {
-        AlertDialog(
+        AppDialog(
             onDismissRequest = { ptpipViewModel.dismissLocationSettingsDialog() },
             title = { Text(stringResource(R.string.ptpip_location_service_needed)) },
             text = {
@@ -358,7 +358,7 @@ fun PtpipConnectionScreen(
 
     // Wi-Fi 설정 다이얼로그 (새로 추가)
     if (needWifiSettings) {
-        AlertDialog(
+        AppDialog(
             onDismissRequest = { ptpipViewModel.dismissWifiSettingsDialog() },
             title = { Text(stringResource(R.string.ptpip_wifi_scan_restriction)) },
             text = {
@@ -402,7 +402,7 @@ fun PtpipConnectionScreen(
 
     // Wi-Fi 패스워드 입력 다이얼로그 표시
     if (showPasswordDialog && currentWifiSsid != null) {
-        AlertDialog(
+        AppDialog(
             onDismissRequest = {
                 showPasswordDialog = false
                 passwordForSsid = ""
@@ -550,7 +550,7 @@ fun PtpipConnectionScreen(
 
     // Wi-Fi 연결 끊어짐 알림 표시
     connectionLostMessage?.let { message ->
-        AlertDialog(
+        AppDialog(
             onDismissRequest = { ptpipViewModel.clearConnectionLostMessage() },
             title = { Text(stringResource(R.string.ptpip_camera_disconnected)) },
             text = {

@@ -50,7 +50,6 @@ import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -98,11 +97,11 @@ import com.inik.camcon.presentation.theme.OnAccent
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.Surface0
 import com.inik.camcon.presentation.theme.Surface1
-import com.inik.camcon.presentation.theme.Surface2
 import com.inik.camcon.presentation.theme.Surface3
 import com.inik.camcon.presentation.theme.TextPrimaryV2
 import com.inik.camcon.presentation.theme.TextSecondaryV2
 import com.inik.camcon.presentation.theme.TextTertiary
+import com.inik.camcon.presentation.ui.components.v2.AppDialog
 import com.inik.camcon.presentation.ui.components.v2.DestructiveRowV2
 import com.inik.camcon.presentation.ui.components.v2.DividerLineV2
 import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
@@ -792,7 +791,7 @@ fun SettingsScreen(
 
             // 네이티브 로그 다이얼로그 — V2 PrimaryButton/SecondaryButton
             logDialogContent?.let { logContent ->
-                AlertDialog(
+                AppDialog(
                     onDismissRequest = { logDialogContent = null },
                     title = { Text(stringResource(R.string.settings_native_log_dialog_title)) },
                     text = {
@@ -915,7 +914,7 @@ fun SettingsScreen(
         // -------- 그룹 1 — 로그아웃 / 계정 삭제 / 언어 선택 다이얼로그 --------
 
         if (showLogoutConfirm) {
-            AlertDialog(
+            AppDialog(
                 onDismissRequest = { showLogoutConfirm = false },
                 title = {
                     Text(
@@ -945,13 +944,12 @@ fun SettingsScreen(
                         text = stringResource(R.string.account_logout_cancel),
                         onClick = { showLogoutConfirm = false }
                     )
-                },
-                containerColor = Surface2
+                }
             )
         }
 
         if (showDeleteAccountDialog) {
-            AlertDialog(
+            AppDialog(
                 onDismissRequest = { showDeleteAccountDialog = false },
                 title = {
                     Text(
@@ -982,14 +980,13 @@ fun SettingsScreen(
                         text = stringResource(R.string.account_delete_cancel),
                         onClick = { showDeleteAccountDialog = false }
                     )
-                },
-                containerColor = Surface2
+                }
             )
         }
 
         if (showDeleteConfirmDialog) {
             val confirmEnabled = deleteConfirmInput.trim() == "DELETE" && !isDeletingAccount
-            AlertDialog(
+            AppDialog(
                 onDismissRequest = {
                     if (!isDeletingAccount) {
                         showDeleteConfirmDialog = false
@@ -1102,8 +1099,7 @@ fun SettingsScreen(
                             }
                         }
                     )
-                },
-                containerColor = Surface2
+                }
             )
         }
 
@@ -1181,7 +1177,7 @@ private fun LanguageSelectionDialog(
         applied.toLanguageTags().substringBefore(',').substringBefore('-')
     }
 
-    AlertDialog(
+    AppDialog(
         onDismissRequest = onDismissRequest,
         title = {
             Text(
@@ -1227,8 +1223,7 @@ private fun LanguageSelectionDialog(
                 text = stringResource(R.string.cancel),
                 onClick = onDismissRequest
             )
-        },
-        containerColor = Surface2
+        }
     )
 }
 
