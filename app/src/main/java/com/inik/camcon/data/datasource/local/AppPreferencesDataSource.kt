@@ -74,6 +74,11 @@ class AppPreferencesDataSource @Inject constructor(
         // Live View Overlays (Group 7)
         private val HISTOGRAM_ENABLED = booleanPreferencesKey("liveview_histogram_enabled")
         private val FOCUS_PEAKING_ENABLED = booleanPreferencesKey("liveview_focus_peaking_enabled")
+
+        // Film Simulation (Group 8)
+        private val FILM_SIMULATION_ENABLED = booleanPreferencesKey("film_simulation_enabled")
+        private val SELECTED_FILM_LUT_ID = stringPreferencesKey("selected_film_lut_id")
+        private val FILM_SIMULATION_INTENSITY = floatPreferencesKey("film_simulation_intensity")
     }
 
     /**
@@ -294,6 +299,30 @@ class AppPreferencesDataSource @Inject constructor(
         }
 
     /**
+     * 필름 시뮬레이션 기능 활성화 여부 (기본값: false)
+     */
+    override val isFilmSimulationEnabled: Flow<Boolean> = context.appDataStore.data
+        .map { preferences ->
+            preferences[FILM_SIMULATION_ENABLED] ?: false
+        }
+
+    /**
+     * 선택된 필름 LUT id (assets 상대 경로). 기본값: "" (선택 없음)
+     */
+    override val selectedFilmLutId: Flow<String> = context.appDataStore.data
+        .map { preferences ->
+            preferences[SELECTED_FILM_LUT_ID] ?: ""
+        }
+
+    /**
+     * 필름 시뮬레이션 강도 (기본값: 1.0 — 필름 룩 완전 적용)
+     */
+    override val filmSimulationIntensity: Flow<Float> = context.appDataStore.data
+        .map { preferences ->
+            preferences[FILM_SIMULATION_INTENSITY] ?: 1.0f
+        }
+
+    /**
      * 구독 티어 (SubscriptionTier enum으로 변환, 기본값: FREE)
      */
     override val subscriptionTierEnum: Flow<com.inik.camcon.domain.model.SubscriptionTier> = subscriptionTier
@@ -394,6 +423,33 @@ class AppPreferencesDataSource @Inject constructor(
     override suspend fun setColorTransferIntensity(intensity: Float) {
         context.appDataStore.edit { preferences ->
             preferences[COLOR_TRANSFER_INTENSITY] = intensity.coerceIn(0.0f, 1.0f)
+        }
+    }
+
+    /**
+     * 필름 시뮬레이션 기능 활성화/비활성화
+     */
+    override suspend fun setFilmSimulationEnabled(enabled: Boolean) {
+        context.appDataStore.edit { preferences ->
+            preferences[FILM_SIMULATION_ENABLED] = enabled
+        }
+    }
+
+    /**
+     * 선택된 필름 LUT id 설정 (빈 문자열 = 선택 해제)
+     */
+    override suspend fun setSelectedFilmLutId(id: String) {
+        context.appDataStore.edit { preferences ->
+            preferences[SELECTED_FILM_LUT_ID] = id
+        }
+    }
+
+    /**
+     * 필름 시뮬레이션 강도 설정 (0.0 ~ 1.0)
+     */
+    override suspend fun setFilmSimulationIntensity(intensity: Float) {
+        context.appDataStore.edit { preferences ->
+            preferences[FILM_SIMULATION_INTENSITY] = intensity.coerceIn(0.0f, 1.0f)
         }
     }
 

@@ -115,4 +115,13 @@
     <string name="settings_v2_referral_generate_in_progress">Génération…</string>
     <string name="settings_v2_referral_extract_title">Extraire un code disponible</string>
     <string name="settings_v2_referral_extract_subtitle">Copier un code de parrainage inutilisé dans le presse-papiers</string>
+
+    <!-- 필름 시뮬레이션 -->
+    <string name="settings_v2_section_film_simulation">Simulation de film</string>
+    <string name="settings_v2_film_simulation_title">Simulation de film</string>
+    <string name="settings_v2_film_simulation_on">Activé · LUT sélectionné</string>
+    <string name="settings_v2_film_simulation_on_nolut">Activé · choisissez un LUT</string>
+    <string name="settings_v2_film_simulation_off">Désactivé</string>
+    <string name="settings_v2_film_simulation_detail_title">Réglages du LUT de film</string>
+    <string name="settings_v2_film_simulation_detail_subtitle">Choisir un LUT · aperçu en direct · exporter</string>
 </resources>

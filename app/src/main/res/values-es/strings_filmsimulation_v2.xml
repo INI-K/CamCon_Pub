@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 필름 시뮬레이션 상세 화면 -->
+    <string name="film_simulation_settings">Simulación de película</string>
+    <string name="fs_settings_title">Simulación de película</string>
+    <string name="fs_disabled_title">La simulación de película está desactivada</string>
+    <string name="fs_disabled_message">Actívala para aplicar un LUT de película a tus fotos.</string>
+    <string name="fs_applied_default">El LUT seleccionado se incrusta en las fotos capturadas durante la conexión por cable.</string>
+    <string name="fs_preview_title">Vista previa en directo</string>
+    <string name="fs_pick_target">Elegir una foto</string>
+    <string name="fs_no_target">Elige una foto para la vista previa</string>
+    <string name="fs_select_lut_title">LUT de película</string>
+    <string name="fs_lut_none">Ninguno (original)</string>
+    <string name="fs_intensity_title">Intensidad</string>
+    <string name="fs_intensity_percent">%1$d%%</string>
+    <string name="fs_export">Guardar en la galería</string>
+    <string name="fs_export_success">Guardado en la galería</string>
+    <string name="fs_export_failed">Error al guardar</string>
+</resources>

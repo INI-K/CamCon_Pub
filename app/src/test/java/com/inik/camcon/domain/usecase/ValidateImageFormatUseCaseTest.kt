@@ -73,6 +73,9 @@ class ValidateImageFormatUseCaseTest {
         override val lastTimelapseCount: Flow<Int> = MutableStateFlow(100)
         override val isHistogramEnabled: Flow<Boolean> = MutableStateFlow(false)
         override val isFocusPeakingEnabled: Flow<Boolean> = MutableStateFlow(false)
+        override val isFilmSimulationEnabled: Flow<Boolean> = MutableStateFlow(false)
+        override val selectedFilmLutId: Flow<String> = MutableStateFlow("")
+        override val filmSimulationIntensity: Flow<Float> = MutableStateFlow(1.0f)
         override val isOnboardingCompleted: Flow<Boolean> = flowOf(true)
 
         override suspend fun setCameraControlsEnabled(enabled: Boolean) {}
@@ -84,6 +87,9 @@ class ValidateImageFormatUseCaseTest {
         override suspend fun setColorTransferReferenceImagePath(path: String?) {}
         override suspend fun setColorTransferTargetImagePath(path: String?) {}
         override suspend fun setColorTransferIntensity(intensity: Float) {}
+        override suspend fun setFilmSimulationEnabled(enabled: Boolean) {}
+        override suspend fun setSelectedFilmLutId(id: String) {}
+        override suspend fun setFilmSimulationIntensity(intensity: Float) {}
         override suspend fun setRawFileDownloadEnabled(enabled: Boolean) {
             _isRawFileDownloadEnabled.value = enabled
         }

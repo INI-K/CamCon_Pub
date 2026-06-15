@@ -115,4 +115,13 @@
     <string name="settings_v2_referral_generate_in_progress">生成中…</string>
     <string name="settings_v2_referral_extract_title">利用可能なコードを1件抽出</string>
     <string name="settings_v2_referral_extract_subtitle">未使用のリファラルコードを1件クリップボードにコピー</string>
+
+    <!-- 필름 시뮬레이션 -->
+    <string name="settings_v2_section_film_simulation">フィルムシミュレーション</string>
+    <string name="settings_v2_film_simulation_title">フィルムシミュレーション</string>
+    <string name="settings_v2_film_simulation_on">オン · LUT選択済み</string>
+    <string name="settings_v2_film_simulation_on_nolut">オン · LUTを選択してください</string>
+    <string name="settings_v2_film_simulation_off">オフ</string>
+    <string name="settings_v2_film_simulation_detail_title">フィルムLUT設定</string>
+    <string name="settings_v2_film_simulation_detail_subtitle">LUTを選択 · ライブプレビュー · 書き出し</string>
 </resources>

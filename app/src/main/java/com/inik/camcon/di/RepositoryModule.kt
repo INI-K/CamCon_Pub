@@ -21,6 +21,7 @@ import com.inik.camcon.data.repository.PtpipPreferencesRepositoryImpl
 import com.inik.camcon.data.repository.PtpipRepositoryImpl
 import com.inik.camcon.data.repository.SubscriptionRepositoryImpl
 import com.inik.camcon.data.repository.ColorTransferRepositoryImpl
+import com.inik.camcon.data.repository.FilmLutRepositoryImpl
 import com.inik.camcon.data.repository.UsbDeviceRepositoryImpl
 import com.inik.camcon.data.repository.managers.CameraConnectionGlobalManagerImpl
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
@@ -34,6 +35,7 @@ import com.inik.camcon.domain.manager.ErrorNotifier
 import com.inik.camcon.domain.manager.NativeErrorCallbackRegistrar
 import com.inik.camcon.presentation.viewmodel.state.ErrorHandlingManager
 import com.inik.camcon.domain.repository.AppSettingsRepository
+import com.inik.camcon.domain.repository.FilmLutRepository
 import com.inik.camcon.domain.repository.AppUpdateRepository
 import com.inik.camcon.domain.repository.AuthRepository
 import com.inik.camcon.domain.repository.CameraAdvancedCaptureRepository
@@ -136,6 +138,12 @@ abstract class RepositoryModule {
     abstract fun bindColorTransferRepository(
         impl: ColorTransferRepositoryImpl
     ): ColorTransferRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindFilmLutRepository(
+        impl: FilmLutRepositoryImpl
+    ): FilmLutRepository
 
     @Binds
     @Singleton

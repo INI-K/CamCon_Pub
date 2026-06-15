@@ -37,6 +37,11 @@ interface AppSettingsRepository {
     val isHistogramEnabled: Flow<Boolean>
     val isFocusPeakingEnabled: Flow<Boolean>
 
+    // === Film Simulation (Group 8) ===
+    val isFilmSimulationEnabled: Flow<Boolean>
+    val selectedFilmLutId: Flow<String>
+    val filmSimulationIntensity: Flow<Float>
+
     // === 쓰기 ===
     suspend fun setCameraControlsEnabled(enabled: Boolean)
     suspend fun setLiveViewEnabled(enabled: Boolean)
@@ -58,6 +63,9 @@ interface AppSettingsRepository {
     suspend fun setLastTimelapseCount(count: Int)
     suspend fun setHistogramEnabled(enabled: Boolean)
     suspend fun setFocusPeakingEnabled(enabled: Boolean)
+    suspend fun setFilmSimulationEnabled(enabled: Boolean)
+    suspend fun setSelectedFilmLutId(id: String)
+    suspend fun setFilmSimulationIntensity(intensity: Float)
     /**
      * 구독 티어를 영속 캐시에 저장한다.
      *

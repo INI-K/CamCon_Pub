@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 필름 시뮬레이션 상세 화면 -->
+    <string name="film_simulation_settings">Simulazione pellicola</string>
+    <string name="fs_settings_title">Simulazione pellicola</string>
+    <string name="fs_disabled_title">La simulazione pellicola è disattivata</string>
+    <string name="fs_disabled_message">Attivala per applicare un LUT pellicola alle tue foto.</string>
+    <string name="fs_applied_default">Il LUT selezionato viene incorporato nelle foto scattate durante la connessione cablata.</string>
+    <string name="fs_preview_title">Anteprima live</string>
+    <string name="fs_pick_target">Scegli una foto</string>
+    <string name="fs_no_target">Scegli una foto per l\'anteprima</string>
+    <string name="fs_select_lut_title">LUT pellicola</string>
+    <string name="fs_lut_none">Nessuno (originale)</string>
+    <string name="fs_intensity_title">Intensità</string>
+    <string name="fs_intensity_percent">%1$d%%</string>
+    <string name="fs_export">Salva nella galleria</string>
+    <string name="fs_export_success">Salvato nella galleria</string>
+    <string name="fs_export_failed">Salvataggio non riuscito</string>
+</resources>
