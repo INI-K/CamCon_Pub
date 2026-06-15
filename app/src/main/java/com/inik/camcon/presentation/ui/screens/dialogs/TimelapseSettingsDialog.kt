@@ -1,7 +1,6 @@
 package com.inik.camcon.presentation.ui.screens.dialogs
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -13,6 +12,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.ui.components.v2.AppDialog
 import com.inik.camcon.domain.model.ThemeMode
 
 /**
@@ -32,7 +32,7 @@ fun TimelapseSettingsDialog(
     var interval by remember { mutableStateOf(initialInterval.toString()) }
     var totalShots by remember { mutableStateOf(initialCount.toString()) }
 
-    AlertDialog(
+    AppDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.timelapse_settings), style = MaterialTheme.typography.titleLarge) },
         text = {

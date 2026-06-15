@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.ui.components.v2.AppDialog
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.MockCameraUiEvent
 import com.inik.camcon.presentation.viewmodel.MockCameraViewModel
@@ -234,7 +235,7 @@ fun MockCameraScreen(
 
                     // 다이얼로그
                     if (showCameraModelDialog) {
-                        AlertDialog(
+                        AppDialog(
                             onDismissRequest = { showCameraModelDialog = false },
                             title = { Text("카메라 모델 선택") },
                             text = {
