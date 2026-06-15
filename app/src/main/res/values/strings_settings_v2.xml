@@ -57,6 +57,15 @@
     <string name="settings_v2_color_transfer_detail_title">Advanced settings</string>
     <string name="settings_v2_color_transfer_detail_subtitle">Color transfer algorithm and advanced options</string>
 
+    <!-- 필름 시뮬레이션 -->
+    <string name="settings_v2_section_film_simulation">Film Simulation</string>
+    <string name="settings_v2_film_simulation_title">Film Simulation</string>
+    <string name="settings_v2_film_simulation_on">On · LUT selected</string>
+    <string name="settings_v2_film_simulation_on_nolut">On · choose a LUT</string>
+    <string name="settings_v2_film_simulation_off">Off</string>
+    <string name="settings_v2_film_simulation_detail_title">Film LUT settings</string>
+    <string name="settings_v2_film_simulation_detail_subtitle">Pick a LUT · live preview · export</string>
+
     <!-- RAW 다운로드 -->
     <string name="settings_v2_raw_download_title">RAW file download</string>
     <string name="settings_v2_raw_download_on">Enabled</string>
