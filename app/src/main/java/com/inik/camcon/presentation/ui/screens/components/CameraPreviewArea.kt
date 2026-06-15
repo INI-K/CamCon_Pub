@@ -56,11 +56,15 @@ import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.ErrorV2
+import com.inik.camcon.presentation.theme.Micro
+import com.inik.camcon.presentation.theme.MonoReadout
+import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.Surface0
 import com.inik.camcon.presentation.theme.Surface2
 import com.inik.camcon.presentation.theme.TextPrimaryV2
 import com.inik.camcon.presentation.theme.TextSecondaryV2
+import com.inik.camcon.presentation.theme.TextTertiary
 import com.inik.camcon.presentation.theme.WarningV2
 import com.inik.camcon.presentation.ui.components.v2.EmptyState
 import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
@@ -112,7 +116,8 @@ fun CameraPreviewArea(
     isHistogramEnabled: Boolean = false,
     onToggleHistogram: (() -> Unit)? = null,
     isFocusPeakingEnabled: Boolean = false,
-    onToggleFocusPeaking: (() -> Unit)? = null
+    onToggleFocusPeaking: (() -> Unit)? = null,
+    currentSettings: com.inik.camcon.domain.model.CameraSettings? = null
 ) {
     Box(
         modifier = modifier
@@ -298,6 +303,16 @@ fun CameraPreviewArea(
                             data = histogramData
                         )
                     }
+                }
+
+                // Technical HUD: 좌하단 노출 텔레메트리 스트립 (라이브뷰 활성 시에만)
+                currentSettings?.let { s ->
+                    LiveViewExposureStrip(
+                        settings = s,
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(Spacing.md)
+                    )
                 }
 
                 // 라이브뷰 중지 버튼 오버레이
@@ -498,6 +513,48 @@ fun CameraConnectionButtons(
                 leadingIcon = Icons.Default.Security,
                 modifier = Modifier.fillMaxWidth()
             )
+        }
+    }
+}
+
+/**
+ * 라이브뷰 노출 텔레메트리 스트립 (Technical HUD 시그니처).
+ *
+ * 라이브뷰가 활성일 때 뷰파인더 좌하단에 현재 노출값(ISO·SS·F·EV·WB)을
+ * 모노스페이스로 컴팩트하게 노출한다. 빈 값/EV 0은 생략한다.
+ */
+@Composable
+private fun LiveViewExposureStrip(
+    settings: com.inik.camcon.domain.model.CameraSettings,
+    modifier: Modifier = Modifier
+) {
+    val items = buildList {
+        settings.iso.takeIf { it.isNotBlank() }?.let { add("ISO" to it) }
+        settings.shutterSpeed.takeIf { it.isNotBlank() }?.let { add("SS" to it) }
+        settings.aperture.takeIf { it.isNotBlank() }?.let { add("F" to it) }
+        settings.exposureCompensation.takeIf { it.isNotBlank() && it != "0" }?.let { add("EV" to it) }
+        settings.whiteBalance.takeIf { it.isNotBlank() }?.let { add("WB" to it) }
+    }
+    if (items.isEmpty()) return
+    androidx.compose.material3.Surface(
+        color = Surface0.copy(alpha = 0.6f),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(Radius.sm),
+        modifier = modifier
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            items.forEach { (label, value) ->
+                Row(
+                    verticalAlignment = Alignment.Bottom,
+                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    Text(text = label, style = Micro, color = TextTertiary)
+                    Text(text = value, style = MonoReadout, color = TextPrimaryV2)
+                }
+            }
         }
     }
 }

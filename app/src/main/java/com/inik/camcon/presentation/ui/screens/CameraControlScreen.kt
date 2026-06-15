@@ -714,7 +714,8 @@ private fun PortraitCameraLayout(
                     isHistogramEnabled = isHistogramEnabled,
                     onToggleHistogram = onToggleHistogram,
                     isFocusPeakingEnabled = isFocusPeakingEnabled,
-                    onToggleFocusPeaking = onToggleFocusPeaking
+                    onToggleFocusPeaking = onToggleFocusPeaking,
+                    currentSettings = uiState.cameraSettings
                 )
             } else {
                 LogcatManager.d(
@@ -932,7 +933,8 @@ private fun FullscreenCameraLayout(
                 isHistogramEnabled = isHistogramEnabled,
                 onToggleHistogram = onToggleHistogram,
                 isFocusPeakingEnabled = isFocusPeakingEnabled,
-                onToggleFocusPeaking = onToggleFocusPeaking
+                onToggleFocusPeaking = onToggleFocusPeaking,
+                currentSettings = uiState.cameraSettings
             )
         } else {
             Box(
