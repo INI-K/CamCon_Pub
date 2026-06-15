@@ -24,15 +24,18 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.ShootingMode
-import com.inik.camcon.presentation.theme.Background
-import com.inik.camcon.presentation.theme.Border
+import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.CamConTheme
-import com.inik.camcon.presentation.theme.Primary
-import com.inik.camcon.presentation.theme.Surface
-import com.inik.camcon.presentation.theme.SurfaceElevated
-import com.inik.camcon.presentation.theme.OnPrimary
-import com.inik.camcon.presentation.theme.TextMuted
-import com.inik.camcon.presentation.theme.TextPrimary
+import com.inik.camcon.presentation.theme.DividerLine
+import com.inik.camcon.presentation.theme.OnAccent
+import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.StrokeWidth
+import com.inik.camcon.presentation.theme.Surface0
+import com.inik.camcon.presentation.theme.Surface1
+import com.inik.camcon.presentation.theme.Surface2
+import com.inik.camcon.presentation.theme.TextPrimaryV2
+import com.inik.camcon.presentation.theme.TextTertiary
 import com.inik.camcon.domain.model.CameraCapabilities
 import com.inik.camcon.presentation.viewmodel.CameraCaptureState
 import com.inik.camcon.domain.model.ThemeMode
@@ -122,31 +125,31 @@ private fun ModeButton(
     }
 
     val containerColor = when {
-        isSelected -> Primary
-        isEnabled -> SurfaceElevated
-        else -> Surface.copy(alpha = 0.4f)
+        isSelected -> Accent
+        isEnabled -> Surface2
+        else -> Surface1.copy(alpha = 0.4f)
     }
     val contentColor = when {
-        isSelected -> OnPrimary
-        isEnabled -> TextPrimary
-        else -> TextMuted
+        isSelected -> OnAccent
+        isEnabled -> TextPrimaryV2
+        else -> TextTertiary
     }
     val borderColor = when {
-        isSelected -> Primary
-        isEnabled -> Border
-        else -> TextMuted.copy(alpha = 0.2f)
+        isSelected -> Accent
+        isEnabled -> DividerLine
+        else -> TextTertiary.copy(alpha = 0.2f)
     }
 
     androidx.compose.material3.Surface(
         modifier = modifier
-            .clip(RoundedCornerShape(50.dp))
+            .clip(RoundedCornerShape(Radius.sm))
             .clickable(onClick = onClick),
         color = containerColor,
-        shape = RoundedCornerShape(50.dp),
-        border = if (!isSelected) BorderStroke(1.dp, borderColor) else null
+        shape = RoundedCornerShape(Radius.sm),
+        border = if (!isSelected) BorderStroke(StrokeWidth.thin, borderColor) else null
     ) {
         Box(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -167,7 +170,7 @@ private fun ShootingModeSelectorPreview() {
         Column(
             modifier = Modifier
                 .padding(20.dp)
-                .background(Background),
+                .background(Surface0),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             // 연결됨

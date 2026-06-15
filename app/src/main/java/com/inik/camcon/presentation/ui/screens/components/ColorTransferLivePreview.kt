@@ -52,6 +52,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.inik.camcon.R
+import com.inik.camcon.presentation.theme.Elevation
+import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.viewmodel.ColorTransferViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -159,8 +161,8 @@ fun ColorTransferLivePreview(
         modifier = modifier
             .fillMaxWidth()
             .height(300.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(8.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = Elevation.low),
+        shape = RoundedCornerShape(Radius.md)
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -266,11 +268,11 @@ fun ColorTransferLivePreview(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(Radius.md))
                                 .border(
                                     2.dp,
                                     MaterialTheme.colorScheme.primary,
-                                    RoundedCornerShape(8.dp)
+                                    RoundedCornerShape(Radius.md)
                                 )
                                 .clickable {
                                     // 원본 크기로 색감 처리 시작
@@ -375,7 +377,7 @@ fun ColorTransferLivePreview(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(200.dp)
-                                    .clip(RoundedCornerShape(4.dp)),
+                                    .clip(RoundedCornerShape(Radius.sm)),
                                 contentScale = ContentScale.Crop
                             )
                             Spacer(modifier = Modifier.height(8.dp))
@@ -409,7 +411,7 @@ fun ColorTransferLivePreview(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(16.dp),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(Radius.lg),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(
@@ -449,7 +451,7 @@ fun ColorTransferLivePreview(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(16.dp)
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(Radius.xl))
                     ) {
                         ZoomableImageWithDoubleTap(
                             bitmap = fullSizeProcessedBitmap!!,

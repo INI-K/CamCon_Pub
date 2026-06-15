@@ -23,7 +23,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.core.content.FileProvider
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.CameraPhoto
-import com.inik.camcon.presentation.theme.Background
+import com.inik.camcon.presentation.theme.Surface0
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
 import com.inik.camcon.utils.LogMask
 import kotlinx.coroutines.CoroutineScope
@@ -268,7 +268,7 @@ fun FullScreenPhotoViewer(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Background)
+            .background(Surface0)
     ) {
         HorizontalPager(
             state = pagerState,

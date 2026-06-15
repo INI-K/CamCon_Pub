@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  CamCon 모노크롬 아이콘 — Android 13+ 테마 아이콘 및 알림 silhouette.
+  단색 흰색(시스템이 틴트). 24px에서도 읽히도록 틱 제거 + 굵은 스트로크.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 조리개 링 -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="7"
+        android:pathData="M25,54 A29,29 0 1 1 83,54 A29,29 0 1 1 25,54 Z" />
+
+    <!-- 셔터 아이리스 (육각) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5"
+        android:strokeLineJoin="round"
+        android:pathData="M68,54 L61,66.12 L47,66.12 L40,54 L47,41.88 L61,41.88 Z" />
+
+    <!-- 중심 포커스 점 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,50 A4,4 0 1 1 53.99,50 Z" />
+</vector>

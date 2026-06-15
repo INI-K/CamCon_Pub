@@ -14,8 +14,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.inik.camcon.R
-import com.inik.camcon.presentation.theme.SurfaceElevated
-import com.inik.camcon.presentation.theme.TextPrimary
+import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.Surface2
+import com.inik.camcon.presentation.theme.TextPrimaryV2
 
 /**
  * 전체화면 진입 힌트 배지
@@ -47,8 +48,8 @@ fun BoxScope.FullscreenHintBadge(modifier: Modifier = Modifier) {
         Modifier
             .padding(20.dp)
             .background(
-                SurfaceElevated.copy(alpha = 0.8f),
-                RoundedCornerShape(12.dp)
+                Surface2.copy(alpha = 0.8f),
+                RoundedCornerShape(Radius.xl)
             )
             .padding(horizontal = 12.dp, vertical = 6.dp)
     }
@@ -60,7 +61,7 @@ fun BoxScope.FullscreenHintBadge(modifier: Modifier = Modifier) {
     ) {
         Text(
             text = stringResource(R.string.camera_control_double_click_fullscreen),
-            color = TextPrimary,
+            color = TextPrimaryV2,
             style = MaterialTheme.typography.bodySmall
         )
     }

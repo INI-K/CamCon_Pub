@@ -61,6 +61,16 @@ object StrokeWidth {
     val regular = 1.5.dp
     val thick = 2.dp
     val heavy = 2.5.dp
+    val focusRing = 2.dp   // 애니메이션 포커스 링
+}
+
+/** Technical HUD 깊이 계층 — 그림자/elevation 토큰. 평면 박스 탈피. */
+object Elevation {
+    val none = 0.dp
+    val low = 2.dp      // 정지 카드
+    val medium = 6.dp   // 떠 있는 패널 / 시트
+    val high = 12.dp    // 다이얼로그 / HUD 레일
+    val overlay = 20.dp // 셔터 / 모달 오버레이
 }
 
 /** 카메라 도메인 전용 치수. */

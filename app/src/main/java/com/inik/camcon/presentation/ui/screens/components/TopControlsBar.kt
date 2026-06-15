@@ -37,17 +37,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.Camera
-import com.inik.camcon.presentation.theme.Background
-import com.inik.camcon.presentation.theme.Border
 import com.inik.camcon.presentation.theme.CamConTheme
-import com.inik.camcon.presentation.theme.Error
-import com.inik.camcon.presentation.theme.Primary
-import com.inik.camcon.presentation.theme.Success
-import com.inik.camcon.presentation.theme.Surface
-import com.inik.camcon.presentation.theme.SurfaceElevated
-import com.inik.camcon.presentation.theme.TextMuted
-import com.inik.camcon.presentation.theme.TextPrimary
-import com.inik.camcon.presentation.theme.TextSecondary
+import com.inik.camcon.presentation.theme.DividerLine
+import com.inik.camcon.presentation.theme.ErrorV2
+import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.StrokeWidth
+import com.inik.camcon.presentation.theme.SuccessV2
+import com.inik.camcon.presentation.theme.Surface0
+import com.inik.camcon.presentation.theme.Surface1
+import com.inik.camcon.presentation.theme.Surface2
+import com.inik.camcon.presentation.theme.TextPrimaryV2
+import com.inik.camcon.presentation.theme.TextTertiary
 import com.inik.camcon.presentation.theme.WarningV2
 import com.inik.camcon.presentation.viewmodel.CameraConnectionState
 import com.inik.camcon.presentation.viewmodel.CameraSettingsState
@@ -81,13 +82,13 @@ fun TopControlsBar(
     )
 
     Surface(
-        color = Surface,
+        color = Surface1,
         modifier = modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+                .padding(horizontal = Spacing.lg, vertical = Spacing.base),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -97,20 +98,20 @@ fun TopControlsBar(
                 modifier = Modifier
                     .background(
                         color = if (uiState.isConnected)
-                            Success.copy(alpha = 0.1f)
+                            SuccessV2.copy(alpha = 0.1f)
                         else
-                            Error.copy(alpha = 0.1f),
-                        shape = RoundedCornerShape(20.dp)
+                            ErrorV2.copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(Radius.sm)
                     )
                     .border(
-                        width = 1.dp,
+                        width = StrokeWidth.thin,
                         color = if (uiState.isConnected)
-                            Success.copy(alpha = 0.3f)
+                            SuccessV2.copy(alpha = 0.3f)
                         else
-                            Error.copy(alpha = 0.3f),
-                        shape = RoundedCornerShape(20.dp)
+                            ErrorV2.copy(alpha = 0.3f),
+                        shape = RoundedCornerShape(Radius.sm)
                     )
-                    .padding(horizontal = 16.dp, vertical = 10.dp)
+                    .padding(horizontal = Spacing.md, vertical = Spacing.sm)
             ) {
                 // 상태 인디케이터 (연결 시 펄싱)
                 Box(
@@ -118,11 +119,11 @@ fun TopControlsBar(
                         .size(8.dp)
                         .clip(CircleShape)
                         .background(
-                            if (uiState.isConnected) Success.copy(alpha = pulseAlpha) else Error
+                            if (uiState.isConnected) SuccessV2.copy(alpha = pulseAlpha) else ErrorV2
                         )
                 )
 
-                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(Spacing.sm))
 
                 Text(
                     text = if (uiState.isConnected) {
@@ -132,29 +133,29 @@ fun TopControlsBar(
                     } else {
                         stringResource(R.string.camera_disconnected)
                     },
-                    color = TextPrimary,
+                    color = TextPrimaryV2,
                     style = MaterialTheme.typography.labelLarge
                 )
 
                 // M8: 배터리 칩 — capabilities.batteryLevel 이 있을 때만 표시
                 uiState.cameraCapabilities?.batteryLevel?.let { level ->
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(Spacing.sm))
                     Box(
                         modifier = Modifier
                             .background(
-                                color = Surface,
-                                shape = RoundedCornerShape(12.dp)
+                                color = Surface1,
+                                shape = RoundedCornerShape(Radius.sm)
                             )
                             .border(
-                                width = 1.dp,
-                                color = Border,
-                                shape = RoundedCornerShape(12.dp)
+                                width = StrokeWidth.thin,
+                                color = DividerLine,
+                                shape = RoundedCornerShape(Radius.sm)
                             )
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .padding(horizontal = Spacing.sm, vertical = Spacing.xs)
                     ) {
                         Text(
                             text = stringResource(R.string.camera_status_battery_percent, level),
-                            color = if (level <= 15) Error else TextPrimary,
+                            color = if (level <= 15) ErrorV2 else TextPrimaryV2,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Medium
                         )
@@ -175,24 +176,24 @@ fun TopControlsBar(
                         } else {
                             stringResource(R.string.camera_status_sd_format_mb, mb.toInt())
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(Spacing.sm))
                         Box(
                             modifier = Modifier
                                 .background(
-                                    color = Surface,
-                                    shape = RoundedCornerShape(12.dp)
+                                    color = Surface1,
+                                    shape = RoundedCornerShape(Radius.sm)
                                 )
                                 .border(
-                                    width = 1.dp,
-                                    color = if (isLow) WarningV2.copy(alpha = 0.5f) else Border,
-                                    shape = RoundedCornerShape(12.dp)
+                                    width = StrokeWidth.thin,
+                                    color = if (isLow) WarningV2.copy(alpha = 0.5f) else DividerLine,
+                                    shape = RoundedCornerShape(Radius.sm)
                                 )
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                .padding(horizontal = Spacing.sm, vertical = Spacing.xs)
                         ) {
                             Column(horizontalAlignment = Alignment.End) {
                                 Text(
                                     text = sdText,
-                                    color = if (isLow) WarningV2 else TextPrimary,
+                                    color = if (isLow) WarningV2 else TextPrimaryV2,
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Medium
                                 )
@@ -202,7 +203,7 @@ fun TopControlsBar(
                                             R.string.camera_status_sd_images_free,
                                             count
                                         ),
-                                        color = TextMuted,
+                                        color = TextTertiary,
                                         style = MaterialTheme.typography.labelSmall
                                     )
                                 }
@@ -214,7 +215,7 @@ fun TopControlsBar(
 
             // 설정 버튼
             Surface(
-                color = SurfaceElevated,
+                color = Surface2,
                 shape = CircleShape,
                 modifier = Modifier.size(44.dp)
             ) {
@@ -225,7 +226,7 @@ fun TopControlsBar(
                     Icon(
                         Icons.Default.Settings,
                         contentDescription = stringResource(R.string.settings),
-                        tint = TextPrimary,
+                        tint = TextPrimaryV2,
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -238,7 +239,7 @@ fun TopControlsBar(
 @Composable
 private fun TopControlsConnectedPreview() {
     CamConTheme() {
-        Box(modifier = Modifier.background(Background)) {
+        Box(modifier = Modifier.background(Surface0)) {
             TopControlsBar(
                 uiState = CameraUiState(
                     connection = CameraConnectionState(isConnected = true),
@@ -280,7 +281,7 @@ private fun TopControlsConnectedPreview() {
 @Composable
 private fun TopControlsDisconnectedPreview() {
     CamConTheme() {
-        Box(modifier = Modifier.background(Background)) {
+        Box(modifier = Modifier.background(Surface0)) {
             TopControlsBar(
                 uiState = CameraUiState(),
                 cameraFeed = emptyList(),

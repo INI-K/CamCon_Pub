@@ -10,8 +10,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.inik.camcon.presentation.theme.Background
-import com.inik.camcon.presentation.theme.TextPrimary
+import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.Surface0
+import com.inik.camcon.presentation.theme.TextPrimaryV2
 
 /**
  * 사진 뷰어의 현재 페이지 표시 (예: "3 / 15")
@@ -29,15 +30,15 @@ fun PhotoPageIndicator(
     Box(
         modifier = modifier
             .background(
-                Background.copy(alpha = 0.6f),
-                RoundedCornerShape(16.dp)
+                Surface0.copy(alpha = 0.6f),
+                RoundedCornerShape(Radius.md)
             )
             .padding(horizontal = 12.dp, vertical = 6.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = "${currentIndex + 1} / $totalCount",
-            color = TextPrimary,
+            color = TextPrimaryV2,
             style = MaterialTheme.typography.bodySmall
         )
     }

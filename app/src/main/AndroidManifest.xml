@@ -86,7 +86,7 @@
         <!-- Firebase 및 Google Services 설정 -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
-            android:resource="@drawable/ic_launcher_foreground" />
+            android:resource="@drawable/ic_launcher_monochrome" />
 
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_color"

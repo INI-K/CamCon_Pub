@@ -58,13 +58,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.CameraPhoto
-import com.inik.camcon.presentation.theme.Background
-import com.inik.camcon.presentation.theme.BadgeText
+import com.inik.camcon.presentation.theme.Surface0
+import com.inik.camcon.presentation.theme.Micro
 import com.inik.camcon.presentation.theme.Caption
-import com.inik.camcon.presentation.theme.CaptionSmall
-import com.inik.camcon.presentation.theme.Overlay
-import com.inik.camcon.presentation.theme.Success
-import com.inik.camcon.presentation.theme.TextPrimary
+import com.inik.camcon.presentation.theme.Elevation
+import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.SuccessV2
+import com.inik.camcon.presentation.theme.TextPrimaryV2
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.utils.LogMask
 import kotlinx.coroutines.Dispatchers
@@ -98,12 +98,12 @@ fun PhotoThumbnail(
     Card(
         modifier = Modifier
             .aspectRatio(1f)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(Radius.xl))
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
             ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = Elevation.low),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Box {
@@ -190,7 +190,7 @@ fun PhotoThumbnail(
                         .padding(8.dp)
                         .size(24.dp)
                         .background(
-                            color = if (isSelected) Success else TextPrimary.copy(alpha = 0.8f),
+                            color = if (isSelected) SuccessV2 else TextPrimaryV2.copy(alpha = 0.8f),
                             shape = CircleShape
                         ),
                     contentAlignment = Alignment.Center
@@ -199,7 +199,7 @@ fun PhotoThumbnail(
                         Icon(
                             imageVector = Icons.Filled.CheckCircle,
                             contentDescription = stringResource(R.string.cd_selected),
-                            tint = TextPrimary,
+                            tint = TextPrimaryV2,
                             modifier = Modifier.size(20.dp)
                         )
                     } else {
@@ -222,15 +222,15 @@ fun PhotoThumbnail(
                     .align(Alignment.BottomStart)
                     .fillMaxWidth()
                     .background(
-                        Background.copy(alpha = 0.6f),
-                        RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp)
+                        Surface0.copy(alpha = 0.6f),
+                        RoundedCornerShape(bottomStart = Radius.xl, bottomEnd = Radius.xl)
                     ),
                 contentAlignment = Alignment.CenterStart
             ) {
                 Text(
                     text = photo.name,
-                    color = TextPrimary,
-                    style = BadgeText,
+                    color = TextPrimaryV2,
+                    style = Micro,
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -243,15 +243,15 @@ fun PhotoThumbnail(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .background(
-                            Background.copy(alpha = 0.7f),
-                            RoundedCornerShape(bottomStart = 8.dp, topEnd = 12.dp)
+                            Surface0.copy(alpha = 0.7f),
+                            RoundedCornerShape(bottomStart = Radius.lg, topEnd = Radius.xl)
                         )
                         .padding(horizontal = 4.dp, vertical = 2.dp)
                 ) {
                     Text(
                         text = formatFileSize(photo.size),
-                        color = TextPrimary,
-                        style = CaptionSmall
+                        color = TextPrimaryV2,
+                        style = Micro
                     )
                 }
             }
@@ -521,12 +521,12 @@ fun FluidPhotoThumbnail(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(aspectRatio)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(Radius.xl))
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
             ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = Elevation.low),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Box {
@@ -613,7 +613,7 @@ fun FluidPhotoThumbnail(
                         .padding(8.dp)
                         .size(24.dp)
                         .background(
-                            color = if (isSelected) Success else TextPrimary.copy(alpha = 0.8f),
+                            color = if (isSelected) SuccessV2 else TextPrimaryV2.copy(alpha = 0.8f),
                             shape = CircleShape
                         ),
                     contentAlignment = Alignment.Center
@@ -622,7 +622,7 @@ fun FluidPhotoThumbnail(
                         Icon(
                             imageVector = Icons.Filled.CheckCircle,
                             contentDescription = stringResource(R.string.cd_selected),
-                            tint = TextPrimary,
+                            tint = TextPrimaryV2,
                             modifier = Modifier.size(20.dp)
                         )
                     } else {
@@ -645,15 +645,15 @@ fun FluidPhotoThumbnail(
                     .align(Alignment.BottomStart)
                     .fillMaxWidth()
                     .background(
-                        Background.copy(alpha = 0.6f),
-                        RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp)
+                        Surface0.copy(alpha = 0.6f),
+                        RoundedCornerShape(bottomStart = Radius.xl, bottomEnd = Radius.xl)
                     ),
                 contentAlignment = Alignment.CenterStart
             ) {
                 Text(
                     text = photo.name,
-                    color = TextPrimary,
-                    style = BadgeText,
+                    color = TextPrimaryV2,
+                    style = Micro,
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -666,15 +666,15 @@ fun FluidPhotoThumbnail(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .background(
-                            Background.copy(alpha = 0.7f),
-                            RoundedCornerShape(bottomStart = 8.dp, topEnd = 12.dp)
+                            Surface0.copy(alpha = 0.7f),
+                            RoundedCornerShape(bottomStart = Radius.lg, topEnd = Radius.xl)
                         )
                         .padding(horizontal = 4.dp, vertical = 2.dp)
                 ) {
                     Text(
                         text = formatFileSize(photo.size),
-                        color = TextPrimary,
-                        style = CaptionSmall
+                        color = TextPrimaryV2,
+                        style = Micro
                     )
                 }
             }
@@ -883,9 +883,9 @@ fun FeaturedPhotoThumbnail(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(aspectRatio)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(Radius.xl))
             .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = Elevation.low),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Box {
@@ -961,17 +961,17 @@ fun FeaturedPhotoThumbnail(
                         Brush.verticalGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                Background.copy(alpha = 0.7f)
+                                Surface0.copy(alpha = 0.7f)
                             )
                         ),
-                        RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
+                        RoundedCornerShape(bottomStart = Radius.xl, bottomEnd = Radius.xl)
                     )
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
                 Column {
                     Text(
                         text = photo.name,
-                        color = TextPrimary,
+                        color = TextPrimaryV2,
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -980,7 +980,7 @@ fun FeaturedPhotoThumbnail(
                     if (photo.size > 0) {
                         Text(
                             text = formatFileSize(photo.size),
-                            color = TextPrimary.copy(alpha = 0.8f),
+                            color = TextPrimaryV2.copy(alpha = 0.8f),
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -994,13 +994,13 @@ fun FeaturedPhotoThumbnail(
                     .padding(12.dp)
                     .background(
                         color = MaterialTheme.colorScheme.primary,
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(Radius.lg)
                     )
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(
                     text = stringResource(R.string.photo_thumbnail_latest),
-                    color = TextPrimary,
+                    color = TextPrimaryV2,
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold
                 )
@@ -1023,7 +1023,7 @@ private fun PhotoThumbnailPreview() {
         )
         Column(
             modifier = Modifier
-                .background(Background)
+                .background(Surface0)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {

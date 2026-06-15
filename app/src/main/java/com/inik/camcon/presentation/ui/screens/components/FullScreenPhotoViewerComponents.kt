@@ -51,8 +51,9 @@ import com.github.panpf.zoomimage.CoilZoomAsyncImage
 import com.github.panpf.zoomimage.rememberCoilZoomState
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.CameraPhoto
-import com.inik.camcon.presentation.theme.Background
-import com.inik.camcon.presentation.theme.TextPrimary
+import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.Surface0
+import com.inik.camcon.presentation.theme.TextPrimaryV2
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
 import com.inik.camcon.utils.LogMask
 import kotlinx.coroutines.launch
@@ -108,14 +109,14 @@ fun FullScreenTopBar(
             onClick = onClose,
             modifier = Modifier
                 .background(
-                    Background.copy(alpha = 0.6f),
-                    RoundedCornerShape(20.dp)
+                    Surface0.copy(alpha = 0.6f),
+                    RoundedCornerShape(Radius.sm)
                 )
         ) {
             Icon(
                 Icons.Default.Close,
                 contentDescription = stringResource(R.string.cd_close),
-                tint = TextPrimary
+                tint = TextPrimaryV2
             )
         }
 
@@ -125,14 +126,14 @@ fun FullScreenTopBar(
             onClick = onInfoClick,
             modifier = Modifier
                 .background(
-                    Background.copy(alpha = 0.6f),
-                    RoundedCornerShape(20.dp)
+                    Surface0.copy(alpha = 0.6f),
+                    RoundedCornerShape(Radius.sm)
                 )
         ) {
             Icon(
                 Icons.Default.Info,
                 contentDescription = stringResource(R.string.cd_info),
-                tint = TextPrimary
+                tint = TextPrimaryV2
             )
         }
 
@@ -141,14 +142,14 @@ fun FullScreenTopBar(
                 onClick = onDownloadClick,
                 modifier = Modifier
                     .background(
-                        Background.copy(alpha = 0.6f),
-                        RoundedCornerShape(20.dp)
+                        Surface0.copy(alpha = 0.6f),
+                        RoundedCornerShape(Radius.sm)
                     )
             ) {
                 Icon(
                     Icons.Default.Download,
                     contentDescription = stringResource(R.string.cd_download),
-                    tint = TextPrimary
+                    tint = TextPrimaryV2
                 )
             }
         }
@@ -157,14 +158,14 @@ fun FullScreenTopBar(
             onClick = onShareClick,
             modifier = Modifier
                 .background(
-                    Background.copy(alpha = 0.6f),
-                    RoundedCornerShape(20.dp)
+                    Surface0.copy(alpha = 0.6f),
+                    RoundedCornerShape(Radius.sm)
                 )
         ) {
             Icon(
                 Icons.Default.Share,
                 contentDescription = stringResource(R.string.cd_share),
-                tint = TextPrimary
+                tint = TextPrimaryV2
             )
         }
 
@@ -174,14 +175,14 @@ fun FullScreenTopBar(
                 onClick = { showDeleteDialog = true },
                 modifier = Modifier
                     .background(
-                        Background.copy(alpha = 0.6f),
-                        RoundedCornerShape(20.dp)
+                        Surface0.copy(alpha = 0.6f),
+                        RoundedCornerShape(Radius.sm)
                     )
             ) {
                 Icon(
                     Icons.Default.Delete,
                     contentDescription = stringResource(R.string.preview_delete_title),
-                    tint = TextPrimary
+                    tint = TextPrimaryV2
                 )
             }
         }
@@ -300,7 +301,7 @@ fun PhotoPagerLoadingIndicator(modifier: Modifier = Modifier) {
     ) {
         CircularProgressIndicator(
             modifier = Modifier.size(48.dp),
-            color = TextPrimary
+            color = TextPrimaryV2
         )
     }
 }
@@ -326,7 +327,7 @@ fun FullScreenBottomThumbnails(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(Background.copy(alpha = 0.8f))
+            .background(Surface0.copy(alpha = 0.8f))
             .padding(8.dp)
     ) {
         LazyRow(
@@ -349,7 +350,7 @@ fun FullScreenBottomThumbnails(
                     },
                     modifier = Modifier
                         .size(80.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(Radius.lg))
                         .clickable { onPhotoSelected(photo) }
                 )
             }
@@ -376,7 +377,7 @@ fun LocalBottomThumbnailStripWrapper(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(Background.copy(alpha = 0.8f))
+            .background(Surface0.copy(alpha = 0.8f))
             .padding(8.dp)
     ) {
         LazyRow(
@@ -398,7 +399,7 @@ fun LocalBottomThumbnailStripWrapper(
                     },
                     modifier = Modifier
                         .size(80.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(Radius.lg))
                         .clickable { onPhotoSelected(photo) }
                 )
             }
@@ -418,9 +419,9 @@ private fun ServerThumbnailItemWrapper(
         modifier = modifier
             .background(
                 if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surfaceVariant,
-                RoundedCornerShape(8.dp)
+                RoundedCornerShape(Radius.lg)
             )
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(Radius.lg))
     ) {
         if (thumbnailData != null) {
             val bitmap = remember(thumbnailData) {
@@ -462,7 +463,7 @@ private fun ServerThumbnailItemWrapper(
                     .fillMaxSize()
                     .background(
                         MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                        RoundedCornerShape(8.dp)
+                        RoundedCornerShape(Radius.lg)
                     )
             )
         }
@@ -480,9 +481,9 @@ private fun LocalThumbnailItemWrapper(
         modifier = modifier
             .background(
                 if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surfaceVariant,
-                RoundedCornerShape(8.dp)
+                RoundedCornerShape(Radius.lg)
             )
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(Radius.lg))
     ) {
         val bitmap = remember(photo.path) {
             android.graphics.BitmapFactory.decodeFile(photo.path)
@@ -516,7 +517,7 @@ private fun LocalThumbnailItemWrapper(
                     .fillMaxSize()
                     .background(
                         MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                        RoundedCornerShape(8.dp)
+                        RoundedCornerShape(Radius.lg)
                     )
             )
         }
@@ -534,7 +535,7 @@ private fun PhotoThumbnailLoadingState(modifier: Modifier = Modifier) {
         CircularProgressIndicator(
             modifier = Modifier.size(24.dp),
             strokeWidth = 2.dp,
-            color = TextPrimary
+            color = TextPrimaryV2
         )
     }
 }

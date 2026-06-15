@@ -22,9 +22,11 @@ import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -69,7 +71,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.inik.camcon.presentation.theme.Border
+import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
 import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
 import androidx.core.content.ContextCompat
@@ -426,7 +428,7 @@ fun MainScreen(
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentDestination = navBackStackEntry?.destination
 
-                    HorizontalDivider(color = Border, thickness = 0.5.dp)
+                    HorizontalDivider(color = DividerLine, thickness = 0.5.dp)
                     NavigationBar(
                         containerColor = MaterialTheme.colorScheme.surface,
                         contentColor = MaterialTheme.colorScheme.onSurface,
@@ -464,7 +466,18 @@ fun MainScreen(
                 NavHost(
                     navController,
                     startDestination = BottomNavItem.CameraControl.route,
-                    Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    // M6: Material 'fade through' 탭 전환 — 추상적 평면 교체 대신 의도된 모션
+                    enterTransition = {
+                        fadeIn(animationSpec = tween(220, delayMillis = 60)) +
+                            scaleIn(initialScale = 0.96f, animationSpec = tween(220, delayMillis = 60))
+                    },
+                    exitTransition = { fadeOut(animationSpec = tween(120)) },
+                    popEnterTransition = {
+                        fadeIn(animationSpec = tween(220, delayMillis = 60)) +
+                            scaleIn(initialScale = 0.96f, animationSpec = tween(220, delayMillis = 60))
+                    },
+                    popExitTransition = { fadeOut(animationSpec = tween(120)) }
                 ) {
                     composable(BottomNavItem.PhotoPreview.route) { PhotoPreviewScreen() }
                     composable(BottomNavItem.CameraControl.route) {

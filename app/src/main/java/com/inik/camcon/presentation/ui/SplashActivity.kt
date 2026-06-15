@@ -50,8 +50,8 @@ import com.inik.camcon.domain.usecase.camera.SetupNativeEnvironmentUseCase
 import com.inik.camcon.domain.usecase.camera.StartNativeLogUseCase
 import com.inik.camcon.presentation.theme.BodySmall
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.DisplayL
 import com.inik.camcon.presentation.theme.HeadingL
-import com.inik.camcon.presentation.theme.HeadingXL
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.Surface0
 import com.inik.camcon.presentation.theme.TextPrimaryV2
@@ -329,14 +329,14 @@ fun SplashScreen(
                 .alpha(alphaAnim.value)
         ) {
             Image(
-                painter = painterResource(id = R.drawable.ic_camera),
+                painter = painterResource(id = R.drawable.ic_launcher_foreground),
                 contentDescription = null,
-                modifier = Modifier.size(96.dp)
+                modifier = Modifier.size(112.dp)
             )
             Spacer(modifier = Modifier.height(Spacing.lg))
             Text(
                 text = "CamCon",
-                style = HeadingXL,
+                style = DisplayL,
                 color = TextPrimaryV2
             )
             Spacer(modifier = Modifier.height(Spacing.xs))

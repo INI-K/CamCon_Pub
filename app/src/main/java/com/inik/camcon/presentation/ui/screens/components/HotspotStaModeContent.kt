@@ -44,7 +44,7 @@ import com.inik.camcon.domain.model.PtpipCameraInfo
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
-import com.inik.camcon.presentation.theme.SurfaceElevated
+import com.inik.camcon.presentation.theme.Surface2
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
 
 /**
@@ -157,7 +157,7 @@ fun HotspotStaModeContent(
 private fun HotspotEnableCard(onOpenSettings: () -> Unit) {
     Card(
         shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = SurfaceElevated),
+        colors = CardDefaults.cardColors(containerColor = Surface2),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -228,7 +228,7 @@ private fun HotspotAutoReconnectCard(
 ) {
     Card(
         shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = SurfaceElevated),
+        colors = CardDefaults.cardColors(containerColor = Surface2),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -274,7 +274,7 @@ private fun HotspotMdnsSearchCard(
 ) {
     Card(
         shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = SurfaceElevated),
+        colors = CardDefaults.cardColors(containerColor = Surface2),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -325,7 +325,7 @@ private fun HotspotMdnsSearchCard(
 private fun HotspotStatusCard(state: HotspotStaContentState) {
     Card(
         shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = SurfaceElevated),
+        colors = CardDefaults.cardColors(containerColor = Surface2),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -372,7 +372,7 @@ private fun HotspotStatusCard(state: HotspotStaContentState) {
 private fun HotspotGuideCard() {
     Card(
         shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = SurfaceElevated),
+        colors = CardDefaults.cardColors(containerColor = Surface2),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -416,7 +416,7 @@ private fun ManualIpInputCard(
 ) {
     Card(
         shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = SurfaceElevated),
+        colors = CardDefaults.cardColors(containerColor = Surface2),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth()
     ) {

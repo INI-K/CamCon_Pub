@@ -37,10 +37,10 @@ import com.inik.camcon.domain.model.PtpipCameraInfo
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
-import com.inik.camcon.presentation.theme.Border
 import com.inik.camcon.presentation.theme.CamConTheme
-import com.inik.camcon.presentation.theme.Success
-import com.inik.camcon.presentation.theme.SurfaceElevated
+import com.inik.camcon.presentation.theme.DividerLine
+import com.inik.camcon.presentation.theme.Surface2
+import com.inik.camcon.presentation.theme.SuccessV2
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
 import com.inik.camcon.domain.model.ThemeMode
 
@@ -144,20 +144,20 @@ private fun StaNetworkStatusCard(
             .border(
                 width = 1.dp,
                 color = if (wifiNetworkState.isConnected)
-                    Success.copy(alpha = 0.2f)
+                    SuccessV2.copy(alpha = 0.2f)
                 else
                     MaterialTheme.colorScheme.error.copy(alpha = 0.2f),
                 shape = MaterialTheme.shapes.medium
             ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceElevated)
+        colors = CardDefaults.cardColors(containerColor = Surface2)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = if (isWifiConnected) Icons.Filled.Wifi else Icons.Filled.WifiOff,
                     contentDescription = null,
-                    tint = if (wifiNetworkState.isConnected) Success else MaterialTheme.colorScheme.error,
+                    tint = if (wifiNetworkState.isConnected) SuccessV2 else MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -180,7 +180,7 @@ private fun StaNetworkStatusCard(
             Text(
                 text = ptpipViewModel.getNetworkStatusMessage(),
                 style = MaterialTheme.typography.bodySmall,
-                color = if (wifiNetworkState.isConnected) Success else MaterialTheme.colorScheme.error,
+                color = if (wifiNetworkState.isConnected) SuccessV2 else MaterialTheme.colorScheme.error,
                 fontWeight = FontWeight.Medium
             )
 
@@ -219,11 +219,11 @@ private fun AutoReconnectCard(
             .fillMaxWidth()
             .border(
                 width = 1.dp,
-                color = Border,
+                color = DividerLine,
                 shape = MaterialTheme.shapes.medium
             ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceElevated)
+        colors = CardDefaults.cardColors(containerColor = Surface2)
     ) {
         Row(
             modifier = Modifier
@@ -275,7 +275,7 @@ private fun MdnsSearchCard(
                 shape = MaterialTheme.shapes.medium
             ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceElevated)
+        colors = CardDefaults.cardColors(containerColor = Surface2)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

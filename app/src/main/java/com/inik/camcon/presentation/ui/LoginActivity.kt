@@ -56,7 +56,7 @@ import com.inik.camcon.domain.model.resolve
 import com.inik.camcon.presentation.theme.BodySmall
 import com.inik.camcon.presentation.theme.ButtonText
 import com.inik.camcon.presentation.theme.CamConTheme
-import com.inik.camcon.presentation.theme.HeadingXL
+import com.inik.camcon.presentation.theme.DisplayL
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.Accent
@@ -212,11 +212,11 @@ fun LoginScreen(
             horizontalAlignment = Alignment.Start,
             verticalArrangement = Arrangement.Center
         ) {
-            // Logo
+            // Logo — Technical HUD 레티클 마크(런처 아이콘과 동일)
             Image(
-                painter = painterResource(id = R.drawable.ic_camera),
+                painter = painterResource(id = R.drawable.ic_launcher_foreground),
                 contentDescription = null,
-                modifier = Modifier.size(64.dp)
+                modifier = Modifier.size(72.dp)
             )
 
             Spacer(modifier = Modifier.height(Spacing.xl))
@@ -224,7 +224,7 @@ fun LoginScreen(
             // 좌측 정렬 헤드라인 (HeadingXL)
             Text(
                 text = stringResource(R.string.app_name),
-                style = HeadingXL,
+                style = DisplayL,
                 color = TextPrimaryV2
             )
 

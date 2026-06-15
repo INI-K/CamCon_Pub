@@ -14,10 +14,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
@@ -49,18 +51,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.Camera
-import com.inik.camcon.presentation.theme.Background
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.DividerLine
-import com.inik.camcon.presentation.theme.Error
+import com.inik.camcon.presentation.theme.ErrorV2
 import com.inik.camcon.presentation.theme.Spacing
-import com.inik.camcon.presentation.theme.SurfaceElevated
-import com.inik.camcon.presentation.theme.TextPrimary
-import com.inik.camcon.presentation.theme.TextSecondary
-import com.inik.camcon.presentation.theme.Warning
+import com.inik.camcon.presentation.theme.Surface0
+import com.inik.camcon.presentation.theme.Surface2
+import com.inik.camcon.presentation.theme.TextPrimaryV2
+import com.inik.camcon.presentation.theme.TextSecondaryV2
+import com.inik.camcon.presentation.theme.WarningV2
+import com.inik.camcon.presentation.ui.components.v2.EmptyState
+import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
+import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
 import com.inik.camcon.domain.model.CameraCapabilities
 import com.inik.camcon.domain.model.LiveViewFrame
 import com.inik.camcon.presentation.viewmodel.CameraConnectionState
@@ -221,7 +225,7 @@ fun CameraPreviewArea(
                 ) {
                     if (onToggleGridOverlay != null) {
                         androidx.compose.material3.Surface(
-                            color = SurfaceElevated.copy(alpha = 0.7f),
+                            color = Surface2.copy(alpha = 0.7f),
                             shape = androidx.compose.foundation.shape.CircleShape
                         ) {
                             IconButton(
@@ -231,7 +235,7 @@ fun CameraPreviewArea(
                                 Icon(
                                     imageVector = if (isGridOverlayEnabled) Icons.Default.GridOn else Icons.Default.GridOff,
                                     contentDescription = stringResource(R.string.liveview_grid_toggle),
-                                    tint = TextPrimary,
+                                    tint = TextPrimaryV2,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -240,7 +244,7 @@ fun CameraPreviewArea(
 
                     if (onToggleHistogram != null) {
                         androidx.compose.material3.Surface(
-                            color = SurfaceElevated.copy(
+                            color = Surface2.copy(
                                 alpha = if (isHistogramEnabled) 0.9f else 0.7f
                             ),
                             shape = androidx.compose.foundation.shape.CircleShape
@@ -253,7 +257,7 @@ fun CameraPreviewArea(
                                     imageVector = Icons.Default.BarChart,
                                     contentDescription = stringResource(R.string.liveview_histogram_toggle),
                                     tint = if (isHistogramEnabled)
-                                        MaterialTheme.colorScheme.primary else TextPrimary,
+                                        MaterialTheme.colorScheme.primary else TextPrimaryV2,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -262,7 +266,7 @@ fun CameraPreviewArea(
 
                     if (onToggleFocusPeaking != null) {
                         androidx.compose.material3.Surface(
-                            color = SurfaceElevated.copy(
+                            color = Surface2.copy(
                                 alpha = if (isFocusPeakingEnabled) 0.9f else 0.7f
                             ),
                             shape = androidx.compose.foundation.shape.CircleShape
@@ -275,7 +279,7 @@ fun CameraPreviewArea(
                                     imageVector = Icons.Default.CenterFocusWeak,
                                     contentDescription = stringResource(R.string.liveview_focus_peaking_toggle),
                                     tint = if (isFocusPeakingEnabled)
-                                        MaterialTheme.colorScheme.primary else TextPrimary,
+                                        MaterialTheme.colorScheme.primary else TextPrimaryV2,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -305,17 +309,17 @@ fun CameraPreviewArea(
                         .align(Alignment.BottomCenter)
                         .padding(16.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Error.copy(alpha = 0.8f)
+                        containerColor = ErrorV2.copy(alpha = 0.8f)
                     )
                 ) {
                     Icon(
                         Icons.Default.Stop,
                         contentDescription = stringResource(R.string.cd_stop_live_view),
-                        tint = TextPrimary,
+                        tint = TextPrimaryV2,
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.stop_live_view), color = TextPrimary)
+                    Text(stringResource(R.string.stop_live_view), color = TextPrimaryV2)
                 }
             }
         } else if (!connectionState.isConnected) {
@@ -360,38 +364,20 @@ fun CameraDisconnectedState(
     onRequestUsbPermission: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(
-            Icons.Default.UsbOff,
-            contentDescription = null,
-            tint = TextSecondary,
-            modifier = Modifier.size(64.dp)
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            stringResource(R.string.camera_not_connected),
-            color = TextPrimary,
-            style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp)
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            stringResource(R.string.connect_camera_usb),
-            color = TextSecondary,
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-        CameraConnectionButtons(
-            connectionState = connectionState,
-            cameraFeed = cameraFeed,
-            onConnectCamera = onConnectCamera,
-            onRefreshUsb = onRefreshUsb,
-            onRequestUsbPermission = onRequestUsbPermission
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        EmptyState(
+            icon = Icons.Default.UsbOff,
+            title = stringResource(R.string.camera_not_connected),
+            description = stringResource(R.string.connect_camera_usb),
+            action = {
+                CameraConnectionButtons(
+                    connectionState = connectionState,
+                    cameraFeed = cameraFeed,
+                    onConnectCamera = onConnectCamera,
+                    onRefreshUsb = onRefreshUsb,
+                    onRequestUsbPermission = onRequestUsbPermission
+                )
+            }
         )
     }
 }
@@ -421,11 +407,15 @@ fun CameraConnectedState(
                 if (isLiveViewActive) Icons.Default.VideocamOff
                 else Icons.Default.Videocam,
                 contentDescription = stringResource(R.string.cd_live_view_frame),
-                tint = TextSecondary,
+                tint = TextSecondaryV2,
                 modifier = Modifier.size(64.dp)
             )
             Spacer(modifier = Modifier.height(16.dp))
-            Button(
+            PrimaryButton(
+                text = if (isLiveViewActive)
+                    stringResource(R.string.stop_live_view)
+                else
+                    stringResource(R.string.start_live_view),
                 onClick = {
                     if (isLiveViewActive) {
                         onStopLiveView()
@@ -433,40 +423,27 @@ fun CameraConnectedState(
                         onStartLiveView()
                     }
                 },
-                enabled = isConnected,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isConnected)
-                        MaterialTheme.colorScheme.primary
-                    else
-                        TextSecondary.copy(alpha = 0.5f)
-                )
-            ) {
-                Text(
-                    if (isLiveViewActive)
-                        stringResource(R.string.stop_live_view)
-                    else
-                        stringResource(R.string.start_live_view)
-                )
-            }
+                enabled = isConnected
+            )
         } else {
             // 라이브뷰를 지원하지 않는 경우
             Icon(
                 Icons.Default.VideocamOff,
                 contentDescription = stringResource(R.string.cd_live_view_frame),
-                tint = Error.copy(alpha = 0.5f),
+                tint = ErrorV2.copy(alpha = 0.5f),
                 modifier = Modifier.size(64.dp)
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 stringResource(R.string.liveview_not_supported),
-                color = TextSecondary,
+                color = TextSecondaryV2,
                 style = MaterialTheme.typography.bodyLarge,
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 stringResource(R.string.liveview_not_supported_detail),
-                color = TextSecondary.copy(alpha = 0.7f),
+                color = TextSecondaryV2.copy(alpha = 0.7f),
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center
             )
@@ -487,11 +464,12 @@ fun CameraConnectionButtons(
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier,
+        modifier = modifier.widthIn(max = 280.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm)
     ) {
-        Button(
+        PrimaryButton(
+            text = stringResource(R.string.retry_connection),
             onClick = {
                 // 재연결을 시도하거나 카메라 목록을 표시
                 cameraFeed.firstOrNull()?.let { camera ->
@@ -501,49 +479,25 @@ fun CameraConnectionButtons(
                     onConnectCamera("auto")
                 }
             },
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary
-            )
-        ) {
-            Text(stringResource(R.string.retry_connection))
-        }
+            modifier = Modifier.fillMaxWidth()
+        )
 
         // USB 새로고침 버튼
-        Button(
+        SecondaryButton(
+            text = stringResource(R.string.refresh_usb),
             onClick = onRefreshUsb,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.secondary
-            )
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Default.Refresh,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(stringResource(R.string.refresh_usb))
-            }
-        }
+            leadingIcon = Icons.Default.Refresh,
+            modifier = Modifier.fillMaxWidth()
+        )
 
         // USB 권한 요청 버튼
         if (connectionState.usbDeviceCount > 0 && !connectionState.hasUsbPermission) {
-            Button(
+            PrimaryButton(
+                text = stringResource(R.string.request_usb_permission),
                 onClick = onRequestUsbPermission,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Warning
-                )
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.Security,
-                        contentDescription = stringResource(R.string.cd_camera_status),
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(stringResource(R.string.request_usb_permission), color = TextPrimary)
-                }
-            }
+                leadingIcon = Icons.Default.Security,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }
@@ -583,13 +537,13 @@ private fun LiveViewStaleBadge(
 
     if (isStale.value) {
         androidx.compose.material3.Surface(
-            color = Warning.copy(alpha = 0.9f),
+            color = WarningV2.copy(alpha = 0.9f),
             shape = androidx.compose.foundation.shape.RoundedCornerShape(Spacing.sm),
             modifier = modifier
         ) {
             Text(
                 text = stringResource(R.string.liveview_frame_stalled),
-                color = TextPrimary,
+                color = TextPrimaryV2,
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm)
@@ -608,7 +562,7 @@ private fun CameraPreviewConnectedPreview() {
         Box(
             modifier = Modifier
                 .size(300.dp)
-                .background(Background)
+                .background(Surface0)
         ) {
             CameraConnectedState(
                 isConnected = true,

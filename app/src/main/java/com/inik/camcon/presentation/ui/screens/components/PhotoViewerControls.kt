@@ -40,8 +40,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.inik.camcon.R
-import com.inik.camcon.presentation.theme.Background
-import com.inik.camcon.presentation.theme.TextPrimary
+import com.inik.camcon.presentation.theme.Elevation
+import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.Surface0
+import com.inik.camcon.presentation.theme.TextPrimaryV2
 import com.inik.camcon.domain.model.CameraPhoto
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -64,7 +66,7 @@ fun PhotoViewerTopControls(
             Icon(
                 Icons.Default.Info,
                 contentDescription = context.getString(R.string.photo_details),
-                tint = TextPrimary,
+                tint = TextPrimaryV2,
                 modifier = Modifier.size(28.dp)
             )
         }
@@ -75,7 +77,7 @@ fun PhotoViewerTopControls(
             Icon(
                 Icons.Default.Close,
                 contentDescription = context.getString(R.string.close),
-                tint = TextPrimary,
+                tint = TextPrimaryV2,
                 modifier = Modifier.size(28.dp)
             )
         }
@@ -105,7 +107,7 @@ fun PhotoDetailsDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(8.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = Elevation.high),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background)
         ) {
             Column(
@@ -173,7 +175,7 @@ fun PhotoDetailsDialog(
                 Button(
                     onClick = onDownload,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(Radius.sm)
                 ) {
                     Icon(
                         Icons.Default.Share,
@@ -270,7 +272,7 @@ private fun PhotoViewerTopControlsPreview() {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Background.copy(alpha = 0.5f))
+                .background(Surface0.copy(alpha = 0.5f))
                 .padding(16.dp)
         ) {
             PhotoViewerTopControls(

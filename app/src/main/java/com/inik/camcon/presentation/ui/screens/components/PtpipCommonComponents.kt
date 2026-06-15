@@ -30,11 +30,11 @@ import com.inik.camcon.R
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.PtpipCameraInfo
 import com.inik.camcon.domain.model.PtpipConnectionState
-import com.inik.camcon.presentation.theme.Border
 import com.inik.camcon.presentation.theme.CamConTheme
-import com.inik.camcon.presentation.theme.Success
-import com.inik.camcon.presentation.theme.SurfaceElevated
-import com.inik.camcon.presentation.theme.Warning
+import com.inik.camcon.presentation.theme.DividerLine
+import com.inik.camcon.presentation.theme.Surface2
+import com.inik.camcon.presentation.theme.SuccessV2
+import com.inik.camcon.presentation.theme.WarningV2
 import com.inik.camcon.domain.model.ThemeMode
 
 /**
@@ -55,14 +55,14 @@ fun ConnectionStatusCard(
             .border(
                 width = 1.dp,
                 color = when (connectionState) {
-                    PtpipConnectionState.CONNECTED -> Success.copy(alpha = 0.3f)
+                    PtpipConnectionState.CONNECTED -> SuccessV2.copy(alpha = 0.3f)
                     PtpipConnectionState.ERROR -> MaterialTheme.colorScheme.error.copy(alpha = 0.3f)
-                    else -> Border
+                    else -> DividerLine
                 },
                 shape = MaterialTheme.shapes.medium
             ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceElevated)
+        colors = CardDefaults.cardColors(containerColor = Surface2)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -74,8 +74,8 @@ fun ConnectionStatusCard(
                     imageVector = Icons.Filled.CameraAlt,
                     contentDescription = null,
                     tint = when (connectionState) {
-                        PtpipConnectionState.CONNECTED -> Success
-                        PtpipConnectionState.CONNECTING -> Warning
+                        PtpipConnectionState.CONNECTED -> SuccessV2
+                        PtpipConnectionState.CONNECTING -> WarningV2
                         PtpipConnectionState.ERROR -> MaterialTheme.colorScheme.error
                         else -> MaterialTheme.colorScheme.onSurfaceVariant
                     },

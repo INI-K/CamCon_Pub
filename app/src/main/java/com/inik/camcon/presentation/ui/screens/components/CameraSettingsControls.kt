@@ -44,16 +44,18 @@ import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.domain.model.CameraCapabilities
 import com.inik.camcon.domain.model.CameraSettings
 import com.inik.camcon.domain.model.ExposureCompensation
-import com.inik.camcon.presentation.theme.Background
-import com.inik.camcon.presentation.theme.BadgeText
-import com.inik.camcon.presentation.theme.Border
+import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.CamConTheme
-import com.inik.camcon.presentation.theme.Primary
-import com.inik.camcon.presentation.theme.Surface
-import com.inik.camcon.presentation.theme.SurfaceElevated
-import com.inik.camcon.presentation.theme.TextMuted
-import com.inik.camcon.presentation.theme.TextPrimary
-import com.inik.camcon.presentation.theme.TextSecondary
+import com.inik.camcon.presentation.theme.DividerLine
+import com.inik.camcon.presentation.theme.Micro
+import com.inik.camcon.presentation.theme.MonoNumeric
+import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.StrokeWidth
+import com.inik.camcon.presentation.theme.Surface0
+import com.inik.camcon.presentation.theme.Surface2
+import com.inik.camcon.presentation.theme.TextPrimaryV2
+import com.inik.camcon.presentation.theme.TextSecondaryV2
+import com.inik.camcon.presentation.theme.TextTertiary
 
 /**
  * ISO/셔터스피드/조리개 조절 컨트롤
@@ -159,35 +161,35 @@ private fun SettingDropdown(
         // 레이블
         Text(
             text = label,
-            style = BadgeText.copy(fontWeight = FontWeight.Medium),
-            color = if (isEnabled) TextSecondary else TextMuted,
+            style = Micro,
+            color = if (isEnabled) TextSecondaryV2 else TextTertiary,
             modifier = Modifier.padding(bottom = 2.dp)
         )
 
-        // 드롭다운 버튼
+        // 드롭다운 버튼 (HUD: 각진 4dp 세그먼트)
         Box {
             Surface(
                 modifier = Modifier
                     .height(36.dp)
                     .widthIn(min = 70.dp)
-                    .clip(RoundedCornerShape(50.dp))
+                    .clip(RoundedCornerShape(Radius.sm))
                     .clickable(enabled = isEnabled && options.isNotEmpty()) {
                         expanded = true
                     }
                     .then(
                         if (isEnabled) Modifier.border(
-                            width = if (isManuallySet) 1.5.dp else 1.dp,
-                            color = if (isManuallySet) Primary.copy(alpha = 0.5f) else Border,
-                            shape = RoundedCornerShape(50.dp)
+                            width = if (isManuallySet) StrokeWidth.regular else StrokeWidth.thin,
+                            color = if (isManuallySet) Accent.copy(alpha = 0.5f) else DividerLine,
+                            shape = RoundedCornerShape(Radius.sm)
                         )
                         else Modifier.border(
-                            1.dp,
-                            TextMuted.copy(alpha = 0.3f),
-                            RoundedCornerShape(50.dp)
+                            StrokeWidth.thin,
+                            TextTertiary.copy(alpha = 0.3f),
+                            RoundedCornerShape(Radius.sm)
                         )
                     ),
-                color = if (isEnabled) SurfaceElevated else SurfaceElevated.copy(alpha = 0.5f),
-                shape = RoundedCornerShape(50.dp)
+                color = if (isEnabled) Surface2 else Surface2.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(Radius.sm)
             ) {
                 Row(
                     modifier = Modifier
@@ -198,8 +200,8 @@ private fun SettingDropdown(
                 ) {
                     Text(
                         text = formatDisplayValue(currentValue),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (isEnabled) TextPrimary else TextMuted,
+                        style = MonoNumeric,
+                        color = if (isEnabled) TextPrimaryV2 else TextTertiary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
@@ -209,7 +211,7 @@ private fun SettingDropdown(
                         Icon(
                             Icons.Default.ArrowDropDown,
                             contentDescription = null,
-                            tint = TextSecondary,
+                            tint = TextSecondaryV2,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -221,7 +223,7 @@ private fun SettingDropdown(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
                 modifier = Modifier
-                    .background(SurfaceElevated)
+                    .background(Surface2)
                     .height(250.dp),
                 properties = PopupProperties(focusable = true)
             ) {
@@ -243,13 +245,13 @@ private fun SettingDropdown(
                                         style = MaterialTheme.typography.bodyMedium.copy(
                                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
                                         ),
-                                        color = if (isSelected) Primary else TextPrimary
+                                        color = if (isSelected) Accent else TextPrimaryV2
                                     )
                                     if (isSelected) {
                                         Icon(
                                             Icons.Default.Check,
                                             contentDescription = null,
-                                            tint = Primary,
+                                            tint = Accent,
                                             modifier = Modifier.size(16.dp)
                                         )
                                     }
@@ -260,8 +262,8 @@ private fun SettingDropdown(
                                 expanded = false
                             },
                             modifier = Modifier.background(
-                                if (isSelected) Primary.copy(alpha = 0.1f)
-                                else SurfaceElevated
+                                if (isSelected) Accent.copy(alpha = 0.1f)
+                                else Surface2
                             )
                         )
                     }
@@ -286,7 +288,7 @@ private fun CameraSettingsControlsPreview() {
     CamConTheme() {
         Column(
             modifier = Modifier
-                .background(Background)
+                .background(Surface0)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
