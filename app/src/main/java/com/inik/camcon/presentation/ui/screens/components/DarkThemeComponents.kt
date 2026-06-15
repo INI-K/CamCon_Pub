@@ -31,38 +31,29 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.inik.camcon.presentation.theme.DarkBackgroundGradientEnd
-import com.inik.camcon.presentation.theme.DarkBackgroundGradientMid
-import com.inik.camcon.presentation.theme.DarkBackgroundGradientStart
-import com.inik.camcon.presentation.theme.DarkBodyText
-import com.inik.camcon.presentation.theme.DarkCardBackground
-import com.inik.camcon.presentation.theme.DarkCardBorder
-import com.inik.camcon.presentation.theme.DarkFilterChipLockedText
-import com.inik.camcon.presentation.theme.DarkFilterChipSelectedBackground
-import com.inik.camcon.presentation.theme.DarkFilterChipSelectedBorder
-import com.inik.camcon.presentation.theme.DarkFilterChipUnselectedBackground
-import com.inik.camcon.presentation.theme.DarkFilterChipUnselectedBorder
-import com.inik.camcon.presentation.theme.DarkIconButtonBackground
-import com.inik.camcon.presentation.theme.DarkIconButtonTint
-import com.inik.camcon.presentation.theme.DarkStatusBadgeText
-import com.inik.camcon.presentation.theme.DarkTabRowBackground
-import com.inik.camcon.presentation.theme.DarkTabRowBorder
-import com.inik.camcon.presentation.theme.DarkTabSelectedBackground
-import com.inik.camcon.presentation.theme.DarkTabSelectedText
-import com.inik.camcon.presentation.theme.DarkTabUnselectedText
-import com.inik.camcon.presentation.theme.DarkTitleText
-import com.inik.camcon.presentation.theme.DarkTopBarGradientEnd
-import com.inik.camcon.presentation.theme.DarkTopBarGradientStart
+import com.inik.camcon.presentation.theme.Accent
+import com.inik.camcon.presentation.theme.AccentMuted
+import com.inik.camcon.presentation.theme.DividerLine
+import com.inik.camcon.presentation.theme.Elevation
+import com.inik.camcon.presentation.theme.OnAccent
+import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.Surface0
+import com.inik.camcon.presentation.theme.Surface1
+import com.inik.camcon.presentation.theme.Surface2
+import com.inik.camcon.presentation.theme.Surface3
+import com.inik.camcon.presentation.theme.TextDisabled
+import com.inik.camcon.presentation.theme.TextPrimaryV2
+import com.inik.camcon.presentation.theme.TextSecondaryV2
 
-private val DarkCardBorderStroke = BorderStroke(1.dp, DarkCardBorder)
+private val DarkCardBorderStroke = BorderStroke(1.dp, DividerLine)
 
 fun Modifier.darkScreenBackground(): Modifier =
     background(
         Brush.verticalGradient(
             colors = listOf(
-                DarkBackgroundGradientStart,
-                DarkBackgroundGradientMid,
-                DarkBackgroundGradientEnd
+                Surface0,
+                Surface1,
+                Surface0
             )
         )
     )
@@ -87,10 +78,10 @@ fun DarkInfoCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        elevation = 4.dp,
-        backgroundColor = DarkCardBackground,
+        elevation = Elevation.low,
+        backgroundColor = Surface2,
         border = DarkCardBorderStroke,
-        shape = RoundedCornerShape(18.dp)
+        shape = RoundedCornerShape(Radius.md)
     ) {
         Column(modifier = Modifier.padding(16.dp), content = content)
     }
@@ -108,16 +99,16 @@ fun DarkTopBar(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(Radius.md))
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        DarkTopBarGradientStart,
-                        DarkTopBarGradientEnd
+                        Surface1,
+                        Surface0
                     )
                 )
             )
-            .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(18.dp))
+            .border(1.dp, DividerLine, RoundedCornerShape(Radius.md))
     ) {
         Row(
             modifier = Modifier
@@ -135,26 +126,26 @@ fun DarkTopBar(
                     IconButton(
                         onClick = onBack,
                         modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(DarkIconButtonBackground)
+                            .clip(RoundedCornerShape(Radius.sm))
+                            .background(Surface3)
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "뒤로가기",
-                            tint = DarkIconButtonTint
+                            tint = TextPrimaryV2
                         )
                     }
                 }
                 Column {
                     Text(
                         text = title,
-                        color = DarkTitleText,
+                        color = Accent,
                         style = MaterialTheme.typography.h6
                     )
                     if (!subtitle.isNullOrBlank()) {
                         Text(
                             text = subtitle,
-                            color = DarkBodyText,
+                            color = TextSecondaryV2,
                             style = MaterialTheme.typography.caption
                         )
                     }
@@ -178,12 +169,12 @@ fun DarkSectionHeader(
     Column(modifier = modifier) {
         Text(
             text = title,
-            color = DarkTitleText,
+            color = Accent,
             style = MaterialTheme.typography.subtitle1
         )
         Text(
             text = subtitle,
-            color = DarkBodyText,
+            color = TextSecondaryV2,
             style = MaterialTheme.typography.caption
         )
     }
@@ -198,11 +189,11 @@ fun DarkStatusBadge(
 ) {
     Text(
         text = text,
-        color = DarkStatusBadgeText,
+        color = TextPrimaryV2,
         fontSize = if (compact) 9.sp else 10.sp,
         modifier = Modifier
-            .background(background.copy(alpha = 0.92f), RoundedCornerShape(10.dp))
-            .border(1.dp, border.copy(alpha = 0.95f), RoundedCornerShape(10.dp))
+            .background(background.copy(alpha = 0.92f), RoundedCornerShape(Radius.sm))
+            .border(1.dp, border.copy(alpha = 0.95f), RoundedCornerShape(Radius.sm))
             .padding(
                 horizontal = if (compact) 7.dp else 8.dp,
                 vertical = if (compact) 3.dp else 4.dp
@@ -220,9 +211,9 @@ fun DarkTabRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(DarkTabRowBackground)
-            .border(1.dp, DarkTabRowBorder, RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(Radius.md))
+            .background(Surface1)
+            .border(1.dp, DividerLine, RoundedCornerShape(Radius.md))
             .padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
@@ -231,13 +222,13 @@ fun DarkTabRow(
             Surface(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(RoundedCornerShape(Radius.sm))
                     .clickable { onTabSelected(index) },
-                color = if (selected) DarkTabSelectedBackground else Color.Transparent
+                color = if (selected) Accent else Color.Transparent
             ) {
                 Text(
                     text = title,
-                    color = if (selected) DarkTabSelectedText else DarkTabUnselectedText,
+                    color = if (selected) OnAccent else TextSecondaryV2,
                     style = MaterialTheme.typography.body2,
                     fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                     modifier = Modifier.padding(vertical = 10.dp),
@@ -255,18 +246,18 @@ fun DarkFilterChip(
     isLocked: Boolean = false,
     onClick: () -> Unit
 ) {
-    val background = if (isSelected) DarkFilterChipSelectedBackground else DarkFilterChipUnselectedBackground
-    val border = if (isSelected) DarkFilterChipSelectedBorder else DarkFilterChipUnselectedBorder
+    val background = if (isSelected) AccentMuted else Surface2
+    val border = if (isSelected) Accent else DividerLine
     val content = when {
-        isLocked -> DarkFilterChipLockedText
-        isSelected -> DarkTabSelectedText
-        else -> DarkTabUnselectedText
+        isLocked -> TextDisabled
+        isSelected -> OnAccent
+        else -> TextSecondaryV2
     }
     Surface(
         modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(Radius.sm))
             .clickable(enabled = !isLocked, onClick = onClick)
-            .border(1.dp, border, RoundedCornerShape(10.dp)),
+            .border(1.dp, border, RoundedCornerShape(Radius.sm)),
         color = background
     ) {
         Text(

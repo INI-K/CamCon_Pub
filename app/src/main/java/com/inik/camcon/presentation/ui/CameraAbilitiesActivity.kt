@@ -703,9 +703,9 @@ private fun FeatureCard(
                         else
                             stringResource(R.string.diag_abilities_feature_unsupported),
                         tint = if (feature.supported)
-                            com.inik.camcon.presentation.theme.Success
+                            com.inik.camcon.presentation.theme.SuccessV2
                         else
-                            com.inik.camcon.presentation.theme.Error,
+                            com.inik.camcon.presentation.theme.ErrorV2,
                         modifier = Modifier.size(24.dp)
                     )
                 }

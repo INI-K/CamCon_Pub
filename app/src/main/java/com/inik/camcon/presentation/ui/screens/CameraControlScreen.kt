@@ -106,19 +106,17 @@ import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.CameraSettings
 import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.presentation.theme.CamConTheme
-import com.inik.camcon.presentation.theme.Background
+import com.inik.camcon.presentation.theme.Elevation
 import com.inik.camcon.presentation.theme.IconSize
 import com.inik.camcon.presentation.theme.Padding
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.StrokeWidth
-import com.inik.camcon.presentation.theme.Surface
-import com.inik.camcon.presentation.theme.SurfaceElevated
-import com.inik.camcon.presentation.theme.Primary
-import com.inik.camcon.presentation.theme.Error
-import com.inik.camcon.presentation.theme.TextPrimary
-import com.inik.camcon.presentation.theme.TextSecondary
-import com.inik.camcon.presentation.theme.TextMuted
+import com.inik.camcon.presentation.theme.Surface1
+import com.inik.camcon.presentation.theme.Surface2
+import com.inik.camcon.presentation.theme.Accent
+import com.inik.camcon.presentation.theme.ErrorV2
+import com.inik.camcon.presentation.theme.TextPrimaryV2
 import com.inik.camcon.presentation.theme.TouchTarget
 import com.inik.camcon.presentation.theme.Surface0
 import com.inik.camcon.presentation.theme.TextSecondaryV2
@@ -282,7 +280,7 @@ fun CameraControlScreen(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = Background,
+        containerColor = Surface0,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { scaffoldPadding ->
@@ -653,7 +651,7 @@ private fun PortraitCameraLayout(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Background)
+            .background(Surface0)
             .padding(contentPadding)
             .imePadding()
     ) {
@@ -685,7 +683,7 @@ private fun PortraitCameraLayout(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .background(Background),
+                .background(Surface0),
             contentAlignment = Alignment.Center
         ) {
             if (appSettings.isCameraControlsEnabled && appSettings.isLiveViewEnabled) {
@@ -754,7 +752,7 @@ private fun PortraitCameraLayout(
                     AnimatedPhotoSwitcher(
                         capturedPhotos = uiState.capturedPhotos,
                         modifier = Modifier.fillMaxSize(),
-                        emptyTextColor = TextSecondary,
+                        emptyTextColor = TextSecondaryV2,
                         isRotated = false,
                         onDoubleClick = {
                             if (canEnterFullscreen) {
@@ -772,14 +770,14 @@ private fun PortraitCameraLayout(
                         .align(Alignment.TopStart)
                         .padding(Padding.lg)
                         .background(
-                            SurfaceElevated.copy(alpha = 0.8f),
-                            RoundedCornerShape(Radius.lg)
+                            Surface2.copy(alpha = 0.8f),
+                            RoundedCornerShape(Radius.sm)
                         )
                         .padding(horizontal = Padding.md, vertical = 6.dp)
                 ) {
                     Text(
                         text = stringResource(R.string.camera_control_double_click_fullscreen),
-                        color = TextPrimary,
+                        color = TextPrimaryV2,
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
@@ -788,9 +786,9 @@ private fun PortraitCameraLayout(
 
         // 프리미엄 하단 컨트롤 패널
         Surface(
-            color = Surface,
-            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-            tonalElevation = Spacing.sm,
+            color = Surface1,
+            shape = RoundedCornerShape(topStart = Radius.xl, topEnd = Radius.xl),
+            tonalElevation = Elevation.medium,
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
@@ -849,7 +847,7 @@ private fun PortraitCameraLayout(
                 if (recentPhotos.isNotEmpty()) {
                     Text(
                         text = stringResource(R.string.camera_control_received_photos, uiState.capturedPhotos.size),
-                        color = TextPrimary,
+                        color = TextPrimaryV2,
                         style = MaterialTheme.typography.labelLarge,
                         modifier = Modifier.padding(horizontal = Padding.lg, vertical = Padding.md)
                     )
@@ -905,7 +903,7 @@ private fun FullscreenCameraLayout(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Background)
+            .background(Surface0)
     ) {
         // 메인 라이브뷰 또는 사진 뷰 영역
         if (isLiveViewEnabled && uiState.isLiveViewActive) {
@@ -955,7 +953,7 @@ private fun FullscreenCameraLayout(
                 AnimatedPhotoSwitcher(
                     capturedPhotos = uiState.capturedPhotos,
                     modifier = Modifier.fillMaxSize(),
-                    emptyTextColor = TextSecondary,
+                    emptyTextColor = TextSecondaryV2,
                     isRotated = isRotated,
                     onDoubleClick = onExitFullscreen
                 )
@@ -989,38 +987,38 @@ private fun FullscreenCameraLayout(
                 horizontalArrangement = Arrangement.spacedBy(Spacing.md)
             ) {
                 Surface(
-                    color = SurfaceElevated.copy(alpha = 0.9f),
+                    color = Surface2.copy(alpha = 0.9f),
                     shape = CircleShape
                 ) {
                     IconButton(
                         onClick = { isRotated = !isRotated },
                         modifier = Modifier
                             .size(TouchTarget.xl)
-                            .background(SurfaceElevated, CircleShape)
+                            .background(Surface2, CircleShape)
                     ) {
                         Icon(
                             Icons.Default.RotateRight,
                             contentDescription = stringResource(R.string.cd_rotate_180),
-                            tint = TextPrimary,
+                            tint = TextPrimaryV2,
                             modifier = Modifier.size(26.dp)
                         )
                     }
                 }
 
                 Surface(
-                    color = SurfaceElevated.copy(alpha = 0.9f),
+                    color = Surface2.copy(alpha = 0.9f),
                     shape = CircleShape
                 ) {
                     IconButton(
                         onClick = onExitFullscreen,
                         modifier = Modifier
                             .size(TouchTarget.xl)
-                            .background(Error.copy(alpha = 0.3f), CircleShape)
+                            .background(ErrorV2.copy(alpha = 0.3f), CircleShape)
                     ) {
                         Icon(
                             Icons.Default.Close,
                             contentDescription = stringResource(R.string.cd_exit_fullscreen),
-                            tint = TextPrimary,
+                            tint = TextPrimaryV2,
                             modifier = Modifier.size(26.dp)
                         )
                     }
@@ -1030,15 +1028,15 @@ private fun FullscreenCameraLayout(
 
         // 하단 안내 텍스트 - 프리미엄 스타일
         Surface(
-            color = SurfaceElevated.copy(alpha = 0.8f),
-            shape = RoundedCornerShape(Radius.lg),
+            color = Surface2.copy(alpha = 0.8f),
+            shape = RoundedCornerShape(Radius.sm),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(Padding.lg)
         ) {
             Text(
                 text = stringResource(R.string.camera_control_double_click_exit),
-                color = TextPrimary,
+                color = TextPrimaryV2,
                 modifier = Modifier.padding(horizontal = Padding.base, vertical = 10.dp),
                 style = MaterialTheme.typography.bodyMedium
             )
@@ -1082,9 +1080,9 @@ private fun FullscreenControlPanel(
     modifier: Modifier = Modifier
 ) {
     Surface(
-        color = SurfaceElevated.copy(alpha = 0.95f),
-        shape = RoundedCornerShape(20.dp),
-        tonalElevation = Spacing.sm,
+        color = Surface2.copy(alpha = 0.95f),
+        shape = RoundedCornerShape(Radius.md),
+        tonalElevation = Elevation.medium,
         modifier = modifier
     ) {
         Column(
@@ -1094,7 +1092,7 @@ private fun FullscreenControlPanel(
         ) {
             // 종료 버튼
             Surface(
-                color = Error.copy(alpha = 0.2f),
+                color = ErrorV2.copy(alpha = 0.2f),
                 shape = CircleShape,
                 modifier = Modifier.size(TouchTarget.xl)
             ) {
@@ -1105,7 +1103,7 @@ private fun FullscreenControlPanel(
                     Icon(
                         Icons.Default.Close,
                         contentDescription = stringResource(R.string.cd_exit_fullscreen),
-                        tint = Error,
+                        tint = ErrorV2,
                         modifier = Modifier.size(26.dp)
                     )
                 }
@@ -1113,7 +1111,7 @@ private fun FullscreenControlPanel(
 
             // 180도 회전 버튼
             Surface(
-                color = SurfaceElevated,
+                color = Surface2,
                 shape = CircleShape,
                 modifier = Modifier.size(TouchTarget.xl)
             ) {
@@ -1125,7 +1123,7 @@ private fun FullscreenControlPanel(
                     Icon(
                         Icons.Default.RotateRight,
                         contentDescription = stringResource(R.string.cd_rotate_180),
-                        tint = if (onRotate != null) TextPrimary else TextSecondary,
+                        tint = if (onRotate != null) TextPrimaryV2 else TextSecondaryV2,
                         modifier = Modifier.size(26.dp)
                     )
                 }
@@ -1215,10 +1213,10 @@ private fun RecentCaptureItem(
         modifier = Modifier
             .size(104.dp)
             .clickable { onClick() },
-        shape = RoundedCornerShape(Radius.xl),
-        color = SurfaceElevated,
-        tonalElevation = Padding.xs,
-        shadowElevation = Padding.xs
+        shape = RoundedCornerShape(Radius.md),
+        color = Surface2,
+        tonalElevation = Elevation.low,
+        shadowElevation = Elevation.low
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -1269,11 +1267,11 @@ private fun RecentCaptureItem(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Background.copy(alpha = 0.7f)),
+                        .background(Surface0.copy(alpha = 0.7f)),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator(
-                        color = Primary,
+                        color = Accent,
                         modifier = Modifier.size(IconSize.lg),
                         strokeWidth = StrokeWidth.thick
                     )
@@ -1283,13 +1281,13 @@ private fun RecentCaptureItem(
             // 파일 크기 표시 (하단)
             if (photo.size > 0) {
                 Surface(
-                    color = Background.copy(alpha = 0.8f),
-                    shape = RoundedCornerShape(Radius.md),
+                    color = Surface0.copy(alpha = 0.8f),
+                    shape = RoundedCornerShape(Radius.sm),
                     modifier = Modifier.align(Alignment.BottomEnd)
                 ) {
                     Text(
                         text = sizeText,
-                        color = TextPrimary,
+                        color = TextPrimaryV2,
                         style = MaterialTheme.typography.labelSmall,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                     )
@@ -1306,7 +1304,7 @@ private fun RecentCaptureItem(
 private fun AnimatedPhotoSwitcher(
     capturedPhotos: List<CapturedPhoto>,
     modifier: Modifier = Modifier,
-    emptyTextColor: Color = TextSecondary,
+    emptyTextColor: Color = TextSecondaryV2,
     isRotated: Boolean = false,
     onDoubleClick: (() -> Unit)? = null
 ) {
@@ -1716,12 +1714,12 @@ private fun CameraControlScreenPreview() {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Background),
+                .background(Surface0),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 stringResource(R.string.camera_control_preview_screen),
-                color = TextPrimary,
+                color = TextPrimaryV2,
                 textAlign = TextAlign.Center
             )
         }
@@ -1799,12 +1797,12 @@ private fun FullscreenControlPanelPreview() {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Background),
+                .background(Surface0),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 stringResource(R.string.camera_control_fullscreen_panel),
-                color = TextPrimary,
+                color = TextPrimaryV2,
                 textAlign = TextAlign.Center
             )
         }
