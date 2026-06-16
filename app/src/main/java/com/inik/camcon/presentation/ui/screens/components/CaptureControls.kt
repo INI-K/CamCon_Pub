@@ -1,5 +1,7 @@
 package com.inik.camcon.presentation.ui.screens.components
 
+import android.content.Context
+import android.media.AudioManager
 import android.media.MediaActionSound
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -37,6 +39,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -165,6 +168,12 @@ private fun CaptureControlsContent(
 ) {
     val haptic = LocalHapticFeedback.current
 
+    // 셔터음은 기기 무음/진동 모드를 따른다(사용자가 기기를 무음으로 두면 셔터음도 무음).
+    val context = LocalContext.current
+    val audioManager = remember(context) {
+        context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+    }
+
     // 셔터음 — 호스트 컴포저블의 라이프사이클을 따라 load/release
     val shutterSound = remember {
         MediaActionSound().apply { load(MediaActionSound.SHUTTER_CLICK) }
@@ -270,7 +279,10 @@ private fun CaptureControlsContent(
                         onStopTimelapse()
                         return@clickable
                     }
-                    if (isShutterSoundEnabled) {
+                    // 셔터음은 앱 설정 + 기기 ringer 모드(무음/진동이면 미재생)를 모두 따른다.
+                    if (isShutterSoundEnabled &&
+                        audioManager?.ringerMode == AudioManager.RINGER_MODE_NORMAL
+                    ) {
                         try {
                             shutterSound.play(MediaActionSound.SHUTTER_CLICK)
                         } catch (e: Exception) {
