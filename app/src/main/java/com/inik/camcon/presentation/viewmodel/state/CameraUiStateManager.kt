@@ -63,12 +63,22 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
         _uiState.update {
             it.copy(
                 connection = it.connection.copy(isConnected = isConnected),
+                // 연결이 끊기면 라이브뷰 시작/활성 플래그를 함께 정리해 로딩 오버레이("라이브뷰 시작 중...") 고착을 막는다.
+                // 라이브뷰 Job이 끊김으로 CancellationException 취소되면 startLiveView의 isLoading=false 경로가 실행되지 않아
+                // isLiveViewLoading=true가 남는데, UI가 실제로 관찰하는 유일 chokepoint가 여기이므로 끊김·재연결 양쪽에서 해소된다.
+                liveView = if (!isConnected)
+                    it.liveView.copy(isLiveViewActive = false, isLiveViewLoading = false)
+                else
+                    it.liveView,
                 error = when {
                     isConnected -> null
                     errorMessage != null -> errorMessage
                     else -> it.error
                 }
             )
+        }
+        if (!isConnected) {
+            _liveViewFrame.value = null
         }
         Log.d(TAG, "연결 상태 업데이트: $isConnected, 에러: $errorMessage")
     }
