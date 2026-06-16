@@ -1538,6 +1538,21 @@ class PtpipDataSource @Inject constructor(
         try {
             Log.d(TAG, "카메라 연결 해제 시작 (keepSession: $keepSession)")
 
+            // 소유권 가드: 단일 전역 네이티브 카메라 핸들(CameraNative)을 USB와 Wi-Fi PTP/IP가
+            // 공유한다. USB 전용 세션에선 PtpipDataSource가 아무것도 소유하지 않는다(USB가 소유).
+            // 이때 Wi-Fi 측 teardown이 호출되면(설정/PTPIP Activity 파괴 → PtpipViewModel.onCleared
+            // → connectionHelper.cleanup) 아래에서 stopAutomaticFileReceiving로 상시 이벤트 리스너를
+            // 죽이고 closeCamera로 USB 카메라까지 끊어버린다(물리셔터 수신 영구 중단 + 재시작 실패).
+            // 살아있는 Wi-Fi 세션을 실제로 소유할 때만(연결 완료=CONNECTED 또는 connectedCamera 보유)
+            // teardown을 수행한다. 연결 실패로 남는 ERROR/연결중 CONNECTING 상태는 소유로 보지 않는다
+            // (USB 보호 우선 — ERROR는 자동으로 DISCONNECTED로 리셋되지 않으므로 != DISCONNECTED는 부적합).
+            val ptpipOwnsSession =
+                connectedCamera != null || _connectionState.value == PtpipConnectionState.CONNECTED
+            if (!ptpipOwnsSession) {
+                Log.d(TAG, "PTP/IP 세션 미소유(USB 소유 또는 미연결) - Wi-Fi teardown 생략 (keepSession=$keepSession)")
+                return@withContext
+            }
+
             // 물리 셔터 무선 수신 리스너 중지 (H3): tetherService.listenForNewShots가 단일 PTP/IP
             // 세션의 소켓을 점유하므로, disconnect 시 이 Job을 취소하지 않으면 고아 소켓이 살아남아
             // 재연결 시 카메라가 새 TCP를 -7/End-of-stream으로 거부한다(앱 재시작 전까지 재연결 불가).
