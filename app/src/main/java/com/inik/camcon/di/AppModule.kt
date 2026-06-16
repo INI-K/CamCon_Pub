@@ -149,12 +149,15 @@ object AppModule {
     @Singleton
     fun providePtpipDiscoveryService(
         @ApplicationContext context: Context,
-        wifiHelper: WifiNetworkHelper
-    ) = PtpipDiscoveryService(context, wifiHelper)
+        wifiHelper: WifiNetworkHelper,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
+    ) = PtpipDiscoveryService(context, wifiHelper, ioDispatcher)
 
     @Provides
     @Singleton
-    fun providePtpipConnectionManager() = PtpipConnectionManager()
+    fun providePtpipConnectionManager(
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
+    ) = PtpipConnectionManager(ioDispatcher)
 
     @Provides
     @Singleton

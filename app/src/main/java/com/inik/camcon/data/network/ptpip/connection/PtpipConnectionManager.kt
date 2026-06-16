@@ -3,16 +3,18 @@ package com.inik.camcon.data.network.ptpip.connection
 import android.util.Log
 import com.inik.camcon.data.constants.PtpipConstants
 import com.inik.camcon.data.network.ptpip.IpAddressValidator
+import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.model.PtpSessionState
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.PtpipCameraInfo
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.coroutines.coroutineContext
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.nio.ByteBuffer
@@ -33,7 +35,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class PtpipConnectionManager @Inject constructor(
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     @Volatile private var commandSocket: Socket? = null
     @Volatile private var eventSocket: Socket? = null
@@ -52,10 +54,13 @@ class PtpipConnectionManager @Inject constructor(
 
     /**
      * CAS 기반 상태 전이 시도. 유효하지 않은 전이는 거부한다.
+     * 경합으로 CAS가 반복 실패할 때 취소된 코루틴이 무한 스핀하지 않도록
+     * 매 반복마다 [ensureActive]로 취소를 확인한다.
      * @return 전이 성공 여부
      */
-    private fun tryTransition(to: PtpSessionState): Boolean {
+    private suspend fun tryTransition(to: PtpSessionState): Boolean {
         while (true) {
+            coroutineContext.ensureActive()
             val current = sessionState.get()
             if (!PtpSessionState.isValidTransition(current, to)) {
                 Log.w(TAG, "상태 전이 거부: $current → $to")
@@ -342,22 +347,27 @@ class PtpipConnectionManager @Inject constructor(
      * 연결 종료
      */
     suspend fun closeConnections(closeSession: Boolean = true) = withContext(ioDispatcher) {
-        try {
-            // 세션 닫기 (필요한 경우에만)
-            if (closeSession && commandSocket?.isConnected == true) {
-                closeSession(forceClose = true)
-            }
+        // 세션 닫기 (필요한 경우에만). closeSession()이 ptpTransactionMutex를 잡으므로
+        // 재진입 데드락을 피하기 위해 락 밖에서 먼저 호출한다.
+        if (closeSession && commandSocket?.isConnected == true) {
+            closeSession(forceClose = true)
+        }
 
-            commandSocket?.close()
-            eventSocket?.close()
-        } catch (e: Exception) {
-            Log.w(TAG, "연결 종료 중 오류: ${e.message}")
-        } finally {
-            commandSocket = null
-            eventSocket = null
-            sessionId.set(0)
-            transactionId.set(0)
-            forceTransition(PtpSessionState.DISCONNECTED)
+        // 소켓 종료/널 처리와 상태 전이를 ptpTransactionMutex로 보호하여
+        // openSession()의 set(OPEN)·소켓 접근과의 race(상태=OPEN, 소켓=null)를 차단한다.
+        ptpTransactionMutex.withLock {
+            try {
+                commandSocket?.close()
+                eventSocket?.close()
+            } catch (e: Exception) {
+                Log.w(TAG, "연결 종료 중 오류: ${e.message}")
+            } finally {
+                commandSocket = null
+                eventSocket = null
+                sessionId.set(0)
+                transactionId.set(0)
+                forceTransition(PtpSessionState.DISCONNECTED)
+            }
         }
     }
 

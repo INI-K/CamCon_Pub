@@ -161,56 +161,60 @@ class UsbDeviceDetector @Inject constructor(
     }
 
     private fun handleDeviceAttached(intent: Intent) {
-        val device: UsbDevice? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
-        } else {
-            @Suppress("DEPRECATION")
-            intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
-        }
-        device?.let {
-            LogcatManager.d(TAG, "USB 디바이스가 연결되었습니다: ${it.deviceName}")
-            if (isCameraDevice(it)) {
-                val hasActualPermission = usbManager.hasPermission(it)
-                LogcatManager.d(TAG, "연결된 디바이스의 실제 권한 상태: $hasActualPermission")
+        synchronized(this) {
+            val device: UsbDevice? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+            }
+            device?.let {
+                LogcatManager.d(TAG, "USB 디바이스가 연결되었습니다: ${it.deviceName}")
+                if (isCameraDevice(it)) {
+                    val hasActualPermission = usbManager.hasPermission(it)
+                    LogcatManager.d(TAG, "연결된 디바이스의 실제 권한 상태: $hasActualPermission")
 
-                if (hasActualPermission) {
-                    _hasPermission.value = true
-                    currentDevice = it
-                } else {
-                    // 권한이 없더라도 기존에 추적 중인 다른 디바이스를 덮어쓰지 않는다.
-                    // (현재 연결된 디바이스가 없을 때만 권한 상태를 초기화)
-                    if (currentDevice == null) {
-                        _hasPermission.value = false
+                    if (hasActualPermission) {
+                        _hasPermission.value = true
+                        currentDevice = it
+                    } else {
+                        // 권한이 없더라도 기존에 추적 중인 다른 디바이스를 덮어쓰지 않는다.
+                        // (현재 연결된 디바이스가 없을 때만 권한 상태를 초기화)
+                        if (currentDevice == null) {
+                            _hasPermission.value = false
+                        }
                     }
-                }
 
-                updateDeviceList()
+                    updateDeviceList()
+                }
             }
         }
     }
 
     private fun handleDeviceDetached(intent: Intent) {
-        val device: UsbDevice? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
-        } else {
-            @Suppress("DEPRECATION")
-            intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
-        }
-        device?.let {
-            LogcatManager.d(TAG, "USB 디바이스가 분리되었습니다: ${it.deviceName}")
-            // 동일 인스턴스 비교(==)는 attach/permission 시점마다 currentDevice가 갱신/누락되어
-            // 분리 이벤트를 놓칠 수 있으므로 deviceId 기준으로 추적 디바이스 일치를 판단한다.
-            val isTrackedDevice = currentDevice?.deviceId == it.deviceId
-            // 카메라 디바이스가 분리되면 추적 디바이스 여부와 무관하게 연결 매니저에 정리 기회를 준다.
-            // (dangling native connection/FD 잔존 방지)
-            if (isTrackedDevice || isCameraDevice(it)) {
-                if (isTrackedDevice) {
-                    _hasPermission.value = false
-                    currentDevice = null
-                }
-                disconnectionCallback?.invoke(it)
+        synchronized(this) {
+            val device: UsbDevice? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
             }
-            updateDeviceList()
+            device?.let {
+                LogcatManager.d(TAG, "USB 디바이스가 분리되었습니다: ${it.deviceName}")
+                // 동일 인스턴스 비교(==)는 attach/permission 시점마다 currentDevice가 갱신/누락되어
+                // 분리 이벤트를 놓칠 수 있으므로 deviceId 기준으로 추적 디바이스 일치를 판단한다.
+                val isTrackedDevice = currentDevice?.deviceId == it.deviceId
+                // 카메라 디바이스가 분리되면 추적 디바이스 여부와 무관하게 연결 매니저에 정리 기회를 준다.
+                // (dangling native connection/FD 잔존 방지)
+                if (isTrackedDevice || isCameraDevice(it)) {
+                    if (isTrackedDevice) {
+                        _hasPermission.value = false
+                        currentDevice = null
+                    }
+                    disconnectionCallback?.invoke(it)
+                }
+                updateDeviceList()
+            }
         }
     }
 

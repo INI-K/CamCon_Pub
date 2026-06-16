@@ -10,7 +10,6 @@ import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.model.PtpipCamera
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -33,7 +32,7 @@ import kotlin.coroutines.resume
 class PtpipDiscoveryService @Inject constructor(
     private val context: Context,
     private val wifiHelper: WifiNetworkHelper,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     private val nsdManager = context.getSystemService(Context.NSD_SERVICE) as NsdManager
 

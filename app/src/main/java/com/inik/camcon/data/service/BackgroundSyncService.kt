@@ -26,6 +26,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -58,6 +59,7 @@ class BackgroundSyncService : Service() {
         private const val CHANNEL_ID = "background_sync_channel"
         private const val SYNC_INTERVAL = 30_000L // 30초마다 체크
         private const val EVENT_LISTENER_CHECK_INTERVAL = 10_000L // 10초마다 이벤트 리스너 체크
+        private const val EVENT_LISTENER_RESTART_BACKOFF = 5_000L // 예외로 collect 종료 시 재시작 backoff
 
         /**
          * 서비스 시작
@@ -334,6 +336,10 @@ class BackgroundSyncService : Service() {
         eventListenerJob?.cancel()
 
         eventListenerJob = serviceScope?.launch {
+            // collect 루프가 예기치 못한 예외(예: isEventListenerActive().first(), ensureWakeLock())로
+            // 종료되면 이벤트 리스너 관리가 영구 중단되므로, backoff 후 재시도하는 루프로 감싼다.
+            // (무한 즉시 재시작 방지 = delay 포함. CancellationException은 정상 종료로 루프를 빠져나감)
+            while (isActive) {
             try {
                 LogcatManager.d(TAG, " 백그라운드 이벤트 리스너 관리자 시작")
 
@@ -399,9 +405,13 @@ class BackgroundSyncService : Service() {
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 LogcatManager.d(TAG, "백그라운드 이벤트 리스너 관리자가 정상적으로 종료됨")
-                // CancellationException은 정상 종료이므로 아무것도 하지 않음
+                // CancellationException은 정상 종료이므로 재시도 루프를 빠져나간다
+                throw e
             } catch (e: Exception) {
-                LogcatManager.e(TAG, "백그라운드 이벤트 리스너 관리자 중 치명적 오류", e)
+                LogcatManager.e(TAG, "백그라운드 이벤트 리스너 관리자 중 치명적 오류 - 재시작 예정", e)
+                // 예외로 collect가 종료되면 backoff 후 재시도 (영구 중단 방지)
+                delay(EVENT_LISTENER_RESTART_BACKOFF)
+            }
             }
         }
     }

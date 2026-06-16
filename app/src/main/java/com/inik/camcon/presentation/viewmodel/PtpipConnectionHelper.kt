@@ -84,8 +84,14 @@ class PtpipConnectionHelper @Inject constructor(
             // libgphoto2 설정 초기화
             try {
                 Log.i(TAG, "=== libgphoto2 설정 초기화 시작 ===")
-                val deleteResult = deleteGphotoSettingsUseCase()
-                Log.i(TAG, "설정 삭제 결과:\n$deleteResult")
+                deleteGphotoSettingsUseCase().fold(
+                    onSuccess = { deleteResult ->
+                        Log.i(TAG, "설정 삭제 결과:\n$deleteResult")
+                    },
+                    onFailure = { e ->
+                        Log.w(TAG, "설정 삭제 실패 (계속 진행): ${e.message}")
+                    }
+                )
                 delay(500)
                 Log.i(TAG, "=== libgphoto2 설정 초기화 완료 ===")
             } catch (e: Exception) {

@@ -6,5 +6,7 @@ import javax.inject.Inject
 class DeleteGphotoSettingsUseCase @Inject constructor(
     private val repository: CameraRepository
 ) {
-    suspend operator fun invoke(): String = repository.deleteGphotoSettings()
+    suspend operator fun invoke(): Result<String> = runCatching {
+        repository.deleteGphotoSettings()
+    }
 }

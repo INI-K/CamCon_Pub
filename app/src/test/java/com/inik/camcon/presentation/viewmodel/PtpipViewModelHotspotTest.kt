@@ -18,6 +18,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -187,13 +188,25 @@ class PtpipViewModelHotspotTest {
         }
 
     @Test
-    fun `discoverCamerasHotspot delegates to repository with forceApMode false`() = runTest {
-        val viewModel = createViewModel()
+    fun `discoverCamerasHotspot sets STA_PHONE_HOTSPOT and delegates to discoveryHelper with forceApMode false`() =
+        runTest {
+            val viewModel = createViewModel()
 
-        viewModel.discoverCamerasHotspot()
+            viewModel.discoverCamerasHotspot()
 
-        coVerify { ptpipRepository.discoverCameras(forceApMode = false) }
-    }
+            // 핫스팟 검색은 AP/STA 탭과 동일하게 discoveryHelper 경로(검색→자동선택→자동연결)를 타며,
+            // 활성 시나리오를 STA_PHONE_HOTSPOT으로 먼저 지정한다.
+            verify { ptpipRepository.setActiveConnectionMethod(ConnectionMethod.STA_PHONE_HOTSPOT) }
+            verify {
+                discoveryHelper.discoverCameras(
+                    forceApMode = false,
+                    onDiscoveringChanged = any(),
+                    onConnectingChanged = any(),
+                    onErrorChanged = any(),
+                    onCameraSelected = any()
+                )
+            }
+        }
 
     @Test
     fun `activeConnectionMethod StateFlow is exposed to UI layer`() = runTest {

@@ -18,9 +18,10 @@ import androidx.core.app.NotificationCompat
 import com.inik.camcon.R
 import com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
+import com.inik.camcon.di.IoDispatcher
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -48,7 +49,12 @@ class WifiMonitoringService : Service() {
     @Inject
     lateinit var preferencesDataSource: PtpipPreferencesDataSource
 
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    @Inject
+    @IoDispatcher
+    lateinit var ioDispatcher: CoroutineDispatcher
+
+    // 주입된 ioDispatcher는 생성자 시점엔 아직 채워지지 않으므로 onCreate에서 초기화한다.
+    private lateinit var serviceScope: CoroutineScope
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
     // 콜백 스레드(onLost)와 serviceScope 코루틴 워커 스레드 양쪽에서 접근하므로
@@ -103,6 +109,7 @@ class WifiMonitoringService : Service() {
         Log.d(TAG, "📡 WiFi 모니터링 Service 시작")
         Log.d(TAG, "========================================")
 
+        serviceScope = CoroutineScope(SupervisorJob() + ioDispatcher)
         startForegroundService()
         startWifiMonitoring()
     }

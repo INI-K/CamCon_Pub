@@ -115,25 +115,32 @@ class PhotoImageManager @Inject constructor(
 
             // 순차적으로 처리 (동시 실행 방지)
             photos.forEach { photo ->
-                // 이미 캐시에 있거나 로딩 중인 경우 건너뛰기 — 캐시·로딩 상태 모두 최신 StateFlow 값 기준으로 판정(F31)
-                if (_thumbnailCache.value.containsKey(photo.path) || _loadingThumbnails.value.contains(photo.path)) {
-                    if (_thumbnailCache.value.containsKey(photo.path)) {
-                        Log.d(TAG, "♻️ 이미 캐시에 있음: ${photo.name}")
-                    } else {
-                        Log.d(TAG, "⏳ 이미 로딩 중: ${photo.name}")
-                    }
-                    return@forEach
-                }
-
                 // 매니저 비활성화 체크
                 if (!isManagerActive) {
                     Log.d(TAG, "⛔ 썸네일 로딩 중단됨 (매니저 비활성)")
                     return@launch
                 }
 
-                // 로딩 상태에 추가 — 동시 launch 간 손상 방지를 위해 최신 값 기준으로 갱신
-                synchronized(thumbnailCacheLock) {
-                    _loadingThumbnails.value = _loadingThumbnails.value + photo.path
+                // 이미 캐시에 있거나 로딩 중인 경우 건너뛰기 — check-then-act 원자화(F31):
+                // containsKey/contains 판정과 _loadingThumbnails 등록을 동일 락 블록에서 수행해
+                // 동시 launch가 같은 false 스냅샷을 보고 중복 로드하는 것을 방지한다.
+                val alreadyCached: Boolean
+                val skip = synchronized(thumbnailCacheLock) {
+                    alreadyCached = _thumbnailCache.value.containsKey(photo.path)
+                    if (alreadyCached || _loadingThumbnails.value.contains(photo.path)) {
+                        true
+                    } else {
+                        _loadingThumbnails.value = _loadingThumbnails.value + photo.path
+                        false
+                    }
+                }
+                if (skip) {
+                    if (alreadyCached) {
+                        Log.d(TAG, "♻️ 이미 캐시에 있음: ${photo.name}")
+                    } else {
+                        Log.d(TAG, "⏳ 이미 로딩 중: ${photo.name}")
+                    }
+                    return@forEach
                 }
 
                 try {

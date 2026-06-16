@@ -12,10 +12,11 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.inik.camcon.R
+import com.inik.camcon.di.IoDispatcher
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -27,10 +28,19 @@ class AutoConnectForegroundService : Service() {
     @Inject
     lateinit var autoConnectTaskRunner: AutoConnectTaskRunner
 
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    @Inject
+    @IoDispatcher
+    lateinit var ioDispatcher: CoroutineDispatcher
+
+    private var serviceScope: CoroutineScope? = null
     private var notificationManager: NotificationManager? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onCreate() {
+        super.onCreate()
+        serviceScope = CoroutineScope(SupervisorJob() + ioDispatcher)
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -50,7 +60,7 @@ class AutoConnectForegroundService : Service() {
             else -> {
                 startForegroundService()
                 val ssid = intent?.getStringExtra(AutoConnectTaskRunner.EXTRA_SSID)
-                serviceScope.launch {
+                serviceScope?.launch {
                     try {
                         autoConnectTaskRunner.handlePostConnection(ssid)
                     } catch (e: CancellationException) {
@@ -68,7 +78,7 @@ class AutoConnectForegroundService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        serviceScope.cancel()
+        serviceScope?.cancel()
         stopForeground(STOP_FOREGROUND_REMOVE)
     }
 

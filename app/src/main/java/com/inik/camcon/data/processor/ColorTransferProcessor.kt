@@ -636,6 +636,8 @@ class ColorTransferProcessor @Inject constructor() {
             val finalResult = if (nativeSuccess) {
                 resultBitmap
             } else {
+                // 네이티브 실패 시 결과 비트맵 해제 후 폴백
+                resultBitmap.recycle()
                 applyColorTransferToImageParallel(
                     inputBitmap,
                     inputStats,
