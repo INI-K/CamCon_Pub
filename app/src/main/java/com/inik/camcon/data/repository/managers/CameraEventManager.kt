@@ -369,7 +369,10 @@ class CameraEventManager @Inject constructor(
 
         var isCameraInitialized = false
         var waitTime = 0
-        val maxWaitTime = 10000 // USB는 최대 10초 대기
+        // 정상 연결 시점엔 네이티브가 이미 init돼 있어 첫 체크에서 즉시 통과한다.
+        // 분리 teardown 경합으로 헛 재시작될 때만 이 루프가 도므로, 죽은 카메라를
+        // 오래 기다리지 않도록 천장을 짧게 둔다(과거 10초 → 2초 프리즈 해소).
+        val maxWaitTime = 2000
 
         while (!isCameraInitialized && waitTime < maxWaitTime) {
             try {

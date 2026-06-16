@@ -36,10 +36,13 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.onFailure
 import kotlinx.coroutines.channels.trySendBlocking
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -84,6 +87,9 @@ class CameraCaptureRepositoryImpl @Inject constructor(
 
         /** 세션 내 capturedPhotos StateFlow 상한 (장시간 테더링 메모리 누수 방지) */
         private const val MAX_CAPTURED_PHOTOS = 1000
+
+        /** 라이브뷰 첫 프레임 대기 상한 — 초과 시 네이티브 무응답으로 보고 재시도 가능한 에러로 종료 */
+        private const val LIVEVIEW_FIRST_FRAME_TIMEOUT_MS = 5000L
 
         /** capturedPhotos 정렬 기준 — captureTime 오름차순, 동률이면 basename·확장자 순 */
         private val PHOTO_ORDER_COMPARATOR = compareBy<CapturedPhoto>(
@@ -530,10 +536,49 @@ class CameraCaptureRepositoryImpl @Inject constructor(
             return@callbackFlow
         }
 
+        // 재연결 직후 등 네이티브 핸들이 닫혀 있으면 네이티브 startLiveView가 void로 조용히
+        // no-op 한다(프레임 영영 없음 → isLoading=true 고착 = "라이브뷰 시작 중..." 무한). 시작 전
+        // 네이티브 초기화 여부를 확인해 즉시 실패로 전파한다(연결 플래그만으론 재연결 경합에서 stale).
+        if (!nativeDataSource.isCameraInitialized()) {
+            Log.e(TAG, "네이티브 카메라 미초기화 — 라이브뷰 시작 불가")
+            close(IllegalStateException("카메라가 아직 준비되지 않았습니다. 잠시 후 다시 시도해주세요."))
+            return@callbackFlow
+        }
+
+        // 네이티브 startLiveView는 미지원·활성화 실패 시에도 void로 조용히 끝나 프레임이 안 온다.
+        // 첫 프레임 워치독으로 무한 로딩을 막고 재시도 가능한 에러로 종료시킨다.
+        val firstFrameReceived = AtomicBoolean(false)
+        var firstFrameWatchdog: Job? = null
+
+        // 카메라가 끊기면(껐다 켜기 등) 네이티브 프레임 펌프는 죽지만 이 flow는 awaitClose에서
+        // 영원히 대기 → liveViewJob이 stale-active로 남아 재연결 후 "이미 활성화"로 재시작이 막힌다.
+        // 연결 끊김을 감지해 flow를 종료시켜 job이 깨끗이 끝나도록 한다(촬영 중 프레임 멈춤엔
+        // 영향 없는 안전 신호 = 연결 상태). 시작 시점엔 이미 연결됨이라 즉시 close되지 않는다.
+        val connectionWatcher = launch {
+            combine(
+                connectionManager.isConnected,
+                connectionManager.isPtpipConnected
+            ) { usb, ptpip -> usb || ptpip }
+                .collect { stillConnected ->
+                    if (!stillConnected) {
+                        Log.w(TAG, "라이브뷰 중 카메라 연결 끊김 — 라이브뷰 flow 종료")
+                        close(IllegalStateException("카메라 연결이 끊어졌습니다"))
+                    }
+                }
+        }
+
         try {
             com.inik.camcon.utils.LogcatManager.d(TAG, "네이티브 startLiveView 호출 시작 (자동초점 생략)")
+            firstFrameWatchdog = launch {
+                delay(LIVEVIEW_FIRST_FRAME_TIMEOUT_MS)
+                if (!firstFrameReceived.get()) {
+                    Log.e(TAG, "라이브뷰 첫 프레임 타임아웃(${LIVEVIEW_FIRST_FRAME_TIMEOUT_MS}ms) — 시작 실패로 종료")
+                    close(IllegalStateException("라이브뷰 시작 실패(응답 없음)"))
+                }
+            }
             nativeDataSource.startLiveView(object : LiveViewCallback {
                 override fun onLiveViewFrame(frame: ByteArray) {
+                    firstFrameReceived.set(true)
                     try {
                         val liveViewFrame = LiveViewFrame(
                             data = frame,
@@ -581,6 +626,8 @@ class CameraCaptureRepositoryImpl @Inject constructor(
 
         awaitClose {
             com.inik.camcon.utils.LogcatManager.d(TAG, "라이브뷰 중지 (awaitClose)")
+            firstFrameWatchdog?.cancel()
+            connectionWatcher.cancel()
             try {
                 nativeDataSource.stopLiveView()
                 com.inik.camcon.utils.LogcatManager.d(TAG, "라이브뷰 중지 완료")

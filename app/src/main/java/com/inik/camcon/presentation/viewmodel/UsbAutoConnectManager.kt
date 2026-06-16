@@ -19,6 +19,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -53,6 +54,10 @@ class UsbAutoConnectManager @Inject constructor(
 
     companion object {
         private const val TAG = "카메라연결매니저"
+
+        // 매니페스트 USB_DEVICE_ATTACHED('이 USB 기기에 기본으로 사용' 1회 체크)가 재연결 시 권한을
+        // 자동 부여하기를 기다리는 유예시간. 이 안에 권한이 들어오면 프로그램적 권한요청을 생략한다.
+        private const val PERMISSION_GRACE_MS = 2000L
     }
 
     // 앱 scope의 자식 scope — cancelChildren해도 앱 scope에 영향 없음
@@ -66,6 +71,10 @@ class UsbAutoConnectManager @Inject constructor(
     val isAutoConnecting: StateFlow<Boolean> = _isAutoConnecting.asStateFlow()
 
     private var connectionJob: Job? = null
+
+    // attach-intent('기본으로 사용') 자동 권한부여를 기다렸다가, 미부여 시에만 프로그램적 권한요청을
+    // 띄우는 디바운스 Job. 권한이 들어오면 취소한다(불필요한 권한 다이얼로그 churn 방지).
+    private var pendingPermissionJob: Job? = null
 
     // 연결 Job 교체(취소→대입)를 직렬화해 동시 호출 시 Job 참조 유실 방지
     private val connectionMutex = Mutex()
@@ -86,8 +95,23 @@ class UsbAutoConnectManager @Inject constructor(
                 )
 
                 if (deviceCount > 0 && !usbDeviceRepository.hasUsbPermission.value && !_isAutoConnecting.value) {
-                    Log.d(TAG, "USB 디바이스 감지됨 - 권한 자동 요청")
-                    requestUsbPermission()
+                    // 재연결 시 매니페스트 USB_DEVICE_ATTACHED 인텐트필터('기본으로 사용' 1회 체크)가
+                    // 권한을 자동 부여한다. 그 자동부여가 도착할 시간을 잠깐 준 뒤에도 미보유일 때만
+                    // 프로그램적 requestPermission을 띄운다 — 그래야 attach-intent 자동부여와
+                    // 프로그램적 권한 다이얼로그가 충돌해 거부→앱 재시작으로 이어지는 churn을 막는다.
+                    pendingPermissionJob?.cancel()
+                    pendingPermissionJob = scope.launch {
+                        delay(PERMISSION_GRACE_MS)
+                        if (usbDeviceRepository.connectedDeviceCount.value > 0 &&
+                            !usbDeviceRepository.hasUsbPermission.value &&
+                            !_isAutoConnecting.value
+                        ) {
+                            Log.d(TAG, "USB 디바이스 감지됨 - 권한 자동부여 미도착, 프로그램적 권한 요청(폴백)")
+                            requestUsbPermission()
+                        } else {
+                            Log.d(TAG, "USB 권한이 attach-intent로 자동 부여됨 - 프로그램적 요청 생략(churn 방지)")
+                        }
+                    }
                 }
             }
             .launchIn(scope)
@@ -97,6 +121,11 @@ class UsbAutoConnectManager @Inject constructor(
             .onEach { hasPermission ->
                 val deviceCount = usbDeviceRepository.connectedDeviceCount.value
                 uiStateManager.updateUsbDeviceState(deviceCount, hasPermission)
+
+                if (hasPermission) {
+                    // 권한이 들어오면(attach-intent 자동부여 등) 대기 중인 프로그램적 요청을 취소한다.
+                    pendingPermissionJob?.cancel()
+                }
 
                 if (hasPermission && deviceCount > 0 && !_isAutoConnecting.value) {
                     Log.d(TAG, "USB 권한 획득 - 자동 연결 시작")

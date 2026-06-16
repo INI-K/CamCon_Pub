@@ -143,11 +143,15 @@ class UsbDeviceDetector @Inject constructor(
                 @Suppress("DEPRECATION")
                 intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
             }
-            val granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
+            val grantedExtra = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
+            // EXTRA_PERMISSION_GRANTED는 일부 기기(삼성·Android 12+)에서 실제로 "허용"을 눌러도
+            // false로 오는 버그가 있다("승인했는데 거부" 오탐). 시스템의 실제 권한 상태를 재확인해
+            // 보정한다 — 실제 거부 시엔 hasPermission도 false라 정상 거부 처리되어 안전하다.
+            val granted = grantedExtra || (device != null && usbManager.hasPermission(device))
 
             if (granted) {
                 device?.let {
-                    LogcatManager.d(TAG, "USB 권한이 승인되었습니다: ${it.deviceName}")
+                    LogcatManager.d(TAG, "USB 권한이 승인되었습니다: ${it.deviceName} (extra=$grantedExtra)")
                     _hasPermission.value = true
                     currentDevice = it
                     // 권한 승인 시 상위 계층에 알림 (초기화 트리거)
