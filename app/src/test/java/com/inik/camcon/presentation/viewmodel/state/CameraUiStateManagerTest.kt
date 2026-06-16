@@ -5,6 +5,7 @@ import com.inik.camcon.domain.manager.CameraStateObserver
 import com.inik.camcon.domain.model.CameraAbilitiesInfo
 import com.inik.camcon.domain.model.CameraCapabilities
 import com.inik.camcon.domain.model.CameraSupports
+import com.inik.camcon.domain.model.LiveViewFrame
 import com.inik.camcon.domain.model.TransferQueueState
 import io.mockk.every
 import io.mockk.mockkStatic
@@ -195,6 +196,52 @@ class CameraUiStateManagerTest {
 
         assertFalse(manager.uiState.value.isConnected)
         assertEquals("연결 실패", manager.uiState.value.error)
+    }
+
+    /**
+     * 회귀: 라이브뷰 중 끊김→재연결 시 "라이브뷰 시작 중..." 로딩 오버레이가 안 사라지던 버그.
+     * 라이브뷰 Job이 끊김으로 CancellationException 취소되면 startLiveView의 isLoading=false 경로가
+     * 실행되지 않아 isLiveViewLoading=true가 고착된다. UI가 실제로 관찰하는 유일 chokepoint인
+     * updateConnectionState(false)에서 라이브뷰 플래그/프레임을 함께 정리해 해소한다.
+     */
+    @Test
+    fun `updateConnectionState false시 고착된 라이브뷰 로딩-활성-프레임 정리`() {
+        // Given: 라이브뷰 시작 중(로딩) + 프레임 보유 상태에서 (Job 취소로 loading이 true로 고착됐다고 가정)
+        manager.updateConnectionState(true)
+        manager.updateLiveViewState(
+            isActive = true,
+            isLoading = true,
+            frame = LiveViewFrame(ByteArray(4), 2, 2, 0L)
+        )
+        assertTrue(manager.uiState.value.isLiveViewLoading)
+        assertTrue(manager.uiState.value.isLiveViewActive)
+
+        // When: 끊김(연결 false) 전이
+        manager.updateConnectionState(false)
+
+        // Then: 로딩 오버레이가 풀리고(고착 해제) 활성/프레임도 정리됨
+        assertFalse(manager.uiState.value.isLiveViewLoading)
+        assertFalse(manager.uiState.value.isLiveViewActive)
+        assertNull(manager.liveViewFrame.value)
+        assertFalse(manager.uiState.value.isConnected)
+    }
+
+    /**
+     * 회귀 가드: 정상 연결(true) 전이에서는 라이브뷰 상태를 건드리지 않아야 한다
+     * (활성 라이브뷰 중 오발 리셋 방지).
+     */
+    @Test
+    fun `updateConnectionState true시 활성 라이브뷰 상태 보존`() {
+        // Given: 라이브뷰 활성
+        manager.updateConnectionState(true)
+        manager.updateLiveViewState(isActive = true, isLoading = false)
+
+        // When: 연결 true 재방출
+        manager.updateConnectionState(true)
+
+        // Then: 라이브뷰 활성 유지
+        assertTrue(manager.uiState.value.isLiveViewActive)
+        assertFalse(manager.uiState.value.isLiveViewLoading)
     }
 
     // --- updateTransferQueue (요구 E6) ---
