@@ -85,6 +85,7 @@ class PtpipDataSource @Inject constructor(
     private val autoConnectTaskRunnerProvider: Lazy<AutoConnectTaskRunner>,
     private val ptpipPreferencesDataSource: com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource,
     private val tetherService: com.inik.camcon.data.network.ptpip.PtpipTetherService,
+    private val nativeCameraDataSource: com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource,
     @ApplicationScope private val coroutineScope: CoroutineScope,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
@@ -300,24 +301,10 @@ class PtpipDataSource @Inject constructor(
         startNetworkMonitoring()
         registerAutoConnectReceiver()
         restoreLastConnectedCamera()
-
-        // libgphoto2 디버그 로그 활성화
-        try {
-            // GP_LOG_ALL = 3 (모든 로그 레벨 활성화)
-            CameraNative.setLogLevel(0)
-            Log.d(TAG, "libgphoto2 로그 레벨을 GP_LOG_ALL로 설정 완료")
-        } catch (e: Exception) {
-            Log.e(TAG, "libgphoto2 로그 레벨 설정 실패", e)
-
-            // 대체 방법으로 개별 로그 활성화
-            try {
-                CameraNative.enableDebugLogging(true)
-                CameraNative.enableVerboseLogging(true)
-                Log.d(TAG, "libgphoto2 개별 로그 활성화 완료")
-            } catch (e2: Exception) {
-                Log.e(TAG, "libgphoto2 개별 로그 활성화 실패", e2)
-            }
-        }
+        // 네이티브 로그 정책은 NativeCameraDataSource(파일 로그 단일 소유자)가 UseCase 체인으로 관리한다.
+        // @Singleton 데이터소스가 생성 시점에 전역 로그 상태를 건드리면 안 된다 — 과거 여기서
+        // setLogLevel(0)을 "GP_LOG_ALL"이라 거짓 주석하며 호출했고, 그 catch가 enableDebugLogging(true)+
+        // enableVerboseLogging(true)로 g_logcatVerbose를 켜 logcat 스톰을 되살렸다. 그래서 제거한다.
     }
 
     /**
@@ -854,16 +841,18 @@ class PtpipDataSource @Inject constructor(
                     CameraNative.initCameraForAPMode(camera.ipAddress, camera.port, pluginDir)
                 } else {
                     Log.i(TAG, "표준 모드: libgphoto2 초기화")
-                    // init 구간에만 GP_LOG_DATA(3)로 올리고 끝나면 ERROR로 복귀
+                    // init 구간에만 GP_LOG_DATA로 올리고, 끝나면 파일 로그 baseline 레벨로 복귀한다.
+                    // (과거 finally가 무조건 setLogLevel(0)이라, Splash/설정이 켠 영구 디버그 파일이
+                    //  Wi-Fi 연결마다 ERROR로 떨어지는 버그가 있었다 → NativeCameraDataSource baseline 복원.)
                     // 파일: files/libgphoto2_ptpip_latest.txt (연결마다 덮어씀)
                     val gphotoLogPath =
                         "${context.filesDir.absolutePath}/libgphoto2_ptpip_latest.txt"
                     runCatching { CameraNative.startLogFile(gphotoLogPath) }
-                    runCatching { CameraNative.setLogLevel(3) }
+                    runCatching { CameraNative.setLogLevel(CameraNative.GP_LOG_DATA) }
                     try {
                         CameraNative.initCameraWithPtpip(camera.ipAddress, camera.port, pluginDir)
                     } finally {
-                        runCatching { CameraNative.setLogLevel(0) }
+                        runCatching { CameraNative.setLogLevel(nativeCameraDataSource.currentFileLevel()) }
                     }
                 }
             }

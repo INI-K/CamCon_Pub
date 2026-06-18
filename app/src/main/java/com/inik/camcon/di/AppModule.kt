@@ -185,6 +185,7 @@ object AppModule {
         autoConnectTaskRunner: Lazy<AutoConnectTaskRunner>,
         ptpipPreferencesDataSource: PtpipPreferencesDataSource,
         tetherService: PtpipTetherService,
+        nativeCameraDataSource: com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource,
         @ApplicationScope scope: CoroutineScope,
         @IoDispatcher ioDispatcher: CoroutineDispatcher
     ): PtpipDataSource {
@@ -201,6 +202,7 @@ object AppModule {
             autoConnectTaskRunner,
             ptpipPreferencesDataSource,
             tetherService,
+            nativeCameraDataSource,
             scope,
             ioDispatcher
         )
