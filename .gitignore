@@ -75,3 +75,6 @@ app/build/
 
 # 릴리스 서명 (로컬 전용 — 절대 커밋 금지). *.jks/*.keystore는 위에서 이미 ignore
 Key/upload_certificate.pem
+
+# superpowers brainstorm artifacts
+.superpowers/
