@@ -108,59 +108,63 @@ class PhotoListManager @Inject constructor(
             }
 
             _isLoading.value = true
-            _currentPage.value = 0
-            _allPhotos.value = emptyList()
+            // loadNextPage와 동일하게 try/finally로 로딩 상태 해제를 보장한다.
+            // (과거: onSuccess 내 return@launch / 카메라 미연결 / 코루틴 취소 경로가
+            //  하단 _isLoading=false 를 건너뛰어 스피너가 영구 박제되는 결함이 있었다.)
+            try {
+                _currentPage.value = 0
+                _allPhotos.value = emptyList()
 
-            Log.d(TAG, "현재 카메라 연결 상태: $isConnected")
+                Log.d(TAG, "현재 카메라 연결 상태: $isConnected")
 
-            if (!isConnected) {
-                Log.w(TAG, "카메라가 연결되지 않음")
-                _isLoading.value = false
-                errorHandlingManager.emitError(
-                    ErrorType.CONNECTION,
-                    "카메라가 연결되지 않았습니다. 카메라를 연결해주세요.",
-                    null,
-                    ErrorSeverity.MEDIUM
-                )
-                return@launch
-            }
-
-            if (!isManagerActive) {
-                Log.d(TAG, "loadInitialPhotos 중단됨 (카메라 확인 후)")
-                return@launch
-            }
-
-            getCameraPhotosPagedUseCase(page = 0, pageSize = PREFETCH_PAGE_SIZE).fold(
-                onSuccess = { paginatedPhotos ->
-                    if (!isManagerActive) {
-                        Log.d(TAG, "loadInitialPhotos 중단됨 (사진 목록 로딩 후)")
-                        return@launch
-                    }
-
-                    Log.d(TAG, "사진 목록 불러오기 성공: ${paginatedPhotos.photos.size}개")
-                    _allPhotos.value = paginatedPhotos.photos
-                    updateFilteredPhotos(currentTier)
-
-                    _currentPage.value = paginatedPhotos.currentPage
-                    _totalPages.value = paginatedPhotos.totalPages
-                    _hasNextPage.value = paginatedPhotos.hasNext
-                },
-                onFailure = { exception ->
-                    if (isManagerActive) {
-                        Log.e(TAG, "사진 목록 불러오기 실패", exception)
-                        val errorMessage =
-                            errorHandlingManager.handleFileError(exception, "사진 목록 로딩")
-                        errorHandlingManager.emitError(
-                            ErrorType.FILE_SYSTEM,
-                            errorMessage,
-                            exception,
-                            ErrorSeverity.MEDIUM
-                        )
-                    }
+                if (!isConnected) {
+                    Log.w(TAG, "카메라가 연결되지 않음")
+                    errorHandlingManager.emitError(
+                        ErrorType.CONNECTION,
+                        "카메라가 연결되지 않았습니다. 카메라를 연결해주세요.",
+                        null,
+                        ErrorSeverity.MEDIUM
+                    )
+                    return@launch
                 }
-            )
 
-            _isLoading.value = false
+                if (!isManagerActive) {
+                    Log.d(TAG, "loadInitialPhotos 중단됨 (카메라 확인 후)")
+                    return@launch
+                }
+
+                getCameraPhotosPagedUseCase(page = 0, pageSize = PREFETCH_PAGE_SIZE).fold(
+                    onSuccess = { paginatedPhotos ->
+                        if (!isManagerActive) {
+                            Log.d(TAG, "loadInitialPhotos 중단됨 (사진 목록 로딩 후)")
+                            return@fold
+                        }
+
+                        Log.d(TAG, "사진 목록 불러오기 성공: ${paginatedPhotos.photos.size}개")
+                        _allPhotos.value = paginatedPhotos.photos
+                        updateFilteredPhotos(currentTier)
+
+                        _currentPage.value = paginatedPhotos.currentPage
+                        _totalPages.value = paginatedPhotos.totalPages
+                        _hasNextPage.value = paginatedPhotos.hasNext
+                    },
+                    onFailure = { exception ->
+                        if (isManagerActive) {
+                            Log.e(TAG, "사진 목록 불러오기 실패", exception)
+                            val errorMessage =
+                                errorHandlingManager.handleFileError(exception, "사진 목록 로딩")
+                            errorHandlingManager.emitError(
+                                ErrorType.FILE_SYSTEM,
+                                errorMessage,
+                                exception,
+                                ErrorSeverity.MEDIUM
+                            )
+                        }
+                    }
+                )
+            } finally {
+                _isLoading.value = false
+            }
         }
     }
 
