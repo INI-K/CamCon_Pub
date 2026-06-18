@@ -65,13 +65,26 @@ fun ShootingModeSelector(
     contentPadding: PaddingValues = PaddingValues(horizontal = 20.dp),
     onUnsupportedModeClick: (ShootingMode) -> Unit = {}
 ) {
+    // 앱이 구현했고(+카메라가 지원하는) 모드만 노출한다. 미구현/미지원 칩은 숨겨 클러터를 제거.
+    // 현재 APP_IMPLEMENTED = {SINGLE} 이므로 사실상 '단일'만 보이며, 모드가 늘면 자동 확장된다.
+    val supportedModes = ShootingMode.entries.filter { mode ->
+        val cameraCapable = when (mode) {
+            ShootingMode.SINGLE -> true
+            ShootingMode.BURST -> cameraCapabilities?.supportsBurstMode ?: false
+            ShootingMode.TIMELAPSE -> cameraCapabilities?.supportsTimelapse ?: false
+            ShootingMode.BULB -> cameraCapabilities?.supportsBulbMode ?: false
+            ShootingMode.HDR_BRACKET -> cameraCapabilities?.supportsBracketing ?: false
+        }
+        cameraCapable && mode in APP_IMPLEMENTED_SHOOTING_MODES
+    }
+
     LazyRow(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = contentPadding
     ) {
         items(
-            items = ShootingMode.entries.toTypedArray(),
+            items = supportedModes,
             key = { mode -> mode.name }
         ) { mode ->
             // 카메라가 지원하더라도 앱이 아직 구현하지 않은 모드는 비활성화한다.
