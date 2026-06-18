@@ -64,9 +64,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.CenterFocusWeak
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.GridOff
+import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.RotateRight
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -82,6 +87,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -90,6 +96,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -934,7 +941,11 @@ private fun FullscreenCameraLayout(
                 onToggleHistogram = onToggleHistogram,
                 isFocusPeakingEnabled = isFocusPeakingEnabled,
                 onToggleFocusPeaking = onToggleFocusPeaking,
-                currentSettings = uiState.cameraSettings
+                currentSettings = uiState.cameraSettings,
+                inlineChromeVisible = false,
+                rotated = isRotated,
+                // 탭-투-포커스: JPEG 좌표+크기를 넘기면 네이티브가 카메라 격자로 스케일 후 이동+AF 구동.
+                onTapFocus = { jx, jy, jw, jh -> viewModel.setAFArea(jx, jy, jw, jh) }
             )
         } else {
             Box(
@@ -971,13 +982,20 @@ private fun FullscreenCameraLayout(
                 onAutoFocus = viewModel::performAutoFocus,
                 onShowTimelapseDialog = { showTimelapseDialog = true },
                 onExitFullscreen = onExitFullscreen,
+                onStopLiveView = viewModel::stopLiveView,
+                isGridEnabled = isLiveViewGridEnabled,
+                onToggleGrid = onToggleLiveViewGrid,
+                isHistogramEnabled = isHistogramEnabled,
+                onToggleHistogram = onToggleHistogram,
+                isFocusPeakingEnabled = isFocusPeakingEnabled,
+                onToggleFocusPeaking = onToggleFocusPeaking,
                 onRotate = { isRotated = !isRotated },
                 onGalleryClick = onGalleryClick,
                 isShutterSoundEnabled = isShutterSoundEnabled,
                 onStopTimelapse = viewModel::stopTimelapse,
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
-                    .padding(Padding.lg)
+                    .padding(end = Spacing.md, top = Spacing.xs, bottom = Spacing.xs)
             )
 
             // 촬영 모드는 하단 가로 칩으로 분리 (우측 레일 폭 회피)
@@ -1037,21 +1055,8 @@ private fun FullscreenCameraLayout(
             }
         }
 
-        // 하단 안내 텍스트 - 프리미엄 스타일 (중앙 모드 칩과 겹치지 않게 좌측 하단)
-        Surface(
-            color = Surface2.copy(alpha = 0.8f),
-            shape = RoundedCornerShape(Radius.sm),
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(Padding.lg)
-        ) {
-            Text(
-                text = stringResource(R.string.camera_control_double_click_exit),
-                color = TextPrimaryV2,
-                modifier = Modifier.padding(horizontal = Padding.base, vertical = 10.dp),
-                style = MaterialTheme.typography.bodyMedium
-            )
-        }
+        // 더블클릭 종료 텍스트 힌트 제거: ✕ 버튼이 명시적이고 더블클릭 제스처는 유지된다.
+        // (좌하단 노출 스트립과의 겹침도 함께 해소)
 
         // 전역 로딩 상태
         if (uiState.isCapturing) {
@@ -1072,9 +1077,13 @@ private fun FullscreenCameraLayout(
 }
 
 /**
- * 전체화면 우측 슬림 컨트롤 레일 -- state+callback 패턴.
- * 불투명 패널을 없애 프리뷰 가림을 최소화하고, 각 요소는 자체 반투명 원형 배경으로 가독성을 확보한다.
- * 촬영 모드 선택은 하단 가로 칩으로 분리되어 여기엔 포함하지 않는다.
+ * 전체화면 우측 통합 컨트롤 도크 -- state+callback 패턴.
+ *
+ * 모든 컨트롤을 하나의 세로 Column(단일 열)에 그룹·구분선으로 담는다. 단일 Column이라 요소가
+ * 서로 겹치는 것이 구조적으로 불가능하고, 컴팩트 사이즈로 짧은 가로 화면(≈360dp)에도 클리핑 없이
+ * 들어간다(합계 ≈339dp). 각 버튼은 자체 반투명 원형 배경으로 패널 없이도 또렷하다.
+ * 그룹: [종료] · [뷰 토글: 그리드/히스토그램/포커스피킹] · [캡처: 갤러리/셔터/AF] · [보조: 중지/회전].
+ * 빨강은 종료 하나뿐이며, 라이브뷰 중지는 중립색이다.
  */
 @Composable
 private fun FullscreenControlPanel(
@@ -1084,6 +1093,13 @@ private fun FullscreenControlPanel(
     onAutoFocus: () -> Unit,
     onShowTimelapseDialog: () -> Unit,
     onExitFullscreen: () -> Unit,
+    onStopLiveView: () -> Unit,
+    isGridEnabled: Boolean,
+    onToggleGrid: () -> Unit,
+    isHistogramEnabled: Boolean,
+    onToggleHistogram: () -> Unit,
+    isFocusPeakingEnabled: Boolean,
+    onToggleFocusPeaking: () -> Unit,
     onRotate: (() -> Unit)? = null,
     onGalleryClick: () -> Unit = {},
     isShutterSoundEnabled: Boolean = true,
@@ -1092,49 +1108,55 @@ private fun FullscreenControlPanel(
 ) {
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // 종료 버튼 (반투명 원형, 프리뷰 위에 떠 있음)
-        Surface(
-            color = ErrorV2.copy(alpha = 0.85f),
-            shape = CircleShape,
-            modifier = Modifier.size(TouchTarget.xl)
-        ) {
-            IconButton(
-                onClick = onExitFullscreen,
-                modifier = Modifier.size(TouchTarget.xl)
-            ) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = stringResource(R.string.cd_exit_fullscreen),
-                    tint = TextPrimaryV2,
-                    modifier = Modifier.size(26.dp)
-                )
-            }
+        // 1) 종료 — 유일한 빨강
+        DockCircleButton(
+            icon = Icons.Default.Close,
+            contentDescription = stringResource(R.string.cd_exit_fullscreen),
+            onClick = onExitFullscreen,
+            background = ErrorV2.copy(alpha = 0.85f),
+            size = TouchTarget.lg,
+            iconSize = 24.dp
+        )
+
+        DockDivider()
+
+        // 2) 뷰 토글 (가로 미니행) — 그리드 / 히스토그램 / 포커스 피킹
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            DockCircleButton(
+                icon = if (isGridEnabled) Icons.Default.GridOn else Icons.Default.GridOff,
+                contentDescription = stringResource(R.string.liveview_grid_toggle),
+                onClick = onToggleGrid,
+                background = Surface2.copy(alpha = if (isGridEnabled) 0.9f else 0.7f),
+                tint = if (isGridEnabled) MaterialTheme.colorScheme.primary else TextPrimaryV2,
+                size = TouchTarget.min,
+                iconSize = 20.dp
+            )
+            DockCircleButton(
+                icon = Icons.Default.BarChart,
+                contentDescription = stringResource(R.string.liveview_histogram_toggle),
+                onClick = onToggleHistogram,
+                background = Surface2.copy(alpha = if (isHistogramEnabled) 0.9f else 0.7f),
+                tint = if (isHistogramEnabled) MaterialTheme.colorScheme.primary else TextPrimaryV2,
+                size = TouchTarget.min,
+                iconSize = 20.dp
+            )
+            DockCircleButton(
+                icon = Icons.Default.CenterFocusWeak,
+                contentDescription = stringResource(R.string.liveview_focus_peaking_toggle),
+                onClick = onToggleFocusPeaking,
+                background = Surface2.copy(alpha = if (isFocusPeakingEnabled) 0.9f else 0.7f),
+                tint = if (isFocusPeakingEnabled) MaterialTheme.colorScheme.primary else TextPrimaryV2,
+                size = TouchTarget.min,
+                iconSize = 20.dp
+            )
         }
 
-        // 180도 회전 버튼
-        Surface(
-            color = Surface2.copy(alpha = 0.85f),
-            shape = CircleShape,
-            modifier = Modifier.size(TouchTarget.xl)
-        ) {
-            IconButton(
-                onClick = { onRotate?.invoke() },
-                enabled = onRotate != null,
-                modifier = Modifier.size(TouchTarget.xl)
-            ) {
-                Icon(
-                    Icons.Default.RotateRight,
-                    contentDescription = stringResource(R.string.cd_rotate_180),
-                    tint = if (onRotate != null) TextPrimaryV2 else TextSecondaryV2,
-                    modifier = Modifier.size(26.dp)
-                )
-            }
-        }
+        DockDivider()
 
-        // 갤러리 · 메인 셔터 · AF (세로) — 각 버튼이 자체 배경을 가져 패널 없이도 또렷하다.
+        // 3) 캡처 (컴팩트) — 갤러리 / 셔터 / AF
         CaptureControls(
             captureState = captureState,
             isConnected = isConnected,
@@ -1142,12 +1164,84 @@ private fun FullscreenControlPanel(
             onAutoFocus = onAutoFocus,
             onShowTimelapseDialog = onShowTimelapseDialog,
             isVertical = true,
+            compact = true,
             onGalleryClick = onGalleryClick,
             isShutterSoundEnabled = isShutterSoundEnabled,
             isTimelapseRunning = captureState.shootingMode == com.inik.camcon.domain.model.ShootingMode.TIMELAPSE && captureState.isCapturing,
             onStopTimelapse = onStopTimelapse
         )
+
+        DockDivider()
+
+        // 4) 보조 (가로 미니행) — 라이브뷰 중지(중립색) / 180° 회전
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            DockCircleButton(
+                icon = Icons.Default.Stop,
+                contentDescription = stringResource(R.string.cd_stop_live_view),
+                onClick = onStopLiveView,
+                background = Surface2.copy(alpha = 0.85f),
+                enabled = isConnected,
+                size = TouchTarget.min,
+                iconSize = 22.dp
+            )
+            DockCircleButton(
+                icon = Icons.Default.RotateRight,
+                contentDescription = stringResource(R.string.cd_rotate_180),
+                onClick = { onRotate?.invoke() },
+                enabled = onRotate != null,
+                background = Surface2.copy(alpha = 0.85f),
+                tint = if (onRotate != null) TextPrimaryV2 else TextSecondaryV2,
+                size = TouchTarget.min,
+                iconSize = 22.dp
+            )
+        }
     }
+}
+
+/**
+ * 전체화면 도크용 원형 아이콘 버튼 — 자체 반투명 배경으로 패널 없이도 또렷하다.
+ */
+@Composable
+private fun DockCircleButton(
+    icon: ImageVector,
+    contentDescription: String?,
+    onClick: () -> Unit,
+    background: Color,
+    modifier: Modifier = Modifier,
+    tint: Color = TextPrimaryV2,
+    size: Dp = TouchTarget.lg,
+    iconSize: Dp = 24.dp,
+    enabled: Boolean = true
+) {
+    Surface(
+        color = background,
+        shape = CircleShape,
+        modifier = modifier.size(size)
+    ) {
+        IconButton(
+            onClick = onClick,
+            enabled = enabled,
+            modifier = Modifier.size(size)
+        ) {
+            Icon(
+                icon,
+                contentDescription = contentDescription,
+                tint = tint,
+                modifier = Modifier.size(iconSize)
+            )
+        }
+    }
+}
+
+/** 도크 그룹 사이의 얇은 구분선. */
+@Composable
+private fun DockDivider() {
+    Box(
+        modifier = Modifier
+            .width(24.dp)
+            .height(1.dp)
+            .background(TextPrimaryV2.copy(alpha = 0.15f))
+    )
 }
 
 /**

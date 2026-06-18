@@ -93,13 +93,14 @@ fun CaptureControls(
     isShutterSoundEnabled: Boolean = true,
     isTimelapseRunning: Boolean = false,
     onStopTimelapse: () -> Unit = {},
+    compact: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     if (isVertical) {
         Column(
             modifier = modifier,
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            verticalArrangement = Arrangement.spacedBy(if (compact) Spacing.sm else 20.dp)
         ) {
             CaptureControlsContent(
                 captureState = captureState,
@@ -111,7 +112,8 @@ fun CaptureControls(
                 isLiveViewActive = isLiveViewActive,
                 isShutterSoundEnabled = isShutterSoundEnabled,
                 isTimelapseRunning = isTimelapseRunning,
-                onStopTimelapse = onStopTimelapse
+                onStopTimelapse = onStopTimelapse,
+                compact = compact
             )
         }
     } else {
@@ -164,9 +166,17 @@ private fun CaptureControlsContent(
     isLiveViewActive: Boolean = true,
     isShutterSoundEnabled: Boolean = true,
     isTimelapseRunning: Boolean = false,
-    onStopTimelapse: () -> Unit = {}
+    onStopTimelapse: () -> Unit = {},
+    compact: Boolean = false
 ) {
     val haptic = LocalHapticFeedback.current
+
+    // compact = 전체화면 가로 도크용 축소 사이즈(세로 누적 높이를 줄여 짧은 가로 화면에서도 fit).
+    val galleryAfSize = if (compact) 44.dp else 52.dp
+    val sideIconSize = if (compact) 20.dp else 24.dp
+    val shutterOuterSize = if (compact) 64.dp else 88.dp
+    val shutterInnerSize = if (compact) 50.dp else 72.dp
+    val shutterIconSize = if (compact) 28.dp else 36.dp
 
     // 셔터음은 기기 무음/진동 모드를 따른다(사용자가 기기를 무음으로 두면 셔터음도 무음).
     val context = LocalContext.current
@@ -193,17 +203,17 @@ private fun CaptureControlsContent(
         color = Surface2,
         shape = CircleShape,
         border = BorderStroke(1.dp, DividerLine),
-        modifier = Modifier.size(52.dp)
+        modifier = Modifier.size(galleryAfSize)
     ) {
         IconButton(
             onClick = onGalleryClick,
-            modifier = Modifier.size(52.dp)
+            modifier = Modifier.size(galleryAfSize)
         ) {
             Icon(
                 Icons.Default.PhotoLibrary,
                 contentDescription = stringResource(R.string.gallery),
                 tint = TextSecondaryV2,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(sideIconSize)
             )
         }
     }
@@ -237,7 +247,7 @@ private fun CaptureControlsContent(
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(88.dp)
+            .size(shutterOuterSize)
             .scale(scale)
             .border(
                 width = 1.5.dp,
@@ -252,7 +262,7 @@ private fun CaptureControlsContent(
         // 안쪽 버튼
         Box(
             modifier = Modifier
-                .size(72.dp)
+                .size(shutterInnerSize)
                 .shadow(
                     elevation = if (isEnabled) 20.dp else 0.dp,
                     shape = CircleShape,
@@ -302,12 +312,12 @@ private fun CaptureControlsContent(
                     Icons.Default.Stop,
                     contentDescription = null,
                     tint = OnAccent,
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(shutterIconSize)
                 )
             } else if (captureState.isCapturing) {
                 CircularProgressIndicator(
                     color = OnAccent,
-                    modifier = Modifier.size(36.dp),
+                    modifier = Modifier.size(shutterIconSize),
                     strokeWidth = 2.5.dp
                 )
             }
@@ -322,12 +332,12 @@ private fun CaptureControlsContent(
             1.dp,
             if (isConnected) DividerLine else TextTertiary.copy(alpha = 0.1f)
         ),
-        modifier = Modifier.size(52.dp)
+        modifier = Modifier.size(galleryAfSize)
     ) {
         IconButton(
             onClick = onAutoFocus,
             enabled = isConnected && !captureState.isFocusing,
-            modifier = Modifier.size(52.dp)
+            modifier = Modifier.size(galleryAfSize)
         ) {
             if (captureState.isFocusing) {
                 CircularProgressIndicator(
@@ -340,7 +350,7 @@ private fun CaptureControlsContent(
                     Icons.Default.CenterFocusStrong,
                     contentDescription = stringResource(R.string.focus),
                     tint = if (isConnected) TextSecondaryV2 else TextTertiary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(sideIconSize)
                 )
             }
         }

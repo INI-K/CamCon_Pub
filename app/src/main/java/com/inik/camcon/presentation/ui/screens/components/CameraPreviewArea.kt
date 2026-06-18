@@ -8,6 +8,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,9 +44,12 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -117,7 +121,16 @@ fun CameraPreviewArea(
     onToggleHistogram: (() -> Unit)? = null,
     isFocusPeakingEnabled: Boolean = false,
     onToggleFocusPeaking: (() -> Unit)? = null,
-    currentSettings: com.inik.camcon.domain.model.CameraSettings? = null
+    currentSettings: com.inik.camcon.domain.model.CameraSettings? = null,
+    // 전체화면 도크가 토글·라이브뷰중지를 대신 제공할 때 false → 프리뷰 내장 크롬을 숨긴다.
+    // 세로 모드는 기본값 true 그대로 사용(무변경).
+    inlineChromeVisible: Boolean = true,
+    // 라이브뷰 프리뷰를 180° 회전(카메라가 거꾸로 장착된 경우). 전체화면 회전 버튼이 토글한다.
+    rotated: Boolean = false,
+    // 탭-투-포커스 콜백. null이면 단일 탭은 무동작(세로 모드 등).
+    // (jpegX, jpegY) = 디코드 JPEG 픽셀 좌표, (jpegW, jpegH) = 디코드 JPEG 크기.
+    // 카메라 AF 격자로의 스케일 보정은 네이티브(setAFArea)에서 수행한다.
+    onTapFocus: ((jpegX: Int, jpegY: Int, jpegW: Int, jpegH: Int) -> Unit)? = null
 ) {
     Box(
         modifier = modifier
@@ -133,6 +146,20 @@ fun CameraPreviewArea(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
+                // 탭-투-포커스 상태: 프리뷰 컴포넌트 크기 / 마커 위치 / 최신 비트맵(차원 용도)
+                val previewSize = androidx.compose.runtime.remember {
+                    androidx.compose.runtime.mutableStateOf(androidx.compose.ui.unit.IntSize.Zero)
+                }
+                val tapMarker = androidx.compose.runtime.remember {
+                    androidx.compose.runtime.mutableStateOf<androidx.compose.ui.geometry.Offset?>(null)
+                }
+                val latestBmp = androidx.compose.runtime.rememberUpdatedState(decodedBitmap)
+                // 라이브뷰는 매 프레임 recompose되어 콜백 람다가 재생성되므로, pointerInput 키를 Unit으로 고정하고
+                // 최신 값은 rememberUpdatedState로 읽는다(매 프레임 제스처 감지기 재시작 → 탭 유실 방지).
+                val tapFocusCb = androidx.compose.runtime.rememberUpdatedState(onTapFocus)
+                val rotatedRef = androidx.compose.runtime.rememberUpdatedState(rotated)
+                val onDoubleClickRef = androidx.compose.runtime.rememberUpdatedState(onDoubleClick)
+
                 // 포커스 피킹: 토글 ON 이면 edge 가 입혀진 별도 Bitmap 으로 표시.
                 // IO 작업이므로 LaunchedEffect 에서 처리하고 결과만 화면에 반영.
                 val focusPeakingBitmap = androidx.compose.runtime.remember {
@@ -164,14 +191,55 @@ fun CameraPreviewArea(
                     contentDescription = "Live View",
                     modifier = Modifier
                         .fillMaxSize()
-                        .combinedClickable(
-                            onClick = { /* 단일 클릭 처리 */ },
-                            onDoubleClick = {
-                                onDoubleClick?.invoke()
-                            }
-                        ),
+                        // 제스처·크기는 회전 적용 '이전' 레이아웃 공간에서 측정한다.
+                        // (mapTapToCameraPoint가 rotated 플래그로 180° 반전을 처리)
+                        .onSizeChanged { previewSize.value = it }
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onDoubleTap = { onDoubleClickRef.value?.invoke() },
+                                onTap = { offset ->
+                                    val cb = tapFocusCb.value
+                                    val bmp = latestBmp.value
+                                    val sz = previewSize.value
+                                    if (cb != null && bmp != null && sz.width > 0 && sz.height > 0) {
+                                        Log.d(
+                                            "TapFocus",
+                                            "tap=(${offset.x},${offset.y}) box=${sz.width}x${sz.height} " +
+                                                "bmp=${bmp.width}x${bmp.height} rotated=${rotatedRef.value}"
+                                        )
+                                        val p = com.inik.camcon.presentation.util.mapTapToCameraPoint(
+                                            offset.x, offset.y,
+                                            sz.width, sz.height,
+                                            bmp.width, bmp.height,
+                                            rotatedRef.value
+                                        )
+                                        if (p != null) {
+                                            tapMarker.value = offset
+                                            cb(p.x, p.y, bmp.width, bmp.height)
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                        .rotate(if (rotated) 180f else 0f),
                     contentScale = ContentScale.Fit
                 )
+
+                // 탭-투-포커스 마커 — 탭한 화면 위치에 표시(이미지 회전과 무관). 1.5초 후 소멸.
+                tapMarker.value?.let { mk ->
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        drawCircle(
+                            color = com.inik.camcon.presentation.theme.Accent,
+                            radius = 26.dp.toPx(),
+                            center = mk,
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
+                        )
+                    }
+                    androidx.compose.runtime.LaunchedEffect(mk) {
+                        kotlinx.coroutines.delay(1500)
+                        tapMarker.value = null
+                    }
+                }
 
                 // 라이브뷰 프레임 정지/끊김 감지 — 마지막 프레임 수신 후 일정 시간 새 프레임이
                 // 안 오면 "프레임 정지" 배지를 표시한다. 멈춘 마지막 프레임을 라이브로 오인하지 않게.
@@ -221,7 +289,8 @@ fun CameraPreviewArea(
                 }
 
                 // H5 + G7: 우상단 토글 버튼 묶음 (그리드 / 히스토그램 / 포커스 피킹)
-                Row(
+                // 전체화면은 우측 도크가 토글을 제공하므로(inlineChromeVisible=false) 숨긴다.
+                if (inlineChromeVisible) Row(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(Spacing.md),
@@ -315,8 +384,8 @@ fun CameraPreviewArea(
                     )
                 }
 
-                // 라이브뷰 중지 버튼 오버레이
-                Button(
+                // 라이브뷰 중지 버튼 오버레이 — 전체화면은 우측 도크가 제공하므로 숨긴다.
+                if (inlineChromeVisible) Button(
                     onClick = {
                         onStopLiveView()
                     },
