@@ -282,7 +282,15 @@ object CameraNative {
      * 콜백 해제 API 를 사용해야 한다.
      */
     external fun setLogLevel(level: Int): Boolean
+
+    /**
+     * ⚠️ logcat verbose 출력을 켠다(`g_logcatVerbose=true`). DEBUG/VERBOSE가 logcat에 쏟아진다.
+     * 자동/시작/연결 경로에서 호출 금지 — 수동 디버깅용 escape hatch 전용.
+     * 파일 로그는 [startLogFile]+[setLogLevel](레벨만 올림, logcat 영향 없음)을 쓴다.
+     */
     external fun enableVerboseLogging(enabled: Boolean): Boolean
+
+    /** ⚠️ [enableVerboseLogging]와 동일 경고: logcat verbose를 켠다. 수동 디버깅 전용. */
     external fun enableDebugLogging(enabled: Boolean): Boolean
 
     // 로그 파일 제어 함수들

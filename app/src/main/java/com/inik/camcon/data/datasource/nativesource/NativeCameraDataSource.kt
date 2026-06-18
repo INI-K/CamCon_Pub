@@ -643,16 +643,30 @@ class NativeCameraDataSource @Inject constructor(
         CameraNative.setupEnvironmentPaths(pluginDir)
     }
 
+    // 파일 로그 정책 단일 소유자: 마지막으로 설정한 파일 로그 레벨(baseline).
+    // Wi-Fi 연결이 init 구간에 레벨을 일시 상향한 뒤 이 baseline으로 복원한다(하드-0 금지).
+    @Volatile
+    private var baselineFileLevel: Int = CameraNative.GP_LOG_ERROR
+
+    /** Wi-Fi 연결 등 일시적 레벨 상향 후 복원에 쓰는 현재 파일 로그 baseline 레벨. */
+    fun currentFileLevel(): Int = baselineFileLevel
+
     suspend fun startLogFile(logPath: String, level: Int): Boolean = withContext(ioDispatcher) {
         val started = CameraNative.startLogFile(logPath)
         if (started) {
             CameraNative.setLogLevel(level)
+            baselineFileLevel = level
         }
         started
     }
 
     suspend fun stopLogFile(): Boolean = withContext(ioDispatcher) {
-        CameraNative.stopLogFile()
+        val stopped = CameraNative.stopLogFile()
+        // 파일 로그를 끄면 콜백 레벨도 알려진 조용한 상태(ERROR)로 되돌린다.
+        // (기존 stopLogFile은 콜백을 마지막 레벨에 그대로 둬 "꺼도 안 조용한" 비일관 상태였다.)
+        CameraNative.setLogLevel(CameraNative.GP_LOG_ERROR)
+        baselineFileLevel = CameraNative.GP_LOG_ERROR
+        stopped
     }
 
     suspend fun getLogFileContent(filePath: String): String = withContext(ioDispatcher) {
