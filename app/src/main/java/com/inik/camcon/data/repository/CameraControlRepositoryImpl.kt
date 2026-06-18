@@ -51,12 +51,7 @@ class CameraControlRepositoryImpl @Inject constructor(
     suspend fun getCameraSettings(): Result<CameraSettings> {
         return withContext(ioDispatcher) {
             try {
-                // 캐시된 설정이 있으면 우선 반환
-                _cameraSettings.value?.let { cachedSettings ->
-                    com.inik.camcon.utils.LogcatManager.d(TAG, "캐시된 카메라 설정 반환")
-                    return@withContext Result.success(cachedSettings)
-                }
-
+                // 라이브 값(노출 스트립)을 위해 캐시 우선 반환을 제거 — 매 호출마다 fresh 위젯 JSON에서 파싱.
                 val widgetJson = getWidgetJsonFromSource()
                 val settings = parseWidgetJsonToSettings(widgetJson)
                     ?: return@withContext Result.failure(
@@ -79,39 +74,94 @@ class CameraControlRepositoryImpl @Inject constructor(
     }
 
     /**
-     * 위젯 JSON 가져오기. USB > PTPIP > 마스터 데이터 우선순위.
+     * 위젯 JSON 가져오기. 라이브 설정값을 위해 항상 fresh 네이티브를 우선한다.
+     * (마스터 데이터는 연결 시점 캐시라 ISO/SS/조리개 등이 갱신되지 않으므로 폴백으로만 사용)
      */
     private suspend fun getWidgetJsonFromSource(): String {
-        val isUsbConnected = usbCameraManager.isNativeCameraConnected.value
-        val isPtpipConnected = connectionManager.isPtpipConnected.value
-
-        return if (isUsbConnected) {
-            com.inik.camcon.utils.LogcatManager.d(TAG, "USB 카메라 연결됨 - 마스터 데이터 사용")
-            usbCameraManager.buildWidgetJsonFromMaster()
-        } else if (isPtpipConnected) {
-            com.inik.camcon.utils.LogcatManager.d(TAG, "PTPIP 카메라 연결됨 - 직접 네이티브 호출")
-            nativeDataSource.buildWidgetJson()
-        } else {
-            val masterData = usbCameraManager.buildWidgetJsonFromMaster()
-            if (masterData.isNotEmpty()) {
-                com.inik.camcon.utils.LogcatManager.d(TAG, "카메라 미연결이지만 마스터 데이터 사용")
-                masterData
-            } else {
-                com.inik.camcon.utils.LogcatManager.d(TAG, "마스터 데이터 없음 - 직접 네이티브 호출")
-                nativeDataSource.buildWidgetJson()
-            }
+        val live = nativeDataSource.buildWidgetJson()
+        if (live.isNotBlank() && !live.contains("\"error\"")) {
+            return live
         }
+        com.inik.camcon.utils.LogcatManager.d(TAG, "fresh 위젯 JSON 비어있음 - 마스터 데이터 폴백")
+        return usbCameraManager.buildWidgetJsonFromMaster()
     }
 
     /**
-     * 위젯 JSON을 CameraSettings로 변환. (TODO: 실제 파싱)
+     * 위젯 JSON 트리를 CameraSettings로 변환.
      *
-     * 현재 네이티브 buildWidgetJson 은 value 필드를 직렬화하지 않아 실제 값 파싱이 불가능하다.
-     * 과거에는 하드코딩 더미(ISO 100, 1/125, F2.8)를 반환해 설정 UI와 촬영 사진 메타데이터에
-     * 가짜 값이 기록됐다 — 구현 전까지 null(설정 미상)을 반환해 정직하게 실패시킨다.
+     * 네이티브 buildWidgetJson 이 이제 타입별 "value"를 직렬화하므로(camera_config.cpp) 실제 값을 파싱한다.
+     * 관심 설정(iso/shutterspeed/f-number/whitebalance/exposurecompensation/focusmode)을 이름으로 찾는다.
+     * 하나도 못 읽으면 null(설정 미상)을 반환해 가짜 값 기록을 막는다.
      */
     private fun parseWidgetJsonToSettings(widgetJson: String): CameraSettings? {
-        return null
+        return try {
+            if (widgetJson.isBlank()) return null
+            val root = org.json.JSONObject(widgetJson)
+
+            // 이름 → 노드 인덱스(재귀)
+            val byName = HashMap<String, org.json.JSONObject>()
+            fun walk(node: org.json.JSONObject) {
+                node.optString("name", "").takeIf { it.isNotEmpty() }?.let { byName[it] = node }
+                val children = node.optJSONArray("children") ?: return
+                for (i in 0 until children.length()) {
+                    children.optJSONObject(i)?.let { walk(it) }
+                }
+            }
+            walk(root)
+            if (byName.isEmpty()) return null
+
+            fun value(vararg names: String): String {
+                for (nm in names) {
+                    val node = byName[nm] ?: continue
+                    val v = node.opt("value")
+                    if (v != null && v.toString().isNotBlank()) return v.toString()
+                }
+                return ""
+            }
+            fun choices(vararg names: String): List<String> {
+                for (nm in names) {
+                    val arr = byName[nm]?.optJSONArray("choices") ?: continue
+                    val out = ArrayList<String>(arr.length())
+                    for (i in 0 until arr.length()) out.add(arr.optString(i))
+                    if (out.isNotEmpty()) return out
+                }
+                return emptyList()
+            }
+
+            val iso = value("iso", "isospeed")
+            val shutter = value("shutterspeed", "shutterspeed2")
+            val aperture = value("f-number", "aperture")
+            val wb = value("whitebalance", "whitebalance2")
+            val focus = value("focusmode", "focusmode2", "autofocusmode")
+            val ev = value("exposurecompensation", "exposurecompensation2")
+
+            // 모두 비어있으면 미상 — 가짜 값 방지
+            if (iso.isEmpty() && shutter.isEmpty() && aperture.isEmpty() && wb.isEmpty() && ev.isEmpty()) {
+                return null
+            }
+
+            val available = HashMap<String, List<String>>()
+            choices("iso").takeIf { it.isNotEmpty() }?.let { available["iso"] = it }
+            choices("shutterspeed", "shutterspeed2").takeIf { it.isNotEmpty() }?.let { available["shutterspeed"] = it }
+            choices("f-number", "aperture").takeIf { it.isNotEmpty() }?.let { available["f-number"] = it }
+            choices("whitebalance", "whitebalance2").takeIf { it.isNotEmpty() }?.let { available["whitebalance"] = it }
+            choices("exposurecompensation", "exposurecompensation2").takeIf { it.isNotEmpty() }?.let {
+                available["exposurecompensation"] = it
+            }
+
+            CameraSettings(
+                iso = iso,
+                shutterSpeed = shutter,
+                aperture = aperture,
+                whiteBalance = wb,
+                focusMode = focus,
+                exposureCompensation = ev,
+                availableSettings = available
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "위젯 JSON 파싱 실패", e)
+            null
+        }
     }
 
     suspend fun getCameraInfo(): Result<String> {
