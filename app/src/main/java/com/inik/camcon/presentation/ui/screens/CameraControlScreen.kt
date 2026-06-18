@@ -316,10 +316,10 @@ fun CameraControlScreen(
                 label = "fullscreen_content"
             ) { isFullscreenMode ->
                 if (isFullscreenMode) {
-                    LogcatManager.d(
-                        "CameraControl",
-                        "🌟 전체화면 모드 렌더링 - isFullscreen=$isFullscreen, isCameraControlsEnabled=${appSettings.isCameraControlsEnabled}, capturedPhotos=${uiState.capturedPhotos.size}"
-                    )
+//                    LogcatManager.d(
+//                        "CameraControl",
+//                        "🌟 전체화면 모드 렌더링 - isFullscreen=$isFullscreen, isCameraControlsEnabled=${appSettings.isCameraControlsEnabled}, capturedPhotos=${uiState.capturedPhotos.size}"
+//                    )
                     // 전체화면 모드는 scaffoldPadding 무시 (시스템 UI 숨김)
                     FullscreenCameraLayout(
                         uiState = uiState,
