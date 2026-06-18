@@ -23,12 +23,15 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -251,6 +254,9 @@ class CameraViewModel @Inject constructor(
 
         // PTPIP 연결 상태 관찰
         observePtpipConnection()
+
+        // ① 라이브뷰 중 카메라 설정(노출 스트립) 주기 갱신
+        observeLiveSettingsPolling()
     }
 
     /**
@@ -263,6 +269,27 @@ class CameraViewModel @Inject constructor(
             isPtpipConnected.collectLatest { isConnected ->
                 uiStateManager.updatePtpipConnectionState(isConnected)
             }
+        }
+    }
+
+    /**
+     * 라이브뷰가 활성인 동안 카메라 설정값을 ~3초마다 fresh로 갱신해 노출 스트립을 실시간화한다.
+     * 라이브뷰가 꺼지면 collectLatest 가 내부 루프를 취소한다. 실패는 조용히 무시(토스트 스팸 방지).
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun observeLiveSettingsPolling() {
+        viewModelScope.launch {
+            uiState
+                .map { it.isLiveViewActive }
+                .distinctUntilChanged()
+                .collectLatest { active ->
+                    if (active) {
+                        while (isActive) {
+                            settingsManager.refreshCameraSettingsQuiet()
+                            delay(3000L)
+                        }
+                    }
+                }
         }
     }
 

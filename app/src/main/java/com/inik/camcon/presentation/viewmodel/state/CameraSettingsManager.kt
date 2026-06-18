@@ -129,6 +129,23 @@ class CameraSettingsManager @Inject constructor(
     }
 
     /**
+     * 라이브뷰 중 노출 스트립용 주기 갱신. loadCameraSettings와 달리 isLoadingSettings를 건드리지 않고
+     * 실패해도 에러를 emit하지 않는다(주기 폴링이 토스트를 스팸하지 않도록 — 조용히 로그만).
+     */
+    suspend fun refreshCameraSettingsQuiet() {
+        withContext(ioDispatcher) {
+            try {
+                getCameraSettingsUseCase()
+                    .onSuccess { settings -> _cameraSettings.value = settings }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logger.d(TAG, "설정 주기 갱신 실패(무시): ${e.message}")
+            }
+        }
+    }
+
+    /**
      * 카메라 기능 정보 로드
      */
     suspend fun loadCameraCapabilities(cameraId: String? = null) {
