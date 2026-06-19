@@ -62,7 +62,7 @@ class CameraControlRepositoryImpl @Inject constructor(
                     _cameraSettings.value = settings
                 }
 
-                com.inik.camcon.utils.LogcatManager.d(TAG, "카메라 설정 업데이트")
+                // 라이브뷰 중 이벤트 푸시 + 1초 안전망이 자주 호출 → 로그 도배 방지 위해 무로깅.
                 Result.success(settings)
             } catch (e: CancellationException) {
                 throw e
@@ -78,11 +78,21 @@ class CameraControlRepositoryImpl @Inject constructor(
      * (마스터 데이터는 연결 시점 캐시라 ISO/SS/조리개 등이 갱신되지 않으므로 폴백으로만 사용)
      */
     private suspend fun getWidgetJsonFromSource(): String {
-        val live = nativeDataSource.buildWidgetJson()
-        if (live.isNotBlank() && !live.contains("\"error\"")) {
-            return live
+        // 노출 스트립은 노출 프로퍼티 몇 개만 필요 → 경량 getter 우선(전체 트리보다 빠르고 LV를 덜 끊음).
+        val light = nativeDataSource.getLiveExposureJson()
+        if (light.isNotBlank() && !light.contains("\"error\"") && light.contains("\"name\"")) {
+            return light
         }
-        com.inik.camcon.utils.LogcatManager.d(TAG, "fresh 위젯 JSON 비어있음 - 마스터 데이터 폴백")
+        // 일시적 사유(coalesce 드랍/타임아웃)는 무거운 전체 트리로 폴백하지 말고 ""을 반환해
+        // 직전 캐시를 유지한다(파싱 null → 조용히 skip). LV 중 호출 연쇄·끊김 방지.
+        if (light.contains("\"timeout\"") || light.contains("\"coalesced\"")) {
+            return ""
+        }
+        // 폴백: 전체 트리(fresh) → 마스터 데이터
+        val full = nativeDataSource.buildWidgetJson()
+        if (full.isNotBlank() && !full.contains("\"error\"")) {
+            return full
+        }
         return usbCameraManager.buildWidgetJsonFromMaster()
     }
 
@@ -128,7 +138,9 @@ class CameraControlRepositoryImpl @Inject constructor(
                 return emptyList()
             }
 
-            val iso = value("iso", "isospeed")
+            // d0b5(ISOControlSensitivity)=유효 auto-ISO(libgphoto2 getvendorcodes fixup 후 노출).
+            // 있으면 본체가 실제 쓰는 값, 없으면 base iso(0x500F).
+            val iso = value("d0b5", "iso", "isospeed")
             val shutter = value("shutterspeed", "shutterspeed2")
             val aperture = value("f-number", "aperture")
             val wb = value("whitebalance", "whitebalance2")

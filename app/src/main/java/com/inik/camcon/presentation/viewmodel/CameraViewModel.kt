@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
@@ -273,21 +274,37 @@ class CameraViewModel @Inject constructor(
     }
 
     /**
-     * 라이브뷰가 활성인 동안 카메라 설정값을 ~3초마다 fresh로 갱신해 노출 스트립을 실시간화한다.
-     * 라이브뷰가 꺼지면 collectLatest 가 내부 루프를 취소한다. 실패는 조용히 무시(토스트 스팸 방지).
+     * 라이브뷰 동안 노출 스트립을 실시간화한다. 라이브뷰일 때만 가동(collectLatest 가 LV off 시 전부 취소):
+     * (1) 진입 시 1회 seed, (2) 본체 설정 변경 푸시 구동 재조회(debounce 150ms — DevicePropChanged),
+     * (3) 이벤트 미발생(예: Nikon Z8 auto-ISO 펌웨어가 0x500F 변경 이벤트를 안 쏘는 경우) 대비 1초 안전망.
+     * 경량 getter는 큐에서 coalesce 되므로 이벤트+폴링이 겹쳐도 중복 호출은 1회로 접힌다. 실패는 조용히 무시.
      */
-    @OptIn(ExperimentalCoroutinesApi::class)
+    @OptIn(ExperimentalCoroutinesApi::class, kotlinx.coroutines.FlowPreview::class)
     private fun observeLiveSettingsPolling() {
+        // settingsManager.cameraSettings → uiState.cameraSettings 브리지(노출 스트립이 읽는 곳). 값 미러링만(네이티브 호출 없음)이라 항상 가동.
+        viewModelScope.launch {
+            settingsManager.cameraSettings.collect { s ->
+                if (s != null) uiStateManager.updateCameraSettings(s)
+            }
+        }
+        // 라이브뷰일 때만: seed + 이벤트 구동 재조회 + 1초 안전망. LV off 시 collectLatest 가 자식까지 전부 취소.
         viewModelScope.launch {
             uiState
                 .map { it.isLiveViewActive }
                 .distinctUntilChanged()
                 .collectLatest { active ->
-                    if (active) {
-                        while (isActive) {
-                            settingsManager.refreshCameraSettingsQuiet()
-                            delay(3000L)
-                        }
+                    if (!active) return@collectLatest
+                    settingsManager.refreshCameraSettingsQuiet() // seed
+                    // 이벤트 구동(정석): 본체에서 설정이 바뀌면 onPropertyChanged 푸시 → debounce 후 경량 재조회.
+                    launch {
+                        cameraRepository.settingChanged()
+                            .debounce(150L)
+                            .collect { settingsManager.refreshCameraSettingsQuiet() }
+                    }
+                    // 놓친 이벤트/이벤트 미지원 대비 1초 안전망(자가 치유).
+                    while (isActive) {
+                        delay(1000L)
+                        settingsManager.refreshCameraSettingsQuiet()
                     }
                 }
         }

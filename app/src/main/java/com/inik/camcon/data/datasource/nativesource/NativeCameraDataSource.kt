@@ -231,11 +231,12 @@ class NativeCameraDataSource @Inject constructor(
 
     // 위젯 JSON 빌드 결과
     fun buildWidgetJson(): String {
-        Log.d(TAG, "⚠️ buildWidgetJson 호출 - NativeCameraDataSource에서 직접 네이티브 호출 (마스터 데이터 미사용)")
-        val result = CameraNative.buildWidgetJson()
-        Log.d(TAG, "직접 네이티브 호출 완료 - 위젯 JSON 길이: ${result.length}")
-        return result
+        // 라이브뷰 중 설정 스트립 폴링이 호출 → 로그 도배 방지 위해 무로깅.
+        return CameraNative.buildWidgetJson()
     }
+
+    // 라이브뷰 노출 스트립용 경량 조회(필요 노출 프로퍼티만, 캐시 없음). 전체 트리보다 빠르고 LV를 덜 끊는다.
+    fun getLiveExposureJson(): String = CameraNative.getLiveExposureJson()
 
     // 카메라 설정 쿼리
     fun queryConfig() {

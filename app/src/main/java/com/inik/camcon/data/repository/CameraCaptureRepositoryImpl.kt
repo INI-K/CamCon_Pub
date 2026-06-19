@@ -182,6 +182,10 @@ class CameraCaptureRepositoryImpl @Inject constructor(
     fun isEventListenerActive(): Flow<Boolean> =
         eventManager.isEventListenerActive
 
+    // 카메라 본체 설정(노출) 변경 푸시 — 폴링 대체. 수집측이 debounce 후 경량 재조회.
+    fun settingChanged(): Flow<Unit> =
+        eventManager.settingChanged
+
     fun isPhotoPreviewMode(): Flow<Boolean> =
         eventManager.isPhotoPreviewModeFlow
 

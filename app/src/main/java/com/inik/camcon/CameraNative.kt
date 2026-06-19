@@ -150,6 +150,8 @@ object CameraNative {
     external fun stopListenCameraEventsAsync(callback: EventListenerStopCallback)
     external fun cameraAutoDetect(): String
     external fun buildWidgetJson(): String
+    // 라이브뷰 노출 스트립용 경량 조회(필요 노출 프로퍼티만, 캐시 없음). 폴링용.
+    external fun getLiveExposureJson(): String
     external fun queryConfig()
 
     // 범용 설정 접근 (C++ 구현은 camera_config.cpp에 존재)

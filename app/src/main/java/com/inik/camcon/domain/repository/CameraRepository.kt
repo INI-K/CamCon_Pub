@@ -43,6 +43,9 @@ interface CameraRepository {
     fun setPhotoPreviewMode(enabled: Boolean)
     fun isEventListenerActive(): Flow<Boolean>
 
+    /** 카메라 본체에서 설정(노출)이 바뀔 때 푸시되는 신호 — 폴링 대체. 수집측이 debounce 후 재조회. */
+    fun settingChanged(): Flow<Unit>
+
     /**
      * 사진 미리보기 모드 상태 관찰 (백그라운드 이벤트 리스너 감독자용)
      */

@@ -943,9 +943,10 @@ private fun FullscreenCameraLayout(
                 onToggleFocusPeaking = onToggleFocusPeaking,
                 currentSettings = uiState.cameraSettings,
                 inlineChromeVisible = false,
-                rotated = isRotated,
-                // 탭-투-포커스: JPEG 좌표+크기를 넘기면 네이티브가 카메라 격자로 스케일 후 이동+AF 구동.
-                onTapFocus = { jx, jy, jw, jh -> viewModel.setAFArea(jx, jy, jw, jh) }
+                rotated = isRotated
+                // 탭-투-포커스 비활성화: Nikon Z8/Z9는 AF-영역 모드를 PTP로 설정할 수 없어
+                // (벤더확장 미노출) changeafarea 좌표가 무시되고 좌상단에 park된다. onTapFocus 미전달(null)
+                // → 라이브뷰 단일 탭은 무동작, 더블탭=전체화면 종료는 유지.
             )
         } else {
             Box(

@@ -96,6 +96,7 @@ class CameraRepositoryImpl @Inject constructor(
     // ── Capture delegates ──
 
     override fun isEventListenerActive(): Flow<Boolean> = captureRepo.isEventListenerActive()
+    override fun settingChanged(): Flow<Unit> = captureRepo.settingChanged()
     override fun isPhotoPreviewMode(): Flow<Boolean> = captureRepo.isPhotoPreviewMode()
     override fun setPhotoPreviewMode(enabled: Boolean) = captureRepo.setPhotoPreviewMode(enabled)
     override suspend fun startCameraEventListener(): Result<Boolean> = captureRepo.startCameraEventListener()

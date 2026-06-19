@@ -118,6 +118,8 @@ class FakeCameraRepository : CameraRepository {
         return flowOf(false)
     }
 
+    override fun settingChanged(): Flow<Unit> = kotlinx.coroutines.flow.emptyFlow()
+
     override fun isPhotoPreviewMode(): Flow<Boolean> = flowOf(false)
 
     override suspend fun capturePhoto(mode: ShootingMode): Result<CapturedPhoto> {
