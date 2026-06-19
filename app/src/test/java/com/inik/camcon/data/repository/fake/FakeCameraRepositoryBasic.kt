@@ -289,6 +289,7 @@ class FakeCameraRepositoryBasic : CameraRepository {
     override fun isPhotoPreviewMode(): Flow<Boolean> = flowOf(false)
 
     override fun isEventListenerActive(): Flow<Boolean> = isEventListenerActiveFlow
+    override fun settingChanged(): Flow<Unit> = kotlinx.coroutines.flow.emptyFlow()
 
     override suspend fun capturePhoto(mode: ShootingMode): Result<CapturedPhoto> {
         capturePhotoCallCount++

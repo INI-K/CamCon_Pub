@@ -22,7 +22,9 @@ import com.inik.camcon.di.MainDispatcher
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
@@ -57,6 +59,19 @@ class CameraEventManager @Inject constructor(
     // 카메라 이벤트 리스너 상태 추적
     private val _isEventListenerActive = MutableStateFlow(false)
     val isEventListenerActive = _isEventListenerActive.asStateFlow()
+
+    // 설정(노출) 변경 이벤트 푸시 — 카메라 본체에서 ISO/SS/조리개/WB/EV 등이 바뀌면 emit. 폴링 대체.
+    // 수집측(ViewModel)이 debounce 후 경량 재조회한다.
+    private val _settingChanged = MutableSharedFlow<Unit>(extraBufferCapacity = 16)
+    val settingChanged = _settingChanged.asSharedFlow()
+
+    // onPropertyChanged에서 통과시킬 노출 관련 config 이름. 니콘은 idle에도 노출표시 등 잡음 스트림을
+    // 흘리므로 이 화이트리스트로 걸러야 불필요한 재조회가 폭주하지 않는다.
+    // ⚠️ camera_config.cpp 의 buildLiveExposureJson kProps[] 와 반드시 동기 유지(한쪽만 바꾸면 동기화가 조용히 깨진다).
+    private val exposureConfigNames = setOf(
+        "iso", "d0b5", "shutterspeed", "shutterspeed2", "f-number", "aperture",
+        "whitebalance", "exposurecompensation", "focusmode"
+    )
 
     // 스레드 안전한 실행 상태 관리
     private val isEventListenerRunning = AtomicBoolean(false)
@@ -628,6 +643,13 @@ class CameraEventManager @Inject constructor(
                         LogcatManager.w("카메라이벤트매니저", "PTPIP 네트워크 연결 끊김 감지됨")
                         handlePtpipDisconnection()
                     }
+                }
+            }
+
+            override fun onPropertyChanged(configName: String) {
+                // 카메라에서 노출 관련 설정이 바뀐 이벤트만 통과 → 수집측이 디바운스 후 경량 재조회.
+                if (configName in exposureConfigNames) {
+                    _settingChanged.tryEmit(Unit)
                 }
             }
 

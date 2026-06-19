@@ -33,4 +33,11 @@ interface CameraCaptureCallback {
 
     /** USB 디바이스가 분리되었을 때 호출 */
     fun onUsbDisconnected()
+
+    /**
+     * 카메라 본체에서 디바이스 프로퍼티(설정)가 변경됐을 때 호출 (이벤트 푸시 — 폴링 대체).
+     * @param configName 변경된 gphoto2 config 이름 (예: "iso", "shutterspeed", "f-number")
+     * 기본 구현 무동작 — 관심 있는 구현만 override.
+     */
+    fun onPropertyChanged(configName: String) {}
 }
