@@ -497,6 +497,7 @@
     <string name="cd_exit_fullscreen">전체화면 종료</string>
     <string name="cd_stop_live_view">라이브뷰 중지</string>
     <string name="cd_start_live_view">라이브뷰 시작</string>
+    <string name="cd_cycle_liveview_quality">라이브뷰 화질: %1$s (탭하여 변경)</string>
     <string name="cd_camera_capture">촬영</string>
     <string name="cd_usb_off">USB 연결 끊김</string>
     <string name="cd_live_view_frame">라이브뷰 프레임</string>

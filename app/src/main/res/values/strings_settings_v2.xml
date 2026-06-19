@@ -28,6 +28,13 @@
     <string name="settings_v2_camera_controls_off">Disabled - the latest captured photo is shown</string>
     <string name="settings_v2_liveview_title">Enable live view</string>
     <string name="settings_v2_liveview_subtitle">Show the real-time camera feed (ADMIN only)</string>
+    <string name="settings_v2_liveview_quality_title">Live view quality</string>
+    <string name="settings_v2_liveview_quality_speed">Speed</string>
+    <string name="settings_v2_liveview_quality_balanced">Balanced</string>
+    <string name="settings_v2_liveview_quality_quality">Quality</string>
+    <string name="settings_v2_liveview_quality_speed_desc">Lowest resolution, fastest frame rate</string>
+    <string name="settings_v2_liveview_quality_balanced_desc">Keep camera\'s current size</string>
+    <string name="settings_v2_liveview_quality_quality_desc">Highest resolution, slower frame rate</string>
     <string name="settings_v2_auto_event_title">Auto event listening</string>
     <string name="settings_v2_auto_event_subtitle">Start the event listener automatically when entering the camera control tab</string>
     <string name="settings_v2_liveview_locked_title">Live view feature</string>

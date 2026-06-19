@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.inik.camcon.domain.model.LiveViewQuality
 import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.usecase.ColorTransferUseCase
@@ -259,6 +260,17 @@ class AppSettingsViewModel @Inject constructor(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5000),
                 initialValue = false
+            )
+
+    /**
+     * 라이브뷰 화질 (기본값: QUALITY)
+     */
+    val liveViewQuality: StateFlow<LiveViewQuality> =
+        appSettingsRepository.liveViewQuality
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = LiveViewQuality.QUALITY
             )
 
     /**
@@ -549,6 +561,15 @@ class AppSettingsViewModel @Inject constructor(
     fun setLiveViewGridEnabled(enabled: Boolean) {
         viewModelScope.launch {
             appSettingsRepository.setLiveViewGridEnabled(enabled)
+        }
+    }
+
+    /**
+     * 라이브뷰 화질 설정
+     */
+    fun setLiveViewQuality(quality: LiveViewQuality) {
+        viewModelScope.launch {
+            appSettingsRepository.setLiveViewQuality(quality)
         }
     }
 
