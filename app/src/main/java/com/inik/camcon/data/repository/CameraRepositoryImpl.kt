@@ -157,6 +157,11 @@ class CameraRepositoryImpl @Inject constructor(
     override suspend fun setRawFileDownloadEnabled(enabled: Boolean): Result<Unit> =
         controlRepo.setRawFileDownloadEnabled(enabled)
 
+    override suspend fun setLiveViewQuality(quality: com.inik.camcon.domain.model.LiveViewQuality): Result<Unit> =
+        controlRepo.setLiveViewQuality(quality)
+
+    override fun isLiveViewStopping(): Boolean = controlRepo.isLiveViewStopping()
+
     override suspend fun getCameraFileListNow(): Result<List<String>> = controlRepo.getCameraFileListNow()
 
     // ── C3 라운드 1: Native Gateway delegates ──

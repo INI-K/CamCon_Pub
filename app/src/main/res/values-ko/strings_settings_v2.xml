@@ -28,6 +28,13 @@
     <string name="settings_v2_camera_controls_off">비활성화 - 최신 촬영 사진이 표시됩니다</string>
     <string name="settings_v2_liveview_title">라이브뷰 활성화</string>
     <string name="settings_v2_liveview_subtitle">실시간 카메라 화면 표시 (ADMIN 전용)</string>
+    <string name="settings_v2_liveview_quality_title">라이브뷰 화질</string>
+    <string name="settings_v2_liveview_quality_speed">속도</string>
+    <string name="settings_v2_liveview_quality_balanced">균형</string>
+    <string name="settings_v2_liveview_quality_quality">품질</string>
+    <string name="settings_v2_liveview_quality_speed_desc">최저 해상도, 가장 빠른 프레임</string>
+    <string name="settings_v2_liveview_quality_balanced_desc">카메라 현재 크기 유지</string>
+    <string name="settings_v2_liveview_quality_quality_desc">최고 해상도, 느린 프레임</string>
     <string name="settings_v2_auto_event_title">자동 이벤트 수신</string>
     <string name="settings_v2_auto_event_subtitle">카메라 제어 탭 진입 시 자동으로 이벤트 리스너 시작</string>
     <string name="settings_v2_liveview_locked_title">라이브뷰 기능</string>

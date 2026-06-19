@@ -7,6 +7,7 @@ import com.inik.camcon.domain.model.CameraCapabilities
 import com.inik.camcon.domain.model.CameraSettings
 import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.domain.model.LiveViewFrame
+import com.inik.camcon.domain.model.LiveViewQuality
 import com.inik.camcon.domain.model.PtpDeviceInfo
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.domain.model.SubscriptionTier
@@ -31,7 +32,7 @@ import kotlinx.coroutines.flow.flowOf
  * - Flow 기반 메서드는 고정 값 또는 제어 가능한 MutableStateFlow 반환
  * - 하드웨어 의존성 없음 — 순수 in-memory 구현
  */
-class FakeCameraRepositoryBasic : CameraRepository {
+open class FakeCameraRepositoryBasic : CameraRepository {
 
     // ======================== 제어 속성 ========================
     // 테스트에서 설정하여 메서드의 반환 값을 제어
@@ -161,6 +162,8 @@ class FakeCameraRepositoryBasic : CameraRepository {
     var getCameraFileListNowResult: Result<List<String>> = Result.success(emptyList())
     var setSubscriptionTierResult: Result<Unit> = Result.success(Unit)
     var setRawFileDownloadEnabledResult: Result<Unit> = Result.success(Unit)
+    var setLiveViewQualityResult: Result<Unit> = Result.success(Unit)
+    var isLiveViewStoppingResult: Boolean = false
 
     // ======================== 상태 추적 속성 ========================
     // 메서드 호출 기록 및 파라미터 검증용
@@ -220,6 +223,8 @@ class FakeCameraRepositoryBasic : CameraRepository {
     var lastSetSubscriptionTier: SubscriptionTier? = null
     var setRawFileDownloadEnabledCallCount: Int = 0
     var lastSetRawFileDownloadEnabled: Boolean? = null
+    var setLiveViewQualityCallCount: Int = 0
+    var lastSetLiveViewQuality: LiveViewQuality? = null
 
     // ======================== Flow 상태 속성 ========================
 
@@ -416,6 +421,14 @@ class FakeCameraRepositoryBasic : CameraRepository {
         return setRawFileDownloadEnabledResult
     }
 
+    override suspend fun setLiveViewQuality(quality: LiveViewQuality): Result<Unit> {
+        setLiveViewQualityCallCount++
+        lastSetLiveViewQuality = quality
+        return setLiveViewQualityResult
+    }
+
+    override fun isLiveViewStopping(): Boolean = isLiveViewStoppingResult
+
     override suspend fun isCameraConnectedNow(): Result<Boolean> {
         isCameraConnectedNowCallCount++
         return isCameraConnectedNowResult
@@ -479,6 +492,9 @@ class FakeCameraRepositoryBasic : CameraRepository {
         getCameraFileListNowCallCount = 0
         setSubscriptionTierCallCount = 0
         setRawFileDownloadEnabledCallCount = 0
+        setLiveViewQualityCallCount = 0
+        lastSetLiveViewQuality = null
+        isLiveViewStoppingResult = false
     }
 
     // ── C3 라운드 1 stub (2026-04-23) ──

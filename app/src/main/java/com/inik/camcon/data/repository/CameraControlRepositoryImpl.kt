@@ -11,6 +11,7 @@ import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.model.CameraCapabilities
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.CameraSettings
+import com.inik.camcon.domain.model.LiveViewQuality
 import com.inik.camcon.domain.model.PaginatedCameraPhotos
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -138,9 +139,16 @@ class CameraControlRepositoryImpl @Inject constructor(
                 return emptyList()
             }
 
-            // d0b5(ISOControlSensitivity)=유효 auto-ISO(libgphoto2 getvendorcodes fixup 후 노출).
-            // 있으면 본체가 실제 쓰는 값, 없으면 base iso(0x500F).
-            val iso = value("d0b5", "iso", "isospeed")
+            // ISO 표시 게이팅:
+            // - d054(Auto ISO on/off) == "1" → 본체가 스스로 올린 실효 ISO = d0b5(ISOControlSensitivity) 우선.
+            // - d054 존재 && != "1" (Auto ISO 명시적 OFF) → manual "iso"(0x500F)로 강제(d0b5 무시).
+            // - d054 부재(Z6/Z7 등 게이팅 정보 없는 기종, 또는 d0b5/d054 모두 미연결) → 기존 우선순위 그대로(회귀 0).
+            val autoIso = value("d054")
+            val iso = when {
+                autoIso == "1" -> value("d0b5", "iso", "isospeed")
+                autoIso.isNotEmpty() -> value("iso", "isospeed", "d0b5")
+                else -> value("d0b5", "iso", "isospeed")
+            }
             val shutter = value("shutterspeed", "shutterspeed2")
             val aperture = value("f-number", "aperture")
             val wb = value("whitebalance", "whitebalance2")
@@ -353,6 +361,20 @@ class CameraControlRepositoryImpl @Inject constructor(
         Log.e(TAG, "RAW 파일 다운로드 설정 실패", e)
         Result.failure(e)
     }
+
+    suspend fun setLiveViewQuality(quality: LiveViewQuality): Result<Unit> = try {
+        nativeDataSource.setLiveViewQuality(quality.value)
+        Log.d(TAG, "라이브뷰 화질 설정 완료: $quality (네이티브: ${quality.value})")
+        Result.success(Unit)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Log.e(TAG, "라이브뷰 화질 설정 실패", e)
+        Result.failure(e)
+    }
+
+    // 라이브뷰 stop이 진행 중인지 여부. 화질 변경 후 안전 재시작 시 stop 완료를 폴링하는 용도.
+    fun isLiveViewStopping(): Boolean = nativeDataSource.isLiveViewStopping()
 
     suspend fun getCameraFileListNow(): Result<List<String>> = try {
         val fileList = nativeDataSource.getCameraFileListNow()

@@ -3,6 +3,7 @@ package com.inik.camcon.domain.usecase
 import android.util.Log
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.ImageFormat
+import com.inik.camcon.domain.model.LiveViewQuality
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.domain.model.UiText
@@ -68,6 +69,7 @@ class ValidateImageFormatUseCaseTest {
         override val isNativeLogCaptureEnabled: Flow<Boolean> = MutableStateFlow(false)
         override val isShutterSoundEnabled: Flow<Boolean> = MutableStateFlow(true)
         override val isLiveViewGridEnabled: Flow<Boolean> = MutableStateFlow(false)
+        override val liveViewQuality: Flow<LiveViewQuality> = MutableStateFlow(LiveViewQuality.BALANCED)
         override val hasSeenCaptureCoachmark: Flow<Boolean> = MutableStateFlow(false)
         override val lastTimelapseInterval: Flow<Int> = MutableStateFlow(5)
         override val lastTimelapseCount: Flow<Int> = MutableStateFlow(100)
@@ -98,6 +100,7 @@ class ValidateImageFormatUseCaseTest {
         override suspend fun setOnboardingCompleted(completed: Boolean) {}
         override suspend fun setShutterSoundEnabled(enabled: Boolean) {}
         override suspend fun setLiveViewGridEnabled(enabled: Boolean) {}
+        override suspend fun setLiveViewQuality(quality: LiveViewQuality) {}
         override suspend fun setHasSeenCaptureCoachmark(seen: Boolean) {}
         override suspend fun setLastTimelapseInterval(seconds: Int) {}
         override suspend fun setLastTimelapseCount(count: Int) {}

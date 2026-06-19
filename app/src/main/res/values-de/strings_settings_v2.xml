@@ -28,6 +28,13 @@
     <string name="settings_v2_camera_controls_off">Deaktiviert - das zuletzt aufgenommene Foto wird angezeigt</string>
     <string name="settings_v2_liveview_title">Live-Ansicht aktivieren</string>
     <string name="settings_v2_liveview_subtitle">Echtzeit-Kamerabild anzeigen (nur ADMIN)</string>
+    <string name="settings_v2_liveview_quality_title">Live-View-Qualität</string>
+    <string name="settings_v2_liveview_quality_speed">Geschwindigkeit</string>
+    <string name="settings_v2_liveview_quality_balanced">Ausgewogen</string>
+    <string name="settings_v2_liveview_quality_quality">Qualität</string>
+    <string name="settings_v2_liveview_quality_speed_desc">Niedrigste Auflösung, höchste Bildrate</string>
+    <string name="settings_v2_liveview_quality_balanced_desc">Aktuelle Kameragröße beibehalten</string>
+    <string name="settings_v2_liveview_quality_quality_desc">Höchste Auflösung, geringere Bildrate</string>
     <string name="settings_v2_auto_event_title">Automatischer Event-Empfang</string>
     <string name="settings_v2_auto_event_subtitle">Event-Listener beim Öffnen des Kamerasteuerungs-Tabs automatisch starten</string>
     <string name="settings_v2_liveview_locked_title">Live-Ansicht-Funktion</string>

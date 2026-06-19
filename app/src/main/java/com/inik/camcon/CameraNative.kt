@@ -376,6 +376,19 @@ object CameraNative {
     external fun setRawFileDownloadEnabled(enabled: Boolean)
     external fun isRawFileDownloadEnabled(): Boolean
 
+    // 라이브뷰 화질 (0: SPEED, 1: BALANCED, 2: QUALITY) — 다음 startLiveView 진입 시 적용
+    external fun setLiveViewQuality(level: Int)
+
+    /**
+     * 라이브뷰 stop이 진행 중인지 여부.
+     *
+     * stopLiveView()가 viewfinder=0 + 콜백 해제를 커맨드 큐에 비동기로 submit하므로,
+     * stop 완료까지는 native `liveViewStopping` 플래그가 true로 유지된다(완료 콜백에서 false).
+     * 화질 변경 후 라이브뷰를 재시작할 때 stop→start 사이에 이 값이 false가 될 때까지 폴링하면
+     * viewfinder=0 큐 커맨드와 새 startLiveView의 enableLiveView 경합을 피할 수 있다.
+     */
+    external fun isLiveViewStopping(): Boolean
+
     external fun initializeCameraCache() // 카메라 캐시 초기화
 
     // ===== 네이티브 캐시 무효화 / 진단 =====

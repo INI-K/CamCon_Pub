@@ -258,6 +258,9 @@ class NativeCameraDataSource @Inject constructor(
         CameraNative.stopLiveView()
     }
 
+    // 라이브뷰 stop이 진행 중인지 여부 (stop 완료까지 true). 화질 변경 재시작 시 폴링용.
+    fun isLiveViewStopping(): Boolean = CameraNative.isLiveViewStopping()
+
     // 카메라 초기화 상태 반환
     fun isCameraInitialized(): Boolean {
         return try {
@@ -617,6 +620,11 @@ class NativeCameraDataSource @Inject constructor(
     fun setRawFileDownloadEnabled(enabled: Boolean) {
         Log.d(TAG, "RAW 파일 다운로드 설정: $enabled")
         CameraNative.setRawFileDownloadEnabled(enabled)
+    }
+
+    fun setLiveViewQuality(quality: Int) {
+        Log.d(TAG, "라이브뷰 화질 설정: $quality")
+        CameraNative.setLiveViewQuality(quality)
     }
 
     // C-3 수정: 카메라 연결/초기화 상태 확인 (기존 메서드 이용)

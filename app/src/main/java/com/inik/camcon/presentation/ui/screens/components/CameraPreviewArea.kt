@@ -75,6 +75,7 @@ import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
 import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
 import com.inik.camcon.domain.model.CameraCapabilities
 import com.inik.camcon.domain.model.LiveViewFrame
+import com.inik.camcon.domain.model.LiveViewQuality
 import com.inik.camcon.presentation.viewmodel.CameraConnectionState
 import com.inik.camcon.presentation.viewmodel.CameraCaptureState
 import com.inik.camcon.presentation.viewmodel.CameraLiveViewState
@@ -130,7 +131,11 @@ fun CameraPreviewArea(
     // 탭-투-포커스 콜백. null이면 단일 탭은 무동작(세로 모드 등).
     // (jpegX, jpegY) = 디코드 JPEG 픽셀 좌표, (jpegW, jpegH) = 디코드 JPEG 크기.
     // 카메라 AF 격자로의 스케일 보정은 네이티브(setAFArea)에서 수행한다.
-    onTapFocus: ((jpegX: Int, jpegY: Int, jpegW: Int, jpegH: Int) -> Unit)? = null
+    onTapFocus: ((jpegX: Int, jpegY: Int, jpegW: Int, jpegH: Int) -> Unit)? = null,
+    // 인-LV 화질 순환 컨트롤. 현재값/콜백은 상위(CameraControlScreen)에서 주입(이 컴포넌트가
+    // ViewModel을 직접 참조하지 않도록). 둘 다 non-null + inlineChromeVisible 일 때만 칩 노출.
+    liveViewQuality: LiveViewQuality? = null,
+    onCycleLiveViewQuality: (() -> Unit)? = null
 ) {
     Box(
         modifier = modifier
@@ -354,6 +359,29 @@ fun CameraPreviewArea(
                                     contentDescription = stringResource(R.string.liveview_focus_peaking_toggle),
                                     tint = if (isFocusPeakingEnabled)
                                         MaterialTheme.colorScheme.primary else TextPrimaryV2,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // 화질 순환 칩(세로 모드) — 탭 시 SPEED→BALANCED→QUALITY 순환. 현재 단계 아이콘 + accent tint.
+                    if (onCycleLiveViewQuality != null && liveViewQuality != null) {
+                        androidx.compose.material3.Surface(
+                            color = Surface2.copy(alpha = 0.7f),
+                            shape = androidx.compose.foundation.shape.CircleShape
+                        ) {
+                            IconButton(
+                                onClick = onCycleLiveViewQuality,
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(
+                                    imageVector = liveViewQuality.icon(),
+                                    contentDescription = stringResource(
+                                        R.string.cd_cycle_liveview_quality,
+                                        stringResource(liveViewQuality.shortLabelRes())
+                                    ),
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }

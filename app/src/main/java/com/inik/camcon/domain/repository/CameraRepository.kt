@@ -7,6 +7,7 @@ import com.inik.camcon.domain.model.CameraCapabilities
 import com.inik.camcon.domain.model.CameraSettings
 import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.domain.model.LiveViewFrame
+import com.inik.camcon.domain.model.LiveViewQuality
 import com.inik.camcon.domain.model.PtpDeviceInfo
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.domain.model.SubscriptionTier
@@ -91,6 +92,13 @@ interface CameraRepository {
     // 구독/RAW 파일 설정 관련 (C-3 수정)
     suspend fun setSubscriptionTier(tier: SubscriptionTier): Result<Unit>
     suspend fun setRawFileDownloadEnabled(enabled: Boolean): Result<Unit>
+    suspend fun setLiveViewQuality(quality: LiveViewQuality): Result<Unit>
+
+    /**
+     * 라이브뷰 stop이 진행 중인지 여부(stop 완료까지 true). native atomic 단순 조회.
+     * 화질 변경 후 안전 재시작 시 stop→start 사이에 false가 될 때까지 폴링하는 용도.
+     */
+    fun isLiveViewStopping(): Boolean
 
     // 카메라 연결/초기화 상태 (C-3 수정)
     suspend fun isCameraConnectedNow(): Result<Boolean>

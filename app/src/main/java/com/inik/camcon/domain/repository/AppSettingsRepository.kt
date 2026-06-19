@@ -1,5 +1,6 @@
 package com.inik.camcon.domain.repository
 
+import com.inik.camcon.domain.model.LiveViewQuality
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
@@ -29,6 +30,7 @@ interface AppSettingsRepository {
     // === Capture UX (Group 3) ===
     val isShutterSoundEnabled: Flow<Boolean>
     val isLiveViewGridEnabled: Flow<Boolean>
+    val liveViewQuality: Flow<LiveViewQuality>
     val hasSeenCaptureCoachmark: Flow<Boolean>
     val lastTimelapseInterval: Flow<Int>
     val lastTimelapseCount: Flow<Int>
@@ -58,6 +60,7 @@ interface AppSettingsRepository {
     suspend fun setOnboardingCompleted(completed: Boolean)
     suspend fun setShutterSoundEnabled(enabled: Boolean)
     suspend fun setLiveViewGridEnabled(enabled: Boolean)
+    suspend fun setLiveViewQuality(quality: LiveViewQuality)
     suspend fun setHasSeenCaptureCoachmark(seen: Boolean)
     suspend fun setLastTimelapseInterval(seconds: Int)
     suspend fun setLastTimelapseCount(count: Int)

@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
@@ -35,6 +36,8 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.coroutineContext
 import com.inik.camcon.di.IoDispatcher
@@ -73,7 +76,16 @@ class CameraViewModel @Inject constructor(
 
     companion object {
         private const val TAG = "카메라뷰모델"
+
+        // 화질 변경 후 라이브뷰 재시작 시 native stop 완료(isLiveViewStopping=false)를 폴링하는 간격/상한.
+        // 고정 delay가 아니라 실제 stop 완료를 기다리되, 응답 없을 때 영구 대기하지 않도록 타임아웃 폴백.
+        private const val LIVEVIEW_STOP_POLL_INTERVAL_MS = 50L
+        private const val LIVEVIEW_STOP_POLL_TIMEOUT_MS = 3000L
     }
+
+    // 화질 변경에 따른 라이브뷰 재시작을 직렬화한다(연타·중복 재시작 차단).
+    // stop→폴링→start 2-단계가 원자적이어야 하므로 onEach(직렬) + 이 Mutex로 보호한다.
+    private val liveViewRestartMutex = Mutex()
 
     // UI 상태는 StateManager에 위임
     val uiState: StateFlow<CameraUiState> = uiStateManager.uiState
@@ -134,7 +146,9 @@ class CameraViewModel @Inject constructor(
     init {
         initializeViewModel()
         loadSubscriptionTierAtStartup()
+        loadLiveViewQualityAtStartup()
         observeRawDownloadSetting()
+        observeLiveViewQuality()
     }
 
     /**
@@ -197,6 +211,33 @@ class CameraViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 앱 시작 시 저장된 라이브뷰 화질을 1회 네이티브에 push.
+     *
+     * tier/raw 로더와 동일 패턴: DataStore 저장값을 first()로 읽어 setLiveViewQuality(push)만 한다(재시작 없음).
+     * observeLiveViewQuality()는 drop(1)로 초기 emit을 스킵하므로 초기 push를 하지 않는다 —
+     * 이 로더가 없으면 native g_liveViewQuality가 기본값(BALANCED)으로 남아 첫 라이브뷰가 저장값으로
+     * 시작되지 않는다. drop(1)이 동일 초기값의 중복 push를 막으므로 이 push와 겹치지 않는다.
+     */
+    private fun loadLiveViewQualityAtStartup() {
+        viewModelScope.launch {
+            try {
+                val quality = appSettingsRepository.liveViewQuality.first()
+                cameraRepository.setLiveViewQuality(quality)
+                    .onSuccess {
+                        Log.d(TAG, "✅ 앱 시작 시 라이브뷰 화질 설정 완료: $quality")
+                    }
+                    .onFailure { e ->
+                        Log.e(TAG, "❌ 앱 시작 시 라이브뷰 화질 설정 실패", e)
+                    }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ 앱 시작 시 라이브뷰 화질 로드 실패", e)
+            }
+        }
+    }
+
     private fun subscriptionTierToInt(tier: SubscriptionTier): Int = when (tier) {
         SubscriptionTier.FREE -> 0
         SubscriptionTier.BASIC -> 1
@@ -229,6 +270,92 @@ class CameraViewModel @Inject constructor(
                 }
             }
             .launchIn(viewModelScope)
+    }
+
+    /**
+     * 라이브뷰 화질 설정 관찰 — 변경 시점에 네이티브 push + (라이브뷰 활성 중이면) 안전 재시작.
+     *
+     * - distinctUntilChanged: 동일값 재방출 무시(연타·중복 collect 방어).
+     * - drop(1): 앱 시작 시 DataStore 초기값 emit으로 라이브뷰를 죽이지 않도록 첫 emit 스킵.
+     * - onEach(collectLatest 아님): stop→폴링→start 가 원자적이어야 하므로 직렬 처리.
+     *   중간 취소되면 LV가 stop된 채 start 전에 끊겨 영구 off될 수 있다.
+     * - 순서 불변식: (a) setLiveViewQuality(suspend) await로 g_liveViewQuality.store 완료 보장 후
+     *   (b) 재시작 → 재시작의 enableLiveView가 새 값을 읽는다(observeRawDownloadSetting과 동일 근거).
+     */
+    private fun observeLiveViewQuality() {
+        appSettingsRepository.liveViewQuality
+            .distinctUntilChanged()
+            .drop(1)
+            .onEach { quality ->
+                try {
+                    // (a) native push — suspend, 완료까지 await (순서 불변식)
+                    cameraRepository.setLiveViewQuality(quality)
+                        .onSuccess {
+                            Log.d(TAG, "🎯 라이브뷰 화질 설정 업데이트: $quality")
+                        }
+                        .onFailure { e ->
+                            Log.e(TAG, "❌ 라이브뷰 화질 설정 업데이트 실패", e)
+                        }
+
+                    // (b) 라이브뷰 활성 && 비촬영/비타임랩스일 때만 재시작해 즉시 반영.
+                    //     비활성이면 push만(다음 startLiveView 진입 시 적용),
+                    //     촬영/타임랩스 중이면 재시작 스킵(셔터 오살 방지, push만).
+                    if (operationsManager.isLiveViewActive()) {
+                        if (uiState.value.isCapturing || operationsManager.isTimelapseActive()) {
+                            Log.d(TAG, "촬영/타임랩스 중 — 화질 재시작 스킵(push만, 다음 LV 시작 때 반영)")
+                        } else {
+                            Log.d(TAG, "라이브뷰 활성 중 — 화질 적용 위해 안전 재시작")
+                            restartLiveViewForQuality()
+                        }
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.e(TAG, "라이브뷰 화질 설정 업데이트 중 예외 발생", e)
+                }
+            }
+            .launchIn(viewModelScope)
+    }
+
+    /**
+     * 화질 변경 반영용 라이브뷰 안전 재시작.
+     * 기존 stop/start 경로(OperationsManager/UseCase)만 재사용한다(신규 LV 제어 경로 금지).
+     * stop은 native에서 viewfinder=0 + 콜백 해제를 커맨드 큐에 비동기 submit하므로,
+     * isLiveViewStopping()이 false가 될 때까지 폴링해 stop 완료를 보장한 뒤 start해야
+     * stop의 viewfinder=0 큐 커맨드와 새 start의 enableLiveView 경합을 피할 수 있다.
+     */
+    private suspend fun restartLiveViewForQuality() {
+        liveViewRestartMutex.withLock {
+            // Mutex 대기 중 LV가 꺼졌거나 촬영/타임랩스로 전환됐으면 재시작하지 않는다.
+            if (!operationsManager.isLiveViewActive()) return
+            if (uiState.value.isCapturing || operationsManager.isTimelapseActive()) return
+
+            stopLiveView()
+            awaitLiveViewStopped()
+
+            // stop 대기 중 끊김/미초기화 됐으면 재시작하지 않는다([[camcon-liveview-reconnect-silent-fail]]).
+            val initialized = cameraRepository.isCameraInitializedNow().getOrNull() ?: false
+            if (uiState.value.isConnected && initialized) {
+                startLiveView()
+            } else {
+                Log.w(TAG, "화질 재시작 중단 — 연결 끊김 또는 미초기화 (connected=${uiState.value.isConnected}, init=$initialized)")
+            }
+        }
+    }
+
+    /**
+     * native stop 완료(isLiveViewStopping=false)까지 폴링. 응답 없으면 타임아웃 폴백(영구 대기 금지).
+     * 고정 delay가 아니라 실제 완료 신호를 본다.
+     */
+    private suspend fun awaitLiveViewStopped() {
+        var waited = 0L
+        while (cameraRepository.isLiveViewStopping() && waited < LIVEVIEW_STOP_POLL_TIMEOUT_MS) {
+            delay(LIVEVIEW_STOP_POLL_INTERVAL_MS)
+            waited += LIVEVIEW_STOP_POLL_INTERVAL_MS
+        }
+        if (waited >= LIVEVIEW_STOP_POLL_TIMEOUT_MS) {
+            Log.w(TAG, "라이브뷰 stop 완료 폴링 타임아웃(${LIVEVIEW_STOP_POLL_TIMEOUT_MS}ms) — 그대로 재시작 진행")
+        }
     }
 
     /**
