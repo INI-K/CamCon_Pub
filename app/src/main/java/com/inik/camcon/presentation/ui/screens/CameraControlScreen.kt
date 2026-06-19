@@ -138,6 +138,9 @@ import androidx.compose.material.icons.outlined.WarningAmber
 import com.inik.camcon.presentation.ui.screens.components.CameraPreviewArea
 import com.inik.camcon.presentation.ui.screens.components.CameraSettingsControls
 import com.inik.camcon.presentation.ui.screens.components.CaptureControls
+import com.inik.camcon.presentation.ui.screens.components.icon
+import com.inik.camcon.presentation.ui.screens.components.next
+import com.inik.camcon.presentation.ui.screens.components.shortLabelRes
 import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
 import com.inik.camcon.presentation.ui.screens.components.LoadingOverlay
 import com.inik.camcon.presentation.ui.screens.components.ShootingModeSelector
@@ -148,6 +151,7 @@ import com.inik.camcon.presentation.ui.screens.dialogs.CameraConnectionHelpDialo
 import com.inik.camcon.presentation.ui.screens.dialogs.TimelapseSettingsDialog
 import com.inik.camcon.presentation.ui.screens.camera.dialogs.CameraRestartDialog
 import com.inik.camcon.domain.model.LiveViewFrame
+import com.inik.camcon.domain.model.LiveViewQuality
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.CameraUiState
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
@@ -189,6 +193,12 @@ fun CameraControlScreen(
     val hasSeenCaptureCoachmark by appSettingsViewModel.hasSeenCaptureCoachmark.collectAsStateWithLifecycle()
     val lastTimelapseInterval by appSettingsViewModel.lastTimelapseInterval.collectAsStateWithLifecycle()
     val lastTimelapseCount by appSettingsViewModel.lastTimelapseCount.collectAsStateWithLifecycle()
+    // 인-LV 화질 컨트롤 현재값/콜백 — SettingsActivity와 동일 DataStore 단일 소스(자동 동기).
+    // 변경은 setLiveViewQuality 단일 경유 → DataStore → observeLiveViewQuality 가 재시작까지 처리.
+    val liveViewQuality by appSettingsViewModel.liveViewQuality.collectAsStateWithLifecycle()
+    val onCycleLiveViewQuality: () -> Unit = {
+        appSettingsViewModel.setLiveViewQuality(liveViewQuality.next())
+    }
 
     // 다이얼로그 상태들
     var showFolderSelectionDialog by remember { mutableStateOf(false) }
@@ -352,7 +362,9 @@ fun CameraControlScreen(
                         isFocusPeakingEnabled = isFocusPeakingEnabled,
                         onToggleFocusPeaking = {
                             appSettingsViewModel.setFocusPeakingEnabled(!isFocusPeakingEnabled)
-                        }
+                        },
+                        liveViewQuality = liveViewQuality,
+                        onCycleLiveViewQuality = onCycleLiveViewQuality
                     )
                 } else {
                     // 일반 모드는 Scaffold contentPadding 적용
@@ -395,6 +407,8 @@ fun CameraControlScreen(
                         onToggleFocusPeaking = {
                             appSettingsViewModel.setFocusPeakingEnabled(!isFocusPeakingEnabled)
                         },
+                        liveViewQuality = liveViewQuality,
+                        onCycleLiveViewQuality = onCycleLiveViewQuality,
                         onUnsupportedShootingMode = { mode ->
                             viewModel.setShootingMode(mode)
                         }
@@ -579,6 +593,8 @@ private fun PortraitCameraLayout(
     onToggleHistogram: () -> Unit = {},
     isFocusPeakingEnabled: Boolean = false,
     onToggleFocusPeaking: () -> Unit = {},
+    liveViewQuality: LiveViewQuality = LiveViewQuality.BALANCED,
+    onCycleLiveViewQuality: () -> Unit = {},
     onUnsupportedShootingMode: (com.inik.camcon.domain.model.ShootingMode) -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -722,7 +738,9 @@ private fun PortraitCameraLayout(
                     onToggleHistogram = onToggleHistogram,
                     isFocusPeakingEnabled = isFocusPeakingEnabled,
                     onToggleFocusPeaking = onToggleFocusPeaking,
-                    currentSettings = uiState.cameraSettings
+                    currentSettings = uiState.cameraSettings,
+                    liveViewQuality = liveViewQuality,
+                    onCycleLiveViewQuality = onCycleLiveViewQuality
                 )
             } else {
                 LogcatManager.d(
@@ -890,7 +908,9 @@ private fun FullscreenCameraLayout(
     isHistogramEnabled: Boolean = false,
     onToggleHistogram: () -> Unit = {},
     isFocusPeakingEnabled: Boolean = false,
-    onToggleFocusPeaking: () -> Unit = {}
+    onToggleFocusPeaking: () -> Unit = {},
+    liveViewQuality: LiveViewQuality = LiveViewQuality.BALANCED,
+    onCycleLiveViewQuality: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var showTimelapseDialog by remember { mutableStateOf(false) }
@@ -994,6 +1014,8 @@ private fun FullscreenCameraLayout(
                 onGalleryClick = onGalleryClick,
                 isShutterSoundEnabled = isShutterSoundEnabled,
                 onStopTimelapse = viewModel::stopTimelapse,
+                liveViewQuality = liveViewQuality,
+                onCycleLiveViewQuality = onCycleLiveViewQuality,
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .padding(end = Spacing.md, top = Spacing.xs, bottom = Spacing.xs)
@@ -1105,6 +1127,8 @@ private fun FullscreenControlPanel(
     onGalleryClick: () -> Unit = {},
     isShutterSoundEnabled: Boolean = true,
     onStopTimelapse: () -> Unit = {},
+    liveViewQuality: LiveViewQuality = LiveViewQuality.BALANCED,
+    onCycleLiveViewQuality: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -1154,6 +1178,23 @@ private fun FullscreenControlPanel(
                 iconSize = 20.dp
             )
         }
+
+        DockDivider()
+
+        // 2-1) 화질 순환 (단독 행) — 탭 시 SPEED→BALANCED→QUALITY 순환. 현재 단계 아이콘 + accent tint.
+        // 가로 폭 압박을 피하려 뷰 토글행에 합치지 않고 단독 버튼으로 둔다(단일 Column 겹침 불가).
+        DockCircleButton(
+            icon = liveViewQuality.icon(),
+            contentDescription = stringResource(
+                R.string.cd_cycle_liveview_quality,
+                stringResource(liveViewQuality.shortLabelRes())
+            ),
+            onClick = onCycleLiveViewQuality,
+            background = Surface2.copy(alpha = 0.8f),
+            tint = MaterialTheme.colorScheme.primary,
+            size = TouchTarget.min,
+            iconSize = 20.dp
+        )
 
         DockDivider()
 

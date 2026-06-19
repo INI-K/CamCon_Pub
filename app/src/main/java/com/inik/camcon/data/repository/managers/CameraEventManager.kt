@@ -69,7 +69,7 @@ class CameraEventManager @Inject constructor(
     // 흘리므로 이 화이트리스트로 걸러야 불필요한 재조회가 폭주하지 않는다.
     // ⚠️ camera_config.cpp 의 buildLiveExposureJson kProps[] 와 반드시 동기 유지(한쪽만 바꾸면 동기화가 조용히 깨진다).
     private val exposureConfigNames = setOf(
-        "iso", "d0b5", "shutterspeed", "shutterspeed2", "f-number", "aperture",
+        "iso", "d0b5", "d054", "d0b4", "shutterspeed", "shutterspeed2", "f-number", "aperture",
         "whitebalance", "exposurecompensation", "focusmode"
     )
 

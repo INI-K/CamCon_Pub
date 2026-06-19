@@ -12,6 +12,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -37,6 +38,7 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Logout
@@ -83,6 +85,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.inik.camcon.BuildConfig
 import com.inik.camcon.R
+import com.inik.camcon.domain.model.LiveViewQuality
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.model.User
 import com.inik.camcon.presentation.theme.Accent
@@ -230,6 +233,7 @@ fun SettingsScreen(
 
     val isCameraControlsEnabled by appSettingsViewModel.isCameraControlsEnabled.collectAsStateWithLifecycle()
     val isLiveViewEnabled by appSettingsViewModel.isLiveViewEnabled.collectAsStateWithLifecycle()
+    val liveViewQuality by appSettingsViewModel.liveViewQuality.collectAsStateWithLifecycle()
     val isAdminTier by appSettingsViewModel.isAdminTier.collectAsStateWithLifecycle()
     val isAutoStartEventListener by appSettingsViewModel.isAutoStartEventListenerEnabled.collectAsStateWithLifecycle()
     val isShowLatestPhotoWhenDisabled by appSettingsViewModel.isShowLatestPhotoWhenDisabled.collectAsStateWithLifecycle()
@@ -292,6 +296,7 @@ fun SettingsScreen(
     var deleteConfirmInput by remember { mutableStateOf("") }
     var isDeletingAccount by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
+    var showLiveViewQualityDialog by remember { mutableStateOf(false) }
 
     val accountDeleteSuccessText = stringResource(R.string.account_delete_success)
     val accountDeleteFailedTemplate = stringResource(R.string.account_delete_failed)
@@ -349,6 +354,12 @@ fun SettingsScreen(
                             subtitle = stringResource(R.string.settings_v2_liveview_subtitle),
                             checked = isLiveViewEnabled,
                             onCheckedChange = { appSettingsViewModel.setLiveViewEnabled(it) }
+                        )
+                        ClickableRowV2(
+                            icon = Icons.Default.HighQuality,
+                            title = stringResource(R.string.settings_v2_liveview_quality_title),
+                            subtitle = stringResource(liveViewQuality.labelRes()),
+                            onClick = { showLiveViewQualityDialog = true }
                         )
                         SwitchRowV2(
                             icon = Icons.Default.Settings,
@@ -1117,6 +1128,17 @@ fun SettingsScreen(
                 }
             )
         }
+
+        if (showLiveViewQualityDialog) {
+            LiveViewQualitySelectionDialog(
+                current = liveViewQuality,
+                onSelected = {
+                    appSettingsViewModel.setLiveViewQuality(it)
+                    showLiveViewQualityDialog = false
+                },
+                onDismissRequest = { showLiveViewQualityDialog = false }
+            )
+        }
     }
 }
 
@@ -1225,6 +1247,101 @@ private fun LanguageSelectionDialog(
             )
         }
     )
+}
+
+/**
+ * 라이브뷰 화질(속도/균형/품질) 선택 다이얼로그.
+ * LanguageSelectionDialog 패턴 복제 — AppDialog + RadioButton 리스트, 다크 V2 토큰.
+ */
+@Composable
+private fun LiveViewQualitySelectionDialog(
+    current: LiveViewQuality,
+    onSelected: (LiveViewQuality) -> Unit,
+    onDismissRequest: () -> Unit
+) {
+    data class QualityOption(
+        val quality: LiveViewQuality,
+        @StringRes val labelRes: Int,
+        @StringRes val descRes: Int
+    )
+
+    val options = listOf(
+        QualityOption(
+            LiveViewQuality.SPEED,
+            R.string.settings_v2_liveview_quality_speed,
+            R.string.settings_v2_liveview_quality_speed_desc
+        ),
+        QualityOption(
+            LiveViewQuality.BALANCED,
+            R.string.settings_v2_liveview_quality_balanced,
+            R.string.settings_v2_liveview_quality_balanced_desc
+        ),
+        QualityOption(
+            LiveViewQuality.QUALITY,
+            R.string.settings_v2_liveview_quality_quality,
+            R.string.settings_v2_liveview_quality_quality_desc
+        )
+    )
+
+    AppDialog(
+        onDismissRequest = onDismissRequest,
+        title = {
+            Text(
+                stringResource(R.string.settings_v2_liveview_quality_title),
+                style = HeadingL,
+                color = TextPrimaryV2
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                options.forEach { option ->
+                    val selected = option.quality == current
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelected(option.quality) }
+                            .padding(vertical = Spacing.sm, horizontal = Spacing.xs),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = selected,
+                            onClick = { onSelected(option.quality) },
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = Accent,
+                                unselectedColor = TextSecondaryV2
+                            )
+                        )
+                        Spacer(modifier = Modifier.width(Spacing.sm))
+                        Column {
+                            Text(
+                                text = stringResource(option.labelRes),
+                                style = HeadingM,
+                                color = TextPrimaryV2
+                            )
+                            Text(
+                                text = stringResource(option.descRes),
+                                style = BodySmall,
+                                color = TextSecondaryV2
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            SecondaryButton(
+                text = stringResource(R.string.cancel),
+                onClick = onDismissRequest
+            )
+        }
+    )
+}
+
+@StringRes
+private fun LiveViewQuality.labelRes(): Int = when (this) {
+    LiveViewQuality.SPEED -> R.string.settings_v2_liveview_quality_speed
+    LiveViewQuality.BALANCED -> R.string.settings_v2_liveview_quality_balanced
+    LiveViewQuality.QUALITY -> R.string.settings_v2_liveview_quality_quality
 }
 
 /**

@@ -8,6 +8,7 @@ import com.inik.camcon.domain.model.CameraSettings
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.domain.model.LiveViewFrame
+import com.inik.camcon.domain.model.LiveViewQuality
 import com.inik.camcon.domain.model.PaginatedCameraPhotos
 import com.inik.camcon.domain.model.PtpDeviceInfo
 import com.inik.camcon.domain.model.ShootingMode
@@ -282,6 +283,12 @@ class FakeCameraRepository : CameraRepository {
     override suspend fun setRawFileDownloadEnabled(enabled: Boolean): Result<Unit> {
         return Result.success(Unit)
     }
+
+    override suspend fun setLiveViewQuality(quality: LiveViewQuality): Result<Unit> {
+        return Result.success(Unit)
+    }
+
+    override fun isLiveViewStopping(): Boolean = false
 
     override suspend fun isCameraConnectedNow(): Result<Boolean> {
         return Result.success(true)

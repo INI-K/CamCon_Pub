@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.inik.camcon.BuildConfig
+import com.inik.camcon.domain.model.LiveViewQuality
 import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.domain.repository.AppSettingsRepository
 import kotlinx.coroutines.flow.Flow
@@ -63,6 +64,7 @@ class AppPreferencesDataSource @Inject constructor(
         // Capture UX (Group 3)
         private val SHUTTER_SOUND_ENABLED = booleanPreferencesKey("shutter_sound_enabled")
         private val LIVE_VIEW_GRID_ENABLED = booleanPreferencesKey("live_view_grid_enabled")
+        private val LIVE_VIEW_QUALITY = intPreferencesKey("live_view_quality")
         private val HAS_SEEN_CAPTURE_COACHMARK =
             booleanPreferencesKey("has_seen_capture_coachmark")
         private val LAST_TIMELAPSE_INTERVAL = intPreferencesKey("last_timelapse_interval")
@@ -256,6 +258,15 @@ class AppPreferencesDataSource @Inject constructor(
     override val isLiveViewGridEnabled: Flow<Boolean> = context.appDataStore.data
         .map { preferences ->
             preferences[LIVE_VIEW_GRID_ENABLED] ?: false
+        }
+
+    /**
+     * 라이브뷰 화질 (기본값: QUALITY — liveviewsize 최대)
+     */
+    override val liveViewQuality: Flow<LiveViewQuality> = context.appDataStore.data
+        .map { preferences ->
+            val v = preferences[LIVE_VIEW_QUALITY] ?: LiveViewQuality.QUALITY.value
+            LiveViewQuality.fromValue(v)
         }
 
     /**
@@ -494,6 +505,15 @@ class AppPreferencesDataSource @Inject constructor(
     override suspend fun setLiveViewGridEnabled(enabled: Boolean) {
         context.appDataStore.edit { preferences ->
             preferences[LIVE_VIEW_GRID_ENABLED] = enabled
+        }
+    }
+
+    /**
+     * 라이브뷰 화질 저장.
+     */
+    override suspend fun setLiveViewQuality(quality: LiveViewQuality) {
+        context.appDataStore.edit { preferences ->
+            preferences[LIVE_VIEW_QUALITY] = quality.value
         }
     }
 
