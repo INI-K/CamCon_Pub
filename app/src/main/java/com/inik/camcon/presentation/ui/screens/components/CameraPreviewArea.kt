@@ -361,27 +361,22 @@ fun CameraPreviewArea(
                     }
                 }
 
-                // G7: 좌상단 히스토그램 오버레이 (토글 ON 시에만)
-                if (isHistogramEnabled) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .padding(Spacing.md)
-                    ) {
+                // 좌상단 HUD: 노출 스트립 + 히스토그램(토글 ON)을 한 묶음으로.
+                // 기존엔 스트립이 좌하단이라 하단 모드칩과 겹쳤음 → 정보(노출/히스토그램)는 좌상단으로 통합.
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(Spacing.md),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.sm)
+                ) {
+                    currentSettings?.let { s ->
+                        LiveViewExposureStrip(settings = s)
+                    }
+                    if (isHistogramEnabled) {
                         com.inik.camcon.presentation.ui.components.v2.HistogramOverlay(
                             data = histogramData
                         )
                     }
-                }
-
-                // Technical HUD: 좌하단 노출 텔레메트리 스트립 (라이브뷰 활성 시에만)
-                currentSettings?.let { s ->
-                    LiveViewExposureStrip(
-                        settings = s,
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(Spacing.md)
-                    )
                 }
 
                 // 라이브뷰 중지 버튼 오버레이 — 전체화면은 우측 도크가 제공하므로 숨긴다.
@@ -587,10 +582,30 @@ fun CameraConnectionButtons(
 }
 
 /**
+ * 셔터스피드를 사진가 관습 표기로 정규화한다.
+ * 카메라(gphoto2)는 1초 미만을 "0.0040s" 같은 소수 초로 주는데, 이를 "1/250"으로 변환한다.
+ * 1초 이상은 "1.3s"/"2s"(0 제거), 이미 "1/250" 형태거나 숫자가 아니면(예: bulb) 그대로 둔다.
+ */
+private fun formatLiveShutterSpeed(raw: String): String {
+    val s = raw.trim().removeSuffix("s").trim()
+    if (s.contains('/')) return raw.trim()           // 이미 분수 표기
+    val v = s.toDoubleOrNull() ?: return raw.trim()   // bulb 등 비숫자
+    return when {
+        v <= 0.0 -> raw.trim()
+        v >= 1.0 -> {
+            val str = if (v == v.toLong().toDouble()) v.toLong().toString()
+            else String.format("%.1f", v)
+            "${str}s"
+        }
+        else -> "1/${Math.round(1.0 / v)}"
+    }
+}
+
+/**
  * 라이브뷰 노출 텔레메트리 스트립 (Technical HUD 시그니처).
  *
- * 라이브뷰가 활성일 때 뷰파인더 좌하단에 현재 노출값(ISO·SS·F·EV·WB)을
- * 모노스페이스로 컴팩트하게 노출한다. 빈 값/EV 0은 생략한다.
+ * 라이브뷰가 활성일 때 현재 노출값(ISO·SS·F·EV·WB)을 모노스페이스로 컴팩트하게 노출한다.
+ * 빈 값/EV 0은 생략한다.
  */
 @Composable
 private fun LiveViewExposureStrip(
@@ -599,7 +614,7 @@ private fun LiveViewExposureStrip(
 ) {
     val items = buildList {
         settings.iso.takeIf { it.isNotBlank() }?.let { add("ISO" to it) }
-        settings.shutterSpeed.takeIf { it.isNotBlank() }?.let { add("SS" to it) }
+        settings.shutterSpeed.takeIf { it.isNotBlank() }?.let { add("SS" to formatLiveShutterSpeed(it)) }
         settings.aperture.takeIf { it.isNotBlank() }?.let { add("F" to it) }
         settings.exposureCompensation.takeIf { it.isNotBlank() && it != "0" }?.let { add("EV" to it) }
         settings.whiteBalance.takeIf { it.isNotBlank() }?.let { add("WB" to it) }
@@ -610,10 +625,9 @@ private fun LiveViewExposureStrip(
         shape = androidx.compose.foundation.shape.RoundedCornerShape(Radius.sm),
         modifier = modifier
     ) {
-        Row(
+        Column(
             modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
-            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-            verticalAlignment = Alignment.CenterVertically
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs)
         ) {
             items.forEach { (label, value) ->
                 Row(
