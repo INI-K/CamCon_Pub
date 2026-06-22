@@ -1,5 +1,6 @@
 package com.inik.camcon.domain.repository
 
+import com.inik.camcon.domain.model.FilmEdit
 import com.inik.camcon.domain.model.FilmLut
 import com.inik.camcon.domain.model.FilmLutResult
 
@@ -42,6 +43,28 @@ interface FilmLutRepository {
      * 도메인 레이어가 Android(Bitmap) 의존성을 갖지 않도록 `Any` 로 선언한다(실제 타입 Bitmap).
      */
     suspend fun loadLookupBitmap(lutId: String): Any?
+
+    /**
+     * 입력 이미지에 [FilmEdit](LUT+강도+조정 8종)을 적용하고 EXIF 를 보존해 outputPath 에 저장한다(편집 내보내기).
+     * @return 결과 정보, 실패 시 null.
+     */
+    suspend fun applyEditAndSave(
+        inputImagePath: String,
+        edit: FilmEdit,
+        originalImagePath: String,
+        outputPath: String
+    ): FilmLutResult?
+
+    /**
+     * 입력 이미지에 [FilmEdit] 를 적용한 결과를 임시 파일로 저장한다.
+     * @param maxSize 입력을 스케일할 최대 긴 변 px(0 = 스케일 안 함).
+     * @return 임시 파일 경로, 실패 시 null.
+     */
+    suspend fun applyEditToTemp(
+        inputImagePath: String,
+        edit: FilmEdit,
+        maxSize: Int = 0
+    ): String?
 
     /** 주어진 경로가 유효한 이미지인지 검증한다. */
     fun isValidImageFile(imagePath: String): Boolean

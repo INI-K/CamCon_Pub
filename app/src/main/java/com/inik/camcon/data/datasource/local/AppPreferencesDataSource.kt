@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.inik.camcon.BuildConfig
 import com.inik.camcon.domain.model.LiveViewQuality
@@ -81,6 +82,7 @@ class AppPreferencesDataSource @Inject constructor(
         private val FILM_SIMULATION_ENABLED = booleanPreferencesKey("film_simulation_enabled")
         private val SELECTED_FILM_LUT_ID = stringPreferencesKey("selected_film_lut_id")
         private val FILM_SIMULATION_INTENSITY = floatPreferencesKey("film_simulation_intensity")
+        private val FAVORITE_FILM_LUT_IDS = stringSetPreferencesKey("favorite_film_lut_ids")
     }
 
     /**
@@ -334,6 +336,14 @@ class AppPreferencesDataSource @Inject constructor(
         }
 
     /**
+     * 즐겨찾기한 필름 LUT id 집합 (기본값: 빈 집합)
+     */
+    override val favoriteFilmLutIds: Flow<Set<String>> = context.appDataStore.data
+        .map { preferences ->
+            preferences[FAVORITE_FILM_LUT_IDS] ?: emptySet()
+        }
+
+    /**
      * 구독 티어 (SubscriptionTier enum으로 변환, 기본값: FREE)
      */
     override val subscriptionTierEnum: Flow<com.inik.camcon.domain.model.SubscriptionTier> = subscriptionTier
@@ -461,6 +471,19 @@ class AppPreferencesDataSource @Inject constructor(
     override suspend fun setFilmSimulationIntensity(intensity: Float) {
         context.appDataStore.edit { preferences ->
             preferences[FILM_SIMULATION_INTENSITY] = intensity.coerceIn(0.0f, 1.0f)
+        }
+    }
+
+    /**
+     * 필름 LUT 즐겨찾기 토글 — 있으면 제거, 없으면 추가.
+     * DataStore `edit` 은 단일 트랜잭션이라 read-modify-write 가 원자적이다.
+     */
+    override suspend fun toggleFavoriteFilmLut(id: String) {
+        if (id.isEmpty()) return
+        context.appDataStore.edit { preferences ->
+            val current = preferences[FAVORITE_FILM_LUT_IDS] ?: emptySet()
+            preferences[FAVORITE_FILM_LUT_IDS] =
+                if (id in current) current - id else current + id
         }
     }
 
