@@ -2,17 +2,10 @@
 <resources>
     <!-- 필름 시뮬레이션 상세 화면 -->
     <string name="film_simulation_settings">胶片模拟</string>
-    <string name="fs_settings_title">胶片模拟</string>
-    <string name="fs_disabled_title">胶片模拟已关闭</string>
-    <string name="fs_disabled_message">开启后即可为照片应用胶片 LUT。</string>
-    <string name="fs_applied_default">所选 LUT 会写入连机拍摄时拍下的照片中。</string>
-    <string name="fs_preview_title">实时预览</string>
     <string name="fs_pick_target">选择照片</string>
     <string name="fs_no_target">选择一张照片进行预览</string>
-    <string name="fs_select_lut_title">胶片 LUT</string>
     <string name="fs_lut_none">无（原图）</string>
     <string name="fs_intensity_title">强度</string>
-    <string name="fs_intensity_percent">%1$d%%</string>
     <string name="fs_export">保存到相册</string>
     <string name="fs_export_success">已保存到相册</string>
     <string name="fs_export_failed">保存失败</string>

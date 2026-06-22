@@ -2,17 +2,10 @@
 <resources>
     <!-- 필름 시뮬레이션 상세 화면 -->
     <string name="film_simulation_settings">フィルムシミュレーション</string>
-    <string name="fs_settings_title">フィルムシミュレーション</string>
-    <string name="fs_disabled_title">フィルムシミュレーションはオフです</string>
-    <string name="fs_disabled_message">オンにすると、写真にフィルムLUTを適用できます。</string>
-    <string name="fs_applied_default">選択したLUTは、テザリング撮影中の写真に焼き込まれます。</string>
-    <string name="fs_preview_title">ライブプレビュー</string>
     <string name="fs_pick_target">写真を選択</string>
     <string name="fs_no_target">プレビューする写真を選択してください</string>
-    <string name="fs_select_lut_title">フィルムLUT</string>
     <string name="fs_lut_none">なし（オリジナル）</string>
     <string name="fs_intensity_title">強度</string>
-    <string name="fs_intensity_percent">%1$d%%</string>
     <string name="fs_export">ギャラリーに保存</string>
     <string name="fs_export_success">ギャラリーに保存しました</string>
     <string name="fs_export_failed">保存に失敗しました</string>

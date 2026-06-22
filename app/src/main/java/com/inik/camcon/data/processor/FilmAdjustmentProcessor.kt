@@ -129,9 +129,13 @@ class FilmAdjustmentProcessor @Inject constructor(
         if (a.exposure != FilmAdjustments.NEUTRAL) {
             filters.add(GPUImageExposureFilter(a.exposure))
         }
-        // 3. 색온도: ±100 → 5000K ± 2000K
+        // 3. 색온도: GPUImageWhiteBalanceFilter 셰이더의 K→보정계수가 cool(<5000K, 0.0004/K)과
+        //    warm(>5000K, 0.00006/K)로 ~6.7배 비대칭이라, 동일 Kelvin offset 을 쓰면 -100(강한 파랑)과
+        //    +100(약한 주황)의 체감이 어긋난다. UI 양끝(±100)에서 보정 강도가 대칭(|계수|≈0.5)이 되도록
+        //    Kelvin offset 을 비대칭으로 매핑한다(cool 1250K, warm 8333K). 최종 강도는 실기기 보정 대상.
         if (a.temperature != FilmAdjustments.NEUTRAL) {
-            val kelvin = 5000f + (a.temperature / 100f) * 2000f
+            val t = a.temperature / 100f
+            val kelvin = if (t >= 0f) 5000f + t * 8333f else 5000f + t * 1250f
             filters.add(GPUImageWhiteBalanceFilter(kelvin, 0f))
         }
         // 4. 대비: ±100 → 0.5..1.5 (1.0 중립)
