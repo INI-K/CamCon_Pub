@@ -97,9 +97,8 @@ fun FilmEditScreen(
     val favorites by viewModel.favorites.collectAsStateWithLifecycle()
     val selectedLutId by viewModel.selectedLutId.collectAsStateWithLifecycle()
     val filmEdit by viewModel.filmEdit.collectAsStateWithLifecycle()
-    val previewEdit by viewModel.previewEdit.collectAsStateWithLifecycle()
     val previewBitmap by viewModel.previewBitmap.collectAsStateWithLifecycle()
-    val lookupBitmap by viewModel.lookupBitmap.collectAsStateWithLifecycle()
+    val renderedPreview by viewModel.renderedPreview.collectAsStateWithLifecycle()
     val isExporting by viewModel.isExporting.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
 
@@ -199,10 +198,8 @@ fun FilmEditScreen(
         ) {
             // 프리뷰(고정 영역). 꾹 누르면 원본.
             FilmEditPreview(
-                previewBitmap = previewBitmap,
-                lookupBitmap = lookupBitmap,
-                edit = previewEdit,
-                buildFilters = viewModel::buildPreviewFilters,
+                rendered = renderedPreview,
+                original = previewBitmap,
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(4f / 3f)
