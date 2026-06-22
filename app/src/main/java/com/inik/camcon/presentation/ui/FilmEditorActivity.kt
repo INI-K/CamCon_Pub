@@ -18,11 +18,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.FilmContactSheetScreen
 import com.inik.camcon.presentation.ui.screens.FilmEditScreen
@@ -78,9 +76,9 @@ class FilmEditorActivity : ComponentActivity() {
         const val EXTRA_RESULT_LUT_ID = "extra_result_lut_id"
 
         const val ROUTE_CONTACT_SHEET = "contactSheet"
-        const val ROUTE_EDIT = "edit/{lutId}"
-
-        fun editRoute(lutId: String): String = "edit/$lutId"
+        // lutId 는 에셋 경로(슬래시 포함)라 nav path arg 로 못 넘긴다. 공유 VM 의 selectLut 로
+        // 이미 선택되므로 정적 라우트만 쓰고 편집 화면은 VM 에서 선택값을 읽는다.
+        const val ROUTE_EDIT = "edit"
 
         /** 갤러리/프리뷰 진입점: 특정 사진 경로를 대상으로 에디터를 연다(컨택트 시트 → 편집). */
         fun startForPhoto(context: android.content.Context, sourcePath: String) {
@@ -159,19 +157,14 @@ private fun FilmEditorHost(
                     if (selectOnly) {
                         onSelectAndFinish(lutId)
                     } else {
-                        navController.navigate(FilmEditorActivity.editRoute(lutId))
+                        navController.navigate(FilmEditorActivity.ROUTE_EDIT)
                     }
                 }
             )
         }
 
-        composable(
-            route = FilmEditorActivity.ROUTE_EDIT,
-            arguments = listOf(navArgument("lutId") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val lutId = backStackEntry.arguments?.getString("lutId").orEmpty()
+        composable(FilmEditorActivity.ROUTE_EDIT) {
             FilmEditScreen(
-                lutId = lutId,
                 viewModel = viewModel,
                 onBackClick = { navController.popBackStack() }
             )

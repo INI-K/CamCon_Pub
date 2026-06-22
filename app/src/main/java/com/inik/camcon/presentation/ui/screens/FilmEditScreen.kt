@@ -79,12 +79,12 @@ import kotlin.math.roundToInt
  * 비트맵 소유: [FilmEditorViewModel.previewBitmap] = VM 소유, [FilmEditorViewModel.lookupBitmap] = 캐시 소유
  * → 본 화면에서 회수 금지(표시만).
  *
- * @param lutId 진입 시 navArg 로 받은 선택 LUT id. 화면 진입 시 1회 [FilmEditorViewModel.selectLut] 한다.
+ * 선택 LUT 은 컨택트 시트 셀 탭 시 [FilmEditorViewModel.selectLut] 로 이미 설정되며, 본 화면은 공유 VM 의
+ * [FilmEditorViewModel.selectedLutId]/[FilmEditorViewModel.filmEdit] 등에서 읽는다(라우트 인자로 받지 않는다).
  */
 @androidx.compose.material3.ExperimentalMaterial3Api
 @Composable
 fun FilmEditScreen(
-    lutId: String,
     viewModel: FilmEditorViewModel,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -103,10 +103,6 @@ fun FilmEditScreen(
     val isExporting by viewModel.isExporting.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
 
-    // 진입 시 navArg lutId 를 선택(컨택트 시트에서 이미 selectLut 했어도 idempotent).
-    LaunchedEffect(lutId) {
-        if (lutId.isNotEmpty()) viewModel.selectLut(lutId)
-    }
 
     // 내보내기 결과 토스트.
     val okText = stringResource(R.string.fs_export_success)
