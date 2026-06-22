@@ -1,57 +1,96 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  CamCon 런처 아이콘 전경 — Technical HUD "셔터 + 크로스헤어 레티클" 모노그램.
-  앰버(#E8A245) on 투명. 그라데이션/그림자 없음. 66dp 안전영역(반경 33) 내 배치.
--->
+<!-- CamCon 런처 전경 A1: 필름 프레임 + 앰버 글로우 + 그라디언트 6엽 조리개 (auto-gen) -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M21.70,54.0 a32.30,32.30 0 1 0 64.60,0 a32.30,32.30 0 1 0 -64.60,0 Z" android:fillColor="#0FE8A245"/>
+    <path android:pathData="M29.35,54.0 a24.65,24.65 0 1 0 49.30,0 a24.65,24.65 0 1 0 -49.30,0 Z" android:fillColor="#1AE8A245"/>
+    <path android:pathData="M35.30,54.0 a18.70,18.70 0 1 0 37.40,0 a18.70,18.70 0 1 0 -37.40,0 Z" android:fillColor="#24E8A245"/>
+    <path android:strokeWidth="3.4" android:strokeLineCap="round" android:pathData="M39.00,26.00 H69.00 A13.00,13.00 0 0 1 82.00,39.00 V69.00 A13.00,13.00 0 0 1 69.00,82.00 H39.00 A13.00,13.00 0 0 1 26.00,69.00 V39.00 A13.00,13.00 0 0 1 39.00,26.00 Z">
+        <aapt:attr name="android:strokeColor">
+            <gradient android:type="linear" android:startX="22" android:startY="22" android:endX="86" android:endY="86">
+                <item android:color="#FFFFFFFF" android:offset="0.0"/>
+                <item android:color="#FF9AA3B2" android:offset="0.55"/>
+                <item android:color="#FF5A636F" android:offset="1.0"/>
+            </gradient>
+        </aapt:attr>
+    </path>
 
-    <!-- 외곽 조리개 링 -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#E8A245"
-        android:strokeWidth="5"
-        android:pathData="M24,54 A30,30 0 1 1 84,54 A30,30 0 1 1 24,54 Z" />
+    <path android:pathData="M32.50,36.25 H33.50 A1.80,1.80 0 0 1 35.30,38.05 V41.95 A1.80,1.80 0 0 1 33.50,43.75 H32.50 A1.80,1.80 0 0 1 30.70,41.95 V38.05 A1.80,1.80 0 0 1 32.50,36.25 Z" android:fillColor="#FF0A0B0D"/>
+    <path android:pathData="M32.50,50.25 H33.50 A1.80,1.80 0 0 1 35.30,52.05 V55.95 A1.80,1.80 0 0 1 33.50,57.75 H32.50 A1.80,1.80 0 0 1 30.70,55.95 V52.05 A1.80,1.80 0 0 1 32.50,50.25 Z" android:fillColor="#FF0A0B0D"/>
+    <path android:pathData="M32.50,64.25 H33.50 A1.80,1.80 0 0 1 35.30,66.05 V69.95 A1.80,1.80 0 0 1 33.50,71.75 H32.50 A1.80,1.80 0 0 1 30.70,69.95 V66.05 A1.80,1.80 0 0 1 32.50,64.25 Z" android:fillColor="#FF0A0B0D"/>
+    <path android:pathData="M74.50,36.25 H75.50 A1.80,1.80 0 0 1 77.30,38.05 V41.95 A1.80,1.80 0 0 1 75.50,43.75 H74.50 A1.80,1.80 0 0 1 72.70,41.95 V38.05 A1.80,1.80 0 0 1 74.50,36.25 Z" android:fillColor="#FF0A0B0D"/>
+    <path android:pathData="M74.50,50.25 H75.50 A1.80,1.80 0 0 1 77.30,52.05 V55.95 A1.80,1.80 0 0 1 75.50,57.75 H74.50 A1.80,1.80 0 0 1 72.70,55.95 V52.05 A1.80,1.80 0 0 1 74.50,50.25 Z" android:fillColor="#FF0A0B0D"/>
+    <path android:pathData="M74.50,64.25 H75.50 A1.80,1.80 0 0 1 77.30,66.05 V69.95 A1.80,1.80 0 0 1 75.50,71.75 H74.50 A1.80,1.80 0 0 1 72.70,69.95 V66.05 A1.80,1.80 0 0 1 74.50,64.25 Z" android:fillColor="#FF0A0B0D"/>
+    <path android:strokeColor="#FF0A0B0D" android:strokeWidth="0.9" android:strokeLineJoin="round" android:pathData="M70.00,54.00 A16.00,16.00 0 0 1 62.00,67.86 L59.30,56.36 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="22" android:startY="22" android:endX="86" android:endY="86">
+                <item android:color="#FFF4C079" android:offset="0.0"/>
+                <item android:color="#FFE8A245" android:offset="0.55"/>
+                <item android:color="#FFC9822E" android:offset="1.0"/>
+            </gradient>
+        </aapt:attr>
+    </path>
 
-    <!-- 레티클 틱 (상·하·좌·우 조준선) -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#E8A245"
-        android:strokeWidth="4"
-        android:strokeLineCap="round"
-        android:pathData="M54,22 L54,32" />
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#E8A245"
-        android:strokeWidth="4"
-        android:strokeLineCap="round"
-        android:pathData="M54,76 L54,86" />
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#E8A245"
-        android:strokeWidth="4"
-        android:strokeLineCap="round"
-        android:pathData="M22,54 L32,54" />
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#E8A245"
-        android:strokeWidth="4"
-        android:strokeLineCap="round"
-        android:pathData="M76,54 L86,54" />
+    <path android:strokeColor="#FF0A0B0D" android:strokeWidth="0.9" android:strokeLineJoin="round" android:pathData="M62.00,67.86 A16.00,16.00 0 0 1 46.00,67.86 L54.61,59.77 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="22" android:startY="22" android:endX="86" android:endY="86">
+                <item android:color="#FFF4C079" android:offset="0.0"/>
+                <item android:color="#FFE8A245" android:offset="0.55"/>
+                <item android:color="#FFC9822E" android:offset="1.0"/>
+            </gradient>
+        </aapt:attr>
+    </path>
 
-    <!-- 셔터 아이리스 (육각 조리개) -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#E8A245"
-        android:strokeWidth="3.5"
-        android:strokeLineJoin="round"
-        android:pathData="M69,54 L61.5,66.99 L46.5,66.99 L39,54 L46.5,41.01 L61.5,41.01 Z" />
+    <path android:strokeColor="#FF0A0B0D" android:strokeWidth="0.9" android:strokeLineJoin="round" android:pathData="M46.00,67.86 A16.00,16.00 0 0 1 38.00,54.00 L49.31,57.41 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="22" android:startY="22" android:endX="86" android:endY="86">
+                <item android:color="#FFF4C079" android:offset="0.0"/>
+                <item android:color="#FFE8A245" android:offset="0.55"/>
+                <item android:color="#FFC9822E" android:offset="1.0"/>
+            </gradient>
+        </aapt:attr>
+    </path>
 
-    <!-- 중심 포커스 점 -->
-    <path
-        android:fillColor="#E8A245"
-        android:pathData="M54,50.5 A3.5,3.5 0 1 1 53.99,50.5 Z" />
+    <path android:strokeColor="#FF0A0B0D" android:strokeWidth="0.9" android:strokeLineJoin="round" android:pathData="M38.00,54.00 A16.00,16.00 0 0 1 46.00,40.14 L48.70,51.64 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="22" android:startY="22" android:endX="86" android:endY="86">
+                <item android:color="#FFF4C079" android:offset="0.0"/>
+                <item android:color="#FFE8A245" android:offset="0.55"/>
+                <item android:color="#FFC9822E" android:offset="1.0"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <path android:strokeColor="#FF0A0B0D" android:strokeWidth="0.9" android:strokeLineJoin="round" android:pathData="M46.00,40.14 A16.00,16.00 0 0 1 62.00,40.14 L53.39,48.23 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="22" android:startY="22" android:endX="86" android:endY="86">
+                <item android:color="#FFF4C079" android:offset="0.0"/>
+                <item android:color="#FFE8A245" android:offset="0.55"/>
+                <item android:color="#FFC9822E" android:offset="1.0"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <path android:strokeColor="#FF0A0B0D" android:strokeWidth="0.9" android:strokeLineJoin="round" android:pathData="M62.00,40.14 A16.00,16.00 0 0 1 70.00,54.00 L58.69,50.59 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="22" android:startY="22" android:endX="86" android:endY="86">
+                <item android:color="#FFF4C079" android:offset="0.0"/>
+                <item android:color="#FFE8A245" android:offset="0.55"/>
+                <item android:color="#FFC9822E" android:offset="1.0"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <path android:pathData="M59.30,56.36 L54.61,59.77 L49.31,57.41 L48.70,51.64 L53.39,48.23 L58.69,50.59 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="radial" android:centerX="54.0" android:centerY="53.0" android:gradientRadius="5.8">
+                <item android:color="#FFFFF4E0" android:offset="0.0"/>
+                <item android:color="#FFF4C079" android:offset="1.0"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <path android:pathData="M46.00,42.48 A16.00,16.00 0 0 1 57.20,40.24" android:strokeColor="#80FFFFFF" android:strokeWidth="1.4" android:strokeLineCap="round"/>
 </vector>
