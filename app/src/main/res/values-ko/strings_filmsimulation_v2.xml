@@ -2,17 +2,10 @@
 <resources>
     <!-- 필름 시뮬레이션 상세 화면 -->
     <string name="film_simulation_settings">필름 시뮬레이션</string>
-    <string name="fs_settings_title">필름 시뮬레이션</string>
-    <string name="fs_disabled_title">필름 시뮬레이션이 꺼져 있습니다</string>
-    <string name="fs_disabled_message">사진에 필름 LUT를 적용하려면 기능을 켜세요.</string>
-    <string name="fs_applied_default">선택한 LUT가 테더링 촬영 사진에 자동 적용됩니다.</string>
-    <string name="fs_preview_title">실시간 미리보기</string>
     <string name="fs_pick_target">사진 선택</string>
     <string name="fs_no_target">미리보기할 사진을 선택하세요</string>
-    <string name="fs_select_lut_title">필름 LUT</string>
     <string name="fs_lut_none">없음 (원본)</string>
     <string name="fs_intensity_title">강도</string>
-    <string name="fs_intensity_percent">%1$d%%</string>
     <string name="fs_export">갤러리에 저장</string>
     <string name="fs_export_success">갤러리에 저장됨</string>
     <string name="fs_export_failed">저장 실패</string>

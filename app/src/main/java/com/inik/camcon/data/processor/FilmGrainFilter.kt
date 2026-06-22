@@ -14,23 +14,16 @@ import jp.co.cyberagent.android.gpuimage.filter.GPUImageFilter
 class FilmGrainFilter(strength: Float = 0f) : GPUImageFilter(NO_FILTER_VERTEX_SHADER, FRAGMENT_SHADER) {
 
     private var strengthLocation = 0
-    private var resolutionLocation = 0
     private var strength: Float = strength.coerceIn(0f, 1f)
 
     override fun onInit() {
         super.onInit()
         strengthLocation = GLES20.glGetUniformLocation(program, "grainStrength")
-        resolutionLocation = GLES20.glGetUniformLocation(program, "resolution")
     }
 
     override fun onInitialized() {
         super.onInitialized()
         setStrength(strength)
-    }
-
-    override fun onOutputSizeChanged(width: Int, height: Int) {
-        super.onOutputSizeChanged(width, height)
-        setFloatVec2(resolutionLocation, floatArrayOf(width.toFloat(), height.toFloat()))
     }
 
     fun setStrength(value: Float) {
@@ -42,12 +35,15 @@ class FilmGrainFilter(strength: Float = 0f) : GPUImageFilter(NO_FILTER_VERTEX_SH
         // 강도 1.0 에서의 최대 노이즈 진폭(0..1 색 범위 대비). 과하지 않게 0.12 로 시작(설계 §12: 1차 단순 구현).
         private const val MAX_AMPLITUDE = 0.12f
 
+        // 그레인 입자 밀도(이미지 가로/세로당 셀 수). 실제 픽셀 해상도 대신 고정값을 써서
+        // 프리뷰(다운스케일)와 내보내기(원본)에서 입자 크기가 동일하게 유지된다(preview==export 정합).
+        private const val GRAIN_CELLS = 1400f
+
         private val FRAGMENT_SHADER = """
             precision highp float;
             varying highp vec2 textureCoordinate;
             uniform sampler2D inputImageTexture;
             uniform highp float grainStrength;
-            uniform highp vec2 resolution;
 
             highp float hash(highp vec2 p) {
                 return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
@@ -59,7 +55,7 @@ class FilmGrainFilter(strength: Float = 0f) : GPUImageFilter(NO_FILTER_VERTEX_SH
                     gl_FragColor = color;
                     return;
                 }
-                highp vec2 pixel = textureCoordinate * resolution;
+                highp vec2 pixel = textureCoordinate * $GRAIN_CELLS;
                 highp float n = hash(pixel) - 0.5;
                 // 미드톤에서 더 강하게: 휘도 0/1 부근은 노이즈 약화
                 highp float luma = dot(color.rgb, vec3(0.299, 0.587, 0.114));
