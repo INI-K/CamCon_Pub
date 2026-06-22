@@ -92,6 +92,7 @@ fun FilmContactSheetScreen(
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val selectedLutId by viewModel.selectedLutId.collectAsStateWithLifecycle()
     val sourcePath by viewModel.sourcePath.collectAsStateWithLifecycle()
+    val sourceId by viewModel.sourceId.collectAsStateWithLifecycle()
     val previewSize by viewModel.previewSize.collectAsStateWithLifecycle()
 
     var searchVisible by remember { mutableStateOf(false) }
@@ -162,8 +163,19 @@ fun FilmContactSheetScreen(
                 onSelect = viewModel::setCategory
             )
 
-            if (sourcePath == null) {
-                EmptySourcePrompt(onPickImage = onPickImage)
+            if (sourceId == null) {
+                if (sourcePath == null) {
+                    EmptySourcePrompt(onPickImage = onPickImage)
+                } else {
+                    // 사진 선택 직후 디코딩 중: thumbSource 준비되어 sourceId 가 set 되면 그리드로 전환.
+                    // (그리드를 sourceId 로 게이팅해야 셀의 requestThumbnail 이 thumbSource 준비 후 호출된다.)
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        androidx.compose.material3.CircularProgressIndicator()
+                    }
+                }
             } else {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(3),
@@ -343,7 +355,7 @@ private fun ContactSheetCell(
         Text(
             text = lut.name,
             style = MaterialTheme.typography.labelSmall,
-            maxLines = 1,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             color = if (isSelected) Accent else MaterialTheme.colorScheme.onSurface,
             modifier = Modifier
