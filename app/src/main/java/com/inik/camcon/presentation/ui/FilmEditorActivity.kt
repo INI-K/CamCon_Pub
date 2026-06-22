@@ -1,8 +1,11 @@
 package com.inik.camcon.presentation.ui
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.provider.OpenableColumns
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -11,7 +14,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -86,6 +92,12 @@ class FilmEditorActivity : ComponentActivity() {
     }
 }
 
+/** content Uri 의 표시 파일명(OpenableColumns.DISPLAY_NAME)을 조회한다. 실패 시 null. */
+private fun queryDisplayName(context: Context, uri: Uri): String? = runCatching {
+    context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+        ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+}.getOrNull()
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FilmEditorHost(
@@ -107,15 +119,23 @@ private fun FilmEditorHost(
     }
 
     val context = androidx.compose.ui.platform.LocalContext.current
+    val pickScope = rememberCoroutineScope()
     val pickImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
-        uri?.let { selectedUri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        // 큰 이미지 복사는 IO 스레드에서 수행한다(메인 스레드 복사는 UI 멈춤/ANR 유발).
+        // 원본 파일명을 보존해 대상사진 바에 임시명(film_target_…) 대신 실제 이름이 보이게 한다.
+        pickScope.launch(Dispatchers.IO) {
             try {
                 val imageDir = File(context.cacheDir, "film_editor_images")
                 if (!imageDir.exists()) imageDir.mkdirs()
-                val targetFile = File(imageDir, "film_target_${System.currentTimeMillis()}.jpg")
-                context.contentResolver.openInputStream(selectedUri)?.use { input ->
+                val name = queryDisplayName(context, uri)
+                    ?.substringAfterLast('/')
+                    ?.takeIf { it.isNotBlank() }
+                    ?: "image_${System.currentTimeMillis()}.jpg"
+                val targetFile = File(imageDir, name)
+                context.contentResolver.openInputStream(uri)?.use { input ->
                     FileOutputStream(targetFile).use { output -> input.copyTo(output) }
                 }
                 viewModel.setSourceImage(targetFile.absolutePath)
@@ -133,7 +153,7 @@ private fun FilmEditorHost(
             FilmContactSheetScreen(
                 viewModel = viewModel,
                 onBackClick = onClose,
-                onPickImage = { pickImageLauncher.launch("image/*") },
+                onPickImage = { pickImageLauncher.launch("image/jpeg") },
                 onLutClick = { lutId ->
                     viewModel.selectLut(lutId)
                     if (selectOnly) {
