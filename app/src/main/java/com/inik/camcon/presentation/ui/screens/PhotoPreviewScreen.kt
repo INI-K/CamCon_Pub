@@ -267,6 +267,8 @@ fun PhotoPreviewScreen(
         val canDelete = (cameraCapabilities?.canDeleteFiles == true) &&
                 canAccessRawTier(uiState.currentTier)
 
+        val viewerContext = androidx.compose.ui.platform.LocalContext.current
+
         FullScreenPhotoViewer(
             photo = photo,
             onDismiss = {
@@ -294,7 +296,13 @@ fun PhotoPreviewScreen(
             localPhotos = if (photos.any { File(it.path).exists() }) photos else null,
             onDeleteRequest = if (canDelete) {
                 { target -> viewModel.deletePhoto(target) }
-            } else null
+            } else null,
+            onFilmEdit = { target ->
+                com.inik.camcon.presentation.ui.FilmEditorActivity.startForPhoto(
+                    viewerContext, target.path
+                )
+            },
+            isRawFile = viewModel::isRawFile
         )
 
         BackHandler(enabled = !isMultiSelectMode) {

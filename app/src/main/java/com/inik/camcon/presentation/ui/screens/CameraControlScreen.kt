@@ -457,7 +457,13 @@ fun CameraControlScreen(
                 isDownloadingFullImage = false,
                 onDownload = { /* 이미 다운로드됨, 아무 동작 안함 */ },
                 viewModel = null, // PhotoPreviewViewModel 없이 사용
-                hideDownloadButton = true // 다운로드 버튼 숨김
+                hideDownloadButton = true, // 다운로드 버튼 숨김
+                onFilmEdit = { target ->
+                    com.inik.camcon.presentation.ui.FilmEditorActivity.startForPhoto(
+                        context, target.path
+                    )
+                },
+                isRawFile = appSettingsViewModel::isRawFile
             )
         }
     }

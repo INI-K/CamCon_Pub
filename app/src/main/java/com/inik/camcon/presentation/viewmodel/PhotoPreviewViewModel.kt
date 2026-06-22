@@ -736,6 +736,12 @@ class PhotoPreviewViewModel @Inject constructor(
         return true
     }
 
+    /**
+     * 파일 경로가 RAW 인지 판정한다. RAW 판정은 [ValidateImageFormatUseCase] 단일 지점에 위임(CLAUDE.md §2).
+     * 필름 에디터 진입점 게이팅(RAW 비노출)에 사용한다.
+     */
+    fun isRawFile(path: String): Boolean = validateImageFormatUseCase.isRawFile(path)
+
     @Deprecated("SharedFlow 이벤트로 대체됨")
     fun clearError() {
         // SharedFlow 사용으로 더 이상 필요 없음

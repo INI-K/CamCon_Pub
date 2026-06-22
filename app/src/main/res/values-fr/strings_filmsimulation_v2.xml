@@ -16,4 +16,31 @@
     <string name="fs_export">Enregistrer dans la galerie</string>
     <string name="fs_export_success">Enregistré dans la galerie</string>
     <string name="fs_export_failed">Échec de l\'enregistrement</string>
+
+    <!-- Phase 2 — Planche-contact (éditeur complet) -->
+    <string name="fs_contact_sheet_title">Simulation de film</string>
+    <string name="fs_search_toggle">Rechercher</string>
+    <string name="fs_search_hint">Rechercher des films</string>
+    <string name="fs_category_all">Tous</string>
+    <string name="fs_category_favorites">Favoris</string>
+    <string name="fs_target_label">Cible</string>
+    <string name="fs_target_none">Aucune photo sélectionnée</string>
+    <string name="fs_target_change">Changer</string>
+    <string name="fs_favorite_add">Ajouter aux favoris</string>
+    <string name="fs_favorite_remove">Retirer des favoris</string>
+    <string name="fs_pick_prompt">Choisissez une photo pour voir chaque film appliqué dessus.</string>
+
+    <!-- Phase 3 — Écran d\'édition (éditeur complet) -->
+    <string name="fs_reset">Réinitialiser les réglages</string>
+    <string name="fs_section_film">Film</string>
+    <string name="fs_section_adjust">Réglages</string>
+    <string name="fs_original_compare_hint">Appuyez longuement pour comparer avec l\'original.</string>
+    <string name="fs_adj_exposure">Exposition</string>
+    <string name="fs_adj_temperature">Température de couleur</string>
+    <string name="fs_adj_contrast">Contraste</string>
+    <string name="fs_adj_shadows">Ombres</string>
+    <string name="fs_adj_highlights">Hautes lumières</string>
+    <string name="fs_adj_saturation">Saturation</string>
+    <string name="fs_adj_grain">Grain</string>
+    <string name="fs_adj_chromatic_aberration">Aberration chromatique</string>
 </resources>

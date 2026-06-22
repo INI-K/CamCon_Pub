@@ -206,6 +206,8 @@ fun MyPhotosScreen(
                 "선택된 사진: ${LogMask.path(currentCameraPhoto.path)}, 존재=${file.exists()}, 크기=${file.length()}bytes"
             )
 
+            val viewerContext = LocalContext.current
+
             FullScreenPhotoViewer(
                 photo = currentCameraPhoto,
                 onDismiss = { selectedPhoto = null },
@@ -218,7 +220,13 @@ fun MyPhotosScreen(
                 fullImageData = ByteArray(0), // 빈 배열로 로컬 파일임을 표시
                 onDownload = { /* 이미 로컬 파일이므로 무시 */ },
                 hideDownloadButton = true,
-                localPhotos = cameraPhotos
+                localPhotos = cameraPhotos,
+                onFilmEdit = { target ->
+                    com.inik.camcon.presentation.ui.FilmEditorActivity.startForPhoto(
+                        viewerContext, target.path
+                    )
+                },
+                isRawFile = viewModel::isRawFile
             )
         }
     }

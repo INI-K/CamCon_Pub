@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.domain.repository.CameraRepository
+import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.utils.LogMask
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -35,11 +36,18 @@ data class ServerPhotosUiState(
 class ServerPhotosViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val cameraRepository: CameraRepository,
+    private val validateImageFormatUseCase: ValidateImageFormatUseCase,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ServerPhotosUiState())
     val uiState: StateFlow<ServerPhotosUiState> = _uiState.asStateFlow()
+
+    /**
+     * 파일 경로가 RAW 인지 판정한다. RAW 판정은 [ValidateImageFormatUseCase] 단일 지점에 위임(CLAUDE.md §2).
+     * 필름 에디터 진입점 게이팅(RAW 비노출)에 사용한다.
+     */
+    fun isRawFile(path: String): Boolean = validateImageFormatUseCase.isRawFile(path)
 
     init {
         loadLocalPhotos()

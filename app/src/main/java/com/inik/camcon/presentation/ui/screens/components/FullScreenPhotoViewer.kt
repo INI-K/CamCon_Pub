@@ -165,7 +165,9 @@ fun FullScreenPhotoViewer(
     viewModel: PhotoPreviewViewModel? = null,
     hideDownloadButton: Boolean = false,
     localPhotos: List<CameraPhoto>? = null,
-    onDeleteRequest: ((CameraPhoto) -> Unit)? = null
+    onDeleteRequest: ((CameraPhoto) -> Unit)? = null,
+    onFilmEdit: ((CameraPhoto) -> Unit)? = null,
+    isRawFile: (String) -> Boolean = { false }
 ) {
     val context = LocalContext.current
 
@@ -338,6 +340,17 @@ fun FullScreenPhotoViewer(
                     currentThumbnailData,
                     shareStrings
                 )
+            },
+            onFilmEditClick = onFilmEdit?.let { handler ->
+                val currentPhoto =
+                    if (viewModel != null) (photos.getOrNull(pagerState.currentPage)
+                        ?: photo) else photo
+                // 에디터는 JPEG/디코딩 가능한 로컬 파일만 대상. RAW 는 ValidateImageFormatUseCase 단일 지점으로 제외.
+                if (File(currentPhoto.path).exists() && !isRawFile(currentPhoto.path)) {
+                    { handler(currentPhoto) }
+                } else {
+                    null
+                }
             },
             onDeleteClick = onDeleteRequest?.let { handler ->
                 {

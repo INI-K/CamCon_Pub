@@ -59,6 +59,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -125,6 +127,7 @@ import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
 import java.io.FileOutputStream
+import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -242,6 +245,7 @@ fun SettingsScreen(
     val colorTransferReferenceImagePath by appSettingsViewModel.colorTransferReferenceImagePath.collectAsStateWithLifecycle()
     val isFilmSimulationEnabled by appSettingsViewModel.isFilmSimulationEnabled.collectAsStateWithLifecycle()
     val selectedFilmLutId by appSettingsViewModel.selectedFilmLutId.collectAsStateWithLifecycle()
+    val filmSimulationIntensity by appSettingsViewModel.filmSimulationIntensity.collectAsStateWithLifecycle()
     val isRawFileDownloadEnabled by appSettingsViewModel.isRawFileDownloadEnabled.collectAsStateWithLifecycle()
 
     val subscriptionTier by appSettingsViewModel.subscriptionTier.collectAsStateWithLifecycle()
@@ -283,6 +287,18 @@ fun SettingsScreen(
                 appSettingsViewModel.setColorTransferReferenceImagePath(targetFile.absolutePath)
             } catch (e: Exception) {
                 android.util.Log.e("SettingsActivity", "참조 이미지 복사 실패", e)
+            }
+        }
+    }
+
+    // 자동적용 "기본 필름 선택" — 에디터를 select-only 로 열어 결과 LUT id 를 설정에 반영.
+    val defaultFilmSelectLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            val lutId = result.data?.getStringExtra(FilmEditorActivity.EXTRA_RESULT_LUT_ID)
+            if (!lutId.isNullOrEmpty()) {
+                appSettingsViewModel.setSelectedFilmLutId(lutId)
             }
         }
     }
@@ -506,8 +522,20 @@ fun SettingsScreen(
 
             // 필름 시뮬레이션 설정
             SettingsSection(title = stringResource(R.string.settings_v2_section_film_simulation)) {
-                SwitchRowV2(
+                // 편집기 진입(항상 표시) — 소스 미지정으로 열어 컨택트 시트가 이미지 선택을 안내.
+                NavigationRowV2(
                     icon = Icons.Default.Photo,
+                    title = stringResource(R.string.settings_v2_film_editor_title),
+                    subtitle = stringResource(R.string.settings_v2_film_editor_subtitle),
+                    onClick = {
+                        val intent = Intent(context, FilmEditorActivity::class.java)
+                        context.startActivity(intent)
+                    }
+                )
+
+                // 자동적용 블록 — 토글 + (on 일 때) 기본 필름 선택 + 강도 슬라이더.
+                SwitchRowV2(
+                    icon = Icons.Default.Settings,
                     title = stringResource(R.string.settings_v2_film_simulation_title),
                     subtitle = if (isFilmSimulationEnabled) {
                         if (selectedFilmLutId.isNotEmpty()) {
@@ -524,13 +552,18 @@ fun SettingsScreen(
 
                 if (isFilmSimulationEnabled) {
                     NavigationRowV2(
-                        icon = Icons.Default.Settings,
-                        title = stringResource(R.string.settings_v2_film_simulation_detail_title),
-                        subtitle = stringResource(R.string.settings_v2_film_simulation_detail_subtitle),
+                        icon = Icons.Default.Photo,
+                        title = stringResource(R.string.settings_v2_film_default_title),
+                        subtitle = stringResource(R.string.settings_v2_film_default_subtitle),
                         onClick = {
-                            val intent = Intent(context, FilmSimulationSettingsActivity::class.java)
-                            context.startActivity(intent)
+                            val intent = Intent(context, FilmEditorActivity::class.java)
+                                .putExtra(FilmEditorActivity.EXTRA_SELECT_ONLY, true)
+                            defaultFilmSelectLauncher.launch(intent)
                         }
+                    )
+                    FilmIntensityRow(
+                        intensity = filmSimulationIntensity,
+                        onChange = { appSettingsViewModel.setFilmSimulationIntensity(it) }
                     )
                 }
             }
@@ -1405,6 +1438,52 @@ private fun SwitchRowV2(
             },
             onClick = { onCheckedChange(!checked) }
         )
+        DividerLineV2()
+    }
+}
+
+/**
+ * 자동적용 강도 슬라이더 행 — SettingsSection 내부 다크 V2 Slider(0..1).
+ * 라벨 + 퍼센트 표기 + Material3 Slider. 값 변경은 [onChange] 로 호이스팅.
+ */
+@Composable
+private fun FilmIntensityRow(
+    intensity: Float,
+    onChange: (Float) -> Unit
+) {
+    Column {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Spacing.base, vertical = Spacing.sm)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_v2_film_intensity_title),
+                    style = HeadingM,
+                    color = TextPrimaryV2
+                )
+                Text(
+                    text = "${(intensity * 100f).roundToInt()}%",
+                    style = BodySmall,
+                    color = TextSecondaryV2
+                )
+            }
+            Slider(
+                value = intensity.coerceIn(0f, 1f),
+                onValueChange = onChange,
+                valueRange = 0f..1f,
+                colors = SliderDefaults.colors(
+                    thumbColor = Accent,
+                    activeTrackColor = Accent,
+                    inactiveTrackColor = Surface3
+                )
+            )
+        }
         DividerLineV2()
     }
 }

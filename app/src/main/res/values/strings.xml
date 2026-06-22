@@ -490,6 +490,7 @@
     <string name="cd_info">정보</string>
     <string name="cd_download">다운로드</string>
     <string name="cd_share">공유</string>
+    <string name="cd_film_edit">필름 편집</string>
     <string name="cd_refresh">새로고침</string>
     <string name="cd_wifi_settings">Wi-Fi 설정</string>
     <string name="cd_back">뒤로가기</string>

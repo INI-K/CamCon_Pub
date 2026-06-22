@@ -16,4 +16,31 @@
     <string name="fs_export">In Galerie speichern</string>
     <string name="fs_export_success">In Galerie gespeichert</string>
     <string name="fs_export_failed">Speichern fehlgeschlagen</string>
+
+    <!-- Phase 2 — Kontaktbogen (Voll-Editor) -->
+    <string name="fs_contact_sheet_title">Filmsimulation</string>
+    <string name="fs_search_toggle">Suchen</string>
+    <string name="fs_search_hint">Filme suchen</string>
+    <string name="fs_category_all">Alle</string>
+    <string name="fs_category_favorites">Favoriten</string>
+    <string name="fs_target_label">Ziel</string>
+    <string name="fs_target_none">Kein Foto ausgewählt</string>
+    <string name="fs_target_change">Ändern</string>
+    <string name="fs_favorite_add">Zu Favoriten hinzufügen</string>
+    <string name="fs_favorite_remove">Aus Favoriten entfernen</string>
+    <string name="fs_pick_prompt">Wähle ein Foto, um jeden Film darauf angewendet zu sehen.</string>
+
+    <!-- Phase 3 — Bearbeitungsbildschirm (Voll-Editor) -->
+    <string name="fs_reset">Anpassungen zurücksetzen</string>
+    <string name="fs_section_film">Film</string>
+    <string name="fs_section_adjust">Anpassungen</string>
+    <string name="fs_original_compare_hint">Gedrückt halten, um mit dem Original zu vergleichen.</string>
+    <string name="fs_adj_exposure">Belichtung</string>
+    <string name="fs_adj_temperature">Farbtemperatur</string>
+    <string name="fs_adj_contrast">Kontrast</string>
+    <string name="fs_adj_shadows">Schatten</string>
+    <string name="fs_adj_highlights">Lichter</string>
+    <string name="fs_adj_saturation">Sättigung</string>
+    <string name="fs_adj_grain">Korn</string>
+    <string name="fs_adj_chromatic_aberration">Chromatische Aberration</string>
 </resources>

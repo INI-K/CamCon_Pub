@@ -114,6 +114,25 @@ object ImageProcessingUtils {
     }
 
     /**
+     * 파일 경로의 EXIF orientation 을 [bitmap] 에 적용해 올바로 세운 비트맵을 돌려준다.
+     * 디코딩 후 비트맵에 회전을 입히는 단일 진입점([applyRotationFromExif] 재사용)으로,
+     * 필름 에디터 프리뷰/썸네일 소스가 세로 사진을 눕히지 않도록 한다.
+     * 회전이 일어나면 입력 비트맵은 recycle 되고 새 비트맵을 반환한다(회전 없으면 입력 그대로).
+     */
+    fun applyExifOrientationFromFile(bitmap: Bitmap, filePath: String): Bitmap {
+        val orientation = try {
+            ExifInterface(filePath).getAttributeInt(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL
+            )
+        } catch (e: Exception) {
+            Log.w("ImageProcessing", "파일 EXIF orientation 읽기 실패: $filePath", e)
+            ExifInterface.ORIENTATION_NORMAL
+        }
+        return applyRotationFromExif(bitmap, orientation, filePath)
+    }
+
+    /**
      * EXIF 방향 정보에 따른 비트맵 회전 적용 (표준 매핑).
      * PhotoDownloadManager.rotateImageIfRequired 와 동일한 규칙으로 통일(F30):
      * 90→90f, 180→180f, 270→270f. 90/270 회전 시 width/height 를 swap 한다.
