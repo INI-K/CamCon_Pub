@@ -97,7 +97,8 @@ class FilmLutCatalogLoader @Inject constructor(
     companion object {
         private const val TAG = "FilmLutCatalogLoader"
         private const val CATALOG_PATH = "film_luts.json"
-        private const val MAX_LUT3D_CACHE = 16
+        // 컨택트 시트 스크롤 시 .cube 재파싱을 줄이기 위해 충분히 크게(Lut3D 1개 ≈ 수십 KB).
+        private const val MAX_LUT3D_CACHE = 64
         private const val MAX_LOOKUP_CACHE = 6
     }
 }
