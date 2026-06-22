@@ -1,5 +1,6 @@
 package com.inik.camcon.domain.usecase
 
+import com.inik.camcon.domain.model.FilmEdit
 import com.inik.camcon.domain.model.FilmLut
 import com.inik.camcon.domain.model.FilmLutResult
 import com.inik.camcon.domain.repository.FilmLutRepository
@@ -39,6 +40,21 @@ class FilmLutUseCase @Inject constructor(
 
     suspend fun loadLookupBitmap(lutId: String): Any? =
         filmLutRepository.loadLookupBitmap(lutId)
+
+    suspend fun applyEditAndSave(
+        inputImagePath: String,
+        edit: FilmEdit,
+        originalImagePath: String,
+        outputPath: String
+    ): FilmLutResult? =
+        filmLutRepository.applyEditAndSave(inputImagePath, edit, originalImagePath, outputPath)
+
+    suspend fun applyEditToTemp(
+        inputImagePath: String,
+        edit: FilmEdit,
+        maxSize: Int = 0
+    ): String? =
+        filmLutRepository.applyEditToTemp(inputImagePath, edit, maxSize)
 
     fun isValidImageFile(imagePath: String): Boolean =
         filmLutRepository.isValidImageFile(imagePath)

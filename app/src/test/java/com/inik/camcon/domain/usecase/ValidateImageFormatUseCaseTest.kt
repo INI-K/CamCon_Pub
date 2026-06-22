@@ -78,6 +78,7 @@ class ValidateImageFormatUseCaseTest {
         override val isFilmSimulationEnabled: Flow<Boolean> = MutableStateFlow(false)
         override val selectedFilmLutId: Flow<String> = MutableStateFlow("")
         override val filmSimulationIntensity: Flow<Float> = MutableStateFlow(1.0f)
+        override val favoriteFilmLutIds: Flow<Set<String>> = MutableStateFlow(emptySet())
         override val isOnboardingCompleted: Flow<Boolean> = flowOf(true)
 
         override suspend fun setCameraControlsEnabled(enabled: Boolean) {}
@@ -92,6 +93,7 @@ class ValidateImageFormatUseCaseTest {
         override suspend fun setFilmSimulationEnabled(enabled: Boolean) {}
         override suspend fun setSelectedFilmLutId(id: String) {}
         override suspend fun setFilmSimulationIntensity(intensity: Float) {}
+        override suspend fun toggleFavoriteFilmLut(id: String) {}
         override suspend fun setRawFileDownloadEnabled(enabled: Boolean) {
             _isRawFileDownloadEnabled.value = enabled
         }

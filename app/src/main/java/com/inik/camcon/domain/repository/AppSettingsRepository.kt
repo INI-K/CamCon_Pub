@@ -44,6 +44,9 @@ interface AppSettingsRepository {
     val selectedFilmLutId: Flow<String>
     val filmSimulationIntensity: Flow<Float>
 
+    /** 즐겨찾기한 필름 LUT id 집합(기본값: 빈 집합). */
+    val favoriteFilmLutIds: Flow<Set<String>>
+
     // === 쓰기 ===
     suspend fun setCameraControlsEnabled(enabled: Boolean)
     suspend fun setLiveViewEnabled(enabled: Boolean)
@@ -69,6 +72,9 @@ interface AppSettingsRepository {
     suspend fun setFilmSimulationEnabled(enabled: Boolean)
     suspend fun setSelectedFilmLutId(id: String)
     suspend fun setFilmSimulationIntensity(intensity: Float)
+
+    /** 주어진 LUT id 의 즐겨찾기 상태를 토글한다(있으면 제거, 없으면 추가). */
+    suspend fun toggleFavoriteFilmLut(id: String)
     /**
      * 구독 티어를 영속 캐시에 저장한다.
      *
