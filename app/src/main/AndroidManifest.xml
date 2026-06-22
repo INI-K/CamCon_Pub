@@ -140,7 +140,7 @@
             android:screenOrientation="fullSensor"
             android:label="@string/color_transfer_settings" />
         <activity
-            android:name=".presentation.ui.FilmSimulationSettingsActivity"
+            android:name=".presentation.ui.FilmEditorActivity"
             android:exported="false"
             android:screenOrientation="fullSensor"
             android:label="@string/film_simulation_settings" />

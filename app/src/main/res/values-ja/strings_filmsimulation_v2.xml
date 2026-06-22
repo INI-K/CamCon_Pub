@@ -16,4 +16,31 @@
     <string name="fs_export">ギャラリーに保存</string>
     <string name="fs_export_success">ギャラリーに保存しました</string>
     <string name="fs_export_failed">保存に失敗しました</string>
+
+    <!-- Phase 2 — コンタクトシート（フルエディター） -->
+    <string name="fs_contact_sheet_title">フィルムシミュレーション</string>
+    <string name="fs_search_toggle">検索</string>
+    <string name="fs_search_hint">フィルムを検索</string>
+    <string name="fs_category_all">すべて</string>
+    <string name="fs_category_favorites">お気に入り</string>
+    <string name="fs_target_label">対象</string>
+    <string name="fs_target_none">写真が未選択</string>
+    <string name="fs_target_change">変更</string>
+    <string name="fs_favorite_add">お気に入りに追加</string>
+    <string name="fs_favorite_remove">お気に入りから削除</string>
+    <string name="fs_pick_prompt">写真を選ぶと、各フィルムを適用した様子を確認できます。</string>
+
+    <!-- Phase 3 — 編集画面（フルエディター） -->
+    <string name="fs_reset">調整をリセット</string>
+    <string name="fs_section_film">フィルム</string>
+    <string name="fs_section_adjust">調整</string>
+    <string name="fs_original_compare_hint">長押しするとオリジナルと比較できます。</string>
+    <string name="fs_adj_exposure">露出</string>
+    <string name="fs_adj_temperature">色温度</string>
+    <string name="fs_adj_contrast">コントラスト</string>
+    <string name="fs_adj_shadows">シャドウ</string>
+    <string name="fs_adj_highlights">ハイライト</string>
+    <string name="fs_adj_saturation">彩度</string>
+    <string name="fs_adj_grain">グレイン</string>
+    <string name="fs_adj_chromatic_aberration">色収差</string>
 </resources>

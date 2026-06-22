@@ -125,10 +125,13 @@
 
     <!-- 필름 시뮬레이션 -->
     <string name="settings_v2_section_film_simulation">Filmsimulation</string>
-    <string name="settings_v2_film_simulation_title">Filmsimulation</string>
+    <string name="settings_v2_film_editor_title">Film-Editor</string>
+    <string name="settings_v2_film_editor_subtitle">Film-Looks auf ein Foto anwenden</string>
+    <string name="settings_v2_film_simulation_title">Automatisch auf Aufnahmen anwenden</string>
     <string name="settings_v2_film_simulation_on">Ein · LUT ausgewählt</string>
     <string name="settings_v2_film_simulation_on_nolut">Ein · LUT auswählen</string>
     <string name="settings_v2_film_simulation_off">Aus</string>
-    <string name="settings_v2_film_simulation_detail_title">Film-LUT-Einstellungen</string>
-    <string name="settings_v2_film_simulation_detail_subtitle">LUT auswählen · Live-Vorschau · Exportieren</string>
+    <string name="settings_v2_film_default_title">Standardfilm</string>
+    <string name="settings_v2_film_default_subtitle">Wird beim automatischen Anwenden auf Aufnahmen verwendet</string>
+    <string name="settings_v2_film_intensity_title">Intensität</string>
 </resources>

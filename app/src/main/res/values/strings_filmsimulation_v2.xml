@@ -16,4 +16,31 @@
     <string name="fs_export">Save to gallery</string>
     <string name="fs_export_success">Saved to gallery</string>
     <string name="fs_export_failed">Save failed</string>
+
+    <!-- Phase 2 — Contact sheet (full editor) -->
+    <string name="fs_contact_sheet_title">Film simulation</string>
+    <string name="fs_search_toggle">Search</string>
+    <string name="fs_search_hint">Search films</string>
+    <string name="fs_category_all">All</string>
+    <string name="fs_category_favorites">Favorites</string>
+    <string name="fs_target_label">Target</string>
+    <string name="fs_target_none">No photo selected</string>
+    <string name="fs_target_change">Change</string>
+    <string name="fs_favorite_add">Add to favorites</string>
+    <string name="fs_favorite_remove">Remove from favorites</string>
+    <string name="fs_pick_prompt">Pick a photo to see each film applied to it.</string>
+
+    <!-- Phase 3 — Edit screen (full editor) -->
+    <string name="fs_reset">Reset adjustments</string>
+    <string name="fs_section_film">Film</string>
+    <string name="fs_section_adjust">Adjustments</string>
+    <string name="fs_original_compare_hint">Press and hold to compare with the original.</string>
+    <string name="fs_adj_exposure">Exposure</string>
+    <string name="fs_adj_temperature">Temperature</string>
+    <string name="fs_adj_contrast">Contrast</string>
+    <string name="fs_adj_shadows">Shadows</string>
+    <string name="fs_adj_highlights">Highlights</string>
+    <string name="fs_adj_saturation">Saturation</string>
+    <string name="fs_adj_grain">Grain</string>
+    <string name="fs_adj_chromatic_aberration">Chromatic aberration</string>
 </resources>

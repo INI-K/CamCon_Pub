@@ -66,12 +66,15 @@
 
     <!-- 필름 시뮬레이션 -->
     <string name="settings_v2_section_film_simulation">필름 시뮬레이션</string>
-    <string name="settings_v2_film_simulation_title">필름 시뮬레이션</string>
+    <string name="settings_v2_film_editor_title">필름 편집기</string>
+    <string name="settings_v2_film_editor_subtitle">사진에 필름 적용</string>
+    <string name="settings_v2_film_simulation_title">촬영 사진에 자동 적용</string>
     <string name="settings_v2_film_simulation_on">켜짐 · LUT 선택됨</string>
     <string name="settings_v2_film_simulation_on_nolut">켜짐 · LUT를 선택하세요</string>
     <string name="settings_v2_film_simulation_off">꺼짐</string>
-    <string name="settings_v2_film_simulation_detail_title">필름 LUT 설정</string>
-    <string name="settings_v2_film_simulation_detail_subtitle">LUT 선택 · 실시간 미리보기 · 내보내기</string>
+    <string name="settings_v2_film_default_title">기본 필름</string>
+    <string name="settings_v2_film_default_subtitle">촬영 사진 자동 적용에 사용</string>
+    <string name="settings_v2_film_intensity_title">강도</string>
 
     <!-- RAW 다운로드 -->
     <string name="settings_v2_raw_download_title">RAW 파일 다운로드</string>

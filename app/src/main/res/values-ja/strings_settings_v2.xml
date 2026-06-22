@@ -125,10 +125,13 @@
 
     <!-- 필름 시뮬레이션 -->
     <string name="settings_v2_section_film_simulation">フィルムシミュレーション</string>
-    <string name="settings_v2_film_simulation_title">フィルムシミュレーション</string>
+    <string name="settings_v2_film_editor_title">フィルムエディター</string>
+    <string name="settings_v2_film_editor_subtitle">写真にフィルムを適用</string>
+    <string name="settings_v2_film_simulation_title">撮影写真に自動適用</string>
     <string name="settings_v2_film_simulation_on">オン · LUT選択済み</string>
     <string name="settings_v2_film_simulation_on_nolut">オン · LUTを選択してください</string>
     <string name="settings_v2_film_simulation_off">オフ</string>
-    <string name="settings_v2_film_simulation_detail_title">フィルムLUT設定</string>
-    <string name="settings_v2_film_simulation_detail_subtitle">LUTを選択 · ライブプレビュー · 書き出し</string>
+    <string name="settings_v2_film_default_title">デフォルトフィルム</string>
+    <string name="settings_v2_film_default_subtitle">撮影写真への自動適用に使用</string>
+    <string name="settings_v2_film_intensity_title">強度</string>
 </resources>
