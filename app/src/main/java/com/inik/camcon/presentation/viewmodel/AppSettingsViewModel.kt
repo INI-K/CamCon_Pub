@@ -9,6 +9,7 @@ import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.usecase.ColorTransferUseCase
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
+import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.domain.usecase.camera.ReadNativeLogUseCase
 import com.inik.camcon.domain.usecase.camera.StartNativeLogUseCase
 import com.inik.camcon.domain.usecase.camera.StopNativeLogUseCase
@@ -32,12 +33,19 @@ class AppSettingsViewModel @Inject constructor(
     private val getSubscriptionUseCase: GetSubscriptionUseCase,
     private val startNativeLogUseCase: StartNativeLogUseCase,
     private val stopNativeLogUseCase: StopNativeLogUseCase,
-    private val readNativeLogUseCase: ReadNativeLogUseCase
+    private val readNativeLogUseCase: ReadNativeLogUseCase,
+    private val validateImageFormatUseCase: ValidateImageFormatUseCase
 ) : ViewModel() {
 
     companion object {
         private const val TAG = "AppSettingsViewModel"
     }
+
+    /**
+     * 파일 경로가 RAW 인지 판정한다. RAW 판정은 [ValidateImageFormatUseCase] 단일 지점에 위임(CLAUDE.md §2).
+     * 필름 에디터 진입점 게이팅(RAW 비노출)에 사용한다.
+     */
+    fun isRawFile(path: String): Boolean = validateImageFormatUseCase.isRawFile(path)
 
     /**
      * 카메라 컨트롤 표시 여부

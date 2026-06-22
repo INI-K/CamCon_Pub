@@ -16,4 +16,31 @@
     <string name="fs_export">Salva nella galleria</string>
     <string name="fs_export_success">Salvato nella galleria</string>
     <string name="fs_export_failed">Salvataggio non riuscito</string>
+
+    <!-- Phase 2 — Provino a contatto (editor completo) -->
+    <string name="fs_contact_sheet_title">Simulazione pellicola</string>
+    <string name="fs_search_toggle">Cerca</string>
+    <string name="fs_search_hint">Cerca pellicole</string>
+    <string name="fs_category_all">Tutte</string>
+    <string name="fs_category_favorites">Preferiti</string>
+    <string name="fs_target_label">Soggetto</string>
+    <string name="fs_target_none">Nessuna foto selezionata</string>
+    <string name="fs_target_change">Cambia</string>
+    <string name="fs_favorite_add">Aggiungi ai preferiti</string>
+    <string name="fs_favorite_remove">Rimuovi dai preferiti</string>
+    <string name="fs_pick_prompt">Scegli una foto per vedere ogni pellicola applicata ad essa.</string>
+
+    <!-- Phase 3 — Schermata di modifica (editor completo) -->
+    <string name="fs_reset">Ripristina regolazioni</string>
+    <string name="fs_section_film">Pellicola</string>
+    <string name="fs_section_adjust">Regolazioni</string>
+    <string name="fs_original_compare_hint">Tieni premuto per confrontare con l\'originale.</string>
+    <string name="fs_adj_exposure">Esposizione</string>
+    <string name="fs_adj_temperature">Temperatura colore</string>
+    <string name="fs_adj_contrast">Contrasto</string>
+    <string name="fs_adj_shadows">Ombre</string>
+    <string name="fs_adj_highlights">Alte luci</string>
+    <string name="fs_adj_saturation">Saturazione</string>
+    <string name="fs_adj_grain">Grana</string>
+    <string name="fs_adj_chromatic_aberration">Aberrazione cromatica</string>
 </resources>

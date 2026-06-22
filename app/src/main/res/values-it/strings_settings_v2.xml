@@ -125,10 +125,13 @@
 
     <!-- 필름 시뮬레이션 -->
     <string name="settings_v2_section_film_simulation">Simulazione pellicola</string>
-    <string name="settings_v2_film_simulation_title">Simulazione pellicola</string>
+    <string name="settings_v2_film_editor_title">Editor pellicola</string>
+    <string name="settings_v2_film_editor_subtitle">Applica look pellicola a una foto</string>
+    <string name="settings_v2_film_simulation_title">Applica autom. agli scatti</string>
     <string name="settings_v2_film_simulation_on">Attivata · LUT selezionato</string>
     <string name="settings_v2_film_simulation_on_nolut">Attivata · scegli un LUT</string>
     <string name="settings_v2_film_simulation_off">Disattivata</string>
-    <string name="settings_v2_film_simulation_detail_title">Impostazioni LUT pellicola</string>
-    <string name="settings_v2_film_simulation_detail_subtitle">Scegli un LUT · anteprima live · esporta</string>
+    <string name="settings_v2_film_default_title">Pellicola predefinita</string>
+    <string name="settings_v2_film_default_subtitle">Usata per l’applicazione autom. agli scatti</string>
+    <string name="settings_v2_film_intensity_title">Intensità</string>
 </resources>

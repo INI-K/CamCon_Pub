@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -65,6 +66,7 @@ fun FullScreenTopBar(
     onInfoClick: () -> Unit,
     onDownloadClick: (() -> Unit)?,
     onShareClick: () -> Unit,
+    onFilmEditClick: (() -> Unit)? = null,
     onDeleteClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -167,6 +169,24 @@ fun FullScreenTopBar(
                 contentDescription = stringResource(R.string.cd_share),
                 tint = TextPrimaryV2
             )
+        }
+
+        // 필름 편집 아이콘 — 로컬 디코딩 가능 파일이며 RAW 아닐 때만 호출자가 전달(Phase 4 진입점).
+        if (onFilmEditClick != null) {
+            IconButton(
+                onClick = onFilmEditClick,
+                modifier = Modifier
+                    .background(
+                        Surface0.copy(alpha = 0.6f),
+                        RoundedCornerShape(Radius.sm)
+                    )
+            ) {
+                Icon(
+                    Icons.Default.Tune,
+                    contentDescription = stringResource(R.string.cd_film_edit),
+                    tint = TextPrimaryV2
+                )
+            }
         }
 
         // H7-A — 삭제 아이콘 (구독·기능 게이팅 통과한 경우만 호출자가 전달)

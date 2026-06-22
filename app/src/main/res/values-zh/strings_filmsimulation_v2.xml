@@ -16,4 +16,31 @@
     <string name="fs_export">保存到相册</string>
     <string name="fs_export_success">已保存到相册</string>
     <string name="fs_export_failed">保存失败</string>
+
+    <!-- Phase 2 — 联系表（完整编辑器） -->
+    <string name="fs_contact_sheet_title">胶片模拟</string>
+    <string name="fs_search_toggle">搜索</string>
+    <string name="fs_search_hint">搜索胶片</string>
+    <string name="fs_category_all">全部</string>
+    <string name="fs_category_favorites">收藏</string>
+    <string name="fs_target_label">对象</string>
+    <string name="fs_target_none">未选择照片</string>
+    <string name="fs_target_change">更改</string>
+    <string name="fs_favorite_add">添加到收藏</string>
+    <string name="fs_favorite_remove">从收藏中移除</string>
+    <string name="fs_pick_prompt">选择一张照片即可查看每种胶片应用后的效果。</string>
+
+    <!-- Phase 3 — 编辑界面（完整编辑器） -->
+    <string name="fs_reset">重置调整</string>
+    <string name="fs_section_film">胶片</string>
+    <string name="fs_section_adjust">调整</string>
+    <string name="fs_original_compare_hint">长按可与原图对比。</string>
+    <string name="fs_adj_exposure">曝光</string>
+    <string name="fs_adj_temperature">色温</string>
+    <string name="fs_adj_contrast">对比度</string>
+    <string name="fs_adj_shadows">阴影</string>
+    <string name="fs_adj_highlights">高光</string>
+    <string name="fs_adj_saturation">饱和度</string>
+    <string name="fs_adj_grain">颗粒</string>
+    <string name="fs_adj_chromatic_aberration">色差</string>
 </resources>
