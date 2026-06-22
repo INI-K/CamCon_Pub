@@ -2,17 +2,10 @@
 <resources>
     <!-- 필름 시뮬레이션 상세 화면 -->
     <string name="film_simulation_settings">Filmsimulation</string>
-    <string name="fs_settings_title">Filmsimulation</string>
-    <string name="fs_disabled_title">Filmsimulation ist aus</string>
-    <string name="fs_disabled_message">Schalte sie ein, um ein Film-LUT auf deine Fotos anzuwenden.</string>
-    <string name="fs_applied_default">Das ausgewählte LUT wird beim Tethering direkt in die aufgenommenen Fotos eingebrannt.</string>
-    <string name="fs_preview_title">Live-Vorschau</string>
     <string name="fs_pick_target">Foto auswählen</string>
     <string name="fs_no_target">Wähle ein Foto für die Vorschau</string>
-    <string name="fs_select_lut_title">Film-LUT</string>
     <string name="fs_lut_none">Keines (Original)</string>
     <string name="fs_intensity_title">Intensität</string>
-    <string name="fs_intensity_percent">%1$d%%</string>
     <string name="fs_export">In Galerie speichern</string>
     <string name="fs_export_success">In Galerie gespeichert</string>
     <string name="fs_export_failed">Speichern fehlgeschlagen</string>
