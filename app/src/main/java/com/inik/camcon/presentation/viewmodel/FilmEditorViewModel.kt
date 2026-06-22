@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.stateIn
@@ -133,6 +134,14 @@ class FilmEditorViewModel @Inject constructor(
     /** 진행 중인 lookup 로드 job. lutId 가 빠르게 바뀌면 이전 로드를 취소한다. */
     private var lookupJob: Job? = null
 
+    /**
+     * 편집 프리뷰 렌더 결과. 내보내기와 **동일 경로**([FilmAdjustmentProcessor.apply], PixelBuffer)로 렌더해
+     * Compose Image 로 표시한다 — GPUImageView+필터그룹의 일부 GPU 가장자리 손상을 피하고 WYSIWYG 보장.
+     * VM 소유 → 교체 시 이전 비트맵 회수, [onCleared] 에서도 회수.
+     */
+    private val _renderedPreview = MutableStateFlow<Bitmap?>(null)
+    val renderedPreview: StateFlow<Bitmap?> = _renderedPreview.asStateFlow()
+
     // ---- 내보내기(Phase 3) ----
 
     private val _isExporting = MutableStateFlow(false)
@@ -182,6 +191,32 @@ class FilmEditorViewModel @Inject constructor(
             }
         }
         initializeGpu()
+
+        // 편집 프리뷰 렌더(WYSIWYG): previewBitmap·lookup·previewEdit(디바운스) 변화 시 내보내기와 동일한
+        // PixelBuffer 경로로 1장 렌더 → Compose Image 로 표시. collectLatest 로 직전 렌더는 취소(최신만).
+        viewModelScope.launch {
+            combine(_previewBitmap, _lookupBitmap, previewEdit) { src, lookup, edit ->
+                Triple(src, lookup, edit)
+            }.collectLatest { (src, lookup, edit) ->
+                val out = if (src == null || src.isRecycled) {
+                    null
+                } else {
+                    runCatching {
+                        filmAdjustmentProcessor.apply(src, lookup, edit.intensity, edit.adjustments)
+                    }.getOrNull()
+                }
+                setRenderedPreview(out)
+            }
+        }
+    }
+
+    /** 렌더 결과 교체 + 이전 결과 비트맵 회수(VM 소유). */
+    private fun setRenderedPreview(bmp: Bitmap?) {
+        val old = _renderedPreview.value
+        _renderedPreview.value = bmp
+        if (old != null && old !== bmp && old !== _previewBitmap.value && !old.isRecycled) {
+            old.recycle()
+        }
     }
 
     // ---- 필터 조작 ----
@@ -261,14 +296,6 @@ class FilmEditorViewModel @Inject constructor(
         _filmEdit.value = _filmEdit.value.copy(adjustments = FilmAdjustments())
     }
 
-    /**
-     * 프리뷰용 GPU 필터그룹 빌더(단일 지점, [FilmAdjustmentProcessor.buildFilters] 위임).
-     * 라이브 프리뷰([FilmEditPreview])와 내보내기([export])가 **동일 빌더**를 쓰므로 결과가 일치한다.
-     * 반환 필터는 GPUImageView 가 소유하므로 호출부가 명시 해제할 필요 없다(뷰 파괴 시 GL 정리).
-     */
-    fun buildPreviewFilters(lookup: Bitmap?, edit: FilmEdit) =
-        filmAdjustmentProcessor.buildFilters(lookup, edit)
-
     fun toggleFavorite(id: String) {
         viewModelScope.launch {
             try {
@@ -300,17 +327,19 @@ class FilmEditorViewModel @Inject constructor(
                 Triple(preview, dim, thumb)
             }
 
-            // 이전 소유 비트맵 회수 + 썸네일 캐시/job 무효화(소스 교체).
+            // 새 값을 먼저 반영(렌더 플로우가 새 src 로 전환되며 collectLatest 가 옛 렌더를 취소)한 뒤
+            // 옛 소유 비트맵을 회수한다(렌더 in-flight 중 src 회수 경합 완화). 썸네일 캐시/job 도 무효화.
+            val oldPreview = _previewBitmap.value
+            val oldThumb = thumbSource
             cancelAllThumbnailJobs()
             filmThumbnailGenerator.clear()
             _thumbnails.value = emptyMap()
-            recyclePreview()
-            recycleThumbSource()
-
             _previewBitmap.value = preview
             _previewSize.value = previewDim
             thumbSource = thumb
             _sourceId.value = newSourceId
+            if (oldPreview != null && oldPreview !== preview && !oldPreview.isRecycled) oldPreview.recycle()
+            if (oldThumb != null && oldThumb !== thumb && !oldThumb.isRecycled) oldThumb.recycle()
         }
     }
 
@@ -508,6 +537,7 @@ class FilmEditorViewModel @Inject constructor(
         super.onCleared()
         cancelAllThumbnailJobs()
         lookupJob?.cancel()
+        setRenderedPreview(null)
         recyclePreview()
         recycleThumbSource()
         // 썸네일 결과 비트맵·lookupBitmap 은 생성기/카탈로그 캐시 소유 → VM 이 회수하지 않는다(참조만 해제).
