@@ -8,6 +8,8 @@ import com.inik.camcon.utils.LogcatManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.coroutineContext
 import javax.inject.Inject
@@ -34,6 +36,9 @@ class FilmThumbnailGenerator @Inject constructor(
 
     private val cache = LruCache<String, Bitmap>(MAX_CACHE)
 
+    /** 동시 썸네일 생성 수 제한(에셋 경합·메모리 폭주 방지). GPU 직렬화와 별개로 .cube 읽기/CPU 적용을 제한. */
+    private val genSemaphore = Semaphore(MAX_CONCURRENT)
+
     /**
      * [thumbSource] 에 [lutId] LUT 를 강도 1.0 으로 적용한 썸네일을 반환한다.
      *
@@ -52,37 +57,35 @@ class FilmThumbnailGenerator @Inject constructor(
         cache.get(key)?.let { if (!it.isRecycled) return@withContext it }
 
         coroutineContext.ensureActive()
-        val lut = catalogLoader.getLut(lutId) ?: run {
-            LogcatManager.w(TAG, "썸네일 LUT 미발견: $lutId")
-            return@withContext null
-        }
-
-        try {
+        // 동시 생성 수를 제한(썬더링 허드 방지): 많은 셀이 한꺼번에 .cube 를 열어 AssetManager 경합·메모리
+        // 폭주를 일으키던 문제를 막는다. 대기 중 다른 job 이 이미 만들었으면 캐시 히트로 즉시 반환.
+        genSemaphore.withPermit {
+            cache.get(key)?.let { if (!it.isRecycled) return@withPermit it }
             coroutineContext.ensureActive()
-            val lookup = catalogLoader.loadLookup(lut.assetPath)
-            val result: Bitmap? = if (lookup != null && filmLutProcessor.isGpuReady) {
-                filmLutProcessor.applyFilmLutWithGPU(thumbSource, lookup, INTENSITY)
-            } else {
+            val lut = catalogLoader.getLut(lutId) ?: run {
+                LogcatManager.w(TAG, "썸네일 LUT 미발견: $lutId")
+                return@withPermit null
+            }
+            try {
+                coroutineContext.ensureActive()
+                // 썸네일은 작아서(≈200px) 512² GPU 아틀라스를 만들 필요 없이 CPU 삼선형으로 직접 적용한다.
+                // (296개 아틀라스 빌드·캐시 축출 폭주와 1MB×N 메모리 churn 을 제거. 편집 프리뷰/내보내기는
+                //  여전히 GPU 아틀라스 경로를 쓴다.)
+                val lut3d = catalogLoader.loadLut3D(lut.assetPath) ?: return@withPermit null
+                coroutineContext.ensureActive()
+                val finalBitmap = filmLutProcessor.applyFilmLutCpu(thumbSource, lut3d, INTENSITY)
+                cache.put(key, finalBitmap)
+                finalBitmap
+            } catch (e: CancellationException) {
+                throw e
+            } catch (oom: OutOfMemoryError) {
+                LogcatManager.w(TAG, "썸네일 생성 OOM: $lutId")
+                cache.evictAll()
+                null
+            } catch (e: Exception) {
+                LogcatManager.w(TAG, "썸네일 생성 실패: $lutId", e)
                 null
             }
-
-            val finalBitmap = result ?: run {
-                coroutineContext.ensureActive()
-                val lut3d = catalogLoader.loadLut3D(lut.assetPath) ?: return@withContext null
-                filmLutProcessor.applyFilmLutCpu(thumbSource, lut3d, INTENSITY)
-            }
-
-            cache.put(key, finalBitmap)
-            finalBitmap
-        } catch (e: CancellationException) {
-            throw e
-        } catch (oom: OutOfMemoryError) {
-            LogcatManager.w(TAG, "썸네일 생성 OOM: $lutId")
-            cache.evictAll()
-            null
-        } catch (e: Exception) {
-            LogcatManager.w(TAG, "썸네일 생성 실패: $lutId", e)
-            null
         }
     }
 
@@ -96,6 +99,7 @@ class FilmThumbnailGenerator @Inject constructor(
     companion object {
         private const val TAG = "FilmThumbnailGen"
         private const val MAX_CACHE = 300
+        private const val MAX_CONCURRENT = 2
         private const val INTENSITY = 1f
     }
 }
