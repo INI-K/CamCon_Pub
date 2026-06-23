@@ -100,7 +100,7 @@ class UsbConnectionManager @Inject constructor(
         try {
             // 앱의 private 디렉토리에 플러그인 저장
             val gphoto2BaseDir = context.getDir("gphoto2_plugins", Context.MODE_PRIVATE)
-            val gphoto2VersionDir = java.io.File(gphoto2BaseDir, "libgphoto2/2.5.33.1")
+            val gphoto2VersionDir = java.io.File(gphoto2BaseDir, "libgphoto2/2.5.34")
             val portVersionDir = java.io.File(gphoto2BaseDir, "libgphoto2_port/0.12.2")
 
             // 이미 디렉토리가 있고 파일도 있으면 스킵
