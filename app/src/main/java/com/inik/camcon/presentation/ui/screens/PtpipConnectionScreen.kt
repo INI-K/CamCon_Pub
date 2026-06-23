@@ -120,12 +120,13 @@ fun PtpipConnectionScreen(
 
     // 구독 티어 체크 (STA 모드는 ADMIN만 보임)
     val isAdmin by appSettingsViewModel.isAdminTier.collectAsStateWithLifecycle()
-    // [임시] Wi-Fi STA 모드 집중 개발용 플래그. true 면 AP/핫스팟 탭을 숨기고 STA 모드만 노출한다.
+    // [임시] Wi-Fi 핫스팟 STA(폰 핫스팟에 카메라 합류) 집중 개발용 플래그.
+    // true 면 AP/STA(공유기) 탭을 숨기고 핫스팟 STA 모드만 노출한다.
     // 개발 완료 후 false 로 되돌리면 기존 탭 구성(AP/STA/핫스팟)이 복원된다.
     val staOnly = true
     // 탭 제목과 탭 수를 동적으로 구성
     val tabTitles = if (staOnly) listOf(
-        stringResource(R.string.ptpip_sta_mode),
+        stringResource(R.string.ptpip_sta_hotspot_mode),
     ) else if (isAdmin) listOf(
         stringResource(R.string.ptpip_ap_mode),
         stringResource(R.string.ptpip_sta_mode),
@@ -580,7 +581,7 @@ fun PtpipConnectionScreen(
                         // 자동으로 카메라 검색 시작 (admin: 0=AP, 1=STA, 2=Hotspot / non-admin: 0=AP, 1=Hotspot)
                         val page = pagerState.currentPage
                         when {
-                            staOnly -> ptpipViewModel.discoverCamerasSta()
+                            staOnly -> ptpipViewModel.discoverCamerasHotspot()
                             page == 0 -> ptpipViewModel.discoverCamerasAp()
                             isAdmin && page == 1 -> ptpipViewModel.discoverCamerasSta()
                             else -> ptpipViewModel.discoverCamerasHotspot()
@@ -640,7 +641,7 @@ fun PtpipConnectionScreen(
                             onClick = {
                                 val page = pagerState.currentPage
                                 when {
-                                    staOnly -> ptpipViewModel.discoverCamerasSta()
+                                    staOnly -> ptpipViewModel.discoverCamerasHotspot()
                                     page == 0 -> if (ptpipViewModel
                                             .analyzeWifiScanPermissionStatus().canScan
                                     ) {
@@ -813,7 +814,7 @@ fun PtpipConnectionScreen(
                     //   non-admin : 0=AP, 1=STA_PHONE_HOTSPOT
                     val hotspotTabIndex = if (isAdmin) 2 else 1
                     when {
-                        staOnly -> StaModeContent(
+                        staOnly -> HotspotStaModeContent(
                             ptpipViewModel = ptpipViewModel,
                             connectionState = connectionState,
                             discoveredCameras = discoveredCameras,
@@ -829,8 +830,6 @@ fun PtpipConnectionScreen(
                             hasLocationPermission = ptpipViewModel
                                 .analyzeWifiScanPermissionStatus().canScan,
                             onRequestPermission = { requestWifiScanPermissions() },
-                            nearbyWifiSSIDs = nearbyWifiSSIDs,
-                            onConnectToWifi = { ssid -> onConnectToWifiWithPassword(ssid) }
                         )
 
                         page == 0 -> ApModeContent(
