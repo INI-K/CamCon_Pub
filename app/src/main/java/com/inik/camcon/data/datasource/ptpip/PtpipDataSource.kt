@@ -807,7 +807,7 @@ class PtpipDataSource @Inject constructor(
 
             // 플러그인 디렉토리 사용 (USB와 동일한 방식 - 버전 디렉토리까지 포함)
             val gphoto2BaseDir = context.getDir("gphoto2_plugins", Context.MODE_PRIVATE)
-            val gphoto2VersionDir = java.io.File(gphoto2BaseDir, "libgphoto2/2.5.33.1")
+            val gphoto2VersionDir = java.io.File(gphoto2BaseDir, "libgphoto2/2.5.34")
             val portVersionDir = java.io.File(gphoto2BaseDir, "libgphoto2_port/0.12.2")
 
             // 버전 디렉토리를 콜론(:)으로 구분하여 전달
@@ -869,10 +869,17 @@ class PtpipDataSource @Inject constructor(
             // ⚠️ getConfigString은 실패 시에도 "실패: ..." 비-blank 문자열을 반환하므로 반드시 "성공" 접두로 판정한다
             //    (단순 isNotBlank 판정은 HOLLOW의 "실패:"까지 HEALTHY로 오판 → 미승인 연결 통과 버그).
             fun probeOnce(): Boolean {
-                val cfgOk = runCatching {
-                    CameraNative.getConfigString("batterylevel")?.startsWith("성공") == true
+                // HEALTHY 판별: 경량 노출 프로퍼티(get_single_config: iso/d0b5/d054/shutterspeed/f-number…) 읽기.
+                // libgphoto2 2.5.34 업그레이드 후 Z8/Z9는 GetDevicePropDesc 를 0x2005/0x200a 로 거부한다.
+                // 이전 프로브(getConfigString("batterylevel")=전체 config 트리)는 healthy 에서도 0x2005 폭주+"실패",
+                // getStorageInfoNative 는 무선 카드 거부(-6) → 둘 다 거짓 음성으로 성공한 연결을 닫고 재init(-7)
+                // 하던 STA 회귀의 원인이었다. synth-dpd 우회가 적용된 경량 read 경로로 판별한다:
+                //  HEALTHY → 노출 프로퍼티가 읽혀 children 에 항목("name") 생성, HOLLOW(미승인) → 전부 0x2005 → 빈 children.
+                val expOk = runCatching {
+                    CameraNative.getLiveExposureJson().contains("\"name\"")
                 }.getOrDefault(false)
-                if (cfgOk) return true
+                if (expOk) return true
+                // 폴백: 노출 프로퍼티가 없는 기종은 스토리지로 생존 확인.
                 return runCatching { CameraNative.getStorageInfoNative() != null }.getOrDefault(false)
             }
             // 1회 성공이면 HEALTHY. 실패 시 1회 더 확인 → Z8의 일시적 프로브 실패(배터리 조회 순간

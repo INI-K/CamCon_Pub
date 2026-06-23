@@ -143,7 +143,7 @@ class CamCon : Application() {
             val gphoto2BaseDir = getDir("gphoto2_plugins", Context.MODE_PRIVATE)
             Log.d(TAG, "🔧 libgphoto2 플러그인 디렉토리 생성: ${gphoto2BaseDir.absolutePath}")
 
-            val gphoto2VersionDir = java.io.File(gphoto2BaseDir, "libgphoto2/2.5.33.1")
+            val gphoto2VersionDir = java.io.File(gphoto2BaseDir, "libgphoto2/2.5.34")
             val portVersionDir = java.io.File(gphoto2BaseDir, "libgphoto2_port/0.12.2")
 
             gphoto2VersionDir.mkdirs()
