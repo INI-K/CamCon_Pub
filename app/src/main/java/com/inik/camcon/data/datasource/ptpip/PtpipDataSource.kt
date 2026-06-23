@@ -713,6 +713,56 @@ class PtpipDataSource @Inject constructor(
      * (handleNetworkStateChange → attemptAutoReconnect)에서는 connectToCameraInternal을
      * 직접 호출해야 한다. kotlinx Mutex는 비재진입이므로 락 보유 중 재획득 시 데드락된다.
      */
+    // ===== Nikon STA 페어링 GUID 수명 관리 =====
+    // 카메라는 (GUID, client_name) 쌍에 승인/거부를 기록한다. 한 번 거부(InitFail 0x1)된 GUID는
+    // 전원재기동·네트워크 변경과 무관하게 영구 거부되므로, 그 GUID를 계속 들이밀면 영영 연결 불가다.
+    // → InitFail 0x1 감지 시 '새 랜덤 GUID'(=카메라가 모르는 새 기기)로 바꿔 재시도하면 hollow 수락→
+    //   in-session 0x952b/0x935a 승인(본체 "연결 허용")으로 신규 등록된다. 승인된 GUID는 저장해 재사용.
+    private val staPairingPrefs: android.content.SharedPreferences by lazy {
+        context.getSharedPreferences("ptpip_sta_pairing", Context.MODE_PRIVATE)
+    }
+
+    private fun storedStaGuid(): String? = staPairingPrefs.getString("guid", null)
+
+    private fun saveStaGuid(guid: String) {
+        staPairingPrefs.edit().putString("guid", guid).apply()
+    }
+
+    /** libgphoto2 ptp2_ip/guid 에 주입할 GUID: 이전에 페어링된 것이 있으면 우선, 없으면 기본 페어링 GUID. */
+    private fun staGuidToInject(): String =
+        storedStaGuid() ?: NikonAuthenticationService.STA_PAIRING_GUID
+
+    /** 콜론-hex 16바이트 랜덤 GUID 생성 (STA_PAIRING_GUID 와 동일 포맷). */
+    private fun generateFreshStaGuid(): String {
+        val b = ByteArray(16)
+        java.security.SecureRandom().nextBytes(b)
+        return b.joinToString(":") { "%02x".format(it) }
+    }
+
+    /**
+     * 직전 init 의 libgphoto2 로그(파일)에서 PTP/IP InitFail 사유를 읽는다.
+     * 0 = InitFail 없음(또는 미상), 1 = rejected/denied(거부), 2 = busy/in-use.
+     * (latest 로그는 매 init 마다 덮어쓰므로 직전 시도의 결과를 반영한다.)
+     */
+    private fun lastPtpipInitFailReason(): Int = runCatching {
+        val f = java.io.File(context.filesDir, "libgphoto2_ptpip_latest.txt")
+        if (!f.exists()) return 0
+        val len = f.length()
+        val text = if (len <= 512_000L) {
+            f.readText()
+        } else {
+            f.inputStream().use { ins ->
+                ins.skip(len - 256_000L)
+                ins.readBytes().toString(Charsets.UTF_8)
+            }
+        }
+        when {
+            text.contains("PTPIP InitFail reason=0x00000001") -> 1
+            text.contains("PTPIP InitFail reason=0x00000002") -> 2
+            else -> 0
+        }
+    }.getOrDefault(0)
+
     suspend fun connectToCamera(camera: PtpipCamera, forceApMode: Boolean): Boolean =
         connectionStateMutex.withLock {
             connectToCameraInternal(camera, forceApMode)
@@ -788,11 +838,25 @@ class PtpipDataSource @Inject constructor(
             // 주입하고 별도 Phase1 선인증/모델분기는 하지 않는다. (과거 별도-소켓 Phase1은 단일 PTP/IP
             // 세션을 점유·오염시켜 Z8을 -7로, Z6를 hollow로 깨뜨렸다 → in-session 승인으로 대체.)
             if (isNikonCamera && !forceApMode) {
+                // libgphoto2 연결과 '동일한' 고정 페어링 GUID 주입(performStaAuthentication도 같은 GUID 사용 —
+                // 인증으로 등록된 GUID와 연결 GUID가 반드시 일치해야 한다).
                 runCatching {
                     CameraNative.setPtpipGuid(NikonAuthenticationService.STA_PAIRING_GUID)
-                }.onFailure {
-                    Log.w(TAG, "⚠️ libgphoto2 GUID 주입 실패", it)
-                }
+                }.onFailure { Log.w(TAG, "⚠️ libgphoto2 GUID 주입 실패", it) }
+
+                // [복원] 코드-자동전송 STA 페어링(별도 소켓: 0x952b → 0x935a → 코드 필요 시 0x935b 자동전송).
+                // 카메라가 "연결 허용/페어링 코드"를 띄우면 앱이 읽어 자동 전송해 GUID를 등록한다. 등록돼야
+                // 아래 libgphoto2 연결이 InitFail(0x1) 없이 붙는다. (e499a2f가 이 호출을 제거 → 미등록 GUID로
+                // 바로 연결해 0x1 회귀 + 카메라에 코드도 안 뜨게 됐다. 사용자 보고로 복원.)
+                Log.i(TAG, "=== Nikon STA 인증 시도 (${camera.name}) ===")
+                setProgress(UiText.Resource(R.string.progress_ptpip_authenticating_nikon))
+                runCatching {
+                    if (nikonAuthService.performStaAuthentication(camera)) {
+                        Log.i(TAG, "✅ Nikon STA 인증 성공 - 카메라 승인/등록됨")
+                    } else {
+                        Log.w(TAG, "⚠️ Nikon STA 인증 실패 - 그래도 연결 시도 진행")
+                    }
+                }.onFailure { Log.w(TAG, "⚠️ Nikon STA 인증 중 예외 - 연결 시도 계속", it) }
             }
 
             // =========================
@@ -859,32 +923,9 @@ class PtpipDataSource @Inject constructor(
             fun isInitOk(r: String?): Boolean =
                 r == "OK" || r == "GP_OK" || r?.contains("Success", ignoreCase = true) == true
 
-            // HEALTHY 프로브: 미승인(HOLLOW) 상태면 카메라가 실제 opcode를 0x2005로 거부한다.
-            // getCameraAbilities류는 정적 드라이버표라 HOLLOW/HEALTHY 동일 → 무의미. HOLLOW에서만 실패하는
-            // "실제 동작"을 쏴서 판별한다:
-            //  (1) 단일 config 조회(get_single_config, 메모리카드 무관·경량) → 성공("성공:")이면 HEALTHY
-            //  (2) 스토리지 조회(0x1004) → OR 결합(카드 없을 때 (1)이, 카드 있을 때 (2)가 커버)
-            // ⚠️ queryConfig(전체 설정 트리)는 Nikon ~수백 프로퍼티를 PTP로 일일이 왕복해 18초+ 큐 타임아웃까지
-            //    유발하므로 프로브에선 금지. getConfigString 단독은 get_single_config 우선이라 트리 빌드 없이 경량.
-            // ⚠️ getConfigString은 실패 시에도 "실패: ..." 비-blank 문자열을 반환하므로 반드시 "성공" 접두로 판정한다
-            //    (단순 isNotBlank 판정은 HOLLOW의 "실패:"까지 HEALTHY로 오판 → 미승인 연결 통과 버그).
-            fun probeOnce(): Boolean {
-                // HEALTHY 판별: 경량 노출 프로퍼티(get_single_config: iso/d0b5/d054/shutterspeed/f-number…) 읽기.
-                // libgphoto2 2.5.34 업그레이드 후 Z8/Z9는 GetDevicePropDesc 를 0x2005/0x200a 로 거부한다.
-                // 이전 프로브(getConfigString("batterylevel")=전체 config 트리)는 healthy 에서도 0x2005 폭주+"실패",
-                // getStorageInfoNative 는 무선 카드 거부(-6) → 둘 다 거짓 음성으로 성공한 연결을 닫고 재init(-7)
-                // 하던 STA 회귀의 원인이었다. synth-dpd 우회가 적용된 경량 read 경로로 판별한다:
-                //  HEALTHY → 노출 프로퍼티가 읽혀 children 에 항목("name") 생성, HOLLOW(미승인) → 전부 0x2005 → 빈 children.
-                val expOk = runCatching {
-                    CameraNative.getLiveExposureJson().contains("\"name\"")
-                }.getOrDefault(false)
-                if (expOk) return true
-                // 폴백: 노출 프로퍼티가 없는 기종은 스토리지로 생존 확인.
-                return runCatching { CameraNative.getStorageInfoNative() != null }.getOrDefault(false)
-            }
-            // 1회 성공이면 HEALTHY. 실패 시 1회 더 확인 → Z8의 일시적 프로브 실패(배터리 조회 순간
-            // 타임아웃 등)가 HOLLOW로 오판돼 불필요한 Phase1(세션 소모)을 타는 것을 막는다.
-            fun probeCameraHealthy(): Boolean = probeOnce() || probeOnce()
+            // [2.5.34] desc 기반 HEALTHY 프로브 제거: Z8/Z9 가 GetDevicePropDesc 를 0x2005/0x200a 로 막아
+            // config-read(전체 트리·get_single_config) 프로브가 healthy 연결도 거짓 음성을 내, 성공한 연결을
+            // 닫고 재init(-7) 시키던 STA 회귀의 원인이었다. init 성공 자체를 ready 로 본다(아래 ready=initOk 참고).
 
             // 연결 준비 판정 = init 성공 + (Nikon STA면) 카메라가 전체 opcode 노출(=0x935a 승인 전환 완료).
             // ⚠️ 고정 delay 제거: 승인 전환은 비동기·시간 가변(핫스팟 RTT/펌웨어 의존)이라 "기다릴 시간"을
@@ -908,7 +949,12 @@ class PtpipDataSource @Inject constructor(
             // 여기선 init + healthy 프로브만 하고, 일시적 핸드셰이크 실패(-7)나 승인 직후 일시 hollow면 backoff 재시도.
             var initResult = runLibGphotoInit()
             var initOk = isInitOk(initResult)
-            var ready = initOk && (!requireHealthy || probeCameraHealthy())
+            // ready = init 성공만으로 판정. libgphoto2 2.5.34 에서 Z8/Z9 는 GetDevicePropDesc 를 0x2005/0x200a
+            // 로 막아(synth-dpd 우회는 전체 _get_config 경로에서만 동작) batterylevel/get_single_config 기반
+            // healthy 프로브가 healthy 연결도 거짓 음성 → 성공한 연결을 close+재init(-7) 하던 STA 회귀의 원인.
+            // 미승인 첫-페어링은 camera_init 이 -7 로 실패하므로(=init OK 면 승인·healthy 확정), 아래 재시도 루프가
+            // 승인 대기를 그대로 처리한다. 따라서 desc 기반 프로브를 ready 게이트에서 제거한다.
+            var ready = initOk
             while (!ready && android.os.SystemClock.elapsedRealtime() < readyDeadlineMs) {
                 runCatching { CameraNative.closeCamera() }
                 directRetries++
@@ -925,7 +971,7 @@ class PtpipDataSource @Inject constructor(
                 backoffMs = (backoffMs * 2).coerceAtMost(1500L)
                 initResult = runLibGphotoInit()
                 initOk = isInitOk(initResult)
-                ready = initOk && (!requireHealthy || probeCameraHealthy())
+                ready = initOk
             }
             if (ready && requireHealthy) {
                 Log.i(TAG, "✅ Nikon 승인 확인됨 - 카메라가 전체 opcode 노출")

@@ -844,7 +844,9 @@ class NikonAuthenticationService @Inject constructor(
         buffer.putInt(PtpipConstants.PTPIP_INIT_COMMAND_REQUEST)
         buffer.put(commandGuid)
         buffer.put(hostNameBytes)
-        buffer.putInt(0x00010001)
+        // 프로토콜 버전: minor=0x0000, major=0x0001 → 0x00010000.
+        // WTU 캡처(tt2cpa.pcapng)·libgphoto2 ptpip.c 와 동일하게 맞춘다(기존 0x00010001 = minor 1 오기).
+        buffer.putInt(0x00010000)
 
         return buffer.array()
     }
