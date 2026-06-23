@@ -88,7 +88,7 @@ fun OpenSourceLicensesScreen(
     val nativeLicenses = listOf(
         NativeLicense(
             name = "libgphoto2",
-            version = "2.5.33.1",
+            version = "2.5.34",
             license = "LGPL-2.1-or-later",
             copyright = "Copyright (c) 2000-2024 The gphoto2 Team",
             url = "https://github.com/gphoto/libgphoto2"
