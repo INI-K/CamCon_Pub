@@ -132,6 +132,12 @@ interface PtpipRepository {
     /** 자동 재연결 활성화/비활성화 */
     fun setAutoReconnectEnabled(enabled: Boolean)
 
+    /** Wi-Fi 모니터링 Foreground Service 시작 (자동 연결 등록 성공 시). */
+    fun startWifiMonitoring()
+
+    /** Wi-Fi 모니터링 서비스 중지 (자동 연결 해제 시). */
+    fun stopWifiMonitoring()
+
     /** 연결 끊어짐 메시지 클리어 */
     fun clearConnectionLostMessage()
 

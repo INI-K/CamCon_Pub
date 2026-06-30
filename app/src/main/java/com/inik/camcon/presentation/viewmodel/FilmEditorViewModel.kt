@@ -8,8 +8,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.inik.camcon.data.processor.FilmAdjustmentProcessor
-import com.inik.camcon.data.processor.FilmThumbnailGenerator
+import com.inik.camcon.domain.repository.FilmEditProcessor
 import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.model.FilmAdjustments
 import com.inik.camcon.domain.model.FilmEdit
@@ -60,8 +59,7 @@ import javax.inject.Inject
 class FilmEditorViewModel @Inject constructor(
     private val filmLutUseCase: FilmLutUseCase,
     private val filmFavoritesUseCase: FilmFavoritesUseCase,
-    private val filmThumbnailGenerator: FilmThumbnailGenerator,
-    private val filmAdjustmentProcessor: FilmAdjustmentProcessor,
+    private val filmEditProcessor: FilmEditProcessor,
     @ApplicationContext private val context: Context,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
@@ -202,7 +200,7 @@ class FilmEditorViewModel @Inject constructor(
                     null
                 } else {
                     runCatching {
-                        filmAdjustmentProcessor.apply(src, lookup, edit.intensity, edit.adjustments)
+                        filmEditProcessor.renderPreview(src, lookup, edit.intensity, edit.adjustments) as? Bitmap
                     }.getOrNull()
                 }
                 setRenderedPreview(out)
@@ -332,7 +330,7 @@ class FilmEditorViewModel @Inject constructor(
             val oldPreview = _previewBitmap.value
             val oldThumb = thumbSource
             cancelAllThumbnailJobs()
-            filmThumbnailGenerator.clear()
+            filmEditProcessor.clearThumbnails()
             _thumbnails.value = emptyMap()
             _previewBitmap.value = preview
             _previewSize.value = previewDim
@@ -357,7 +355,7 @@ class FilmEditorViewModel @Inject constructor(
 
         val job = viewModelScope.launch {
             try {
-                val bmp = filmThumbnailGenerator.generate(sid, source, lutId)
+                val bmp = filmEditProcessor.generateThumbnail(sid, source, lutId) as? Bitmap
                 if (bmp != null && !bmp.isRecycled) {
                     _thumbnails.value = _thumbnails.value + (lutId to bmp)
                 }
@@ -545,7 +543,7 @@ class FilmEditorViewModel @Inject constructor(
         // ViewModel 소멸 시 호출 금지. GPU 싱글톤은 앱 수명 동안 유지하고, 썸네일 LRU 만 비운다.
         _lookupBitmap.value = null
         _thumbnails.value = emptyMap()
-        filmThumbnailGenerator.clear()
+        filmEditProcessor.clearThumbnails()
     }
 
     companion object {
