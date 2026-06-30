@@ -1,7 +1,10 @@
 package com.inik.camcon.data.repository
 
+import android.content.Context
 import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
 import com.inik.camcon.data.datasource.ptpip.PtpipDataSource
+import com.inik.camcon.data.service.WifiMonitoringService
+import dagger.hilt.android.qualifiers.ApplicationContext
 import com.inik.camcon.domain.model.AutoConnectNetworkConfig
 import com.inik.camcon.domain.model.CameraCaptureCallback
 import com.inik.camcon.domain.model.ConnectionMethod
@@ -24,7 +27,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class PtpipRepositoryImpl @Inject constructor(
-    private val ptpipDataSource: PtpipDataSource
+    private val ptpipDataSource: PtpipDataSource,
+    @ApplicationContext private val context: Context
 ) : PtpipRepository {
 
     // ── StateFlow 위임 ──
@@ -154,6 +158,10 @@ class PtpipRepositoryImpl @Inject constructor(
 
     override fun setAutoReconnectEnabled(enabled: Boolean) =
         ptpipDataSource.setAutoReconnectEnabled(enabled)
+
+    override fun startWifiMonitoring() = WifiMonitoringService.start(context)
+
+    override fun stopWifiMonitoring() = WifiMonitoringService.stop(context)
 
     override fun clearConnectionLostMessage() =
         ptpipDataSource.clearConnectionLostMessage()

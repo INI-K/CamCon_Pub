@@ -2,8 +2,7 @@ package com.inik.camcon.presentation.viewmodel
 
 import android.content.Context
 import app.cash.turbine.test
-import com.inik.camcon.data.processor.FilmAdjustmentProcessor
-import com.inik.camcon.data.processor.FilmThumbnailGenerator
+import com.inik.camcon.domain.repository.FilmEditProcessor
 import com.inik.camcon.domain.model.FilmAdjustments
 import com.inik.camcon.domain.model.FilmEdit
 import com.inik.camcon.domain.model.FilmLut
@@ -34,7 +33,7 @@ import java.io.File
  * 검증 범위(자동 가능): 카테고리/검색/즐겨찾기 조합 → [FilmEditorViewModel.visibleLuts] 방출.
  * 제외: 비트맵 디코딩/GPU/썸네일(실기기 필요) — [setSourceImage]/[requestThumbnail] 미호출.
  *
- * 협력자: [FilmLutUseCase]/[FilmFavoritesUseCase]/[FilmThumbnailGenerator] = relaxed mock.
+ * 협력자: [FilmLutUseCase]/[FilmFavoritesUseCase]/[FilmEditProcessor] = relaxed mock.
  * GPU init(initializeGPU) 은 relaxed mock 으로 no-op.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -44,8 +43,7 @@ class FilmEditorViewModelTest {
 
     private lateinit var filmLutUseCase: FilmLutUseCase
     private lateinit var filmFavoritesUseCase: FilmFavoritesUseCase
-    private lateinit var thumbnailGenerator: FilmThumbnailGenerator
-    private lateinit var adjustmentProcessor: FilmAdjustmentProcessor
+    private lateinit var filmEditProcessor: FilmEditProcessor
     private lateinit var context: Context
 
     private val favoritesFlow = MutableStateFlow<Set<String>>(emptySet())
@@ -63,8 +61,7 @@ class FilmEditorViewModelTest {
         Dispatchers.setMain(testDispatcher)
         filmLutUseCase = mockk(relaxed = true)
         filmFavoritesUseCase = mockk(relaxed = true)
-        thumbnailGenerator = mockk(relaxed = true)
-        adjustmentProcessor = mockk(relaxed = true)
+        filmEditProcessor = mockk(relaxed = true)
         context = mockk(relaxed = true)
 
         coEvery { filmLutUseCase.getAvailableLuts() } returns catalog
@@ -81,8 +78,7 @@ class FilmEditorViewModelTest {
         FilmEditorViewModel(
             filmLutUseCase = filmLutUseCase,
             filmFavoritesUseCase = filmFavoritesUseCase,
-            filmThumbnailGenerator = thumbnailGenerator,
-            filmAdjustmentProcessor = adjustmentProcessor,
+            filmEditProcessor = filmEditProcessor,
             context = context,
             ioDispatcher = testDispatcher
         )

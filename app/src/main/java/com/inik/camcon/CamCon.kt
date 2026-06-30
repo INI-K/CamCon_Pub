@@ -343,8 +343,7 @@ class CamCon : Application() {
             applicationScope.launch(Dispatchers.IO) {
                 try {
                     if (CameraNative.isLibrariesLoaded()) {
-                        CameraNative.closeCamera()
-                        CameraNative.closeLogFile()
+                        NativeLifecycle.closeCameraAndLog()
                         Log.d(TAG, "네이티브 리소스 정리 완료")
                     } else {
                         Log.w(TAG, "네이티브 라이브러리가 로딩되지 않아 정리 생략")
