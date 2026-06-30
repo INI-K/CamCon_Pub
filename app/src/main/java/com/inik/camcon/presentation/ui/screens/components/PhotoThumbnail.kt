@@ -337,26 +337,10 @@ private fun ExifAwareThumbnail(
                 }
 
                 if (originalBitmap != null) {
-                    // 5. EXIF 표준 회전 적용 (F30: 90→90/180→180/270→270 — 역방향 매핑 수정,
-                    //    ImageProcessingUtils.applyRotationFromExif·PhotoDownloadManager와 통일)
-                    fun rotate(degrees: Float): android.graphics.Bitmap = try {
-                        val matrix = android.graphics.Matrix()
-                        matrix.postRotate(degrees)
-                        android.graphics.Bitmap.createBitmap(
-                            originalBitmap, 0, 0,
-                            originalBitmap.width, originalBitmap.height,
-                            matrix, true
-                        ).also { if (it != originalBitmap) originalBitmap.recycle() }
-                    } catch (e: Exception) {
-                        Log.e("PhotoThumbnail", "${degrees.toInt()}도 회전 실패: ${photo.name}", e)
-                        originalBitmap
-                    }
-                    val rotatedBmp = when (fullExif) {
-                        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> rotate(90f)
-                        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> rotate(180f)
-                        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> rotate(270f)
-                        else -> originalBitmap
-                    }
+                    // 5. EXIF 표준 회전 적용 (공통 헬퍼 applyExifRotationToThumbnail 사용)
+                    val rotatedBmp = applyExifRotationToThumbnail(
+                        originalBitmap, fullExif, photo.name, "PhotoThumbnail"
+                    )
 
                     // 6. ImageBitmap으로 변환
                     try {
@@ -397,6 +381,37 @@ private fun ExifAwareThumbnail(
     } ?: run {
         // 로딩 중이거나 실패 시 플레이스홀더
         ThumbnailPlaceholder()
+    }
+}
+
+/**
+ * 썸네일용 EXIF 표준 회전 적용 (F30: 90→90/180→180/270→270 — 역방향 매핑 수정).
+ * PhotoThumbnail / FluidPhotoThumbnail 공통 로직 (로그 태그만 호출부별 구분).
+ * 회전이 발생하면 원본 비트맵은 recycle 한다.
+ */
+private fun applyExifRotationToThumbnail(
+    originalBitmap: android.graphics.Bitmap,
+    fullExif: Int,
+    photoName: String,
+    logTag: String
+): android.graphics.Bitmap {
+    fun rotate(degrees: Float): android.graphics.Bitmap = try {
+        val matrix = android.graphics.Matrix()
+        matrix.postRotate(degrees)
+        android.graphics.Bitmap.createBitmap(
+            originalBitmap, 0, 0,
+            originalBitmap.width, originalBitmap.height,
+            matrix, true
+        ).also { if (it != originalBitmap) originalBitmap.recycle() }
+    } catch (e: Exception) {
+        Log.e(logTag, "${degrees.toInt()}도 회전 실패: $photoName", e)
+        originalBitmap
+    }
+    return when (fullExif) {
+        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> rotate(90f)
+        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> rotate(180f)
+        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> rotate(270f)
+        else -> originalBitmap
     }
 }
 
@@ -760,25 +775,10 @@ private fun FluidExifAwareThumbnail(
                 }
 
                 if (originalBitmap != null) {
-                    // 5. EXIF 표준 회전 적용 (F30: 90→90/180→180/270→270 — 역방향 매핑 수정)
-                    fun rotate(degrees: Float): android.graphics.Bitmap = try {
-                        val matrix = android.graphics.Matrix()
-                        matrix.postRotate(degrees)
-                        android.graphics.Bitmap.createBitmap(
-                            originalBitmap, 0, 0,
-                            originalBitmap.width, originalBitmap.height,
-                            matrix, true
-                        ).also { if (it != originalBitmap) originalBitmap.recycle() }
-                    } catch (e: Exception) {
-                        Log.e("FluidPhotoThumbnail", "${degrees.toInt()}도 회전 실패: ${photo.name}", e)
-                        originalBitmap
-                    }
-                    val rotatedBmp = when (fullExif) {
-                        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> rotate(90f)
-                        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> rotate(180f)
-                        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> rotate(270f)
-                        else -> originalBitmap
-                    }
+                    // 5. EXIF 표준 회전 적용 (공통 헬퍼 applyExifRotationToThumbnail 사용)
+                    val rotatedBmp = applyExifRotationToThumbnail(
+                        originalBitmap, fullExif, photo.name, "FluidPhotoThumbnail"
+                    )
 
                     // 6. ImageBitmap으로 변환
                     try {
