@@ -148,21 +148,26 @@ class PtpipDiscoveryHelper @Inject constructor(
                 onDiscoveringChanged(true)
                 onErrorChanged(null)
 
-                if (!ptpipRepository.isWifiConnected()) {
-                    val errorMsg = "Wi-Fi가 연결되어 있지 않습니다. Wi-Fi를 켜고 네트워크에 연결해주세요."
+                // 폰 핫스팟(STA_PHONE_HOTSPOT) 모드에선 폰이 SoftAP라서 Wi-Fi 클라이언트 연결이 없어
+                // isWifiConnected()=false 가 정상이다(폰이 게이트웨이). 따라서 클라이언트 연결도 없고
+                // 핫스팟도 꺼져 있을 때(=진짜로 네트워크 없음)에만 차단하고, 핫스팟이 켜져 있으면 진행한다.
+                val networkState = ptpipRepository.getCurrentWifiNetworkState()
+                if (!ptpipRepository.isWifiConnected() && !networkState.isHotspotEnabled) {
+                    val errorMsg = "Wi-Fi가 연결되어 있지 않습니다. Wi-Fi를 켜고 네트워크에 연결하거나 핫스팟을 켜주세요."
                     Log.w(TAG, errorMsg)
                     onErrorChanged(errorMsg)
                     return@launch
                 }
 
-                val networkState = ptpipRepository.getCurrentWifiNetworkState()
                 if (networkState.isConnectedToCameraAP) {
                     Log.i(TAG, "AP 모드 연결 감지됨: ${LogMask.ssid(networkState.ssid)}")
+                } else if (networkState.isHotspotEnabled) {
+                    Log.i(TAG, "폰 핫스팟(STA_PHONE_HOTSPOT) 모드 감지됨")
                 } else {
                     Log.i(TAG, "STA 모드 또는 일반 네트워크 연결")
                 }
 
-                Log.i(TAG, "Wi-Fi 연결 확인됨, 카메라 검색 시작...")
+                Log.i(TAG, "네트워크 확인됨, 카메라 검색 시작...")
                 val cameras = ptpipRepository.discoverCameras(forceApMode)
 
                 Log.i(TAG, "카메라 검색 완료: ${cameras.size}개 발견")
