@@ -4,7 +4,7 @@ import com.inik.camcon.data.datasource.nativesource.NativeFileDataSource
 import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.model.file.CameraFileInfoModel
 import com.inik.camcon.domain.model.file.CameraThumbnailResult
-import com.inik.camcon.domain.model.file.StorageInfo
+import com.inik.camcon.domain.model.file.DetailedStorageInfo
 import com.inik.camcon.domain.repository.CameraFileRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.channels.awaitClose
@@ -71,7 +71,7 @@ class CameraFileRepositoryImpl @Inject constructor(
             ?: throw IllegalStateException("Download by handle failed: $handle")
     }
 
-    override suspend fun getDetailedStorageInfo(): Result<StorageInfo> = runCatching {
+    override suspend fun getDetailedStorageInfo(): Result<DetailedStorageInfo> = runCatching {
         val json = nativeDataSource.getDetailedStorageInfo()
         parseStorageInfo(json)
     }
@@ -125,9 +125,9 @@ class CameraFileRepositoryImpl @Inject constructor(
         awaitClose { /* 네이티브 호출은 동기 완료. 별도 정리 불필요. */ }
     }.flowOn(ioDispatcher)
 
-    private fun parseStorageInfo(json: String): StorageInfo {
+    private fun parseStorageInfo(json: String): DetailedStorageInfo {
         val obj = JSONObject(json)
-        return StorageInfo(
+        return DetailedStorageInfo(
             label = obj.optString("label", ""),
             description = obj.optString("description", ""),
             totalKB = obj.optLong("totalKB", 0),

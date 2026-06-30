@@ -1,6 +1,6 @@
 package com.inik.camcon.presentation.viewmodel
 
-import com.inik.camcon.domain.model.file.StorageInfo
+import com.inik.camcon.domain.model.file.DetailedStorageInfo
 import com.inik.camcon.domain.usecase.file.*
 import com.inik.camcon.di.ApplicationScope
 import kotlinx.coroutines.CoroutineScope
@@ -31,8 +31,8 @@ class CameraFileManager @Inject constructor(
     private val clearRecentCapturedPathsUseCase: ClearRecentCapturedPathsUseCase,
     @ApplicationScope private val scope: CoroutineScope
 ) {
-    private val _storageInfo = MutableStateFlow<StorageInfo?>(null)
-    val storageInfo: StateFlow<StorageInfo?> = _storageInfo.asStateFlow()
+    private val _storageInfo = MutableStateFlow<DetailedStorageInfo?>(null)
+    val storageInfo: StateFlow<DetailedStorageInfo?> = _storageInfo.asStateFlow()
 
     private val _isOperating = MutableStateFlow(false)
     val isOperating: StateFlow<Boolean> = _isOperating.asStateFlow()

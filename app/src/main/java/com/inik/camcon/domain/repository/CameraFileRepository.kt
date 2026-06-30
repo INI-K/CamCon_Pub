@@ -2,7 +2,7 @@ package com.inik.camcon.domain.repository
 
 import com.inik.camcon.domain.model.file.CameraFileInfoModel
 import com.inik.camcon.domain.model.file.CameraThumbnailResult
-import com.inik.camcon.domain.model.file.StorageInfo
+import com.inik.camcon.domain.model.file.DetailedStorageInfo
 import kotlinx.coroutines.flow.Flow
 
 interface CameraFileRepository {
@@ -17,7 +17,7 @@ interface CameraFileRepository {
     suspend fun removeFolder(parentFolder: String, folderName: String): Result<Boolean>
     suspend fun readFileChunk(path: String, offset: Long, size: Int): Result<ByteArray>
     suspend fun downloadByObjectHandle(handle: Long): Result<ByteArray>
-    suspend fun getDetailedStorageInfo(): Result<StorageInfo>
+    suspend fun getDetailedStorageInfo(): Result<DetailedStorageInfo>
     suspend fun initializeCache(): Result<Boolean>
     suspend fun invalidateFileCache(): Result<Boolean>
     suspend fun getRecentCapturedPaths(maxCount: Int): Result<List<String>>
