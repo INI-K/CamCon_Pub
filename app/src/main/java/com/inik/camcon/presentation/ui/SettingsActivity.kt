@@ -777,14 +777,21 @@ fun SettingsScreen(
                 val isNativeLogCaptureEnabled by appSettingsViewModel.isNativeLogCaptureEnabled.collectAsStateWithLifecycle()
 
                 SettingsSection(title = stringResource(R.string.settings_v2_section_admin)) {
-                    ClickableRowV2(
-                        icon = Icons.Default.CameraAlt,
-                        title = stringResource(R.string.settings_v2_mock_camera_title),
-                        subtitle = stringResource(R.string.settings_v2_mock_camera_subtitle),
-                        onClick = {
-                            context.startActivity(Intent(context, MockCameraActivity::class.java))
-                        }
-                    )
+                    // MockCameraActivity 는 src/debug 전용(릴리스 바이너리 제외) → 정적 참조 금지.
+                    // debug 빌드에서만 행을 노출하고 리플렉션으로 진입한다.
+                    if (BuildConfig.SHOW_DEVELOPER_FEATURES) {
+                        ClickableRowV2(
+                            icon = Icons.Default.CameraAlt,
+                            title = stringResource(R.string.settings_v2_mock_camera_title),
+                            subtitle = stringResource(R.string.settings_v2_mock_camera_subtitle),
+                            onClick = {
+                                runCatching {
+                                    val cls = Class.forName("com.inik.camcon.presentation.ui.MockCameraActivity")
+                                    context.startActivity(Intent(context, cls))
+                                }
+                            }
+                        )
+                    }
                     ClickableRowV2(
                         icon = Icons.Default.Info,
                         title = stringResource(R.string.settings_v2_camera_abilities_title),
