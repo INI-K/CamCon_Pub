@@ -395,7 +395,7 @@ class PtpipConnectionHelper @Inject constructor(
                     preferencesRepository.setAutoConnectEnabled(true)
                     lastConnectedWifiConfig = updatedConfig
 
-                    com.inik.camcon.data.service.WifiMonitoringService.start(appContext)
+                    ptpipRepository.startWifiMonitoring()
                     Log.d(TAG, "WifiMonitoringService 시작됨")
 
                     onResult(true, suggestionResult.message)
@@ -414,7 +414,7 @@ class PtpipConnectionHelper @Inject constructor(
                 }
                 preferencesRepository.setAutoConnectEnabled(false)
 
-                com.inik.camcon.data.service.WifiMonitoringService.stop(appContext)
+                ptpipRepository.stopWifiMonitoring()
                 Log.d(TAG, "WifiMonitoringService 중지됨")
 
                 onResult(

@@ -743,8 +743,7 @@ class MainActivity : ComponentActivity() {
         private fun cleanupNativeResources(label: String) {
             Thread {
                 try {
-                    com.inik.camcon.CameraNative.closeCamera()
-                    com.inik.camcon.CameraNative.closeLogFile()
+                    com.inik.camcon.NativeLifecycle.closeCameraAndLog()
                     LogcatManager.d(TAG, "$label: 네이티브 리소스 정리 완료")
                 } catch (e: Exception) {
                     LogcatManager.w(TAG, "$label: 네이티브 리소스 정리 중 오류", e)
@@ -944,7 +943,7 @@ class MainActivity : ComponentActivity() {
                 LogcatManager.d(TAG, "카메라 정리 후 앱 재시작 시작")
 
                 // 카메라 정리 완료 콜백을 사용한 안전한 재시작
-                com.inik.camcon.CameraNative.closeCameraAsync(
+                com.inik.camcon.NativeLifecycle.closeCameraAsync(
                     object : com.inik.camcon.CameraCleanupCallback {
                         override fun onCleanupComplete(success: Boolean, message: String) {
                             LogcatManager.d(TAG, "카메라 정리 완료: success=$success, message=$message")
@@ -953,7 +952,7 @@ class MainActivity : ComponentActivity() {
                             android.os.Handler(android.os.Looper.getMainLooper()).post {
                                 try {
                                     // 로그 파일도 닫기
-                                    com.inik.camcon.CameraNative.closeLogFile()
+                                    com.inik.camcon.NativeLifecycle.closeLogFile()
 
                                     // 시스템 재시작 메커니즘 사용
                                     val packageManager = activity.packageManager
