@@ -633,9 +633,10 @@ class PtpipDataSource @Inject constructor(
                 return _discoveredCameras.value
             }
 
-            // Wi-Fi 연결 상태 확인
-            if (!wifiHelper.isWifiConnected()) {
-                Log.w(TAG, "Wi-Fi 네트워크에 연결되어 있지 않음")
+            // Wi-Fi 연결 상태 확인. 단 폰 핫스팟(STA_PHONE_HOTSPOT) 모드에선 폰이 SoftAP라
+            // 클라이언트 연결이 없는 게 정상이므로, 핫스팟이 켜져 있으면 mDNS 검색을 진행한다.
+            if (!wifiHelper.isWifiConnected() && !wifiHelper.isHotspotEnabled()) {
+                Log.w(TAG, "Wi-Fi 네트워크에 연결되어 있지 않음 (핫스팟도 꺼짐)")
                 return emptyList()
             }
 
