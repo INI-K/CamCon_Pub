@@ -4,10 +4,10 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
-import androidx.exifinterface.media.ExifInterface
 import com.inik.camcon.data.processor.FilmAdjustmentProcessor
 import com.inik.camcon.data.processor.FilmLutProcessor
 import com.inik.camcon.data.processor.FilmThumbnailGenerator
+import com.inik.camcon.data.util.BitmapIoUtils
 import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.model.FilmEdit
 import com.inik.camcon.domain.model.FilmLut
@@ -75,7 +75,7 @@ class FilmLutRepositoryImpl @Inject constructor(
                 resultBitmap.compress(Bitmap.CompressFormat.JPEG, 95, out)
             }
 
-            runCatching { copyExifMetadata(originalImagePath, outputPath) }
+            runCatching { BitmapIoUtils.copyExifMetadata(originalImagePath, outputPath, "CamCon - Film Simulation Applied") }
                 .onFailure { Log.w(TAG, "EXIF 복사 실패: ${it.message}") }
 
             FilmLutResult(
@@ -111,7 +111,7 @@ class FilmLutRepositoryImpl @Inject constructor(
 
             val resultBitmap = applyToBitmap(inputBitmap, lut.assetPath, intensity)
                 ?: return@withContext null
-            saveBitmapToTempFile(resultBitmap)
+            BitmapIoUtils.saveBitmapToTempFile(resultBitmap, "film_lut_")
         } catch (e: Exception) {
             Log.e(TAG, "applyFilmLut 실패", e)
             null
@@ -147,7 +147,7 @@ class FilmLutRepositoryImpl @Inject constructor(
                 resultBitmap.compress(Bitmap.CompressFormat.JPEG, 95, out)
             }
 
-            runCatching { copyExifMetadata(originalImagePath, outputPath) }
+            runCatching { BitmapIoUtils.copyExifMetadata(originalImagePath, outputPath, "CamCon - Film Simulation Applied") }
                 .onFailure { Log.w(TAG, "EXIF 복사 실패: ${it.message}") }
 
             FilmLutResult(
@@ -177,11 +177,11 @@ class FilmLutRepositoryImpl @Inject constructor(
             inputBitmapToRecycle = inputBitmap
 
             val resultBitmap = applyEditToBitmap(inputBitmap, edit) ?: return@withContext null
-            val tempPath = saveBitmapToTempFile(resultBitmap) ?: return@withContext null
+            val tempPath = BitmapIoUtils.saveBitmapToTempFile(resultBitmap, "film_lut_") ?: return@withContext null
             // 결과는 픽셀 미회전으로 저장하고 원본의 orientation 태그(및 EXIF)를 복사해 보존한다.
             // 프리뷰(FilmEditorViewModel.decodeDownscaled)는 픽셀을 회전해 표시하므로, export 는 태그만
             // 보존하면 갤러리가 회전을 적용해 최종 표시가 프리뷰와 일치한다(이중회전 없음).
-            runCatching { copyExifMetadata(inputImagePath, tempPath) }
+            runCatching { BitmapIoUtils.copyExifMetadata(inputImagePath, tempPath, "CamCon - Film Simulation Applied") }
                 .onFailure { Log.w(TAG, "EXIF 복사 실패: ${it.message}") }
             tempPath
         } catch (e: Exception) {
@@ -293,50 +293,4 @@ class FilmLutRepositoryImpl @Inject constructor(
         }
     }
 
-    private fun saveBitmapToTempFile(bitmap: Bitmap): String? {
-        var tempFile: File? = null
-        return try {
-            tempFile = File.createTempFile("film_lut_", ".jpg")
-            FileOutputStream(tempFile).use { out ->
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 95, out)
-            }
-            bitmap.recycle()
-            tempFile.absolutePath
-        } catch (e: Exception) {
-            Log.e(TAG, "임시 파일 저장 실패: ${e.message}")
-            bitmap.recycle()
-            tempFile?.delete()
-            null
-        }
-    }
-
-    private fun copyExifMetadata(inputImagePath: String, outputPath: String) {
-        val inputExif = ExifInterface(inputImagePath)
-        val outputExif = ExifInterface(outputPath)
-        val tagsToPreserve = arrayOf(
-            ExifInterface.TAG_DATETIME,
-            ExifInterface.TAG_DATETIME_ORIGINAL,
-            ExifInterface.TAG_DATETIME_DIGITIZED,
-            ExifInterface.TAG_MAKE,
-            ExifInterface.TAG_MODEL,
-            ExifInterface.TAG_ORIENTATION,
-            ExifInterface.TAG_GPS_LATITUDE,
-            ExifInterface.TAG_GPS_LONGITUDE,
-            ExifInterface.TAG_GPS_LATITUDE_REF,
-            ExifInterface.TAG_GPS_LONGITUDE_REF,
-            ExifInterface.TAG_EXPOSURE_TIME,
-            ExifInterface.TAG_F_NUMBER,
-            ExifInterface.TAG_ISO_SPEED_RATINGS,
-            ExifInterface.TAG_FOCAL_LENGTH,
-            ExifInterface.TAG_APERTURE_VALUE,
-            ExifInterface.TAG_SHUTTER_SPEED_VALUE,
-            ExifInterface.TAG_WHITE_BALANCE,
-            ExifInterface.TAG_FLASH
-        )
-        for (tag in tagsToPreserve) {
-            inputExif.getAttribute(tag)?.let { outputExif.setAttribute(tag, it) }
-        }
-        outputExif.setAttribute(ExifInterface.TAG_SOFTWARE, "CamCon - Film Simulation Applied")
-        outputExif.saveAttributes()
-    }
 }
