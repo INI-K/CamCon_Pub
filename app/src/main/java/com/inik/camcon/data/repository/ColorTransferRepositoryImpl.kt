@@ -4,11 +4,11 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ColorSpace
-import android.graphics.Matrix
 import android.os.Build
 import android.util.Log
 import androidx.exifinterface.media.ExifInterface
 import com.inik.camcon.data.processor.ColorTransferProcessor
+import com.inik.camcon.data.util.BitmapIoUtils
 import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.model.ColorTransferResult
 import com.inik.camcon.domain.repository.ColorTransferRepository
@@ -75,7 +75,7 @@ class ColorTransferRepositoryImpl @Inject constructor(
             )
 
             // 결과를 임시 파일로 저장
-            saveBitmapToTempFile(transferred)
+            BitmapIoUtils.saveBitmapToTempFile(transferred, "color_transfer_")
         } catch (e: Exception) {
             Log.e(TAG, "applyColorTransferWithGPUCached failed", e)
             null
@@ -120,7 +120,7 @@ class ColorTransferRepositoryImpl @Inject constructor(
             }
 
             // 결과를 임시 파일로 저장
-            saveBitmapToTempFile(transferred)
+            BitmapIoUtils.saveBitmapToTempFile(transferred, "color_transfer_")
         } catch (e: Exception) {
             Log.e(TAG, "applyColorTransfer failed", e)
             null
@@ -166,7 +166,7 @@ class ColorTransferRepositoryImpl @Inject constructor(
 
                 if (result != null) {
                     Log.d(TAG, "GPU color transfer succeeded")
-                    return@withContext saveBitmapToTempFile(result)
+                    return@withContext BitmapIoUtils.saveBitmapToTempFile(result, "color_transfer_")
                 } else {
                     Log.w(TAG, "GPU color transfer failed - CPU fallback")
                 }
@@ -187,7 +187,7 @@ class ColorTransferRepositoryImpl @Inject constructor(
             )
 
             Log.d(TAG, "CPU fallback complete")
-            saveBitmapToTempFile(result)
+            BitmapIoUtils.saveBitmapToTempFile(result, "color_transfer_")
         } catch (e: Exception) {
             Log.e(TAG, "Color transfer failed", e)
             null
@@ -244,7 +244,7 @@ class ColorTransferRepositoryImpl @Inject constructor(
 
             // 원본 이미지의 EXIF 메타데이터 복사
             try {
-                copyExifMetadata(originalImagePath, outputPath)
+                BitmapIoUtils.copyExifMetadata(originalImagePath, outputPath, "CamCon - Color Transfer Applied (Optimized)")
                 Log.d(TAG, "EXIF metadata copied successfully")
             } catch (e: Exception) {
                 Log.w(TAG, "EXIF metadata copy failed: ${e.message}")
@@ -319,23 +319,13 @@ class ColorTransferRepositoryImpl @Inject constructor(
         )
 
         return when (orientation) {
-            ExifInterface.ORIENTATION_ROTATE_90 -> rotateBitmap(bitmap, 90)
-            ExifInterface.ORIENTATION_ROTATE_180 -> rotateBitmap(bitmap, 180)
-            ExifInterface.ORIENTATION_ROTATE_270 -> rotateBitmap(bitmap, 270)
+            ExifInterface.ORIENTATION_ROTATE_90 -> BitmapIoUtils.rotateBitmap(bitmap, 90)
+            ExifInterface.ORIENTATION_ROTATE_180 -> BitmapIoUtils.rotateBitmap(bitmap, 180)
+            ExifInterface.ORIENTATION_ROTATE_270 -> BitmapIoUtils.rotateBitmap(bitmap, 270)
             else -> bitmap
         }
     }
 
-    private fun rotateBitmap(bitmap: Bitmap, degrees: Int): Bitmap {
-        val matrix = Matrix()
-        matrix.postRotate(degrees.toFloat())
-        val rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
-        // 회전 사본이 생성됐으면 원본은 즉시 회수해 순간 2× 메모리 피크를 줄인다
-        if (rotated != bitmap) {
-            bitmap.recycle()
-        }
-        return rotated
-    }
 
     /**
      * GPU(EGL pbuffer) 경로 입력을 텍스처/메모리 한도 내로 다운스케일한다.
@@ -397,63 +387,5 @@ class ColorTransferRepositoryImpl @Inject constructor(
         }
     }
 
-    private fun copyExifMetadata(inputImagePath: String, outputPath: String) {
-        val inputExif = ExifInterface(inputImagePath)
-        val outputExif = ExifInterface(outputPath)
 
-        val tagsToPreserve = arrayOf(
-            ExifInterface.TAG_DATETIME,
-            ExifInterface.TAG_DATETIME_ORIGINAL,
-            ExifInterface.TAG_DATETIME_DIGITIZED,
-            ExifInterface.TAG_MAKE,
-            ExifInterface.TAG_MODEL,
-            ExifInterface.TAG_ORIENTATION,
-            ExifInterface.TAG_GPS_LATITUDE,
-            ExifInterface.TAG_GPS_LONGITUDE,
-            ExifInterface.TAG_GPS_LATITUDE_REF,
-            ExifInterface.TAG_GPS_LONGITUDE_REF,
-            ExifInterface.TAG_EXPOSURE_TIME,
-            ExifInterface.TAG_F_NUMBER,
-            ExifInterface.TAG_ISO_SPEED_RATINGS,
-            ExifInterface.TAG_FOCAL_LENGTH,
-            ExifInterface.TAG_APERTURE_VALUE,
-            ExifInterface.TAG_SHUTTER_SPEED_VALUE,
-            ExifInterface.TAG_WHITE_BALANCE,
-            ExifInterface.TAG_FLASH
-        )
-
-        var copiedTags = 0
-        for (tag in tagsToPreserve) {
-            inputExif.getAttribute(tag)?.let { value ->
-                outputExif.setAttribute(tag, value)
-                copiedTags++
-            }
-        }
-
-        outputExif.setAttribute(
-            ExifInterface.TAG_SOFTWARE,
-            "CamCon - Color Transfer Applied (Optimized)"
-        )
-
-        outputExif.saveAttributes()
-        Log.d(TAG, "EXIF metadata copied: $copiedTags tags")
-    }
-
-    private fun saveBitmapToTempFile(bitmap: Bitmap): String? {
-        var tempFile: File? = null
-        return try {
-            tempFile = File.createTempFile("color_transfer_", ".jpg")
-            FileOutputStream(tempFile).use { outputStream ->
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 95, outputStream)
-            }
-            bitmap.recycle()
-            tempFile.absolutePath
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to save bitmap to temp file: ${e.message}")
-            bitmap.recycle()
-            // 압축/쓰기 실패 시 잔존 임시파일 정리 (캐시 디렉토리 누적 방지)
-            tempFile?.delete()
-            null
-        }
-    }
 }
