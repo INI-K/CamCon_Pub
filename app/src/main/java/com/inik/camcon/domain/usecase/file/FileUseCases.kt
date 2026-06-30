@@ -1,7 +1,7 @@
 package com.inik.camcon.domain.usecase.file
 
 import com.inik.camcon.domain.model.file.CameraFileInfoModel
-import com.inik.camcon.domain.model.file.StorageInfo
+import com.inik.camcon.domain.model.file.DetailedStorageInfo
 import com.inik.camcon.domain.repository.CameraFileRepository
 import javax.inject.Inject
 
@@ -82,7 +82,7 @@ class DownloadByObjectHandleUseCase @Inject constructor(
 class GetDetailedStorageInfoUseCase @Inject constructor(
     private val repository: CameraFileRepository
 ) {
-    suspend operator fun invoke(): Result<StorageInfo> = repository.getDetailedStorageInfo()
+    suspend operator fun invoke(): Result<DetailedStorageInfo> = repository.getDetailedStorageInfo()
 }
 
 class InitializeCacheUseCase @Inject constructor(

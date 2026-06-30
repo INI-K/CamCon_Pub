@@ -56,7 +56,6 @@ import com.inik.camcon.domain.repository.SubscriptionRepository
 import com.inik.camcon.domain.repository.UsbDeviceRepository
 import com.inik.camcon.domain.util.Logger
 import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
-import com.inik.camcon.presentation.viewmodel.CameraOperationsManager
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -164,36 +163,43 @@ abstract class RepositoryModule {
     ): AppSettingsRepository
 
     @Binds
+    @Singleton
     abstract fun bindAdvancedCaptureRepository(
         impl: CameraAdvancedCaptureRepositoryImpl
     ): CameraAdvancedCaptureRepository
 
     @Binds
+    @Singleton
     abstract fun bindFocusRepository(
         impl: CameraFocusRepositoryImpl
     ): CameraFocusRepository
 
     @Binds
+    @Singleton
     abstract fun bindFileRepository(
         impl: CameraFileRepositoryImpl
     ): CameraFileRepository
 
     @Binds
+    @Singleton
     abstract fun bindConfigRepository(
         impl: CameraConfigRepositoryImpl
     ): CameraConfigRepository
 
     @Binds
+    @Singleton
     abstract fun bindStreamingRepository(
         impl: CameraStreamingRepositoryImpl
     ): CameraStreamingRepository
 
     @Binds
+    @Singleton
     abstract fun bindDiagnosticsRepository(
         impl: CameraDiagnosticsRepositoryImpl
     ): CameraDiagnosticsRepository
 
     @Binds
+    @Singleton
     abstract fun bindMockRepository(
         impl: CameraMockRepositoryImpl
     ): CameraMockRepository

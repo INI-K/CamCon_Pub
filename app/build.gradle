@@ -140,18 +140,6 @@ android {
             signingConfig hasReleaseSigning ? signingConfigs.release : null
             buildConfigField "boolean", "SHOW_DEVELOPER_FEATURES", "false"
         }
-
-//        // 릴리즈 최적화 + 디버깅 가능
-//        releaseDebug {
-//            initWith release
-//            debuggable true
-//            minifyEnabled false
-//            shrinkResources false
-//            applicationIdSuffix ".release.debug"
-//            versionNameSuffix "-release-debug"
-//            matchingFallbacks = ['release', 'debug']
-//            buildConfigField "boolean", "SHOW_DEVELOPER_FEATURES", "true"
-//        }
     }
 
     compileOptions {
@@ -316,8 +304,6 @@ dependencies {
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2'
     // Firebase await() 사용
-
-    implementation "com.google.android.material:material:1.12.0"
 
     implementation "androidx.activity:activity-compose:1.10.1"
     implementation("androidx.activity:activity-ktx:1.10.1")

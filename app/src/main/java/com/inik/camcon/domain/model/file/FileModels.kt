@@ -1,6 +1,6 @@
 package com.inik.camcon.domain.model.file
 
-data class StorageInfo(
+data class DetailedStorageInfo(
     val label: String,
     val description: String,
     val totalKB: Long,

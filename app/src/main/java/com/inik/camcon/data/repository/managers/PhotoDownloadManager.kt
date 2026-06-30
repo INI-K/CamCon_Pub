@@ -24,7 +24,7 @@ import com.inik.camcon.domain.usecase.ColorTransferUseCase
 import com.inik.camcon.domain.usecase.FilmLutUseCase
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
-import com.inik.camcon.domain.usecase.camera.PhotoCaptureEventManager
+import com.inik.camcon.domain.manager.PhotoCaptureEventManager
 import com.inik.camcon.utils.Constants
 import com.inik.camcon.utils.LogMask
 import com.inik.camcon.di.IoDispatcher

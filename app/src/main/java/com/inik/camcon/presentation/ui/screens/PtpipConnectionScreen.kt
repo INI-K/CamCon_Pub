@@ -59,6 +59,9 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -253,9 +256,14 @@ fun PtpipConnectionScreen(
 
     // 📡 물리 셔터 무선 수신 모드 상태 + 안내(Toast)
     val isShutterListening by ptpipViewModel.isShutterListening.collectAsStateWithLifecycle()
+    val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(Unit) {
-        ptpipViewModel.shutterListenMessage.collect { message ->
-            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+        // 다른 화면(CameraControl/PhotoPreview)과 동일하게 lifecycle-aware 수집:
+        // 비포그라운드에서 셔터 Toast가 뜨지 않도록 STARTED 구간에서만 collect
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            ptpipViewModel.shutterListenMessage.collect { message ->
+                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            }
         }
     }
 

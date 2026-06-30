@@ -1,4 +1,4 @@
-package com.inik.camcon.domain.usecase.camera
+package com.inik.camcon.domain.manager
 
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
