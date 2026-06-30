@@ -41,7 +41,7 @@ private val UnifiedDarkColorScheme = darkColorScheme(
 
     outline = DividerLine,
     outlineVariant = Surface3,
-    scrim = Overlay,
+    scrim = Surface0.copy(alpha = 0.7f),
 
     inverseSurface = TextPrimaryV2,
     inverseOnSurface = Surface0,
