@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- debug 전용: Mock 카메라 진입 화면은 릴리스 바이너리에서 제외한다(CD-5). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <activity
+            android:name=".presentation.ui.MockCameraActivity"
+            android:exported="false"
+            android:screenOrientation="fullSensor"
+            android:label="Mock Camera 설정" />
+    </application>
+
+</manifest>
