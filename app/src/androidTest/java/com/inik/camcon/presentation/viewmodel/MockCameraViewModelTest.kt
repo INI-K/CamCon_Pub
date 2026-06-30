@@ -61,7 +61,7 @@ class MockCameraViewModelTest {
         every { cameraNative.isLibrariesLoaded() } returns false
 
         // When
-        val viewModel = MockCameraViewModel(cameraNative)
+        val viewModel = MockCameraViewModel(cameraNative, testDispatcher)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
@@ -84,7 +84,7 @@ class MockCameraViewModelTest {
         every { cameraNative.getMockCameraInfo() } returns createMockCameraInfoJson()
         every { cameraNative.enableMockCamera(true) } returns true
 
-        val viewModel = MockCameraViewModel(cameraNative)
+        val viewModel = MockCameraViewModel(cameraNative, testDispatcher)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // When
@@ -107,7 +107,7 @@ class MockCameraViewModelTest {
         every { cameraNative.getMockCameraInfo() } returns createMockCameraInfoJson()
         every { cameraNative.enableMockCamera(true) } returns false
 
-        val viewModel = MockCameraViewModel(cameraNative)
+        val viewModel = MockCameraViewModel(cameraNative, testDispatcher)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // When
@@ -129,7 +129,7 @@ class MockCameraViewModelTest {
         every { cameraNative.getMockCameraInfo() } returns createMockCameraInfoJson()
         every { cameraNative.setMockCameraDelay(1000) } returns true
 
-        val viewModel = MockCameraViewModel(cameraNative)
+        val viewModel = MockCameraViewModel(cameraNative, testDispatcher)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // When
@@ -151,7 +151,7 @@ class MockCameraViewModelTest {
         every { cameraNative.getMockCameraInfo() } returns createMockCameraInfoJson()
         every { cameraNative.setMockCameraAutoCapture(true, 5000) } returns true
 
-        val viewModel = MockCameraViewModel(cameraNative)
+        val viewModel = MockCameraViewModel(cameraNative, testDispatcher)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // When
@@ -175,7 +175,7 @@ class MockCameraViewModelTest {
         every { cameraNative.getMockCameraInfo() } returns createMockCameraInfoJson()
         every { cameraNative.setMockCameraModel("Canon", "Canon EOS R5") } returns true
 
-        val viewModel = MockCameraViewModel(cameraNative)
+        val viewModel = MockCameraViewModel(cameraNative, testDispatcher)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // When

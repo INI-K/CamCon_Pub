@@ -150,11 +150,6 @@
             android:screenOrientation="fullSensor"
             android:label="오픈소스 라이선스" />
         <activity
-            android:name=".presentation.ui.MockCameraActivity"
-            android:exported="false"
-            android:screenOrientation="fullSensor"
-            android:label="Mock Camera 설정" />
-        <activity
             android:name=".presentation.ui.CameraAbilitiesActivity"
             android:exported="false"
             android:screenOrientation="portrait"
