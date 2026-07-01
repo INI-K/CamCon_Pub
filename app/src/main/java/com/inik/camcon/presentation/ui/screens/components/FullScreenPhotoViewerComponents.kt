@@ -250,6 +250,14 @@ fun PhotoPagerImage(
             .data(imageModel)
             .allowHardware(false)
             .crossfade(true)
+            // RAW(NEF 등)는 Coil 이 EXIF orientation 을 안 씌워 세로컷이 눕는다 → RAW 만 방향 보정(전체화면도 목록과 동일).
+            .apply {
+                if (com.inik.camcon.domain.util.SubscriptionUtils.isRawFile(photo.path)) {
+                    transformations(
+                        com.inik.camcon.presentation.ui.util.RawExifRotationTransformation(photo.path)
+                    )
+                }
+            }
             .listener(
                 onStart = { request ->
                     Log.d("PhotoPagerImage", "이미지 로딩 시작: ${photo.name}")
