@@ -658,7 +658,7 @@ private fun PortraitCameraLayout(
 
     // V2 StatusBar — 카메라 연결 상태 라벨
     val statusKind = when {
-        uiState.isConnected && uiState.isNativeCameraConnected -> StatusKind.Connected
+        uiState.isConnected && (uiState.isNativeCameraConnected || uiState.isPtpipConnected) -> StatusKind.Connected
         uiState.isUsbInitializing -> StatusKind.Connecting
         uiState.error != null -> StatusKind.Error
         else -> StatusKind.Idle
@@ -669,7 +669,11 @@ private fun PortraitCameraLayout(
     val disconnectedLabel = stringResource(R.string.camera_disconnected)
     val statusLabel = when (statusKind) {
         StatusKind.Connected -> {
-            val model = cameraFeed.firstOrNull()?.name
+            // 드라이버 플레이스홀더("PTP/IP Camera") 대신 실제 DeviceInfo 모델(cameraCapabilities.model)을 우선.
+            val model = uiState.cameraCapabilities?.model
+                ?.takeIf { it.isNotBlank() && !it.equals("PTP/IP Camera", ignoreCase = true) }
+                ?: cameraFeed.firstOrNull()?.name
+                    ?.takeIf { !it.equals("PTP/IP Camera", ignoreCase = true) }
             if (model.isNullOrBlank()) connectedLabel else "$connectedLabel · $model"
         }
         StatusKind.Connecting -> connectingLabel
@@ -1394,6 +1398,14 @@ private fun RecentCaptureItem(
                             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                                 colorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
                             }
+                            // RAW(NEF 등)는 Coil 이 EXIF orientation 을 안 씌워 세로컷이 눕는다 → RAW 만 방향 보정.
+                            if (com.inik.camcon.domain.util.SubscriptionUtils.isRawFile(photo.filePath)) {
+                                transformations(
+                                    com.inik.camcon.presentation.ui.util.RawExifRotationTransformation(
+                                        photo.filePath
+                                    )
+                                )
+                            }
                         }
                         .build(),
                     contentDescription = stringResource(R.string.camera_control_captured_photo),
@@ -1519,6 +1531,14 @@ private fun AnimatedPhotoSwitcher(
                             // sRGB 색공간 설정
                             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                                 colorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
+                            }
+                            // RAW(NEF 등)는 Coil 이 EXIF orientation 을 안 씌워 세로컷이 눕는다 → RAW 만 방향 보정.
+                            if (com.inik.camcon.domain.util.SubscriptionUtils.isRawFile(photo.filePath)) {
+                                transformations(
+                                    com.inik.camcon.presentation.ui.util.RawExifRotationTransformation(
+                                        photo.filePath
+                                    )
+                                )
                             }
                         }
                         .build(),
