@@ -826,8 +826,13 @@ private fun PortraitCameraLayout(
             Column(
                 modifier = Modifier.padding(vertical = Padding.sm)
             ) {
-                // H2: 카메라 컨트롤이 켜져 있으면 라이브뷰 여부와 무관하게 모드 선택을 노출
-                if (appSettings.isCameraControlsEnabled) {
+                // 라이브뷰가 표시 중이면 하단 촬영 컨트롤(모드칩/셔터/AF)을 숨기고 갤러리만 남긴다
+                // (물리셔터 전용 워크플로우). 라이브뷰가 없으면 트리거 캡처용으로 그대로 노출.
+                val liveViewVisuallyActive =
+                    appSettings.isLiveViewEnabled && (uiState.cameraCapabilities?.canLiveView ?: false)
+
+                // 촬영 모드 선택 — 라이브뷰 중엔 숨김
+                if (appSettings.isCameraControlsEnabled && !liveViewVisuallyActive) {
                     ShootingModeSelector(
                         captureState = uiState.capture,
                         isConnected = uiState.isConnected,
@@ -855,12 +860,9 @@ private fun PortraitCameraLayout(
                     )
                 }
 
-                // H2: 카메라 컨트롤이 활성화되어 있고 라이브뷰가 비활성/미지원이어도
-                // 트리거 캡처용 셔터/AF는 항상 노출. CaptureControls 내부 라벨이
-                // "라이브뷰 없이 트리거 캡처"를 표시한다.
-                if (appSettings.isCameraControlsEnabled) {
-                    val supportsLiveView = uiState.cameraCapabilities?.canLiveView ?: false
-                    val liveViewVisuallyActive = appSettings.isLiveViewEnabled && supportsLiveView
+                // 촬영 컨트롤(갤러리/셔터/AF) — 라이브뷰 중엔 통째로 숨기고, 라이브뷰가 없을 때만
+                // 트리거 캡처용으로 노출(CaptureControls 내부 라벨이 "라이브뷰 없이 트리거 캡처" 표시).
+                if (appSettings.isCameraControlsEnabled && !liveViewVisuallyActive) {
                     CaptureControls(
                         captureState = uiState.capture,
                         isConnected = uiState.isConnected,
