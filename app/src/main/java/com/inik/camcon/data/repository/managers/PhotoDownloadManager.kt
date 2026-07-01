@@ -1691,9 +1691,12 @@ class PhotoDownloadManager @Inject constructor(
                 // 임시 파일 삭제
                 tempFile.delete()
 
-                // 실제 저장된 파일 경로 생성 (폴더 구조 포함)
-                val savedPath = buildActualSavedPath(fileName)
-                Log.d(TAG, "✅ MediaStore 저장 성공 (폴더 구조 유지): ${LogMask.path(savedPath)}")
+                // 실제 저장된 파일 경로: 방금 insert 한 URI 의 실경로(DATA)를 우선 사용한다.
+                // buildActualSavedPath(파일명 조립 합성경로)는, 같은 이름의 물리파일이 남아 있어
+                // MediaStore 가 "KAY_0011 (1).JPG" 로 리네임해도 옛 "KAY_0011.JPG"(직전 컷 stale)를
+                // 가리켜, 수신사진 목록/미리보기에 이전 촬영 이미지가 표시되는 버그를 유발한다.
+                val savedPath = getPathFromUri(uri) ?: buildActualSavedPath(fileName)
+                Log.d(TAG, "✅ MediaStore 저장 성공: ${LogMask.path(savedPath)}")
                 savedPath
             } else {
                 Log.e(TAG, "MediaStore URI 생성 실패")

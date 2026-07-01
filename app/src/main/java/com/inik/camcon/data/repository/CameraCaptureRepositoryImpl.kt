@@ -703,12 +703,6 @@ class CameraCaptureRepositoryImpl @Inject constructor(
             )
 
             scope.launch(ioDispatcher) {
-                val actualSize = try {
-                    java.io.File(filePath).length()
-                } catch (_: Exception) {
-                    imageData.size.toLong()
-                }
-
                 val capturedPhoto = CapturedPhoto(
                     id = java.util.UUID.randomUUID().toString(),
                     filePath = filePath,
@@ -717,7 +711,9 @@ class CameraCaptureRepositoryImpl @Inject constructor(
                     captureTime = ExifCaptureTime.parseMillis(imageData) ?: System.currentTimeMillis(),
                     cameraModel = connectionManager.cameraCapabilities.value?.model ?: "알 수 없음",
                     settings = cameraSettingsProvider(),
-                    size = actualSize,
+                    // 크기는 방금 다운로드한 imageData 기준(정본). 합성경로를 File().length() 로
+                    // 재조회하면 stale 물리파일 크기를 읽어 실제 컷과 어긋난다(수정1과 세트).
+                    size = imageData.size.toLong(),
                     width = 0,
                     height = 0,
                     isDownloading = false,
