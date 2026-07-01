@@ -522,73 +522,20 @@ class PtpipDiscoveryService @Inject constructor(
         return try {
             Log.d(TAG, "PTP-IP 연결 테스트: ${LogMask.id(ipAddress)}:$port")
 
+            // ⚠️ InitCommandRequest를 보내지 않는다. Nikon Z8은 abrupt close(CloseSession 없이) 시
+            // PTP/IP 세션을 놓아주지 않고 잠근다(단일 세션만 허용). 프로브가 InitCommandRequest→Ack로
+            // 세션을 세운 뒤 소켓만 닫으면, 뒤따르는 실제 연결(Phase1/libgphoto2)이 전부 InitFail 0x1로
+            // 거부된다 — 패킷 GUID/이름과 무관(랜덤 GUID 프로브도 수락됨). 그래서 포트 개방(TCP connect)
+            // 확인만으로 PTP/IP 카메라 도달성을 판정한다(15740은 PTP/IP 전용 포트).
             java.net.Socket().use { socket ->
-                socket.soTimeout = 3000
                 socket.connect(java.net.InetSocketAddress(ipAddress, port), 3000)
-
-                // PTP-IP Init Command Request 생성 및 전송
-                val initPacket = createPtpipInitRequest()
-                socket.getOutputStream().write(initPacket)
-                socket.getOutputStream().flush()
-
-                // 응답 대기
-                val response = ByteArray(1024)
-                val bytesRead = socket.getInputStream().read(response)
-
-                // PTP-IP ACK 응답 확인
-                if (bytesRead >= 8) {
-                    val buffer =
-                        java.nio.ByteBuffer.wrap(response).order(java.nio.ByteOrder.LITTLE_ENDIAN)
-                    buffer.position(4)
-                    val responseType = buffer.int
-
-                    if (responseType == PtpipConstants.PTPIP_INIT_COMMAND_ACK) {
-                        Log.d(TAG, "PTP-IP 연결 성공: ${LogMask.id(ipAddress)}")
-                        return true
-                    } else {
-                        Log.d(TAG, "PTP-IP 응답 타입 불일치: $responseType")
-                    }
-                } else {
-                    Log.d(TAG, "PTP-IP 응답 길이 부족: $bytesRead bytes")
-                }
-
-                false
+                Log.d(TAG, "PTP-IP 포트 개방 확인: ${LogMask.id(ipAddress)}")
+                socket.isConnected
             }
         } catch (e: Exception) {
             Log.d(TAG, "PTP-IP 연결 실패: ${LogMask.id(ipAddress)} - ${e.message}")
             false
         }
-    }
-
-    /**
-     * PTP-IP Init Command Request 패킷 생성
-     */
-    private fun createPtpipInitRequest(): ByteArray {
-        // PTP-IP 표준 GUID
-        val commandGuid = byteArrayOf(
-            0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
-            0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10
-        )
-
-        // 호스트 이름 (UTF-16LE)
-        val hostName = "Android Camera Controller"
-        val hostNameBytes = hostName.toByteArray(Charsets.UTF_16LE)
-        val nullTerminator = byteArrayOf(0x00, 0x00)
-
-        // 패킷 크기 계산
-        val totalLength = 4 + 4 + 16 + hostNameBytes.size + nullTerminator.size + 4
-        val buffer =
-            java.nio.ByteBuffer.allocate(totalLength).order(java.nio.ByteOrder.LITTLE_ENDIAN)
-
-        // 패킷 구성
-        buffer.putInt(totalLength) // 길이
-        buffer.putInt(PtpipConstants.PTPIP_INIT_COMMAND_REQUEST) // 타입
-        buffer.put(commandGuid) // Connection Number GUID
-        buffer.put(hostNameBytes) // 표시 이름
-        buffer.put(nullTerminator) // 널 종단
-        buffer.putInt(0x00010001) // 프로토콜 버전
-
-        return buffer.array()
     }
 
     /**
