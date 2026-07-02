@@ -68,6 +68,7 @@ class ValidateImageFormatUseCaseTest {
         override val themeMode: Flow<ThemeMode> = MutableStateFlow(ThemeMode.DARK)
         override val isNativeLogCaptureEnabled: Flow<Boolean> = MutableStateFlow(false)
         override val isShutterSoundEnabled: Flow<Boolean> = MutableStateFlow(true)
+        override val isVibrateOnPhotoReceivedEnabled: Flow<Boolean> = MutableStateFlow(false)
         override val isLiveViewGridEnabled: Flow<Boolean> = MutableStateFlow(false)
         override val liveViewQuality: Flow<LiveViewQuality> = MutableStateFlow(LiveViewQuality.BALANCED)
         override val hasSeenCaptureCoachmark: Flow<Boolean> = MutableStateFlow(false)
@@ -101,6 +102,7 @@ class ValidateImageFormatUseCaseTest {
         override suspend fun setNativeLogCaptureEnabled(enabled: Boolean) {}
         override suspend fun setOnboardingCompleted(completed: Boolean) {}
         override suspend fun setShutterSoundEnabled(enabled: Boolean) {}
+        override suspend fun setVibrateOnPhotoReceivedEnabled(enabled: Boolean) {}
         override suspend fun setLiveViewGridEnabled(enabled: Boolean) {}
         override suspend fun setLiveViewQuality(quality: LiveViewQuality) {}
         override suspend fun setHasSeenCaptureCoachmark(seen: Boolean) {}

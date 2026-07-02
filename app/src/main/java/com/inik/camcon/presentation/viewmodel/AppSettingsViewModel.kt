@@ -260,6 +260,17 @@ class AppSettingsViewModel @Inject constructor(
             )
 
     /**
+     * 사진 도착 시 진동 알림 활성화 여부 (기본값: false)
+     */
+    val isVibrateOnPhotoReceivedEnabled: StateFlow<Boolean> =
+        appSettingsRepository.isVibrateOnPhotoReceivedEnabled
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = false
+            )
+
+    /**
      * 라이브뷰 그리드 오버레이 활성화 여부 (기본값: false)
      */
     val isLiveViewGridEnabled: StateFlow<Boolean> =
@@ -560,6 +571,15 @@ class AppSettingsViewModel @Inject constructor(
     fun setShutterSoundEnabled(enabled: Boolean) {
         viewModelScope.launch {
             appSettingsRepository.setShutterSoundEnabled(enabled)
+        }
+    }
+
+    /**
+     * 사진 도착 시 진동 알림 토글
+     */
+    fun setVibrateOnPhotoReceivedEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            appSettingsRepository.setVibrateOnPhotoReceivedEnabled(enabled)
         }
     }
 

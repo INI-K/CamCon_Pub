@@ -29,6 +29,8 @@
     <!-- USB 권한 추가 -->
     <uses-permission android:name="android.permission.USB_PERMISSION" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- 사진 도착 시 진동 알림 (normal 권한) -->
+    <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- 화면이 꺼져도 작동하기 위한 권한 -->

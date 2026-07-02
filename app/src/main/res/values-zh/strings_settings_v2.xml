@@ -8,6 +8,9 @@
     <string name="settings_v2_section_camera_control">相机控制设置（开发版）</string>
     <string name="settings_v2_section_wifi_ptpip">Wi-Fi 相机连接（PTPIP）- 开发版</string>
     <string name="settings_v2_section_color_transfer">色彩传输设置</string>
+    <string name="settings_v2_vibrate_on_photo_title">收到照片时振动</string>
+    <string name="settings_v2_vibrate_on_photo_on">收到照片时短暂振动。</string>
+    <string name="settings_v2_vibrate_on_photo_off">开启后，收到照片时会短暂振动。</string>
     <string name="settings_v2_section_raw_download">RAW 文件下载设置</string>
     <string name="settings_v2_section_connected_camera">已连接相机信息</string>
     <string name="settings_v2_section_user_info">用户信息</string>
@@ -47,10 +50,6 @@
     <string name="settings_v2_wifi_camera_on_last">已启用 - 上次连接: %s</string>
     <string name="settings_v2_wifi_camera_on_none">已启用 - 无已连接相机</string>
     <string name="settings_v2_wifi_camera_off">通过 Wi-Fi 远程控制相机</string>
-    <string name="settings_v2_wifi_connect_title">进行 WIFI 连接</string>
-    <string name="settings_v2_wifi_connect_subtitle">在与相机相同的 Wi-Fi 网络上连接（推荐）</string>
-    <string name="settings_v2_auto_discovery_title">自动搜索相机</string>
-    <string name="settings_v2_auto_discovery_subtitle">在网络中自动查找 PTPIP 相机</string>
     <string name="settings_v2_auto_connect_title">自动连接</string>
     <string name="settings_v2_auto_connect_subtitle">自动连接到上次连接的相机</string>
     <string name="settings_v2_connection_manage_title">相机连接管理</string>
