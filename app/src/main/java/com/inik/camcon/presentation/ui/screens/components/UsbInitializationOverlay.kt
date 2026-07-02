@@ -6,15 +6,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -32,9 +28,12 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.presentation.ui.components.v2.AppDialog
+import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
+import com.inik.camcon.presentation.ui.components.v2.SkeletonLoader
+import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
 import com.inik.camcon.presentation.theme.CamConTheme
-import com.inik.camcon.presentation.theme.Elevation
 import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.Surface0
 
 /**
@@ -51,33 +50,24 @@ fun LoadingOverlay(
             .background(Surface0.copy(alpha = 0.7f)),
         contentAlignment = Alignment.Center
     ) {
-        Card(
-            shape = RoundedCornerShape(Radius.xl),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = Elevation.medium),
-            modifier = Modifier.padding(24.dp)
+        SurfaceV2(
+            tier = 2,
+            border = true,
+            shape = RoundedCornerShape(Radius.md),
+            modifier = Modifier.padding(Spacing.lg)
         ) {
             Column(
-                modifier = Modifier.padding(20.dp),
+                modifier = Modifier.padding(Spacing.md),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                if (progress != null) {
-                    CircularProgressIndicator(
-                        progress = progress,
-                        modifier = Modifier.size(48.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        strokeWidth = 3.dp
-                    )
-                } else {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(48.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        strokeWidth = 3.dp
-                    )
-                }
+                SkeletonLoader(
+                    modifier = Modifier
+                        .width(200.dp)
+                        .height(Spacing.sm)
+                )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(Spacing.md))
 
                 Text(
                     text = message,
@@ -104,36 +94,27 @@ fun UsbInitializationOverlay(
             .background(Surface0.copy(alpha = 0.7f)),
         contentAlignment = Alignment.Center
     ) {
-        Card(
-            shape = RoundedCornerShape(Radius.xl),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = Elevation.medium),
+        SurfaceV2(
+            tier = 2,
+            border = true,
+            shape = RoundedCornerShape(Radius.md),
             modifier = Modifier
-                .padding(32.dp)
+                .padding(Spacing.xl)
                 .width(300.dp)
         ) {
             Column(
                 modifier = Modifier
-                    .padding(24.dp),
+                    .padding(Spacing.lg),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                if (progress != null) {
-                    CircularProgressIndicator(
-                        progress = progress,
-                        modifier = Modifier.size(60.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        strokeWidth = 4.dp
-                    )
-                } else {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(60.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        strokeWidth = 4.dp
-                    )
-                }
+                SkeletonLoader(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(Spacing.sm)
+                )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(Spacing.lg))
 
                 Text(
                     text = message,
@@ -143,7 +124,7 @@ fun UsbInitializationOverlay(
                     fontWeight = FontWeight.Medium
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Spacing.sm))
 
                 Text(
                     text = stringResource(R.string.usb_init_please_wait),
@@ -181,13 +162,13 @@ fun PtpTimeoutDialog(
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Spacing.sm))
                 Text(
                     text = stringResource(R.string.usb_init_restart_fix),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Spacing.sm))
                 Text(
                     text = stringResource(R.string.usb_init_check_instructions),
                     style = MaterialTheme.typography.bodySmall,
@@ -196,11 +177,10 @@ fun PtpTimeoutDialog(
             }
         },
         confirmButton = {
-            Button(
+            PrimaryButton(
+                text = stringResource(R.string.camera_control_app_restart),
                 onClick = onRestartRequest
-            ) {
-                Text(stringResource(R.string.camera_control_app_restart))
-            }
+            )
         },
         dismissButton = {
             TextButton(

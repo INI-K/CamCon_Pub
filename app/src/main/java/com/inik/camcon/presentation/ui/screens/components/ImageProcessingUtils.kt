@@ -5,8 +5,10 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.util.Log
 import android.widget.ImageView
+import androidx.compose.ui.graphics.toArgb
 import androidx.exifinterface.media.ExifInterface
 import com.inik.camcon.domain.model.CameraPhoto
+import com.inik.camcon.presentation.theme.Surface3
 import com.inik.camcon.utils.LogMask
 import java.io.File
 
@@ -190,7 +192,7 @@ object ImageProcessingUtils {
             Log.e("ImageProcessing", "플레이스홀더 설정 오류", e)
             // 오류 발생 시 최소한의 설정
             imageView.setImageDrawable(null)
-            imageView.setBackgroundColor(0xFF444444.toInt()) // 회색 배경
+            imageView.setBackgroundColor(Surface3.toArgb()) // 플레이스홀더 폴백 배경 (CINE Surface3 토큰)
         }
     }
 

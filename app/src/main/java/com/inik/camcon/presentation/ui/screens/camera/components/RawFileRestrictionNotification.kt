@@ -20,10 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Photo
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -36,6 +32,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.inik.camcon.R
+import com.inik.camcon.presentation.theme.ErrorV2
+import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.TextPrimaryV2
+import com.inik.camcon.presentation.theme.TextSecondaryV2
+import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
+import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
 import com.inik.camcon.presentation.viewmodel.RawFileRestriction
 import kotlinx.coroutines.delay
 
@@ -69,17 +72,17 @@ fun RawFileRestrictionNotification(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 36.dp, start = 16.dp, end = 16.dp)
+                .padding(top = 36.dp, start = Spacing.lg, end = Spacing.lg)
         ) {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.error),
-                shape = RoundedCornerShape(12.dp),
-                elevation = CardDefaults.cardElevation(8.dp),
+            SurfaceV2(
+                tier = 2,
+                border = true,
+                shape = RoundedCornerShape(Radius.md),
                 modifier = Modifier.align(Alignment.TopCenter)
             ) {
                 Column(
                     modifier = Modifier
-                        .padding(16.dp)
+                        .padding(Spacing.base)
                         .fillMaxWidth()
                 ) {
                     Row(
@@ -88,13 +91,13 @@ fun RawFileRestrictionNotification(
                         Icon(
                             imageVector = Icons.Default.Photo,
                             contentDescription = stringResource(R.string.cd_raw_notification),
-                            tint = MaterialTheme.colorScheme.onError,
+                            tint = ErrorV2,
                             modifier = Modifier.size(24.dp)
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(Spacing.md))
                         Text(
                             text = stringResource(R.string.camera_control_raw_file_restriction),
-                            color = MaterialTheme.colorScheme.onError,
+                            color = TextPrimaryV2,
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
                         )
                         Spacer(modifier = Modifier.weight(1f))
@@ -102,43 +105,38 @@ fun RawFileRestrictionNotification(
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = stringResource(R.string.cd_close),
-                                tint = MaterialTheme.colorScheme.onError,
+                                tint = TextSecondaryV2,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Spacing.sm))
 
                     Text(
                         text = restriction.fileName,
-                        color = MaterialTheme.colorScheme.onError,
+                        color = TextPrimaryV2,
                         style = MaterialTheme.typography.bodyMedium
                     )
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(Spacing.xs))
 
                     Text(
                         text = restriction.message,
-                        color = MaterialTheme.colorScheme.onError.copy(alpha = 0.9f),
+                        color = TextSecondaryV2,
                         style = MaterialTheme.typography.bodyMedium
                     )
 
                     if (showUpgradeAction) {
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(Spacing.md))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.End
                         ) {
-                            FilledTonalButton(
-                                onClick = onUpgradeClick,
-                                colors = ButtonDefaults.filledTonalButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.onError,
-                                    contentColor = MaterialTheme.colorScheme.error
-                                )
-                            ) {
-                                Text(text = stringResource(R.string.diag_raw_upgrade))
-                            }
+                            PrimaryButton(
+                                text = stringResource(R.string.diag_raw_upgrade),
+                                onClick = onUpgradeClick
+                            )
                         }
                     }
                 }

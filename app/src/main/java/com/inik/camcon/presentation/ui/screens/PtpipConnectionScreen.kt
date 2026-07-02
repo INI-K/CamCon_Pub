@@ -34,7 +34,6 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.Icon
@@ -50,11 +49,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -94,11 +89,14 @@ import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.presentation.theme.Surface2
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.Surface1
+import com.inik.camcon.presentation.theme.IconSize
+import com.inik.camcon.presentation.theme.StrokeWidth
 import com.inik.camcon.presentation.theme.CameraSpec
 import com.inik.camcon.presentation.ui.components.v2.AppDialog
 import com.inik.camcon.presentation.ui.components.v2.IconButtonV2
 import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
 import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
+import com.inik.camcon.presentation.ui.components.v2.SkeletonLoader
 import com.inik.camcon.presentation.ui.components.v2.StatusIndicator
 import com.inik.camcon.presentation.ui.components.v2.StatusKind
 import com.inik.camcon.utils.LogMask
@@ -380,9 +378,9 @@ fun PtpipConnectionScreen(
             text = {
                 Column {
                     Text(stringResource(R.string.ptpip_wifi_scan_restriction_message))
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Spacing.sm))
                     Text(stringResource(R.string.ptpip_wifi_scan_steps))
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(Spacing.xs))
                     Text(stringResource(R.string.ptpip_wifi_scan_step1))
                     Text(stringResource(R.string.ptpip_wifi_scan_step2))
                     Text(stringResource(R.string.ptpip_wifi_scan_step3))
@@ -436,7 +434,7 @@ fun PtpipConnectionScreen(
                         text = stringResource(R.string.ptpip_enter_wifi_password),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                        modifier = Modifier.padding(bottom = 12.dp)
+                        modifier = Modifier.padding(bottom = Spacing.md)
                     )
                     OutlinedTextField(
                         value = passwordForSsid,
@@ -453,13 +451,13 @@ fun PtpipConnectionScreen(
                                     Icon(
                                         Icons.Filled.Visibility,
                                         contentDescription = stringResource(R.string.ptpip_hide_password),
-                                        modifier = Modifier.size(20.dp)
+                                        modifier = Modifier.size(IconSize.md)
                                     )
                                 } else {
                                     Icon(
                                         Icons.Filled.VisibilityOff,
                                         contentDescription = stringResource(R.string.ptpip_show_password),
-                                        modifier = Modifier.size(20.dp)
+                                        modifier = Modifier.size(IconSize.md)
                                     )
                                 }
                             }
@@ -568,12 +566,12 @@ fun PtpipConnectionScreen(
             text = {
                 Column {
                     Text(message)
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Spacing.sm))
                     Text(
                         stringResource(R.string.ptpip_next_steps),
                         fontWeight = FontWeight.Bold
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(Spacing.xs))
                     Text(stringResource(R.string.ptpip_check_wifi))
                     Text(stringResource(R.string.ptpip_check_camera_wifi))
                     Text(stringResource(R.string.ptpip_reconnect_camera))
@@ -906,67 +904,48 @@ fun PtpipConnectionScreen(
         }
     }
 
-    // PTPIP 연결 진행 상황 다이얼로그
+    // PTPIP 연결 진행 상황 다이얼로그 (v2 AppDialog — 연결 중에는 닫을 수 없음)
     if (showConnectionProgressDialog) {
-        Dialog(
+        AppDialog(
             onDismissRequest = { /* 연결 중에는 닫을 수 없음 */ },
             properties = DialogProperties(
                 dismissOnBackPress = false,
                 dismissOnClickOutside = false
-            )
-        ) {
-            Card(
-                shape = MaterialTheme.shapes.medium,
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Surface2
-                ),
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(40.dp),
-                        strokeWidth = 3.dp,
-                        color = MaterialTheme.colorScheme.primary
+            ),
+            title = {
+                Text(
+                    text = connectionProgressMessage.ifEmpty { stringResource(R.string.ptpip_connecting_to_camera) },
+                    style = MaterialTheme.typography.titleSmall,
+                    textAlign = TextAlign.Center
+                )
+            },
+            text = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    // V8: 스피너 대신 v2 SkeletonLoader shimmer 로딩 표시
+                    SkeletonLoader(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(StrokeWidth.thick)
                     )
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    Text(
-                        text = connectionProgressMessage.ifEmpty { stringResource(R.string.ptpip_connecting_to_camera) },
-                        style = MaterialTheme.typography.titleSmall,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
+                    Spacer(modifier = Modifier.height(Spacing.md))
                     Text(
                         text = stringResource(R.string.ptpip_please_wait),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    TextButton(
-                        onClick = {
-                            ptpipViewModel.disconnect()
-                            showConnectionProgressDialog = false
-                        }
-                    ) {
-                        Text(
-                            stringResource(R.string.cancel),
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
                 }
+            },
+            confirmButton = {
+                SecondaryButton(
+                    text = stringResource(R.string.cancel),
+                    onClick = {
+                        ptpipViewModel.disconnect()
+                        showConnectionProgressDialog = false
+                    }
+                )
             }
-        }
+        )
     }
 }
 
