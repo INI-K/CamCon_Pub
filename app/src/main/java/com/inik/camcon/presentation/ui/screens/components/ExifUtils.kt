@@ -9,10 +9,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
 import android.util.Log
 import com.google.gson.Gson
 import com.inik.camcon.R
+import com.inik.camcon.presentation.theme.Body
 
 /**
  * EXIF 메타데이터 파싱 및 포맷팅 유틸리티 함수들
@@ -147,12 +147,12 @@ fun ExifField(
     ) {
         Text(
             text = label,
-            fontSize = 14.sp,
+            style = Body,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
             text = value,
-            fontSize = 14.sp,
+            style = Body,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface
         )
