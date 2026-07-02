@@ -27,13 +27,9 @@ import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Button
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -80,7 +76,13 @@ import com.inik.camcon.domain.model.CapturedPhoto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.Surface0
 import com.inik.camcon.presentation.ui.components.v2.AppDialog
+import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
+import com.inik.camcon.presentation.ui.components.v2.SkeletonLoader
+import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
 import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
 import com.inik.camcon.presentation.viewmodel.ServerPhotosViewModel
 import com.inik.camcon.domain.model.ThemeMode
@@ -143,6 +145,7 @@ fun MyPhotosScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(Surface0)
             .statusBarsPadding()
     ) {
         // 상단 헤더 - 멀티 선택 모드에 따라 다르게 표시
@@ -238,14 +241,13 @@ fun MyPhotosScreen(
             title = { Text(stringResource(R.string.server_photos_delete_photos)) },
             text = { Text(stringResource(R.string.server_photos_delete_confirm, uiState.selectedPhotos.size)) },
             confirmButton = {
-                Button(
+                PrimaryButton(
+                    text = stringResource(R.string.delete),
                     onClick = {
                         viewModel.deleteSelectedPhotos()
                         showDeleteConfirmDialog = false
                     }
-                ) {
-                    Text(stringResource(R.string.delete))
-                }
+                )
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirmDialog = false }) {
@@ -262,7 +264,7 @@ fun MyPhotosScreen(
             contentAlignment = Alignment.BottomCenter
         ) {
             Snackbar(
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier.padding(Spacing.base),
                 containerColor = MaterialTheme.colorScheme.error,
                 contentColor = MaterialTheme.colorScheme.onError,
                 action = {
@@ -291,7 +293,7 @@ private fun ModernMyPhotosHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            .padding(Spacing.base),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -332,9 +334,9 @@ private fun FluidPhotoGrid(
 ) {
     LazyVerticalStaggeredGrid(
         columns = StaggeredGridCells.Fixed(4),
-        contentPadding = PaddingValues(8.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalItemSpacing = 4.dp,
+        contentPadding = PaddingValues(Spacing.sm),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+        verticalItemSpacing = Spacing.xs,
         modifier = Modifier.fillMaxSize()
     ) {
         items(
@@ -403,7 +405,7 @@ private fun FluidPhotoGridItem(
         photo.filePath.substringAfterLast('.', "").lowercase() in RAW_EXTENSIONS
     }
 
-    Card(
+    SurfaceV2(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(aspectRatio)
@@ -411,9 +413,9 @@ private fun FluidPhotoGridItem(
                 onClick = { onClick() },
                 onLongClick = { onLongClick() }
             ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(6.dp),
-        colors = CardDefaults.cardColors(containerColor = if (isSelected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface)
+        tier = if (isSelected) 4 else 2,
+        border = true,
+        shape = RoundedCornerShape(Radius.sm)
     ) {
         Box {
             if (isRawFile) {
@@ -517,19 +519,12 @@ private fun FluidPhotoGridItem(
 
                 when (val thumbnail = thumbnailState.value) {
                     null -> {
-                        // 로딩 중: placeholder
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.surfaceVariant),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                            )
-                        }
+                        // 로딩 중: CINE 정합 스켈레톤 shimmer (그리드 개별 타일이라 발화 억제)
+                        SkeletonLoader(
+                            modifier = Modifier.fillMaxSize(),
+                            shape = RoundedCornerShape(Radius.sm),
+                            announceLoading = false
+                        )
                     }
                     else -> {
                         Image(
@@ -554,7 +549,7 @@ private fun FluidPhotoGridItem(
                 Box(
                     modifier = Modifier
                         .matchParentSize()
-                        .padding(8.dp),
+                        .padding(Spacing.sm),
                     contentAlignment = Alignment.TopEnd
                 ) {
                     Icon(
@@ -571,22 +566,27 @@ private fun FluidPhotoGridItem(
 
 @Composable
 private fun LoadingIndicator() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+    // CINE 정합: 스피너+텍스트 대신 4열 타일 스켈레톤 shimmer로 목록 로딩을 표현.
+    val placeholders = remember {
+        listOf(
+            "s0" to 0.75f, "s1" to 1f, "s2" to 0.66f, "s3" to 1.33f,
+            "s4" to 0.85f, "s5" to 1f, "s6" to 0.7f, "s7" to 1.2f
+        )
+    }
+    LazyVerticalStaggeredGrid(
+        columns = StaggeredGridCells.Fixed(4),
+        contentPadding = PaddingValues(Spacing.sm),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+        verticalItemSpacing = Spacing.xs,
+        modifier = Modifier.fillMaxSize()
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            CircularProgressIndicator(
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(48.dp)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = stringResource(R.string.server_photos_loading),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+        items(items = placeholders, key = { it.first }) { (key, ratio) ->
+            SkeletonLoader(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(ratio),
+                shape = RoundedCornerShape(Radius.sm),
+                announceLoading = key == "s0"
             )
         }
     }
@@ -632,16 +632,17 @@ fun CapturedPhotoItem(
     onDelete: () -> Unit
 ) {
     // 이 함수는 더 이상 사용되지 않음 (그리드뷰로 변경)
-    Card(
+    SurfaceV2(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { /* TODO: 사진 상세 보기 */ },
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        tier = 2,
+        border = true
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(Spacing.md),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // 썸네일
@@ -659,12 +660,12 @@ fun CapturedPhotoItem(
                 contentDescription = null,
                 modifier = Modifier
                     .size(80.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(Radius.sm))
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentScale = ContentScale.Crop
             )
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(Spacing.md))
 
             // 사진 정보
             Column(
@@ -720,7 +721,7 @@ fun MyPhotosMultiSelectActionBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            .padding(Spacing.base),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {

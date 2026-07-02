@@ -19,10 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -62,6 +59,7 @@ import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.ErrorV2
+import com.inik.camcon.presentation.theme.IconSize
 import com.inik.camcon.presentation.theme.MicroLabel
 import com.inik.camcon.presentation.theme.MonoReadout
 import com.inik.camcon.presentation.theme.Spacing
@@ -317,7 +315,7 @@ fun CameraPreviewArea(
                                     imageVector = if (isGridOverlayEnabled) Icons.Default.GridOn else Icons.Default.GridOff,
                                     contentDescription = stringResource(R.string.liveview_grid_toggle),
                                     tint = TextPrimaryV2,
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(IconSize.md)
                                 )
                             }
                         }
@@ -339,7 +337,7 @@ fun CameraPreviewArea(
                                     contentDescription = stringResource(R.string.liveview_histogram_toggle),
                                     tint = if (isHistogramEnabled)
                                         MaterialTheme.colorScheme.primary else TextPrimaryV2,
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(IconSize.md)
                                 )
                             }
                         }
@@ -361,7 +359,7 @@ fun CameraPreviewArea(
                                     contentDescription = stringResource(R.string.liveview_focus_peaking_toggle),
                                     tint = if (isFocusPeakingEnabled)
                                         MaterialTheme.colorScheme.primary else TextPrimaryV2,
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(IconSize.md)
                                 )
                             }
                         }
@@ -384,7 +382,7 @@ fun CameraPreviewArea(
                                         stringResource(liveViewQuality.shortLabelRes())
                                     ),
                                     tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(IconSize.md)
                                 )
                             }
                         }
@@ -410,26 +408,14 @@ fun CameraPreviewArea(
                 }
 
                 // 라이브뷰 중지 버튼 오버레이 — 전체화면은 우측 도크가 제공하므로 숨긴다.
-                if (inlineChromeVisible) Button(
-                    onClick = {
-                        onStopLiveView()
-                    },
+                if (inlineChromeVisible) SecondaryButton(
+                    text = stringResource(R.string.stop_live_view),
+                    onClick = { onStopLiveView() },
+                    leadingIcon = Icons.Default.Stop,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = ErrorV2.copy(alpha = 0.8f)
-                    )
-                ) {
-                    Icon(
-                        Icons.Default.Stop,
-                        contentDescription = stringResource(R.string.cd_stop_live_view),
-                        tint = TextPrimaryV2,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.stop_live_view), color = TextPrimaryV2)
-                }
+                        .padding(Spacing.md)
+                )
             }
         } else if (!connectionState.isConnected) {
             CameraDisconnectedState(
@@ -549,7 +535,7 @@ fun CameraConnectedState(
                 style = MaterialTheme.typography.bodyLarge,
                 textAlign = TextAlign.Center
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(Spacing.sm))
             Text(
                 stringResource(R.string.liveview_not_supported_detail),
                 color = TextSecondaryV2.copy(alpha = 0.7f),
@@ -695,7 +681,7 @@ private fun LiveViewExposureStrip(
                         style = MonoReadout,
                         color = TextPrimaryV2,
                         modifier = Modifier
-                            .padding(bottom = 4.dp)
+                            .padding(bottom = Spacing.xs)
                             .then(
                                 if (cell.manual) Modifier.drawBehind {
                                     val stroke = 2.dp.toPx()

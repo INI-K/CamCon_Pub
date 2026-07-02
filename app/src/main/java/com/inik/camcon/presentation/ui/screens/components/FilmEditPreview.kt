@@ -20,8 +20,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.inik.camcon.R
+import com.inik.camcon.presentation.theme.Radius
 
 /**
  * 편집 화면 대형 프리뷰(설계 §3.3).
@@ -46,7 +46,7 @@ fun FilmEditPreview(
         Box(
             modifier = modifier.background(
                 MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
-                RoundedCornerShape(8.dp)
+                RoundedCornerShape(Radius.md)
             ),
             contentAlignment = Alignment.Center
         ) {
