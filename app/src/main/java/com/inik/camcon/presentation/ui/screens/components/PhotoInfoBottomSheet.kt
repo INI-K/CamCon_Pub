@@ -35,6 +35,9 @@ import androidx.compose.ui.unit.dp
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.presentation.theme.HeadingL
+import com.inik.camcon.presentation.theme.IconSize
+import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
 import com.inik.camcon.utils.LogMask
 import kotlinx.coroutines.Dispatchers
@@ -76,7 +79,7 @@ fun PhotoInfoBottomSheetContent(
         modifier = modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 20.dp)
+            .padding(horizontal = Spacing.lg)
             .padding(bottom = 40.dp)
     ) {
         PhotoInfoBottomSheetHandle()
@@ -87,8 +90,8 @@ fun PhotoInfoBottomSheetContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+                .padding(bottom = Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.lg)
         ) {
             PhotoInfoDateRow(photo = photo, exifInfo = exifInfo.value, isLoading = isLoading.value)
 
@@ -104,15 +107,15 @@ private fun PhotoInfoBottomSheetHandle(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 12.dp),
+            .padding(vertical = Spacing.md),
         contentAlignment = Alignment.Center
     ) {
         Box(
             modifier = Modifier
-                .size(width = 40.dp, height = 4.dp)
+                .size(width = 40.dp, height = Spacing.xs)
                 .background(
                     MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                    RoundedCornerShape(2.dp)
+                    RoundedCornerShape(Radius.sm)
                 )
         )
     }
@@ -123,7 +126,7 @@ private fun PhotoInfoBottomSheetHeader(modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(bottom = 24.dp),
+            .padding(bottom = Spacing.lg),
         horizontalArrangement = Arrangement.Start,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -157,7 +160,7 @@ private fun PhotoInfoDateRow(
             Icon(
                 Icons.Outlined.CalendarToday,
                 contentDescription = null,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(IconSize.lg),
                 tint = MaterialTheme.colorScheme.onSurface
             )
         },
@@ -184,7 +187,7 @@ private fun PhotoInfoFileRow(
             Icon(
                 Icons.Outlined.Image,
                 contentDescription = null,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(IconSize.lg),
                 tint = MaterialTheme.colorScheme.onSurface
             )
         },
@@ -196,7 +199,7 @@ private fun PhotoInfoFileRow(
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(Spacing.xs))
 
                 val fileInfo = buildString {
                     append("${String.format("%.2f", photo.size / 1024.0 / 1024.0)}MB")
@@ -247,7 +250,7 @@ private fun PhotoInfoExifRow(
             Icon(
                 Icons.Outlined.PhotoCamera,
                 contentDescription = null,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(IconSize.lg),
                 tint = MaterialTheme.colorScheme.onSurface
             )
         },
@@ -274,9 +277,9 @@ fun InfoRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp),
+            .padding(horizontal = Spacing.xs),
         verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(Spacing.base)
     ) {
         icon()
         content()
@@ -324,7 +327,7 @@ fun ExifEntriesList(
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm)
     ) {
         val cameraModel = exifEntries["camera_model"]
         if (!cameraModel.isNullOrBlank()) {

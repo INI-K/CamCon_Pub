@@ -17,9 +17,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -52,8 +49,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.inik.camcon.R
-import com.inik.camcon.presentation.theme.Elevation
 import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.StrokeWidth
+import com.inik.camcon.presentation.ui.components.v2.SkeletonLoader
+import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
 import com.inik.camcon.presentation.viewmodel.ColorTransferViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -157,11 +157,12 @@ fun ColorTransferLivePreview(
         }
     }
 
-    Card(
+    SurfaceV2(
         modifier = modifier
             .fillMaxWidth()
             .height(300.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = Elevation.low),
+        tier = 2,
+        border = true,
         shape = RoundedCornerShape(Radius.md)
     ) {
         Box(
@@ -180,7 +181,7 @@ fun ColorTransferLivePreview(
                             modifier = Modifier.size(48.dp),
                             tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(Spacing.sm))
                         Text(
                             text = stringResource(R.string.ct_lp_placeholder_title),
                             style = MaterialTheme.typography.titleMedium,
@@ -205,14 +206,14 @@ fun ColorTransferLivePreview(
                             modifier = Modifier.size(32.dp),
                             tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(Spacing.sm))
                         Text(
                             text = stringResource(R.string.ct_lp_intensity_label, (intensity * 100).toInt()),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(Spacing.xs))
                         Text(
                             text = stringResource(R.string.ct_lp_slider_active_desc),
                             style = MaterialTheme.typography.bodyMedium,
@@ -222,15 +223,16 @@ fun ColorTransferLivePreview(
                 }
 
                 isProcessing -> {
-                    // 처리 중일 때
+                    // 처리 중일 때 — shimmer 스켈레톤 + 강도 라벨 오버레이
+                    SkeletonLoader(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(Spacing.md),
+                        shape = RoundedCornerShape(Radius.md)
+                    )
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(32.dp),
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = stringResource(R.string.ct_lp_processing),
                             style = MaterialTheme.typography.bodyMedium,
@@ -249,7 +251,7 @@ fun ColorTransferLivePreview(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(12.dp),
+                            .padding(Spacing.md),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
@@ -261,7 +263,7 @@ fun ColorTransferLivePreview(
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(Spacing.sm))
 
                         // 처리된 이미지를 크게 표시 (클릭 가능)
                         Box(
@@ -270,7 +272,7 @@ fun ColorTransferLivePreview(
                                 .weight(1f)
                                 .clip(RoundedCornerShape(Radius.md))
                                 .border(
-                                    2.dp,
+                                    StrokeWidth.thick,
                                     MaterialTheme.colorScheme.primary,
                                     RoundedCornerShape(Radius.md)
                                 )
@@ -323,35 +325,26 @@ fun ColorTransferLivePreview(
                                     )
                                 }
                             } else {
-                                // 원본 크기 처리 중 표시
+                                // 원본 크기 처리 중 표시 — shimmer 스켈레톤 + 라벨 오버레이
                                 Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(
-                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                                        ),
+                                    modifier = Modifier.fillMaxSize(),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(24.dp),
-                                            color = MaterialTheme.colorScheme.onPrimary
-                                        )
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            text = stringResource(R.string.ct_lp_processing_full),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onPrimary,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
+                                    SkeletonLoader(
+                                        modifier = Modifier.fillMaxSize(),
+                                        shape = RoundedCornerShape(Radius.md)
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.ct_lp_processing_full),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        fontWeight = FontWeight.Bold
+                                    )
                                 }
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(Spacing.sm))
                         Text(
                             text = stringResource(R.string.ct_lp_result_hint),
                             style = MaterialTheme.typography.bodySmall,
@@ -380,7 +373,7 @@ fun ColorTransferLivePreview(
                                     .clip(RoundedCornerShape(Radius.sm)),
                                 contentScale = ContentScale.Crop
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(Spacing.sm))
                             Text(
                                 text = stringResource(R.string.ct_lp_select_reference_hint),
                                 style = MaterialTheme.typography.bodyMedium,
@@ -407,12 +400,13 @@ fun ColorTransferLivePreview(
                 usePlatformDefaultWidth = false
             )
         ) {
-            Card(
+            SurfaceV2(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(16.dp),
-                shape = RoundedCornerShape(Radius.lg),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    .padding(Spacing.base),
+                tier = 2,
+                border = true,
+                shape = RoundedCornerShape(Radius.lg)
             ) {
                 Column(
                     modifier = Modifier.fillMaxSize()
@@ -421,7 +415,7 @@ fun ColorTransferLivePreview(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
+                            .padding(Spacing.base),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -450,7 +444,7 @@ fun ColorTransferLivePreview(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(16.dp)
+                            .padding(Spacing.base)
                             .clip(RoundedCornerShape(Radius.xl))
                     ) {
                         ZoomableImageWithDoubleTap(

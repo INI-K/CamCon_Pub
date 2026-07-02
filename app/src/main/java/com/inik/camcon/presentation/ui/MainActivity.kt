@@ -80,6 +80,7 @@ import androidx.compose.ui.unit.dp
 import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.IconSize
+import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.StrokeWidth
 import com.inik.camcon.presentation.theme.Surface0
@@ -144,7 +145,7 @@ private fun NavBarIcon(
             modifier = Modifier
                 .width(IconSize.lg)
                 .height(2.dp)
-                .clip(RoundedCornerShape(1.dp))
+                .clip(RoundedCornerShape(Radius.sm))
                 .background(if (selected) Accent else Color.Transparent)
         )
         Spacer(modifier = Modifier.height(Spacing.xs))
@@ -168,7 +169,7 @@ fun CameraConnectionOptimizationDialog(
             )
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 androidx.compose.material3.Text(
                     text = stringResource(R.string.camera_connection_optimization_message),
                     style = androidx.compose.material3.MaterialTheme.typography.bodyLarge
@@ -288,7 +289,7 @@ fun MainScreen(
                 icon = { Icon(Icons.Default.Settings, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                 title = { Text(stringResource(R.string.dialog_restart_required_title), style = MaterialTheme.typography.titleLarge) },
                 text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                         if (isRestarting) {
                             Text(stringResource(R.string.dialog_restart_preparing_title))
                             Text(
@@ -298,7 +299,7 @@ fun MainScreen(
                             )
                         } else {
                             Text(stringResource(R.string.dialog_restart_body))
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(Spacing.sm))
                             Text(
                                 stringResource(R.string.dialog_restart_options),
                                 style = MaterialTheme.typography.bodySmall,
@@ -309,7 +310,7 @@ fun MainScreen(
                 },
                 confirmButton = {
                     if (!isRestarting) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                             SecondaryButton(
                                 text = stringResource(R.string.dialog_later),
                                 onClick = { showRestartDialog = false }
@@ -361,7 +362,7 @@ fun MainScreen(
                     )
                 },
                 text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                         Text(
                             stringResource(R.string.dialog_usb_disconnected_body),
                             style = MaterialTheme.typography.bodyMedium
@@ -404,7 +405,7 @@ fun MainScreen(
                     )
                 },
                 text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                         Text(
                             stringResource(R.string.dialog_camera_check_body),
                             style = MaterialTheme.typography.bodyMedium
@@ -616,12 +617,12 @@ fun MainScreen(
                     )
                 },
                 text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                         Text(
                             stringResource(R.string.dialog_wifi_active_body),
                             style = MaterialTheme.typography.bodyMedium
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(Spacing.sm))
                         Text(
                             stringResource(R.string.dialog_wifi_active_steps_title),
                             style = MaterialTheme.typography.bodyMedium,
@@ -633,7 +634,7 @@ fun MainScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(Spacing.sm))
                         Text(
                             stringResource(R.string.dialog_wifi_active_hint),
                             style = MaterialTheme.typography.bodySmall,

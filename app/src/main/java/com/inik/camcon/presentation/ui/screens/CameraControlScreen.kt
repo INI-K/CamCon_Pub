@@ -71,7 +71,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.GridOff
 import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Photo
-import androidx.compose.material.icons.filled.RotateRight
+import androidx.compose.material.icons.automirrored.filled.RotateRight
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -1261,7 +1261,7 @@ private fun FullscreenCameraLayout(
                             .background(Surface2, CircleShape)
                     ) {
                         Icon(
-                            Icons.Default.RotateRight,
+                            Icons.AutoMirrored.Filled.RotateRight,
                             contentDescription = stringResource(R.string.cd_rotate_180),
                             tint = TextPrimaryV2,
                             modifier = Modifier.size(26.dp)
@@ -1439,7 +1439,7 @@ private fun FullscreenControlPanel(
                 iconSize = 22.dp
             )
             DockCircleButton(
-                icon = Icons.Default.RotateRight,
+                icon = Icons.AutoMirrored.Filled.RotateRight,
                 contentDescription = stringResource(R.string.cd_rotate_180),
                 onClick = { onRotate?.invoke() },
                 enabled = onRotate != null,

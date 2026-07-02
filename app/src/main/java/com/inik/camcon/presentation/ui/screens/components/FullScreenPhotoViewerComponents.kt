@@ -17,7 +17,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -52,7 +51,9 @@ import com.github.panpf.zoomimage.rememberCoilZoomState
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.presentation.ui.components.v2.AppDialog
+import com.inik.camcon.presentation.ui.components.v2.SkeletonLoader
 import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.Surface0
 import com.inik.camcon.presentation.theme.TextPrimaryV2
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
@@ -103,7 +104,7 @@ fun FullScreenTopBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            .padding(Spacing.base),
         horizontalArrangement = Arrangement.Start,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -320,15 +321,10 @@ fun PhotoPagerImage(
 
 @Composable
 fun PhotoPagerLoadingIndicator(modifier: Modifier = Modifier) {
-    Box(
+    SkeletonLoader(
         modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        CircularProgressIndicator(
-            modifier = Modifier.size(48.dp),
-            color = TextPrimaryV2
-        )
-    }
+        shape = RoundedCornerShape(Radius.sm)
+    )
 }
 
 @Composable
@@ -353,15 +349,15 @@ fun FullScreenBottomThumbnails(
         modifier = modifier
             .fillMaxWidth()
             .background(Surface0.copy(alpha = 0.8f))
-            .padding(8.dp)
+            .padding(Spacing.sm)
     ) {
         LazyRow(
             state = lazyListState,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            contentPadding = PaddingValues(horizontal = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(horizontal = Spacing.sm, vertical = Spacing.xs),
+            contentPadding = PaddingValues(horizontal = Spacing.xs),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
         ) {
             itemsIndexed(photos) { index, photo ->
                 val isSelected = index == currentPhotoIndex
@@ -375,7 +371,7 @@ fun FullScreenBottomThumbnails(
                     },
                     modifier = Modifier
                         .size(80.dp)
-                        .clip(RoundedCornerShape(Radius.lg))
+                        .clip(RoundedCornerShape(Radius.sm))
                         .clickable { onPhotoSelected(photo) }
                 )
             }
@@ -403,15 +399,15 @@ fun LocalBottomThumbnailStripWrapper(
         modifier = modifier
             .fillMaxWidth()
             .background(Surface0.copy(alpha = 0.8f))
-            .padding(8.dp)
+            .padding(Spacing.sm)
     ) {
         LazyRow(
             state = lazyListState,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            contentPadding = PaddingValues(horizontal = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(horizontal = Spacing.sm, vertical = Spacing.xs),
+            contentPadding = PaddingValues(horizontal = Spacing.xs),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
         ) {
             itemsIndexed(photos) { index, photo ->
                 val isSelected = index == currentPhotoIndex
@@ -424,7 +420,7 @@ fun LocalBottomThumbnailStripWrapper(
                     },
                     modifier = Modifier
                         .size(80.dp)
-                        .clip(RoundedCornerShape(Radius.lg))
+                        .clip(RoundedCornerShape(Radius.sm))
                         .clickable { onPhotoSelected(photo) }
                 )
             }
@@ -444,9 +440,9 @@ private fun ServerThumbnailItemWrapper(
         modifier = modifier
             .background(
                 if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surfaceVariant,
-                RoundedCornerShape(Radius.lg)
+                RoundedCornerShape(Radius.sm)
             )
-            .clip(RoundedCornerShape(Radius.lg))
+            .clip(RoundedCornerShape(Radius.sm))
     ) {
         if (thumbnailData != null) {
             val bitmap = remember(thumbnailData) {
@@ -488,7 +484,7 @@ private fun ServerThumbnailItemWrapper(
                     .fillMaxSize()
                     .background(
                         MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                        RoundedCornerShape(Radius.lg)
+                        RoundedCornerShape(Radius.sm)
                     )
             )
         }
@@ -506,9 +502,9 @@ private fun LocalThumbnailItemWrapper(
         modifier = modifier
             .background(
                 if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surfaceVariant,
-                RoundedCornerShape(Radius.lg)
+                RoundedCornerShape(Radius.sm)
             )
-            .clip(RoundedCornerShape(Radius.lg))
+            .clip(RoundedCornerShape(Radius.sm))
     ) {
         val bitmap = remember(photo.path) {
             android.graphics.BitmapFactory.decodeFile(photo.path)
@@ -542,7 +538,7 @@ private fun LocalThumbnailItemWrapper(
                     .fillMaxSize()
                     .background(
                         MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                        RoundedCornerShape(Radius.lg)
+                        RoundedCornerShape(Radius.sm)
                     )
             )
         }
@@ -551,16 +547,9 @@ private fun LocalThumbnailItemWrapper(
 
 @Composable
 private fun PhotoThumbnailLoadingState(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surfaceVariant),
-        contentAlignment = Alignment.Center
-    ) {
-        CircularProgressIndicator(
-            modifier = Modifier.size(24.dp),
-            strokeWidth = 2.dp,
-            color = TextPrimaryV2
-        )
-    }
+    SkeletonLoader(
+        modifier = modifier.fillMaxSize(),
+        shape = RoundedCornerShape(Radius.sm),
+        announceLoading = false
+    )
 }

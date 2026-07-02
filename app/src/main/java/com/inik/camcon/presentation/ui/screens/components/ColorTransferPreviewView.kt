@@ -17,14 +17,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -44,6 +39,11 @@ import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.inik.camcon.R
+import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.StrokeWidth
+import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
+import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
 import java.io.File
 
 /**
@@ -58,12 +58,13 @@ fun ColorTransferPreviewView(
     modifier: Modifier = Modifier,
     enabled: Boolean = true
 ) {
-    Card(
+    SurfaceV2(
         modifier = modifier
             .fillMaxWidth()
             .height(420.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        shape = RoundedCornerShape(12.dp)
+        tier = 2,
+        border = true,
+        shape = RoundedCornerShape(Radius.lg)
     ) {
         Column(
             modifier = Modifier.fillMaxSize()
@@ -107,14 +108,14 @@ fun ColorTransferPreviewView(
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(Spacing.sm))
                     Text(
                         text = stringResource(R.string.ct_pv_transfer_label),
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(Spacing.sm))
                     Icon(
                         imageVector = Icons.Default.ArrowDownward,
                         contentDescription = null,
@@ -127,7 +128,7 @@ fun ColorTransferPreviewView(
             // 구분선
             Divider(
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
-                thickness = 1.dp
+                thickness = StrokeWidth.thin
             )
 
             // 하단: 적용 대상 이미지 
@@ -171,7 +172,7 @@ private fun ColorTransferImageSection(
     Box(
         modifier = modifier
             .clickable(enabled = enabled) { onClick() }
-            .padding(16.dp),
+            .padding(Spacing.base),
         contentAlignment = Alignment.Center
     ) {
         if (imagePath != null && File(imagePath).exists()) {
@@ -184,12 +185,12 @@ private fun ColorTransferImageSection(
                 Box(
                     modifier = Modifier
                         .size(120.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(Radius.xl))
                         .border(
-                            1.dp,
+                            StrokeWidth.thin,
                             if (enabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
                             else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
-                            RoundedCornerShape(8.dp)
+                            RoundedCornerShape(Radius.xl)
                         )
                 ) {
                     Image(
@@ -213,7 +214,7 @@ private fun ColorTransferImageSection(
                     )
                 }
 
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(Spacing.base))
 
                 // 이미지 정보
                 Column(
@@ -224,21 +225,21 @@ private fun ColorTransferImageSection(
                         text = title,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = if (enabled) MaterialTheme.colorScheme.onSurface 
+                        color = if (enabled) MaterialTheme.colorScheme.onSurface
                                 else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
-                    
-                    Spacer(modifier = Modifier.height(4.dp))
-                    
+
+                    Spacer(modifier = Modifier.height(Spacing.xs))
+
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (enabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                 else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                     )
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
+
+                    Spacer(modifier = Modifier.height(Spacing.sm))
+
                     val file = File(imagePath)
                     Text(
                         text = stringResource(R.string.ct_pv_file_name, file.name),
@@ -255,7 +256,7 @@ private fun ColorTransferImageSection(
                     )
 
                     if (enabled) {
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(Spacing.sm))
                         Text(
                             text = stringResource(R.string.ct_pv_tap_to_change),
                             style = MaterialTheme.typography.bodySmall,
@@ -278,19 +279,19 @@ private fun ColorTransferImageSection(
                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                 )
                 
-                Spacer(modifier = Modifier.height(12.dp))
-                
+                Spacer(modifier = Modifier.height(Spacing.md))
+
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = if (enabled) MaterialTheme.colorScheme.onSurface 
+                    color = if (enabled) MaterialTheme.colorScheme.onSurface
                             else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     textAlign = TextAlign.Center
                 )
-                
-                Spacer(modifier = Modifier.height(4.dp))
-                
+
+                Spacer(modifier = Modifier.height(Spacing.xs))
+
                 Text(
                     text = placeholder,
                     style = MaterialTheme.typography.bodyMedium,
@@ -298,24 +299,15 @@ private fun ColorTransferImageSection(
                             else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                     textAlign = TextAlign.Center
                 )
-                
+
                 if (enabled) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    OutlinedButton(
+                    Spacer(modifier = Modifier.height(Spacing.sm))
+
+                    SecondaryButton(
+                        text = stringResource(R.string.ct_pv_select),
                         onClick = onClick,
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.primary
-                        )
-                    ) {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(stringResource(R.string.ct_pv_select))
-                    }
+                        leadingIcon = Icons.Default.Add
+                    )
                 }
             }
         }

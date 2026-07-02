@@ -32,6 +32,7 @@ import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.ErrorV2
 import com.inik.camcon.presentation.theme.MicroLabel
 import com.inik.camcon.presentation.theme.MonoMicro
+import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.StrokeWidth
 import com.inik.camcon.presentation.theme.Surface0
@@ -93,7 +94,7 @@ fun TopControlsBar(
                             .border(
                                 width = StrokeWidth.hairline,
                                 color = DividerLine,
-                                shape = RoundedCornerShape(3.dp)
+                                shape = RoundedCornerShape(Radius.sm)
                             )
                             .padding(horizontal = Spacing.sm, vertical = 5.dp)
                     ) {
@@ -200,7 +201,7 @@ private fun HairlineChip(
             .border(
                 width = StrokeWidth.hairline,
                 color = DividerLine,
-                shape = RoundedCornerShape(3.dp)
+                shape = RoundedCornerShape(Radius.sm)
             )
             .padding(horizontal = Spacing.sm, vertical = 3.dp)
     ) {

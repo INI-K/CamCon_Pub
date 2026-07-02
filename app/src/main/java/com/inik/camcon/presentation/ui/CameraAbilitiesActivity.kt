@@ -29,6 +29,10 @@ import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.IconSize
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
+import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
+import com.inik.camcon.presentation.ui.components.v2.SkeletonLoader
+import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.CameraAbilitiesViewModel
 import com.inik.camcon.presentation.viewmodel.CameraDiagnosticsManager
@@ -104,19 +108,30 @@ fun CameraAbilitiesScreen(
     ) { paddingValues ->
         when {
             isLoading -> {
-                Box(
+                Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
+                        .padding(paddingValues)
+                        .padding(Spacing.base),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.base)
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(Spacing.base)
-                    ) {
-                        CircularProgressIndicator()
-                        Text(stringResource(R.string.diag_abilities_loading))
-                    }
+                    SkeletonLoader(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp)
+                    )
+                    SkeletonLoader(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(160.dp),
+                        announceLoading = false
+                    )
+                    SkeletonLoader(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        announceLoading = false
+                    )
                 }
             }
 
@@ -143,9 +158,10 @@ fun CameraAbilitiesScreen(
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.error
                         )
-                        Button(onClick = { viewModel.refresh() }) {
-                            Text(stringResource(R.string.diag_abilities_retry))
-                        }
+                        PrimaryButton(
+                            text = stringResource(R.string.diag_abilities_retry),
+                            onClick = { viewModel.refresh() }
+                        )
                     }
                 }
             }
@@ -168,9 +184,10 @@ fun CameraAbilitiesScreen(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(stringResource(R.string.diag_abilities_not_connected))
-                        OutlinedButton(onClick = { viewModel.refresh() }) {
-                            Text(stringResource(R.string.diag_abilities_refresh))
-                        }
+                        SecondaryButton(
+                            text = stringResource(R.string.diag_abilities_refresh),
+                            onClick = { viewModel.refresh() }
+                        )
                     }
                 }
             }
@@ -202,11 +219,7 @@ private fun CameraAbilitiesContent(
     ) {
         // 카메라 기본 정보
         item {
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
-            ) {
+            SurfaceV2(tier = 2, border = true, modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -249,7 +262,7 @@ private fun CameraAbilitiesContent(
 
         // 연결 정보
         item {
-            Card {
+            SurfaceV2(tier = 2, border = true, modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -389,11 +402,7 @@ private fun CameraAbilitiesContent(
 
         // 비트마스크 원본 값 (개발자용)
         item {
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            ) {
+            SurfaceV2(tier = 2, border = true, modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -422,20 +431,7 @@ private fun CameraAbilitiesContent(
 
         // 종합 평가
         item {
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = when {
-                        abilities.supports.isFullyControllable() ->
-                            MaterialTheme.colorScheme.primaryContainer
-
-                        abilities.supports.isDownloadOnly() ->
-                            MaterialTheme.colorScheme.errorContainer
-
-                        else ->
-                            MaterialTheme.colorScheme.secondaryContainer
-                    }
-                )
-            ) {
+            SurfaceV2(tier = 2, border = true, modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -520,11 +516,7 @@ private fun DiagnosticsSection(
     val memoryStatus by diagnosticsManager.memoryPoolStatus.collectAsState()
     var errorHistory by remember { mutableStateOf<String?>(null) }
 
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer
-        )
-    ) {
+    SurfaceV2(tier = 2, border = true, modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -539,18 +531,12 @@ private fun DiagnosticsSection(
             HorizontalDivider()
 
             // 진단 실행
-            Button(
+            PrimaryButton(
+                text = stringResource(R.string.diag_run_button),
                 onClick = { diagnosticsManager.runFullDiagnostics() },
+                leadingIcon = Icons.Default.PlayArrow,
                 modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    imageVector = Icons.Default.PlayArrow,
-                    contentDescription = null,
-                    modifier = Modifier.size(IconSize.md)
-                )
-                Spacer(modifier = Modifier.width(Spacing.sm))
-                Text(stringResource(R.string.diag_run_button))
-            }
+            )
 
             // 진단 리포트
             val currentReport = report
@@ -583,25 +569,23 @@ private fun DiagnosticsSection(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
             ) {
-                OutlinedButton(
+                SecondaryButton(
+                    text = stringResource(R.string.diag_error_history_load),
                     onClick = {
                         scope.launch {
                             errorHistory = diagnosticsManager.getErrorHistory(50).getOrDefault("")
                         }
                     },
                     modifier = Modifier.weight(1f)
-                ) {
-                    Text(stringResource(R.string.diag_error_history_load))
-                }
-                OutlinedButton(
+                )
+                SecondaryButton(
+                    text = stringResource(R.string.diag_error_history_clear),
                     onClick = {
                         diagnosticsManager.clearErrorHistory()
                         errorHistory = ""
                     },
                     modifier = Modifier.weight(1f)
-                ) {
-                    Text(stringResource(R.string.diag_error_history_clear))
-                }
+                )
             }
             errorHistory?.let { history ->
                 Text(
@@ -624,18 +608,16 @@ private fun DiagnosticsSection(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
             ) {
-                OutlinedButton(
+                SecondaryButton(
+                    text = stringResource(R.string.diag_memory_refresh),
                     onClick = { diagnosticsManager.refreshMemoryPoolStatus() },
                     modifier = Modifier.weight(1f)
-                ) {
-                    Text(stringResource(R.string.diag_memory_refresh))
-                }
-                OutlinedButton(
+                )
+                SecondaryButton(
+                    text = stringResource(R.string.diag_memory_clear_pool),
                     onClick = { diagnosticsManager.clearCameraFilePool() },
                     modifier = Modifier.weight(1f)
-                ) {
-                    Text(stringResource(R.string.diag_memory_clear_pool))
-                }
+                )
             }
             memoryStatus?.let { status ->
                 InfoRow(
@@ -659,7 +641,7 @@ private fun FeatureCard(
     title: String,
     features: List<FeatureItem>
 ) {
-    Card {
+    SurfaceV2(tier = 2, border = true, modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

@@ -2,7 +2,6 @@ package com.inik.camcon.presentation.ui.screens.camera.dialogs
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -12,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.inik.camcon.R
 import com.inik.camcon.presentation.ui.components.v2.AppDialog
+import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
 
 @Composable
 fun CameraRestartDialog(
@@ -38,9 +38,10 @@ fun CameraRestartDialog(
             )
         },
         confirmButton = {
-            Button(onClick = onRestart) {
-                Text(stringResource(R.string.diag_restart_confirm))
-            }
+            PrimaryButton(
+                text = stringResource(R.string.diag_restart_confirm),
+                onClick = onRestart
+            )
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {

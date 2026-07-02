@@ -20,8 +20,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -61,13 +59,14 @@ import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.Surface0
 import com.inik.camcon.presentation.theme.Micro
-import com.inik.camcon.presentation.theme.Elevation
 import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.StrokeWidth
 import com.inik.camcon.presentation.theme.SuccessV2
 import com.inik.camcon.presentation.theme.TextPrimaryV2
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.components.v2.SkeletonLoader
+import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
 import com.inik.camcon.utils.LogMask
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -97,7 +96,9 @@ fun PhotoThumbnail(
         photo.path
     }
 
-    Card(
+    SurfaceV2(
+        tier = 1,
+        shape = RoundedCornerShape(Radius.sm),
         modifier = Modifier
             .aspectRatio(1f)
             .clip(RoundedCornerShape(Radius.sm))
@@ -112,9 +113,7 @@ fun PhotoThumbnail(
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
-            ),
-        elevation = CardDefaults.cardElevation(defaultElevation = Elevation.low),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            )
     ) {
         Box {
             // 선택된 상태일 때 오버레이 추가
@@ -241,7 +240,7 @@ fun PhotoThumbnail(
                     text = photo.name,
                     color = TextPrimaryV2,
                     style = Micro,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = Spacing.xs),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -256,7 +255,7 @@ fun PhotoThumbnail(
                             Surface0.copy(alpha = 0.7f),
                             RoundedCornerShape(bottomStart = Radius.sm, topEnd = Radius.sm)
                         )
-                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                        .padding(horizontal = Spacing.xs, vertical = 2.dp)
                 ) {
                     Text(
                         text = formatFileSize(photo.size),
@@ -520,7 +519,9 @@ fun FluidPhotoThumbnail(
         photo.path
     }
 
-    Card(
+    SurfaceV2(
+        tier = 1,
+        shape = RoundedCornerShape(Radius.sm),
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(aspectRatio)
@@ -536,9 +537,7 @@ fun FluidPhotoThumbnail(
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
-            ),
-        elevation = CardDefaults.cardElevation(defaultElevation = Elevation.low),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            )
     ) {
         Box {
             // 선택된 상태일 때 오버레이 추가
@@ -621,7 +620,7 @@ fun FluidPhotoThumbnail(
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(8.dp)
+                        .padding(Spacing.sm)
                         .size(24.dp)
                         .background(
                             color = if (isSelected) SuccessV2 else TextPrimaryV2.copy(alpha = 0.8f),
@@ -665,7 +664,7 @@ fun FluidPhotoThumbnail(
                     text = photo.name,
                     color = TextPrimaryV2,
                     style = Micro,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = Spacing.xs),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -680,7 +679,7 @@ fun FluidPhotoThumbnail(
                             Surface0.copy(alpha = 0.7f),
                             RoundedCornerShape(bottomStart = Radius.sm, topEnd = Radius.sm)
                         )
-                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                        .padding(horizontal = Spacing.xs, vertical = 2.dp)
                 ) {
                     Text(
                         text = formatFileSize(photo.size),
@@ -875,14 +874,14 @@ fun FeaturedPhotoThumbnail(
         }
     }
 
-    Card(
+    SurfaceV2(
+        tier = 1,
+        shape = RoundedCornerShape(Radius.sm),
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(aspectRatio)
-            .clip(RoundedCornerShape(Radius.xl))
-            .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = Elevation.low),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            .clip(RoundedCornerShape(Radius.sm))
+            .clickable(onClick = onClick)
     ) {
         Box {
             // 이미지 로딩
@@ -960,9 +959,9 @@ fun FeaturedPhotoThumbnail(
                                 Surface0.copy(alpha = 0.7f)
                             )
                         ),
-                        RoundedCornerShape(bottomStart = Radius.xl, bottomEnd = Radius.xl)
+                        RoundedCornerShape(bottomStart = Radius.sm, bottomEnd = Radius.sm)
                     )
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .padding(horizontal = 16.dp, vertical = Spacing.md)
             ) {
                 Column {
                     Text(
@@ -987,12 +986,12 @@ fun FeaturedPhotoThumbnail(
             Box(
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .padding(12.dp)
+                    .padding(Spacing.md)
                     .background(
                         color = MaterialTheme.colorScheme.primary,
                         shape = RoundedCornerShape(Radius.lg)
                     )
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                    .padding(horizontal = Spacing.sm, vertical = Spacing.xs)
             ) {
                 Text(
                     text = stringResource(R.string.photo_thumbnail_latest),

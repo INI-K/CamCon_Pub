@@ -10,12 +10,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
@@ -32,9 +29,14 @@ import com.inik.camcon.domain.model.PtpipCameraInfo
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.DividerLine
-import com.inik.camcon.presentation.theme.Surface2
+import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.StrokeWidth
 import com.inik.camcon.presentation.theme.SuccessV2
 import com.inik.camcon.presentation.theme.WarningV2
+import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
+import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
+import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
 import com.inik.camcon.domain.model.ThemeMode
 
 /**
@@ -49,23 +51,24 @@ fun ConnectionStatusCard(
     onDisconnect: () -> Unit,
     onCapture: () -> Unit
 ) {
-    Card(
+    val cardShape = RoundedCornerShape(Radius.md)
+    SurfaceV2(
         modifier = Modifier
             .fillMaxWidth()
             .border(
-                width = 1.dp,
+                width = StrokeWidth.hairline,
                 color = when (connectionState) {
                     PtpipConnectionState.CONNECTED -> SuccessV2.copy(alpha = 0.3f)
                     PtpipConnectionState.ERROR -> MaterialTheme.colorScheme.error.copy(alpha = 0.3f)
                     else -> DividerLine
                 },
-                shape = MaterialTheme.shapes.medium
+                shape = cardShape
             ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        colors = CardDefaults.cardColors(containerColor = Surface2)
+        tier = 2,
+        shape = cardShape
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(Spacing.base)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically
@@ -81,7 +84,7 @@ fun ConnectionStatusCard(
                     },
                     modifier = Modifier.size(24.dp)
                 )
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(Spacing.md))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = selectedCamera?.name ?: stringResource(R.string.ptpip_camera),
@@ -102,7 +105,7 @@ fun ConnectionStatusCard(
             }
 
             if (cameraInfo != null) {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Spacing.sm))
                 Text(
                     text = "${cameraInfo.manufacturer} ${cameraInfo.model}",
                     style = MaterialTheme.typography.bodySmall,
@@ -111,22 +114,20 @@ fun ConnectionStatusCard(
             }
 
             if (connectionState == PtpipConnectionState.CONNECTED) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(Spacing.md))
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
                 ) {
-                    Button(
+                    PrimaryButton(
+                        text = stringResource(R.string.ptpip_capture),
                         onClick = onCapture,
                         modifier = Modifier.weight(1f)
-                    ) {
-                        Text(stringResource(R.string.ptpip_capture))
-                    }
-                    OutlinedButton(
+                    )
+                    SecondaryButton(
+                        text = stringResource(R.string.ptpip_disconnect),
                         onClick = onDisconnect,
                         modifier = Modifier.weight(1f)
-                    ) {
-                        Text(stringResource(R.string.ptpip_disconnect))
-                    }
+                    )
                 }
             }
         }
