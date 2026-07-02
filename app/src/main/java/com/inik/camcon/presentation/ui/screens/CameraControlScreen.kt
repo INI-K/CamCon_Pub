@@ -145,6 +145,7 @@ import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.WarningAmber
 import com.inik.camcon.presentation.ui.screens.components.CameraPreviewArea
 import com.inik.camcon.presentation.ui.screens.components.CameraSettingsControls
+import com.inik.camcon.presentation.ui.screens.components.LiveViewExposureStrip
 import com.inik.camcon.presentation.ui.screens.components.CaptureControls
 import com.inik.camcon.presentation.ui.screens.components.icon
 import com.inik.camcon.presentation.ui.screens.components.next
@@ -691,14 +692,8 @@ private fun PortraitCameraLayout(
     val errorLabel = stringResource(R.string.error)
     val disconnectedLabel = stringResource(R.string.camera_disconnected)
     val statusLabel = when (statusKind) {
-        StatusKind.Connected -> {
-            // 드라이버 플레이스홀더("PTP/IP Camera") 대신 실제 DeviceInfo 모델(cameraCapabilities.model)을 우선.
-            val model = uiState.cameraCapabilities?.model
-                ?.takeIf { it.isNotBlank() && !it.equals("PTP/IP Camera", ignoreCase = true) }
-                ?: cameraFeed.firstOrNull()?.name
-                    ?.takeIf { !it.equals("PTP/IP Camera", ignoreCase = true) }
-            if (model.isNullOrBlank()) connectedLabel else "$connectedLabel · $model"
-        }
+        // CINE: 모델명은 계기판 바(TopControlsBar) 한 곳에만 표시(중복 제거) — 상태열은 연결 상태만.
+        StatusKind.Connected -> connectedLabel
         StatusKind.Connecting -> connectingLabel
         StatusKind.Error -> errorLabel
         StatusKind.Idle -> disconnectedLabel
@@ -773,7 +768,9 @@ private fun PortraitCameraLayout(
                     onToggleFocusPeaking = onToggleFocusPeaking,
                     currentSettings = uiState.cameraSettings,
                     liveViewQuality = liveViewQuality,
-                    onCycleLiveViewQuality = onCycleLiveViewQuality
+                    onCycleLiveViewQuality = onCycleLiveViewQuality,
+                    // CINE: 노출 스트립은 모니터 아래 독립 행으로 이동. 시작/중지는 좌상단 오버레이 칩.
+                    showInlineExposureStrip = false
                 )
             } else {
                 LogcatManager.d(
@@ -824,6 +821,18 @@ private fun PortraitCameraLayout(
 
             // 상시 "더블클릭으로 전체화면" 힌트 배지 제거(CINE): 1회성 CaptureCoachmarkOverlay 로 흡수.
             // 더블클릭 제스처와 a11y 커스텀 액션("전체화면 전환")은 위에서 그대로 유지된다.
+        }
+
+        // CINE 노출 스트립 — 모니터 '아래' 독립 행(목업 순서: 모니터 → 노출 → 파이프라인).
+        // 라이브뷰 ON/OFF 모두 같은 위치에 표시하고, 값은 마지막 판독(uiState.cameraSettings) 유지.
+        // 6칼럼 균등(fullWidth) + 상하 헤어라인은 LiveViewExposureStrip 내부가 그린다.
+        // 판독값이 하나도 없으면(초기/미연결) 내부에서 스스로 렌더를 생략한다.
+        uiState.cameraSettings?.let { s ->
+            LiveViewExposureStrip(
+                settings = s,
+                fullWidth = true,
+                modifier = Modifier.background(Surface0)
+            )
         }
 
         // CINE 하단 = 이미지 파이프라인 패널. 셔터 버튼·촬영 모드 행은 이 화면 UI에서만 제거

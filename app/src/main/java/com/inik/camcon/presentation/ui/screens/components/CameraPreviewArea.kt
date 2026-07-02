@@ -6,6 +6,8 @@ import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -62,6 +64,7 @@ import com.inik.camcon.presentation.theme.ErrorV2
 import com.inik.camcon.presentation.theme.IconSize
 import com.inik.camcon.presentation.theme.MicroLabel
 import com.inik.camcon.presentation.theme.MonoReadout
+import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.StrokeWidth
 import com.inik.camcon.presentation.theme.Surface0
@@ -135,7 +138,11 @@ fun CameraPreviewArea(
     // 인-LV 화질 순환 컨트롤. 현재값/콜백은 상위(CameraControlScreen)에서 주입(이 컴포넌트가
     // ViewModel을 직접 참조하지 않도록). 둘 다 non-null + inlineChromeVisible 일 때만 칩 노출.
     liveViewQuality: LiveViewQuality? = null,
-    onCycleLiveViewQuality: (() -> Unit)? = null
+    onCycleLiveViewQuality: (() -> Unit)? = null,
+    // CINE 세로 모드는 노출 스트립을 모니터 '아래' 독립 행(PortraitCameraLayout)으로 옮기고,
+    // 라이브뷰 시작/중지는 모니터 좌상단 오버레이 칩으로 대체한다. 이때 false 로 넘겨
+    // 프리뷰 내장 좌상단 노출 HUD와 하단 중지 버튼을 숨긴다. 가로/기타 호출은 기본값 true 로 무변경.
+    showInlineExposureStrip: Boolean = true
 ) {
     Box(
         modifier = modifier
@@ -293,7 +300,8 @@ fun CameraPreviewArea(
                     }
                 }
 
-                // H5 + G7: 우상단 토글 버튼 묶음 (그리드 / 히스토그램 / 포커스 피킹)
+                // CINE 우상단 오버레이 툴바 — 그리드 / 히스토그램 / 포커스 피킹 / HQ.
+                // 목업 언어(전체화면 뷰어 상단바)와 통일: Surface0 60% 각형 헤어라인 칩.
                 // 전체화면은 우측 도크가 토글을 제공하므로(inlineChromeVisible=false) 숨긴다.
                 if (inlineChromeVisible) Row(
                     modifier = Modifier
@@ -303,102 +311,64 @@ fun CameraPreviewArea(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (onToggleGridOverlay != null) {
-                        androidx.compose.material3.Surface(
-                            color = Surface2.copy(alpha = 0.7f),
-                            shape = androidx.compose.foundation.shape.CircleShape
-                        ) {
-                            IconButton(
-                                onClick = onToggleGridOverlay,
-                                modifier = Modifier.size(40.dp)
-                            ) {
-                                Icon(
-                                    imageVector = if (isGridOverlayEnabled) Icons.Default.GridOn else Icons.Default.GridOff,
-                                    contentDescription = stringResource(R.string.liveview_grid_toggle),
-                                    tint = TextPrimaryV2,
-                                    modifier = Modifier.size(IconSize.md)
-                                )
-                            }
-                        }
+                        OverlayToggleChip(
+                            icon = if (isGridOverlayEnabled) Icons.Default.GridOn else Icons.Default.GridOff,
+                            contentDescription = stringResource(R.string.liveview_grid_toggle),
+                            active = isGridOverlayEnabled,
+                            onClick = onToggleGridOverlay
+                        )
                     }
-
                     if (onToggleHistogram != null) {
-                        androidx.compose.material3.Surface(
-                            color = Surface2.copy(
-                                alpha = if (isHistogramEnabled) 0.9f else 0.7f
-                            ),
-                            shape = androidx.compose.foundation.shape.CircleShape
-                        ) {
-                            IconButton(
-                                onClick = onToggleHistogram,
-                                modifier = Modifier.size(40.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.BarChart,
-                                    contentDescription = stringResource(R.string.liveview_histogram_toggle),
-                                    tint = if (isHistogramEnabled)
-                                        MaterialTheme.colorScheme.primary else TextPrimaryV2,
-                                    modifier = Modifier.size(IconSize.md)
-                                )
-                            }
-                        }
+                        OverlayToggleChip(
+                            icon = Icons.Default.BarChart,
+                            contentDescription = stringResource(R.string.liveview_histogram_toggle),
+                            active = isHistogramEnabled,
+                            onClick = onToggleHistogram
+                        )
                     }
-
                     if (onToggleFocusPeaking != null) {
-                        androidx.compose.material3.Surface(
-                            color = Surface2.copy(
-                                alpha = if (isFocusPeakingEnabled) 0.9f else 0.7f
-                            ),
-                            shape = androidx.compose.foundation.shape.CircleShape
-                        ) {
-                            IconButton(
-                                onClick = onToggleFocusPeaking,
-                                modifier = Modifier.size(40.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.CenterFocusWeak,
-                                    contentDescription = stringResource(R.string.liveview_focus_peaking_toggle),
-                                    tint = if (isFocusPeakingEnabled)
-                                        MaterialTheme.colorScheme.primary else TextPrimaryV2,
-                                    modifier = Modifier.size(IconSize.md)
-                                )
-                            }
-                        }
+                        OverlayToggleChip(
+                            icon = Icons.Default.CenterFocusWeak,
+                            contentDescription = stringResource(R.string.liveview_focus_peaking_toggle),
+                            active = isFocusPeakingEnabled,
+                            onClick = onToggleFocusPeaking
+                        )
                     }
-
-                    // 화질 순환 칩(세로 모드) — 탭 시 SPEED→BALANCED→QUALITY 순환. 현재 단계 아이콘 + accent tint.
+                    // HQ — 화질 순환 칩(세로 모드). 탭 시 SPEED→BALANCED→QUALITY 순환.
                     if (onCycleLiveViewQuality != null && liveViewQuality != null) {
-                        androidx.compose.material3.Surface(
-                            color = Surface2.copy(alpha = 0.7f),
-                            shape = androidx.compose.foundation.shape.CircleShape
-                        ) {
-                            IconButton(
-                                onClick = onCycleLiveViewQuality,
-                                modifier = Modifier.size(40.dp)
-                            ) {
-                                Icon(
-                                    imageVector = liveViewQuality.icon(),
-                                    contentDescription = stringResource(
-                                        R.string.cd_cycle_liveview_quality,
-                                        stringResource(liveViewQuality.shortLabelRes())
-                                    ),
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(IconSize.md)
-                                )
-                            }
-                        }
+                        OverlayToggleChip(
+                            icon = liveViewQuality.icon(),
+                            contentDescription = stringResource(
+                                R.string.cd_cycle_liveview_quality,
+                                stringResource(liveViewQuality.shortLabelRes())
+                            ),
+                            active = true,
+                            onClick = onCycleLiveViewQuality
+                        )
                     }
                 }
 
-                // 좌상단 HUD: 노출 스트립 + 히스토그램(토글 ON)을 한 묶음으로.
-                // 기존엔 스트립이 좌하단이라 하단 모드칩과 겹쳤음 → 정보(노출/히스토그램)는 좌상단으로 통합.
+                // CINE 좌상단 오버레이 — 라이브뷰 중지 칩(각형 헤어라인). 노출 스트립은 모니터 아래
+                // 독립 행으로 이동했으므로 여기서는 시작/중지 칩만. 세로 모드(showInlineExposureStrip=false)
+                // 에서만 노출하고, 전체화면(inlineChromeVisible=false)은 우측 도크가 담당한다.
                 Column(
                     modifier = Modifier
                         .align(Alignment.TopStart)
                         .padding(Spacing.md),
                     verticalArrangement = Arrangement.spacedBy(Spacing.sm)
                 ) {
-                    currentSettings?.let { s ->
-                        LiveViewExposureStrip(settings = s)
+                    if (inlineChromeVisible && !showInlineExposureStrip) {
+                        OverlayLabelChip(
+                            icon = Icons.Default.Stop,
+                            label = stringResource(R.string.stop_live_view),
+                            onClick = { onStopLiveView() }
+                        )
+                    }
+                    // 노출 스트립(showInlineExposureStrip)과 히스토그램은 기존 위치 유지(가로/기타 호출 무변경).
+                    if (showInlineExposureStrip) {
+                        currentSettings?.let { s ->
+                            LiveViewExposureStrip(settings = s)
+                        }
                     }
                     if (isHistogramEnabled) {
                         com.inik.camcon.presentation.ui.components.v2.HistogramOverlay(
@@ -407,8 +377,9 @@ fun CameraPreviewArea(
                     }
                 }
 
-                // 라이브뷰 중지 버튼 오버레이 — 전체화면은 우측 도크가 제공하므로 숨긴다.
-                if (inlineChromeVisible) SecondaryButton(
+                // 라이브뷰 중지 버튼(하단 박스) — CINE 세로 모드는 좌상단 칩으로 이동했으므로
+                // showInlineExposureStrip=false 일 땐 숨긴다. 그 외(기본값 true)는 기존 동작 유지.
+                if (inlineChromeVisible && showInlineExposureStrip) SecondaryButton(
                     text = stringResource(R.string.stop_live_view),
                     onClick = { onStopLiveView() },
                     leadingIcon = Icons.Default.Stop,
@@ -617,6 +588,79 @@ private fun formatLiveShutterSpeed(raw: String): String {
     }
 }
 
+/**
+ * CINE 모니터 오버레이 토글 칩 — 아이콘 전용 각형 헤어라인(전체화면 뷰어 상단바 언어와 통일).
+ * Surface0 60% 배경 + 0.5dp 헤어라인, active 시 앰버 tint + 앰버 엣지. 클릭 시 onClick.
+ */
+@Composable
+private fun OverlayToggleChip(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    active: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .size(36.dp)
+            .background(
+                color = Surface0.copy(alpha = 0.6f),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(Radius.sm)
+            )
+            .border(
+                width = StrokeWidth.hairline,
+                color = if (active) Accent.copy(alpha = 0.6f) else DividerLine,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(Radius.sm)
+            )
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = if (active) Accent else TextPrimaryV2,
+            modifier = Modifier.size(IconSize.md)
+        )
+    }
+}
+
+/**
+ * CINE 모니터 오버레이 라벨 칩 — 아이콘 + 텍스트 각형 헤어라인. 라이브뷰 시작/중지처럼
+ * 동작 라벨이 필요할 때 사용. Surface0 60% + 0.5dp 헤어라인, 텍스트는 MicroLabel.
+ */
+@Composable
+private fun OverlayLabelChip(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .background(
+                color = Surface0.copy(alpha = 0.6f),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(Radius.sm)
+            )
+            .border(
+                width = StrokeWidth.hairline,
+                color = DividerLine,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(Radius.sm)
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = Spacing.sm, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = TextPrimaryV2,
+            modifier = Modifier.size(16.dp)
+        )
+        Text(text = label, style = MicroLabel, color = TextPrimaryV2)
+    }
+}
+
 /** 노출 스트립 셀 데이터. manual=true 면 값 하단에 2dp 앰버 언더라인. */
 private data class ExposureCell(
     val label: String,
@@ -629,6 +673,29 @@ private fun isManualExposureValue(value: String): Boolean =
     value.isNotBlank() && !value.equals("auto", ignoreCase = true)
 
 /**
+ * WB 표시값 정규화 — 칼럼 폭 초과 방지(요구 #5). 도메인 값은 불변, 표시 레이어에서만 축약.
+ * "Automatic"/"자동"/"Auto White Balance" → "AUTO", "Daylight"→"DAY" 등 관용 축약을 우선하고,
+ * 매핑에 없고 6자 초과면 앞 6자만 남긴다(모노 칼럼 잘림 대신 결정적 축약).
+ */
+private fun normalizeWhiteBalanceLabel(raw: String): String {
+    val v = raw.trim()
+    val lower = v.lowercase()
+    return when {
+        lower.startsWith("auto") || v == "자동" || lower.contains("automatic") -> "AUTO"
+        lower.startsWith("daylight") || v == "주광" -> "DAY"
+        lower.startsWith("cloud") || v == "흐림" -> "CLOUD"
+        lower.startsWith("shade") || v == "그늘" -> "SHADE"
+        lower.startsWith("tungsten") || lower.startsWith("incandescent") || v == "백열등" -> "TUNG"
+        lower.startsWith("fluorescent") || v == "형광등" -> "FLUO"
+        lower.startsWith("flash") || v == "플래시" -> "FLASH"
+        lower.contains("kelvin") || v.endsWith("K") -> v.filter { it.isDigit() }.ifBlank { "K" } + "K"
+        lower.startsWith("preset") || lower.startsWith("manual") || lower.startsWith("custom") -> "CUST"
+        v.length > 6 -> v.take(6)
+        else -> v
+    }
+}
+
+/**
  * 라이브뷰 노출 텔레메트리 스트립 — CINE 계측기 HUD.
  *
  * 박스 배경 없이 상하 0.5dp 헤어라인 룰 2줄로만 구획한다. 각 칼럼은 대문자 라벨(MicroLabel)과
@@ -636,11 +703,16 @@ private fun isManualExposureValue(value: String): Boolean =
  * 하단 2dp 앰버 언더라인을 넣는다. MODE 칼럼은 카메라 판독값(read-only)으로, exposureMode 가 null 이면
  * 칼럼 자체를 렌더하지 않는다. WB·MODE 는 정보용이라 언더라인 없음. 클릭 불가(read-only).
  * 빈 값/EV 0 은 칼럼을 생략한다.
+ *
+ * CINE 세로 모드는 이 스트립을 모니터 '아래' 독립 행으로 배치한다(PortraitCameraLayout). 이때
+ * fullWidth=true 로 넘기면 6칼럼을 균등(weight)으로 펼쳐 화면 폭 전체를 채운다. 오버레이(가로/기타)
+ * 로 쓸 땐 기본값 false — 내용 폭만 차지한다.
  */
 @Composable
-private fun LiveViewExposureStrip(
+fun LiveViewExposureStrip(
     settings: com.inik.camcon.domain.model.CameraSettings,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    fullWidth: Boolean = false
 ) {
     val labelMode = stringResource(R.string.pipeline_exposure_mode)
     val cells = buildList {
@@ -656,7 +728,7 @@ private fun LiveViewExposureStrip(
         settings.exposureCompensation.takeIf { it.isNotBlank() && it != "0" }
             ?.let { add(ExposureCell("EV", it, manual = true)) }
         settings.whiteBalance.takeIf { it.isNotBlank() }
-            ?.let { add(ExposureCell("WB", it, manual = false)) }
+            ?.let { add(ExposureCell("WB", normalizeWhiteBalanceLabel(it), manual = false)) }
     }
     if (cells.isEmpty()) return
     Column(modifier = modifier) {
@@ -673,7 +745,10 @@ private fun LiveViewExposureStrip(
             horizontalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             cells.forEach { cell ->
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(
+                    modifier = if (fullWidth) Modifier.weight(1f) else Modifier,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                     Text(text = cell.label, style = MicroLabel, color = TextTertiary)
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(

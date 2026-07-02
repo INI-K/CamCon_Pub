@@ -17,9 +17,9 @@
     <!-- 강도 슬라이더 -->
     <string name="ct_intensity_title">色彩转移强度</string>
     <string name="ct_intensity_percent">%d%%</string>
-    <string name="ct_intensity_weak">弱 (1%%)</string>
-    <string name="ct_intensity_strong">强 (100%%)</string>
-    <string name="ct_intensity_recommended">推荐: 3-10%%</string>
+    <string name="ct_intensity_weak">弱 (1%)</string>
+    <string name="ct_intensity_strong">强 (100%)</string>
+    <string name="ct_intensity_recommended">推荐: 3-10%</string>
 
     <!-- 이미지 관리 -->
     <string name="ct_image_management">图片管理</string>
