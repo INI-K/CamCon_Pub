@@ -8,6 +8,9 @@
     <string name="settings_v2_section_camera_control">카메라 제어 설정 (개발 버전)</string>
     <string name="settings_v2_section_wifi_ptpip">Wi-Fi 카메라 연결 (PTPIP) - 개발 버전</string>
     <string name="settings_v2_section_color_transfer">색감 전송 설정</string>
+    <string name="settings_v2_vibrate_on_photo_title">사진 도착 시 진동</string>
+    <string name="settings_v2_vibrate_on_photo_on">사진이 도착하면 짧게 진동합니다.</string>
+    <string name="settings_v2_vibrate_on_photo_off">켜면 사진이 도착할 때 짧게 진동합니다.</string>
     <string name="settings_v2_section_raw_download">RAW 파일 다운로드 설정</string>
     <string name="settings_v2_section_connected_camera">연결된 카메라 정보</string>
     <string name="settings_v2_section_user_info">사용자 정보</string>
@@ -47,10 +50,6 @@
     <string name="settings_v2_wifi_camera_on_last">활성화됨 - 마지막 연결: %s</string>
     <string name="settings_v2_wifi_camera_on_none">활성화됨 - 연결된 카메라 없음</string>
     <string name="settings_v2_wifi_camera_off">Wi-Fi를 통한 카메라 원격 제어</string>
-    <string name="settings_v2_wifi_connect_title">WIFI 연결 하기</string>
-    <string name="settings_v2_wifi_connect_subtitle">카메라와 동일한 Wi-Fi 네트워크에서 연결 (권장)</string>
-    <string name="settings_v2_auto_discovery_title">자동 카메라 검색</string>
-    <string name="settings_v2_auto_discovery_subtitle">네트워크에서 PTPIP 카메라 자동 찾기</string>
     <string name="settings_v2_auto_connect_title">자동 연결</string>
     <string name="settings_v2_auto_connect_subtitle">마지막 연결된 카메라에 자동 연결</string>
     <string name="settings_v2_connection_manage_title">카메라 연결 관리</string>

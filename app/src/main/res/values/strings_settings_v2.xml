@@ -8,6 +8,9 @@
     <string name="settings_v2_section_camera_control">Camera control (dev build)</string>
     <string name="settings_v2_section_wifi_ptpip">Wi-Fi camera connection (PTPIP) - dev build</string>
     <string name="settings_v2_section_color_transfer">Color transfer</string>
+    <string name="settings_v2_vibrate_on_photo_title">Vibrate on photo received</string>
+    <string name="settings_v2_vibrate_on_photo_on">Vibrates briefly when a photo arrives.</string>
+    <string name="settings_v2_vibrate_on_photo_off">Turn on to vibrate briefly when a photo arrives.</string>
     <string name="settings_v2_section_raw_download">RAW file download</string>
     <string name="settings_v2_section_connected_camera">Connected camera</string>
     <string name="settings_v2_section_user_info">User</string>
@@ -47,10 +50,6 @@
     <string name="settings_v2_wifi_camera_on_last">Enabled - last connected: %s</string>
     <string name="settings_v2_wifi_camera_on_none">Enabled - no connected camera</string>
     <string name="settings_v2_wifi_camera_off">Remote camera control over Wi-Fi</string>
-    <string name="settings_v2_wifi_connect_title">Connect over Wi-Fi</string>
-    <string name="settings_v2_wifi_connect_subtitle">Connect on the same Wi-Fi network as the camera (recommended)</string>
-    <string name="settings_v2_auto_discovery_title">Auto camera discovery</string>
-    <string name="settings_v2_auto_discovery_subtitle">Automatically find PTPIP cameras on the network</string>
     <string name="settings_v2_auto_connect_title">Auto connect</string>
     <string name="settings_v2_auto_connect_subtitle">Automatically connect to the last connected camera</string>
     <string name="settings_v2_connection_manage_title">Manage camera connection</string>
