@@ -30,14 +30,12 @@ class PtpipPreferencesDataSource @Inject constructor(
 ) {
     companion object {
         private val PTPIP_ENABLED = booleanPreferencesKey("ptpip_enabled")
-        private val AUTO_DISCOVERY = booleanPreferencesKey("auto_discovery")
         private val LAST_CONNECTED_IP = stringPreferencesKey("last_connected_ip")
         private val LAST_CONNECTED_NAME = stringPreferencesKey("last_connected_name")
         private val CONNECTION_TIMEOUT = intPreferencesKey("connection_timeout")
         private val DISCOVERY_TIMEOUT = intPreferencesKey("discovery_timeout")
         private val PTPIP_PORT = intPreferencesKey("ptpip_port")
         private val AUTO_CONNECT = booleanPreferencesKey("auto_connect")
-        private val WIFI_CONNECTION_MODE = booleanPreferencesKey("wifi_connection_mode")
         private val AUTO_RECONNECT = booleanPreferencesKey("auto_reconnect")
         private val AUTO_CONNECT_SSID = stringPreferencesKey("auto_connect_ssid")
         private val AUTO_CONNECT_SECURITY = stringPreferencesKey("auto_connect_security")
@@ -54,14 +52,6 @@ class PtpipPreferencesDataSource @Inject constructor(
     val isPtpipEnabled: Flow<Boolean> = context.ptpipDataStore.data
         .map { preferences ->
             preferences[PTPIP_ENABLED] ?: false
-        }
-
-    /**
-     * 자동 카메라 검색 활성화 여부
-     */
-    val isAutoDiscoveryEnabled: Flow<Boolean> = context.ptpipDataStore.data
-        .map { preferences ->
-            preferences[AUTO_DISCOVERY] ?: true
         }
 
     /**
@@ -121,17 +111,6 @@ class PtpipPreferencesDataSource @Inject constructor(
         }
 
     /**
-     * Wi-Fi 연결 활성화 여부 (기본값: true - WIFI 연결 우선)
-     *
-     * @return Wi-Fi 연결 활성화 여부
-     * @since 2024
-     */
-    val isWifiConnectionModeEnabled: Flow<Boolean> = context.ptpipDataStore.data
-        .map { preferences ->
-            preferences[WIFI_CONNECTION_MODE] ?: true
-        }
-
-    /**
      * 자동 연결용 Wi-Fi 제안 설정 정보
      */
     val autoConnectNetworkConfig: Flow<com.inik.camcon.domain.model.AutoConnectNetworkConfig?> =
@@ -159,15 +138,6 @@ class PtpipPreferencesDataSource @Inject constructor(
     suspend fun setPtpipEnabled(enabled: Boolean) {
         context.ptpipDataStore.edit { preferences ->
             preferences[PTPIP_ENABLED] = enabled
-        }
-    }
-
-    /**
-     * 자동 카메라 검색 활성화/비활성화
-     */
-    suspend fun setAutoDiscoveryEnabled(enabled: Boolean) {
-        context.ptpipDataStore.edit { preferences ->
-            preferences[AUTO_DISCOVERY] = enabled
         }
     }
 
@@ -233,19 +203,6 @@ class PtpipPreferencesDataSource @Inject constructor(
         }
     }
 
-    /**
-     * Wi-Fi 연결 활성화/비활성화
-     * true: 동일 네트워크에서 카메라 검색 (WIFI 연결)
-     * false: 직접 연결 (AP 모드)
-     *
-     * @param enabled 활성화 여부
-     * @since 2024
-     */
-    suspend fun setWifiConnectionModeEnabled(enabled: Boolean) {
-        context.ptpipDataStore.edit { preferences ->
-            preferences[WIFI_CONNECTION_MODE] = enabled
-        }
-    }
 
     /**
      * 자동 연결을 위한 Wi-Fi 네트워크 정보 저장

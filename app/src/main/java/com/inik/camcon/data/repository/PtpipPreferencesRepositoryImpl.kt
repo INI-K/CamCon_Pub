@@ -19,10 +19,8 @@ class PtpipPreferencesRepositoryImpl @Inject constructor(
     // ── Flow 위임 ──
 
     override val isPtpipEnabled: Flow<Boolean> get() = dataSource.isPtpipEnabled
-    override val isAutoDiscoveryEnabled: Flow<Boolean> get() = dataSource.isAutoDiscoveryEnabled
     override val isAutoConnectEnabled: Flow<Boolean> get() = dataSource.isAutoConnectEnabled
     override val isAutoReconnectEnabled: Flow<Boolean> get() = dataSource.isAutoReconnectEnabled
-    override val isWifiConnectionModeEnabled: Flow<Boolean> get() = dataSource.isWifiConnectionModeEnabled
     override val autoConnectNetworkConfig: Flow<AutoConnectNetworkConfig?>
         get() = dataSource.autoConnectNetworkConfig
     override val lastConnectedIp: Flow<String?> get() = dataSource.lastConnectedIp
@@ -37,17 +35,11 @@ class PtpipPreferencesRepositoryImpl @Inject constructor(
 
     override suspend fun setPtpipEnabled(enabled: Boolean) = dataSource.setPtpipEnabled(enabled)
 
-    override suspend fun setAutoDiscoveryEnabled(enabled: Boolean) =
-        dataSource.setAutoDiscoveryEnabled(enabled)
-
     override suspend fun setAutoConnectEnabled(enabled: Boolean) =
         dataSource.setAutoConnectEnabled(enabled)
 
     override suspend fun setAutoReconnectEnabled(enabled: Boolean) =
         dataSource.setAutoReconnectEnabled(enabled)
-
-    override suspend fun setWifiConnectionModeEnabled(enabled: Boolean) =
-        dataSource.setWifiConnectionModeEnabled(enabled)
 
     override suspend fun setConnectionTimeout(timeout: Int) =
         dataSource.setConnectionTimeout(timeout)
@@ -63,6 +55,9 @@ class PtpipPreferencesRepositoryImpl @Inject constructor(
 
     override suspend fun saveLastConnectedCamera(ip: String, name: String) =
         dataSource.saveLastConnectedCamera(ip, name)
+
+    override suspend fun getLastConnectedCameraInfo(): Pair<String, String?>? =
+        dataSource.getLastConnectedCameraInfo()
 
     // ── 자동 연결 네트워크 설정 ──
 

@@ -77,7 +77,7 @@ class CameraRepositoryImpl @Inject constructor(
         captureRepo.onFlushCompleteCallback = {
             cameraStateObserver.updateCameraInitialization(false)
         }
-        captureRepo.installPtpipDownloadCallback()
+        captureRepo.startPtpipPhotoEventCollection()
 
         lifecycleRepo.subscribeToUsbEvents()
     }

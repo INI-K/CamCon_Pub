@@ -40,4 +40,11 @@ interface CameraCaptureCallback {
      * 기본 구현 무동작 — 관심 있는 구현만 override.
      */
     fun onPropertyChanged(configName: String) {}
+
+    /**
+     * PTP/IP 세션이 '비자발적으로' 끊겼을 때(카메라 OFF/소켓 death 등 네이티브 이벤트 루프
+     * 비정상 종료) 호출된다. 사용자가 요청한 정상 stop과는 구분되어 발화된다.
+     * 기본 구현 무동작 — PTPIP 리스너 구현만 override.
+     */
+    fun onPtpipConnectionLost() {}
 }

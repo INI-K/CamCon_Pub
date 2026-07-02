@@ -320,14 +320,6 @@ class PtpipConnectionHelper @Inject constructor(
         preferencesRepository.setPtpipEnabled(enabled)
     }
 
-    suspend fun setWifiConnectionModeEnabled(enabled: Boolean) {
-        preferencesRepository.setWifiConnectionModeEnabled(enabled)
-    }
-
-    suspend fun setAutoDiscoveryEnabled(enabled: Boolean) {
-        preferencesRepository.setAutoDiscoveryEnabled(enabled)
-    }
-
     suspend fun setAutoConnectEnabled(enabled: Boolean) {
         preferencesRepository.setAutoConnectEnabled(enabled)
     }
@@ -360,11 +352,20 @@ class PtpipConnectionHelper @Inject constructor(
         onResult: (Boolean, String) -> Unit,
         onRequestNotificationPermission: (() -> Unit)? = null
     ) {
-        scope.launch {
+        // UI 콜백(onResult→Toast, onRequestNotificationPermission)이 여기서 직접 호출되므로
+        // 메인 디스패처에서 실행해야 한다. @ApplicationScope(Default)에서 돌면 Toast가
+        // "Can't toast on a thread that has not called Looper.prepare()"로 크래시한다.
+        // (내부 preferences/WifiManager 호출은 전부 빠른 suspend/Binder라 Main에서 안전.)
+        scope.launch(kotlinx.coroutines.Dispatchers.Main) {
             if (enabled) {
                 val storedConfig = preferencesRepository.getAutoConnectNetworkConfig()
                 val networkConfig = storedConfig ?: lastConnectedWifiConfig
-                if (networkConfig == null) {
+
+                // STA 핫스팟은 AP networkConfig가 없어도 정상이다. 전제조건은
+                // "직전에 한 번이라도 성공 연결한 카메라(last_connected_ip)"의 존재.
+                // AP·STA 둘 다 아무 근거가 없을 때만 "먼저 수동 연결" 안내.
+                val hasLastCamera = preferencesRepository.getLastConnectedCameraInfo() != null
+                if (networkConfig == null && !hasLastCamera) {
                     onResult(
                         false,
                         appContext.getString(R.string.auto_connect_requires_setup)
@@ -381,26 +382,39 @@ class PtpipConnectionHelper @Inject constructor(
                     return@launch
                 }
 
-                val suggestionResult =
-                    ptpipRepository.registerNetworkSuggestion(networkConfig)
-                if (suggestionResult.success) {
-                    val latestBssid = ptpipRepository.getCurrentBssid()
-                    val updatedConfig =
-                        networkConfig.copy(
-                            lastUpdatedEpochMillis = System.currentTimeMillis(),
-                            bssid = latestBssid ?: networkConfig.bssid
-                        )
-                    preferencesRepository.saveAutoConnectNetworkConfig(updatedConfig)
-                    preferencesRepository.updateAutoConnectNetworkTimestamp()
-                    preferencesRepository.setAutoConnectEnabled(true)
-                    lastConnectedWifiConfig = updatedConfig
+                if (networkConfig != null) {
+                    // AP 모드 경로 보존 — 네트워크 suggestion 등록 후 서비스 기동.
+                    val suggestionResult =
+                        ptpipRepository.registerNetworkSuggestion(networkConfig)
+                    if (suggestionResult.success) {
+                        val latestBssid = ptpipRepository.getCurrentBssid()
+                        val updatedConfig =
+                            networkConfig.copy(
+                                lastUpdatedEpochMillis = System.currentTimeMillis(),
+                                bssid = latestBssid ?: networkConfig.bssid
+                            )
+                        preferencesRepository.saveAutoConnectNetworkConfig(updatedConfig)
+                        preferencesRepository.updateAutoConnectNetworkTimestamp()
+                        preferencesRepository.setAutoConnectEnabled(true)
+                        lastConnectedWifiConfig = updatedConfig
 
-                    ptpipRepository.startWifiMonitoring()
-                    Log.d(TAG, "WifiMonitoringService 시작됨")
+                        ptpipRepository.startWifiMonitoring()
+                        Log.d(TAG, "WifiMonitoringService 시작됨 (AP suggestion 등록)")
 
-                    onResult(true, suggestionResult.message)
+                        onResult(true, suggestionResult.message)
+                    } else {
+                        onResult(false, suggestionResult.message)
+                    }
                 } else {
-                    onResult(false, suggestionResult.message)
+                    // STA 핫스팟 경로 — networkConfig 없이 직전 카메라만 기억. suggestion 없이 서비스만 기동.
+                    preferencesRepository.setAutoConnectEnabled(true)
+                    ptpipRepository.startWifiMonitoring()
+                    Log.d(TAG, "WifiMonitoringService 시작됨 (STA 핫스팟, 직전 카메라 자동 연결)")
+
+                    onResult(
+                        true,
+                        appContext.getString(R.string.auto_connect_enabled_message)
+                    )
                 }
             } else {
                 val existingConfig = preferencesRepository.getAutoConnectNetworkConfig()

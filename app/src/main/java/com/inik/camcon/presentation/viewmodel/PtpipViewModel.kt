@@ -29,7 +29,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -104,10 +103,8 @@ class PtpipViewModel @Inject constructor(
 
     // PTPIP 설정 상태
     val isPtpipEnabled = preferencesRepository.isPtpipEnabled
-    val isAutoDiscoveryEnabled = preferencesRepository.isAutoDiscoveryEnabled
     val isAutoConnectEnabled = preferencesRepository.isAutoConnectEnabled
     val autoConnectNetworkConfig = preferencesRepository.autoConnectNetworkConfig
-    val isWifiConnectionModeEnabled = preferencesRepository.isWifiConnectionModeEnabled
     val isAutoReconnectEnabled = preferencesRepository.isAutoReconnectEnabled
     val lastConnectedIp = preferencesRepository.lastConnectedIp
     val lastConnectedName = preferencesRepository.lastConnectedName
@@ -155,15 +152,6 @@ class PtpipViewModel @Inject constructor(
     // Wi-Fi 설정 페이지 이동 요청 상태
     private val _needWifiSettings = MutableStateFlow(false)
     val needWifiSettings: StateFlow<Boolean> = _needWifiSettings.asStateFlow()
-
-    // 종합 상태 (PTPIP 활성화 + Wi-Fi 연결)
-    val isPtpipAvailable = combine(
-        isPtpipEnabled,
-        isWifiConnectionModeEnabled,
-        wifiNetworkState
-    ) { enabled, wifiEnabled, networkState ->
-        enabled && wifiEnabled && networkState.isConnected
-    }
 
     // ── 디버그 콜백 ──
 
@@ -292,18 +280,6 @@ class PtpipViewModel @Inject constructor(
             if (!enabled) {
                 disconnect()
             }
-        }
-    }
-
-    fun setWifiConnectionModeEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            connectionHelper.setWifiConnectionModeEnabled(enabled)
-        }
-    }
-
-    fun setAutoDiscoveryEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            connectionHelper.setAutoDiscoveryEnabled(enabled)
         }
     }
 

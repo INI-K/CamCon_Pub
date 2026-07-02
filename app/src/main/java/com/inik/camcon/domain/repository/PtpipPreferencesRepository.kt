@@ -15,10 +15,8 @@ interface PtpipPreferencesRepository {
     // ── 설정 상태 관찰 (Flow) ──
 
     val isPtpipEnabled: Flow<Boolean>
-    val isAutoDiscoveryEnabled: Flow<Boolean>
     val isAutoConnectEnabled: Flow<Boolean>
     val isAutoReconnectEnabled: Flow<Boolean>
-    val isWifiConnectionModeEnabled: Flow<Boolean>
     val autoConnectNetworkConfig: Flow<AutoConnectNetworkConfig?>
     val lastConnectedIp: Flow<String?>
     val lastConnectedName: Flow<String?>
@@ -30,10 +28,8 @@ interface PtpipPreferencesRepository {
     // ── 설정 변경 ──
 
     suspend fun setPtpipEnabled(enabled: Boolean)
-    suspend fun setAutoDiscoveryEnabled(enabled: Boolean)
     suspend fun setAutoConnectEnabled(enabled: Boolean)
     suspend fun setAutoReconnectEnabled(enabled: Boolean)
-    suspend fun setWifiConnectionModeEnabled(enabled: Boolean)
     suspend fun setConnectionTimeout(timeout: Int)
     suspend fun setDiscoveryTimeout(timeout: Int)
     suspend fun setPtpipPort(port: Int)
@@ -42,6 +38,9 @@ interface PtpipPreferencesRepository {
     // ── 카메라 정보 ──
 
     suspend fun saveLastConnectedCamera(ip: String, name: String)
+
+    /** 마지막 연결 카메라 (ip, name) 즉시 조회. 한 번도 연결 성공 없으면 null. */
+    suspend fun getLastConnectedCameraInfo(): Pair<String, String?>?
 
     // ── 자동 연결 네트워크 설정 ──
 

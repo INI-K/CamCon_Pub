@@ -1,9 +1,5 @@
 package com.inik.camcon.data.service
 
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -14,19 +10,28 @@ import android.net.NetworkRequest
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
-import androidx.core.app.NotificationCompat
-import com.inik.camcon.R
+import com.inik.camcon.CameraNative
 import com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource
+import com.inik.camcon.data.datasource.ptpip.PtpipDataSource
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
+import com.inik.camcon.di.IoDispatcher
+import com.inik.camcon.domain.model.ConnectionMethod
+import com.inik.camcon.domain.model.PtpipConnectionState
+import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.utils.LogMask
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /**
@@ -48,6 +53,16 @@ class WifiMonitoringService : Service() {
 
     @Inject
     lateinit var preferencesDataSource: PtpipPreferencesDataSource
+
+    @Inject
+    lateinit var ptpipDataSource: PtpipDataSource
+
+    @Inject
+    lateinit var cameraRepository: CameraRepository
+
+    @Inject
+    @IoDispatcher
+    lateinit var ioDispatcher: CoroutineDispatcher
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
@@ -72,8 +87,6 @@ class WifiMonitoringService : Service() {
 
     companion object {
         private const val TAG = "WifiMonitoringService"
-        private const val CHANNEL_ID = "wifi_monitoring_channel"
-        private const val NOTIFICATION_ID = 3001
 
         /**
          * Service 시작
@@ -109,6 +122,10 @@ class WifiMonitoringService : Service() {
         // H14: 자동 연결 토글이 실제로 켜져 있을 때만 connectedDevice FGS를 유지한다.
         // 토글이 꺼져 있으면(직접 시작·시스템 재기동 등) idle FGS·상시 알림을 남기지 않도록 즉시 종료.
         ensureAutoConnectEnabledOrStop()
+
+        // STA 핫스팟 상시 자동 연결 폴링 시작 (managed serviceScope에서 실행,
+        // onDestroy의 serviceScope.cancel()로 자동 정리)
+        startHotspotAutoConnectPolling()
     }
 
     /**
@@ -128,6 +145,82 @@ class WifiMonitoringService : Service() {
                 Log.w(TAG, "자동 연결 토글 확인 실패", e)
             }
         }
+    }
+
+    /**
+     * 폰 핫스팟(STA) 상시 자동 연결 폴링.
+     *
+     * managed [serviceScope]에서 4초 주기로 실행하며, 다음 조건을 모두 만족할 때만
+     * 기존 discovery/connect 경로를 그대로 호출한다:
+     *  - 자동 연결 설정(auto_connect, "마지막 연결된 카메라에 자동 연결") ON
+     *  - 폰 핫스팟 활성화 상태
+     *  - PTP/IP 연결 상태 == DISCONNECTED
+     *  - 한 번이라도 연결 성공한 "직전 카메라"가 기억되어 있음 (없으면 자동 연결 안 함)
+     *  - 촬영/영상녹화/라이브뷰-종료전이/프리뷰 미활성
+     *
+     * 자동 연결 대상은 "기억된 직전 카메라"로 한정한다. discoverCameras(false)가 캐시 IP(직전 카메라)를
+     * 우선 시도하므로 대부분 그 카메라를 반환하지만, 발견 카메라 IP가 기억된 카메라와 다르면
+     * (다른 카메라) 오연결을 막기 위해 연결하지 않는다.
+     *
+     * 신규 discovery/connect 로직·네이티브 변경 없음 — 파라미터만 전달한다.
+     */
+    private fun startHotspotAutoConnectPolling() {
+        serviceScope.launch {
+            while (isActive) {
+                try {
+                    val remembered = ptpipDataSource.getLastConnectedCamera()
+                    if (preferencesDataSource.isAutoConnectEnabledNow()
+                        && wifiNetworkHelper.isHotspotEnabled()
+                        && ptpipDataSource.connectionState.value == PtpipConnectionState.DISCONNECTED
+                        && remembered != null
+                        && !isCameraBusy()
+                    ) {
+                        withContext(ioDispatcher) {
+                            val cameras = ptpipDataSource.discoverCameras(forceApMode = false)
+                            // 기억된 직전 카메라와 IP가 일치하는 발견 카메라만 자동 연결 대상.
+                            val camera = cameras.firstOrNull {
+                                it.ipAddress == remembered.ipAddress
+                            }
+                            // discover 사이 상태 변화/촬영 진입에 대비해 connect 직전 재확인
+                            if (camera != null
+                                && ptpipDataSource.connectionState.value == PtpipConnectionState.DISCONNECTED
+                                && !isCameraBusy()
+                            ) {
+                                Log.d(TAG, "🔗 STA 핫스팟 자동 연결 시도(직전 카메라): ${camera.name}")
+                                val ok = ptpipDataSource.connectToCamera(
+                                    camera,
+                                    ConnectionMethod.STA_PHONE_HOTSPOT
+                                )
+                                // 폴링 경로는 PtpipConnectionHelper를 거치지 않으므로 여기서 직접 영속 저장한다.
+                                // (수동 연결 경로는 Helper가 이미 저장 — 앱 재시작 시 restoreLastConnectedCamera 복원)
+                                if (ok) {
+                                    preferencesDataSource.saveLastConnectedCamera(
+                                        camera.ipAddress,
+                                        camera.name
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "STA 핫스팟 자동 연결 폴링 오류", e)
+                }
+                delay(4000)
+            }
+        }
+    }
+
+    /**
+     * 촬영/영상녹화/라이브뷰-종료전이/프리뷰 탭 중이면 세션 방해를 피하기 위해 스킵한다.
+     * sibling BackgroundSyncService와 동일하게 CameraRepository(도메인 인터페이스) +
+     * CameraNative(전역 싱글톤)를 재사용하므로 신규 레이어 위반 없음.
+     */
+    private suspend fun isCameraBusy(): Boolean {
+        return runCatching {
+            CameraNative.isVideoRecording()
+                || CameraNative.isLiveViewStopping()
+                || cameraRepository.isPhotoPreviewMode().first()
+        }.getOrDefault(false)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -162,7 +255,9 @@ class WifiMonitoringService : Service() {
 
         stopWifiMonitoring()
         serviceScope.cancel()
-        stopForeground(STOP_FOREGROUND_REMOVE)
+        // 공유 상태 알림 — REMOVE는 다른 서비스가 쓰는 알림까지 지운다
+        stopForeground(STOP_FOREGROUND_DETACH)
+        CamConStatusNotification.detach(this, CamConStatusNotification.OWNER_WIFI)
         super.onDestroy()
     }
 
@@ -170,67 +265,24 @@ class WifiMonitoringService : Service() {
      * Foreground Service 시작 (알림 표시)
      */
     private fun startForegroundService() {
-        createNotificationChannel()
-        val notification = buildNotification()
+        val notification = CamConStatusNotification.attach(
+            this,
+            CamConStatusNotification.OWNER_WIFI,
+            "카메라 자동 연결 대기 중",
+            "설정된 WiFi 네트워크 연결을 감지하고 있습니다"
+        )
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(
-                NOTIFICATION_ID,
+                CamConStatusNotification.NOTIFICATION_ID,
                 notification,
                 android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
             )
         } else {
-            startForeground(NOTIFICATION_ID, notification)
+            startForeground(CamConStatusNotification.NOTIFICATION_ID, notification)
         }
 
         Log.d(TAG, "✅ Foreground Service 시작 완료 (알림 표시됨)")
-    }
-
-    /**
-     * 알림 생성
-     */
-    private fun buildNotification(): Notification {
-        val intent = packageManager.getLaunchIntentForPackage(packageName)
-            ?: Intent(Intent.ACTION_MAIN).apply {
-                addCategory(Intent.CATEGORY_LAUNCHER)
-                setPackage(packageName)
-            }
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_camera_24)
-            .setContentTitle("카메라 자동 연결 대기 중")
-            .setContentText("설정된 WiFi 네트워크 연결을 감지하고 있습니다")
-            .setPriority(NotificationCompat.PRIORITY_LOW) // 조용한 알림
-            .setCategory(NotificationCompat.CATEGORY_SERVICE)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(false)
-            .setOngoing(true) // 스와이프로 제거 불가
-            .build()
-    }
-
-    /**
-     * 알림 채널 생성 (Android 8.0+)
-     */
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "WiFi 자동 연결 모니터링",
-                NotificationManager.IMPORTANCE_LOW // 조용한 알림
-            ).apply {
-                description = "카메라 WiFi 자동 연결을 위한 백그라운드 모니터링"
-                setShowBadge(false)
-            }
-
-            val notificationManager = getSystemService(NotificationManager::class.java)
-            notificationManager.createNotificationChannel(channel)
-        }
     }
 
     /**

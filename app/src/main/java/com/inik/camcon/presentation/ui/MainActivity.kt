@@ -1235,6 +1235,12 @@ class MainActivity : ComponentActivity() {
             ) {
                 permissionsToRequest.add(Manifest.permission.READ_MEDIA_IMAGES)
             }
+            // Android 13+: 알림 권한 (자동 연결 FGS 알림 표시용, 매니페스트에 이미 선언됨)
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
+            }
         } else {
             // Android 12 이하: 기존 저장소 권한
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)

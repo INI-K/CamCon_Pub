@@ -51,8 +51,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -100,13 +103,23 @@ class PtpipDataSource @Inject constructor(
 
     // Repository 콜백 저장용 - Singleton이므로 일반 참조 사용 (메모리 누수 방지 불필요)
     private var onPhotoCapturedCallback: ((String, String) -> Unit)? = null
-    private var onPhotoDownloadedCallback: ((String, String, ByteArray) -> Unit)? = null
-    private var onPhotoDownloadFailedCallback: ((String) -> Unit)? = null
     private var onConnectionLostCallback: (() -> Unit)? = null // Wi-Fi 연결 끊어짐 알림용
+
+    // 사진 다운로드 이벤트 스트림 — 수집자는 싱글톤 CameraCaptureRepositoryImpl.
+    // 콜백 슬롯과 달리 화면 cleanup()이 배선을 끊을 수 없다(수신사진 리스트 유실 방지).
+    // 버퍼 초과 시 emit이 suspend되어 발행측(다운로드 파이프라인)에 자연 백프레셔가 걸린다.
+    private val _photoEvents = MutableSharedFlow<PtpipPhotoEvent>(extraBufferCapacity = 16)
+    val photoEvents: SharedFlow<PtpipPhotoEvent> = _photoEvents.asSharedFlow()
 
     // UI 관찰용 StateFlow
     private val _connectionState = MutableStateFlow(PtpipConnectionState.DISCONNECTED)
     val connectionState: StateFlow<PtpipConnectionState> = _connectionState.asStateFlow()
+
+    /**
+     * 한 번이라도 연결에 성공한 직전 카메라(연결 성공 시 세팅, 앱 재시작 시 DataStore에서 복원).
+     * 없으면 null. STA 핫스팟 자동 연결 폴링이 "기억된 카메라만 자동 연결" 게이트로 사용한다.
+     */
+    fun getLastConnectedCamera(): PtpipCamera? = lastConnectedCamera
 
     // 추가: 연결 진행 메시지 상태 — 외부 API는 String 유지 (UI 단순화).
     // i18n: 내부에서 setProgress(UiText)로 resource를 즉시 resolve해 저장한다.
@@ -602,10 +615,8 @@ class PtpipDataSource @Inject constructor(
         // 물리 셔터 리스너 중지 (누수 방지)
         stopShutterListening()
 
-        // 콜백 초기화
+        // 콜백 초기화 (사진 다운로드 이벤트는 SharedFlow라 정리 대상 아님 — 수집자는 싱글톤 Repository)
         onPhotoCapturedCallback = null
-        onPhotoDownloadedCallback = null
-        onPhotoDownloadFailedCallback = null
         onConnectionLostCallback = null
 
         if (autoConnectReceiverRegistered) {
@@ -1050,6 +1061,12 @@ class PtpipDataSource @Inject constructor(
             // =========================
             connectedCamera = camera
             lastConnectedCamera = camera
+            // 직전 성공 카메라 영속 저장 — 모든 연결 경로(수동 STA 검색/자동/폴링)가 여기로 수렴하므로
+            // 이 지점에서 저장해야 "마지막 연결된 카메라에 자동 연결"(auto_connect) 토글이 대상 카메라를
+            // 인식한다. (Helper.connectToCamera 경로만 저장하면 검색→연결 경로는 누락됨.)
+            runCatching {
+                ptpipPreferencesDataSource.saveLastConnectedCamera(camera.ipAddress, camera.name)
+            }.onFailure { Log.w(TAG, "직전 카메라 영속 저장 실패", it) }
 
             // 연결 완료 전이 안전망 (H4): 정상 경로는 onFlushComplete 콜백이 _connectionState를
             // CONNECTED로 올린다(startAutomaticFileReceiving 내부에서 최대 10초 대기). 그러나 특정
@@ -1233,6 +1250,10 @@ class PtpipDataSource @Inject constructor(
             // 이벤트 리스너 시작
             setProgress(UiText.Resource(R.string.progress_ptpip_listener_start))
 
+            // 비자발적 끊김(카메라 OFF/소켓 death) 통지 슬롯 배선 — 리스너 시작 직전에 연결.
+            // 네이티브 이벤트 루프가 비정상 종료하면 '상태만' DISCONNECTED로 내려 폴링이 재연결한다.
+            cameraEventManager.onPtpipConnectionLostCallback = { notifyInvoluntaryPtpipDisconnect() }
+
             // CameraEventManager를 통해 PTPIP 이벤트 리스너 시작
             val result = cameraEventManager.startCameraEventListener(
                 isConnected = true,
@@ -1292,8 +1313,10 @@ class PtpipDataSource @Inject constructor(
                                     // 알림 업데이트 실패해도 무시
                                 }
 
-                                // Repository 콜백 호출 (안드로이드 저장소 경로)
-                                onPhotoDownloadedCallback?.invoke(realPath, fileName, imageData)
+                                // Repository로 이벤트 발행 (안드로이드 저장소 경로)
+                                _photoEvents.emit(
+                                    PtpipPhotoEvent.Downloaded(realPath, fileName, imageData)
+                                )
                             } else {
                                 com.inik.camcon.utils.LogcatManager.e(
                                     TAG,
@@ -1301,7 +1324,7 @@ class PtpipDataSource @Inject constructor(
                                 )
                                 // 무음 유실 방지 — 실패를 Repository에 전파해
                                 // UI placeholder 제거 + dedup 해제(재시도 허용)
-                                onPhotoDownloadFailedCallback?.invoke(fileName)
+                                _photoEvents.emit(PtpipPhotoEvent.DownloadFailed(fileName))
                             }
                         } catch (e: Exception) {
                             com.inik.camcon.utils.LogcatManager.e(
@@ -1309,7 +1332,7 @@ class PtpipDataSource @Inject constructor(
                                 "MediaStore 저장 중 오류: ${e.message}",
                                 e
                             )
-                            onPhotoDownloadFailedCallback?.invoke(fileName)
+                            _photoEvents.emit(PtpipPhotoEvent.DownloadFailed(fileName))
                         }
                     }
                 },
@@ -1487,6 +1510,9 @@ class PtpipDataSource @Inject constructor(
     private suspend fun stopAutomaticFileReceiving() {
         try {
             Log.d(TAG, "PTPIP 자동 파일 수신 중지")
+
+            // 비자발적 끊김 통지 슬롯 해제 — 정상 stop 경로에서 중복/지연 통지 방지.
+            cameraEventManager.onPtpipConnectionLostCallback = null
 
             // CameraEventManager를 통해 이벤트 리스너 중지
             val result = cameraEventManager.stopCameraEventListener()
@@ -1853,22 +1879,11 @@ class PtpipDataSource @Inject constructor(
         Log.d(TAG, "PTPIP 파일 촬영 콜백 설정 완료")
     }
 
-    fun setPhotoDownloadedCallback(callback: (String, String, ByteArray) -> Unit) {
-        onPhotoDownloadedCallback = callback
-        Log.d(TAG, "PTPIP 파일 다운로드 콜백 설정 완료")
-    }
-
-    /** 다운로드/저장 실패 시 fileName 을 전달 — 무음 유실 방지(UI placeholder 제거·재시도 허용) */
-    fun setPhotoDownloadFailedCallback(callback: (String) -> Unit) {
-        onPhotoDownloadFailedCallback = callback
-        Log.d(TAG, "PTPIP 파일 다운로드 실패 콜백 설정 완료")
-    }
-
     // ── 물리 셔터 무선 수신 모드 (제조사 자동 판별: 니콘=vendor 잠금우회, 그 외=표준 PTP) ──
     // 단일 PTP/IP 세션 제약상 libgphoto2(원격촬영/라이브뷰)와 공존 불가. 이 모드는 libgphoto2
     // 연결을 끊은 뒤(호출부 책임) 단독 세션으로 카드 핸들을 폴링해 새로 찍힌 컷만 풀해상도로
     // 받는다. 받은 bytes는 기존 PhotoDownloadManager(RAW게이팅·FREE축소·EXIF·MediaStore) →
-    // onPhotoDownloadedCallback 체인으로 흘려보내 capturedPhotos/미리보기에 동일하게 등장시킨다.
+    // photoEvents 스트림으로 흘려보내 capturedPhotos/미리보기에 동일하게 등장시킨다.
     private var shutterListenerJob: Job? = null
 
     val isShutterListening: Boolean
@@ -1892,7 +1907,9 @@ class PtpipDataSource @Inject constructor(
                     )
                     if (saved != null) {
                         Log.i(TAG, "새 컷 수신·저장: ${LogMask.path(saved.filePath)}")
-                        onPhotoDownloadedCallback?.invoke(saved.filePath, fileName, bytes)
+                        _photoEvents.emit(
+                            PtpipPhotoEvent.Downloaded(saved.filePath, fileName, bytes)
+                        )
                     } else {
                         Log.w(TAG, "새 컷 저장 차단/실패(게이팅 등): $fileName")
                     }
@@ -1915,6 +1932,33 @@ class PtpipDataSource @Inject constructor(
     fun setConnectionLostCallback(callback: () -> Unit) {
         onConnectionLostCallback = callback
         Log.d(TAG, "PTPIP 연결 끊어짐 콜백 설정 완료")
+    }
+
+    /**
+     * 네이티브 이벤트 루프가 '비자발적으로' 죽었을 때만 호출된다(사용자 disconnect와 구분됨).
+     * 공유 네이티브 핸들(closeCamera)·리스너 stop을 하지 않고 '연결 상태만' DISCONNECTED로 내려
+     * WifiMonitoringService 폴링(=='DISCONNECTED')이 재연결을 이어받게 한다.
+     */
+    fun notifyInvoluntaryPtpipDisconnect() {
+        coroutineScope.launch(ioDispatcher) {
+            connectionStateMutex.withLock {
+                // 이미 내려갔거나 재연결이 진행 중이면 무시(멱등·경합 방지).
+                if (_connectionState.value != PtpipConnectionState.CONNECTED) {
+                    Log.d(TAG, "비자발적 끊김 통지 무시 — 이미 CONNECTED 아님(${_connectionState.value})")
+                    return@withLock
+                }
+                Log.w(TAG, "PTP/IP 비자발적 끊김 — 상태 DISCONNECTED 전이(핸들 보존, 폴링에 재연결 위임)")
+                connectedCamera = null
+                _connectionState.value = PtpipConnectionState.DISCONNECTED
+                _connectionLostMessage.value = context.getString(R.string.progress_wifi_disconnected)
+                isInitialFlushCompleted = false
+                // 재연결 시 stale 리스너 플래그로 조기 리턴하지 않도록 Kotlin 측 실행 상태를 정합화
+                // (네이티브 stop 미호출 — 공유 핸들 불침해). M1/R5 가드.
+                cameraEventManager.resetListenerStateAfterNativeDeath()
+                // lastConnectedCamera는 '유지'한다 — 폴링/자동재연결이 이걸로 대상 카메라를 찾는다.
+                // (disconnectInternal의 명시적 사용자 해제와 달리 여기선 null로 만들지 않는다.)
+            }
+        }
     }
 
     /**

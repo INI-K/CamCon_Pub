@@ -311,14 +311,17 @@ class CamCon : Application() {
                 val isAutoConnectEnabled = preferencesDataSource.isAutoConnectEnabledNow()
                 Log.d(TAG, "WiFi 모니터링 Service 시작 확인 - 자동 연결 활성화: $isAutoConnectEnabled")
 
+                // 자동 연결(auto_connect) ON이면 서비스를 띄운다.
+                // AP 모드는 저장된 네트워크 config, STA 핫스팟은 config 없이 직전 카메라 기반 —
+                // 두 경우 모두 auto_connect 토글만 기준으로 부트한다(STA는 config가 null이어도 정상).
                 if (isAutoConnectEnabled) {
                     val autoConnectConfig = preferencesDataSource.getAutoConnectNetworkConfig()
                     if (autoConnectConfig != null) {
                         Log.d(TAG, "WifiMonitoringService 시작 - 저장된 네트워크: ${LogMask.ssid(autoConnectConfig.ssid)}")
-                        WifiMonitoringService.start(applicationContext)
                     } else {
-                        Log.w(TAG, "자동 연결이 켜져있지만 네트워크 설정이 없음")
+                        Log.d(TAG, "WifiMonitoringService 시작 - STA 핫스팟(직전 카메라 자동 연결)")
                     }
+                    WifiMonitoringService.start(applicationContext)
                 } else {
                     Log.d(TAG, "자동 연결이 비활성화되어 있음 - Service 시작 안 함")
                 }
