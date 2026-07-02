@@ -1399,13 +1399,8 @@ private fun RecentCaptureItem(
                                 colorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
                             }
                             // RAW(NEF 등)는 Coil 이 EXIF orientation 을 안 씌워 세로컷이 눕는다 → RAW 만 방향 보정.
-                            if (com.inik.camcon.domain.util.SubscriptionUtils.isRawFile(photo.filePath)) {
-                                transformations(
-                                    com.inik.camcon.presentation.ui.util.RawExifRotationTransformation(
-                                        photo.filePath
-                                    )
-                                )
-                            }
+                            com.inik.camcon.presentation.ui.util.RawExifRotationTransformation
+                                .forPathOrNull(photo.filePath)?.let { transformations(it) }
                         }
                         .build(),
                     contentDescription = stringResource(R.string.camera_control_captured_photo),
@@ -1533,13 +1528,8 @@ private fun AnimatedPhotoSwitcher(
                                 colorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
                             }
                             // RAW(NEF 등)는 Coil 이 EXIF orientation 을 안 씌워 세로컷이 눕는다 → RAW 만 방향 보정.
-                            if (com.inik.camcon.domain.util.SubscriptionUtils.isRawFile(photo.filePath)) {
-                                transformations(
-                                    com.inik.camcon.presentation.ui.util.RawExifRotationTransformation(
-                                        photo.filePath
-                                    )
-                                )
-                            }
+                            com.inik.camcon.presentation.ui.util.RawExifRotationTransformation
+                                .forPathOrNull(photo.filePath)?.let { transformations(it) }
                         }
                         .build(),
                     contentDescription = stringResource(R.string.camera_control_photo),
