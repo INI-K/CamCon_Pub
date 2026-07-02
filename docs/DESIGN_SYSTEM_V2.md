@@ -20,16 +20,18 @@ Phase 1-8(V1)의 일관성 작업을 토대로, 시각 정체성을 Capture One/
 
 ## 1. 컬러 팔레트
 
-### 1.1 Neutral (모노크롬 5 surface tier + 4 text tier)
+### 1.1 Neutral (CINE INSTRUMENT — 순흑 위 앰버 모니터, 5 surface tier + 4 text tier)
+
+깊이는 표면 tier 차이 + 0.5dp 헤어라인(`DividerLine`)으로만 표현한다(그림자 elevation 0). Surface0는 순흑 하한 `#050607`이며 더 어둡게 낮추지 않는다(OLED 스미어 방지).
 
 | 토큰 | Hex | 용도 |
 |------|-----|------|
-| `Surface0` | `#0E0E0E` | 앱 배경 (Scaffold container) |
-| `Surface1` | `#1A1A1A` | 메인 패널 (Lightroom 베이스) |
-| `Surface2` | `#232323` | 카드 / BottomSheet |
-| `Surface3` | `#2E2E2E` | 입력 / 포커스 |
-| `Surface4` | `#3A3A3A` | 호버 / 액티브 |
-| `DividerLine` | `#2A2A2A` | 1px hairline |
+| `Surface0` | `#050607` | 앱 배경 (순흑 하한 — 더 어둡게 금지) |
+| `Surface1` | `#0C0E11` | 메인 패널 |
+| `Surface2` | `#14171C` | 카드 / BottomSheet |
+| `Surface3` | `#1C2026` | 입력 / 포커스 |
+| `Surface4` | `#252A31` | 호버 / 액티브 |
+| `DividerLine` | `#262C33` | 0.5dp 헤어라인 (tier 경계) |
 | `TextPrimary` | `#F2F2F2` | 주 텍스트 |
 | `TextSecondary` | `#B3B3B3` | 보조 |
 | `TextTertiary` | `#808080` | 캡션 |
@@ -129,11 +131,11 @@ labelSmall = Micro
 
 ---
 
-## 4. Surface 시스템 — Flat + Border
+## 4. Surface 시스템 — Flat + Hairline (CINE INSTRUMENT)
 
-- `elevation = 0.dp` 표준 (그림자 폐지)
-- 깊이는 surface tier(0→4) + 1px `DividerLine`으로만 표현
-- 예외: BottomSheet는 `elevation = 8.dp` 1회 허용
+- **elevation 전면 0** — `Elevation.low/medium/high` 모두 `0.dp`. 그림자를 일절 쓰지 않는다.
+- 깊이는 **surface tier(0→4) 차이 + 0.5dp 헤어라인(`DividerLine` `#262C33`)** 으로만 표현하고, 활성 상태는 앰버 엣지 1px(`AccentEdge`)로 드러낸다.
+- BottomSheet도 그림자 없이 상단 라운드(`Radius.xl` 8dp) + 헤어라인으로 분리한다(과거 8dp elevation 예외 폐지).
 
 ---
 
@@ -141,12 +143,12 @@ labelSmall = Micro
 
 | 컴포넌트 | Radius |
 |---------|--------|
-| 인풋/버튼/칩 | 4.dp |
-| 카드 | 6.dp |
-| BottomSheet 상단 | 12.dp |
-| 다이얼로그 | 8.dp |
+| 인풋/버튼/칩 | 2.dp (`Radius.sm`) |
+| 카드 | 4.dp (`Radius.md`) |
+| 다이얼로그 | 6.dp (`Radius.lg`) |
+| BottomSheet 상단 | 8.dp (`Radius.xl`, 상단 전용) |
 
-V1의 12-36dp 큰 라운드 폐기.
+CINE INSTRUMENT에서 라운드를 한 단계 더 타이트하게 조여 계측기 톤을 낸다(V1의 12-36dp 큰 라운드 폐기).
 
 ---
 
@@ -279,7 +281,7 @@ Section: 구독
 ## 11. 회귀 위험 / 호환성
 
 - **V1 토큰 호출처 광범위**: `Primary`, `Background`, `Surface`, `TextPrimary` 등 자주 쓰임. V2는 같은 이름을 유지하되 색만 교체 — 호출처 코드 변경 0 (Color.kt만 수정).
-- **`Dark*` 토큰 23종**: V1에서 도입(Phase 2). V2에서는 ColorScheme 슬롯으로 흡수 → 토큰 제거 + 호출처 일괄 리팩터(약 1개 파일 — DarkThemeComponents.kt).
+- ✅ **`Dark*` 토큰 23종 / DarkThemeComponents.kt** (CINE INSTRUMENT Phase 1 완료): 호출처 0건(참조 grep 0) 확인 후 `DarkThemeComponents.kt` 死코드로 삭제. 깊이 표현은 ColorScheme surface tier + 0.5dp 헤어라인으로 흡수됨.
 - **`AppTitle`/`BadgeText`/`Caption`/`CaptionSmall`** (Phase 3 도입): V2의 `HeadingXL`/`Caption`/`Micro`로 매핑.
 - **`Dimensions.kt` `Padding`/`Spacing` 중복**: V2에서 `Spacing` 단일화. `Padding` 별칭 호출처 일괄 변경.
 - **`Shapes` 큰 라운드(28-36dp) 호출처**: 보존 vs 변경 — 화면별 시각 회귀 평가 후 결정.

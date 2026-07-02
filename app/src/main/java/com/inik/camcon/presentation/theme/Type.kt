@@ -63,9 +63,14 @@ val Caption = pretendard(12, FontWeight.Medium, 16, letterSpacing = 0.2)
 val Micro = pretendard(11, FontWeight.Medium, 14, letterSpacing = 0.3)
 val ButtonText = pretendard(14, FontWeight.SemiBold, 16, letterSpacing = 0.2)
 
+// ---- CINE INSTRUMENT 계측기 라벨 ----
+// 대문자 트래킹 라벨용. CJK는 스타일 관례만 따르고 `.uppercase()` 호출은 하지 않는다.
+val MicroLabel = pretendard(11, FontWeight.Medium, 14, letterSpacing = 1.4)
+
 // ---- 모노스페이스 텔레메트리 (ISO/SS/F/EV/WB 등 카메라 수치) ----
-val MonoReadout = mono(16, FontWeight.Medium, 20, letterSpacing = 0.5)   // HUD 노출 스트립
+val MonoReadout = mono(16, FontWeight.Medium, 20, letterSpacing = 1.0)   // HUD 노출 스트립
 val MonoNumeric = mono(12, FontWeight.Normal, 16, letterSpacing = 0.5)   // 인라인 탭형 수치
+val MonoMicro = mono(11, FontWeight.Normal, 14, letterSpacing = 0.5)     // 미니 수치(썸네일·배지)
 
 // ---- Material 3 Typography 매핑 ----
 val Typography = Typography(
