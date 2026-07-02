@@ -26,6 +26,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.IconSize
+import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.CameraAbilitiesViewModel
 import com.inik.camcon.presentation.viewmodel.CameraDiagnosticsManager
@@ -109,7 +112,7 @@ fun CameraAbilitiesScreen(
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        verticalArrangement = Arrangement.spacedBy(Spacing.base)
                     ) {
                         CircularProgressIndicator()
                         Text(stringResource(R.string.diag_abilities_loading))
@@ -126,8 +129,8 @@ fun CameraAbilitiesScreen(
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier.padding(32.dp)
+                        verticalArrangement = Arrangement.spacedBy(Spacing.base),
+                        modifier = Modifier.padding(Spacing.xl)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Warning,
@@ -156,7 +159,7 @@ fun CameraAbilitiesScreen(
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        verticalArrangement = Arrangement.spacedBy(Spacing.base)
                     ) {
                         Icon(
                             imageVector = Icons.Default.CameraAlt,
@@ -194,8 +197,8 @@ private fun CameraAbilitiesContent(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(Spacing.base),
+        verticalArrangement = Arrangement.spacedBy(Spacing.base)
     ) {
         // 카메라 기본 정보
         item {
@@ -207,8 +210,8 @@ private fun CameraAbilitiesContent(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(Spacing.base),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.sm)
                 ) {
                     Text(
                         text = stringResource(R.string.diag_abilities_section_camera),
@@ -250,8 +253,8 @@ private fun CameraAbilitiesContent(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(Spacing.base),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.sm)
                 ) {
                     Text(
                         text = stringResource(R.string.diag_abilities_section_connection),
@@ -394,8 +397,8 @@ private fun CameraAbilitiesContent(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(Spacing.base),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.sm)
                 ) {
                     Text(
                         text = stringResource(R.string.diag_abilities_section_raw),
@@ -436,12 +439,12 @@ private fun CameraAbilitiesContent(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(Spacing.base),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.sm)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
                     ) {
                         Icon(
                             imageVector = when {
@@ -503,7 +506,7 @@ private fun CameraAbilitiesContent(
 
         // Spacer
         item {
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(Spacing.xl))
         }
     }
 }
@@ -525,8 +528,8 @@ private fun DiagnosticsSection(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(Spacing.base),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             Text(
                 text = stringResource(R.string.diag_section_title),
@@ -543,9 +546,9 @@ private fun DiagnosticsSection(
                 Icon(
                     imageVector = Icons.Default.PlayArrow,
                     contentDescription = null,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(IconSize.md)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(Spacing.sm))
                 Text(stringResource(R.string.diag_run_button))
             }
 
@@ -578,7 +581,7 @@ private fun DiagnosticsSection(
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
             ) {
                 OutlinedButton(
                     onClick = {
@@ -619,7 +622,7 @@ private fun DiagnosticsSection(
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
             ) {
                 OutlinedButton(
                     onClick = { diagnosticsManager.refreshMemoryPoolStatus() },
@@ -660,8 +663,8 @@ private fun FeatureCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(Spacing.base),
+            verticalArrangement = Arrangement.spacedBy(Spacing.sm)
         ) {
             Text(
                 text = title,
@@ -677,14 +680,14 @@ private fun FeatureCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.weight(1f)
                     ) {
                         Icon(
                             imageVector = feature.icon,
                             contentDescription = null,
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(IconSize.md),
                             tint = if (feature.supported)
                                 MaterialTheme.colorScheme.primary
                             else
@@ -706,7 +709,7 @@ private fun FeatureCard(
                             com.inik.camcon.presentation.theme.SuccessV2
                         else
                             com.inik.camcon.presentation.theme.ErrorV2,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(IconSize.lg)
                     )
                 }
             }
@@ -754,9 +757,9 @@ private fun CodeRow(label: String, value: String) {
             modifier = Modifier
                 .background(
                     color = MaterialTheme.colorScheme.surface,
-                    shape = RoundedCornerShape(4.dp)
+                    shape = RoundedCornerShape(Radius.md)
                 )
-                .padding(horizontal = 8.dp, vertical = 4.dp)
+                .padding(horizontal = Spacing.sm, vertical = Spacing.xs)
         )
     }
 }

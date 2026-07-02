@@ -25,7 +25,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -48,11 +49,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -60,8 +59,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.FilmLut
 import com.inik.camcon.presentation.theme.Accent
+import com.inik.camcon.presentation.theme.DividerLine
+import com.inik.camcon.presentation.theme.MicroLabel
+import com.inik.camcon.presentation.theme.MonoMicro
+import com.inik.camcon.presentation.theme.OnAccent
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.StrokeWidth
+import com.inik.camcon.presentation.theme.Surface0
+import com.inik.camcon.presentation.theme.TextPrimaryV2
+import com.inik.camcon.presentation.theme.TextTertiary
 import com.inik.camcon.presentation.ui.components.v2.FilterChipV2
 import com.inik.camcon.presentation.ui.components.v2.SkeletonLoader
 import com.inik.camcon.presentation.viewmodel.FilmEditorViewModel
@@ -110,7 +117,7 @@ fun FilmContactSheetScreen(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
-                            Icons.Default.ArrowBack,
+                            Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.cd_back)
                         )
                     }
@@ -124,18 +131,20 @@ fun FilmContactSheetScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = Surface0,
+                    titleContentColor = TextPrimaryV2,
+                    navigationIconContentColor = TextPrimaryV2,
+                    actionIconContentColor = TextPrimaryV2
                 )
             )
         },
+        containerColor = Surface0,
         contentWindowInsets = WindowInsets.safeDrawing
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(Surface0)
                 .padding(paddingValues)
         ) {
             if (searchVisible) {
@@ -208,39 +217,52 @@ private fun TargetPhotoBar(
     previewSize: Pair<Int, Int>?,
     onPickImage: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = Spacing.base, vertical = Spacing.sm),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = stringResource(R.string.fs_target_label),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-            )
-            Text(
-                text = sourcePath?.substringAfterLast('/')
-                    ?: stringResource(R.string.fs_target_none),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            previewSize?.let { (w, h) ->
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Spacing.lg, vertical = Spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "$w × $h",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    text = stringResource(R.string.fs_target_label),
+                    style = MicroLabel,
+                    color = TextTertiary,
+                    modifier = Modifier.padding(bottom = Spacing.xs)
+                )
+                Text(
+                    text = sourcePath?.substringAfterLast('/')
+                        ?: stringResource(R.string.fs_target_none),
+                    style = MonoMicro,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = TextPrimaryV2
+                )
+                previewSize?.let { (w, h) ->
+                    Text(
+                        text = "$w × $h",
+                        style = MonoMicro,
+                        color = TextTertiary,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+            }
+            TextButton(onClick = onPickImage) {
+                Text(
+                    text = stringResource(R.string.fs_target_change),
+                    style = MicroLabel,
+                    color = Accent
                 )
             }
         }
-        TextButton(onClick = onPickImage) {
-            Text(stringResource(R.string.fs_target_change))
-        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(StrokeWidth.hairline)
+                .background(DividerLine)
+        )
     }
 }
 
@@ -251,32 +273,40 @@ private fun CategoryChipRow(
     onSelect: (String) -> Unit
 ) {
     val scrollState = rememberScrollState()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(scrollState)
-            .padding(horizontal = Spacing.base, vertical = Spacing.sm),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        FilterChipV2(
-            text = stringResource(R.string.fs_category_all),
-            selected = selected == FilmEditorViewModel.CATEGORY_ALL,
-            onClick = { onSelect(FilmEditorViewModel.CATEGORY_ALL) }
-        )
-        FilterChipV2(
-            text = stringResource(R.string.fs_category_favorites),
-            selected = selected == FilmEditorViewModel.CATEGORY_FAVORITES,
-            onClick = { onSelect(FilmEditorViewModel.CATEGORY_FAVORITES) },
-            leadingIcon = Icons.Default.Favorite
-        )
-        categories.forEach { category ->
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(scrollState)
+                .padding(horizontal = Spacing.base, vertical = Spacing.sm),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             FilterChipV2(
-                text = category,
-                selected = selected == category,
-                onClick = { onSelect(category) }
+                text = stringResource(R.string.fs_category_all),
+                selected = selected == FilmEditorViewModel.CATEGORY_ALL,
+                onClick = { onSelect(FilmEditorViewModel.CATEGORY_ALL) }
             )
+            FilterChipV2(
+                text = stringResource(R.string.fs_category_favorites),
+                selected = selected == FilmEditorViewModel.CATEGORY_FAVORITES,
+                onClick = { onSelect(FilmEditorViewModel.CATEGORY_FAVORITES) },
+                leadingIcon = Icons.Default.Favorite
+            )
+            categories.forEach { category ->
+                FilterChipV2(
+                    text = category,
+                    selected = selected == category,
+                    onClick = { onSelect(category) }
+                )
+            }
         }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(StrokeWidth.hairline)
+                .background(DividerLine)
+        )
     }
 }
 
@@ -300,20 +330,21 @@ private fun ContactSheetCell(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(Radius.md))
+            .clip(RoundedCornerShape(Radius.sm))
             .clickable(onClick = onClick)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
-                .clip(RoundedCornerShape(Radius.md))
-                .then(
-                    if (isSelected) {
-                        Modifier.border(2.dp, Accent, RoundedCornerShape(Radius.md))
+                .clip(RoundedCornerShape(Radius.sm))
+                .border(
+                    border = if (isSelected) {
+                        androidx.compose.foundation.BorderStroke(StrokeWidth.thick, Accent)
                     } else {
-                        Modifier
-                    }
+                        androidx.compose.foundation.BorderStroke(StrokeWidth.hairline, DividerLine)
+                    },
+                    shape = RoundedCornerShape(Radius.sm)
                 )
         ) {
             val bmp = thumbnail
@@ -327,7 +358,7 @@ private fun ContactSheetCell(
             } else {
                 SkeletonLoader(
                     modifier = Modifier.fillMaxSize(),
-                    shape = RoundedCornerShape(Radius.md),
+                    shape = RoundedCornerShape(Radius.sm),
                     announceLoading = false
                 )
             }
@@ -339,25 +370,46 @@ private fun ContactSheetCell(
                     .size(32.dp)
                     .padding(2.dp)
                     .clip(RoundedCornerShape(Radius.sm))
-                    .background(Color.Black.copy(alpha = 0.35f))
+                    .background(Surface0.copy(alpha = 0.55f))
             ) {
                 Icon(
                     imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                     contentDescription = stringResource(
                         if (isFavorite) R.string.fs_favorite_remove else R.string.fs_favorite_add
                     ),
-                    tint = if (isFavorite) Accent else Color.White,
+                    tint = if (isFavorite) Accent else TextTertiary,
                     modifier = Modifier.size(16.dp)
                 )
             }
+
+            // 선택 = 앰버 프레임 + 좌상단 틱(콘택트시트 언어).
+            if (isSelected) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(4.dp)
+                        .size(18.dp)
+                        .clip(RoundedCornerShape(Radius.sm))
+                        .background(Accent),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        tint = OnAccent,
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
+            }
         }
 
+        // LUT 이름 = MonoMicro(라틴 대문자 관례는 데이터 자체), 선택 시 앰버.
         Text(
             text = lut.name,
-            style = MaterialTheme.typography.labelSmall,
+            style = MonoMicro,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            color = if (isSelected) Accent else MaterialTheme.colorScheme.onSurface,
+            color = if (isSelected) Accent else TextTertiary,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = Spacing.xs, start = Spacing.xs, end = Spacing.xs)
@@ -378,7 +430,7 @@ private fun EmptySourcePrompt(onPickImage: () -> Unit) {
             Icon(
                 imageVector = Icons.Default.Search,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                tint = TextTertiary,
                 modifier = Modifier.size(48.dp)
             )
             Spacer(modifier = Modifier.height(Spacing.md))
@@ -390,7 +442,11 @@ private fun EmptySourcePrompt(onPickImage: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(Spacing.md))
             TextButton(onClick = onPickImage) {
-                Text(stringResource(R.string.fs_pick_target))
+                Text(
+                    text = stringResource(R.string.fs_pick_target),
+                    style = MicroLabel,
+                    color = Accent
+                )
             }
         }
     }

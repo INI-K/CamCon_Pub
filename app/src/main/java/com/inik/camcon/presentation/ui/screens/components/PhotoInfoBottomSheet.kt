@@ -31,11 +31,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.CameraPhoto
+import com.inik.camcon.presentation.theme.HeadingL
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
 import com.inik.camcon.utils.LogMask
 import kotlinx.coroutines.Dispatchers
@@ -130,10 +129,7 @@ private fun PhotoInfoBottomSheetHeader(modifier: Modifier = Modifier) {
     ) {
         Text(
             text = stringResource(R.string.fullscreen_viewer_detail_info),
-            style = MaterialTheme.typography.titleLarge.copy(
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Medium
-            ),
+            style = HeadingL,
             color = MaterialTheme.colorScheme.onSurface
         )
     }

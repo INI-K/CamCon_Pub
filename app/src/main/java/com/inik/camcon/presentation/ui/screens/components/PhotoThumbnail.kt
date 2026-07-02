@@ -4,25 +4,24 @@ package com.inik.camcon.presentation.ui.screens.components
 
 import android.graphics.ColorSpace
 import android.util.Log
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -58,14 +57,17 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.CameraPhoto
+import com.inik.camcon.presentation.theme.Accent
+import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.Surface0
 import com.inik.camcon.presentation.theme.Micro
-import com.inik.camcon.presentation.theme.Caption
 import com.inik.camcon.presentation.theme.Elevation
 import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.StrokeWidth
 import com.inik.camcon.presentation.theme.SuccessV2
 import com.inik.camcon.presentation.theme.TextPrimaryV2
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.ui.components.v2.SkeletonLoader
 import com.inik.camcon.utils.LogMask
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -98,7 +100,15 @@ fun PhotoThumbnail(
     Card(
         modifier = Modifier
             .aspectRatio(1f)
-            .clip(RoundedCornerShape(Radius.xl))
+            .clip(RoundedCornerShape(Radius.sm))
+            .border(
+                border = if (isSelected) {
+                    BorderStroke(StrokeWidth.thick, Accent)
+                } else {
+                    BorderStroke(StrokeWidth.hairline, DividerLine)
+                },
+                shape = RoundedCornerShape(Radius.sm)
+            )
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
@@ -223,7 +233,7 @@ fun PhotoThumbnail(
                     .fillMaxWidth()
                     .background(
                         Surface0.copy(alpha = 0.6f),
-                        RoundedCornerShape(bottomStart = Radius.xl, bottomEnd = Radius.xl)
+                        RoundedCornerShape(bottomStart = Radius.sm, bottomEnd = Radius.sm)
                     ),
                 contentAlignment = Alignment.CenterStart
             ) {
@@ -244,7 +254,7 @@ fun PhotoThumbnail(
                         .align(Alignment.TopEnd)
                         .background(
                             Surface0.copy(alpha = 0.7f),
-                            RoundedCornerShape(bottomStart = Radius.lg, topEnd = Radius.xl)
+                            RoundedCornerShape(bottomStart = Radius.sm, topEnd = Radius.sm)
                         )
                         .padding(horizontal = 4.dp, vertical = 2.dp)
                 ) {
@@ -454,32 +464,15 @@ private fun ThumbnailImage(
 }
 
 /**
- * 이미지를 불러올 수 없을 때 표시되는 플레이스홀더
+ * 이미지를 불러올 수 없을 때 표시되는 플레이스홀더.
+ * CINE INSTRUMENT — 스피너/텍스트 없이 v2 SkeletonLoader shimmer 로만 표현.
  */
 @Composable
 private fun ThumbnailPlaceholder() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            CircularProgressIndicator(
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp),
-                strokeWidth = 2.dp
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = stringResource(R.string.server_photos_loading_placeholder),
-                style = Caption,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-            )
-        }
-    }
+    SkeletonLoader(
+        modifier = Modifier.fillMaxSize(),
+        shape = RoundedCornerShape(Radius.sm)
+    )
 }
 
 /**
@@ -513,13 +506,8 @@ fun FluidPhotoThumbnail(
         if (photo.width > 0 && photo.height > 0) {
             photo.width.toFloat() / photo.height.toFloat()
         } else {
-            // 비율 정보가 없으면 랜덤한 비율 사용 (시각적 다양성을 위해)
-            when ((0..3).random()) {
-                0 -> 1f       // 정사각형
-                1 -> 0.75f    // 세로형
-                2 -> 1.33f    // 가로형
-                else -> 0.6f  // 긴 세로형
-            }
+            // 비율 정보가 없으면 고정 3:2 (CINE INSTRUMENT — 랜덤 종횡비 제거)
+            1.5f
         }
     }
 
@@ -536,7 +524,15 @@ fun FluidPhotoThumbnail(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(aspectRatio)
-            .clip(RoundedCornerShape(Radius.xl))
+            .clip(RoundedCornerShape(Radius.sm))
+            .border(
+                border = if (isSelected) {
+                    BorderStroke(StrokeWidth.thick, Accent)
+                } else {
+                    BorderStroke(StrokeWidth.hairline, DividerLine)
+                },
+                shape = RoundedCornerShape(Radius.sm)
+            )
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
@@ -661,7 +657,7 @@ fun FluidPhotoThumbnail(
                     .fillMaxWidth()
                     .background(
                         Surface0.copy(alpha = 0.6f),
-                        RoundedCornerShape(bottomStart = Radius.xl, bottomEnd = Radius.xl)
+                        RoundedCornerShape(bottomStart = Radius.sm, bottomEnd = Radius.sm)
                     ),
                 contentAlignment = Alignment.CenterStart
             ) {
@@ -682,7 +678,7 @@ fun FluidPhotoThumbnail(
                         .align(Alignment.TopEnd)
                         .background(
                             Surface0.copy(alpha = 0.7f),
-                            RoundedCornerShape(bottomStart = Radius.lg, topEnd = Radius.xl)
+                            RoundedCornerShape(bottomStart = Radius.sm, topEnd = Radius.sm)
                         )
                         .padding(horizontal = 4.dp, vertical = 2.dp)
                 ) {

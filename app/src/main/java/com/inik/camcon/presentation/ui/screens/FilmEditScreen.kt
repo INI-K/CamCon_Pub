@@ -28,7 +28,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.FileUpload
@@ -39,6 +39,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -54,7 +55,6 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -62,8 +62,17 @@ import com.inik.camcon.R
 import com.inik.camcon.domain.model.FilmAdjustments
 import com.inik.camcon.domain.model.FilmLut
 import com.inik.camcon.presentation.theme.Accent
+import com.inik.camcon.presentation.theme.DividerLine
+import com.inik.camcon.presentation.theme.MicroLabel
+import com.inik.camcon.presentation.theme.MonoMicro
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.StrokeWidth
+import com.inik.camcon.presentation.theme.Surface0
+import com.inik.camcon.presentation.theme.Surface1
+import com.inik.camcon.presentation.theme.TextPrimaryV2
+import com.inik.camcon.presentation.theme.TextTertiary
+import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
 import com.inik.camcon.presentation.ui.screens.components.FilmEditPreview
 import com.inik.camcon.presentation.viewmodel.FilmEditorViewModel
 import kotlin.math.roundToInt
@@ -139,7 +148,7 @@ fun FilmEditScreen(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
-                            Icons.Default.ArrowBack,
+                            Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.cd_back)
                         )
                     }
@@ -154,7 +163,7 @@ fun FilmEditScreen(
                             contentDescription = stringResource(
                                 if (isFavorite) R.string.fs_favorite_remove else R.string.fs_favorite_add
                             ),
-                            tint = if (isFavorite) Accent else MaterialTheme.colorScheme.onPrimary
+                            tint = if (isFavorite) Accent else TextPrimaryV2
                         )
                     }
                     IconButton(onClick = viewModel::resetAdjustments) {
@@ -171,7 +180,7 @@ fun FilmEditScreen(
                             CircularProgressIndicator(
                                 modifier = Modifier.size(20.dp),
                                 strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onPrimary
+                                color = Accent
                             )
                         } else {
                             Icon(
@@ -182,18 +191,20 @@ fun FilmEditScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = Surface0,
+                    titleContentColor = TextPrimaryV2,
+                    navigationIconContentColor = TextPrimaryV2,
+                    actionIconContentColor = TextPrimaryV2
                 )
             )
         },
+        containerColor = Surface0,
         contentWindowInsets = WindowInsets.safeDrawing
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(Surface0)
                 .padding(paddingValues)
         ) {
             // 프리뷰(고정 영역). 꾹 누르면 원본.
@@ -208,33 +219,42 @@ fun FilmEditScreen(
 
             Text(
                 text = stringResource(R.string.fs_original_compare_hint),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                style = MicroLabel,
+                color = TextTertiary,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = Spacing.base, vertical = Spacing.xs)
             )
 
-            // 슬라이더 영역(스크롤).
-            Column(
+            // 컨트롤 패널(flat Surface1 + 헤어라인). 슬라이더 스택은 스크롤.
+            SurfaceV2(
+                tier = 1,
+                border = true,
+                shape = RoundedCornerShape(Radius.md),
                 modifier = Modifier
                     .weight(1f)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = Spacing.base)
+                    .fillMaxWidth()
+                    .padding(horizontal = Spacing.base, vertical = Spacing.sm)
             ) {
-                SectionHeader(stringResource(R.string.fs_section_film))
-                IntensitySlider(
-                    intensity = filmEdit.intensity,
-                    onChange = viewModel::setIntensity
-                )
+                Column(
+                    modifier = Modifier
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = Spacing.base)
+                ) {
+                    SectionHeader(stringResource(R.string.fs_section_film))
+                    IntensitySlider(
+                        intensity = filmEdit.intensity,
+                        onChange = viewModel::setIntensity
+                    )
 
-                Spacer(Modifier.height(Spacing.md))
-                SectionHeader(stringResource(R.string.fs_section_adjust))
-                AdjustmentSliders(
-                    adjustments = filmEdit.adjustments,
-                    onChange = viewModel::setAdjustment
-                )
-                Spacer(Modifier.height(Spacing.md))
+                    Spacer(Modifier.height(Spacing.md))
+                    SectionHeader(stringResource(R.string.fs_section_adjust))
+                    AdjustmentSliders(
+                        adjustments = filmEdit.adjustments,
+                        onChange = viewModel::setAdjustment
+                    )
+                    Spacer(Modifier.height(Spacing.md))
+                }
             }
 
             // 하단 필름 전환 스트립.
@@ -252,12 +272,12 @@ fun FilmEditScreen(
 
 @Composable
 private fun SectionHeader(text: String) {
+    // 계측기 섹션 라벨(MicroLabel). CJK 가능성으로 .uppercase() 호출하지 않음.
     Text(
         text = text,
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.padding(top = Spacing.sm, bottom = Spacing.xs)
+        style = MicroLabel,
+        color = TextTertiary,
+        modifier = Modifier.padding(top = Spacing.md, bottom = Spacing.sm)
     )
 }
 
@@ -363,23 +383,30 @@ private fun LabeledSlider(
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                color = TextPrimaryV2
             )
+            // 수치 = MonoReadout 계열(MonoMicro), 앰버.
             Text(
                 text = valueText,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                style = MonoMicro,
+                color = Accent
             )
         }
         Slider(
             value = value.coerceIn(valueRange.start, valueRange.endInclusive),
             onValueChange = onChange,
-            valueRange = valueRange
+            valueRange = valueRange,
+            colors = SliderDefaults.colors(
+                thumbColor = Accent,
+                activeTrackColor = Accent,
+                inactiveTrackColor = DividerLine
+            )
         )
     }
 }
@@ -394,23 +421,31 @@ private fun FilmSwitchStrip(
     onLeave: (String) -> Unit
 ) {
     if (luts.isEmpty()) return
-    LazyRow(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(vertical = Spacing.sm),
-        contentPadding = PaddingValues(horizontal = Spacing.sm),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
-    ) {
-        items(luts, key = { it.id }) { lut ->
-            FilmStripCell(
-                lut = lut,
-                thumbnail = thumbnails[lut.id],
-                isSelected = lut.id == selectedLutId,
-                onClick = { onSelect(lut.id) },
-                onEnter = { onEnter(lut.id) },
-                onLeave = { onLeave(lut.id) }
-            )
+    Column {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(StrokeWidth.hairline)
+                .background(DividerLine)
+        )
+        LazyRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Surface0)
+                .padding(vertical = Spacing.sm),
+            contentPadding = PaddingValues(horizontal = Spacing.sm),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
+        ) {
+            items(luts, key = { it.id }) { lut ->
+                FilmStripCell(
+                    lut = lut,
+                    thumbnail = thumbnails[lut.id],
+                    isSelected = lut.id == selectedLutId,
+                    onClick = { onSelect(lut.id) },
+                    onEnter = { onEnter(lut.id) },
+                    onLeave = { onLeave(lut.id) }
+                )
+            }
         }
     }
 }
@@ -432,17 +467,21 @@ private fun FilmStripCell(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .width(64.dp)
-            .clip(RoundedCornerShape(Radius.md))
+            .clip(RoundedCornerShape(Radius.sm))
             .clickable(onClick = onClick)
     ) {
         Box(
             modifier = Modifier
                 .size(64.dp)
-                .clip(RoundedCornerShape(Radius.md))
-                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
-                .then(
-                    if (isSelected) Modifier.border(2.dp, Accent, RoundedCornerShape(Radius.md))
-                    else Modifier
+                .clip(RoundedCornerShape(Radius.sm))
+                .background(Surface1)
+                .border(
+                    border = if (isSelected) {
+                        androidx.compose.foundation.BorderStroke(StrokeWidth.thick, Accent)
+                    } else {
+                        androidx.compose.foundation.BorderStroke(StrokeWidth.hairline, DividerLine)
+                    },
+                    shape = RoundedCornerShape(Radius.sm)
                 )
         ) {
             val bmp = thumbnail
@@ -457,10 +496,10 @@ private fun FilmStripCell(
         }
         Text(
             text = lut.name,
-            style = MaterialTheme.typography.labelSmall,
+            style = MonoMicro,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            color = if (isSelected) Accent else MaterialTheme.colorScheme.onSurface,
+            color = if (isSelected) Accent else TextTertiary,
             modifier = Modifier
                 .width(64.dp)
                 .padding(top = Spacing.xs)

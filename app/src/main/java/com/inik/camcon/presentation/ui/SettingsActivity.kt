@@ -33,7 +33,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ContentCopy
@@ -98,6 +98,7 @@ import com.inik.camcon.presentation.theme.ErrorV2
 import com.inik.camcon.presentation.theme.HeadingL
 import com.inik.camcon.presentation.theme.HeadingM
 import com.inik.camcon.presentation.theme.IconSize
+import com.inik.camcon.presentation.theme.MicroLabel
 import com.inik.camcon.presentation.theme.OnAccent
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.Surface0
@@ -304,6 +305,11 @@ fun SettingsScreen(
 
     var logDialogContent by remember { mutableStateOf<String?>(null) }
 
+    // 안내성(비오류·비시스템) 토스트를 V2 ToastV2 오버레이로 표시. null 이면 숨김.
+    // 에러/시스템(권한·결제·Firebase 삭제·자동연결 결과)은 컴포지션 수명과 무관하게
+    // 동작해야 하므로 기존 android.widget.Toast 를 유지한다(아래 각 호출부 참조).
+    var advisoryToastMessage by remember { mutableStateOf<String?>(null) }
+
     // 그룹 1 — 계정/로그아웃/삭제 UX, 언어 선택
     var showLogoutConfirm by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
@@ -324,7 +330,7 @@ fun SettingsScreen(
                 navigationIcon = {
                     androidx.compose.material3.IconButton(onClick = onBackClick) {
                         Icon(
-                            Icons.Default.ArrowBack,
+                            Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.settings_v2_back),
                             tint = TextPrimaryV2
                         )
@@ -808,8 +814,9 @@ fun SettingsScreen(
                         checked = isNativeLogCaptureEnabled,
                         onCheckedChange = {
                             appSettingsViewModel.setNativeLogCaptureEnabled(it)
-                            val message = if (it) nativeLogToastEnableText else nativeLogToastDisableText
-                            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
+                            // 안내성 토스트 → ToastV2 오버레이
+                            advisoryToastMessage =
+                                if (it) nativeLogToastEnableText else nativeLogToastDisableText
                         }
                     )
 
@@ -821,11 +828,8 @@ fun SettingsScreen(
                             onClick = {
                                 val logFiles = appSettingsViewModel.getLogFiles()
                                 if (logFiles.isEmpty()) {
-                                    android.widget.Toast.makeText(
-                                        context,
-                                        nativeLogNoFilesText,
-                                        android.widget.Toast.LENGTH_SHORT
-                                    ).show()
+                                    // 안내성 토스트 → ToastV2 오버레이
+                                    advisoryToastMessage = nativeLogNoFilesText
                                 } else {
                                     coroutineScope.launch {
                                         logDialogContent = appSettingsViewModel.getLogFileContent()
@@ -863,11 +867,8 @@ fun SettingsScreen(
                             text = stringResource(R.string.settings_native_log_copy_button),
                             onClick = {
                                 context.copyToClipboard(nativeLogClipboardLabel, logContent)
-                                android.widget.Toast.makeText(
-                                    context,
-                                    nativeLogCopiedText,
-                                    android.widget.Toast.LENGTH_SHORT
-                                ).show()
+                                // 안내성 토스트 → ToastV2 오버레이
+                                advisoryToastMessage = nativeLogCopiedText
                             }
                         )
                     }
@@ -937,11 +938,8 @@ fun SettingsScreen(
                             val code = adminReferralCodeViewModel.extractOneAvailableCode()
                             if (code != null) {
                                 context.copyToClipboard(referralClipboardLabel, code)
-                                android.widget.Toast.makeText(
-                                    context,
-                                    referralCopiedTemplate.format(code),
-                                    android.widget.Toast.LENGTH_LONG
-                                ).show()
+                                // 안내성(코드 복사됨) 토스트 → ToastV2 오버레이
+                                advisoryToastMessage = referralCopiedTemplate.format(code)
                             }
                         }
                     )
@@ -958,6 +956,13 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(Spacing.lg))
         }
+
+        // 안내성 토스트 오버레이 — 상단에서 슬라이드 인, 3초 후 자동 소멸.
+        AdvisoryToastHost(
+            message = advisoryToastMessage,
+            paddingValues = paddingValues,
+            onDismiss = { advisoryToastMessage = null }
+        )
 
         // -------- 그룹 1 — 로그아웃 / 계정 삭제 / 언어 선택 다이얼로그 --------
 
@@ -1382,8 +1387,51 @@ private fun LiveViewQuality.labelRes(): Int = when (this) {
 }
 
 /**
+ * 안내성(비오류) 토스트 오버레이 — CameraControlScreen 의 ToastV2 패턴을 따른다.
+ * [message] 가 non-null 이면 상단에서 슬라이드 인 후 3초 뒤 [onDismiss] 로 소멸한다.
+ */
+@Composable
+private fun AdvisoryToastHost(
+    message: String?,
+    paddingValues: androidx.compose.foundation.layout.PaddingValues,
+    onDismiss: () -> Unit
+) {
+    val visible = message != null
+    if (message != null) {
+        LaunchedEffect(message) {
+            kotlinx.coroutines.delay(3000L)
+            onDismiss()
+        }
+    }
+    androidx.compose.animation.AnimatedVisibility(
+        visible = visible,
+        enter = androidx.compose.animation.slideInVertically(initialOffsetY = { -80 }) +
+            androidx.compose.animation.fadeIn(
+                animationSpec = androidx.compose.animation.core.tween(260)
+            ),
+        exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { -80 }) +
+            androidx.compose.animation.fadeOut(
+                animationSpec = androidx.compose.animation.core.tween(260)
+            )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(paddingValues)
+                .padding(start = Spacing.base, end = Spacing.base, top = Spacing.sm)
+        ) {
+            com.inik.camcon.presentation.ui.components.v2.ToastV2(
+                message = message.orEmpty(),
+                kind = com.inik.camcon.presentation.ui.components.v2.StatusKind.Idle,
+                modifier = Modifier.align(Alignment.TopCenter)
+            )
+        }
+    }
+}
+
+/**
  * V2 섹션 컨테이너 — Lightroom 환경설정 톤.
- * 헤더(HeadingM, TextSecondaryV2 uppercase 톤) + SurfaceV2 tier=1 패널 + RowItem 리스트.
+ * 헤더(MicroLabel, TextTertiary 계측기 라벨) + SurfaceV2 tier=1 패널 + RowItem 리스트.
  */
 @Composable
 fun SettingsSection(
@@ -1392,8 +1440,9 @@ fun SettingsSection(
 ) {
     Column(modifier = Modifier.padding(horizontal = Spacing.base)) {
         Text(
-            text = title.uppercase(),
-            style = HeadingM,
+            // CINE 계측기 라벨 — MicroLabel(11sp Medium, ls1.4). CJK 대응으로 .uppercase() 호출 금지.
+            text = title,
+            style = MicroLabel,
             color = TextTertiary,
             modifier = Modifier.padding(
                 start = Spacing.xs,
