@@ -8,6 +8,7 @@ import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
 import com.inik.camcon.data.datasource.nativesource.LiveViewCallback
 import com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource
 import com.inik.camcon.data.datasource.ptpip.PtpipDataSource
+import com.inik.camcon.data.datasource.ptpip.PtpipPhotoEvent
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
 import com.inik.camcon.data.repository.managers.CameraConnectionManager
 import com.inik.camcon.data.repository.managers.CameraEventManager
@@ -686,46 +687,69 @@ class CameraCaptureRepositoryImpl @Inject constructor(
         eventManager.onRawFileRestricted = callback
     }
 
-    // ── PTPIP 사진 다운로드 콜백 설치 (Facade init에서 1회 호출) ──
+    // ── PTPIP 사진 이벤트 수집 (Facade init에서 시작) ──
 
-    fun installPtpipDownloadCallback() {
-        // Wi-Fi 경로 저장 실패도 USB 경로와 동일하게 처리 — 무음 유실 방지
-        ptpipDataSource.setPhotoDownloadFailedCallback { fileName ->
-            Log.e(TAG, "PTPIP 사진 저장 실패: $fileName")
-            processedFileCache.remove(fileName)
-            updatePhotoDownloadFailed(fileName)
+    private val ptpipPhotoEventCollectionStarted = AtomicBoolean(false)
+
+    /**
+     * [PtpipDataSource.photoEvents] 수집 시작 (멱등).
+     *
+     * 과거 콜백 슬롯 방식은 화면 cleanup(`PtpipDataSource.cleanup()`)이 콜백을 null로 지우면
+     * 재설치 경로가 없어 capturedPhotos 갱신이 조용히 멈췄다. 싱글톤 [scope] 수집은
+     * 화면 수명주기와 무관하게 프로세스 종료까지 유지된다.
+     */
+    fun startPtpipPhotoEventCollection() {
+        if (!ptpipPhotoEventCollectionStarted.compareAndSet(false, true)) return
+
+        scope.launch {
+            ptpipDataSource.photoEvents.collect { event ->
+                when (event) {
+                    is PtpipPhotoEvent.Downloaded -> handlePtpipPhotoDownloaded(event)
+
+                    // Wi-Fi 경로 저장 실패도 USB 경로와 동일하게 처리 — 무음 유실 방지
+                    is PtpipPhotoEvent.DownloadFailed -> {
+                        Log.e(TAG, "PTPIP 사진 저장 실패: ${event.fileName}")
+                        processedFileCache.remove(event.fileName)
+                        updatePhotoDownloadFailed(event.fileName)
+                    }
+                }
+            }
         }
+    }
 
-        ptpipDataSource.setPhotoDownloadedCallback { filePath, fileName, imageData ->
-            com.inik.camcon.utils.LogcatManager.d(
-                TAG,
-                "PTPIP에서 사진 다운로드 완료: $fileName (${LogMask.path(filePath)}, ${imageData.size / 1024}KB)"
+    private fun handlePtpipPhotoDownloaded(event: PtpipPhotoEvent.Downloaded) {
+        val filePath = event.filePath
+        val fileName = event.fileName
+        val imageData = event.imageData
+        com.inik.camcon.utils.LogcatManager.d(
+            TAG,
+            "PTPIP에서 사진 다운로드 완료: $fileName (${LogMask.path(filePath)}, ${imageData.size / 1024}KB)"
+        )
+
+        // 이벤트별 별도 코루틴 — EXIF 파싱이 수집 루프(발행측 백프레셔)를 막지 않게 한다
+        scope.launch(ioDispatcher) {
+            val capturedPhoto = CapturedPhoto(
+                id = java.util.UUID.randomUUID().toString(),
+                filePath = filePath,
+                thumbnailPath = null,
+                // 정렬 기준 안정화: PtpipDataSource 가 넘긴 원본 바이트의 EXIF 촬영 시각 사용, 실패 시 현재 시각 폴백
+                captureTime = ExifCaptureTime.parseMillis(imageData) ?: System.currentTimeMillis(),
+                cameraModel = connectionManager.cameraCapabilities.value?.model ?: "알 수 없음",
+                settings = cameraSettingsProvider(),
+                // 크기는 방금 다운로드한 imageData 기준(정본). 합성경로를 File().length() 로
+                // 재조회하면 stale 물리파일 크기를 읽어 실제 컷과 어긋난다(수정1과 세트).
+                size = imageData.size.toLong(),
+                width = 0,
+                height = 0,
+                isDownloading = false,
+                downloadCompleteTime = System.currentTimeMillis()
             )
 
-            scope.launch(ioDispatcher) {
-                val capturedPhoto = CapturedPhoto(
-                    id = java.util.UUID.randomUUID().toString(),
-                    filePath = filePath,
-                    thumbnailPath = null,
-                    // 정렬 기준 안정화: PtpipDataSource 가 넘긴 원본 바이트의 EXIF 촬영 시각 사용, 실패 시 현재 시각 폴백
-                    captureTime = ExifCaptureTime.parseMillis(imageData) ?: System.currentTimeMillis(),
-                    cameraModel = connectionManager.cameraCapabilities.value?.model ?: "알 수 없음",
-                    settings = cameraSettingsProvider(),
-                    // 크기는 방금 다운로드한 imageData 기준(정본). 합성경로를 File().length() 로
-                    // 재조회하면 stale 물리파일 크기를 읽어 실제 컷과 어긋난다(수정1과 세트).
-                    size = imageData.size.toLong(),
-                    width = 0,
-                    height = 0,
-                    isDownloading = false,
-                    downloadCompleteTime = System.currentTimeMillis()
-                )
-
-                com.inik.camcon.utils.LogcatManager.d(
-                    TAG,
-                    "PTPIP 사진 저장 성공: ${LogMask.path(capturedPhoto.filePath)}"
-                )
-                updateDownloadedPhoto(capturedPhoto)
-            }
+            com.inik.camcon.utils.LogcatManager.d(
+                TAG,
+                "PTPIP 사진 저장 성공: ${LogMask.path(capturedPhoto.filePath)}"
+            )
+            updateDownloadedPhoto(capturedPhoto)
         }
     }
 

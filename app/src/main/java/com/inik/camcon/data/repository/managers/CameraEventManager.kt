@@ -92,6 +92,11 @@ class CameraEventManager @Inject constructor(
     // PTPIP 분리 콜백
     var onPtpipDisconnectedCallback: (() -> Unit)? = null
 
+    // 비자발적 PTPIP 끊김(네이티브 통지) — '상태만' 내리는 경량 콜백. 무거운 cleanup과 분리.
+    // ⚠️ 기존 죽은 슬롯 onPtpipDisconnectedCallback(위)과 혼동 금지 —
+    //    그건 handlePtpipDisconnection(performCompleteCleanup 포함)용이라 재활용하지 않는다.
+    var onPtpipConnectionLostCallback: (() -> Unit)? = null
+
     // RAW 파일 제한 콜백 추가
     var onRawFileRestricted: ((fileName: String, restrictionMessage: String) -> Unit)? = null
 
@@ -374,6 +379,23 @@ class CameraEventManager @Inject constructor(
 
     fun isRunning(): Boolean = isEventListenerRunning.get()
 
+    /**
+     * 네이티브 이벤트 루프가 '비자발적으로' 죽은 뒤(카메라 OFF/소켓 death) Kotlin 측 실행 플래그를
+     * 정합화한다. 네이티브 스레드는 이미 스스로 eventListenerRunning=false로 종료 중이므로
+     * CameraNative.stopListenCameraEvents()를 부르지 않고(공유 핸들 불침해) Kotlin 상태만 리셋한다.
+     *
+     * 이걸 하지 않으면 재연결 시 startCameraEventListener가 stale true 플래그
+     * (isEventListenerRunning / isEventListenerStarting)에 걸려 조기 리턴 → 리스너 미재시작(M1/R5).
+     */
+    fun resetListenerStateAfterNativeDeath() {
+        isEventListenerRunning.set(false)
+        isEventListenerStarting.set(false)
+        scope.launch(mainDispatcher) {
+            _isEventListenerActive.value = false
+        }
+        LogcatManager.d("카메라이벤트매니저", "네이티브 비자발적 종료 — Kotlin 리스너 플래그 리셋(네이티브 stop 미호출)")
+    }
+
     fun isPhotoPreviewMode(): Boolean = _isPhotoPreviewMode.value
 
     /**
@@ -642,6 +664,24 @@ class CameraEventManager @Inject constructor(
                     ConnectionType.PTPIP -> {
                         LogcatManager.w("카메라이벤트매니저", "PTPIP 네트워크 연결 끊김 감지됨")
                         handlePtpipDisconnection()
+                    }
+                }
+            }
+
+            override fun onPtpipConnectionLost() {
+                // 네이티브 이벤트 루프가 비자발적으로 죽었을 때만 호출된다(사용자 stop과 구분됨).
+                when (connectionType) {
+                    ConnectionType.PTPIP -> {
+                        LogcatManager.w("카메라이벤트매니저", "PTPIP 세션 비자발적 끊김 감지(네이티브 통지)")
+                        // ⚠️ performCompleteCleanup()/handlePtpipDisconnection() 호출 금지:
+                        //    그 경로는 stopListenCameraEvents + (상위에서) closeCamera로 이어져
+                        //    공유 네이티브 핸들을 파괴한다. 여기선 '상태만' 내리도록 위임.
+                        onPtpipConnectionLostCallback?.invoke()
+                    }
+
+                    ConnectionType.USB -> {
+                        // USB는 이 경로로 상태를 내리지 않는다(케이블 재부착 인텐트 경로가 담당).
+                        LogcatManager.d("카메라이벤트매니저", "USB 리스너 종료 통지 — PTPIP 아님, 무시")
                     }
                 }
             }
