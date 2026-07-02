@@ -37,6 +37,14 @@
     <!-- 카메라 연결 -->
     <string name="camera_connected">Connessa</string>
     <string name="camera_disconnected">Disconnessa</string>
+    <string name="pipeline_film_sim">FILM SIM</string>
+    <string name="pipeline_color_transfer">Trasf. colore</string>
+    <string name="pipeline_off">OFF</string>
+    <string name="pipeline_none">—</string>
+    <string name="pipeline_recent_waiting">In attesa</string>
+    <string name="pipeline_exposure_mode">MODE</string>
+    <string name="cd_toggle_film_sim">Attiva/disattiva simulazione pellicola</string>
+    <string name="cd_toggle_color_transfer">Attiva/disattiva trasferimento colore</string>
     <string name="camera_not_connected">Fotocamera Non Connessa</string>
     <string name="connect_camera_usb">Collega la fotocamera tramite USB OTG</string>
     <string name="retry_connection">Riprova Connessione</string>
@@ -338,4 +346,10 @@
     <string name="notif_bg_sync_listener_active">Listener di eventi attivo: in attesa di foto</string>
     <string name="notif_bg_sync_checking">Verifica della connessione della fotocamera…</string>
     <string name="notif_bg_sync_waiting">In attesa della connessione della fotocamera…</string>
+    <string name="ptpip_please_enable_wifi">Attiva il Wi-Fi</string>
+    <string name="ptpip_please_enable_location">Attiva il servizio di localizzazione</string>
+    <string name="ptpip_check_scan_conditions">Controlla le condizioni di scansione</string>
+    <string name="ptpip_shutter_listen_start">Avvia ricezione wireless dello scatto fisico</string>
+    <string name="ptpip_shutter_listen_stop">Arresta ricezione wireless</string>
+    <string name="ptpip_no_camera_search_first">Nessuna fotocamera — cerca prima una fotocamera in modalità STA</string>
 </resources>

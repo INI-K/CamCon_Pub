@@ -36,6 +36,14 @@
     <!-- 카메라 연결 -->
     <string name="camera_connected">已连接</string>
     <string name="camera_disconnected">已断开连接</string>
+    <string name="pipeline_film_sim">FILM SIM</string>
+    <string name="pipeline_color_transfer">色彩转移</string>
+    <string name="pipeline_off">OFF</string>
+    <string name="pipeline_none">—</string>
+    <string name="pipeline_recent_waiting">等待中</string>
+    <string name="pipeline_exposure_mode">MODE</string>
+    <string name="cd_toggle_film_sim">开启/关闭胶片模拟</string>
+    <string name="cd_toggle_color_transfer">开启/关闭色彩转移</string>
     <string name="camera_not_connected">相机未连接</string>
     <string name="connect_camera_usb">通过USB OTG连接您的相机</string>
     <string name="retry_connection">重试连接</string>
@@ -336,4 +344,10 @@
     <string name="notif_bg_sync_listener_active">事件监听器已启用 - 等待接收照片</string>
     <string name="notif_bg_sync_checking">正在确认相机连接…</string>
     <string name="notif_bg_sync_waiting">等待相机连接…</string>
+    <string name="ptpip_please_enable_wifi">请开启 Wi-Fi</string>
+    <string name="ptpip_please_enable_location">请开启定位服务</string>
+    <string name="ptpip_check_scan_conditions">请检查扫描条件</string>
+    <string name="ptpip_shutter_listen_start">开始无线接收物理快门</string>
+    <string name="ptpip_shutter_listen_stop">停止无线接收</string>
+    <string name="ptpip_no_camera_search_first">没有相机 — 请先在 STA 模式下搜索相机</string>
 </resources>

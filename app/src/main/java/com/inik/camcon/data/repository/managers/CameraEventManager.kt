@@ -70,7 +70,7 @@ class CameraEventManager @Inject constructor(
     // ⚠️ camera_config.cpp 의 buildLiveExposureJson kProps[] 와 반드시 동기 유지(한쪽만 바꾸면 동기화가 조용히 깨진다).
     private val exposureConfigNames = setOf(
         "iso", "d0b5", "d054", "d0b4", "shutterspeed", "shutterspeed2", "f-number", "aperture",
-        "whitebalance", "exposurecompensation", "focusmode"
+        "whitebalance", "exposurecompensation", "focusmode", "expprogram"
     )
 
     // 스레드 안전한 실행 상태 관리

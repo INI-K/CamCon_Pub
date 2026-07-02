@@ -37,6 +37,14 @@
     <!-- 카메라 연결 -->
     <string name="camera_connected">接続済み</string>
     <string name="camera_disconnected">切断済み</string>
+    <string name="pipeline_film_sim">FILM SIM</string>
+    <string name="pipeline_color_transfer">色転送</string>
+    <string name="pipeline_off">OFF</string>
+    <string name="pipeline_none">—</string>
+    <string name="pipeline_recent_waiting">待機中</string>
+    <string name="pipeline_exposure_mode">MODE</string>
+    <string name="cd_toggle_film_sim">フィルムシミュレーションのオン/オフ</string>
+    <string name="cd_toggle_color_transfer">色転送のオン/オフ</string>
     <string name="camera_not_connected">カメラが接続されていません</string>
     <string name="connect_camera_usb">USB OTGでカメラを接続してください</string>
     <string name="retry_connection">接続を再試行</string>
@@ -340,4 +348,10 @@
     <string name="notif_bg_sync_listener_active">イベントリスナー稼働中 - 写真の受信を待機中</string>
     <string name="notif_bg_sync_checking">カメラ接続を確認中…</string>
     <string name="notif_bg_sync_waiting">カメラ接続を待機中…</string>
+    <string name="ptpip_please_enable_wifi">Wi-Fiをオンにしてください</string>
+    <string name="ptpip_please_enable_location">位置情報サービスをオンにしてください</string>
+    <string name="ptpip_check_scan_conditions">スキャン条件を確認してください</string>
+    <string name="ptpip_shutter_listen_start">物理シャッターのワイヤレス受信を開始</string>
+    <string name="ptpip_shutter_listen_stop">ワイヤレス受信を停止</string>
+    <string name="ptpip_no_camera_search_first">カメラがありません — まずSTAモードでカメラを検索してください</string>
 </resources>

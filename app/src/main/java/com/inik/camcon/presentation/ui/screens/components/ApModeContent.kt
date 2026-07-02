@@ -1,5 +1,6 @@
 package com.inik.camcon.presentation.ui.screens.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,9 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -48,12 +46,17 @@ import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.components.v2.AppDialog
+import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
+import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
 import com.inik.camcon.presentation.theme.DividerLine
-import com.inik.camcon.presentation.theme.Elevation
-import com.inik.camcon.presentation.theme.Surface2
+import com.inik.camcon.presentation.theme.IconSize
+import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.StrokeWidth
 import com.inik.camcon.presentation.theme.SuccessV2
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
 import com.inik.camcon.domain.model.ThemeMode
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 /**
  * AP 모드 화면 컴포넌트
@@ -82,7 +85,7 @@ fun ApModeContent(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = Spacing.base, vertical = Spacing.md)
     ) {
         // 통합 네트워크 상태 카드 (NetworkStatus + WifiStatus + PTP/IP 활성화)
         item {
@@ -92,7 +95,7 @@ fun ApModeContent(
                 isWifiConnected = isWifiConnected,
                 ptpipViewModel = ptpipViewModel
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(Spacing.md))
         }
 
         // 카메라 연결 상태 (연결 중이거나 연결됨일 때만)
@@ -105,7 +108,7 @@ fun ApModeContent(
                     onDisconnect = { ptpipViewModel.disconnect() },
                     onCapture = { ptpipViewModel.capturePhoto() }
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(Spacing.md))
             }
         }
 
@@ -117,7 +120,7 @@ fun ApModeContent(
                     onConnectToWifi = onConnectToWifi,
                     savedSsids = savedWifiSsids
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(Spacing.md))
             }
         } else if (isPtpipEnabled) {
             // 스캔 결과 없을 때 안내
@@ -128,7 +131,7 @@ fun ApModeContent(
                     onScan = { ptpipViewModel.scanNearbyWifiNetworks() },
                     onRequestPermission = onRequestPermission
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(Spacing.md))
             }
         }
 
@@ -159,29 +162,32 @@ private fun ApNetworkStatusCard(
     isWifiConnected: Boolean,
     ptpipViewModel: PtpipViewModel
 ) {
-    Card(
+    val statusShape = RoundedCornerShape(Radius.md)
+    SurfaceV2(
         modifier = Modifier
             .fillMaxWidth()
             .border(
-                width = 1.dp,
-                color = if (wifiNetworkState.isConnected)
-                    SuccessV2.copy(alpha = 0.2f)
-                else
-                    MaterialTheme.colorScheme.error.copy(alpha = 0.2f),
-                shape = MaterialTheme.shapes.medium
+                border = BorderStroke(
+                    StrokeWidth.hairline,
+                    if (wifiNetworkState.isConnected)
+                        SuccessV2.copy(alpha = 0.2f)
+                    else
+                        MaterialTheme.colorScheme.error.copy(alpha = 0.2f)
+                ),
+                shape = statusShape
             ),
-        elevation = CardDefaults.cardElevation(defaultElevation = Elevation.none),
-        colors = CardDefaults.cardColors(containerColor = Surface2)
+        tier = 2,
+        shape = statusShape
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(Spacing.base)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = if (isWifiConnected) Icons.Filled.Wifi else Icons.Filled.WifiOff,
                     contentDescription = null,
                     tint = if (wifiNetworkState.isConnected) SuccessV2 else MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(IconSize.md)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(Spacing.sm))
                 Text(
                     text = if (isWifiConnected) stringResource(R.string.ap_mode_wifi_connected) else stringResource(R.string.ap_mode_wifi_disconnected),
                     style = MaterialTheme.typography.titleSmall,
@@ -191,13 +197,14 @@ private fun ApNetworkStatusCard(
 
                 // PTP/IP 비활성일 때 활성화 버튼
                 if (!isPtpipEnabled) {
-                    Button(onClick = { ptpipViewModel.setPtpipEnabled(true) }) {
-                        Text(stringResource(R.string.ap_mode_ptpip_enable))
-                    }
+                    PrimaryButton(
+                        text = stringResource(R.string.ap_mode_ptpip_enable),
+                        onClick = { ptpipViewModel.setPtpipEnabled(true) }
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(Spacing.sm))
 
             Text(
                 text = ptpipViewModel.getNetworkStatusMessage(),
@@ -207,7 +214,7 @@ private fun ApNetworkStatusCard(
             )
 
             if (wifiNetworkState.isConnectedToCameraAP && wifiNetworkState.detectedCameraIP != null) {
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(Spacing.xs))
                 Text(
                     text = stringResource(R.string.ap_mode_camera_ip, wifiNetworkState.detectedCameraIP ?: ""),
                     style = MaterialTheme.typography.bodySmall,
@@ -216,7 +223,7 @@ private fun ApNetworkStatusCard(
             }
 
             if (wifiNetworkState.isConnected && wifiNetworkState.isConnectedToCameraAP) {
-                Spacer(modifier = Modifier.height(2.dp))
+                Spacer(modifier = Modifier.height(Spacing.xs))
                 Text(
                     text = stringResource(R.string.ap_mode_camera_ap_direct),
                     style = MaterialTheme.typography.labelSmall,
@@ -227,7 +234,7 @@ private fun ApNetworkStatusCard(
             // 상세 상태 (한 줄 요약)
             val comprehensiveMsg = ptpipViewModel.getComprehensiveStatusMessage()
             if (comprehensiveMsg.isNotBlank()) {
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(Spacing.sm))
                 Text(
                     text = comprehensiveMsg,
                     style = MaterialTheme.typography.bodySmall,
@@ -248,52 +255,50 @@ private fun ScanPromptCard(
     onScan: () -> Unit,
     onRequestPermission: () -> Unit
 ) {
-    Card(
+    SurfaceV2(
         modifier = Modifier
             .fillMaxWidth()
             .border(
-                width = 1.dp,
-                color = DividerLine,
-                shape = MaterialTheme.shapes.medium
+                border = BorderStroke(StrokeWidth.hairline, DividerLine),
+                shape = RoundedCornerShape(Radius.md)
             ),
-        elevation = CardDefaults.cardElevation(defaultElevation = Elevation.none),
-        colors = CardDefaults.cardColors(containerColor = Surface2)
+        tier = 2,
+        shape = RoundedCornerShape(Radius.md)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp),
+                .padding(Spacing.lg),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
                 imageVector = Icons.Filled.Search,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                modifier = Modifier.size(36.dp)
+                modifier = Modifier.size(IconSize.xl)
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(Spacing.md))
             Text(
                 text = stringResource(R.string.ap_mode_search_camera_wifi),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(Spacing.xs))
             Text(
                 text = stringResource(R.string.ap_mode_turn_on_camera_wifi),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                 textAlign = TextAlign.Center
             )
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(
+            Spacer(modifier = Modifier.height(Spacing.lg))
+            PrimaryButton(
+                text = if (isDiscovering) stringResource(R.string.ap_mode_scanning) else stringResource(R.string.ap_mode_wifi_scan),
                 onClick = {
                     if (hasLocationPermission) onScan() else onRequestPermission()
                 },
                 enabled = !isDiscovering
-            ) {
-                Text(if (isDiscovering) stringResource(R.string.ap_mode_scanning) else stringResource(R.string.ap_mode_wifi_scan))
-            }
+            )
         }
     }
 }
@@ -308,40 +313,39 @@ private fun SavedWifiNetworksCard(
 ) {
     var ssidToDelete by remember { mutableStateOf<String?>(null) }
 
-    Card(
+    SurfaceV2(
         modifier = Modifier
             .fillMaxWidth()
             .border(
-                width = 1.dp,
-                color = DividerLine,
-                shape = MaterialTheme.shapes.medium
+                border = BorderStroke(StrokeWidth.hairline, DividerLine),
+                shape = RoundedCornerShape(Radius.md)
             ),
-        elevation = CardDefaults.cardElevation(defaultElevation = Elevation.none),
-        colors = CardDefaults.cardColors(containerColor = Surface2)
+        tier = 2,
+        shape = RoundedCornerShape(Radius.md)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(Spacing.base)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = Icons.Filled.VpnKey,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(IconSize.md)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(Spacing.sm))
                 Text(
                     text = stringResource(R.string.ap_mode_saved_networks, credentials.size),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold
                 )
             }
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(Spacing.md))
 
             credentials.forEach { credential ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 4.dp)
+                        .padding(vertical = Spacing.xs)
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
@@ -363,7 +367,7 @@ private fun SavedWifiNetworksCard(
                             imageVector = Icons.Filled.Delete,
                             contentDescription = stringResource(R.string.cd_delete),
                             tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(IconSize.md)
                         )
                     }
                 }

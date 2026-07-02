@@ -1,5 +1,6 @@
 package com.inik.camcon.presentation.ui.screens.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,10 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -39,8 +37,13 @@ import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.DividerLine
-import com.inik.camcon.presentation.theme.Surface2
+import com.inik.camcon.presentation.theme.IconSize
+import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.StrokeWidth
 import com.inik.camcon.presentation.theme.SuccessV2
+import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
+import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
 import com.inik.camcon.domain.model.ThemeMode
 
@@ -70,7 +73,7 @@ fun StaModeContent(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = Spacing.base, vertical = Spacing.md)
     ) {
         // 통합 네트워크 상태 카드
         item {
@@ -80,7 +83,7 @@ fun StaModeContent(
                 isWifiConnected = isWifiConnected,
                 ptpipViewModel = ptpipViewModel
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(Spacing.md))
         }
 
         // 자동 재연결 토글
@@ -89,7 +92,7 @@ fun StaModeContent(
                 isAutoReconnectEnabled = isAutoReconnectEnabled,
                 onToggleAutoReconnect = { ptpipViewModel.setAutoReconnectEnabled(it) }
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(Spacing.md))
         }
 
         // 카메라 연결 상태 (연결 중이거나 연결됨일 때만)
@@ -102,7 +105,7 @@ fun StaModeContent(
                     onDisconnect = { ptpipViewModel.disconnect() },
                     onCapture = { ptpipViewModel.capturePhoto() }
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(Spacing.md))
             }
         }
 
@@ -114,7 +117,7 @@ fun StaModeContent(
                     onConnectToWifi = onConnectToWifi,
                     isStaMode = true
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(Spacing.md))
             }
         }
 
@@ -138,29 +141,32 @@ private fun StaNetworkStatusCard(
     isWifiConnected: Boolean,
     ptpipViewModel: PtpipViewModel
 ) {
-    Card(
+    val statusShape = RoundedCornerShape(Radius.md)
+    SurfaceV2(
         modifier = Modifier
             .fillMaxWidth()
             .border(
-                width = 1.dp,
-                color = if (wifiNetworkState.isConnected)
-                    SuccessV2.copy(alpha = 0.2f)
-                else
-                    MaterialTheme.colorScheme.error.copy(alpha = 0.2f),
-                shape = MaterialTheme.shapes.medium
+                border = BorderStroke(
+                    StrokeWidth.hairline,
+                    if (wifiNetworkState.isConnected)
+                        SuccessV2.copy(alpha = 0.2f)
+                    else
+                        MaterialTheme.colorScheme.error.copy(alpha = 0.2f)
+                ),
+                shape = statusShape
             ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        colors = CardDefaults.cardColors(containerColor = Surface2)
+        tier = 2,
+        shape = statusShape
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(Spacing.base)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = if (isWifiConnected) Icons.Filled.Wifi else Icons.Filled.WifiOff,
                     contentDescription = null,
                     tint = if (wifiNetworkState.isConnected) SuccessV2 else MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(IconSize.md)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(Spacing.sm))
                 Text(
                     text = if (isWifiConnected) stringResource(R.string.ap_mode_wifi_connected) else stringResource(R.string.ap_mode_wifi_disconnected),
                     style = MaterialTheme.typography.titleSmall,
@@ -169,13 +175,14 @@ private fun StaNetworkStatusCard(
                 )
 
                 if (!isPtpipEnabled) {
-                    Button(onClick = { ptpipViewModel.setPtpipEnabled(true) }) {
-                        Text(stringResource(R.string.ap_mode_ptpip_enable))
-                    }
+                    PrimaryButton(
+                        text = stringResource(R.string.ap_mode_ptpip_enable),
+                        onClick = { ptpipViewModel.setPtpipEnabled(true) }
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(Spacing.sm))
 
             Text(
                 text = ptpipViewModel.getNetworkStatusMessage(),
@@ -185,7 +192,7 @@ private fun StaNetworkStatusCard(
             )
 
             if (wifiNetworkState.isConnected && !wifiNetworkState.isConnectedToCameraAP) {
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(Spacing.xs))
                 Text(
                     text = stringResource(R.string.sta_mode_general_wifi),
                     style = MaterialTheme.typography.labelSmall,
@@ -195,7 +202,7 @@ private fun StaNetworkStatusCard(
 
             val comprehensiveMsg = ptpipViewModel.getComprehensiveStatusMessage()
             if (comprehensiveMsg.isNotBlank()) {
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(Spacing.sm))
                 Text(
                     text = comprehensiveMsg,
                     style = MaterialTheme.typography.bodySmall,
@@ -214,30 +221,29 @@ private fun AutoReconnectCard(
     isAutoReconnectEnabled: Boolean,
     onToggleAutoReconnect: (Boolean) -> Unit
 ) {
-    Card(
+    SurfaceV2(
         modifier = Modifier
             .fillMaxWidth()
             .border(
-                width = 1.dp,
-                color = DividerLine,
-                shape = MaterialTheme.shapes.medium
+                border = BorderStroke(StrokeWidth.hairline, DividerLine),
+                shape = RoundedCornerShape(Radius.md)
             ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        colors = CardDefaults.cardColors(containerColor = Surface2)
+        tier = 2,
+        shape = RoundedCornerShape(Radius.md)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(Spacing.base),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = Icons.Filled.Sync,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(IconSize.md)
             )
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(Spacing.md))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = stringResource(R.string.sta_mode_auto_reconnect),
@@ -266,26 +272,29 @@ private fun MdnsSearchCard(
     isDiscovering: Boolean,
     onSearchClick: () -> Unit
 ) {
-    Card(
+    val searchShape = RoundedCornerShape(Radius.md)
+    SurfaceV2(
         modifier = Modifier
             .fillMaxWidth()
             .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                shape = MaterialTheme.shapes.medium
+                border = BorderStroke(
+                    StrokeWidth.hairline,
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                ),
+                shape = searchShape
             ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        colors = CardDefaults.cardColors(containerColor = Surface2)
+        tier = 2,
+        shape = searchShape
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(Spacing.base)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = Icons.Filled.Search,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(IconSize.md)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(Spacing.sm))
                 Text(
                     text = stringResource(R.string.sta_mode_mdns_search),
                     style = MaterialTheme.typography.titleSmall,
@@ -293,7 +302,7 @@ private fun MdnsSearchCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(Spacing.sm))
 
             Text(
                 text = stringResource(R.string.sta_mode_mdns_description),
@@ -301,25 +310,15 @@ private fun MdnsSearchCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(Spacing.md))
 
-            Button(
+            PrimaryButton(
+                text = if (isDiscovering) stringResource(R.string.sta_mode_searching) else stringResource(R.string.sta_mode_search_camera),
                 onClick = onSearchClick,
                 enabled = !isDiscovering,
+                isLoading = isDiscovering,
                 modifier = Modifier.fillMaxWidth()
-            ) {
-                if (isDiscovering) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.sta_mode_searching))
-                } else {
-                    Text(stringResource(R.string.sta_mode_search_camera))
-                }
-            }
+            )
         }
     }
 }

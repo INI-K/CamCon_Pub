@@ -154,6 +154,9 @@ class CameraControlRepositoryImpl @Inject constructor(
             val wb = value("whitebalance", "whitebalance2")
             val focus = value("focusmode", "focusmode2", "autofocusmode")
             val ev = value("exposurecompensation", "exposurecompensation2")
+            // 노출 모드(PASM) — 카메라가 expprogram 위젯을 주지 않으면 "" → null(미판독, UI 자동 숨김).
+            val exposureMode = value("expprogram").takeIf { it.isNotEmpty() }
+                ?.let { normalizeExposureMode(it) }
 
             // 모두 비어있으면 미상 — 가짜 값 방지
             if (iso.isEmpty() && shutter.isEmpty() && aperture.isEmpty() && wb.isEmpty() && ev.isEmpty()) {
@@ -176,11 +179,28 @@ class CameraControlRepositoryImpl @Inject constructor(
                 whiteBalance = wb,
                 focusMode = focus,
                 exposureCompensation = ev,
+                exposureMode = exposureMode,
                 availableSettings = available
             )
         } catch (e: Exception) {
             Log.e(TAG, "위젯 JSON 파싱 실패", e)
             null
+        }
+    }
+
+    /**
+     * expprogram 위젯 값을 노출 모드 1글자(P/A/S/M)로 정규화.
+     * 카메라별로 "Manual"/"Aperture Priority"(long-form) 또는 이미 "M"/"A"(short-form)로 올 수 있다.
+     * 알려진 long-form만 축약하고, 매핑에 없는 값(제조사 특수 모드 등)은 원본을 그대로 유지한다.
+     */
+    private fun normalizeExposureMode(raw: String): String {
+        val t = raw.trim()
+        return when (t.lowercase()) {
+            "p", "program", "program ae", "program auto", "auto", "programmed auto" -> "P"
+            "a", "av", "aperture", "aperture priority", "aperture-priority", "aperture priority ae" -> "A"
+            "s", "tv", "shutter", "shutter priority", "shutter-priority", "shutter priority ae" -> "S"
+            "m", "manual", "manual exposure" -> "M"
+            else -> t
         }
     }
 

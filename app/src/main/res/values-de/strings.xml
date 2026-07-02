@@ -37,6 +37,14 @@
     <!-- 카메라 연결 -->
     <string name="camera_connected">Verbunden</string>
     <string name="camera_disconnected">Getrennt</string>
+    <string name="pipeline_film_sim">FILM SIM</string>
+    <string name="pipeline_color_transfer">Farbübertragung</string>
+    <string name="pipeline_off">OFF</string>
+    <string name="pipeline_none">—</string>
+    <string name="pipeline_recent_waiting">Warten</string>
+    <string name="pipeline_exposure_mode">MODE</string>
+    <string name="cd_toggle_film_sim">Filmsimulation ein/aus</string>
+    <string name="cd_toggle_color_transfer">Farbübertragung ein/aus</string>
     <string name="camera_not_connected">Kamera Nicht Verbunden</string>
     <string name="connect_camera_usb">Verbinden Sie Ihre Kamera über USB OTG</string>
     <string name="retry_connection">Verbindung Wiederholen</string>
@@ -338,4 +346,10 @@
     <string name="notif_bg_sync_listener_active">Ereignis-Listener aktiv – Warten auf Fotos</string>
     <string name="notif_bg_sync_checking">Kameraverbindung wird geprüft…</string>
     <string name="notif_bg_sync_waiting">Warten auf Kameraverbindung…</string>
+    <string name="ptpip_please_enable_wifi">Bitte WLAN einschalten</string>
+    <string name="ptpip_please_enable_location">Bitte Standortdienst einschalten</string>
+    <string name="ptpip_check_scan_conditions">Bitte Scan-Bedingungen prüfen</string>
+    <string name="ptpip_shutter_listen_start">Drahtlosen Empfang des physischen Auslösers starten</string>
+    <string name="ptpip_shutter_listen_stop">Drahtlosen Empfang stoppen</string>
+    <string name="ptpip_no_camera_search_first">Keine Kamera — bitte zuerst im STA-Modus nach einer Kamera suchen</string>
 </resources>

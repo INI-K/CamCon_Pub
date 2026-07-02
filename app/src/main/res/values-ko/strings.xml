@@ -37,6 +37,14 @@
     <!-- 카메라 연결 -->
     <string name="camera_connected">연결됨</string>
     <string name="camera_disconnected">연결 해제됨</string>
+    <string name="pipeline_film_sim">FILM SIM</string>
+    <string name="pipeline_color_transfer">색감전송</string>
+    <string name="pipeline_off">OFF</string>
+    <string name="pipeline_none">—</string>
+    <string name="pipeline_recent_waiting">대기 중</string>
+    <string name="pipeline_exposure_mode">MODE</string>
+    <string name="cd_toggle_film_sim">필름 시뮬레이션 켜기/끄기</string>
+    <string name="cd_toggle_color_transfer">색감전송 켜기/끄기</string>
     <string name="camera_not_connected">카메라가 연결되지 않음</string>
     <string name="connect_camera_usb">USB OTG로 카메라를 연결하세요</string>
     <string name="retry_connection">연결 재시도</string>
@@ -350,4 +358,10 @@
     <string name="notif_bg_sync_listener_active">카메라 이벤트 리스너 활성 - 사진 수신 대기 중</string>
     <string name="notif_bg_sync_checking">카메라 연결 확인 중…</string>
     <string name="notif_bg_sync_waiting">카메라 연결 대기 중…</string>
+    <string name="ptpip_please_enable_wifi">Wi-Fi를 켜주세요</string>
+    <string name="ptpip_please_enable_location">위치 서비스를 켜주세요</string>
+    <string name="ptpip_check_scan_conditions">스캔 조건을 확인해주세요</string>
+    <string name="ptpip_shutter_listen_start">물리 셔터 무선 수신 시작</string>
+    <string name="ptpip_shutter_listen_stop">무선 수신 중지</string>
+    <string name="ptpip_no_camera_search_first">카메라가 없습니다 — 먼저 STA 모드에서 카메라를 검색하세요</string>
 </resources>
