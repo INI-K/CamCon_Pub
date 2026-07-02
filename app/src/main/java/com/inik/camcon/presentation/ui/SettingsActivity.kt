@@ -42,7 +42,7 @@ import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Logout
-import androidx.compose.material.icons.filled.NetworkWifi
+import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Photo
@@ -229,8 +229,6 @@ fun SettingsScreen(
     }
 
     val isPtpipEnabled by ptpipViewModel.isPtpipEnabled.collectAsStateWithLifecycle(initialValue = false)
-    val isWifiConnectionModeEnabled by ptpipViewModel.isWifiConnectionModeEnabled.collectAsStateWithLifecycle(initialValue = true)
-    val isAutoDiscoveryEnabled by ptpipViewModel.isAutoDiscoveryEnabled.collectAsStateWithLifecycle(initialValue = true)
     val isAutoConnectEnabled by ptpipViewModel.isAutoConnectEnabled.collectAsStateWithLifecycle(initialValue = false)
     val lastConnectedName by ptpipViewModel.lastConnectedName.collectAsStateWithLifecycle(initialValue = null)
 
@@ -243,6 +241,7 @@ fun SettingsScreen(
 
     val isColorTransferEnabled by appSettingsViewModel.isColorTransferEnabled.collectAsStateWithLifecycle()
     val colorTransferReferenceImagePath by appSettingsViewModel.colorTransferReferenceImagePath.collectAsStateWithLifecycle()
+    val isVibrateOnPhotoReceivedEnabled by appSettingsViewModel.isVibrateOnPhotoReceivedEnabled.collectAsStateWithLifecycle()
     val isFilmSimulationEnabled by appSettingsViewModel.isFilmSimulationEnabled.collectAsStateWithLifecycle()
     val selectedFilmLutId by appSettingsViewModel.selectedFilmLutId.collectAsStateWithLifecycle()
     val filmSimulationIntensity by appSettingsViewModel.filmSimulationIntensity.collectAsStateWithLifecycle()
@@ -431,20 +430,6 @@ fun SettingsScreen(
 
                     if (isPtpipEnabled) {
                         SwitchRowV2(
-                            icon = Icons.Default.NetworkWifi,
-                            title = stringResource(R.string.settings_v2_wifi_connect_title),
-                            subtitle = stringResource(R.string.settings_v2_wifi_connect_subtitle),
-                            checked = isWifiConnectionModeEnabled,
-                            onCheckedChange = { ptpipViewModel.setWifiConnectionModeEnabled(it) }
-                        )
-                        SwitchRowV2(
-                            icon = Icons.Default.Settings,
-                            title = stringResource(R.string.settings_v2_auto_discovery_title),
-                            subtitle = stringResource(R.string.settings_v2_auto_discovery_subtitle),
-                            checked = isAutoDiscoveryEnabled,
-                            onCheckedChange = { ptpipViewModel.setAutoDiscoveryEnabled(it) }
-                        )
-                        SwitchRowV2(
                             icon = Icons.Default.CameraAlt,
                             title = stringResource(R.string.settings_v2_auto_connect_title),
                             subtitle = stringResource(R.string.settings_v2_auto_connect_subtitle),
@@ -518,6 +503,18 @@ fun SettingsScreen(
                         }
                     )
                 }
+
+                SwitchRowV2(
+                    icon = Icons.Default.Vibration,
+                    title = stringResource(R.string.settings_v2_vibrate_on_photo_title),
+                    subtitle = if (isVibrateOnPhotoReceivedEnabled) {
+                        stringResource(R.string.settings_v2_vibrate_on_photo_on)
+                    } else {
+                        stringResource(R.string.settings_v2_vibrate_on_photo_off)
+                    },
+                    checked = isVibrateOnPhotoReceivedEnabled,
+                    onCheckedChange = { appSettingsViewModel.setVibrateOnPhotoReceivedEnabled(it) }
+                )
             }
 
             // 필름 시뮬레이션 설정

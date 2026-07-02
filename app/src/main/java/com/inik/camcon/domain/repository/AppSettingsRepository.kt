@@ -29,6 +29,9 @@ interface AppSettingsRepository {
 
     // === Capture UX (Group 3) ===
     val isShutterSoundEnabled: Flow<Boolean>
+
+    /** 사진 도착(수신·저장 완료) 시 진동 알림 여부 (기본값: false). */
+    val isVibrateOnPhotoReceivedEnabled: Flow<Boolean>
     val isLiveViewGridEnabled: Flow<Boolean>
     val liveViewQuality: Flow<LiveViewQuality>
     val hasSeenCaptureCoachmark: Flow<Boolean>
@@ -62,6 +65,7 @@ interface AppSettingsRepository {
     suspend fun setNativeLogCaptureEnabled(enabled: Boolean)
     suspend fun setOnboardingCompleted(completed: Boolean)
     suspend fun setShutterSoundEnabled(enabled: Boolean)
+    suspend fun setVibrateOnPhotoReceivedEnabled(enabled: Boolean)
     suspend fun setLiveViewGridEnabled(enabled: Boolean)
     suspend fun setLiveViewQuality(quality: LiveViewQuality)
     suspend fun setHasSeenCaptureCoachmark(seen: Boolean)

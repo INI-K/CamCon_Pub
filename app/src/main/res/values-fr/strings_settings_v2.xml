@@ -8,6 +8,9 @@
     <string name="settings_v2_section_camera_control">Contrôle de l\'appareil photo (version de développement)</string>
     <string name="settings_v2_section_wifi_ptpip">Connexion de l\'appareil photo par Wi-Fi (PTPIP) - version de développement</string>
     <string name="settings_v2_section_color_transfer">Transfert de couleur</string>
+    <string name="settings_v2_vibrate_on_photo_title">Vibrer à la réception d\'une photo</string>
+    <string name="settings_v2_vibrate_on_photo_on">Vibre brièvement lorsqu\'une photo arrive.</string>
+    <string name="settings_v2_vibrate_on_photo_off">Activez pour vibrer brièvement lorsqu\'une photo arrive.</string>
     <string name="settings_v2_section_raw_download">Téléchargement de fichiers RAW</string>
     <string name="settings_v2_section_connected_camera">Appareil photo connecté</string>
     <string name="settings_v2_section_user_info">Utilisateur</string>
@@ -47,10 +50,6 @@
     <string name="settings_v2_wifi_camera_on_last">Activé - dernière connexion : %s</string>
     <string name="settings_v2_wifi_camera_on_none">Activé - aucun appareil photo connecté</string>
     <string name="settings_v2_wifi_camera_off">Commande à distance de l\'appareil photo par Wi-Fi</string>
-    <string name="settings_v2_wifi_connect_title">Se connecter en WIFI</string>
-    <string name="settings_v2_wifi_connect_subtitle">Se connecter sur le même réseau Wi-Fi que l\'appareil photo (recommandé)</string>
-    <string name="settings_v2_auto_discovery_title">Recherche automatique d\'appareils photo</string>
-    <string name="settings_v2_auto_discovery_subtitle">Rechercher automatiquement les appareils photo PTPIP sur le réseau</string>
     <string name="settings_v2_auto_connect_title">Connexion automatique</string>
     <string name="settings_v2_auto_connect_subtitle">Se connecter automatiquement au dernier appareil photo connecté</string>
     <string name="settings_v2_connection_manage_title">Gérer la connexion de l\'appareil photo</string>

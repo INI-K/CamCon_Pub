@@ -64,6 +64,8 @@ class AppPreferencesDataSource @Inject constructor(
 
         // Capture UX (Group 3)
         private val SHUTTER_SOUND_ENABLED = booleanPreferencesKey("shutter_sound_enabled")
+        private val VIBRATE_ON_PHOTO_RECEIVED =
+            booleanPreferencesKey("vibrate_on_photo_received")
         private val LIVE_VIEW_GRID_ENABLED = booleanPreferencesKey("live_view_grid_enabled")
         private val LIVE_VIEW_QUALITY = intPreferencesKey("live_view_quality")
         private val HAS_SEEN_CAPTURE_COACHMARK =
@@ -252,6 +254,14 @@ class AppPreferencesDataSource @Inject constructor(
     override val isShutterSoundEnabled: Flow<Boolean> = context.appDataStore.data
         .map { preferences ->
             preferences[SHUTTER_SOUND_ENABLED] ?: true
+        }
+
+    /**
+     * 사진 도착 시 진동 알림 사용 여부 (기본값: false)
+     */
+    override val isVibrateOnPhotoReceivedEnabled: Flow<Boolean> = context.appDataStore.data
+        .map { preferences ->
+            preferences[VIBRATE_ON_PHOTO_RECEIVED] ?: false
         }
 
     /**
@@ -519,6 +529,15 @@ class AppPreferencesDataSource @Inject constructor(
     override suspend fun setShutterSoundEnabled(enabled: Boolean) {
         context.appDataStore.edit { preferences ->
             preferences[SHUTTER_SOUND_ENABLED] = enabled
+        }
+    }
+
+    /**
+     * 사진 도착 시 진동 알림 사용 여부 저장.
+     */
+    override suspend fun setVibrateOnPhotoReceivedEnabled(enabled: Boolean) {
+        context.appDataStore.edit { preferences ->
+            preferences[VIBRATE_ON_PHOTO_RECEIVED] = enabled
         }
     }
 
