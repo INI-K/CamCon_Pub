@@ -339,4 +339,15 @@
     <string name="settings_native_log_toast_disable">네이티브 로그 캡처를 중지했습니다.</string>
     <string name="settings_referral_clipboard_label">referral_code</string>
     <string name="settings_referral_copied">레퍼럴 코드 \'%s\'가 클립보드에 복사되었습니다</string>
+
+    <!-- 포그라운드 서비스 상태 알림 (CINE INSTRUMENT 브랜드 정합, Phase 1) -->
+    <string name="notif_auto_connect_prepare_title">카메라 자동 연결 준비</string>
+    <string name="notif_auto_connect_prepare_text">카메라 이벤트 리스너를 준비하는 중입니다</string>
+    <string name="notif_wifi_waiting_title">카메라 자동 연결 대기 중</string>
+    <string name="notif_wifi_waiting_text">설정된 WiFi 네트워크 연결을 감지하고 있습니다</string>
+    <string name="notif_bg_sync_title">CamCon 백그라운드 동기화</string>
+    <string name="notif_bg_sync_active">카메라 이벤트 리스너 활성 상태 - 화면이 꺼져도 사진 수신 가능</string>
+    <string name="notif_bg_sync_listener_active">카메라 이벤트 리스너 활성 - 사진 수신 대기 중</string>
+    <string name="notif_bg_sync_checking">카메라 연결 확인 중…</string>
+    <string name="notif_bg_sync_waiting">카메라 연결 대기 중…</string>
 </resources>

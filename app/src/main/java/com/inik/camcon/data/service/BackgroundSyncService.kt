@@ -11,6 +11,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.Log
+import com.inik.camcon.R
 import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.manager.PhotoCaptureEventManager
 import com.inik.camcon.domain.repository.AppSettingsRepository
@@ -74,7 +75,6 @@ class BackgroundSyncService : Service() {
 
     companion object {
         private const val TAG = "BackgroundSyncService"
-        private const val NOTIFICATION_TITLE = "CamCon 백그라운드 동기화"
         private const val SYNC_INTERVAL = 30_000L // 30초마다 체크
         private const val EVENT_LISTENER_CHECK_INTERVAL = 10_000L // 10초마다 이벤트 리스너 체크
         private const val VIBRATE_DEBOUNCE_MS = 800L // JPG+NEF 한 컷 이중 진동 방지
@@ -119,8 +119,8 @@ class BackgroundSyncService : Service() {
             val notification = CamConStatusNotification.attach(
                 this,
                 CamConStatusNotification.OWNER_SYNC,
-                NOTIFICATION_TITLE,
-                "카메라 이벤트 리스너 활성 상태 - 화면이 꺼져도 사진 수신 가능"
+                getString(R.string.notif_bg_sync_title),
+                getString(R.string.notif_bg_sync_active)
             )
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 // Android 14+ (API 34+)에서는 서비스 타입 지정 필수
@@ -388,10 +388,10 @@ class BackgroundSyncService : Service() {
                                     val result = cameraRepository.startCameraEventListener()
                                     if (result.isSuccess) {
                                         LogcatManager.d(TAG, " 백그라운드에서 이벤트 리스너 재시작 성공")
-                                        updateNotificationText("카메라 이벤트 리스너 활성 - 사진 수신 대기 중")
+                                        updateNotificationText(getString(R.string.notif_bg_sync_listener_active))
                                     } else {
                                         LogcatManager.w(TAG, " 백그라운드에서 이벤트 리스너 재시작 실패")
-                                        updateNotificationText("카메라 연결 확인 중...")
+                                        updateNotificationText(getString(R.string.notif_bg_sync_checking))
                                     }
                                 } catch (e: kotlinx.coroutines.CancellationException) {
                                     LogcatManager.d(TAG, "이벤트 리스너 재시작 작업이 취소됨")
@@ -402,7 +402,7 @@ class BackgroundSyncService : Service() {
                             }
 
                             else -> {
-                                updateNotificationText("카메라 이벤트 리스너 활성 - 사진 수신 대기 중")
+                                updateNotificationText(getString(R.string.notif_bg_sync_listener_active))
                             }
                         }
                     } else {
@@ -423,7 +423,7 @@ class BackgroundSyncService : Service() {
                             }
                         }
 
-                        updateNotificationText("카메라 연결 대기 중...")
+                        updateNotificationText(getString(R.string.notif_bg_sync_waiting))
 
                         // 연결이 끊어지면 깨울 카메라가 없으므로 Wake Lock 해제 (배터리 절약)
                         releaseWakeLock()
@@ -507,7 +507,7 @@ class BackgroundSyncService : Service() {
         CamConStatusNotification.update(
             this,
             CamConStatusNotification.OWNER_SYNC,
-            NOTIFICATION_TITLE,
+            getString(R.string.notif_bg_sync_title),
             text
         )
     }

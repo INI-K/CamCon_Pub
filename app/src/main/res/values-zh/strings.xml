@@ -325,4 +325,15 @@
     <string name="ptpip_hotspot_enable_desc">由于 Android 限制，应用无法直接开启热点，将打开系统设置。开启热点后请返回。</string>
     <string name="ptpip_hotspot_open_settings">打开热点设置</string>
     <string name="ptpip_hotspot_compat_note">Nikon Z、富士、佳能(EOS Utility)、松下 Lumix 支持连接手机热点。OM System、宾得/理光仅支持相机自身 AP，无法连接手机热点。</string>
+
+    <!-- 포그라운드 서비스 상태 알림 (CINE INSTRUMENT 브랜드 정합, Phase 1) -->
+    <string name="notif_auto_connect_prepare_title">正在准备相机自动连接</string>
+    <string name="notif_auto_connect_prepare_text">正在准备相机事件监听器</string>
+    <string name="notif_wifi_waiting_title">等待相机自动连接</string>
+    <string name="notif_wifi_waiting_text">正在检测已设置的 Wi-Fi 网络</string>
+    <string name="notif_bg_sync_title">CamCon 后台同步</string>
+    <string name="notif_bg_sync_active">事件监听器已启用 - 熄屏也可接收照片</string>
+    <string name="notif_bg_sync_listener_active">事件监听器已启用 - 等待接收照片</string>
+    <string name="notif_bg_sync_checking">正在确认相机连接…</string>
+    <string name="notif_bg_sync_waiting">等待相机连接…</string>
 </resources>

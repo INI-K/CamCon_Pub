@@ -329,4 +329,15 @@
     <string name="ptpip_hotspot_enable_desc">En raison des restrictions Android, l\'application ne peut pas l\'activer directement ; les paramètres vont s\'ouvrir. Activez le point d\'accès puis revenez.</string>
     <string name="ptpip_hotspot_open_settings">Ouvrir les paramètres du point d\'accès</string>
     <string name="ptpip_hotspot_compat_note">Nikon Z, Fujifilm, Canon (EOS Utility) et Panasonic Lumix prennent en charge la connexion au point d\'accès du téléphone. OM System et Pentax/Ricoh ne gèrent que le point d\'accès propre à l\'appareil photo et ne peuvent pas se connecter au point d\'accès du téléphone.</string>
+
+    <!-- 포그라운드 서비스 상태 알림 (CINE INSTRUMENT 브랜드 정합, Phase 1) -->
+    <string name="notif_auto_connect_prepare_title">Préparation de la connexion automatique de l\'appareil photo</string>
+    <string name="notif_auto_connect_prepare_text">Préparation de l\'écouteur d\'événements de l\'appareil photo</string>
+    <string name="notif_wifi_waiting_title">En attente de la connexion automatique de l\'appareil photo</string>
+    <string name="notif_wifi_waiting_text">Détection du réseau Wi-Fi configuré</string>
+    <string name="notif_bg_sync_title">Synchronisation en arrière-plan de CamCon</string>
+    <string name="notif_bg_sync_active">Écouteur d\'événements actif — les photos peuvent être reçues écran éteint</string>
+    <string name="notif_bg_sync_listener_active">Écouteur d\'événements actif — en attente de photos</string>
+    <string name="notif_bg_sync_checking">Vérification de la connexion de l\'appareil photo…</string>
+    <string name="notif_bg_sync_waiting">En attente de la connexion de l\'appareil photo…</string>
 </resources>

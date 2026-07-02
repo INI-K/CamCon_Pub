@@ -9,8 +9,9 @@
         <item name="colorSecondary">@color/colorSecondary</item>
         <item name="colorSecondaryVariant">@color/colorSecondaryVariant</item>
         <item name="colorOnSecondary">@color/colorOnSecondary</item>
-        <!-- 상태 표시줄 색상. -->
-        <item name="android:statusBarColor">@color/colorPrimary</item>
+        <!-- CINE INSTRUMENT: 상태바·윈도우 배경을 순흑(Surface0)으로 통일 -->
+        <item name="android:statusBarColor">@color/windowBackgroundDark</item>
+        <item name="android:windowBackground">@color/windowBackgroundDark</item>
         <!-- 여기에서 테마를 커스터마이즈하세요. -->
     </style>
 </resources>

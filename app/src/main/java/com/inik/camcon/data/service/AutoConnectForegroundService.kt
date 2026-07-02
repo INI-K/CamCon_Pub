@@ -6,6 +6,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
+import com.inik.camcon.R
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -54,8 +55,8 @@ class AutoConnectForegroundService : Service() {
         val notification = CamConStatusNotification.attach(
             this,
             CamConStatusNotification.OWNER_AUTO_CONNECT,
-            "카메라 자동 연결 준비",
-            "카메라 이벤트 리스너를 준비하는 중입니다"
+            getString(R.string.notif_auto_connect_prepare_title),
+            getString(R.string.notif_auto_connect_prepare_text)
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(

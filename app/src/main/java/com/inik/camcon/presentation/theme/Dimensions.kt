@@ -49,10 +49,10 @@ object TouchTarget {
 }
 
 object Radius {
-    val sm = 4.dp    // 인풋/버튼/칩 표준
-    val md = 6.dp    // 카드 표준
-    val lg = 8.dp    // 다이얼로그
-    val xl = 12.dp   // BottomSheet 상단
+    val sm = 2.dp    // 인풋/버튼/칩 표준
+    val md = 4.dp    // 카드 표준
+    val lg = 6.dp    // 다이얼로그
+    val xl = 8.dp    // BottomSheet 상단 전용
 }
 
 object StrokeWidth {
@@ -64,13 +64,17 @@ object StrokeWidth {
     val focusRing = 2.dp   // 애니메이션 포커스 링
 }
 
-/** Technical HUD 깊이 계층 — 그림자/elevation 토큰. 평면 박스 탈피. */
+/**
+ * CINE INSTRUMENT 깊이 정책 — 그림자 elevation 전면 0.
+ * 깊이는 표면 tier 차이 + 0.5dp 헤어라인(StrokeWidth.hairline)으로만 표현한다.
+ * 그림자를 부여하지 않으므로 low/medium/high 모두 0.dp 이며, 호출부 시그니처 호환을 위해 토큰만 유지한다.
+ */
 object Elevation {
     val none = 0.dp
-    val low = 2.dp      // 정지 카드
-    val medium = 6.dp   // 떠 있는 패널 / 시트
-    val high = 12.dp    // 다이얼로그 / HUD 레일
-    val overlay = 20.dp // 셔터 / 모달 오버레이
+    val low = 0.dp      // 정지 카드 — 깊이=tier+헤어라인
+    val medium = 0.dp   // 떠 있는 패널 / 시트 — 깊이=tier+헤어라인
+    val high = 0.dp     // 다이얼로그 / HUD 레일 — 깊이=tier+헤어라인
+    val overlay = 20.dp // 셔터 / 모달 오버레이 (스크림 전용, 그림자 아님)
 }
 
 /** 카메라 도메인 전용 치수. */

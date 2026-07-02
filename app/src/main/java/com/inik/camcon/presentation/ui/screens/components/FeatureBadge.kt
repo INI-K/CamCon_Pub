@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.FeatureBadgeBracketing
 import com.inik.camcon.presentation.theme.FeatureBadgeBurst
 import com.inik.camcon.presentation.theme.FeatureBadgeTimeLapse
 import com.inik.camcon.presentation.theme.Micro
@@ -65,7 +66,7 @@ private fun FeatureBadgesPreview() {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FeatureBadge(context.getString(R.string.video_4k), MaterialTheme.colorScheme.error)
                 FeatureBadge(context.getString(R.string.remote_control), com.inik.camcon.presentation.theme.SuccessV2)
-                FeatureBadge(context.getString(R.string.bracketing), Color.Cyan)
+                FeatureBadge(context.getString(R.string.bracketing), FeatureBadgeBracketing)
             }
         }
     }

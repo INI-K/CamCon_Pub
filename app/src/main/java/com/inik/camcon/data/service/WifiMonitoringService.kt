@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import com.inik.camcon.CameraNative
+import com.inik.camcon.R
 import com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource
 import com.inik.camcon.data.datasource.ptpip.PtpipDataSource
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
@@ -268,8 +269,8 @@ class WifiMonitoringService : Service() {
         val notification = CamConStatusNotification.attach(
             this,
             CamConStatusNotification.OWNER_WIFI,
-            "카메라 자동 연결 대기 중",
-            "설정된 WiFi 네트워크 연결을 감지하고 있습니다"
+            getString(R.string.notif_wifi_waiting_title),
+            getString(R.string.notif_wifi_waiting_text)
         )
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {

@@ -327,4 +327,15 @@
     <string name="ptpip_hotspot_enable_desc">Aufgrund von Android-Vorgaben kann die App den Hotspot nicht direkt einschalten. Die Einstellungen werden geöffnet – schalte den Hotspot ein und kehre zurück.</string>
     <string name="ptpip_hotspot_open_settings">Hotspot-Einstellungen öffnen</string>
     <string name="ptpip_hotspot_compat_note">Nikon Z, Fujifilm, Canon (EOS Utility) und Panasonic Lumix unterstützen die Verbindung zum Handy-Hotspot. OM System und Pentax/Ricoh unterstützen nur den kameraeigenen AP und können sich nicht mit dem Handy-Hotspot verbinden.</string>
+
+    <!-- 포그라운드 서비스 상태 알림 (CINE INSTRUMENT 브랜드 정합, Phase 1) -->
+    <string name="notif_auto_connect_prepare_title">Automatische Kameraverbindung wird vorbereitet</string>
+    <string name="notif_auto_connect_prepare_text">Der Kamera-Ereignis-Listener wird vorbereitet</string>
+    <string name="notif_wifi_waiting_title">Warten auf automatische Kameraverbindung</string>
+    <string name="notif_wifi_waiting_text">Das konfigurierte WLAN-Netzwerk wird erkannt</string>
+    <string name="notif_bg_sync_title">CamCon-Hintergrundsynchronisierung</string>
+    <string name="notif_bg_sync_active">Ereignis-Listener aktiv – Fotos können bei ausgeschaltetem Bildschirm empfangen werden</string>
+    <string name="notif_bg_sync_listener_active">Ereignis-Listener aktiv – Warten auf Fotos</string>
+    <string name="notif_bg_sync_checking">Kameraverbindung wird geprüft…</string>
+    <string name="notif_bg_sync_waiting">Warten auf Kameraverbindung…</string>
 </resources>
