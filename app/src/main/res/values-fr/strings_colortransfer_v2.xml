@@ -17,9 +17,9 @@
     <!-- 강도 슬라이더 -->
     <string name="ct_intensity_title">Intensité du transfert de couleur</string>
     <string name="ct_intensity_percent">%d%%</string>
-    <string name="ct_intensity_weak">Faible (1%%)</string>
-    <string name="ct_intensity_strong">Forte (100%%)</string>
-    <string name="ct_intensity_recommended">Recommandé : 3-10%%</string>
+    <string name="ct_intensity_weak">Faible (1%)</string>
+    <string name="ct_intensity_strong">Forte (100%)</string>
+    <string name="ct_intensity_recommended">Recommandé : 3-10%</string>
 
     <!-- 이미지 관리 -->
     <string name="ct_image_management">Gestion des images</string>

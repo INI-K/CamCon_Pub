@@ -17,9 +17,9 @@
     <!-- 강도 슬라이더 -->
     <string name="ct_intensity_title">カラー転送の強度</string>
     <string name="ct_intensity_percent">%d%%</string>
-    <string name="ct_intensity_weak">弱い (1%%)</string>
-    <string name="ct_intensity_strong">強い (100%%)</string>
-    <string name="ct_intensity_recommended">推奨: 3〜10%%</string>
+    <string name="ct_intensity_weak">弱い (1%)</string>
+    <string name="ct_intensity_strong">強い (100%)</string>
+    <string name="ct_intensity_recommended">推奨: 3〜10%</string>
 
     <!-- 이미지 관리 -->
     <string name="ct_image_management">画像の管理</string>
