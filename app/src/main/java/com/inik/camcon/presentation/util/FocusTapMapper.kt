@@ -6,6 +6,35 @@ import kotlin.math.roundToInt
 /** 카메라 AF 포인트 좌표(디코드 라이브뷰 이미지 픽셀 공간). */
 data class CameraFocusPoint(val x: Int, val y: Int)
 
+/** ContentScale.Fit 으로 컨테이너 안에 중앙 배치된 콘텐츠의 실제 표시 사각형(px). */
+data class FittedRect(val left: Float, val top: Float, val width: Float, val height: Float) {
+    val right: Float get() = left + width
+    val bottom: Float get() = top + height
+}
+
+/**
+ * ContentScale.Fit(비율 유지·중앙 정렬) 기준으로 컨테이너 안에 실제로 그려지는 콘텐츠 사각형을 계산한다.
+ * 레터박스/필러박스 여백을 뺀 영상 영역이며, 그리드·오버레이를 이 안에만 그릴 때 쓴다.
+ *
+ * 180° 회전은 같은 종횡비의 중앙-정렬 사각형을 그대로 두므로 회전 여부와 무관하다.
+ *
+ * @param boxW,boxH  컨테이너 px 크기
+ * @param contentW,contentH  콘텐츠(비트맵) 원본 px
+ * @return 표시 사각형. 입력이 유효하지 않으면 null.
+ */
+fun computeFittedRect(boxW: Int, boxH: Int, contentW: Int, contentH: Int): FittedRect? {
+    if (boxW <= 0 || boxH <= 0 || contentW <= 0 || contentH <= 0) return null
+    val scale = min(boxW.toFloat() / contentW, boxH.toFloat() / contentH)
+    val dispW = contentW * scale
+    val dispH = contentH * scale
+    return FittedRect(
+        left = (boxW - dispW) / 2f,
+        top = (boxH - dispH) / 2f,
+        width = dispW,
+        height = dispH
+    )
+}
+
 /**
  * 라이브뷰 탭 위치를 카메라 AF 포인트 좌표로 변환하는 순수 함수(단위테스트 대상).
  *

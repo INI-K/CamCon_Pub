@@ -5,6 +5,7 @@ import com.inik.camcon.data.repository.fake.FakeCameraRepositoryBasic
 import com.inik.camcon.domain.model.LiveViewQuality
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.repository.AppSettingsRepository
+import com.inik.camcon.domain.repository.PtpipPreferencesRepository
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.presentation.viewmodel.state.CameraSettingsManager
 import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
@@ -69,6 +70,7 @@ class CameraViewModelLiveViewQualityTest {
     private lateinit var errorHandlingManager: ErrorHandlingManager
     private lateinit var handoffTracker: ConnectionHandoffTracker
     private lateinit var appSettingsRepository: AppSettingsRepository
+    private lateinit var ptpipPreferencesRepository: PtpipPreferencesRepository
     private lateinit var advancedCaptureManager: CameraAdvancedCaptureManager
     private lateinit var focusManager: CameraFocusManager
     private lateinit var fileManager: CameraFileManager
@@ -111,6 +113,7 @@ class CameraViewModelLiveViewQualityTest {
         errorHandlingManager = mockk(relaxed = true)
         handoffTracker = mockk(relaxed = true)
         appSettingsRepository = mockk(relaxed = true)
+        ptpipPreferencesRepository = mockk(relaxed = true)
         advancedCaptureManager = mockk(relaxed = true)
         focusManager = mockk(relaxed = true)
         fileManager = mockk(relaxed = true)
@@ -122,6 +125,10 @@ class CameraViewModelLiveViewQualityTest {
         every { appSettingsRepository.subscriptionTierEnum } returns flowOf(SubscriptionTier.FREE)
         every { appSettingsRepository.isRawFileDownloadEnabled } returns flowOf(true)
         every { appSettingsRepository.isHistogramEnabled } returns flowOf(false)
+
+        // isAutoSearchArmed(init 파생 StateFlow)가 combine 으로 읽는 Flow 2종 — 명시 stub.
+        every { ptpipPreferencesRepository.isAutoConnectEnabled } returns flowOf(false)
+        every { ptpipPreferencesRepository.lastConnectedName } returns flowOf(null)
 
         // getSubscriptionUseCase 는 연결 관찰 경로(observeCameraConnection)에서 참조될 수 있음.
         every { getSubscriptionUseCase.getSubscriptionTier() } returns emptyFlow()
@@ -172,6 +179,7 @@ class CameraViewModelLiveViewQualityTest {
         errorHandlingManager = errorHandlingManager,
         handoffTracker = handoffTracker,
         appSettingsRepository = appSettingsRepository,
+        ptpipPreferencesRepository = ptpipPreferencesRepository,
         advancedCaptureManager = advancedCaptureManager,
         focusManager = focusManager,
         fileManager = fileManager,

@@ -40,6 +40,16 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
     val liveViewFrame: StateFlow<LiveViewFrame?> = _liveViewFrame.asStateFlow()
 
     /**
+     * 비자발적 PTP/IP 끊김 시점에 라이브뷰가 활성이었는지 기억하는 플래그.
+     * 자동 재연결(false→true 전이) 성공 후 라이브뷰를 자동 재개할지 판정하는 근거로 쓴다.
+     * [updatePtpipConnectionState]의 true→false 전이에서 set 되고, ViewModel의 재개 트리거가
+     * [consumeResumeLiveViewAfterReconnect]로 소비한다. 사용자가 수동으로 LV를 끈 경우엔
+     * 끊김 시점 isLiveViewActive 가 false 이므로 set 되지 않아 재개하지 않는다.
+     */
+    @Volatile
+    private var resumeLiveViewAfterReconnect: Boolean = false
+
+    /**
      * 1-shot 정보 메시지 채널 — AF 성공 등 에러가 아닌 일시적 안내를 전달한다.
      * 에러 채널(uiState.error)과 분리해 의미 오용을 막는다.
      * replay=0, extraBufferCapacity로 구독자가 없어도 emit이 블로킹되지 않게 한다.
@@ -538,6 +548,13 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
     override fun updatePtpipConnectionState(isConnected: Boolean) {
         // 동일 상태 중복 호출 무시 (네이티브 연결 변화는 별도 경로에서 isConnected를 재계산한다).
         if (_uiState.value.connection.isPtpipConnected == isConnected) return
+        // true→false(끊김) 전이 시 라이브뷰가 활성이었다면 재개 대상으로 표시.
+        // updateConnectionState 등에서 isLiveViewActive 가 false 로 정리되기 전의 값을 봐야 하므로
+        // uiState 갱신보다 먼저 판정한다. 사용자가 수동으로 LV를 끈 경우엔 이미 false 라 표시되지 않는다.
+        if (!isConnected && _uiState.value.liveView.isLiveViewActive) {
+            resumeLiveViewAfterReconnect = true
+            Log.d(TAG, "PTPIP 비자발적 끊김 — 라이브뷰 활성 상태였음, 재연결 후 자동 재개 예약")
+        }
         _uiState.update {
             it.copy(
                 connection = it.connection.copy(
@@ -547,6 +564,25 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
             )
         }
         Log.d(TAG, "PTPIP 연결 상태 업데이트: isConnected=$isConnected")
+    }
+
+    /**
+     * 재연결 후 라이브뷰 자동 재개 예약 여부를 소비(consume)한다.
+     * true 를 반환하면 호출자(ViewModel)가 기존 라이브뷰 시작 경로를 태워 재개하고,
+     * 플래그는 즉시 클리어된다(중복 재개 방지). 예약이 없으면 false.
+     */
+    fun consumeResumeLiveViewAfterReconnect(): Boolean {
+        val pending = resumeLiveViewAfterReconnect
+        resumeLiveViewAfterReconnect = false
+        return pending
+    }
+
+    /**
+     * 재개 예약을 강제 클리어. 사용자가 재연결 전/후 라이브뷰를 수동 조작하는 등
+     * 예약이 무의미해진 경우 ViewModel 이 호출한다.
+     */
+    fun clearResumeLiveViewAfterReconnect() {
+        resumeLiveViewAfterReconnect = false
     }
 
     // ── UI 가시성 / Abilities ──

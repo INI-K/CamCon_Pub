@@ -13,4 +13,9 @@
     <!-- 로그아웃 오류 세부 내용 (settings_toast_logout_failed의 "%s") -->
     <string name="auth_error_network_detail">Netzwerkfehler</string>
     <string name="auth_error_unknown_detail">unbekannter Fehler</string>
+
+    <!-- Login v2 CINE: 브랜드 마크 아래 태그라인 / 구획 라벨 -->
+    <string name="login_v2_tagline">KINO-KAMERASTEUERUNG</string>
+    <string name="login_v2_signin_label">ANMELDEN</string>
+    <string name="login_v2_referral_label">EMPFEHLUNGSCODE</string>
 </resources>
