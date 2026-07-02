@@ -24,6 +24,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
@@ -95,6 +96,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -122,8 +124,14 @@ import com.inik.camcon.presentation.theme.StrokeWidth
 import com.inik.camcon.presentation.theme.Surface1
 import com.inik.camcon.presentation.theme.Surface2
 import com.inik.camcon.presentation.theme.Accent
+import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.ErrorV2
+import com.inik.camcon.presentation.theme.MicroLabel
+import com.inik.camcon.presentation.theme.MonoMicro
+import com.inik.camcon.presentation.theme.Surface3
+import com.inik.camcon.presentation.theme.TextDisabled
 import com.inik.camcon.presentation.theme.TextPrimaryV2
+import com.inik.camcon.presentation.theme.TextTertiary
 import com.inik.camcon.presentation.theme.TouchTarget
 import com.inik.camcon.presentation.theme.Surface0
 import com.inik.camcon.presentation.theme.TextSecondaryV2
@@ -191,6 +199,11 @@ fun CameraControlScreen(
     val isFocusPeakingEnabled by appSettingsViewModel.isFocusPeakingEnabled.collectAsStateWithLifecycle()
     val histogramData by viewModel.histogramData.collectAsStateWithLifecycle()
     val hasSeenCaptureCoachmark by appSettingsViewModel.hasSeenCaptureCoachmark.collectAsStateWithLifecycle()
+    // CINE 이미지 파이프라인 패널 상태 (AppSettings 단일 소스 — 이미 존재하는 StateFlow 소비, VM 추가 없음)
+    val isFilmSimulationEnabled by appSettingsViewModel.isFilmSimulationEnabled.collectAsStateWithLifecycle()
+    val selectedFilmLutId by appSettingsViewModel.selectedFilmLutId.collectAsStateWithLifecycle()
+    val isColorTransferEnabled by appSettingsViewModel.isColorTransferEnabled.collectAsStateWithLifecycle()
+    val colorTransferReferenceImagePath by appSettingsViewModel.colorTransferReferenceImagePath.collectAsStateWithLifecycle()
     val lastTimelapseInterval by appSettingsViewModel.lastTimelapseInterval.collectAsStateWithLifecycle()
     val lastTimelapseCount by appSettingsViewModel.lastTimelapseCount.collectAsStateWithLifecycle()
     // 인-LV 화질 컨트롤 현재값/콜백 — SettingsActivity와 동일 DataStore 단일 소스(자동 동기).
@@ -411,6 +424,17 @@ fun CameraControlScreen(
                         onCycleLiveViewQuality = onCycleLiveViewQuality,
                         onUnsupportedShootingMode = { mode ->
                             viewModel.setShootingMode(mode)
+                        },
+                        isFilmSimulationEnabled = isFilmSimulationEnabled,
+                        selectedFilmLutId = selectedFilmLutId,
+                        onToggleFilmSimulation = {
+                            // GPU 정리(releaseGpu) 호출 금지 — 전역 싱글톤 파괴 위험(memory 규약).
+                            appSettingsViewModel.setFilmSimulationEnabled(!isFilmSimulationEnabled)
+                        },
+                        isColorTransferEnabled = isColorTransferEnabled,
+                        colorTransferReferenceImagePath = colorTransferReferenceImagePath,
+                        onToggleColorTransfer = {
+                            appSettingsViewModel.setColorTransferEnabled(!isColorTransferEnabled)
                         }
                     )
                 }
@@ -601,7 +625,14 @@ private fun PortraitCameraLayout(
     onToggleFocusPeaking: () -> Unit = {},
     liveViewQuality: LiveViewQuality = LiveViewQuality.BALANCED,
     onCycleLiveViewQuality: () -> Unit = {},
-    onUnsupportedShootingMode: (com.inik.camcon.domain.model.ShootingMode) -> Unit = {}
+    onUnsupportedShootingMode: (com.inik.camcon.domain.model.ShootingMode) -> Unit = {},
+    // CINE 파이프라인 패널 배선 (AppSettings 상태/토글)
+    isFilmSimulationEnabled: Boolean = false,
+    selectedFilmLutId: String = "",
+    onToggleFilmSimulation: () -> Unit = {},
+    isColorTransferEnabled: Boolean = false,
+    colorTransferReferenceImagePath: String? = null,
+    onToggleColorTransfer: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -637,14 +668,6 @@ private fun PortraitCameraLayout(
             "CameraControl",
             "라이브뷰 UI 표시 조건 (카메라 컨트롤 & 라이브뷰 둘 다 활성화): ${appSettings.isCameraControlsEnabled && appSettings.isLiveViewEnabled}"
         )
-    }
-
-    val recentPhotos = remember(uiState.capturedPhotos.size) {
-        if (uiState.capturedPhotos.isNotEmpty()) {
-            uiState.capturedPhotos.takeLast(10).reversed()
-        } else {
-            emptyList()
-        }
     }
 
     val canEnterFullscreen = remember(uiState.isLiveViewActive, uiState.capturedPhotos.size) {
@@ -799,55 +822,27 @@ private fun PortraitCameraLayout(
                 }
             }
 
-            if (canEnterFullscreen) {
-                // 프리미엄 힌트 배지
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(Padding.lg)
-                        .background(
-                            Surface2.copy(alpha = 0.8f),
-                            RoundedCornerShape(Radius.sm)
-                        )
-                        .padding(horizontal = Padding.md, vertical = 6.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.camera_control_double_click_fullscreen),
-                        color = TextPrimaryV2,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
+            // 상시 "더블클릭으로 전체화면" 힌트 배지 제거(CINE): 1회성 CaptureCoachmarkOverlay 로 흡수.
+            // 더블클릭 제스처와 a11y 커스텀 액션("전체화면 전환")은 위에서 그대로 유지된다.
         }
 
-        // 프리미엄 하단 컨트롤 패널
+        // CINE 하단 = 이미지 파이프라인 패널. 셔터 버튼·촬영 모드 행은 이 화면 UI에서만 제거
+        // (CaptureControls/ShootingModeSelector 코드·촬영 로직·ViewModel 경로는 그대로 보존 — 물리셔터 전제).
+        // 각진 사각 Surface1 + 상단 0.5dp 헤어라인(라운드 제거).
         Surface(
             color = Surface1,
-            shape = RoundedCornerShape(topStart = Radius.xl, topEnd = Radius.xl),
-            tonalElevation = Elevation.medium,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(
-                modifier = Modifier.padding(vertical = Padding.sm)
-            ) {
-                // 라이브뷰가 표시 중이면 하단 촬영 컨트롤(모드칩/셔터/AF)을 숨기고 갤러리만 남긴다
-                // (물리셔터 전용 워크플로우). 라이브뷰가 없으면 트리거 캡처용으로 그대로 노출.
-                val liveViewVisuallyActive =
-                    appSettings.isLiveViewEnabled && (uiState.cameraCapabilities?.canLiveView ?: false)
+            Column {
+                // 상단 헤어라인 (패널 구획)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(StrokeWidth.hairline)
+                        .background(Surface0)
+                )
 
-                // 촬영 모드 선택 — 라이브뷰 중엔 숨김
-                if (appSettings.isCameraControlsEnabled && !liveViewVisuallyActive) {
-                    ShootingModeSelector(
-                        captureState = uiState.capture,
-                        isConnected = uiState.isConnected,
-                        cameraCapabilities = uiState.cameraCapabilities,
-                        onModeSelected = { mode -> viewModel.setShootingMode(mode) },
-                        onUnsupportedModeClick = onUnsupportedShootingMode,
-                        modifier = Modifier.padding(vertical = 2.dp)
-                    )
-                }
-
-                // ISO/셔터스피드/조리개/EV 조절 컨트롤
+                // ISO/셔터스피드/조리개/EV 조절 컨트롤 — 셔터/모드가 아니므로 유지.
                 if (appSettings.isCameraControlsEnabled && uiState.isConnected) {
                     CameraSettingsControls(
                         currentSettings = uiState.cameraSettings,
@@ -856,7 +851,7 @@ private fun PortraitCameraLayout(
                             viewModel.updateCameraSetting(key, value)
                         },
                         isEnabled = uiState.isConnected && !uiState.isCapturing,
-                        modifier = Modifier.padding(vertical = 2.dp),
+                        modifier = Modifier.padding(vertical = Padding.sm),
                         exposureCompensation = exposureCompensation,
                         onExposureCompensationChange = { value ->
                             viewModel.setExposureCompensation(value)
@@ -864,40 +859,245 @@ private fun PortraitCameraLayout(
                     )
                 }
 
-                // 촬영 컨트롤(갤러리/셔터/AF) — 라이브뷰 중엔 통째로 숨기고, 라이브뷰가 없을 때만
-                // 트리거 캡처용으로 노출(CaptureControls 내부 라벨이 "라이브뷰 없이 트리거 캡처" 표시).
-                if (appSettings.isCameraControlsEnabled && !liveViewVisuallyActive) {
-                    CaptureControls(
-                        captureState = uiState.capture,
-                        isConnected = uiState.isConnected,
-                        onCapture = viewModel::capturePhoto,
-                        onAutoFocus = viewModel::performAutoFocus,
-                        onShowTimelapseDialog = onShowTimelapseDialog,
-                        isVertical = false,
-                        onGalleryClick = onGalleryClick,
-                        isLiveViewActive = liveViewVisuallyActive,
-                        isShutterSoundEnabled = isShutterSoundEnabled,
-                        isTimelapseRunning = uiState.shootingMode == com.inik.camcon.domain.model.ShootingMode.TIMELAPSE && uiState.isCapturing,
-                        onStopTimelapse = viewModel::stopTimelapse
-                    )
-                }
-
-                if (recentPhotos.isNotEmpty()) {
-                    Text(
-                        text = stringResource(R.string.camera_control_received_photos, uiState.capturedPhotos.size),
-                        color = TextPrimaryV2,
-                        style = MaterialTheme.typography.labelLarge,
-                        modifier = Modifier.padding(horizontal = Padding.lg, vertical = Padding.md)
-                    )
-                    RecentCapturesRow(
-                        photos = recentPhotos,
-                        onPhotoClick = onPhotoClick,
-                        modifier = Modifier.padding(horizontal = Padding.lg, vertical = Padding.sm)
-                    )
-                }
+                ImagePipelinePanel(
+                    isFilmSimulationEnabled = isFilmSimulationEnabled,
+                    selectedFilmLutId = selectedFilmLutId,
+                    onToggleFilmSimulation = onToggleFilmSimulation,
+                    isColorTransferEnabled = isColorTransferEnabled,
+                    colorTransferReferenceImagePath = colorTransferReferenceImagePath,
+                    onToggleColorTransfer = onToggleColorTransfer,
+                    latestPhoto = uiState.capturedPhotos.lastOrNull(),
+                    onLatestPhotoClick = onPhotoClick
+                )
             }
         }
     }
+}
+
+/**
+ * CINE 이미지 파이프라인 패널 (셔터/촬영 모드 대체).
+ *
+ * 좌측: FILM SIM · 색감전송 토글 칩(탭=ON/OFF, 길게=상세 화면 진입).
+ *   - ON = 앰버 dot + 값(LUT명/레퍼런스 파일명), OFF = TextDisabled 디밍.
+ *   - **FilmLutRepository.releaseGpu() 등 GPU 정리 호출 금지**(전역 싱글톤, memory 규약) — 토글은 순수 설정 변경만.
+ * 우측: 최근 수신 피드 — 마지막 수신 사진의 미니 썸네일 + 파일명(모노), 없으면 "대기 중".
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ImagePipelinePanel(
+    isFilmSimulationEnabled: Boolean,
+    selectedFilmLutId: String,
+    onToggleFilmSimulation: () -> Unit,
+    isColorTransferEnabled: Boolean,
+    colorTransferReferenceImagePath: String?,
+    onToggleColorTransfer: () -> Unit,
+    latestPhoto: CapturedPhoto?,
+    onLatestPhotoClick: (CapturedPhoto) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = Padding.lg, vertical = Padding.md),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(Spacing.sm)
+        ) {
+            // FILM SIM — 탭 토글 / 길게 = 필름 에디터(LUT 선택)
+            val filmValue = if (isFilmSimulationEnabled) {
+                filmLutDisplayName(selectedFilmLutId)
+                    ?: stringResource(R.string.pipeline_none)
+            } else {
+                stringResource(R.string.pipeline_off)
+            }
+            PipelineChip(
+                label = stringResource(R.string.pipeline_film_sim),
+                value = filmValue,
+                isOn = isFilmSimulationEnabled,
+                contentDescription = stringResource(R.string.cd_toggle_film_sim),
+                onTap = onToggleFilmSimulation,
+                onLongPress = {
+                    context.startActivity(
+                        Intent(context, com.inik.camcon.presentation.ui.FilmEditorActivity::class.java)
+                    )
+                }
+            )
+
+            // 색감전송 — 탭 토글 / 길게 = 색감전송 설정(레퍼런스 선택)
+            val ctValue = if (isColorTransferEnabled) {
+                colorTransferReferenceImagePath
+                    ?.substringAfterLast('/')
+                    ?.takeIf { it.isNotBlank() }
+                    ?: stringResource(R.string.pipeline_none)
+            } else {
+                stringResource(R.string.pipeline_off)
+            }
+            PipelineChip(
+                label = stringResource(R.string.pipeline_color_transfer),
+                value = ctValue,
+                isOn = isColorTransferEnabled,
+                contentDescription = stringResource(R.string.cd_toggle_color_transfer),
+                onTap = onToggleColorTransfer,
+                onLongPress = {
+                    context.startActivity(
+                        Intent(context, com.inik.camcon.presentation.ui.ColorTransferSettingsActivity::class.java)
+                    )
+                }
+            )
+        }
+
+        // 우측 최근 수신 피드
+        RecentReceivedFeed(
+            latestPhoto = latestPhoto,
+            onClick = onLatestPhotoClick
+        )
+    }
+}
+
+/**
+ * 파이프라인 토글 칩 — 탭 = ON/OFF, 길게 = 상세 진입.
+ * ON = 앰버 엣지 + 앰버 dot + 값 하단 앰버 언더라인, OFF = 디밍.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun PipelineChip(
+    label: String,
+    value: String,
+    isOn: Boolean,
+    contentDescription: String,
+    onTap: () -> Unit,
+    onLongPress: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .border(
+                width = StrokeWidth.hairline,
+                color = if (isOn) Accent.copy(alpha = 0.6f) else Surface3,
+                shape = RoundedCornerShape(Radius.sm)
+            )
+            .combinedClickable(
+                onClick = onTap,
+                onLongClick = onLongPress,
+                onClickLabel = contentDescription
+            )
+            .padding(horizontal = Padding.md, vertical = Padding.sm),
+        verticalArrangement = Arrangement.spacedBy(Spacing.xs)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(5.dp)
+                    .background(
+                        color = if (isOn) Accent else TextDisabled,
+                        shape = CircleShape
+                    )
+            )
+            Text(
+                text = label,
+                style = MicroLabel,
+                color = if (isOn) TextTertiary else TextDisabled
+            )
+        }
+        Text(
+            text = value,
+            style = MonoMicro,
+            color = if (isOn) TextPrimaryV2 else TextDisabled,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+/** 우측 최근 수신 피드 — 마지막 수신 사진의 미니 썸네일 + 파일명(모노). 없으면 "대기 중". */
+@Composable
+private fun RecentReceivedFeed(
+    latestPhoto: CapturedPhoto?,
+    onClick: (CapturedPhoto) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.width(64.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Spacing.xs)
+    ) {
+        if (latestPhoto == null) {
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .border(StrokeWidth.hairline, DividerLine, RoundedCornerShape(Radius.sm)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Photo,
+                    contentDescription = null,
+                    tint = TextDisabled,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            Text(
+                text = stringResource(R.string.pipeline_recent_waiting),
+                style = MonoMicro,
+                color = TextTertiary,
+                maxLines = 1
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .border(StrokeWidth.hairline, DividerLine, RoundedCornerShape(Radius.sm))
+                    .clickable { onClick(latestPhoto) },
+                contentAlignment = Alignment.Center
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(latestPhoto.thumbnailPath ?: latestPhoto.filePath)
+                        .crossfade(200)
+                        .memoryCacheKey(latestPhoto.id + "_pipe")
+                        .scale(Scale.FIT)
+                        .allowHardware(false)
+                        .build(),
+                    contentDescription = stringResource(R.string.camera_control_captured_photo),
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
+            Text(
+                text = latestPhoto.filePath.substringAfterLast('/'),
+                style = MonoMicro,
+                color = TextSecondaryV2,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+/**
+ * selectedFilmLutId(assets 상대 경로)에서 표시용 LUT 명을 파생한다.
+ * 카탈로그 suspend 조회를 피하기 위해 파일명 basename 을 사람이 읽을 수 있는 형태로 변환한다.
+ * 예: "luts/negative-new/kodak_portra_400.cube" → "KODAK PORTRA 400". 비어있으면 null.
+ */
+private fun filmLutDisplayName(id: String): String? {
+    if (id.isBlank()) return null
+    return id.substringAfterLast('/')
+        .removeSuffix(".cube")
+        .replace('_', ' ')
+        .replace('-', ' ')
+        .trim()
+        .split(' ')
+        .filter { it.isNotBlank() }
+        .joinToString(" ") { it.uppercase() }
+        .takeIf { it.isNotBlank() }
 }
 
 /**

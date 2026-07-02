@@ -8,6 +8,8 @@ data class CameraSettings(
     val whiteBalance: String,
     val focusMode: String,
     val exposureCompensation: String,
+    // 노출 모드(PASM) 판독값. 카메라가 expprogram 위젯을 주지 않으면 null(UI 자동 숨김).
+    val exposureMode: String? = null,
     val availableSettings: Map<String, List<String>> = emptyMap()
 )
 

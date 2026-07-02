@@ -44,6 +44,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -57,13 +58,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.Camera
+import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.ErrorV2
-import com.inik.camcon.presentation.theme.Micro
+import com.inik.camcon.presentation.theme.MicroLabel
 import com.inik.camcon.presentation.theme.MonoReadout
-import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.StrokeWidth
 import com.inik.camcon.presentation.theme.Surface0
 import com.inik.camcon.presentation.theme.Surface2
 import com.inik.camcon.presentation.theme.TextPrimaryV2
@@ -629,44 +631,92 @@ private fun formatLiveShutterSpeed(raw: String): String {
     }
 }
 
+/** 노출 스트립 셀 데이터. manual=true 면 값 하단에 2dp 앰버 언더라인. */
+private data class ExposureCell(
+    val label: String,
+    val value: String,
+    val manual: Boolean
+)
+
+/** 값이 수동 오버라이드(비-AUTO/비어있지 않음)인지 — SettingDropdown 관례와 동일. */
+private fun isManualExposureValue(value: String): Boolean =
+    value.isNotBlank() && !value.equals("auto", ignoreCase = true)
+
 /**
- * 라이브뷰 노출 텔레메트리 스트립 (Technical HUD 시그니처).
+ * 라이브뷰 노출 텔레메트리 스트립 — CINE 계측기 HUD.
  *
- * 라이브뷰가 활성일 때 현재 노출값(ISO·SS·F·EV·WB)을 모노스페이스로 컴팩트하게 노출한다.
- * 빈 값/EV 0은 생략한다.
+ * 박스 배경 없이 상하 0.5dp 헤어라인 룰 2줄로만 구획한다. 각 칼럼은 대문자 라벨(MicroLabel)과
+ * 모노스페이스 판독값(MonoReadout)을 세로로 쌓고, 수동 오버라이드 값(ISO/SS/F/EV의 비-AUTO)에만
+ * 하단 2dp 앰버 언더라인을 넣는다. MODE 칼럼은 카메라 판독값(read-only)으로, exposureMode 가 null 이면
+ * 칼럼 자체를 렌더하지 않는다. WB·MODE 는 정보용이라 언더라인 없음. 클릭 불가(read-only).
+ * 빈 값/EV 0 은 칼럼을 생략한다.
  */
 @Composable
 private fun LiveViewExposureStrip(
     settings: com.inik.camcon.domain.model.CameraSettings,
     modifier: Modifier = Modifier
 ) {
-    val items = buildList {
-        settings.iso.takeIf { it.isNotBlank() }?.let { add("ISO" to it) }
-        settings.shutterSpeed.takeIf { it.isNotBlank() }?.let { add("SS" to formatLiveShutterSpeed(it)) }
-        settings.aperture.takeIf { it.isNotBlank() }?.let { add("F" to it) }
-        settings.exposureCompensation.takeIf { it.isNotBlank() && it != "0" }?.let { add("EV" to it) }
-        settings.whiteBalance.takeIf { it.isNotBlank() }?.let { add("WB" to it) }
+    val labelMode = stringResource(R.string.pipeline_exposure_mode)
+    val cells = buildList {
+        // MODE — 카메라 판독값. null(미판독)이면 칼럼 자체 미표시.
+        settings.exposureMode?.takeIf { it.isNotBlank() }
+            ?.let { add(ExposureCell(labelMode, it, manual = false)) }
+        settings.iso.takeIf { it.isNotBlank() }
+            ?.let { add(ExposureCell("ISO", it, manual = isManualExposureValue(it))) }
+        settings.shutterSpeed.takeIf { it.isNotBlank() }
+            ?.let { add(ExposureCell("SHUTTER", formatLiveShutterSpeed(it), manual = isManualExposureValue(it))) }
+        settings.aperture.takeIf { it.isNotBlank() }
+            ?.let { add(ExposureCell("F", it, manual = isManualExposureValue(it))) }
+        settings.exposureCompensation.takeIf { it.isNotBlank() && it != "0" }
+            ?.let { add(ExposureCell("EV", it, manual = true)) }
+        settings.whiteBalance.takeIf { it.isNotBlank() }
+            ?.let { add(ExposureCell("WB", it, manual = false)) }
     }
-    if (items.isEmpty()) return
-    androidx.compose.material3.Surface(
-        color = Surface0.copy(alpha = 0.6f),
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(Radius.sm),
-        modifier = modifier
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
-            verticalArrangement = Arrangement.spacedBy(Spacing.xs)
+    if (cells.isEmpty()) return
+    Column(modifier = modifier) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(StrokeWidth.hairline)
+                .background(DividerLine)
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Spacing.sm, vertical = 11.dp),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
-            items.forEach { (label, value) ->
-                Row(
-                    verticalAlignment = Alignment.Bottom,
-                    horizontalArrangement = Arrangement.spacedBy(3.dp)
-                ) {
-                    Text(text = label, style = Micro, color = TextTertiary)
-                    Text(text = value, style = MonoReadout, color = TextPrimaryV2)
+            cells.forEach { cell ->
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = cell.label, style = MicroLabel, color = TextTertiary)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = cell.value,
+                        style = MonoReadout,
+                        color = TextPrimaryV2,
+                        modifier = Modifier
+                            .padding(bottom = 4.dp)
+                            .then(
+                                if (cell.manual) Modifier.drawBehind {
+                                    val stroke = 2.dp.toPx()
+                                    drawLine(
+                                        color = Accent,
+                                        start = androidx.compose.ui.geometry.Offset(0f, size.height - stroke / 2),
+                                        end = androidx.compose.ui.geometry.Offset(size.width, size.height - stroke / 2),
+                                        strokeWidth = stroke
+                                    )
+                                } else Modifier
+                            )
+                    )
                 }
             }
         }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(StrokeWidth.hairline)
+                .background(DividerLine)
+        )
     }
 }
 

@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 
-import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -160,13 +159,16 @@ fun PtpipConnectionScreen(
                 showPermissionDialog = true
             } else {
                 // 권한은 있지만 Wi-Fi나 위치 서비스가 꺼져있음 - 스낵바로 안내
+                val enableWifiMessage = context.getString(R.string.ptpip_please_enable_wifi)
+                val enableLocationMessage = context.getString(R.string.ptpip_please_enable_location)
+                val checkScanMessage = context.getString(R.string.ptpip_check_scan_conditions)
                 scope.launch {
                     val message = if (!wifiScanPermissionStatus.isWifiEnabled) {
-                        "Wi-Fi를 켜주세요"
+                        enableWifiMessage
                     } else if (!wifiScanPermissionStatus.isLocationEnabled) {
-                        "위치 서비스를 켜주세요"
+                        enableLocationMessage
                     } else {
-                        "스캔 조건을 확인해주세요"
+                        checkScanMessage
                     }
                     snackbarHostState.showSnackbar(message)
                 }
@@ -468,7 +470,8 @@ fun PtpipConnectionScreen(
                 }
             },
             confirmButton = {
-                Button(
+                PrimaryButton(
+                    text = stringResource(R.string.ptpip_connect),
                     onClick = {
                         // 1. 즉시 로딩 다이얼로그 표시
                         showConnectionProgressDialog = true
@@ -489,23 +492,18 @@ fun PtpipConnectionScreen(
                         passwordForSsid = ""
                         currentWifiSsid = null
                     },
-                    enabled = passwordForSsid.isNotEmpty(),
-                    modifier = Modifier.height(36.dp)
-                ) {
-                    Text(stringResource(R.string.ptpip_connect), style = MaterialTheme.typography.labelLarge)
-                }
+                    enabled = passwordForSsid.isNotEmpty()
+                )
             },
             dismissButton = {
-                TextButton(
+                SecondaryButton(
+                    text = stringResource(R.string.cancel),
                     onClick = {
                         showPasswordDialog = false
                         passwordForSsid = ""
                         currentWifiSsid = null
-                    },
-                    modifier = Modifier.height(36.dp)
-                ) {
-                    Text(stringResource(R.string.cancel), style = MaterialTheme.typography.labelLarge)
-                }
+                    }
+                )
             }
         )
     }
@@ -625,14 +623,17 @@ fun PtpipConnectionScreen(
                         if (isAdmin) {
                             IconButtonV2(
                                 icon = if (isShutterListening) Icons.Filled.CloudDone else Icons.Filled.CloudDownload,
-                                contentDescription = if (isShutterListening) "무선 수신 중지" else "물리 셔터 무선 수신 시작",
+                                contentDescription = if (isShutterListening)
+                                    stringResource(R.string.ptpip_shutter_listen_stop)
+                                else
+                                    stringResource(R.string.ptpip_shutter_listen_start),
                                 tint = if (isShutterListening) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
                                 onClick = {
                                     val target = selectedCamera ?: discoveredCameras.firstOrNull()
                                     if (target == null) {
                                         Toast.makeText(
                                             context,
-                                            "카메라가 없습니다 — 먼저 STA 모드에서 카메라를 검색하세요",
+                                            context.getString(R.string.ptpip_no_camera_search_first),
                                             Toast.LENGTH_SHORT
                                         ).show()
                                     } else {
