@@ -22,12 +22,13 @@ import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,10 +38,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
@@ -65,12 +69,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.DividerLine
+import com.inik.camcon.presentation.theme.IconSize
+import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.StrokeWidth
+import com.inik.camcon.presentation.theme.Surface0
+import com.inik.camcon.presentation.theme.TextTertiary
 import com.inik.camcon.presentation.ui.components.v2.AppDialog
 import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
 import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
@@ -112,6 +125,32 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.inik.camcon.di.IoDispatcher
+
+/** Material 3 Emphasized Decelerate 이징 — 진입 모션(요소가 화면으로 들어올 때) 표준. */
+private val EmphasizedDecelerate = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1.0f)
+
+/**
+ * 바텀 내비 아이콘 — 활성 시 아이콘 위에 2dp 앰버 인디케이터를 얹는다.
+ * 비활성 시에도 동일 높이의 투명 스페이서를 두어 아이콘 정렬을 고정한다.
+ */
+@Composable
+private fun NavBarIcon(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    selected: Boolean
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            modifier = Modifier
+                .width(IconSize.lg)
+                .height(2.dp)
+                .clip(RoundedCornerShape(1.dp))
+                .background(if (selected) Accent else Color.Transparent)
+        )
+        Spacer(modifier = Modifier.height(Spacing.xs))
+        Icon(icon, contentDescription = contentDescription)
+    }
+}
 
 @Composable
 fun CameraConnectionOptimizationDialog(
@@ -428,19 +467,21 @@ fun MainScreen(
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentDestination = navBackStackEntry?.destination
 
-                    HorizontalDivider(color = DividerLine, thickness = 0.5.dp)
+                    // CINE 정합: Surface0 컨테이너 + 상단 헤어라인, 활성 탭 상단 2dp 앰버 인디케이터.
+                    HorizontalDivider(color = DividerLine, thickness = StrokeWidth.hairline)
                     NavigationBar(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        containerColor = Surface0,
+                        contentColor = TextTertiary,
                         tonalElevation = 0.dp,
                     ) {
                         items.forEach { screen ->
                             val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
                             NavigationBarItem(
                                 icon = {
-                                    Icon(
-                                        screen.icon,
-                                        contentDescription = stringResource(screen.titleRes)
+                                    NavBarIcon(
+                                        icon = screen.icon,
+                                        contentDescription = stringResource(screen.titleRes),
+                                        selected = selected
                                     )
                                 },
                                 label = {
@@ -450,11 +491,12 @@ fun MainScreen(
                                 onClick = { onTabClick(screen) },
                                 alwaysShowLabel = true,
                                 colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = MaterialTheme.colorScheme.primary,
-                                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    indicatorColor = MaterialTheme.colorScheme.secondaryContainer
+                                    selectedIconColor = Accent,
+                                    selectedTextColor = Accent,
+                                    unselectedIconColor = TextTertiary,
+                                    unselectedTextColor = TextTertiary,
+                                    // 상단 앰버 인디케이터로 활성 표현 — 기본 pill 인디케이터는 제거.
+                                    indicatorColor = Color.Transparent
                                 )
                             )
                         }
@@ -467,17 +509,26 @@ fun MainScreen(
                     navController,
                     startDestination = BottomNavItem.CameraControl.route,
                     modifier = Modifier.fillMaxSize(),
-                    // M6: Material 'fade through' 탭 전환 — 추상적 평면 교체 대신 의도된 모션
+                    // M3 fadeThrough 탭 전환 — 진입 fadeIn 210ms(EmphasizedDecelerate),
+                    // 이탈 fadeOut 90ms. 겹침을 최소화한 페이드 스루.
                     enterTransition = {
-                        fadeIn(animationSpec = tween(220, delayMillis = 60)) +
-                            scaleIn(initialScale = 0.96f, animationSpec = tween(220, delayMillis = 60))
+                        fadeIn(
+                            animationSpec = tween(
+                                durationMillis = 210,
+                                easing = EmphasizedDecelerate
+                            )
+                        )
                     },
-                    exitTransition = { fadeOut(animationSpec = tween(120)) },
+                    exitTransition = { fadeOut(animationSpec = tween(90)) },
                     popEnterTransition = {
-                        fadeIn(animationSpec = tween(220, delayMillis = 60)) +
-                            scaleIn(initialScale = 0.96f, animationSpec = tween(220, delayMillis = 60))
+                        fadeIn(
+                            animationSpec = tween(
+                                durationMillis = 210,
+                                easing = EmphasizedDecelerate
+                            )
+                        )
                     },
-                    popExitTransition = { fadeOut(animationSpec = tween(120)) }
+                    popExitTransition = { fadeOut(animationSpec = tween(90)) }
                 ) {
                     composable(BottomNavItem.PhotoPreview.route) { PhotoPreviewScreen() }
                     composable(BottomNavItem.CameraControl.route) {

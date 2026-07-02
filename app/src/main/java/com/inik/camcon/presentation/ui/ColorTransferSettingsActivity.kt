@@ -21,21 +21,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -62,7 +58,19 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.inik.camcon.R
+import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.DividerLine
+import com.inik.camcon.presentation.theme.ErrorV2
+import com.inik.camcon.presentation.theme.MicroLabel
+import com.inik.camcon.presentation.theme.MonoReadout
+import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.Surface0
+import com.inik.camcon.presentation.theme.TextPrimaryV2
+import com.inik.camcon.presentation.theme.TextTertiary
+import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
+import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
 import com.inik.camcon.presentation.ui.screens.ColorTransferImagePickerScreen
 import com.inik.camcon.presentation.ui.screens.components.ColorTransferLivePreview
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
@@ -205,54 +213,57 @@ fun ColorTransferSettingsScreen(
                 title = { Text(stringResource(R.string.ct_settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = Surface0,
+                    titleContentColor = TextPrimaryV2,
+                    navigationIconContentColor = TextPrimaryV2
                 )
             )
         },
+        containerColor = Surface0,
         contentWindowInsets = WindowInsets.safeDrawing
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(Surface0)
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
-            // 색감 전송 활성화 상태 표시
+            // 색감 전송 비활성화 안내 — flat SurfaceV2 + 헤어라인(Elevation 0 정책).
             if (!isColorTransferEnabled) {
-                Card(
+                SurfaceV2(
+                    tier = 1,
+                    border = true,
+                    shape = RoundedCornerShape(Radius.md),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    )
+                        .padding(Spacing.base)
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp)
+                        modifier = Modifier.padding(Spacing.base)
                     ) {
                         Text(
                             text = stringResource(R.string.ct_disabled_title),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimaryV2
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(Spacing.sm))
                         Text(
                             text = stringResource(R.string.ct_disabled_message),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            color = TextTertiary
                         )
                     }
                 }
             }
 
             if (isColorTransferEnabled) {
-                // [필수2] 처리 중 진행률 인디케이터 + 상태 텍스트
+                // [필수2] 처리 중 진행률 인디케이터 + 상태 텍스트 — flat SurfaceV2(tier 2) + 헤어라인.
                 val isProcessingInProgress = isLoading &&
                         processingStage != null &&
                         processingStage != ColorTransferStage.DONE
@@ -266,19 +277,18 @@ fun ColorTransferSettingsScreen(
                             stringResource(R.string.ct_processing_title)
                         else -> stringResource(R.string.ct_processing_title)
                     }
-                    Card(
+                    SurfaceV2(
+                        tier = 2,
+                        border = true,
+                        shape = RoundedCornerShape(Radius.md),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-                        ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                            .padding(horizontal = Spacing.base, vertical = Spacing.sm)
                     ) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp)
+                                .padding(Spacing.base)
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -287,48 +297,49 @@ fun ColorTransferSettingsScreen(
                             ) {
                                 Text(
                                     text = stageText,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
+                                    style = MicroLabel,
+                                    color = Accent
                                 )
                                 Text(
                                     text = stringResource(
                                         R.string.ct_intensity_percent,
                                         (processingProgress * 100).toInt()
                                     ),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.primary
+                                    style = MonoReadout,
+                                    color = Accent
                                 )
                             }
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(Spacing.md))
                             LinearProgressIndicator(
                                 progress = { processingProgress },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(6.dp),
-                                color = MaterialTheme.colorScheme.primary,
-                                trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+                                color = Accent,
+                                trackColor = DividerLine
                             )
                         }
                     }
                 }
 
-                // 실시간 미리보기 영역 - 더 크게
-                Card(
+                // 실시간 미리보기 영역 — flat SurfaceV2 + 헤어라인. 프리뷰 기능 불변, 스타일만.
+                SurfaceV2(
+                    tier = 1,
+                    border = true,
+                    shape = RoundedCornerShape(Radius.md),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                        .padding(Spacing.base)
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp)
+                        modifier = Modifier.padding(Spacing.base)
                     ) {
                         Text(
                             text = stringResource(R.string.ct_live_preview_title),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
+                            style = MicroLabel,
+                            color = TextTertiary
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(Spacing.md))
                         ColorTransferLivePreview(
                             referenceImagePath = colorTransferReferenceImagePath,
                             targetImagePath = colorTransferTargetImagePath,
@@ -338,12 +349,14 @@ fun ColorTransferSettingsScreen(
                     }
                 }
 
-                // 색감 전송 강도 설정 - 더 직관적으로
-                Card(
+                // 색감 전송 강도 설정 — flat SurfaceV2 + 헤어라인. 강도 슬라이더 기능/디바운스 불변.
+                SurfaceV2(
+                    tier = 1,
+                    border = true,
+                    shape = RoundedCornerShape(Radius.md),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        .padding(horizontal = Spacing.base, vertical = Spacing.sm)
                 ) {
                     // 로컬 상태로 즉시 반응
                     var localIntensity by remember { mutableStateOf(colorTransferIntensity) }
@@ -364,31 +377,32 @@ fun ColorTransferSettingsScreen(
                     }
 
                     Column(
-                        modifier = Modifier.padding(20.dp)
+                        modifier = Modifier.padding(Spacing.lg)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = stringResource(R.string.ct_intensity_title),
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold
+                                style = MicroLabel,
+                                color = TextTertiary
                             )
+                            // 전송 강도 판독 = MonoReadout, 앰버.
                             Text(
                                 text = stringResource(
                                     R.string.ct_intensity_percent,
                                     (localIntensity * 100).toInt()
                                 ),
-                                style = MaterialTheme.typography.headlineSmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold
+                                style = MonoReadout,
+                                color = Accent
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(20.dp))
+                        Spacer(modifier = Modifier.height(Spacing.lg))
 
-                        // 더 큰 슬라이더
+                        // 강도 슬라이더 (얇은 트랙 + 앰버 필)
                         Slider(
                             value = localIntensity,
                             onValueChange = { newValue ->
@@ -396,15 +410,15 @@ fun ColorTransferSettingsScreen(
                             },
                             valueRange = 0.01f..1.0f,
                             colors = SliderDefaults.colors(
-                                thumbColor = MaterialTheme.colorScheme.primary,
-                                activeTrackColor = MaterialTheme.colorScheme.primary,
-                                activeTickColor = MaterialTheme.colorScheme.primary,
-                                inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.24f)
+                                thumbColor = Accent,
+                                activeTrackColor = Accent,
+                                activeTickColor = Accent,
+                                inactiveTrackColor = DividerLine
                             ),
                             modifier = Modifier.height(48.dp)
                         )
 
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(Spacing.xs))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -413,16 +427,16 @@ fun ColorTransferSettingsScreen(
                             Text(
                                 text = stringResource(R.string.ct_intensity_weak),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                color = TextTertiary
                             )
                             Text(
                                 text = stringResource(R.string.ct_intensity_strong),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                color = TextTertiary
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(Spacing.md))
 
                         // 추천 범위 표시
                         Row(
@@ -432,182 +446,160 @@ fun ColorTransferSettingsScreen(
                             Icon(
                                 imageVector = Icons.Default.Photo,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                                modifier = Modifier.padding(end = 4.dp)
+                                tint = Accent.copy(alpha = 0.7f),
+                                modifier = Modifier.padding(end = Spacing.xs)
                             )
                             Text(
                                 text = stringResource(R.string.ct_intensity_recommended),
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                color = Accent.copy(alpha = 0.8f),
                                 fontWeight = FontWeight.Medium
                             )
                         }
                     }
                 }
 
-                // 이미지 선택 버튼들 - 더 간결하게
-                Card(
+                // 이미지 선택 버튼들 — flat SurfaceV2 + 헤어라인, V2 SecondaryButton.
+                SurfaceV2(
+                    tier = 1,
+                    border = true,
+                    shape = RoundedCornerShape(Radius.md),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        .padding(horizontal = Spacing.base, vertical = Spacing.sm)
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp)
+                        modifier = Modifier.padding(Spacing.base)
                     ) {
                         Text(
                             text = stringResource(R.string.ct_image_management),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            style = MicroLabel,
+                            color = TextTertiary
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(Spacing.md))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
                         ) {
                             // 참조 이미지 선택 (시스템 갤러리에서 새로 추가)
-                            OutlinedButton(
-                                onClick = {
-                                    referenceImagePickerLauncher.launch("image/*")
-                                },
+                            SecondaryButton(
+                                text = stringResource(R.string.ct_reference_image),
+                                onClick = { referenceImagePickerLauncher.launch("image/*") },
+                                leadingIcon = Icons.Default.Photo,
                                 modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(
-                                    Icons.Default.Photo,
-                                    contentDescription = null,
-                                    modifier = Modifier.padding(end = 4.dp)
-                                )
-                                Text(stringResource(R.string.ct_reference_image))
-                            }
+                            )
 
                             // 대상 이미지 선택
-                            OutlinedButton(
-                                onClick = {
-                                    targetImagePickerLauncher.launch("image/*")
-                                },
+                            SecondaryButton(
+                                text = stringResource(R.string.ct_target_image),
+                                onClick = { targetImagePickerLauncher.launch("image/*") },
+                                leadingIcon = Icons.Default.Photo,
                                 modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(
-                                    Icons.Default.Photo,
-                                    contentDescription = null,
-                                    modifier = Modifier.padding(end = 4.dp)
-                                )
-                                Text(stringResource(R.string.ct_target_image))
-                            }
+                            )
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(Spacing.sm))
 
                         // [권장3] 등록된 참조 이미지 라이브러리에서 다시 고르기
-                        OutlinedButton(
-                            onClick = {
-                                route = ColorTransferRoute.REFERENCE_PICKER
-                            },
+                        SecondaryButton(
+                            text = stringResource(R.string.ct_manage_library),
+                            onClick = { route = ColorTransferRoute.REFERENCE_PICKER },
+                            leadingIcon = Icons.Default.PhotoLibrary,
                             modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                Icons.Default.PhotoLibrary,
-                                contentDescription = null,
-                                modifier = Modifier.padding(end = 4.dp)
-                            )
-                            Text(stringResource(R.string.ct_manage_library))
-                        }
+                        )
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(Spacing.sm))
 
                         // 캐시 초기화
-                        OutlinedButton(
+                        SecondaryButton(
+                            text = stringResource(R.string.ct_clear_cache),
                             onClick = {
                                 colorTransferViewModel.clearPerformanceInfo()
                                 colorTransferViewModel.clearProcessingStatus()
                             },
+                            leadingIcon = Icons.Default.Clear,
                             modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                Icons.Default.Clear,
-                                contentDescription = null,
-                                modifier = Modifier.padding(end = 4.dp)
-                            )
-                            Text(stringResource(R.string.ct_clear_cache))
-                        }
+                        )
                     }
                 }
 
-                // 성능 정보 표시 - 컴팩트하게
+                // 성능 정보 표시 — flat SurfaceV2 + 헤어라인.
                 performanceInfo?.let { info ->
-                    Card(
+                    SurfaceV2(
+                        tier = 1,
+                        border = true,
+                        shape = RoundedCornerShape(Radius.md),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                        ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                            .padding(horizontal = Spacing.base, vertical = Spacing.sm)
                     ) {
                         Row(
-                            modifier = Modifier.padding(12.dp)
+                            modifier = Modifier.padding(Spacing.md)
                         ) {
                             Text(
                                 text = "⚡",
                                 style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.padding(end = 8.dp)
+                                modifier = Modifier.padding(end = Spacing.sm)
                             )
                             Text(
                                 text = info,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                color = TextTertiary
                             )
                         }
                     }
                 }
 
-                // 에러 메시지 표시 - 더 눈에 띄게
+                // 에러 메시지 표시 — flat SurfaceV2 + 헤어라인.
                 errorMessage?.let { error ->
-                    Card(
+                    SurfaceV2(
+                        tier = 1,
+                        border = true,
+                        shape = RoundedCornerShape(Radius.md),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-                        ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                            .padding(horizontal = Spacing.base, vertical = Spacing.sm)
                     ) {
                         Column(
-                            modifier = Modifier.padding(16.dp)
+                            modifier = Modifier.padding(Spacing.base)
                         ) {
                             Row {
                                 Text(
                                     text = "⚠️",
                                     style = MaterialTheme.typography.titleLarge,
-                                    modifier = Modifier.padding(end = 8.dp)
+                                    modifier = Modifier.padding(end = Spacing.sm)
                                 )
                                 Text(
                                     text = stringResource(R.string.ct_error_title),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.error
+                                    color = ErrorV2
                                 )
                             }
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(Spacing.sm))
                             Text(
                                 text = error,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.error
+                                color = ErrorV2
                             )
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(Spacing.md))
                             TextButton(
                                 onClick = { colorTransferViewModel.clearError() },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text(stringResource(R.string.ct_confirm))
+                                Text(
+                                    text = stringResource(R.string.ct_confirm),
+                                    style = MicroLabel,
+                                    color = Accent
+                                )
                             }
                         }
                     }
                 }
 
                 // 하단 여백
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(Spacing.base))
             }
         }
     }
@@ -631,46 +623,49 @@ private fun ColorTransferSettingsScreenPreview(
                 title = { Text(stringResource(R.string.ct_settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = {}) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = Surface0,
+                    titleContentColor = TextPrimaryV2,
+                    navigationIconContentColor = TextPrimaryV2
                 )
             )
         },
+        containerColor = Surface0,
         contentWindowInsets = WindowInsets.safeDrawing
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(Surface0)
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
             if (!isColorTransferEnabled) {
-                Card(
+                SurfaceV2(
+                    tier = 1,
+                    border = true,
+                    shape = RoundedCornerShape(Radius.md),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    )
+                        .padding(Spacing.base)
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp)
+                        modifier = Modifier.padding(Spacing.base)
                     ) {
                         Text(
                             text = stringResource(R.string.ct_disabled_title),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimaryV2
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(Spacing.sm))
                         Text(
                             text = stringResource(R.string.ct_disabled_message),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            color = TextTertiary
                         )
                     }
                 }
@@ -678,29 +673,31 @@ private fun ColorTransferSettingsScreenPreview(
 
             if (isColorTransferEnabled) {
                 // 미리보기 플레이스홀더
-                Card(
+                SurfaceV2(
+                    tier = 1,
+                    border = true,
+                    shape = RoundedCornerShape(Radius.md),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                        .padding(Spacing.base)
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp)
+                        modifier = Modifier.padding(Spacing.base)
                     ) {
                         Text(
                             text = stringResource(R.string.ct_live_preview_title),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
+                            style = MicroLabel,
+                            color = TextTertiary
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(Spacing.md))
 
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(250.dp)
                                 .background(
-                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
-                                    RoundedCornerShape(8.dp)
+                                    Surface0,
+                                    RoundedCornerShape(Radius.sm)
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
@@ -711,21 +708,21 @@ private fun ColorTransferSettingsScreenPreview(
                                     imageVector = Icons.Default.Photo,
                                     contentDescription = null,
                                     modifier = Modifier.size(64.dp),
-                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                    tint = TextTertiary
                                 )
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(Spacing.sm))
                                 Text(
                                     text = stringResource(R.string.ct_live_preview_title),
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                    color = TextTertiary
                                 )
                                 Text(
                                     text = stringResource(
                                         R.string.ct_lp_intensity_label,
                                         (colorTransferIntensity * 100).toInt()
                                     ),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                                    style = MonoReadout,
+                                    color = Accent
                                 )
                             }
                         }
@@ -733,51 +730,53 @@ private fun ColorTransferSettingsScreenPreview(
                 }
 
                 // 슬라이더
-                Card(
+                SurfaceV2(
+                    tier = 1,
+                    border = true,
+                    shape = RoundedCornerShape(Radius.md),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        .padding(horizontal = Spacing.base, vertical = Spacing.sm)
                 ) {
                     Column(
-                        modifier = Modifier.padding(20.dp)
+                        modifier = Modifier.padding(Spacing.lg)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = stringResource(R.string.ct_intensity_title),
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold
+                                style = MicroLabel,
+                                color = TextTertiary
                             )
                             Text(
                                 text = stringResource(
                                     R.string.ct_intensity_percent,
                                     (colorTransferIntensity * 100).toInt()
                                 ),
-                                style = MaterialTheme.typography.headlineSmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold
+                                style = MonoReadout,
+                                color = Accent
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(20.dp))
+                        Spacer(modifier = Modifier.height(Spacing.lg))
 
                         Slider(
                             value = colorTransferIntensity,
                             onValueChange = {},
                             valueRange = 0.01f..1.0f,
                             colors = SliderDefaults.colors(
-                                thumbColor = MaterialTheme.colorScheme.primary,
-                                activeTrackColor = MaterialTheme.colorScheme.primary,
-                                activeTickColor = MaterialTheme.colorScheme.primary,
-                                inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.24f)
+                                thumbColor = Accent,
+                                activeTrackColor = Accent,
+                                activeTickColor = Accent,
+                                inactiveTrackColor = DividerLine
                             ),
                             modifier = Modifier.height(48.dp)
                         )
 
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(Spacing.xs))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -786,16 +785,16 @@ private fun ColorTransferSettingsScreenPreview(
                             Text(
                                 text = stringResource(R.string.ct_intensity_weak),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                color = TextTertiary
                             )
                             Text(
                                 text = stringResource(R.string.ct_intensity_strong),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                color = TextTertiary
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(Spacing.md))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -804,13 +803,13 @@ private fun ColorTransferSettingsScreenPreview(
                             Icon(
                                 imageVector = Icons.Default.Photo,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                                modifier = Modifier.padding(end = 4.dp)
+                                tint = Accent.copy(alpha = 0.7f),
+                                modifier = Modifier.padding(end = Spacing.xs)
                             )
                             Text(
                                 text = stringResource(R.string.ct_intensity_recommended),
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                color = Accent.copy(alpha = 0.8f),
                                 fontWeight = FontWeight.Medium
                             )
                         }
@@ -818,104 +817,85 @@ private fun ColorTransferSettingsScreenPreview(
                 }
 
                 // 버튼들
-                Card(
+                SurfaceV2(
+                    tier = 1,
+                    border = true,
+                    shape = RoundedCornerShape(Radius.md),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        .padding(horizontal = Spacing.base, vertical = Spacing.sm)
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp)
+                        modifier = Modifier.padding(Spacing.base)
                     ) {
                         Text(
                             text = stringResource(R.string.ct_image_management),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            style = MicroLabel,
+                            color = TextTertiary
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(Spacing.md))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
                         ) {
-                            OutlinedButton(
+                            SecondaryButton(
+                                text = stringResource(R.string.ct_reference_image),
                                 onClick = {},
+                                leadingIcon = Icons.Default.Photo,
                                 modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(
-                                    Icons.Default.Photo,
-                                    contentDescription = null,
-                                    modifier = Modifier.padding(end = 4.dp)
-                                )
-                                Text(stringResource(R.string.ct_reference_image))
-                            }
+                            )
 
-                            OutlinedButton(
+                            SecondaryButton(
+                                text = stringResource(R.string.ct_target_image),
                                 onClick = {},
+                                leadingIcon = Icons.Default.Photo,
                                 modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(
-                                    Icons.Default.Photo,
-                                    contentDescription = null,
-                                    modifier = Modifier.padding(end = 4.dp)
-                                )
-                                Text(stringResource(R.string.ct_target_image))
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        OutlinedButton(
-                            onClick = {},
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                Icons.Default.PhotoLibrary,
-                                contentDescription = null,
-                                modifier = Modifier.padding(end = 4.dp)
                             )
-                            Text(stringResource(R.string.ct_manage_library))
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(Spacing.sm))
 
-                        OutlinedButton(
+                        SecondaryButton(
+                            text = stringResource(R.string.ct_manage_library),
                             onClick = {},
+                            leadingIcon = Icons.Default.PhotoLibrary,
                             modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                Icons.Default.Clear,
-                                contentDescription = null,
-                                modifier = Modifier.padding(end = 4.dp)
-                            )
-                            Text(stringResource(R.string.ct_clear_cache))
-                        }
+                        )
+
+                        Spacer(modifier = Modifier.height(Spacing.sm))
+
+                        SecondaryButton(
+                            text = stringResource(R.string.ct_clear_cache),
+                            onClick = {},
+                            leadingIcon = Icons.Default.Clear,
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                 }
 
                 // 성능 정보
                 performanceInfo?.let { info ->
-                    Card(
+                    SurfaceV2(
+                        tier = 1,
+                        border = true,
+                        shape = RoundedCornerShape(Radius.md),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                        ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                            .padding(horizontal = Spacing.base, vertical = Spacing.sm)
                     ) {
                         Row(
-                            modifier = Modifier.padding(12.dp)
+                            modifier = Modifier.padding(Spacing.md)
                         ) {
                             Text(
                                 text = "⚡",
                                 style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.padding(end = 8.dp)
+                                modifier = Modifier.padding(end = Spacing.sm)
                             )
                             Text(
                                 text = info,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                color = TextTertiary
                             )
                         }
                     }
@@ -923,49 +903,52 @@ private fun ColorTransferSettingsScreenPreview(
 
                 // 에러 메시지
                 errorMessage?.let { error ->
-                    Card(
+                    SurfaceV2(
+                        tier = 1,
+                        border = true,
+                        shape = RoundedCornerShape(Radius.md),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-                        ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                            .padding(horizontal = Spacing.base, vertical = Spacing.sm)
                     ) {
                         Column(
-                            modifier = Modifier.padding(16.dp)
+                            modifier = Modifier.padding(Spacing.base)
                         ) {
                             Row {
                                 Text(
                                     text = "⚠️",
                                     style = MaterialTheme.typography.titleLarge,
-                                    modifier = Modifier.padding(end = 8.dp)
+                                    modifier = Modifier.padding(end = Spacing.sm)
                                 )
                                 Text(
                                     text = stringResource(R.string.ct_error_title),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.error
+                                    color = ErrorV2
                                 )
                             }
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(Spacing.sm))
                             Text(
                                 text = error,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.error
+                                color = ErrorV2
                             )
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(Spacing.md))
                             TextButton(
                                 onClick = {},
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text(stringResource(R.string.ct_confirm))
+                                Text(
+                                    text = stringResource(R.string.ct_confirm),
+                                    style = MicroLabel,
+                                    color = Accent
+                                )
                             }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(Spacing.base))
             }
         }
     }

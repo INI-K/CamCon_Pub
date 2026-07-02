@@ -12,12 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -31,19 +26,19 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.inik.camcon.R
-import com.inik.camcon.presentation.theme.Elevation
-import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.Surface0
 import com.inik.camcon.presentation.theme.TextPrimaryV2
+import com.inik.camcon.presentation.ui.components.v2.AppDialog
+import com.inik.camcon.presentation.ui.components.v2.DividerLineV2
+import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
 import com.inik.camcon.domain.model.CameraPhoto
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -95,47 +90,25 @@ fun PhotoDetailsDialog(
 ) {
     val context = LocalContext.current
 
-    Dialog(
+    AppDialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            dismissOnBackPress = true,
-            dismissOnClickOutside = true,
-            usePlatformDefaultWidth = false
-        )
-    ) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = Elevation.high),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background)
-        ) {
+        icon = {
+            Icon(
+                Icons.Default.Info,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+        },
+        title = {
+            Text(text = context.getString(R.string.photo_details))
+        },
+        text = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
-                    .padding(16.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.Info,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = context.getString(R.string.photo_details),
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-                Divider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
+                DividerLineV2()
                 Spacer(modifier = Modifier.height(12.dp))
 
                 InfoRow(
@@ -169,28 +142,21 @@ fun PhotoDetailsDialog(
                     value = photo.path,
                     icon = null
                 )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Button(
-                    onClick = onDownload,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(Radius.sm)
-                ) {
-                    Icon(
-                        Icons.Default.Share,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = context.getString(R.string.download_photo),
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                }
             }
-        }
-    }
+        },
+        confirmButton = {
+            PrimaryButton(
+                text = context.getString(R.string.download_photo),
+                onClick = onDownload,
+                leadingIcon = Icons.Default.Share,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
+    )
 }
 
 /**
@@ -268,7 +234,7 @@ private fun formatDate(timestamp: Long, context: android.content.Context): Strin
 @Preview(name = "Photo Viewer Top Controls", showBackground = false)
 @Composable
 private fun PhotoViewerTopControlsPreview() {
-    MaterialTheme {
+    CamConTheme {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -289,7 +255,7 @@ private fun PhotoViewerTopControlsPreview() {
 @Preview(name = "Photo Details Dialog", showBackground = true)
 @Composable
 private fun PhotoDetailsDialogPreview() {
-    MaterialTheme {
+    CamConTheme {
         PhotoDetailsDialog(
             photo = CameraPhoto(
                 name = "IMG_0001.JPG",
