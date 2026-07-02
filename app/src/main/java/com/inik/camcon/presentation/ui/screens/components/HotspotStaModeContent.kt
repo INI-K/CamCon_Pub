@@ -3,6 +3,8 @@ package com.inik.camcon.presentation.ui.screens.components
 import android.content.Context
 import android.content.Intent
 import android.provider.Settings
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,15 +15,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiOff
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -35,7 +34,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.inik.camcon.R
@@ -44,7 +42,13 @@ import com.inik.camcon.domain.model.PtpipCameraInfo
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
-import com.inik.camcon.presentation.theme.Surface2
+import com.inik.camcon.presentation.theme.DividerLine
+import com.inik.camcon.presentation.theme.IconSize
+import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.StrokeWidth
+import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
+import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
 
 /**
@@ -83,11 +87,11 @@ fun HotspotStaModeContent(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = Spacing.base, vertical = Spacing.md)
     ) {
         item {
             HotspotStatusCard(state = state)
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(Spacing.md))
         }
 
         if (state.status == HotspotStaContentState.HotspotStatus.DISABLED) {
@@ -98,13 +102,13 @@ fun HotspotStaModeContent(
                         ptpipViewModel.refreshHotspotState()
                     }
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(Spacing.md))
             }
         }
 
         item {
             HotspotGuideCard()
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(Spacing.md))
         }
 
         if (connectionState != PtpipConnectionState.DISCONNECTED) {
@@ -116,7 +120,7 @@ fun HotspotStaModeContent(
                     onDisconnect = { ptpipViewModel.disconnect() },
                     onCapture = { ptpipViewModel.capturePhoto() }
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(Spacing.md))
             }
         }
 
@@ -125,7 +129,7 @@ fun HotspotStaModeContent(
                 isAutoReconnectEnabled = isAutoReconnectEnabled,
                 onToggleAutoReconnect = { ptpipViewModel.setAutoReconnectEnabled(it) }
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(Spacing.md))
         }
 
         item {
@@ -135,7 +139,7 @@ fun HotspotStaModeContent(
                 onConnect = { ptpipViewModel.connectManualCamera() },
                 enabled = !isConnecting,
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(Spacing.md))
         }
 
         item {
@@ -155,47 +159,44 @@ fun HotspotStaModeContent(
  */
 @Composable
 private fun HotspotEnableCard(onOpenSettings: () -> Unit) {
-    Card(
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = Surface2),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        modifier = Modifier.fillMaxWidth()
+    SurfaceV2(
+        shape = RoundedCornerShape(Radius.md),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                border = BorderStroke(StrokeWidth.hairline, DividerLine),
+                shape = RoundedCornerShape(Radius.md)
+            ),
+        tier = 2
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(Spacing.base)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = Icons.Filled.WifiOff,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(IconSize.md)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(Spacing.sm))
                 Text(
                     text = stringResource(R.string.ptpip_hotspot_enable_title),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold
                 )
             }
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(Spacing.sm))
             Text(
                 text = stringResource(R.string.ptpip_hotspot_enable_desc),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(modifier = Modifier.height(12.dp))
-            Button(
+            Spacer(modifier = Modifier.height(Spacing.md))
+            PrimaryButton(
+                text = stringResource(R.string.ptpip_hotspot_open_settings),
                 onClick = onOpenSettings,
+                leadingIcon = Icons.Filled.Wifi,
                 modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Wifi,
-                    contentDescription = null
-                )
-                Text(
-                    text = stringResource(R.string.ptpip_hotspot_open_settings),
-                    modifier = Modifier.padding(start = 8.dp)
-                )
-            }
+            )
         }
     }
 }
@@ -226,25 +227,29 @@ private fun HotspotAutoReconnectCard(
     isAutoReconnectEnabled: Boolean,
     onToggleAutoReconnect: (Boolean) -> Unit
 ) {
-    Card(
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = Surface2),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        modifier = Modifier.fillMaxWidth()
+    SurfaceV2(
+        shape = RoundedCornerShape(Radius.md),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                border = BorderStroke(StrokeWidth.hairline, DividerLine),
+                shape = RoundedCornerShape(Radius.md)
+            ),
+        tier = 2
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(Spacing.base),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = Icons.Filled.Sync,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(IconSize.md)
             )
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(Spacing.md))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = stringResource(R.string.sta_mode_auto_reconnect),
@@ -272,64 +277,62 @@ private fun HotspotMdnsSearchCard(
     isDiscovering: Boolean,
     onSearchClick: () -> Unit
 ) {
-    Card(
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = Surface2),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        modifier = Modifier.fillMaxWidth()
+    SurfaceV2(
+        shape = RoundedCornerShape(Radius.md),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                border = BorderStroke(StrokeWidth.hairline, DividerLine),
+                shape = RoundedCornerShape(Radius.md)
+            ),
+        tier = 2
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(Spacing.base)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = Icons.Filled.Search,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(IconSize.md)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(Spacing.sm))
                 Text(
                     text = stringResource(R.string.sta_mode_mdns_search),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold
                 )
             }
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(Spacing.sm))
             Text(
                 text = stringResource(R.string.sta_mode_mdns_description),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(modifier = Modifier.height(12.dp))
-            Button(
+            Spacer(modifier = Modifier.height(Spacing.md))
+            PrimaryButton(
+                text = if (isDiscovering) stringResource(R.string.sta_mode_searching) else stringResource(R.string.sta_mode_search_camera),
                 onClick = onSearchClick,
                 enabled = !isDiscovering,
+                isLoading = isDiscovering,
                 modifier = Modifier.fillMaxWidth()
-            ) {
-                if (isDiscovering) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.sta_mode_searching))
-                } else {
-                    Text(stringResource(R.string.sta_mode_search_camera))
-                }
-            }
+            )
         }
     }
 }
 
 @Composable
 private fun HotspotStatusCard(state: HotspotStaContentState) {
-    Card(
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = Surface2),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        modifier = Modifier.fillMaxWidth()
+    SurfaceV2(
+        shape = RoundedCornerShape(Radius.md),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                border = BorderStroke(StrokeWidth.hairline, DividerLine),
+                shape = RoundedCornerShape(Radius.md)
+            ),
+        tier = 2
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(Spacing.base)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val enabled = state.status == HotspotStaContentState.HotspotStatus.ENABLED
                 Icon(
@@ -344,12 +347,12 @@ private fun HotspotStatusCard(state: HotspotStaContentState) {
                     ),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(start = 8.dp)
+                    modifier = Modifier.padding(start = Spacing.sm)
                 )
             }
 
             state.ssidLabel?.let {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Spacing.sm))
                 Text(
                     text = "SSID: $it",
                     style = MaterialTheme.typography.bodySmall,
@@ -357,7 +360,7 @@ private fun HotspotStatusCard(state: HotspotStaContentState) {
                 )
             }
             state.gatewayLabel?.let {
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(Spacing.xs))
                 Text(
                     text = "Gateway: $it",
                     style = MaterialTheme.typography.bodySmall,
@@ -370,19 +373,23 @@ private fun HotspotStatusCard(state: HotspotStaContentState) {
 
 @Composable
 private fun HotspotGuideCard() {
-    Card(
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = Surface2),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        modifier = Modifier.fillMaxWidth()
+    SurfaceV2(
+        shape = RoundedCornerShape(Radius.md),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                border = BorderStroke(StrokeWidth.hairline, DividerLine),
+                shape = RoundedCornerShape(Radius.md)
+            ),
+        tier = 2
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(Spacing.base)) {
             Text(
                 text = stringResource(R.string.ptpip_hotspot_description),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(Spacing.sm))
             listOf(
                 R.string.ptpip_hotspot_step_1,
                 R.string.ptpip_hotspot_step_2,
@@ -394,10 +401,10 @@ private fun HotspotGuideCard() {
                     text = stringResource(res),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(vertical = 2.dp)
+                    modifier = Modifier.padding(vertical = Spacing.xs)
                 )
             }
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(Spacing.sm))
             Text(
                 text = stringResource(R.string.ptpip_hotspot_compat_note),
                 style = MaterialTheme.typography.bodySmall,
@@ -414,19 +421,23 @@ private fun ManualIpInputCard(
     onConnect: () -> Unit,
     enabled: Boolean,
 ) {
-    Card(
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = Surface2),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        modifier = Modifier.fillMaxWidth()
+    SurfaceV2(
+        shape = RoundedCornerShape(Radius.md),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                border = BorderStroke(StrokeWidth.hairline, DividerLine),
+                shape = RoundedCornerShape(Radius.md)
+            ),
+        tier = 2
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(Spacing.base)) {
             Text(
                 text = stringResource(R.string.ptpip_manual_ip_input),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(Spacing.sm))
             OutlinedTextField(
                 value = manualIp,
                 onValueChange = onIpChange,
@@ -435,21 +446,14 @@ private fun ManualIpInputCard(
                 placeholder = { Text("192.168.49.137") },
                 modifier = Modifier.fillMaxWidth()
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            Button(
+            Spacer(modifier = Modifier.height(Spacing.sm))
+            PrimaryButton(
+                text = stringResource(R.string.ptpip_connect_with_ip),
                 onClick = onConnect,
+                leadingIcon = Icons.Filled.Search,
                 enabled = enabled && manualIp.isNotBlank(),
                 modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Search,
-                    contentDescription = null
-                )
-                Text(
-                    text = stringResource(R.string.ptpip_connect_with_ip),
-                    modifier = Modifier.padding(start = 8.dp)
-                )
-            }
+            )
         }
     }
 }
