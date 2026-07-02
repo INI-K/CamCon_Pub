@@ -17,9 +17,9 @@
     <!-- 강도 슬라이더 -->
     <string name="ct_intensity_title">색감 전송 강도</string>
     <string name="ct_intensity_percent">%d%%</string>
-    <string name="ct_intensity_weak">약함 (1%%)</string>
-    <string name="ct_intensity_strong">강함 (100%%)</string>
-    <string name="ct_intensity_recommended">권장: 3-10%%</string>
+    <string name="ct_intensity_weak">약함 (1%)</string>
+    <string name="ct_intensity_strong">강함 (100%)</string>
+    <string name="ct_intensity_recommended">권장: 3-10%</string>
 
     <!-- 이미지 관리 -->
     <string name="ct_image_management">이미지 관리</string>
