@@ -28,6 +28,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -47,10 +50,12 @@ import com.inik.camcon.domain.usecase.camera.GetLibGphoto2VersionUseCase
 import com.inik.camcon.domain.usecase.camera.IsNativeLibrariesLoadedUseCase
 import com.inik.camcon.domain.usecase.camera.SetupNativeEnvironmentUseCase
 import com.inik.camcon.domain.usecase.camera.StartNativeLogUseCase
+import com.inik.camcon.presentation.theme.Accent
+import com.inik.camcon.presentation.theme.AccentEdge
 import com.inik.camcon.presentation.theme.BodySmall
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.DisplayL
-import com.inik.camcon.presentation.theme.HeadingL
+import com.inik.camcon.presentation.theme.MicroLabel
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.Surface0
 import com.inik.camcon.presentation.theme.TextPrimaryV2
@@ -285,6 +290,37 @@ private fun UiText.resolve(): String = when (this) {
     }
 }
 
+/**
+ * CINE 레티클 프레임 — 순흑 위 코너 틱(앰버 1px)으로 브랜드 마크를 감싼다.
+ * 로그인 화면 ReticleFrame 과 동일 언어(목업 preview_cine.html .tick).
+ */
+@Composable
+private fun SplashReticleFrame(
+    modifier: Modifier = Modifier,
+    tickColor: Color = AccentEdge,
+    content: @Composable () -> Unit
+) {
+    Box(
+        modifier = modifier.drawBehind {
+            val tick = 14.dp.toPx()
+            val stroke = 1.dp.toPx()
+            val w = size.width
+            val h = size.height
+            drawLine(tickColor, Offset(0f, 0f), Offset(tick, 0f), stroke)
+            drawLine(tickColor, Offset(0f, 0f), Offset(0f, tick), stroke)
+            drawLine(tickColor, Offset(w, 0f), Offset(w - tick, 0f), stroke)
+            drawLine(tickColor, Offset(w, 0f), Offset(w, tick), stroke)
+            drawLine(tickColor, Offset(0f, h), Offset(tick, h), stroke)
+            drawLine(tickColor, Offset(0f, h), Offset(0f, h - tick), stroke)
+            drawLine(tickColor, Offset(w, h), Offset(w - tick, h), stroke)
+            drawLine(tickColor, Offset(w, h), Offset(w, h - tick), stroke)
+        },
+        contentAlignment = Alignment.Center
+    ) {
+        content()
+    }
+}
+
 @Composable
 fun SplashScreen(
     versionState: AppVersionUiState,
@@ -328,22 +364,29 @@ fun SplashScreen(
                 .padding(horizontal = Spacing.xl)
                 .alpha(alphaAnim.value)
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.ic_launcher_foreground),
-                contentDescription = null,
-                modifier = Modifier.size(112.dp)
-            )
+            // 브랜드 마크 — 런처 조리개 심볼을 레티클 프레임 안에(로그인 화면과 동일 언어)
+            SplashReticleFrame(
+                modifier = Modifier.size(140.dp)
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                    contentDescription = null,
+                    modifier = Modifier.size(112.dp)
+                )
+            }
             Spacer(modifier = Modifier.height(Spacing.lg))
             Text(
                 text = "CamCon",
                 style = DisplayL,
                 color = TextPrimaryV2
             )
-            Spacer(modifier = Modifier.height(Spacing.xs))
+            Spacer(modifier = Modifier.height(Spacing.sm))
+            // 태그라인 — MicroLabel(대문자 라벨), Accent (CINE 정합)
             Text(
                 text = stringResource(R.string.splash_camera_controller),
-                style = HeadingL,
-                color = TextSecondaryV2
+                style = MicroLabel,
+                color = Accent,
+                textAlign = TextAlign.Center
             )
 
             Spacer(modifier = Modifier.height(Spacing.xl))

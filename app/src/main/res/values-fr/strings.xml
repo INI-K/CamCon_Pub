@@ -37,6 +37,7 @@
     <!-- 카메라 연결 -->
     <string name="camera_connected">Connecté</string>
     <string name="camera_disconnected">Déconnecté</string>
+    <string name="camera_searching">Recherche de la caméra…</string>
     <string name="pipeline_film_sim">FILM SIM</string>
     <string name="pipeline_color_transfer">Transfert couleur</string>
     <string name="pipeline_off">OFF</string>
@@ -314,6 +315,7 @@
     <string name="cd_status_connecting">Connexion en cours</string>
     <string name="cd_status_connected">Connecté</string>
     <string name="cd_status_error">Erreur</string>
+    <string name="cd_status_searching">Recherche</string>
     <!-- %1$s = 파일명, %2$s = 촬영 날짜 -->
     <string name="cd_photo_preview">Photo %1$s, %2$s</string>
     <string name="cd_photo_preview_no_date">Photo %1$s</string>

@@ -66,6 +66,7 @@ import com.inik.camcon.presentation.theme.MicroLabel
 import com.inik.camcon.presentation.theme.MonoReadout
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.StrokeWidth
 import com.inik.camcon.presentation.theme.Surface0
 import com.inik.camcon.presentation.theme.TextPrimaryV2
 import com.inik.camcon.presentation.theme.TextTertiary
@@ -208,20 +209,29 @@ fun ColorTransferSettingsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                modifier = Modifier.statusBarsPadding(),
-                title = { Text(stringResource(R.string.ct_settings_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Surface0,
-                    titleContentColor = TextPrimaryV2,
-                    navigationIconContentColor = TextPrimaryV2
+            Column {
+                TopAppBar(
+                    modifier = Modifier.statusBarsPadding(),
+                    title = { Text(stringResource(R.string.ct_settings_title)) },
+                    navigationIcon = {
+                        IconButton(onClick = onBackClick) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Surface0,
+                        titleContentColor = TextPrimaryV2,
+                        navigationIconContentColor = TextPrimaryV2
+                    )
                 )
-            )
+                // 앱바-컨텐츠 경계 헤어라인(순흑끼리 경계 소실 방지, CINE 계기판 언어).
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(StrokeWidth.hairline)
+                        .background(DividerLine)
+                )
+            }
         },
         containerColor = Surface0,
         contentWindowInsets = WindowInsets.safeDrawing
@@ -403,18 +413,27 @@ fun ColorTransferSettingsScreen(
                         Spacer(modifier = Modifier.height(Spacing.lg))
 
                         // 강도 슬라이더 (얇은 트랙 + 앰버 필)
+                        val intensitySliderColors = SliderDefaults.colors(
+                            thumbColor = Accent,
+                            activeTrackColor = Accent,
+                            activeTickColor = Accent,
+                            inactiveTrackColor = DividerLine
+                        )
                         Slider(
                             value = localIntensity,
                             onValueChange = { newValue ->
                                 localIntensity = newValue
                             },
                             valueRange = 0.01f..1.0f,
-                            colors = SliderDefaults.colors(
-                                thumbColor = Accent,
-                                activeTrackColor = Accent,
-                                activeTickColor = Accent,
-                                inactiveTrackColor = DividerLine
-                            ),
+                            colors = intensitySliderColors,
+                            // 비활성 트랙 끝 stop indicator(앰버 점) 제거 — 썸으로 오인 방지.
+                            track = { sliderState ->
+                                SliderDefaults.Track(
+                                    sliderState = sliderState,
+                                    colors = intensitySliderColors,
+                                    drawStopIndicator = null
+                                )
+                            },
                             modifier = Modifier.height(48.dp)
                         )
 
@@ -618,20 +637,29 @@ private fun ColorTransferSettingsScreenPreview(
 ) {
     Scaffold(
         topBar = {
-            TopAppBar(
-                modifier = Modifier.statusBarsPadding(),
-                title = { Text(stringResource(R.string.ct_settings_title)) },
-                navigationIcon = {
-                    IconButton(onClick = {}) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Surface0,
-                    titleContentColor = TextPrimaryV2,
-                    navigationIconContentColor = TextPrimaryV2
+            Column {
+                TopAppBar(
+                    modifier = Modifier.statusBarsPadding(),
+                    title = { Text(stringResource(R.string.ct_settings_title)) },
+                    navigationIcon = {
+                        IconButton(onClick = {}) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Surface0,
+                        titleContentColor = TextPrimaryV2,
+                        navigationIconContentColor = TextPrimaryV2
+                    )
                 )
-            )
+                // 앱바-컨텐츠 경계 헤어라인(순흑끼리 경계 소실 방지, CINE 계기판 언어).
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(StrokeWidth.hairline)
+                        .background(DividerLine)
+                )
+            }
         },
         containerColor = Surface0,
         contentWindowInsets = WindowInsets.safeDrawing
@@ -763,16 +791,25 @@ private fun ColorTransferSettingsScreenPreview(
 
                         Spacer(modifier = Modifier.height(Spacing.lg))
 
+                        val previewSliderColors = SliderDefaults.colors(
+                            thumbColor = Accent,
+                            activeTrackColor = Accent,
+                            activeTickColor = Accent,
+                            inactiveTrackColor = DividerLine
+                        )
                         Slider(
                             value = colorTransferIntensity,
                             onValueChange = {},
                             valueRange = 0.01f..1.0f,
-                            colors = SliderDefaults.colors(
-                                thumbColor = Accent,
-                                activeTrackColor = Accent,
-                                activeTickColor = Accent,
-                                inactiveTrackColor = DividerLine
-                            ),
+                            colors = previewSliderColors,
+                            // 비활성 트랙 끝 stop indicator(앰버 점) 제거 — 썸으로 오인 방지.
+                            track = { sliderState ->
+                                SliderDefaults.Track(
+                                    sliderState = sliderState,
+                                    colors = previewSliderColors,
+                                    drawStopIndicator = null
+                                )
+                            },
                             modifier = Modifier.height(48.dp)
                         )
 

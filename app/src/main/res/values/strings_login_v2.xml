@@ -13,4 +13,9 @@
     <!-- 인증(로그아웃) 오류 상세, settings_toast_logout_failed의 "%s"로 사용됨 -->
     <string name="auth_error_network_detail">network error</string>
     <string name="auth_error_unknown_detail">unknown error</string>
+
+    <!-- Login v2 CINE: 브랜드 마크 아래 MicroLabel 태그라인 / 구획 라벨 (uppercase 스타일, CJK는 관례만) -->
+    <string name="login_v2_tagline">CINEMA CAMERA CONTROLLER</string>
+    <string name="login_v2_signin_label">SIGN IN</string>
+    <string name="login_v2_referral_label">REFERRAL CODE</string>
 </resources>

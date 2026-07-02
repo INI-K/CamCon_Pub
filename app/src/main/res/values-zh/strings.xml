@@ -36,6 +36,7 @@
     <!-- 카메라 연결 -->
     <string name="camera_connected">已连接</string>
     <string name="camera_disconnected">已断开连接</string>
+    <string name="camera_searching">正在搜索相机…</string>
     <string name="pipeline_film_sim">FILM SIM</string>
     <string name="pipeline_color_transfer">色彩转移</string>
     <string name="pipeline_off">OFF</string>
@@ -310,6 +311,7 @@
     <string name="cd_status_connecting">连接中</string>
     <string name="cd_status_connected">已连接</string>
     <string name="cd_status_error">错误</string>
+    <string name="cd_status_searching">正在搜索</string>
     <!-- %1$s = 파일명, %2$s = 촬영 시간 -->
     <string name="cd_photo_preview">照片 %1$s，%2$s</string>
     <string name="cd_photo_preview_no_date">照片 %1$s</string>

@@ -56,6 +56,7 @@ fun ToastV2(
 ) {
     val barColor: Color = when (kind) {
         StatusKind.Idle -> Info
+        StatusKind.Searching -> Accent
         StatusKind.Connecting -> Accent
         StatusKind.Connected -> SuccessV2
         StatusKind.Error -> ErrorV2

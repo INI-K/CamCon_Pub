@@ -717,7 +717,8 @@ fun PtpipConnectionScreen(
                     StatusKind.Connected -> selectedCamera?.name ?: stringResource(R.string.ptpip_camera_connection)
                     StatusKind.Connecting -> connectionProgressMessage.ifEmpty { stringResource(R.string.ptpip_connecting_to_camera) }
                     StatusKind.Error -> errorMessage ?: stringResource(R.string.ptpip_camera_disconnected)
-                    StatusKind.Idle -> stringResource(R.string.ptpip_camera_connection)
+                    // ptpStatusKind 는 PtpipConnectionState 매핑이라 Searching 은 생산되지 않지만 when 완전성을 위해 Idle 과 동일 처리.
+                    StatusKind.Searching, StatusKind.Idle -> stringResource(R.string.ptpip_camera_connection)
                 }
                 androidx.compose.foundation.layout.Row(
                     modifier = Modifier

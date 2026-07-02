@@ -13,6 +13,7 @@ import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.repository.CameraRepository
+import com.inik.camcon.domain.repository.PtpipPreferencesRepository
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
@@ -62,6 +64,7 @@ class CameraViewModel @Inject constructor(
     private val errorHandlingManager: ErrorHandlingManager,
     private val handoffTracker: ConnectionHandoffTracker,
     private val appSettingsRepository: AppSettingsRepository,
+    private val ptpipPreferencesRepository: PtpipPreferencesRepository,
 
     // 신규 매니저 의존성 주입
     private val advancedCaptureManager: CameraAdvancedCaptureManager,
@@ -81,6 +84,10 @@ class CameraViewModel @Inject constructor(
         // 고정 delay가 아니라 실제 stop 완료를 기다리되, 응답 없을 때 영구 대기하지 않도록 타임아웃 폴백.
         private const val LIVEVIEW_STOP_POLL_INTERVAL_MS = 50L
         private const val LIVEVIEW_STOP_POLL_TIMEOUT_MS = 3000L
+
+        // 자동 재연결(CONNECTED 전이) 직후 이벤트 리스너/세션 안정화를 기다리는 지연.
+        // 별도 플러시 완료 신호가 없어 소폭 지연으로 근사한다(스펙: 1~2s 허용).
+        private const val LIVEVIEW_RESUME_DELAY_MS = 1500L
     }
 
     // 화질 변경에 따른 라이브뷰 재시작을 직렬화한다(연타·중복 재시작 차단).
@@ -142,6 +149,23 @@ class CameraViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = false
         )
+
+    /**
+     * 백그라운드 자동 검색이 armed 상태인지(= WifiMonitoringService 폴링이 재연결을 시도할 조건).
+     * UI가 관찰 가능한 신호만으로 근사한다: auto_connect ON && 직전 카메라 존재.
+     * 실제 연결 여부(!isConnected/!isConnecting)는 UI(CameraControlScreen)에서 uiState와 조합해
+     * "검색 중" 표시를 최종 판정한다(hotspot 활성 여부는 suspend 라 UI 근사에서 생략 — 스펙 허용).
+     */
+    val isAutoSearchArmed: StateFlow<Boolean> = combine(
+        ptpipPreferencesRepository.isAutoConnectEnabled,
+        ptpipPreferencesRepository.lastConnectedName
+    ) { autoConnect, lastName ->
+        autoConnect && !lastName.isNullOrBlank()
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = false
+    )
 
     init {
         initializeViewModel()
@@ -394,8 +418,54 @@ class CameraViewModel @Inject constructor(
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun observePtpipConnection() {
         viewModelScope.launch {
+            var wasConnected = isPtpipConnected.value
             isPtpipConnected.collectLatest { isConnected ->
+                // 끊김(true→false) 시 라이브뷰 활성 여부를 uiState 정리 전에 판정해 재개 예약을 걸어야 하므로
+                // updatePtpipConnectionState 를 먼저 호출한다(내부에서 예약 set).
                 uiStateManager.updatePtpipConnectionState(isConnected)
+
+                // false→true(재연결) 전이에서만 라이브뷰 자동 재개를 시도한다.
+                if (isConnected && !wasConnected) {
+                    resumeLiveViewAfterReconnectIfNeeded()
+                }
+                wasConnected = isConnected
+            }
+        }
+    }
+
+    /**
+     * 비자발적 끊김 시점에 라이브뷰가 활성이었다면 재연결 성공 후 자동 재개한다.
+     * 기존 startLiveView 경로(isCameraInitialized 선검사·첫프레임 워치독)를 그대로 재사용하며,
+     * 신규 LV 제어 경로를 만들지 않는다([[camcon-liveview-reconnect-silent-fail]]).
+     *
+     * 회귀 가드:
+     *  (a) 수동으로 LV를 끈 경우엔 끊김 시점 isLiveViewActive=false 라 예약 자체가 없다(예약은 끊김 전이에서만 set).
+     *  (b) 촬영/타임랩스 중이면 재개를 보류(예약은 유지 — 촬영 종료 후 다음 재연결에서 재개될 수 있다).
+     *  (c) 이벤트 리스너 플러시를 기다리는 별도 신호가 없으므로 CONNECTED 전이 후 소폭 지연을 둔다.
+     */
+    private fun resumeLiveViewAfterReconnectIfNeeded() {
+        viewModelScope.launch {
+            if (!uiStateManager.consumeResumeLiveViewAfterReconnect()) return@launch
+
+            // 촬영/타임랩스 중이면 세션 방해를 피해 재개 보류.
+            if (uiState.value.isCapturing || operationsManager.isTimelapseActive()) {
+                Log.d(TAG, "촬영/타임랩스 중 — 라이브뷰 자동 재개 보류")
+                return@launch
+            }
+
+            // 재연결 직후 이벤트 리스너/세션 안정화를 위한 소폭 지연.
+            delay(LIVEVIEW_RESUME_DELAY_MS)
+
+            // 지연 사이 상태가 바뀔 수 있으므로 재확인: 여전히 연결됐고 초기화됐고 LV가 꺼져 있을 때만 시작.
+            val initialized = cameraRepository.isCameraInitializedNow().getOrNull() ?: false
+            if (uiState.value.isConnected && initialized && !operationsManager.isLiveViewActive()) {
+                Log.d(TAG, "재연결 후 라이브뷰 자동 재개")
+                startLiveView()
+            } else {
+                Log.w(
+                    TAG,
+                    "라이브뷰 자동 재개 스킵 (connected=${uiState.value.isConnected}, init=$initialized, active=${operationsManager.isLiveViewActive()})"
+                )
             }
         }
     }

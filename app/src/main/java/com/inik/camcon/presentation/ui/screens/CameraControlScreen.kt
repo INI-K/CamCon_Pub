@@ -680,22 +680,29 @@ private fun PortraitCameraLayout(
         result
     }
 
+    // 백그라운드 자동 검색 armed 여부(auto_connect ON && 직전 카메라 존재). UI 근사 신호.
+    val isAutoSearchArmed by viewModel.isAutoSearchArmed.collectAsStateWithLifecycle()
+
     // V2 StatusBar — 카메라 연결 상태 라벨
     val statusKind = when {
         uiState.isConnected && (uiState.isNativeCameraConnected || uiState.isPtpipConnected) -> StatusKind.Connected
         uiState.isUsbInitializing -> StatusKind.Connecting
         uiState.error != null -> StatusKind.Error
+        // 연결 안 됨 + 자동 검색 armed → 백그라운드 검색 중 표시(에러/연결시도 없을 때만).
+        isAutoSearchArmed -> StatusKind.Searching
         else -> StatusKind.Idle
     }
     val connectedLabel = stringResource(R.string.camera_connected)
     val connectingLabel = stringResource(R.string.connecting)
     val errorLabel = stringResource(R.string.error)
     val disconnectedLabel = stringResource(R.string.camera_disconnected)
+    val searchingLabel = stringResource(R.string.camera_searching)
     val statusLabel = when (statusKind) {
         // CINE: 모델명은 계기판 바(TopControlsBar) 한 곳에만 표시(중복 제거) — 상태열은 연결 상태만.
         StatusKind.Connected -> connectedLabel
         StatusKind.Connecting -> connectingLabel
         StatusKind.Error -> errorLabel
+        StatusKind.Searching -> searchingLabel
         StatusKind.Idle -> disconnectedLabel
     }
 

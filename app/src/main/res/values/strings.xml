@@ -36,6 +36,7 @@
     <!-- 카메라 연결 -->
     <string name="camera_connected">Connected</string>
     <string name="camera_disconnected">Disconnected</string>
+    <string name="camera_searching">Searching for camera…</string>
     <string name="camera_not_connected">Camera Not Connected</string>
     <string name="connect_camera_usb">Connect your camera via USB OTG</string>
     <string name="retry_connection">Retry Connection</string>
@@ -540,6 +541,7 @@
     <string name="cd_status_connecting">Connecting</string>
     <string name="cd_status_connected">Connected</string>
     <string name="cd_status_error">Error</string>
+    <string name="cd_status_searching">Searching</string>
     <!-- %1$s = 파일 이름, %2$s = 촬영 날짜 문자열. 알 수 없으면 비어 있음. -->
     <string name="cd_photo_preview">Photo %1$s, %2$s</string>
     <string name="cd_photo_preview_no_date">Photo %1$s</string>

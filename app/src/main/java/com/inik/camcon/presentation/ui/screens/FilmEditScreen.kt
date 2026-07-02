@@ -136,67 +136,76 @@ fun FilmEditScreen(
     Scaffold(
         modifier = modifier,
         topBar = {
-            TopAppBar(
-                modifier = Modifier.statusBarsPadding(),
-                title = {
-                    Text(
-                        text = filmName,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.cd_back)
+            Column {
+                TopAppBar(
+                    modifier = Modifier.statusBarsPadding(),
+                    title = {
+                        Text(
+                            text = filmName,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = { if (selectedLutId.isNotEmpty()) viewModel.toggleFavorite(selectedLutId) },
-                        enabled = selectedLutId.isNotEmpty()
-                    ) {
-                        Icon(
-                            imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = stringResource(
-                                if (isFavorite) R.string.fs_favorite_remove else R.string.fs_favorite_add
-                            ),
-                            tint = if (isFavorite) Accent else TextPrimaryV2
-                        )
-                    }
-                    IconButton(onClick = viewModel::resetAdjustments) {
-                        Icon(
-                            Icons.Default.Refresh,
-                            contentDescription = stringResource(R.string.fs_reset)
-                        )
-                    }
-                    IconButton(
-                        onClick = viewModel::export,
-                        enabled = !isExporting && previewBitmap != null
-                    ) {
-                        if (isExporting) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                strokeWidth = 2.dp,
-                                color = Accent
-                            )
-                        } else {
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBackClick) {
                             Icon(
-                                Icons.Default.FileUpload,
-                                contentDescription = stringResource(R.string.fs_export)
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.cd_back)
                             )
                         }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Surface0,
-                    titleContentColor = TextPrimaryV2,
-                    navigationIconContentColor = TextPrimaryV2,
-                    actionIconContentColor = TextPrimaryV2
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = { if (selectedLutId.isNotEmpty()) viewModel.toggleFavorite(selectedLutId) },
+                            enabled = selectedLutId.isNotEmpty()
+                        ) {
+                            Icon(
+                                imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                contentDescription = stringResource(
+                                    if (isFavorite) R.string.fs_favorite_remove else R.string.fs_favorite_add
+                                ),
+                                tint = if (isFavorite) Accent else TextPrimaryV2
+                            )
+                        }
+                        IconButton(onClick = viewModel::resetAdjustments) {
+                            Icon(
+                                Icons.Default.Refresh,
+                                contentDescription = stringResource(R.string.fs_reset)
+                            )
+                        }
+                        IconButton(
+                            onClick = viewModel::export,
+                            enabled = !isExporting && previewBitmap != null
+                        ) {
+                            if (isExporting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp,
+                                    color = Accent
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Default.FileUpload,
+                                    contentDescription = stringResource(R.string.fs_export)
+                                )
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Surface0,
+                        titleContentColor = TextPrimaryV2,
+                        navigationIconContentColor = TextPrimaryV2,
+                        actionIconContentColor = TextPrimaryV2
+                    )
                 )
-            )
+                // 앱바-컨텐츠 경계 헤어라인(순흑끼리 경계 소실 방지, CINE 계기판 언어).
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(StrokeWidth.hairline)
+                        .background(DividerLine)
+                )
+            }
         },
         containerColor = Surface0,
         contentWindowInsets = WindowInsets.safeDrawing
@@ -398,15 +407,24 @@ private fun LabeledSlider(
                 color = Accent
             )
         }
+        val sliderColors = SliderDefaults.colors(
+            thumbColor = Accent,
+            activeTrackColor = Accent,
+            inactiveTrackColor = DividerLine
+        )
         Slider(
             value = value.coerceIn(valueRange.start, valueRange.endInclusive),
             onValueChange = onChange,
             valueRange = valueRange,
-            colors = SliderDefaults.colors(
-                thumbColor = Accent,
-                activeTrackColor = Accent,
-                inactiveTrackColor = DividerLine
-            )
+            colors = sliderColors,
+            // 비활성 트랙 끝 stop indicator(앰버 점) 제거 — 썸으로 오인 방지.
+            track = { sliderState ->
+                SliderDefaults.Track(
+                    sliderState = sliderState,
+                    colors = sliderColors,
+                    drawStopIndicator = null
+                )
+            }
         )
     }
 }

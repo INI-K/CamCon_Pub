@@ -38,6 +38,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -56,15 +58,20 @@ import com.inik.camcon.domain.model.resolve
 import com.inik.camcon.presentation.theme.BodySmall
 import com.inik.camcon.presentation.theme.ButtonText
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.Caption
 import com.inik.camcon.presentation.theme.DisplayL
+import com.inik.camcon.presentation.theme.MicroLabel
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.Accent
+import com.inik.camcon.presentation.theme.AccentEdge
+import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.Surface0
 import com.inik.camcon.presentation.theme.Surface3
 import com.inik.camcon.presentation.theme.TextPrimaryV2
 import com.inik.camcon.presentation.theme.TextSecondaryV2
 import com.inik.camcon.presentation.theme.TextTertiary
+import com.inik.camcon.presentation.ui.components.v2.DividerLineV2
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.LoginUiEvent
 import com.inik.camcon.presentation.viewmodel.LoginUiState
@@ -191,12 +198,49 @@ class LoginActivity : ComponentActivity() {
     }
 }
 
+/**
+ * CINE 레티클 프레임 — 순흑 위 코너 틱(앰버 1px)만으로 브랜드 마크를 계측기처럼 감싼다.
+ * 목업 preview_cine.html 의 .tick(코너 4틱) 언어. 박스/배경 없음 — 코너 4곳에 L자 스트로크만.
+ */
+@Composable
+private fun ReticleFrame(
+    modifier: Modifier = Modifier,
+    tickColor: Color = AccentEdge,
+    content: @Composable () -> Unit
+) {
+    Box(
+        modifier = modifier.drawBehind {
+            val tick = 14.dp.toPx()
+            val stroke = 1.dp.toPx()
+            val w = size.width
+            val h = size.height
+            // 좌상
+            drawLine(tickColor, Offset(0f, 0f), Offset(tick, 0f), stroke)
+            drawLine(tickColor, Offset(0f, 0f), Offset(0f, tick), stroke)
+            // 우상
+            drawLine(tickColor, Offset(w, 0f), Offset(w - tick, 0f), stroke)
+            drawLine(tickColor, Offset(w, 0f), Offset(w, tick), stroke)
+            // 좌하
+            drawLine(tickColor, Offset(0f, h), Offset(tick, h), stroke)
+            drawLine(tickColor, Offset(0f, h), Offset(0f, h - tick), stroke)
+            // 우하
+            drawLine(tickColor, Offset(w, h), Offset(w - tick, h), stroke)
+            drawLine(tickColor, Offset(w, h), Offset(w, h - tick), stroke)
+        },
+        contentAlignment = Alignment.Center
+    ) {
+        content()
+    }
+}
+
 @Composable
 fun LoginScreen(
     uiState: LoginUiState,
     snackbarHostState: SnackbarHostState,
     onGoogleSignIn: (String) -> Unit
 ) {
+    var referralCode by remember { mutableStateOf("") }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -208,47 +252,64 @@ fun LoginScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = Spacing.xl),
-            // V2 Airy 등급: 좌측 정렬 헤드라인
-            horizontalAlignment = Alignment.Start,
-            verticalArrangement = Arrangement.Center
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Logo — Technical HUD 레티클 마크(런처 아이콘과 동일)
-            Image(
-                painter = painterResource(id = R.drawable.ic_launcher_foreground),
-                contentDescription = null,
-                modifier = Modifier.size(72.dp)
-            )
+            // ---- 브랜드 영역: 첫인상. 화면 상단 2/3를 채워 조리개 마크를 크게 발광시킨다 ----
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                // 브랜드 마크 — 런처 조리개 심볼을 레티클 프레임 안에 크게(새 아트웍 제작 없이 재사용)
+                ReticleFrame(
+                    modifier = Modifier.size(148.dp)
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                        contentDescription = null,
+                        modifier = Modifier.size(120.dp)
+                    )
+                }
 
-            Spacer(modifier = Modifier.height(Spacing.xl))
+                Spacer(modifier = Modifier.height(Spacing.lg))
 
-            // 좌측 정렬 헤드라인 (HeadingXL)
-            Text(
-                text = stringResource(R.string.app_name),
-                style = DisplayL,
-                color = TextPrimaryV2
-            )
+                // 앱명 — DisplayL, 중앙
+                Text(
+                    text = stringResource(R.string.app_name),
+                    style = DisplayL,
+                    color = TextPrimaryV2
+                )
 
-            Spacer(modifier = Modifier.height(Spacing.sm))
+                Spacer(modifier = Modifier.height(Spacing.sm))
 
-            Text(
-                text = stringResource(R.string.app_description),
-                style = BodySmall,
-                color = TextSecondaryV2
-            )
+                // 태그라인 — MicroLabel(대문자 라벨, letterSpacing 1.4), Accent
+                Text(
+                    text = stringResource(R.string.login_v2_tagline),
+                    style = MicroLabel,
+                    color = Accent,
+                    textAlign = TextAlign.Center
+                )
+            }
 
-            Spacer(modifier = Modifier.height(Spacing.xl))
-
-            // 환영 메시지 — BodySmall + TextSecondaryV2
-            Text(
-                text = stringResource(R.string.welcome_message),
-                style = BodySmall,
-                color = TextSecondaryV2
-            )
+            // ---- 로그인 영역: 하단. 헤어라인으로 구획하여 계측기 패널처럼 분리 ----
+            // MicroLabel 구획 라벨(양옆 헤어라인) — CINE 계측기 섹션 헤더 언어
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.md)
+            ) {
+                DividerLineV2(modifier = Modifier.weight(1f), color = DividerLine)
+                Text(
+                    text = stringResource(R.string.login_v2_signin_label),
+                    style = MicroLabel,
+                    color = TextTertiary
+                )
+                DividerLineV2(modifier = Modifier.weight(1f), color = DividerLine)
+            }
 
             Spacer(modifier = Modifier.height(Spacing.lg))
 
             // 추천 코드 입력 — 선택. 공백이면 무시하고 로그인 진행.
-            var referralCode by remember { mutableStateOf("") }
             OutlinedTextField(
                 value = referralCode,
                 onValueChange = { referralCode = it },
@@ -266,9 +327,10 @@ fun LoginScreen(
                     Text(
                         text = stringResource(R.string.referral_input_helper),
                         color = TextTertiary,
-                        style = BodySmall
+                        style = Caption
                     )
                 },
+                shape = RoundedCornerShape(Radius.sm),
                 colors = TextFieldDefaults.colors(
                     focusedTextColor = TextPrimaryV2,
                     unfocusedTextColor = TextPrimaryV2,
@@ -331,13 +393,15 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(Spacing.md))
 
-            // 약관 — BodySmall + TextTertiary
+            // 약관 — Caption + TextTertiary, 중앙
             Text(
                 text = stringResource(R.string.terms_agreement),
-                style = BodySmall,
+                style = Caption,
                 color = TextTertiary,
-                textAlign = TextAlign.Start
+                textAlign = TextAlign.Center
             )
+
+            Spacer(modifier = Modifier.height(Spacing.xl))
         }
 
         SnackbarHost(
