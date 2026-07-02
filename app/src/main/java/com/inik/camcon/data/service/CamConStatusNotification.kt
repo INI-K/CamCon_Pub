@@ -36,6 +36,9 @@ object CamConStatusNotification {
     private const val TAG = "CamCon상태알림"
     private const val CHANNEL_ID = "camcon_status"
 
+    /** CINE INSTRUMENT 앰버 — 상태바 아이콘 틴트 브랜드 색. */
+    private const val BRAND_COLOR = 0xFFE8A245.toInt()
+
     // 통합 전 서비스별 채널(+진동 이슈로 교체됐던 채널). 발견 즉시 삭제해 설정 잔재를 없앤다.
     private val LEGACY_CHANNEL_IDS = listOf(
         "background_sync_channel",
@@ -112,6 +115,8 @@ object CamConStatusNotification {
 
         return NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_camcon)
+            .setColor(BRAND_COLOR)
+            .setColorized(false)
             .setContentTitle(title)
             .setContentText(text)
             .setPriority(NotificationCompat.PRIORITY_LOW)

@@ -329,4 +329,15 @@
     <string name="ptpip_hotspot_enable_desc">Androidの制約によりアプリから直接オンにできないため、設定画面を開きます。テザリングをオンにして戻ってください。</string>
     <string name="ptpip_hotspot_open_settings">テザリング設定を開く</string>
     <string name="ptpip_hotspot_compat_note">Nikon Z・富士フイルム・キヤノン(EOS Utility)・Panasonic Lumixはスマホのテザリング接続に対応しています。OM System・ペンタックス/リコーはカメラ本体のAPのみ対応で、スマホのテザリングには接続できません。</string>
+
+    <!-- 포그라운드 서비스 상태 알림 (CINE INSTRUMENT 브랜드 정합, Phase 1) -->
+    <string name="notif_auto_connect_prepare_title">カメラの自動接続を準備中</string>
+    <string name="notif_auto_connect_prepare_text">カメライベントリスナーを準備しています</string>
+    <string name="notif_wifi_waiting_title">カメラの自動接続を待機中</string>
+    <string name="notif_wifi_waiting_text">設定された Wi-Fi ネットワークへの接続を検出しています</string>
+    <string name="notif_bg_sync_title">CamCon バックグラウンド同期</string>
+    <string name="notif_bg_sync_active">イベントリスナー稼働中 - 画面がオフでも写真を受信できます</string>
+    <string name="notif_bg_sync_listener_active">イベントリスナー稼働中 - 写真の受信を待機中</string>
+    <string name="notif_bg_sync_checking">カメラ接続を確認中…</string>
+    <string name="notif_bg_sync_waiting">カメラ接続を待機中…</string>
 </resources>

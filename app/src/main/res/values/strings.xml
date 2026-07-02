@@ -572,4 +572,15 @@
     <string name="settings_native_log_toast_disable">Native log capture stopped.</string>
     <string name="settings_referral_clipboard_label">referral_code</string>
     <string name="settings_referral_copied">Referral code \'%s\' copied to clipboard</string>
+
+    <!-- 포그라운드 서비스 상태 알림 (CINE INSTRUMENT 브랜드 정합, Phase 1) -->
+    <string name="notif_auto_connect_prepare_title">Preparing camera auto-connect</string>
+    <string name="notif_auto_connect_prepare_text">Preparing the camera event listener</string>
+    <string name="notif_wifi_waiting_title">Waiting for camera auto-connect</string>
+    <string name="notif_wifi_waiting_text">Detecting the configured Wi-Fi network</string>
+    <string name="notif_bg_sync_title">CamCon background sync</string>
+    <string name="notif_bg_sync_active">Event listener active — photos can be received with the screen off</string>
+    <string name="notif_bg_sync_listener_active">Event listener active — waiting for photos</string>
+    <string name="notif_bg_sync_checking">Checking camera connection…</string>
+    <string name="notif_bg_sync_waiting">Waiting for camera connection…</string>
 </resources>

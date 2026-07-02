@@ -12,15 +12,16 @@ import androidx.compose.ui.graphics.Color
  * 신규 V2 토큰(Surface0-4, TextPrimary~Disabled, Accent*, Semantic)은 별도 추가.
  */
 
-// ---- V2 Surface Tier (5단계) — Technical HUD: 쿨 블랙, 최고 대비 ----
+// ---- V2 Surface Tier (5단계) — CINE INSTRUMENT: 앰버 모니터, 순흑 계측기 ----
 // 순수 무채색 회색(R=G=B)을 폐기하고 미세한 쿨 캐스트를 부여해 '계기판' 톤을 낸다.
-val Surface0 = Color(0xFF0A0B0D)   // 앱 배경 (쿨 니어블랙)
-val Surface1 = Color(0xFF131519)   // 메인 패널
-val Surface2 = Color(0xFF1D2128)   // 카드 / 시트
-val Surface3 = Color(0xFF272C34)   // 입력 / 포커스
-val Surface4 = Color(0xFF353B42)   // 호버 / 액티브
-// 엔지니어드 그리드용 하이라인/구분선. 쿨 슬레이트(WCAG 비텍스트 대비 우선).
-val DividerLine = Color(0xFF4A525C)
+// 깊이는 표면 tier 차이 + 0.5dp 헤어라인 + 활성 시 앰버 엣지 1px로만 낸다(그림자 0).
+val Surface0 = Color(0xFF050607)   // 앱 배경 — 순흑 하한(더 어둡게 금지, OLED 스미어)
+val Surface1 = Color(0xFF0C0E11)   // 메인 패널
+val Surface2 = Color(0xFF14171C)   // 카드 / 시트
+val Surface3 = Color(0xFF1C2026)   // 입력 / 포커스
+val Surface4 = Color(0xFF252A31)   // 호버 / 액티브
+// tier 경계를 그리는 0.5dp 헤어라인. 발광 대비를 위해 대비를 낮춘 다크 슬레이트.
+val DividerLine = Color(0xFF262C33)
 // HUD 액티브 패널 1px 엣지라이트 (앰버 40%).
 val AccentEdge = Color(0x66E8A245)
 
@@ -46,3 +47,4 @@ val Info = Color(0xFF5AA9E0)        // 정보 (테크니컬 시안블루)
 // ---- FeatureBadge 데코 (V2 시맨틱 톤으로 정제) ----
 val FeatureBadgeTimeLapse = Color(0xFF8A6FB0)   // 차분한 퍼플
 val FeatureBadgeBurst = Color(0xFFD68A3D)       // 앰버 변형
+val FeatureBadgeBracketing = Color(0xFF5AA9E0)  // 브라케팅 — Info 계열(Color.Cyan 오염 대체)

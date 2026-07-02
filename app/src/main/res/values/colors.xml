@@ -1,11 +1,13 @@
 <resources>
-    <!-- 주 색상 -->
-    <color name="colorPrimary">#0064FF</color>
-    <color name="colorPrimaryVariant">#0057E7</color>
+    <!-- 주 색상 (CINE INSTRUMENT 앰버) -->
+    <color name="colorPrimary">#E8A245</color>
+    <color name="colorPrimaryVariant">#F0B865</color>
     <!-- 보조 색상 (예: 배경이나 accent) -->
     <color name="colorSecondary">#202632</color>
     <color name="colorSecondaryVariant">#1B1E2B</color>
     <!-- 기타 필요 색상 -->
     <color name="colorOnPrimary">#FFFFFF</color>
     <color name="colorOnSecondary">#FFFFFF</color>
+    <!-- 앱 배경/상태바 — Surface0 순흑 하한과 동기 (Compose Surface0=#050607) -->
+    <color name="windowBackgroundDark">#050607</color>
 </resources>
