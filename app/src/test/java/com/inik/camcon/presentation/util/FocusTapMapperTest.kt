@@ -59,4 +59,44 @@ class FocusTapMapperTest {
         assertNull(mapTapToCameraPoint(10f, 10f, 0, 100, 100, 100, rotated = false))
         assertNull(mapTapToCameraPoint(10f, 10f, 100, 100, 0, 100, rotated = false))
     }
+
+    // computeFittedRect — 그리드/오버레이가 그려질 실제 영상 영역(ContentScale.Fit) 검증.
+
+    @Test
+    fun `동일 종횡비는 컨테이너 전체가 표시 영역`() {
+        // box == 콘텐츠 비율 -> 여백 없음, rect == 컨테이너
+        val r = computeFittedRect(1000, 500, 1000, 500)!!
+        assertEquals(0f, r.left, 0.001f)
+        assertEquals(0f, r.top, 0.001f)
+        assertEquals(1000f, r.width, 0.001f)
+        assertEquals(500f, r.height, 0.001f)
+    }
+
+    @Test
+    fun `가로 필러박스는 좌우 여백을 만든다`() {
+        // box 2000x500, 콘텐츠 1000x500(2:1) -> scale=1, 표시폭 1000, 좌우 각 500 여백
+        val r = computeFittedRect(2000, 500, 1000, 500)!!
+        assertEquals(500f, r.left, 0.001f)
+        assertEquals(0f, r.top, 0.001f)
+        assertEquals(1000f, r.width, 0.001f)
+        assertEquals(500f, r.height, 0.001f)
+        assertEquals(1500f, r.right, 0.001f)
+    }
+
+    @Test
+    fun `세로 레터박스는 상하 여백을 만든다`() {
+        // box 1000x1000, 콘텐츠 1000x500(2:1) -> scale=1, 표시높이 500, 상하 각 250 여백
+        val r = computeFittedRect(1000, 1000, 1000, 500)!!
+        assertEquals(0f, r.left, 0.001f)
+        assertEquals(250f, r.top, 0.001f)
+        assertEquals(1000f, r.width, 0.001f)
+        assertEquals(500f, r.height, 0.001f)
+        assertEquals(750f, r.bottom, 0.001f)
+    }
+
+    @Test
+    fun `computeFittedRect 잘못된 치수는 null`() {
+        assertNull(computeFittedRect(0, 100, 100, 100))
+        assertNull(computeFittedRect(100, 100, 100, 0))
+    }
 }

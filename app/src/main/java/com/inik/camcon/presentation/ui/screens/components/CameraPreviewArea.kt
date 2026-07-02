@@ -280,23 +280,31 @@ fun CameraPreviewArea(
                 }
 
                 // H5: Rule-of-Thirds 그리드 오버레이
+                // 컨테이너 전체가 아니라 ContentScale.Fit 으로 레터박스된 실제 영상 영역 안에만 그린다.
+                // (displayBitmap 종횡비 기준 fitted rect). 회전(180°)은 중앙-정렬 rect 를 바꾸지 않으므로 무관.
                 if (isGridOverlayEnabled) {
                     Canvas(modifier = Modifier.fillMaxSize()) {
-                        val w = size.width
-                        val h = size.height
+                        val rect = com.inik.camcon.presentation.util.computeFittedRect(
+                            size.width.toInt(), size.height.toInt(),
+                            displayBitmap.width, displayBitmap.height
+                        ) ?: return@Canvas
                         val stroke = 1.dp.toPx()
                         val color = androidx.compose.ui.graphics.Color(DividerLine.value)
                             .copy(alpha = 0.7f)
+                        val l = rect.left
+                        val t = rect.top
+                        val w = rect.width
+                        val h = rect.height
                         // 1/3, 2/3 지점의 수직선 2개
-                        drawLine(color, androidx.compose.ui.geometry.Offset(w / 3f, 0f),
-                            androidx.compose.ui.geometry.Offset(w / 3f, h), strokeWidth = stroke)
-                        drawLine(color, androidx.compose.ui.geometry.Offset(2f * w / 3f, 0f),
-                            androidx.compose.ui.geometry.Offset(2f * w / 3f, h), strokeWidth = stroke)
+                        drawLine(color, androidx.compose.ui.geometry.Offset(l + w / 3f, t),
+                            androidx.compose.ui.geometry.Offset(l + w / 3f, t + h), strokeWidth = stroke)
+                        drawLine(color, androidx.compose.ui.geometry.Offset(l + 2f * w / 3f, t),
+                            androidx.compose.ui.geometry.Offset(l + 2f * w / 3f, t + h), strokeWidth = stroke)
                         // 1/3, 2/3 지점의 수평선 2개
-                        drawLine(color, androidx.compose.ui.geometry.Offset(0f, h / 3f),
-                            androidx.compose.ui.geometry.Offset(w, h / 3f), strokeWidth = stroke)
-                        drawLine(color, androidx.compose.ui.geometry.Offset(0f, 2f * h / 3f),
-                            androidx.compose.ui.geometry.Offset(w, 2f * h / 3f), strokeWidth = stroke)
+                        drawLine(color, androidx.compose.ui.geometry.Offset(l, t + h / 3f),
+                            androidx.compose.ui.geometry.Offset(l + w, t + h / 3f), strokeWidth = stroke)
+                        drawLine(color, androidx.compose.ui.geometry.Offset(l, t + 2f * h / 3f),
+                            androidx.compose.ui.geometry.Offset(l + w, t + 2f * h / 3f), strokeWidth = stroke)
                     }
                 }
 

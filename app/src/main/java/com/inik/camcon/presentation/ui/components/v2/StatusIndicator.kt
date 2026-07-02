@@ -44,8 +44,9 @@ import com.inik.camcon.presentation.theme.TextTertiary
 /**
  * V2 상태 인디케이터 — 8dp dot + Caption label.
  *
- * 4가지 상태:
+ * 5가지 상태:
  * - Idle: TextTertiary dot (정적)
+ * - Searching: Accent dot + 펄스 scale 1.0↔1.2 (백그라운드 자동 검색 armed 상태)
  * - Connecting: Accent dot + 360° 회전 (1000ms linear infinite)
  * - Connected: Accent dot + 펄스 scale 1.0↔1.2 (1500ms reverse infinite)
  * - Error: ErrorV2 dot + ErrorV2 label
@@ -56,7 +57,7 @@ import com.inik.camcon.presentation.theme.TextTertiary
  * - contentDescription 은 "{상태} {label}" 형태로 구성하여 dot 의미와 label 을
  *   하나의 발화로 들려준다.
  */
-enum class StatusKind { Idle, Connecting, Connected, Error }
+enum class StatusKind { Idle, Searching, Connecting, Connected, Error }
 
 @Composable
 fun StatusIndicator(
@@ -66,6 +67,7 @@ fun StatusIndicator(
 ) {
     val dotColor = when (kind) {
         StatusKind.Idle -> TextTertiary
+        StatusKind.Searching -> Accent
         StatusKind.Connecting -> Accent
         StatusKind.Connected -> Accent
         StatusKind.Error -> ErrorV2
@@ -76,6 +78,7 @@ fun StatusIndicator(
     }
     val statusLabel = when (kind) {
         StatusKind.Idle -> stringResource(R.string.cd_status_idle)
+        StatusKind.Searching -> stringResource(R.string.cd_status_searching)
         StatusKind.Connecting -> stringResource(R.string.cd_status_connecting)
         StatusKind.Connected -> stringResource(R.string.cd_status_connected)
         StatusKind.Error -> stringResource(R.string.cd_status_error)
@@ -128,6 +131,7 @@ private fun StatusDot(kind: StatusKind, color: Color) {
     val dotModifier = when (kind) {
         StatusKind.Connecting -> Modifier.rotate(rotation)
         StatusKind.Connected -> Modifier.scale(pulse)
+        StatusKind.Searching -> Modifier.scale(pulse)
         else -> Modifier
     }
 

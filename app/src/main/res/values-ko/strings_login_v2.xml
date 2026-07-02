@@ -13,4 +13,9 @@
     <!-- 로그아웃 오류 상세 (settings_toast_logout_failed 의 "%s" 자리) -->
     <string name="auth_error_network_detail">네트워크 오류</string>
     <string name="auth_error_unknown_detail">알 수 없는 오류</string>
+
+    <!-- Login v2 CINE: 브랜드 마크 아래 태그라인 / 구획 라벨 -->
+    <string name="login_v2_tagline">시네마 카메라 컨트롤러</string>
+    <string name="login_v2_signin_label">로그인</string>
+    <string name="login_v2_referral_label">추천 코드</string>
 </resources>

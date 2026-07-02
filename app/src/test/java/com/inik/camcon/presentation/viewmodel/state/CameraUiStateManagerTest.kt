@@ -279,6 +279,60 @@ class CameraUiStateManagerTest {
         assertFalse(manager.uiState.value.capture.transferQueue.isActive)
     }
 
+    // --- 재연결 후 라이브뷰 자동 재개 예약 (요구 2) ---
+
+    /**
+     * 비자발적 끊김(PTP/IP true→false) 시점에 라이브뷰가 활성이었으면
+     * 재개 예약이 set 되고, consume 은 한 번 true 를 준 뒤 클리어된다(중복 재개 방지).
+     */
+    @Test
+    fun `PTPIP 끊김 시 라이브뷰 활성이면 재개 예약 set되고 consume은 1회만 true`() {
+        // Given: PTP/IP 연결 + 라이브뷰 활성
+        manager.updatePtpipConnectionState(true)
+        manager.updateLiveViewState(isActive = true)
+
+        // When: 비자발적 끊김 전이
+        manager.updatePtpipConnectionState(false)
+
+        // Then: 예약이 걸려 첫 consume 은 true, 두 번째는 false(소비됨)
+        assertTrue(manager.consumeResumeLiveViewAfterReconnect())
+        assertFalse(manager.consumeResumeLiveViewAfterReconnect())
+    }
+
+    /**
+     * 회귀 가드(a): 사용자가 수동으로 라이브뷰를 끈 뒤 끊긴 경우엔
+     * 끊김 시점 isLiveViewActive=false 라 재개 예약이 걸리지 않아야 한다.
+     */
+    @Test
+    fun `PTPIP 끊김 시 라이브뷰 비활성이면 재개 예약 안 걸림`() {
+        // Given: PTP/IP 연결 + 라이브뷰 꺼진 상태(수동 OFF 가정)
+        manager.updatePtpipConnectionState(true)
+        manager.updateLiveViewState(isActive = false)
+
+        // When: 끊김 전이
+        manager.updatePtpipConnectionState(false)
+
+        // Then: 예약 없음
+        assertFalse(manager.consumeResumeLiveViewAfterReconnect())
+    }
+
+    /**
+     * clearResumeLiveViewAfterReconnect 로 예약을 강제 클리어하면 consume 이 false 를 준다.
+     */
+    @Test
+    fun `clearResumeLiveViewAfterReconnect가 예약을 클리어`() {
+        // Given: 예약이 걸린 상태
+        manager.updatePtpipConnectionState(true)
+        manager.updateLiveViewState(isActive = true)
+        manager.updatePtpipConnectionState(false)
+
+        // When
+        manager.clearResumeLiveViewAfterReconnect()
+
+        // Then
+        assertFalse(manager.consumeResumeLiveViewAfterReconnect())
+    }
+
     // --- USB 분리 처리 ---
 
     @Test
