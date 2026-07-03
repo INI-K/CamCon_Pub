@@ -17,3 +17,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "CamCon"
 include ':app'
+include ':baselineprofile'

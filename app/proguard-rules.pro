@@ -63,24 +63,46 @@
 }
 
 # 콜백 인터페이스
+# 네이티브(cpp)가 GetMethodID로 이름·시그니처를 직접 조회하므로 R8이 콜백 메서드를
+# rename/remove하면 릴리즈 빌드에서만 GetMethodID가 null을 반환해 콜백이 무음 파괴된다.
+# 아래 인터페이스와 그 구현체의 콜백 메서드 이름/시그니처를 반드시 보존한다.
 -keep interface com.inik.camcon.NativeErrorCallback { *; }
 -keep interface com.inik.camcon.CameraCleanupCallback { *; }
+-keep interface com.inik.camcon.EventListenerStopCallback { *; }
+-keep interface com.inik.camcon.CameraNative$HookEventCallback { *; }
 -keep interface com.inik.camcon.data.datasource.nativesource.CameraCaptureListener { *; }
 -keep interface com.inik.camcon.data.datasource.nativesource.LiveViewCallback { *; }
+-keep interface com.inik.camcon.domain.model.CameraCaptureCallback { *; }
 
 # 콜백 구현체의 필수 메서드 시그니처 보존
+# (cpp의 GetMethodID 호출 메서드명과 1:1 매핑 — native-lib.cpp / camera_*.cpp 참조)
 -keepclassmembers class ** implements com.inik.camcon.NativeErrorCallback {
     public void onNativeError(int, java.lang.String);
 }
 -keepclassmembers class ** implements com.inik.camcon.CameraCleanupCallback {
     public void onCleanupComplete(boolean, java.lang.String);
 }
--keepclassmembers class ** implements com.inik.camcon.data.datasource.nativesource.CameraCaptureListener {
-    public void onPhotoCaptured(java.lang.String, java.lang.String);
+-keepclassmembers class ** implements com.inik.camcon.EventListenerStopCallback {
+    public void onStopped();
+}
+-keepclassmembers class ** implements com.inik.camcon.CameraNative$HookEventCallback {
+    public void onHookEvent(java.lang.String, java.lang.String);
 }
 -keepclassmembers class ** implements com.inik.camcon.data.datasource.nativesource.LiveViewCallback {
     public void onLiveViewFrame(byte[]);
-    public void onLiveViewError(java.lang.String);
+    public void onLivePhotoCaptured(java.lang.String);
+    public void onPhotoCaptured(java.lang.String, java.lang.String);
+    public void onPhotoDownloaded(java.lang.String, java.lang.String, byte[]);
+}
+# CameraCaptureCallback(= data의 CameraCaptureListener 상위) 구현체 전체 콜백 보존
+-keepclassmembers class ** implements com.inik.camcon.domain.model.CameraCaptureCallback {
+    public void onFlushComplete();
+    public void onPhotoCaptured(java.lang.String, java.lang.String);
+    public void onPhotoDownloaded(java.lang.String, java.lang.String, byte[]);
+    public void onCaptureFailed(int);
+    public void onUsbDisconnected();
+    public void onPropertyChanged(java.lang.String);
+    public void onPtpipConnectionLost();
 }
 
 # 네이티브 메서드를 가진 모든 클래스 보호
