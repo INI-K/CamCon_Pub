@@ -1,0 +1,65 @@
+plugins {
+    alias(libs.plugins.android.test)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.baselineprofile)
+}
+
+android {
+    namespace 'com.inik.camcon.baselineprofile'
+    compileSdk 36
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+    kotlinOptions {
+        jvmTarget = "11"
+    }
+
+    defaultConfig {
+        // macrobenchmark/baseline profile는 API 28+ 필요.
+        // 앱 minSdk는 29이므로 29로 맞춘다.
+        minSdk 29
+        targetSdk 36
+
+        // CamCon은 arm64-v8a 전용 네이티브(.so)를 사용하므로
+        // 프로파일 생성 디바이스도 arm64여야 앱이 정상 기동한다.
+        // (연결된 실기기 또는 arm64 에뮬레이터/GMD)
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    // 프로파일 생성 대상 앱 모듈
+    targetProjectPath = ':app'
+
+    // Gradle Managed Device: arm64 AOSP 이미지.
+    // 로컬에 arm64 실기기가 연결돼 있으면 GMD 대신 connectedAndroidTest 경로를 써도 된다.
+    testOptions {
+        managedDevices {
+            devices {
+                pixel6Api33(com.android.build.api.dsl.ManagedVirtualDevice) {
+                    device = "Pixel 6"
+                    apiLevel = 33
+                    // arm64 호스트(Apple Silicon)에서는 aosp-atd/arm64가 자동 선택된다.
+                    systemImageSource = "aosp"
+                }
+            }
+        }
+    }
+}
+
+// 생성된 프로파일을 어떤 빌드 변형에서 뽑을지 지정.
+// release 성능을 기준으로 하되, 실제 생성은 non-minified 변형에서 수행 후
+// :app release에 병합된다(플러그인이 자동 처리).
+baselineProfile {
+    // 관리형 디바이스 이름(위 managedDevices의 키)으로 자동 실행하려면 지정.
+    // 연결된 실기기로 돌리려면 useConnectedDevices = true 로 바꾼다.
+    managedDevices += "pixel6Api33"
+    useConnectedDevices = false
+}
+
+dependencies {
+    implementation libs.androidx.junit
+    implementation libs.androidx.espresso.core
+    implementation libs.androidx.test.uiautomator
+    implementation libs.androidx.benchmark.macro.junit4
+}

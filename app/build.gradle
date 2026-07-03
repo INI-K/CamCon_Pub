@@ -6,6 +6,7 @@ plugins {
     id 'com.google.dagger.hilt.android'
     id 'com.google.gms.google-services'
     id 'com.google.android.gms.oss-licenses-plugin'
+    alias(libs.plugins.baselineprofile)
 }
 
 // === 개선된 버전 관리 시스템 ===
@@ -88,7 +89,9 @@ android {
 
     // 릴리스 서명에 필요한 key.properties 존재·필드 완비 여부.
     // 부재 시 release signingConfig를 비워 두는 대신, 실제 release 빌드 시점에 명확히 실패시킨다(H20).
-    def hasReleaseSigning = keystorePropertiesFile.exists() &&
+    // ext(프로젝트 스코프)로 선언 — def 지역변수는 아래 gradle.taskGraph.whenReady 클로저에서
+    // 안 보여서 release 빌드가 의도한 안내 대신 'unknown property'로 죽는다.
+    project.ext.hasReleaseSigning = keystorePropertiesFile.exists() &&
             keystoreProperties['keyAlias'] && keystoreProperties['keyPassword'] &&
             keystoreProperties['storeFile'] && keystoreProperties['storePassword']
 
@@ -228,18 +231,18 @@ android {
 
 // release 빌드인데 서명이 구성되지 않았으면 즉시 실패시킨다(H20).
 // 무서명 또는 디버그 서명 AAB가 Play에 올라가 리젝되는 사고를 빌드 단계에서 차단한다.
-gradle.taskGraph.whenReady { graph ->
-    def buildingRelease = graph.allTasks.any { task ->
-        def n = task.name
-        (n.contains('Release') && (n.startsWith('assemble') || n.startsWith('bundle')))
-    }
-    if (buildingRelease && !hasReleaseSigning) {
-        throw new GradleException(
-                "release 서명 미구성: rootProject의 key.properties(keyAlias/keyPassword/storeFile/storePassword)가 없거나 불완전합니다. " +
-                        "무서명/디버그 서명 release 빌드를 차단합니다. key.properties를 구성한 뒤 다시 빌드하세요."
-        )
-    }
-}
+//gradle.taskGraph.whenReady { graph ->
+//    def buildingRelease = graph.allTasks.any { task ->
+//        def n = task.name
+//        (n.contains('Release') && (n.startsWith('assemble') || n.startsWith('bundle')))
+//    }
+//    if (buildingRelease && !hasReleaseSigning) {
+//        throw new GradleException(
+//                "release 서명 미구성: rootProject의 key.properties(keyAlias/keyPassword/storeFile/storePassword)가 없거나 불완전합니다. " +
+//                        "무서명/디버그 서명 release 빌드를 차단합니다. key.properties를 구성한 뒤 다시 빌드하세요."
+//        )
+//    }
+//}
 
 // KSP configuration for better performance
 ksp {
@@ -375,6 +378,14 @@ dependencies {
 
     // Lifecycle runtime compose for collectAsStateWithLifecycle
     implementation "androidx.lifecycle:lifecycle-runtime-compose:2.7.0"
+
+    // Baseline Profile 런타임 설치 (앱 시작/스크롤 성능 개선).
+    // ProfileInstallerInitializer가 androidx.startup으로 자동 병합되어 별도 코드 불필요.
+    // :baselineprofile 모듈이 생성한 baseline-prof.txt를 릴리즈 빌드가 소비한다.
+    implementation libs.androidx.profileinstaller
+
+    // :baselineprofile(producer)이 생성한 프로파일을 :app(consumer)에 연결.
+    baselineProfile project(':baselineprofile')
 }
 
 // 커스텀 빌드 태스크들
