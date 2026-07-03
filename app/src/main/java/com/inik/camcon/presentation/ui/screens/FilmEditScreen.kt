@@ -216,10 +216,11 @@ fun FilmEditScreen(
                 .background(Surface0)
                 .padding(paddingValues)
         ) {
-            // 프리뷰(고정 영역). 꾹 누르면 원본.
+            // 프리뷰(고정 영역). 꾹 누르면 원본. 강도는 표시단 알파 합성으로 실시간 반영.
             FilmEditPreview(
                 rendered = renderedPreview,
                 original = previewBitmap,
+                intensity = filmEdit.intensity,
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(4f / 3f)

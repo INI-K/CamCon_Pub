@@ -18,7 +18,7 @@ import javax.inject.Singleton
 /**
  * 컨택트 시트 그리드용 썸네일 생성기.
  *
- * 이미 작게(긴 변 ~200px) 다운스케일된 "썸네일 소스" 비트맵에 **LUT 룩업만** 적용해 작은 결과
+ * 이미 작게(긴 변 ~512px) 다운스케일된 "썸네일 소스" 비트맵에 **LUT 룩업만** 적용해 작은 결과
  * 비트맵을 만든다. 조정 8종은 적용하지 않는다(설계 §5: 그리드는 필름 룩 식별용).
  *
  * - 적용은 [FilmLutProcessor](단일 GPUImage + gpuMutex)에 위임해 EGL race 를 차단하고 패턴을 재사용한다.
@@ -34,7 +34,12 @@ class FilmThumbnailGenerator @Inject constructor(
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
 
-    private val cache = LruCache<String, Bitmap>(MAX_CACHE)
+    // 바이트 예산 LRU: 소스가 512px로 커지며(화질 개선) 개수 기반(300개)이면 최대 ~210MB까지
+    // 자랄 수 있어 저사양 기기에서 위험 → 총 48MB 예산으로 제한(512px 썸네일 약 70장 상당).
+    private val cache = object : LruCache<String, Bitmap>(MAX_CACHE_KB) {
+        override fun sizeOf(key: String, value: Bitmap): Int =
+            (value.byteCount / 1024).coerceAtLeast(1)
+    }
 
     /** 동시 썸네일 생성 수 제한(에셋 경합·메모리 폭주 방지). GPU 직렬화와 별개로 .cube 읽기/CPU 적용을 제한. */
     private val genSemaphore = Semaphore(MAX_CONCURRENT)
@@ -43,7 +48,7 @@ class FilmThumbnailGenerator @Inject constructor(
      * [thumbSource] 에 [lutId] LUT 를 강도 1.0 으로 적용한 썸네일을 반환한다.
      *
      * @param sourceId 썸네일 소스의 안정 식별자(세션 내 고정). 캐시 키 일부.
-     * @param thumbSource ~200px 로 다운스케일된 소스 비트맵(호출부/VM 소유, 회수 책임도 호출부).
+     * @param thumbSource ~512px 로 다운스케일된 소스 비트맵(호출부/VM 소유, 회수 책임도 호출부).
      *   본 메서드는 소스를 회수하지 않는다.
      * @param lutId 적용할 필름 LUT id.
      * @return 썸네일 비트맵(캐시 소유 — 회수 금지). 실패 시 null.
@@ -68,7 +73,7 @@ class FilmThumbnailGenerator @Inject constructor(
             }
             try {
                 coroutineContext.ensureActive()
-                // 썸네일은 작아서(≈200px) 512² GPU 아틀라스를 만들 필요 없이 CPU 삼선형으로 직접 적용한다.
+                // 썸네일은 작아서(≈512px) 512² GPU 아틀라스를 만들 필요 없이 CPU 삼선형으로 직접 적용한다.
                 // (296개 아틀라스 빌드·캐시 축출 폭주와 1MB×N 메모리 churn 을 제거. 편집 프리뷰/내보내기는
                 //  여전히 GPU 아틀라스 경로를 쓴다.)
                 val lut3d = catalogLoader.loadLut3D(lut.assetPath) ?: return@withPermit null
@@ -98,7 +103,9 @@ class FilmThumbnailGenerator @Inject constructor(
 
     companion object {
         private const val TAG = "FilmThumbnailGen"
-        private const val MAX_CACHE = 300
+
+        /** 썸네일 캐시 총 예산(KB). 48MB ≈ 512px 썸네일(~700KB) 70장. */
+        private const val MAX_CACHE_KB = 48 * 1024
         private const val MAX_CONCURRENT = 2
         private const val INTENSITY = 1f
     }

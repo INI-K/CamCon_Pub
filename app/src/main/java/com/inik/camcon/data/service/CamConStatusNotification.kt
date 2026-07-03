@@ -82,6 +82,7 @@ object CamConStatusNotification {
         ownerContents.remove(owner)
         val remaining = ownerContents.values.lastOrNull()
         if (remaining == null) {
+            pendingPost = null // 보류 중이던 게시가 제거된 알림을 되살리지 않도록
             try {
                 notificationManager(context).cancel(NOTIFICATION_ID)
             } catch (e: Exception) {
@@ -92,7 +93,46 @@ object CamConStatusNotification {
         }
     }
 
+    // ---- 게시 스로틀 ----
+    // 연속 수신 중 파일마다 상태를 갱신하면 notify()가 초당 1~2회 호출되어(실측) 저사양 기기
+    // 부하 + 시스템 알림 rate-limit 대상이 된다. 최소 간격(1.5s)을 두고, 간격 내 갱신은 최신
+    // 내용만 보류했다가 창이 끝나면 반드시 게시한다(trailing flush — 마지막 상태 유실 방지).
+    private const val MIN_POST_INTERVAL_MS = 1500L
+    private val mainHandler by lazy { android.os.Handler(android.os.Looper.getMainLooper()) }
+    private var lastPostMs = 0L
+    private var pendingPost: Pair<String, String>? = null
+    private var flushScheduled = false
+
     private fun post(context: Context, title: String, text: String) {
+        val appCtx = context.applicationContext
+        val now = android.os.SystemClock.elapsedRealtime()
+        val elapsed = now - lastPostMs
+        if (elapsed >= MIN_POST_INTERVAL_MS) {
+            lastPostMs = now
+            pendingPost = null
+            postNow(appCtx, title, text)
+            return
+        }
+        pendingPost = title to text
+        if (!flushScheduled) {
+            flushScheduled = true
+            mainHandler.postDelayed(
+                { flushPending(appCtx) },
+                MIN_POST_INTERVAL_MS - elapsed
+            )
+        }
+    }
+
+    @Synchronized
+    private fun flushPending(appCtx: Context) {
+        flushScheduled = false
+        val p = pendingPost ?: return
+        pendingPost = null
+        lastPostMs = android.os.SystemClock.elapsedRealtime()
+        postNow(appCtx, p.first, p.second)
+    }
+
+    private fun postNow(context: Context, title: String, text: String) {
         try {
             notificationManager(context).notify(NOTIFICATION_ID, build(context, title, text))
         } catch (e: Exception) {
