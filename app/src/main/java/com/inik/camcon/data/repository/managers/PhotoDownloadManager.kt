@@ -32,6 +32,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
@@ -63,6 +64,23 @@ class PhotoDownloadManager @Inject constructor(
     companion object {
         private const val TAG = "사진다운로드매니저"
         private const val FREE_TIER_MAX_DIMENSION = 2000 // FREE 티어 최대 장축 크기
+
+        /**
+         * 요청 파일명과 MediaStore 가 실제 부여한 DISPLAY_NAME 이 다른지 판정(순수 함수, 단위 테스트 대상).
+         *
+         * MediaStore 는 같은 relativePath 에 물리 파일이 이미 존재하면 DISPLAY_NAME 충돌을 조용히
+         * "name (1).JPG" 로 리네임할 수 있어, 사진 내용은 요청 컷인데 파일명이 밀려 저장되는 버그를 만든다.
+         *
+         * - actual 이 null 이면(재조회 실패) 불일치로 보지 않는다 — 조회 실패가 저장 실패를 의미하진 않으므로
+         *   불필요한 재시도/삭제를 피한다.
+         * - 비교는 대소문자 무시(일부 파일시스템/제조사 MediaStore 가 확장자 대소문자를 정규화).
+         */
+        @JvmStatic
+        @androidx.annotation.VisibleForTesting
+        fun isDisplayNameMismatch(requested: String, actual: String?): Boolean {
+            if (actual == null) return false
+            return !requested.equals(actual, ignoreCase = true)
+        }
     }
 
     /**
@@ -73,6 +91,27 @@ class PhotoDownloadManager @Inject constructor(
      * 한 번에 한 건만 처리하도록 직렬화한다.
      */
     private val colorTransferSemaphore = Semaphore(1)
+
+    /**
+     * 필름 시뮬레이션·색감 전송의 무거운 디코드/LUT/재인코딩 전용 워커 디스패처.
+     *
+     * 24MP(6048×4024 ≈ 93MB) 풀 디코드 → LUT → 재인코딩은 CPU·메모리를 크게 먹는다.
+     * 이를 [ioDispatcher](공유 IO 풀, 기본 우선순위)에서 돌리면 UI 렌더/입력 스레드와 CPU 를
+     * 다투어 저사양(3GB) 기기에서 프레임 드랍이 발생한다. 단일 스레드 + [THREAD_PRIORITY_BACKGROUND]
+     * 로 직렬화·저우선순위화하여, 다운로드(별도 IO 경로)는 막지 않으면서 UI 우선순위를 보장한다.
+     * ([colorTransferSemaphore] 가 동시성 1 을 이미 보장하므로 스레드도 1 개면 충분하다.)
+     *
+     * @Singleton 이므로 프로세스 수명과 함께 유지되는 데몬 스레드 1 개만 쓴다.
+     */
+    private val imageProcessingDispatcher: CoroutineDispatcher by lazy {
+        java.util.concurrent.Executors.newSingleThreadExecutor { r ->
+            Thread({
+                // Linux nice 값을 백그라운드로 낮춰 UI/렌더 스레드에 CPU 를 양보한다(Android 권장 방식).
+                android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
+                r.run()
+            }, "camcon-image-proc").apply { isDaemon = true }
+        }.asCoroutineDispatcher()
+    }
 
     /**
      * RAW 게이팅 단일 지점 방어선(CLAUDE.md §2).
@@ -524,13 +563,15 @@ class PhotoDownloadManager @Inject constructor(
 
                             val transferResult =
                                 colorTransferSemaphore.withPermit {
-                                    colorTransferUseCase.applyColorTransferAndSave(
-                                        currentProcessedFile.absolutePath,
-                                        referenceImagePath,
-                                        currentProcessedFile.absolutePath,
-                                        ctOutputFile.absolutePath,
-                                        colorTransferIntensity
-                                    )
+                                    withContext(imageProcessingDispatcher) {
+                                        colorTransferUseCase.applyColorTransferAndSave(
+                                            currentProcessedFile.absolutePath,
+                                            referenceImagePath,
+                                            currentProcessedFile.absolutePath,
+                                            ctOutputFile.absolutePath,
+                                            colorTransferIntensity
+                                        )
+                                    }
                                 }
 
                             if (transferResult != null) {
@@ -579,13 +620,15 @@ class PhotoDownloadManager @Inject constructor(
                             filmLutFile = filmOutputFile
 
                             val filmResult = colorTransferSemaphore.withPermit {
-                                filmLutUseCase.applyFilmLutAndSave(
-                                    currentProcessedFile.absolutePath,
-                                    selectedFilmLutId,
-                                    currentProcessedFile.absolutePath,
-                                    filmOutputFile.absolutePath,
-                                    filmSimIntensity
-                                )
+                                withContext(imageProcessingDispatcher) {
+                                    filmLutUseCase.applyFilmLutAndSave(
+                                        currentProcessedFile.absolutePath,
+                                        selectedFilmLutId,
+                                        currentProcessedFile.absolutePath,
+                                        filmOutputFile.absolutePath,
+                                        filmSimIntensity
+                                    )
+                                }
                             }
 
                             if (filmResult != null) {
@@ -823,13 +866,15 @@ class PhotoDownloadManager @Inject constructor(
                     )
 
                     val transferResult = colorTransferSemaphore.withPermit {
-                        colorTransferUseCase.applyColorTransferAndSave(
-                            processedFile.absolutePath, // 입력 파일 경로 (리사이즈된 이미지 또는 원본)
-                            referenceImagePath, // 참조 이미지 경로
-                            processedFile.absolutePath, // 원본 이미지 경로 (EXIF 메타데이터 복사용)
-                            colorTransferredFile.absolutePath, // 출력 파일 경로
-                            colorTransferIntensity // 사용자 설정 강도
-                        )
+                        withContext(imageProcessingDispatcher) {
+                            colorTransferUseCase.applyColorTransferAndSave(
+                                processedFile.absolutePath, // 입력 파일 경로 (리사이즈된 이미지 또는 원본)
+                                referenceImagePath, // 참조 이미지 경로
+                                processedFile.absolutePath, // 원본 이미지 경로 (EXIF 메타데이터 복사용)
+                                colorTransferredFile.absolutePath, // 출력 파일 경로
+                                colorTransferIntensity // 사용자 설정 강도
+                            )
+                        }
                     }
 
                     if (transferResult != null) {
@@ -873,13 +918,15 @@ class PhotoDownloadManager @Inject constructor(
                     )
 
                     val filmResult = colorTransferSemaphore.withPermit {
-                        filmLutUseCase.applyFilmLutAndSave(
-                            currentFilmFile.absolutePath,
-                            selectedFilmLutId,
-                            currentFilmFile.absolutePath,
-                            filmOutputFile.absolutePath,
-                            filmSimIntensity
-                        )
+                        withContext(imageProcessingDispatcher) {
+                            filmLutUseCase.applyFilmLutAndSave(
+                                currentFilmFile.absolutePath,
+                                selectedFilmLutId,
+                                currentFilmFile.absolutePath,
+                                filmOutputFile.absolutePath,
+                                filmSimIntensity
+                            )
+                        }
                     }
 
                     if (filmResult != null) {
@@ -1650,56 +1697,31 @@ class PhotoDownloadManager @Inject constructor(
 
             Log.d(TAG, "   MediaStore 경로: $relativePath")
 
-            // 기존 파일이 존재하는지 확인하고 삭제
-            val existingUri = findExistingFileInMediaStore(baseFileName, relativePath)
-            if (existingUri != null) {
-                Log.d(TAG, "기존 파일 발견, 삭제 중: $relativePath/$baseFileName")
-                val deletedRows = context.contentResolver.delete(existingUri, null, null)
-                if (deletedRows > 0) {
-                    Log.d(TAG, "✅ 기존 파일 삭제 완료: $baseFileName")
-                } else {
-                    Log.w(TAG, "⚠️ 기존 파일 삭제 실패: $baseFileName")
-                }
+            // 기존 파일이 존재하는지 확인하고 삭제 (IS_PENDING row·소유권 밖 row 포함)
+            deleteExistingFileInMediaStore(baseFileName, relativePath)
+
+            // 1차 저장 시도. MediaStore 가 이름 충돌 시 조용히 "name (1).JPG" 로 리네임하면
+            // 요청명과 실제 DISPLAY_NAME 이 어긋난다(사진 내용/파일명 불일치 버그).
+            // allowMismatch=false → 리네임 시 row 롤백 후 null 반환(정리 후 재시도).
+            var savedPath =
+                insertAndVerify(tempFile, baseFileName, mimeType, relativePath, fileName, allowMismatch = false)
+
+            if (savedPath == null) {
+                // 리네임 감지됨 → 물리 고아 파일까지 정리 후 1회 재시도.
+                Log.w(TAG, "⚠️ MediaStore 리네임 감지 — 충돌 파일 정리 후 재시도: $baseFileName")
+                deleteExistingFileInMediaStore(baseFileName, relativePath)
+                deleteOrphanPhysicalFile(relativePath, baseFileName)
+                // 마지막 시도: 여기서도 리네임되면 사진 유실 대신 실제 저장명을 그대로 채택하고 에러 로그.
+                savedPath =
+                    insertAndVerify(tempFile, baseFileName, mimeType, relativePath, fileName, allowMismatch = true)
             }
 
-            // MediaStore를 사용하여 DCIM/CamCon/서브폴더에 저장
-            val contentValues = ContentValues().apply {
-                put(MediaStore.Images.Media.DISPLAY_NAME, baseFileName) // 실제 파일명만
-                put(MediaStore.Images.Media.MIME_TYPE, mimeType)
-                put(MediaStore.Images.Media.RELATIVE_PATH, relativePath) // 폴더 구조 포함
-                put(MediaStore.Images.Media.IS_PENDING, 1) // 저장 중 상태로 설정
-            }
-
-            val uri = context.contentResolver.insert(
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                contentValues
-            )
-
-            if (uri != null) {
-                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                    FileInputStream(tempFile).use { inputStream ->
-                        inputStream.copyTo(outputStream)
-                    }
-                }
-
-                // 저장 완료 후 IS_PENDING 플래그 제거
-                val updateValues = ContentValues().apply {
-                    put(MediaStore.Images.Media.IS_PENDING, 0)
-                }
-                context.contentResolver.update(uri, updateValues, null, null)
-
-                // 임시 파일 삭제
+            if (savedPath != null) {
                 tempFile.delete()
-
-                // 실제 저장된 파일 경로: 방금 insert 한 URI 의 실경로(DATA)를 우선 사용한다.
-                // buildActualSavedPath(파일명 조립 합성경로)는, 같은 이름의 물리파일이 남아 있어
-                // MediaStore 가 "KAY_0011 (1).JPG" 로 리네임해도 옛 "KAY_0011.JPG"(직전 컷 stale)를
-                // 가리켜, 수신사진 목록/미리보기에 이전 촬영 이미지가 표시되는 버그를 유발한다.
-                val savedPath = getPathFromUri(uri) ?: buildActualSavedPath(fileName)
                 Log.d(TAG, "✅ MediaStore 저장 성공: ${LogMask.path(savedPath)}")
                 savedPath
             } else {
-                Log.e(TAG, "MediaStore URI 생성 실패")
+                Log.e(TAG, "MediaStore 저장 실패(URI 생성 실패)")
                 tempFilePath
             }
         } catch (e: Exception) {
@@ -1709,43 +1731,187 @@ class PhotoDownloadManager @Inject constructor(
     }
 
     /**
-     * MediaStore에서 동일한 파일명의 기존 파일을 찾기
+     * baseFileName 으로 MediaStore insert 후, 실제 저장된 DISPLAY_NAME 이 요청명과 일치하는지 검증한다.
+     *
+     * MediaStore 는 같은 relativePath 에 물리 파일이 이미 존재하면 DISPLAY_NAME 충돌을 조용히
+     * "name (1).JPG" 로 리네임할 수 있다. 이 경우 사진 내용은 요청 컷인데 파일명이 다음 번호로
+     * 밀려 저장/표시되는 불일치 버그가 생긴다. 여기서 리네임을 감지하면:
+     * - allowMismatch=false → 삽입한 row 를 되돌리고 null 반환(호출부가 충돌 정리 후 재시도).
+     * - allowMismatch=true  → 사진 유실 방지를 위해 리네임된 파일을 그대로 채택하고 에러 로그 후
+     *   실제 저장 경로를 반환한다(마지막 시도).
+     *
+     * @return 저장 경로(DATA). URI 생성 실패, 또는 allowMismatch=false 이고 리네임됐으면 null.
      */
-    private fun findExistingFileInMediaStore(fileName: String, relativePath: String): Uri? {
-        return try {
-            val projection = arrayOf(
-                MediaStore.Images.Media._ID,
-                MediaStore.Images.Media.DISPLAY_NAME,
-                MediaStore.Images.Media.RELATIVE_PATH
+    private fun insertAndVerify(
+        tempFile: File,
+        baseFileName: String,
+        mimeType: String,
+        relativePath: String,
+        fileNameWithFolder: String,
+        allowMismatch: Boolean
+    ): String? {
+        val contentValues = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, baseFileName) // 실제 파일명만
+            put(MediaStore.Images.Media.MIME_TYPE, mimeType)
+            put(MediaStore.Images.Media.RELATIVE_PATH, relativePath) // 폴더 구조 포함
+            put(MediaStore.Images.Media.IS_PENDING, 1) // 저장 중 상태로 설정
+        }
+
+        val uri = context.contentResolver.insert(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            contentValues
+        ) ?: run {
+            Log.e(TAG, "MediaStore URI 생성 실패")
+            return null
+        }
+
+        context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+            FileInputStream(tempFile).use { inputStream ->
+                inputStream.copyTo(outputStream)
+            }
+        }
+
+        // 저장 완료 후 IS_PENDING 플래그 제거
+        context.contentResolver.update(
+            uri,
+            ContentValues().apply { put(MediaStore.Images.Media.IS_PENDING, 0) },
+            null,
+            null
+        )
+
+        // insert 후 실제 DISPLAY_NAME 재조회 → 요청명과 비교(리네임 감지)
+        val actualDisplayName = queryDisplayName(uri)
+        if (isDisplayNameMismatch(baseFileName, actualDisplayName)) {
+            if (!allowMismatch) {
+                Log.w(
+                    TAG,
+                    "⚠️ MediaStore DISPLAY_NAME 불일치: 요청=$baseFileName, 실제=$actualDisplayName — row 롤백 후 재시도"
+                )
+                runCatching { context.contentResolver.delete(uri, null, null) }
+                return null
+            }
+            // 마지막 시도에서도 리네임됨 → 유실 방지 위해 실제 저장명 채택(내용/파일명 어긋남을 명확히 경고).
+            Log.e(
+                TAG,
+                "❌ MediaStore DISPLAY_NAME 불일치 미해소 — 실제 저장명 채택: 요청=$baseFileName, 실제=$actualDisplayName"
             )
+        }
+
+        // 실제 저장된 파일 경로: 방금 insert 한 URI 의 실경로(DATA)를 우선 사용한다.
+        // buildActualSavedPath(파일명 조립 합성경로)는, 같은 이름의 물리파일이 남아 있어
+        // MediaStore 가 "KAY_0011 (1).JPG" 로 리네임해도 옛 "KAY_0011.JPG"(직전 컷 stale)를
+        // 가리켜, 수신사진 목록/미리보기에 이전 촬영 이미지가 표시되는 버그를 유발하므로 DATA 를 우선한다.
+        return getPathFromUri(uri) ?: buildActualSavedPath(fileNameWithFolder)
+    }
+
+    private fun queryDisplayName(uri: Uri): String? {
+        return try {
+            context.contentResolver.query(
+                uri,
+                arrayOf(MediaStore.Images.Media.DISPLAY_NAME),
+                null,
+                null,
+                null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    cursor.getString(
+                        cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
+                    )
+                } else null
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "DISPLAY_NAME 조회 실패", e)
+            null
+        }
+    }
+
+    /**
+     * MediaStore 에서 동일 파일명·경로의 기존 row 를 모두 삭제한다.
+     *
+     * 기본 EXTERNAL_CONTENT_URI 쿼리는 IS_PENDING=0 row 만 노출하므로, 이전 세션에서 남은
+     * pending row 나 소유권 밖 row 가 있으면 "기존 파일 없음" 으로 오판해 insert 가 리네임된다.
+     * [MediaStore.QUERY_ARG_MATCH_PENDING] = MATCH_INCLUDE 로 pending row 까지 포함해 조회·삭제한다.
+     */
+    private fun deleteExistingFileInMediaStore(fileName: String, relativePath: String) {
+        try {
+            val projection = arrayOf(MediaStore.Images.Media._ID)
             val selection =
                 "${MediaStore.Images.Media.DISPLAY_NAME} = ? AND ${MediaStore.Images.Media.RELATIVE_PATH} = ?"
             val selectionArgs = arrayOf(fileName, relativePath)
 
-            context.contentResolver.query(
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                projection,
-                selection,
-                selectionArgs,
-                null
-            )?.use { cursor ->
-                if (cursor.moveToFirst()) {
-                    val id =
-                        cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID))
-                    val uri = Uri.withAppendedPath(
+            // QUERY_ARG_MATCH_PENDING / MATCH_INCLUDE 는 API 30(R)부터. API 29 는 pending row 조회가
+            // 불가능하므로 기본 selection 으로만 조회(리네임 감지+재시도 안전망이 잔여 케이스를 커버).
+            val cursor = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val queryArgs = android.os.Bundle().apply {
+                    putString(
+                        android.content.ContentResolver.QUERY_ARG_SQL_SELECTION,
+                        selection
+                    )
+                    putStringArray(
+                        android.content.ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS,
+                        selectionArgs
+                    )
+                    putInt(
+                        MediaStore.QUERY_ARG_MATCH_PENDING,
+                        MediaStore.MATCH_INCLUDE
+                    )
+                }
+                context.contentResolver.query(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    projection,
+                    queryArgs,
+                    null
+                )
+            } else {
+                context.contentResolver.query(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    projection,
+                    selection,
+                    selectionArgs,
+                    null
+                )
+            }
+
+            cursor?.use {
+                val idIndex = it.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
+                while (it.moveToNext()) {
+                    val id = it.getLong(idIndex)
+                    val existingUri = Uri.withAppendedPath(
                         MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                         id.toString()
                     )
-                    Log.d(TAG, "기존 파일 찾음: $fileName (ID: $id)")
-                    uri
-                } else {
-                    Log.d(TAG, "기존 파일 없음: $fileName")
-                    null
+                    val deleted = runCatching {
+                        context.contentResolver.delete(existingUri, null, null)
+                    }.getOrDefault(0)
+                    if (deleted > 0) {
+                        Log.d(TAG, "✅ 기존 파일 row 삭제: $relativePath/$fileName (ID: $id)")
+                    } else {
+                        Log.w(TAG, "⚠️ 기존 파일 row 삭제 실패: $relativePath/$fileName (ID: $id)")
+                    }
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "기존 파일 검색 실패: $fileName", e)
-            null
+            Log.e(TAG, "기존 파일 검색/삭제 실패: $fileName", e)
+        }
+    }
+
+    /**
+     * MediaStore row 는 없지만 디스크에 물리적으로 남아 있는 고아 파일을 삭제한다.
+     * (row 삭제로도 리네임이 안 풀리는, 물리 파일만 존재하는 케이스 대비 최후 정리)
+     */
+    private fun deleteOrphanPhysicalFile(relativePath: String, baseFileName: String) {
+        try {
+            val normalized = relativePath.trimEnd('/')
+            val orphan = File("/storage/emulated/0/$normalized/$baseFileName")
+            if (orphan.exists()) {
+                val deleted = orphan.delete()
+                Log.w(
+                    TAG,
+                    "고아 물리 파일 정리: ${LogMask.path(orphan.absolutePath)} → ${if (deleted) "삭제됨" else "삭제 실패"}"
+                )
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "고아 물리 파일 정리 중 오류 (무시): ${e.message}")
         }
     }
 
