@@ -115,6 +115,7 @@ class SplashActivity : ComponentActivity() {
     )
     private var isLibraryLoaded by mutableStateOf(false)
     private var subscriptionTier: SubscriptionTier? = null
+    private var hasNavigated = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -270,10 +271,20 @@ class SplashActivity : ComponentActivity() {
     }
 
     private fun navigateToNextScreen() {
+        // 버전 체크 완료 이펙트 재발화 + 다이얼로그 dismiss 직접 호출이 겹치면
+        // LoginActivity(standard launchMode)가 2개 쌓이므로 1회만 실행
+        if (hasNavigated) return
+        hasNavigated = true
+
         if (firebaseAuth.currentUser != null) {
             startActivity(Intent(this, MainActivity::class.java))
         } else {
-            startActivity(Intent(this, LoginActivity::class.java))
+            // USB 연결로 새 Splash가 기존 LoginActivity 위에 뜬 경우 기존 인스턴스 재사용
+            startActivity(
+                Intent(this, LoginActivity::class.java).addFlags(
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                )
+            )
         }
         finish()
     }
