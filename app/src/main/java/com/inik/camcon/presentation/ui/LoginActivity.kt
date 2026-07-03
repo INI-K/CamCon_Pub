@@ -90,8 +90,19 @@ class LoginActivity : ComponentActivity() {
         Log.d("LoginActivity", "Google Sign-In result received with code: ${result.resultCode}")
 
         // 사용자가 계정 선택 화면에서 취소한 경우
+        // GMS는 DEVELOPER_ERROR(10) 등 실패도 RESULT_CANCELED로 돌려주므로 실제 상태 코드를 확인해 남긴다
         if (result.resultCode == RESULT_CANCELED) {
-            Log.d("LoginActivity", "Google Sign-In cancelled by user (RESULT_CANCELED)")
+            var cancelStatusCode: Int? = null
+            try {
+                GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                    .getResult(ApiException::class.java)
+            } catch (e: ApiException) {
+                cancelStatusCode = e.statusCode
+            }
+            Log.e(
+                "LoginActivity",
+                "Google Sign-In cancelled (RESULT_CANCELED), status=$cancelStatusCode"
+            )
             loginViewModel?.onSignInUiError(UiText.Resource(R.string.login_error_cancelled))
             return@registerForActivityResult
         }
