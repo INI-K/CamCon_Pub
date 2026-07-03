@@ -780,10 +780,6 @@ private fun PortraitCameraLayout(
                     showInlineExposureStrip = false
                 )
             } else {
-                LogcatManager.d(
-                    "CameraControl",
-                    "사진 표시 모드 - 수신된 사진 개수: ${uiState.capturedPhotos.size}"
-                )
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -1694,42 +1690,6 @@ private fun AnimatedPhotoSwitcher(
                         .scale(Scale.FIT)
                         .allowHardware(false) // EXIF 처리를 위해 하드웨어 가속 비활성화
                         .listener(
-                            onStart = { request ->
-                                LogcatManager.d("CameraPhoto", "수신된 사진 로딩 시작: ${photo.filePath}")
-                            },
-                            onSuccess = { request, result ->
-                                LogcatManager.d("CameraPhoto", "수신된 사진 로딩 성공: ${photo.filePath}")
-
-                                // EXIF 디버그 로깅 — 릴리즈에서는 파일 I/O 자체를 건너뜀
-                                if (com.inik.camcon.BuildConfig.DEBUG) {
-                                    try {
-                                        val exif =
-                                            androidx.exifinterface.media.ExifInterface(photo.filePath)
-                                        val orientation = exif.getAttributeInt(
-                                            androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION,
-                                            androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
-                                        )
-
-                                        val rotationText = when (orientation) {
-                                            androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> "90도 (270도로 수정 적용)"
-                                            androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> "180도 (회전하지 않음)"
-                                            androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> "270도 (90도로 수정 적용)"
-                                            else -> "없음"
-                                        }
-
-                                        LogcatManager.d("EXIF_RECEIVED_PHOTO", "=== 수신 사진 EXIF 정보 ===")
-                                        LogcatManager.d("EXIF_RECEIVED_PHOTO", "파일: ${photo.filePath}")
-                                        LogcatManager.d("EXIF_RECEIVED_PHOTO", "EXIF Orientation: $orientation")
-                                        LogcatManager.d("EXIF_RECEIVED_PHOTO", "회전 정보: $rotationText")
-                                        LogcatManager.d(
-                                            "EXIF_RECEIVED_PHOTO",
-                                            "Coil이 자동 회전 처리: ${orientation != androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL}"
-                                        )
-                                    } catch (e: Exception) {
-                                        LogcatManager.e("EXIF_RECEIVED_PHOTO", "EXIF 정보 확인 실패: ${e.message}", e)
-                                    }
-                                }
-                            },
                             onError = { request, error ->
                                 LogcatManager.e(
                                     "CameraPhoto",

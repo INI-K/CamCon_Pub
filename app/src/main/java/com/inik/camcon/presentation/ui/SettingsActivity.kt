@@ -353,8 +353,9 @@ fun SettingsScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
-            // 카메라 제어 설정
-            if (BuildConfig.SHOW_DEVELOPER_FEATURES) {
+            // 카메라 제어 설정 — 개발 빌드 또는 ADMIN 티어에 노출.
+            // (빌드 타입만으로 게이트하면 릴리즈에서 관리자에게도 안 보인다)
+            if (BuildConfig.SHOW_DEVELOPER_FEATURES || isAdminTier) {
                 SettingsSection(title = stringResource(R.string.settings_v2_section_camera_control)) {
                     SwitchRowV2(
                         icon = Icons.Default.CameraAlt,
@@ -693,8 +694,8 @@ fun SettingsScreen(
                 )
             }
 
-            // 서버 설정
-            if (BuildConfig.SHOW_DEVELOPER_FEATURES) {
+            // 서버 설정 — 개발 빌드 또는 ADMIN 티어에 노출
+            if (BuildConfig.SHOW_DEVELOPER_FEATURES || isAdminTier) {
                 SettingsSection(title = stringResource(R.string.settings_v2_section_server)) {
                     ClickableRowV2(
                         icon = Icons.Default.Storage,
@@ -896,8 +897,8 @@ fun SettingsScreen(
 
             // Mock Camera 진입점은 ADMIN 섹션에 이미 노출됨 (위쪽 isAdminTier 블록).
             // 개발자 빌드 분기는 ADMIN 권한과 중복되어 동일 화면이 두 번 보이는 문제가 있어 삭제.
-            // 관리자 레퍼럴 코드 관리는 SHOW_DEVELOPER_FEATURES 기준으로 유지.
-            if (BuildConfig.SHOW_DEVELOPER_FEATURES) {
+            // 관리자 레퍼럴 코드 관리 — 개발 빌드 또는 ADMIN 티어에 노출(릴리즈 관리자 대응).
+            if (BuildConfig.SHOW_DEVELOPER_FEATURES || isAdminTier) {
                 SettingsSection(title = stringResource(R.string.settings_v2_section_referral)) {
                     val totalCodes = adminReferralState.statistics["totalCodes"] as? Int ?: 0
                     val availableCodes = adminReferralState.statistics["availableCodes"] as? Int ?: 0

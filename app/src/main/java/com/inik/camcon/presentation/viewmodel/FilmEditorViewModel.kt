@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -133,8 +134,9 @@ class FilmEditorViewModel @Inject constructor(
     private var lookupJob: Job? = null
 
     /**
-     * 편집 프리뷰 렌더 결과. 내보내기와 **동일 경로**([FilmAdjustmentProcessor.apply], PixelBuffer)로 렌더해
-     * Compose Image 로 표시한다 — GPUImageView+필터그룹의 일부 GPU 가장자리 손상을 피하고 WYSIWYG 보장.
+     * 편집 프리뷰 "풀 룩" 렌더 결과 — PixelBuffer 경로로 **강도 1.0 고정** 렌더.
+     * 표시단([FilmEditPreview])이 원본 위에 알파(=강도)로 합성해 강도 드래그를 실시간 반영한다
+     * (LUT 셰이더의 mix 와 동일 수식). 내보내기는 항상 정확 경로(_filmEdit 실강도)로 렌더된다.
      * VM 소유 → 교체 시 이전 비트맵 회수, [onCleared] 에서도 회수.
      */
     private val _renderedPreview = MutableStateFlow<Bitmap?>(null)
@@ -166,7 +168,7 @@ class FilmEditorViewModel @Inject constructor(
     private val _previewSize = MutableStateFlow<Pair<Int, Int>?>(null)
     val previewSize: StateFlow<Pair<Int, Int>?> = _previewSize.asStateFlow()
 
-    /** 썸네일 소스 비트맵(긴 변 ~200). VM 소유 → 회수. 그리드 셀이 직접 소비하지 않고 VM 만 사용. */
+    /** 썸네일 소스 비트맵(긴 변 THUMB_SOURCE_EDGE). VM 소유 → 회수. 그리드 셀이 직접 소비하지 않고 VM 만 사용. */
     private var thumbSource: Bitmap? = null
 
     /** lutId → 썸네일 비트맵(캐시 소유, 회수 금지). 그리드가 표시만 한다. */
@@ -190,21 +192,27 @@ class FilmEditorViewModel @Inject constructor(
         }
         initializeGpu()
 
-        // 편집 프리뷰 렌더(WYSIWYG): previewBitmap·lookup·previewEdit(디바운스) 변화 시 내보내기와 동일한
-        // PixelBuffer 경로로 1장 렌더 → Compose Image 로 표시. collectLatest 로 직전 렌더는 취소(최신만).
+        // 편집 프리뷰 렌더: previewBitmap·lookup·조정(디바운스) 변화 시 PixelBuffer 경로로
+        // **강도 1.0 고정** "풀 룩" 1장을 렌더한다. 강도는 GPU 재렌더 없이 표시단에서
+        // 원본 위 알파(=강도) 합성으로 반영된다([FilmEditPreview]) — LUT 셰이더의
+        // mix(original, lut, intensity)와 동일 수식이라 드래그가 실시간으로 보인다.
+        // (조정 8종이 비중립이면 합성 순서 차이로 드래그 중 근사이며, 내보내기는 항상
+        //  정확 경로(_filmEdit 실강도)로 렌더된다. 조정 기본값=중립에서는 완전 일치.)
+        // 강도만 바뀔 땐 distinctUntilChanged 로 렌더를 아예 건너뛴다(저사양 GPU 절약).
         viewModelScope.launch {
             combine(_previewBitmap, _lookupBitmap, previewEdit) { src, lookup, edit ->
-                Triple(src, lookup, edit)
-            }.collectLatest { (src, lookup, edit) ->
-                val out = if (src == null || src.isRecycled) {
-                    null
-                } else {
-                    runCatching {
-                        filmEditProcessor.renderPreview(src, lookup, edit.intensity, edit.adjustments) as? Bitmap
-                    }.getOrNull()
+                Triple(src, lookup, edit.adjustments)
+            }.distinctUntilChanged()
+                .collectLatest { (src, lookup, adjustments) ->
+                    val out = if (src == null || src.isRecycled) {
+                        null
+                    } else {
+                        runCatching {
+                            filmEditProcessor.renderPreview(src, lookup, 1f, adjustments) as? Bitmap
+                        }.getOrNull()
+                    }
+                    setRenderedPreview(out)
                 }
-                setRenderedPreview(out)
-            }
         }
     }
 
@@ -549,7 +557,14 @@ class FilmEditorViewModel @Inject constructor(
     companion object {
         private const val TAG = "FilmEditorViewModel"
         private const val MAX_PREVIEW_EDGE = 1280
-        private const val THUMB_SOURCE_EDGE = 200
+
+        /**
+         * 컨택트 시트 썸네일 소스의 긴 변(px).
+         * 200이었을 때 2열 그리드 타일(태블릿 실측 ~580px)에 3배 가까이 확대되어 뿌옇게 보였다.
+         * 512 = 대부분 기기에서 타일 실픽셀에 근접(화질), CPU LUT·메모리 비용은
+         * FilmThumbnailGenerator의 동시성 2 제한 + 바이트 예산 캐시가 흡수한다.
+         */
+        private const val THUMB_SOURCE_EDGE = 512
 
         /** 슬라이더 드래그 → 프리뷰 GPU 재구성 디바운스(ms). 설계 §8: 과다 갱신 방지. */
         private const val PREVIEW_DEBOUNCE_MS = 200L
