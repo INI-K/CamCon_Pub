@@ -15,7 +15,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 data class AppVersionUiState(
-    val isLoading: Boolean = false,
+    // 초기값 true: idle 상태가 "체크 완료(false)"와 구분되지 않으면
+    // 스플래시가 버전 체크 전에 네비게이션을 발화한다 (로그인 화면 2회 오픈 원인)
+    val isLoading: Boolean = true,
     val error: String? = null,
     val versionInfo: AppVersionInfo? = null,
     val showUpdateDialog: Boolean = false
