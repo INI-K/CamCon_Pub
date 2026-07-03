@@ -663,6 +663,11 @@ class CameraEventManager @Inject constructor(
 
                     ConnectionType.PTPIP -> {
                         LogcatManager.w("카메라이벤트매니저", "PTPIP 네트워크 연결 끊김 감지됨")
+                        // 연결 상태를 먼저 DISCONNECTED로 내린다(비자발적 끊김 경로).
+                        // 이게 없으면 전역 상태가 CONNECTED로 남아 BackgroundSyncService가
+                        // 죽은 세션에 리스너를 무한 재시작(재시작 성공 → 3연속 I/O → 끊김 감지
+                        // → 재시작 …)하고, 자동 재연결 폴링(DISCONNECTED 조건)도 영영 안 돈다.
+                        onPtpipConnectionLostCallback?.invoke()
                         handlePtpipDisconnection()
                     }
                 }
