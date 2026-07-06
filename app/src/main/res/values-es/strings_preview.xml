@@ -16,4 +16,7 @@
     <string name="raw_gating_tier_label_REFERRER">REFERRER</string>
     <string name="raw_gating_tier_label_ADMIN">ADMIN</string>
     <string name="preview_retry_single">Reintentar</string>
+    <string name="photo_preview_locked_title">La vista previa es una función PRO</string>
+    <string name="photo_preview_locked_body">La vista previa de fotos en directo está disponible con la suscripción PRO. Las opciones de mejora llegarán pronto.</string>
+    <string name="photo_preview_locked_tab_badge_cd">Bloqueado — función PRO</string>
 </resources>

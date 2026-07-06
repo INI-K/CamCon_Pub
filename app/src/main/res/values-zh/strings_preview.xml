@@ -16,4 +16,7 @@
     <string name="raw_gating_tier_label_REFERRER">REFERRER</string>
     <string name="raw_gating_tier_label_ADMIN">ADMIN</string>
     <string name="preview_retry_single">重试</string>
+    <string name="photo_preview_locked_title">预览是 PRO 功能</string>
+    <string name="photo_preview_locked_body">实时照片预览需要 PRO 订阅。升级选项即将推出。</string>
+    <string name="photo_preview_locked_tab_badge_cd">已锁定 — PRO 功能</string>
 </resources>

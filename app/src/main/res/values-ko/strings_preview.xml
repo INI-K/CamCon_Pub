@@ -16,4 +16,7 @@
     <string name="raw_gating_tier_label_REFERRER">REFERRER</string>
     <string name="raw_gating_tier_label_ADMIN">ADMIN</string>
     <string name="preview_retry_single">재시도</string>
+    <string name="photo_preview_locked_title">미리보기는 PRO 기능입니다</string>
+    <string name="photo_preview_locked_body">실시간 사진 미리보기는 PRO 구독에서 사용할 수 있습니다. 업그레이드는 추후 지원 예정입니다.</string>
+    <string name="photo_preview_locked_tab_badge_cd">잠김 — PRO 기능</string>
 </resources>

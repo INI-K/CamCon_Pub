@@ -36,4 +36,8 @@
     <string name="fs_adj_saturation">Saturazione</string>
     <string name="fs_adj_grain">Grana</string>
     <string name="fs_adj_chromatic_aberration">Aberrazione cromatica</string>
+
+    <!-- 필름↔색감 배타 스왑 안내(정합화 통지 겸용) -->
+    <string name="pipeline_swap_color_disabled">Trasferimento colore disattivato — il tuo piano attuale non può usarlo insieme alla simulazione pellicola.</string>
+    <string name="pipeline_swap_film_disabled">Simulazione pellicola disattivata — il tuo piano attuale non può usarla insieme al trasferimento colore.</string>
 </resources>

@@ -36,4 +36,8 @@
     <string name="fs_adj_saturation">채도</string>
     <string name="fs_adj_grain">그레인</string>
     <string name="fs_adj_chromatic_aberration">색수차</string>
+
+    <!-- 필름↔색감 배타 스왑 안내(정합화 통지 겸용) -->
+    <string name="pipeline_swap_color_disabled">색감 전송이 꺼졌습니다 — 현재 플랜에서는 필름 시뮬레이션과 동시에 사용할 수 없습니다.</string>
+    <string name="pipeline_swap_film_disabled">필름 시뮬레이션이 꺼졌습니다 — 현재 플랜에서는 색감 전송과 동시에 사용할 수 없습니다.</string>
 </resources>

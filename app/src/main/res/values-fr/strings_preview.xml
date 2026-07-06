@@ -16,4 +16,7 @@
     <string name="raw_gating_tier_label_REFERRER">REFERRER</string>
     <string name="raw_gating_tier_label_ADMIN">ADMIN</string>
     <string name="preview_retry_single">Réessayer</string>
+    <string name="photo_preview_locked_title">L\'aperçu est une fonction PRO</string>
+    <string name="photo_preview_locked_body">L\'aperçu photo en direct est disponible avec un abonnement PRO. Les options de mise à niveau arrivent bientôt.</string>
+    <string name="photo_preview_locked_tab_badge_cd">Verrouillé — fonction PRO</string>
 </resources>

@@ -9,6 +9,9 @@ import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.usecase.ColorTransferUseCase
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
+import com.inik.camcon.domain.usecase.PipelineFeature
+import com.inik.camcon.domain.usecase.ToggleDecision
+import com.inik.camcon.domain.usecase.ValidateFeatureAccessUseCase
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.domain.usecase.camera.ReadNativeLogUseCase
 import com.inik.camcon.domain.usecase.camera.StartNativeLogUseCase
@@ -17,9 +20,14 @@ import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.utils.LogMask
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -34,11 +42,57 @@ class AppSettingsViewModel @Inject constructor(
     private val startNativeLogUseCase: StartNativeLogUseCase,
     private val stopNativeLogUseCase: StopNativeLogUseCase,
     private val readNativeLogUseCase: ReadNativeLogUseCase,
-    private val validateImageFormatUseCase: ValidateImageFormatUseCase
+    private val validateImageFormatUseCase: ValidateImageFormatUseCase,
+    private val validateFeatureAccessUseCase: ValidateFeatureAccessUseCase
 ) : ViewModel() {
 
     companion object {
         private const val TAG = "AppSettingsViewModel"
+    }
+
+    /**
+     * pref 우선 병합 티어 (cold flow).
+     *
+     * [subscriptionTier] StateFlow 의 초기값(FREE) 오염 없이 파생 판정(미리보기 접근·정합화·세터)에
+     * 사용한다. StateFlow 에서 map 하면 초기값 FREE 가 동기 재방출되어 잠금 플래시·오정합화를 만든다.
+     */
+    private val effectiveTierFlow: Flow<SubscriptionTier> = combine(
+        appSettingsRepository.subscriptionTierEnum,
+        getSubscriptionUseCase.getSubscriptionTier()
+    ) { prefTier, firebaseTier ->
+        // Preferences 티어가 FREE 가 아니면 우선 사용, FREE 면 Firebase 값 확인(기존 로직 그대로).
+        if (prefTier != SubscriptionTier.FREE) {
+            prefTier
+        } else {
+            firebaseTier ?: SubscriptionTier.FREE
+        }
+    }
+
+    /** 필름↔색감 스왑/정합화 발생 시 꺼진 쪽을 통지하는 1회성 이벤트. */
+    private val _pipelineSwapEvent = MutableSharedFlow<PipelineFeature>(extraBufferCapacity = 1)
+    val pipelineSwapEvent: SharedFlow<PipelineFeature> = _pipelineSwapEvent.asSharedFlow()
+
+    init {
+        // 비허용 티어에서 필름·색감이 '둘 다 ON' 인 상태를 정합화한다(색감 OFF).
+        // 반드시 effectiveTierFlow(cold)를 사용해야 한다 — subscriptionTier StateFlow 의 초기값(FREE)이
+        // PRO 사용자에게도 순간 방출되어 '둘 다 ON' 을 잘못 정합화(색감 영구 OFF)하는 것을 막는다.
+        // VM 인스턴스가 화면마다 별개라 이 관찰자가 중복 실행될 수 있으나 setColorTransferEnabled(false)는
+        // 멱등·DataStore 직렬화로 안전하고, 토스트는 best-effort 다.
+        viewModelScope.launch {
+            combine(
+                effectiveTierFlow,
+                appSettingsRepository.isFilmSimulationEnabled,
+                appSettingsRepository.isColorTransferEnabled
+            ) { tier, film, color ->
+                validateFeatureAccessUseCase.resolveActivePipeline(tier, film, color)
+            }.collect { active ->
+                if (active.needsReconcile) {
+                    // 1회 영속 — 쓰기 후 flow 가 재방출되어 needsReconcile=false 로 자연 종료.
+                    appSettingsRepository.setColorTransferEnabled(false)
+                    _pipelineSwapEvent.tryEmit(PipelineFeature.COLOR_TRANSFER)
+                }
+            }
+        }
     }
 
     /**
@@ -207,25 +261,31 @@ class AppSettingsViewModel @Inject constructor(
             )
 
     /**
-     * 현재 구독 티어 - Preferences에 저장된 값 우선, 없으면 Firebase에서 가져옴
+     * 현재 구독 티어 - Preferences에 저장된 값 우선, 없으면 Firebase에서 가져옴.
+     * 병합 로직은 [effectiveTierFlow] 로 추출되어 파생 판정과 공유된다(동작 무변경).
      */
     val subscriptionTier: StateFlow<com.inik.camcon.domain.model.SubscriptionTier> =
-        combine(
-            appSettingsRepository.subscriptionTierEnum,
-            getSubscriptionUseCase.getSubscriptionTier()
-        ) { prefTier, firebaseTier ->
-            // Preferences에 저장된 티어가 FREE가 아니면 우선 사용
-            // FREE인 경우는 초기값일 수 있으므로 Firebase 값 확인
-            if (prefTier != SubscriptionTier.FREE) {
-                prefTier
-            } else {
-                firebaseTier ?: SubscriptionTier.FREE
-            }
-        }.stateIn(
+        effectiveTierFlow.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = com.inik.camcon.domain.model.SubscriptionTier.FREE
         )
+
+    /**
+     * 미리보기 탭 접근 허용 여부.
+     *
+     * null = 티어 미확정(pref DataStore 첫 read 까지 수 ms). 반드시 [effectiveTierFlow] 에서 파생한다 —
+     * [subscriptionTier] StateFlow 에서 map 하면 초기값 FREE 가 동기 재방출되어 PRO 사용자에게 false
+     * 플래시가 발생한다. 첫 방출이 pref 병합 티어이므로 PRO 는 null→true 로만 이어진다.
+     */
+    val photoPreviewAccess: StateFlow<Boolean?> =
+        effectiveTierFlow
+            .map { validateFeatureAccessUseCase.isPhotoPreviewAllowed(it) }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = null
+            )
 
     /**
      * 테마 모드 설정
@@ -418,10 +478,26 @@ class AppSettingsViewModel @Inject constructor(
     }
 
     /**
-     * 색감 전송 기능 활성화/비활성화
+     * 색감 전송 기능 활성화/비활성화.
+     *
+     * 비허용 티어(FREE/BASIC)에서 필름이 이미 ON 인데 색감을 켜면 필름을 끄고 켠다(자동 스왑).
+     * 티어는 `.value` 스냅샷이 아니라 [effectiveTierFlow].first() 로 읽는다 — VM 이 화면마다 별개
+     * 인스턴스라 collect 없는 인스턴스의 StateFlow 값은 영영 초기 FREE 이기 때문.
      */
     fun setColorTransferEnabled(enabled: Boolean) {
         viewModelScope.launch {
+            if (enabled) {
+                val tier = effectiveTierFlow.first()
+                val otherOn = appSettingsRepository.isFilmSimulationEnabled.first()
+                val decision = validateFeatureAccessUseCase.resolveExclusiveToggle(
+                    tier, PipelineFeature.COLOR_TRANSFER, otherOn
+                )
+                if (decision is ToggleDecision.Swap) {
+                    // OFF 먼저 → ON 나중 순서로 '둘 다 ON' 창을 만들지 않는다.
+                    appSettingsRepository.setFilmSimulationEnabled(false)
+                    _pipelineSwapEvent.tryEmit(PipelineFeature.FILM_SIMULATION)
+                }
+            }
             appSettingsRepository.setColorTransferEnabled(enabled)
         }
     }
@@ -455,10 +531,25 @@ class AppSettingsViewModel @Inject constructor(
     }
 
     /**
-     * 필름 시뮬레이션 기능 활성화/비활성화
+     * 필름 시뮬레이션 기능 활성화/비활성화.
+     *
+     * 비허용 티어(FREE/BASIC)에서 색감이 이미 ON 인데 필름을 켜면 색감을 끄고 켠다(자동 스왑).
+     * 티어는 [setColorTransferEnabled] 와 동일하게 [effectiveTierFlow].first() 로 읽는다.
      */
     fun setFilmSimulationEnabled(enabled: Boolean) {
         viewModelScope.launch {
+            if (enabled) {
+                val tier = effectiveTierFlow.first()
+                val otherOn = appSettingsRepository.isColorTransferEnabled.first()
+                val decision = validateFeatureAccessUseCase.resolveExclusiveToggle(
+                    tier, PipelineFeature.FILM_SIMULATION, otherOn
+                )
+                if (decision is ToggleDecision.Swap) {
+                    // OFF 먼저 → ON 나중 순서로 '둘 다 ON' 창을 만들지 않는다.
+                    appSettingsRepository.setColorTransferEnabled(false)
+                    _pipelineSwapEvent.tryEmit(PipelineFeature.COLOR_TRANSFER)
+                }
+            }
             appSettingsRepository.setFilmSimulationEnabled(enabled)
         }
     }

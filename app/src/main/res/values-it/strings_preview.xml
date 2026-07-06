@@ -16,4 +16,7 @@
     <string name="raw_gating_tier_label_REFERRER">REFERRER</string>
     <string name="raw_gating_tier_label_ADMIN">ADMIN</string>
     <string name="preview_retry_single">Riprova</string>
+    <string name="photo_preview_locked_title">L\'anteprima è una funzione PRO</string>
+    <string name="photo_preview_locked_body">L\'anteprima foto in tempo reale è disponibile con l\'abbonamento PRO. Le opzioni di upgrade arriveranno presto.</string>
+    <string name="photo_preview_locked_tab_badge_cd">Bloccato — funzione PRO</string>
 </resources>

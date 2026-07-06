@@ -161,6 +161,7 @@ import com.inik.camcon.presentation.ui.screens.dialogs.TimelapseSettingsDialog
 import com.inik.camcon.presentation.ui.screens.camera.dialogs.CameraRestartDialog
 import com.inik.camcon.domain.model.LiveViewFrame
 import com.inik.camcon.domain.model.LiveViewQuality
+import com.inik.camcon.domain.usecase.PipelineFeature
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.CameraUiState
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
@@ -212,6 +213,19 @@ fun CameraControlScreen(
     val liveViewQuality by appSettingsViewModel.liveViewQuality.collectAsStateWithLifecycle()
     val onCycleLiveViewQuality: () -> Unit = {
         appSettingsViewModel.setLiveViewQuality(liveViewQuality.next())
+    }
+
+    // 필름↔색감 배타 스왑 안내 토스트 — CTA 없이 안내만(다운로드 제한 ToastV2 관례와 동일).
+    val pipelineSwapColorDisabledText = stringResource(R.string.pipeline_swap_color_disabled)
+    val pipelineSwapFilmDisabledText = stringResource(R.string.pipeline_swap_film_disabled)
+    var pipelineSwapMessage by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        appSettingsViewModel.pipelineSwapEvent.collect { disabled ->
+            pipelineSwapMessage = when (disabled) {
+                PipelineFeature.COLOR_TRANSFER -> pipelineSwapColorDisabledText
+                PipelineFeature.FILM_SIMULATION -> pipelineSwapFilmDisabledText
+            }
+        }
     }
 
     // 다이얼로그 상태들
@@ -460,6 +474,14 @@ fun CameraControlScreen(
         RawFileRestrictionNotification(
             restriction = restriction,
             onDismiss = { viewModel.clearRawFileRestriction() }
+        )
+    }
+
+    // 필름↔색감 배타 스왑 안내 표시
+    pipelineSwapMessage?.let { message ->
+        PipelineSwapNotification(
+            message = message,
+            onDismiss = { pipelineSwapMessage = null }
         )
     }
 
@@ -2022,6 +2044,60 @@ private fun RawFileRestrictionNotification(
                     message = "${restriction.fileName} — ${restriction.message}",
                     kind = StatusKind.Error,
                     leadingIcon = Icons.Outlined.WarningAmber,
+                    maxLines = 2,
+                    modifier = Modifier
+                        .widthIn(max = 400.dp)
+                        .clickable {
+                            scope.launch {
+                                visible = false
+                                kotlinx.coroutines.delay(260L)
+                                onDismiss()
+                            }
+                        }
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 필름↔색감 배타 스왑 안내 토스트 (슬라이드 인/아웃 + 페이드).
+ * 다운로드 제한 토스트와 동일한 상단 오버레이 관례를 따르되, 경고가 아닌 안내이므로 Idle kind + 2초 자동 소멸.
+ */
+@Composable
+private fun PipelineSwapNotification(
+    message: String,
+    onDismiss: () -> Unit
+) {
+    var visible by remember(message) { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(message) {
+        visible = true
+        kotlinx.coroutines.delay(2000L)
+        visible = false
+        kotlinx.coroutines.delay(260L) // exit 애니메이션 완료 대기
+        onDismiss()
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = slideInVertically(
+            initialOffsetY = { -80 }
+        ) + fadeIn(animationSpec = tween(260)),
+        exit = slideOutVertically(
+            targetOffsetY = { -80 }
+        ) + fadeOut(animationSpec = tween(260))
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 36.dp, start = Padding.base, end = Padding.base)
+        ) {
+            Box(modifier = Modifier.align(Alignment.TopCenter)) {
+                ToastV2(
+                    message = message,
+                    kind = StatusKind.Idle,
                     maxLines = 2,
                     modifier = Modifier
                         .widthIn(max = 400.dp)
