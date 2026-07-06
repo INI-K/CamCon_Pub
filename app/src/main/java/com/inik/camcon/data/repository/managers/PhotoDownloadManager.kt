@@ -624,8 +624,11 @@ class PhotoDownloadManager @Inject constructor(
 
                 // 필름 시뮬레이션 적용 (색감 전송 결과 또는 이전 단계 산출물에 LUT 적용)
                 // 티어 마스킹된 값 사용(위 resolveActivePipeline 1회 판정) — datasource 직접 read 금지.
+                // 선택 LUT 이 현재 티어에서 잠겨 있으면 "" 로 마스킹 → 아래 isNotEmpty 가드가 필름 스텝을 스킵(영속화 없음).
                 val isFilmSimEnabled = activePipeline.filmEnabled
-                val selectedFilmLutId = appPreferencesDataSource.selectedFilmLutId.first()
+                val selectedFilmLutId = validateFeatureAccessUseCase.resolveEffectiveLutId(
+                    currentTier, appPreferencesDataSource.selectedFilmLutId.first()
+                )
                 val filmSimIntensity = appPreferencesDataSource.filmSimulationIntensity.first()
                 val filmInputPath = processedPath
                 if (isFilmSimEnabled &&
@@ -940,8 +943,11 @@ class PhotoDownloadManager @Inject constructor(
 
             // 필름 시뮬레이션 적용 (색감 전송 결과 또는 이전 단계 산출물에 LUT 적용)
             // 티어 마스킹된 값 사용(위 resolveActivePipeline 1회 판정) — datasource 직접 read 금지.
+            // 선택 LUT 이 현재 티어에서 잠겨 있으면 "" 로 마스킹 → 아래 isNotEmpty 가드가 필름 스텝을 스킵(영속화 없음).
             val isFilmSimEnabled = activePipeline.filmEnabled
-            val selectedFilmLutId = appPreferencesDataSource.selectedFilmLutId.first()
+            val selectedFilmLutId = validateFeatureAccessUseCase.resolveEffectiveLutId(
+                currentTier, appPreferencesDataSource.selectedFilmLutId.first()
+            )
             val filmSimIntensity = appPreferencesDataSource.filmSimulationIntensity.first()
             if (isFilmSimEnabled &&
                 selectedFilmLutId.isNotEmpty() &&

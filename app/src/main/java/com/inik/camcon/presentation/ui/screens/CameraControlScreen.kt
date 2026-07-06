@@ -141,6 +141,7 @@ import com.inik.camcon.presentation.ui.components.v2.StatusKind
 import com.inik.camcon.presentation.ui.components.v2.ToastV2
 import com.inik.camcon.presentation.ui.components.v2.TransferProgressBadge
 import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.WarningAmber
 import com.inik.camcon.presentation.ui.screens.components.CameraPreviewArea
@@ -204,6 +205,7 @@ fun CameraControlScreen(
     // CINE 이미지 파이프라인 패널 상태 (AppSettings 단일 소스 — 이미 존재하는 StateFlow 소비, VM 추가 없음)
     val isFilmSimulationEnabled by appSettingsViewModel.isFilmSimulationEnabled.collectAsStateWithLifecycle()
     val selectedFilmLutId by appSettingsViewModel.selectedFilmLutId.collectAsStateWithLifecycle()
+    val selectedFilmLutLocked by appSettingsViewModel.selectedFilmLutLocked.collectAsStateWithLifecycle()
     val isColorTransferEnabled by appSettingsViewModel.isColorTransferEnabled.collectAsStateWithLifecycle()
     val colorTransferReferenceImagePath by appSettingsViewModel.colorTransferReferenceImagePath.collectAsStateWithLifecycle()
     val lastTimelapseInterval by appSettingsViewModel.lastTimelapseInterval.collectAsStateWithLifecycle()
@@ -448,6 +450,7 @@ fun CameraControlScreen(
                         },
                         isFilmSimulationEnabled = isFilmSimulationEnabled,
                         selectedFilmLutId = selectedFilmLutId,
+                        selectedFilmLutLocked = selectedFilmLutLocked,
                         onToggleFilmSimulation = {
                             // GPU 정리(releaseGpu) 호출 금지 — 전역 싱글톤 파괴 위험(memory 규약).
                             appSettingsViewModel.setFilmSimulationEnabled(!isFilmSimulationEnabled)
@@ -654,6 +657,7 @@ private fun PortraitCameraLayout(
     // CINE 파이프라인 패널 배선 (AppSettings 상태/토글)
     isFilmSimulationEnabled: Boolean = false,
     selectedFilmLutId: String = "",
+    selectedFilmLutLocked: Boolean? = null,
     onToggleFilmSimulation: () -> Unit = {},
     isColorTransferEnabled: Boolean = false,
     colorTransferReferenceImagePath: String? = null,
@@ -898,6 +902,7 @@ private fun PortraitCameraLayout(
                 ImagePipelinePanel(
                     isFilmSimulationEnabled = isFilmSimulationEnabled,
                     selectedFilmLutId = selectedFilmLutId,
+                    selectedFilmLutLocked = selectedFilmLutLocked,
                     onToggleFilmSimulation = onToggleFilmSimulation,
                     isColorTransferEnabled = isColorTransferEnabled,
                     colorTransferReferenceImagePath = colorTransferReferenceImagePath,
@@ -923,6 +928,7 @@ private fun PortraitCameraLayout(
 private fun ImagePipelinePanel(
     isFilmSimulationEnabled: Boolean,
     selectedFilmLutId: String,
+    selectedFilmLutLocked: Boolean?,
     onToggleFilmSimulation: () -> Unit,
     isColorTransferEnabled: Boolean,
     colorTransferReferenceImagePath: String?,
@@ -955,6 +961,8 @@ private fun ImagePipelinePanel(
                 label = stringResource(R.string.pipeline_film_sim),
                 value = filmValue,
                 isOn = isFilmSimulationEnabled,
+                // 필름심 ON 인데 선택 LUT 이 잠겼으면 자동 적용이 스킵되므로 잠금 표기(ON+LUT명 혼란 방지).
+                isLocked = isFilmSimulationEnabled && selectedFilmLutLocked == true,
                 contentDescription = stringResource(R.string.cd_toggle_film_sim),
                 onTap = onToggleFilmSimulation,
                 onLongPress = {
@@ -1008,7 +1016,8 @@ private fun PipelineChip(
     contentDescription: String,
     onTap: () -> Unit,
     onLongPress: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isLocked: Boolean = false
 ) {
     Column(
         modifier = modifier
@@ -1044,13 +1053,26 @@ private fun PipelineChip(
                 color = if (isOn) TextTertiary else TextDisabled
             )
         }
-        Text(
-            text = value,
-            style = MonoMicro,
-            color = if (isOn) TextPrimaryV2 else TextDisabled,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
+        ) {
+            if (isLocked) {
+                Icon(
+                    imageVector = Icons.Outlined.Lock,
+                    contentDescription = stringResource(R.string.fs_selected_film_locked_hint),
+                    tint = TextTertiary,
+                    modifier = Modifier.size(12.dp)
+                )
+            }
+            Text(
+                text = value,
+                style = MonoMicro,
+                color = if (isOn) TextPrimaryV2 else TextDisabled,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 

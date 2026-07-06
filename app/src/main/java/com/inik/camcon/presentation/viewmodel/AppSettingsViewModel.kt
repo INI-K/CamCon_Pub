@@ -9,6 +9,7 @@ import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.usecase.ColorTransferUseCase
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
+import com.inik.camcon.domain.usecase.ObserveEffectiveTierUseCase
 import com.inik.camcon.domain.usecase.PipelineFeature
 import com.inik.camcon.domain.usecase.ToggleDecision
 import com.inik.camcon.domain.usecase.ValidateFeatureAccessUseCase
@@ -43,7 +44,8 @@ class AppSettingsViewModel @Inject constructor(
     private val stopNativeLogUseCase: StopNativeLogUseCase,
     private val readNativeLogUseCase: ReadNativeLogUseCase,
     private val validateImageFormatUseCase: ValidateImageFormatUseCase,
-    private val validateFeatureAccessUseCase: ValidateFeatureAccessUseCase
+    private val validateFeatureAccessUseCase: ValidateFeatureAccessUseCase,
+    private val observeEffectiveTierUseCase: ObserveEffectiveTierUseCase
 ) : ViewModel() {
 
     companion object {
@@ -53,20 +55,11 @@ class AppSettingsViewModel @Inject constructor(
     /**
      * pref 우선 병합 티어 (cold flow).
      *
-     * [subscriptionTier] StateFlow 의 초기값(FREE) 오염 없이 파생 판정(미리보기 접근·정합화·세터)에
+     * [subscriptionTier] StateFlow 의 초기값(FREE) 오염 없이 파생 판정(미리보기 접근·정합화·세터·필름 잠금)에
      * 사용한다. StateFlow 에서 map 하면 초기값 FREE 가 동기 재방출되어 잠금 플래시·오정합화를 만든다.
+     * 병합 로직은 [ObserveEffectiveTierUseCase] 로 추출되어 [FilmEditorViewModel] 과 공유된다(동작 무변경).
      */
-    private val effectiveTierFlow: Flow<SubscriptionTier> = combine(
-        appSettingsRepository.subscriptionTierEnum,
-        getSubscriptionUseCase.getSubscriptionTier()
-    ) { prefTier, firebaseTier ->
-        // Preferences 티어가 FREE 가 아니면 우선 사용, FREE 면 Firebase 값 확인(기존 로직 그대로).
-        if (prefTier != SubscriptionTier.FREE) {
-            prefTier
-        } else {
-            firebaseTier ?: SubscriptionTier.FREE
-        }
-    }
+    private val effectiveTierFlow: Flow<SubscriptionTier> = observeEffectiveTierUseCase()
 
     /** 필름↔색감 스왑/정합화 발생 시 꺼진 쪽을 통지하는 1회성 이벤트. */
     private val _pipelineSwapEvent = MutableSharedFlow<PipelineFeature>(extraBufferCapacity = 1)
@@ -286,6 +279,22 @@ class AppSettingsViewModel @Inject constructor(
                 started = SharingStarted.WhileSubscribed(5000),
                 initialValue = null
             )
+
+    /**
+     * 선택된 기본 필름 LUT 이 현재 티어에서 잠겨 있는지.
+     *
+     * null = 티어 미확정(H1 관례) — 소비처는 `== true` 일 때만 잠금 표기한다. 반드시 [effectiveTierFlow]
+     * 에서 파생한다(초기값 FREE 오염 방지). true 면 수신 자동 적용에서 필름 스텝이 스킵되므로 설정 행·
+     * FILM SIM 칩에 잠금 힌트를 노출해 '켜졌는데 미적용' 혼란을 방지한다.
+     */
+    val selectedFilmLutLocked: StateFlow<Boolean?> =
+        combine(effectiveTierFlow, appSettingsRepository.selectedFilmLutId) { tier, id ->
+            !validateFeatureAccessUseCase.isFilmLutAllowed(tier, id)
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
 
     /**
      * 테마 모드 설정
@@ -555,11 +564,19 @@ class AppSettingsViewModel @Inject constructor(
     }
 
     /**
-     * 선택된 필름 LUT id 설정 (빈 문자열이면 선택 해제)
+     * 선택된 필름 LUT id 설정 (빈 문자열이면 선택 해제).
+     *
+     * 심층 방어: 정상 UI(에디터 select-only 게이트)로는 잠긴 LUT 가 도달할 수 없으나, 티어 게이팅
+     * 단일 지점 불변식을 세터에서도 유지한다. 잠긴 id 는 영속화하지 않는다.
      */
     fun setSelectedFilmLutId(id: String) {
         viewModelScope.launch {
-            appSettingsRepository.setSelectedFilmLutId(id)
+            val tier = effectiveTierFlow.first()
+            if (validateFeatureAccessUseCase.isFilmLutAllowed(tier, id)) {
+                appSettingsRepository.setSelectedFilmLutId(id)
+            } else {
+                Log.w(TAG, "잠긴 필름 LUT 선택 시도 차단 — 영속화 생략")
+            }
         }
     }
 

@@ -7,6 +7,7 @@ import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.usecase.ColorTransferUseCase
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
+import com.inik.camcon.domain.usecase.ObserveEffectiveTierUseCase
 import com.inik.camcon.domain.usecase.ValidateFeatureAccessUseCase
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.domain.usecase.camera.ReadNativeLogUseCase
@@ -66,6 +67,7 @@ class AppSettingsViewModelLiveViewQualityTest {
         context = mockk(relaxed = true)
 
         every { appSettingsRepository.liveViewQuality } returns liveViewQualityFlow
+        every { appSettingsRepository.subscriptionTierEnum } returns flowOf(SubscriptionTier.FREE)
         every { getSubscriptionUseCase.getSubscriptionTier() } returns flowOf(SubscriptionTier.FREE)
     }
 
@@ -83,7 +85,10 @@ class AppSettingsViewModelLiveViewQualityTest {
         stopNativeLogUseCase = mockk<StopNativeLogUseCase>(relaxed = true),
         readNativeLogUseCase = mockk<ReadNativeLogUseCase>(relaxed = true),
         validateImageFormatUseCase = mockk<ValidateImageFormatUseCase>(relaxed = true),
-        validateFeatureAccessUseCase = mockk<ValidateFeatureAccessUseCase>(relaxed = true)
+        validateFeatureAccessUseCase = mockk<ValidateFeatureAccessUseCase>(relaxed = true),
+        observeEffectiveTierUseCase = ObserveEffectiveTierUseCase(
+            appSettingsRepository, getSubscriptionUseCase
+        )
     )
 
     @Test

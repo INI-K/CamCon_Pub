@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -98,6 +99,7 @@ fun FilmContactSheetScreen(
     val categoryFilter by viewModel.categoryFilter.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val selectedLutId by viewModel.selectedLutId.collectAsStateWithLifecycle()
+    val lockedLutIds by viewModel.lockedLutIds.collectAsStateWithLifecycle()
     val sourcePath by viewModel.sourcePath.collectAsStateWithLifecycle()
     val sourceId by viewModel.sourceId.collectAsStateWithLifecycle()
     val previewSize by viewModel.previewSize.collectAsStateWithLifecycle()
@@ -199,6 +201,7 @@ fun FilmContactSheetScreen(
                             thumbnail = thumbnails[lut.id],
                             isFavorite = lut.id in favorites,
                             isSelected = lut.id == selectedLutId,
+                            isLocked = lut.id in lockedLutIds,
                             onClick = { onLutClick(lut.id) },
                             onToggleFavorite = { viewModel.toggleFavorite(lut.id) },
                             onEnter = { viewModel.requestThumbnail(lut.id) },
@@ -316,6 +319,7 @@ private fun ContactSheetCell(
     thumbnail: android.graphics.Bitmap?,
     isFavorite: Boolean,
     isSelected: Boolean,
+    isLocked: Boolean,
     onClick: () -> Unit,
     onToggleFavorite: () -> Unit,
     onEnter: () -> Unit,
@@ -382,7 +386,7 @@ private fun ContactSheetCell(
                 )
             }
 
-            // 선택 = 앰버 프레임 + 좌상단 틱(콘택트시트 언어).
+            // 좌상단 슬롯: 선택 틱(앰버) 우선 > 잠금 배지(PRO 전용 필름). 프리뷰는 보여주고 선택만 차단.
             if (isSelected) {
                 Box(
                     modifier = Modifier
@@ -397,6 +401,23 @@ private fun ContactSheetCell(
                         imageVector = Icons.Default.Check,
                         contentDescription = null,
                         tint = OnAccent,
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
+            } else if (isLocked) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(4.dp)
+                        .size(18.dp)
+                        .clip(RoundedCornerShape(Radius.sm))
+                        .background(Surface0.copy(alpha = 0.55f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Lock,
+                        contentDescription = stringResource(R.string.fs_lut_locked_badge_cd),
+                        tint = TextTertiary,
                         modifier = Modifier.size(12.dp)
                     )
                 }

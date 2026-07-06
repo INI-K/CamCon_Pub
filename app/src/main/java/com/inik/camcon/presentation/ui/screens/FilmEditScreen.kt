@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -105,6 +106,7 @@ fun FilmEditScreen(
     val thumbnails by viewModel.thumbnails.collectAsStateWithLifecycle()
     val favorites by viewModel.favorites.collectAsStateWithLifecycle()
     val selectedLutId by viewModel.selectedLutId.collectAsStateWithLifecycle()
+    val lockedLutIds by viewModel.lockedLutIds.collectAsStateWithLifecycle()
     val filmEdit by viewModel.filmEdit.collectAsStateWithLifecycle()
     val previewBitmap by viewModel.previewBitmap.collectAsStateWithLifecycle()
     val renderedPreview by viewModel.renderedPreview.collectAsStateWithLifecycle()
@@ -272,7 +274,8 @@ fun FilmEditScreen(
                 luts = visibleLuts,
                 thumbnails = thumbnails,
                 selectedLutId = selectedLutId,
-                onSelect = viewModel::selectLut,
+                lockedLutIds = lockedLutIds,
+                onSelect = viewModel::selectLutGated,
                 onEnter = viewModel::requestThumbnail,
                 onLeave = viewModel::cancelThumbnail
             )
@@ -435,6 +438,7 @@ private fun FilmSwitchStrip(
     luts: List<FilmLut>,
     thumbnails: Map<String, Bitmap>,
     selectedLutId: String,
+    lockedLutIds: Set<String>,
     onSelect: (String) -> Unit,
     onEnter: (String) -> Unit,
     onLeave: (String) -> Unit
@@ -460,6 +464,7 @@ private fun FilmSwitchStrip(
                     lut = lut,
                     thumbnail = thumbnails[lut.id],
                     isSelected = lut.id == selectedLutId,
+                    isLocked = lut.id in lockedLutIds,
                     onClick = { onSelect(lut.id) },
                     onEnter = { onEnter(lut.id) },
                     onLeave = { onLeave(lut.id) }
@@ -474,6 +479,7 @@ private fun FilmStripCell(
     lut: FilmLut,
     thumbnail: Bitmap?,
     isSelected: Boolean,
+    isLocked: Boolean,
     onClick: () -> Unit,
     onEnter: () -> Unit,
     onLeave: () -> Unit
@@ -511,6 +517,26 @@ private fun FilmStripCell(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
+            }
+
+            // 잠금 배지(PRO 전용 필름) — 선택되지 않았을 때만 좌상단에 미니 자물쇠.
+            if (isLocked && !isSelected) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(2.dp)
+                        .size(16.dp)
+                        .clip(RoundedCornerShape(Radius.sm))
+                        .background(Surface0.copy(alpha = 0.55f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Lock,
+                        contentDescription = stringResource(R.string.fs_lut_locked_badge_cd),
+                        tint = TextTertiary,
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
             }
         }
         Text(
