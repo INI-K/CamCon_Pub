@@ -17,6 +17,7 @@ import com.inik.camcon.data.network.ptpip.PtpipTetherService
 import com.inik.camcon.data.network.ptpip.authentication.NikonAuthenticationService
 import com.inik.camcon.data.network.ptpip.connection.PtpipConnectionManager
 import com.inik.camcon.data.network.ptpip.discovery.PtpipDiscoveryService
+import com.inik.camcon.data.network.ptpip.discovery.SsdpDiscoveryService
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.data.repository.managers.CameraEventManager
 import com.inik.camcon.data.repository.managers.CameraConnectionManager
@@ -148,8 +149,9 @@ object AppModule {
     @Singleton
     fun providePtpipDiscoveryService(
         @ApplicationContext context: Context,
-        wifiHelper: WifiNetworkHelper
-    ) = PtpipDiscoveryService(context, wifiHelper)
+        wifiHelper: WifiNetworkHelper,
+        ssdpDiscoveryService: SsdpDiscoveryService
+    ) = PtpipDiscoveryService(context, wifiHelper, ssdpDiscoveryService)
 
     @Provides
     @Singleton

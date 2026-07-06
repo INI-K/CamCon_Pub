@@ -8,6 +8,7 @@ import android.util.Log
 import com.inik.camcon.data.constants.PtpipConstants
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.di.IoDispatcher
+import com.inik.camcon.domain.model.CameraVendor
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.utils.LogMask
 import kotlinx.coroutines.CoroutineDispatcher
@@ -34,6 +35,7 @@ import kotlin.coroutines.resume
 class PtpipDiscoveryService @Inject constructor(
     private val context: Context,
     private val wifiHelper: WifiNetworkHelper,
+    private val ssdpDiscoveryService: SsdpDiscoveryService,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
     private val nsdManager = context.getSystemService(Context.NSD_SERVICE) as NsdManager
@@ -53,6 +55,7 @@ class PtpipDiscoveryService @Inject constructor(
         private const val TAG = "PtpipDiscoveryService"
         private const val PREF_LAST_CAMERA_IP = "last_camera_ip"
         private const val PREF_LAST_CAMERA_NAME = "last_camera_name"
+        private const val PREF_LAST_CAMERA_SERVICE_TYPE = "last_camera_service_type"
         private const val PREF_LAST_SUCCESS_TIME = "last_success_time"
         private const val CACHE_VALID_DURATION_MS = 24 * 60 * 60 * 1000L // 24시간
 
@@ -142,9 +145,22 @@ class PtpipDiscoveryService @Inject constructor(
                     return@withContext cameras
                 }
 
-                // 3단계: STA 모드에서 mDNS 검색
-                Log.d(TAG, "3단계: STA 모드 - mDNS를 사용한 카메라 자동 검색")
-                Log.d(TAG, "mDNS 서비스 검색 시작...")
+                // 3단계: STA 모드에서 mDNS + SSDP 병행 검색
+                Log.d(TAG, "3단계: STA 모드 - mDNS/SSDP 병행 카메라 자동 검색")
+
+                // SSDP는 mDNS와 병행 실행 — mDNS에 광고하지 않는 제조사
+                // (Canon SSDP/UPnP, Sony 구형, Panasonic)를 연결 전에 판별한다.
+                val ssdpDeferred = async {
+                    try {
+                        ssdpDiscoveryService.discover()
+                    } catch (ce: kotlinx.coroutines.CancellationException) {
+                        // 협력 취소는 반드시 전파 — 삼키면 취소가 빈 결과로 위장된다.
+                        throw ce
+                    } catch (e: Exception) {
+                        Log.w(TAG, "SSDP 검색 실패: ${e.message}")
+                        emptyList()
+                    }
+                }
 
                 // mDNS로 여러 PTP 서비스 타입 동시 검색 (각 서비스가 개별 타임아웃을 가짐)
                 val discoveredServices = discoverPtpServicesMultiType()
@@ -160,26 +176,77 @@ class PtpipDiscoveryService @Inject constructor(
 
                         if (hostAddress != null && port > 0) {
                             val cameraName = extractCameraName(serviceName, hostAddress)
+                            val verdict = CameraVendorClassifier.classifyMdns(
+                                serviceName, serviceInfo.serviceType
+                            )
+
+                            // 실측 확보용 덤프: 실기별 mDNS 광고 실태(타입·TXT)를 남긴다.
+                            // 니콘이 실제로 어떤 서비스 타입/TXT를 광고하는지 저장소에 실측이
+                            // 없어(2026-07-06 조사) 이 로그로 갭을 메꾼다. 이름/IP는 마스킹.
+                            val txt = serviceInfo.attributes.entries.joinToString {
+                                "${it.key}=${it.value?.toString(Charsets.UTF_8).orEmpty()}"
+                            }
+                            Log.i(
+                                TAG,
+                                "VENDOR_MDNS_DUMP name=${LogMask.id(serviceName)} " +
+                                    "type=${serviceInfo.serviceType} verdict=$verdict txt={$txt}"
+                            )
 
                             val camera = PtpipCamera(
                                 ipAddress = hostAddress,
                                 port = port,
                                 name = cameraName,
                                 isOnline = true,
-                                discoveredServiceType = serviceInfo.serviceType  // mDNS 서비스 타입 저장
+                                discoveredServiceType = serviceInfo.serviceType,  // mDNS 서비스 타입 저장
+                                vendorVerdict = verdict
                             )
                             cameras.add(camera)
                             Log.i(TAG, "카메라 발견: ${LogMask.id(cameraName)} (${LogMask.id(hostAddress)}:$port)")
 
                             // 첫 번째 발견된 카메라를 캐시에 저장
                             if (cameras.size == 1) {
-                                saveCachedIP(hostAddress, cameraName)
+                                saveCachedIP(hostAddress, cameraName, serviceInfo.serviceType)
                             }
                         } else {
                             Log.w(TAG, "유효하지 않은 서비스 정보: ${LogMask.id(serviceName)}")
                         }
                     } catch (e: Exception) {
                         Log.w(TAG, "서비스 정보 처리 중 오류: ${e.message}")
+                    }
+                }
+
+                // SSDP 결과 병합 — 같은 IP는 mDNS 항목을 유지하되 verdict만 신뢰도 높은 쪽으로 승격
+                val ssdpCameras = ssdpDeferred.await()
+                for (ssdpCamera in ssdpCameras) {
+                    val existingIdx = cameras.indexOfFirst { it.ipAddress == ssdpCamera.ipAddress }
+                    if (existingIdx < 0) {
+                        // TV/가전 잡음 차단: Sony Bravia가 ScalarWebAPI URN을, Panasonic
+                        // 가전이 rootdevice를 광고하므로 PTP/IP 포트(15740)가 실제로 열린
+                        // 기기만 목록에 올린다. testPtpipConnection은 순수 TCP connect라
+                        // InitCommandRequest를 보내지 않아 니콘 세션락에도 안전하다.
+                        if (testPtpipConnection(ssdpCamera.ipAddress, ssdpCamera.port)) {
+                            cameras.add(ssdpCamera)
+                            Log.i(
+                                TAG,
+                                "카메라 발견(SSDP): ${ssdpCamera.vendorVerdict.vendor} " +
+                                    "(${LogMask.id(ssdpCamera.ipAddress)}:${ssdpCamera.port})"
+                            )
+                        } else {
+                            Log.d(
+                                TAG,
+                                "SSDP 발견 기기 PTP/IP 포트 미개방 — 목록 제외: " +
+                                    "${ssdpCamera.vendorVerdict.vendor} (${LogMask.id(ssdpCamera.ipAddress)})"
+                            )
+                        }
+                    } else if (
+                        cameras[existingIdx].vendorVerdict.vendor != CameraVendor.NIKON &&
+                        CameraVendorClassifier.confidenceRank(ssdpCamera.vendorVerdict) >
+                        CameraVendorClassifier.confidenceRank(cameras[existingIdx].vendorVerdict)
+                    ) {
+                        // NIKON verdict는 보존 — 타 벤더 SSDP 응답이 덮으면 STA 인증이
+                        // 생략되어 첫 페어링이 InitFail 0x1로 파손된다.
+                        cameras[existingIdx] =
+                            cameras[existingIdx].copy(vendorVerdict = ssdpCamera.vendorVerdict)
                     }
                 }
 
@@ -231,11 +298,16 @@ class PtpipDiscoveryService @Inject constructor(
 
         if (success) {
             Log.i(TAG, "캐시된 IP 연결 성공")
+            // 캐시된 서비스 타입으로 재판별 — 개명 니콘(_nikon._tcp로만 CONFIRMED)이
+            // 캐시 경로에서 verdict를 잃고 STA 인증을 건너뛰는 비일관을 막는다.
+            val cachedType = prefs.getString(PREF_LAST_CAMERA_SERVICE_TYPE, null)
             PtpipCamera(
                 ipAddress = cachedIP,
                 port = 15740,
                 name = "$cachedName (캐시)",
-                isOnline = true
+                isOnline = true,
+                discoveredServiceType = cachedType,
+                vendorVerdict = CameraVendorClassifier.classifyMdns(cachedName, cachedType)
             )
         } else {
             Log.d(TAG, "캐시된 IP 연결 실패")
@@ -246,10 +318,11 @@ class PtpipDiscoveryService @Inject constructor(
     /**
      * 캐시에 IP 저장
      */
-    private fun saveCachedIP(ipAddress: String, cameraName: String) {
+    private fun saveCachedIP(ipAddress: String, cameraName: String, serviceType: String? = null) {
         prefs.edit().apply {
             putString(PREF_LAST_CAMERA_IP, ipAddress)
             putString(PREF_LAST_CAMERA_NAME, cameraName)
+            putString(PREF_LAST_CAMERA_SERVICE_TYPE, serviceType)
             putLong(PREF_LAST_SUCCESS_TIME, System.currentTimeMillis())
             apply()
         }
@@ -283,10 +356,20 @@ class PtpipDiscoveryService @Inject constructor(
 
             Log.d(TAG, "모든 mDNS 검색 완료: 총 ${allServices.size}개 서비스 발견")
 
-            // 중복 제거 (같은 IP:Port 조합)
+            // 중복 제거 (같은 IP:Port 조합) — 제조사 특정 타입(_nikon._tcp 등)이
+            // 표준 _ptp._tcp에 도착 순서로 밀려 유실되지 않도록 신뢰도 높은 쪽을 남긴다.
             val uniqueServices = allServices
                 .filter { it.host?.hostAddress != null }
-                .distinctBy { "${it.host!!.hostAddress}:${it.port}" }
+                .groupBy { "${it.host!!.hostAddress}:${it.port}" }
+                .map { (_, group) ->
+                    group.maxBy { svc ->
+                        CameraVendorClassifier.confidenceRank(
+                            CameraVendorClassifier.classifyMdns(
+                                svc.serviceName.orEmpty(), svc.serviceType
+                            )
+                        )
+                    }
+                }
 
             Log.d(TAG, "중복 제거 후: ${uniqueServices.size}개 서비스")
             uniqueServices
