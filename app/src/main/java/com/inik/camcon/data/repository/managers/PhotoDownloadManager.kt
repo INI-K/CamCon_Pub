@@ -344,13 +344,22 @@ class PhotoDownloadManager @Inject constructor(
     ): Result<CapturedPhoto> {
         return withContext(ioDispatcher) {
             try {
-                Log.d("사진다운로드매니저", "카메라에서 사진 다운로드 시작: ${LogMask.path(photoId)}")
+                val isRaw = validateImageFormatUseCase.isRawFile(photoId)
+                val startedAtMs = System.currentTimeMillis()
+                Log.d(
+                    "사진다운로드매니저",
+                    "카메라에서 사진 다운로드 시작: ${LogMask.path(photoId)}${if (isRaw) " [RAW]" else ""}"
+                )
 
                 // 네이티브 코드를 통해 실제 파일 데이터 다운로드
                 val imageData = nativeDataSource.downloadCameraPhoto(photoId)
 
                 if (imageData != null && imageData.isNotEmpty()) {
-                    Log.d("사진다운로드매니저", "네이티브 다운로드 성공: ${imageData.size} bytes")
+                    Log.d(
+                        "사진다운로드매니저",
+                        "네이티브 다운로드 성공: ${imageData.size} bytes" +
+                            "${if (isRaw) " [RAW]" else ""} (${System.currentTimeMillis() - startedAtMs}ms)"
+                    )
 
                     // 임시 파일 생성
                     val fileName = photoId.substringAfterLast("/")
@@ -467,6 +476,10 @@ class PhotoDownloadManager @Inject constructor(
                 // RAW 게이팅 단일 지점 방어 — 미지원 RAW 는 저장하지 않는다.
                 if (!isDownloadAllowedByGating(fileName)) {
                     return@withContext null
+                }
+
+                if (validateImageFormatUseCase.isRawFile(fileName)) {
+                    Log.i(TAG, "💾 RAW 수신 저장 시작: $fileName (${imageData.size / 1024}KB)")
                 }
 
                 val startTime = System.currentTimeMillis()

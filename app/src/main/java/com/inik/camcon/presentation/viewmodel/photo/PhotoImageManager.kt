@@ -273,6 +273,7 @@ class PhotoImageManager @Inject constructor(
         managerScope.launch {
             // 다운로드 성공 여부 — finally 에서 결과 이벤트 emit.
             var downloadSucceeded = false
+            val startedAtMs = System.currentTimeMillis()
             try {
                 val imageData = withContext(ioDispatcher) {
                     downloadCameraPhotoUseCase(photoPath)
@@ -325,7 +326,11 @@ class PhotoImageManager @Inject constructor(
                 _downloadingImages.value = _downloadingImages.value - photoPath
                 // 성공/실패 결과 통지 — 실패·빈 결과는 캐시에 넣지 않으므로 재시도 가능(필수1).
                 _downloadResult.tryEmit(DownloadResult(photoPath, isSuccess = downloadSucceeded))
-                Log.d(TAG, "다운로드 상태 정리 완료: ${LogMask.path(photoPath)} (성공: $downloadSucceeded)")
+                val elapsedMs = System.currentTimeMillis() - startedAtMs
+                Log.d(
+                    TAG,
+                    "다운로드 상태 정리 완료: ${LogMask.path(photoPath)} (성공: $downloadSucceeded, ${elapsedMs}ms)"
+                )
             }
         }
     }
