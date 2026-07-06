@@ -506,31 +506,19 @@ private fun LocalThumbnailItemWrapper(
             )
             .clip(RoundedCornerShape(Radius.sm))
     ) {
-        val bitmap = remember(photo.path) {
-            android.graphics.BitmapFactory.decodeFile(photo.path)
-        }
-
-        // F28: 수동 디코딩한 비트맵을 key 변경/컴포지션 이탈 시 명시적으로 recycle
-        DisposableEffect(photo.path) {
-            onDispose {
-                try {
-                    bitmap?.let { if (!it.isRecycled) it.recycle() }
-                } catch (e: Exception) {
-                    Log.w("FullScreenThumbnail", "썸네일 Bitmap recycle 실패: ${photo.name}", e)
-                }
-            }
-        }
-
-        if (bitmap != null) {
-            Image(
-                bitmap = bitmap.asImageBitmap(),
-                contentDescription = photo.name,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-        } else {
-            PhotoThumbnailLoadingState()
-        }
+        // 원본(24MP) 통디코딩 금지: BitmapFactory.decodeFile은 컴포지션(메인스레드)에서
+        // 장당 ~0.4초 + ~97MB 소프트웨어 비트맵을 만들어 프레임 정지(Davey 수초)를 유발한다.
+        // 셀 크기(240px≈80dp×3x)로 샘플링 디코딩(IO 스레드)·메모리캐시 재사용.
+        coil.compose.AsyncImage(
+            model = coil.request.ImageRequest.Builder(LocalContext.current)
+                .data(java.io.File(photo.path))
+                .size(240)
+                .crossfade(true)
+                .build(),
+            contentDescription = photo.name,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
 
         if (isSelected) {
             Box(
