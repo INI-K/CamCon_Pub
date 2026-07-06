@@ -4,6 +4,8 @@ import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.functions.FirebaseFunctions
+import com.google.firebase.functions.FirebaseFunctionsException
 import com.inik.camcon.domain.model.ReferralCode
 import com.inik.camcon.domain.model.Subscription
 import com.inik.camcon.domain.model.SubscriptionTier
@@ -23,7 +25,8 @@ import javax.inject.Singleton
 @Singleton
 class AuthRepositoryImpl @Inject constructor(
     private val firebaseAuth: FirebaseAuth,
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val functions: FirebaseFunctions
 ) : AuthRepository {
 
     companion object {
@@ -32,6 +35,7 @@ class AuthRepositoryImpl @Inject constructor(
         private const val SUBSCRIPTIONS_COLLECTION = "subscriptions"
         private const val REFERRALS_COLLECTION = "referrals"
         private const val REFERRAL_CODES_COLLECTION = "referral_codes"
+        private const val REDEEM_REFERRAL_FUNCTION = "redeemReferralCode"
 
         /**
          * PII(UID/식별자) 마스킹: 앞 4글자만 노출 + ***.
@@ -403,24 +407,39 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun updateUserReferralCode(userId: String, referralCode: String): Boolean {
+    /**
+     * 추천코드 적용 — Cloud Function(redeemReferralCode)에 위임.
+     * 서버가 referral_codes 검증·소비 및 subscriptions 티어부여를 단일 트랜잭션으로 처리한다.
+     * 클라이언트 직접 Firestore 접근은 firestore.rules(write=false)로 차단되므로 이 경로만 유효하다.
+     */
+    override suspend fun redeemReferralCode(code: String): Result<SubscriptionTier?> {
         return try {
-            firestore.collection(USERS_COLLECTION)
-                .document(userId)
-                .update(
-                    mapOf(
-                        "referralCode" to referralCode,
-                        "referralCodeUsedAt" to Date(),
-                        "updatedAt" to Date()
-                    )
-                )
+            val payload = mapOf("code" to code)
+            val result = functions
+                .getHttpsCallable(REDEEM_REFERRAL_FUNCTION)
+                .call(payload)
                 .await()
 
-            Log.i(TAG, "사용자 추천 코드 정보 업데이트 성공: ${maskId(userId)} → $referralCode")
-            true
+            @Suppress("UNCHECKED_CAST")
+            val data = result.data as? Map<String, Any?>
+            val tierName = data?.get("tier") as? String
+            val tier = tierName?.let {
+                try {
+                    SubscriptionTier.valueOf(it)
+                } catch (e: IllegalArgumentException) {
+                    null
+                }
+            }
+
+            Log.i(TAG, "추천코드 적용 성공: $code → ${tier?.name ?: "(no tier)"}")
+            Result.success(tier)
+        } catch (e: FirebaseFunctionsException) {
+            // 서버 HttpsError 코드를 그대로 보존해 상위(UseCase)가 사유를 판별할 수 있게 한다.
+            Log.w(TAG, "추천코드 적용 거부: $code (code=${e.code})", e)
+            Result.failure(e)
         } catch (e: Exception) {
-            Log.e(TAG, "사용자 추천 코드 정보 업데이트 실패: ${maskId(userId)}", e)
-            false
+            Log.e(TAG, "추천코드 적용 실패: $code", e)
+            Result.failure(e)
         }
     }
 
@@ -569,45 +588,6 @@ class AuthRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "사용된 추천 코드 조회 실패", e)
             emptyList()
-        }
-    }
-
-    override suspend fun validateReferralCode(code: String): ReferralCode? {
-        return try {
-            val doc = firestore.collection(REFERRAL_CODES_COLLECTION)
-                .document(code)
-                .get()
-                .await()
-
-            if (doc.exists() && doc.data != null) {
-                mapDocumentToReferralCode(doc.id, doc.data)
-            } else {
-                null
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "추천 코드 검증 실패: $code", e)
-            null
-        }
-    }
-
-    override suspend fun useReferralCode(code: String, userId: String): Boolean {
-        return try {
-            val updateData = mapOf(
-                "isUsed" to true,
-                "usedBy" to userId,
-                "usedAt" to Date()
-            )
-
-            firestore.collection(REFERRAL_CODES_COLLECTION)
-                .document(code)
-                .update(updateData)
-                .await()
-
-            Log.i(TAG, "추천 코드 사용 처리 성공: $code by ${maskId(userId)}")
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "추천 코드 사용 처리 실패: $code", e)
-            false
         }
     }
 
