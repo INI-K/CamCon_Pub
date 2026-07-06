@@ -17,4 +17,7 @@
     <string name="raw_gating_tier_label_REFERRER">REFERRER</string>
     <string name="raw_gating_tier_label_ADMIN">ADMIN</string>
     <string name="preview_retry_single">Retry</string>
+    <string name="photo_preview_locked_title">Preview is a PRO feature</string>
+    <string name="photo_preview_locked_body">Live photo preview is available with a PRO subscription. Upgrade options are coming soon.</string>
+    <string name="photo_preview_locked_tab_badge_cd">Locked — PRO feature</string>
 </resources>

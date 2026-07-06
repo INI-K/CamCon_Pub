@@ -48,7 +48,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -110,6 +113,7 @@ import com.inik.camcon.presentation.theme.LocalWindowSizeClass
 import com.inik.camcon.presentation.theme.isMediumOrWider
 import com.inik.camcon.presentation.ui.screens.CameraControlScreen
 import com.inik.camcon.presentation.ui.screens.MyPhotosScreen
+import com.inik.camcon.presentation.ui.screens.PhotoPreviewLockedScreen
 import com.inik.camcon.presentation.ui.screens.PhotoPreviewScreen
 import com.inik.camcon.presentation.ui.screens.components.PtpTimeoutDialog
 import com.inik.camcon.presentation.ui.screens.components.UsbInitializationOverlay
@@ -251,6 +255,9 @@ fun MainScreen(
     // 테마 모드 상태
     val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
     val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
+
+    // 미리보기 탭 접근 여부 — null(미확정)/true(허용)/false(잠금). 탭 배지·라우트 분기에 사용.
+    val photoPreviewAccess by appSettingsViewModel.photoPreviewAccess.collectAsStateWithLifecycle()
 
     // 시스템 바 인셋 계산 - 기종별 대응
     val systemBarsPadding = WindowInsets.systemBars.asPaddingValues()
@@ -477,13 +484,35 @@ fun MainScreen(
                     ) {
                         items.forEach { screen ->
                             val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                            val showLockBadge =
+                                screen == BottomNavItem.PhotoPreview && photoPreviewAccess == false
                             NavigationBarItem(
                                 icon = {
-                                    NavBarIcon(
-                                        icon = screen.icon,
-                                        contentDescription = stringResource(screen.titleRes),
-                                        selected = selected
-                                    )
+                                    if (showLockBadge) {
+                                        BadgedBox(
+                                            badge = {
+                                                Badge {
+                                                    Icon(
+                                                        Icons.Default.Lock,
+                                                        contentDescription = stringResource(R.string.photo_preview_locked_tab_badge_cd),
+                                                        modifier = Modifier.size(12.dp)
+                                                    )
+                                                }
+                                            }
+                                        ) {
+                                            NavBarIcon(
+                                                icon = screen.icon,
+                                                contentDescription = stringResource(screen.titleRes),
+                                                selected = selected
+                                            )
+                                        }
+                                    } else {
+                                        NavBarIcon(
+                                            icon = screen.icon,
+                                            contentDescription = stringResource(screen.titleRes),
+                                            selected = selected
+                                        )
+                                    }
                                 },
                                 label = {
                                     Text(stringResource(screen.titleRes))
@@ -531,7 +560,14 @@ fun MainScreen(
                     },
                     popExitTransition = { fadeOut(animationSpec = tween(90)) }
                 ) {
-                    composable(BottomNavItem.PhotoPreview.route) { PhotoPreviewScreen() }
+                    composable(BottomNavItem.PhotoPreview.route) {
+                        when (photoPreviewAccess) {
+                            true -> PhotoPreviewScreen()
+                            false -> PhotoPreviewLockedScreen()
+                            // pref 첫 read 까지 수 ms — 빈 화면(잘못된 분기/플래시 방지).
+                            null -> Box(Modifier.fillMaxSize())
+                        }
+                    }
                     composable(BottomNavItem.CameraControl.route) {
                         // AP 모드와 USB 모드 모두 동일한 CameraControlScreen 사용
                         CameraControlScreen(
@@ -574,12 +610,33 @@ fun MainScreen(
                     ) {
                         items.forEach { screen ->
                             val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                            val showLockBadge =
+                                screen == BottomNavItem.PhotoPreview && photoPreviewAccess == false
                             NavigationRailItem(
                                 icon = {
-                                    Icon(
-                                        screen.icon,
-                                        contentDescription = stringResource(screen.titleRes)
-                                    )
+                                    if (showLockBadge) {
+                                        BadgedBox(
+                                            badge = {
+                                                Badge {
+                                                    Icon(
+                                                        Icons.Default.Lock,
+                                                        contentDescription = stringResource(R.string.photo_preview_locked_tab_badge_cd),
+                                                        modifier = Modifier.size(12.dp)
+                                                    )
+                                                }
+                                            }
+                                        ) {
+                                            Icon(
+                                                screen.icon,
+                                                contentDescription = stringResource(screen.titleRes)
+                                            )
+                                        }
+                                    } else {
+                                        Icon(
+                                            screen.icon,
+                                            contentDescription = stringResource(screen.titleRes)
+                                        )
+                                    }
                                 },
                                 label = {
                                     Text(stringResource(screen.titleRes))

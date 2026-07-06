@@ -7,6 +7,7 @@ import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.usecase.ColorTransferUseCase
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
+import com.inik.camcon.domain.usecase.ValidateFeatureAccessUseCase
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.domain.usecase.camera.ReadNativeLogUseCase
 import com.inik.camcon.domain.usecase.camera.StartNativeLogUseCase
@@ -81,7 +82,8 @@ class AppSettingsViewModelLiveViewQualityTest {
         startNativeLogUseCase = mockk<StartNativeLogUseCase>(relaxed = true),
         stopNativeLogUseCase = mockk<StopNativeLogUseCase>(relaxed = true),
         readNativeLogUseCase = mockk<ReadNativeLogUseCase>(relaxed = true),
-        validateImageFormatUseCase = mockk<ValidateImageFormatUseCase>(relaxed = true)
+        validateImageFormatUseCase = mockk<ValidateImageFormatUseCase>(relaxed = true),
+        validateFeatureAccessUseCase = mockk<ValidateFeatureAccessUseCase>(relaxed = true)
     )
 
     @Test

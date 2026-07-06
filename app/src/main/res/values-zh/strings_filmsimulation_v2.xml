@@ -36,4 +36,8 @@
     <string name="fs_adj_saturation">饱和度</string>
     <string name="fs_adj_grain">颗粒</string>
     <string name="fs_adj_chromatic_aberration">色差</string>
+
+    <!-- 필름↔색감 배타 스왑 안내(정합화 통지 겸용) -->
+    <string name="pipeline_swap_color_disabled">色彩转移已关闭 — 当前套餐无法与胶片模拟同时使用。</string>
+    <string name="pipeline_swap_film_disabled">胶片模拟已关闭 — 当前套餐无法与色彩转移同时使用。</string>
 </resources>

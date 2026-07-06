@@ -16,4 +16,7 @@
     <string name="raw_gating_tier_label_REFERRER">REFERRER</string>
     <string name="raw_gating_tier_label_ADMIN">ADMIN</string>
     <string name="preview_retry_single">再試行</string>
+    <string name="photo_preview_locked_title">プレビューはPRO機能です</string>
+    <string name="photo_preview_locked_body">リアルタイム写真プレビューはPROサブスクリプションでご利用いただけます。アップグレードは今後対応予定です。</string>
+    <string name="photo_preview_locked_tab_badge_cd">ロック中 — PRO機能</string>
 </resources>

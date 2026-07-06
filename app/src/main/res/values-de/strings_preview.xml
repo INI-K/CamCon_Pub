@@ -16,4 +16,7 @@
     <string name="raw_gating_tier_label_REFERRER">REFERRER</string>
     <string name="raw_gating_tier_label_ADMIN">ADMIN</string>
     <string name="preview_retry_single">Wiederholen</string>
+    <string name="photo_preview_locked_title">Vorschau ist eine PRO-Funktion</string>
+    <string name="photo_preview_locked_body">Die Live-Fotovorschau ist mit einem PRO-Abonnement verfügbar. Upgrade-Optionen folgen in Kürze.</string>
+    <string name="photo_preview_locked_tab_badge_cd">Gesperrt — PRO-Funktion</string>
 </resources>
