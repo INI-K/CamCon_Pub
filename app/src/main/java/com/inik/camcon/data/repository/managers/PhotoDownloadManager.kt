@@ -23,6 +23,7 @@ import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.usecase.ColorTransferUseCase
 import com.inik.camcon.domain.usecase.FilmLutUseCase
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
+import com.inik.camcon.domain.usecase.ValidateFeatureAccessUseCase
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.domain.manager.PhotoCaptureEventManager
 import com.inik.camcon.utils.Constants
@@ -57,6 +58,7 @@ class PhotoDownloadManager @Inject constructor(
     private val photoCaptureEventManager: PhotoCaptureEventManager,
     private val getSubscriptionUseCase: GetSubscriptionUseCase,
     private val validateImageFormatUseCase: ValidateImageFormatUseCase,
+    private val validateFeatureAccessUseCase: ValidateFeatureAccessUseCase,
     private val transferProgressTracker: TransferProgressTracker,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
@@ -501,8 +503,16 @@ class PhotoDownloadManager @Inject constructor(
                 // 현재 구독 티어 확인
                 val currentTier = getSubscriptionUseCase.getSubscriptionTier().first()
 
+                // 필름/색감 플래그를 티어 조회 직후로 모아 resolveActivePipeline 1회로 판정한다.
+                // (비허용 티어에서 '둘 다 ON' 이면 색감을 이번 다운로드에 한해 마스킹 — 영속화 없음.
+                //  신규 다운로드 경로 추가 시에도 두 플래그를 datasource 에서 직접 읽지 말고 이 경유로 처리할 것.)
+                val rawColorOn = appPreferencesDataSource.isColorTransferEnabled.first()
+                val rawFilmOn = appPreferencesDataSource.isFilmSimulationEnabled.first()
+                val activePipeline =
+                    validateFeatureAccessUseCase.resolveActivePipeline(currentTier, rawFilmOn, rawColorOn)
+
                 // 색감 전송 적용 확인 (JPEG 파일만)
-                val isColorTransferEnabled = appPreferencesDataSource.isColorTransferEnabled.first()
+                val isColorTransferEnabled = activePipeline.colorEnabled
                 val referenceImagePath =
                     appPreferencesDataSource.colorTransferReferenceImagePath.first()
                 val colorTransferIntensity = appPreferencesDataSource.colorTransferIntensity.first()
@@ -613,7 +623,8 @@ class PhotoDownloadManager @Inject constructor(
                 }
 
                 // 필름 시뮬레이션 적용 (색감 전송 결과 또는 이전 단계 산출물에 LUT 적용)
-                val isFilmSimEnabled = appPreferencesDataSource.isFilmSimulationEnabled.first()
+                // 티어 마스킹된 값 사용(위 resolveActivePipeline 1회 판정) — datasource 직접 read 금지.
+                val isFilmSimEnabled = activePipeline.filmEnabled
                 val selectedFilmLutId = appPreferencesDataSource.selectedFilmLutId.first()
                 val filmSimIntensity = appPreferencesDataSource.filmSimulationIntensity.first()
                 val filmInputPath = processedPath
@@ -828,8 +839,16 @@ class PhotoDownloadManager @Inject constructor(
             // 현재 구독 티어 확인
             val currentTier = getSubscriptionUseCase.getSubscriptionTier().first()
 
+            // 필름/색감 플래그를 티어 조회 직후로 모아 resolveActivePipeline 1회로 판정한다.
+            // (비허용 티어에서 '둘 다 ON' 이면 색감을 이번 다운로드에 한해 마스킹 — 영속화 없음.
+            //  신규 다운로드 경로 추가 시에도 두 플래그를 datasource 에서 직접 읽지 말고 이 경유로 처리할 것.)
+            val rawColorOn = appPreferencesDataSource.isColorTransferEnabled.first()
+            val rawFilmOn = appPreferencesDataSource.isFilmSimulationEnabled.first()
+            val activePipeline =
+                validateFeatureAccessUseCase.resolveActivePipeline(currentTier, rawFilmOn, rawColorOn)
+
             // 색감 전송 적용 확인 (JPEG 파일만)
-            val isColorTransferEnabled = appPreferencesDataSource.isColorTransferEnabled.first()
+            val isColorTransferEnabled = activePipeline.colorEnabled
             val referenceImagePath =
                 appPreferencesDataSource.colorTransferReferenceImagePath.first()
             val colorTransferIntensity = appPreferencesDataSource.colorTransferIntensity.first()
@@ -920,7 +939,8 @@ class PhotoDownloadManager @Inject constructor(
             }
 
             // 필름 시뮬레이션 적용 (색감 전송 결과 또는 이전 단계 산출물에 LUT 적용)
-            val isFilmSimEnabled = appPreferencesDataSource.isFilmSimulationEnabled.first()
+            // 티어 마스킹된 값 사용(위 resolveActivePipeline 1회 판정) — datasource 직접 read 금지.
+            val isFilmSimEnabled = activePipeline.filmEnabled
             val selectedFilmLutId = appPreferencesDataSource.selectedFilmLutId.first()
             val filmSimIntensity = appPreferencesDataSource.filmSimulationIntensity.first()
             if (isFilmSimEnabled &&

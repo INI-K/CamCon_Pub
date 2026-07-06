@@ -36,4 +36,8 @@
     <string name="fs_adj_saturation">彩度</string>
     <string name="fs_adj_grain">グレイン</string>
     <string name="fs_adj_chromatic_aberration">色収差</string>
+
+    <!-- 필름↔색감 배타 스왑 안내(정합화 통지 겸용) -->
+    <string name="pipeline_swap_color_disabled">色転送をオフにしました — 現在のプランではフィルムシミュレーションと同時に使用できません。</string>
+    <string name="pipeline_swap_film_disabled">フィルムシミュレーションをオフにしました — 現在のプランでは色転送と同時に使用できません。</string>
 </resources>

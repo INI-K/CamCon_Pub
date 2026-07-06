@@ -90,6 +90,7 @@ import com.inik.camcon.R
 import com.inik.camcon.domain.model.LiveViewQuality
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.model.User
+import com.inik.camcon.domain.usecase.PipelineFeature
 import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.AccentMuted
 import com.inik.camcon.presentation.theme.BodySmall
@@ -321,6 +322,18 @@ fun SettingsScreen(
 
     val accountDeleteSuccessText = stringResource(R.string.account_delete_success)
     val accountDeleteFailedTemplate = stringResource(R.string.account_delete_failed)
+
+    // 필름↔색감 배타 스왑 안내 — 기존 advisoryToastMessage 호스트 재사용(신규 토스트 추가 금지).
+    val pipelineSwapColorDisabledText = stringResource(R.string.pipeline_swap_color_disabled)
+    val pipelineSwapFilmDisabledText = stringResource(R.string.pipeline_swap_film_disabled)
+    LaunchedEffect(Unit) {
+        appSettingsViewModel.pipelineSwapEvent.collect { disabled ->
+            advisoryToastMessage = when (disabled) {
+                PipelineFeature.COLOR_TRANSFER -> pipelineSwapColorDisabledText
+                PipelineFeature.FILM_SIMULATION -> pipelineSwapFilmDisabledText
+            }
+        }
+    }
 
     Scaffold(
         topBar = {

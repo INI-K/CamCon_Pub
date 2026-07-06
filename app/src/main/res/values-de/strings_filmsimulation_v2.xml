@@ -36,4 +36,8 @@
     <string name="fs_adj_saturation">Sättigung</string>
     <string name="fs_adj_grain">Korn</string>
     <string name="fs_adj_chromatic_aberration">Chromatische Aberration</string>
+
+    <!-- 필름↔색감 배타 스왑 안내(정합화 통지 겸용) -->
+    <string name="pipeline_swap_color_disabled">Farbübertragung deaktiviert — dein aktueller Tarif kann sie nicht zusammen mit der Filmsimulation verwenden.</string>
+    <string name="pipeline_swap_film_disabled">Filmsimulation deaktiviert — dein aktueller Tarif kann sie nicht zusammen mit der Farbübertragung verwenden.</string>
 </resources>
