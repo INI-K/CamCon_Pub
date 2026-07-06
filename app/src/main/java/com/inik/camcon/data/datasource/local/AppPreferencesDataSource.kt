@@ -237,10 +237,21 @@ class AppPreferencesDataSource @Inject constructor(
     /**
      * 구독 티어 (기본값: null).
      * 암호화 저장소에서 읽는다. 레거시 평문 값이 있으면 1회 이관 후 반환.
+     * EncryptedSharedPreferences는 변경 통지가 없어 setter 갱신을 구독자에게
+     * 재방출하기 위해 MutableStateFlow를 경유한다(최초 구독 시 디스크 값 시드).
+     * 값 타입이 nullable(String?)이라 미시드 판별용 홀더로 감싼다.
      */
+    private class TierHolder(val value: String?)
+
+    private val subscriptionTierState = MutableStateFlow<TierHolder?>(null)
+
     val subscriptionTier: Flow<String?> = flow {
         migrateSensitiveFlagsIfNeeded()
-        emit(encryptedPrefs.getSubscriptionTierString())
+        subscriptionTierState.compareAndSet(
+            expect = null,
+            update = TierHolder(encryptedPrefs.getSubscriptionTierString())
+        )
+        emitAll(subscriptionTierState.filterNotNull().map { it.value })
     }
 
     /**
@@ -631,6 +642,7 @@ class AppPreferencesDataSource @Inject constructor(
     suspend fun setSubscriptionTier(tier: String?) {
         migrateSensitiveFlagsIfNeeded()
         encryptedPrefs.setSubscriptionTierString(tier)
+        subscriptionTierState.value = TierHolder(tier)
     }
 
     /**
@@ -671,6 +683,7 @@ class AppPreferencesDataSource @Inject constructor(
             preferences.clear()
         }
         encryptedPrefs.setSubscriptionTierString(null)
+        subscriptionTierState.value = TierHolder(null)
         // RAW 플래그는 명시적 기본값(true)이 있으므로 명시적으로 다시 기록한다.
         encryptedPrefs.setRawFileDownloadEnabled(true)
         rawFileDownloadState.value = true
