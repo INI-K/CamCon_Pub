@@ -527,13 +527,13 @@ private fun FilmStripCell(
                         .padding(2.dp)
                         .size(16.dp)
                         .clip(RoundedCornerShape(Radius.sm))
-                        .background(Surface0.copy(alpha = 0.55f)),
+                        .background(Surface0.copy(alpha = 0.85f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Lock,
                         contentDescription = stringResource(R.string.fs_lut_locked_badge_cd),
-                        tint = TextTertiary,
+                        tint = Accent,
                         modifier = Modifier.size(12.dp)
                     )
                 }

@@ -89,41 +89,14 @@ class FilmEditorViewModel @Inject constructor(
     val favorites: StateFlow<Set<String>> = filmFavoritesUseCase.favorites()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
-    /**
-     * 카테고리(전체/즐겨찾기/특정) + 검색어(name 부분일치, 대소문자 무시)로 거른 가시 LUT 목록.
-     * 그리드/편집 필름 전환 스트립의 단일 진실원.
-     */
-    val visibleLuts: StateFlow<List<FilmLut>> =
-        combine(
-            _availableLuts,
-            _categoryFilter,
-            _searchQuery,
-            favorites
-        ) { luts, category, query, favs ->
-            luts.asSequence()
-                .filter { lut ->
-                    when (category) {
-                        CATEGORY_ALL -> true
-                        CATEGORY_FAVORITES -> lut.id in favs
-                        else -> lut.category == category
-                    }
-                }
-                .filter { lut ->
-                    query.isBlank() || lut.name.contains(query.trim(), ignoreCase = true)
-                }
-                .toList()
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
-    private val _selectedLutId = MutableStateFlow("")
-    val selectedLutId: StateFlow<String> = _selectedLutId.asStateFlow()
-
     // ---- 티어 게이팅(무료 시그니처 필름 + PRO 전체 카탈로그) ----
+    // 주의: visibleLuts 가 lockedLutIds 를 참조하므로 반드시 그보다 먼저 선언(프로퍼티 초기화 순서).
 
     /** pref 우선 병합 유효 티어(cold). 첫 방출이 병합 티어 → PRO 잠금 플래시 없음(H1). */
     private val effectiveTier: Flow<SubscriptionTier> = observeEffectiveTierUseCase()
 
     /**
-     * 현재 티어에서 잠긴(선택 불가) LUT id 집합. 배지 표시 전용.
+     * 현재 티어에서 잠긴(선택 불가) LUT id 집합. 배지 표시·정렬 전용.
      *
      * 초기값 emptySet = 배지 없음 → PRO 잠금 플래시 없음(photoPreviewAccess null 초기값 관례와 동형).
      * FREE 는 수 ms 후 '카탈로그 − 무료셋' 을 방출한다 — 이 창의 셀 탭은 [selectLutGated] 가 first()
@@ -137,6 +110,37 @@ class FilmEditorViewModel @Inject constructor(
                 luts.mapTo(HashSet()) { it.id } - ValidateFeatureAccessUseCase.FREE_FILM_LUT_IDS
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
+    /**
+     * 카테고리(전체/즐겨찾기/특정) + 검색어(name 부분일치, 대소문자 무시)로 거른 가시 LUT 목록.
+     * 그리드/편집 필름 전환 스트립의 단일 진실원.
+     * 사용 가능한(잠기지 않은) 필름이 항상 상단에 오도록 안정 정렬한다 — PRO 는 잠금이 없어 원순서 유지.
+     */
+    val visibleLuts: StateFlow<List<FilmLut>> =
+        combine(
+            _availableLuts,
+            _categoryFilter,
+            _searchQuery,
+            favorites,
+            lockedLutIds
+        ) { luts, category, query, favs, locked ->
+            luts.asSequence()
+                .filter { lut ->
+                    when (category) {
+                        CATEGORY_ALL -> true
+                        CATEGORY_FAVORITES -> lut.id in favs
+                        else -> lut.category == category
+                    }
+                }
+                .filter { lut ->
+                    query.isBlank() || lut.name.contains(query.trim(), ignoreCase = true)
+                }
+                .sortedBy { it.id in locked }
+                .toList()
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private val _selectedLutId = MutableStateFlow("")
+    val selectedLutId: StateFlow<String> = _selectedLutId.asStateFlow()
 
     /**
      * 게이트를 통과한 선택 반영 신호(선택된 lutId). 호스트가 편집 화면 이동/결과 반환에 사용한다.
