@@ -398,6 +398,9 @@ class CameraEventManager @Inject constructor(
 
     fun isPhotoPreviewMode(): Boolean = _isPhotoPreviewMode.value
 
+    /** USB 카메라가 공유 네이티브 핸들을 잡고 있는지 — PTP/IP 자동 재연결의 교차모드 가드용. */
+    fun isUsbCameraActive(): Boolean = usbCameraManager.isNativeCameraConnected.value
+
     /**
      * USB 카메라 초기화 검증
      */
@@ -668,7 +671,12 @@ class CameraEventManager @Inject constructor(
                         // 죽은 세션에 리스너를 무한 재시작(재시작 성공 → 3연속 I/O → 끊김 감지
                         // → 재시작 …)하고, 자동 재연결 폴링(DISCONNECTED 조건)도 영영 안 돈다.
                         onPtpipConnectionLostCallback?.invoke()
-                        handlePtpipDisconnection()
+                        // 정리는 IO로 홉 — 이 콜백은 네이티브 리스너 스레드 위에서 동기 실행되므로
+                        // 여기서 stopListenCameraEvents까지 동기로 부르면 리스너 스레드가 자기
+                        // 자신을 join(10초 블록)한다(2026-07-06 실측). notify는 위에서 동기 유지.
+                        scope.launch(ioDispatcher) {
+                            handlePtpipDisconnection()
+                        }
                     }
                 }
             }
