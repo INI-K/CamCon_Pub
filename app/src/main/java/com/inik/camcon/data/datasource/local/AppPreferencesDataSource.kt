@@ -15,6 +15,9 @@ import com.inik.camcon.domain.model.LiveViewQuality
 import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.domain.repository.AppSettingsRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -217,10 +220,18 @@ class AppPreferencesDataSource @Inject constructor(
     /**
      * RAW 파일 다운로드 활성화 여부 (기본값: true).
      * 암호화 저장소에서 읽는다. 레거시 평문 값이 있으면 1회 이관 후 반환.
+     * EncryptedSharedPreferences는 변경 통지가 없어 setter 갱신을 구독자에게
+     * 재방출하기 위해 MutableStateFlow를 경유한다(최초 구독 시 디스크 값 시드).
      */
+    private val rawFileDownloadState = MutableStateFlow<Boolean?>(null)
+
     override val isRawFileDownloadEnabled: Flow<Boolean> = flow {
         migrateSensitiveFlagsIfNeeded()
-        emit(encryptedPrefs.getRawFileDownloadEnabled(default = true))
+        rawFileDownloadState.compareAndSet(
+            expect = null,
+            update = encryptedPrefs.getRawFileDownloadEnabled(default = true)
+        )
+        emitAll(rawFileDownloadState.filterNotNull())
     }
 
     /**
@@ -503,6 +514,7 @@ class AppPreferencesDataSource @Inject constructor(
     override suspend fun setRawFileDownloadEnabled(enabled: Boolean) {
         migrateSensitiveFlagsIfNeeded()
         encryptedPrefs.setRawFileDownloadEnabled(enabled)
+        rawFileDownloadState.value = enabled
     }
 
     /**
@@ -661,5 +673,6 @@ class AppPreferencesDataSource @Inject constructor(
         encryptedPrefs.setSubscriptionTierString(null)
         // RAW 플래그는 명시적 기본값(true)이 있으므로 명시적으로 다시 기록한다.
         encryptedPrefs.setRawFileDownloadEnabled(true)
+        rawFileDownloadState.value = true
     }
 }
