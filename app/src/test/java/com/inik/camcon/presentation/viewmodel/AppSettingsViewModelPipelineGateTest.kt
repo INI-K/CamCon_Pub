@@ -157,10 +157,13 @@ class AppSettingsViewModelPipelineGateTest {
         }
     }
 
-    // ---------- init 정합화 관찰자 ----------
+    // ---------- init 은 설정을 쓰지 않는다 (시작 시 정합화 제거 회귀 가드) ----------
+    // 배경: 시작 시 '둘 다 ON' 영구 정합화가 티어 첫 방출 경합에서 사용자의 색감 설정을
+    // 잘못 OFF 했다(실기 '재시작하면 토글 풀림'). 불변식은 세터 스왑 + 수신 마스킹이 지키므로
+    // init 은 어떤 티어·플래그 조합에서도 영구 쓰기를 해서는 안 된다.
 
     @Test
-    fun `H1 회귀 - pref PRO + 둘 다 ON 이면 init 정합화가 색감 OFF 를 호출하지 않음`() = runTest {
+    fun `H1 회귀 - pref PRO + 둘 다 ON 이어도 init 이 색감 OFF 를 호출하지 않음`() = runTest {
         prefTierFlow.value = SubscriptionTier.PRO
         filmEnabledFlow.value = true
         colorEnabledFlow.value = true
@@ -168,24 +171,21 @@ class AppSettingsViewModelPipelineGateTest {
 
         testDispatcher.scheduler.advanceUntilIdle()
 
-        // 세터를 호출하지 않았으므로 정합화만이 유일한 setColorTransferEnabled 호출원.
+        // 세터를 호출하지 않았으므로 init 만이 유일한 setColorTransferEnabled 호출원 후보.
         coVerify(exactly = 0) { appSettingsRepository.setColorTransferEnabled(false) }
     }
 
     @Test
-    fun `pref FREE(강등) + 둘 다 ON 이면 init 정합화가 색감 OFF 1회 + 이벤트 방출`() = runTest {
+    fun `pref FREE + 둘 다 ON 이어도 init 은 설정을 쓰지 않는다 (재시작 토글 풀림 회귀)`() = runTest {
         prefTierFlow.value = SubscriptionTier.FREE
         filmEnabledFlow.value = true
         colorEnabledFlow.value = true
         val viewModel = createViewModel()
 
-        viewModel.pipelineSwapEvent.test {
-            testDispatcher.scheduler.advanceUntilIdle()
-            assertTrue(awaitItem() == com.inik.camcon.domain.usecase.PipelineFeature.COLOR_TRANSFER)
-            cancelAndConsumeRemainingEvents()
-        }
+        testDispatcher.scheduler.advanceUntilIdle()
 
-        coVerify(exactly = 1) { appSettingsRepository.setColorTransferEnabled(false) }
+        coVerify(exactly = 0) { appSettingsRepository.setColorTransferEnabled(any()) }
+        coVerify(exactly = 0) { appSettingsRepository.setFilmSimulationEnabled(any()) }
     }
 
     // ---------- photoPreviewAccess 플래시 회귀 ----------
