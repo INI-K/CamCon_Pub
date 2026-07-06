@@ -16,7 +16,6 @@ interface AuthRepository {
     suspend fun getAllUsers(): List<User>
     suspend fun updateUser(user: User): Boolean
     suspend fun updateUserTier(userId: String, tier: SubscriptionTier): Boolean
-    suspend fun updateUserReferralCode(userId: String, referralCode: String): Boolean
     suspend fun deactivateUser(userId: String): Boolean
     suspend fun reactivateUser(userId: String): Boolean
     suspend fun getUsersByTier(tier: SubscriptionTier): List<User>
@@ -34,7 +33,12 @@ interface AuthRepository {
     suspend fun getAllReferralCodes(): List<ReferralCode>
     suspend fun getAvailableReferralCodes(): List<ReferralCode>
     suspend fun getUsedReferralCodes(): List<ReferralCode>
-    suspend fun validateReferralCode(code: String): ReferralCode?
-    suspend fun useReferralCode(code: String, userId: String): Boolean
     suspend fun deleteReferralCode(code: String): Boolean
+
+    /**
+     * 추천코드 적용 — 검증·소비·티어부여를 서버(Cloud Function redeemReferralCode)가
+     * 단일 트랜잭션으로 처리한다. 클라이언트는 referral_codes/subscriptions에 직접 쓸 수 없다
+     * (firestore.rules: write=false). 성공 시 부여된 티어(코드에 티어가 없으면 null)를 반환.
+     */
+    suspend fun redeemReferralCode(code: String): Result<SubscriptionTier?>
 }
