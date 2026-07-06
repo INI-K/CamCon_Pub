@@ -290,16 +290,10 @@
 
     <!-- 스마트폰 핫스팟 STA 모드 (PtpipConnectionScreen 세 번째 탭) -->
     <string name="ptpip_sta_hotspot_mode">STA (スマホテザリング)</string>
-    <string name="ptpip_hotspot_description">ルーターなしで、スマートフォンがホットスポット役となり、カメラがクライアントとして接続します。</string>
     <string name="ptpip_hotspot_enabled">スマホのテザリングが有効です</string>
     <string name="ptpip_hotspot_disabled">スマホのテザリングはオフです</string>
     <string name="ptpip_manual_ip_input">カメラIPを直接入力</string>
     <string name="ptpip_connect_with_ip">このIPで接続</string>
-    <string name="ptpip_hotspot_step_1">1. スマートフォンのモバイルテザリングを有効にしてください</string>
-    <string name="ptpip_hotspot_step_2">2. カメラのWi-Fi設定でSTAモードを選択してください</string>
-    <string name="ptpip_hotspot_step_3">3. カメラ側でスマホテザリングのSSID/パスワードを入力して接続してください</string>
-    <string name="ptpip_hotspot_step_4">4. カメラが接続されたら「カメラを探す」を押すか、IPを直接入力してください</string>
-    <string name="ptpip_hotspot_step_5">5. mDNS広告が届かない場合はIPを直接入力してください</string>
 
     <!-- 카메라 연결 최적화 다이얼로그 (MainActivity, 2026-05-22) -->
     <string name="camera_connection_optimization_title">カメラ接続最適化設定</string>
@@ -335,10 +329,7 @@
     <string name="settings_native_log_toast_disable">ネイティブログキャプチャを停止しました。</string>
     <string name="settings_referral_clipboard_label">referral_code</string>
     <string name="settings_referral_copied">紹介コード \'%s\' をクリップボードにコピーしました</string>
-    <string name="ptpip_hotspot_enable_title">スマホのテザリングがオフです</string>
-    <string name="ptpip_hotspot_enable_desc">Androidの制約によりアプリから直接オンにできないため、設定画面を開きます。テザリングをオンにして戻ってください。</string>
     <string name="ptpip_hotspot_open_settings">テザリング設定を開く</string>
-    <string name="ptpip_hotspot_compat_note">Nikon Z・富士フイルム・キヤノン(EOS Utility)・Panasonic Lumixはスマホのテザリング接続に対応しています。OM System・ペンタックス/リコーはカメラ本体のAPのみ対応で、スマホのテザリングには接続できません。</string>
 
     <!-- 포그라운드 서비스 상태 알림 (CINE INSTRUMENT 브랜드 정합, Phase 1) -->
     <string name="notif_auto_connect_prepare_title">カメラの自動接続を準備中</string>

@@ -12,5 +12,10 @@
     <!-- PTP/IP 자동 재연결 -->
     <string name="connect_auto_reconnect_label">Riconnessione automatica</string>
     <string name="connect_auto_reconnect_subtitle">Si riconnette automaticamente quando il Wi-Fi della fotocamera è di nuovo disponibile</string>
-    <string name="autoconnect_notification_required">È richiesto il permesso di notifica per mantenere la riconnessione automatica in background.</string>
+    <!-- STA 핫스팟 탭 (히어로형) -->
+    <string name="ptpip_hotspot_help_title">Come collegarsi</string>
+    <string name="ptpip_hotspot_help_body">Attiva l\'hotspot del telefono, poi collega la fotocamera all\'hotspot dalle impostazioni Wi-Fi (SSID / password). Una volta connessa, cerca la fotocamera qui sotto o collegati tramite IP.</string>
+    <string name="ptpip_hotspot_hero_hint">Attiva l\'hotspot del telefono così la fotocamera può collegarsi</string>
+    <string name="cd_expanded">Espanso</string>
+    <string name="cd_collapsed">Compresso</string>
 </resources>

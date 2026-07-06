@@ -290,16 +290,10 @@
 
     <!-- 휴대폰 핫스팟을 통한 STA 모드 (PtpipConnectionScreen, 3번째 탭) -->
     <string name="ptpip_sta_hotspot_mode">STA (point d\'accès du téléphone)</string>
-    <string name="ptpip_hotspot_description">Sans routeur, le téléphone fait office de point d\'accès et l\'appareil photo s\'y connecte en tant que client.</string>
     <string name="ptpip_hotspot_enabled">Point d\'accès du téléphone activé</string>
     <string name="ptpip_hotspot_disabled">Point d\'accès du téléphone désactivé</string>
     <string name="ptpip_manual_ip_input">Saisir l\'IP de l\'appareil photo directement</string>
     <string name="ptpip_connect_with_ip">Se connecter avec cette IP</string>
-    <string name="ptpip_hotspot_step_1">1. Activez le point d\'accès mobile (partage de connexion) du téléphone</string>
-    <string name="ptpip_hotspot_step_2">2. Dans les réglages Wi-Fi de l\'appareil photo, sélectionnez le mode STA</string>
-    <string name="ptpip_hotspot_step_3">3. Sur l\'appareil photo, saisissez le SSID/mot de passe du point d\'accès du téléphone et connectez-vous</string>
-    <string name="ptpip_hotspot_step_4">4. Une fois l\'appareil photo connecté, touchez « Rechercher un appareil » ou saisissez l\'IP directement</string>
-    <string name="ptpip_hotspot_step_5">5. Si l\'annonce mDNS n\'arrive pas, saisissez l\'IP directement</string>
 
     <!-- 카메라 연결 최적화 대화상자 (MainActivity, 2026-05-22) -->
     <string name="camera_connection_optimization_title">Optimiser la connexion de l\'appareil photo</string>
@@ -335,10 +329,7 @@
     <string name="settings_native_log_toast_disable">Capture du journal natif arrêtée.</string>
     <string name="settings_referral_clipboard_label">referral_code</string>
     <string name="settings_referral_copied">Code de parrainage \'%s\' copié dans le presse-papiers</string>
-    <string name="ptpip_hotspot_enable_title">Le point d\'accès du téléphone est désactivé</string>
-    <string name="ptpip_hotspot_enable_desc">En raison des restrictions Android, l\'application ne peut pas l\'activer directement ; les paramètres vont s\'ouvrir. Activez le point d\'accès puis revenez.</string>
     <string name="ptpip_hotspot_open_settings">Ouvrir les paramètres du point d\'accès</string>
-    <string name="ptpip_hotspot_compat_note">Nikon Z, Fujifilm, Canon (EOS Utility) et Panasonic Lumix prennent en charge la connexion au point d\'accès du téléphone. OM System et Pentax/Ricoh ne gèrent que le point d\'accès propre à l\'appareil photo et ne peuvent pas se connecter au point d\'accès du téléphone.</string>
 
     <!-- 포그라운드 서비스 상태 알림 (CINE INSTRUMENT 브랜드 정합, Phase 1) -->
     <string name="notif_auto_connect_prepare_title">Préparation de la connexion automatique de l\'appareil photo</string>
