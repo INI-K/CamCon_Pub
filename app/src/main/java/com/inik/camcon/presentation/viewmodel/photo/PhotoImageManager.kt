@@ -96,13 +96,33 @@ class PhotoImageManager @Inject constructor(
     // 작업 취소를 위한 플래그
     private var isManagerActive = true
 
+    // 썸네일 순차 로딩 잡 — 단일 잡으로 유지(목록 갱신 시 이전 루프 취소·재시작,
+    // 탭 이탈 시 취소). 이전에는 목록 변화마다 루프가 중첩 실행되어 탭을 떠나도
+    // 계속 받는 문제가 있었다(2026-07-03 실측).
+    private var thumbnailLoadJob: kotlinx.coroutines.Job? = null
+
+    /**
+     * 진행 중인 썸네일 로딩 취소 (탭 이탈 시). 캐시는 유지해 재진입 시 재사용.
+     */
+    fun cancelThumbnailLoading() {
+        if (thumbnailLoadJob?.isActive == true) {
+            Log.d(TAG, "썸네일 로딩 취소 (탭 이탈)")
+        }
+        thumbnailLoadJob?.cancel()
+        thumbnailLoadJob = null
+        synchronized(thumbnailCacheLock) {
+            _loadingThumbnails.value = emptySet()
+        }
+    }
+
     /**
      * 썸네일 로드
      */
     fun loadThumbnailsForPhotos(photos: List<CameraPhoto>) {
         Log.d(TAG, "썸네일 로딩 시작: ${photos.size}개 사진")
 
-        managerScope.launch {
+        thumbnailLoadJob?.cancel()
+        thumbnailLoadJob = managerScope.launch {
             if (!isManagerActive) {
                 Log.d(TAG, "썸네일 로딩 중단됨 (매니저 비활성)")
                 return@launch
