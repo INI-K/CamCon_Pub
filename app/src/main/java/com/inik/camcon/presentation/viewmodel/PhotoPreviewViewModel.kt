@@ -15,7 +15,6 @@ import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.domain.usecase.camera.DeleteCameraFileUseCase
-import com.inik.camcon.domain.manager.PhotoCaptureEventManager
 import com.inik.camcon.domain.usecase.camera.ResumeNativeOperationsUseCase
 import com.inik.camcon.utils.LogMask
 import com.inik.camcon.presentation.viewmodel.photo.FileTypeFilter
@@ -88,7 +87,6 @@ data class MultiDownloadProgress(
 class PhotoPreviewViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val cameraRepository: CameraRepository,
-    private val photoCaptureEventManager: PhotoCaptureEventManager,
     private val globalManager: CameraConnectionGlobalManager,
     private val getSubscriptionUseCase: GetSubscriptionUseCase,
     private val appSettingsRepository: AppSettingsRepository,
@@ -772,6 +770,9 @@ class PhotoPreviewViewModel @Inject constructor(
      */
     fun onTabExit() {
         Log.d(TAG, "📸 사진 미리보기 탭 이탈 감지 - 연결 상태별 처리")
+
+        // 탭을 떠나면 진행 중인 썸네일 순차 로딩을 즉시 중단(카메라 큐 점유 해제).
+        photoImageManager.cancelThumbnailLoading()
 
         viewModelScope.launch {
             try {

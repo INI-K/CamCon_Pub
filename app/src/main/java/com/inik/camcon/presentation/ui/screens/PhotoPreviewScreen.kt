@@ -232,6 +232,9 @@ fun PhotoPreviewScreen(
     // === FullScreen Viewer 오버레이 ===
     uiState.selectedPhoto?.let { photo ->
         val fullImageCache by viewModel.fullImageCache.collectAsStateWithLifecycle()
+        // StateFlow 구독 — 일반 함수(getThumbnail)로 읽으면 캐시가 채워져도
+        // recomposition이 없어 썸네일이 영영 placeholder로 남는다(2026-07-03 실측).
+        val thumbnailCache by viewModel.thumbnailCache.collectAsStateWithLifecycle()
         val downloadingImages by viewModel.downloadingImages.collectAsStateWithLifecycle()
 
         LaunchedEffect(photo.path) {
@@ -284,7 +287,7 @@ fun PhotoPreviewScreen(
                     viewModel.selectPhoto(newPhoto)
                 }
             },
-            thumbnailData = viewModel.getThumbnail(photo.path),
+            thumbnailData = thumbnailCache[photo.path],
             fullImageData = fullImageCache[photo.path],
             isDownloadingFullImage = downloadingImages.contains(photo.path),
             onDownload = {
@@ -662,6 +665,8 @@ private fun PhotoGrid(
 ) {
     val lazyGridState = rememberLazyStaggeredGridState()
     val fullImageCache by viewModel.fullImageCache.collectAsStateWithLifecycle()
+    // StateFlow 구독 — getThumbnail 함수 호출로는 캐시 갱신 시 recomposition이 없다.
+    val thumbnailCache by viewModel.thumbnailCache.collectAsStateWithLifecycle()
 
     val widthSizeClass = LocalWindowSizeClass.current.widthSizeClass
     val gridColumns = when (widthSizeClass) {
@@ -698,7 +703,7 @@ private fun PhotoGrid(
                 item(span = StaggeredGridItemSpan.FullLine) {
                     FeaturedPhotoThumbnail(
                         photo = firstPhoto,
-                        thumbnailData = viewModel.getThumbnail(firstPhoto.path),
+                        thumbnailData = thumbnailCache[firstPhoto.path],
                         fullImageCache = fullImageCache,
                         onClick = { viewModel.selectPhoto(firstPhoto) }
                     )
@@ -714,7 +719,7 @@ private fun PhotoGrid(
         ) { photo ->
             FluidPhotoThumbnail(
                 photo = photo,
-                thumbnailData = viewModel.getThumbnail(photo.path),
+                thumbnailData = thumbnailCache[photo.path],
                 fullImageCache = fullImageCache,
                 onClick = {
                     if (isMultiSelectMode) {

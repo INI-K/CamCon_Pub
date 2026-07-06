@@ -181,8 +181,9 @@ object Constants {
      * 캐시 관련 상수
      */
     object Cache {
-        // 썸네일 캐시 크기 제한
-        const val MAX_THUMBNAIL_CACHE_SIZE = 50
+        // 썸네일 캐시 크기 제한 — EXIF 썸(~10KB/장)이라 400장 ≈ 4MB.
+        // 50이면 페이지 2장(100항목)에서 FIFO 축출↔재다운로드 순환 발생(2026-07-03 실측).
+        const val MAX_THUMBNAIL_CACHE_SIZE = 400
         // 고해상도 이미지 캐시 크기 제한
         const val MAX_FULL_IMAGE_CACHE_SIZE = 10
         // 색감 전송 통계 캐시 크기
