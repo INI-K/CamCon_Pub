@@ -40,4 +40,9 @@
     <!-- 필름↔색감 배타 스왑 안내(정합화 통지 겸용) -->
     <string name="pipeline_swap_color_disabled">色彩转移已关闭 — 当前套餐无法与胶片模拟同时使用。</string>
     <string name="pipeline_swap_film_disabled">胶片模拟已关闭 — 当前套餐无法与色彩转移同时使用。</string>
+
+    <!-- 필름 LUT 티어 게이팅(무료 시그니처 + PRO 전체) -->
+    <string name="fs_lut_locked_badge_cd">已锁定 — PRO 胶片</string>
+    <string name="fs_lut_locked_notice">此胶片需要 PRO 套餐。升级选项即将推出。</string>
+    <string name="fs_selected_film_locked_hint">当前套餐无法使用 — 已跳过自动应用。</string>
 </resources>
