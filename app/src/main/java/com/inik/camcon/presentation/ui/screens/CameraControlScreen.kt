@@ -40,6 +40,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -2014,18 +2015,23 @@ private fun RawFileRestrictionNotification(
                 .padding(top = 36.dp, start = Padding.base, end = Padding.base)
         ) {
             Box(modifier = Modifier.align(Alignment.TopCenter)) {
+                // 컴팩트 강제: 태블릿에서 풀폭으로 여러 줄 감기며 라이브뷰를 가리지 않도록
+                // 폭 상한 + 2줄 말줄임. 경고 성격은 아이콘·컬러바가 전달하므로 타이틀 중복 제거.
                 ToastV2(
-                    message = "${stringResource(R.string.camera_control_raw_file_restriction)} · ${restriction.fileName} — ${restriction.message} · ${stringResource(R.string.subscription_upgrade)} →",
+                    message = "${restriction.fileName} — ${restriction.message} · ${stringResource(R.string.subscription_upgrade)} →",
                     kind = StatusKind.Error,
                     leadingIcon = Icons.Outlined.WarningAmber,
-                    modifier = Modifier.clickable {
-                        // 탭하면 종료 애니메이션 후 구독(업그레이드) 화면으로 이동
-                        scope.launch {
-                            visible = false
-                            kotlinx.coroutines.delay(260L)
-                            onUpgradeClick()
+                    maxLines = 2,
+                    modifier = Modifier
+                        .widthIn(max = 400.dp)
+                        .clickable {
+                            // 탭하면 종료 애니메이션 후 구독(업그레이드) 화면으로 이동
+                            scope.launch {
+                                visible = false
+                                kotlinx.coroutines.delay(260L)
+                                onUpgradeClick()
+                            }
                         }
-                    }
                 )
             }
         }
