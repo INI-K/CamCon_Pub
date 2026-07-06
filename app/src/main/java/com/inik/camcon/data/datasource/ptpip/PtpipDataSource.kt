@@ -58,6 +58,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -1942,13 +1943,13 @@ class PtpipDataSource @Inject constructor(
      */
     fun notifyInvoluntaryPtpipDisconnect() {
         coroutineScope.launch(ioDispatcher) {
-            connectionStateMutex.withLock {
+            val transitioned = connectionStateMutex.withLock {
                 // 이미 내려갔거나 재연결이 진행 중이면 무시(멱등·경합 방지).
                 if (_connectionState.value != PtpipConnectionState.CONNECTED) {
                     Log.d(TAG, "비자발적 끊김 통지 무시 — 이미 CONNECTED 아님(${_connectionState.value})")
-                    return@withLock
+                    return@withLock false
                 }
-                Log.w(TAG, "PTP/IP 비자발적 끊김 — 상태 DISCONNECTED 전이(핸들 보존, 폴링에 재연결 위임)")
+                Log.w(TAG, "PTP/IP 비자발적 끊김 — 상태 DISCONNECTED 전이(핸들 보존)")
                 connectedCamera = null
                 _connectionState.value = PtpipConnectionState.DISCONNECTED
                 _connectionLostMessage.value = context.getString(R.string.progress_wifi_disconnected)
@@ -1958,6 +1959,53 @@ class PtpipDataSource @Inject constructor(
                 cameraEventManager.resetListenerStateAfterNativeDeath()
                 // lastConnectedCamera는 '유지'한다 — 폴링/자동재연결이 이걸로 대상 카메라를 찾는다.
                 // (disconnectInternal의 명시적 사용자 해제와 달리 여기선 null로 만들지 않는다.)
+                true
+            }
+            if (!transitioned) return@launch
+
+            // [재연결 액터] WifiMonitoringService 폴링은 auto_connect(기본 OFF)+자기 핫스팟
+            // 전제라 STA(외부 AP·폰 핫스팟)에선 영영 안 돈다 — 여기서 직접 재연결을 예약한다.
+            // in-memory 플래그는 Ptpip 화면을 안 거친 프로세스에서 false 고착이라 DataStore 직독.
+            val autoReconnect = try {
+                ptpipPreferencesDataSource.isAutoReconnectEnabled.first()
+            } catch (e: Exception) {
+                false
+            }
+            if (!autoReconnect) {
+                Log.d(TAG, "자동 재연결 비활성(설정) — 재연결 예약 생략")
+                return@launch
+            }
+            // attemptAutoReconnect의 재시도 대기 조건이 in-memory 플래그를 보므로 동기화.
+            isAutoReconnectEnabled = true
+
+            // 리스너 정리(IO 홉) 완료 대기: 옛 리스너 스레드 생존 중 재연결하면 한 핸들
+            // 이중 펌프·closeCamera 경합(UAF)이 난다. Kotlin 플래그 false 확인 + 여유 2초.
+            val listenerStopped = withTimeoutOrNull(12_000L) {
+                cameraEventManager.isEventListenerActive.first { !it }
+                true
+            } ?: false
+            if (!listenerStopped) {
+                Log.w(TAG, "리스너 정지 대기 초과 — 자동 재연결 포기(수동 연결 필요)")
+                return@launch
+            }
+            delay(2_000L)
+
+            // USB 교차모드 가드 — 그 사이 USB가 공유 핸들을 잡았으면 건드리지 않는다(C3 계열).
+            if (cameraEventManager.isUsbCameraActive()) {
+                Log.w(TAG, "USB 카메라 활성 — PTP/IP 자동 재연결 생략")
+                return@launch
+            }
+
+            connectionStateMutex.withLock {
+                // 발화 시점 재독 — 명시적 disconnect(lastConnectedCamera=null)·수동 연결과의
+                // 경합은 락 안에서 조건 재확인으로 차단한다.
+                val target = lastConnectedCamera
+                if (_connectionState.value != PtpipConnectionState.DISCONNECTED || target == null) {
+                    Log.d(TAG, "자동 재연결 조건 소멸(상태=${_connectionState.value}) — 생략")
+                    return@withLock
+                }
+                Log.i(TAG, "비자발적 끊김 자동 재연결 시작: ${LogMask.serial(target.name)}")
+                attemptAutoReconnect(target)
             }
         }
     }
