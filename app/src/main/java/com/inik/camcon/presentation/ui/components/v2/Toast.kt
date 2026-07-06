@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.inik.camcon.presentation.theme.Accent
@@ -52,7 +53,8 @@ fun ToastV2(
     message: String,
     kind: StatusKind = StatusKind.Idle,
     modifier: Modifier = Modifier,
-    leadingIcon: ImageVector? = null
+    leadingIcon: ImageVector? = null,
+    maxLines: Int = Int.MAX_VALUE
 ) {
     val barColor: Color = when (kind) {
         StatusKind.Idle -> Info
@@ -91,7 +93,9 @@ fun ToastV2(
                 Text(
                     text = message,
                     style = Body,
-                    color = TextPrimaryV2
+                    color = TextPrimaryV2,
+                    maxLines = maxLines,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
