@@ -362,7 +362,13 @@ fun CameraControlScreen(
                             onFullscreenChange(false)
                         },
                         isLiveViewEnabled = appSettings.isLiveViewEnabled,
-                        onGalleryClick = onGalleryClick,
+                        onGalleryClick = {
+                            // 갤러리로 나가면 전체화면을 해제 — 잔류 시 탭 네비 숨김·인셋
+                            // 이상 상태가 갤러리 화면까지 샌다(화면 로컬+상위 양쪽 해제).
+                            isFullscreen = false
+                            onFullscreenChange(false)
+                            onGalleryClick()
+                        },
                         isShutterSoundEnabled = isShutterSoundEnabled,
                         isLiveViewGridEnabled = isLiveViewGridEnabled,
                         onToggleLiveViewGrid = {
