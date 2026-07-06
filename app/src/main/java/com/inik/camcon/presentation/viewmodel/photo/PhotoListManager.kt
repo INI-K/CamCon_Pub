@@ -101,13 +101,20 @@ class PhotoListManager @Inject constructor(
     ) {
         Log.d(TAG, "loadInitialPhotos 호출 (티어=$tier)")
         currentTier = tier
-        managerScope.launch {
-            if (!isManagerActive) {
-                Log.d(TAG, "loadInitialPhotos 작업 중단됨 (매니저 비활성)")
-                return@launch
-            }
 
-            _isLoading.value = true
+        if (!isManagerActive) {
+            Log.d(TAG, "loadInitialPhotos 작업 중단됨 (매니저 비활성)")
+            return
+        }
+
+        // 가드+잠금을 원자적으로 수행 — 연결 옵저버 2종(연결/PTPIP)이 첫 emission에서
+        // 각각 호출하는 동시/연속 중복 호출을 1회로 합쳐 전체 열거 직렬 2회 실행을 방지.
+        if (!_isLoading.compareAndSet(expect = false, update = true)) {
+            Log.d(TAG, "loadInitialPhotos 건너뛰기: 이미 로딩 중")
+            return
+        }
+
+        managerScope.launch {
             // loadNextPage와 동일하게 try/finally로 로딩 상태 해제를 보장한다.
             // (과거: onSuccess 내 return@launch / 카메라 미연결 / 코루틴 취소 경로가
             //  하단 _isLoading=false 를 건너뛰어 스피너가 영구 박제되는 결함이 있었다.)
