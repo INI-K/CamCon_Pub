@@ -367,6 +367,15 @@ private fun ContactSheetCell(
                 )
             }
 
+            // 잠긴 필름은 프리뷰를 가라앉혀 사용 가능 항목과 한눈에 구분되게 한다(룩 자체는 보이게).
+            if (isLocked && !isSelected) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Surface0.copy(alpha = 0.45f))
+                )
+            }
+
             IconButton(
                 onClick = onToggleFavorite,
                 modifier = Modifier
@@ -405,20 +414,21 @@ private fun ContactSheetCell(
                     )
                 }
             } else if (isLocked) {
+                // 사진 위에서도 확실히 보이도록 진한 칩 + 앰버 자물쇠(선택 틱과 구분되는 배색).
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopStart)
                         .padding(4.dp)
-                        .size(18.dp)
+                        .size(22.dp)
                         .clip(RoundedCornerShape(Radius.sm))
-                        .background(Surface0.copy(alpha = 0.55f)),
+                        .background(Surface0.copy(alpha = 0.85f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Lock,
                         contentDescription = stringResource(R.string.fs_lut_locked_badge_cd),
-                        tint = TextTertiary,
-                        modifier = Modifier.size(12.dp)
+                        tint = Accent,
+                        modifier = Modifier.size(14.dp)
                     )
                 }
             }
