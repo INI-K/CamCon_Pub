@@ -36,6 +36,43 @@ enum class NikonConnectionMode {
 }
 
 /**
+ * 카메라 제조사 (디스커버리 신호 기반 판별)
+ */
+enum class CameraVendor {
+    NIKON,
+    CANON,
+    SONY,
+    FUJIFILM,
+    PANASONIC,
+    UNKNOWN
+}
+
+/**
+ * 제조사 판별 신뢰도.
+ *
+ * UNKNOWN은 "해당 제조사가 아님"이 아니라 "연결 전 신호로는 판별 불가"를 뜻한다.
+ * 확정은 연결 후 PTP DeviceInfo의 manufacturer 문자열로만 가능하다
+ * (Vendor Extension ID는 Nikon Z8이 Microsoft로 보고하므로 판별에 사용 금지).
+ */
+enum class VendorConfidence {
+    CONFIRMED,
+    LIKELY,
+    UNKNOWN
+}
+
+/**
+ * 제조사 판별 결과 (제조사 + 신뢰도)
+ */
+data class VendorVerdict(
+    val vendor: CameraVendor,
+    val confidence: VendorConfidence
+) {
+    companion object {
+        fun unknown() = VendorVerdict(CameraVendor.UNKNOWN, VendorConfidence.UNKNOWN)
+    }
+}
+
+/**
  * PTPIP 카메라 정보
  */
 data class PtpipCamera(
@@ -43,7 +80,8 @@ data class PtpipCamera(
     val port: Int,
     val name: String,
     val isOnline: Boolean = true,
-    val discoveredServiceType: String? = null  // mDNS 서비스 타입: "_ptp._tcp" 또는 "_ptpip._tcp"
+    val discoveredServiceType: String? = null,  // mDNS 서비스 타입: "_ptp._tcp" 또는 "_ptpip._tcp"
+    val vendorVerdict: VendorVerdict = VendorVerdict.unknown()  // 디스커버리 신호 기반 제조사 판별
 )
 
 /**
