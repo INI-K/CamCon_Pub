@@ -70,7 +70,6 @@ import com.inik.camcon.presentation.viewmodel.SubscriptionViewModel
  * data 레이어 `BillingDataSourceImpl`의 동명 상수와 의도적으로 일치시킨다.
  * (presentation→data 의존을 만들지 않기 위해 상수만 로컬에 둔다.)
  */
-private const val BASIC_MONTHLY_PRODUCT_ID = "camcon_basic_monthly"
 private const val PRO_MONTHLY_PRODUCT_ID = "camcon_pro_monthly"
 
 /**
@@ -95,17 +94,6 @@ private val freeTier = PaywallTier(
     fallbackProductId = null
 )
 
-private val basicTier = PaywallTier(
-    tier = SubscriptionTier.BASIC,
-    titleRes = R.string.subscription_tier_basic,
-    benefitsRes = listOf(
-        R.string.subscription_benefit_png,
-        R.string.subscription_benefit_batch,
-        R.string.subscription_benefit_original_download
-    ),
-    fallbackProductId = BASIC_MONTHLY_PRODUCT_ID
-)
-
 private val proTier = PaywallTier(
     tier = SubscriptionTier.PRO,
     titleRes = R.string.subscription_tier_pro,
@@ -117,7 +105,7 @@ private val proTier = PaywallTier(
     fallbackProductId = PRO_MONTHLY_PRODUCT_ID
 )
 
-private val paywallTiers = listOf(freeTier, basicTier, proTier)
+private val paywallTiers = listOf(freeTier, proTier)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

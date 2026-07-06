@@ -81,26 +81,6 @@ object SubscriptionUtils {
         return format
     }
 
-    /**
-     * 구독 등급에 따른 기능 제한 확인
-     */
-    fun canUseFeature(tier: SubscriptionTier, feature: String): Boolean {
-        // 관리자와 추천인은 모든 기능 사용 가능
-        if (tier == SubscriptionTier.ADMIN || tier == SubscriptionTier.REFERRER) {
-            return true
-        }
-
-        val canUse = when (feature) {
-            "raw_processing" -> tier == SubscriptionTier.PRO
-            "png_export" -> false
-            "webp_export" -> false
-            "advanced_filters" -> tier == SubscriptionTier.PRO
-            "batch_processing" -> tier != SubscriptionTier.FREE
-            else -> true // 기본 기능은 모든 등급에서 사용 가능
-        }
-        return canUse
-    }
-
     // `getUpgradeMessage` 도 PR-7 (2026-05-13) 에서 `R.string.upgrade_message_*` 로 이동.
 
     /**
