@@ -4,8 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -69,7 +71,13 @@ fun ToastV2(
         color = Surface3,
         shape = RoundedCornerShape(Radius.sm)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        // height(IntrinsicSize.Min): 컬러바의 fillMaxHeight가 '내용(텍스트) 높이'에만 맞도록 고정.
+        // 이게 없으면 높이 제한이 있는 부모(전체 화면 오버레이 등)에서 바가 화면 끝까지 늘어나
+        // 토스트 전체가 세로로 꽉 차버린다(2026-07-06 실기 확인).
+        Row(
+            modifier = Modifier.height(IntrinsicSize.Min),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             // 좌측 컬러 bar (4dp 폭, 행 전체 높이)
             Box(
                 modifier = Modifier
