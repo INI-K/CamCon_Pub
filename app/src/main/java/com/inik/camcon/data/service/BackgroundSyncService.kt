@@ -67,12 +67,6 @@ class BackgroundSyncService : Service() {
     private var lastVibrationAt = 0L
     private var wakeLock: PowerManager.WakeLock? = null
 
-    // 카메라 연결 상태에서 앱이 최근앱에서 제거(onTaskRemoved)돼 서비스가 존속한 상황 표시.
-    // 이 상태에서 이후 카메라 연결까지 끊기면 idle FGS·영구 알림 잔존을 막기 위해 self-stop 한다.
-    // 앱이 (재)실행돼 onStartCommand가 다시 호출되면 false로 리셋된다.
-    @Volatile
-    private var taskRemovedWhileConnected = false
-
     companion object {
         private const val TAG = "BackgroundSyncService"
         private const val SYNC_INTERVAL = 30_000L // 30초마다 체크
@@ -154,10 +148,6 @@ class BackgroundSyncService : Service() {
             }
         }
 
-        // 앱이 (재)실행되어 onStartCommand가 다시 호출되면 "스와이프 후 존속" 표시를 해제한다.
-        // (전경 복귀 시 disconnect로 인한 의도치 않은 self-stop 방지)
-        taskRemovedWhileConnected = false
-
         // onTaskRemoved(미연결 정리)→onDestroy 사이에 onStartCommand가 끼어드는 레이스 가드:
         // 취소된 scope에 launch하면 무음으로 무시되어 동기화가 죽는다 — 활성 아니면 재생성.
         if (serviceScope?.isActive != true) {
@@ -175,7 +165,7 @@ class BackgroundSyncService : Service() {
         startPhotoReceivedVibration()
 
         // OS가 메모리 부족으로 서비스를 죽이면 재생성해 포그라운드+이벤트 리스너를 복원한다.
-        // (스와이프 제거 시: 카메라 연결 중이면 onTaskRemoved가 존속시키고, 미연결이면 stopSelf로 종료)
+        // (스와이프 제거는 명시적 종료 의사로 간주 — onTaskRemoved가 세션·프로세스까지 완전 종료)
         return START_STICKY
     }
 
@@ -201,22 +191,10 @@ class BackgroundSyncService : Service() {
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        // 카메라가 연결된 상태에서 앱을 최근앱에서 스와이프로 닫아도 백그라운드 수신을 끊지 않는다.
-        // (manifest stopWithTask="false"와 함께 동작 — 서비스를 존속시켜 무인 테더링 수신 유지)
-        val cameraConnected = try {
-            globalConnectionManager.globalConnectionState.value.isAnyConnectionActive
-        } catch (e: Exception) {
-            false
-        }
-
-        if (cameraConnected) {
-            LogcatManager.d(TAG, "Task removed - 카메라 연결 유지 중: 백그라운드 수신 지속(서비스 존속)")
-            taskRemovedWhileConnected = true
-            return
-        }
-
-        // 연결이 없으면 살려둘 이유가 없으므로 정리 후 종료
-        LogcatManager.d(TAG, "Task removed - 카메라 미연결: 서비스 정리 후 종료")
+        // 최근앱 스와이프 = 사용자의 명시적 종료 의사(2026-07-07 제품 결정 — 이전의
+        // '연결 중이면 존속' 설계 폐기). 연결 여부와 무관하게 리스너·알림·세션·프로세스를
+        // 전부 내린다. 백그라운드 무인 수신은 앱을 스와이프하지 않는 동안만 유지된다.
+        LogcatManager.d(TAG, "Task removed - 명시적 종료: 리스너·세션·프로세스 완전 종료")
         try {
             syncJob?.cancel()
             eventListenerJob?.cancel()
@@ -224,13 +202,28 @@ class BackgroundSyncService : Service() {
             serviceScope?.cancel()
             releaseWakeLock()
 
-            stopForeground(STOP_FOREGROUND_DETACH)
+            stopForeground(STOP_FOREGROUND_REMOVE)
             CamConStatusNotification.detach(this, CamConStatusNotification.OWNER_SYNC)
         } catch (e: Exception) {
             LogcatManager.w(TAG, "Task removed 처리 중 정리 실패", e)
-        } finally {
-            stopSelf()
         }
+
+        // 네이티브 세션은 '클린 종료' 후 프로세스를 내린다 — closeCamera가 이벤트 리스너를
+        // join(stop-before-destroy)하고 PTP 세션을 정상 해제한다. abrupt kill만 하면 카메라
+        // (Nikon STA)가 세션 잠금 상태로 남아 다음 연결을 거부할 수 있다. 메인 스레드 블로킹
+        // (join 최대 수 초)을 피하기 위해 전용 스레드에서 수행한다.
+        Thread({
+            try {
+                com.inik.camcon.NativeLifecycle.closeCameraAndLog()
+            } catch (t: Throwable) {
+                LogcatManager.w(TAG, "Task removed 네이티브 정리 실패(프로세스 종료는 진행)", t)
+            }
+            try {
+                stopSelf()
+            } catch (_: Throwable) {
+            }
+            android.os.Process.killProcess(android.os.Process.myPid())
+        }, "camcon-task-removed-exit").start()
     }
 
     /**
@@ -429,13 +422,6 @@ class BackgroundSyncService : Service() {
                         releaseWakeLock()
 
                         LogcatManager.d(TAG, " 카메라 연결 끊김 - 이벤트 리스너 관리 대기 모드로 전환")
-
-                        // 앱이 이미 최근앱에서 제거된 상태(스와이프 후 연결로 존속)에서 연결까지 끊기면
-                        // idle FGS·영구 알림이 무한 잔존하지 않도록 서비스를 종료한다(onDestroy가 정리).
-                        if (taskRemovedWhileConnected) {
-                            LogcatManager.d(TAG, "태스크 제거 후 연결 끊김 - idle 잔존 방지로 서비스 종료")
-                            stopSelf()
-                        }
                     }
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
