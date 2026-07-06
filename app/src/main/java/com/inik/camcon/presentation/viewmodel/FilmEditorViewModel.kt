@@ -14,6 +14,7 @@ import com.inik.camcon.domain.model.FilmAdjustments
 import com.inik.camcon.domain.model.FilmEdit
 import com.inik.camcon.domain.model.FilmLut
 import com.inik.camcon.domain.model.SubscriptionTier
+import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.usecase.FilmFavoritesUseCase
 import com.inik.camcon.domain.usecase.FilmLutUseCase
 import com.inik.camcon.domain.usecase.ObserveEffectiveTierUseCase
@@ -71,6 +72,7 @@ class FilmEditorViewModel @Inject constructor(
     private val filmEditProcessor: FilmEditProcessor,
     private val observeEffectiveTierUseCase: ObserveEffectiveTierUseCase,
     private val validateFeatureAccessUseCase: ValidateFeatureAccessUseCase,
+    private val appSettingsRepository: AppSettingsRepository,
     @ApplicationContext private val context: Context,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
@@ -307,6 +309,14 @@ class FilmEditorViewModel @Inject constructor(
             val tier = effectiveTier.first()
             if (validateFeatureAccessUseCase.isFilmLutAllowed(tier, lutId)) {
                 selectLut(lutId)
+                // 에디터에서 마지막으로 고른 필름 = 수신 자동 적용 기본값으로 영속
+                // (2026-07-07 제품 결정 — 설정의 '기본 필름 선택'을 거치지 않아도 기억).
+                // 게이트를 통과한 lutId 만 도달하므로 티어 재검증 불필요.
+                try {
+                    appSettingsRepository.setSelectedFilmLutId(lutId)
+                } catch (e: Exception) {
+                    LogcatManager.w(TAG, "마지막 사용 필름 저장 실패(선택 동작에는 영향 없음)", e)
+                }
                 _lutSelectionAccepted.tryEmit(lutId)
             } else {
                 _lutLockNotice.tryEmit(Unit)
@@ -476,6 +486,14 @@ class FilmEditorViewModel @Inject constructor(
                 val tmpFile = File(tmp)
                 val saved = withContext(ioDispatcher) { saveToGallery(tmpFile) }
                 _message.value = if (saved) MESSAGE_OK else MESSAGE_FAIL
+                if (saved) {
+                    // 내보내기 = 이 강도를 '실제로 사용' 확정한 시점 — 자동 적용 기본 강도로 기억.
+                    try {
+                        appSettingsRepository.setFilmSimulationIntensity(_filmEdit.value.intensity)
+                    } catch (e: Exception) {
+                        LogcatManager.w(TAG, "마지막 사용 강도 저장 실패(내보내기에는 영향 없음)", e)
+                    }
+                }
                 if (tmpFile.exists()) tmpFile.delete()
             } catch (e: CancellationException) {
                 throw e

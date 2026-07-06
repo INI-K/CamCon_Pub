@@ -95,6 +95,7 @@ class FilmEditorViewModelTest {
             filmEditProcessor = filmEditProcessor,
             observeEffectiveTierUseCase = observeEffectiveTierUseCase,
             validateFeatureAccessUseCase = validateFeatureAccessUseCase,
+            appSettingsRepository = mockk(relaxed = true),
             context = context,
             ioDispatcher = testDispatcher
         )
