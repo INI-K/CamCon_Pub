@@ -553,9 +553,14 @@ fun MainScreen(
                 }
             }
 
+            // 전체화면에서도 인셋을 상태가 아닌 실제 시스템바 기준으로 소비한다:
+            // 단독 창에선 hide() 성공 → 인셋 0 = 기존 몰입 UX 그대로, 멀티윈도우처럼
+            // 시스템이 hide를 무시해 바가 남으면 비영 인셋이 적용돼 상하 겹침을 막는다.
             val containerModifier = Modifier
                 .fillMaxSize()
-                .padding(if (isFullscreen) PaddingValues(0.dp) else innerPadding)
+                .padding(
+                    if (isFullscreen) WindowInsets.systemBars.asPaddingValues() else innerPadding
+                )
 
             if (useNavigationRail && !isFullscreen) {
                 // Medium / Expanded: NavigationRail 좌측 + content 우측
