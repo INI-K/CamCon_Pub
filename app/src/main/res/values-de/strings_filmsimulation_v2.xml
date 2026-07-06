@@ -40,4 +40,9 @@
     <!-- 필름↔색감 배타 스왑 안내(정합화 통지 겸용) -->
     <string name="pipeline_swap_color_disabled">Farbübertragung deaktiviert — dein aktueller Tarif kann sie nicht zusammen mit der Filmsimulation verwenden.</string>
     <string name="pipeline_swap_film_disabled">Filmsimulation deaktiviert — dein aktueller Tarif kann sie nicht zusammen mit der Farbübertragung verwenden.</string>
+
+    <!-- 필름 LUT 티어 게이팅(무료 시그니처 + PRO 전체) -->
+    <string name="fs_lut_locked_badge_cd">Gesperrt — PRO-Film</string>
+    <string name="fs_lut_locked_notice">Dieser Film erfordert einen PRO-Tarif. Upgrade-Optionen folgen in Kürze.</string>
+    <string name="fs_selected_film_locked_hint">In deinem Tarif nicht verfügbar — automatische Anwendung wird übersprungen.</string>
 </resources>

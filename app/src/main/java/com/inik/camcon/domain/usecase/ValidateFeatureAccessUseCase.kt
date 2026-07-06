@@ -39,11 +39,42 @@ data class ActivePipeline(
 @Singleton
 class ValidateFeatureAccessUseCase @Inject constructor() {
 
+    companion object {
+        /**
+         * 무료(전 티어) 시그니처 필름 LUT id (= FilmLut.id = film_luts.json lut_file).
+         * 교체는 이 목록 한 곳만 수정한다. 항목 실존은 FreeFilmLutIdsCatalogTest 가 검증한다.
+         */
+        val FREE_FILM_LUT_IDS: Set<String> = setOf(
+            "luts/negative_new/kodak_portra_400.cube",              // 컬러 네거티브 대표
+            "luts/colorslide/fuji_velvia_50.cube",                 // 슬라이드(풍경) 대표
+            "luts/bw/kodak_tri-x_400.cube",                        // 흑백 대표
+            "luts/fujixtransiii/fuji_xtrans_iii_classic_chrome.cube", // 디지털 필름심 대표
+            "luts/instant_consumer/polaroid_px-680.cube"           // 인스턴트 대표
+        )
+    }
+
     /** 미리보기 탭 접근 허용 티어 — [ValidateImageFormatUseCase.isRawAllowedForTier] 와 동일 집합. */
     fun isPhotoPreviewAllowed(tier: SubscriptionTier): Boolean =
         tier == SubscriptionTier.PRO ||
                 tier == SubscriptionTier.REFERRER ||
                 tier == SubscriptionTier.ADMIN
+
+    /** 전체 LUT 카탈로그 사용 허용 티어 — [isPhotoPreviewAllowed] 와 동일 집합(PRO/REFERRER/ADMIN). */
+    fun isFullLutCatalogAllowed(tier: SubscriptionTier): Boolean =
+        tier == SubscriptionTier.PRO ||
+                tier == SubscriptionTier.REFERRER ||
+                tier == SubscriptionTier.ADMIN
+
+    /** 해당 LUT 사용 가능 여부. 빈 id(선택 없음)는 항상 true. */
+    fun isFilmLutAllowed(tier: SubscriptionTier, lutId: String): Boolean =
+        lutId.isEmpty() || isFullLutCatalogAllowed(tier) || lutId in FREE_FILM_LUT_IDS
+
+    /**
+     * 수신 자동 적용 폴백: 잠긴 LUT 면 "" 반환(→ 기존 isNotEmpty 가드가 필름 스텝을 스킵).
+     * 마스킹만 하고 선택 id 를 영속화하지 않는다 — 재업그레이드 시 선택이 그대로 살아난다.
+     */
+    fun resolveEffectiveLutId(tier: SubscriptionTier, selectedLutId: String): String =
+        if (isFilmLutAllowed(tier, selectedLutId)) selectedLutId else ""
 
     /** 필름·색감 동시 사용(듀얼 파이프라인) 허용 티어. */
     fun isDualPipelineAllowed(tier: SubscriptionTier): Boolean =

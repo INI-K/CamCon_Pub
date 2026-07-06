@@ -40,4 +40,9 @@
     <!-- 필름↔색감 배타 스왑 안내(정합화 통지 겸용) -->
     <string name="pipeline_swap_color_disabled">Color transfer turned off — your current plan can\'t use it together with film simulation.</string>
     <string name="pipeline_swap_film_disabled">Film simulation turned off — your current plan can\'t use it together with color transfer.</string>
+
+    <!-- 필름 LUT 티어 게이팅(무료 시그니처 + PRO 전체) -->
+    <string name="fs_lut_locked_badge_cd">Locked — PRO film</string>
+    <string name="fs_lut_locked_notice">This film requires a PRO plan. Upgrade options are coming soon.</string>
+    <string name="fs_selected_film_locked_hint">Not available on your plan — auto-apply is skipped.</string>
 </resources>

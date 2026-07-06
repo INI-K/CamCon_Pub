@@ -13,8 +13,11 @@ import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.model.FilmAdjustments
 import com.inik.camcon.domain.model.FilmEdit
 import com.inik.camcon.domain.model.FilmLut
+import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.usecase.FilmFavoritesUseCase
 import com.inik.camcon.domain.usecase.FilmLutUseCase
+import com.inik.camcon.domain.usecase.ObserveEffectiveTierUseCase
+import com.inik.camcon.domain.usecase.ValidateFeatureAccessUseCase
 import com.inik.camcon.presentation.ui.screens.components.ImageProcessingUtils
 import com.inik.camcon.utils.LogcatManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,14 +26,19 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -61,6 +69,8 @@ class FilmEditorViewModel @Inject constructor(
     private val filmLutUseCase: FilmLutUseCase,
     private val filmFavoritesUseCase: FilmFavoritesUseCase,
     private val filmEditProcessor: FilmEditProcessor,
+    private val observeEffectiveTierUseCase: ObserveEffectiveTierUseCase,
+    private val validateFeatureAccessUseCase: ValidateFeatureAccessUseCase,
     @ApplicationContext private val context: Context,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
@@ -106,6 +116,40 @@ class FilmEditorViewModel @Inject constructor(
 
     private val _selectedLutId = MutableStateFlow("")
     val selectedLutId: StateFlow<String> = _selectedLutId.asStateFlow()
+
+    // ---- 티어 게이팅(무료 시그니처 필름 + PRO 전체 카탈로그) ----
+
+    /** pref 우선 병합 유효 티어(cold). 첫 방출이 병합 티어 → PRO 잠금 플래시 없음(H1). */
+    private val effectiveTier: Flow<SubscriptionTier> = observeEffectiveTierUseCase()
+
+    /**
+     * 현재 티어에서 잠긴(선택 불가) LUT id 집합. 배지 표시 전용.
+     *
+     * 초기값 emptySet = 배지 없음 → PRO 잠금 플래시 없음(photoPreviewAccess null 초기값 관례와 동형).
+     * FREE 는 수 ms 후 '카탈로그 − 무료셋' 을 방출한다 — 이 창의 셀 탭은 [selectLutGated] 가 first()
+     * 로 정확히 판정하므로 우회되지 않는다. 전체 허용 티어는 항상 emptySet.
+     */
+    val lockedLutIds: StateFlow<Set<String>> =
+        combine(_availableLuts, effectiveTier) { luts, tier ->
+            if (validateFeatureAccessUseCase.isFullLutCatalogAllowed(tier)) {
+                emptySet()
+            } else {
+                luts.mapTo(HashSet()) { it.id } - ValidateFeatureAccessUseCase.FREE_FILM_LUT_IDS
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
+    /**
+     * 게이트를 통과한 선택 반영 신호(선택된 lutId). 호스트가 편집 화면 이동/결과 반환에 사용한다.
+     * 편집 화면 하단 스트립도 [selectLutGated] 를 쓰므로 이 이벤트가 발화한다 — 호스트 수집기는
+     * 반드시 현재 라우트가 컨택트 시트일 때만 네비게이션한다(재네비게이션 방지).
+     * tryEmit 드롭 방지를 위해 extraBufferCapacity = 1 (pipelineSwapEvent 관례).
+     */
+    private val _lutSelectionAccepted = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val lutSelectionAccepted: SharedFlow<String> = _lutSelectionAccepted.asSharedFlow()
+
+    /** 잠긴 LUT 탭 시 안내 신호(1회성). 호스트가 토스트로 표시한다. */
+    private val _lutLockNotice = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val lutLockNotice: SharedFlow<Unit> = _lutLockNotice.asSharedFlow()
 
     // ---- 편집 상태(Phase 3) ----
 
@@ -237,13 +281,33 @@ class FilmEditorViewModel @Inject constructor(
 
     /**
      * 필름 LUT 을 선택한다. [selectedLutId] 와 [filmEdit].lutId 를 갱신하고 룩업 비트맵을 로드한다.
-     * 컨택트 시트 셀 탭(편집 진입)과 편집 화면 하단 필름 전환 스트립이 공유한다.
+     *
+     * **티어 게이트 미적용** — 화면 진입 경로(컨택트 시트 셀 탭·편집 스트립)는 반드시 [selectLutGated] 를
+     * 사용한다. 이 함수는 게이트를 통과한 선택의 반영과 내부·테스트 용도로만 직접 호출한다.
      */
     fun selectLut(lutId: String) {
         if (_selectedLutId.value == lutId && _lookupBitmap.value != null) return
         _selectedLutId.value = lutId
         _filmEdit.value = _filmEdit.value.copy(lutId = lutId)
         loadLookup(lutId)
+    }
+
+    /**
+     * 티어 게이트를 통과한 선택만 반영한다. 화면 진입 경로(컨택트 시트 셀 탭·편집 스트립)가 사용한다.
+     *
+     * 허용 시 [selectLut] 로 반영하고 [lutSelectionAccepted] 를 방출한다. 잠긴 LUT 면 상태를 바꾸지 않고
+     * [lutLockNotice] 만 방출한다. 티어는 `.value` 스냅샷이 아니라 [effectiveTier].first() 로 읽는다(H2).
+     */
+    fun selectLutGated(lutId: String) {
+        viewModelScope.launch {
+            val tier = effectiveTier.first()
+            if (validateFeatureAccessUseCase.isFilmLutAllowed(tier, lutId)) {
+                selectLut(lutId)
+                _lutSelectionAccepted.tryEmit(lutId)
+            } else {
+                _lutLockNotice.tryEmit(Unit)
+            }
+        }
     }
 
     /** [lutId] 의 512×512 룩업을 로드해 [lookupBitmap] 에 노출한다(캐시 소유). 비면 null. */

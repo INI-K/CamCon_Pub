@@ -6,6 +6,7 @@ import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.usecase.ColorTransferUseCase
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
+import com.inik.camcon.domain.usecase.ObserveEffectiveTierUseCase
 import com.inik.camcon.domain.usecase.ValidateFeatureAccessUseCase
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.domain.usecase.camera.ReadNativeLogUseCase
@@ -52,6 +53,10 @@ class AppSettingsViewModelPipelineGateTest {
     private val prefTierFlow = MutableStateFlow(SubscriptionTier.FREE)
     private val filmEnabledFlow = MutableStateFlow(false)
     private val colorEnabledFlow = MutableStateFlow(false)
+    private val selectedFilmLutIdFlow = MutableStateFlow("")
+
+    private val paidLutId = "luts/print/kodak_2393_cuspclip.cube" // 무료셋에 없는 카탈로그 id
+    private val freeLutId = ValidateFeatureAccessUseCase.FREE_FILM_LUT_IDS.first()
 
     private val testDispatcher = StandardTestDispatcher()
 
@@ -68,10 +73,12 @@ class AppSettingsViewModelPipelineGateTest {
         every { appSettingsRepository.subscriptionTierEnum } returns prefTierFlow
         every { appSettingsRepository.isFilmSimulationEnabled } returns filmEnabledFlow
         every { appSettingsRepository.isColorTransferEnabled } returns colorEnabledFlow
+        every { appSettingsRepository.selectedFilmLutId } returns selectedFilmLutIdFlow
         every { getSubscriptionUseCase.getSubscriptionTier() } returns flowOf(SubscriptionTier.FREE)
 
         coEvery { appSettingsRepository.setColorTransferEnabled(any()) } returns Unit
         coEvery { appSettingsRepository.setFilmSimulationEnabled(any()) } returns Unit
+        coEvery { appSettingsRepository.setSelectedFilmLutId(any()) } returns Unit
     }
 
     @After
@@ -88,7 +95,11 @@ class AppSettingsViewModelPipelineGateTest {
         stopNativeLogUseCase = mockk<StopNativeLogUseCase>(relaxed = true),
         readNativeLogUseCase = mockk<ReadNativeLogUseCase>(relaxed = true),
         validateImageFormatUseCase = mockk<ValidateImageFormatUseCase>(relaxed = true),
-        validateFeatureAccessUseCase = validateFeatureAccessUseCase
+        validateFeatureAccessUseCase = validateFeatureAccessUseCase,
+        // 실제 UseCase 사용(mock 아님) — pref+Firebase 병합 로직이 리팩터 후에도 무변경임을 함께 증명.
+        observeEffectiveTierUseCase = ObserveEffectiveTierUseCase(
+            appSettingsRepository, getSubscriptionUseCase
+        )
     )
 
     // ---------- 세터 배타 스왑 ----------
@@ -190,5 +201,66 @@ class AppSettingsViewModelPipelineGateTest {
             assertTrue(awaitItem() == true)
             cancelAndConsumeRemainingEvents()
         }
+    }
+
+    // ---------- 필름 LUT 잠금 표시 / 세터 심층 방어 ----------
+
+    @Test
+    fun `selectedFilmLutLocked - pref PRO 는 null 다음 false (FREE 플래시 없음)`() = runTest {
+        prefTierFlow.value = SubscriptionTier.PRO
+        selectedFilmLutIdFlow.value = paidLutId
+        val viewModel = createViewModel()
+
+        viewModel.selectedFilmLutLocked.test {
+            assertNull(awaitItem())
+            assertTrue(awaitItem() == false)
+            cancelAndConsumeRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `selectedFilmLutLocked - FREE + 유료 LUT 선택이면 null 다음 true`() = runTest {
+        prefTierFlow.value = SubscriptionTier.FREE
+        selectedFilmLutIdFlow.value = paidLutId
+        val viewModel = createViewModel()
+
+        viewModel.selectedFilmLutLocked.test {
+            assertNull(awaitItem())
+            assertTrue(awaitItem() == true)
+            cancelAndConsumeRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `setSelectedFilmLutId - FREE + 유료 id 는 repo 저장 미호출(심층 방어)`() = runTest {
+        prefTierFlow.value = SubscriptionTier.FREE
+        val viewModel = createViewModel()
+
+        viewModel.setSelectedFilmLutId(paidLutId)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify(exactly = 0) { appSettingsRepository.setSelectedFilmLutId(paidLutId) }
+    }
+
+    @Test
+    fun `setSelectedFilmLutId - FREE + 무료 id 는 repo 저장 호출`() = runTest {
+        prefTierFlow.value = SubscriptionTier.FREE
+        val viewModel = createViewModel()
+
+        viewModel.setSelectedFilmLutId(freeLutId)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify(exactly = 1) { appSettingsRepository.setSelectedFilmLutId(freeLutId) }
+    }
+
+    @Test
+    fun `setSelectedFilmLutId - PRO + 유료 id 는 repo 저장 호출`() = runTest {
+        prefTierFlow.value = SubscriptionTier.PRO
+        val viewModel = createViewModel()
+
+        viewModel.setSelectedFilmLutId(paidLutId)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify(exactly = 1) { appSettingsRepository.setSelectedFilmLutId(paidLutId) }
     }
 }

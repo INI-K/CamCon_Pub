@@ -246,6 +246,7 @@ fun SettingsScreen(
     val isVibrateOnPhotoReceivedEnabled by appSettingsViewModel.isVibrateOnPhotoReceivedEnabled.collectAsStateWithLifecycle()
     val isFilmSimulationEnabled by appSettingsViewModel.isFilmSimulationEnabled.collectAsStateWithLifecycle()
     val selectedFilmLutId by appSettingsViewModel.selectedFilmLutId.collectAsStateWithLifecycle()
+    val selectedFilmLutLocked by appSettingsViewModel.selectedFilmLutLocked.collectAsStateWithLifecycle()
     val filmSimulationIntensity by appSettingsViewModel.filmSimulationIntensity.collectAsStateWithLifecycle()
     val isRawFileDownloadEnabled by appSettingsViewModel.isRawFileDownloadEnabled.collectAsStateWithLifecycle()
 
@@ -568,10 +569,18 @@ fun SettingsScreen(
                 )
 
                 if (isFilmSimulationEnabled) {
+                    // 선택된 기본 필름이 현재 티어에서 잠겼으면(강등/무료셋 변경) 보조 문구에 잠금 힌트를 덧붙인다.
+                    // 자동 적용이 스킵되는데 필름심 ON 으로만 보이는 혼란을 방지한다(null=미확정 → 힌트 없음).
+                    val defaultFilmSubtitle = if (selectedFilmLutLocked == true) {
+                        stringResource(R.string.settings_v2_film_default_subtitle) +
+                            " · " + stringResource(R.string.fs_selected_film_locked_hint)
+                    } else {
+                        stringResource(R.string.settings_v2_film_default_subtitle)
+                    }
                     NavigationRowV2(
                         icon = Icons.Default.Photo,
                         title = stringResource(R.string.settings_v2_film_default_title),
-                        subtitle = stringResource(R.string.settings_v2_film_default_subtitle),
+                        subtitle = defaultFilmSubtitle,
                         onClick = {
                             val intent = Intent(context, FilmEditorActivity::class.java)
                                 .putExtra(FilmEditorActivity.EXTRA_SELECT_ONLY, true)

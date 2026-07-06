@@ -6,8 +6,11 @@ import com.inik.camcon.domain.repository.FilmEditProcessor
 import com.inik.camcon.domain.model.FilmAdjustments
 import com.inik.camcon.domain.model.FilmEdit
 import com.inik.camcon.domain.model.FilmLut
+import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.usecase.FilmFavoritesUseCase
 import com.inik.camcon.domain.usecase.FilmLutUseCase
+import com.inik.camcon.domain.usecase.ObserveEffectiveTierUseCase
+import com.inik.camcon.domain.usecase.ValidateFeatureAccessUseCase
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -46,7 +49,15 @@ class FilmEditorViewModelTest {
     private lateinit var filmEditProcessor: FilmEditProcessor
     private lateinit var context: Context
 
+    private lateinit var observeEffectiveTierUseCase: ObserveEffectiveTierUseCase
+    private val validateFeatureAccessUseCase = ValidateFeatureAccessUseCase()
+
     private val favoritesFlow = MutableStateFlow<Set<String>>(emptySet())
+    /** 게이팅 테스트가 유효 티어를 제어하는 축. 기본 PRO(전체 허용) — 기존 필터 테스트에 영향 없음. */
+    private val effectiveTierFlow = MutableStateFlow(SubscriptionTier.PRO)
+
+    private val freeLutId = ValidateFeatureAccessUseCase.FREE_FILM_LUT_IDS.first()
+    private val paidLutId = "neg/portra.cube" // 카탈로그엔 있지만 무료셋엔 없는 id
 
     private val catalog = listOf(
         FilmLut(id = "bw/tri-x.cube", name = "Kodak Tri-X 400", category = "Bw", assetPath = "bw/tri-x.cube"),
@@ -64,8 +75,11 @@ class FilmEditorViewModelTest {
         filmEditProcessor = mockk(relaxed = true)
         context = mockk(relaxed = true)
 
+        observeEffectiveTierUseCase = mockk()
+
         coEvery { filmLutUseCase.getAvailableLuts() } returns catalog
         every { filmFavoritesUseCase.favorites() } returns favoritesFlow
+        every { observeEffectiveTierUseCase() } returns effectiveTierFlow
     }
 
     @After
@@ -79,6 +93,8 @@ class FilmEditorViewModelTest {
             filmLutUseCase = filmLutUseCase,
             filmFavoritesUseCase = filmFavoritesUseCase,
             filmEditProcessor = filmEditProcessor,
+            observeEffectiveTierUseCase = observeEffectiveTierUseCase,
+            validateFeatureAccessUseCase = validateFeatureAccessUseCase,
             context = context,
             ioDispatcher = testDispatcher
         )
@@ -284,6 +300,68 @@ class FilmEditorViewModelTest {
             assertEquals(FilmEditorViewModel.MESSAGE_OK, awaitItem())
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    // ---- 티어 게이팅(무료 시그니처 필름 + PRO 전체) ----
+
+    @Test
+    fun `PRO 티어면 lockedLutIds 는 emptySet (배지 플래시 없음)`() = runTest {
+        effectiveTierFlow.value = SubscriptionTier.PRO
+        val vm = createViewModel()
+        vm.lockedLutIds.test {
+            assertEquals(emptySet<String>(), awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `FREE 티어면 lockedLutIds 는 카탈로그에서 무료셋을 뺀 집합`() = runTest {
+        effectiveTierFlow.value = SubscriptionTier.FREE
+        val vm = createViewModel()
+        vm.lockedLutIds.test {
+            // 초기값 emptySet → FREE 병합 후 '카탈로그 − 무료셋'. 이 카탈로그엔 무료 id 가 없어 전부 잠김.
+            var latest = awaitItem()
+            while (latest.isEmpty()) latest = awaitItem()
+            assertEquals(catalog.map { it.id }.toSet(), latest)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `selectLutGated FREE + 잠긴 id → lutLockNotice 방출 + 선택 불변`() = runTest {
+        effectiveTierFlow.value = SubscriptionTier.FREE
+        val vm = createViewModel()
+        vm.lutLockNotice.test {
+            vm.selectLutGated(paidLutId)
+            awaitItem() // Unit 방출 확인
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals("", vm.selectedLutId.value)
+        assertEquals("", vm.filmEdit.value.lutId)
+    }
+
+    @Test
+    fun `selectLutGated FREE + 무료 id → lutSelectionAccepted 방출 + 선택 갱신`() = runTest {
+        effectiveTierFlow.value = SubscriptionTier.FREE
+        val vm = createViewModel()
+        vm.lutSelectionAccepted.test {
+            vm.selectLutGated(freeLutId)
+            assertEquals(freeLutId, awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(freeLutId, vm.selectedLutId.value)
+    }
+
+    @Test
+    fun `selectLutGated PRO + 잠긴 id 도 허용 → accepted 방출`() = runTest {
+        effectiveTierFlow.value = SubscriptionTier.PRO
+        val vm = createViewModel()
+        vm.lutSelectionAccepted.test {
+            vm.selectLutGated(paidLutId)
+            assertEquals(paidLutId, awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(paidLutId, vm.selectedLutId.value)
     }
 
     /** export 는 _sourcePath 가 있어야 동작한다. setSourceImage 는 비트맵 디코딩을 타므로,

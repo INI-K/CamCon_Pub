@@ -21,6 +21,7 @@ import kotlinx.coroutines.launch
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.FilmContactSheetScreen
 import com.inik.camcon.presentation.ui.screens.FilmEditScreen
@@ -143,6 +144,29 @@ private fun FilmEditorHost(
         }
     }
 
+    // 게이트 통과 선택 → 편집 이동/결과 반환. 잠긴 LUT 탭 → 토스트. 두 수집기 모두 호스트 1곳(공용).
+    LaunchedEffect(Unit) {
+        viewModel.lutSelectionAccepted.collect { lutId ->
+            // [필수] 편집 화면 하단 스트립도 selectLutGated 로 이 이벤트를 발화한다. 라우트 가드가 없으면
+            // 필름 전환마다 ROUTE_EDIT 가 중복 push 되어 백스택이 오염된다(연타 방지가 아니라 정상 조작 버그).
+            if (navController.currentDestination?.route == FilmEditorActivity.ROUTE_CONTACT_SHEET) {
+                if (selectOnly) {
+                    onSelectAndFinish(lutId)
+                } else {
+                    navController.navigate(FilmEditorActivity.ROUTE_EDIT)
+                }
+            }
+        }
+    }
+    LaunchedEffect(Unit) {
+        viewModel.lutLockNotice.collect {
+            android.widget.Toast.makeText(
+                context, R.string.fs_lut_locked_notice, android.widget.Toast.LENGTH_SHORT
+            ).show()
+            // TODO(billing): 업그레이드 CTA 추후 지원 (PhotoPreviewLockedScreen.kt 관례)
+        }
+    }
+
     NavHost(
         navController = navController,
         startDestination = FilmEditorActivity.ROUTE_CONTACT_SHEET
@@ -152,14 +176,7 @@ private fun FilmEditorHost(
                 viewModel = viewModel,
                 onBackClick = onClose,
                 onPickImage = { pickImageLauncher.launch("image/jpeg") },
-                onLutClick = { lutId ->
-                    viewModel.selectLut(lutId)
-                    if (selectOnly) {
-                        onSelectAndFinish(lutId)
-                    } else {
-                        navController.navigate(FilmEditorActivity.ROUTE_EDIT)
-                    }
-                }
+                onLutClick = { lutId -> viewModel.selectLutGated(lutId) }
             )
         }
 

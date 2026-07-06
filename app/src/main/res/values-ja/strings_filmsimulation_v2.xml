@@ -40,4 +40,9 @@
     <!-- 필름↔색감 배타 스왑 안내(정합화 통지 겸용) -->
     <string name="pipeline_swap_color_disabled">色転送をオフにしました — 現在のプランではフィルムシミュレーションと同時に使用できません。</string>
     <string name="pipeline_swap_film_disabled">フィルムシミュレーションをオフにしました — 現在のプランでは色転送と同時に使用できません。</string>
+
+    <!-- 필름 LUT 티어 게이팅(무료 시그니처 + PRO 전체) -->
+    <string name="fs_lut_locked_badge_cd">ロック中 — PRO フィルム</string>
+    <string name="fs_lut_locked_notice">このフィルムには PRO プランが必要です。アップグレードオプションは近日提供予定です。</string>
+    <string name="fs_selected_film_locked_hint">現在のプランでは使用できないため、自動適用はスキップされます。</string>
 </resources>

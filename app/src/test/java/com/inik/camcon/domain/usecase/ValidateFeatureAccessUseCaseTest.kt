@@ -95,4 +95,65 @@ class ValidateFeatureAccessUseCaseTest {
         )
         assertEquals(ActivePipeline(filmEnabled = false, colorEnabled = true, needsReconcile = false), colorOnly)
     }
+
+    // ---------- isFullLutCatalogAllowed ----------
+
+    @Test
+    fun `isFullLutCatalogAllowed - FREE·BASIC 은 false, PRO·REFERRER·ADMIN 은 true`() {
+        assertFalse(useCase.isFullLutCatalogAllowed(SubscriptionTier.FREE))
+        assertFalse(useCase.isFullLutCatalogAllowed(SubscriptionTier.BASIC))
+        assertTrue(useCase.isFullLutCatalogAllowed(SubscriptionTier.PRO))
+        assertTrue(useCase.isFullLutCatalogAllowed(SubscriptionTier.REFERRER))
+        assertTrue(useCase.isFullLutCatalogAllowed(SubscriptionTier.ADMIN))
+    }
+
+    // ---------- isFilmLutAllowed ----------
+
+    private val freeLutId = ValidateFeatureAccessUseCase.FREE_FILM_LUT_IDS.first()
+    private val paidLutId = "luts/print/kodak_2393_cuspclip.cube" // 무료셋에 없는 임의 카탈로그 id
+
+    @Test
+    fun `isFilmLutAllowed - 빈 id 는 모든 티어에서 true(선택 없음)`() {
+        SubscriptionTier.values().forEach { tier ->
+            assertTrue(useCase.isFilmLutAllowed(tier, ""))
+        }
+    }
+
+    @Test
+    fun `isFilmLutAllowed - FREE·BASIC 은 무료 id 만 true, 유료 id 는 false`() {
+        listOf(SubscriptionTier.FREE, SubscriptionTier.BASIC).forEach { tier ->
+            assertTrue("무료 id 는 $tier 에서 허용", useCase.isFilmLutAllowed(tier, freeLutId))
+            assertFalse("유료 id 는 $tier 에서 차단", useCase.isFilmLutAllowed(tier, paidLutId))
+        }
+    }
+
+    @Test
+    fun `isFilmLutAllowed - PRO·REFERRER·ADMIN 은 임의 id 도 true`() {
+        listOf(SubscriptionTier.PRO, SubscriptionTier.REFERRER, SubscriptionTier.ADMIN).forEach { tier ->
+            assertTrue(useCase.isFilmLutAllowed(tier, freeLutId))
+            assertTrue(useCase.isFilmLutAllowed(tier, paidLutId))
+        }
+    }
+
+    // ---------- resolveEffectiveLutId ----------
+
+    @Test
+    fun `resolveEffectiveLutId - FREE 에서 잠긴 id 는 빈 문자열로 마스킹`() {
+        assertEquals("", useCase.resolveEffectiveLutId(SubscriptionTier.FREE, paidLutId))
+    }
+
+    @Test
+    fun `resolveEffectiveLutId - FREE 에서 무료 id 는 그대로 통과`() {
+        assertEquals(freeLutId, useCase.resolveEffectiveLutId(SubscriptionTier.FREE, freeLutId))
+    }
+
+    @Test
+    fun `resolveEffectiveLutId - PRO 는 유료 id 도 그대로 통과`() {
+        assertEquals(paidLutId, useCase.resolveEffectiveLutId(SubscriptionTier.PRO, paidLutId))
+    }
+
+    @Test
+    fun `resolveEffectiveLutId - 빈 id 는 그대로 빈 문자열`() {
+        assertEquals("", useCase.resolveEffectiveLutId(SubscriptionTier.FREE, ""))
+    }
 }
