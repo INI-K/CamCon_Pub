@@ -114,26 +114,31 @@ class PhotoDownloadManager @Inject constructor(
     }
 
     /**
-     * RAW 게이팅 단일 지점 방어선(CLAUDE.md §2).
+     * 포맷/티어 게이팅 단일 지점 방어선(CLAUDE.md §2).
      *
      * capture/liveview 직접 콜백 등 CameraEventManager 게이팅 래퍼를 거치지 않는 경로가
      * 이 저장 진입부로 직행할 수 있으므로, [ValidateImageFormatUseCase]로 다시 한 번 검증한다.
-     * 차단 대상(미지원 RAW)이면 false 를 반환하여 저장을 중단시킨다. 일반 포맷은 항상 통과.
+     * 차단 대상은 '티어 사유'뿐이다 — 미지원 RAW(티어/설정)와 티어 미지원 일반 포맷
+     * (예: FREE의 PNG). 미지 확장자는 기존 통과 동작을 유지해 촬영 직콜백의 비정형
+     * 파일명을 새로 막지 않는다.
      *
-     * @return 저장을 진행해도 되면 true, RAW 게이팅으로 차단해야 하면 false.
+     * @return 저장을 진행해도 되면 true, 티어 게이팅으로 차단해야 하면 false.
      */
     private suspend fun isDownloadAllowedByGating(fileName: String): Boolean {
-        if (!validateImageFormatUseCase.isRawFile(fileName)) {
+        val result = validateImageFormatUseCase.validateFormat(fileName)
+        if (result.isSupported) {
             return true
         }
-        val result = validateImageFormatUseCase.validateRawFileAccess(fileName)
-        if (!result.isSupported) {
-            Log.w(
-                TAG,
-                "⛔ RAW 게이팅 차단 — 저장 중단: $fileName (제조사: ${result.manufacturer})"
-            )
+        // 티어와 무관한 미지 포맷(needsUpgrade=false, RAW 아님)은 기존 동작대로 통과.
+        if (!result.isRawFile && !result.needsUpgrade) {
+            return true
         }
-        return result.isSupported
+        Log.w(
+            TAG,
+            "⛔ 포맷 게이팅 차단 — 저장 중단: $fileName" +
+                " (RAW=${result.isRawFile}, 제조사: ${result.manufacturer})"
+        )
+        return false
     }
 
     suspend fun getCameraPhotos(): Result<List<CameraPhoto>> {
