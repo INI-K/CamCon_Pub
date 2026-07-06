@@ -109,7 +109,6 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.size.Scale
 import com.inik.camcon.R
-import com.inik.camcon.presentation.ui.SubscriptionActivity
 import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.domain.model.CameraPhoto
@@ -454,11 +453,7 @@ fun CameraControlScreen(
     uiState.rawFileRestriction?.let { restriction ->
         RawFileRestrictionNotification(
             restriction = restriction,
-            onDismiss = { viewModel.clearRawFileRestriction() },
-            onUpgradeClick = {
-                viewModel.clearRawFileRestriction()
-                SubscriptionActivity.start(context)
-            }
+            onDismiss = { viewModel.clearRawFileRestriction() }
         )
     }
 
@@ -1983,17 +1978,16 @@ private fun CapturedPhoto.getExifData(): String? {
 @Composable
 private fun RawFileRestrictionNotification(
     restriction: RawFileRestriction,
-    onDismiss: () -> Unit,
-    onUpgradeClick: () -> Unit = {}
+    onDismiss: () -> Unit
 ) {
     // 내부 visible 상태로 종료 애니메이션을 재생한 뒤 onDismiss 호출
     var visible by remember(restriction.timestamp) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    // 진입 시 애니메이션 트리거 + 자동으로 사라지게 하기 (업그레이드 탭 여유를 위해 7초)
+    // 진입 시 애니메이션 트리거 + 5초 후 자동 소멸
     LaunchedEffect(restriction.timestamp) {
         visible = true
-        kotlinx.coroutines.delay(7000L)
+        kotlinx.coroutines.delay(5000L)
         visible = false
         kotlinx.coroutines.delay(260L) // exit 애니메이션 완료 대기
         onDismiss()
@@ -2017,19 +2011,19 @@ private fun RawFileRestrictionNotification(
             Box(modifier = Modifier.align(Alignment.TopCenter)) {
                 // 컴팩트 강제: 태블릿에서 풀폭으로 여러 줄 감기며 라이브뷰를 가리지 않도록
                 // 폭 상한 + 2줄 말줄임. 경고 성격은 아이콘·컬러바가 전달하므로 타이틀 중복 제거.
+                // 구독 업그레이드 유도는 추후 지원 — CTA 없이 안내만, 탭하면 조기 닫기.
                 ToastV2(
-                    message = "${restriction.fileName} — ${restriction.message} · ${stringResource(R.string.subscription_upgrade)} →",
+                    message = "${restriction.fileName} — ${restriction.message}",
                     kind = StatusKind.Error,
                     leadingIcon = Icons.Outlined.WarningAmber,
                     maxLines = 2,
                     modifier = Modifier
                         .widthIn(max = 400.dp)
                         .clickable {
-                            // 탭하면 종료 애니메이션 후 구독(업그레이드) 화면으로 이동
                             scope.launch {
                                 visible = false
                                 kotlinx.coroutines.delay(260L)
-                                onUpgradeClick()
+                                onDismiss()
                             }
                         }
                 )
