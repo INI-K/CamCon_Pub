@@ -283,12 +283,6 @@ class PtpipViewModel @Inject constructor(
         }
     }
 
-    fun setAutoConnectEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            connectionHelper.setAutoConnectEnabled(enabled)
-        }
-    }
-
     fun updateAutoConnectEnabled(
         enabled: Boolean,
         onResult: (Boolean, String) -> Unit,

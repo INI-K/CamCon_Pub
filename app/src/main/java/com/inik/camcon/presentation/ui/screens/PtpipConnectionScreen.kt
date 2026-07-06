@@ -1,9 +1,7 @@
 package com.inik.camcon.presentation.ui.screens
 
-import android.Manifest
 import android.app.Activity
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
 import android.util.Log
@@ -72,7 +70,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.LocationRequest
@@ -208,7 +205,8 @@ fun PtpipConnectionScreen(
     val cameraInfo by ptpipViewModel.cameraInfo.collectAsStateWithLifecycle()
     val isPtpipEnabled by ptpipViewModel.isPtpipEnabled.collectAsStateWithLifecycle(initialValue = false)
     val wifiNetworkState by ptpipViewModel.wifiNetworkState.collectAsStateWithLifecycle()
-    val isAutoReconnectEnabled by ptpipViewModel.isAutoReconnectEnabled.collectAsStateWithLifecycle(initialValue = false)
+    // DataStore 기본값(true)과 일치시켜 첫 방출 전 OFF 깜빡임을 막는다.
+    val isAutoReconnectEnabled by ptpipViewModel.isAutoReconnectEnabled.collectAsStateWithLifecycle(initialValue = true)
     val isWifiConnected = ptpipViewModel.isWifiConnected()
     val wifiCapabilities = ptpipViewModel.getWifiCapabilities()
     val nearbyWifiSSIDs by ptpipViewModel.nearbyWifiSSIDs.collectAsStateWithLifecycle()
@@ -735,39 +733,18 @@ fun PtpipConnectionScreen(
                     }
 
                     // 자동 재연결 토글 — TopAppBar 아래 항상 노출.
-                    // POST_NOTIFICATIONS(API 33+) 미부여 시 Switch는 비활성 + 안내 라벨.
-                    val notificationPermissionGranted = remember(context) {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            ContextCompat.checkSelfPermission(
-                                context,
-                                Manifest.permission.POST_NOTIFICATIONS
-                            ) == PackageManager.PERMISSION_GRANTED
-                        } else {
-                            true
-                        }
-                    }
+                    // 인프로세스 재연결(AUTO_RECONNECT) 전용. 알림 권한 불필요.
+                    // 백그라운드 자동연결(AUTO_CONNECT)은 설정 화면이 단일 관리처.
                     Text(
-                        text = if (notificationPermissionGranted) {
-                            stringResource(R.string.connect_auto_reconnect_label)
-                        } else {
-                            stringResource(R.string.autoconnect_notification_required)
-                        },
+                        text = stringResource(R.string.connect_auto_reconnect_label),
                         style = MaterialTheme.typography.labelMedium,
-                        color = if (notificationPermissionGranted) {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        } else {
-                            MaterialTheme.colorScheme.error
-                        },
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(end = Spacing.sm)
                     )
                     Switch(
                         checked = isAutoReconnectEnabled,
-                        enabled = notificationPermissionGranted,
                         onCheckedChange = { enabled ->
                             ptpipViewModel.setAutoReconnectEnabled(enabled)
-                            // 자동 재연결 토글은 자동 연결(브로드캐스트 기반)과 함께 운용된다.
-                            // 사용자 의도 — 토글을 켜면 두 기능 모두 활성화.
-                            ptpipViewModel.setAutoConnectEnabled(enabled)
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
@@ -834,7 +811,6 @@ fun PtpipConnectionScreen(
                             isWifiConnected = isWifiConnected,
                             wifiCapabilities = wifiCapabilities,
                             wifiNetworkState = wifiNetworkState,
-                            isAutoReconnectEnabled = isAutoReconnectEnabled,
                             hasLocationPermission = ptpipViewModel
                                 .analyzeWifiScanPermissionStatus().canScan,
                             onRequestPermission = { requestWifiScanPermissions() },
@@ -893,7 +869,6 @@ fun PtpipConnectionScreen(
                             isWifiConnected = isWifiConnected,
                             wifiCapabilities = wifiCapabilities,
                             wifiNetworkState = wifiNetworkState,
-                            isAutoReconnectEnabled = isAutoReconnectEnabled,
                             hasLocationPermission = ptpipViewModel
                                 .analyzeWifiScanPermissionStatus().canScan,
                             onRequestPermission = { requestWifiScanPermissions() },

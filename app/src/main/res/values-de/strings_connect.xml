@@ -12,5 +12,10 @@
     <!-- PTP/IP 자동 재연결 -->
     <string name="connect_auto_reconnect_label">Automatisch neu verbinden</string>
     <string name="connect_auto_reconnect_subtitle">Verbindet automatisch erneut, sobald das Kamera-WLAN wieder verfügbar ist</string>
-    <string name="autoconnect_notification_required">Für die automatische Wiederverbindung im Hintergrund ist die Benachrichtigungsberechtigung erforderlich.</string>
+    <!-- STA 핫스팟 탭 (히어로형) -->
+    <string name="ptpip_hotspot_help_title">So verbinden Sie sich</string>
+    <string name="ptpip_hotspot_help_body">Schalten Sie den Telefon-Hotspot ein und verbinden Sie die Kamera über deren WLAN-Einstellungen mit dem Hotspot (SSID / Passwort). Danach unten die Kamera suchen oder per IP verbinden.</string>
+    <string name="ptpip_hotspot_hero_hint">Schalten Sie den Telefon-Hotspot ein, damit sich die Kamera verbinden kann</string>
+    <string name="cd_expanded">Ausgeklappt</string>
+    <string name="cd_collapsed">Eingeklappt</string>
 </resources>

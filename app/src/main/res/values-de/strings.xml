@@ -288,16 +288,10 @@
 
     <!-- 휴대폰 핫스팟 STA 모드 (PtpipConnectionScreen, 3번째 탭) -->
     <string name="ptpip_sta_hotspot_mode">STA (Telefon-Hotspot)</string>
-    <string name="ptpip_hotspot_description">Ohne Router fungiert das Telefon als Hotspot, und die Kamera verbindet sich als Client.</string>
     <string name="ptpip_hotspot_enabled">Telefon-Hotspot aktiviert</string>
     <string name="ptpip_hotspot_disabled">Telefon-Hotspot ist ausgeschaltet</string>
     <string name="ptpip_manual_ip_input">Kamera-IP direkt eingeben</string>
     <string name="ptpip_connect_with_ip">Mit dieser IP verbinden</string>
-    <string name="ptpip_hotspot_step_1">1. Aktivieren Sie den mobilen Hotspot (Tethering) Ihres Telefons</string>
-    <string name="ptpip_hotspot_step_2">2. Wählen Sie in den Wi-Fi-Einstellungen der Kamera den STA-Modus</string>
-    <string name="ptpip_hotspot_step_3">3. Geben Sie an der Kamera SSID/Passwort des Telefon-Hotspots ein und verbinden Sie sich</string>
-    <string name="ptpip_hotspot_step_4">4. Tippen Sie nach erfolgreicher Verbindung auf \"Kamera suchen\" oder geben Sie die IP direkt ein</string>
-    <string name="ptpip_hotspot_step_5">5. Wenn keine mDNS-Bekanntmachung eintrifft, geben Sie die IP direkt ein</string>
 
     <!-- 카메라 연결 최적화 대화상자 (MainActivity, 2026-05-22) -->
     <string name="camera_connection_optimization_title">Kameraverbindung optimieren</string>
@@ -333,10 +327,7 @@
     <string name="settings_native_log_toast_disable">Native-Log-Erfassung gestoppt.</string>
     <string name="settings_referral_clipboard_label">referral_code</string>
     <string name="settings_referral_copied">Empfehlungscode \'%s\' in Zwischenablage kopiert</string>
-    <string name="ptpip_hotspot_enable_title">Handy-Hotspot ist aus</string>
-    <string name="ptpip_hotspot_enable_desc">Aufgrund von Android-Vorgaben kann die App den Hotspot nicht direkt einschalten. Die Einstellungen werden geöffnet – schalte den Hotspot ein und kehre zurück.</string>
     <string name="ptpip_hotspot_open_settings">Hotspot-Einstellungen öffnen</string>
-    <string name="ptpip_hotspot_compat_note">Nikon Z, Fujifilm, Canon (EOS Utility) und Panasonic Lumix unterstützen die Verbindung zum Handy-Hotspot. OM System und Pentax/Ricoh unterstützen nur den kameraeigenen AP und können sich nicht mit dem Handy-Hotspot verbinden.</string>
 
     <!-- 포그라운드 서비스 상태 알림 (CINE INSTRUMENT 브랜드 정합, Phase 1) -->
     <string name="notif_auto_connect_prepare_title">Automatische Kameraverbindung wird vorbereitet</string>

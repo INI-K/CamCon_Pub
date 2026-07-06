@@ -320,10 +320,6 @@ class PtpipConnectionHelper @Inject constructor(
         preferencesRepository.setPtpipEnabled(enabled)
     }
 
-    suspend fun setAutoConnectEnabled(enabled: Boolean) {
-        preferencesRepository.setAutoConnectEnabled(enabled)
-    }
-
     suspend fun setAutoReconnectEnabled(enabled: Boolean) {
         preferencesRepository.setAutoReconnectEnabled(enabled)
     }

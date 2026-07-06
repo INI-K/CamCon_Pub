@@ -12,5 +12,10 @@
     <!-- PTP/IP 자동 재연결 -->
     <string name="connect_auto_reconnect_label">Reconnexion automatique</string>
     <string name="connect_auto_reconnect_subtitle">Se reconnecte automatiquement dès que le Wi-Fi de l\'appareil est de nouveau disponible</string>
-    <string name="autoconnect_notification_required">L\'autorisation de notifications est requise pour conserver la reconnexion automatique en arrière-plan.</string>
+    <!-- STA 핫스팟 탭 (히어로형) -->
+    <string name="ptpip_hotspot_help_title">Comment se connecter</string>
+    <string name="ptpip_hotspot_help_body">Activez le point d\'accès du téléphone, puis connectez-y l\'appareil photo depuis ses réglages Wi-Fi (SSID / mot de passe). Une fois connecté, recherchez l\'appareil ci-dessous ou connectez-vous par IP.</string>
+    <string name="ptpip_hotspot_hero_hint">Activez le point d\'accès du téléphone pour que l\'appareil photo puisse se connecter</string>
+    <string name="cd_expanded">Déplié</string>
+    <string name="cd_collapsed">Replié</string>
 </resources>

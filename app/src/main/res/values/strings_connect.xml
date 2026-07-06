@@ -12,5 +12,10 @@
     <!-- PTP/IP 자동 재연결 (Group 5 - M3) -->
     <string name="connect_auto_reconnect_label">Auto-reconnect</string>
     <string name="connect_auto_reconnect_subtitle">Automatically reconnect when the camera Wi-Fi is available again</string>
-    <string name="autoconnect_notification_required">Notification permission is required to keep auto-reconnect running in the background.</string>
+    <!-- STA 핫스팟 탭 (히어로형) -->
+    <string name="ptpip_hotspot_help_title">How to connect</string>
+    <string name="ptpip_hotspot_help_body">Turn on the phone hotspot, then join it from the camera\'s Wi-Fi settings (SSID/password). Once connected, search for the camera below or connect by IP.</string>
+    <string name="ptpip_hotspot_hero_hint">Turn on the phone hotspot so the camera can connect</string>
+    <string name="cd_expanded">Expanded</string>
+    <string name="cd_collapsed">Collapsed</string>
 </resources>

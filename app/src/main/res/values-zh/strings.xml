@@ -286,16 +286,10 @@
 
     <!-- 휴대폰 핫스팟 STA 모드 (PtpipConnectionScreen 세 번째 탭) -->
     <string name="ptpip_sta_hotspot_mode">STA (手机热点)</string>
-    <string name="ptpip_hotspot_description">无需路由器，手机作为热点，相机以客户端身份连接到手机。</string>
     <string name="ptpip_hotspot_enabled">手机热点已开启</string>
     <string name="ptpip_hotspot_disabled">手机热点未开启</string>
     <string name="ptpip_manual_ip_input">直接输入相机 IP</string>
     <string name="ptpip_connect_with_ip">使用此 IP 连接</string>
-    <string name="ptpip_hotspot_step_1">1. 请打开手机的移动热点（共享网络）</string>
-    <string name="ptpip_hotspot_step_2">2. 在相机的 Wi-Fi 设置中选择 STA 模式</string>
-    <string name="ptpip_hotspot_step_3">3. 在相机端输入手机热点的 SSID/密码并连接</string>
-    <string name="ptpip_hotspot_step_4">4. 相机连接成功后，点击\"查找相机\"或直接输入 IP</string>
-    <string name="ptpip_hotspot_step_5">5. 如果未收到 mDNS 广播，请直接输入 IP</string>
 
     <!-- 카메라 연결 최적화 다이얼로그 (MainActivity, 2026-05-22) -->
     <string name="camera_connection_optimization_title">相机连接优化设置</string>
@@ -331,10 +325,7 @@
     <string name="settings_native_log_toast_disable">已停止原生日志捕获。</string>
     <string name="settings_referral_clipboard_label">referral_code</string>
     <string name="settings_referral_copied">推荐码 \'%s\' 已复制到剪贴板</string>
-    <string name="ptpip_hotspot_enable_title">手机热点已关闭</string>
-    <string name="ptpip_hotspot_enable_desc">由于 Android 限制，应用无法直接开启热点，将打开系统设置。开启热点后请返回。</string>
     <string name="ptpip_hotspot_open_settings">打开热点设置</string>
-    <string name="ptpip_hotspot_compat_note">Nikon Z、富士、佳能(EOS Utility)、松下 Lumix 支持连接手机热点。OM System、宾得/理光仅支持相机自身 AP，无法连接手机热点。</string>
 
     <!-- 포그라운드 서비스 상태 알림 (CINE INSTRUMENT 브랜드 정합, Phase 1) -->
     <string name="notif_auto_connect_prepare_title">正在准备相机自动连接</string>

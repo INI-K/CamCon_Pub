@@ -12,5 +12,10 @@
     <!-- PTP/IP 자동 재연결 -->
     <string name="connect_auto_reconnect_label">自動再接続</string>
     <string name="connect_auto_reconnect_subtitle">カメラの Wi-Fi が利用可能になったら自動的に再接続します</string>
-    <string name="autoconnect_notification_required">バックグラウンドで自動再接続を維持するには通知権限が必要です。</string>
+    <!-- STA 핫스팟 탭 (히어로형) -->
+    <string name="ptpip_hotspot_help_title">接続方法</string>
+    <string name="ptpip_hotspot_help_body">スマートフォンのテザリングをオンにし、カメラの Wi-Fi 設定からスマートフォンのテザリング（SSID / パスワード）に接続してください。接続後、下でカメラを検索するか IP で接続します。</string>
+    <string name="ptpip_hotspot_hero_hint">テザリングをオンにするとカメラが接続できます</string>
+    <string name="cd_expanded">展開済み</string>
+    <string name="cd_collapsed">折りたたみ</string>
 </resources>
