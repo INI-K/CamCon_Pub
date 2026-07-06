@@ -1,7 +1,6 @@
 package com.inik.camcon.presentation.ui.screens.components
 
 import android.util.Log
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -30,7 +29,6 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,7 +38,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -445,35 +442,19 @@ private fun ServerThumbnailItemWrapper(
             .clip(RoundedCornerShape(Radius.sm))
     ) {
         if (thumbnailData != null) {
-            val bitmap = remember(thumbnailData) {
-                android.graphics.BitmapFactory.decodeByteArray(
-                    thumbnailData,
-                    0,
-                    thumbnailData.size
-                )
-            }
-
-            // F28: 수동 디코딩한 비트맵을 key 변경/컴포지션 이탈 시 명시적으로 recycle
-            DisposableEffect(thumbnailData) {
-                onDispose {
-                    try {
-                        bitmap?.let { if (!it.isRecycled) it.recycle() }
-                    } catch (e: Exception) {
-                        Log.w("FullScreenThumbnail", "썸네일 Bitmap recycle 실패: ${photo.name}", e)
-                    }
-                }
-            }
-
-            if (bitmap != null) {
-                Image(
-                    bitmap = bitmap.asImageBitmap(),
-                    contentDescription = photo.name,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                PhotoThumbnailLoadingState()
-            }
+            // 컴포지션(메인스레드) 수동 decodeByteArray 금지 — Coil이 IO 스레드에서
+            // 셀 크기로 샘플링 디코딩·캐시한다. 지금은 소형 EXIF 썸이지만 대형
+            // 바이트가 들어와도 안전해진다.
+            coil.compose.AsyncImage(
+                model = coil.request.ImageRequest.Builder(LocalContext.current)
+                    .data(thumbnailData)
+                    .size(240)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = photo.name,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
         } else {
             PhotoThumbnailLoadingState()
         }
