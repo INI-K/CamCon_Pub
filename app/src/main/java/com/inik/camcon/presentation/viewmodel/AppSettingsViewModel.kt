@@ -65,28 +65,12 @@ class AppSettingsViewModel @Inject constructor(
     private val _pipelineSwapEvent = MutableSharedFlow<PipelineFeature>(extraBufferCapacity = 1)
     val pipelineSwapEvent: SharedFlow<PipelineFeature> = _pipelineSwapEvent.asSharedFlow()
 
-    init {
-        // 비허용 티어에서 필름·색감이 '둘 다 ON' 인 상태를 정합화한다(색감 OFF).
-        // 반드시 effectiveTierFlow(cold)를 사용해야 한다 — subscriptionTier StateFlow 의 초기값(FREE)이
-        // PRO 사용자에게도 순간 방출되어 '둘 다 ON' 을 잘못 정합화(색감 영구 OFF)하는 것을 막는다.
-        // VM 인스턴스가 화면마다 별개라 이 관찰자가 중복 실행될 수 있으나 setColorTransferEnabled(false)는
-        // 멱등·DataStore 직렬화로 안전하고, 토스트는 best-effort 다.
-        viewModelScope.launch {
-            combine(
-                effectiveTierFlow,
-                appSettingsRepository.isFilmSimulationEnabled,
-                appSettingsRepository.isColorTransferEnabled
-            ) { tier, film, color ->
-                validateFeatureAccessUseCase.resolveActivePipeline(tier, film, color)
-            }.collect { active ->
-                if (active.needsReconcile) {
-                    // 1회 영속 — 쓰기 후 flow 가 재방출되어 needsReconcile=false 로 자연 종료.
-                    appSettingsRepository.setColorTransferEnabled(false)
-                    _pipelineSwapEvent.tryEmit(PipelineFeature.COLOR_TRANSFER)
-                }
-            }
-        }
-    }
+    // 시작 시 '둘 다 ON' 영구 정합화 관찰자는 두지 않는다(2026-07-07 제거).
+    // 티어 flow 의 첫 방출이 실제 티어로 수렴하기 전(FREE 평가) 걸리는 경합에서 사용자의 색감
+    // 설정을 잘못 영구 OFF 할 수 있다 — 실기의 '재시작하면 토글이 풀린다' 관측 원인.
+    // 불변식은 두 겹이 이미 지킨다: 세터의 자동 스왑(향후 상태) + PhotoDownloadManager 의
+    // resolveActivePipeline 마스킹(적용 시점, 영속화 없음). 레거시 '둘 다 ON' 잔존은 화면 표시만
+    // 남고 다음 토글 조작의 스왑으로 자연 정리된다.
 
     /**
      * 파일 경로가 RAW 인지 판정한다. RAW 판정은 [ValidateImageFormatUseCase] 단일 지점에 위임(CLAUDE.md §2).
