@@ -430,68 +430,69 @@ fun SettingsScreen(
                         )
                     }
                 }
+            }
 
-                SettingsSection(title = stringResource(R.string.settings_v2_section_wifi_ptpip)) {
-                    SwitchRowV2(
-                        icon = Icons.Default.Wifi,
-                        title = stringResource(R.string.settings_v2_wifi_camera_title),
-                        subtitle = if (isPtpipEnabled) {
-                            val connectedName = lastConnectedName
-                            if (connectedName != null) {
-                                stringResource(R.string.settings_v2_wifi_camera_on_last, connectedName)
-                            } else {
-                                stringResource(R.string.settings_v2_wifi_camera_on_none)
-                            }
+            // Wi-Fi PTP/IP 연결은 전 티어 노출 — 무선 연결은 구독 기능이 아니다(FREE 포함).
+            SettingsSection(title = stringResource(R.string.settings_v2_section_wifi_ptpip)) {
+                SwitchRowV2(
+                    icon = Icons.Default.Wifi,
+                    title = stringResource(R.string.settings_v2_wifi_camera_title),
+                    subtitle = if (isPtpipEnabled) {
+                        val connectedName = lastConnectedName
+                        if (connectedName != null) {
+                            stringResource(R.string.settings_v2_wifi_camera_on_last, connectedName)
                         } else {
-                            stringResource(R.string.settings_v2_wifi_camera_off)
-                        },
-                        checked = isPtpipEnabled,
-                        onCheckedChange = { ptpipViewModel.setPtpipEnabled(it) }
-                    )
+                            stringResource(R.string.settings_v2_wifi_camera_on_none)
+                        }
+                    } else {
+                        stringResource(R.string.settings_v2_wifi_camera_off)
+                    },
+                    checked = isPtpipEnabled,
+                    onCheckedChange = { ptpipViewModel.setPtpipEnabled(it) }
+                )
 
-                    if (isPtpipEnabled) {
-                        SwitchRowV2(
-                            icon = Icons.Default.CameraAlt,
-                            title = stringResource(R.string.settings_v2_auto_connect_title),
-                            subtitle = stringResource(R.string.settings_v2_auto_connect_subtitle),
-                            checked = isAutoConnectEnabled,
-                            onCheckedChange = { enabled ->
-                                ptpipViewModel.updateAutoConnectEnabled(
-                                    enabled = enabled,
-                                    onResult = { _, message ->
+                if (isPtpipEnabled) {
+                    SwitchRowV2(
+                        icon = Icons.Default.CameraAlt,
+                        title = stringResource(R.string.settings_v2_auto_connect_title),
+                        subtitle = stringResource(R.string.settings_v2_auto_connect_subtitle),
+                        checked = isAutoConnectEnabled,
+                        onCheckedChange = { enabled ->
+                            ptpipViewModel.updateAutoConnectEnabled(
+                                enabled = enabled,
+                                onResult = { _, message ->
+                                    android.widget.Toast.makeText(
+                                        context, message, android.widget.Toast.LENGTH_LONG
+                                    ).show()
+                                },
+                                onRequestNotificationPermission = {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        notificationPermissionLauncher.launch(
+                                            Manifest.permission.POST_NOTIFICATIONS
+                                        )
+                                    } else {
                                         android.widget.Toast.makeText(
-                                            context, message, android.widget.Toast.LENGTH_LONG
+                                            context,
+                                            notificationUnsupportedText,
+                                            android.widget.Toast.LENGTH_SHORT
                                         ).show()
-                                    },
-                                    onRequestNotificationPermission = {
-                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                            notificationPermissionLauncher.launch(
-                                                Manifest.permission.POST_NOTIFICATIONS
-                                            )
-                                        } else {
-                                            android.widget.Toast.makeText(
-                                                context,
-                                                notificationUnsupportedText,
-                                                android.widget.Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
                                     }
-                                )
-                            }
-                        )
-                        NavigationRowV2(
-                            icon = Icons.Default.Info,
-                            title = stringResource(R.string.settings_v2_connection_manage_title),
-                            subtitle = stringResource(
-                                R.string.settings_v2_connection_manage_subtitle,
-                                ptpipViewModel.getConnectionStatusText()
-                            ),
-                            onClick = {
-                                val intent = Intent(context, PtpipConnectionActivity::class.java)
-                                context.startActivity(intent)
-                            }
-                        )
-                    }
+                                }
+                            )
+                        }
+                    )
+                    NavigationRowV2(
+                        icon = Icons.Default.Info,
+                        title = stringResource(R.string.settings_v2_connection_manage_title),
+                        subtitle = stringResource(
+                            R.string.settings_v2_connection_manage_subtitle,
+                            ptpipViewModel.getConnectionStatusText()
+                        ),
+                        onClick = {
+                            val intent = Intent(context, PtpipConnectionActivity::class.java)
+                            context.startActivity(intent)
+                        }
+                    )
                 }
             }
 
