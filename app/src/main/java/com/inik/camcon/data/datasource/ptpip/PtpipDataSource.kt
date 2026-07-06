@@ -16,6 +16,7 @@ import com.inik.camcon.R
 import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
 import com.inik.camcon.data.network.ptpip.authentication.NikonAuthenticationService
 import com.inik.camcon.data.network.ptpip.connection.PtpipConnectionManager
+import com.inik.camcon.data.network.ptpip.discovery.CameraVendorClassifier
 import com.inik.camcon.data.network.ptpip.discovery.PtpipDiscoveryService
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.data.repository.managers.CameraEventManager
@@ -835,10 +836,10 @@ class PtpipDataSource @Inject constructor(
             // =========================
             // Step 0: Nikon STA 인증 (0x952b/0x935a) — libgphoto2 연결 전 필수
             // =========================
-            // mDNS 서비스 이름으로 Nikon 카메라 감지 (Z_6_..., D_850_..., Nikon_Z8 등)
-            val isNikonCamera = camera.name.contains("Nikon", ignoreCase = true) ||
-                    camera.name.startsWith("Z_", ignoreCase = true) ||
-                    camera.name.startsWith("D_", ignoreCase = true)
+            // 제조사 판별 단일 지점(CameraVendorClassifier) — 발견 시 verdict 우선,
+            // 캐시/수동 IP 경로는 이름·타입 폴백. 오판(false) 시 STA 인증을 건너뛰어
+            // 첫 페어링이 InitFail 0x1로 파손되므로 놓치는 쪽 비용이 크다.
+            val isNikonCamera = CameraVendorClassifier.isLikelyNikon(camera)
 
             // ⚠️ Nikon은 세션마다 0x935a 승인을 거쳐야 카메라가 전체 PTP opcode를 노출한다.
             // 승인 전엔 DeviceInfo에 0x952b/0x935a만 보이고 모든 실제 명령이 0x2005(Not Supported)로 거부된다.
@@ -1738,8 +1739,8 @@ class PtpipDataSource @Inject constructor(
             try {
                 Log.d(TAG, "gphoto2 호환 모드: 연결 해제 시작 (keepSession: $keepSession)")
 
-                // 니콘 카메라 특별 처리
-                if (connectedCamera?.name?.contains("Nikon", ignoreCase = true) == true) {
+                // 니콘 카메라 특별 처리 — 연결 게이트와 동일한 단일 판별기 사용
+                if (connectedCamera?.let { CameraVendorClassifier.isLikelyNikon(it) } == true) {
                     if (!keepSession) {
                         Log.d(TAG, "니콘 카메라 세션 종료")
                         connectionManager.closeSession()
