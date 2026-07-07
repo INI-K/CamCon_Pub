@@ -28,6 +28,10 @@
     <string name="dialog_understood">Entendido</string>
     <string name="dialog_reconnect">Reconectar</string>
 
+    <string name="dialog_permission_reprompt_title">Algunos permisos están desactivados</string>
+    <string name="dialog_permission_reprompt_body">CamCon necesita estos permisos para funcionar por completo:\n• Fotos y multimedia — para guardar y mostrar las fotos capturadas\n• Notificaciones — para avisarte cuando lleguen fotos en segundo plano\n\nFueron denegados. Actívalos en Ajustes.</string>
+    <string name="dialog_permission_reprompt_settings">Abrir ajustes</string>
+
     <string name="dialog_usb_disconnected_title">Dispositivo USB desconectado</string>
     <string name="dialog_usb_disconnected_body">Se perdió la conexión USB con la cámara.</string>
     <string name="dialog_usb_disconnected_hints">• Compruebe el cable USB\n• Compruebe la batería de la cámara\n• Ponga la cámara en modo PC</string>
