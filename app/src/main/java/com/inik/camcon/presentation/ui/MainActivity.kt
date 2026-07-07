@@ -1,6 +1,5 @@
 package com.inik.camcon.presentation.ui
 
-import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -194,6 +193,46 @@ fun CameraConnectionOptimizationDialog(
         dismissButton = {
             SecondaryButton(
                 text = stringResource(R.string.camera_connection_optimization_dismiss),
+                onClick = onDismissRequest
+            )
+        }
+    )
+}
+
+/**
+ * 권한이 영구 거부되어 시스템 다이얼로그가 억제됐을 때, 어떤 권한이 왜 필요한지 안내하고
+ * 앱 설정으로 이동시키는 다이얼로그. (배터리 최적화 다이얼로그와 동일한 표시 패턴)
+ */
+@Composable
+fun PermissionSettingsDialog(
+    onDismissRequest: () -> Unit,
+    onGoToSettings: () -> Unit
+) {
+    AppDialog(
+        onDismissRequest = onDismissRequest,
+        icon = { Icon(Icons.Default.Settings, contentDescription = null) },
+        title = {
+            Text(
+                stringResource(R.string.dialog_permission_reprompt_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Text(
+                text = stringResource(R.string.dialog_permission_reprompt_body),
+                style = MaterialTheme.typography.bodyMedium
+            )
+        },
+        confirmButton = {
+            PrimaryButton(
+                text = stringResource(R.string.dialog_permission_reprompt_settings),
+                onClick = onGoToSettings
+            )
+        },
+        dismissButton = {
+            SecondaryButton(
+                text = stringResource(R.string.dialog_later),
                 onClick = onDismissRequest
             )
         }
@@ -823,6 +862,10 @@ class MainActivity : ComponentActivity() {
 
     private var batteryDialogShown = false
 
+    // 권한이 영구 거부되어 설정 이동을 안내해야 할 때 Compose 다이얼로그를 띄우는 브리지 상태.
+    // (권한 결과 콜백에서 갱신 → setContent 컴포지션이 관찰)
+    private val showPermissionSettingsDialog = mutableStateOf(false)
+
     private val viewModel: MainActivityViewModel by viewModels()
 
     @Inject
@@ -844,6 +887,16 @@ class MainActivity : ComponentActivity() {
             LogcatManager.d("MainActivity", "모든 저장소 권한이 승인됨")
         } else {
             LogcatManager.w("MainActivity", "일부 저장소 권한이 거부됨: $permissions")
+            // 안드로이드 2회 거부 캡('다시 묻지 않음') 이후엔 재요청해도 시스템 다이얼로그가 뜨지 않는다.
+            // 이런 영구 거부 권한이 하나라도 있으면 설정 이동 안내 다이얼로그를 띄워
+            // '실행마다 다시 받을 수 있는' 경로를 보장한다.
+            val permanentlyDenied = AppPermissions.permanentlyDeniedPermissions(permissions) {
+                !shouldShowRequestPermissionRationale(it)
+            }
+            if (permanentlyDenied.isNotEmpty()) {
+                LogcatManager.w("MainActivity", "영구 거부된 권한: $permanentlyDenied")
+                showPermissionSettingsDialog.value = true
+            }
         }
     }
 
@@ -1191,6 +1244,16 @@ class MainActivity : ComponentActivity() {
                                         }
                                     )
                                 }
+                                // 권한 영구 거부 시 설정 이동 안내 (콜드 스타트마다 재요청→억제 시 노출)
+                                if (showPermissionSettingsDialog.value) {
+                                    PermissionSettingsDialog(
+                                        onDismissRequest = { showPermissionSettingsDialog.value = false },
+                                        onGoToSettings = {
+                                            showPermissionSettingsDialog.value = false
+                                            openAppDetailsSettings()
+                                        }
+                                    )
+                                }
                                 MainScreen(
                                     onSettingsClick = {
                                         startActivity(Intent(this, SettingsActivity::class.java))
@@ -1340,33 +1403,8 @@ class MainActivity : ComponentActivity() {
      * 저장소 권한 요청
      */
     private fun requestStoragePermissions() {
-        val permissionsToRequest = mutableListOf<String>()
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Android 13+: 세분화된 미디어 권한
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES)
-                != PackageManager.PERMISSION_GRANTED
-            ) {
-                permissionsToRequest.add(Manifest.permission.READ_MEDIA_IMAGES)
-            }
-            // Android 13+: 알림 권한 (자동 연결 FGS 알림 표시용, 매니페스트에 이미 선언됨)
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                != PackageManager.PERMISSION_GRANTED
-            ) {
-                permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        } else {
-            // Android 12 이하: 기존 저장소 권한
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-                != PackageManager.PERMISSION_GRANTED
-            ) {
-                permissionsToRequest.add(Manifest.permission.READ_EXTERNAL_STORAGE)
-            }
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                != PackageManager.PERMISSION_GRANTED
-            ) {
-                permissionsToRequest.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-            }
+        val permissionsToRequest = AppPermissions.storagePermissionsToRequest(Build.VERSION.SDK_INT) {
+            ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
         }
 
         if (permissionsToRequest.isNotEmpty()) {
@@ -1448,6 +1486,19 @@ class MainActivity : ComponentActivity() {
             } catch (ex: Exception) {
                 LogcatManager.e(TAG, "APP 상세 정보 화면도 이동 실패", ex)
             }
+        }
+    }
+
+    /**
+     * 앱 상세 설정(권한) 화면으로 이동. 영구 거부된 권한을 사용자가 직접 허용하도록 안내한다.
+     */
+    private fun openAppDetailsSettings() {
+        try {
+            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+            intent.data = Uri.parse("package:$packageName")
+            startActivity(intent)
+        } catch (e: Exception) {
+            LogcatManager.e(TAG, "앱 상세 설정 화면 이동 실패", e)
         }
     }
 

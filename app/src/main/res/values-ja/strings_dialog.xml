@@ -28,6 +28,10 @@
     <string name="dialog_understood">了解</string>
     <string name="dialog_reconnect">再接続</string>
 
+    <string name="dialog_permission_reprompt_title">一部の権限がオフになっています</string>
+    <string name="dialog_permission_reprompt_body">アプリを正しく使うには次の権限が必要です:\n• 写真・メディア — 撮影した写真の保存・表示\n• 通知 — バックグラウンドで写真を受信したときのお知らせ\n\n権限が拒否されています。設定で許可してください。</string>
+    <string name="dialog_permission_reprompt_settings">設定を開く</string>
+
     <string name="dialog_usb_disconnected_title">USBデバイスが切断されました</string>
     <string name="dialog_usb_disconnected_body">カメラのUSB接続が切れました。</string>
     <string name="dialog_usb_disconnected_hints">• USBケーブルを確認してください\n• カメラの電源を確認してください\n• カメラをPCモードに設定してください</string>

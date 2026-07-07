@@ -28,6 +28,10 @@
     <string name="dialog_understood">知道了</string>
     <string name="dialog_reconnect">重新连接</string>
 
+    <string name="dialog_permission_reprompt_title">部分权限已关闭</string>
+    <string name="dialog_permission_reprompt_body">应用需要以下权限才能正常使用:\n• 照片和媒体 — 保存并显示拍摄的照片\n• 通知 — 在后台接收照片时提醒你\n\n权限已被拒绝,请在设置中开启。</string>
+    <string name="dialog_permission_reprompt_settings">前往设置</string>
+
     <string name="dialog_usb_disconnected_title">USB 设备已断开</string>
     <string name="dialog_usb_disconnected_body">相机 USB 连接已断开。</string>
     <string name="dialog_usb_disconnected_hints">• 请检查 USB 数据线\n• 请检查相机电源\n• 请将相机切换到 PC 模式</string>

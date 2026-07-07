@@ -30,6 +30,10 @@
     <string name="dialog_understood">알겠습니다</string>
     <string name="dialog_reconnect">다시 연결</string>
 
+    <string name="dialog_permission_reprompt_title">일부 권한이 꺼져 있어요</string>
+    <string name="dialog_permission_reprompt_body">다음 권한이 있어야 앱이 제대로 동작합니다:\n• 사진·미디어 — 촬영한 사진 저장·표시\n• 알림 — 백그라운드에서 사진 수신 시 알림\n\n권한이 거부되어 있어요. 설정에서 허용해 주세요.</string>
+    <string name="dialog_permission_reprompt_settings">설정으로 이동</string>
+
     <string name="dialog_usb_disconnected_title">USB 디바이스 분리</string>
     <string name="dialog_usb_disconnected_body">카메라 USB 연결이 끊어졌습니다.</string>
     <string name="dialog_usb_disconnected_hints">• USB 케이블 연결을 확인해주세요\n• 카메라 전원을 확인해주세요\n• 카메라를 PC 모드로 설정해주세요</string>
