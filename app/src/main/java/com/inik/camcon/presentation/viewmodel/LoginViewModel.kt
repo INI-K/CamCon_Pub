@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.R
+import com.inik.camcon.domain.model.ReferralRedeemException
 import com.inik.camcon.domain.model.UiText
 import com.inik.camcon.domain.model.User
 import com.inik.camcon.domain.usecase.auth.SignInWithGoogleUseCase
@@ -134,11 +135,10 @@ class LoginViewModel @Inject constructor(
                     onFailure = { error ->
                         Log.e("LoginViewModel", "추천 코드 처리 오류: ${LogMask.id(referralCode)}", error)
                         _uiState.update { it.copy(isLoading = false, isLoggedIn = true) }
-                        _uiEvent.emit(
-                            LoginUiEvent.ShowReferralMessage(
-                                UiText.Resource(R.string.login_referral_error)
-                            )
-                        )
+                        // 서버가 분류한 거부 사유가 있으면 사유별 메시지, 아니면 일반 문구.
+                        val message = (error as? ReferralRedeemException)?.reason?.toUiText()
+                            ?: UiText.Resource(R.string.login_referral_error)
+                        _uiEvent.emit(LoginUiEvent.ShowReferralMessage(message))
                         _uiEvent.emit(LoginUiEvent.NavigateToHome)
                     }
                 )

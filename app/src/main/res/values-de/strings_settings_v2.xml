@@ -133,4 +133,11 @@
     <string name="settings_v2_film_default_title">Standardfilm</string>
     <string name="settings_v2_film_default_subtitle">Wird beim automatischen Anwenden auf Aufnahmen verwendet</string>
     <string name="settings_v2_film_intensity_title">Intensität</string>
+
+    <!-- 로그인 후 추천 코드 등록(전 티어) -->
+    <string name="settings_referral_redeem_title">Empfehlungscode einlösen</string>
+    <string name="settings_referral_redeem_subtitle">Gib einen erhaltenen Empfehlungscode ein, um Vorteile freizuschalten.</string>
+    <string name="settings_referral_redeem_hint">Empfehlungscode</string>
+    <string name="settings_referral_redeem_apply">Anwenden</string>
+    <string name="settings_referral_redeem_success">Empfehlungscode angewendet.</string>
 </resources>

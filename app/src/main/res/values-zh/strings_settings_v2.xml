@@ -133,4 +133,11 @@
     <string name="settings_v2_film_default_title">默认胶片</string>
     <string name="settings_v2_film_default_subtitle">用于自动应用到拍摄照片</string>
     <string name="settings_v2_film_intensity_title">强度</string>
+
+    <!-- 로그인 후 추천 코드 등록(전 티어) -->
+    <string name="settings_referral_redeem_title">填写推荐码</string>
+    <string name="settings_referral_redeem_subtitle">输入收到的推荐码即可获得权益。</string>
+    <string name="settings_referral_redeem_hint">推荐码</string>
+    <string name="settings_referral_redeem_apply">应用</string>
+    <string name="settings_referral_redeem_success">推荐码已应用。</string>
 </resources>
