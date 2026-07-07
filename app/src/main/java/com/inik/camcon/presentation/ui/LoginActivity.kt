@@ -6,22 +6,29 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -29,6 +36,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -72,6 +80,7 @@ import com.inik.camcon.presentation.theme.TextPrimaryV2
 import com.inik.camcon.presentation.theme.TextSecondaryV2
 import com.inik.camcon.presentation.theme.TextTertiary
 import com.inik.camcon.presentation.ui.components.v2.DividerLineV2
+import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.LoginUiEvent
 import com.inik.camcon.presentation.viewmodel.LoginUiState
@@ -251,6 +260,8 @@ fun LoginScreen(
     onGoogleSignIn: (String) -> Unit
 ) {
     var referralCode by remember { mutableStateOf("") }
+    // 추천 코드 접이식 노출. 기본 접힘, 세션 내 단방향(한 번 펼치면 유지).
+    var showReferral by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -258,161 +269,209 @@ fun LoginScreen(
             .background(Surface0)
             .statusBarsPadding()
             .navigationBarsPadding()
+            .imePadding()
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = Spacing.xl),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // ---- 브랜드 영역: 첫인상. 화면 상단 2/3를 채워 조리개 마크를 크게 발광시킨다 ----
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            // 뷰포트 높이 확보(heightIn min) + verticalScroll 조합 = "들어가면 세로 중앙, 넘치면 스크롤".
             Column(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = maxHeight)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = Spacing.xl),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // 브랜드 마크 — 런처 조리개 심볼을 레티클 프레임 안에 크게(새 아트웍 제작 없이 재사용)
-                ReticleFrame(
-                    modifier = Modifier.size(148.dp)
+                // 폭 제한 콘텐츠 블록 — 태블릿에서 400dp로 캡, 좌우 순흑 여백이 프레이밍.
+                // (디자인 시스템에 width 토큰 부재 → 레이아웃 상수. 추후 토큰화 여지.)
+                Column(
+                    modifier = Modifier
+                        .widthIn(max = 400.dp)
+                        .fillMaxWidth()
+                        .padding(vertical = Spacing.xl),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_launcher_foreground),
-                        contentDescription = null,
-                        modifier = Modifier.size(120.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(Spacing.lg))
-
-                // 앱명 — DisplayL, 중앙
-                Text(
-                    text = stringResource(R.string.app_name),
-                    style = DisplayL,
-                    color = TextPrimaryV2
-                )
-
-                Spacer(modifier = Modifier.height(Spacing.sm))
-
-                // 태그라인 — MicroLabel(대문자 라벨, letterSpacing 1.4), Accent
-                Text(
-                    text = stringResource(R.string.login_v2_tagline),
-                    style = MicroLabel,
-                    color = Accent,
-                    textAlign = TextAlign.Center
-                )
-            }
-
-            // ---- 로그인 영역: 하단. 헤어라인으로 구획하여 계측기 패널처럼 분리 ----
-            // MicroLabel 구획 라벨(양옆 헤어라인) — CINE 계측기 섹션 헤더 언어
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Spacing.md)
-            ) {
-                DividerLineV2(modifier = Modifier.weight(1f), color = DividerLine)
-                Text(
-                    text = stringResource(R.string.login_v2_signin_label),
-                    style = MicroLabel,
-                    color = TextTertiary
-                )
-                DividerLineV2(modifier = Modifier.weight(1f), color = DividerLine)
-            }
-
-            Spacer(modifier = Modifier.height(Spacing.lg))
-
-            // 추천 코드 입력 — 선택. 공백이면 무시하고 로그인 진행.
-            OutlinedTextField(
-                value = referralCode,
-                onValueChange = { referralCode = it },
-                singleLine = true,
-                enabled = !uiState.isLoading,
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = {
-                    Text(
-                        text = stringResource(R.string.referral_input_label),
-                        color = TextTertiary,
-                        style = BodySmall
-                    )
-                },
-                supportingText = {
-                    Text(
-                        text = stringResource(R.string.referral_input_helper),
-                        color = TextTertiary,
-                        style = Caption
-                    )
-                },
-                shape = RoundedCornerShape(Radius.sm),
-                colors = TextFieldDefaults.colors(
-                    focusedTextColor = TextPrimaryV2,
-                    unfocusedTextColor = TextPrimaryV2,
-                    focusedContainerColor = Surface3,
-                    unfocusedContainerColor = Surface3,
-                    disabledContainerColor = Surface3,
-                    focusedIndicatorColor = Accent,
-                    unfocusedIndicatorColor = Surface3,
-                    cursorColor = Accent
-                )
-            )
-
-            Spacer(modifier = Modifier.height(Spacing.lg))
-
-            // Google Sign In Button — 외부 브랜드 색상 유지
-            // 다크 테마 규약 예외: Google Sign-In 디자인 가이드라인에 따라
-            // 버튼은 흰 배경 + Google 브랜드 파랑(0xFF4285F4) 콘텐츠 고정.
-            Button(
-                onClick = { onGoogleSignIn(referralCode.trim()) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White,
-                    contentColor = Color(0xFF4285F4),
-                    disabledContainerColor = Color.White.copy(alpha = 0.6f),
-                    disabledContentColor = Color(0xFF4285F4).copy(alpha = 0.6f)
-                ),
-                shape = RoundedCornerShape(Radius.sm),
-                elevation = ButtonDefaults.buttonElevation(
-                    defaultElevation = 0.dp,
-                    pressedElevation = 0.dp
-                ),
-                enabled = !uiState.isLoading
-            ) {
-                if (uiState.isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = Color(0xFF4285F4),
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
+                    // ---- 브랜드 영역 ----
+                    // 브랜드 마크 — 런처 조리개 심볼을 레티클 프레임 안에 크게(새 아트웍 제작 없이 재사용)
+                    ReticleFrame(
+                        modifier = Modifier.size(148.dp)
                     ) {
                         Image(
-                            painter = painterResource(id = R.drawable.ic_google),
+                            painter = painterResource(id = R.drawable.ic_launcher_foreground),
                             contentDescription = null,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(120.dp)
                         )
-                        Spacer(modifier = Modifier.width(Spacing.sm))
+                    }
+
+                    Spacer(modifier = Modifier.height(Spacing.lg))
+
+                    // 앱명 — DisplayL, 중앙
+                    Text(
+                        text = stringResource(R.string.app_name),
+                        style = DisplayL,
+                        color = TextPrimaryV2
+                    )
+
+                    Spacer(modifier = Modifier.height(Spacing.sm))
+
+                    // 태그라인 — MicroLabel(대문자 라벨, letterSpacing 1.4), Accent
+                    Text(
+                        text = stringResource(R.string.login_v2_tagline),
+                        style = MicroLabel,
+                        color = Accent,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(Spacing.xl))
+
+                    // ---- SIGN IN 구획 라벨(브랜드↔패널 브릿지) ----
+                    // MicroLabel 구획 라벨(양옆 헤어라인) — CINE 계측기 섹션 헤더 언어
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.md)
+                    ) {
+                        DividerLineV2(modifier = Modifier.weight(1f), color = DividerLine)
                         Text(
-                            text = stringResource(R.string.login_with_google),
-                            style = ButtonText
+                            text = stringResource(R.string.login_v2_signin_label),
+                            style = MicroLabel,
+                            color = TextTertiary
                         )
+                        DividerLineV2(modifier = Modifier.weight(1f), color = DividerLine)
+                    }
+
+                    Spacer(modifier = Modifier.height(Spacing.lg))
+
+                    // ---- 계측 패널: 추천 + Google + 약관을 헤어라인 보더 안에 그룹핑 ----
+                    SurfaceV2(
+                        modifier = Modifier.fillMaxWidth(),
+                        tier = 1,
+                        border = true,
+                        shape = RoundedCornerShape(Radius.md)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(Spacing.lg),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            // 추천 코드 — 접이식 강등. 접힘 상태에선 토글만 노출.
+                            AnimatedVisibility(visible = !showReferral) {
+                                TextButton(
+                                    onClick = { showReferral = true },
+                                    enabled = !uiState.isLoading
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.login_v2_referral_toggle),
+                                        style = BodySmall,
+                                        color = TextTertiary
+                                    )
+                                }
+                            }
+                            // 펼침 상태 — 死 키 login_v2_referral_label을 필드 헤더로 재사용.
+                            AnimatedVisibility(visible = showReferral) {
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    Text(
+                                        text = stringResource(R.string.login_v2_referral_label),
+                                        style = MicroLabel,
+                                        color = TextTertiary
+                                    )
+                                    Spacer(modifier = Modifier.height(Spacing.xs))
+                                    // 추천 코드 입력 — 선택. 공백이면 무시하고 로그인 진행.
+                                    OutlinedTextField(
+                                        value = referralCode,
+                                        onValueChange = { referralCode = it },
+                                        singleLine = true,
+                                        enabled = !uiState.isLoading,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        placeholder = {
+                                            Text(
+                                                text = stringResource(R.string.referral_input_label),
+                                                color = TextTertiary,
+                                                style = BodySmall
+                                            )
+                                        },
+                                        supportingText = {
+                                            Text(
+                                                text = stringResource(R.string.referral_input_helper),
+                                                color = TextTertiary,
+                                                style = Caption
+                                            )
+                                        },
+                                        shape = RoundedCornerShape(Radius.sm),
+                                        colors = TextFieldDefaults.colors(
+                                            focusedTextColor = TextPrimaryV2,
+                                            unfocusedTextColor = TextPrimaryV2,
+                                            focusedContainerColor = Surface3,
+                                            unfocusedContainerColor = Surface3,
+                                            disabledContainerColor = Surface3,
+                                            focusedIndicatorColor = Accent,
+                                            unfocusedIndicatorColor = Surface3,
+                                            cursorColor = Accent
+                                        )
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(Spacing.lg))
+
+                            // Google Sign In Button — 외부 브랜드 색상 유지
+                            // 다크 테마 규약 예외: Google Sign-In 디자인 가이드라인에 따라
+                            // 버튼은 흰 배경 + Google 브랜드 파랑(0xFF4285F4) 콘텐츠 고정.
+                            Button(
+                                onClick = { onGoogleSignIn(referralCode.trim()) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color.White,
+                                    contentColor = Color(0xFF4285F4),
+                                    disabledContainerColor = Color.White.copy(alpha = 0.6f),
+                                    disabledContentColor = Color(0xFF4285F4).copy(alpha = 0.6f)
+                                ),
+                                shape = RoundedCornerShape(Radius.sm),
+                                elevation = ButtonDefaults.buttonElevation(
+                                    defaultElevation = 0.dp,
+                                    pressedElevation = 0.dp
+                                ),
+                                enabled = !uiState.isLoading
+                            ) {
+                                if (uiState.isLoading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        color = Color(0xFF4285F4),
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Image(
+                                            painter = painterResource(id = R.drawable.ic_google),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(Spacing.sm))
+                                        Text(
+                                            text = stringResource(R.string.login_with_google),
+                                            style = ButtonText
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(Spacing.md))
+
+                            // 약관 — Caption + TextTertiary, 중앙
+                            Text(
+                                text = stringResource(R.string.terms_agreement),
+                                style = Caption,
+                                color = TextTertiary,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.height(Spacing.md))
-
-            // 약관 — Caption + TextTertiary, 중앙
-            Text(
-                text = stringResource(R.string.terms_agreement),
-                style = Caption,
-                color = TextTertiary,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(Spacing.xl))
         }
 
         SnackbarHost(
@@ -425,6 +484,18 @@ fun LoginScreen(
 @Preview(showBackground = true)
 @Composable
 fun LoginScreenPreview() {
+    CamConTheme() {
+        LoginScreen(
+            uiState = LoginUiState(),
+            snackbarHostState = remember { SnackbarHostState() },
+            onGoogleSignIn = { _ -> }
+        )
+    }
+}
+
+@Preview(name = "Login — Tablet", showBackground = true, widthDp = 840, heightDp = 1200)
+@Composable
+fun LoginScreenTabletPreview() {
     CamConTheme() {
         LoginScreen(
             uiState = LoginUiState(),

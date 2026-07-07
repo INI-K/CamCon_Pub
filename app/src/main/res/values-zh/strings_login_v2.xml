@@ -18,4 +18,5 @@
     <string name="login_v2_tagline">电影摄像机控制器</string>
     <string name="login_v2_signin_label">登录</string>
     <string name="login_v2_referral_label">推荐码</string>
+    <string name="login_v2_referral_toggle">有推荐码吗？</string>
 </resources>

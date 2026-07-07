@@ -18,4 +18,5 @@
     <string name="login_v2_tagline">KINO-KAMERASTEUERUNG</string>
     <string name="login_v2_signin_label">ANMELDEN</string>
     <string name="login_v2_referral_label">EMPFEHLUNGSCODE</string>
+    <string name="login_v2_referral_toggle">Hast du einen Empfehlungscode?</string>
 </resources>
