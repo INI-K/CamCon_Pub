@@ -16,7 +16,26 @@
     initReveal();
     initScrollSpy();
     initHeader();
+    initBeforeAfter();
   });
+
+  /* ══════════════ before/after slider ══════════════ */
+  function initBeforeAfter() {
+    document.querySelectorAll(".ba").forEach(function (ba) {
+      var range = ba.querySelector(".ba-range");
+      var before = ba.querySelector(".ba-before-wrap");
+      var divider = ba.querySelector(".ba-divider");
+      if (!range || !before || !divider) return;
+      function set(v) {
+        var clip = "inset(0 " + (100 - v) + "% 0 0)";
+        before.style.clipPath = clip;
+        before.style.webkitClipPath = clip;
+        divider.style.left = v + "%";
+      }
+      range.addEventListener("input", function () { set(+range.value); });
+      set(+range.value);
+    });
+  }
 
   /* ══════════════ header scrolled state ══════════════ */
   function initHeader() {
@@ -264,10 +283,8 @@
 
     var shown = filtered.slice(0, CAP);
     list.innerHTML = shown.map(function (c) {
-      var wifi = c.connection === "wifi";
       return '<li><span class="cam-vendor">' + esc(vendorLabel(c.vendor)) + "</span>" +
-        '<span class="cam-model">' + esc(c.model) + "</span>" +
-        '<span class="cam-conn' + (wifi ? " is-wifi" : "") + '">' + (wifi ? "Wi-Fi" : "USB") + "</span></li>";
+        '<span class="cam-model">' + esc(c.model) + "</span></li>";
     }).join("");
 
     if (empty) empty.hidden = filtered.length !== 0;
