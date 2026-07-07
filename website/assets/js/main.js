@@ -15,7 +15,19 @@
     initCamExplorer();
     initReveal();
     initScrollSpy();
+    initHeader();
   });
+
+  /* ══════════════ header scrolled state ══════════════ */
+  function initHeader() {
+    var header = document.querySelector(".site-header");
+    if (!header) return;
+    var onScroll = function () {
+      header.classList.toggle("scrolled", window.scrollY > 8);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+  }
 
   /* ══════════════ i18n ══════════════ */
   function t(key) {
