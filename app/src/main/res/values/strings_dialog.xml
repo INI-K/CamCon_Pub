@@ -30,6 +30,10 @@
     <string name="dialog_understood">Got it</string>
     <string name="dialog_reconnect">Reconnect</string>
 
+    <string name="dialog_permission_reprompt_title">Some permissions are off</string>
+    <string name="dialog_permission_reprompt_body">CamCon needs these permissions to work fully:\n• Photos &amp; media — to save and show captured photos\n• Notifications — to alert you when photos arrive in the background\n\nThey have been declined, so please enable them in Settings.</string>
+    <string name="dialog_permission_reprompt_settings">Open settings</string>
+
     <string name="dialog_usb_disconnected_title">USB device disconnected</string>
     <string name="dialog_usb_disconnected_body">Camera USB connection has been lost.</string>
     <string name="dialog_usb_disconnected_hints">• Check the USB cable\n• Verify camera power\n• Set the camera to PC mode</string>
