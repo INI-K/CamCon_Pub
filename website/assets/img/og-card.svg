@@ -8,6 +8,10 @@
       <stop offset="0%" stop-color="#E8A33D"/>
       <stop offset="100%" stop-color="#B87A1E"/>
     </linearGradient>
+    <linearGradient id="badge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1B1B1F"/>
+      <stop offset="100%" stop-color="#0B0B0D"/>
+    </linearGradient>
   </defs>
 
   <rect width="1200" height="630" fill="#0B0B0D"/>
@@ -21,16 +25,19 @@
     <path d="M1136 522v36a8 8 0 0 1-8 8h-36"/>
   </g>
 
-  <!-- aperture -->
-  <g transform="translate(980 315)" opacity="0.9">
-    <circle r="150" fill="none" stroke="#26262B" stroke-width="2"/>
-    <circle r="112" fill="none" stroke="#26262B" stroke-width="2"/>
-    <g fill="none" stroke="url(#amber)" stroke-width="3">
-      <path d="M0 -145 L86 -44"/><path d="M138 72 L26 72"/>
-      <path d="M52 138 L0 26"/><path d="M-138 72 L-26 -44"/>
-      <path d="M-86 -138 L0 -26"/><path d="M138 -44 L26 26"/>
+  <!-- app-icon style badge: dark rounded square + amber aperture -->
+  <g transform="translate(905 315)">
+    <rect x="-150" y="-150" width="300" height="300" rx="56" fill="url(#badge)" stroke="#26262B" stroke-width="2"/>
+    <g opacity="0.95">
+      <circle r="112" fill="none" stroke="#26262B" stroke-width="2"/>
+      <circle r="84" fill="none" stroke="#26262B" stroke-width="2"/>
+      <g fill="none" stroke="url(#amber)" stroke-width="6" stroke-linecap="round">
+        <path d="M0 -108 L64 -33"/><path d="M104 54 L20 54"/>
+        <path d="M39 104 L0 20"/><path d="M-104 54 L-20 -33"/>
+        <path d="M-64 -104 L0 -20"/><path d="M104 -33 L20 20"/>
+      </g>
+      <circle r="15" fill="#E8A33D"/>
     </g>
-    <circle r="12" fill="#E8A33D"/>
   </g>
 
   <!-- text -->
