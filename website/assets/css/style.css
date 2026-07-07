@@ -4,7 +4,7 @@
    ============================================================ */
 
 /* ---------- Fonts ---------- */
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=JetBrains+Mono:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap");
 
 /* ---------- Tokens ---------- */
 :root {
@@ -29,7 +29,8 @@
   --amber-35:  rgba(235,162,60,.35);
   --cyan:      #58C6DA;
 
-  --serif: "Fraunces", "Pretendard Variable", Pretendard, Georgia, serif;
+  /* '디스플레이' 역할도 Pretendard로 통일(사용자 선호). 큰 숫자·워드마크·폴리오에 사용. */
+  --serif: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", system-ui, sans-serif;
   --mono:  "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   --sans:  "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", system-ui, sans-serif;
 
@@ -77,7 +78,7 @@ body::after {
 /* ---------- Layout ---------- */
 .wrap { width: 100%; max-width: var(--wrap); margin-inline: auto; padding-inline: 28px; }
 main { position: relative; z-index: 2; counter-reset: folio; }
-.section { padding: clamp(72px, 11vh, 132px) 0; position: relative; z-index: 2; }
+.section { padding: clamp(92px, 13vh, 172px) 0; position: relative; z-index: 2; }
 .section-alt { position: relative; background:
   linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 12%, var(--bg-2) 88%, var(--bg) 100%); }
 .section-alt::before {
@@ -107,10 +108,11 @@ main { position: relative; z-index: 2; counter-reset: folio; }
 .section-head { max-width: 760px; margin-bottom: clamp(36px, 5vw, 56px); counter-increment: folio; }
 .section-head::before {
   content: counter(folio, decimal-leading-zero);
-  display: block; font-family: var(--serif); font-style: italic; font-weight: 500;
-  font-optical-sizing: auto; font-size: clamp(2.6rem, 5.5vw, 3.6rem); line-height: .9;
-  letter-spacing: -.02em; margin-bottom: 12px;
-  color: color-mix(in oklab, var(--amber) 20%, var(--hair-2));
+  display: block; font-family: var(--serif); font-weight: 800;
+  font-size: clamp(2.6rem, 5.5vw, 3.6rem); line-height: .9;
+  letter-spacing: -.03em; margin-bottom: 12px;
+  color: color-mix(in oklab, var(--amber) 22%, var(--hair-2));
+  font-variant-numeric: lining-nums tabular-nums;
 }
 .section-head.center { margin-inline: auto; text-align: center; }
 .section-title {
@@ -411,7 +413,26 @@ main { position: relative; z-index: 2; counter-reset: folio; }
    FILMS
    ============================================================ */
 /* before / after comparison (real LUT-graded photos) */
-.ba { max-width: 920px; margin: 0 auto clamp(40px, 6vw, 66px); }
+.ba { max-width: 1080px; margin: 0 auto clamp(48px, 6vw, 72px); }
+
+/* full-bleed film photo band (units.gr-style large imagery, dark-blended) */
+.showcase { position: relative; height: clamp(300px, 46vw, 560px); overflow: hidden; z-index: 2; }
+.showcase-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.showcase::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, var(--bg), transparent 16%, transparent 80%, var(--bg));
+}
+.showcase::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(120% 80% at 20% 90%, rgba(235,162,60,.10), transparent 55%);
+}
+.showcase-tag {
+  position: absolute; left: clamp(20px, 4vw, 52px); bottom: clamp(20px, 4vw, 44px); z-index: 2;
+  font-family: var(--mono); font-size: 11px; letter-spacing: .16em; color: #fff;
+  background: rgba(6,6,8,.5); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  padding: 8px 14px; border-radius: 20px;
+}
+.showcase-tag b { color: var(--amber-hi); font-weight: 500; }
 .ba-frame {
   position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--hair);
   aspect-ratio: 3 / 2; box-shadow: 0 46px 90px -46px rgba(0,0,0,.92), inset 0 1px 0 rgba(255,255,255,.05);
@@ -617,7 +638,7 @@ main { position: relative; z-index: 2; counter-reset: folio; }
   position: relative; padding: 26px 24px; border-radius: 14px;
   background: linear-gradient(180deg, var(--surface), var(--bg-2)); border: 1px solid var(--hair);
 }
-.step .num { font-family: var(--serif); font-size: 2rem; font-weight: 500; font-style: italic; color: var(--amber); line-height: 1; font-optical-sizing: auto; font-variant-numeric: lining-nums tabular-nums; }
+.step .num { font-family: var(--serif); font-size: 2rem; font-weight: 800; color: var(--amber); line-height: 1; letter-spacing: -.02em; font-variant-numeric: lining-nums tabular-nums; }
 .step p { margin-top: 14px; color: var(--ink); font-size: .96rem; line-height: 1.55; }
 .step p strong { color: var(--amber); font-weight: 600; }
 .perm-note {
