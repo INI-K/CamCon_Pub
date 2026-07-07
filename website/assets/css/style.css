@@ -351,7 +351,7 @@ main { position: relative; z-index: 2; counter-reset: folio; }
 .filmstrip::after { right: 0; background: linear-gradient(270deg, var(--bg), transparent); }
 .filmstrip-track { display: flex; width: max-content; animation: drift 44s linear infinite; }
 .filmstrip:hover .filmstrip-track { animation-play-state: paused; }
-@keyframes drift { to { transform: translateX(-50%); } }
+@keyframes drift { to { transform: translateX(-25%); } }
 .frame {
   position: relative; width: 150px; height: 96px; flex: none;
   border-left: 1px solid rgba(0,0,0,.6); border-right: 1px solid rgba(0,0,0,.6);
