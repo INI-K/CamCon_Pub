@@ -5,9 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title data-i18n="meta.title">CamCon — 촬영과 동시에 필름룩 사진을 폰으로</title>
   <meta name="description" data-i18n-attr="content" data-i18n="meta.desc" content="CamCon은 DSLR·미러리스 카메라를 안드로이드에 무선으로 잇고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보는 시네마 카메라 컨트롤러입니다.">
-  <meta name="theme-color" content="#0B0B0D">
+  <meta name="theme-color" content="#0A0A0C">
 
-  <!-- Open Graph -->
   <meta property="og:type" content="website">
   <meta property="og:locale" content="ko_KR">
   <meta property="og:site_name" content="CamCon">
@@ -19,24 +18,29 @@
   <meta name="twitter:description" content="카메라를 무선으로 잇고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보세요.">
   <meta name="twitter:image" content="assets/img/og-card.svg">
 
-  <link rel="icon" type="image/png" href="assets/img/app-icon.png">
-  <link rel="apple-touch-icon" href="assets/img/app-icon.png">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="apple-touch-icon" href="favicon.svg">
 
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
   <div class="grain" aria-hidden="true"></div>
-
   <a class="skip-link" href="#main" data-i18n="a11y.skip">본문 바로가기</a>
 
   <!-- ══════════════ HEADER ══════════════ -->
   <header class="site-header" id="top">
     <div class="wrap header-inner">
       <a class="brand" href="#top" aria-label="CamCon">
-        <img class="brand-mark" src="assets/img/app-icon.png" alt="" width="32" height="32">
-        <span class="brand-name">CamCon</span>
+        <svg class="brand-mark" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+          <circle cx="24" cy="24" r="16.5" stroke="#EBA23C" stroke-width="2.4"/>
+          <path class="iris" d="M35 24 L29.5 33.5 L18.5 33.5 L13 24 L18.5 14.5 L29.5 14.5 Z" stroke="#F7C266" stroke-width="1.4" stroke-linejoin="round" opacity="0.85"/>
+          <circle cx="24" cy="24" r="3.4" fill="#EBA23C"/>
+        </svg>
+        <span class="brand-name">Cam<b>Con</b></span>
       </a>
 
       <nav class="nav" aria-label="주요 메뉴">
@@ -48,23 +52,24 @@
         <a href="#faq" data-i18n="nav.faq">FAQ</a>
       </nav>
 
-      <div class="lang-select">
-        <svg viewBox="0 0 24 24" aria-hidden="true" class="lang-globe"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 2.5 15.5 0 18M12 3c-2.5 2.5-2.5 15.5 0 18"/></svg>
-        <select id="lang" aria-label="언어 선택 / Language">
-          <option value="ko">한국어</option>
-          <option value="en">English</option>
-          <option value="ja">日本語</option>
-          <option value="zh">中文</option>
-          <option value="de">Deutsch</option>
-          <option value="es">Español</option>
-          <option value="fr">Français</option>
-          <option value="it">Italiano</option>
-        </select>
+      <div class="header-right">
+        <div class="lang-select">
+          <svg class="lang-globe" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 2.5 15.5 0 18M12 3c-2.5 2.5-2.5 15.5 0 18"/></svg>
+          <select id="lang" aria-label="언어 선택 / Language">
+            <option value="ko">한국어</option>
+            <option value="en">English</option>
+            <option value="ja">日本語</option>
+            <option value="zh">中文</option>
+            <option value="de">Deutsch</option>
+            <option value="es">Español</option>
+            <option value="fr">Français</option>
+            <option value="it">Italiano</option>
+          </select>
+        </div>
+        <button class="nav-toggle" aria-expanded="false" aria-controls="mobile-nav" aria-label="메뉴 열기" data-i18n-attr="aria-label" data-i18n="nav.menuOpen">
+          <span></span><span></span><span></span>
+        </button>
       </div>
-
-      <button class="nav-toggle" aria-expanded="false" aria-controls="mobile-nav" aria-label="메뉴 열기" data-i18n-attr="aria-label" data-i18n="nav.menuOpen">
-        <span></span><span></span><span></span>
-      </button>
     </div>
     <nav class="mobile-nav" id="mobile-nav" aria-label="모바일 메뉴" hidden>
       <a href="#features" data-i18n="nav.features">기능</a>
@@ -79,84 +84,112 @@
   <main id="main">
 
     <!-- ══════════════ HERO ══════════════ -->
-    <section class="hero" aria-labelledby="hero-title">
-      <span class="bracket bracket-tl" aria-hidden="true"></span>
-      <span class="bracket bracket-tr" aria-hidden="true"></span>
-      <span class="bracket bracket-bl" aria-hidden="true"></span>
-      <span class="bracket bracket-br" aria-hidden="true"></span>
+    <section class="hero">
+      <div class="hero-stage" aria-hidden="true"></div>
+      <div class="wrap hero-inner">
+        <div class="hero-grid">
+          <div>
+            <p class="eyebrow hero-eyebrow reveal" data-i18n="hero.eyebrow">Cinema Camera Controller</p>
+            <h1 class="hero-title reveal" data-delay="1" data-i18n="hero.title">셔터를 누르면,<br><span class="accent">필름룩 사진</span>이 폰에 도착합니다</h1>
+            <p class="hero-sub reveal" data-delay="2" data-i18n="hero.sub">CamCon — Cinema Camera Controller. 카메라를 무선으로 잇고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보세요.</p>
+            <div class="hero-actions reveal" data-delay="3">
+              <button class="btn btn-primary is-disabled" disabled aria-disabled="true" data-i18n="hero.cta">Google Play 출시 예정</button>
+              <a class="btn btn-ghost" href="#features" data-i18n="hero.explore">기능 살펴보기</a>
+            </div>
+            <div class="hero-specs reveal" data-delay="3">
+              <div class="hero-spec"><div class="k">Film Looks</div><div class="v">296</div></div>
+              <div class="hero-spec"><div class="k">RAW</div><div class="v">원본 보존</div></div>
+              <div class="hero-spec"><div class="k">Tethering</div><div class="v">USB · Wi-Fi</div></div>
+            </div>
+          </div>
 
-      <div class="wrap hero-inner reveal">
-        <p class="micro-label" data-i18n="hero.eyebrow">Cinema Camera Controller</p>
-        <h1 id="hero-title" class="hero-title" data-i18n="hero.title">
-          셔터를 누르면,<br><span class="accent">필름룩 사진</span>이 폰에 도착합니다
-        </h1>
-        <p class="hero-sub" data-i18n="hero.sub">
-          CamCon — Cinema Camera Controller. 카메라를 무선으로 잇고,
-          촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보세요.
-        </p>
-        <div class="hero-actions">
-          <button class="btn btn-primary is-disabled" disabled aria-disabled="true" data-i18n="hero.cta">
-            Google Play 출시 예정
-          </button>
-          <a class="btn btn-ghost" href="#features" data-i18n="hero.explore">기능 살펴보기</a>
+          <div class="hero-visual reveal" data-delay="2" aria-hidden="true">
+            <div class="hero-reticle"><span></span><span></span><span></span><span></span></div>
+            <div class="hero-rec">REC · TETHER</div>
+            <div class="hero-lens">
+              <svg class="hero-iris" viewBox="0 0 100 100" fill="none">
+                <circle cx="50" cy="50" r="40" stroke="#34343F" stroke-width="1"/>
+                <g stroke="#EBA23C" stroke-width="1.6" opacity="0.9">
+                  <path d="M50 12 L70 30"/><path d="M84 44 L60 58"/><path d="M74 78 L52 62"/>
+                  <path d="M34 86 L46 60"/><path d="M12 56 L40 54"/><path d="M22 22 L48 44"/>
+                </g>
+                <path d="M64 44 L58 60 L42 60 L36 44 L46 32 L60 34 Z" stroke="#F7C266" stroke-width="1.4" opacity="0.75"/>
+                <circle cx="50" cy="50" r="6" fill="#EBA23C"/>
+              </svg>
+            </div>
+          </div>
         </div>
-        <p class="hero-meta micro-label" data-i18n="hero.meta">PTP/IP · USB OTG · 필름 시뮬레이션 296종</p>
       </div>
 
-      <!-- app icon framed by a viewfinder reticle -->
-      <div class="hero-badge" aria-hidden="true">
-        <span class="rf rf-tl"></span><span class="rf rf-tr"></span>
-        <span class="rf rf-bl"></span><span class="rf rf-br"></span>
-        <img class="hero-badge-img" src="assets/img/app-icon.png" alt="">
+      <!-- drifting film strip -->
+      <div class="filmstrip" aria-hidden="true">
+        <div class="filmstrip-track">
+          <div class="frame g-portra"><span class="stock">PORTRA 400</span></div>
+          <div class="frame g-velvia"><span class="stock">VELVIA 50</span></div>
+          <div class="frame g-trix"><span class="stock">TRI-X 400</span></div>
+          <div class="frame g-chrome"><span class="stock">CLASSIC CHROME</span></div>
+          <div class="frame g-polaroid"><span class="stock">PX-680</span></div>
+          <div class="frame g-slide"><span class="stock">EKTACHROME</span></div>
+          <div class="frame g-negold"><span class="stock">GOLD 200</span></div>
+          <div class="frame g-instc"><span class="stock">INSTAX</span></div>
+          <!-- duplicate for seamless loop -->
+          <div class="frame g-portra"><span class="stock">PORTRA 400</span></div>
+          <div class="frame g-velvia"><span class="stock">VELVIA 50</span></div>
+          <div class="frame g-trix"><span class="stock">TRI-X 400</span></div>
+          <div class="frame g-chrome"><span class="stock">CLASSIC CHROME</span></div>
+          <div class="frame g-polaroid"><span class="stock">PX-680</span></div>
+          <div class="frame g-slide"><span class="stock">EKTACHROME</span></div>
+          <div class="frame g-negold"><span class="stock">GOLD 200</span></div>
+          <div class="frame g-instc"><span class="stock">INSTAX</span></div>
+        </div>
       </div>
     </section>
 
     <!-- ══════════════ FEATURES ══════════════ -->
-    <section class="section" id="features" aria-labelledby="features-title">
+    <section class="section" id="features">
       <div class="wrap">
         <header class="section-head reveal">
-          <p class="micro-label" data-i18n="features.eyebrow">Features</p>
-          <h2 id="features-title" class="section-title" data-i18n="features.title">촬영부터 색보정까지, 카메라와 폰 사이 한 번에</h2>
+          <p class="eyebrow" data-i18n="features.eyebrow">Features</p>
+          <h2 class="section-title" data-i18n="features.title">촬영부터 색보정까지, 카메라와 폰 사이 한 번에</h2>
         </header>
-
-        <div class="grid features-grid">
-          <article class="card reveal">
-            <div class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20a8 8 0 0 0 8-8M12 20a8 8 0 0 1-8-8M12 20v-3M2 12a10 10 0 0 1 20 0"/><circle cx="12" cy="12" r="1.6"/></svg></div>
+        <div class="features-grid">
+          <article class="feat reveal">
+            <div class="feat-icon"><svg viewBox="0 0 24 24"><path d="M12 20a8 8 0 0 0 8-8M12 20a8 8 0 0 1-8-8M12 20v-3M2 12a10 10 0 0 1 20 0"/><circle cx="12" cy="12" r="1.4"/></svg></div>
             <h3 data-i18n="feat.wifi.t">Wi-Fi 무선 테더링</h3>
             <p data-i18n="feat.wifi.d">PTP/IP로 케이블 없이 촬영한 사진을 즉시 수신합니다. 끊겨도 자동으로 재연결하고, 백그라운드에서도 계속 받아옵니다.</p>
           </article>
-          <article class="card reveal">
-            <div class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="12" rx="2"/><path d="M12 15v5M8 20h8M10 3v3M14 3v3"/></svg></div>
+          <article class="feat reveal" data-delay="1">
+            <div class="feat-icon"><svg viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="12" rx="2"/><path d="M12 15v5M8 20h8M10 3v3M14 3v3"/></svg></div>
             <h3 data-i18n="feat.usb.t">USB OTG 유선 제어</h3>
-            <p data-i18n="feat.usb.d">libgphoto2 기반의 안정적인 유선 연결. USB-C(OTG) 케이블을 꽂으면 카메라를 즉시 인식합니다.</p>
+            <p data-i18n="feat.usb.d">표준 PTP 기반의 안정적인 유선 연결. USB-C(OTG) 케이블을 꽂으면 카메라를 즉시 인식합니다.</p>
           </article>
-          <article class="card reveal">
-            <div class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M7 4v5M7 20v-5"/></svg></div>
+          <article class="feat reveal" data-delay="2">
+            <div class="feat-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M7 4v5M7 20v-5"/></svg></div>
             <h3 data-i18n="feat.film.t">필름 시뮬레이션 296종</h3>
             <p data-i18n="feat.film.d">실제 필름을 모델링한 3D LUT를 촬영 사진에 자동 적용. 수신과 동시에 필름룩이 입혀진 사진을 받습니다.</p>
           </article>
-          <article class="card reveal">
-            <div class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 16V8l7-4 7 4v8M4 16l7 4 7-4M4 16l7-4 7 4M11 12v8"/></svg></div>
+          <article class="feat reveal" data-delay="3">
+            <div class="feat-icon"><svg viewBox="0 0 24 24"><path d="M4 16V8l7-4 7 4v8M4 16l7 4 7-4M4 16l7-4 7 4M11 12v8"/></svg></div>
             <h3 data-i18n="feat.color.t">색감 전송</h3>
             <p data-i18n="feat.color.d">마음에 드는 레퍼런스 사진 한 장의 색감을 추출해, 내 사진에 그대로 입힙니다.</p>
           </article>
-          <article class="card reveal">
-            <div class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3.2"/><path d="M7 5l1.5-2h7L17 5"/></svg></div>
+          <article class="feat reveal">
+            <div class="feat-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3.2"/><path d="M7 5l1.5-2h7L17 5"/></svg></div>
             <h3 data-i18n="feat.live.t">라이브뷰 원격 제어</h3>
             <p data-i18n="feat.live.d">실시간 프리뷰를 보며 ISO·셔터·조리개·화이트밸런스를 조작합니다. 화질은 속도·균형·품질 3단계.</p>
           </article>
-          <article class="card reveal">
-            <div class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2M12 2v2M12 20v2"/></svg></div>
+          <article class="feat reveal" data-delay="1">
+            <div class="feat-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg></div>
             <h3 data-i18n="feat.timelapse.t">타임랩스 · 원격 릴리즈</h3>
             <p data-i18n="feat.timelapse.d">인터벌을 정해두면 무인으로 장시간 촬영. 원격 셔터로 손떨림 없이 릴리즈합니다.</p>
           </article>
-          <article class="card reveal">
-            <div class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 2h9l3 3v17H6z"/><path d="M15 2v4h4M9 13h6M9 17h6M9 9h2"/></svg></div>
-            <h3><span data-i18n="feat.raw.t">RAW 워크플로</span><span class="tag tag-pro">PRO</span></h3>
+          <article class="feat reveal" data-delay="2">
+            <div class="feat-icon"><svg viewBox="0 0 24 24"><path d="M4 7h16v12H4zM8 7V5h8v2"/><path d="M9 15h2M9 11h6"/></svg></div>
+            <h3 data-i18n="feat.raw.t">RAW 워크플로</h3>
             <p data-i18n="feat.raw.d">RAW(NEF 등) 원본을 무손상으로 다운로드합니다. 필름룩은 JPG 사본에만 입혀, 원본은 그대로 보존됩니다.</p>
           </article>
-          <article class="card reveal">
-            <div class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 13a7 7 0 0 1 14 0"/><path d="M8.5 15.5a4 4 0 0 1 7 0"/><circle cx="12" cy="18" r="1.4"/></svg></div>
+          <article class="feat reveal" data-delay="3">
+            <div class="feat-icon"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg></div>
             <h3 data-i18n="feat.auto.t">스마트 자동 연결</h3>
             <p data-i18n="feat.auto.d">카메라 전원만 켜면 mDNS·SSDP 검색으로 자동 탐색하고 재연결합니다. 매번 설정할 필요가 없습니다.</p>
           </article>
@@ -164,273 +197,235 @@
       </div>
     </section>
 
-    <!-- ══════════════ FILM LIBRARY ══════════════ -->
-    <section class="section section-alt" id="films" aria-labelledby="films-title">
+    <!-- ══════════════ FILMS ══════════════ -->
+    <section class="section section-alt" id="films">
       <div class="wrap">
-        <header class="section-head reveal">
-          <p class="micro-label" data-i18n="films.eyebrow">Film Library</p>
-          <h2 id="films-title" class="section-title" data-i18n="films.title">9개 계열, <span class="accent">296종</span>의 필름 시뮬레이션</h2>
+        <header class="section-head center reveal">
+          <p class="eyebrow center" data-i18n="films.eyebrow">Film Library</p>
+          <h2 class="section-title" data-i18n="films.title">9개 계열, <span class="accent">296종</span>의 필름 시뮬레이션</h2>
           <p class="section-lead" data-i18n="films.lead">흑백부터 인스턴트, 컬러 네거티브까지. 실제 필름의 톤 커브와 색을 3D LUT로 재현했습니다.</p>
         </header>
 
-        <div class="grid films-grid">
-          <div class="film-card reveal"><span class="film-count">25</span><span class="film-name" data-i18n="film.bw">흑백</span></div>
-          <div class="film-card reveal"><span class="film-count">26</span><span class="film-name" data-i18n="film.slide">컬러 슬라이드</span></div>
-          <div class="film-card reveal"><span class="film-count">15</span><span class="film-name" data-i18n="film.xtrans">후지 X-Trans III</span></div>
-          <div class="film-card reveal"><span class="film-count">54</span><span class="film-name" data-i18n="film.instantc">인스턴트 컨슈머</span></div>
-          <div class="film-card reveal"><span class="film-count">68</span><span class="film-name" data-i18n="film.instantp">인스턴트 프로</span></div>
-          <div class="film-card reveal"><span class="film-count">13</span><span class="film-name" data-i18n="film.colorneg">컬러 네거티브</span></div>
-          <div class="film-card reveal"><span class="film-count">39</span><span class="film-name" data-i18n="film.negnew">네거티브 뉴</span></div>
-          <div class="film-card reveal"><span class="film-count">44</span><span class="film-name" data-i18n="film.negold">네거티브 올드</span></div>
-          <div class="film-card reveal"><span class="film-count">12</span><span class="film-name" data-i18n="film.print">프린트</span></div>
+        <div class="films-free reveal">
+          <div class="films-free-label" data-i18n="films.freeLabel">Free Signature — 무료로 쓰는 시그니처 5종</div>
+          <div class="free-strip">
+            <div class="swatch free"><div class="grade g-portra"></div><span class="tag-free">FREE</span><div class="meta"><span class="name">Kodak<br>Portra 400</span></div></div>
+            <div class="swatch free"><div class="grade g-velvia"></div><span class="tag-free">FREE</span><div class="meta"><span class="name">Fuji<br>Velvia 50</span></div></div>
+            <div class="swatch free"><div class="grade g-trix"></div><span class="tag-free">FREE</span><div class="meta"><span class="name">Kodak<br>Tri-X 400</span></div></div>
+            <div class="swatch free"><div class="grade g-chrome"></div><span class="tag-free">FREE</span><div class="meta"><span class="name">Classic<br>Chrome</span></div></div>
+            <div class="swatch free"><div class="grade g-polaroid"></div><span class="tag-free">FREE</span><div class="meta"><span class="name">Polaroid<br>PX-680</span></div></div>
+          </div>
         </div>
 
-        <div class="film-free reveal">
-          <p class="micro-label" data-i18n="films.freeLabel">Free Signature — 무료로 쓰는 시그니처 5종</p>
-          <ul class="chip-row">
-            <li class="chip">Kodak Portra 400</li>
-            <li class="chip">Fuji Velvia 50</li>
-            <li class="chip">Kodak Tri-X 400</li>
-            <li class="chip">Classic Chrome</li>
-            <li class="chip">Polaroid PX-680</li>
-          </ul>
-          <p class="film-note" data-i18n="films.note">전체 296종은 <strong>PRO</strong>에서 열립니다.</p>
+        <div class="films-grid">
+          <div class="swatch film-cat reveal"><div class="grade g-bw"></div><div class="meta"><span class="name" data-i18n="film.bw">흑백</span><span class="n">25</span></div></div>
+          <div class="swatch film-cat reveal" data-delay="1"><div class="grade g-slide"></div><div class="meta"><span class="name" data-i18n="film.slide">컬러 슬라이드</span><span class="n">26</span></div></div>
+          <div class="swatch film-cat reveal" data-delay="2"><div class="grade g-xtrans"></div><div class="meta"><span class="name" data-i18n="film.xtrans">후지 X-Trans III</span><span class="n">15</span></div></div>
+          <div class="swatch film-cat reveal"><div class="grade g-instc"></div><div class="meta"><span class="name" data-i18n="film.instantc">인스턴트 컨슈머</span><span class="n">54</span></div></div>
+          <div class="swatch film-cat reveal" data-delay="1"><div class="grade g-instp"></div><div class="meta"><span class="name" data-i18n="film.instantp">인스턴트 프로</span><span class="n">68</span></div></div>
+          <div class="swatch film-cat reveal" data-delay="2"><div class="grade g-colorneg"></div><div class="meta"><span class="name" data-i18n="film.colorneg">컬러 네거티브</span><span class="n">13</span></div></div>
+          <div class="swatch film-cat reveal"><div class="grade g-negnew"></div><div class="meta"><span class="name" data-i18n="film.negnew">네거티브 뉴</span><span class="n">39</span></div></div>
+          <div class="swatch film-cat reveal" data-delay="1"><div class="grade g-negold"></div><div class="meta"><span class="name" data-i18n="film.negold">네거티브 올드</span><span class="n">44</span></div></div>
+          <div class="swatch film-cat reveal" data-delay="2"><div class="grade g-print"></div><div class="meta"><span class="name" data-i18n="film.print">프린트</span><span class="n">12</span></div></div>
         </div>
+        <p class="films-note reveal" data-i18n="films.note">전체 296종은 <strong>PRO</strong>에서 열립니다.</p>
       </div>
     </section>
 
     <!-- ══════════════ CAMERAS ══════════════ -->
-    <section class="section" id="cameras" aria-labelledby="cameras-title">
+    <section class="section" id="cameras">
       <div class="wrap">
         <header class="section-head reveal">
-          <p class="micro-label" data-i18n="cameras.eyebrow">Supported Cameras</p>
-          <h2 id="cameras-title" class="section-title" data-i18n="cameras.title">내 카메라, 쓸 수 있을까요?</h2>
+          <p class="eyebrow" data-i18n="cameras.eyebrow">Supported Cameras</p>
+          <h2 class="section-title" data-i18n="cameras.title">내 카메라, 쓸 수 있을까요?</h2>
           <p class="section-lead" data-i18n="cameras.lead">PTP/MTP USB 연결을 지원하는 카메라라면 대부분 동작합니다.</p>
         </header>
 
-        <div class="table-wrap reveal">
-          <table class="cam-table">
-            <thead>
-              <tr>
-                <th scope="col" data-i18n="cameras.colConn">연결 방식</th>
-                <th scope="col" data-i18n="cameras.colScope">지원 범위</th>
-                <th scope="col" data-i18n="cameras.colStatus">상태</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <th scope="row" data-i18n="cameras.usbRow">USB 유선</th>
-                <td data-i18n="cameras.usbDesc">libgphoto2 기반 — Nikon · Canon · Sony · Fujifilm · Panasonic · OM System(Olympus) · Pentax · Ricoh · Leica 등 PTP 프로토콜 카메라를 폭넓게 지원(수천 모델 규모). 구형 전용 드라이버(Canon 레거시 · Sierra · Pentax 등)도 포함합니다.</td>
-                <td><span class="badge badge-ok" data-i18n="cameras.badgeBroad">폭넓게 지원</span></td>
-              </tr>
-              <tr>
-                <th scope="row" data-i18n="cameras.wifiRow">Wi-Fi 무선</th>
-                <td data-i18n="cameras.wifiDesc"><strong>Nikon Z 시리즈</strong>(Z8 · Z6 등) 실기 검증 완료. Canon · Sony · Panasonic · Fujifilm · OM System은 자동 검색 신호가 구현되어 있으며, 실기 검증을 진행 중입니다.</td>
-                <td>
-                  <span class="badge badge-ok" data-i18n="cameras.badgeNikon">Nikon 검증됨</span>
-                  <span class="badge badge-wip" data-i18n="cameras.badgeExpand">그 외 확대 중</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- full model explorer (libgphoto2) -->
-        <div class="cam-explorer reveal">
-          <button class="cam-explorer-toggle" id="camToggle" aria-expanded="false" aria-controls="camExplorerBody">
-            <span>
-              <span data-i18n="cameras.listToggle">전체 지원 모델 보기</span>
-              <span class="cam-total-badge">libgphoto2 · <span id="camTotal">—</span><span data-i18n="cameras.modelsSuffix">+ 모델</span></span>
-            </span>
-            <svg class="acc-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-          </button>
-
-          <div class="cam-explorer-body" id="camExplorerBody" hidden>
-            <p class="cam-explorer-note" data-i18n="cameras.listNote">아래 목록은 USB 유선(libgphoto2) 기준입니다. Wi-Fi 실기 검증 현황은 위 표를 참고하세요.</p>
-            <div class="cam-search">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-              <input type="search" id="camSearch" data-i18n-attr="placeholder" data-i18n="cameras.searchPh" placeholder="제조사 또는 모델명 검색 (예: Nikon Z8)" autocomplete="off">
-            </div>
-            <div class="cam-filters" id="camFilters" role="group" aria-label="제조사 필터"></div>
-            <p class="cam-count" id="camCount" aria-live="polite"></p>
-            <ul class="cam-list" id="camList"></ul>
-            <p class="cam-empty" id="camEmpty" hidden data-i18n="cameras.noResults">일치하는 모델이 없습니다.</p>
+        <div class="cam-table">
+          <div class="cam-row reveal">
+            <div class="conn"><svg viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="12" rx="2"/><path d="M12 15v5M8 20h8"/></svg><b data-i18n="cameras.usbRow">USB 유선</b></div>
+            <p class="desc" data-i18n="cameras.usbDesc">표준 PTP 프로토콜 기반으로 Nikon · Canon · Sony · Fujifilm · Panasonic · OM System(Olympus) · Pentax · Ricoh · Leica 등 주요 제조사의 카메라를 폭넓게 지원합니다.</p>
+            <div class="cam-badges"><span class="badge ok" data-i18n="cameras.badgeBroad">폭넓게 지원</span></div>
+          </div>
+          <div class="cam-row reveal" data-delay="1">
+            <div class="conn"><svg viewBox="0 0 24 24"><path d="M12 20a8 8 0 0 0 8-8M12 20a8 8 0 0 1-8-8M12 20v-3M2 12a10 10 0 0 1 20 0"/><circle cx="12" cy="12" r="1.4"/></svg><b data-i18n="cameras.wifiRow">Wi-Fi 무선</b></div>
+            <p class="desc" data-i18n="cameras.wifiDesc"><strong>Nikon Z 시리즈</strong>(Z8 · Z6 등) 실기 검증 완료. Canon · Sony · Panasonic · Fujifilm · OM System은 자동 검색 신호가 구현되어 있으며, 실기 검증을 진행 중입니다.</p>
+            <div class="cam-badges"><span class="badge wifi" data-i18n="cameras.badgeNikon">Nikon 검증됨</span><span class="badge" data-i18n="cameras.badgeExpand">그 외 확대 중</span></div>
           </div>
         </div>
 
-        <p class="cam-help reveal" data-i18n="cameras.help">
-          내 카메라가 PTP/MTP USB 연결을 지원하면 대부분 동작합니다. 확실하지 않다면 <a href="#contact">문의</a>를 주시면 확인해 드립니다.
-        </p>
+        <div class="cam-explorer reveal">
+          <div class="cam-explorer-head">
+            <div class="count"><span class="num" id="camTotal">—</span><span class="lbl"><span data-i18n="cameras.modelsSuffix">+ 모델</span></span></div>
+            <button class="cam-toggle" id="camToggle" aria-expanded="false" aria-controls="camExplorerBody"><span data-i18n="cameras.listToggle">전체 지원 모델 보기</span><span class="chev" aria-hidden="true"></span></button>
+          </div>
+          <div class="cam-body" id="camExplorerBody" hidden>
+            <p class="cam-count" data-i18n="cameras.listNote" style="margin-bottom:16px;color:var(--ink-mute)">아래 목록은 USB 유선 연결 기준입니다. Wi-Fi 실기 검증 현황은 위 표를 참고하세요.</p>
+            <div class="cam-search-row">
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+              <input id="camSearch" type="search" autocomplete="off" data-i18n-attr="placeholder" data-i18n="cameras.searchPh" placeholder="제조사 또는 모델명 검색 (예: Nikon Z8)">
+            </div>
+            <div class="cam-filters" id="camFilters"></div>
+            <p class="cam-count" id="camCount"></p>
+            <ul class="cam-list" id="camList"></ul>
+            <p class="cam-empty" id="camEmpty" data-i18n="cameras.noResults" hidden>일치하는 모델이 없습니다.</p>
+          </div>
+        </div>
+
+        <p class="cam-help reveal" data-i18n="cameras.help">내 카메라가 PTP/MTP USB 연결을 지원하면 대부분 동작합니다. 확실하지 않다면 <a href="#contact">문의</a>를 주시면 확인해 드립니다.</p>
       </div>
     </section>
 
     <!-- ══════════════ CONNECT ══════════════ -->
-    <section class="section section-alt" id="connect" aria-labelledby="connect-title">
+    <section class="section section-alt" id="connect">
       <div class="wrap">
         <header class="section-head reveal">
-          <p class="micro-label" data-i18n="connect.eyebrow">How to Connect</p>
-          <h2 id="connect-title" class="section-title" data-i18n="connect.title">세 가지 연결 방법</h2>
+          <p class="eyebrow" data-i18n="connect.eyebrow">How to Connect</p>
+          <h2 class="section-title" data-i18n="connect.title">세 가지 연결 방법</h2>
         </header>
 
-        <div class="tabs reveal" role="tablist" aria-label="연결 방법 선택">
-          <button class="tab is-active" role="tab" id="tab-usb" aria-selected="true" aria-controls="panel-usb" data-i18n="connect.tabUsb">USB OTG</button>
-          <button class="tab" role="tab" id="tab-ap" aria-selected="false" aria-controls="panel-ap" tabindex="-1" data-i18n="connect.tabAp">Wi-Fi · 카메라 AP</button>
-          <button class="tab" role="tab" id="tab-sta" aria-selected="false" aria-controls="panel-sta" tabindex="-1" data-i18n="connect.tabSta">Wi-Fi · 공유기(STA)</button>
-        </div>
+        <div class="reveal">
+          <div class="tabs" role="tablist" aria-label="연결 방법">
+            <button class="tab is-active" role="tab" id="tab-usb" aria-controls="panel-usb" aria-selected="true" tabindex="0" data-i18n="connect.tabUsb">USB OTG</button>
+            <button class="tab" role="tab" id="tab-ap" aria-controls="panel-ap" aria-selected="false" tabindex="-1" data-i18n="connect.tabAp">Wi-Fi · 카메라 AP</button>
+            <button class="tab" role="tab" id="tab-sta" aria-controls="panel-sta" aria-selected="false" tabindex="-1" data-i18n="connect.tabSta">Wi-Fi · 공유기(STA)</button>
+          </div>
 
-        <div class="tab-panel is-active" role="tabpanel" id="panel-usb" aria-labelledby="tab-usb" tabindex="0">
-          <ol class="steps">
-            <li><span class="step-n">1</span><p data-i18n="connect.usb1">USB-C(OTG) 케이블로 폰과 카메라를 연결합니다.</p></li>
-            <li><span class="step-n">2</span><p data-i18n="connect.usb2">앱에서 USB 연결 권한을 허용합니다.</p></li>
-            <li><span class="step-n">3</span><p data-i18n="connect.usb3">자동 인식·연결이 완료되면 바로 촬영을 시작합니다.</p></li>
-          </ol>
-          <p class="perm-note micro-label" data-i18n="connect.usbPerm">필요 권한 — USB 장치 접근 권한(연결 시 1회 허용)</p>
-        </div>
+          <div class="tab-panel is-active" id="panel-usb" role="tabpanel" aria-labelledby="tab-usb">
+            <div class="steps">
+              <div class="step"><div class="num">01</div><p data-i18n="connect.usb1">USB-C(OTG) 케이블로 폰과 카메라를 연결합니다.</p></div>
+              <div class="step"><div class="num">02</div><p data-i18n="connect.usb2">앱에서 USB 연결 권한을 허용합니다.</p></div>
+              <div class="step"><div class="num">03</div><p data-i18n="connect.usb3">자동 인식·연결이 완료되면 바로 촬영을 시작합니다.</p></div>
+            </div>
+            <div class="perm-note" data-i18n="connect.usbPerm">필요 권한 — USB 장치 접근 권한(연결 시 1회 허용)</div>
+          </div>
 
-        <div class="tab-panel" role="tabpanel" id="panel-ap" aria-labelledby="tab-ap" tabindex="0" hidden>
-          <ol class="steps">
-            <li><span class="step-n">1</span><p data-i18n="connect.ap1">카메라 메뉴에서 Wi-Fi(액세스 포인트) 모드를 켭니다.</p></li>
-            <li><span class="step-n">2</span><p data-i18n="connect.ap2">폰 Wi-Fi를 카메라가 만든 네트워크에 연결합니다.</p></li>
-            <li><span class="step-n">3</span><p data-i18n="connect.ap3">앱이 카메라를 자동 검색해 연결합니다.</p></li>
-          </ol>
-          <p class="perm-note micro-label" data-i18n="connect.apPerm">필요 권한 — 위치 권한(주변 Wi-Fi 검색용), 알림 권한(백그라운드 수신용)</p>
-        </div>
+          <div class="tab-panel" id="panel-ap" role="tabpanel" aria-labelledby="tab-ap" hidden>
+            <div class="steps">
+              <div class="step"><div class="num">01</div><p data-i18n="connect.ap1">카메라 메뉴에서 Wi-Fi(액세스 포인트) 모드를 켭니다.</p></div>
+              <div class="step"><div class="num">02</div><p data-i18n="connect.ap2">폰 Wi-Fi를 카메라가 만든 네트워크에 연결합니다.</p></div>
+              <div class="step"><div class="num">03</div><p data-i18n="connect.ap3">앱이 카메라를 자동 검색해 연결합니다.</p></div>
+            </div>
+            <div class="perm-note" data-i18n="connect.apPerm">필요 권한 — 위치 권한(주변 Wi-Fi 검색용), 알림 권한(백그라운드 수신용)</div>
+          </div>
 
-        <div class="tab-panel" role="tabpanel" id="panel-sta" aria-labelledby="tab-sta" tabindex="0" hidden>
-          <ol class="steps">
-            <li><span class="step-n">1</span><p data-i18n="connect.sta1">카메라와 폰을 같은 공유기에 연결합니다.</p></li>
-            <li><span class="step-n">2</span><p data-i18n="connect.sta2">앱에서 카메라를 검색해 선택합니다.</p></li>
-            <li><span class="step-n">3</span><p data-i18n="connect.sta3">첫 연결 시 <strong>카메라 본체에서 "연결 허용"을 승인</strong>합니다. 이후에는 자동으로 재연결됩니다.</p></li>
-          </ol>
-          <p class="perm-note micro-label" data-i18n="connect.staPerm">필요 권한 — 위치 권한(네트워크 검색용), 알림 권한(백그라운드 수신용)</p>
+          <div class="tab-panel" id="panel-sta" role="tabpanel" aria-labelledby="tab-sta" hidden>
+            <div class="steps">
+              <div class="step"><div class="num">01</div><p data-i18n="connect.sta1">카메라와 폰을 같은 공유기에 연결합니다.</p></div>
+              <div class="step"><div class="num">02</div><p data-i18n="connect.sta2">앱에서 카메라를 검색해 선택합니다.</p></div>
+              <div class="step"><div class="num">03</div><p data-i18n="connect.sta3">첫 연결 시 <strong>카메라 본체에서 "연결 허용"을 승인</strong>합니다. 이후에는 자동으로 재연결됩니다.</p></div>
+            </div>
+            <div class="perm-note" data-i18n="connect.staPerm">필요 권한 — 위치 권한(네트워크 검색용), 알림 권한(백그라운드 수신용)</div>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- ══════════════ PRICING ══════════════ -->
-    <section class="section" id="pricing" aria-labelledby="pricing-title">
+    <section class="section" id="pricing">
       <div class="wrap">
-        <header class="section-head reveal">
-          <p class="micro-label" data-i18n="pricing.eyebrow">Pricing</p>
-          <h2 id="pricing-title" class="section-title" data-i18n="pricing.title">무료로 시작하고, 필요할 때 PRO로</h2>
+        <header class="section-head center reveal">
+          <p class="eyebrow center" data-i18n="pricing.eyebrow">Pricing</p>
+          <h2 class="section-title" data-i18n="pricing.title">무료로 시작하고, 필요할 때 PRO로</h2>
           <p class="section-lead" data-i18n="pricing.lead">가격은 출시 시 공개됩니다.</p>
         </header>
 
-        <div class="grid pricing-grid">
-          <article class="plan reveal">
-            <header class="plan-head">
-              <p class="micro-label" data-i18n="pricing.planLabel">Plan</p>
-              <h3 class="plan-name">FREE</h3>
-              <p class="plan-price" data-i18n="pricing.freePrice">무료</p>
-            </header>
-            <ul class="plan-feats">
+        <div class="plans">
+          <div class="plan reveal">
+            <div class="plan-name">FREE</div>
+            <div class="price-free" data-i18n="pricing.freePrice">무료</div>
+            <ul>
               <li data-i18n="pricing.free1">Wi-Fi · USB 카메라 연결</li>
               <li data-i18n="pricing.free2">JPG 수신 (장변 2000px)</li>
               <li data-i18n="pricing.free3">시그니처 필름 5종</li>
               <li data-i18n="pricing.free4">필름 · 색감 중 하나 활성</li>
             </ul>
-          </article>
-
-          <article class="plan plan-featured reveal">
-            <span class="plan-flag" data-i18n="pricing.flag">추천</span>
-            <header class="plan-head">
-              <p class="micro-label" data-i18n="pricing.planLabel">Plan</p>
-              <h3 class="plan-name">PRO</h3>
-              <p class="plan-price" data-i18n="pricing.proPrice">출시 시 공개</p>
-            </header>
-            <ul class="plan-feats">
+          </div>
+          <div class="plan pro reveal" data-delay="1">
+            <div class="plan-flag" data-i18n="pricing.flag">추천</div>
+            <div class="plan-name">PRO</div>
+            <div class="plan-price" data-i18n="pricing.proPrice">출시 시 공개</div>
+            <ul>
               <li data-i18n="pricing.pro1"><strong>RAW 원본 다운로드</strong></li>
               <li data-i18n="pricing.pro2">필름 시뮬레이션 <strong>296종 전체</strong></li>
               <li data-i18n="pricing.pro3">필름 + 색감 동시 적용</li>
               <li data-i18n="pricing.pro4">원본 해상도 수신</li>
               <li data-i18n="pricing.pro5">사진 미리보기 탭</li>
             </ul>
-          </article>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- ══════════════ FAQ ══════════════ -->
-    <section class="section section-alt" id="faq" aria-labelledby="faq-title">
-      <div class="wrap wrap-narrow">
-        <header class="section-head reveal">
-          <p class="micro-label" data-i18n="faq.eyebrow">FAQ</p>
-          <h2 id="faq-title" class="section-title" data-i18n="faq.title">자주 묻는 질문</h2>
+    <section class="section section-alt" id="faq">
+      <div class="wrap">
+        <header class="section-head center reveal">
+          <p class="eyebrow center" data-i18n="faq.eyebrow">FAQ</p>
+          <h2 class="section-title" data-i18n="faq.title">자주 묻는 질문</h2>
         </header>
-
-        <div class="accordion reveal">
-          <div class="acc-item">
-            <button class="acc-trigger" aria-expanded="false">
-              <span data-i18n="faq.q1">내 카메라가 지원되는지 어떻게 확인하나요?</span>
-              <svg class="acc-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-            </button>
+        <div class="faq-list">
+          <div class="acc reveal">
+            <button class="acc-trigger" aria-expanded="false"><span data-i18n="faq.q1">내 카메라가 지원되는지 어떻게 확인하나요?</span><span class="acc-ico" aria-hidden="true"></span></button>
             <div class="acc-panel"><p data-i18n="faq.a1">카메라가 PTP/MTP USB 연결을 지원하면 대부분 동작합니다. Wi-Fi는 Nikon Z 시리즈가 실기 검증되어 있고, 그 외 제조사는 지원을 확대하는 중입니다. 위 "전체 지원 모델 보기"에서 기종을 검색해 확인할 수 있습니다.</p></div>
           </div>
-          <div class="acc-item">
-            <button class="acc-trigger" aria-expanded="false">
-              <span data-i18n="faq.q2">RAW 파일이 훼손되지는 않나요?</span>
-              <svg class="acc-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-            </button>
+          <div class="acc reveal">
+            <button class="acc-trigger" aria-expanded="false"><span data-i18n="faq.q2">RAW 파일이 훼손되지는 않나요?</span><span class="acc-ico" aria-hidden="true"></span></button>
             <div class="acc-panel"><p data-i18n="faq.a2">RAW 원본은 그대로 보존됩니다. 필름 시뮬레이션과 색감은 JPG 사본에만 적용되며, RAW(NEF 등) 파일에는 어떤 변형도 가하지 않습니다.</p></div>
           </div>
-          <div class="acc-item">
-            <button class="acc-trigger" aria-expanded="false">
-              <span data-i18n="faq.q3">백그라운드에서도 사진이 받아지나요?</span>
-              <svg class="acc-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-            </button>
+          <div class="acc reveal">
+            <button class="acc-trigger" aria-expanded="false"><span data-i18n="faq.q3">백그라운드에서도 사진이 받아지나요?</span><span class="acc-ico" aria-hidden="true"></span></button>
             <div class="acc-panel"><p data-i18n="faq.a3">포그라운드 서비스로 동작하므로 다른 앱을 쓰는 동안에도 계속 수신합니다. 다만 앱을 완전히 종료하면 수신은 중단됩니다.</p></div>
           </div>
-          <div class="acc-item">
-            <button class="acc-trigger" aria-expanded="false">
-              <span data-i18n="faq.q4">어떤 안드로이드 버전이 필요한가요?</span>
-              <svg class="acc-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-            </button>
+          <div class="acc reveal">
+            <button class="acc-trigger" aria-expanded="false"><span data-i18n="faq.q4">어떤 안드로이드 버전이 필요한가요?</span><span class="acc-ico" aria-hidden="true"></span></button>
             <div class="acc-panel"><p data-i18n="faq.a4">Android 10 이상, 64비트(arm64) 기기가 필요합니다.</p></div>
           </div>
-          <div class="acc-item">
-            <button class="acc-trigger" aria-expanded="false">
-              <span data-i18n="faq.q5">추천 코드는 어디서 입력하나요?</span>
-              <svg class="acc-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-            </button>
+          <div class="acc reveal">
+            <button class="acc-trigger" aria-expanded="false"><span data-i18n="faq.q5">추천 코드는 어디서 입력하나요?</span><span class="acc-ico" aria-hidden="true"></span></button>
             <div class="acc-panel"><p data-i18n="faq.a5">로그인 화면, 또는 설정 → 추천 코드 등록에서 입력할 수 있습니다.</p></div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- ══════════════ CTA STRIP ══════════════ -->
-    <section class="cta-strip" aria-labelledby="cta-title">
-      <div class="wrap reveal">
-        <span class="bracket bracket-tl" aria-hidden="true"></span>
-        <span class="bracket bracket-br" aria-hidden="true"></span>
-        <h2 id="cta-title" class="cta-title" data-i18n="cta.title">촬영이 곧 결과물이 되는 워크플로</h2>
-        <p class="cta-sub" data-i18n="cta.sub">셔터를 누르는 그 순간, 필름룩 사진이 폰에 도착합니다.</p>
-        <button class="btn btn-primary is-disabled" disabled aria-disabled="true" data-i18n="hero.cta">Google Play 출시 예정</button>
+    <!-- ══════════════ CTA ══════════════ -->
+    <section class="section cta">
+      <div class="wrap">
+        <div class="cta-inner reveal">
+          <h2 data-i18n="cta.title">촬영이 곧 결과물이 되는 워크플로</h2>
+          <p data-i18n="cta.sub">셔터를 누르는 그 순간, 필름룩 사진이 폰에 도착합니다.</p>
+          <button class="btn btn-primary is-disabled" disabled aria-disabled="true" data-i18n="hero.cta">Google Play 출시 예정</button>
+        </div>
       </div>
     </section>
-
   </main>
 
   <!-- ══════════════ FOOTER ══════════════ -->
   <footer class="site-footer" id="contact">
-    <div class="wrap footer-inner">
-      <div class="footer-brand">
-        <span class="brand-name">CamCon</span>
-        <p class="footer-tagline micro-label" data-i18n="hero.eyebrow">Cinema Camera Controller</p>
+    <div class="wrap">
+      <div class="footer-top">
+        <a class="brand footer-brand" href="#top" aria-label="CamCon">
+          <svg class="brand-mark" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+            <circle cx="24" cy="24" r="16.5" stroke="#EBA23C" stroke-width="2.4"/>
+            <path d="M35 24 L29.5 33.5 L18.5 33.5 L13 24 L18.5 14.5 L29.5 14.5 Z" stroke="#F7C266" stroke-width="1.4" stroke-linejoin="round" opacity="0.85"/>
+            <circle cx="24" cy="24" r="3.4" fill="#EBA23C"/>
+          </svg>
+          <span class="brand-name">Cam<b>Con</b></span>
+        </a>
+        <nav class="footer-nav" aria-label="푸터 메뉴">
+          <a href="#features" data-i18n="nav.features">기능</a>
+          <a href="#films" data-i18n="nav.films">필름</a>
+          <a href="#cameras" data-i18n="nav.cameras">지원 카메라</a>
+          <a href="#connect" data-i18n="nav.connect">연결</a>
+          <a href="#pricing" data-i18n="nav.pricing">요금제</a>
+          <a href="#faq" data-i18n="nav.faq">FAQ</a>
+          <a href="mailto:ppp5544@gmail.com" data-i18n="footer.contact">문의</a>
+        </nav>
       </div>
-      <nav class="footer-nav" aria-label="푸터 메뉴">
-        <a href="#features" data-i18n="nav.features">기능</a>
-        <a href="#films" data-i18n="nav.films">필름</a>
-        <a href="#cameras" data-i18n="nav.cameras">지원 카메라</a>
-        <a href="#connect" data-i18n="nav.connect">연결</a>
-        <a href="#pricing" data-i18n="nav.pricing">요금제</a>
-        <a href="#faq" data-i18n="nav.faq">FAQ</a>
-        <!-- TODO: 문의 이메일/채널 확정 후 교체 -->
-        <a href="#contact" data-i18n="footer.contact">문의</a>
-      </nav>
-    </div>
-    <div class="wrap footer-bottom">
-      <p data-i18n="footer.rights">© 2026 CamCon. All rights reserved.</p>
+      <div class="footer-bottom">
+        <p data-i18n="footer.rights">© 2026 CamCon. All rights reserved.</p>
+      </div>
     </div>
   </footer>
 
