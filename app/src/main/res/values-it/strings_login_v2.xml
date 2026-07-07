@@ -10,6 +10,13 @@
     <string name="login_referral_failed">Impossibile applicare il codice di invito.</string>
     <string name="login_referral_error">Si è verificato un problema durante l\'elaborazione del codice di invito.</string>
 
+    <!-- 추천 코드 거부 사유별 메시지 (로그인·설정 공용) -->
+    <string name="referral_error_not_found">Questo codice di invito non esiste.</string>
+    <string name="referral_error_already_used">Questo codice è già stato usato, oppure il tuo account ha già usato un invito.</string>
+    <string name="referral_error_self">Non puoi usare il tuo codice di invito.</string>
+    <string name="referral_error_not_grantable">Questo codice non può essere applicato a questo account.</string>
+    <string name="referral_error_network">Errore di rete. Riprova tra poco.</string>
+
     <!-- 로그아웃 오류 상세 (settings_toast_logout_failed의 "%s") -->
     <string name="auth_error_network_detail">errore di rete</string>
     <string name="auth_error_unknown_detail">errore sconosciuto</string>

@@ -46,6 +46,7 @@ import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Photo
+import androidx.compose.material.icons.filled.Redeem
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storage
@@ -65,6 +66,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -90,6 +93,7 @@ import com.inik.camcon.R
 import com.inik.camcon.domain.model.LiveViewQuality
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.model.User
+import com.inik.camcon.domain.model.resolve
 import com.inik.camcon.domain.usecase.PipelineFeature
 import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.AccentMuted
@@ -123,6 +127,8 @@ import com.inik.camcon.presentation.viewmodel.AuthUiEvent
 import com.inik.camcon.presentation.viewmodel.AuthViewModel
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
+import com.inik.camcon.presentation.viewmodel.ReferralRedeemEvent
+import com.inik.camcon.presentation.viewmodel.ReferralRedeemViewModel
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import com.google.firebase.auth.FirebaseAuth
@@ -174,6 +180,7 @@ fun SettingsScreen(
     appSettingsViewModel: AppSettingsViewModel = hiltViewModel(),
     authViewModel: AuthViewModel? = hiltViewModel(),
     adminReferralCodeViewModel: AdminReferralCodeViewModel = hiltViewModel(),
+    referralRedeemViewModel: ReferralRedeemViewModel = hiltViewModel(),
     cameraViewModel: CameraViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -184,6 +191,7 @@ fun SettingsScreen(
     }
 
     val adminReferralState by adminReferralCodeViewModel.uiState.collectAsStateWithLifecycle()
+    val referralRedeemState by referralRedeemViewModel.uiState.collectAsStateWithLifecycle()
 
     val cameraUiState by cameraViewModel.uiState.collectAsStateWithLifecycle()
     val isUsbConnected = cameraUiState.isNativeCameraConnected
@@ -317,6 +325,32 @@ fun SettingsScreen(
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var deleteConfirmInput by remember { mutableStateOf("") }
+    var showReferralRedeemDialog by remember { mutableStateOf(false) }
+    var referralRedeemInput by remember { mutableStateOf("") }
+
+    // 추천 코드 등록 결과 — 성공 시 다이얼로그를 닫고, 성공/실패 모두 토스트로 안내.
+    LaunchedEffect(Unit) {
+        referralRedeemViewModel.uiEvent.collect { event ->
+            when (event) {
+                is ReferralRedeemEvent.Success -> {
+                    showReferralRedeemDialog = false
+                    referralRedeemInput = ""
+                    android.widget.Toast.makeText(
+                        context,
+                        event.message.resolve(context),
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+                }
+                is ReferralRedeemEvent.Error -> {
+                    android.widget.Toast.makeText(
+                        context,
+                        event.message.resolve(context),
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    }
     var isDeletingAccount by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showLiveViewQualityDialog by remember { mutableStateOf(false) }
@@ -685,6 +719,17 @@ fun SettingsScreen(
                         stringResource(tierLabelRes)
                     ),
                     onClick = { SubscriptionActivity.start(context) }
+                )
+
+                // 추천 코드 등록 — 전 티어 노출. 로그인 후 코드를 입력해 혜택(REFERRER)을 받는다.
+                ClickableRowV2(
+                    icon = Icons.Default.Redeem,
+                    title = stringResource(R.string.settings_referral_redeem_title),
+                    subtitle = stringResource(R.string.settings_referral_redeem_subtitle),
+                    onClick = {
+                        referralRedeemInput = ""
+                        showReferralRedeemDialog = true
+                    }
                 )
 
                 ClickableRowV2(
@@ -1173,6 +1218,78 @@ fun SettingsScreen(
                         onClick = {
                             if (!isDeletingAccount) {
                                 showDeleteConfirmDialog = false
+                            }
+                        }
+                    )
+                }
+            )
+        }
+
+        if (showReferralRedeemDialog) {
+            val applyEnabled =
+                referralRedeemInput.trim().isNotEmpty() && !referralRedeemState.isLoading
+            AppDialog(
+                onDismissRequest = {
+                    if (!referralRedeemState.isLoading) {
+                        showReferralRedeemDialog = false
+                    }
+                },
+                title = {
+                    Text(
+                        stringResource(R.string.settings_referral_redeem_title),
+                        style = HeadingL,
+                        color = TextPrimaryV2
+                    )
+                },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                        Text(
+                            stringResource(R.string.settings_referral_redeem_subtitle),
+                            style = BodySmall,
+                            color = TextSecondaryV2
+                        )
+                        OutlinedTextField(
+                            value = referralRedeemInput,
+                            onValueChange = { referralRedeemInput = it },
+                            singleLine = true,
+                            enabled = !referralRedeemState.isLoading,
+                            keyboardOptions = KeyboardOptions(
+                                capitalization = KeyboardCapitalization.Characters
+                            ),
+                            placeholder = {
+                                Text(
+                                    stringResource(R.string.settings_referral_redeem_hint),
+                                    color = TextTertiary
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = TextFieldDefaults.colors(
+                                focusedTextColor = TextPrimaryV2,
+                                unfocusedTextColor = TextPrimaryV2,
+                                focusedContainerColor = Surface3,
+                                unfocusedContainerColor = Surface3,
+                                disabledContainerColor = Surface3,
+                                focusedIndicatorColor = Accent,
+                                unfocusedIndicatorColor = Surface3,
+                                cursorColor = Accent
+                            )
+                        )
+                    }
+                },
+                confirmButton = {
+                    PrimaryButton(
+                        text = stringResource(R.string.settings_referral_redeem_apply),
+                        enabled = applyEnabled,
+                        isLoading = referralRedeemState.isLoading,
+                        onClick = { referralRedeemViewModel.redeem(referralRedeemInput) }
+                    )
+                },
+                dismissButton = {
+                    SecondaryButton(
+                        text = stringResource(R.string.cancel),
+                        onClick = {
+                            if (!referralRedeemState.isLoading) {
+                                showReferralRedeemDialog = false
                             }
                         }
                     )

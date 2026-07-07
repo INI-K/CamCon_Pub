@@ -7,6 +7,8 @@ import com.google.firebase.firestore.Query
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.FirebaseFunctionsException
 import com.inik.camcon.domain.model.ReferralCode
+import com.inik.camcon.domain.model.ReferralRedeemException
+import com.inik.camcon.domain.model.ReferralRedeemReason
 import com.inik.camcon.domain.model.Subscription
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.model.User
@@ -17,6 +19,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
+import java.io.IOException
 import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
@@ -36,6 +39,7 @@ class AuthRepositoryImpl @Inject constructor(
         private const val REFERRALS_COLLECTION = "referrals"
         private const val REFERRAL_CODES_COLLECTION = "referral_codes"
         private const val REDEEM_REFERRAL_FUNCTION = "redeemReferralCode"
+        private const val BOOTSTRAP_FUNCTION = "ensureUserBootstrap"
 
         /**
          * PII(UID/식별자) 마스킹: 앞 4글자만 노출 + ***.
@@ -87,22 +91,13 @@ class AuthRepositoryImpl @Inject constructor(
                     .set(newUserData)
                     .await()
 
-                // 기본 구독 정보 생성 (FREE 티어)
-                val defaultSubscription = mapOf(
-                    "tier" to SubscriptionTier.FREE.name,
-                    "isActive" to true,
-                    "startDate" to Date(),
-                    "endDate" to null,
-                    "updatedAt" to Date(),
-                    "updatedBy" to "system"
-                )
-
-                firestore.collection(USERS_COLLECTION)
-                    .document(firebaseUser.uid)
-                    .collection(SUBSCRIPTIONS_COLLECTION)
-                    .document("current")
-                    .set(defaultSubscription)
-                    .await()
+                // 기본 FREE 구독 문서는 서버 권위(ensureUserBootstrap CF)로 생성 — rules가 클라 쓰기를 금지.
+                // CF 미배포/일시 실패여도 로그인은 진행(구독 문서 부재 시 FREE 폴백이 이미 동작).
+                try {
+                    functions.getHttpsCallable(BOOTSTRAP_FUNCTION).call().await()
+                } catch (e: Exception) {
+                    Log.w(TAG, "기본 구독 부트스트랩 실패(로그인은 계속): ${maskId(firebaseUser.uid)}", e)
+                }
 
                 // User 객체 생성
                 user = User(
@@ -126,6 +121,16 @@ class AuthRepositoryImpl @Inject constructor(
                     .document(firebaseUser.uid)
                     .update("lastLoginAt", Date())
                     .await()
+
+                // 구독 문서가 아직 없으면(과거 CF 미배포 시기 첫 로그인 등) 멱등 부트스트랩 재시도.
+                // 폴백 FREE(startDate=null)와 실제 문서(FREE 포함, startDate 존재)를 startDate로 구분한다.
+                if (user.subscription.startDate == null) {
+                    try {
+                        functions.getHttpsCallable(BOOTSTRAP_FUNCTION).call().await()
+                    } catch (e: Exception) {
+                        Log.w(TAG, "구독 부트스트랩 재시도 실패(로그인은 계속): ${maskId(firebaseUser.uid)}", e)
+                    }
+                }
 
                 user = user.copy(lastLoginAt = Date())
                 // displayName은 사용자 PII에 해당하므로 식별자 마스킹만 노출
@@ -413,8 +418,10 @@ class AuthRepositoryImpl @Inject constructor(
      * 클라이언트 직접 Firestore 접근은 firestore.rules(write=false)로 차단되므로 이 경로만 유효하다.
      */
     override suspend fun redeemReferralCode(code: String): Result<SubscriptionTier?> {
+        // 관리자 코드는 대문자 — 소문자 입력을 관용해 정규화 후 전송(서버도 동일 정규화).
+        val normalized = code.trim().uppercase()
         return try {
-            val payload = mapOf("code" to code)
+            val payload = mapOf("code" to normalized)
             val result = functions
                 .getHttpsCallable(REDEEM_REFERRAL_FUNCTION)
                 .call(payload)
@@ -431,15 +438,28 @@ class AuthRepositoryImpl @Inject constructor(
                 }
             }
 
-            Log.i(TAG, "추천코드 적용 성공: $code → ${tier?.name ?: "(no tier)"}")
+            Log.i(TAG, "추천코드 적용 성공: ${maskId(normalized)} → ${tier?.name ?: "(no tier)"}")
             Result.success(tier)
         } catch (e: FirebaseFunctionsException) {
-            // 서버 HttpsError 코드를 그대로 보존해 상위(UseCase)가 사유를 판별할 수 있게 한다.
-            Log.w(TAG, "추천코드 적용 거부: $code (code=${e.code})", e)
-            Result.failure(e)
+            // 서버 HttpsError 코드를 도메인 사유로 매핑해 상위(UseCase/ViewModel)가 화면 메시지를 고르게 한다.
+            val reason = when (e.code) {
+                FirebaseFunctionsException.Code.NOT_FOUND -> ReferralRedeemReason.NOT_FOUND
+                FirebaseFunctionsException.Code.ALREADY_EXISTS -> ReferralRedeemReason.ALREADY_USED
+                FirebaseFunctionsException.Code.PERMISSION_DENIED -> ReferralRedeemReason.SELF_REFERRAL
+                FirebaseFunctionsException.Code.FAILED_PRECONDITION -> ReferralRedeemReason.NOT_GRANTABLE
+                FirebaseFunctionsException.Code.UNAUTHENTICATED -> ReferralRedeemReason.UNAUTHENTICATED
+                FirebaseFunctionsException.Code.UNAVAILABLE,
+                FirebaseFunctionsException.Code.DEADLINE_EXCEEDED -> ReferralRedeemReason.NETWORK
+                else -> ReferralRedeemReason.UNKNOWN
+            }
+            Log.w(TAG, "추천코드 적용 거부: ${maskId(normalized)} (code=${e.code}, reason=$reason)", e)
+            Result.failure(ReferralRedeemException(reason, e))
+        } catch (e: IOException) {
+            Log.e(TAG, "추천코드 적용 네트워크 오류: ${maskId(normalized)}", e)
+            Result.failure(ReferralRedeemException(ReferralRedeemReason.NETWORK, e))
         } catch (e: Exception) {
-            Log.e(TAG, "추천코드 적용 실패: $code", e)
-            Result.failure(e)
+            Log.e(TAG, "추천코드 적용 실패: ${maskId(normalized)}", e)
+            Result.failure(ReferralRedeemException(ReferralRedeemReason.UNKNOWN, e))
         }
     }
 

@@ -10,6 +10,13 @@
     <string name="login_referral_failed">紹介コードを適用できませんでした。</string>
     <string name="login_referral_error">紹介コードの処理中に問題が発生しました。</string>
 
+    <!-- 추천 코드 거부 사유별 메시지 (로그인·설정 공용) -->
+    <string name="referral_error_not_found">存在しない紹介コードです。</string>
+    <string name="referral_error_already_used">すでに使用されたコード、またはすでに紹介を受けたアカウントです。</string>
+    <string name="referral_error_self">自分の紹介コードは使用できません。</string>
+    <string name="referral_error_not_grantable">このアカウントには適用できないコードです。</string>
+    <string name="referral_error_network">ネットワークエラーです。しばらくしてからもう一度お試しください。</string>
+
     <!-- 로그아웃 오류 상세 (settings_toast_logout_failed 의 「%s」) -->
     <string name="auth_error_network_detail">ネットワークエラー</string>
     <string name="auth_error_unknown_detail">不明なエラー</string>
