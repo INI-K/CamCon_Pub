@@ -262,8 +262,12 @@ main { position: relative; z-index: 2; counter-reset: folio; }
 .hero-title {
   font-family: var(--sans); font-weight: 800;
   font-size: clamp(2.3rem, 6vw, 4.7rem); line-height: 1.05;
-  letter-spacing: -.035em; text-wrap: balance;
+  letter-spacing: -.035em; text-wrap: balance; line-break: strict;
 }
+/* 언어별 줄바꿈: 한국어는 어절 단위(keep-all), CJK 외 언어는 자연 줄바꿈 */
+:lang(ko) .hero-title,
+:lang(ko) .section-title,
+:lang(ko) .cta h2 { word-break: keep-all; }
 .hero-title .accent {
   background: linear-gradient(100deg,
     var(--amber-hi) 0%, var(--amber) 44%, #FFE7BE 50%, var(--amber) 56%, var(--amber-lo) 100%);
