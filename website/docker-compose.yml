@@ -1,0 +1,7 @@
+services:
+  camcon-web:
+    build: .
+    container_name: camcon-web
+    ports:
+      - "8091:80"
+    restart: unless-stopped
