@@ -10,6 +10,13 @@
     <string name="login_referral_failed">Der Empfehlungscode konnte nicht angewendet werden.</string>
     <string name="login_referral_error">Bei der Verarbeitung des Empfehlungscodes ist ein Problem aufgetreten.</string>
 
+    <!-- 추천 코드 거부 사유별 메시지 (로그인·설정 공용) -->
+    <string name="referral_error_not_found">Dieser Empfehlungscode existiert nicht.</string>
+    <string name="referral_error_already_used">Dieser Code wurde bereits verwendet oder dein Konto hat bereits eine Empfehlung genutzt.</string>
+    <string name="referral_error_self">Du kannst deinen eigenen Empfehlungscode nicht verwenden.</string>
+    <string name="referral_error_not_grantable">Dieser Code kann auf dieses Konto nicht angewendet werden.</string>
+    <string name="referral_error_network">Netzwerkfehler. Bitte versuche es gleich noch einmal.</string>
+
     <!-- 로그아웃 오류 세부 내용 (settings_toast_logout_failed의 "%s") -->
     <string name="auth_error_network_detail">Netzwerkfehler</string>
     <string name="auth_error_unknown_detail">unbekannter Fehler</string>

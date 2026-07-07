@@ -10,6 +10,13 @@
     <string name="login_referral_failed">Impossible d\'appliquer le code de parrainage.</string>
     <string name="login_referral_error">Un problème est survenu lors du traitement du code de parrainage.</string>
 
+    <!-- 추천 코드 거부 사유별 메시지 (로그인·설정 공용) -->
+    <string name="referral_error_not_found">Ce code de parrainage n\'existe pas.</string>
+    <string name="referral_error_already_used">Ce code a déjà été utilisé, ou votre compte a déjà utilisé un parrainage.</string>
+    <string name="referral_error_self">Vous ne pouvez pas utiliser votre propre code de parrainage.</string>
+    <string name="referral_error_not_grantable">Ce code ne peut pas être appliqué à ce compte.</string>
+    <string name="referral_error_network">Erreur réseau. Veuillez réessayer dans un instant.</string>
+
     <!-- 로그아웃 오류 상세 (settings_toast_logout_failed의 «%s») -->
     <string name="auth_error_network_detail">erreur réseau</string>
     <string name="auth_error_unknown_detail">erreur inconnue</string>

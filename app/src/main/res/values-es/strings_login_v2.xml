@@ -10,6 +10,13 @@
     <string name="login_referral_failed">No se pudo aplicar el código de referido.</string>
     <string name="login_referral_error">Hubo un problema al procesar el código de referido.</string>
 
+    <!-- 추천 코드 거부 사유별 메시지 (로그인·설정 공용) -->
+    <string name="referral_error_not_found">Este código de referido no existe.</string>
+    <string name="referral_error_already_used">Este código ya se ha usado o tu cuenta ya usó un referido.</string>
+    <string name="referral_error_self">No puedes usar tu propio código de referido.</string>
+    <string name="referral_error_not_grantable">Este código no se puede aplicar a esta cuenta.</string>
+    <string name="referral_error_network">Error de red. Inténtalo de nuevo en un momento.</string>
+
     <!-- 로그아웃 오류 상세 (settings_toast_logout_failed의 "%s") -->
     <string name="auth_error_network_detail">error de red</string>
     <string name="auth_error_unknown_detail">error desconocido</string>

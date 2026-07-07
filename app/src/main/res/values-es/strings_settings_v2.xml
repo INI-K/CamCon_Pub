@@ -133,4 +133,11 @@
     <string name="settings_v2_film_default_title">Película predeterminada</string>
     <string name="settings_v2_film_default_subtitle">Se usa al aplicar automáticamente a las capturas</string>
     <string name="settings_v2_film_intensity_title">Intensidad</string>
+
+    <!-- 로그인 후 추천 코드 등록(전 티어) -->
+    <string name="settings_referral_redeem_title">Canjear código de referido</string>
+    <string name="settings_referral_redeem_subtitle">Introduce un código de referido que recibiste para obtener beneficios.</string>
+    <string name="settings_referral_redeem_hint">Código de referido</string>
+    <string name="settings_referral_redeem_apply">Aplicar</string>
+    <string name="settings_referral_redeem_success">Código de referido aplicado.</string>
 </resources>

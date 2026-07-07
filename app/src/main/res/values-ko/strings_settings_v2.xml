@@ -133,4 +133,11 @@
     <string name="settings_v2_referral_generate_in_progress">생성 중…</string>
     <string name="settings_v2_referral_extract_title">사용 가능한 코드 하나 추출</string>
     <string name="settings_v2_referral_extract_subtitle">사용하지 않은 레퍼럴 코드 하나를 클립보드에 복사</string>
+
+    <!-- 로그인 후 추천 코드 등록(전 티어) -->
+    <string name="settings_referral_redeem_title">추천 코드 등록</string>
+    <string name="settings_referral_redeem_subtitle">전달받은 추천 코드를 입력해 혜택을 받으세요</string>
+    <string name="settings_referral_redeem_hint">추천 코드 입력</string>
+    <string name="settings_referral_redeem_apply">적용</string>
+    <string name="settings_referral_redeem_success">추천 코드가 적용되었습니다</string>
 </resources>

@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -43,6 +44,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,6 +53,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -85,6 +88,7 @@ import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.LoginUiEvent
 import com.inik.camcon.presentation.viewmodel.LoginUiState
 import com.inik.camcon.presentation.viewmodel.LoginViewModel
+import com.inik.camcon.utils.LogMask
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -147,6 +151,10 @@ class LoginActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         Log.d("LoginActivity", "onCreate called")
 
+        // Google 로그인 왕복 중 프로세스 사망/구성 변경으로 Activity가 재생성돼도
+        // 입력했던 추천 코드가 유실되지 않도록 복원한다.
+        currentReferralCode = savedInstanceState?.getString(KEY_REFERRAL_CODE).orEmpty()
+
         setContent {
             val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
             val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
@@ -184,16 +192,23 @@ class LoginActivity : ComponentActivity() {
                     uiState = uiState,
                     snackbarHostState = snackbarHostState,
                     onGoogleSignIn = { referralCode ->
-                        Log.d(
-                            "LoginActivity",
-                            "Google Sign-In button clicked with referral code: $referralCode"
-                        )
+                        if (com.inik.camcon.BuildConfig.DEBUG) {
+                            Log.d(
+                                "LoginActivity",
+                                "Google Sign-In clicked, referral=${LogMask.id(referralCode)}"
+                            )
+                        }
                         currentReferralCode = referralCode
                         signInWithGoogle()
                     }
                 )
             }
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString(KEY_REFERRAL_CODE, currentReferralCode)
     }
 
     private fun signInWithGoogle() {
@@ -215,6 +230,10 @@ class LoginActivity : ComponentActivity() {
         } catch (e: Exception) {
             Log.e("LoginActivity", "Error creating Google Sign-In intent", e)
         }
+    }
+
+    private companion object {
+        private const val KEY_REFERRAL_CODE = "referral_code"
     }
 }
 
@@ -259,9 +278,10 @@ fun LoginScreen(
     snackbarHostState: SnackbarHostState,
     onGoogleSignIn: (String) -> Unit
 ) {
-    var referralCode by remember { mutableStateOf("") }
+    // 회전/구성 변경에도 입력값·펼침 상태가 유지되도록 rememberSaveable 사용.
+    var referralCode by rememberSaveable { mutableStateOf("") }
     // 추천 코드 접이식 노출. 기본 접힘, 세션 내 단방향(한 번 펼치면 유지).
-    var showReferral by remember { mutableStateOf(false) }
+    var showReferral by rememberSaveable { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -381,6 +401,9 @@ fun LoginScreen(
                                         onValueChange = { referralCode = it },
                                         singleLine = true,
                                         enabled = !uiState.isLoading,
+                                        keyboardOptions = KeyboardOptions(
+                                            capitalization = KeyboardCapitalization.Characters
+                                        ),
                                         modifier = Modifier.fillMaxWidth(),
                                         placeholder = {
                                             Text(

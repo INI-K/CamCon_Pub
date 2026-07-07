@@ -13,10 +13,12 @@ service cloud.firestore {
     }
 
     // 사용자가 ADMIN 티어인지 확인
+    // 주의: match 경로 변수는 함수 내부에서 $(database)/$(userId) 로 바인딩해야 한다.
+    // {database}/{userId} 로 쓰면 리터럴 경로가 되어 문서가 존재하지 않고 항상 false → 관리자 read 전멸.
     function isAdmin(userId) {
       return isAuthenticated() &&
-             exists(/databases/{database}/documents/users/{userId}/subscriptions/current) &&
-             get(/databases/{database}/documents/users/{userId}/subscriptions/current).data.tier == 'ADMIN';
+             exists(/databases/$(database)/documents/users/$(userId)/subscriptions/current) &&
+             get(/databases/$(database)/documents/users/$(userId)/subscriptions/current).data.tier == 'ADMIN';
     }
 
     // 현재 사용자가 ADMIN인지 확인
@@ -29,11 +31,16 @@ service cloud.firestore {
       return fieldName in request.resource.data.diff(resource.data).affectedKeys();
     }
 
-    // 보호된 필드(구독 티어 등)가 변경되지 않았는지 확인
+    // 보호된 필드(구독 티어·추천 이력 등)가 변경되지 않았는지 확인.
+    // referredBy/totalReferrals 를 포함하는 이유: 클라가 referredBy 를 리셋해
+    // redeemReferralCode 의 '계정당 1회' 가드를 우회하는 구멍을 봉쇄한다(서버 Admin SDK 만 갱신).
+    // referralCode 는 generateReferralCode 경로가 클라 쓰기로 세팅하므로 여기서 잠그지 않는다.
     function protectedFieldsNotChanged() {
       return !fieldChanged('tier') &&
              !fieldChanged('updatedAt') &&
-             !fieldChanged('updatedBy');
+             !fieldChanged('updatedBy') &&
+             !fieldChanged('referredBy') &&
+             !fieldChanged('totalReferrals');
     }
 
     // ==================== USERS 컬렉션 ====================
@@ -41,9 +48,18 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isOwner(userId);
 
-      // 사용자는 자신의 문서의 기본 정보만 수정 가능
-      // 구독 티어는 절대 변경 불가 (서버에서만 Admin SDK로 변경)
-      allow write: if isOwner(userId) && protectedFieldsNotChanged();
+      // 신규 사용자 문서 생성 — 본인 문서만. 추천 이력·티어 필드는 초기값이어야 한다(자가 세팅 방지).
+      // create 시 resource 가 null 이라 protectedFieldsNotChanged() 의 diff(resource.data) 가
+      // 평가 에러를 내 무조건 거부되므로(신규 가입 사망), create/update 를 분리한다.
+      allow create: if isOwner(userId) &&
+                    (!('referredBy' in request.resource.data) || request.resource.data.referredBy == null) &&
+                    (!('totalReferrals' in request.resource.data) || request.resource.data.totalReferrals == 0) &&
+                    !('tier' in request.resource.data) &&
+                    !('updatedAt' in request.resource.data) &&
+                    !('updatedBy' in request.resource.data);
+
+      // 기존 문서 수정 — 구독 티어·추천 이력 등 보호 필드는 변경 불가(서버 Admin SDK 전용).
+      allow update: if isOwner(userId) && protectedFieldsNotChanged();
 
       // 관리자는 모든 사용자 문서 읽기 가능
       allow read: if currentUserIsAdmin();

@@ -10,6 +10,13 @@
     <string name="login_referral_failed">Could not apply the referral code.</string>
     <string name="login_referral_error">There was a problem processing the referral code.</string>
 
+    <!-- 추천 코드 거부 사유별 메시지 (로그인·설정 공용) -->
+    <string name="referral_error_not_found">This referral code does not exist.</string>
+    <string name="referral_error_already_used">This code has already been used, or your account has already used a referral.</string>
+    <string name="referral_error_self">You can\'t use your own referral code.</string>
+    <string name="referral_error_not_grantable">This code can\'t be applied to this account.</string>
+    <string name="referral_error_network">Network error. Please try again in a moment.</string>
+
     <!-- 인증(로그아웃) 오류 상세, settings_toast_logout_failed의 "%s"로 사용됨 -->
     <string name="auth_error_network_detail">network error</string>
     <string name="auth_error_unknown_detail">unknown error</string>
