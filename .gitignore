@@ -39,6 +39,7 @@ app/symbols.zip
 
 # 워크스페이스
 _workspace/
+.claude/_workspace*
 
 # Firebase Cloud Functions
 functions/node_modules/
