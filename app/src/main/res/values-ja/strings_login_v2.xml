@@ -18,4 +18,5 @@
     <string name="login_v2_tagline">シネマカメラコントローラー</string>
     <string name="login_v2_signin_label">ログイン</string>
     <string name="login_v2_referral_label">紹介コード</string>
+    <string name="login_v2_referral_toggle">紹介コードをお持ちですか？</string>
 </resources>
