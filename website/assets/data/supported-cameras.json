@@ -1,0 +1,6346 @@
+{
+ "generated": "libgphoto2 camlibs parse (CamCon arm64-v8a bundled 19 camlibs)",
+ "total": 1268,
+ "cameras": [
+  {
+   "vendor": "Agfa",
+   "model": "ePhoto 1280",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Agfa",
+   "model": "ePhoto 1680",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Agfa",
+   "model": "ePhoto 307",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Agfa",
+   "model": "ePhoto 780",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Agfa",
+   "model": "ePhoto 780C",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Apple",
+   "model": "iPad",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Apple",
+   "model": "iPad Air",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Apple",
+   "model": "iPhone",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Apple",
+   "model": "iPhone 3G",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Apple",
+   "model": "iPhone 3GS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Apple",
+   "model": "iPhone 4",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Apple",
+   "model": "iPhone 4S",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Apple",
+   "model": "iPhone 5",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Apple",
+   "model": "iPod Touch",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Apple",
+   "model": "iPod Touch 2G",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Apple",
+   "model": "iPod Touch 3rd Gen",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Apple",
+   "model": "QuickTake 1x0",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Apple",
+   "model": "QuickTake 200 (Sierra Mode)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "AX203 USB picture frame",
+   "model": "AX203 USB picture frame",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 100 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 110 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 120 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 130",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 132",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 180",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 185",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 255HS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 30",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 300",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 300 HS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 330",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 40",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 400",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 430",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 50",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 500",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 55",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 60",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 65",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 70",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 700",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 75",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 750",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 80 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 800",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 85 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 850 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 860 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 90 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 900Ti",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 95 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 950 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 960 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 970 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 980 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS 990 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS i",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS i5",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS II",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS IIs",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS iZ",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS v",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS v2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS v3",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital IXUS Wireless",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital PowerShot SX730HS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital Rebel XT",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Digital unknown 3",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Elura 50",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Elura 65",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS (WLAN)",
+   "connection": "wifi"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 1000D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 100D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 10D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 1100D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 1200D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 1300D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 1500D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 1D C",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 1D Mark II",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 1D Mark III",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 1D Mark IV",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 1D X",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 1D X MarkII",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 1D X MarkIII",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 2000D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 200D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 20D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 250D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 300D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 30D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 350D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 4000D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 400D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 40D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 450D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 500D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 50D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 550D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 5D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 5D Mark II",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 5D Mark III",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 5D Mark IV",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 5DS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 5DS R",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 5Rm2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 600D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 60D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 650D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 6D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 6d Mark II",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 700D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 70D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 750D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 760D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 77D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 7D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 7D MarkII",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 800D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 80D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 850D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS 90D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS D30",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS D60",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS Digital Rebel",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS Digital Rebel XTi",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS Kiss Digital",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS Kiss Digital N",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS Kiss Digital X",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS Kiss X2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS Kiss X3",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS M",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS M10",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS M100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS M2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS M200",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS M3",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS M5",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS M50",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS M50m2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS M6",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS M6 Mark II",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS R",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS R10",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS R100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS R3",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS R5",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS R5 C",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS R50",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS R50 V",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS R6",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS R6m2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS R7",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS R8",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS Rebel T1i",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS Rebel T6",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS Rebel T7i",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS Rebel T8i",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS Rebel XSi",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS RP",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "FV M1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "IXUS 125HS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "IXUS 160",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "IXUS 165",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "IXUS 310IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "IXY 220 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "IXY 3000 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "IXY DIGITAL",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "IXY DIGITAL 300",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "IXY Digital 40",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "IXY Digital 430",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "IXY Digital 500",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "IXY Digital 55",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "IXY Digital 600",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "IXY Digital L2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "IXY DV M",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "IXY DV M2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "MV630i",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "MV650i",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "MV750i",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "MVX 10i",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "MVX 3i",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "MVX100i",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "MVX150i",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "MVX25i",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "MVX2i",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "MVX3i",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Optura 10",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Optura 20",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Optura 200 MC",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Optura 300",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Optura 40",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Optura 600",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Optura Xi",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A10",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A1000 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A1100 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A1300IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A1400",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A20",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A200",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A2000 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A2100 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A2200",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A2300IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A2400IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A2500",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A2600",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A30",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A300",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A3000 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A310",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A3100 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A3500IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A40",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A400",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A4000IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A410",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A420",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A430",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A450",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A460",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A470",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A480",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Powershot A495",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A5",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A5 Zoom",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A50",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A510",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A520",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A530",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A540",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A550",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A560",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A570 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A580",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A590 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A60",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A610",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A620",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A630",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A640",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A650IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A70",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A700",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A710 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A720 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A75",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A80",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A800",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A810",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A85",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot A95",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot D10",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot ELPH 350 HS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot Elph135",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot Elph340HS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot G1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot G1 X",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot G10",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot G11",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot G12",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot G15",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot G16",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot G2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot G3",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot G3 X",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot G5",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot G5X",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot G6",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Powershot G6",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot G7",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot G7 X",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot G7 X Mark II",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot G7 X Mark III",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot G9",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot G9 X Mark II",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot IXY Digital L",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot Pro70",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot Pro90 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot S1 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot S10",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot S100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot S100 (2000)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot S110",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot S110 (2001)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot S120",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot S2 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot S20",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot S200",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot S230",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot S3 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot S30",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot S300",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot S330",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot S40",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot S400",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot S410",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot S410 Digital ELPH",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot S45",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot S5 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot S50",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot S500",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot S500 Digital ELPH",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Powershot S60",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot S60",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Powershot S70",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot S70",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot S80",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot S95",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SD10 Digital ELPH",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SD100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SD1000",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SD110",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SD110 Digital ELPH",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Powershot SD1100 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Powershot SD1200 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SD1300 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SD20",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SD200",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SD40",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SD400",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SD430",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SD450",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SD500",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SD600",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SD630",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SD700",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SD750",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SD770 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SD780 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Powershot SD790 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SD850",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SD880 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SD900",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SD940 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SD970 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SD990",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SX10 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Powershot SX100 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SX110 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SX120 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SX130 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SX150 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SX160IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SX170 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SX20 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SX200 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SX210 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SX220HS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SX230HS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SX240HS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SX260HS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SX280HS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SX40HS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SX500IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SX510 HS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SX520 HS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SX530 HS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SX540 HS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SX600 HS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SX60HS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SX70 HS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot SX740 HS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot unknown 1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "PowerShot unknown 2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Rebel T2i",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Rebel T3",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Rebel T3i",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "Rebel T4i",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "SX 620HS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "SX 720HS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "ZR70MC",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Casio",
+   "model": "EX-S770",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Casio",
+   "model": "EX-Z120",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Casio",
+   "model": "EX-Z65",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Casio",
+   "model": "EX-Z700",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Casio",
+   "model": "EX-ZR700",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Chinon",
+   "model": "ES-1000",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Epson",
+   "model": "PhotoPC 3000z",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Epson",
+   "model": "PhotoPC 500",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Epson",
+   "model": "PhotoPC 550",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Epson",
+   "model": "PhotoPC 600",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Epson",
+   "model": "PhotoPC 650",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Epson",
+   "model": "PhotoPC 700",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Epson",
+   "model": "PhotoPC 800",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Epson",
+   "model": "PhotoPC 850z",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "A220",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix A330",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix A610",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix A800",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix A820",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix A920",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix AV-150",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix E900",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix F100fd",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix F20",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix F200 EXR",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix F30",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix F31fd",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix F40fd",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix F50fd",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix F60fd",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix F70 EXR",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix F80EXR",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix H20EXR",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix HS30EXR",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix JX370",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix S1000fd",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix S100fs",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix S1500",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix S1800",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix S2000HD",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix S2500HD",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix S2950",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix S2980",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix S4300",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix S4850",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix S5700",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix S5800",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix S6500fd",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix S7000",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix S8600",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix S9500",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix SL1000",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix T200",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix X-E1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix X-S1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix X10",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix X20",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix XF1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix Z100fd",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix Z35",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "FinePix Z700EXR",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "GFX 100S",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "GFX 100S (2nd)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "GFX 50 R",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "GFX 50 S",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "GFX100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "GFX100 II",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "S5 Pro",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "X (WLAN)",
+   "connection": "wifi"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "X-A2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "X-A5",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "X-E2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "X-E3",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "X-E4",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "X-H1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "X-H2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "X-H2S",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "X-M1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "X-M5",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "X-Pro2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "X-Pro3",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "X-S10",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "X-T1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "X-T10",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "X-T2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "X-T20",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "X-T3",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "X-T30",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "X-T4",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "X-T5",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "X100F",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "X100V",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "X100VI",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "X30",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
+   "model": "X70",
+   "connection": "usb"
+  },
+  {
+   "vendor": "GoPro",
+   "model": "HERO",
+   "connection": "usb"
+  },
+  {
+   "vendor": "GoPro",
+   "model": "HERO +",
+   "connection": "usb"
+  },
+  {
+   "vendor": "GoPro",
+   "model": "HERO 3+",
+   "connection": "usb"
+  },
+  {
+   "vendor": "GoPro",
+   "model": "HERO 4",
+   "connection": "usb"
+  },
+  {
+   "vendor": "GoPro",
+   "model": "HERO10 Black",
+   "connection": "usb"
+  },
+  {
+   "vendor": "GoPro",
+   "model": "HERO11 Black",
+   "connection": "usb"
+  },
+  {
+   "vendor": "GoPro",
+   "model": "HERO11 Black mini",
+   "connection": "usb"
+  },
+  {
+   "vendor": "GoPro",
+   "model": "HERO4 Silver",
+   "connection": "usb"
+  },
+  {
+   "vendor": "GoPro",
+   "model": "HERO5 Black",
+   "connection": "usb"
+  },
+  {
+   "vendor": "GoPro",
+   "model": "HERO5 Session",
+   "connection": "usb"
+  },
+  {
+   "vendor": "GoPro",
+   "model": "HERO6 Black",
+   "connection": "usb"
+  },
+  {
+   "vendor": "GoPro",
+   "model": "HERO7 Black",
+   "connection": "usb"
+  },
+  {
+   "vendor": "GoPro",
+   "model": "HERO7 Silver",
+   "connection": "usb"
+  },
+  {
+   "vendor": "GoPro",
+   "model": "HERO7 White",
+   "connection": "usb"
+  },
+  {
+   "vendor": "GoPro",
+   "model": "HERO8 Black",
+   "connection": "usb"
+  },
+  {
+   "vendor": "GoPro",
+   "model": "HERO9 Black",
+   "connection": "usb"
+  },
+  {
+   "vendor": "GoPro",
+   "model": "Max",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart ...",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart 120",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart 217",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart 317",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart 318",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart 320",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart 407",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart 417",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart 43x",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart 507",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart 517",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart 607",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart 612",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart 620",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart 635",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart 707",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart 715",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart 717",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart 720",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart 733",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart 735",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart 812",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart 817",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart 818",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart 850",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart 935",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart 945",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart C500",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart E327",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart E331",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart E427",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart M22",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart M23",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart M307",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart M415",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart M425",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart M525",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart M527",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart M547",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart M725",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart M727",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart M737",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart R742",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart R927",
+   "connection": "usb"
+  },
+  {
+   "vendor": "HP",
+   "model": "PhotoSmart R967",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "C1530",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "C183",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "C300",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "C310",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "C330",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "C340",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "C360",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "C433",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "C530",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "C533",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "C613",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "C633",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "C643",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "C653",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "C743",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "C813",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "C875",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "C913",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "CD33",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "CX4200",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "CX4210",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "CX4230",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "CX4300",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "CX4310",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "CX6200",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "CX6230",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "CX6330",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "CX6445",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "CX7220",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "CX7300",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "CX7310",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "CX7330",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "CX7430",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "CX7525",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "CX7530",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "DC240",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "DC280",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "DC3400",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "DC4800",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "DC5000",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "DX3215",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "DX3500",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "DX3600",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "DX3700",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "DX3900",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "DX4330",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "DX4530",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "DX4900",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "DX6340",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "DX6440",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "DX6490",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "DX7440",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "DX7590",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "DX7630",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "LS420",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "LS443",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "LS663",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "LS743",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "LS753",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "M1063",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "M531",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "M531 2nd id",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "M753",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "M863",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "M883",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "M893 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "MC3",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "P850",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "P880",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "V530",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "V550",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "V570",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "V603",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "V610",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "V705",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "V803",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "Z612",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "Z650",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "Z700",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "Z710",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "Z712 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "Z730",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "Z740",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "Z7590",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "Z812 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "Z8612 IS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "Z915",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "Z950",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "Z990",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Kodak",
+   "model": "ZD710",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Konica-Minolta",
+   "model": "DiMAGE A2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Konica-Minolta",
+   "model": "DiMAGE A200",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Konica-Minolta",
+   "model": "DiMAGE X21",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Konica-Minolta",
+   "model": "DiMAGE Z2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Konica-Minolta",
+   "model": "DiMAGE Z3",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Konica-Minolta",
+   "model": "DiMAGE Z5",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Konica-Minolta",
+   "model": "DiMAGE Z6",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Leica",
+   "model": "D-LUX 2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Leica",
+   "model": "M11 Monochrom",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Leica",
+   "model": "M9",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Leica",
+   "model": "Q3",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Leica",
+   "model": "SL",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Leica",
+   "model": "SL (Typ 601)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Minolta",
+   "model": "Dimage V",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "1 (WLAN)",
+   "connection": "wifi"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "CoolPix 100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix 2000",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix 2100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "CoolPix 2100 (Sierra Mode)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix 2200",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix 2200v1.1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix 2500",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "CoolPix 2500 (Sierra Mode)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "CoolPix 300",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix 3100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix 3200",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix 3500",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "CoolPix 3500 (Sierra Mode)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix 3700",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix 4100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "CoolPix 4100 (Sierra Mode)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix 4200",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix 4300",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "CoolPix 4300 (Sierra Mode)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix 4500",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix 4600",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix 4600a",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix 4800",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix 5000",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix 5200",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix 5400",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix 5600",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix 5700",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix 5900",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "CoolPix 700",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix 7600",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix 7900",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "CoolPix 800",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix 8700",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "CoolPix 880",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix 8800",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix 885",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "CoolPix 900",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "CoolPix 900S",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "CoolPix 910",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix 9400",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "CoolPix 950",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "CoolPix 950S",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "CoolPix 990",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "CoolPix 995",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix A",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix A900",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix AW100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix AW110",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix AW130",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix B500",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix B700",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix L1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix L10",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix L100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix L11",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix L110",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix L12",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix L120",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix L16",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix L19",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix L20",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix L23",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix L27",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix L340",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix L4",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix L810",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix L820",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix L840",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix P1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix P100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix P1000",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix P2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix P300",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix P330",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix P4",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix P50",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix P500",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix P5000",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix P510",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix P5100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix P520",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix P60",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix P6000",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix P7000",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix P7100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix P7700",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix P7800",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix P80",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix P80 v1.1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix P90",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix P900",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S01",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S02",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S200",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S220",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S225",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S2500",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S2600",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S2700",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S2900",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S3000",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S3100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S3200",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S3300",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S3600",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S3700",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S4",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S4300",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S500",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S5100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S6",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S60",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S6000",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S620",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S6300",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S6800",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S7c",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S8000",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S8200",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S9100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S9500",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S9700",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix SQ",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "D100 (Sierra Mode)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "D2H SLR",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "D2Hs",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "D2X SLR",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "D3",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "D50",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D200",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D2Xs",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D300",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D3000",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D300s",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D3100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D3200",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D3300",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D3400",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D3500",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D3s",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D3x",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D4",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D40",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D40x",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D4s",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D5",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D500",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D5000",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D5100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D5200",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D5300",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D5500",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D5600",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D6",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D60",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D600",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D610",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D70",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D700",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D7000",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D70s",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D7100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D7200",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D750",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D7500",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D780",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D80",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D800",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D800E",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D810",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D810A",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D850",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC D90",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSC Df",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "DSLR (WLAN)",
+   "connection": "wifi"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "J1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "J2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "J3",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "J4",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "J5",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "KeyMission 170",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "KeyMission 360",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "P950",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "S1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "S2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "V1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "V2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "V3",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Z30",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Z5",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Z50",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Z6",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Z6 III",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Z6_2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Z7",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Z7_2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Z8",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Z9",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Zf",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Zfc",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nokia",
+   "model": "N73",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-1000L",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-1400L",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-1400XL",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-2000Z",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-2020Z",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-2040Z",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-2100UZ",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-2500L",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-3000Z",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-3020Z",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-3030Z",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-3040Z",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-310Z",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-350Z",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-370Z",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-400",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-400L",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-4040Z",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-410",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-410L",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-420",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-420L",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-5050Z",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-5500Z",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-55Z",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-700UZ",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-750UZ",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-770UZ",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-800",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-800L",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-820",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-820L",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-830L",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-840L",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-860L",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-900 Zoom",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-900L Zoom",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "C-990 Zoom",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "D-100Z",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "D-200L",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "D-220L",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "D-300L",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "D-320L",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "D-330R",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "D-340L",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "D-340R",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "D-360L",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "D-400L Zoom",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "D-450Z",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "D-460Z",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "D-500L",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "D-535Z",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "D-540Z",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "D-560Z",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "D-600L",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "D-600XL",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "D-620L",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "E series (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "E-410",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "E-520",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "E-M1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "E-M1 Mark II",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "E-M1 MII",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "E-M5",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "E-M5 Mark II",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "E-PL5",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "fe-200",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "FE4000",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "IR-300",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "mju 500",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "OM-1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "OM-1MarkII",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "SP-500UZ",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "SP-720UZ",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "TG-620",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "VR360",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "X-100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "X-250",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "X-450",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "X920",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Olympus",
+   "model": "X925",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Panasonic",
+   "model": "Coolshot NV-DCF5E",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Panasonic",
+   "model": "DC-GH5",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Panasonic",
+   "model": "DMC-FS62",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Panasonic",
+   "model": "DMC-FZ20",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Panasonic",
+   "model": "DMC-FZ38",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Panasonic",
+   "model": "DMC-FZ45",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Panasonic",
+   "model": "DMC-FZ50",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Panasonic",
+   "model": "DMC-GF1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Panasonic",
+   "model": "DMC-GX8",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Panasonic",
+   "model": "DMC-LC1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Panasonic",
+   "model": "DMC-LS2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Panasonic",
+   "model": "DMC-LS3",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Panasonic",
+   "model": "DMC-LX7",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Panasonic",
+   "model": "DMC-LZ2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Panasonic",
+   "model": "DMC-TZ15",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Panasonic",
+   "model": "DMC-TZ18",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Panasonic",
+   "model": "DMC-TZ8",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Panasonic",
+   "model": "Lumix FZ5",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Parrot",
+   "model": "Sequoia",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Pentax",
+   "model": "K01",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Pentax",
+   "model": "K1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Pentax",
+   "model": "K100D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Pentax",
+   "model": "K100DS",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Pentax",
+   "model": "K10D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Pentax",
+   "model": "K1II",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Pentax",
+   "model": "K200D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Pentax",
+   "model": "K20D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Pentax",
+   "model": "K3",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Pentax",
+   "model": "K3 II",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Pentax",
+   "model": "K30",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Pentax",
+   "model": "K3II",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Pentax",
+   "model": "K3III",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Pentax",
+   "model": "K50D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Pentax",
+   "model": "K5D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Pentax",
+   "model": "K5II",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Pentax",
+   "model": "K5IIs",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Pentax",
+   "model": "K70",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Pentax",
+   "model": "KP",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Pentax",
+   "model": "Optio 33WR",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Pentax",
+   "model": "Optio 43WR",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Pentax",
+   "model": "Optio 450",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Pentax",
+   "model": "Optio W90",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Pentax",
+   "model": "Optio W90 (Sierra Mode)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Philips",
+   "model": "ESP2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Philips",
+   "model": "ESP50",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Philips",
+   "model": "ESP60",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Philips",
+   "model": "ESP70",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Philips",
+   "model": "ESP80",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Philips",
+   "model": "ESP80SXG",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Pioneer",
+   "model": "DVR-LX60D",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Polaroid",
+   "model": "PDC 2300Z",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Polaroid",
+   "model": "PDC 640",
+   "connection": "usb"
+  },
+  {
+   "vendor": "PTP/IP",
+   "model": "Camera",
+   "connection": "wifi"
+  },
+  {
+   "vendor": "Ricoh",
+   "model": "Caplio GX",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Ricoh",
+   "model": "Caplio GX 8",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Ricoh",
+   "model": "Caplio R1v",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Ricoh",
+   "model": "Caplio R3",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Ricoh",
+   "model": "Caplio R5",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Ricoh",
+   "model": "Caplio RR750",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Ricoh",
+   "model": "GR III",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Ricoh",
+   "model": "GR IIIx",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Ricoh",
+   "model": "RDC-1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Ricoh",
+   "model": "RDC-100G",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Ricoh",
+   "model": "RDC-2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Ricoh",
+   "model": "RDC-2E",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Ricoh",
+   "model": "RDC-300",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Ricoh",
+   "model": "RDC-300Z",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Ricoh",
+   "model": "RDC-4200",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Ricoh",
+   "model": "RDC-4300",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Ricoh",
+   "model": "RDC-5000",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Ricoh",
+   "model": "Theta (WLAN)",
+   "connection": "wifi"
+  },
+  {
+   "vendor": "Ricoh",
+   "model": "Theta m15",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Ricoh",
+   "model": "Theta S",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Ricoh",
+   "model": "Theta SC",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Ricoh",
+   "model": "Theta V",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Ricoh",
+   "model": "Theta Z1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Ricoh",
+   "model": "WG-M2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Rollei",
+   "model": "dr5",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Samsung",
+   "model": "EK-GC100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Samsung",
+   "model": "NX1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Samsung",
+   "model": "NX1000",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Samsung",
+   "model": "S5620",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sanyo",
+   "model": "DSC-X300",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sanyo",
+   "model": "DSC-X350",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sanyo",
+   "model": "VPC-C5",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sanyo",
+   "model": "VPC-FH1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sanyo",
+   "model": "VPC-G200",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sanyo",
+   "model": "VPC-G200EX",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sanyo",
+   "model": "VPC-G210",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sanyo",
+   "model": "VPC-G250",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sea&Sea",
+   "model": "2G",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sea&Sea",
+   "model": "5000G",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sierra Imaging",
+   "model": "SD640",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sigma",
+   "model": "fp",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sigma",
+   "model": "fp L",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "A6700",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-A3000",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-A5000 (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-A5100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-A5100 (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-A6000",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-A6000 (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-A6100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-A6300",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-A6300 (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-A6500",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-A6500 (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-A6600",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-A68",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-A68 (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-A7 (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-A7 III",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-A7 IV",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-A77 M2 (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-A7III (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-A7r (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-A7r II (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-A7R III",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-A7r III",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-A7S",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-A7S (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-A7S II (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-A9 (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-A99 M2 (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-RX10M4 (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "Alpha-RX1R II (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC RX0 II",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-A100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-A7r IV (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-A7S III",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-A7S III (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-A900",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-F707V",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-F717",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-F828",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-H1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-H2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-H5",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-HX100V",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-HX200V",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-HX20V",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-HX300",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-HX400V",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-HX5V",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-HX60V",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-HX80",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-HX90V",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-N2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-P10",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-P100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-P120",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-P200",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-P30",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-P31",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-P32",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-P41",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-P43",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-P5",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-P50",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-P51",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-P52",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-P71",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-P72",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-P73",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-P92",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-P93",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-QX30U",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-R1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-RX0",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-RX1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-RX100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-RX100M2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-RX100M4",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-RX100M5 (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-RX100M5A",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-RX100M6",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-RX100M7",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-RX100V (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-RX10M3 (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-S40",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-S60",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-S730",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-S75",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-S780",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-S85",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-T1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-T10",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-T3",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-U10",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-U20",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-V1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-W1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-W12",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-W130",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-W200",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-W35",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-W510",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-W55",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-WX220",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "DSC-WX350",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "HDR-PJ260VE",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "HDR-PJ710V",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "ILCE-1 (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "ILCE-6400",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "ILCE-7C (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "ILCE-7M2 (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "ILCE-7R M2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "ILCE-7RM3A",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "ILCE-7RM4A",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "ILCE-7RM5",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "ILCE-9M3 (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "ILME-FX3",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "ILX-LR1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "MVC-CD300",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "MVC-CD500",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "NEX-3N",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "NEX-5N",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "NEX-5R",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "NEX-6",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "NEX-7",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "NEX5",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "PTP",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "RX100M3",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "SLT-A35",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "SLT-A350",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "SLT-A37",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "SLT-A55",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "SLT-A57",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "SLT-A58",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "SLT-A58 (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "SLT-A65V",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "SLT-A77V",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "SLT-A99V",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "SLT-A99v",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "UMC-R10C",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "ZV-1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "ZV-E10",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "ZV-E10 (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "ZV-E10M2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "ST2205 USB picture frame",
+   "model": "ST2205 USB picture frame",
+   "connection": "usb"
+  },
+  {
+   "vendor": "TOPDON",
+   "model": "TC004 Mini",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Topfield",
+   "model": "TF5000PVR",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Toshiba",
+   "model": "PDR-M60",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Toshiba",
+   "model": "PDR-M61",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Toshiba",
+   "model": "PDR-M65",
+   "connection": "usb"
+  },
+  {
+   "vendor": "TP6801 USB picture frame",
+   "model": "TP6801 USB picture frame",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Aiptek PenCam VGA+",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Amazing Spiderman",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "American Idol Keychain Camera",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Argus Bean Sprout",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Argus DC-1510",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Argus DC-1610",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Argus DC-1620",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Argus DC-1730",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Argus DC1512e",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Argus QuickClix",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Aries ATC-0017",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Aries Digital Keychain Camera, ITEM 128986",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Barbie Camera (Digital Blue)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Che-ez Snap",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Che-Ez Snap SNAP-U",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Cobra DC125",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Cobra Digital Camera DC150",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Concord Eye-Q Duo",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Concord Eye-Q Easy",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "DC-N130t",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "DC-N130ta",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "DC31VC",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Digigr8",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Digital camera, CD302N",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "DIGITAL MID#0020509 (no-name camera)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Disney pix micro",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Disney pix micro 2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Elta Medi@ digi-cam",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Emprex PCD3600",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Gear to go",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Genius Smart 300, version 2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Global Point 3 in 1 Digital Fun Graffiti 00044",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Global Point Clipster",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Global Point Splash Mini (underwater camera)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "GTW Electronics",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Haimei Electronics HE-501A",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "iConcepts digital camera",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "INNOVAGE Mini Digital, CD302N",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "ION digital camera",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Jazwares Star Wars no. 15256",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Jazz JDC9",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Jazz JDK235",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Jenoptik JDC 350",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "JL2005B/C/D camera",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Lego Bionicle",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Magpix B350",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Mini Shotz ms-350",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Mitek CD10",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Mitek CD30P",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Nexxtech Mini Digital Camera",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "NogaNet TDC-15",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Philips P44417B keychain camera",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Pixart Gemini Keychain Camera",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Pixie Princess Jelly-Soft",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "PockCam",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Praktica Slimpix",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Precision Mini Digital Camera",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Precision Mini, Model HA513A",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Request Ultra Slim",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Sakar 23070  Crayola Digital Camera",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Sakar 28290 and 28292  Digital Concepts Styleshot",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Sakar 92045  Spiderman",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Sakar clipshot no. 1169x",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Sakar Digital Keychain 11199",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Sakar Digital no, 6637x",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Sakar Digital no, 67480",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Sakar Digital no. 56379 Spyshot",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Sakar Digital no. 77379",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Sakar Dora the Explorer no. 88067",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Sakar Hello Kitty no. 94009",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Sakar Kidz Cam 86379",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Sakar Kidz-Cam no. 88379",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Sakar Micro Digital 2428x",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Sakar Nickelodeon iCarly no. 88061",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Sakar no. 1638x CyberPix",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Sakar no. 75379",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Sakar no. 81890",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Sakar no. 91379",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Sakar no. 98379",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Sakar Star Wars kit no. 92022",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Sakar Sticker Wizard no. 59379",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Shark 2-in-1 Mini",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Shark SDC-513",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Shark SDC-519",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Shift3",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Soundstar TDC-35",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "SQ chip camera",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Stop & Shop 87096",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Suprema Digital Keychain Camera",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "SY-2107C",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Trust Spyc@m 100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "ViviCam3350",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "ViviCam5B",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Vivitar Freelance",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Vivitar Mini Digital Camera",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Vivitar Vivicam 55",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Vivitar Vivicam3350B",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Vivitar Vivicam35",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "Wild Planet Digital Spy Camera 70137",
+   "connection": "usb"
+  },
+  {
+   "vendor": "기타",
+   "model": "ZINA Mini Digital Keychain Camera",
+   "connection": "usb"
+  }
+ ]
+}
