@@ -30,4 +30,7 @@
     <!-- 스낵바 -->
     <string name="subscription_snackbar_purchase_started">결제를 시작했습니다. 검증 후 적용됩니다.</string>
     <string name="subscription_snackbar_error">요청을 처리하지 못했습니다. 다시 시도해 주세요.</string>
+
+    <!-- 결제 미지원 안내 (추후 지원) -->
+    <string name="subscription_coming_soon">업그레이드는 추후 지원 예정입니다.</string>
 </resources>

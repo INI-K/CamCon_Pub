@@ -30,4 +30,7 @@
     <!-- 스낵바 -->
     <string name="subscription_snackbar_purchase_started">Acquisto avviato. Verrà applicato dopo la verifica.</string>
     <string name="subscription_snackbar_error">Impossibile elaborare la richiesta. Riprova.</string>
+
+    <!-- 결제 미지원 안내 (추후 지원) -->
+    <string name="subscription_coming_soon">Le opzioni di upgrade arriveranno presto.</string>
 </resources>

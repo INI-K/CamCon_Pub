@@ -33,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -61,6 +62,7 @@ import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
 import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
 import com.inik.camcon.presentation.viewmodel.SubscriptionUiState
 import com.inik.camcon.presentation.viewmodel.SubscriptionViewModel
+import kotlinx.coroutines.launch
 
 /**
  * 페이월 폴백 productId — Google Play Billing 상품 조회가 비어 있을 때
@@ -135,9 +137,17 @@ private fun SubscriptionScreenContent(
     onPurchaseSuccessConsumed: () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
 
     val purchaseStartedMessage = stringResource(R.string.subscription_snackbar_purchase_started)
     val genericErrorMessage = stringResource(R.string.subscription_snackbar_error)
+    val comingSoonMessage = stringResource(R.string.subscription_coming_soon)
+
+    // TODO(billing): 결제 미지원 — 업그레이드/구매 복원은 "추후 지원" 안내만 표시한다.
+    //  결제 배선 복구 시 이 콜백 대신 onPurchase(productId) / onRestore() 를 다시 호출한다.
+    val onComingSoon: () -> Unit = {
+        coroutineScope.launch { snackbarHostState.showSnackbar(comingSoonMessage) }
+    }
 
     LaunchedEffect(uiState.error) {
         val error = uiState.error
@@ -212,13 +222,13 @@ private fun SubscriptionScreenContent(
                         currentTier = uiState.currentTier,
                         product = findProduct(uiState.products, paywallTier.tier),
                         purchaseInProgress = uiState.purchaseInProgress,
-                        onPurchase = onPurchase
+                        onUpgrade = onComingSoon
                     )
                 }
 
                 SecondaryButton(
                     text = stringResource(R.string.subscription_restore),
-                    onClick = onRestore,
+                    onClick = onComingSoon, // TODO(billing): 복구 시 onRestore 로 되돌린다.
                     enabled = !uiState.purchaseInProgress,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -278,12 +288,10 @@ private fun TierCard(
     currentTier: SubscriptionTier,
     product: SubscriptionProduct?,
     purchaseInProgress: Boolean,
-    onPurchase: (String) -> Unit
+    onUpgrade: () -> Unit
 ) {
     val isCurrent = currentTier == paywallTier.tier
     val isFree = paywallTier.tier == SubscriptionTier.FREE
-    // 결제에 사용할 productId: Billing 상품이 있으면 그 ID, 없으면 폴백 SKU.
-    val productId = product?.productId ?: paywallTier.fallbackProductId
 
     CardV2(
         modifier = Modifier.fillMaxWidth(),
@@ -319,14 +327,17 @@ private fun TierCard(
 
             if (!isFree) {
                 Spacer(Modifier.height(Spacing.md))
+                // TODO(billing): 결제 미지원 — 탭 시 "추후 지원" 안내만 표시.
+                //  복구 시 onClick 을 { (product?.productId ?: paywallTier.fallbackProductId)?.let(onPurchase) },
+                //  enabled 를 !isCurrent && productId != null 로 되돌린다.
                 PrimaryButton(
                     text = if (isCurrent) {
                         stringResource(R.string.subscription_badge_current)
                     } else {
                         stringResource(R.string.subscription_upgrade)
                     },
-                    onClick = { productId?.let(onPurchase) },
-                    enabled = !isCurrent && productId != null,
+                    onClick = onUpgrade,
+                    enabled = !isCurrent,
                     isLoading = purchaseInProgress,
                     modifier = Modifier.fillMaxWidth()
                 )
