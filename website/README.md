@@ -14,7 +14,7 @@ website/
 │   ├── img/
 │   │   ├── app-icon.png            실제 앱 아이콘 (파비콘·헤더·히어로 공용)
 │   │   └── og-card.svg             OG 공유 카드
-│   ├── data/supported-cameras.json libgphoto2 파싱 산출물 (지원 모델 목록)
+│   ├── data/supported-cameras.json 표준 PTP 카메라 드라이버 파싱 산출물 (지원 모델 목록)
 │   └── i18n/{ko,en,ja,zh,de,es,fr,it}.json  8개 언어 번역 (런타임 로딩)
 ├── tools/
 │   └── generate_supported_cameras.py  supported-cameras.json 생성기
@@ -60,20 +60,21 @@ docker compose down                    # 중지
 
 ## 지원 카메라 목록 재생성
 
-`assets/data/supported-cameras.json`은 libgphoto2 소스 트리의 camlib 모델 테이블을 파싱해 생성한다.
+`assets/data/supported-cameras.json`은 표준 PTP 카메라 드라이버 소스 트리의 camlib 모델 테이블을 파싱해 생성한다.
 CamCon arm64-v8a 빌드에 실제 동봉된 19개 camlib(ax203 canon digigr8 dimagev directory jl2005a jl2005c
 kodak_dc240 mars pentax ptp2 quicktake1x0 ricoh_g3 sierra sonix sq905 st2205 topfield tp6801)만 대상으로 한다.
 
 ```bash
 cd website
-python3 tools/generate_supported_cameras.py \
-  /Users/ini-k/build_LibG/gphoto-build_16k/arm64-v8a/libgphoto2_src/camlibs
-# → assets/data/supported-cameras.json 갱신 (camlib별 신규 모델 수 + 총계 출력)
+python3 tools/generate_supported_cameras.py <카메라-드라이버-소스>/camlibs
+# 정확한 소스 경로는 tools/generate_supported_cameras.py 헤더 주석 참조.
+# → assets/data/supported-cameras.json 갱신 (파싱/제외/유지 개수 + 벤더별 개수 출력)
 ```
 
-- 인자는 `.so`를 빌드한 libgphoto2 소스의 `camlibs/` 디렉터리 경로.
-- ptp2 USB 모델 테이블이 대부분을 차지하며, ptpip 6종은 `connection: "wifi"`로 표기된다.
-- libgphoto2를 재빌드해 신규 기종이 추가되면 이 스크립트를 다시 돌려 JSON을 갱신한다.
+- 인자는 `.so`를 빌드한 표준 PTP 카메라 드라이버 소스의 `camlibs/` 디렉터리 경로.
+- ptp2 USB 모델 테이블이 대부분을 차지하며, PTP/IP(Wi-Fi) 항목은 `connection: "wifi"`로 표기된다.
+- **유명 카메라 제조사만 큐레이션**한다. 스크립트의 `VENDOR_WHITELIST`(Canon · Nikon · Sony · Fujifilm · Panasonic · Olympus · OM System · Pentax · Ricoh · Leica · Sigma · Hasselblad · Casio 등)에 없는 벤더는 제외된다. 유지할 브랜드를 바꾸려면 이 상수를 수정한다.
+- 카메라 드라이버 라이브러리를 재빌드해 신규 기종이 추가되면 이 스크립트를 다시 돌려 JSON을 갱신한다.
 - 목록은 USB 유선 기준이다. Wi-Fi 실기 검증 현황은 별개(페이지 상단 표).
 
 ## 다국어 (i18n)
