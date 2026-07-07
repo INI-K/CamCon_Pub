@@ -355,8 +355,11 @@ main { position: relative; z-index: 2; counter-reset: folio; }
 .frame {
   position: relative; width: 150px; height: 96px; flex: none;
   border-left: 1px solid rgba(0,0,0,.6); border-right: 1px solid rgba(0,0,0,.6);
-  margin: 16px 3px; border-radius: 2px;
-  box-shadow: inset 0 0 22px -7px rgba(0,0,0,.85), inset 0 7px 10px -8px rgba(255,241,214,.22), inset 0 0 0 1px rgba(0,0,0,.28);
+  margin: 16px 3px; border-radius: 2px; background: #0a0a0c;
+}
+.frame img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 2px;
+  box-shadow: inset 0 0 22px -7px rgba(0,0,0,.85), inset 0 7px 10px -8px rgba(255,241,214,.22), inset 0 0 0 1px rgba(0,0,0,.3);
 }
 .frame::before, .frame::after {
   content: ""; position: absolute; left: 8px; right: 8px; height: 7px;
@@ -364,7 +367,7 @@ main { position: relative; z-index: 2; counter-reset: folio; }
   background-size: 15px 7px; background-repeat: repeat-x;
 }
 .frame::before { top: -12px; } .frame::after { bottom: -12px; }
-.frame .stock { position: absolute; left: 7px; bottom: 6px; font-family: var(--mono); font-size: 8px; letter-spacing: .08em; color: rgba(255,255,255,.85); text-shadow: 0 1px 2px rgba(0,0,0,.7); }
+.frame .stock { position: absolute; z-index: 2; left: 7px; bottom: 6px; font-family: var(--mono); font-size: 8px; letter-spacing: .08em; color: rgba(255,255,255,.92); text-shadow: 0 1px 3px rgba(0,0,0,.9); }
 
 /* ============================================================
    FEATURES
@@ -498,22 +501,6 @@ main { position: relative; z-index: 2; counter-reset: folio; }
 .film-cat .meta { padding: 16px 16px 14px; }
 .films-note { margin-top: 30px; color: var(--ink-dim); font-size: .95rem; text-align: center; }
 .films-note strong { color: var(--amber); }
-
-/* film-stock grades — tuned to real stock response */
-.g-portra  { background: linear-gradient(135deg,#f2dcc0,#e3b489 34%,#c9835f 64%,#7a4f42 100%); }
-.g-velvia  { background: linear-gradient(135deg,#1a5c47,#2f9e6b 24%,#8fbf3f 44%,#d83f4e 72%,#6c162e 100%); }
-.g-trix    { background: linear-gradient(135deg,#f4f2ec,#b6b4ae 30%,#55545a 60%,#101012 100%); }
-.g-chrome  { background: linear-gradient(135deg,#b8bcae,#8b9384 38%,#55645f 68%,#2b3a3c 100%); }
-.g-polaroid{ background: linear-gradient(135deg,#f1e7d2,#e0cbad 34%,#b6b39c 60%,#6f9ba1 100%); }
-.g-bw      { background: linear-gradient(135deg,#eeece6,#a7a59f 44%,#26262a 100%); }
-.g-slide   { background: linear-gradient(135deg,#1f7fb8,#3aa9a0 32%,#e6b23f 66%,#c8552f 100%); }
-.g-xtrans  { background: linear-gradient(135deg,#a6b0a4,#74827b 40%,#3f4c4a 72%,#242c2e 100%); }
-.g-instc   { background: linear-gradient(135deg,#f5e6cf,#e2b591 42%,#b98fae 74%,#6f5f8a 100%); }
-.g-instp   { background: linear-gradient(135deg,#f0dbb6,#dd9a6f 40%,#a85f75 72%,#5e3a52 100%); }
-.g-colorneg{ background: linear-gradient(135deg,#eec39a,#d18a63 42%,#6f7fa0 78%,#3f4a63 100%); }
-.g-negnew  { background: linear-gradient(135deg,#eccb9e,#cf9560 44%,#6f7e8c 78%,#414d59 100%); }
-.g-negold  { background: linear-gradient(135deg,#e7d2a2,#c9a566 42%,#9c7c48 72%,#4e3d26 100%); }
-.g-print   { background: linear-gradient(135deg,#f1e4cd,#cdae86 44%,#8a6b4a 74%,#3c2c1e 100%); }
 
 /* ============================================================
    CAMERAS
