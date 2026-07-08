@@ -3,63 +3,63 @@
     <!-- ColorTransfer v2: 설정/실시간 미리보기/미리보기 뷰 + 진행률 + 선택기용 i18n -->
 
     <!-- 공통 / 상단 바 -->
-    <string name="ct_settings_title">색감 전송 상세 설정</string>
-    <string name="ct_cd_close">닫기</string>
-    <string name="ct_confirm">확인</string>
+    <string name="ct_settings_title">Color transfer detailed settings</string>
+    <string name="ct_cd_close">Close</string>
+    <string name="ct_confirm">Confirm</string>
 
     <!-- 비활성화 배너 -->
-    <string name="ct_disabled_title">⚠️ 색감 전송 기능이 비활성화됨</string>
-    <string name="ct_disabled_message">설정에서 색감 전송 기능을 먼저 활성화해주세요</string>
+    <string name="ct_disabled_title">⚠️ Color transfer disabled</string>
+    <string name="ct_disabled_message">Please enable color transfer in Settings first</string>
 
     <!-- 실시간 미리보기 섹션 -->
-    <string name="ct_live_preview_title">실시간 미리보기</string>
+    <string name="ct_live_preview_title">Live Preview</string>
 
     <!-- 강도 슬라이더 -->
-    <string name="ct_intensity_title">색감 전송 강도</string>
+    <string name="ct_intensity_title">Color transfer intensity</string>
     <string name="ct_intensity_percent">%d%%</string>
-    <string name="ct_intensity_weak">약함 (1%)</string>
-    <string name="ct_intensity_strong">강함 (100%)</string>
-    <string name="ct_intensity_recommended">권장: 3-10%</string>
+    <string name="ct_intensity_weak">Weak (1%)</string>
+    <string name="ct_intensity_strong">Strong (100%)</string>
+    <string name="ct_intensity_recommended">Recommended: 3-10%</string>
 
     <!-- 이미지 관리 -->
-    <string name="ct_image_management">이미지 관리</string>
-    <string name="ct_reference_image">참조 이미지</string>
-    <string name="ct_target_image">대상 이미지</string>
-    <string name="ct_manage_library">참조 이미지 라이브러리</string>
-    <string name="ct_clear_cache">캐시 초기화</string>
+    <string name="ct_image_management">Image management</string>
+    <string name="ct_reference_image">Reference image</string>
+    <string name="ct_target_image">Target image</string>
+    <string name="ct_manage_library">Reference Image Library</string>
+    <string name="ct_clear_cache">Clear cache</string>
 
     <!-- 오류 카드 -->
-    <string name="ct_error_title">오류 발생</string>
+    <string name="ct_error_title">An error occurred</string>
 
     <!-- 처리 진행률 -->
-    <string name="ct_processing_title">색감 전송 처리 중…</string>
+    <string name="ct_processing_title">Processing color transfer…</string>
 
     <!-- LivePreview 컴포넌트 -->
-    <string name="ct_lp_placeholder_title">실시간 미리보기</string>
-    <string name="ct_lp_placeholder_desc">참조 이미지와 대상 이미지를\n선택하면 미리보기가 표시됩니다</string>
-    <string name="ct_lp_slider_active_desc">슬라이더 조작을 완료하면\n미리보기가 업데이트됩니다</string>
-    <string name="ct_lp_processing">색감 전송 처리 중…</string>
-    <string name="ct_lp_intensity_label">강도: %d%%</string>
-    <string name="ct_lp_result_title">색감 적용 결과 (%d%%)</string>
-    <string name="ct_lp_cd_applied">색감 적용된 이미지</string>
-    <string name="ct_lp_tap_for_full">👆 탭하여 원본 크기로 보기</string>
-    <string name="ct_lp_processing_full">원본 크기 처리 중…</string>
-    <string name="ct_lp_result_hint">참조 이미지의 색감이 적용된 결과입니다</string>
-    <string name="ct_lp_cd_target">대상 이미지</string>
-    <string name="ct_lp_select_reference_hint">참조 이미지를 선택하면\n색감 전송 미리보기가 표시됩니다</string>
-    <string name="ct_lp_full_result_title">색감 적용 결과 (원본 크기)</string>
-    <string name="ct_lp_cd_full_applied">원본 크기 색감 적용된 이미지</string>
+    <string name="ct_lp_placeholder_title">Live preview</string>
+    <string name="ct_lp_placeholder_desc">Select a reference image and a target image\nto see a preview</string>
+    <string name="ct_lp_slider_active_desc">Preview updates when you\nfinish adjusting the slider</string>
+    <string name="ct_lp_processing">Processing color transfer…</string>
+    <string name="ct_lp_intensity_label">Intensity: %d%%</string>
+    <string name="ct_lp_result_title">Color transfer result (%d%%)</string>
+    <string name="ct_lp_cd_applied">Color-applied image</string>
+    <string name="ct_lp_tap_for_full">👆 Tap to view at original size</string>
+    <string name="ct_lp_processing_full">Processing original size…</string>
+    <string name="ct_lp_result_hint">Result with the colors of the reference image applied</string>
+    <string name="ct_lp_cd_target">Target image</string>
+    <string name="ct_lp_select_reference_hint">Select a reference image to\nshow a color transfer preview</string>
+    <string name="ct_lp_full_result_title">Color transfer result (original size)</string>
+    <string name="ct_lp_cd_full_applied">Image with full-size color transfer applied</string>
 
     <!-- PreviewView 컴포넌트 -->
-    <string name="ct_pv_reference_title">색감 참조 이미지</string>
-    <string name="ct_pv_reference_subtitle">이 이미지의 색감이 적용됩니다</string>
-    <string name="ct_pv_reference_placeholder">색감을 가져올\n참조 이미지를 선택하세요</string>
-    <string name="ct_pv_transfer_label">색감 전송</string>
-    <string name="ct_pv_target_title">적용 대상 이미지</string>
-    <string name="ct_pv_target_subtitle">색감이 적용될 이미지입니다</string>
-    <string name="ct_pv_target_placeholder">색감이 적용될\n대상 이미지를 선택하세요</string>
-    <string name="ct_pv_file_name">파일명: %s</string>
-    <string name="ct_pv_file_size">크기: %d KB</string>
-    <string name="ct_pv_tap_to_change">탭하여 다른 이미지 선택</string>
-    <string name="ct_pv_select">선택하기</string>
+    <string name="ct_pv_reference_title">Color reference image</string>
+    <string name="ct_pv_reference_subtitle">This image\'s colors will be applied</string>
+    <string name="ct_pv_reference_placeholder">Select a reference image\nto transfer color from</string>
+    <string name="ct_pv_transfer_label">Color transfer</string>
+    <string name="ct_pv_target_title">Target image</string>
+    <string name="ct_pv_target_subtitle">The image the color will be applied to</string>
+    <string name="ct_pv_target_placeholder">Select the target image\nto apply the color to</string>
+    <string name="ct_pv_file_name">File name: %s</string>
+    <string name="ct_pv_file_size">Size: %d KB</string>
+    <string name="ct_pv_tap_to_change">Tap to select another image</string>
+    <string name="ct_pv_select">Select</string>
 </resources>
