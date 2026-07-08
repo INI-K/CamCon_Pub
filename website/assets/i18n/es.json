@@ -1,6 +1,6 @@
 {
   "meta.title": "CamCon — Fotos con look de película en tu móvil, en el instante del disparo",
-  "meta.desc": "CamCon conecta tu cámara réflex o sin espejo a Android de forma inalámbrica y entrega fotos con simulación de película aplicada a tu móvil en el momento de disparar. Un controlador de cámara de cine.",
+  "meta.desc": "CamCon conecta tu cámara réflex o sin espejo a Android por USB o Wi-Fi y entrega fotos con simulación de película aplicada a tu móvil en el momento de disparar. Un controlador de cámara de cine.",
   "a11y.skip": "Saltar al contenido",
 
   "nav.features": "Funciones",
@@ -14,7 +14,7 @@
 
   "hero.eyebrow": "Cinema Camera Controller",
   "hero.title": "Pulsa el obturador y la <span class=\"accent\">foto con look de película</span> llega a tu móvil",
-  "hero.sub": "CamCon — Cinema Camera Controller. Conecta tu cámara sin cables y recibe fotos con la simulación de película ya aplicada, justo al disparar.",
+  "hero.sub": "CamCon — Cinema Camera Controller. Conecta tu cámara por USB o Wi-Fi y recibe fotos con la simulación de película ya aplicada, justo al disparar.",
   "hero.cta": "Disponible en Google Play",
   "hero.explore": "Ver funciones",
   "hero.meta": "PTP/IP · USB OTG · 296 simulaciones de película",
@@ -66,7 +66,7 @@
   "cameras.usbDesc": "Cámaras compatibles con PTP conectadas mediante cable USB-C (OTG). Admite las principales marcas: Nikon, Canon, Sony, Fujifilm, Panasonic, OM System (Olympus), Pentax, Ricoh, Leica y más.",
   "cameras.badgeBroad": "Amplia compatibilidad",
   "cameras.wifiRow": "Wi-Fi inalámbrico",
-  "cameras.wifiDesc": "Si tu cámara admite el <strong>modo Wi-Fi STA (router)</strong>, se conecta de forma inalámbrica. Aunque la conexión sea distinta, funciones como captura, recepción y look de película son exactamente iguales que por USB.",
+  "cameras.wifiDesc": "La conexión inalámbrica (Wi-Fi) está actualmente <strong>verificada en modelos Nikon</strong> y se está ampliando. Otras marcas pueden conectarse al instante por USB, y funciones como captura, recepción y look de película son las mismas sin importar cómo te conectes.",
   "cameras.badgeNikon": "Nikon verificado",
   "cameras.badgeExpand": "Otras en expansión",
   "cameras.badgeSta": "Conecta con STA",
@@ -101,7 +101,7 @@
 
   "pricing.eyebrow": "Pricing",
   "pricing.title": "Empieza gratis, pasa a PRO cuando lo necesites",
-  "pricing.lead": "Los precios se anunciarán en el lanzamiento.",
+  "pricing.lead": "Empieza gratis. El plan PRO estará disponible próximamente.",
   "pricing.planLabel": "Plan",
   "pricing.flag": "Recomendado",
   "pricing.freePrice": "Gratis",
@@ -109,7 +109,7 @@
   "pricing.free2": "Recepción JPG (borde largo 2000px)",
   "pricing.free3": "5 películas emblemáticas",
   "pricing.free4": "Película o color, uno activo",
-  "pricing.proPrice": "Se anuncia en el lanzamiento",
+  "pricing.proPrice": "Próximamente",
   "pricing.pro1": "<strong>Descarga de originales RAW</strong>",
   "pricing.pro2": "Las <strong>296 simulaciones de película</strong>",
   "pricing.pro3": "Película + color a la vez",
