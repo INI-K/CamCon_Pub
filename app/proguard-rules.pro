@@ -57,7 +57,7 @@
 -keepclasseswithmembernames class * { native <methods>; }
 
 # CamCon JNI 브리지
--keep class com.inik.camcon.CameraNative { 
+-keep class com.inik.camcon.CameraNative {
     public static <methods>;
     native <methods>;
 }
@@ -73,6 +73,7 @@
 -keep interface com.inik.camcon.data.datasource.nativesource.CameraCaptureListener { *; }
 -keep interface com.inik.camcon.data.datasource.nativesource.LiveViewCallback { *; }
 -keep interface com.inik.camcon.domain.model.CameraCaptureCallback { *; }
+-keep interface com.inik.camcon.ThumbnailBatchCallback { *; }
 
 # 콜백 구현체의 필수 메서드 시그니처 보존
 # (cpp의 GetMethodID 호출 메서드명과 1:1 매핑 — native-lib.cpp / camera_*.cpp 참조)
@@ -103,6 +104,11 @@
     public void onUsbDisconnected();
     public void onPropertyChanged(java.lang.String);
     public void onPtpipConnectionLost();
+}
+
+# 배치 썸네일 JNI 콜백 — camera_files.cpp가 GetMethodID로 onThumbnail을 조회하므로 이름/시그니처 보존
+-keepclassmembers class ** implements com.inik.camcon.ThumbnailBatchCallback {
+    public void onThumbnail(java.lang.String, byte[]);
 }
 
 # 네이티브 메서드를 가진 모든 클래스 보호

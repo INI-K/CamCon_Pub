@@ -26,15 +26,11 @@
     <uses-permission
         android:name="android.permission.POST_NOTIFICATIONS"
         tools:targetApi="33" />
-    <!-- USB 권한 추가 -->
-    <uses-permission android:name="android.permission.USB_PERMISSION" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- 사진 도착 시 진동 알림 (normal 권한) -->
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
-    <!-- 화면이 꺼져도 작동하기 위한 권한 -->
-    <uses-permission android:name="android.permission.PARTIAL_WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <!-- 재부팅 시 자동 시작 -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -56,7 +52,7 @@
     <!-- USB Host 모드 지원 선언 -->
     <uses-feature
         android:name="android.hardware.usb.host"
-        android:required="true" />
+        android:required="false" />
 
     <!-- Wi-Fi 기능 지원 선언 (PTPIP용) -->
     <uses-feature
@@ -150,13 +146,13 @@
             android:name=".presentation.ui.OpenSourceLicensesActivity"
             android:exported="false"
             android:screenOrientation="fullSensor"
-            android:label="오픈소스 라이선스" />
+            android:label="@string/open_source_licenses" />
         <activity
             android:name=".presentation.ui.CameraAbilitiesActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.CamCon"
-            android:label="카메라 기능 정보" />
+            android:label="@string/diag_abilities_title" />
 
         <!-- FileProvider for sharing photos -->
         <provider

@@ -7,6 +7,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.User
+import com.inik.camcon.domain.usecase.auth.DeleteAccountUseCase
 import com.inik.camcon.domain.usecase.auth.GetCurrentUserUseCase
 import com.inik.camcon.domain.usecase.auth.SignOutUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,6 +27,7 @@ import javax.inject.Inject
 data class AuthUiState(
     val isLoading: Boolean = false,
     val isSignOutSuccess: Boolean = false,
+    val isDeletingAccount: Boolean = false,
     val currentUser: User? = null
 )
 
@@ -37,11 +39,14 @@ sealed class AuthUiEvent {
     data class ShowError(val message: String) : AuthUiEvent()
     object SignOutSuccess : AuthUiEvent()
     object NavigateToLogin : AuthUiEvent()
+    object AccountDeleteSuccess : AuthUiEvent()
+    data class AccountDeleteFailure(val message: String) : AuthUiEvent()
 }
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val signOutUseCase: SignOutUseCase,
+    private val deleteAccountUseCase: DeleteAccountUseCase,
     private val getCurrentUserUseCase: GetCurrentUserUseCase,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
@@ -87,6 +92,38 @@ class AuthViewModel @Inject constructor(
                 android.util.Log.e("AuthViewModel", "로그아웃 예외", e)
                 _uiState.update { it.copy(isLoading = false) }
                 _uiEvent.emit(AuthUiEvent.ShowError(signOutErrorDetail(e)))
+            }
+        }
+    }
+
+    /**
+     * 계정·데이터 삭제. 서버(deleteAccount CF)가 서버측 데이터·Auth 사용자까지 삭제한 뒤
+     * 로컬 로그아웃까지 수행한다. 성공 시 로그인 화면으로 이동(NavigateToLogin), 실패 시 사유 토스트.
+     */
+    fun deleteAccount() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isDeletingAccount = true) }
+            try {
+                deleteAccountUseCase().fold(
+                    onSuccess = {
+                        // 서버가 Auth 사용자를 삭제했고 repo가 signOut 했으므로 Google 클라이언트도 정리한다.
+                        signOutFromGoogle()
+                        _uiState.update { it.copy(isDeletingAccount = false, currentUser = null) }
+                        _uiEvent.emit(AuthUiEvent.AccountDeleteSuccess)
+                        _uiEvent.emit(AuthUiEvent.NavigateToLogin)
+                    },
+                    onFailure = { error ->
+                        android.util.Log.e("AuthViewModel", "계정 삭제 실패", error)
+                        _uiState.update { it.copy(isDeletingAccount = false) }
+                        _uiEvent.emit(AuthUiEvent.AccountDeleteFailure(signOutErrorDetail(error)))
+                    }
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                android.util.Log.e("AuthViewModel", "계정 삭제 예외", e)
+                _uiState.update { it.copy(isDeletingAccount = false) }
+                _uiEvent.emit(AuthUiEvent.AccountDeleteFailure(signOutErrorDetail(e)))
             }
         }
     }

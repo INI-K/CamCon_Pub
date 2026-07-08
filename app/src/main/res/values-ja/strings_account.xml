@@ -9,7 +9,7 @@
     <string name="account_delete_row_title">アカウントを削除</string>
     <string name="account_delete_row_subtitle">アカウントと全データを完全に削除します</string>
     <string name="account_delete_dialog_title">アカウントを削除しますか？</string>
-    <string name="account_delete_dialog_message">アカウントを削除すると、クラウド写真・設定・サブスクリプション情報が完全に消去されます。この操作は取り消せません。</string>
+    <string name="account_delete_dialog_message">アカウントを削除すると、アカウント情報・設定・サブスクリプション情報が完全に消去されます。この操作は取り消せません。</string>
     <string name="account_delete_continue">続行</string>
     <string name="account_delete_cancel">キャンセル</string>
 

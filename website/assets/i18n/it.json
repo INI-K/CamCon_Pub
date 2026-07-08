@@ -1,6 +1,6 @@
 {
   "meta.title": "CamCon — Foto con look pellicola sul telefono, nell'istante dello scatto",
-  "meta.desc": "CamCon collega la tua reflex o mirrorless ad Android in modalità wireless e invia al telefono foto con simulazione pellicola già applicata, nel momento dello scatto. Un controller per fotocamere cinema.",
+  "meta.desc": "CamCon collega la tua reflex o mirrorless ad Android via USB o Wi-Fi e invia al telefono foto con simulazione pellicola già applicata, nel momento dello scatto. Un controller per fotocamere cinema.",
   "a11y.skip": "Vai al contenuto",
 
   "nav.features": "Funzioni",
@@ -14,8 +14,8 @@
 
   "hero.eyebrow": "Cinema Camera Controller",
   "hero.title": "Premi l'otturatore e la <span class=\"accent\">foto con look pellicola</span> arriva sul telefono",
-  "hero.sub": "CamCon — Cinema Camera Controller. Collega la fotocamera senza fili e ricevi foto con la simulazione pellicola già applicata, proprio mentre scatti.",
-  "hero.cta": "Presto su Google Play",
+  "hero.sub": "CamCon — Cinema Camera Controller. Collega la fotocamera via USB o Wi-Fi e ricevi foto con la simulazione pellicola già applicata, proprio mentre scatti.",
+  "hero.cta": "Disponibile su Google Play",
   "hero.explore": "Scopri le funzioni",
   "hero.meta": "PTP/IP · USB OTG · 296 simulazioni pellicola",
   "hero.specRaw": "Originale intatto",
@@ -66,7 +66,7 @@
   "cameras.usbDesc": "Fotocamere compatibili PTP collegate con un cavo USB-C (OTG). Supporta i principali produttori — Nikon, Canon, Sony, Fujifilm, Panasonic, OM System (Olympus), Pentax, Ricoh, Leica e altri.",
   "cameras.badgeBroad": "Ampio supporto",
   "cameras.wifiRow": "Wi-Fi wireless",
-  "cameras.wifiDesc": "Se la tua fotocamera supporta la <strong>modalità Wi-Fi STA (router)</strong>, si connette in modalità wireless. Anche con una connessione diversa, funzioni come scatto, ricezione e look pellicola sono identiche a quelle via USB.",
+  "cameras.wifiDesc": "La connessione wireless (Wi-Fi) è attualmente <strong>verificata sui modelli Nikon</strong> ed è in fase di ampliamento. Gli altri marchi possono collegarsi subito via USB e funzioni come scatto, ricezione e look pellicola sono identiche a prescindere dal tipo di connessione.",
   "cameras.badgeNikon": "Nikon verificata",
   "cameras.badgeExpand": "Altre in espansione",
   "cameras.badgeSta": "Si connette con STA",
@@ -101,7 +101,7 @@
 
   "pricing.eyebrow": "Pricing",
   "pricing.title": "Inizia gratis, passa a PRO quando serve",
-  "pricing.lead": "I prezzi saranno annunciati al lancio.",
+  "pricing.lead": "Inizia gratis. Il piano PRO sarà presto disponibile.",
   "pricing.planLabel": "Plan",
   "pricing.flag": "Consigliato",
   "pricing.freePrice": "Gratis",
@@ -109,7 +109,7 @@
   "pricing.free2": "Ricezione JPG (lato lungo 2000px)",
   "pricing.free3": "5 pellicole signature",
   "pricing.free4": "Pellicola o colore, uno attivo",
-  "pricing.proPrice": "Annunciato al lancio",
+  "pricing.proPrice": "Presto disponibile",
   "pricing.pro1": "<strong>Download degli originali RAW</strong>",
   "pricing.pro2": "Tutte le <strong>296 simulazioni pellicola</strong>",
   "pricing.pro3": "Pellicola + colore insieme",
@@ -132,6 +132,8 @@
   "cta.title": "Un flusso in cui lo scatto è già il risultato",
   "cta.sub": "Nell'istante in cui premi l'otturatore, la foto con look pellicola arriva sul telefono.",
 
+  "footer.privacy": "Privacy",
+  "footer.terms": "Termini di servizio",
   "footer.contact": "Contatti",
   "footer.rights": "© 2026 CamCon. Tutti i diritti riservati."
 }

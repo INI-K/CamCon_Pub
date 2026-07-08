@@ -9,7 +9,7 @@
     <string name="account_delete_row_title">Konto löschen</string>
     <string name="account_delete_row_subtitle">Konto und alle Daten dauerhaft entfernen</string>
     <string name="account_delete_dialog_title">Konto löschen?</string>
-    <string name="account_delete_dialog_message">Beim Löschen des Kontos werden Ihre Cloud-Fotos, Einstellungen und Abonnementdaten dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.</string>
+    <string name="account_delete_dialog_message">Beim Löschen des Kontos werden Ihre Kontodaten, Einstellungen und Abonnementdaten dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.</string>
     <string name="account_delete_continue">Weiter</string>
     <string name="account_delete_cancel">Abbrechen</string>
 

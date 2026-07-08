@@ -1,6 +1,6 @@
 {
   "meta.title": "CamCon — Film-look photos on your phone, the instant you shoot",
-  "meta.desc": "CamCon links your DSLR or mirrorless camera to Android wirelessly and delivers film-simulated photos to your phone the moment you press the shutter. A cinema camera controller.",
+  "meta.desc": "CamCon links your DSLR or mirrorless camera to Android over USB or Wi-Fi and delivers film-simulated photos to your phone the moment you press the shutter. A cinema camera controller.",
   "a11y.skip": "Skip to content",
 
   "nav.features": "Features",
@@ -14,8 +14,8 @@
 
   "hero.eyebrow": "Cinema Camera Controller",
   "hero.title": "Press the shutter, and the <span class=\"accent\">film-look photo</span> lands on your phone",
-  "hero.sub": "CamCon — Cinema Camera Controller. Connect your camera wirelessly and receive photos with a film simulation already applied, right as you shoot.",
-  "hero.cta": "Coming soon on Google Play",
+  "hero.sub": "CamCon — Cinema Camera Controller. Connect your camera over USB or Wi-Fi and receive photos with a film simulation already applied, right as you shoot.",
+  "hero.cta": "Get it on Google Play",
   "hero.explore": "Explore features",
   "hero.meta": "PTP/IP · USB OTG · 296 film simulations",
   "hero.specRaw": "Untouched",
@@ -66,7 +66,7 @@
   "cameras.usbDesc": "PTP-compatible cameras connected with a USB-C (OTG) cable. Supports major makers — Nikon, Canon, Sony, Fujifilm, Panasonic, OM System (Olympus), Pentax, Ricoh, Leica and more.",
   "cameras.badgeBroad": "Broad support",
   "cameras.wifiRow": "Wi-Fi wireless",
-  "cameras.wifiDesc": "If your camera supports <strong>Wi-Fi STA (router) mode</strong>, it connects wirelessly. Even with a different connection, features like capture, transfer and film looks are exactly the same as over USB.",
+  "cameras.wifiDesc": "Wireless (Wi-Fi) connection is currently <strong>verified on Nikon models</strong> and is expanding. Other makers can connect right away over USB, and features like capture, transfer and film looks work the same regardless of how you connect.",
   "cameras.badgeNikon": "Nikon verified",
   "cameras.badgeExpand": "Others expanding",
   "cameras.badgeSta": "Connects with STA",
@@ -101,7 +101,7 @@
 
   "pricing.eyebrow": "Pricing",
   "pricing.title": "Start free, go PRO when you need to",
-  "pricing.lead": "Pricing will be announced at launch.",
+  "pricing.lead": "Start free. The PRO plan is coming soon.",
   "pricing.planLabel": "Plan",
   "pricing.flag": "Recommended",
   "pricing.freePrice": "Free",
@@ -109,7 +109,7 @@
   "pricing.free2": "JPG receiving (2000px long edge)",
   "pricing.free3": "5 signature films",
   "pricing.free4": "Film or color, one active",
-  "pricing.proPrice": "Announced at launch",
+  "pricing.proPrice": "Coming soon",
   "pricing.pro1": "<strong>RAW original download</strong>",
   "pricing.pro2": "All <strong>296 film simulations</strong>",
   "pricing.pro3": "Film + color applied together",
@@ -132,6 +132,8 @@
   "cta.title": "A workflow where the shot is the result",
   "cta.sub": "The instant you press the shutter, the film-look photo arrives on your phone.",
 
+  "footer.privacy": "Privacy Policy",
+  "footer.terms": "Terms of Service",
   "footer.contact": "Contact",
   "footer.rights": "© 2026 CamCon. All rights reserved."
 }
