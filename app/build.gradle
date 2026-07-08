@@ -142,6 +142,11 @@ android {
             // 디버그 서명으로도 대체하지 않는다(H20). 서명 미구성 release는 빌드 그래프에서 명확히 실패한다.
             signingConfig hasReleaseSigning ? signingConfigs.release : null
             buildConfigField "boolean", "SHOW_DEVELOPER_FEATURES", "false"
+            // 네이티브 크래시/ANR 심볼화를 위해 디버그 심볼을 별도 파일로 추출해 AAB에 포함(Play 업로드용).
+            // 배포 .so 자체는 AGP가 스트립하므로 앱 다운로드 크기는 커지지 않는다.
+            ndk {
+                debugSymbolLevel 'FULL'
+            }
         }
     }
 
@@ -175,7 +180,9 @@ android {
                 arguments '-DCMAKE_BUILD_TYPE=Release',
                         '-DCMAKE_CXX_FLAGS_RELEASE=-O3 -flto -ffast-math -funroll-loops',
                         '-DCMAKE_C_FLAGS_RELEASE=-O3 -flto -ffast-math',
-                        "-DCMAKE_SHARED_LINKER_FLAGS=-s -Wl,--gc-sections -Wl,--strip-all ${link16KbFlags}",
+                        // -s/--strip-all 제거: libnative-lib.so에 심볼을 남겨 AGP가 debugSymbolLevel로 추출하게 한다.
+                        // (APK에 실리는 .so는 AGP strip 단계에서 최종 스트립됨 — 16KB 정렬 유지)
+                        "-DCMAKE_SHARED_LINKER_FLAGS=-Wl,--gc-sections ${link16KbFlags}",
                         "-DCMAKE_EXE_LINKER_FLAGS=${link16KbFlags}"
             }
             cFlags '-g'
@@ -204,7 +211,8 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = false  // 16KB 정렬을 위해 false로 변경
-            keepDebugSymbols += ['**/*.so']
+            // keepDebugSymbols 제거: 배포 .so를 스트립해 다운로드 크기 축소(프리빌트 libgphoto2가 not-stripped였음).
+            // 네이티브 심볼은 위 debugSymbolLevel 'FULL'로 별도 파일에 보존됨.
             // 16KB 페이지 크기 정렬 활성화 (Android 15+ 필수)
             pickFirsts += ['**/*.so']
         }
