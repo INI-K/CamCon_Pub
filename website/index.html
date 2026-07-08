@@ -4,20 +4,26 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title data-i18n="meta.title">CamCon — 촬영과 동시에 필름룩 사진을 폰으로</title>
-  <meta name="description" data-i18n-attr="content" data-i18n="meta.desc" content="CamCon은 DSLR·미러리스 카메라를 안드로이드에 무선으로 잇고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보는 시네마 카메라 컨트롤러입니다.">
+  <meta name="description" data-i18n-attr="content" data-i18n="meta.desc" content="CamCon은 DSLR·미러리스 카메라를 안드로이드에 USB·Wi-Fi로 잇고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보는 시네마 카메라 컨트롤러입니다.">
   <meta name="theme-color" content="#0A0A0C">
 
   <meta property="og:type" content="website">
   <meta property="og:locale" content="ko_KR">
   <meta property="og:site_name" content="CamCon">
+  <meta property="og:url" content="https://camcon.inik.kr/">
   <meta property="og:title" content="CamCon — 셔터를 누르면, 필름룩 사진이 폰에 도착합니다">
-  <meta property="og:description" content="카메라를 무선으로 잇고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보세요.">
-  <meta property="og:image" content="assets/img/og-card.svg">
+  <meta property="og:description" content="카메라를 USB·Wi-Fi로 잇고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보세요.">
+  <meta property="og:image" content="https://camcon.inik.kr/assets/img/og-card.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:alt" content="CamCon — Cinema Camera Controller">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="CamCon — Cinema Camera Controller">
-  <meta name="twitter:description" content="카메라를 무선으로 잇고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보세요.">
-  <meta name="twitter:image" content="assets/img/og-card.svg">
+  <meta name="twitter:description" content="카메라를 USB·Wi-Fi로 잇고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보세요.">
+  <meta name="twitter:image" content="https://camcon.inik.kr/assets/img/og-card.png">
 
+  <link rel="canonical" href="https://camcon.inik.kr/">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="apple-touch-icon" href="favicon.svg">
 
@@ -25,7 +31,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/style.css?v=20260708">
 </head>
 <body>
   <div class="grain" aria-hidden="true"></div>
@@ -91,7 +97,7 @@
           <div>
             <p class="eyebrow hero-eyebrow reveal" data-i18n="hero.eyebrow">Cinema Camera Controller</p>
             <h1 class="hero-title reveal" data-delay="1" data-i18n="hero.title">셔터를 누르면, <span class="accent">필름룩 사진</span>이 폰에 도착합니다</h1>
-            <p class="hero-sub reveal" data-delay="2" data-i18n="hero.sub">CamCon — Cinema Camera Controller. 카메라를 무선으로 잇고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보세요.</p>
+            <p class="hero-sub reveal" data-delay="2" data-i18n="hero.sub">CamCon — Cinema Camera Controller. 카메라를 USB·Wi-Fi로 잇고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보세요.</p>
             <div class="hero-actions reveal" data-delay="3">
               <a class="btn btn-primary" href="https://play.google.com/store/apps/details?id=com.inik.camcon" target="_blank" rel="noopener" data-i18n="hero.cta">Google Play에서 다운로드</a>
               <a class="btn btn-ghost" href="#features" data-i18n="hero.explore">기능 살펴보기</a>
@@ -287,7 +293,7 @@
           <div class="cam-row reveal" data-delay="1">
             <div class="conn"><svg viewBox="0 0 24 24"><path d="M12 20a8 8 0 0 0 8-8M12 20a8 8 0 0 1-8-8M12 20v-3M2 12a10 10 0 0 1 20 0"/><circle cx="12" cy="12" r="1.4"/></svg><b data-i18n="cameras.wifiRow">Wi-Fi 무선</b></div>
             <p class="desc" data-i18n="cameras.wifiDesc">카메라가 <strong>Wi-Fi STA(공유기) 모드</strong>를 지원하면 무선으로 연결됩니다. 연결 방식이 달라도 촬영·수신·필름 적용 등 기능은 USB와 완전히 동일합니다.</p>
-            <div class="cam-badges"><span class="badge wifi" data-i18n="cameras.badgeSta">STA 지원 시 연결</span></div>
+            <div class="cam-badges"><span class="badge wifi" data-i18n="cameras.badgeNikon">Nikon 검증됨</span><span class="badge" data-i18n="cameras.badgeExpand">그 외 확대 중</span></div>
           </div>
         </div>
         <p class="cam-unified reveal" data-i18n="cameras.unified">USB로 연결하든 Wi-Fi로 연결하든, 촬영·수신·필름 적용 등 모든 기능은 동일합니다.</p>
@@ -467,6 +473,6 @@
     </div>
   </footer>
 
-  <script src="assets/js/main.js" defer></script>
+  <script src="assets/js/main.js?v=20260708" defer></script>
 </body>
 </html>

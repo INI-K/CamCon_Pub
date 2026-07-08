@@ -1,6 +1,6 @@
 {
   "meta.title": "CamCon — シャッターを切った瞬間、フィルムルックの写真がスマホに",
-  "meta.desc": "CamConは一眼レフ・ミラーレスカメラをAndroidにワイヤレスで接続し、撮影と同時にフィルムシミュレーションを適用した写真を受け取れるシネマカメラコントローラーです。",
+  "meta.desc": "CamConは一眼レフ・ミラーレスカメラをAndroidにUSB・Wi-Fiで接続し、撮影と同時にフィルムシミュレーションを適用した写真を受け取れるシネマカメラコントローラーです。",
   "a11y.skip": "本文へスキップ",
 
   "nav.features": "機能",
@@ -14,7 +14,7 @@
 
   "hero.eyebrow": "Cinema Camera Controller",
   "hero.title": "シャッターを切ると、<span class=\"accent\">フィルムルックの写真</span>がスマホに届く",
-  "hero.sub": "CamCon — Cinema Camera Controller。カメラをワイヤレスでつなぎ、撮影と同時にフィルムシミュレーションを施した写真を受け取りましょう。",
+  "hero.sub": "CamCon — Cinema Camera Controller。カメラをUSB・Wi-Fiでつなぎ、撮影と同時にフィルムシミュレーションを施した写真を受け取りましょう。",
   "hero.cta": "Google Play で手に入れよう",
   "hero.explore": "機能を見る",
   "hero.meta": "PTP/IP · USB OTG · フィルムシミュレーション296種",
@@ -66,7 +66,7 @@
   "cameras.usbDesc": "USB-C(OTG)ケーブルで接続するPTP対応カメラ。Nikon · Canon · Sony · Fujifilm · Panasonic · OM System(Olympus) · Pentax · Ricoh · Leica など主要メーカーに対応します。",
   "cameras.badgeBroad": "幅広く対応",
   "cameras.wifiRow": "Wi-Fiワイヤレス",
-  "cameras.wifiDesc": "カメラが<strong>Wi-Fi STA(ルーター)モード</strong>に対応していれば、ワイヤレスで接続します。接続方式が違っても、撮影・受信・フィルム適用などの機能はUSBと完全に同じです。",
+  "cameras.wifiDesc": "無線(Wi-Fi)接続は現在<strong>Nikon 機種で検証済み</strong>で、対応を順次拡大しています。それ以外のメーカーは USB 有線ですぐに接続でき、接続方式が違っても撮影・受信・フィルム適用などの機能は同じです。",
   "cameras.badgeNikon": "Nikon検証済み",
   "cameras.badgeExpand": "その他 拡大中",
   "cameras.badgeSta": "STA対応で接続",
@@ -101,7 +101,7 @@
 
   "pricing.eyebrow": "Pricing",
   "pricing.title": "無料で始めて、必要なときにPROへ",
-  "pricing.lead": "料金は公開時に発表します。",
+  "pricing.lead": "無料で始められます。PRO プランは準備中です。",
   "pricing.planLabel": "Plan",
   "pricing.flag": "おすすめ",
   "pricing.freePrice": "無料",
@@ -109,7 +109,7 @@
   "pricing.free2": "JPG受信(長辺2000px)",
   "pricing.free3": "シグネチャーフィルム5種",
   "pricing.free4": "フィルム・色味のいずれか1つを有効化",
-  "pricing.proPrice": "公開時に発表",
+  "pricing.proPrice": "準備中",
   "pricing.pro1": "<strong>RAW原本ダウンロード</strong>",
   "pricing.pro2": "フィルムシミュレーション<strong>296種すべて</strong>",
   "pricing.pro3": "フィルム+色味の同時適用",

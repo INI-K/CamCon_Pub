@@ -1,6 +1,6 @@
 {
   "meta.title": "CamCon — Des photos au rendu argentique sur votre téléphone, à l'instant du déclenchement",
-  "meta.desc": "CamCon relie votre reflex ou hybride à Android sans fil et envoie sur votre téléphone des photos avec simulation de pellicule appliquée, au moment du déclenchement. Un contrôleur d'appareil photo cinéma.",
+  "meta.desc": "CamCon relie votre reflex ou hybride à Android en USB ou Wi-Fi et envoie sur votre téléphone des photos avec simulation de pellicule appliquée, au moment du déclenchement. Un contrôleur d'appareil photo cinéma.",
   "a11y.skip": "Aller au contenu",
 
   "nav.features": "Fonctions",
@@ -14,7 +14,7 @@
 
   "hero.eyebrow": "Cinema Camera Controller",
   "hero.title": "Vous déclenchez, et la <span class=\"accent\">photo au rendu argentique</span> arrive sur votre téléphone",
-  "hero.sub": "CamCon — Cinema Camera Controller. Connectez votre appareil sans fil et recevez des photos avec la simulation de pellicule déjà appliquée, dès le déclenchement.",
+  "hero.sub": "CamCon — Cinema Camera Controller. Connectez votre appareil en USB ou Wi-Fi et recevez des photos avec la simulation de pellicule déjà appliquée, dès le déclenchement.",
   "hero.cta": "Disponible sur Google Play",
   "hero.explore": "Voir les fonctions",
   "hero.meta": "PTP/IP · USB OTG · 296 simulations de pellicule",
@@ -66,7 +66,7 @@
   "cameras.usbDesc": "Appareils compatibles PTP connectés par câble USB-C (OTG). Prend en charge les grandes marques — Nikon, Canon, Sony, Fujifilm, Panasonic, OM System (Olympus), Pentax, Ricoh, Leica et plus.",
   "cameras.badgeBroad": "Prise en charge étendue",
   "cameras.wifiRow": "Wi-Fi sans fil",
-  "cameras.wifiDesc": "Si votre appareil prend en charge le <strong>mode Wi-Fi STA (routeur)</strong>, il se connecte sans fil. Même avec une connexion différente, les fonctions comme la prise de vue, la réception et le rendu argentique sont exactement les mêmes qu'en USB.",
+  "cameras.wifiDesc": "La connexion sans fil (Wi-Fi) est actuellement <strong>validée sur les modèles Nikon</strong> et s'étend progressivement. Les autres marques se connectent immédiatement en USB, et les fonctions comme la prise de vue, la réception et le rendu argentique restent les mêmes quel que soit le mode de connexion.",
   "cameras.badgeNikon": "Nikon vérifié",
   "cameras.badgeExpand": "Autres en extension",
   "cameras.badgeSta": "Connexion via STA",
@@ -101,7 +101,7 @@
 
   "pricing.eyebrow": "Pricing",
   "pricing.title": "Commencez gratuitement, passez à PRO au besoin",
-  "pricing.lead": "Les tarifs seront annoncés au lancement.",
+  "pricing.lead": "Commencez gratuitement. L'offre PRO arrive bientôt.",
   "pricing.planLabel": "Plan",
   "pricing.flag": "Recommandé",
   "pricing.freePrice": "Gratuit",
@@ -109,7 +109,7 @@
   "pricing.free2": "Réception JPG (bord long 2000px)",
   "pricing.free3": "5 pellicules signature",
   "pricing.free4": "Pellicule ou couleur, un seul actif",
-  "pricing.proPrice": "Annoncé au lancement",
+  "pricing.proPrice": "Bientôt disponible",
   "pricing.pro1": "<strong>Téléchargement des originaux RAW</strong>",
   "pricing.pro2": "Les <strong>296 simulations de pellicule</strong>",
   "pricing.pro3": "Pellicule + couleur en même temps",
