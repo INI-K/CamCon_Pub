@@ -66,6 +66,10 @@ app/build/
 
 # 백업 파일
 *.bak
+*.backup
+
+# 로그 파일 (루트 build.log/kapt_error.log/firebase-debug.log 등 — 커밋 금지)
+*.log
 
 # 중요: app/src/main/java/com/inik/camcon/data 폴더는 추적해야 함
 !app/src/main/java/com/inik/camcon/data/
