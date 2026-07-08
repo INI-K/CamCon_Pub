@@ -9,7 +9,7 @@
     <string name="account_delete_row_title">删除账户</string>
     <string name="account_delete_row_subtitle">永久删除您的账户和所有数据</string>
     <string name="account_delete_dialog_title">要删除账户吗？</string>
-    <string name="account_delete_dialog_message">删除账户将永久清除您的云端照片、设置和订阅信息。此操作无法撤销。</string>
+    <string name="account_delete_dialog_message">删除账户将永久清除您的账户信息、设置和订阅信息。此操作无法撤销。</string>
     <string name="account_delete_continue">继续</string>
     <string name="account_delete_cancel">取消</string>
 
