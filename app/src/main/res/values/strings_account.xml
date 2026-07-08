@@ -9,7 +9,7 @@
     <string name="account_delete_row_title">Delete account</string>
     <string name="account_delete_row_subtitle">Permanently remove your account and data</string>
     <string name="account_delete_dialog_title">Delete account?</string>
-    <string name="account_delete_dialog_message">Deleting your account will permanently erase your cloud photos, settings, and subscription information. This action cannot be undone.</string>
+    <string name="account_delete_dialog_message">Deleting your account will permanently erase your account data, settings, and subscription information. This action cannot be undone.</string>
     <string name="account_delete_continue">Continue</string>
     <string name="account_delete_cancel">Cancel</string>
 
@@ -40,7 +40,7 @@
     <string name="language_dialog_title">Choose language</string>
     <string name="language_system_default">System default</string>
     <string name="language_option_en">English</string>
-    <string name="language_option_ko">한국어</string>
+    <string name="language_option_ko">Korean</string>
     <string name="language_option_ja">日本語</string>
     <string name="language_option_zh">中文</string>
     <string name="language_option_de">Deutsch</string>

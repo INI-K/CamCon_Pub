@@ -131,7 +131,6 @@ import com.inik.camcon.presentation.viewmodel.ReferralRedeemEvent
 import com.inik.camcon.presentation.viewmodel.ReferralRedeemViewModel
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
-import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
 import java.io.FileOutputStream
@@ -219,6 +218,21 @@ fun SettingsScreen(
                     }
                     context.startActivity(intent)
                     (context as? ComponentActivity)?.finish()
+                }
+                is AuthUiEvent.AccountDeleteSuccess -> {
+                    android.widget.Toast.makeText(
+                        context,
+                        context.getString(R.string.account_delete_success),
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+                    // 화면 이동은 이어서 emit되는 NavigateToLogin 이 처리한다.
+                }
+                is AuthUiEvent.AccountDeleteFailure -> {
+                    android.widget.Toast.makeText(
+                        context,
+                        context.getString(R.string.account_delete_failed).format(event.message),
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
                 }
             }
         }
@@ -351,12 +365,10 @@ fun SettingsScreen(
             }
         }
     }
-    var isDeletingAccount by remember { mutableStateOf(false) }
+    // 계정 삭제 진행 상태는 AuthViewModel(서버 CF 호출)에서 관리 — 로컬 상태 분산 방지.
+    val isDeletingAccount = authUiState.isDeletingAccount
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showLiveViewQualityDialog by remember { mutableStateOf(false) }
-
-    val accountDeleteSuccessText = stringResource(R.string.account_delete_success)
-    val accountDeleteFailedTemplate = stringResource(R.string.account_delete_failed)
 
     // 필름↔색감 배타 스왑 안내 — 기존 advisoryToastMessage 호스트 재사용(신규 토스트 추가 금지).
     val pipelineSwapColorDisabledText = stringResource(R.string.pipeline_swap_color_disabled)
@@ -1159,10 +1171,10 @@ fun SettingsScreen(
                         enabled = confirmEnabled,
                         isLoading = isDeletingAccount,
                         onClick = {
-                            isDeletingAccount = true
-                            val firebaseUser = FirebaseAuth.getInstance().currentUser
-                            if (firebaseUser == null) {
-                                isDeletingAccount = false
+                            // 서버(deleteAccount CF)가 Firestore 사용자 데이터·구독·레퍼럴·구매기록과
+                            // Firebase Auth 사용자까지 삭제한다. 로딩(isDeletingAccount)·성공/실패 토스트·
+                            // 로그인 화면 이동은 AuthViewModel 의 uiState/uiEvent 에서 처리한다.
+                            authViewModel?.deleteAccount() ?: run {
                                 showDeleteConfirmDialog = false
                                 val intent = Intent(context, LoginActivity::class.java).apply {
                                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or
@@ -1170,44 +1182,6 @@ fun SettingsScreen(
                                 }
                                 context.startActivity(intent)
                                 (context as? ComponentActivity)?.finish()
-                            } else {
-                                firebaseUser.delete()
-                                    .addOnCompleteListener { task ->
-                                        isDeletingAccount = false
-                                        showDeleteConfirmDialog = false
-                                        if (task.isSuccessful) {
-                                            android.widget.Toast.makeText(
-                                                context,
-                                                accountDeleteSuccessText,
-                                                android.widget.Toast.LENGTH_LONG
-                                            ).show()
-                                            // Auth 계정은 삭제되었으나 Google 로그인 클라이언트·로컬 auth
-                                            // 상태가 남아 있으므로 signOut 으로 정리한다(이미 로그아웃 상태이면
-                                            // firebaseAuth.signOut() 은 no-op). signOut 의 NavigateToLogin
-                                            // 이벤트가 LoginActivity 이동을 처리한다.
-                                            // 주의: Firestore users/{uid}·subscriptions·클라우드 사진 등
-                                            // 서버측 PII 정리는 클라이언트에서 불가능하다. Auth 삭제 후
-                                            // request.auth 가 사라지고 subscriptions 는 rules 상
-                                            // write:false 이므로, Cloud Function/Admin SDK 선행 + 도메인
-                                            // DeleteAccountUseCase 가 추가되어야 완전 삭제가 가능하다.
-                                            authViewModel?.signOut()
-                                                ?: run {
-                                                    val intent = Intent(context, LoginActivity::class.java).apply {
-                                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                                                                Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                                    }
-                                                    context.startActivity(intent)
-                                                    (context as? ComponentActivity)?.finish()
-                                                }
-                                        } else {
-                                            val msg = task.exception?.localizedMessage ?: "unknown"
-                                            android.widget.Toast.makeText(
-                                                context,
-                                                accountDeleteFailedTemplate.format(msg),
-                                                android.widget.Toast.LENGTH_LONG
-                                            ).show()
-                                        }
-                                    }
                             }
                         }
                     )

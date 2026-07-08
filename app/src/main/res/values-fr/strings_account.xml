@@ -9,7 +9,7 @@
     <string name="account_delete_row_title">Supprimer le compte</string>
     <string name="account_delete_row_subtitle">Supprimer définitivement votre compte et vos données</string>
     <string name="account_delete_dialog_title">Supprimer le compte ?</string>
-    <string name="account_delete_dialog_message">La suppression de votre compte effacera définitivement vos photos cloud, vos paramètres et vos informations d\'abonnement. Cette action est irréversible.</string>
+    <string name="account_delete_dialog_message">La suppression de votre compte effacera définitivement les données de votre compte, vos paramètres et vos informations d\'abonnement. Cette action est irréversible.</string>
     <string name="account_delete_continue">Continuer</string>
     <string name="account_delete_cancel">Annuler</string>
 

@@ -9,7 +9,7 @@
     <string name="account_delete_row_title">Eliminar cuenta</string>
     <string name="account_delete_row_subtitle">Elimina permanentemente tu cuenta y datos</string>
     <string name="account_delete_dialog_title">¿Eliminar la cuenta?</string>
-    <string name="account_delete_dialog_message">Al eliminar tu cuenta se borrarán de forma permanente tus fotos en la nube, ajustes e información de suscripción. Esta acción no se puede deshacer.</string>
+    <string name="account_delete_dialog_message">Al eliminar tu cuenta se borrarán de forma permanente los datos de tu cuenta, ajustes e información de suscripción. Esta acción no se puede deshacer.</string>
     <string name="account_delete_continue">Continuar</string>
     <string name="account_delete_cancel">Cancelar</string>
 
