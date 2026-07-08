@@ -41,4 +41,12 @@ interface AuthRepository {
      * (firestore.rules: write=false). 성공 시 부여된 티어(코드에 티어가 없으면 null)를 반환.
      */
     suspend fun redeemReferralCode(code: String): Result<SubscriptionTier?>
+
+    /**
+     * 계정·데이터 삭제 — 서버(Cloud Function deleteAccount)가 Admin SDK로 호출자의
+     * Firestore 사용자 문서·구독·레퍼럴·구매기록과 Firebase Auth 사용자까지 삭제한다.
+     * 클라이언트는 users/subscriptions에 직접 쓸 수 없고 Auth 삭제도 재인증이 필요하므로 서버가 처리한다.
+     * 성공 시 로컬 로그아웃까지 수행한다.
+     */
+    suspend fun deleteAccount(): Result<Unit>
 }
