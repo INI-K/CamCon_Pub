@@ -40,7 +40,7 @@
     <string name="language_dialog_title">Choose language</string>
     <string name="language_system_default">System default</string>
     <string name="language_option_en">English</string>
-    <string name="language_option_ko">한국어</string>
+    <string name="language_option_ko">Korean</string>
     <string name="language_option_ja">日本語</string>
     <string name="language_option_zh">中文</string>
     <string name="language_option_de">Deutsch</string>
