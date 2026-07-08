@@ -1,6 +1,6 @@
 {
   "meta.title": "CamCon — 按下快门的瞬间，胶片风格照片就到手机",
-  "meta.desc": "CamCon 将单反·微单相机无线连接到 Android，在拍摄的同时把应用了胶片模拟的照片传到手机。一款影院级相机控制器。",
+  "meta.desc": "CamCon 将单反·微单相机通过 USB·Wi-Fi 连接到 Android，在拍摄的同时把应用了胶片模拟的照片传到手机。一款影院级相机控制器。",
   "a11y.skip": "跳到正文",
 
   "nav.features": "功能",
@@ -14,7 +14,7 @@
 
   "hero.eyebrow": "Cinema Camera Controller",
   "hero.title": "按下快门，<span class=\"accent\">胶片风格照片</span>随即到达手机",
-  "hero.sub": "CamCon — Cinema Camera Controller。把相机无线连接起来，在拍摄的同时接收已叠加胶片模拟的照片。",
+  "hero.sub": "CamCon — Cinema Camera Controller。用 USB·Wi-Fi 把相机连接起来，在拍摄的同时接收已叠加胶片模拟的照片。",
   "hero.cta": "在 Google Play 下载",
   "hero.explore": "查看功能",
   "hero.meta": "PTP/IP · USB OTG · 296 种胶片模拟",
@@ -66,7 +66,7 @@
   "cameras.usbDesc": "通过 USB-C(OTG) 线缆连接的 PTP 兼容相机。支持 Nikon · Canon · Sony · Fujifilm · Panasonic · OM System(Olympus) · Pentax · Ricoh · Leica 等主流厂商。",
   "cameras.badgeBroad": "广泛支持",
   "cameras.wifiRow": "Wi-Fi 无线",
-  "cameras.wifiDesc": "只要相机支持 <strong>Wi-Fi STA(路由器) 模式</strong>，即可无线连接。即使连接方式不同，拍摄·接收·胶片应用等功能也与 USB 完全相同。",
+  "cameras.wifiDesc": "无线(Wi-Fi)连接目前已在 <strong>Nikon 机型上验证</strong>，并在逐步扩大支持。其他厂商可通过 USB 有线立即连接，即使连接方式不同，拍摄·接收·胶片应用等功能也完全相同。",
   "cameras.badgeNikon": "Nikon 已验证",
   "cameras.badgeExpand": "其余 扩展中",
   "cameras.badgeSta": "支持 STA 即可连接",
@@ -101,7 +101,7 @@
 
   "pricing.eyebrow": "Pricing",
   "pricing.title": "免费开始，需要时升级 PRO",
-  "pricing.lead": "价格将在上线时公布。",
+  "pricing.lead": "免费开始使用。PRO 付费方案即将推出。",
   "pricing.planLabel": "Plan",
   "pricing.flag": "推荐",
   "pricing.freePrice": "免费",
@@ -109,7 +109,7 @@
   "pricing.free2": "接收 JPG(长边 2000px)",
   "pricing.free3": "5 款招牌胶片",
   "pricing.free4": "胶片·色调二选一启用",
-  "pricing.proPrice": "上线时公布",
+  "pricing.proPrice": "即将推出",
   "pricing.pro1": "<strong>RAW 原始文件下载</strong>",
   "pricing.pro2": "全部 <strong>296 种胶片模拟</strong>",
   "pricing.pro3": "胶片 + 色调同时应用",

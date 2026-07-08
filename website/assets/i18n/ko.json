@@ -1,6 +1,6 @@
 {
   "meta.title": "CamCon — 촬영과 동시에 필름룩 사진을 폰으로",
-  "meta.desc": "CamCon은 DSLR·미러리스 카메라를 안드로이드에 무선으로 잇고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보는 시네마 카메라 컨트롤러입니다.",
+  "meta.desc": "CamCon은 DSLR·미러리스 카메라를 안드로이드에 USB·Wi-Fi로 잇고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보는 시네마 카메라 컨트롤러입니다.",
   "a11y.skip": "본문 바로가기",
 
   "nav.features": "기능",
@@ -14,7 +14,7 @@
 
   "hero.eyebrow": "Cinema Camera Controller",
   "hero.title": "셔터를 누르면, <span class=\"accent\">필름룩 사진</span>이 폰에 도착합니다",
-  "hero.sub": "CamCon — Cinema Camera Controller. 카메라를 무선으로 잇고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보세요.",
+  "hero.sub": "CamCon — Cinema Camera Controller. 카메라를 USB·Wi-Fi로 잇고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보세요.",
   "hero.cta": "Google Play에서 다운로드",
   "hero.explore": "기능 살펴보기",
   "hero.meta": "PTP/IP · USB OTG · 필름 시뮬레이션 296종",
@@ -66,7 +66,7 @@
   "cameras.usbDesc": "USB-C(OTG) 케이블로 연결하는 PTP 호환 카메라. Nikon · Canon · Sony · Fujifilm · Panasonic · OM System(Olympus) · Pentax · Ricoh · Leica 등 주요 제조사를 지원합니다.",
   "cameras.badgeBroad": "폭넓게 지원",
   "cameras.wifiRow": "Wi-Fi 무선",
-  "cameras.wifiDesc": "카메라가 <strong>Wi-Fi STA(공유기) 모드</strong>를 지원하면 무선으로 연결됩니다. 연결 방식이 달라도 촬영·수신·필름 적용 등 기능은 USB와 완전히 동일합니다.",
+  "cameras.wifiDesc": "무선(Wi-Fi) 연결은 현재 <strong>Nikon 기종에서 검증</strong>되었고 지원을 넓혀가는 중입니다. 그 외 제조사는 USB 유선으로 바로 연결할 수 있으며, 연결 방식이 달라도 촬영·수신·필름 적용 등 기능은 동일합니다.",
   "cameras.badgeNikon": "Nikon 검증됨",
   "cameras.badgeExpand": "그 외 확대 중",
   "cameras.badgeSta": "STA 지원 시 연결",
@@ -101,7 +101,7 @@
 
   "pricing.eyebrow": "Pricing",
   "pricing.title": "무료로 시작하고, 필요할 때 PRO로",
-  "pricing.lead": "가격은 출시 시 공개됩니다.",
+  "pricing.lead": "무료로 시작하세요. PRO 유료 플랜은 준비 중입니다.",
   "pricing.planLabel": "Plan",
   "pricing.flag": "추천",
   "pricing.freePrice": "무료",
@@ -109,7 +109,7 @@
   "pricing.free2": "JPG 수신 (장변 2000px)",
   "pricing.free3": "시그니처 필름 5종",
   "pricing.free4": "필름 · 색감 중 하나 활성",
-  "pricing.proPrice": "출시 시 공개",
+  "pricing.proPrice": "준비 중",
   "pricing.pro1": "<strong>RAW 원본 다운로드</strong>",
   "pricing.pro2": "필름 시뮬레이션 <strong>296종 전체</strong>",
   "pricing.pro3": "필름 + 색감 동시 적용",
