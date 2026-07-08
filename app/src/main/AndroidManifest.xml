@@ -52,7 +52,7 @@
     <!-- USB Host 모드 지원 선언 -->
     <uses-feature
         android:name="android.hardware.usb.host"
-        android:required="true" />
+        android:required="false" />
 
     <!-- Wi-Fi 기능 지원 선언 (PTPIP용) -->
     <uses-feature
