@@ -40,6 +40,8 @@ class AuthRepositoryImpl @Inject constructor(
         private const val REFERRAL_CODES_COLLECTION = "referral_codes"
         private const val REDEEM_REFERRAL_FUNCTION = "redeemReferralCode"
         private const val BOOTSTRAP_FUNCTION = "ensureUserBootstrap"
+        private const val CREATE_REFERRAL_FUNCTION = "createReferralCode"
+        private const val DELETE_REFERRAL_FUNCTION = "deleteReferralCode"
 
         /**
          * PII(UID/식별자) 마스킹: 앞 4글자만 노출 + ***.
@@ -527,32 +529,14 @@ class AuthRepositoryImpl @Inject constructor(
         description: String?
     ): Boolean {
         return try {
-            val referralCode = ReferralCode(
-                code = code,
-                isUsed = false,
-                usedBy = null,
-                usedAt = null,
-                createdAt = Date(),
-                createdBy = firebaseAuth.currentUser?.uid ?: "system",
-                tier = tier,
-                description = description
+            // 클라이언트는 referral_codes 에 직접 쓸 수 없다(rules: allow write: if false).
+            // 관리자 검증·문서 생성은 서버(createReferralCode CF, Admin SDK)가 수행한다.
+            val payload = mapOf(
+                "code" to code.trim().uppercase(),
+                "tier" to tier?.name,
+                "description" to description
             )
-
-            val data = mapOf(
-                "isUsed" to referralCode.isUsed,
-                "usedBy" to referralCode.usedBy,
-                "usedAt" to referralCode.usedAt,
-                "createdAt" to referralCode.createdAt,
-                "createdBy" to referralCode.createdBy,
-                "tier" to referralCode.tier?.name,
-                "description" to referralCode.description
-            )
-
-            firestore.collection(REFERRAL_CODES_COLLECTION)
-                .document(code)
-                .set(data)
-                .await()
-
+            functions.getHttpsCallable(CREATE_REFERRAL_FUNCTION).call(payload).await()
             Log.i(TAG, "추천 코드 생성 성공: $code")
             true
         } catch (e: Exception) {
@@ -613,11 +597,9 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun deleteReferralCode(code: String): Boolean {
         return try {
-            firestore.collection(REFERRAL_CODES_COLLECTION)
-                .document(code)
-                .delete()
-                .await()
-
+            // 삭제도 서버(deleteReferralCode CF)만 가능 — rules 가 클라 쓰기를 차단한다.
+            val payload = mapOf("code" to code.trim().uppercase())
+            functions.getHttpsCallable(DELETE_REFERRAL_FUNCTION).call(payload).await()
             Log.i(TAG, "추천 코드 삭제 성공: $code")
             true
         } catch (e: Exception) {
