@@ -301,9 +301,17 @@ fun PhotoPreviewScreen(
                 { target -> viewModel.deletePhoto(target) }
             } else null,
             onFilmEdit = { target ->
-                com.inik.camcon.presentation.ui.FilmEditorActivity.startForPhoto(
-                    viewerContext, target.path
-                )
+                // own-media(API29+)는 uri 로만 접근 가능 → uri 우선, 없으면 기존 파일경로.
+                val uri = target.uri
+                if (uri != null) {
+                    com.inik.camcon.presentation.ui.FilmEditorActivity.startForPhoto(
+                        viewerContext, android.net.Uri.parse(uri)
+                    )
+                } else {
+                    com.inik.camcon.presentation.ui.FilmEditorActivity.startForPhoto(
+                        viewerContext, target.path
+                    )
+                }
             },
             isRawFile = viewModel::isRawFile
         )
