@@ -217,6 +217,18 @@ class CamCon : Application() {
             }
 
             Log.d(TAG, "✅ 플러그인 복사 완료: I/O=$iolibCount, Camera=$camlibCount")
+
+            // [A3] 실제로 iolib/camlib 가 하나도 안 깔렸으면(AAB split 누락/설치본 손상) 복사 개수와 무관하게
+            // 명확히 에러로 남긴다. 이 경우 PTP/IP 자가 재추출 가드(Libgphoto2PluginInstaller)가 연결 시
+            // 재시도하고, 그래도 없으면 플러그인/설치 오류로 fail-fast 한다.
+            val iolibPresent = portVersionDir.listFiles()?.any { it.name.endsWith(".so") } == true
+            val camlibPresent = gphoto2VersionDir.listFiles()?.any { it.name.endsWith(".so") } == true
+            if (!iolibPresent || !camlibPresent) {
+                Log.e(
+                    TAG,
+                    "❌ 플러그인 추출 결과 부재: iolib=$iolibPresent, camlib=$camlibPresent (AAB split 누락 또는 설치본 손상)"
+                )
+            }
         } catch (e: kotlinx.coroutines.CancellationException) {
             // 코루틴 취소는 항상 재던지기
             throw e

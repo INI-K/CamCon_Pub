@@ -64,6 +64,7 @@
     <string name="progress_ptpip_complete_limited">Connected (limited functionality)</string>
     <string name="progress_ptpip_listener_error">Event listener error</string>
     <string name="progress_ptpip_setup_error">Setup error</string>
+    <string name="progress_ptpip_plugin_error">App installation is incomplete (camera plug-ins missing). Please reinstall the app.</string>
     <string name="progress_ptpip_failed">Connection failed: %1$s</string>
     <string name="progress_ptpip_error">Connection error: %1$s</string>
     <string name="progress_wifi_disconnected">Wi-Fi disconnected. Please reconnect.</string>

@@ -18,6 +18,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -51,12 +52,15 @@ class FilmEditorActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val initialSourcePath = intent.getStringExtra(EXTRA_SOURCE_PATH)
+        // 스코프드 스토리지(API29+) 갤러리 own-media 는 raw 파일경로 접근이 막혀 content URI 로 진입한다.
+        val initialSourceUri = intent.getStringExtra(EXTRA_SOURCE_URI)
         val selectOnly = intent.getBooleanExtra(EXTRA_SELECT_ONLY, false)
 
         setContent {
             CamConTheme {
                 FilmEditorHost(
                     initialSourcePath = initialSourcePath,
+                    initialSourceUri = initialSourceUri,
                     selectOnly = selectOnly,
                     onSelectAndFinish = { lutId ->
                         setResult(
@@ -73,6 +77,7 @@ class FilmEditorActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_SOURCE_PATH = "extra_source_path"
+        const val EXTRA_SOURCE_URI = "extra_source_uri"
         const val EXTRA_SELECT_ONLY = "extra_select_only"
         const val EXTRA_RESULT_LUT_ID = "extra_result_lut_id"
 
@@ -82,10 +87,21 @@ class FilmEditorActivity : ComponentActivity() {
         const val ROUTE_EDIT = "edit"
 
         /** 갤러리/프리뷰 진입점: 특정 사진 경로를 대상으로 에디터를 연다(컨택트 시트 → 편집). */
-        fun startForPhoto(context: android.content.Context, sourcePath: String) {
+        fun startForPhoto(context: Context, sourcePath: String) {
             context.startActivity(
                 Intent(context, FilmEditorActivity::class.java)
                     .putExtra(EXTRA_SOURCE_PATH, sourcePath)
+            )
+        }
+
+        /**
+         * 갤러리 own-media(스코프드 스토리지, API29+) 진입점: content URI 를 대상으로 에디터를 연다.
+         * onCreate 에서 URI 를 앱 cache 임시 파일로 복사한 뒤 기존 파이프라인(setSourceImage→decodeFile)을 재사용한다.
+         */
+        fun startForPhoto(context: Context, sourceUri: Uri) {
+            context.startActivity(
+                Intent(context, FilmEditorActivity::class.java)
+                    .putExtra(EXTRA_SOURCE_URI, sourceUri.toString())
             )
         }
     }
@@ -97,10 +113,28 @@ private fun queryDisplayName(context: Context, uri: Uri): String? = runCatching 
         ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
 }.getOrNull()
 
+/**
+ * content Uri 를 앱 cache(film_editor_images)에 복사하고 파일을 반환한다. 원본 파일명 보존.
+ * 큰 이미지 복사는 반드시 IO 스레드에서 호출할 것(메인 스레드 복사는 UI 멈춤/ANR 유발). 실패 시 null.
+ */
+private fun copyUriToCache(context: Context, uri: Uri): File? = runCatching {
+    val imageDir = File(context.cacheDir, "film_editor_images")
+    if (!imageDir.exists()) imageDir.mkdirs()
+    val name = queryDisplayName(context, uri)
+        ?.substringAfterLast('/')
+        ?.takeIf { it.isNotBlank() }
+        ?: "image_${System.currentTimeMillis()}.jpg"
+    val targetFile = File(imageDir, name)
+    val input = context.contentResolver.openInputStream(uri) ?: return@runCatching null
+    input.use { i -> FileOutputStream(targetFile).use { o -> i.copyTo(o) } }
+    targetFile
+}.getOrNull()
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FilmEditorHost(
     initialSourcePath: String?,
+    initialSourceUri: String?,
     selectOnly: Boolean,
     onSelectAndFinish: (String) -> Unit,
     onClose: () -> Unit
@@ -118,6 +152,19 @@ private fun FilmEditorHost(
     }
 
     val context = androidx.compose.ui.platform.LocalContext.current
+
+    // 진입 시 전달된 content URI(갤러리 own-media, API29+)를 1회 처리.
+    // raw 파일경로 접근이 막히므로 URI 를 앱 cache 임시 파일로 복사한 뒤 기존 파이프라인을 재사용한다.
+    LaunchedEffect(initialSourceUri) {
+        val uriStr = initialSourceUri ?: return@LaunchedEffect
+        val cached = withContext(Dispatchers.IO) { copyUriToCache(context, Uri.parse(uriStr)) }
+        if (cached != null) {
+            viewModel.setSourceImage(cached.absolutePath)
+        } else {
+            Log.e("FilmEditorActivity", "초기 대상 URI 복사 실패")
+        }
+    }
+
     val pickScope = rememberCoroutineScope()
     val pickImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -126,20 +173,11 @@ private fun FilmEditorHost(
         // 큰 이미지 복사는 IO 스레드에서 수행한다(메인 스레드 복사는 UI 멈춤/ANR 유발).
         // 원본 파일명을 보존해 대상사진 바에 임시명(film_target_…) 대신 실제 이름이 보이게 한다.
         pickScope.launch(Dispatchers.IO) {
-            try {
-                val imageDir = File(context.cacheDir, "film_editor_images")
-                if (!imageDir.exists()) imageDir.mkdirs()
-                val name = queryDisplayName(context, uri)
-                    ?.substringAfterLast('/')
-                    ?.takeIf { it.isNotBlank() }
-                    ?: "image_${System.currentTimeMillis()}.jpg"
-                val targetFile = File(imageDir, name)
-                context.contentResolver.openInputStream(uri)?.use { input ->
-                    FileOutputStream(targetFile).use { output -> input.copyTo(output) }
-                }
-                viewModel.setSourceImage(targetFile.absolutePath)
-            } catch (e: Exception) {
-                Log.e("FilmEditorActivity", "대상 이미지 복사 실패", e)
+            val cached = copyUriToCache(context, uri)
+            if (cached != null) {
+                viewModel.setSourceImage(cached.absolutePath)
+            } else {
+                Log.e("FilmEditorActivity", "대상 이미지 복사 실패")
             }
         }
     }

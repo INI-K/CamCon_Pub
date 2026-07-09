@@ -61,6 +61,7 @@
     <string name="progress_ptpip_complete_limited">接続完了 (機能制限あり)</string>
     <string name="progress_ptpip_listener_error">イベントリスナーエラー</string>
     <string name="progress_ptpip_setup_error">設定エラー</string>
+    <string name="progress_ptpip_plugin_error">アプリのインストールが不完全です（カメラプラグインがありません）。アプリを再インストールしてください。</string>
     <string name="progress_ptpip_failed">接続失敗: %1$s</string>
     <string name="progress_ptpip_error">接続エラー: %1$s</string>
     <string name="progress_wifi_disconnected">Wi-Fi接続が切れました。再接続してください。</string>
