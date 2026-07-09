@@ -14,6 +14,7 @@ import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.repository.PtpipPreferencesRepository
+import com.inik.camcon.domain.repository.UsbDeviceRepository
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -54,6 +55,7 @@ import javax.inject.Inject
 class CameraViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val cameraRepository: CameraRepository,
+    private val usbDeviceRepository: UsbDeviceRepository,
     private val getSubscriptionUseCase: GetSubscriptionUseCase,
     private val uiStateManager: CameraUiStateManager,
 
@@ -407,6 +409,9 @@ class CameraViewModel @Inject constructor(
         // PTPIP 연결 상태 관찰
         observePtpipConnection()
 
+        // USB 네이티브 연결 상태 관찰 (observePtpipConnection 대칭 — 死writer 배선)
+        observeNativeCameraConnection()
+
         // ① 라이브뷰 중 카메라 설정(노출 스트립) 주기 갱신
         observeLiveSettingsPolling()
     }
@@ -429,6 +434,19 @@ class CameraViewModel @Inject constructor(
                     resumeLiveViewAfterReconnectIfNeeded()
                 }
                 wasConnected = isConnected
+            }
+        }
+    }
+
+    /**
+     * USB 네이티브 연결 상태 관찰. observePtpipConnection 대칭.
+     * usbDeviceRepository.isNativeCameraConnected(UsbCameraManager 백업)는 USB 전용 진실이라
+     * PTP/IP에서는 false를 유지하므로 isNativeCameraConnected 오염이 없다.
+     */
+    private fun observeNativeCameraConnection() {
+        viewModelScope.launch {
+            usbDeviceRepository.isNativeCameraConnected.collect { isConnected ->
+                uiStateManager.updateNativeCameraConnection(isConnected)
             }
         }
     }
