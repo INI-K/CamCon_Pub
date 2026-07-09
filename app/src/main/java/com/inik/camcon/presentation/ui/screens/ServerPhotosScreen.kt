@@ -84,6 +84,7 @@ import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
 import com.inik.camcon.presentation.ui.components.v2.SkeletonLoader
 import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
 import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
+import com.inik.camcon.presentation.util.imageContentUriOrNull
 import com.inik.camcon.presentation.viewmodel.ServerPhotosViewModel
 import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.utils.LogMask
@@ -195,7 +196,10 @@ fun MyPhotosScreen(
                 path = capturedPhoto.filePath,
                 name = File(capturedPhoto.filePath).name,
                 date = capturedPhoto.captureTime,
-                size = capturedPhoto.size
+                size = capturedPhoto.size,
+                // CapturedPhoto.id 가 MediaStore _ID 면 content URI 로 관통(로드/EXIF/공유).
+                // UUID 폴백 row(파일시스템 폴백)면 uri=null → 기존 File 경로 사용. (경계 회귀: MediaStoreUrisTest)
+                uri = imageContentUriOrNull(capturedPhoto.id)
             )
         }
 
@@ -419,7 +423,10 @@ private fun FluidPhotoGridItem(
     ) {
         Box {
             if (isRawFile) {
-                // RAW 파일: 캐시 → ExifInterface 순서로 로드
+                // RAW 파일: 캐시 → content URI(ExifInterface) 순서로 내장 썸네일 로드.
+                // 스코프드 스토리지(API29+)에서 raw 경로 접근이 막히므로 _ID → content URI 로 EXIF 관통.
+                // id 가 _ID(Long) 가 아니면(UUID 폴백) 기존 filePath 로 폴백.
+                val context = LocalContext.current
                 val rawThumbnailState = produceState<Bitmap?>(
                     initialValue = thumbnailCache.get(photo.id),
                     key1 = photo.id
@@ -429,8 +436,18 @@ private fun FluidPhotoGridItem(
                         try {
                             value = withContext(Dispatchers.IO) {
                                 try {
-                                    val exif = ExifInterface(photo.filePath)
-                                    exif.thumbnailBitmap?.also { bitmap ->
+                                    val mediaId = photo.id.toLongOrNull()
+                                    val exif = if (mediaId != null) {
+                                        val uri = ContentUris.withAppendedId(
+                                            MediaStore.Images.Media.EXTERNAL_CONTENT_URI, mediaId
+                                        )
+                                        context.contentResolver.openInputStream(uri)?.use {
+                                            ExifInterface(it)
+                                        }
+                                    } else {
+                                        ExifInterface(photo.filePath)
+                                    }
+                                    exif?.thumbnailBitmap?.also { bitmap ->
                                         thumbnailCache.put(photo.id, bitmap)
                                     }
                                 } catch (e: Exception) {

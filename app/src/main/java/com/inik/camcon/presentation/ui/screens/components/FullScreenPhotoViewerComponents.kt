@@ -219,9 +219,10 @@ fun PhotoPagerImage(
     val context = LocalContext.current
 
     val imageModel: Any? = when {
-        isLocalPhoto || java.io.File(photo.path).exists() -> {
+        isLocalPhoto || photo.uri != null || java.io.File(photo.path).exists() -> {
             Log.d("PhotoPagerImage", "로컬 파일 사용: ${LogMask.path(photo.path)}")
-            java.io.File(photo.path)
+            // 스코프드 스토리지(API29+)에서 raw 경로가 막히면 MediaStore content URI 로 관통. Coil 이 무권한 로드.
+            photo.uri?.let { android.net.Uri.parse(it) } ?: java.io.File(photo.path)
         }
 
         fullImageData != null -> {
@@ -492,7 +493,8 @@ private fun LocalThumbnailItemWrapper(
         // 셀 크기(240px≈80dp×3x)로 샘플링 디코딩(IO 스레드)·메모리캐시 재사용.
         coil.compose.AsyncImage(
             model = coil.request.ImageRequest.Builder(LocalContext.current)
-                .data(java.io.File(photo.path))
+                // 스코프드 스토리지(API29+): raw 경로 대신 MediaStore content URI 로 하단 스트립 썸네일 로드.
+                .data(photo.uri?.let { android.net.Uri.parse(it) } ?: java.io.File(photo.path))
                 .size(240)
                 .crossfade(true)
                 .build(),
