@@ -97,11 +97,14 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
      * 네이티브 카메라 연결 상태 업데이트
      */
     fun updateNativeCameraConnection(isConnected: Boolean) {
+        // 동일 상태 중복 호출 무시 (updatePtpipConnectionState 대칭 — 초깃값 false 반복 방출 차단).
+        if (_uiState.value.connection.isNativeCameraConnected == isConnected) return
         _uiState.update {
             it.copy(
                 connection = it.connection.copy(
                     isNativeCameraConnected = isConnected,
-                    isConnected = isConnected
+                    // PTP/IP 연결을 clobber하지 않도록 다른 전송로와 union.
+                    isConnected = isConnected || it.connection.isPtpipConnected
                 )
             )
         }
