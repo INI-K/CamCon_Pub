@@ -32,7 +32,8 @@ import javax.inject.Singleton
 class UsbConnectionManager @Inject constructor(
     @ApplicationContext private val context: Context,
     @ApplicationScope private val scope: CoroutineScope,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+    private val libgphoto2PluginInstaller: com.inik.camcon.data.datasource.Libgphoto2PluginInstaller
 ) {
     private val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
 
@@ -89,107 +90,6 @@ class UsbConnectionManager @Inject constructor(
      */
     private fun isAllowedCameraVendor(device: UsbDevice): Boolean {
         return device.vendorId in ALLOWED_CAMERA_VENDOR_IDS
-    }
-
-    /**
-     * libgphoto2 플러그인 디렉토리 존재 확인 및 생성
-     *
-     * nativeLibDir는 read-only이므로, 앱의 private 디렉토리에 복사합니다.
-     */
-    private fun ensureLibgphoto2PluginDirs(nativeLibDir: String): String {
-        try {
-            // 앱의 private 디렉토리에 플러그인 저장
-            val gphoto2BaseDir = context.getDir("gphoto2_plugins", Context.MODE_PRIVATE)
-            val gphoto2VersionDir = java.io.File(gphoto2BaseDir, "libgphoto2/2.5.34")
-            val portVersionDir = java.io.File(gphoto2BaseDir, "libgphoto2_port/0.12.2")
-
-            // 이미 디렉토리가 있고 파일도 있으면 스킵
-            if (gphoto2VersionDir.exists() && portVersionDir.exists()) {
-                val camlibExists = gphoto2VersionDir.listFiles()?.isNotEmpty() == true
-                val iolibExists = portVersionDir.listFiles()?.isNotEmpty() == true
-                if (camlibExists && iolibExists) {
-                    Log.d(TAG, "libgphoto2 플러그인 디렉토리 이미 존재: ${LogMask.path(gphoto2BaseDir.absolutePath)}")
-
-                    // libgphoto2에 버전 디렉토리를 직접 전달 (세미콜론 구분)
-                    return "${portVersionDir.absolutePath}:${gphoto2VersionDir.absolutePath}"
-                }
-            }
-
-            Log.d(TAG, "libgphoto2 플러그인 디렉토리 생성: ${LogMask.path(gphoto2BaseDir.absolutePath)}")
-
-            gphoto2VersionDir.mkdirs()
-            portVersionDir.mkdirs()
-
-            var iolibCount = 0
-            var camlibCount = 0
-
-            // APK(및 split APK)의 lib/arm64-v8a 경로에서 라이브러리 목록 조회.
-            // ⚠️ AAB로 배포하면 네이티브 .so는 base가 아니라 config.<abi>.apk split에 들어가므로
-            //    sourceDir만 스캔하면 iolib를 0개 복사한다("No iolibs found"). split도 함께 스캔.
-            val apkPaths = buildList {
-                add(context.applicationInfo.sourceDir)
-                context.applicationInfo.splitSourceDirs?.let { addAll(it) }
-            }
-            for (apkPath in apkPaths) {
-                val apkFile = java.util.zip.ZipFile(apkPath)
-                try {
-                    val entries = apkFile.entries()
-                    while (entries.hasMoreElements()) {
-                        val entry = entries.nextElement()
-                        val entryName = entry.name
-
-                        // lib/arm64-v8a/ 하위의 .so 파일만 처리
-                        if (!entryName.startsWith("lib/arm64-v8a/") || !entryName.endsWith(".so")) {
-                            continue
-                        }
-
-                        val fileName = entryName.substringAfterLast("/")
-
-                        when {
-                            fileName.startsWith("libgphoto2_port_iolib_") -> {
-                                val targetName = fileName.replace("libgphoto2_port_iolib_", "")
-                                val targetFile = java.io.File(portVersionDir, targetName)
-                                if (!targetFile.exists()) {
-                                    // 부모 디렉토리 생성 확인
-                                    targetFile.parentFile?.mkdirs()
-                                    apkFile.getInputStream(entry).use { input ->
-                                        targetFile.outputStream().use { output ->
-                                            input.copyTo(output)
-                                        }
-                                    }
-                                    iolibCount++
-                                }
-                            }
-
-                            fileName.startsWith("libgphoto2_camlib_") -> {
-                                val targetName = fileName.replace("libgphoto2_camlib_", "")
-                                val targetFile = java.io.File(gphoto2VersionDir, targetName)
-                                if (!targetFile.exists()) {
-                                    // 부모 디렉토리 생성 확인
-                                    targetFile.parentFile?.mkdirs()
-                                    apkFile.getInputStream(entry).use { input ->
-                                        targetFile.outputStream().use { output ->
-                                            input.copyTo(output)
-                                        }
-                                    }
-                                    camlibCount++
-                                }
-                            }
-                        }
-                    }
-                } finally {
-                    apkFile.close()
-                }
-            }
-
-            Log.d(TAG, "플러그인 복사 완료: I/O=$iolibCount, Camera=$camlibCount")
-
-            // libgphoto2에 버전 디렉토리를 직접 전달 (세미콜론 구분)
-            return "${portVersionDir.absolutePath}:${gphoto2VersionDir.absolutePath}"
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ 플러그인 디렉토리 생성 실패", e)
-            return nativeLibDir
-        }
     }
 
     /**
@@ -291,7 +191,8 @@ class UsbConnectionManager @Inject constructor(
 
                 // libgphoto2 플러그인 디렉토리 확인 및 생성 (앱 private 디렉토리에)
                 // ⚠️ nativeLibraryDir가 아닌 플러그인 디렉토리를 사용해야 함!
-                val pluginDir = ensureLibgphoto2PluginDirs("")
+                // 자가 재추출 가드는 PTP/IP 경로와 공유(Libgphoto2PluginInstaller).
+                val pluginDir = libgphoto2PluginInstaller.ensurePluginDirs()
 
                 // USB 연결 안정화를 위한 짧은 지연
                 delay(500)

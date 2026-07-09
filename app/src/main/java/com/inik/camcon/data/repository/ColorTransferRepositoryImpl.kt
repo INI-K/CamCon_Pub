@@ -3,8 +3,6 @@ package com.inik.camcon.data.repository
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.ColorSpace
-import android.os.Build
 import android.util.Log
 import androidx.exifinterface.media.ExifInterface
 import com.inik.camcon.data.processor.ColorTransferProcessor
@@ -52,7 +50,7 @@ class ColorTransferRepositoryImpl @Inject constructor(
             val inputBitmap = (if (maxSize > 0) {
                 loadScaledBitmap(targetImagePath, maxSize)
             } else {
-                loadBitmapFromPath(targetImagePath)
+                loadScaledBitmap(targetImagePath, MAX_CT_DIMENSION)
             } ?: return@withContext null)
             inputBitmapToRecycle = inputBitmap
 
@@ -97,14 +95,14 @@ class ColorTransferRepositoryImpl @Inject constructor(
             val inputBitmap = (if (maxSize > 0) {
                 loadScaledBitmap(targetImagePath, maxSize)
             } else {
-                loadBitmapFromPath(targetImagePath)
+                loadScaledBitmap(targetImagePath, MAX_CT_DIMENSION)
             } ?: return@withContext null)
             inputBitmapToRecycle = inputBitmap
 
             val referenceBitmap = (if (maxSize > 0) {
                 loadScaledBitmap(referenceImagePath, maxSize)
             } else {
-                loadBitmapFromPath(referenceImagePath)
+                loadScaledBitmap(referenceImagePath, MAX_CT_DIMENSION)
             } ?: return@withContext null)
             referenceBitmapToRecycle = referenceBitmap
 
@@ -295,17 +293,6 @@ class ColorTransferRepositoryImpl @Inject constructor(
     }
 
     // ---- 내부 헬퍼 ----
-
-    private fun loadBitmapFromPath(imagePath: String): Bitmap? {
-        val options = BitmapFactory.Options().apply {
-            inJustDecodeBounds = false
-            inPreferredConfig = Bitmap.Config.ARGB_8888
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                inPreferredColorSpace = ColorSpace.get(ColorSpace.Named.SRGB)
-            }
-        }
-        return BitmapFactory.decodeFile(imagePath, options)
-    }
 
     private fun loadBitmapWithOrientation(imagePath: String): Bitmap? {
         // 풀해상도 ARGB_8888 디코딩은 고화소(45MP=180MB)에서 OOM 위험.
