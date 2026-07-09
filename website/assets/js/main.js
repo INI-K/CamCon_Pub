@@ -17,6 +17,7 @@
     initScrollSpy();
     initHeader();
     initBeforeAfter();
+    initFilmPicker();
   });
 
   /* ══════════════ before/after slider ══════════════ */
@@ -35,6 +36,54 @@
       range.addEventListener("input", function () { set(+range.value); });
       set(+range.value);
     });
+  }
+
+  /* ══════════════ film picker → drives before/after ══════════════ */
+  function initFilmPicker() {
+    var after = document.getElementById("baAfter");
+    var nameTag = document.getElementById("baName");
+    if (!after || !nameTag) return;
+    var swatches = document.querySelectorAll(".swatch[data-after]");
+    if (!swatches.length) return;
+    var ba = document.querySelector(".ba");
+    var preloaded = {};
+
+    function preload(src) {
+      if (!src || preloaded[src]) return;
+      preloaded[src] = true;
+      var img = new Image();
+      img.src = src;
+    }
+
+    function select(sw) {
+      var src = sw.getAttribute("data-after");
+      if (!src) return;
+      for (var i = 0; i < swatches.length; i++) {
+        var on = swatches[i] === sw;
+        swatches[i].classList.toggle("is-active", on);
+        swatches[i].setAttribute("aria-pressed", on ? "true" : "false");
+      }
+      after.src = src;
+      nameTag.textContent = sw.getAttribute("data-name") || "";
+      // 좁은 화면에선 스와치가 슬라이더 아래라 결과가 안 보임 → 슬라이더로 스크롤
+      if (ba && window.matchMedia("(max-width: 720px)").matches) {
+        ba.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+
+    for (var i = 0; i < swatches.length; i++) {
+      (function (sw) {
+        sw.setAttribute("aria-pressed", sw.classList.contains("is-active") ? "true" : "false");
+        sw.addEventListener("click", function () { select(sw); });
+        sw.addEventListener("keydown", function (e) {
+          if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
+            e.preventDefault();
+            select(sw);
+          }
+        });
+        sw.addEventListener("pointerenter", function () { preload(sw.getAttribute("data-after")); });
+      })(swatches[i]);
+    }
   }
 
   /* ══════════════ header scrolled state ══════════════ */
