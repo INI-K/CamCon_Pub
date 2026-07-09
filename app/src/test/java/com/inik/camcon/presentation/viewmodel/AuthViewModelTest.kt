@@ -3,6 +3,7 @@ package com.inik.camcon.presentation.viewmodel
 import android.content.Context
 import app.cash.turbine.test
 import com.inik.camcon.domain.model.User
+import com.inik.camcon.domain.usecase.auth.DeleteAccountUseCase
 import com.inik.camcon.domain.usecase.auth.GetCurrentUserUseCase
 import com.inik.camcon.domain.usecase.auth.SignOutUseCase
 import io.mockk.coEvery
@@ -27,6 +28,7 @@ class AuthViewModelTest {
 
     private lateinit var viewModel: AuthViewModel
     private lateinit var signOutUseCase: SignOutUseCase
+    private lateinit var deleteAccountUseCase: DeleteAccountUseCase
     private lateinit var getCurrentUserUseCase: GetCurrentUserUseCase
     private lateinit var context: Context
 
@@ -36,6 +38,7 @@ class AuthViewModelTest {
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         signOutUseCase = mockk()
+        deleteAccountUseCase = mockk()
         getCurrentUserUseCase = mockk()
         context = mockk(relaxed = true)
 
@@ -49,7 +52,7 @@ class AuthViewModelTest {
     }
 
     private fun createViewModel(): AuthViewModel {
-        return AuthViewModel(signOutUseCase, getCurrentUserUseCase, context)
+        return AuthViewModel(signOutUseCase, deleteAccountUseCase, getCurrentUserUseCase, context)
     }
 
     @Test
