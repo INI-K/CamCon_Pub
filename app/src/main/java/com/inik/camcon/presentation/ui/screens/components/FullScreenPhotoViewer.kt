@@ -369,8 +369,9 @@ fun FullScreenPhotoViewer(
                 val currentPhoto =
                     if (viewModel != null) (photos.getOrNull(pagerState.currentPage)
                         ?: photo) else photo
-                // 에디터는 JPEG/디코딩 가능한 로컬 파일만 대상. RAW 는 ValidateImageFormatUseCase 단일 지점으로 제외.
-                if (File(currentPhoto.path).exists() && !isRawFile(currentPhoto.path)) {
+                // 에디터는 JPEG/디코딩 가능한 이미지 대상. RAW 는 ValidateImageFormatUseCase 단일 지점으로 제외.
+                // own-media(API29+)는 raw 파일경로 접근이 막혀 uri 로만 접근 가능하므로 uri 존재도 허용한다.
+                if ((currentPhoto.uri != null || File(currentPhoto.path).exists()) && !isRawFile(currentPhoto.path)) {
                     { handler(currentPhoto) }
                 } else {
                     null

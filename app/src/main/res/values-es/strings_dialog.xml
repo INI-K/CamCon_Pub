@@ -61,6 +61,7 @@
     <string name="progress_ptpip_complete_limited">Conectado (funciones limitadas)</string>
     <string name="progress_ptpip_listener_error">Error en escucha de eventos</string>
     <string name="progress_ptpip_setup_error">Error de configuración</string>
+    <string name="progress_ptpip_plugin_error">La instalación de la app está incompleta (faltan complementos de cámara). Reinstala la app.</string>
     <string name="progress_ptpip_failed">Conexión fallida: %1$s</string>
     <string name="progress_ptpip_error">Error de conexión: %1$s</string>
     <string name="progress_wifi_disconnected">Wi-Fi desconectado. Vuelva a conectarse.</string>

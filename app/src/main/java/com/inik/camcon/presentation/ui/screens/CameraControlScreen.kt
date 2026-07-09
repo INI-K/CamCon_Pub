@@ -511,9 +511,17 @@ fun CameraControlScreen(
                 viewModel = null, // PhotoPreviewViewModel 없이 사용
                 hideDownloadButton = true, // 다운로드 버튼 숨김
                 onFilmEdit = { target ->
-                    com.inik.camcon.presentation.ui.FilmEditorActivity.startForPhoto(
-                        context, target.path
-                    )
+                    // own-media(API29+)는 uri 로만 접근 가능 → uri 우선, 없으면 기존 파일경로.
+                    val uri = target.uri
+                    if (uri != null) {
+                        com.inik.camcon.presentation.ui.FilmEditorActivity.startForPhoto(
+                            context, android.net.Uri.parse(uri)
+                        )
+                    } else {
+                        com.inik.camcon.presentation.ui.FilmEditorActivity.startForPhoto(
+                            context, target.path
+                        )
+                    }
                 },
                 isRawFile = appSettingsViewModel::isRawFile
             )

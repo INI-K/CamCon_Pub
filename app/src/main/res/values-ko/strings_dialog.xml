@@ -64,6 +64,7 @@
     <string name="progress_ptpip_complete_limited">연결 완료 (기능 제한)</string>
     <string name="progress_ptpip_listener_error">이벤트 리스너 오류</string>
     <string name="progress_ptpip_setup_error">설정 오류</string>
+    <string name="progress_ptpip_plugin_error">앱 설치가 완전하지 않습니다(카메라 플러그인 없음). 앱을 다시 설치해 주세요.</string>
     <string name="progress_ptpip_failed">연결 실패: %1$s</string>
     <string name="progress_ptpip_error">연결 오류: %1$s</string>
     <string name="progress_wifi_disconnected">Wi-Fi 연결이 끊어졌습니다. 다시 연결해 주세요.</string>

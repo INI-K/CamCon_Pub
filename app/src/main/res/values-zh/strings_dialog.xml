@@ -61,6 +61,7 @@
     <string name="progress_ptpip_complete_limited">连接完成 (功能受限)</string>
     <string name="progress_ptpip_listener_error">事件监听器错误</string>
     <string name="progress_ptpip_setup_error">设置错误</string>
+    <string name="progress_ptpip_plugin_error">应用安装不完整（缺少相机插件）。请重新安装应用。</string>
     <string name="progress_ptpip_failed">连接失败: %1$s</string>
     <string name="progress_ptpip_error">连接错误: %1$s</string>
     <string name="progress_wifi_disconnected">Wi-Fi 已断开,请重新连接。</string>
