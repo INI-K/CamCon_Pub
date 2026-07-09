@@ -129,24 +129,24 @@ class ServerPhotosViewModel @Inject constructor(
                     val width = c.getInt(widthColumn)
                     val height = c.getInt(heightColumn)
 
-                    // 파일이 실제로 존재하는지 확인
-                    val file = File(path)
-                    if (file.exists()) {
-                        photos.add(
-                            CapturedPhoto(
-                                id = id.toString(),
-                                filePath = path,
-                                thumbnailPath = null,
-                                captureTime = date,
-                                cameraModel = "Unknown",
-                                settings = null,
-                                size = size,
-                                width = width,
-                                height = height,
-                                isDownloading = false
-                            )
+                    // 스코프드 스토리지(API29+)에서는 own-media 라도 raw File.exists() 가
+                    // false 를 반환할 수 있어 존재 게이트를 두면 목록이 비는 회귀가 난다.
+                    // MediaStore 쿼리 결과(own-media 무권한 반환)를 그대로 노출하고,
+                    // 실제 로드는 content URI 로 관통한다(_ID 는 CapturedPhoto.id 로 전달).
+                    photos.add(
+                        CapturedPhoto(
+                            id = id.toString(),
+                            filePath = path,
+                            thumbnailPath = null,
+                            captureTime = date,
+                            cameraModel = "Unknown",
+                            settings = null,
+                            size = size,
+                            width = width,
+                            height = height,
+                            isDownloading = false
                         )
-                    }
+                    )
                 }
             }
 

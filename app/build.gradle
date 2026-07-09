@@ -14,7 +14,7 @@ plugins {
 // 메이저.마이너.패치 버전 정의 (수동 관리)
 project.ext.majorVersion = 2
 project.ext.minorVersion = 0
-project.ext.patchVersion = 1
+project.ext.patchVersion = 2
 
 // 브랜치별 버전 식별자 생성
 def getBranchVersionSuffix() {
