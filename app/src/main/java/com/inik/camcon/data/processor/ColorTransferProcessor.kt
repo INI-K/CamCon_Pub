@@ -2,7 +2,6 @@ package com.inik.camcon.data.processor
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Color
 import androidx.exifinterface.media.ExifInterface
 import jp.co.cyberagent.android.gpuimage.GPUImage
@@ -22,6 +21,7 @@ import javax.inject.Singleton
 import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sqrt
+import com.inik.camcon.utils.BitmapDecodeUtils
 import com.inik.camcon.utils.Constants
 import com.inik.camcon.utils.LogcatManager
 
@@ -563,8 +563,11 @@ class ColorTransferProcessor @Inject constructor() {
                     return@withContext null
                 }
 
-                val referenceBitmap = BitmapFactory.decodeFile(referenceImagePath)
-                    ?: return@withContext null
+                val referenceBitmap = BitmapDecodeUtils.decodeSampled(
+                    referenceImagePath,
+                    STATS_MAX_SIZE,
+                    STATS_MAX_SIZE
+                ) ?: return@withContext null
 
                 try {
                     // 참조 이미지 통계 계산
