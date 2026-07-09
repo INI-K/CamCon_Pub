@@ -7,6 +7,61 @@
   var I18N = {};
   var camData = null; // {total, cameras:[{vendor,model,connection}]}
 
+  var VERIFIED_URL = "https://asia-northeast3-camcon-67ad7.cloudfunctions.net/getVerifiedCameras";
+  var verifiedByKey = {};
+
+/* KEEP IN SYNC — 이 블록은 functions/index.js 와 website/assets/js/main.js 에 바이트 동일하게 존재해야 배지 매칭이 성립한다. 한쪽 수정 시 반드시 다른 쪽도 동일 반영. */
+var VENDOR_SYNONYMS = [
+  ["nikon",     ["nikon corporation", "nikon"]],
+  ["canon",     ["canon inc.", "canon inc", "canon"]],
+  ["sony",      ["sony corporation", "sony"]],
+  ["fujifilm",  ["fujifilm corporation", "fuji photo film", "fujifilm", "fuji"]],
+  ["panasonic", ["panasonic corporation", "panasonic", "lumix"]],
+  ["olympus",   ["om digital solutions", "om system", "olympus imaging corp.",
+                 "olympus imaging corp", "olympus corporation", "olympus"]],
+  ["leica",     ["leica camera ag", "leica"]],
+  ["pentax",    ["ricoh imaging company, ltd.", "ricoh imaging", "pentax"]],
+  ["ricoh",     ["ricoh"]],
+  ["sigma",     ["sigma"]],
+  ["hasselblad",["hasselblad"]],
+  ["casio",     ["casio computer co.,ltd.", "casio"]]
+];
+var KEY_ALIASES = {
+  "sony:ilce7":    "sony:alphaa7",     "sony:ilce7r":   "sony:alphaa7r",
+  "sony:ilce7m3":  "sony:alphaa7iii",  "sony:ilce7m4":  "sony:alphaa7iv",
+  "sony:ilce7rm2": "sony:alphaa7rii",  "sony:ilce7rm3": "sony:alphaa7riii",
+  "sony:ilce7rm4": "sony:dsca7riv",    "sony:ilce7s":   "sony:alphaa7s",
+  "sony:ilce7sm2": "sony:alphaa7sii",  "sony:ilce7sm3": "sony:dsca7siii",
+  "sony:ilce3000": "sony:alphaa3000",  "sony:ilce5000": "sony:alphaa5000",
+  "sony:ilce5100": "sony:alphaa5100",  "sony:ilce6000": "sony:alphaa6000",
+  "sony:ilce6100": "sony:alphaa6100",  "sony:ilce6700": "sony:a6700"
+};
+function normalizeCameraKey(input) {
+  if (!input) return "";
+  var s = String(input).toLowerCase();
+  s = s.replace(/\([^)]*\)/g, " ");
+  s = s.replace(/[_/]/g, " ").replace(/\s+/g, " ").trim();
+  var vendor = "", changed = true;
+  while (changed) {
+    changed = false;
+    for (var i = 0; i < VENDOR_SYNONYMS.length; i++) {
+      var canon = VENDOR_SYNONYMS[i][0], syns = VENDOR_SYNONYMS[i][1];
+      for (var j = 0; j < syns.length; j++) {
+        var syn = syns[j];
+        if (s === syn || s.indexOf(syn + " ") === 0) {
+          if (!vendor) vendor = canon;
+          s = s.slice(syn.length).trim(); changed = true; break;
+        }
+      }
+      if (changed) break;
+    }
+  }
+  if (s.indexOf("dsc ") === 0) s = s.slice(4);
+  var model = s.replace(/[^a-z0-9]/g, "");
+  var key = vendor + ":" + model;
+  return KEY_ALIASES[key] || key;
+}
+
   document.addEventListener("DOMContentLoaded", function () {
     initI18n();
     initMobileNav();
@@ -258,6 +313,15 @@
         if (totalEl) totalEl.textContent = (data.total || data.cameras.length).toLocaleString();
         buildVendorChips();
         renderCameras();
+        // 목록 렌더 뒤 "사용 확인됨" 배지 데이터 로드 (실패해도 목록은 정상)
+        fetch(VERIFIED_URL, { cache: "no-cache" })
+          .then(function (r) { return r.ok ? r.json() : { cameras: [] }; })
+          .then(function (v) {
+            verifiedByKey = {};
+            (v.cameras || []).forEach(function (c) { verifiedByKey[c.key] = { usb: c.usb, wifi: c.wifi }; });
+            renderCameras();
+          })
+          .catch(function () { /* 배지 없이 목록만 */ });
       })
       .catch(function () {
         var totalEl = document.getElementById("camTotal");
@@ -332,8 +396,17 @@
 
     var shown = filtered.slice(0, CAP);
     list.innerHTML = shown.map(function (c) {
+      var vh = verifiedByKey[normalizeCameraKey(c.vendor + " " + c.model)];
+      var badge = "";
+      if (vh) {
+        var methods = [];
+        if (vh.usb) methods.push("USB");
+        if (vh.wifi) methods.push("Wi-Fi");
+        var label = (t("cameras.verified") || "사용 확인됨") + (methods.length ? " · " + methods.join(" · ") : "");
+        badge = '<span class="cam-verify">' + esc(label) + '</span>';
+      }
       return '<li><span class="cam-vendor">' + esc(vendorLabel(c.vendor)) + "</span>" +
-        '<span class="cam-model">' + esc(c.model) + "</span></li>";
+        '<span class="cam-model">' + esc(c.model) + "</span>" + badge + "</li>";
     }).join("");
 
     if (empty) empty.hidden = filtered.length !== 0;

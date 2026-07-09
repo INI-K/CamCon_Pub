@@ -81,6 +81,7 @@
   "cameras.countTpl": "在 {total} 个型号中显示 {shown} 个",
   "cameras.noResults": "没有匹配的型号。",
   "cameras.help": "支持 PTP/MTP USB 连接的相机大多都能使用。若不确定，欢迎<a href=\"#contact\">联系我们</a>，我们会为您确认。",
+  "cameras.verified": "已确认可用",
 
   "connect.eyebrow": "How to Connect",
   "connect.title": "两种连接方式",
