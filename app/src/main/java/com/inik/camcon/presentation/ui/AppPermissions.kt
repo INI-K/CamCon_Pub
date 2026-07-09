@@ -22,16 +22,12 @@ object AppPermissions {
         sdkInt: Int,
         isGranted: (String) -> Boolean
     ): List<String> {
+        // 저장소/미디어 권한은 스코프드 스토리지(MediaStore)로만 처리하므로 요청하지 않는다.
+        // API33+ 에서 알림 권한만 요청한다.
         val used = if (sdkInt >= Build.VERSION_CODES.TIRAMISU) {
-            listOf(
-                Manifest.permission.READ_MEDIA_IMAGES,
-                Manifest.permission.POST_NOTIFICATIONS
-            )
+            listOf(Manifest.permission.POST_NOTIFICATIONS)
         } else {
-            listOf(
-                Manifest.permission.READ_EXTERNAL_STORAGE,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE
-            )
+            emptyList()
         }
         return used.filterNot(isGranted)
     }

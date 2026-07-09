@@ -55,6 +55,7 @@ fun PhotoInfoBottomSheetContent(
 ) {
     val exifInfo = remember { mutableStateOf<String?>(null) }
     val isLoading = remember { mutableStateOf(true) }
+    val context = LocalContext.current
 
     LaunchedEffect(photo.path) {
         withContext(Dispatchers.IO) {
@@ -62,7 +63,7 @@ fun PhotoInfoBottomSheetContent(
                 val info = if (viewModel != null) {
                     viewModel.getCameraPhotoExif(photo.path)
                 } else {
-                    readExifFromFile(photo.path)
+                    readExifFromFile(context, photo.path, photo.uri)
                 }
 
                 exifInfo.value = info
@@ -380,12 +381,22 @@ fun ExifEntriesList(
     }
 }
 
-private fun readExifFromFile(filePath: String): String? {
+private fun readExifFromFile(
+    context: android.content.Context,
+    filePath: String,
+    uri: String?
+): String? {
     return try {
-        val file = java.io.File(filePath)
-        if (!file.exists()) return null
-
-        val exif = androidx.exifinterface.media.ExifInterface(filePath)
+        // 스코프드 스토리지(API29+)에서 raw 경로가 막히면 MediaStore content URI 로 EXIF 관통.
+        val exif = if (uri != null) {
+            context.contentResolver.openInputStream(android.net.Uri.parse(uri))?.use {
+                androidx.exifinterface.media.ExifInterface(it)
+            } ?: return null
+        } else {
+            val file = java.io.File(filePath)
+            if (!file.exists()) return null
+            androidx.exifinterface.media.ExifInterface(filePath)
+        }
         val exifMap = mutableMapOf<String, Any>()
 
         exifMap["width"] = exif.getAttributeInt(

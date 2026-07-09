@@ -106,33 +106,6 @@ object Constants {
             return preferences?.getString(DOWNLOAD_PATH_PREFERENCE_KEY, null)
                 ?: findAvailableExternalStoragePath()
         }
-
-        /**
-         * 저장소 타입 확인
-         */
-        fun getStorageType(path: String): StorageType {
-            return when {
-                path.contains("/storage/sdcard1/") ||
-                        path.contains("/storage/external_sd/") ||
-                        path.contains("/storage/extSdCard/") ||
-                        path.contains("/mnt/external_sd/") -> StorageType.SD_CARD
-
-                path.contains("/storage/usbdisk/") ||
-                        path.contains("/storage/usb/") ||
-                        path.contains("/mnt/usb_storage/") -> StorageType.USB_STORAGE
-
-                path.contains("/storage/emulated/0/") -> StorageType.INTERNAL_EXTERNAL
-
-                else -> StorageType.UNKNOWN
-            }
-        }
-
-        enum class StorageType {
-            SD_CARD,           // SD카드
-            USB_STORAGE,       // USB 저장소
-            INTERNAL_EXTERNAL, // 내장 외부 저장소
-            UNKNOWN           // 알 수 없음
-        }
     }
 
     /**
