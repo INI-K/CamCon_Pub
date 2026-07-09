@@ -124,8 +124,9 @@ object AppModule {
     fun provideUsbConnectionManager(
         @ApplicationContext context: Context,
         @ApplicationScope scope: CoroutineScope,
-        @IoDispatcher ioDispatcher: CoroutineDispatcher
-    ) = UsbConnectionManager(context, scope, ioDispatcher)
+        @IoDispatcher ioDispatcher: CoroutineDispatcher,
+        libgphoto2PluginInstaller: com.inik.camcon.data.datasource.Libgphoto2PluginInstaller
+    ) = UsbConnectionManager(context, scope, ioDispatcher, libgphoto2PluginInstaller)
 
     @Provides
     @Singleton
@@ -188,6 +189,7 @@ object AppModule {
         ptpipPreferencesDataSource: PtpipPreferencesDataSource,
         tetherService: PtpipTetherService,
         nativeCameraDataSource: com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource,
+        libgphoto2PluginInstaller: com.inik.camcon.data.datasource.Libgphoto2PluginInstaller,
         @ApplicationScope scope: CoroutineScope,
         @IoDispatcher ioDispatcher: CoroutineDispatcher
     ): PtpipDataSource {
@@ -205,6 +207,7 @@ object AppModule {
             ptpipPreferencesDataSource,
             tetherService,
             nativeCameraDataSource,
+            libgphoto2PluginInstaller,
             scope,
             ioDispatcher
         )

@@ -66,6 +66,7 @@ class PtpipDataSourceInvoluntaryDisconnectTest {
             ptpipPreferencesDataSource = mockk(relaxed = true),
             tetherService = mockk(relaxed = true),
             nativeCameraDataSource = mockk(relaxed = true),
+            libgphoto2PluginInstaller = mockk(relaxed = true),
             coroutineScope = scope,
             ioDispatcher = dispatcher
         )

@@ -91,6 +91,7 @@ class PtpipDataSource @Inject constructor(
     private val ptpipPreferencesDataSource: com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource,
     private val tetherService: com.inik.camcon.data.network.ptpip.PtpipTetherService,
     private val nativeCameraDataSource: com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource,
+    private val libgphoto2PluginInstaller: com.inik.camcon.data.datasource.Libgphoto2PluginInstaller,
     @ApplicationScope private val coroutineScope: CoroutineScope,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
@@ -883,15 +884,23 @@ class PtpipDataSource @Inject constructor(
                 (context.applicationContext as? com.inik.camcon.CamCon)?.pluginExtractionDeferred?.await()
             }
 
-            // 플러그인 디렉토리 사용 (USB와 동일한 방식 - 버전 디렉토리까지 포함)
-            val gphoto2BaseDir = context.getDir("gphoto2_plugins", Context.MODE_PRIVATE)
-            val gphoto2VersionDir = java.io.File(gphoto2BaseDir, "libgphoto2/2.5.34")
-            val portVersionDir = java.io.File(gphoto2BaseDir, "libgphoto2_port/0.12.2")
-
-            // 버전 디렉토리를 콜론(:)으로 구분하여 전달
-            val pluginDir = "${portVersionDir.absolutePath}:${gphoto2VersionDir.absolutePath}"
+            // [A1] PTP/IP 자가 재추출 가드 — 콜드 스타트/AAB split 추출 실패로 플러그인(iolib/camlib)
+            // 디렉토리가 비어 있으면 여기서 재추출한다. USB(UsbConnectionManager)와 동일 로직을
+            // Libgphoto2PluginInstaller 로 공유한다(중복 복붙 제거). 이미 있으면 멱등 통과.
+            val pluginDir = libgphoto2PluginInstaller.ensurePluginDirs()
             if (com.inik.camcon.BuildConfig.DEBUG) {
                 Log.i(TAG, "플러그인 디렉토리: $pluginDir")
+            }
+
+            // [A2] 재추출 후에도 iolib/camlib 가 없으면 = 플러그인/설치 오류(승인/핸드셰이크 문제 아님).
+            // 이 상태로 아래 폴링 루프에 진입하면 libgphoto2 가 "No iolibs"(-4)로 실패해 무한 재시도하고,
+            // 화면엔 "카메라에서 연결 허용을 누르세요"(승인 대기)로 오안내된다. 즉시 실패로 종료해
+            // 정확한 플러그인/설치 오류 안내를 노출한다.
+            if (!libgphoto2PluginInstaller.arePluginsPresent()) {
+                Log.e(TAG, "❌ libgphoto2 플러그인 부재(iolib/camlib 없음) - 무한 재시도 대신 즉시 실패")
+                _connectionState.value = PtpipConnectionState.ERROR
+                setProgress(UiText.Resource(R.string.progress_ptpip_plugin_error))
+                return@withContext false
             }
 
             setProgress(UiText.Resource(R.string.progress_ptpip_connecting))

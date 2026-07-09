@@ -2,12 +2,12 @@ package com.inik.camcon.presentation.viewmodel
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.usecase.ColorTransferUseCase
+import com.inik.camcon.utils.BitmapDecodeUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -201,7 +201,8 @@ class ColorTransferViewModel @Inject constructor(
             val processingTime = System.currentTimeMillis() - startTime
 
             if (resultPath != null) {
-                val bitmap = BitmapFactory.decodeFile(resultPath)
+                // 미리보기 결과는 ≤400px(maxSize=400)라 inSampleSize=1 → 동작 불변, 플래그 소거용
+                val bitmap = BitmapDecodeUtils.decodeSampled(resultPath, 400, 400)
                 // 임시 파일 정리
                 File(resultPath).delete()
 
@@ -260,7 +261,8 @@ class ColorTransferViewModel @Inject constructor(
             val processingTime = System.currentTimeMillis() - startTime
 
             if (resultPath != null) {
-                val bitmap = BitmapFactory.decodeFile(resultPath)
+                // 상류(applyColorTransferWithGPU)가 4096px 캡이라 inSampleSize=1 → 동작 불변, 상한 안전망
+                val bitmap = BitmapDecodeUtils.decodeSampled(resultPath, 4096, 4096)
                 // 임시 파일 정리
                 File(resultPath).delete()
 
