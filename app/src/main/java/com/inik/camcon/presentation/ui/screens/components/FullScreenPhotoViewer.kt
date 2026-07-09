@@ -58,6 +58,30 @@ private fun shareCurrentPhoto(
     // TODO(LOW): Dispatchers.IO 하드코딩 — ViewModel/UseCase 위임으로 옮길 것
     scope.launch(Dispatchers.IO) {
         try {
+            // 0. MediaStore content URI 가 있으면(로컬 갤러리 own-media) 직접 공유.
+            //    스코프드 스토리지(API29+)에서 raw 경로가 막혀도 FileProvider/임시복사 없이
+            //    content URI 를 EXTRA_STREAM 에 넣고 읽기 권한만 위임한다.
+            val mediaUri = photo.uri
+            if (mediaUri != null) {
+                withContext(Dispatchers.Main) {
+                    try {
+                        val shareIntent = Intent().apply {
+                            action = Intent.ACTION_SEND
+                            type = "image/*"
+                            putExtra(Intent.EXTRA_STREAM, android.net.Uri.parse(mediaUri))
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        val chooser = Intent.createChooser(shareIntent, strings.chooserTitle)
+                        context.startActivity(chooser)
+                        Log.d("PhotoShare", "MediaStore URI 공유 시작: $mediaUri")
+                    } catch (e: Exception) {
+                        Log.e("PhotoShare", "MediaStore URI 공유 인텐트 실행 실패", e)
+                        Toast.makeText(context, strings.failed, Toast.LENGTH_SHORT).show()
+                    }
+                }
+                return@launch
+            }
+
             // 1. 로컬 파일인 경우
             val isLocalFile = java.io.File(photo.path).exists()
 
