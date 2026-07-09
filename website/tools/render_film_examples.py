@@ -41,7 +41,7 @@ CATS = [
     ("cat-negold",   "negative_old/kodak_portra_160_nc.cube"),
     ("cat-print",    "print/kodak_2383_constlclip.cube"),
 ]
-HERO_LUT = "negative_new/kodak_portra_400.cube"  # 전/후 슬라이더 '후'
+# 전/후 슬라이더 '후' = 스와치 14종(FREE + CATS) 각각을 hero 사진에 적용
 
 
 def load_cube(path):
@@ -117,13 +117,15 @@ def main():
         fp = os.path.join(OUT, slug + ".webp")
         out.save(fp, "WEBP", quality=82, method=6)
         made.append((slug, os.path.getsize(fp)))
-    # 전/후 슬라이더 (3:2)
+    # 전/후 슬라이더 (3:2) — 원본 1장 + 필름별 적용본(스와치 클릭 미리보기용)
     hero = load_base("hero", 1280, 854)
     hero.save(os.path.join(OUT, "hero-before.webp"), "WEBP", quality=84, method=6)
-    lut, size = load_cube(os.path.join(LUT_DIR, HERO_LUT))
-    apply_lut(hero, lut, size).save(os.path.join(OUT, "hero-after.webp"), "WEBP", quality=84, method=6)
     made.append(("hero-before", os.path.getsize(os.path.join(OUT, "hero-before.webp"))))
-    made.append(("hero-after", os.path.getsize(os.path.join(OUT, "hero-after.webp"))))
+    for slug, lp in FREE + CATS:
+        lut, size = load_cube(os.path.join(LUT_DIR, lp))
+        fp = os.path.join(OUT, "hero-after-" + slug + ".webp")
+        apply_lut(hero, lut, size).save(fp, "WEBP", quality=84, method=6)
+        made.append(("hero-after-" + slug, os.path.getsize(fp)))
 
     total = sum(sz for _, sz in made)
     print(f"렌더 완료: {len(made)}장, 총 {total/1024:.0f} KB")
