@@ -81,6 +81,7 @@
   "cameras.countTpl": "Mostrando {shown} de {total} modelos",
   "cameras.noResults": "No hay modelos coincidentes.",
   "cameras.help": "La mayoría de cámaras con conexión USB PTP/MTP funcionan. Si tienes dudas, <a href=\"#contact\">contáctanos</a> y lo comprobamos por ti.",
+  "cameras.verified": "Uso verificado",
 
   "connect.eyebrow": "How to Connect",
   "connect.title": "Dos formas de conectar",
