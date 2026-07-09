@@ -61,6 +61,7 @@
     <string name="progress_ptpip_complete_limited">Connesso (funzioni limitate)</string>
     <string name="progress_ptpip_listener_error">Errore listener eventi</string>
     <string name="progress_ptpip_setup_error">Errore di configurazione</string>
+    <string name="progress_ptpip_plugin_error">Installazione incompleta (plug-in fotocamera mancanti). Reinstalla l\'app.</string>
     <string name="progress_ptpip_failed">Connessione fallita: %1$s</string>
     <string name="progress_ptpip_error">Errore di connessione: %1$s</string>
     <string name="progress_wifi_disconnected">Wi-Fi disconnesso. Riconnetti.</string>
