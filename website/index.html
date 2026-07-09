@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title data-i18n="meta.title">CamCon — 촬영과 동시에 필름룩 사진을 폰으로</title>
-  <meta name="description" data-i18n-attr="content" data-i18n="meta.desc" content="CamCon은 DSLR·미러리스 카메라를 안드로이드에 USB·Wi-Fi로 잇고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보는 시네마 카메라 컨트롤러입니다.">
+  <meta name="description" data-i18n-attr="content" data-i18n="meta.desc" content="CamCon은 DSLR·미러리스 카메라를 안드로이드에 USB·Wi-Fi로 연결하고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보는 시네마 카메라 컨트롤러입니다.">
   <meta name="theme-color" content="#0A0A0C">
 
   <meta property="og:type" content="website">
@@ -12,7 +12,7 @@
   <meta property="og:site_name" content="CamCon">
   <meta property="og:url" content="https://camcon.inik.kr/">
   <meta property="og:title" content="CamCon — 셔터를 누르면, 필름룩 사진이 폰에 도착합니다">
-  <meta property="og:description" content="카메라를 USB·Wi-Fi로 잇고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보세요.">
+  <meta property="og:description" content="카메라를 USB·Wi-Fi로 연결하고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보세요.">
   <meta property="og:image" content="https://camcon.inik.kr/assets/img/og-card.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -20,7 +20,7 @@
   <meta property="og:image:alt" content="CamCon — Cinema Camera Controller">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="CamCon — Cinema Camera Controller">
-  <meta name="twitter:description" content="카메라를 USB·Wi-Fi로 잇고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보세요.">
+  <meta name="twitter:description" content="카메라를 USB·Wi-Fi로 연결하고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보세요.">
   <meta name="twitter:image" content="https://camcon.inik.kr/assets/img/og-card.png">
 
   <link rel="canonical" href="https://camcon.inik.kr/">
@@ -31,7 +31,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="assets/css/style.css?v=20260709">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500..800&family=JetBrains+Mono:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="assets/css/style.css?v=20260709b">
 </head>
 <body>
   <div class="grain" aria-hidden="true"></div>
@@ -97,7 +98,7 @@
           <div>
             <p class="eyebrow hero-eyebrow reveal" data-i18n="hero.eyebrow">Cinema Camera Controller</p>
             <h1 class="hero-title reveal" data-delay="1" data-i18n="hero.title">셔터를 누르면, <span class="accent">필름룩 사진</span>이 폰에 도착합니다</h1>
-            <p class="hero-sub reveal" data-delay="2" data-i18n="hero.sub">CamCon — Cinema Camera Controller. 카메라를 USB·Wi-Fi로 잇고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보세요.</p>
+            <p class="hero-sub reveal" data-delay="2" data-i18n="hero.sub">CamCon — Cinema Camera Controller. 카메라를 USB·Wi-Fi로 연결하고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보세요.</p>
             <div class="hero-actions reveal" data-delay="3">
               <a class="btn btn-primary" href="https://play.google.com/store/apps/details?id=com.inik.camcon" target="_blank" rel="noopener" data-i18n="hero.cta">Google Play에서 다운로드</a>
               <a class="btn btn-ghost" href="#features" data-i18n="hero.explore">기능 살펴보기</a>
@@ -325,13 +326,12 @@
       <div class="wrap">
         <header class="section-head reveal">
           <p class="eyebrow" data-i18n="connect.eyebrow">How to Connect</p>
-          <h2 class="section-title" data-i18n="connect.title">세 가지 연결 방법</h2>
+          <h2 class="section-title" data-i18n="connect.title">두 가지 연결 방법</h2>
         </header>
 
         <div class="reveal">
           <div class="tabs" role="tablist" aria-label="연결 방법">
             <button class="tab is-active" role="tab" id="tab-usb" aria-controls="panel-usb" aria-selected="true" tabindex="0" data-i18n="connect.tabUsb">USB OTG</button>
-            <button class="tab" role="tab" id="tab-ap" aria-controls="panel-ap" aria-selected="false" tabindex="-1" data-i18n="connect.tabAp">Wi-Fi · 카메라 AP</button>
             <button class="tab" role="tab" id="tab-sta" aria-controls="panel-sta" aria-selected="false" tabindex="-1" data-i18n="connect.tabSta">Wi-Fi · 공유기(STA)</button>
           </div>
 
@@ -342,15 +342,6 @@
               <div class="step"><div class="num">03</div><p data-i18n="connect.usb3">자동 인식·연결이 완료되면 바로 촬영을 시작합니다.</p></div>
             </div>
             <div class="perm-note" data-i18n="connect.usbPerm">필요 권한 — USB 장치 접근 권한(연결 시 1회 허용)</div>
-          </div>
-
-          <div class="tab-panel" id="panel-ap" role="tabpanel" aria-labelledby="tab-ap" hidden>
-            <div class="steps">
-              <div class="step"><div class="num">01</div><p data-i18n="connect.ap1">카메라 메뉴에서 Wi-Fi(액세스 포인트) 모드를 켭니다.</p></div>
-              <div class="step"><div class="num">02</div><p data-i18n="connect.ap2">폰 Wi-Fi를 카메라가 만든 네트워크에 연결합니다.</p></div>
-              <div class="step"><div class="num">03</div><p data-i18n="connect.ap3">앱이 카메라를 자동 검색해 연결합니다.</p></div>
-            </div>
-            <div class="perm-note" data-i18n="connect.apPerm">필요 권한 — 위치 권한(주변 Wi-Fi 검색용), 알림 권한(백그라운드 수신용)</div>
           </div>
 
           <div class="tab-panel" id="panel-sta" role="tabpanel" aria-labelledby="tab-sta" hidden>
