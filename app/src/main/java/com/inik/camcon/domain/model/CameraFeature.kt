@@ -125,5 +125,9 @@ data class CameraCapabilities(
 
     // 추가 기능 프로퍼티
     val canTimelapse: Boolean = supportsTimelapse,
-    val canAutoFocus: Boolean = supportsAutofocus
+    val canAutoFocus: Boolean = supportsAutofocus,
+
+    // libgphoto2 abilities 원본 모델명(연결 검증 집계 매칭 키용).
+    // 표시용 [model]은 DeviceInfo로 덮어써지지만, 이 값은 라이브러리 원본을 그대로 보존한다.
+    val abilitiesModel: String? = null
 )
