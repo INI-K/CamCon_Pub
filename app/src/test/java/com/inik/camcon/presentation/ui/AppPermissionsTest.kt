@@ -26,16 +26,10 @@ class AppPermissionsTest {
     }
 
     @Test
-    fun `API32 이하는 레거시 저장소 권한을 요청한다`() {
+    fun `API32 이하는 저장소 권한을 요청하지 않는다`() {
         val result = AppPermissions.storagePermissionsToRequest(Build.VERSION_CODES.S) { false }
 
-        assertEquals(
-            listOf(
-                Manifest.permission.READ_EXTERNAL_STORAGE,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE
-            ),
-            result
-        )
+        assertTrue(result.isEmpty())
     }
 
     @Test

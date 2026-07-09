@@ -1599,70 +1599,18 @@ class PhotoDownloadManager @Inject constructor(
     }
 
     /**
-     * 저장소 권한 확인
-     */
-    private fun hasStoragePermission(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Android 13+: 세분화된 미디어 권한
-            context.checkSelfPermission(android.Manifest.permission.READ_MEDIA_IMAGES) ==
-                    android.content.pm.PackageManager.PERMISSION_GRANTED
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            // Android 6-12: 기존 저장소 권한
-            context.checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) ==
-                    android.content.pm.PackageManager.PERMISSION_GRANTED &&
-                    context.checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) ==
-                    android.content.pm.PackageManager.PERMISSION_GRANTED
-        } else {
-            // Android 5 이하: 권한 확인 불필요
-            true
-        }
-    }
-
-    /**
-     * SAF를 고려한 저장 디렉토리 결정
+     * 네이티브 다운로드용 임시 디렉토리 결정.
+     *
+     * minSdk 29(스코프드 스토리지 강제)라 원격 다운로드는 항상 캐시 임시 디렉토리에 받아
+     * 후처리([postProcessPhoto])에서 MediaStore(RELATIVE_PATH=DCIM/CamCon)로 이관한다.
+     * 저장소 권한·SDK<Q 외부저장소 raw-write 분기는 minSdk29 에서 도달 불가라 제거했다.
+     * 호출부(PtpipDataSource, CameraCaptureRepositoryImpl)는 이 임시 디렉토리만 소비한다.
      */
     fun getSaveDirectory(): String {
         return try {
-            // 권한 확인
-            if (!hasStoragePermission()) {
-                Log.w("사진다운로드매니저", "저장소 권한 없음, 내부 저장소 사용")
-                return File(
-                    context.cacheDir,
-                    Constants.FilePaths.TEMP_CACHE_DIR
-                ).apply { mkdirs() }.absolutePath
-            }
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                // Android 10+: SAF 사용하므로 임시 디렉토리 반환 (후처리에서 MediaStore 사용)
-                val tempDir = File(context.cacheDir, Constants.FilePaths.TEMP_CACHE_DIR)
-                if (!tempDir.exists()) {
-                    tempDir.mkdirs()
-                }
-                Log.d("사진다운로드매니저", "✅ SAF 사용 - 임시 디렉토리: ${LogMask.path(tempDir.absolutePath)}")
-                tempDir.absolutePath
-            } else {
-                // Android 9 이하: 직접 외부 저장소 접근 - 우선순위 시스템 사용
-                val externalPath = Constants.FilePaths.findAvailableExternalStoragePath()
-                val externalDir = File(externalPath)
-
-                if (!externalDir.exists()) {
-                    externalDir.mkdirs()
-                }
-
-                if (externalDir.exists() && externalDir.canWrite()) {
-                    val storageType = Constants.FilePaths.getStorageType(externalPath)
-                    Log.d("사진다운로드매니저", "✅ 외부 저장소 사용: ${LogMask.path(externalPath)} (타입: $storageType)")
-                    externalPath
-                } else {
-                    // 외부 저장소를 사용할 수 없으면 내부 저장소
-                    val internalDir = File(context.filesDir, "photos")
-                    if (!internalDir.exists()) {
-                        internalDir.mkdirs()
-                    }
-                    Log.w("사진다운로드매니저", "⚠️ 내부 저장소 사용: ${LogMask.path(internalDir.absolutePath)}")
-                    internalDir.absolutePath
-                }
-            }
+            File(context.cacheDir, Constants.FilePaths.TEMP_CACHE_DIR)
+                .apply { mkdirs() }
+                .absolutePath
         } catch (e: Exception) {
             Log.e("사진다운로드매니저", "저장 디렉토리 결정 실패, 기본값 사용", e)
             context.filesDir.absolutePath
