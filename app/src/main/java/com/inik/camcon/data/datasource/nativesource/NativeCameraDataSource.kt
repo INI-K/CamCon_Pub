@@ -479,6 +479,9 @@ class NativeCameraDataSource @Inject constructor(
             }
 
             var model = json.optString("model", "알 수 없음")
+            // libgphoto2 abilities 원본 모델명(연결 검증 집계 매칭 키). DeviceInfo override로
+            // 덮어써지는 표시용 model과 달리 라이브러리 원본을 그대로 보존한다. 없으면 blank.
+            val abilitiesModel = json.optString("model", "")
             val supportsObj = json.optJSONObject("supports")
 
             // Abilities의 모델명은 제네릭 드라이버명("PTP/IP Camera")이므로
@@ -552,7 +555,8 @@ class NativeCameraDataSource @Inject constructor(
                 availableWhiteBalanceSettings = emptyList(), // TODO: 위젯에서 파싱 필요
                 supportsRemoteControl = canConfig,
                 supportsConfigChange = canConfig,
-                batteryLevel = null
+                batteryLevel = null,
+                abilitiesModel = abilitiesModel.ifBlank { null }
             )
 
             capabilities

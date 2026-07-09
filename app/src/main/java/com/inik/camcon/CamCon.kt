@@ -10,6 +10,7 @@ import com.google.firebase.FirebaseApp
 import com.inik.camcon.data.activity.ActivityProviderImpl
 import com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
+import com.inik.camcon.data.repository.managers.ConnectionReportObserver
 import com.inik.camcon.data.service.WifiMonitoringService
 import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.di.IoDispatcher
@@ -52,6 +53,10 @@ class CamCon : Application() {
     // 결제 시트 등 Activity 컨텍스트가 필요한 시점에 현재 resumed Activity를 제공
     @Inject
     lateinit var activityProvider: ActivityProviderImpl
+
+    // 카메라 연결 성공을 익명으로 보고(사용 확인됨 배지 집계). 읽기 전용 관찰자.
+    @Inject
+    lateinit var connectionReportObserver: ConnectionReportObserver
 
     // 현재 활성 Activity 추적 (포그라운드 상태 확인용)
     private var activeActivityCount = 0
@@ -126,6 +131,9 @@ class CamCon : Application() {
 
         // WiFi 자동 연결 모니터링 Service 시작 (자동 연결이 켜져있으면)
         startWifiMonitoringServiceIfEnabled()
+
+        // 카메라 연결 성공 익명 보고 관찰자 시작 (읽기 전용, 연결 상태 미변경)
+        connectionReportObserver.start()
 
         Log.d(TAG, "앱 초기화 완료")
     }
