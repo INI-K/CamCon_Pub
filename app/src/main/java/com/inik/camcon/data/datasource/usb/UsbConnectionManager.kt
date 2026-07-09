@@ -123,55 +123,63 @@ class UsbConnectionManager @Inject constructor(
             var iolibCount = 0
             var camlibCount = 0
 
-            // APK의 lib/arm64-v8a 경로에서 라이브러리 목록 조회
-            val apkFile = java.util.zip.ZipFile(context.applicationInfo.sourceDir)
-            try {
-                val entries = apkFile.entries()
-                while (entries.hasMoreElements()) {
-                    val entry = entries.nextElement()
-                    val entryName = entry.name
+            // APK(및 split APK)의 lib/arm64-v8a 경로에서 라이브러리 목록 조회.
+            // ⚠️ AAB로 배포하면 네이티브 .so는 base가 아니라 config.<abi>.apk split에 들어가므로
+            //    sourceDir만 스캔하면 iolib를 0개 복사한다("No iolibs found"). split도 함께 스캔.
+            val apkPaths = buildList {
+                add(context.applicationInfo.sourceDir)
+                context.applicationInfo.splitSourceDirs?.let { addAll(it) }
+            }
+            for (apkPath in apkPaths) {
+                val apkFile = java.util.zip.ZipFile(apkPath)
+                try {
+                    val entries = apkFile.entries()
+                    while (entries.hasMoreElements()) {
+                        val entry = entries.nextElement()
+                        val entryName = entry.name
 
-                    // lib/arm64-v8a/ 하위의 .so 파일만 처리
-                    if (!entryName.startsWith("lib/arm64-v8a/") || !entryName.endsWith(".so")) {
-                        continue
-                    }
-
-                    val fileName = entryName.substringAfterLast("/")
-
-                    when {
-                        fileName.startsWith("libgphoto2_port_iolib_") -> {
-                            val targetName = fileName.replace("libgphoto2_port_iolib_", "")
-                            val targetFile = java.io.File(portVersionDir, targetName)
-                            if (!targetFile.exists()) {
-                                // 부모 디렉토리 생성 확인
-                                targetFile.parentFile?.mkdirs()
-                                apkFile.getInputStream(entry).use { input ->
-                                    targetFile.outputStream().use { output ->
-                                        input.copyTo(output)
-                                    }
-                                }
-                                iolibCount++
-                            }
+                        // lib/arm64-v8a/ 하위의 .so 파일만 처리
+                        if (!entryName.startsWith("lib/arm64-v8a/") || !entryName.endsWith(".so")) {
+                            continue
                         }
 
-                        fileName.startsWith("libgphoto2_camlib_") -> {
-                            val targetName = fileName.replace("libgphoto2_camlib_", "")
-                            val targetFile = java.io.File(gphoto2VersionDir, targetName)
-                            if (!targetFile.exists()) {
-                                // 부모 디렉토리 생성 확인
-                                targetFile.parentFile?.mkdirs()
-                                apkFile.getInputStream(entry).use { input ->
-                                    targetFile.outputStream().use { output ->
-                                        input.copyTo(output)
+                        val fileName = entryName.substringAfterLast("/")
+
+                        when {
+                            fileName.startsWith("libgphoto2_port_iolib_") -> {
+                                val targetName = fileName.replace("libgphoto2_port_iolib_", "")
+                                val targetFile = java.io.File(portVersionDir, targetName)
+                                if (!targetFile.exists()) {
+                                    // 부모 디렉토리 생성 확인
+                                    targetFile.parentFile?.mkdirs()
+                                    apkFile.getInputStream(entry).use { input ->
+                                        targetFile.outputStream().use { output ->
+                                            input.copyTo(output)
+                                        }
                                     }
+                                    iolibCount++
                                 }
-                                camlibCount++
+                            }
+
+                            fileName.startsWith("libgphoto2_camlib_") -> {
+                                val targetName = fileName.replace("libgphoto2_camlib_", "")
+                                val targetFile = java.io.File(gphoto2VersionDir, targetName)
+                                if (!targetFile.exists()) {
+                                    // 부모 디렉토리 생성 확인
+                                    targetFile.parentFile?.mkdirs()
+                                    apkFile.getInputStream(entry).use { input ->
+                                        targetFile.outputStream().use { output ->
+                                            input.copyTo(output)
+                                        }
+                                    }
+                                    camlibCount++
+                                }
                             }
                         }
                     }
+                } finally {
+                    apkFile.close()
                 }
-            } finally {
-                apkFile.close()
             }
 
             Log.d(TAG, "플러그인 복사 완료: I/O=$iolibCount, Camera=$camlibCount")
