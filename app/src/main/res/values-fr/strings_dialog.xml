@@ -61,6 +61,7 @@
     <string name="progress_ptpip_complete_limited">Connecté (limité)</string>
     <string name="progress_ptpip_listener_error">Erreur d\'écoute d\'événements</string>
     <string name="progress_ptpip_setup_error">Erreur de configuration</string>
+    <string name="progress_ptpip_plugin_error">Installation incomplète (modules caméra manquants). Veuillez réinstaller l\'application.</string>
     <string name="progress_ptpip_failed">Échec : %1$s</string>
     <string name="progress_ptpip_error">Erreur de connexion : %1$s</string>
     <string name="progress_wifi_disconnected">Wi-Fi déconnecté. Reconnectez-vous.</string>
