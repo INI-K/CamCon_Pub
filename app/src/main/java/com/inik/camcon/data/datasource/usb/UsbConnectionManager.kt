@@ -80,7 +80,7 @@ class UsbConnectionManager @Inject constructor(
             0x04DA, // Panasonic
             0x07B4, // Olympus / OM System
             0x25FB, // Pentax / Ricoh
-            0x1843, // Leica
+            0x1A98, // Leica Camera AG (구 0x1843=Vaisala 오기 교정)
             0x1EDB, // Blackmagic Design (시네마)
         )
     }
