@@ -6,10 +6,12 @@ import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.repository.SubscriptionRepository
 import com.inik.camcon.domain.util.Logger
+import io.mockk.clearMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.emptyFlow
@@ -183,5 +185,48 @@ class GetSubscriptionUseCaseTest {
         // Then: refresh가 seed를 덮어써 최종 FREE
         val result = useCase().value
         assertEquals(SubscriptionTier.FREE, result.tier)
+    }
+
+    // === 회귀: logCurrentTier는 서버 재조회 없이 캐시값만 읽는다 (Firestore read 절감) ===
+
+    @Test
+    fun `logCurrentTier는 서버 재조회(getUserSubscription)를 트리거하지 않는다`() = runTest {
+        // Given: init에서 정당한 refresh 1회만 수행
+        coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(
+            Subscription(tier = SubscriptionTier.PRO)
+        )
+        coEvery { subscriptionRepository.syncSubscriptionStatus() } returns Unit
+
+        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, logger, this)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // init의 호출 기록만 지우고 stub(answers)은 유지 → logCurrentTier 단독 행위만 관찰
+        clearMocks(subscriptionRepository, answers = false)
+
+        // When: 진단 로그 호출
+        useCase.logCurrentTier()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then: 서버 재조회/동기화가 전혀 일어나지 않는다
+        coVerify(exactly = 0) { subscriptionRepository.getUserSubscription() }
+        coVerify(exactly = 0) { subscriptionRepository.syncSubscriptionStatus() }
+    }
+
+    @Test
+    fun `logCurrentTier는 캐시된 현재 티어값을 로그로 출력한다`() = runTest {
+        // Given: init refresh로 캐시 StateFlow가 PRO로 채워짐
+        coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(
+            Subscription(tier = SubscriptionTier.PRO)
+        )
+
+        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, logger, this)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // When
+        useCase.logCurrentTier()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then: 캐시된 값(PRO)이 티어 로그로 출력된다
+        verify { logger.i("GetSubscriptionUseCase", " 티어: PRO") }
     }
 }
