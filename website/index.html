@@ -13,7 +13,7 @@
   <meta property="og:url" content="https://camcon.inik.kr/">
   <meta property="og:title" content="CamCon — 셔터를 누르면, 필름룩 사진이 폰에 도착합니다">
   <meta property="og:description" content="카메라를 USB·Wi-Fi로 연결하고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보세요.">
-  <meta property="og:image" content="https://camcon.inik.kr/assets/img/og-card.png?v=3">
+  <meta property="og:image" content="https://camcon.inik.kr/assets/img/og-card.png?v=4">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:image:type" content="image/png">
@@ -21,7 +21,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="CamCon — 셔터를 누르면, 필름룩 사진이 폰에 도착합니다">
   <meta name="twitter:description" content="카메라를 USB·Wi-Fi로 연결하고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보세요.">
-  <meta name="twitter:image" content="https://camcon.inik.kr/assets/img/og-card.png?v=3">
+  <meta name="twitter:image" content="https://camcon.inik.kr/assets/img/og-card.png?v=4">
 
   <link rel="canonical" href="https://camcon.inik.kr/">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -43,7 +43,7 @@
     "applicationCategory": "MultimediaApplication",
     "description": "DSLR·미러리스 카메라를 USB·Wi-Fi로 연결하고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보는 시네마 카메라 컨트롤러",
     "url": "https://camcon.inik.kr/",
-    "image": "https://camcon.inik.kr/assets/img/og-card.png?v=3",
+    "image": "https://camcon.inik.kr/assets/img/og-card.png?v=4",
     "installUrl": "https://play.google.com/store/apps/details?id=com.inik.camcon",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "KRW" }
   }
@@ -212,8 +212,8 @@
               <p data-i18n="feat.film.d">실제 필름을 모델링한 3D LUT를 촬영 사진에 자동 적용. 수신과 동시에 필름룩이 입혀진 사진을 받습니다.</p>
             </div>
             <div class="feat-visual feat-split" aria-hidden="true">
-              <div class="half l"><img src="assets/film/hero-before.webp" alt="" loading="lazy" width="1280" height="854"></div>
-              <div class="half r"><img src="assets/film/hero-after-free-portra400.webp" alt="" loading="lazy" width="1280" height="854"></div>
+              <div class="half l"><img src="assets/film/ba-before-grid.webp" alt="" loading="lazy" width="1280" height="854"></div>
+              <div class="half r"><img src="assets/film/ba-after-free-portra400.webp" alt="" loading="lazy" width="1280" height="854"></div>
               <span class="line"></span>
               <span class="t l">ORIGINAL</span><span class="t r">PORTRA 400</span>
             </div>
@@ -273,8 +273,8 @@
         <!-- before / after (실제 LUT 적용) -->
         <div class="ba reveal">
           <div class="ba-frame">
-            <img class="ba-img ba-after" id="baAfter" src="assets/film/hero-after-free-portra400.webp" alt="필름 적용 후" data-i18n-attr="alt" data-i18n="films.afterAlt" width="1280" height="854">
-            <div class="ba-before-wrap"><img class="ba-img ba-before" src="assets/film/hero-before.webp" alt="원본" data-i18n-attr="alt" data-i18n="films.baBefore" width="1280" height="854"></div>
+            <img class="ba-img ba-after" id="baAfter" src="assets/film/ba-after-free-portra400.webp" alt="필름 적용 후" data-i18n-attr="alt" data-i18n="films.afterAlt" width="1280" height="854">
+            <div class="ba-before-wrap"><img class="ba-img ba-before" src="assets/film/ba-before-grid.webp" alt="원본" data-i18n-attr="alt" data-i18n="films.baBefore" width="1280" height="854"></div>
             <span class="ba-tag ba-tag-l" data-i18n="films.baBefore">원본</span>
             <span class="ba-tag ba-tag-r" id="baName" aria-live="polite">Kodak Portra 400</span>
             <div class="ba-divider" aria-hidden="true"><span class="ba-handle"></span></div>
@@ -286,24 +286,24 @@
         <div class="films-free reveal">
           <div class="films-free-label" data-i18n="films.freeLabel">Free Signature — 무료로 쓰는 시그니처 5종</div>
           <div class="free-strip">
-            <div class="swatch free is-active" role="button" tabindex="0" aria-label="Kodak Portra 400" data-after="assets/film/hero-after-free-portra400.webp" data-name="Kodak Portra 400"><img class="shot" src="assets/film/free-portra400.webp" alt="Kodak Portra 400" loading="lazy" width="760" height="608"><span class="tag-free">FREE</span><div class="meta"><span class="name">Kodak Portra 400</span></div></div>
-            <div class="swatch free" role="button" tabindex="0" aria-label="Fuji Velvia 50" data-after="assets/film/hero-after-free-velvia50.webp" data-name="Fuji Velvia 50"><img class="shot" src="assets/film/free-velvia50.webp" alt="Fuji Velvia 50" loading="lazy" width="760" height="608"><span class="tag-free">FREE</span><div class="meta"><span class="name">Fuji Velvia 50</span></div></div>
-            <div class="swatch free" role="button" tabindex="0" aria-label="Kodak Tri-X 400" data-after="assets/film/hero-after-free-trix400.webp" data-name="Kodak Tri-X 400"><img class="shot" src="assets/film/free-trix400.webp" alt="Kodak Tri-X 400" loading="lazy" width="760" height="608"><span class="tag-free">FREE</span><div class="meta"><span class="name">Kodak Tri-X 400</span></div></div>
-            <div class="swatch free" role="button" tabindex="0" aria-label="Classic Chrome" data-after="assets/film/hero-after-free-classicchrome.webp" data-name="Classic Chrome"><img class="shot" src="assets/film/free-classicchrome.webp" alt="Classic Chrome" loading="lazy" width="760" height="608"><span class="tag-free">FREE</span><div class="meta"><span class="name">Classic Chrome</span></div></div>
-            <div class="swatch free" role="button" tabindex="0" aria-label="Polaroid PX-680" data-after="assets/film/hero-after-free-px680.webp" data-name="Polaroid PX-680"><img class="shot" src="assets/film/free-px680.webp" alt="Polaroid PX-680" loading="lazy" width="760" height="608"><span class="tag-free">FREE</span><div class="meta"><span class="name">Polaroid PX-680</span></div></div>
+            <div class="swatch free is-active" role="button" tabindex="0" aria-label="Kodak Portra 400" data-before="assets/film/ba-before-grid.webp" data-after="assets/film/ba-after-free-portra400.webp" data-name="Kodak Portra 400"><img class="shot" src="assets/film/free-portra400.webp" alt="Kodak Portra 400" loading="lazy" width="760" height="608"><span class="tag-free">FREE</span><div class="meta"><span class="name">Kodak Portra 400</span></div></div>
+            <div class="swatch free" role="button" tabindex="0" aria-label="Fuji Velvia 50" data-before="assets/film/ba-before-alt.webp" data-after="assets/film/ba-after-free-velvia50.webp" data-name="Fuji Velvia 50"><img class="shot" src="assets/film/free-velvia50.webp" alt="Fuji Velvia 50" loading="lazy" width="760" height="608"><span class="tag-free">FREE</span><div class="meta"><span class="name">Fuji Velvia 50</span></div></div>
+            <div class="swatch free" role="button" tabindex="0" aria-label="Kodak Tri-X 400" data-before="assets/film/ba-before-hero.webp" data-after="assets/film/ba-after-free-trix400.webp" data-name="Kodak Tri-X 400"><img class="shot" src="assets/film/free-trix400.webp" alt="Kodak Tri-X 400" loading="lazy" width="760" height="608"><span class="tag-free">FREE</span><div class="meta"><span class="name">Kodak Tri-X 400</span></div></div>
+            <div class="swatch free" role="button" tabindex="0" aria-label="Classic Chrome" data-before="assets/film/ba-before-grid.webp" data-after="assets/film/ba-after-free-classicchrome.webp" data-name="Classic Chrome"><img class="shot" src="assets/film/free-classicchrome.webp" alt="Classic Chrome" loading="lazy" width="760" height="608"><span class="tag-free">FREE</span><div class="meta"><span class="name">Classic Chrome</span></div></div>
+            <div class="swatch free" role="button" tabindex="0" aria-label="Polaroid PX-680" data-before="assets/film/ba-before-alt.webp" data-after="assets/film/ba-after-free-px680.webp" data-name="Polaroid PX-680"><img class="shot" src="assets/film/free-px680.webp" alt="Polaroid PX-680" loading="lazy" width="760" height="608"><span class="tag-free">FREE</span><div class="meta"><span class="name">Polaroid PX-680</span></div></div>
           </div>
         </div>
 
         <div class="films-grid">
-          <div class="swatch film-cat reveal" role="button" tabindex="0" data-after="assets/film/hero-after-cat-bw.webp" data-name="Ilford Delta 100"><img class="shot" src="assets/film/cat-bw.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.bw">흑백</span><span class="n">25</span></div></div>
-          <div class="swatch film-cat reveal" data-delay="1" role="button" tabindex="0" data-after="assets/film/hero-after-cat-slide.webp" data-name="Fuji Provia 100"><img class="shot" src="assets/film/cat-slide.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.slide">컬러 슬라이드</span><span class="n">26</span></div></div>
-          <div class="swatch film-cat reveal" data-delay="2" role="button" tabindex="0" data-after="assets/film/hero-after-cat-xtrans.webp" data-name="Fuji Astia"><img class="shot" src="assets/film/cat-xtrans.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.xtrans">후지 X-Trans III</span><span class="n">15</span></div></div>
-          <div class="swatch film-cat reveal" role="button" tabindex="0" data-after="assets/film/hero-after-cat-instc.webp" data-name="Polaroid PX-70"><img class="shot" src="assets/film/cat-instc.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.instantc">인스턴트 컨슈머</span><span class="n">54</span></div></div>
-          <div class="swatch film-cat reveal" data-delay="1" role="button" tabindex="0" data-after="assets/film/hero-after-cat-instp.webp" data-name="Fuji FP-100C"><img class="shot" src="assets/film/cat-instp.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.instantp">인스턴트 프로</span><span class="n">68</span></div></div>
-          <div class="swatch film-cat reveal" data-delay="2" role="button" tabindex="0" data-after="assets/film/hero-after-cat-colorneg.webp" data-name="Fuji Superia 200"><img class="shot" src="assets/film/cat-colorneg.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.colorneg">컬러 네거티브</span><span class="n">13</span></div></div>
-          <div class="swatch film-cat reveal" role="button" tabindex="0" data-after="assets/film/hero-after-cat-negnew.webp" data-name="Fuji Pro 400H"><img class="shot" src="assets/film/cat-negnew.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.negnew">네거티브 뉴</span><span class="n">39</span></div></div>
-          <div class="swatch film-cat reveal" data-delay="1" role="button" tabindex="0" data-after="assets/film/hero-after-cat-negold.webp" data-name="Kodak Portra 160 NC"><img class="shot" src="assets/film/cat-negold.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.negold">네거티브 올드</span><span class="n">44</span></div></div>
-          <div class="swatch film-cat reveal" data-delay="2" role="button" tabindex="0" data-after="assets/film/hero-after-cat-print.webp" data-name="Kodak 2383"><img class="shot" src="assets/film/cat-print.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.print">프린트</span><span class="n">12</span></div></div>
+          <div class="swatch film-cat reveal" role="button" tabindex="0" data-before="assets/film/ba-before-alt.webp" data-after="assets/film/ba-after-cat-bw.webp" data-name="Ilford Delta 100"><img class="shot" src="assets/film/cat-bw.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.bw">흑백</span><span class="n">25</span></div></div>
+          <div class="swatch film-cat reveal" data-delay="1" role="button" tabindex="0" data-before="assets/film/ba-before-grid.webp" data-after="assets/film/ba-after-cat-slide.webp" data-name="Fuji Provia 100"><img class="shot" src="assets/film/cat-slide.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.slide">컬러 슬라이드</span><span class="n">26</span></div></div>
+          <div class="swatch film-cat reveal" data-delay="2" role="button" tabindex="0" data-before="assets/film/ba-before-hero.webp" data-after="assets/film/ba-after-cat-xtrans.webp" data-name="Fuji Astia"><img class="shot" src="assets/film/cat-xtrans.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.xtrans">후지 X-Trans III</span><span class="n">15</span></div></div>
+          <div class="swatch film-cat reveal" role="button" tabindex="0" data-before="assets/film/ba-before-hero.webp" data-after="assets/film/ba-after-cat-instc.webp" data-name="Polaroid PX-70"><img class="shot" src="assets/film/cat-instc.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.instantc">인스턴트 컨슈머</span><span class="n">54</span></div></div>
+          <div class="swatch film-cat reveal" data-delay="1" role="button" tabindex="0" data-before="assets/film/ba-before-alt.webp" data-after="assets/film/ba-after-cat-instp.webp" data-name="Fuji FP-100C"><img class="shot" src="assets/film/cat-instp.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.instantp">인스턴트 프로</span><span class="n">68</span></div></div>
+          <div class="swatch film-cat reveal" data-delay="2" role="button" tabindex="0" data-before="assets/film/ba-before-grid.webp" data-after="assets/film/ba-after-cat-colorneg.webp" data-name="Fuji Superia 200"><img class="shot" src="assets/film/cat-colorneg.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.colorneg">컬러 네거티브</span><span class="n">13</span></div></div>
+          <div class="swatch film-cat reveal" role="button" tabindex="0" data-before="assets/film/ba-before-grid.webp" data-after="assets/film/ba-after-cat-negnew.webp" data-name="Fuji Pro 400H"><img class="shot" src="assets/film/cat-negnew.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.negnew">네거티브 뉴</span><span class="n">39</span></div></div>
+          <div class="swatch film-cat reveal" data-delay="1" role="button" tabindex="0" data-before="assets/film/ba-before-hero.webp" data-after="assets/film/ba-after-cat-negold.webp" data-name="Kodak Portra 160 NC"><img class="shot" src="assets/film/cat-negold.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.negold">네거티브 올드</span><span class="n">44</span></div></div>
+          <div class="swatch film-cat reveal" data-delay="2" role="button" tabindex="0" data-before="assets/film/ba-before-alt.webp" data-after="assets/film/ba-after-cat-print.webp" data-name="Kodak 2383"><img class="shot" src="assets/film/cat-print.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.print">프린트</span><span class="n">12</span></div></div>
         </div>
         <p class="films-note reveal" data-i18n="films.note">전체 296종은 <strong>PRO</strong>에서 열립니다.</p>
       </div>
@@ -507,6 +507,6 @@
     </div>
   </footer>
 
-  <script src="assets/js/main.js?v=20260710" defer></script>
+  <script src="assets/js/main.js?v=20260710b" defer></script>
 </body>
 </html>
