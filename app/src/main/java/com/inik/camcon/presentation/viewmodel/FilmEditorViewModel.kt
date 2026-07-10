@@ -21,6 +21,7 @@ import com.inik.camcon.domain.usecase.ObserveEffectiveTierUseCase
 import com.inik.camcon.domain.usecase.ValidateFeatureAccessUseCase
 import com.inik.camcon.presentation.ui.screens.components.ImageProcessingUtils
 import com.inik.camcon.utils.LogcatManager
+import com.inik.camcon.utils.MediaStoreVolumes
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -525,7 +526,16 @@ class FilmEditorViewModel @Inject constructor(
                 put(MediaStore.Images.Media.IS_PENDING, 1)
             }
             val resolver = context.contentResolver
-            val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+            // 제거식 SD카드가 있으면 SD카드에 우선 저장, 없거나 탈거 경합이면 primary 볼륨으로 폴백.
+            val preferredUri = MediaStoreVolumes.preferredImagesUri(context)
+            // EXTERNAL_CONTENT_URI(집계 external)와는 볼륨명 표기가 달라 == 비교가 성립하지 않으므로 표기 통일.
+            val primaryUri =
+                MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+            var uri = resolver.insert(preferredUri, values)
+            if (uri == null && preferredUri != primaryUri) {
+                LogcatManager.w(TAG, "선호 볼륨 저장 실패 — primary 볼륨으로 재시도")
+                uri = resolver.insert(primaryUri, values)
+            }
             if (uri == null) {
                 saveToExternalFiles(source)
             } else {
