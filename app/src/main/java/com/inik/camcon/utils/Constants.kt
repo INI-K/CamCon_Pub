@@ -21,7 +21,7 @@ object Constants {
     }
 
     /**
-     * 파일 저장 관련 경로 - 외부 저장소 우선순위 시스템
+     * 파일 저장 관련 경로
      */
     object FilePaths {
         // 기본 앱 폴더명
@@ -29,57 +29,9 @@ object Constants {
         const val DCIM_BASE_DIR = "DCIM"
 
         /**
-         * 외부 저장소 우선순위 경로들 (SD카드 → 내장 외부 저장소)
-         */
-        val EXTERNAL_STORAGE_PRIORITY_PATHS = listOf(
-            // 1순위: SD카드 경로들
-            "/storage/sdcard1/$DCIM_BASE_DIR/$APP_FOLDER_NAME",        // SD카드
-            "/storage/external_sd/$DCIM_BASE_DIR/$APP_FOLDER_NAME",    // 외부 SD
-            "/storage/extSdCard/$DCIM_BASE_DIR/$APP_FOLDER_NAME",      // 외부 SD 다른 경로
-            "/storage/usbdisk/$DCIM_BASE_DIR/$APP_FOLDER_NAME",        // USB
-            "/storage/usb/$DCIM_BASE_DIR/$APP_FOLDER_NAME",            // USB 다른 경로
-            "/mnt/external_sd/$DCIM_BASE_DIR/$APP_FOLDER_NAME",        // 마운트된 SD
-            "/mnt/usb_storage/$DCIM_BASE_DIR/$APP_FOLDER_NAME",        // 마운트된 USB
-
-            // 2순위: 내장 외부 저장소 (기본)
-            "/storage/emulated/0/$DCIM_BASE_DIR/$APP_FOLDER_NAME"
-        )
-
-        /**
-         * 기본 내장 외부 저장소 경로
-         */
-        const val DEFAULT_EXTERNAL_STORAGE_PATH = "/storage/emulated/0"
-
-        /**
          * MediaStore 경로 (Android 10+)
          */
         fun getMediaStoreRelativePath(): String = "$DCIM_BASE_DIR/$APP_FOLDER_NAME"
-
-        /**
-         * 사용 가능한 외부 저장소 경로 찾기
-         */
-        fun findAvailableExternalStoragePath(): String {
-            // 우선순위에 따라 사용 가능한 경로 찾기
-            for (path in EXTERNAL_STORAGE_PRIORITY_PATHS) {
-                val parentPath = path.substring(0, path.lastIndexOf("/$DCIM_BASE_DIR"))
-                val parentDir = java.io.File(parentPath)
-
-                // 부모 디렉토리가 존재하고 쓰기 가능한지 확인
-                if (parentDir.exists() && parentDir.canWrite()) {
-                    // 실제 저장 디렉토리 생성 시도
-                    val targetDir = java.io.File(path)
-                    if (targetDir.exists() || targetDir.mkdirs()) {
-                        return path
-                    }
-                }
-            }
-
-            // 모든 경로 실패 시 기본 경로 반환
-            return "$DEFAULT_EXTERNAL_STORAGE_PATH/$DCIM_BASE_DIR/$APP_FOLDER_NAME"
-        }
-
-        // 사용자 설정 가능한 경로 키
-        const val DOWNLOAD_PATH_PREFERENCE_KEY = "custom_download_path"
 
         // 임시 파일 저장 디렉토리 (앱 내부)
         const val TEMP_CACHE_DIR = "temp_photos"
@@ -94,17 +46,6 @@ object Constants {
          */
         fun getAppSpecificDownloadDir(context: android.content.Context): String {
             return "$DCIM_BASE_DIR/${context.getString(com.inik.camcon.R.string.app_name)}"
-        }
-
-        /**
-         * 사용자 설정을 고려한 다운로드 경로
-         */
-        fun getDownloadPath(
-            context: android.content.Context,
-            preferences: android.content.SharedPreferences? = null
-        ): String {
-            return preferences?.getString(DOWNLOAD_PATH_PREFERENCE_KEY, null)
-                ?: findAvailableExternalStoragePath()
         }
     }
 
