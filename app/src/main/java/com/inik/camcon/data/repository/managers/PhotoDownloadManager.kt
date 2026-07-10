@@ -28,6 +28,7 @@ import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.domain.manager.PhotoCaptureEventManager
 import com.inik.camcon.utils.Constants
 import com.inik.camcon.utils.LogMask
+import com.inik.camcon.utils.MediaStoreVolumes
 import com.inik.camcon.di.IoDispatcher
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -1749,10 +1750,7 @@ class PhotoDownloadManager @Inject constructor(
             put(MediaStore.Images.Media.IS_PENDING, 1) // 저장 중 상태로 설정
         }
 
-        val uri = context.contentResolver.insert(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            contentValues
-        ) ?: run {
+        val uri = insertWithPreferredVolume(contentValues) ?: run {
             Log.e(TAG, "MediaStore URI 생성 실패")
             return null
         }
@@ -1794,6 +1792,29 @@ class PhotoDownloadManager @Inject constructor(
         // MediaStore 가 "KAY_0011 (1).JPG" 로 리네임해도 옛 "KAY_0011.JPG"(직전 컷 stale)를
         // 가리켜, 수신사진 목록/미리보기에 이전 촬영 이미지가 표시되는 버그를 유발하므로 DATA 를 우선한다.
         return getPathFromUri(uri) ?: buildActualSavedPath(fileNameWithFolder)
+    }
+
+    /**
+     * 제거식 SD카드가 있으면 SD카드 볼륨에 우선 insert 하고, 선호 볼륨이 primary 가 아닌데
+     * 실패(null 또는 예외 — 볼륨 탈거 경합 등)하면 primary 볼륨으로 1회 재시도한다.
+     * 반환 URI 는 볼륨별 content URI 라 이후 update/delete 흐름은 그대로 동작한다.
+     */
+    private fun insertWithPreferredVolume(contentValues: ContentValues): Uri? {
+        val preferredUri = MediaStoreVolumes.preferredImagesUri(context)
+        // EXTERNAL_CONTENT_URI(집계 external)와는 볼륨명 표기가 달라 == 비교가 성립하지 않으므로,
+        // 선호 URI 와 같은 표기(external_primary)로 만들어 'primary 면 재시도 스킵' 가드를 살린다.
+        val primaryUri =
+            MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        val uri = try {
+            context.contentResolver.insert(preferredUri, contentValues)
+        } catch (e: Exception) {
+            Log.w(TAG, "선호 볼륨 MediaStore insert 예외 — primary 폴백", e)
+            null
+        }
+        if (uri != null) return uri
+        if (preferredUri == primaryUri) return null
+        Log.w(TAG, "선호 볼륨 insert 실패($preferredUri) — primary 볼륨으로 재시도")
+        return context.contentResolver.insert(primaryUri, contentValues)
     }
 
     private fun queryDisplayName(uri: Uri): String? {
