@@ -283,7 +283,9 @@ main { position: relative; z-index: 2; counter-reset: folio; }
   color: var(--ink-dim); font-size: clamp(1.02rem, 1.5vw, 1.2rem);
   margin-top: 26px; max-width: 520px; line-height: 1.62; text-wrap: pretty;
 }
-.hero-actions { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 36px; }
+.hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 36px; }
+/* 히어로 배지: 공식 배지 PNG의 내장 여백 탓에 78px면 과대 — 보이는 배지 높이가 고스트 버튼(52px)과 맞도록 */
+.hero-actions .play-badge { height: 66px; }
 
 /* EXIF-style spec readout */
 .hero-specs {
@@ -754,7 +756,8 @@ main { position: relative; z-index: 2; counter-reset: folio; }
 .cta h2 { font-family: var(--sans); font-weight: 800; font-size: clamp(1.8rem, 4.2vw, 3.15rem); letter-spacing: -.02em; line-height: 1.12; text-wrap: balance; }
 .cta p { color: var(--ink-dim); margin-top: 18px; font-size: 1.08rem; max-width: 540px; margin-inline: auto; text-wrap: pretty; }
 .cta .btn { margin-top: 34px; }
-.play-badge-link { display: inline-block; margin-top: 30px; border-radius: 12px; }
+.play-badge-link { display: inline-block; border-radius: 12px; }
+.cta .play-badge-link { margin-top: 30px; }
 .play-badge { height: 78px; width: auto; transition: transform .2s var(--ease), filter .25s; }
 .play-badge-link:hover .play-badge { transform: translateY(-2px); filter: brightness(1.12); }
 
