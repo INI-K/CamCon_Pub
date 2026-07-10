@@ -127,6 +127,7 @@
 
   "cta.title": "Un flux où la prise de vue est déjà le résultat",
   "cta.sub": "À l'instant où vous déclenchez, la photo au rendu argentique arrive sur votre téléphone.",
+  "cta.badgeSrc": "assets/img/play/badge-fr.png",
 
   "footer.privacy": "Confidentialité",
   "footer.terms": "Conditions d'utilisation",

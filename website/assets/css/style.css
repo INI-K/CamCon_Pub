@@ -414,6 +414,49 @@ main { position: relative; z-index: 2; counter-reset: folio; }
 }
 .feat.span-2 { grid-column: span 2; }
 
+/* --- 벤토 대형 카드(텍스트 좌 + 비주얼 우). 비주얼 microcopy는 영문 mono = i18n 불필요 --- */
+.feat.has-visual { display: grid; grid-template-columns: 1.05fr .95fr; gap: 22px; align-items: center; }
+.feat.has-visual > div:first-child { min-width: 0; position: relative; }
+.feat-visual { position: relative; min-width: 0; }
+
+/* 필름: 미니 전/후 분할 */
+.feat-split { height: 152px; border-radius: 12px; overflow: hidden; border: 1px solid var(--hair-2); box-shadow: inset 0 1px 0 rgba(255,255,255,.08); }
+.feat-split .half { position: absolute; top: 0; bottom: 0; width: 50%; overflow: hidden; }
+.feat-split .half.l { left: 0; }
+.feat-split .half.r { right: 0; }
+.feat-split .half img { position: absolute; top: 0; height: 100%; width: 200%; max-width: none; object-fit: cover; }
+.feat-split .half.l img { left: 0; }
+.feat-split .half.r img { right: 0; }
+.feat-split .line { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: rgba(255,255,255,.85); transform: translateX(-1px); z-index: 2; }
+.feat-split .t { position: absolute; z-index: 3; top: 9px; font-family: var(--mono); font-size: 8.5px; letter-spacing: .12em; padding: 3px 8px; border-radius: 12px; background: rgba(6,6,8,.62); color: #fff; }
+.feat-split .t.l { left: 9px; }
+.feat-split .t.r { right: 9px; color: var(--amber-hi); }
+
+/* Wi-Fi: 카메라 → 폰 전송 흐름 */
+.feat-flow { display: flex; align-items: center; gap: 13px; padding: 20px 4px; }
+.flow-node { display: grid; justify-items: center; gap: 9px; }
+.flow-node svg { width: 30px; height: 30px; stroke: var(--amber); stroke-width: 1.5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.flow-node span { font-family: var(--mono); font-size: 8.5px; letter-spacing: .16em; color: var(--ink-mute); }
+.flow-line { position: relative; flex: 1; height: 1px; background: repeating-linear-gradient(90deg, var(--hair-2) 0 6px, transparent 6px 12px); }
+.flow-dot { position: absolute; top: -2.5px; left: 0; width: 6px; height: 6px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 8px var(--amber-35); animation: flowDot 2.8s linear infinite; }
+.flow-dot.d2 { animation-delay: .95s; }
+.flow-dot.d3 { animation-delay: 1.9s; }
+@keyframes flowDot {
+  0% { left: 0; opacity: 0; }
+  12% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { left: calc(100% - 6px); opacity: 0; }
+}
+
+/* RAW: NEF/JPG 칩 · 자동연결: 스캔 상태줄 */
+.feat-chips { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.chip-file { font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; color: var(--ink-dim); border: 1px solid var(--hair-2); padding: 9px 13px; border-radius: 8px; white-space: nowrap; background: rgba(255,255,255,.015); }
+.chip-file b { color: var(--ink); font-weight: 600; }
+.chip-file.amber { color: var(--amber); border-color: var(--amber-35); background: var(--amber-06); }
+.chip-file.amber b { color: var(--amber-hi); }
+.feat-scan { display: flex; align-items: center; justify-content: center; gap: 9px; font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; color: var(--ink-dim); white-space: nowrap; }
+.feat-scan::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 7px var(--amber); animation: blink 1.6s steps(1) infinite; }
+
 /* ============================================================
    FILMS
    ============================================================ */
@@ -711,6 +754,9 @@ main { position: relative; z-index: 2; counter-reset: folio; }
 .cta h2 { font-family: var(--sans); font-weight: 800; font-size: clamp(1.8rem, 4.2vw, 3.15rem); letter-spacing: -.02em; line-height: 1.12; text-wrap: balance; }
 .cta p { color: var(--ink-dim); margin-top: 18px; font-size: 1.08rem; max-width: 540px; margin-inline: auto; text-wrap: pretty; }
 .cta .btn { margin-top: 34px; }
+.play-badge-link { display: inline-block; margin-top: 30px; border-radius: 12px; }
+.play-badge { height: 78px; width: auto; transition: transform .2s var(--ease), filter .25s; }
+.play-badge-link:hover .play-badge { transform: translateY(-2px); filter: brightness(1.12); }
 
 .site-footer { border-top: 1px solid var(--hair); padding: 56px 0 40px; position: relative; z-index: 2; }
 .footer-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 28px; align-items: center; }
@@ -735,7 +781,9 @@ main { position: relative; z-index: 2; counter-reset: folio; }
   .reveal { opacity: 1; transform: none; transition: none; }
   .hero-stage::before, .hero-iris, .filmstrip-track, .hero-rec::before,
   .hero-title .accent, .hero-reticle,
-  #camCount::before, .btn-primary.is-disabled::after { animation: none !important; }
+  #camCount::before, .btn-primary.is-disabled::after,
+  .flow-dot, .feat-scan::before { animation: none !important; }
+  .flow-dot { opacity: 0; }
   .swatch:hover .shot, .feat:hover .feat-icon, .nav a:hover::after { transform: none; }
   .swatch.is-active { transform: none; }
   .swatch::after { display: none; }
@@ -768,6 +816,10 @@ main { position: relative; z-index: 2; counter-reset: folio; }
   .wrap { padding-inline: 20px; }
   .features-grid, .films-grid, .free-strip { grid-template-columns: 1fr 1fr; }
   .feat.span-2 { grid-column: span 2; }
+  .feat.has-visual { grid-template-columns: 1fr; gap: 18px; }
+  .feat-split { height: 124px; }
+  .feat-flow { padding: 6px 4px; }
+  .play-badge { height: 64px; }
   .free-strip {
     display: flex; grid-template-columns: none; gap: 12px;
     overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
