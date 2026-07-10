@@ -45,4 +45,7 @@
     <string name="fs_lut_locked_badge_cd">已锁定 — PRO 胶片</string>
     <string name="fs_lut_locked_notice">此胶片需要 PRO 套餐。升级选项即将推出。</string>
     <string name="fs_selected_film_locked_hint">当前套餐无法使用 — 已跳过自动应用。</string>
+
+    <!-- 기본 필름 선택 완료 토스트(%1$s = 필름 표시명) -->
+    <string name="film_default_set_toast">已设为默认胶片：%1$s</string>
 </resources>

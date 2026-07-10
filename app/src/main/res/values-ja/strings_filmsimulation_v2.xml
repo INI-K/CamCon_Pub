@@ -45,4 +45,7 @@
     <string name="fs_lut_locked_badge_cd">ロック中 — PRO フィルム</string>
     <string name="fs_lut_locked_notice">このフィルムには PRO プランが必要です。アップグレードオプションは近日提供予定です。</string>
     <string name="fs_selected_film_locked_hint">現在のプランでは使用できないため、自動適用はスキップされます。</string>
+
+    <!-- 기본 필름 선택 완료 토스트(%1$s = 필름 표시명) -->
+    <string name="film_default_set_toast">デフォルトフィルムを設定: %1$s</string>
 </resources>

@@ -45,4 +45,7 @@
     <string name="fs_lut_locked_badge_cd">잠김 — PRO 필름</string>
     <string name="fs_lut_locked_notice">이 필름은 PRO 플랜이 필요합니다. 업그레이드 옵션은 곧 지원될 예정입니다.</string>
     <string name="fs_selected_film_locked_hint">현재 플랜에서는 사용할 수 없어 자동 적용이 생략됩니다.</string>
+
+    <!-- 기본 필름 선택 완료 토스트(%1$s = 필름 표시명) -->
+    <string name="film_default_set_toast">기본 필름 설정: %1$s</string>
 </resources>
