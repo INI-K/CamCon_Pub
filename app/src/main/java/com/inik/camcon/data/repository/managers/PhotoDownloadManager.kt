@@ -84,6 +84,25 @@ class PhotoDownloadManager @Inject constructor(
             if (actual == null) return false
             return !requested.equals(actual, ignoreCase = true)
         }
+
+        /**
+         * 카메라 보고 파일명을 로컬 경로 조합에 안전한 basename 으로 정제(순수 함수, 단위 테스트 대상).
+         *
+         * JNI 콜백이 넘긴 카메라 파일명은 신뢰할 수 없어 "../" 등이 섞이면 앱 사설 저장소 내부/외부
+         * 파일을 덮어쓸 수 있다(경로 traversal). [File.name] 으로 basename 만 취해 경로 구분자를 제거하고,
+         * 결과가 blank·"."·".." 이거나 제어문자(ISO control)를 포함하면 유효하지 않은 것으로 보고 null 을 반환한다.
+         *
+         * @return 안전한 basename, 유효하지 않으면 null.
+         */
+        @JvmStatic
+        @androidx.annotation.VisibleForTesting
+        fun sanitizeCameraFileName(raw: String): String? {
+            val base = File(raw).name
+            if (base.isBlank()) return null
+            if (base == "." || base == "..") return null
+            if (base.any { it.isISOControl() }) return null
+            return base
+        }
     }
 
     /**
@@ -473,6 +492,17 @@ class PhotoDownloadManager @Inject constructor(
             var processedPath: String? = null
 
             try {
+                // 보안(경로 traversal 방어): 카메라가 보고한 fileName 은 신뢰할 수 없다. basename 으로
+                // 축약해 앱 사설 저장소 밖/내부 파일 조합을 차단한다. 무효면 저장을 중단하되,
+                // 아래 finally 의 markDone(fileName) 이 상류 markDownloading 항목을 정리해 진행 배지 고아를 막는다.
+                // 진행 카운트(markProcessing/markDone) 키는 상류 CameraEventManager.markDownloading(fileName)
+                // 과 일치해야 하므로 원본 fileName 을 그대로 쓰고, 경로/표시명 조합에만 safeFileName 을 쓴다.
+                val safeFileName = sanitizeCameraFileName(fileName)
+                if (safeFileName == null) {
+                    Log.w(TAG, "⛔ 유효하지 않은 카메라 파일명 — 저장 중단: $fileName")
+                    return@withContext null
+                }
+
                 // 전송 진행 카운트(요구 E3): 후처리·저장 단계 시작. 동일 fileName 이 DOWNLOADING 이었다면 PROCESSING 으로 전이.
                 // markProcessing 과 아래 finally 의 markDone 을 동일 try/finally 경계에 두어
                 // 디스패치 취소 시에도 markDone 이 반드시 짝지어지게 한다(누수 방지).
@@ -518,8 +548,8 @@ class PhotoDownloadManager @Inject constructor(
                     appPreferencesDataSource.colorTransferReferenceImagePath.first()
                 val colorTransferIntensity = appPreferencesDataSource.colorTransferIntensity.first()
 
-                // 임시 파일 생성하여 이미지 데이터 저장
-                tempFile = File(context.cacheDir, "temp_native_downloads/$fileName")
+                // 임시 파일 생성하여 이미지 데이터 저장 (정제된 basename 으로 경로 조합 — traversal 방어)
+                tempFile = File(context.cacheDir, "temp_native_downloads/$safeFileName")
                 if (!tempFile.parentFile?.exists()!!) {
                     tempFile.parentFile?.mkdirs()
                 }
@@ -682,9 +712,9 @@ class PhotoDownloadManager @Inject constructor(
 
                 // SAF를 사용한 후처리 (Android 10+에서 MediaStore로 이동)
                 val fileNameWithFolder = if (cameraSubFolder.isNotEmpty()) {
-                    "$cameraSubFolder/$fileName"
+                    "$cameraSubFolder/$safeFileName"
                 } else {
-                    fileName
+                    safeFileName
                 }
                 // Log.d(TAG, "📂 후처리 전 파일명 정보:")
                 // Log.d(TAG, "   원본 파일명: $fileName")
