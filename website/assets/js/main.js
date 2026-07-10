@@ -269,11 +269,9 @@ function normalizeCameraKey(input) {
   /* ══════════════ FAQ accordion ══════════════ */
   function initAccordion() {
     document.querySelectorAll(".acc-trigger").forEach(function (trigger) {
-      var panel = trigger.nextElementSibling;
       trigger.addEventListener("click", function () {
         var open = trigger.getAttribute("aria-expanded") === "true";
         trigger.setAttribute("aria-expanded", open ? "false" : "true");
-        panel.style.maxHeight = open ? null : panel.scrollHeight + "px";
       });
     });
   }
