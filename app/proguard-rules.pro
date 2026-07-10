@@ -1,7 +1,7 @@
 # CamCon - R8/ProGuard rules (lean)
 
-# 빌드 성능 최적화
--dontoptimize
+# 주의: -dontoptimize 를 켜면 R8 이 아래 -assumenosideeffects 로그 제거를 수행하지 않아
+# release 에 Log 호출·인자 문자열이 그대로 남는다(2026-07-10 dex 실증). 재도입 금지.
 
 # ---- 로그 최적화 ----
 # 릴리즈 빌드에서 로그 호출을 완전히 제거하여 성능 향상
