@@ -164,7 +164,7 @@ fun PhotoPreviewScreen(
                     currentPage = currentPage,
                     totalPages = totalPages,
                     currentFilter = currentFilter,
-                    canAccessRaw = canAccessRawTier(uiState.currentTier),
+                    canAccessRaw = uiState.canAccessRawFormats,
                     onFilterChange = { viewModel.changeFileTypeFilter(it) },
                     onRefresh = { viewModel.loadCameraPhotos() },
                     onForceLoadNext = { viewModel.forceLoadNextPage() }
@@ -268,7 +268,7 @@ fun PhotoPreviewScreen(
 
         // H7-A — 삭제 액션 게이팅: 카메라 capability + 구독 티어
         val canDelete = (cameraCapabilities?.canDeleteFiles == true) &&
-                canAccessRawTier(uiState.currentTier)
+                uiState.canAccessRawFormats
 
         val viewerContext = androidx.compose.ui.platform.LocalContext.current
 
@@ -386,12 +386,6 @@ fun PhotoPreviewScreen(
 }
 
 /* ----------------- Helpers / Components ----------------- */
-
-private fun canAccessRawTier(tier: com.inik.camcon.domain.model.SubscriptionTier): Boolean {
-    return tier == com.inik.camcon.domain.model.SubscriptionTier.PRO ||
-            tier == com.inik.camcon.domain.model.SubscriptionTier.REFERRER ||
-            tier == com.inik.camcon.domain.model.SubscriptionTier.ADMIN
-}
 
 /**
  * 상단 32dp StatusBar — 연결 상태 표시 (USB / PTPIP / 미연결).

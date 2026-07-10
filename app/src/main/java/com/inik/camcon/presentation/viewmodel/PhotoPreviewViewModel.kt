@@ -13,6 +13,7 @@ import com.inik.camcon.domain.model.resolve
 import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
+import com.inik.camcon.domain.usecase.ValidateFeatureAccessUseCase
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.domain.usecase.camera.DeleteCameraFileUseCase
 import com.inik.camcon.domain.usecase.camera.ResumeNativeOperationsUseCase
@@ -47,6 +48,8 @@ data class PhotoPreviewUiState(
     val isInitialized: Boolean = false,
     val isInitializing: Boolean = false,
     val currentTier: SubscriptionTier = SubscriptionTier.FREE,
+    // 미리보기 탭/RAW·전체포맷 접근 허용 여부. ValidateFeatureAccessUseCase 단일 지점 판정 결과(CLAUDE.md §2).
+    val canAccessRawFormats: Boolean = false,
     val isPtpipConnected: Boolean = false
 )
 
@@ -91,6 +94,7 @@ class PhotoPreviewViewModel @Inject constructor(
     private val getSubscriptionUseCase: GetSubscriptionUseCase,
     private val appSettingsRepository: AppSettingsRepository,
     private val validateImageFormatUseCase: ValidateImageFormatUseCase,
+    private val validateFeatureAccessUseCase: ValidateFeatureAccessUseCase,
 
     // 매니저 의존성 주입 (단일책임원칙 적용)
     private val photoListManager: PhotoListManager,
@@ -435,7 +439,12 @@ class PhotoPreviewViewModel @Inject constructor(
         tierObserveJob = viewModelScope.launch {
             getSubscriptionUseCase.getSubscriptionTier().collect { tier ->
                 Log.d(TAG, "사용자 구독 티어 변경: $tier")
-                _uiState.update { it.copy(currentTier = tier) }
+                _uiState.update {
+                    it.copy(
+                        currentTier = tier,
+                        canAccessRawFormats = validateFeatureAccessUseCase.isPhotoPreviewAllowed(tier)
+                    )
+                }
 
                 // 티어 변경 시 현재 필터에 따라 사진 목록 다시 필터링
                 photoListManager.changeFileTypeFilter(
