@@ -14,10 +14,9 @@
 
   "hero.eyebrow": "Cinema Camera Controller",
   "hero.title": "Pulsa el obturador y la <span class=\"accent\">foto con look de película</span> llega a tu móvil",
-  "hero.sub": "CamCon — Cinema Camera Controller. Conecta tu cámara por USB o Wi-Fi y recibe fotos con la simulación de película ya aplicada, justo al disparar.",
+  "hero.sub": "Conecta tu cámara por USB o Wi-Fi y recibe fotos con la simulación de película ya aplicada, justo al disparar.",
   "hero.cta": "Disponible en Google Play",
   "hero.explore": "Ver funciones",
-  "hero.meta": "PTP/IP · USB OTG · 296 simulaciones de película",
   "hero.specRaw": "Original intacto",
 
   "features.eyebrow": "Features",
@@ -55,7 +54,7 @@
   "films.note": "Las 296 se desbloquean con <strong>PRO</strong>.",
   "films.baBefore": "Original",
   "films.afterAlt": "Con película",
-  "films.baHint": "Arrastra el control para comparar el original y el look de película.",
+  "films.baHint": "Toca una película para cambiarla y arrastra el control para comparar el antes y el después.",
 
   "cameras.eyebrow": "Supported Cameras",
   "cameras.title": "¿Funcionará mi cámara?",
@@ -67,7 +66,7 @@
   "cameras.usbDesc": "Cámaras compatibles con PTP conectadas mediante cable USB-C (OTG). Admite las principales marcas: Nikon, Canon, Sony, Fujifilm, Panasonic, OM System (Olympus), Pentax, Ricoh, Leica y más.",
   "cameras.badgeBroad": "Amplia compatibilidad",
   "cameras.wifiRow": "Wi-Fi inalámbrico",
-  "cameras.wifiDesc": "La conexión inalámbrica (Wi-Fi) está actualmente <strong>verificada en modelos Nikon</strong> y se está ampliando. Otras marcas pueden conectarse al instante por USB, y funciones como captura, recepción y look de película son las mismas sin importar cómo te conectes.",
+  "cameras.wifiDesc": "La conexión inalámbrica (Wi-Fi) está actualmente <strong>verificada en modelos Nikon</strong> y se está ampliando. Otras marcas pueden conectarse al instante por USB.",
   "cameras.badgeNikon": "Nikon verificado",
   "cameras.badgeExpand": "Otras en expansión",
   "cameras.badgeSta": "Conecta con STA",

@@ -14,10 +14,9 @@
 
   "hero.eyebrow": "Cinema Camera Controller",
   "hero.title": "Premi l'otturatore e la <span class=\"accent\">foto con look pellicola</span> arriva sul telefono",
-  "hero.sub": "CamCon — Cinema Camera Controller. Collega la fotocamera via USB o Wi-Fi e ricevi foto con la simulazione pellicola già applicata, proprio mentre scatti.",
+  "hero.sub": "Collega la fotocamera via USB o Wi-Fi e ricevi foto con la simulazione pellicola già applicata, proprio mentre scatti.",
   "hero.cta": "Disponibile su Google Play",
   "hero.explore": "Scopri le funzioni",
-  "hero.meta": "PTP/IP · USB OTG · 296 simulazioni pellicola",
   "hero.specRaw": "Originale intatto",
 
   "features.eyebrow": "Features",
@@ -55,7 +54,7 @@
   "films.note": "Tutte le 296 si sbloccano con <strong>PRO</strong>.",
   "films.baBefore": "Originale",
   "films.afterAlt": "Con pellicola",
-  "films.baHint": "Trascina la maniglia per confrontare l'originale e il look pellicola.",
+  "films.baHint": "Tocca una pellicola per cambiarla e trascina la maniglia per confrontare prima e dopo.",
 
   "cameras.eyebrow": "Supported Cameras",
   "cameras.title": "La mia fotocamera funzionerà?",
@@ -67,7 +66,7 @@
   "cameras.usbDesc": "Fotocamere compatibili PTP collegate con un cavo USB-C (OTG). Supporta i principali produttori — Nikon, Canon, Sony, Fujifilm, Panasonic, OM System (Olympus), Pentax, Ricoh, Leica e altri.",
   "cameras.badgeBroad": "Ampio supporto",
   "cameras.wifiRow": "Wi-Fi wireless",
-  "cameras.wifiDesc": "La connessione wireless (Wi-Fi) è attualmente <strong>verificata sui modelli Nikon</strong> ed è in fase di ampliamento. Gli altri marchi possono collegarsi subito via USB e funzioni come scatto, ricezione e look pellicola sono identiche a prescindere dal tipo di connessione.",
+  "cameras.wifiDesc": "La connessione wireless (Wi-Fi) è attualmente <strong>verificata sui modelli Nikon</strong> ed è in fase di ampliamento. Gli altri marchi possono collegarsi subito via USB.",
   "cameras.badgeNikon": "Nikon verificata",
   "cameras.badgeExpand": "Altre in espansione",
   "cameras.badgeSta": "Si connette con STA",

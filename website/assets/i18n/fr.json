@@ -14,10 +14,9 @@
 
   "hero.eyebrow": "Cinema Camera Controller",
   "hero.title": "Vous déclenchez, et la <span class=\"accent\">photo au rendu argentique</span> arrive sur votre téléphone",
-  "hero.sub": "CamCon — Cinema Camera Controller. Connectez votre appareil en USB ou Wi-Fi et recevez des photos avec la simulation de pellicule déjà appliquée, dès le déclenchement.",
+  "hero.sub": "Connectez votre appareil en USB ou Wi-Fi et recevez des photos avec la simulation de pellicule déjà appliquée, dès le déclenchement.",
   "hero.cta": "Disponible sur Google Play",
   "hero.explore": "Voir les fonctions",
-  "hero.meta": "PTP/IP · USB OTG · 296 simulations de pellicule",
   "hero.specRaw": "Original intact",
 
   "features.eyebrow": "Features",
@@ -55,7 +54,7 @@
   "films.note": "Les 296 se débloquent avec <strong>PRO</strong>.",
   "films.baBefore": "Original",
   "films.afterAlt": "Avec le film",
-  "films.baHint": "Faites glisser la poignée pour comparer l'original et le rendu argentique.",
+  "films.baHint": "Touchez une pellicule pour en changer, puis faites glisser la poignée pour comparer l'avant et l'après.",
 
   "cameras.eyebrow": "Supported Cameras",
   "cameras.title": "Mon appareil est-il compatible ?",
@@ -67,7 +66,7 @@
   "cameras.usbDesc": "Appareils compatibles PTP connectés par câble USB-C (OTG). Prend en charge les grandes marques — Nikon, Canon, Sony, Fujifilm, Panasonic, OM System (Olympus), Pentax, Ricoh, Leica et plus.",
   "cameras.badgeBroad": "Prise en charge étendue",
   "cameras.wifiRow": "Wi-Fi sans fil",
-  "cameras.wifiDesc": "La connexion sans fil (Wi-Fi) est actuellement <strong>validée sur les modèles Nikon</strong> et s'étend progressivement. Les autres marques se connectent immédiatement en USB, et les fonctions comme la prise de vue, la réception et le rendu argentique restent les mêmes quel que soit le mode de connexion.",
+  "cameras.wifiDesc": "La connexion sans fil (Wi-Fi) est actuellement <strong>validée sur les modèles Nikon</strong> et s'étend progressivement. Les autres marques se connectent immédiatement en USB.",
   "cameras.badgeNikon": "Nikon vérifié",
   "cameras.badgeExpand": "Autres en extension",
   "cameras.badgeSta": "Connexion via STA",

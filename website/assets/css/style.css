@@ -267,6 +267,7 @@ main { position: relative; z-index: 2; counter-reset: folio; }
 /* 언어별 줄바꿈: 한국어는 어절 단위(keep-all), CJK 외 언어는 자연 줄바꿈 */
 :lang(ko) .hero-title,
 :lang(ko) .section-title,
+:lang(ko) .feat h3,
 :lang(ko) .cta h2 { word-break: keep-all; }
 .hero-title .accent {
   background: linear-gradient(100deg,
@@ -696,8 +697,11 @@ main { position: relative; z-index: 2; counter-reset: folio; }
 .acc-ico::after { left: 10px; top: 3px; bottom: 3px; width: 2px; }
 .acc-trigger[aria-expanded="true"] .acc-ico::after { transform: scaleY(0); }
 .acc-panel { display: grid; grid-template-rows: 0fr; overflow: hidden; transition: grid-template-rows .4s var(--ease); }
-.acc-panel > p { min-height: 0; overflow: hidden; padding: 0 4px 24px; color: var(--ink-dim); font-size: .98rem; line-height: 1.66; max-width: 680px; text-wrap: pretty; }
-.acc-trigger[aria-expanded="true"] + .acc-panel { grid-template-rows: 1fr; max-height: none !important; }
+/* 접힘은 grid 0fr 트릭 — 자식 p에 하단 padding이 있으면 트랙이 완전히 붕괴하지 않아
+   접힌 상태에서 답변 첫 줄이 새어 보인다. 하단 여백은 열림 상태에서만 부여. */
+.acc-panel > p { min-height: 0; overflow: hidden; padding: 0 4px; color: var(--ink-dim); font-size: .98rem; line-height: 1.66; max-width: 680px; text-wrap: pretty; transition: padding-bottom .4s var(--ease); }
+.acc-trigger[aria-expanded="true"] + .acc-panel { grid-template-rows: 1fr; }
+.acc-trigger[aria-expanded="true"] + .acc-panel > p { padding-bottom: 24px; }
 
 /* ============================================================
    CTA + FOOTER
@@ -735,7 +739,7 @@ main { position: relative; z-index: 2; counter-reset: folio; }
   .swatch:hover .shot, .feat:hover .feat-icon, .nav a:hover::after { transform: none; }
   .swatch.is-active { transform: none; }
   .swatch::after { display: none; }
-  .acc-panel, .nav a::after { transition: none; }
+  .acc-panel, .acc-panel > p, .nav a::after { transition: none; }
 }
 
 /* ============================================================
@@ -775,7 +779,11 @@ main { position: relative; z-index: 2; counter-reset: folio; }
   .hero-spec { flex: 1 1 0; min-width: 0; padding: 12px 10px; border-right: 1px solid var(--hair); }
   .hero-spec:last-child { border-right: none; }
   .hero-spec .k { font-size: 9.5px; letter-spacing: .1em; }
-  .hero-spec .v { font-size: 1.12rem; }
+  .hero-spec .v { font-size: 1.12rem; white-space: nowrap; }
   .cam-explorer-head { justify-content: flex-start; }
   .cam-explorer-head .cam-toggle { flex: 1 1 100%; justify-content: center; }
+}
+@media (max-width: 374px) {
+  .hero-spec { padding: 12px 8px; }
+  .hero-spec .v { font-size: .95rem; }
 }
