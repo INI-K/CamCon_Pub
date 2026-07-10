@@ -5,7 +5,9 @@ CamCon 홈페이지 — 필름 시뮬레이션 예시 사진 렌더러.
 앱에 실제로 탑재된 3D LUT(.cube)를 원본 사진에 적용해 '진짜 필름 룩' 예시를 만든다.
 - 원본: website/assets/samples/{grid,hero,alt}.jpg  (교체하려면 이 파일만 바꾸고 재실행)
   · 스와치 썸네일 = 3개 장면(grid=피오르, hero=설산, alt=폭포)을 섞어 단조로움 회피
-  · hero.jpg = 전/후 슬라이더용 (hero-after-*는 전부 이 장면 — 슬라이더 원본과 짝이므로 장면 고정)
+  · 전/후 슬라이더 = 장면별 원본 ba-before-<scene> 3장 + 스와치별 적용본 ba-after-<slug> 14장.
+    ba-after-<slug>는 그 스와치의 장면으로 렌더 — 스와치 클릭 시 index.html의 data-before/
+    data-after가 함께 교체되므로 두 속성의 장면 짝이 항상 맞아야 한다(이 스크립트가 보장).
 - 출력: website/assets/film/*.webp
 - LUT 원천: app/src/main/assets/luts/  (앱과 동일)
 
@@ -42,7 +44,7 @@ CATS = [
     ("cat-negold",   "negative_old/kodak_portra_160_nc.cube",       "hero"),
     ("cat-print",    "print/kodak_2383_constlclip.cube",            "alt"),
 ]
-# 전/후 슬라이더 '후' = 스와치 14종(FREE + CATS) 각각을 hero 사진에 적용
+# 전/후 슬라이더 '후' = 스와치 14종(FREE + CATS) 각각을 자기 장면에 적용
 
 
 def load_cube(path):
@@ -118,15 +120,17 @@ def main():
         fp = os.path.join(OUT, slug + ".webp")
         out.save(fp, "WEBP", quality=82, method=6)
         made.append((slug, os.path.getsize(fp)))
-    # 전/후 슬라이더 (3:2) — 원본 1장 + 필름별 적용본(스와치 클릭 미리보기용, 장면 고정=hero)
-    hero = load_base("hero", 1280, 854)
-    hero.save(os.path.join(OUT, "hero-before.webp"), "WEBP", quality=84, method=6)
-    made.append(("hero-before", os.path.getsize(os.path.join(OUT, "hero-before.webp"))))
-    for slug, lp, _scene in FREE + CATS:
+    # 전/후 슬라이더 (3:2) — 장면별 원본 3장 + 스와치별 적용본(각자 자기 장면과 짝)
+    ba_bases = {name: load_base(name, 1280, 854) for name in ("grid", "hero", "alt")}
+    for name, im in ba_bases.items():
+        fp = os.path.join(OUT, f"ba-before-{name}.webp")
+        im.save(fp, "WEBP", quality=84, method=6)
+        made.append((f"ba-before-{name}", os.path.getsize(fp)))
+    for slug, lp, scene in FREE + CATS:
         lut, size = load_cube(os.path.join(LUT_DIR, lp))
-        fp = os.path.join(OUT, "hero-after-" + slug + ".webp")
-        apply_lut(hero, lut, size).save(fp, "WEBP", quality=84, method=6)
-        made.append(("hero-after-" + slug, os.path.getsize(fp)))
+        fp = os.path.join(OUT, "ba-after-" + slug + ".webp")
+        apply_lut(ba_bases[scene], lut, size).save(fp, "WEBP", quality=84, method=6)
+        made.append(("ba-after-" + slug, os.path.getsize(fp)))
 
     total = sum(sz for _, sz in made)
     print(f"렌더 완료: {len(made)}장, 총 {total/1024:.0f} KB")

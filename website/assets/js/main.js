@@ -98,6 +98,7 @@ function normalizeCameraKey(input) {
     var after = document.getElementById("baAfter");
     var nameTag = document.getElementById("baName");
     if (!after || !nameTag) return;
+    var before = document.querySelector(".ba .ba-before");
     var swatches = document.querySelectorAll(".swatch[data-after]");
     if (!swatches.length) return;
     var ba = document.querySelector(".ba");
@@ -119,6 +120,9 @@ function normalizeCameraKey(input) {
         swatches[i].setAttribute("aria-pressed", on ? "true" : "false");
       }
       after.src = src;
+      // 원본도 스와치의 장면과 짝으로 교체 (data-before, 장면 매핑은 render_film_examples.py가 보장)
+      var bsrc = sw.getAttribute("data-before");
+      if (before && bsrc) before.src = bsrc;
       nameTag.textContent = sw.getAttribute("data-name") || "";
       // 좁은 화면에선 스와치가 슬라이더 아래라 결과가 안 보임 → 슬라이더로 스크롤
       if (ba && window.matchMedia("(max-width: 720px)").matches) {
@@ -136,7 +140,10 @@ function normalizeCameraKey(input) {
             select(sw);
           }
         });
-        sw.addEventListener("pointerenter", function () { preload(sw.getAttribute("data-after")); });
+        sw.addEventListener("pointerenter", function () {
+          preload(sw.getAttribute("data-after"));
+          preload(sw.getAttribute("data-before"));
+        });
       })(swatches[i]);
     }
   }
