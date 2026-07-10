@@ -151,6 +151,14 @@ private fun FilmEditorHost(
         }
     }
 
+    // select-only('기본 필름 선택') 진입인데 대상 사진이 없으면 번들 샘플을 자동 로드해 그리드를 즉시 보인다.
+    // (편집 모드는 진짜 대상 사진이 필요하므로 EmptySourcePrompt 유지 — 여기서 로드하지 않는다.)
+    LaunchedEffect(selectOnly) {
+        if (selectOnly && initialSourcePath == null && initialSourceUri == null) {
+            viewModel.ensureSampleSourceIfNeeded()
+        }
+    }
+
     val context = androidx.compose.ui.platform.LocalContext.current
 
     // 진입 시 전달된 content URI(갤러리 own-media, API29+)를 1회 처리.

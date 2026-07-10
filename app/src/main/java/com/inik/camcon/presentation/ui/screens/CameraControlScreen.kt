@@ -5,11 +5,14 @@ import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.graphics.ColorSpace
 import android.media.ExifInterface
+import android.widget.Toast
 import com.inik.camcon.utils.LogcatManager
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.imePadding
@@ -228,6 +231,33 @@ fun CameraControlScreen(
                 PipelineFeature.FILM_SIMULATION -> pipelineSwapFilmDisabledText
             }
         }
+    }
+
+    // FILM SIM 칩 롱프레스 → '기본 필름 선택'(select-only) 에디터를 열고 결과를 소비한다.
+    // 선택된 lutId 를 기본 필름으로 저장 + 필름 시뮬레이션 자동 적용을 켠다(선택=사용 의도) + 피드백 토스트.
+    val filmDefaultSelectLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val lutId = result.data
+                ?.getStringExtra(com.inik.camcon.presentation.ui.FilmEditorActivity.EXTRA_RESULT_LUT_ID)
+            if (!lutId.isNullOrEmpty()) {
+                appSettingsViewModel.setSelectedFilmLutId(lutId)
+                appSettingsViewModel.setFilmSimulationEnabled(true)
+                val name = filmLutDisplayName(lutId) ?: lutId
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.film_default_set_toast, name),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+    val onLongPressFilmSim: () -> Unit = {
+        filmDefaultSelectLauncher.launch(
+            Intent(context, com.inik.camcon.presentation.ui.FilmEditorActivity::class.java)
+                .putExtra(com.inik.camcon.presentation.ui.FilmEditorActivity.EXTRA_SELECT_ONLY, true)
+        )
     }
 
     // 다이얼로그 상태들
@@ -455,6 +485,7 @@ fun CameraControlScreen(
                             // GPU 정리(releaseGpu) 호출 금지 — 전역 싱글톤 파괴 위험(memory 규약).
                             appSettingsViewModel.setFilmSimulationEnabled(!isFilmSimulationEnabled)
                         },
+                        onLongPressFilmSim = onLongPressFilmSim,
                         isColorTransferEnabled = isColorTransferEnabled,
                         colorTransferReferenceImagePath = colorTransferReferenceImagePath,
                         onToggleColorTransfer = {
@@ -667,6 +698,7 @@ private fun PortraitCameraLayout(
     selectedFilmLutId: String = "",
     selectedFilmLutLocked: Boolean? = null,
     onToggleFilmSimulation: () -> Unit = {},
+    onLongPressFilmSim: () -> Unit = {},
     isColorTransferEnabled: Boolean = false,
     colorTransferReferenceImagePath: String? = null,
     onToggleColorTransfer: () -> Unit = {}
@@ -912,6 +944,7 @@ private fun PortraitCameraLayout(
                     selectedFilmLutId = selectedFilmLutId,
                     selectedFilmLutLocked = selectedFilmLutLocked,
                     onToggleFilmSimulation = onToggleFilmSimulation,
+                    onLongPressFilmSim = onLongPressFilmSim,
                     isColorTransferEnabled = isColorTransferEnabled,
                     colorTransferReferenceImagePath = colorTransferReferenceImagePath,
                     onToggleColorTransfer = onToggleColorTransfer,
@@ -938,6 +971,7 @@ private fun ImagePipelinePanel(
     selectedFilmLutId: String,
     selectedFilmLutLocked: Boolean?,
     onToggleFilmSimulation: () -> Unit,
+    onLongPressFilmSim: () -> Unit,
     isColorTransferEnabled: Boolean,
     colorTransferReferenceImagePath: String?,
     onToggleColorTransfer: () -> Unit,
@@ -973,11 +1007,8 @@ private fun ImagePipelinePanel(
                 isLocked = isFilmSimulationEnabled && selectedFilmLutLocked == true,
                 contentDescription = stringResource(R.string.cd_toggle_film_sim),
                 onTap = onToggleFilmSimulation,
-                onLongPress = {
-                    context.startActivity(
-                        Intent(context, com.inik.camcon.presentation.ui.FilmEditorActivity::class.java)
-                    )
-                }
+                // 롱프레스 = '기본 필름 선택'(select-only). 결과 소비는 CameraControlScreen 의 런처가 담당.
+                onLongPress = onLongPressFilmSim
             )
 
             // 색감전송 — 탭 토글 / 길게 = 색감전송 설정(레퍼런스 선택)

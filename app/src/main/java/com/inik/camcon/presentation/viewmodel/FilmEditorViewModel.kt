@@ -45,6 +45,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
 import javax.inject.Inject
 
 /**
@@ -428,6 +429,40 @@ class FilmEditorViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 대상 사진이 지정되지 않은 select-only 진입(설정/카메라 '기본 필름 선택')에서 번들 샘플 이미지를
+     * 자동 로드해 그리드가 즉시 보이게 한다. 편집 모드(실사진 편집)에서는 호출하지 않는다.
+     *
+     * 이미 소스가 있으면([sourcePath] != null) 무시한다(멱등). 진짜 편집은 사용자 대상 사진이 필요하므로
+     * 이 자동 로드는 [FilmEditorActivity] 가 select-only + 소스 미지정일 때만 호출해야 한다.
+     */
+    fun ensureSampleSourceIfNeeded() {
+        if (_sourcePath.value != null) return
+        viewModelScope.launch {
+            val file = withContext(ioDispatcher) { copySampleToCache() }
+            // 복사 도중 다른 소스가 설정됐으면(경합) 덮어쓰지 않는다.
+            if (file != null && _sourcePath.value == null) {
+                setSourceImage(file.absolutePath)
+            }
+        }
+    }
+
+    /**
+     * 번들 샘플 이미지(assets/[SAMPLE_ASSET_NAME])를 앱 cache 임시 파일로 복사하고 파일을 반환한다.
+     * 기존 URI 진입점([FilmEditorActivity.copyUriToCache])과 동일한 cache 디렉터리를 쓴다. 실패 시 null.
+     * 이미 복사돼 있으면 재사용한다(멱등). IO 스레드에서 호출할 것.
+     */
+    private fun copySampleToCache(): File? = runCatching {
+        val imageDir = File(context.cacheDir, "film_editor_images")
+        if (!imageDir.exists()) imageDir.mkdirs()
+        val target = File(imageDir, SAMPLE_ASSET_NAME)
+        if (target.exists() && target.length() > 0) return@runCatching target
+        context.assets.open(SAMPLE_ASSET_NAME).use { input ->
+            FileOutputStream(target).use { output -> input.copyTo(output) }
+        }
+        target
+    }.getOrNull()
+
     // ---- 지연 썸네일 ----
 
     /**
@@ -653,6 +688,9 @@ class FilmEditorViewModel @Inject constructor(
     companion object {
         private const val TAG = "FilmEditorViewModel"
         private const val MAX_PREVIEW_EDGE = 1280
+
+        /** 소스 미지정 select-only 진입 시 자동 로드하는 번들 샘플 이미지(assets 파일명). */
+        private const val SAMPLE_ASSET_NAME = "film_sample.webp"
 
         /**
          * 컨택트 시트 썸네일 소스의 긴 변(px).
