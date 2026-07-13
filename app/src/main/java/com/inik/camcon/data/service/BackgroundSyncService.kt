@@ -416,12 +416,15 @@ class BackgroundSyncService : Service() {
                             }
                         }
 
-                        updateNotificationText(getString(R.string.notif_bg_sync_waiting))
-
                         // 연결이 끊어지면 깨울 카메라가 없으므로 Wake Lock 해제 (배터리 절약)
                         releaseWakeLock()
 
-                        LogcatManager.d(TAG, " 카메라 연결 끊김 - 이벤트 리스너 관리 대기 모드로 전환")
+                        // 연결 해제 후 idle connectedDevice FGS·상시 알림이 무기한 잔존하지 않도록
+                        // 서비스를 self-stop 한다(Play 정책·전력 점유 방지). 알림 정리는 onDestroy의
+                        // detach(OWNER_SYNC)가 공유 알림 규약(남은 owner 복원/마지막이면 제거)대로 처리한다.
+                        // 재연결은 MainActivity(포그라운드 전이)·WifiMonitoringService(자동 연결)가 담당한다.
+                        LogcatManager.d(TAG, " 카메라 연결 끊김 - idle FGS 잔존 방지로 서비스 종료")
+                        stopSelf()
                     }
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {

@@ -89,7 +89,9 @@ fun HotspotStaModeContent(
     modifier: Modifier = Modifier,
 ) {
     val state = HotspotStaContentState.fromWifiState(wifiNetworkState)
-    val manualIp by ptpipViewModel.manualIp.collectAsState()
+    // 검증된 manualIp가 아니라 자유 타이핑 원문(manualIpInput)을 바인딩한다 — 검증된 값만 바인딩하면
+    // 부분 입력이 매 키 입력마다 거부·리셋돼 타이핑으로 완전한 IP를 만들 수 없었다(붙여넣기만 동작).
+    val manualIp by ptpipViewModel.manualIpInput.collectAsState()
     val context = LocalContext.current
 
     // 핫스팟 설정을 켜고 화면으로 돌아오면 상태를 다시 읽어 히어로/검색 활성을 갱신한다.
