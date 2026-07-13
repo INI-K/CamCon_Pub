@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<!--
+  OG 공유 카드 템플릿 (1200×630) — assets/img/og-card.png 의 정본 소스.
+  렌더:
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+      --headless=new --disable-gpu --hide-scrollbars --window-size=1200,630 \
+      --screenshot=../assets/img/og-card.png --virtual-time-budget=15000 \
+      "file://$(pwd)/og-card.html"
+  변경 시 index.html 의 og:image ?v= 캐시버스트도 함께 올릴 것.
+-->
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+  * { margin: 0; box-sizing: border-box; }
+  html, body { width: 1200px; height: 630px; overflow: hidden; }
+  body {
+    position: relative;
+    font-family: "Pretendard Variable", Pretendard, sans-serif;
+    background:
+      radial-gradient(46% 40% at 82% 20%, rgba(235,162,60,.16), transparent 62%),
+      radial-gradient(50% 44% at 12% 88%, rgba(183,124,34,.12), transparent 65%),
+      #0A0A0C;
+    color: #F4F1E9;
+  }
+  /* 은은한 측량 그리드 */
+  body::before {
+    content: ""; position: absolute; inset: 0; opacity: .42;
+    background:
+      linear-gradient(#26262F 1px, transparent 1px) 0 0 / 100% 90px,
+      linear-gradient(90deg, #26262F 1px, transparent 1px) 0 0 / 90px 100%;
+    -webkit-mask-image: radial-gradient(85% 80% at 50% 45%, #000 25%, transparent 80%);
+  }
+  /* 모서리 리티클 */
+  .tick { position: absolute; width: 44px; height: 44px; border: 3px solid #B77C22; opacity: .85; }
+  .tick.tl { top: 42px; left: 42px; border-right: none; border-bottom: none; border-radius: 6px 0 0 0; }
+  .tick.tr { top: 42px; right: 42px; border-left: none; border-bottom: none; border-radius: 0 6px 0 0; }
+  .tick.bl { bottom: 42px; left: 42px; border-right: none; border-top: none; border-radius: 0 0 0 6px; }
+  .tick.br { bottom: 42px; right: 42px; border-left: none; border-top: none; border-radius: 0 0 6px 0; }
+
+  .copy { position: absolute; left: 96px; top: 50%; transform: translateY(-50%); z-index: 2; }
+  .eyebrow {
+    font-family: "JetBrains Mono", monospace; font-size: 21px; font-weight: 500;
+    letter-spacing: .32em; color: #EBA23C; margin-bottom: 22px;
+  }
+  .brand { font-size: 88px; font-weight: 800; letter-spacing: -.03em; line-height: 1; }
+  .brand b { color: #EBA23C; font-weight: 800; }
+  .tagline { margin-top: 30px; font-size: 39px; font-weight: 700; line-height: 1.38; letter-spacing: -.02em; word-break: keep-all; }
+  .tagline .accent { color: #F7C266; }
+  .spec {
+    margin-top: 34px; font-family: "JetBrains Mono", monospace;
+    font-size: 21px; color: #A3A1AB; letter-spacing: .02em;
+  }
+  .spec b { color: #EBA23C; font-weight: 500; }
+
+  /* 우측: 전/후 필름 카드 스택 */
+  .stack { position: absolute; right: 74px; top: 50%; transform: translateY(-50%); z-index: 1; width: 470px; height: 314px; }
+  .card {
+    position: absolute; inset: 0; border-radius: 16px; overflow: hidden;
+    border: 1px solid rgba(235,162,60,.28);
+    box-shadow: 0 40px 80px -30px rgba(0,0,0,.9), 0 0 40px -10px rgba(235,162,60,.18);
+  }
+  .card.back {
+    transform: rotate(4.5deg) translate(16px, -20px); opacity: .55;
+    border-color: rgba(235,162,60,.16); filter: saturate(1.15);
+  }
+  .card.front { transform: rotate(-2.5deg); background: #060608; }
+  .card img { position: absolute; top: 0; bottom: 0; height: 100%; width: auto; object-fit: cover; }
+  .half { position: absolute; top: 0; bottom: 0; overflow: hidden; }
+  .half.l { left: 0; width: 50%; }
+  .half.r { right: 0; width: 50%; }
+  .half.l img { left: 0; width: 200%; max-width: none; }
+  .half.r img { right: 0; width: 200%; max-width: none; }
+  .divider {
+    position: absolute; top: 0; bottom: 0; left: 50%; width: 3px; z-index: 3;
+    background: rgba(255,255,255,.92); transform: translateX(-1.5px);
+    box-shadow: 0 0 16px rgba(0,0,0,.6);
+  }
+  .knob {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 4;
+    width: 40px; height: 40px; border-radius: 50%; background: rgba(10,10,12,.66);
+    border: 2.5px solid #fff;
+  }
+  .knob::before, .knob::after { content: ""; position: absolute; top: 50%; border-block: 5px solid transparent; }
+  .knob::before { left: 8px; border-right: 7px solid #fff; transform: translateY(-50%); }
+  .knob::after  { right: 8px; border-left: 7px solid #fff; transform: translateY(-50%); }
+  .tag {
+    position: absolute; top: 13px; z-index: 4; font-family: "JetBrains Mono", monospace;
+    font-size: 13.5px; letter-spacing: .1em; padding: 6px 13px; border-radius: 20px;
+    background: rgba(6,6,8,.62); color: #fff;
+  }
+  .tag.l { left: 13px; }
+  .tag.r { right: 13px; color: #F7C266; }
+</style>
+</head>
+<body>
+  <div class="tick tl"></div><div class="tick tr"></div><div class="tick bl"></div><div class="tick br"></div>
+
+  <div class="copy">
+    <div class="eyebrow">CINEMA CAMERA CONTROLLER</div>
+    <div class="brand">Cam<b>Con</b></div>
+    <div class="tagline">셔터를 누르면, <span class="accent">필름룩 사진</span>이<br>폰에 도착합니다</div>
+    <div class="spec">USB·Wi-Fi 테더링 <b>·</b> 필름 시뮬레이션 296종</div>
+  </div>
+
+  <div class="stack">
+    <div class="card back"><img src="../assets/film/ba-after-free-velvia50.webp" alt=""></div>
+    <div class="card front">
+      <div class="half l"><img src="../assets/film/ba-before-grid.webp" alt=""></div>
+      <div class="half r"><img src="../assets/film/ba-after-free-portra400.webp" alt=""></div>
+      <div class="divider"></div>
+      <div class="knob"></div>
+      <span class="tag l">원본</span>
+      <span class="tag r">PORTRA 400</span>
+    </div>
+  </div>
+</body>
+</html>
