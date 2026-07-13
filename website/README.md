@@ -13,11 +13,13 @@ website/
 │   ├── js/main.js                  i18n·탭·아코디언·리빌·스크롤스파이·카메라 탐색기 (의존성 0)
 │   ├── img/
 │   │   ├── app-icon.png            실제 앱 아이콘 (파비콘·헤더·히어로 공용)
-│   │   └── og-card.svg             OG 공유 카드
+│   │   ├── apple-touch-icon.png    iOS 홈화면 아이콘 (180px 불투명 — iOS는 SVG 미지원)
+│   │   └── og-card.png             OG 공유 카드 (정본 소스: tools/og-card.html)
 │   ├── data/supported-cameras.json 표준 PTP 카메라 드라이버 파싱 산출물 (지원 모델 목록)
 │   └── i18n/{ko,en,ja,zh,de,es,fr,it}.json  8개 언어 번역 (런타임 로딩)
 ├── tools/
-│   └── generate_supported_cameras.py  supported-cameras.json 생성기
+│   ├── generate_supported_cameras.py  supported-cameras.json 생성기
+│   └── og-card.html                og-card.png 렌더 템플릿 (헤드리스 크롬, 렌더법은 파일 상단 주석)
 ├── nginx.conf                      gzip · 정적 캐시 헤더 · 단순 서빙
 ├── Dockerfile                      nginx:alpine
 └── docker-compose.yml              camcon-web, 8091:80
