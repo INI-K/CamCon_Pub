@@ -347,4 +347,14 @@
     <string name="ptpip_shutter_listen_start">Démarrer la réception sans fil du déclencheur physique</string>
     <string name="ptpip_shutter_listen_stop">Arrêter la réception sans fil</string>
     <string name="ptpip_no_camera_search_first">Aucun appareil photo — recherchez d\'abord un appareil en mode STA</string>
+    <!-- === 미백필 진짜 누락 9키 (라이선스 화면 + camera_preview_live_view) === -->
+    <string name="open_source_licenses">Licences open source</string>
+    <string name="licenses_description">Cette application utilise les bibliothèques open source suivantes :</string>
+    <string name="licenses_thanks">Merci à tous les contributeurs open source.</string>
+    <string name="native_libraries">Bibliothèques natives</string>
+    <string name="gradle_dependencies">Dépendances Gradle</string>
+    <string name="gradle_dependencies_desc">Appuyez pour afficher toutes les licences des dépendances Gradle</string>
+    <string name="license_version">Version :</string>
+    <string name="license_type">Licence :</string>
+    <string name="camera_preview_live_view">Visée en direct</string>
 </resources>
