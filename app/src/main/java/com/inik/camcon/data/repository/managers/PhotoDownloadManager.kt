@@ -1174,9 +1174,11 @@ class PhotoDownloadManager @Inject constructor(
 
                     // 회전 적용
                     rotatedBitmap = rotateImageIfRequired(resizedBitmap, orientation)
+                    // 픽셀이 실제로 회전됐는지 — 회전 시 새 비트맵을 반환하고, NORMAL·메모리부족·OOM 은 원본을 그대로 돌려준다.
+                    val rotationApplied = rotatedBitmap !== resizedBitmap
 
                     // 리사이즈된 비트맵 즉시 해제 (회전된 것과 다른 경우)
-                    if (rotatedBitmap != resizedBitmap) {
+                    if (rotationApplied) {
                         resizedBitmap.recycle()
                         resizedBitmap = null
                     }
@@ -1188,8 +1190,8 @@ class PhotoDownloadManager @Inject constructor(
                         rotatedBitmap.compress(compressFormat, compressQuality, out)
                     }
 
-                    // 모든 EXIF 정보를 새 파일에 복사
-                    copyAllExifData(inputPath, outputPath, newWidth, newHeight)
+                    // 모든 EXIF 정보를 새 파일에 복사 (회전 적용 여부에 따라 orientation 태그 재설정)
+                    copyAllExifData(inputPath, outputPath, newWidth, newHeight, rotationApplied)
 
                     val outputFile = File(outputPath)
                     val finalSize = outputFile.length()
@@ -1240,7 +1242,8 @@ class PhotoDownloadManager @Inject constructor(
         originalPath: String,
         newPath: String,
         newWidth: Int,
-        newHeight: Int
+        newHeight: Int,
+        rotationApplied: Boolean
     ) {
         try {
             Log.d(TAG, "EXIF 정보 복사 시작: ${LogMask.path(originalPath)} -> ${LogMask.path(newPath)}")
@@ -1317,10 +1320,8 @@ class PhotoDownloadManager @Inject constructor(
                 ExifInterface.TAG_PRIMARY_CHROMATICITIES,
                 ExifInterface.TAG_Y_CB_CR_COEFFICIENTS,
                 ExifInterface.TAG_Y_CB_CR_POSITIONING,
-                ExifInterface.TAG_Y_CB_CR_SUB_SAMPLING,
-
-                // 방향 정보 (변경되지 않음 - 회전은 이미 적용됨)
-                ExifInterface.TAG_ORIENTATION
+                ExifInterface.TAG_Y_CB_CR_SUB_SAMPLING
+                // 방향(TAG_ORIENTATION)은 아래에서 회전 적용 여부에 따라 별도 처리 — 원본값 그대로 복사 금지(이중 회전 방지)
             )
 
             var copiedCount = 0
@@ -1330,6 +1331,19 @@ class PhotoDownloadManager @Inject constructor(
                 if (value != null) {
                     newExif.setAttribute(tag, value)
                     copiedCount++
+                }
+            }
+
+            // 방향 태그: 픽셀 회전을 실제로 적용했으면 NORMAL 로 재설정해 뷰어·후속 색감/필름 단계의 이중 회전을 막는다.
+            // 회전을 건너뛴 경우(NORMAL·메모리 부족·OOM)엔 원본 orientation 을 보존해 뷰어 자동 회전에 맡긴다.
+            if (rotationApplied) {
+                newExif.setAttribute(
+                    ExifInterface.TAG_ORIENTATION,
+                    ExifInterface.ORIENTATION_NORMAL.toString()
+                )
+            } else {
+                originalExif.getAttribute(ExifInterface.TAG_ORIENTATION)?.let {
+                    newExif.setAttribute(ExifInterface.TAG_ORIENTATION, it)
                 }
             }
 

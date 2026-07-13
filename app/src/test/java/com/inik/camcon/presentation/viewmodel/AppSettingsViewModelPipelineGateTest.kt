@@ -2,6 +2,7 @@ package com.inik.camcon.presentation.viewmodel
 
 import android.content.Context
 import app.cash.turbine.test
+import com.inik.camcon.domain.model.Subscription
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.usecase.ColorTransferUseCase
@@ -75,6 +76,11 @@ class AppSettingsViewModelPipelineGateTest {
         every { appSettingsRepository.isColorTransferEnabled } returns colorEnabledFlow
         every { appSettingsRepository.selectedFilmLutId } returns selectedFilmLutIdFlow
         every { getSubscriptionUseCase.getSubscriptionTier() } returns flowOf(SubscriptionTier.FREE)
+        // ObserveEffectiveTierUseCase 는 이제 invoke()(전체 Subscription)를 읽는다. 비권위 FREE 로 두어
+        // 유효 티어를 pref(subscriptionTierEnum)로 제어하는 기존 병합(비권위=pref 우선)을 유지한다.
+        every { getSubscriptionUseCase.invoke() } returns MutableStateFlow(
+            Subscription(tier = SubscriptionTier.FREE, isAuthoritative = false)
+        )
 
         coEvery { appSettingsRepository.setColorTransferEnabled(any()) } returns Unit
         coEvery { appSettingsRepository.setFilmSimulationEnabled(any()) } returns Unit

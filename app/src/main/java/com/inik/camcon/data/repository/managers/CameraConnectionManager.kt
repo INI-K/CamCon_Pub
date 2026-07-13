@@ -194,6 +194,11 @@ class CameraConnectionManager @Inject constructor(
                 // 네이티브 카메라 연결 해제
                 nativeDataSource.closeCamera()
 
+                // UsbConnectionManager 의 연결 추적 상태도 리셋한다. 누락 시
+                // _isNativeCameraConnected / lastInitializedFd / currentConnection 이 stale true 로 남아
+                // 재연결이 '이미 연결됨'으로 조기 성공(네이티브는 닫힘 → UI 만 연결로 오표시)한다.
+                usbCameraManager.resetConnectionStateForDisconnect()
+
                 _isConnected.value = false
                 _isPtpipConnected.value = false
                 _cameraFeed.value = emptyList()
