@@ -345,4 +345,15 @@
     <string name="ptpip_shutter_listen_start">Avvia ricezione wireless dello scatto fisico</string>
     <string name="ptpip_shutter_listen_stop">Arresta ricezione wireless</string>
     <string name="ptpip_no_camera_search_first">Nessuna fotocamera — cerca prima una fotocamera in modalità STA</string>
+
+    <!-- i18n 누락 보강: 백필 미포함 잔여 (2026-07-13) -->
+    <string name="open_source_licenses">Licenze Open Source</string>
+    <string name="licenses_description">Questa app utilizza le seguenti librerie open source:</string>
+    <string name="licenses_thanks">Grazie a tutti i collaboratori open source.</string>
+    <string name="native_libraries">Librerie Native</string>
+    <string name="gradle_dependencies">Dipendenze Gradle</string>
+    <string name="gradle_dependencies_desc">Tocca per vedere tutte le licenze delle dipendenze Gradle</string>
+    <string name="license_version">Versione:</string>
+    <string name="license_type">Licenza:</string>
+    <string name="camera_preview_live_view">Live View</string>
 </resources>

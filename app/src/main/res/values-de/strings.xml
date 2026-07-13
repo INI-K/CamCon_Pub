@@ -345,4 +345,14 @@
     <string name="ptpip_shutter_listen_start">Drahtlosen Empfang des physischen Auslösers starten</string>
     <string name="ptpip_shutter_listen_stop">Drahtlosen Empfang stoppen</string>
     <string name="ptpip_no_camera_search_first">Keine Kamera — bitte zuerst im STA-Modus nach einer Kamera suchen</string>
+    <!-- === 미백필 진짜 누락 9키 (라이선스 화면 + camera_preview_live_view) === -->
+    <string name="open_source_licenses">Open-Source-Lizenzen</string>
+    <string name="licenses_description">Diese App verwendet die folgenden Open-Source-Bibliotheken:</string>
+    <string name="licenses_thanks">Vielen Dank an alle Open-Source-Mitwirkenden.</string>
+    <string name="native_libraries">Native Bibliotheken</string>
+    <string name="gradle_dependencies">Gradle-Abhängigkeiten</string>
+    <string name="gradle_dependencies_desc">Tippen Sie, um alle Lizenzen der Gradle-Abhängigkeiten anzuzeigen</string>
+    <string name="license_version">Version:</string>
+    <string name="license_type">Lizenz:</string>
+    <string name="camera_preview_live_view">Live-Ansicht</string>
 </resources>

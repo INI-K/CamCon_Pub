@@ -357,4 +357,7 @@
     <string name="ptpip_shutter_listen_start">물리 셔터 무선 수신 시작</string>
     <string name="ptpip_shutter_listen_stop">무선 수신 중지</string>
     <string name="ptpip_no_camera_search_first">카메라가 없습니다 — 먼저 STA 모드에서 카메라를 검색하세요</string>
+
+    <!-- 카메라 미리보기 (i18n 정기 점검, 2026-07-13) -->
+    <string name="camera_preview_live_view">라이브뷰</string>
 </resources>

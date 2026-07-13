@@ -347,4 +347,15 @@
     <string name="ptpip_shutter_listen_start">物理シャッターのワイヤレス受信を開始</string>
     <string name="ptpip_shutter_listen_stop">ワイヤレス受信を停止</string>
     <string name="ptpip_no_camera_search_first">カメラがありません — まずSTAモードでカメラを検索してください</string>
+
+    <!-- i18n 패리티 보강: 오픈소스 라이선스 + 라이브뷰 (2026-07-13, backfill 미포함 잔여 9키) -->
+    <string name="camera_preview_live_view">ライブビュー</string>
+    <string name="open_source_licenses">オープンソースライセンス</string>
+    <string name="licenses_description">このアプリは以下のオープンソースライブラリを使用しています:</string>
+    <string name="licenses_thanks">すべてのオープンソース貢献者に感謝します。</string>
+    <string name="native_libraries">ネイティブライブラリ</string>
+    <string name="gradle_dependencies">Gradle依存関係</string>
+    <string name="gradle_dependencies_desc">タップしてすべてのGradle依存関係のライセンスを表示</string>
+    <string name="license_version">バージョン:</string>
+    <string name="license_type">ライセンス:</string>
 </resources>

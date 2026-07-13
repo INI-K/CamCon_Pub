@@ -343,4 +343,17 @@
     <string name="ptpip_shutter_listen_start">开始无线接收物理快门</string>
     <string name="ptpip_shutter_listen_stop">停止无线接收</string>
     <string name="ptpip_no_camera_search_first">没有相机 — 请先在 STA 模式下搜索相机</string>
+
+    <!-- i18n 패리티 보강: 오픈소스 라이선스 + 라이브뷰 + USB (2026-07-13, backfill 미포함 잔여 11키) -->
+    <string name="camera_preview_live_view">实时取景</string>
+    <string name="open_source_licenses">开源许可证</string>
+    <string name="licenses_description">本应用使用以下开源库：</string>
+    <string name="licenses_thanks">感谢所有开源贡献者。</string>
+    <string name="native_libraries">原生库</string>
+    <string name="gradle_dependencies">Gradle 依赖项</string>
+    <string name="gradle_dependencies_desc">点按查看所有 Gradle 依赖项许可证</string>
+    <string name="license_version">版本：</string>
+    <string name="license_type">许可证：</string>
+    <string name="refresh_usb">刷新 USB</string>
+    <string name="request_usb_permission">请求 USB 权限</string>
 </resources>

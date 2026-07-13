@@ -343,4 +343,17 @@
     <string name="ptpip_shutter_listen_start">Iniciar recepción inalámbrica del obturador físico</string>
     <string name="ptpip_shutter_listen_stop">Detener recepción inalámbrica</string>
     <string name="ptpip_no_camera_search_first">No hay cámara — busca primero una cámara en modo STA</string>
+
+    <!-- i18n 누락 보강: 백필 미포함 잔여 (2026-07-13) -->
+    <string name="open_source_licenses">Licencias de Código Abierto</string>
+    <string name="licenses_description">Esta app utiliza las siguientes bibliotecas de código abierto:</string>
+    <string name="licenses_thanks">Gracias a todos los colaboradores de código abierto.</string>
+    <string name="native_libraries">Bibliotecas Nativas</string>
+    <string name="gradle_dependencies">Dependencias de Gradle</string>
+    <string name="gradle_dependencies_desc">Toca para ver todas las licencias de dependencias de Gradle</string>
+    <string name="license_version">Versión:</string>
+    <string name="license_type">Licencia:</string>
+    <string name="refresh_usb">Actualizar USB</string>
+    <string name="request_usb_permission">Solicitar Permiso USB</string>
+    <string name="camera_preview_live_view">Vista en vivo</string>
 </resources>
