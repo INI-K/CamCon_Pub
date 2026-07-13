@@ -1,7 +1,6 @@
 package com.inik.camcon.presentation.ui.screens.components
 
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -11,13 +10,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -27,10 +24,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.inik.camcon.R
 
 /**
  * 핀치줌과 드래그가 가능한 이미지 컴포넌트
@@ -276,47 +271,6 @@ fun PagerCompatibleZoomableImage(
                     translationY = offset.y
                 )
         )
-    }
-}
-
-/**
- * ByteArray 데이터를 받아서 줌 가능한 이미지로 표시하는 컴포넌트
- */
-@Composable
-fun ZoomableImageFromByteArray(
-    imageData: ByteArray,
-    contentDescription: String?,
-    modifier: Modifier = Modifier,
-    contentScale: ContentScale = ContentScale.Fit,
-    onSingleTap: (() -> Unit)? = null,
-    maxScale: Float = 5f,
-    minScale: Float = 1f
-) {
-    val bitmap = remember(imageData) {
-        BitmapFactory.decodeByteArray(imageData, 0, imageData.size)
-    }
-
-    if (bitmap != null) {
-        // 간단한 줌 이미지 사용 (테스트용)
-        SimpleZoomableImage(
-            bitmap = bitmap,
-            contentDescription = contentDescription,
-            modifier = modifier,
-            contentScale = contentScale,
-            onSingleTap = onSingleTap
-        )
-    } else {
-        // 비트맵 디코딩 실패 시 기본 이미지 표시
-        Box(
-            modifier = modifier,
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = stringResource(R.string.image_load_failed),
-                color = com.inik.camcon.presentation.theme.TextPrimaryV2,
-                style = MaterialTheme.typography.bodyMedium
-            )
-        }
     }
 }
 
