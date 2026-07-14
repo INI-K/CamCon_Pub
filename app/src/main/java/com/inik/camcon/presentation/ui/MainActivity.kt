@@ -80,7 +80,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.inik.camcon.presentation.theme.Accent
+import com.inik.camcon.presentation.theme.Body
+import com.inik.camcon.presentation.theme.BodySmall
 import com.inik.camcon.presentation.theme.DividerLine
+import com.inik.camcon.presentation.theme.HeadingM
 import com.inik.camcon.presentation.theme.IconSize
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
@@ -166,20 +169,18 @@ fun CameraConnectionOptimizationDialog(
         icon = { androidx.compose.material3.Icon(Icons.Default.Settings, contentDescription = null) },
         title = {
             androidx.compose.material3.Text(
-                stringResource(R.string.camera_connection_optimization_title),
-                style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                stringResource(R.string.camera_connection_optimization_title)
             )
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 androidx.compose.material3.Text(
                     text = stringResource(R.string.camera_connection_optimization_message),
-                    style = androidx.compose.material3.MaterialTheme.typography.bodyLarge
+                    style = Body
                 )
                 androidx.compose.material3.Text(
                     text = stringResource(R.string.camera_connection_optimization_details),
-                    style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                    style = Body,
                     color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                 )
             }
@@ -213,15 +214,13 @@ fun PermissionSettingsDialog(
         icon = { Icon(Icons.Default.Settings, contentDescription = null) },
         title = {
             Text(
-                stringResource(R.string.dialog_permission_reprompt_title),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                stringResource(R.string.dialog_permission_reprompt_title)
             )
         },
         text = {
             Text(
                 text = stringResource(R.string.dialog_permission_reprompt_body),
-                style = MaterialTheme.typography.bodyMedium
+                style = Body
             )
         },
         confirmButton = {
@@ -333,14 +332,14 @@ fun MainScreen(
                     }
                 },
                 icon = { Icon(Icons.Default.Settings, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                title = { Text(stringResource(R.string.dialog_restart_required_title), style = MaterialTheme.typography.titleLarge) },
+                title = { Text(stringResource(R.string.dialog_restart_required_title)) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                         if (isRestarting) {
                             Text(stringResource(R.string.dialog_restart_preparing_title))
                             Text(
                                 stringResource(R.string.dialog_restart_preparing_body),
-                                style = MaterialTheme.typography.bodySmall,
+                                style = BodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         } else {
@@ -348,7 +347,7 @@ fun MainScreen(
                             Spacer(modifier = Modifier.height(Spacing.sm))
                             Text(
                                 stringResource(R.string.dialog_restart_options),
-                                style = MaterialTheme.typography.bodySmall,
+                                style = BodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -402,20 +401,18 @@ fun MainScreen(
                 },
                 title = {
                     Text(
-                        stringResource(R.string.dialog_usb_disconnected_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        stringResource(R.string.dialog_usb_disconnected_title)
                     )
                 },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                         Text(
                             stringResource(R.string.dialog_usb_disconnected_body),
-                            style = MaterialTheme.typography.bodyMedium
+                            style = Body
                         )
                         Text(
                             stringResource(R.string.dialog_usb_disconnected_hints),
-                            style = MaterialTheme.typography.bodySmall,
+                            style = BodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -445,25 +442,23 @@ fun MainScreen(
                 },
                 title = {
                     Text(
-                        stringResource(R.string.dialog_camera_check_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        stringResource(R.string.dialog_camera_check_title)
                     )
                 },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                         Text(
                             stringResource(R.string.dialog_camera_check_body),
-                            style = MaterialTheme.typography.bodyMedium
+                            style = Body
                         )
                         Text(
                             stringResource(R.string.dialog_camera_check_prompt),
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = Body,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             stringResource(R.string.dialog_camera_check_hints),
-                            style = MaterialTheme.typography.bodySmall,
+                            style = BodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -643,9 +638,10 @@ fun MainScreen(
                 val currentDestination = navBackStackEntry?.destination
 
                 Row(modifier = containerModifier) {
+                    // CINE 정합: Compact 하단 바와 동일하게 Surface0 컨테이너.
                     NavigationRail(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        contentColor = MaterialTheme.colorScheme.onSurface
+                        containerColor = Surface0,
+                        contentColor = TextTertiary
                     ) {
                         items.forEach { screen ->
                             val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
@@ -665,15 +661,17 @@ fun MainScreen(
                                                 }
                                             }
                                         ) {
-                                            Icon(
-                                                screen.icon,
-                                                contentDescription = stringResource(screen.titleRes)
+                                            NavBarIcon(
+                                                icon = screen.icon,
+                                                contentDescription = stringResource(screen.titleRes),
+                                                selected = selected
                                             )
                                         }
                                     } else {
-                                        Icon(
-                                            screen.icon,
-                                            contentDescription = stringResource(screen.titleRes)
+                                        NavBarIcon(
+                                            icon = screen.icon,
+                                            contentDescription = stringResource(screen.titleRes),
+                                            selected = selected
                                         )
                                     }
                                 },
@@ -683,12 +681,13 @@ fun MainScreen(
                                 selected = selected,
                                 onClick = { onTabClick(screen) },
                                 alwaysShowLabel = true,
+                                // Compact 하단 바와 동일한 시각 언어: 앰버 인디케이터(NavBarIcon) + 기본 pill 제거.
                                 colors = NavigationRailItemDefaults.colors(
-                                    selectedIconColor = MaterialTheme.colorScheme.primary,
-                                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    indicatorColor = MaterialTheme.colorScheme.secondaryContainer
+                                    selectedIconColor = Accent,
+                                    selectedTextColor = Accent,
+                                    unselectedIconColor = TextTertiary,
+                                    unselectedTextColor = TextTertiary,
+                                    indicatorColor = Color.Transparent
                                 )
                             )
                         }
@@ -712,33 +711,31 @@ fun MainScreen(
                 icon = { Icon(Icons.Default.CameraAlt, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                 title = {
                     Text(
-                        stringResource(R.string.dialog_wifi_active_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        stringResource(R.string.dialog_wifi_active_title)
                     )
                 },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                         Text(
                             stringResource(R.string.dialog_wifi_active_body),
-                            style = MaterialTheme.typography.bodyMedium
+                            style = Body
                         )
                         Spacer(modifier = Modifier.height(Spacing.sm))
                         Text(
                             stringResource(R.string.dialog_wifi_active_steps_title),
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = Body,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
                             stringResource(R.string.dialog_wifi_active_steps),
-                            style = MaterialTheme.typography.bodySmall,
+                            style = BodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(Spacing.sm))
                         Text(
                             stringResource(R.string.dialog_wifi_active_hint),
-                            style = MaterialTheme.typography.bodySmall,
+                            style = BodySmall,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Medium
                         )
@@ -796,15 +793,13 @@ fun MainScreen(
                 },
                 title = {
                     Text(
-                        stringResource(R.string.dialog_wifi_disconnected_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        stringResource(R.string.dialog_wifi_disconnected_title)
                     )
                 },
                 text = {
                     Text(
                         stringResource(R.string.dialog_wifi_disconnected_body),
-                        style = MaterialTheme.typography.bodyMedium
+                        style = Body
                     )
                 },
                 confirmButton = {
@@ -1522,7 +1517,7 @@ fun MainActivityPreview() {
             ) {
                 Text(
                     text = "CamCon - 메인 화면",
-                    style = MaterialTheme.typography.titleLarge
+                    style = HeadingM
                 )
             }
         }

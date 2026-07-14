@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -19,6 +20,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -36,6 +40,7 @@ import com.inik.camcon.presentation.theme.Surface1
 import com.inik.camcon.presentation.theme.Surface2
 import com.inik.camcon.presentation.theme.TextPrimaryV2
 import com.inik.camcon.presentation.theme.TextTertiary
+import com.inik.camcon.presentation.theme.TouchTarget
 import com.inik.camcon.domain.model.CameraCapabilities
 import com.inik.camcon.presentation.viewmodel.CameraCaptureState
 import com.inik.camcon.domain.model.ThemeMode
@@ -77,6 +82,10 @@ fun ShootingModeSelector(
         }
         cameraCapable && mode in APP_IMPLEMENTED_SHOOTING_MODES
     }
+
+    // 표시 가능한 모드가 1개 이하이면 선택할 게 없으므로 행 전체를 렌더하지 않는다.
+    // (현재 APP_IMPLEMENTED = {SINGLE} 이라 칩 1개짜리 행이 노출되던 것을 제거)
+    if (supportedModes.size <= 1) return
 
     LazyRow(
         modifier = modifier,
@@ -156,13 +165,16 @@ private fun ModeButton(
     androidx.compose.material3.Surface(
         modifier = modifier
             .clip(RoundedCornerShape(Radius.sm))
-            .clickable(onClick = onClick),
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics { selected = isSelected },
         color = containerColor,
         shape = RoundedCornerShape(Radius.sm),
         border = if (!isSelected) BorderStroke(StrokeWidth.thin, borderColor) else null
     ) {
         Box(
-            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
+            modifier = Modifier
+                .defaultMinSize(minHeight = TouchTarget.min)
+                .padding(horizontal = Spacing.md, vertical = Spacing.sm),
             contentAlignment = Alignment.Center
         ) {
             Text(

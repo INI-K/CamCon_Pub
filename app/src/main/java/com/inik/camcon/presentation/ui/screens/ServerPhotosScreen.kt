@@ -53,7 +53,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -76,6 +75,7 @@ import com.inik.camcon.domain.model.CapturedPhoto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.HeadingM
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.Surface0
@@ -312,8 +312,7 @@ private fun ModernMyPhotosHeader(
         Column {
             Text(
                 text = stringResource(R.string.server_photos_my_photos),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+                style = HeadingM
             )
             if (photoCount > 0) {
                 Text(

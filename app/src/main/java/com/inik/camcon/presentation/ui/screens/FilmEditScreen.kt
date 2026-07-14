@@ -48,6 +48,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,6 +67,7 @@ import com.inik.camcon.domain.model.FilmAdjustments
 import com.inik.camcon.domain.model.FilmLut
 import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.DividerLine
+import com.inik.camcon.presentation.theme.HeadingL
 import com.inik.camcon.presentation.theme.MicroLabel
 import com.inik.camcon.presentation.theme.MonoMicro
 import com.inik.camcon.presentation.theme.Radius
@@ -114,13 +118,16 @@ fun FilmEditScreen(
     val message by viewModel.message.collectAsStateWithLifecycle()
 
 
-    // 내보내기 결과 토스트.
+    // 내보내기 결과. 에러 채널 기준(설계 결정 #1):
+    //  - 성공(안내성·비오류) → V2 ToastV2 오버레이(컴포지션 수명 내).
+    //  - 실패(에러) → 플랫폼 Toast 유지(컴포지션 수명과 무관해야 하는 오류 통지).
     val okText = stringResource(R.string.fs_export_success)
     val failText = stringResource(R.string.fs_export_failed)
+    var advisoryMessage by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(message) {
         when (message) {
             FilmEditorViewModel.MESSAGE_OK -> {
-                Toast.makeText(context, okText, Toast.LENGTH_SHORT).show()
+                advisoryMessage = okText
                 viewModel.clearMessage()
             }
 
@@ -144,6 +151,7 @@ fun FilmEditScreen(
                     title = {
                         Text(
                             text = filmName,
+                            style = HeadingL,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -212,6 +220,7 @@ fun FilmEditScreen(
         containerColor = Surface0,
         contentWindowInsets = WindowInsets.safeDrawing
     ) { paddingValues ->
+        Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -278,6 +287,57 @@ fun FilmEditScreen(
                 onSelect = viewModel::selectLutGated,
                 onEnter = viewModel::requestThumbnail,
                 onLeave = viewModel::cancelThumbnail
+            )
+        }
+
+            // 안내성(내보내기 성공) 토스트 → ToastV2 오버레이(상단, 3초 자동 소멸).
+            AdvisoryToastHost(
+                message = advisoryMessage,
+                paddingValues = paddingValues,
+                onDismiss = { advisoryMessage = null }
+            )
+        }
+    }
+}
+
+/**
+ * 안내성(비오류) 토스트 오버레이 — SettingsActivity 의 ToastV2 패턴을 따른다(설계 결정 #1 에러 채널 기준).
+ * [message] 가 non-null 이면 상단에서 슬라이드 인 후 3초 뒤 [onDismiss] 로 소멸한다.
+ */
+@Composable
+private fun AdvisoryToastHost(
+    message: String?,
+    paddingValues: PaddingValues,
+    onDismiss: () -> Unit
+) {
+    val visible = message != null
+    if (message != null) {
+        LaunchedEffect(message) {
+            kotlinx.coroutines.delay(3000L)
+            onDismiss()
+        }
+    }
+    androidx.compose.animation.AnimatedVisibility(
+        visible = visible,
+        enter = androidx.compose.animation.slideInVertically(initialOffsetY = { -80 }) +
+            androidx.compose.animation.fadeIn(
+                animationSpec = androidx.compose.animation.core.tween(260)
+            ),
+        exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { -80 }) +
+            androidx.compose.animation.fadeOut(
+                animationSpec = androidx.compose.animation.core.tween(260)
+            )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(paddingValues)
+                .padding(start = Spacing.base, end = Spacing.base, top = Spacing.sm)
+        ) {
+            com.inik.camcon.presentation.ui.components.v2.ToastV2(
+                message = message.orEmpty(),
+                kind = com.inik.camcon.presentation.ui.components.v2.StatusKind.Connected,
+                modifier = Modifier.align(Alignment.TopCenter)
             )
         }
     }

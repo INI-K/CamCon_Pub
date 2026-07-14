@@ -16,7 +16,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
@@ -47,6 +46,7 @@ import com.inik.camcon.domain.model.WifiNetworkState
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.components.v2.AppDialog
 import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
+import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
 import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
 import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.IconSize
@@ -381,17 +381,19 @@ private fun SavedWifiNetworksCard(
             title = { Text(stringResource(R.string.ap_mode_delete_saved_network)) },
             text = { Text(stringResource(R.string.ap_mode_delete_saved_network_confirm, ssid)) },
             confirmButton = {
-                TextButton(onClick = {
-                    onDelete(ssid)
-                    ssidToDelete = null
-                }) {
-                    Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
-                }
+                PrimaryButton(
+                    text = stringResource(R.string.delete),
+                    onClick = {
+                        onDelete(ssid)
+                        ssidToDelete = null
+                    }
+                )
             },
             dismissButton = {
-                TextButton(onClick = { ssidToDelete = null }) {
-                    Text(stringResource(R.string.cancel))
-                }
+                SecondaryButton(
+                    text = stringResource(R.string.cancel),
+                    onClick = { ssidToDelete = null }
+                )
             }
         )
     }
