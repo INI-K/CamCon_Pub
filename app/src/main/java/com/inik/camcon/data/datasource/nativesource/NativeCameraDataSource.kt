@@ -243,6 +243,9 @@ class NativeCameraDataSource @Inject constructor(
         CameraNative.queryConfig()
     }
 
+    // 범용 설정 변경 (libgphoto2 위젯명 → 값). gp 결과 코드 반환(0=성공). withContext는 호출 레포에서 감쌈.
+    fun setConfigString(key: String, value: String): Int = CameraNative.setConfigString(key, value)
+
     // 비동기 사진 촬영: 결과는 콜백으로 전달됨
     fun capturePhotoAsync(callback: CameraCaptureListener, saveDir: String) {
         CameraNative.capturePhotoAsync(callback, saveDir)

@@ -297,6 +297,13 @@ class CamCon : Application() {
                 Log.e(TAG, "🔴 네이티브 라이브러리 로딩 실패 - 앱 기능이 제한될 수 있습니다")
             }
 
+        } catch (e: LinkageError) {
+            // CameraNative.<clinit>(init 블록)가 .so 로딩 실패로 던지는 예외는 클래스 초기화 중이라
+            // JVM이 RuntimeException이 아니라 ExceptionInInitializerError(첫 접근)/NoClassDefFoundError
+            // (이후 접근)로 포장한다 — 둘 다 LinkageError(Error 계열)라 catch(Exception)이 못 잡는다.
+            // 잡지 못하면 열화 모드 설계(로딩 실패 감지 후 계속 동작)가 무력화되고 시작 즉시 크래시 루프가
+            // 된다. 여기서 잡아 앱을 계속 살린다(카메라 기능만 제한됨).
+            Log.e(TAG, "🔴 네이티브 라이브러리 로딩 실패 - 앱 기능이 제한될 수 있습니다", e)
         } catch (e: Exception) {
             Log.e(TAG, "🔴 네이티브 라이브러리 상태 확인 실패", e)
         }

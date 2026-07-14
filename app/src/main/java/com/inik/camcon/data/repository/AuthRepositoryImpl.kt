@@ -13,11 +13,14 @@ import com.inik.camcon.domain.model.Subscription
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.model.User
 import com.inik.camcon.domain.repository.AuthRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.io.IOException
 import java.util.Date
@@ -151,13 +154,24 @@ class AuthRepositoryImpl @Inject constructor(
         firebaseAuth.signOut()
     }
 
-    override fun getCurrentUser(): Flow<User?> = flow {
-        val firebaseUser = firebaseAuth.currentUser
-        if (firebaseUser != null) {
-            val user = getUserById(firebaseUser.uid)
-            emit(user)
-        } else {
-            emit(null)
+    override fun getCurrentUser(): Flow<User?> = callbackFlow {
+        // FirebaseAuth 인증 상태(로그인/로그아웃)를 실시간으로 관찰해 방출한다.
+        // 앱 기동 후 로그인해도 구독 재조회 트리거(GetSubscriptionUseCase)가 발화하도록 반응형 유지.
+        // (기존 1회성 flow 는 생성 후 로그인 이벤트를 놓쳤음)
+        var enrichJob: Job? = null
+        val listener = FirebaseAuth.AuthStateListener { auth ->
+            val firebaseUser = auth.currentUser
+            // 새 인증 이벤트가 오면 이전 Firestore enrichment 를 취소해 stale User 방출을 막는다.
+            enrichJob?.cancel()
+            enrichJob = launch {
+                val user = if (firebaseUser != null) getUserById(firebaseUser.uid) else null
+                trySend(user)
+            }
+        }
+        firebaseAuth.addAuthStateListener(listener)
+        awaitClose {
+            enrichJob?.cancel()
+            firebaseAuth.removeAuthStateListener(listener)
         }
     }
 

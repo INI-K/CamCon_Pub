@@ -221,8 +221,22 @@ class CameraControlRepositoryImpl @Inject constructor(
     suspend fun updateCameraSetting(key: String, value: String): Result<Boolean> {
         return withContext(ioDispatcher) {
             try {
-                com.inik.camcon.utils.LogcatManager.d(TAG, "카메라 설정 업데이트: $key = $value")
-                Result.success(true)
+                // UI 키 → libgphoto2 위젯명. 대부분 동일하고 조리개만 불일치("aperture" → "f-number").
+                val configName = when (key) {
+                    "aperture" -> "f-number"
+                    else -> key
+                }
+                com.inik.camcon.utils.LogcatManager.d(TAG, "카메라 설정 업데이트: $key($configName) = $value")
+
+                val code = nativeDataSource.setConfigString(configName, value)
+                if (code == 0) {
+                    Result.success(true)
+                } else {
+                    // 성공 위장 제거: 네이티브 실패(gp code != 0)를 그대로 전파해 UI가 에러를 안내하게 한다.
+                    Result.failure(
+                        IllegalStateException("카메라 설정 변경 실패 ($key=$value, gp code=$code)")
+                    )
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

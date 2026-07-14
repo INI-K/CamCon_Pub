@@ -479,7 +479,7 @@ class FilmEditorViewModel @Inject constructor(
             try {
                 val bmp = filmEditProcessor.generateThumbnail(sid, source, lutId) as? Bitmap
                 if (bmp != null && !bmp.isRecycled) {
-                    _thumbnails.value = _thumbnails.value + (lutId to bmp)
+                    _thumbnails.value = putThumbnailBounded(_thumbnails.value, lutId, bmp)
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -495,6 +495,26 @@ class FilmEditorViewModel @Inject constructor(
     /** 셀이 화면을 벗어나면 호출해 불필요한 썸네일 생성을 중단한다. */
     fun cancelThumbnail(lutId: String) {
         thumbnailJobs.remove(lutId)?.cancel()
+    }
+
+    /**
+     * 썸네일 맵에 [lutId]→[bmp] 를 넣되 [MAX_THUMBNAILS] 상한을 강제한다(오래된 항목부터 FIFO 축출).
+     *
+     * [FilmThumbnailGenerator] 의 48MB 바이트 예산과 정합시키기 위한 상한이다. VM 강참조 맵이 무한
+     * 축적되면 생성기 LRU 가 축출해도 GC 가 불가해 예산이 무력화되므로, 여기서도 초과분의 참조를 드롭한다.
+     * 썸네일은 캐시 소유이므로 축출 시 recycle 하지 않는다(참조만 제거 — 재요청 시 생성기 캐시 히트로 복원).
+     * 스크롤 순서 ≈ 삽입 순서라 FIFO 축출은 화면을 벗어난 오래된 셀부터 정리한다.
+     */
+    private fun putThumbnailBounded(
+        current: Map<String, Bitmap>,
+        lutId: String,
+        bmp: Bitmap
+    ): Map<String, Bitmap> {
+        val updated = current + (lutId to bmp)
+        if (updated.size <= MAX_THUMBNAILS) return updated
+        return updated.entries
+            .drop(updated.size - MAX_THUMBNAILS)
+            .associate { it.key to it.value }
     }
 
     // ---- 내보내기(Phase 3) ----
@@ -699,6 +719,14 @@ class FilmEditorViewModel @Inject constructor(
          * FilmThumbnailGenerator의 동시성 2 제한 + 바이트 예산 캐시가 흡수한다.
          */
         private const val THUMB_SOURCE_EDGE = 512
+
+        /**
+         * VM 썸네일 강참조 맵([_thumbnails])의 개수 상한. [FilmThumbnailGenerator] 의 48MB 바이트 예산과
+         * 정합: 최악(정사각 512² ARGB_8888 ≈ 1MB) 기준 48장이면 맵 최대 상주도 48MB 이내로 묶인다
+         * (일반 ~700KB 썸네일이면 생성기 캐시가 잡는 ~70장 이하). 초과 시 오래된 항목부터 참조를 드롭해
+         * 생성기 예산이 실효를 갖게 한다(비트맵 recycle 은 하지 않음 — 캐시 소유).
+         */
+        private const val MAX_THUMBNAILS = 48
 
         /** 슬라이더 드래그 → 프리뷰 GPU 재구성 디바운스(ms). 설계 §8: 과다 갱신 방지. */
         private const val PREVIEW_DEBOUNCE_MS = 200L
