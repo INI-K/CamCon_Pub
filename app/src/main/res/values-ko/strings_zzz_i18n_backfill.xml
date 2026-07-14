@@ -121,6 +121,7 @@
     <string name="photo_preview_wifi_connected">Wi-Fi 연결 중입니다</string>
     <string name="photo_thumbnail_latest">최신</string>
     <string name="photo_thumbnail_selected">선택됨</string>
+    <string name="photo_thumbnail_unselected">선택 안 됨</string>
     <string name="ptpip_allow">허용</string>
     <string name="ptpip_ap_mode">AP 모드</string>
     <string name="ptpip_camera">카메라</string>
@@ -157,6 +158,8 @@
     <string name="ptpip_reconnect_camera">3. 카메라를 다시 검색하고 연결하세요</string>
     <string name="ptpip_search_camera">카메라 재검색</string>
     <string name="ptpip_show_password">보이기</string>
+    <string name="ptpip_password_shown">비밀번호 표시됨</string>
+    <string name="ptpip_password_hidden">비밀번호 숨김</string>
     <string name="ptpip_sta_mode">STA 모드</string>
     <string name="ptpip_tab_content_area">탭 컨텐츠 영역</string>
     <string name="ptpip_wifi_scan_restriction">Wi-Fi 스캔 제한</string>

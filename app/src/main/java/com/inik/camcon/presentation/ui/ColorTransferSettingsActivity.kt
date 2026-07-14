@@ -62,6 +62,7 @@ import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.ErrorV2
+import com.inik.camcon.presentation.theme.HeadingM
 import com.inik.camcon.presentation.theme.MicroLabel
 import com.inik.camcon.presentation.theme.MonoReadout
 import com.inik.camcon.presentation.theme.Radius
@@ -258,8 +259,7 @@ fun ColorTransferSettingsScreen(
                     ) {
                         Text(
                             text = stringResource(R.string.ct_disabled_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
+                            style = HeadingM,
                             color = TextPrimaryV2
                         )
                         Spacer(modifier = Modifier.height(Spacing.sm))
@@ -591,8 +591,7 @@ fun ColorTransferSettingsScreen(
                                 )
                                 Text(
                                     text = stringResource(R.string.ct_error_title),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
+                                    style = HeadingM,
                                     color = ErrorV2
                                 )
                             }
@@ -685,8 +684,7 @@ private fun ColorTransferSettingsScreenPreview(
                     ) {
                         Text(
                             text = stringResource(R.string.ct_disabled_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
+                            style = HeadingM,
                             color = TextPrimaryV2
                         )
                         Spacer(modifier = Modifier.height(Spacing.sm))
@@ -959,8 +957,7 @@ private fun ColorTransferSettingsScreenPreview(
                                 )
                                 Text(
                                     text = stringResource(R.string.ct_error_title),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
+                                    style = HeadingM,
                                     color = ErrorV2
                                 )
                             }

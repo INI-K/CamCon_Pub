@@ -1,6 +1,10 @@
 package com.inik.camcon.presentation.ui.screens
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,10 +19,12 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -36,8 +42,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.inik.camcon.R
@@ -47,10 +57,14 @@ import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.BodySmall
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.Caption
+import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.HeadingL
 import com.inik.camcon.presentation.theme.HeadingM
 import com.inik.camcon.presentation.theme.IconSize
+import com.inik.camcon.presentation.theme.MicroLabel
+import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.StrokeWidth
 import com.inik.camcon.presentation.theme.SuccessV2
 import com.inik.camcon.presentation.theme.Surface0
 import com.inik.camcon.presentation.theme.TextPrimaryV2
@@ -60,6 +74,8 @@ import com.inik.camcon.presentation.ui.components.v2.CardV2
 import com.inik.camcon.presentation.ui.components.v2.ChipV2
 import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
 import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
+import com.inik.camcon.presentation.ui.components.v2.SkeletonLoader
+import com.inik.camcon.presentation.viewmodel.FilmLookSample
 import com.inik.camcon.presentation.viewmodel.SubscriptionUiState
 import com.inik.camcon.presentation.viewmodel.SubscriptionViewModel
 import kotlinx.coroutines.launch
@@ -116,8 +132,12 @@ fun SubscriptionScreen(
     onBackClick: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val filmLookSamples by viewModel.filmLookSamples.collectAsStateWithLifecycle()
+    val filmLookCount by viewModel.filmLookCount.collectAsStateWithLifecycle()
     SubscriptionScreenContent(
         uiState = uiState,
+        filmLookSamples = filmLookSamples,
+        filmLookCount = filmLookCount,
         onBackClick = onBackClick,
         onPurchase = viewModel::purchase,
         onRestore = viewModel::restore,
@@ -134,7 +154,9 @@ private fun SubscriptionScreenContent(
     onPurchase: (String) -> Unit,
     onRestore: () -> Unit,
     onErrorConsumed: () -> Unit,
-    onPurchaseSuccessConsumed: () -> Unit
+    onPurchaseSuccessConsumed: () -> Unit,
+    filmLookSamples: List<FilmLookSample> = emptyList(),
+    filmLookCount: Int = 0
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -222,7 +244,14 @@ private fun SubscriptionScreenContent(
                         currentTier = uiState.currentTier,
                         product = findProduct(uiState.products, paywallTier.tier),
                         purchaseInProgress = uiState.purchaseInProgress,
-                        onUpgrade = onComingSoon
+                        onUpgrade = onComingSoon,
+                        // 필름 룩 시각 증거는 PRO 카드에만(무료 카드는 스트립 없음).
+                        filmLookSamples = if (paywallTier.tier == SubscriptionTier.PRO) {
+                            filmLookSamples
+                        } else {
+                            emptyList()
+                        },
+                        filmLookCount = filmLookCount
                     )
                 }
 
@@ -288,7 +317,9 @@ private fun TierCard(
     currentTier: SubscriptionTier,
     product: SubscriptionProduct?,
     purchaseInProgress: Boolean,
-    onUpgrade: () -> Unit
+    onUpgrade: () -> Unit,
+    filmLookSamples: List<FilmLookSample> = emptyList(),
+    filmLookCount: Int = 0
 ) {
     val isCurrent = currentTier == paywallTier.tier
     val isFree = paywallTier.tier == SubscriptionTier.FREE
@@ -323,6 +354,12 @@ private fun TierCard(
 
             paywallTier.benefitsRes.forEach { benefitRes ->
                 BenefitRow(text = stringResource(benefitRes))
+            }
+
+            // 텍스트 체크리스트에 시각 증거 추가 — 필름 룩 썸네일 스트립(PRO 카드 전용).
+            if (filmLookSamples.isNotEmpty()) {
+                Spacer(Modifier.height(Spacing.md))
+                FilmLookStrip(samples = filmLookSamples, count = filmLookCount)
             }
 
             if (!isFree) {
@@ -364,6 +401,88 @@ private fun BenefitRow(text: String) {
             style = BodySmall,
             color = TextSecondaryV2
         )
+    }
+}
+
+/**
+ * 필름 룩 시각 증거 스트립 — 번들 샘플에 대표 LUT 을 적용한 썸네일 가로 스크롤 + "N가지 필름 룩" 카운터.
+ * [count] 는 카탈로그 size 그대로(하드코딩 금지). 잠긴(PRO 전용) 표본은 자물쇠 오버레이.
+ */
+@Composable
+private fun FilmLookStrip(samples: List<FilmLookSample>, count: Int) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        if (count > 0) {
+            Text(
+                text = stringResource(R.string.subscription_film_look_count, count),
+                style = MicroLabel,
+                color = Accent
+            )
+            Spacer(Modifier.height(Spacing.sm))
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
+        ) {
+            samples.forEach { sample ->
+                FilmLookChip(sample = sample)
+            }
+        }
+    }
+}
+
+@Composable
+private fun FilmLookChip(sample: FilmLookSample) {
+    Box(
+        modifier = Modifier
+            .size(56.dp)
+            .clip(RoundedCornerShape(Radius.sm))
+            .border(
+                BorderStroke(StrokeWidth.hairline, DividerLine),
+                RoundedCornerShape(Radius.sm)
+            )
+    ) {
+        val bmp = sample.thumbnail
+        if (bmp != null && !bmp.isRecycled) {
+            Image(
+                bitmap = bmp.asImageBitmap(),
+                contentDescription = sample.name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            SkeletonLoader(
+                modifier = Modifier.fillMaxSize(),
+                shape = RoundedCornerShape(Radius.sm),
+                announceLoading = false
+            )
+        }
+
+        // 잠긴(PRO 전용) 필름은 프리뷰를 가라앉히고 앰버 자물쇠 배지로 표시(룩 자체는 보이게).
+        if (sample.locked) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Surface0.copy(alpha = 0.45f))
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(3.dp)
+                    .size(18.dp)
+                    .clip(RoundedCornerShape(Radius.sm))
+                    .background(Surface0.copy(alpha = 0.85f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Lock,
+                    contentDescription = stringResource(R.string.fs_lut_locked_badge_cd),
+                    tint = Accent,
+                    modifier = Modifier.size(IconSize.xs)
+                )
+            }
+        }
     }
 }
 

@@ -61,6 +61,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.BodySmall
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.CameraSpec
 import com.inik.camcon.presentation.theme.Caption
 import com.inik.camcon.presentation.theme.HeadingM
 import com.inik.camcon.presentation.theme.LocalWindowSizeClass
@@ -405,7 +406,7 @@ private fun StatusBarRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(32.dp)
+            .height(CameraSpec.statusBarHeight)
             .padding(horizontal = Spacing.base),
         verticalAlignment = Alignment.CenterVertically
     ) {

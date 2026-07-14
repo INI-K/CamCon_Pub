@@ -119,6 +119,7 @@
     <string name="photo_preview_wifi_connected">Connexion Wi-Fi en cours</string>
     <string name="photo_thumbnail_latest">Dernière</string>
     <string name="photo_thumbnail_selected">Sélectionné</string>
+    <string name="photo_thumbnail_unselected">Non sélectionné</string>
     <string name="ptpip_allow">Autoriser</string>
     <string name="ptpip_ap_mode">Mode AP</string>
     <string name="ptpip_camera">Appareil</string>
@@ -155,6 +156,8 @@
     <string name="ptpip_reconnect_camera">3. Recherchez à nouveau l\'appareil et connectez-vous</string>
     <string name="ptpip_search_camera">Rechercher l\'appareil</string>
     <string name="ptpip_show_password">Afficher</string>
+    <string name="ptpip_password_shown">Mot de passe affiché</string>
+    <string name="ptpip_password_hidden">Mot de passe masqué</string>
     <string name="ptpip_sta_mode">Mode STA</string>
     <string name="ptpip_tab_content_area">Zone de contenu des onglets</string>
     <string name="ptpip_wifi_scan_restriction">Restriction d\'analyse Wi-Fi</string>

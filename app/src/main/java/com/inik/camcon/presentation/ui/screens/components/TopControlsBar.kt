@@ -40,6 +40,7 @@ import com.inik.camcon.presentation.theme.Surface1
 import com.inik.camcon.presentation.theme.Surface2
 import com.inik.camcon.presentation.theme.TextPrimaryV2
 import com.inik.camcon.presentation.theme.TextTertiary
+import com.inik.camcon.presentation.theme.TouchTarget
 import com.inik.camcon.presentation.theme.WarningV2
 import com.inik.camcon.presentation.viewmodel.CameraConnectionState
 import com.inik.camcon.presentation.viewmodel.CameraSettingsState
@@ -159,15 +160,15 @@ fun TopControlsBar(
                         }
                     }
 
-                    // 설정 버튼
+                    // 설정 버튼 — M3 기본 터치 타깃(48dp) 복원
                     Surface(
                         color = Surface2,
                         shape = CircleShape,
-                        modifier = Modifier.size(40.dp)
+                        modifier = Modifier.size(TouchTarget.lg)
                     ) {
                         IconButton(
                             onClick = onSettingsClick,
-                            modifier = Modifier.size(40.dp)
+                            modifier = Modifier.size(TouchTarget.lg)
                         ) {
                             Icon(
                                 Icons.Default.Settings,

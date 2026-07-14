@@ -8,8 +8,8 @@ import androidx.compose.ui.graphics.Color
  * Capture One / Lightroom Classic 풍 모노크롬 + 앰버 골드 액센트.
  * 디자인 가이드는 docs/DESIGN_SYSTEM_V2.md 참조.
  *
- * V1 이름(Primary/Background/Surface/TextPrimary 등)은 유지하되 색만 V2로 교체.
- * 신규 V2 토큰(Surface0-4, TextPrimary~Disabled, Accent*, Semantic)은 별도 추가.
+ * 모든 토큰은 V2 네이밍이다: Surface0-4, TextPrimaryV2/SecondaryV2/Tertiary/Disabled,
+ * Accent*, Semantic. (과거 V1 별칭 Primary/Background/Surface/TextPrimary는 존재하지 않는다.)
  */
 
 // ---- V2 Surface Tier (5단계) — CINE INSTRUMENT: 앰버 모니터, 순흑 계측기 ----
@@ -28,7 +28,9 @@ val AccentEdge = Color(0x66E8A245)
 // ---- V2 Text Tier (4단계) — 쿨 틴트, 최고 대비 ----
 val TextPrimaryV2 = Color(0xFFF6F7F8)
 val TextSecondaryV2 = Color(0xFFB6BCC6)
-val TextTertiary = Color(0xFF7E848E)
+// Surface4(0xFF252A31) 대비 ≈4.8:1(WCAG AA 통과), Surface0 대비 ≈6.7:1.
+// TextSecondaryV2(0xFFB6BCC6)보다 어두워 3단계 텍스트 위계를 유지한다.
+val TextTertiary = Color(0xFF8F95A0)
 val TextDisabled = Color(0xFF474D56)
 
 // ---- V2 Accent (앰버 골드 유지) ----

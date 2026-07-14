@@ -3,11 +3,16 @@ package com.inik.camcon.presentation.ui.screens.components
 import android.content.Context
 import android.media.AudioManager
 import android.media.MediaActionSound
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,6 +20,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -37,7 +43,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -51,6 +60,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.ShootingMode
+import com.inik.camcon.presentation.theme.CameraSpec
 import com.inik.camcon.presentation.theme.Surface0
 import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.CamConTheme
@@ -174,7 +184,7 @@ private fun CaptureControlsContent(
     // compact = 전체화면 가로 도크용 축소 사이즈(세로 누적 높이를 줄여 짧은 가로 화면에서도 fit).
     val galleryAfSize = if (compact) 44.dp else 52.dp
     val sideIconSize = if (compact) 20.dp else 24.dp
-    val shutterOuterSize = if (compact) 64.dp else 88.dp
+    val shutterOuterSize = if (compact) CameraSpec.shutterOuterCompact else CameraSpec.shutterOuter
     val shutterInnerSize = if (compact) 50.dp else 72.dp
     val shutterIconSize = if (compact) 28.dp else 36.dp
 
@@ -259,16 +269,37 @@ private fun CaptureControlsContent(
                 shape = CircleShape
             )
     ) {
+        // 촬영 중 계측기 표현 — 그림자(elevation) 대신 바깥 링에 앰버 회전 sweep 아크.
+        // 그림자 0 원칙(Color.kt:15-17) 준수. 타임랩스 중지 모드에서는 표시하지 않는다.
+        if (captureState.isCapturing && !isStopMode) {
+            val sweepTransition = rememberInfiniteTransition(label = "shutter_sweep")
+            val sweepStart by sweepTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = 360f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = 900, easing = LinearEasing)
+                ),
+                label = "shutter_sweep_angle"
+            )
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val stroke = 2.dp.toPx()
+                val inset = stroke / 2f
+                drawArc(
+                    color = Accent,
+                    startAngle = sweepStart,
+                    sweepAngle = 90f,
+                    useCenter = false,
+                    topLeft = Offset(inset, inset),
+                    size = Size(size.width - stroke, size.height - stroke),
+                    style = Stroke(width = stroke, cap = StrokeCap.Round)
+                )
+            }
+        }
+
         // 안쪽 버튼
         Box(
             modifier = Modifier
                 .size(shutterInnerSize)
-                .shadow(
-                    elevation = if (isEnabled) 20.dp else 0.dp,
-                    shape = CircleShape,
-                    ambientColor = (if (isStopMode) ErrorV2 else Accent).copy(alpha = 0.4f),
-                    spotColor = (if (isStopMode) ErrorV2 else Accent).copy(alpha = 0.6f)
-                )
                 .clip(CircleShape)
                 .background(
                     color = when {
