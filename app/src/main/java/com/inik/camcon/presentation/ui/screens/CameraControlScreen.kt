@@ -118,6 +118,7 @@ import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.CameraSettings
 import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.CameraSpec
 import com.inik.camcon.presentation.theme.Elevation
 import com.inik.camcon.presentation.theme.IconSize
 import com.inik.camcon.presentation.theme.Padding
@@ -781,11 +782,11 @@ private fun PortraitCameraLayout(
             .padding(contentPadding)
             .imePadding()
     ) {
-        // V2 StatusBar Row (32dp) — 연결 상태 표시 + 토스트 슬롯 + 전송 진행 배지
+        // V2 StatusBar Row — 연결 상태 표시 + 토스트 슬롯 + 전송 진행 배지
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(32.dp)
+                .height(CameraSpec.statusBarHeight)
                 .padding(horizontal = Spacing.lg),
             verticalAlignment = Alignment.CenterVertically
         ) {

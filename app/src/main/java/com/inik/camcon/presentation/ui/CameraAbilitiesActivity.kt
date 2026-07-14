@@ -26,6 +26,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.HeadingM
 import com.inik.camcon.presentation.theme.IconSize
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
@@ -228,8 +229,7 @@ private fun CameraAbilitiesContent(
                 ) {
                     Text(
                         text = stringResource(R.string.diag_abilities_section_camera),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        style = HeadingM
                     )
                     HorizontalDivider()
 
@@ -271,8 +271,7 @@ private fun CameraAbilitiesContent(
                 ) {
                     Text(
                         text = stringResource(R.string.diag_abilities_section_connection),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        style = HeadingM
                     )
                     HorizontalDivider()
 
@@ -411,8 +410,7 @@ private fun CameraAbilitiesContent(
                 ) {
                     Text(
                         text = stringResource(R.string.diag_abilities_section_raw),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        style = HeadingM
                     )
                     HorizontalDivider()
 
@@ -462,8 +460,7 @@ private fun CameraAbilitiesContent(
                         )
                         Text(
                             text = stringResource(R.string.diag_abilities_section_summary),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
+                            style = HeadingM
                         )
                     }
 
@@ -525,8 +522,7 @@ private fun DiagnosticsSection(
         ) {
             Text(
                 text = stringResource(R.string.diag_section_title),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                style = HeadingM
             )
             HorizontalDivider()
 
@@ -562,8 +558,7 @@ private fun DiagnosticsSection(
             // 에러 히스토리
             Text(
                 text = stringResource(R.string.diag_error_history_title),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
+                style = HeadingM
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -601,8 +596,7 @@ private fun DiagnosticsSection(
             // 메모리 풀 상태
             Text(
                 text = stringResource(R.string.diag_memory_title),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
+                style = HeadingM
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -650,8 +644,7 @@ private fun FeatureCard(
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                style = HeadingM
             )
             HorizontalDivider()
 

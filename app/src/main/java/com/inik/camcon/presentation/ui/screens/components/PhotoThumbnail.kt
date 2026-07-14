@@ -40,9 +40,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -96,6 +101,10 @@ fun PhotoThumbnail(
         photo.path
     }
 
+    val haptic = LocalHapticFeedback.current
+    val selectedDesc = stringResource(R.string.photo_thumbnail_selected)
+    val unselectedDesc = stringResource(R.string.photo_thumbnail_unselected)
+
     SurfaceV2(
         tier = 1,
         shape = RoundedCornerShape(Radius.sm),
@@ -112,7 +121,22 @@ fun PhotoThumbnail(
             )
             .combinedClickable(
                 onClick = onClick,
-                onLongClick = onLongClick
+                onLongClick = {
+                    // 롱프레스 선택 진입 — 촉각 피드백 후 호스트 콜백.
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onLongClick()
+                }
+            )
+            // 멀티선택 모드에서만 토글 시맨틱(선택 여부 + 상태 설명) 노출.
+            .then(
+                if (isMultiSelectMode) {
+                    Modifier.semantics {
+                        selected = isSelected
+                        stateDescription = if (isSelected) selectedDesc else unselectedDesc
+                    }
+                } else {
+                    Modifier
+                }
             )
     ) {
         Box {
@@ -519,6 +543,10 @@ fun FluidPhotoThumbnail(
         photo.path
     }
 
+    val haptic = LocalHapticFeedback.current
+    val selectedDesc = stringResource(R.string.photo_thumbnail_selected)
+    val unselectedDesc = stringResource(R.string.photo_thumbnail_unselected)
+
     SurfaceV2(
         tier = 1,
         shape = RoundedCornerShape(Radius.sm),
@@ -536,7 +564,22 @@ fun FluidPhotoThumbnail(
             )
             .combinedClickable(
                 onClick = onClick,
-                onLongClick = onLongClick
+                onLongClick = {
+                    // 롱프레스 선택 진입 — 촉각 피드백 후 호스트 콜백.
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onLongClick()
+                }
+            )
+            // 멀티선택 모드에서만 토글 시맨틱(선택 여부 + 상태 설명) 노출.
+            .then(
+                if (isMultiSelectMode) {
+                    Modifier.semantics {
+                        selected = isSelected
+                        stateDescription = if (isSelected) selectedDesc else unselectedDesc
+                    }
+                } else {
+                    Modifier
+                }
             )
     ) {
         Box {

@@ -3,6 +3,11 @@ package com.inik.camcon.presentation.ui.screens.components
 // 이미지 로딩을 위한 Coil import
 import android.graphics.BitmapFactory
 import android.util.Log
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -16,6 +21,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -47,10 +53,16 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -72,6 +84,7 @@ import com.inik.camcon.presentation.theme.Surface2
 import com.inik.camcon.presentation.theme.TextPrimaryV2
 import com.inik.camcon.presentation.theme.TextSecondaryV2
 import com.inik.camcon.presentation.theme.TextTertiary
+import com.inik.camcon.presentation.theme.TouchTarget
 import com.inik.camcon.presentation.theme.WarningV2
 import com.inik.camcon.presentation.ui.components.v2.EmptyState
 import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
@@ -144,6 +157,13 @@ fun CameraPreviewArea(
     // 프리뷰 내장 좌상단 노출 HUD와 하단 중지 버튼을 숨긴다. 가로/기타 호출은 기본값 true 로 무변경.
     showInlineExposureStrip: Boolean = true
 ) {
+    // 3-상태 선택 키 — 라이브뷰 프레임 데이터(매 프레임 변동)와 분리해 '상태 전환'만 애니메이션한다.
+    val previewContent = when {
+        liveViewState.isLiveViewActive && liveViewFrame != null && decodedBitmap != null ->
+            PreviewContent.LiveView
+        !connectionState.isConnected -> PreviewContent.Disconnected
+        else -> PreviewContent.Connected
+    }
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -152,12 +172,24 @@ fun CameraPreviewArea(
                 onDoubleClick = { onDoubleClick?.invoke() }
             )
     ) {
-        // ✅ 수정 (CRITICAL-1 + W-2 해결): remember 기반 디코딩 제거, DisposableEffect 추가
-        if (liveViewState.isLiveViewActive && liveViewFrame != null && decodedBitmap != null) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
+        // 상태 전환 컨테이너만 크로스페이드(250ms). 프레임 렌더 내부(디코드/제스처/오버레이) 경로는 불변.
+        Crossfade(
+            targetState = previewContent,
+            animationSpec = tween(durationMillis = 250),
+            label = "camera_preview_state",
+            modifier = Modifier.fillMaxSize()
+        ) { content ->
+            when (content) {
+                PreviewContent.LiveView ->
+                    // ✅ CRITICAL-1 + W-2: remember 기반 디코딩 제거. 페이드 아웃 경계에서 프레임이
+                    // 사라지면 렌더하지 않도록 조건 재확인(smart-cast 로 non-null 보장, recycle/NPE 방지).
+                    if (liveViewState.isLiveViewActive && liveViewFrame != null && decodedBitmap != null) {
+                        // 탭-투-포커스 확정 시점 햅틱(H1 확장)용.
+                        val haptic = LocalHapticFeedback.current
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
                 // 탭-투-포커스 상태: 프리뷰 컴포넌트 크기 / 마커 위치 / 최신 비트맵(차원 용도)
                 val previewSize = androidx.compose.runtime.remember {
                     androidx.compose.runtime.mutableStateOf(androidx.compose.ui.unit.IntSize.Zero)
@@ -200,7 +232,7 @@ fun CameraPreviewArea(
 
                 Image(
                     bitmap = displayBitmap.asImageBitmap(),
-                    contentDescription = "Live View",
+                    contentDescription = stringResource(R.string.cd_live_view_frame),
                     modifier = Modifier
                         .fillMaxSize()
                         // 제스처·크기는 회전 적용 '이전' 레이아웃 공간에서 측정한다.
@@ -226,6 +258,8 @@ fun CameraPreviewArea(
                                             rotatedRef.value
                                         )
                                         if (p != null) {
+                                            // 탭-투-포커스 확정 — 가벼운 촉각 틱으로 포커스 지점 지정을 확인.
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                             tapMarker.value = offset
                                             cb(p.x, p.y, bmp.width, bmp.height)
                                         }
@@ -351,7 +385,9 @@ fun CameraPreviewArea(
                                 stringResource(liveViewQuality.shortLabelRes())
                             ),
                             active = true,
-                            onClick = onCycleLiveViewQuality
+                            onClick = onCycleLiveViewQuality,
+                            // 순환(SPEED→BALANCED→QUALITY) 버튼이므로 on/off '선택' 시맨틱은 부여하지 않는다.
+                            isToggleSelected = null
                         )
                     }
                 }
@@ -373,9 +409,19 @@ fun CameraPreviewArea(
                         )
                     }
                     // 노출 스트립(showInlineExposureStrip)과 히스토그램은 기존 위치 유지(가로/기타 호출 무변경).
+                    // 가로 모드는 영상 위에 직접 얹히므로 헤어라인만으로는 라벨 대비가 부족 → Surface0 반투명
+                    // 스크림을 뒤에 깔아 판독값 대비를 보장한다. (세로 모드는 이 컴포넌트 밖 PortraitCameraLayout
+                    // 독립 행을 쓰므로 룩 불변.)
                     if (showInlineExposureStrip) {
                         currentSettings?.let { s ->
-                            LiveViewExposureStrip(settings = s)
+                            Box(
+                                modifier = Modifier.background(
+                                    color = Surface0.copy(alpha = 0.55f),
+                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(Radius.sm)
+                                )
+                            ) {
+                                LiveViewExposureStrip(settings = s)
+                            }
                         }
                     }
                     if (isHistogramEnabled) {
@@ -395,36 +441,47 @@ fun CameraPreviewArea(
                         .align(Alignment.BottomCenter)
                         .padding(Spacing.md)
                 )
+                        }
+                    }
+                PreviewContent.Disconnected -> CameraDisconnectedState(
+                    connectionState = connectionState,
+                    cameraFeed = cameraFeed,
+                    onConnectCamera = onConnectCamera,
+                    onRefreshUsb = onRefreshUsb,
+                    onRequestUsbPermission = onRequestUsbPermission
+                )
+                PreviewContent.Connected -> CameraConnectedState(
+                    isConnected = connectionState.isConnected,
+                    isLiveViewActive = liveViewState.isLiveViewActive,
+                    cameraCapabilities = cameraCapabilities,
+                    onStartLiveView = onStartLiveView,
+                    onStopLiveView = onStopLiveView
+                )
             }
-        } else if (!connectionState.isConnected) {
-            CameraDisconnectedState(
-                connectionState = connectionState,
-                cameraFeed = cameraFeed,
-                onConnectCamera = onConnectCamera,
-                onRefreshUsb = onRefreshUsb,
-                onRequestUsbPermission = onRequestUsbPermission
-            )
-        } else {
-            CameraConnectedState(
-                isConnected = connectionState.isConnected,
-                isLiveViewActive = liveViewState.isLiveViewActive,
-                cameraCapabilities = cameraCapabilities,
-                onStartLiveView = onStartLiveView,
-                onStopLiveView = onStopLiveView
-            )
         }
 
-        // 전역 로딩 오버레이
-        if (captureState.isCapturing) {
+        // 전역 로딩 오버레이 — 페이드 인/아웃
+        AnimatedVisibility(
+            visible = captureState.isCapturing,
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
             LoadingOverlay(stringResource(R.string.capturing_photo))
         }
 
-        // 라이브뷰 로딩 오버레이
-        if (liveViewState.isLiveViewLoading) {
+        // 라이브뷰 로딩 오버레이 — 페이드 인/아웃
+        AnimatedVisibility(
+            visible = liveViewState.isLiveViewLoading,
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
             LoadingOverlay(stringResource(R.string.starting_liveview))
         }
     }
 }
+
+/** 카메라 프리뷰 3-상태 — 전환 애니메이션(Crossfade)의 targetState 키. */
+private enum class PreviewContent { LiveView, Disconnected, Connected }
 
 /**
  * 카메라 연결 안됨 상태 — state+callback 패턴
@@ -606,11 +663,14 @@ private fun OverlayToggleChip(
     contentDescription: String,
     active: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // on/off 토글이면 선택 상태를 시맨틱으로 노출(TalkBack "선택됨/선택 안 됨"). HQ 같은 순환 칩은 null.
+    isToggleSelected: Boolean? = active
 ) {
     Box(
         modifier = modifier
-            .size(36.dp)
+            // 36dp → 44dp 로 확대: 터치 타깃 하한 확보(WCAG 2.5.8 / M3 최소).
+            .size(TouchTarget.min)
             .background(
                 color = Surface0.copy(alpha = 0.6f),
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(Radius.sm)
@@ -620,7 +680,8 @@ private fun OverlayToggleChip(
                 color = if (active) Accent.copy(alpha = 0.6f) else DividerLine,
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(Radius.sm)
             )
-            .clickable(onClick = onClick),
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics { isToggleSelected?.let { selected = it } },
         contentAlignment = Alignment.Center
     ) {
         Icon(
@@ -645,6 +706,7 @@ private fun OverlayLabelChip(
 ) {
     Row(
         modifier = modifier
+            .defaultMinSize(minHeight = TouchTarget.min)
             .background(
                 color = Surface0.copy(alpha = 0.6f),
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(Radius.sm)
@@ -654,7 +716,7 @@ private fun OverlayLabelChip(
                 color = DividerLine,
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(Radius.sm)
             )
-            .clickable(onClick = onClick)
+            .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = Spacing.sm, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
         verticalAlignment = Alignment.CenterVertically

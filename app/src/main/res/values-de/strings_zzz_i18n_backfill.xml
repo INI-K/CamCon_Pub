@@ -119,6 +119,7 @@
     <string name="photo_preview_wifi_connected">Wi-Fi wird verbunden</string>
     <string name="photo_thumbnail_latest">Neueste</string>
     <string name="photo_thumbnail_selected">Ausgewählt</string>
+    <string name="photo_thumbnail_unselected">Nicht ausgewählt</string>
     <string name="ptpip_allow">Zulassen</string>
     <string name="ptpip_ap_mode">AP-Modus</string>
     <string name="ptpip_camera">Kamera</string>
@@ -155,6 +156,8 @@
     <string name="ptpip_reconnect_camera">3. Suche die Kamera erneut und verbinde dich</string>
     <string name="ptpip_search_camera">Kamera erneut suchen</string>
     <string name="ptpip_show_password">Anzeigen</string>
+    <string name="ptpip_password_shown">Passwort angezeigt</string>
+    <string name="ptpip_password_hidden">Passwort ausgeblendet</string>
     <string name="ptpip_sta_mode">STA-Modus</string>
     <string name="ptpip_tab_content_area">Tab-Inhaltsbereich</string>
     <string name="ptpip_wifi_scan_restriction">Wi-Fi-Scan-Beschränkung</string>

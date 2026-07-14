@@ -119,6 +119,7 @@
     <string name="photo_preview_wifi_connected">正在连接 Wi-Fi</string>
     <string name="photo_thumbnail_latest">最新</string>
     <string name="photo_thumbnail_selected">已选择</string>
+    <string name="photo_thumbnail_unselected">未选择</string>
     <string name="ptpip_allow">允许</string>
     <string name="ptpip_ap_mode">AP 模式</string>
     <string name="ptpip_camera">相机</string>
@@ -155,6 +156,8 @@
     <string name="ptpip_reconnect_camera">3. 重新搜索相机并连接</string>
     <string name="ptpip_search_camera">重新搜索相机</string>
     <string name="ptpip_show_password">显示</string>
+    <string name="ptpip_password_shown">密码已显示</string>
+    <string name="ptpip_password_hidden">密码已隐藏</string>
     <string name="ptpip_sta_mode">STA 模式</string>
     <string name="ptpip_tab_content_area">标签内容区域</string>
     <string name="ptpip_wifi_scan_restriction">Wi-Fi 扫描限制</string>

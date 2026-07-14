@@ -346,6 +346,8 @@
     <string name="ptpip_tab_content_area">Tab content area</string>
     <string name="ptpip_hide_password">Hide</string>
     <string name="ptpip_show_password">Show</string>
+    <string name="ptpip_password_shown">Password shown</string>
+    <string name="ptpip_password_hidden">Password hidden</string>
     <string name="ptpip_please_enable_wifi">Please turn on Wi-Fi</string>
     <string name="ptpip_please_enable_location">Please turn on location services</string>
     <string name="ptpip_check_scan_conditions">Please check the scan conditions</string>
@@ -398,6 +400,7 @@
 
     <!-- PhotoThumbnail -->
     <string name="photo_thumbnail_selected">Selected</string>
+    <string name="photo_thumbnail_unselected">Not selected</string>
     <string name="photo_thumbnail_latest">Latest</string>
 
     <!-- WifiScanResultsCard -->
