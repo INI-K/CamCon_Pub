@@ -72,6 +72,7 @@ class CameraRepositoryImplLruCacheTest {
             eventManager = eventManager,
             downloadManager = downloadManager,
             transferProgressTracker = transferProgressTracker,
+            errorNotifier = mockk(relaxed = true),
             processedFileCache = processedFileCache,
             cacheSweeper = cacheSweeper,
             scope = scope,

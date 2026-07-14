@@ -125,8 +125,9 @@ object AppModule {
         @ApplicationContext context: Context,
         @ApplicationScope scope: CoroutineScope,
         @IoDispatcher ioDispatcher: CoroutineDispatcher,
-        libgphoto2PluginInstaller: com.inik.camcon.data.datasource.Libgphoto2PluginInstaller
-    ) = UsbConnectionManager(context, scope, ioDispatcher, libgphoto2PluginInstaller)
+        libgphoto2PluginInstaller: com.inik.camcon.data.datasource.Libgphoto2PluginInstaller,
+        errorNotifier: com.inik.camcon.domain.manager.ErrorNotifier
+    ) = UsbConnectionManager(context, scope, ioDispatcher, libgphoto2PluginInstaller, errorNotifier)
 
     @Provides
     @Singleton

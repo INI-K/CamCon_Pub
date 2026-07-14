@@ -99,6 +99,8 @@ class PtpipDataSource @Inject constructor(
     @Volatile private var lastConnectedCamera: PtpipCamera? = null
     @Volatile private var isAutoReconnectEnabled = false
     private var networkMonitoringJob: Job? = null
+    // ERROR → DISCONNECTED 자동 복원 예약 Job (중복 예약 취소·교체용)
+    private var errorResetJob: Job? = null
     // 초기 플러시 완료 플래그
     @Volatile private var isInitialFlushCompleted = false
     private val reconnectMutex = Mutex()
@@ -297,6 +299,10 @@ class PtpipDataSource @Inject constructor(
         private const val TAG = "PtpipDataSource"
         private const val RECONNECT_DELAY_MS = 3000L
         private const val DUP_WINDOW_MS = 1500L
+        // ERROR 상태를 잠시 유지(UI 피드백)한 뒤 DISCONNECTED로 자동 복원하기까지의 지연.
+        // DISCONNECTED로 내려야 WifiMonitoringService 폴링·handleNetworkStateChange 자동 재연결이
+        // 다시 게이트를 통과한다(ERROR는 그 게이트에 안 걸려 영구 고착됐었음).
+        private const val ERROR_RESET_DELAY_MS = 5000L
         const val ACTION_PHOTO_SAVED = "com.inik.camcon.action.PHOTO_SAVED"
         const val EXTRA_URI = "uri"
         const val EXTRA_FILE_NAME = "fileName"
@@ -355,6 +361,10 @@ class PtpipDataSource @Inject constructor(
      * 네트워크 상태 모니터링 시작
      */
     private fun startNetworkMonitoring() {
+        // 멱등: @Singleton 수명 동안 단 하나의 모니터링만 유지한다.
+        // cleanup()은 더 이상 이 Job을 취소하지 않으므로(호출자 화면 수명 ≠ 싱글톤 수명) 재시작도 없지만,
+        // 방어적으로 중복 구독을 막는다.
+        if (networkMonitoringJob?.isActive == true) return
         networkMonitoringJob = wifiHelper.networkStateFlow
             .onEach { networkState ->
                 Log.d(
@@ -370,6 +380,33 @@ class PtpipDataSource @Inject constructor(
                 }
             }
             .launchIn(coroutineScope)
+    }
+
+    /**
+     * ERROR 상태 → DISCONNECTED 자동 복원 예약.
+     *
+     * 연결/자동 재연결 실패는 `_connectionState`를 ERROR로 남기는데, 자동 재연결/폴링 체인
+     * (WifiMonitoringService 폴링·handleNetworkStateChange 재연결 예약)은 전부 `== DISCONNECTED`
+     * 게이트라 ERROR가 되면 카메라가 다시 켜져도 자동 연결이 영구 정지했다(소유권 가드도 ERROR를
+     * 비소유로 봐 리셋 못 함). ERROR를 잠깐 유지해 UI 피드백을 준 뒤 DISCONNECTED로 복원해 자동
+     * 경로를 되살린다. 네이티브 핸들은 건드리지 않고 상태 플로우만 내리므로 USB 공유 세션에 무해하다
+     * (ERROR 시점 connectedCamera는 항상 null — 연결 성공 지점에서만 세팅됨).
+     *
+     * 실패 경로(연결 시도·자동 재연결 소진)에서만 호출한다. 지연 경과 뒤에도 여전히 ERROR일 때만
+     * 복원하며, 그 사이 새 시도가 CONNECTING/CONNECTED로 올려두면 no-op(멱등). 중복 예약은 취소·교체.
+     */
+    private fun scheduleErrorReset() {
+        errorResetJob?.cancel()
+        errorResetJob = coroutineScope.launch(ioDispatcher) {
+            delay(ERROR_RESET_DELAY_MS)
+            connectionStateMutex.withLock {
+                if (_connectionState.value == PtpipConnectionState.ERROR) {
+                    Log.i(TAG, "ERROR 상태 자동 복원 → DISCONNECTED (자동 재연결/폴링 재개 허용)")
+                    _connectionState.value = PtpipConnectionState.DISCONNECTED
+                    setProgress(UiText.Empty)
+                }
+            }
+        }
     }
 
     /**
@@ -586,6 +623,10 @@ class PtpipDataSource @Inject constructor(
                 }
             }
             Log.e(TAG, "Auto-reconnect failed after $maxAttempts attempts")
+            // 재시도 소진 후 남은 ERROR도 복원 예약 — 카메라가 나중에 켜져도 폴링/재연결이 재개되도록.
+            if (_connectionState.value == PtpipConnectionState.ERROR) {
+                scheduleErrorReset()
+            }
         } finally {
             reconnectMutex.unlock()
         }
@@ -600,13 +641,17 @@ class PtpipDataSource @Inject constructor(
     }
 
     /**
-     * 리소스 정리
+     * 리소스 정리 (호출자 화면 수명 스코프).
+     *
+     * ⚠️ 이 데이터소스는 @Singleton(프로세스 수명)이다. cleanup()의 유일 호출 경로는
+     * 화면 teardown(PtpipViewModel.onCleared → connectionHelper.cleanup → repository.cleanup)이라,
+     * 여기서 싱글톤 수명 자원(networkMonitoringJob·autoConnectReceiver)을 끄면 설정/Wi-Fi 화면을
+     * 한 번 왕복하는 것만으로 네트워크 모니터링·자동연결 리시버가 프로세스 재시작 전까지 영구 사망했다
+     * (재시작 경로 없음). 그래서 cleanup 범위를 '화면이 실제로 소유한 자원'(연결·셔터 리스너·콜백)으로
+     * 축소하고, 싱글톤 인프라(모니터링 Job·리시버)는 프로세스 수명 동안 계속 살려둔다.
      */
     fun cleanup() {
-        networkMonitoringJob?.cancel()
-        networkMonitoringJob = null
-
-        // 카메라 연결 해제
+        // 카메라 연결 해제 (disconnectInternal 소유권 가드가 USB 공유 세션을 보호)
         coroutineScope.launch(ioDispatcher) {
             try {
                 disconnect(keepSession = false)
@@ -622,16 +667,8 @@ class PtpipDataSource @Inject constructor(
         onPhotoCapturedCallback = null
         onConnectionLostCallback = null
 
-        if (autoConnectReceiverRegistered) {
-            try {
-                context.unregisterReceiver(autoConnectReceiver)
-            } catch (e: Exception) {
-                Log.w(TAG, "BroadcastReceiver 해제 실패: ${e.message}")
-            }
-            autoConnectReceiverRegistered = false
-        }
-
-        Log.d(TAG, "리소스 정리 완료 (콜백 포함)")
+        // autoConnectReceiver·networkMonitoringJob은 여기서 해제하지 않는다(위 KDoc 참조 — 싱글톤 인프라).
+        Log.d(TAG, "리소스 정리 완료 (콜백 포함, 싱글톤 모니터링/리시버는 유지)")
     }
 
     /**
@@ -781,6 +818,13 @@ class PtpipDataSource @Inject constructor(
     suspend fun connectToCamera(camera: PtpipCamera, forceApMode: Boolean): Boolean =
         connectionStateMutex.withLock {
             connectToCameraInternal(camera, forceApMode)
+        }.also { success ->
+            // 연결 실패로 남은 ERROR는 지연 후 DISCONNECTED로 복원 예약 — 안 그러면 폴링/자동재연결이
+            // (== DISCONNECTED 게이트) 영구 정지한다. 락 밖에서 호출하며, 그 사이 새 시도가 상태를
+            // 올려두면 예약 본문이 no-op. (취소 예외는 여기 도달 안 함 — finally가 CONNECTING을 복원.)
+            if (!success && _connectionState.value == PtpipConnectionState.ERROR) {
+                scheduleErrorReset()
+            }
         }
 
     /**
@@ -1102,8 +1146,28 @@ class PtpipDataSource @Inject constructor(
             _connectionState.value = PtpipConnectionState.ERROR
             setProgress(UiText.Resource( R.string.progress_ptpip_error, listOf(e.message.orEmpty()) ))
             return@withContext false
+        } finally {
+            // 취소 경로 상태 복원: 연결 진행 중(최대 60s Nikon 승인 폴링) 화면 이탈로 코루틴이 취소되면
+            // CancellationException을 rethrow만 하고 상태를 안 내려 CONNECTING에 영구 고착됐다 →
+            // discover 조기리턴·attemptAutoReconnect 스킵·폴링 차단으로 검색/자동연결이 전부 막히고,
+            // disconnect 소유권 가드도 CONNECTING을 비소유로 봐 리셋 못 함. 취소 시점 connectedCamera는
+            // 아직 null(성공 지점 1107에서만 세팅)이라 네이티브 세션 소유가 없으므로, 상태만 복원한다.
+            resetIfStuckConnecting()
         }
         } // withContext
+
+    /**
+     * CONNECTING에 고착된 상태를 DISCONNECTED로 되돌린다(정상/실패 종료는 이미 CONNECTED/ERROR로
+     * 내려가 있으므로 no-op). 취소 등으로 종료 상태를 못 밟고 빠져나온 경우에만 자동 경로를 되살린다.
+     * 네이티브 핸들은 건드리지 않는다(USB 공유 세션 보호 — CONNECTING 시점 connectedCamera는 null).
+     */
+    private fun resetIfStuckConnecting() {
+        if (_connectionState.value == PtpipConnectionState.CONNECTING) {
+            Log.w(TAG, "CONNECTING 고착 감지 - DISCONNECTED로 복원(취소/비정상 종료)")
+            _connectionState.value = PtpipConnectionState.DISCONNECTED
+            setProgress(UiText.Empty)
+        }
+    }
 
     /**
      * Abilities JSON 파싱

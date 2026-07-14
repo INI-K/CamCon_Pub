@@ -32,6 +32,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import com.inik.camcon.domain.model.Subscription
+import com.inik.camcon.domain.repository.AuthRepository
 import com.inik.camcon.domain.repository.SubscriptionRepository
 import io.mockk.coEvery
 import kotlinx.coroutines.flow.first
@@ -43,6 +44,7 @@ class ValidateImageFormatUseCaseTest {
     private lateinit var getSubscriptionUseCase: GetSubscriptionUseCase
     private lateinit var subscriptionRepository: SubscriptionRepository
     private lateinit var appSettingsRepository: FakeAppSettingsRepository
+    private lateinit var authRepository: AuthRepository
     private lateinit var logger: Logger
 
     // UiText 전환: UseCase 는 더 이상 Context 를 보유하지 않고 restrictionMessage 를
@@ -124,6 +126,9 @@ class ValidateImageFormatUseCaseTest {
         every { Log.i(any(), any()) } returns 0
         subscriptionRepository = mockk()
         appSettingsRepository = FakeAppSettingsRepository()
+        authRepository = mockk()
+        // 로그인 관찰이 추가 refresh 를 트리거하지 않도록 비로그인(null) 기본 stub.
+        every { authRepository.getCurrentUser() } returns flowOf(null)
         logger = mockk(relaxed = true)
     }
 
@@ -141,7 +146,7 @@ class ValidateImageFormatUseCaseTest {
         coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(
             Subscription(tier = tier)
         )
-        getSubscriptionUseCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, logger, scope)
+        getSubscriptionUseCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, authRepository, logger, scope)
         useCase = ValidateImageFormatUseCase(
             getSubscriptionUseCase,
             appSettingsRepository,

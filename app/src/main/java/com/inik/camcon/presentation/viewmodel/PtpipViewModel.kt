@@ -86,7 +86,15 @@ class PtpipViewModel @Inject constructor(
 
     // 폰 핫스팟 STA 모드 — 활성 시나리오와 사용자 입력 IP를 repository에서 위임.
     val activeConnectionMethod: StateFlow<ConnectionMethod?> = ptpipRepository.activeConnectionMethod
+
+    // 데이터소스가 화이트리스트 검증을 통과한 '완전한' IP만 반영하는 검증된 상태.
     val manualIp: StateFlow<String> = ptpipRepository.manualIp
+
+    // 사용자 자유 타이핑 원문(UI TextField 표시용). 검증 전 중간 입력("1", "192.168.4" 등)도
+    // 그대로 유지해야 controlled TextField가 매 키 입력마다 리셋되지 않는다(검증된 manualIp만
+    // 바인딩하면 부분 입력이 거부돼 타이핑으로 완전한 IP를 만들 수 없고 붙여넣기만 동작하던 버그).
+    private val _manualIpInput = MutableStateFlow("")
+    val manualIpInput: StateFlow<String> = _manualIpInput.asStateFlow()
 
     // 전역 연결 상태
     val globalConnectionState = globalManager.globalConnectionState
@@ -367,8 +375,11 @@ class PtpipViewModel @Inject constructor(
         }
     }
 
-    /** 사용자 입력 IP를 repository에 전달한다 (UI TextField에서 호출). */
+    /** 사용자 입력 IP 갱신 (UI TextField에서 호출). 원문은 로컬 상태로 유지하고 검증은 데이터소스에 위임. */
     fun setManualIp(ip: String) {
+        // 자유 타이핑 원문은 항상 로컬에 보관(화면 표시용) — 중간/부분 입력도 유지.
+        _manualIpInput.value = ip
+        // 검증(사설망/link-local 화이트리스트)은 데이터소스가 수행하며, 통과분만 manualIp에 반영된다.
         ptpipRepository.setManualIp(ip)
     }
 

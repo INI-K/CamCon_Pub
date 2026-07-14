@@ -3,7 +3,9 @@ package com.inik.camcon.domain.usecase
 import app.cash.turbine.test
 import com.inik.camcon.domain.model.Subscription
 import com.inik.camcon.domain.model.SubscriptionTier
+import com.inik.camcon.domain.model.User
 import com.inik.camcon.domain.repository.AppSettingsRepository
+import com.inik.camcon.domain.repository.AuthRepository
 import com.inik.camcon.domain.repository.SubscriptionRepository
 import com.inik.camcon.domain.util.Logger
 import io.mockk.clearMocks
@@ -12,8 +14,11 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -31,6 +36,7 @@ class GetSubscriptionUseCaseTest {
     private lateinit var useCase: GetSubscriptionUseCase
     private lateinit var subscriptionRepository: SubscriptionRepository
     private lateinit var appSettingsRepository: AppSettingsRepository
+    private lateinit var authRepository: AuthRepository
     private lateinit var logger: Logger
 
     private val testDispatcher = StandardTestDispatcher()
@@ -42,6 +48,9 @@ class GetSubscriptionUseCaseTest {
         appSettingsRepository = mockk(relaxed = true)
         // seedFromCache()가 first()에서 멈추지 않도록 캐시 티어 기본 stub.
         every { appSettingsRepository.subscriptionTierEnum } returns flowOf(SubscriptionTier.FREE)
+        authRepository = mockk()
+        // 기본은 비로그인 — 로그인 관찰이 추가 refresh 를 트리거하지 않는다.
+        every { authRepository.getCurrentUser() } returns flowOf(null)
         logger = mockk(relaxed = true)
     }
 
@@ -58,7 +67,7 @@ class GetSubscriptionUseCaseTest {
         )
 
         // When
-        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, logger, this)
+        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, authRepository, logger, this)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
@@ -72,7 +81,7 @@ class GetSubscriptionUseCaseTest {
         val proSubscription = Subscription(tier = SubscriptionTier.PRO)
         coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(proSubscription)
 
-        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, logger, this)
+        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, authRepository, logger, this)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // When & Then
@@ -89,7 +98,7 @@ class GetSubscriptionUseCaseTest {
         val nullTierSubscription = Subscription(tier = null)
         coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(nullTierSubscription)
 
-        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, logger, this)
+        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, authRepository, logger, this)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // When & Then
@@ -108,7 +117,7 @@ class GetSubscriptionUseCaseTest {
         )
         coEvery { subscriptionRepository.syncSubscriptionStatus() } returns Unit
 
-        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, logger, this)
+        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, authRepository, logger, this)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // When
@@ -125,7 +134,7 @@ class GetSubscriptionUseCaseTest {
         val adminSubscription = Subscription(tier = SubscriptionTier.ADMIN, isActive = true)
         coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(adminSubscription)
 
-        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, logger, this)
+        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, authRepository, logger, this)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // When
@@ -144,7 +153,7 @@ class GetSubscriptionUseCaseTest {
         )
         coEvery { subscriptionRepository.syncSubscriptionStatus() } returns Unit
 
-        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, logger, this)
+        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, authRepository, logger, this)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // When
@@ -162,7 +171,7 @@ class GetSubscriptionUseCaseTest {
         coEvery { subscriptionRepository.getUserSubscription() } returns emptyFlow()
 
         // When
-        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, logger, this)
+        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, authRepository, logger, this)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // Then: Firestore가 값을 주지 않았으므로 seed된 PRO가 유지
@@ -179,7 +188,7 @@ class GetSubscriptionUseCaseTest {
         )
 
         // When
-        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, logger, this)
+        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, authRepository, logger, this)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // Then: refresh가 seed를 덮어써 최종 FREE
@@ -197,7 +206,7 @@ class GetSubscriptionUseCaseTest {
         )
         coEvery { subscriptionRepository.syncSubscriptionStatus() } returns Unit
 
-        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, logger, this)
+        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, authRepository, logger, this)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // init의 호출 기록만 지우고 stub(answers)은 유지 → logCurrentTier 단독 행위만 관찰
@@ -219,7 +228,7 @@ class GetSubscriptionUseCaseTest {
             Subscription(tier = SubscriptionTier.PRO)
         )
 
-        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, logger, this)
+        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, authRepository, logger, this)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // When
@@ -228,5 +237,108 @@ class GetSubscriptionUseCaseTest {
 
         // Then: 캐시된 값(PRO)이 티어 로그로 출력된다
         verify { logger.i("GetSubscriptionUseCase", " 티어: PRO") }
+    }
+
+    // === item B: 로그인 성공 후 구독 재조회 트리거 ===
+
+    @Test
+    fun `로그인 이벤트가 감지되면 구독을 재조회한다`() = runTest {
+        // Given: 비로그인 시점에 init refresh 실행(캐시 FREE), 이후 로그인 사용자 등장
+        every { appSettingsRepository.subscriptionTierEnum } returns flowOf(SubscriptionTier.FREE)
+        every { authRepository.getCurrentUser() } returns flowOf(
+            User(id = "uid-1", email = "u@x.com", displayName = "U")
+        )
+        coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(
+            Subscription(tier = SubscriptionTier.PRO, isActive = true)
+        )
+
+        // When
+        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, authRepository, logger, this)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then: 로그인 관찰이 init(1회) 위에 재조회를 추가로 트리거 → 서버 티어(PRO)로 수렴
+        coVerify(atLeast = 2) { subscriptionRepository.getUserSubscription() }
+        assertEquals(SubscriptionTier.PRO, useCase().value.tier)
+    }
+
+    @Test
+    fun `생성 후 로그인 발생 시 재조회가 트리거된다 (getCurrentUser 반응형)`() = runTest {
+        // Given: 생성 시점 비로그인(재설치/로그아웃 후 부팅), 반응형 인증 소스를 MutableStateFlow 로 모사
+        every { appSettingsRepository.subscriptionTierEnum } returns flowOf(SubscriptionTier.FREE)
+        val userFlow = MutableStateFlow<User?>(null)
+        every { authRepository.getCurrentUser() } returns userFlow
+        coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(
+            Subscription(tier = SubscriptionTier.PRO, isActive = true)
+        )
+        // getCurrentUser 가 무한 hot flow 이므로 취소 가능한 별도 scope 사용(runTest 누수 방지)
+        val ucScope = CoroutineScope(testDispatcher)
+
+        // When: 생성 — 아직 비로그인
+        useCase = GetSubscriptionUseCase(
+            subscriptionRepository, appSettingsRepository, authRepository, logger, ucScope
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+        // 생성 직후: init refresh 1회만(로그인 관찰은 uid=null 이라 미발화)
+        coVerify(exactly = 1) { subscriptionRepository.getUserSubscription() }
+
+        // When: 앱 기동 후 로그인 발생(getCurrentUser 가 새 사용자 방출)
+        userFlow.value = User(id = "uid-1", email = "u@x", displayName = "U")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then: 로그인 관찰이 재조회를 추가 트리거 → 서버 티어(PRO)로 수렴
+        coVerify(atLeast = 2) { subscriptionRepository.getUserSubscription() }
+        assertEquals(SubscriptionTier.PRO, useCase().value.tier)
+
+        ucScope.cancel()
+    }
+
+    @Test
+    fun `비로그인이면 로그인 트리거 재조회가 없다 (init 1회만)`() = runTest {
+        // Given: getCurrentUser 가 null 만 방출(setUp 기본) → 로그인 트리거 없음
+        every { appSettingsRepository.subscriptionTierEnum } returns flowOf(SubscriptionTier.FREE)
+        coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(
+            Subscription(tier = SubscriptionTier.FREE, isAuthoritative = false)
+        )
+
+        // When
+        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, authRepository, logger, this)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then: init refresh 1회만 (로그인 관찰은 uid=null 이라 refresh 안 함)
+        coVerify(exactly = 1) { subscriptionRepository.getUserSubscription() }
+    }
+
+    // === item A 보강 / (d): seed 가드가 drop(1) 전제를 보존한다 ===
+
+    @Test
+    fun `캐시가 FREE면 seed는 StateFlow를 시딩하지 않는다 (drop(1) 전제 보존)`() = runTest {
+        // Given: 캐시 FREE, refresh 는 값을 주지 않음(seed 단독 관찰)
+        every { appSettingsRepository.subscriptionTierEnum } returns flowOf(SubscriptionTier.FREE)
+        coEvery { subscriptionRepository.getUserSubscription() } returns emptyFlow()
+
+        // When
+        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, authRepository, logger, this)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then: seed 가드(cache==FREE)로 시딩 스킵 → 초기 비권위 기본값 그대로(추가 emit 없음)
+        val result = useCase().value
+        assertEquals(SubscriptionTier.FREE, result.tier)
+        assertEquals(false, result.isAuthoritative)
+    }
+
+    @Test
+    fun `초기 StateFlow 기본값은 비권위 FREE (권위 오인 방지)`() = runTest {
+        // Given: refresh 미완(값 없음)이라 초기 기본값이 그대로 노출되는 상황
+        every { appSettingsRepository.subscriptionTierEnum } returns flowOf(SubscriptionTier.FREE)
+        coEvery { subscriptionRepository.getUserSubscription() } returns emptyFlow()
+
+        // When
+        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, authRepository, logger, this)
+        // advance 하지 않아 refresh 전 초기값을 관찰
+
+        // Then: 초기 기본값은 isAuthoritative=false (ObserveEffectiveTierUseCase 가 pref 를 무시하지 않도록)
+        val initial = useCase().value
+        assertEquals(SubscriptionTier.FREE, initial.tier)
+        assertEquals(false, initial.isAuthoritative)
     }
 }
