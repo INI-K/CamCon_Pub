@@ -72,6 +72,15 @@ VENDOR_WHITELIST = {
     "pentax", "ricoh", "leica", "sigma", "hasselblad", "casio",
 }
 
+# CamCon 무선(Wi-Fi) 지원 큐레이션 — 표준 PTP/IP를 쓰는 Nikon Z 시리즈.
+# Z6·Z8은 실기 검증 완료, 나머지는 동일 프로토콜. 모델명은 libgphoto2 모델 테이블 원문 표기
+# (Z6_2=Z6II, Z7_2=Z7II, "Z6 III"=Z6III).
+WIFI_SUPPORTED = {
+    ("Nikon", "Z9"), ("Nikon", "Z8"), ("Nikon", "Z7_2"), ("Nikon", "Z7"),
+    ("Nikon", "Z6 III"), ("Nikon", "Z6_2"), ("Nikon", "Z6"), ("Nikon", "Z5"),
+    ("Nikon", "Z50"), ("Nikon", "Z30"), ("Nikon", "Zfc"), ("Nikon", "Zf"),
+}
+
 # ptpip 을 제외한 camlib 는 전부 USB 유선.
 def read(path):
     with open(path, encoding="utf-8", errors="ignore") as fh:
@@ -251,7 +260,8 @@ def main():
     excluded = len(all_rows) - len(kept_rows)
 
     cameras = [
-        {"vendor": v, "model": mo, "connection": c}
+        {"vendor": v, "model": mo, "connection": c,
+         **({"wifi": True} if (v, mo) in WIFI_SUPPORTED else {})}
         for (v, mo, c) in kept_rows
     ]
     out = {
