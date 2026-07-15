@@ -83,3 +83,7 @@ Key/upload_certificate.pem
 
 # superpowers brainstorm artifacts
 .superpowers/
+
+# 쓰레드 마케팅 자산 중간 산출물
+marketing/threads/tools/node_modules/
+marketing/threads/*/frames/
