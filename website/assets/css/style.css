@@ -677,6 +677,9 @@ main { position: relative; z-index: 2; counter-reset: folio; }
 .cam-verify { font-family: var(--mono); font-size: 10px; letter-spacing: .04em; white-space: nowrap;
   padding: 2px 8px; border-radius: 12px; color: var(--amber);
   border: 1px solid var(--amber-35); background: var(--amber-06); flex-shrink: 0; }
+.cam-wifi { font-family: var(--mono); font-size: 10px; letter-spacing: .04em; white-space: nowrap;
+  padding: 2px 8px; border-radius: 12px; color: var(--cyan);
+  border: 1px solid rgba(88,198,218,.3); background: rgba(88,198,218,.07); flex-shrink: 0; }
 .cam-conn { font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em; color: var(--ink-mute); border: 1px solid var(--hair); padding: 2px 6px; border-radius: 4px; }
 .cam-conn.is-wifi { color: var(--cyan); border-color: rgba(88,198,218,.3); }
 .cam-empty { padding: 30px; text-align: center; color: var(--ink-mute); font-family: var(--mono); font-size: 13px; }
