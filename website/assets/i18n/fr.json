@@ -128,9 +128,9 @@
   "faq.q6": "La connexion Wi-Fi ne fonctionne pas.",
   "faq.a6": "Sur la série Nikon Z, vous devez approuver « Autoriser la connexion » sur l'écran du boîtier lors de la première connexion. Activez le point d'accès de votre téléphone ou connectez l'appareil photo et le téléphone au même routeur Wi-Fi. Si cela échoue encore, éteignez puis rallumez le Wi-Fi de l'appareil photo et relancez la recherche dans l'application.",
   "faq.q7": "Que puis-je faire gratuitement ?",
-  "faq.a7": "La connexion de l'appareil (USB et Wi-Fi), la prise de vue, la réception des photos et 5 films signature sont gratuits. PRO débloque les 296 simulations de pellicule, le téléchargement RAW et le contrôle avancé du live view.",
+  "faq.a7": "La connexion de l'appareil (USB et Wi-Fi), la prise de vue, la réception des photos et 5 films signature sont gratuits. Avec l'offre gratuite, les photos sont enregistrées à 2000 px maximum sur le grand côté. PRO débloque les 296 simulations de pellicule, l'enregistrement en pleine résolution, le téléchargement RAW et le contrôle avancé du live view.",
   "faq.q8": "Les photos prises avec le déclencheur de l'appareil sont-elles aussi transférées ?",
-  "faq.a8": "Oui. Pas seulement les prises de vue à distance depuis l'application : les photos prises avec le déclencheur du boîtier sont aussi transférées automatiquement vers le téléphone, même avec le live view activé.",
+  "faq.a8": "Oui. Sur les appareils compatibles, pas seulement les prises de vue à distance depuis l'application : les photos prises avec le déclencheur du boîtier sont aussi transférées automatiquement vers le téléphone, même avec le live view activé.",
   "faq.q9": "Existe-t-il une version iPhone (iOS) ?",
   "faq.a9": "Actuellement Android uniquement (Android 10 ou plus, appareils arm64 64 bits). Il n'existe pas de version iOS.",
 
