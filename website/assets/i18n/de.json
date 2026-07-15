@@ -128,9 +128,9 @@
   "faq.q6": "Die Wi-Fi-Verbindung funktioniert nicht.",
   "faq.a6": "Bei der Nikon-Z-Serie müssen Sie bei der ersten Verbindung „Verbindung zulassen\" am Kameradisplay bestätigen. Aktivieren Sie den Hotspot Ihres Telefons oder verbinden Sie Kamera und Telefon mit demselben WLAN-Router. Falls es weiterhin nicht klappt, schalten Sie das WLAN der Kamera aus und wieder ein und suchen Sie in der App erneut.",
   "faq.q7": "Was kann ich kostenlos nutzen?",
-  "faq.a7": "Kameraverbindung (USB und Wi-Fi), Aufnahme, Fotoübertragung und 5 Signature-Filme sind kostenlos. PRO schaltet alle 296 Filmsimulationen, RAW-Downloads und erweiterte Live-View-Steuerung frei.",
+  "faq.a7": "Kameraverbindung (USB und Wi-Fi), Aufnahme, Fotoübertragung und 5 Signature-Filme sind kostenlos. Im Gratis-Plan werden Fotos mit maximal 2000 px an der langen Kante gespeichert. PRO schaltet alle 296 Filmsimulationen, Speicherung in voller Auflösung, RAW-Downloads und erweiterte Live-View-Steuerung frei.",
   "faq.q8": "Werden auch Fotos übertragen, die mit dem Kameraauslöser aufgenommen wurden?",
-  "faq.a8": "Ja. Nicht nur Fernaufnahmen aus der App, sondern auch mit dem Auslöser der Kamera aufgenommene Fotos werden automatisch auf das Telefon übertragen — auch bei aktiviertem Live View.",
+  "faq.a8": "Ja. Bei unterstützten Kameras werden nicht nur Fernaufnahmen aus der App, sondern auch mit dem Auslöser der Kamera aufgenommene Fotos automatisch auf das Telefon übertragen — auch bei aktiviertem Live View.",
   "faq.q9": "Gibt es eine iPhone-(iOS-)Version?",
   "faq.a9": "Derzeit nur für Android (Android 10 oder höher, 64-Bit-arm64-Geräte). Eine iOS-Version gibt es nicht.",
 
