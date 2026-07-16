@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
@@ -120,6 +121,8 @@ import com.inik.camcon.presentation.ui.components.v2.ProgressBarV2
 import com.inik.camcon.presentation.ui.components.v2.RowItem
 import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
 import com.inik.camcon.presentation.util.copyToClipboard
+import com.inik.camcon.presentation.util.openUrl
+import com.inik.camcon.utils.Constants
 import com.inik.camcon.presentation.viewmodel.AdminReferralCodeViewModel
 import com.inik.camcon.presentation.viewmodel.AdminReferralUiEvent
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
@@ -972,6 +975,18 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_v2_app_version_title),
                     subtitle = BuildConfig.VERSION_NAME,
                     onClick = { }
+                )
+                ClickableRowV2(
+                    icon = Icons.Default.Security,
+                    title = stringResource(R.string.privacy_policy),
+                    subtitle = "",
+                    onClick = { context.openUrl(Constants.Legal.PRIVACY_POLICY_URL) }
+                )
+                ClickableRowV2(
+                    icon = Icons.Default.Description,
+                    title = stringResource(R.string.terms_of_service),
+                    subtitle = "",
+                    onClick = { context.openUrl(Constants.Legal.TERMS_OF_SERVICE_URL) }
                 )
             }
 
