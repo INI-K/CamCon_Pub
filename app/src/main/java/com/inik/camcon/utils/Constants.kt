@@ -301,4 +301,12 @@ object Constants {
         const val USERS_COLLECTION = "users"
         const val SUBSCRIPTIONS_COLLECTION = "subscriptions"
     }
+
+    /**
+     * 법적 문서 URL (개인정보처리방침·이용약관)
+     */
+    object Legal {
+        const val PRIVACY_POLICY_URL = "https://camcon.inik.kr/privacy.html"
+        const val TERMS_OF_SERVICE_URL = "https://camcon.inik.kr/terms.html"
+    }
 }
