@@ -9,6 +9,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -26,6 +27,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -48,9 +50,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -88,6 +92,8 @@ import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.LoginUiEvent
 import com.inik.camcon.presentation.viewmodel.LoginUiState
 import com.inik.camcon.presentation.viewmodel.LoginViewModel
+import com.inik.camcon.presentation.util.openUrl
+import com.inik.camcon.utils.Constants
 import com.inik.camcon.utils.LogMask
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -282,6 +288,8 @@ fun LoginScreen(
     var referralCode by rememberSaveable { mutableStateOf("") }
     // 추천 코드 접이식 노출. 기본 접힘, 세션 내 단방향(한 번 펼치면 유지).
     var showReferral by rememberSaveable { mutableStateOf(false) }
+
+    val context = LocalContext.current
 
     Box(
         modifier = Modifier
@@ -491,6 +499,46 @@ fun LoginScreen(
                                 color = TextTertiary,
                                 textAlign = TextAlign.Center
                             )
+
+                            // 이용약관 · 개인정보처리방침 — 탭 가능한 링크(로케일별 substring 위치 비의존).
+                            // 각 링크 터치 타깃 최소 44dp.
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.terms_of_service),
+                                    style = Caption,
+                                    color = Accent,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(Radius.sm))
+                                        .clickable {
+                                            context.openUrl(Constants.Legal.TERMS_OF_SERVICE_URL)
+                                        }
+                                        .heightIn(min = 44.dp)
+                                        .wrapContentHeight(Alignment.CenterVertically)
+                                        .padding(horizontal = Spacing.sm)
+                                )
+                                Text(
+                                    text = " · ",
+                                    style = Caption,
+                                    color = TextTertiary
+                                )
+                                Text(
+                                    text = stringResource(R.string.privacy_policy),
+                                    style = Caption,
+                                    color = Accent,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(Radius.sm))
+                                        .clickable {
+                                            context.openUrl(Constants.Legal.PRIVACY_POLICY_URL)
+                                        }
+                                        .heightIn(min = 44.dp)
+                                        .wrapContentHeight(Alignment.CenterVertically)
+                                        .padding(horizontal = Spacing.sm)
+                                )
+                            }
                         }
                     }
                 }
