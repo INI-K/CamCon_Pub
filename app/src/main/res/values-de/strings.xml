@@ -355,4 +355,23 @@
     <string name="license_version">Version:</string>
     <string name="license_type">Lizenz:</string>
     <string name="camera_preview_live_view">Live-Ansicht</string>
+    <string name="photo_capture_failed">Foto konnte nicht aufgenommen/empfangen werden (Fehler %1$d)</string>
+    <string name="photo_delete_camera_failed">Foto konnte nicht von der Kamera gelöscht werden</string>
+    <string name="notif_channel_status_name">Kamerastatus</string>
+    <string name="notif_channel_status_desc">Zeigt den Verbindungs- und Dateiempfangsstatus der Kamera an</string>
+    <string name="connection_status_usb_connected">USB-Kamera verbunden</string>
+    <string name="connection_status_ap_connected">AP-Modus verbunden (%1$s)</string>
+    <string name="connection_status_sta_connected">STA-Modus verbunden (%1$s)</string>
+    <string name="connection_status_connecting">Verbindung zur Kamera…</string>
+    <string name="connection_status_error">Kameraverbindungsfehler</string>
+    <string name="connection_status_camera_ap">Kamera-AP verbunden – Kamerasuche möglich</string>
+    <string name="connection_status_wifi">WLAN verbunden – Kamerasuche möglich</string>
+    <string name="connection_status_disconnected">Nicht verbunden</string>
+    <string name="usb_init_connecting_camera">Verbindung zur USB-Kamera…</string>
+    <string name="usb_init_requesting_permission">USB-Berechtigung wird angefordert…</string>
+    <string name="usb_init_waiting_permission">Warte auf USB-Berechtigung…</string>
+    <string name="camera_limitation_download_only">Diese Kamera unterstützt nur den Dateidownload.\nFernauslösung und Live-View sind nicht verfügbar.\n\nHersteller: %1$s\nModell: %2$s</string>
+    <string name="camera_limitation_no_liveview">Diese Kamera unterstützt keine Live-View.\nAufnahmen sind möglich, aber keine Echtzeit-Vorschau.</string>
+    <string name="camera_limitation_no_config">Diese Kamera unterstützt keine Einstellungsänderungen.\nAufnahmen sind möglich, aber ISO, Verschlusszeit usw. direkt an der Kamera einstellen.</string>
+    <string name="camera_control_enter_fullscreen">Vollbild umschalten</string>
 </resources>

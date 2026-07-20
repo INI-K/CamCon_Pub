@@ -564,6 +564,9 @@ class PhotoPreviewViewModel @Inject constructor(
                         },
                         onFailure = { e ->
                             Log.w(TAG, "카메라 측 사진 삭제 실패 (로컬 정리는 계속): ${LogMask.path(photo.name)}", e)
+                            // 파괴적 동작인데 무통지면 목록 갱신 후 사진이 되살아나 '삭제 안 됨'처럼 보인다.
+                            // 카메라 측 삭제 실패(예: Nikon AccessDenied 0x200F)를 사용자에게 알린다.
+                            emitError(context.getString(R.string.photo_delete_camera_failed))
                         }
                     )
                 } else {
@@ -679,6 +682,11 @@ class PhotoPreviewViewModel @Inject constructor(
         val target = photo ?: _lastFailedDownload.value
         if (target != null) {
             Log.d(TAG, "단일 사진 재시도: ${LogMask.path(target.name)}")
+            // 형제 다운로드 경로(preloadAdjacentImages·quickPreloadCurrentImage)와 동일하게
+            // ValidateImageFormatUseCase RAW 게이트를 경유한다(재시도 우회 방지). 차단 시 handleRawFileAccess가 통지.
+            if (!handleRawFileAccess(target)) {
+                return
+            }
             // 재시도도 명시적 액션이므로 단일 결과 추적으로 성공/실패 토스트 노출(필수1).
             if (!_multiDownloadProgress.value.inProgress) {
                 singleDownloadPath = target.path

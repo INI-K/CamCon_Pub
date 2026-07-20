@@ -96,6 +96,8 @@
     <string name="captured_photos">Captured Photos</string>
     <string name="photo_saved">Photo saved</string>
     <string name="photo_save_failed">Failed to save photo</string>
+    <string name="photo_capture_failed">Failed to capture/receive photo (error %1$d)</string>
+    <string name="photo_delete_camera_failed">Couldn\'t delete the photo from the camera</string>
     <string name="delete_photo">Delete Photo</string>
     <string name="delete_photo_confirm">Are you sure you want to delete this photo?</string>
     <string name="photo_deleted">Photo deleted</string>
@@ -592,4 +594,26 @@
     <string name="notif_bg_sync_listener_active">Event listener active — waiting for photos</string>
     <string name="notif_bg_sync_checking">Checking camera connection…</string>
     <string name="notif_bg_sync_waiting">Waiting for camera connection…</string>
+    <string name="notif_channel_status_name">Camera status</string>
+    <string name="notif_channel_status_desc">Shows camera connection and file-receiving status</string>
+
+    <!-- 연결 상태 메시지 (CameraConnectionGlobalManager → UiText, presentation 해석) -->
+    <string name="connection_status_usb_connected">USB camera connected</string>
+    <string name="connection_status_ap_connected">AP mode connected (%1$s)</string>
+    <string name="connection_status_sta_connected">STA mode connected (%1$s)</string>
+    <string name="connection_status_connecting">Connecting to camera…</string>
+    <string name="connection_status_error">Camera connection error</string>
+    <string name="connection_status_camera_ap">Camera AP connected — camera search available</string>
+    <string name="connection_status_wifi">Wi-Fi connected — camera search available</string>
+    <string name="connection_status_disconnected">Not connected</string>
+    <!-- USB 초기화 진행 상태 -->
+    <string name="usb_init_connecting_camera">Connecting to USB camera…</string>
+    <string name="usb_init_requesting_permission">Requesting USB permission…</string>
+    <string name="usb_init_waiting_permission">Waiting for USB permission…</string>
+    <!-- 카메라 기능 제한 안내 -->
+    <string name="camera_limitation_download_only">This camera supports file download only.\nRemote capture and live view are unavailable.\n\nManufacturer: %1$s\nModel: %2$s</string>
+    <string name="camera_limitation_no_liveview">This camera does not support live view.\nCapture works, but real-time preview is unavailable.</string>
+    <string name="camera_limitation_no_config">This camera does not support changing settings.\nCapture works, but adjust ISO, shutter speed, etc. directly on the camera.</string>
+    <!-- 접근성: 전체화면 진입 -->
+    <string name="camera_control_enter_fullscreen">Enter fullscreen</string>
 </resources>

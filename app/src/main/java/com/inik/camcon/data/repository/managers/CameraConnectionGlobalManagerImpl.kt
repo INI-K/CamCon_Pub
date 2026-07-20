@@ -1,6 +1,7 @@
 package com.inik.camcon.data.repository.managers
 
 import android.util.Log
+import com.inik.camcon.R
 import com.inik.camcon.data.datasource.ptpip.PtpipDataSource
 import com.inik.camcon.data.datasource.usb.UsbCameraManager
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
@@ -9,6 +10,7 @@ import com.inik.camcon.domain.model.GlobalCameraConnectionState
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.WifiNetworkState
+import com.inik.camcon.domain.model.UiText
 import com.inik.camcon.di.ApplicationScope
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -49,8 +51,9 @@ class CameraConnectionGlobalManagerImpl @Inject constructor(
     override val activeConnectionType: StateFlow<CameraConnectionType?> =
         _activeConnectionType.asStateFlow()
 
-    private val _connectionStatusMessage = MutableStateFlow("연결 안됨")
-    override val connectionStatusMessage: StateFlow<String> =
+    private val _connectionStatusMessage =
+        MutableStateFlow<UiText>(UiText.Resource(R.string.connection_status_disconnected))
+    override val connectionStatusMessage: StateFlow<UiText> =
         _connectionStatusMessage.asStateFlow()
 
     // 마지막으로 CameraConnectionManager에 푸시한 PTPIP 연결 상태.
@@ -163,28 +166,39 @@ class CameraConnectionGlobalManagerImpl @Inject constructor(
         }
     }
 
+    // 상태 메시지는 Context 없는 data 레이어에서 생성되므로 리소스 ID + 인자(UiText)만 만든다.
+    // 실제 문자열 해석은 presentation(MainActivity 등)이 resolve(context)로 수행한다.
     private fun generateStatusMessage(
         usbConnected: Boolean,
         ptpipState: PtpipConnectionState,
         wifiState: WifiNetworkState,
         discoveredCameras: List<PtpipCamera>,
         isApForced: Boolean
-    ): String {
+    ): UiText {
         return when {
-            usbConnected -> "USB 카메라 연결됨"
+            usbConnected -> UiText.Resource(R.string.connection_status_usb_connected)
             ptpipState == PtpipConnectionState.CONNECTED -> {
+                val ssid = wifiState.ssid ?: ""
                 if (isApForced || isApConnection(wifiState)) {
-                    "AP 모드 연결됨 (${wifiState.ssid})"
+                    UiText.Resource(R.string.connection_status_ap_connected, listOf(ssid))
                 } else {
-                    "STA 모드 연결됨 (${wifiState.ssid})"
+                    UiText.Resource(R.string.connection_status_sta_connected, listOf(ssid))
                 }
             }
 
-            ptpipState == PtpipConnectionState.CONNECTING -> "카메라 연결 중..."
-            ptpipState == PtpipConnectionState.ERROR -> "카메라 연결 오류"
-            wifiState.isConnectedToCameraAP -> "카메라 AP 연결됨 - 카메라 검색 가능"
-            wifiState.isConnected -> "Wi-Fi 연결됨 - 카메라 검색 가능"
-            else -> "연결 안됨"
+            ptpipState == PtpipConnectionState.CONNECTING ->
+                UiText.Resource(R.string.connection_status_connecting)
+
+            ptpipState == PtpipConnectionState.ERROR ->
+                UiText.Resource(R.string.connection_status_error)
+
+            wifiState.isConnectedToCameraAP ->
+                UiText.Resource(R.string.connection_status_camera_ap)
+
+            wifiState.isConnected ->
+                UiText.Resource(R.string.connection_status_wifi)
+
+            else -> UiText.Resource(R.string.connection_status_disconnected)
         }
     }
 

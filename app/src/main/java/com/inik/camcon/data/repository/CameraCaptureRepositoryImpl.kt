@@ -240,6 +240,7 @@ class CameraCaptureRepositoryImpl @Inject constructor(
             },
             onCaptureFailed = { errorCode ->
                 Log.e(TAG, "외부 셔터 촬영 실패: $errorCode")
+                notifyCaptureFailed(errorCode)
             }
         )
     }
@@ -316,6 +317,7 @@ class CameraCaptureRepositoryImpl @Inject constructor(
             },
             onCaptureFailed = { errorCode ->
                 Log.e(TAG, "외부 셔터 촬영 실패: $errorCode")
+                notifyCaptureFailed(errorCode)
             }
         )
     }
@@ -901,6 +903,25 @@ class CameraCaptureRepositoryImpl @Inject constructor(
             )
         } catch (e: Exception) {
             Log.w(TAG, "다운로드 실패 통지 방출 실패: $fileName", e)
+        }
+    }
+
+    /**
+     * 물리 셔터 촬영·무선 수신 실패 통지.
+     *
+     * 네이티브 onCaptureFailed 는 파일명 없이 errorCode 만 전달하므로 fileName 을 요구하는
+     * [updatePhotoDownloadFailed] 수렴점을 탈 수 없다. 대신 앱 셔터 실패와 동일한 UI 에러 채널
+     * (ErrorNotifier→errorEvent→setError→Snackbar)로 통지해 무음 유실을 방지한다.
+     */
+    private fun notifyCaptureFailed(errorCode: Int) {
+        try {
+            errorNotifier.emitError(
+                type = ErrorType.OPERATION,
+                message = context.getString(R.string.photo_capture_failed, errorCode),
+                severity = ErrorSeverity.HIGH
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "촬영 실패 통지 방출 실패: $errorCode", e)
         }
     }
 }

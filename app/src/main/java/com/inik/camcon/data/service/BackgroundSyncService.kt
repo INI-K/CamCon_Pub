@@ -74,6 +74,16 @@ class BackgroundSyncService : Service() {
         private const val VIBRATE_DEBOUNCE_MS = 800L // JPG+NEF 한 컷 이중 진동 방지
 
         /**
+         * 서비스 생존 여부. onCreate→true, onDestroy→false.
+         *
+         * deprecated ActivityManager.getRunningServices(자기 서비스 한정·SDK 제거 리스크) 대체 —
+         * 서비스 자신이 소유하는 신뢰 소스. 호출자(MainActivity)가 이 플래그로 중복 기동을 방지한다.
+         */
+        @Volatile
+        var isRunning: Boolean = false
+            private set
+
+        /**
          * 서비스 시작
          */
         fun startService(context: Context) {
@@ -97,6 +107,7 @@ class BackgroundSyncService : Service() {
     override fun onCreate() {
         super.onCreate()
         LogcatManager.d(TAG, "BackgroundSyncService 생성됨 - 백그라운드 이벤트 리스너 관리 포함")
+        isRunning = true
 
         serviceScope = CoroutineScope(SupervisorJob() + ioDispatcher)
 
@@ -174,6 +185,7 @@ class BackgroundSyncService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         LogcatManager.d(TAG, "BackgroundSyncService 종료됨")
+        isRunning = false
 
         syncJob?.cancel()
         eventListenerJob?.cancel()
