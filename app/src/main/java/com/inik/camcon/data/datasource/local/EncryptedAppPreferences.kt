@@ -29,6 +29,16 @@ class EncryptedAppPreferences @Inject constructor(
         const val KEY_RAW_FILE_DOWNLOAD_ENABLED = "raw_file_download_enabled"
     }
 
+    /**
+     * 암호화 저장소 초기화가 실패해 in-memory 폴백을 쓰는 중인지 여부.
+     * 폴백 모드에서는 티어·RAW 같은 게이팅 플래그를 평문 디스크에 쓰지 않고
+     * 읽기 시 fail-closed(FREE / RAW=false) 기본값을 강제한다.
+     * createPrefs() 안에서만 세팅되므로, 각 접근자는 먼저 [prefs] 를 참조해
+     * lazy 초기화를 트리거한 뒤 이 플래그를 검사해야 한다.
+     */
+    @Volatile
+    private var usingFallback = false
+
     private val prefs: SharedPreferences by lazy { createPrefs() }
 
     private fun createPrefs(): SharedPreferences {
@@ -45,6 +55,7 @@ class EncryptedAppPreferences @Inject constructor(
             )
         } catch (e: Exception) {
             Log.e(TAG, "EncryptedSharedPreferences 초기화 실패 - 안전한 in-memory 폴백 사용", e)
+            usingFallback = true
             // 디스크 평문 폴백 대신, 프로세스 라이프타임에 한정된 빈 SharedPreferences를 만든다.
             // 동일 파일명이지만 MODE_PRIVATE로 분리하여 다른 평문이 섞이지 않도록 임시 사용.
             context.getSharedPreferences("${FILE_NAME}_fallback_volatile", Context.MODE_PRIVATE)
@@ -58,13 +69,20 @@ class EncryptedAppPreferences @Inject constructor(
     // ===== Subscription Tier =====
 
     fun getSubscriptionTierString(): String? {
-        return runCatching { prefs.getString(KEY_SUBSCRIPTION_TIER, null) }
+        val p = prefs
+        if (usingFallback) return null   // fail-closed → getSubscriptionTier() 가 FREE 반환
+        return runCatching { p.getString(KEY_SUBSCRIPTION_TIER, null) }
             .getOrElse { null }
     }
 
     fun setSubscriptionTierString(tier: String?) {
+        val p = prefs
+        if (usingFallback) {
+            Log.w(TAG, "암호화 불가(폴백 모드) - subscription tier 를 평문에 저장하지 않고 무시")
+            return
+        }
         runCatching {
-            prefs.edit().apply {
+            p.edit().apply {
                 if (tier == null) remove(KEY_SUBSCRIPTION_TIER)
                 else putString(KEY_SUBSCRIPTION_TIER, tier)
             }.apply()
@@ -83,18 +101,27 @@ class EncryptedAppPreferences @Inject constructor(
     // ===== RAW File Download Enabled =====
 
     fun getRawFileDownloadEnabled(default: Boolean = true): Boolean {
-        return runCatching { prefs.getBoolean(KEY_RAW_FILE_DOWNLOAD_ENABLED, default) }
+        val p = prefs
+        if (usingFallback) return false   // fail-closed: 폴백 모드에선 RAW 비활성 강제
+        return runCatching { p.getBoolean(KEY_RAW_FILE_DOWNLOAD_ENABLED, default) }
             .getOrDefault(default)
     }
 
     fun hasRawFileDownloadEnabled(): Boolean {
-        return runCatching { prefs.contains(KEY_RAW_FILE_DOWNLOAD_ENABLED) }
+        val p = prefs
+        if (usingFallback) return false
+        return runCatching { p.contains(KEY_RAW_FILE_DOWNLOAD_ENABLED) }
             .getOrDefault(false)
     }
 
     fun setRawFileDownloadEnabled(enabled: Boolean) {
+        val p = prefs
+        if (usingFallback) {
+            Log.w(TAG, "암호화 불가(폴백 모드) - RAW 플래그를 평문에 저장하지 않고 무시")
+            return
+        }
         runCatching {
-            prefs.edit().putBoolean(KEY_RAW_FILE_DOWNLOAD_ENABLED, enabled).apply()
+            p.edit().putBoolean(KEY_RAW_FILE_DOWNLOAD_ENABLED, enabled).apply()
         }.onFailure { Log.w(TAG, "raw 다운로드 플래그 쓰기 실패", it) }
     }
 
@@ -103,7 +130,9 @@ class EncryptedAppPreferences @Inject constructor(
      * 호출자에서 사용할 수 있도록 키 존재 여부를 확인한다.
      */
     fun hasSubscriptionTier(): Boolean {
-        return runCatching { prefs.contains(KEY_SUBSCRIPTION_TIER) }
+        val p = prefs
+        if (usingFallback) return false
+        return runCatching { p.contains(KEY_SUBSCRIPTION_TIER) }
             .getOrDefault(false)
     }
 }

@@ -1,6 +1,8 @@
 package com.inik.camcon.presentation.viewmodel.state
 
 import android.util.Log
+import com.inik.camcon.R
+import com.inik.camcon.domain.model.UiText
 import com.inik.camcon.domain.model.PtpTimeoutException
 import com.inik.camcon.domain.model.PtpSessionState
 import com.inik.camcon.domain.manager.CameraStateObserver
@@ -82,7 +84,7 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
                     it.liveView,
                 error = when {
                     isConnected -> null
-                    errorMessage != null -> errorMessage
+                    errorMessage != null -> UiText.Raw(errorMessage)
                     else -> it.error
                 }
             )
@@ -124,8 +126,8 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
                     usbInitializationMessage = if (hasPermission) null else it.connection.usbInitializationMessage
                 ),
                 error = when {
-                    deviceCount == 0 && !it.connection.isConnected -> "USB 카메라가 감지되지 않음"
-                    !hasPermission && deviceCount > 0 -> "USB 권한이 필요합니다"
+                    deviceCount == 0 && !it.connection.isConnected -> UiText.Resource(R.string.camera_status_usb_not_detected)
+                    !hasPermission && deviceCount > 0 -> UiText.Resource(R.string.camera_status_usb_permission_needed)
                     else -> it.error
                 }
             )
@@ -143,7 +145,7 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
             it.copy(
                 settings = it.settings.copy(cameraCapabilities = capabilities),
                 error = if (capabilities == null && it.connection.isConnected)
-                    "카메라 기능 정보를 가져올 수 없음" else it.error
+                    UiText.Resource(R.string.camera_status_capabilities_unavailable) else it.error
             )
         }
         Log.d(TAG, "카메라 기능 정보 업데이트: ${capabilities?.model ?: "null"}")
@@ -270,7 +272,7 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
     /**
      * USB 초기화 상태 관리
      */
-    fun updateUsbInitialization(isInitializing: Boolean, message: String? = null) {
+    fun updateUsbInitialization(isInitializing: Boolean, message: UiText? = null) {
         _uiState.update {
             it.copy(
                 connection = it.connection.copy(
@@ -287,7 +289,7 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
     /**
      * 에러 상태 관리
      */
-    fun setError(error: String?) {
+    fun setError(error: UiText?) {
         _uiState.update { it.copy(error = error) }
         if (error != null) {
             Log.e(TAG, "에러 상태 설정: $error")
@@ -318,9 +320,9 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
             it.copy(
                 connection = it.connection.copy(isPtpTimeout = isPtpTimeout),
                 error = if (isPtpTimeout) {
-                    "PTP 카메라 통신이 일정 시간 동안 응답하지 않습니다. 연결을 다시 시도해주세요."
+                    UiText.Resource(R.string.camera_status_ptp_timeout)
                 } else {
-                    exception.message
+                    exception.message?.let { UiText.Raw(it) }
                 }
             )
         }
@@ -361,7 +363,7 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
                 settings = it.settings.copy(
                     cameraCapabilities = null
                 ),
-                error = "USB 카메라가 분리되었습니다.\n\n카메라를 다시 연결하려면:\n1. USB 케이블을 다시 연결하세요\n2. 화면 하단의 '새로고침' 버튼을 눌러주세요"
+                error = UiText.Resource(R.string.camera_status_usb_disconnected)
             )
         }
         _liveViewFrame.value = null
@@ -431,9 +433,9 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
                     isPtpTimeout = isPtpTimeout
                 ),
                 error = if (isPtpTimeout) {
-                    "PTP 카메라 통신이 일정 시간 동안 응답하지 않습니다. 연결을 다시 시도해주세요."
+                    UiText.Resource(R.string.camera_status_ptp_timeout)
                 } else {
-                    error.message
+                    error.message?.let { UiText.Raw(it) }
                 }
             )
         }
@@ -634,27 +636,27 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
 
                 // 다이얼로그 / 경고
                 dialog = currentState.dialog.copy(
+                    // Context 없는 상태 매니저이므로 리소스 ID + 인자(UiText)만 만들고
+                    // 실제 문자열은 표시 측(SettingsActivity)이 resolve(context)로 해석한다.
                     cameraFunctionLimitation = when {
                         abilities.supports.isFullyControllable() -> null
 
                         abilities.supports.isDownloadOnly() -> {
                             Log.w(TAG, "다운로드만 가능 (원격 제어 불가)")
-                            "이 카메라는 파일 다운로드만 지원합니다\n" +
-                                    "원격 촬영 및 라이브뷰는 사용할 수 없습니다\n\n" +
-                                    "제조사: ${abilities.getManufacturer()}\n" +
-                                    "모델: ${abilities.model}"
+                            UiText.Resource(
+                                R.string.camera_limitation_download_only,
+                                listOf(abilities.getManufacturer(), abilities.model)
+                            )
                         }
 
                         !abilities.supports.capturePreview -> {
                             Log.w(TAG, "라이브뷰 미지원")
-                            "이 카메라는 라이브뷰를 지원하지 않습니다\n" +
-                                    "촬영은 가능하지만 실시간 미리보기는 불가능합니다"
+                            UiText.Resource(R.string.camera_limitation_no_liveview)
                         }
 
                         !abilities.supports.config -> {
                             Log.w(TAG, "설정 변경 미지원")
-                            "이 카메라는 설정 변경을 지원하지 않습니다\n" +
-                                    "촬영은 가능하지만 ISO, 셔터속도 등 설정은 카메라에서 직접 조정해주세요"
+                            UiText.Resource(R.string.camera_limitation_no_config)
                         }
 
                         else -> null

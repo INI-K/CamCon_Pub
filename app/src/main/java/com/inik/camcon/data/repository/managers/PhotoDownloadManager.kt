@@ -66,7 +66,26 @@ class PhotoDownloadManager @Inject constructor(
 
     companion object {
         private const val TAG = "사진다운로드매니저"
-        private const val FREE_TIER_MAX_DIMENSION = 2000 // FREE 티어 최대 장축 크기
+
+        /**
+         * FREE 티어 리사이즈 목표 치수 계산(순수 함수, 단위 테스트 대상).
+         *
+         * 장축을 [Constants.ImageProcessing.FREE_TIER_MAX_DIMENSION](단일 게이팅 상수)에 맞춘다.
+         * data/presentation 두 리사이즈 경로가 동일 상수를 참조해 정책 드리프트를 막는다(감사 MAJOR).
+         *
+         * @return 장축이 상한 이하이거나 치수가 유효하지 않으면 null(리사이즈 불필요/불가),
+         *   상한 초과면 축소된 (newWidth, newHeight).
+         */
+        @JvmStatic
+        @androidx.annotation.VisibleForTesting
+        fun computeFreeTierTargetSize(width: Int, height: Int): Pair<Int, Int>? {
+            if (width <= 0 || height <= 0) return null
+            val maxDimension = max(width, height)
+            val limit = Constants.ImageProcessing.FREE_TIER_MAX_DIMENSION
+            if (maxDimension <= limit) return null
+            val scale = limit.toFloat() / maxDimension.toFloat()
+            return (width * scale).toInt() to (height * scale).toInt()
+        }
 
         /**
          * 요청 파일명과 MediaStore 가 실제 부여한 DISPLAY_NAME 이 다른지 판정(순수 함수, 단위 테스트 대상).
@@ -139,28 +158,18 @@ class PhotoDownloadManager @Inject constructor(
      * 포맷/티어 게이팅 단일 지점 방어선(CLAUDE.md §2).
      *
      * capture/liveview 직접 콜백 등 CameraEventManager 게이팅 래퍼를 거치지 않는 경로가
-     * 이 저장 진입부로 직행할 수 있으므로, [ValidateImageFormatUseCase]로 다시 한 번 검증한다.
-     * 차단 대상은 '티어 사유'뿐이다 — 미지원 RAW(티어/설정)와 티어 미지원 일반 포맷
-     * (예: FREE의 PNG). 미지 확장자는 기존 통과 동작을 유지해 촬영 직콜백의 비정형
-     * 파일명을 새로 막지 않는다.
+     * 이 저장 진입부로 직행할 수 있으므로, [ValidateImageFormatUseCase.isDownloadAllowed]로
+     * 다시 한 번 검증한다. 게이팅 분기는 전량 UseCase 단일 지점에 있으며, 미지 확장자는
+     * fail-closed(차단)된다(HEIF 등으로 2000px/포맷 정책을 우회하던 C1 취약점 봉합).
      *
-     * @return 저장을 진행해도 되면 true, 티어 게이팅으로 차단해야 하면 false.
+     * @return 저장을 진행해도 되면 true, 게이팅으로 차단해야 하면 false.
      */
     private suspend fun isDownloadAllowedByGating(fileName: String): Boolean {
-        val result = validateImageFormatUseCase.validateFormat(fileName)
-        if (result.isSupported) {
-            return true
+        val allowed = validateImageFormatUseCase.isDownloadAllowed(fileName)
+        if (!allowed) {
+            Log.w(TAG, "⛔ 포맷 게이팅 차단 — 저장 중단: $fileName")
         }
-        // 티어와 무관한 미지 포맷(needsUpgrade=false, RAW 아님)은 기존 동작대로 통과.
-        if (!result.isRawFile && !result.needsUpgrade) {
-            return true
-        }
-        Log.w(
-            TAG,
-            "⛔ 포맷 게이팅 차단 — 저장 중단: $fileName" +
-                " (RAW=${result.isRawFile}, 제조사: ${result.manufacturer})"
-        )
-        return false
+        return allowed
     }
 
     suspend fun getCameraPhotos(): Result<List<CameraPhoto>> {
@@ -208,14 +217,14 @@ class PhotoDownloadManager @Inject constructor(
                 // 네이티브 데이터소스를 통해 페이징된 카메라 사진 목록 가져오기
                 val paginatedNativePhotos = nativeDataSource.getCameraPhotosPaged(page, pageSize)
 
-                // 이벤트 리스너 재시작 처리
+                // 이벤트 리스너 재시작 처리 (미리보기 모드에선 재시작하지 않으므로 안정화 지연도 생략)
                 Log.d("사진다운로드매니저", "페이징 사진 목록 가져오기 후 이벤트 리스너 상태 확인")
-                kotlinx.coroutines.delay(500)
 
                 // 사진 미리보기 모드에서는 이벤트 리스너 재시작 금지
                 if (isPhotoPreviewMode) {
                     Log.d("사진다운로드매니저", "사진 미리보기 모드 - 이벤트 리스너 재시작 생략")
                 } else {
+                    kotlinx.coroutines.delay(500)  // 리스너 재시작 전 안정화 대기
                     try {
                         Log.d("사진다운로드매니저", "이벤트 리스너 재시작 시도")
                         onEventListenerRestart()
@@ -273,16 +282,12 @@ class PhotoDownloadManager @Inject constructor(
             try {
                 Log.d("사진다운로드매니저", "썸네일 가져오기 시작: ${LogMask.path(photoPath)}")
 
-                // 카메라가 현재 초기화 중인지 확인 (초기화 중에는 대기)
+                // 카메라가 초기화 중이면 썸네일 로딩 불가.
+                // (isInitializing 은 호출자가 넘긴 스냅샷이라 이 함수 안에서 값이 바뀌지 않는다 —
+                //  과거의 delay 후 재검사는 불변 값 재확인이라 死코드였으므로 제거.)
                 if (isInitializing) {
-                    Log.w("사진다운로드매니저", "getCameraThumbnail: 카메라 초기화 중 - 짧게 대기 후 재시도")
-                    kotlinx.coroutines.delay(100)  // 초기화 완료 대기 (300ms -> 100ms로 단축)
-
-                    // 초기화가 완료되지 않았으면 실패 처리
-                    if (isInitializing) {
-                        Log.w("사진다운로드매니저", "getCameraThumbnail: 카메라 초기화 지속 중 - 썸네일 로딩 불가")
-                        return@withContext Result.failure(Exception("카메라 초기화 중 - 썸네일 로딩 불가"))
-                    }
+                    Log.w("사진다운로드매니저", "getCameraThumbnail: 카메라 초기화 중 - 썸네일 로딩 불가")
+                    return@withContext Result.failure(Exception("카메라 초기화 중 - 썸네일 로딩 불가"))
                 }
 
                 // 네이티브 카메라 연결 상태 확인
@@ -407,8 +412,9 @@ class PhotoDownloadManager @Inject constructor(
                                 return@withContext Result.failure(Exception("파일 저장 실패: ${e.message}"))
                             }
 
-                            // 후처리 (MediaStore 저장 등)
+                            // 후처리 (MediaStore 저장 등) — 실패 시 원본(fallbackFile) 보존, 실패 전파.
                             val finalPath = postProcessPhoto(fallbackFile.absolutePath, fileName)
+                                ?: return@withContext Result.failure(Exception("사진 저장 실패: $fileName"))
 
                             val capturedPhoto = CapturedPhoto(
                                 id = UUID.randomUUID().toString(),
@@ -440,8 +446,9 @@ class PhotoDownloadManager @Inject constructor(
                         return@withContext Result.failure(Exception("파일 저장 실패: ${e.message}"))
                     }
 
-                    // 후처리 (MediaStore 저장 등)
+                    // 후처리 (MediaStore 저장 등) — 실패 시 원본(tempFile) 보존, 실패 전파.
                     val finalPath = postProcessPhoto(tempFile.absolutePath, fileName)
+                        ?: return@withContext Result.failure(Exception("사진 저장 실패: $fileName"))
 
                     val capturedPhoto = CapturedPhoto(
                         id = UUID.randomUUID().toString(),
@@ -723,6 +730,12 @@ class PhotoDownloadManager @Inject constructor(
                 // Log.d(TAG, "   임시 파일 경로: $processedPath")
 
                 val finalPath = postProcessPhoto(processedPath!!, fileNameWithFolder)
+                if (finalPath == null) {
+                    // 저장 실패 — 성공으로 오표시하지 않고 실패 전파(finally 의 tempFile 반환경로 가드가
+                    // processedPath 원본을 보존한다. Nikon SDRAM 캡처는 카드 사본이 없어 마지막 사본).
+                    Log.e(TAG, "❌ Native 사진 저장 실패 — 원본 보존, 실패 처리: $fileName")
+                    return@withContext null
+                }
                 Log.d(TAG, "✅ Native 사진 후처리 완료: ${LogMask.path(finalPath)}")
 
                 val capturedPhoto = CapturedPhoto(
@@ -761,8 +774,16 @@ class PhotoDownloadManager @Inject constructor(
 
                 // 메모리 정리 - 모든 임시 객체 해제
                 try {
-                    // 임시 파일들 정리
-                    tempFile?.takeIf { it.exists() }?.delete()
+                    // 임시 파일들 정리. tempFile 도 형제(processedFile 등)와 동일한 반환경로 보호
+                    // 가드를 적용한다 — 저장 실패로 processedPath 가 tempFile 을 가리키면(무처리 경로)
+                    // 삭제하지 않고 원본을 보존한다(C2: 촬영물 유실 방지).
+                    tempFile?.takeIf {
+                        it.exists() && processedPath?.let { path ->
+                            it != File(
+                                path
+                            )
+                        } ?: true
+                    }?.delete()
                     processedFile?.takeIf {
                         it.exists() && processedPath?.let { path ->
                             it != File(
@@ -1031,6 +1052,12 @@ class PhotoDownloadManager @Inject constructor(
 
             // SAF를 사용한 후처리 (Android 10+에서 MediaStore로 이동)
             val finalPath = postProcessPhoto(processedPath, fileName)
+            if (finalPath == null) {
+                // 저장 실패 — 성공으로 오표시하지 않고 실패 통지(원본/처리본 보존).
+                Log.e(TAG, "❌ 사진 저장 실패 — 실패 처리: $fileName")
+                onDownloadFailed(fileName)
+                return
+            }
             Log.d(TAG, "✅ 사진 후처리 완료: ${LogMask.path(finalPath)}")
 
             // 즉시 UI에 임시 사진 정보 추가 (썸네일 없이)
@@ -1120,23 +1147,19 @@ class PhotoDownloadManager @Inject constructor(
 
                 val originalWidth = options.outWidth
                 val originalHeight = options.outHeight
-                val maxDimension = max(originalWidth, originalHeight)
 
                 Log.d(TAG, "원본 이미지 크기: ${originalWidth}x${originalHeight}")
 
-                // 이미 작은 이미지인 경우 리사이즈하지 않음
-                if (maxDimension <= FREE_TIER_MAX_DIMENSION) {
+                // FREE 티어 리사이즈 목표 치수 판정(순수 함수). null 이면 이미 상한 이하 → 복사만.
+                val target = computeFreeTierTargetSize(originalWidth, originalHeight)
+                if (target == null) {
                     Log.d(TAG, "이미 작은 이미지 - 리사이즈 불필요")
                     return@withContext File(inputPath).copyTo(File(outputPath), overwrite = true)
                         .exists()
                 }
+                val (newWidth, newHeight) = target
 
-                // 리사이즈 비율 계산
-                val scale = FREE_TIER_MAX_DIMENSION.toFloat() / maxDimension.toFloat()
-                val newWidth = (originalWidth * scale).toInt()
-                val newHeight = (originalHeight * scale).toInt()
-
-                Log.d(TAG, "리사이즈 목표 크기: ${newWidth}x${newHeight} (비율: $scale)")
+                Log.d(TAG, "리사이즈 목표 크기: ${newWidth}x${newHeight}")
 
                 // 메모리 효율적인 리사이즈를 위한 샘플링
                 val sampleSize =
@@ -1663,20 +1686,24 @@ class PhotoDownloadManager @Inject constructor(
     }
 
     /**
-     * 사진 후처리 - SAF를 사용하여 최종 저장소에 저장
+     * 사진 후처리 - SAF를 사용하여 최종 저장소에 저장.
+     *
+     * @return 저장 성공 시 최종 경로. Android 10+ 에서 MediaStore 저장이 실패하면 null 을 반환해
+     *   촬영물 유실을 성공으로 오표시하지 않는다(C2). 호출부는 null 을 실패로 전파하고 임시
+     *   원본을 보존해야 한다.
      */
-    private suspend fun postProcessPhoto(tempFilePath: String, fileName: String): String {
+    private suspend fun postProcessPhoto(tempFilePath: String, fileName: String): String? {
         return withContext(ioDispatcher) {
             try {
                 Log.d(TAG, "📝 postProcessPhoto 시작: 임시=${LogMask.path(tempFilePath)}, 파일명=$fileName, SDK=${Build.VERSION.SDK_INT}")
 
-                // Issue 1: EXIF 회전 역방향 — non-resize 경로에서 회전 적용
+                // Issue 1: EXIF 회전 역방향 — non-resize 경로에서 회전 적용 (내부 try/catch — 예외 안전)
                 rotateImageIfRequired(tempFilePath)
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    // Android 10+: MediaStore API 사용
+                    // Android 10+: MediaStore API 사용 (실패 시 null 전파)
                     val result = saveToMediaStore(tempFilePath, fileName)
-                    Log.d(TAG, "   ✅ MediaStore 저장 결과: ${LogMask.path(result)}")
+                    Log.d(TAG, "   MediaStore 저장 결과: ${result?.let { LogMask.path(it) } ?: "실패(null)"}")
                     result
                 } else {
                     // Android 9 이하: 이미 올바른 위치에 저장되어 있음
@@ -1686,23 +1713,28 @@ class PhotoDownloadManager @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e(TAG, "사진 후처리 실패", e)
-                tempFilePath // 실패 시 원본 경로 반환
+                // 저장 단계의 예기치 못한 실패 — 성공으로 오표시하지 않고 실패 전파(원본 보존).
+                Log.e(TAG, "❌ 사진 후처리 실패 — 저장 실패로 처리", e)
+                null
             }
         }
     }
 
     /**
-     * MediaStore를 사용하여 사진을 외부 저장소에 저장 (카메라 폴더 구조 유지)
+     * MediaStore를 사용하여 사진을 외부 저장소에 저장 (카메라 폴더 구조 유지).
+     *
+     * @return 저장 성공 시 실제 저장 경로, 실패 시 null(촬영물 유실 방지 — 호출부가 실패로 전파해
+     *   사용자에게 통지하고 임시 원본을 보존한다). 과거엔 실패 시 임시 경로를 반환해 유실을
+     *   성공으로 오표시했다(C2).
      */
-    private fun saveToMediaStore(tempFilePath: String, fileName: String): String {
+    private fun saveToMediaStore(tempFilePath: String, fileName: String): String? {
         return try {
             Log.d(TAG, "💾 saveToMediaStore 시작: 임시=${LogMask.path(tempFilePath)}, 파일명=$fileName")
 
             val tempFile = File(tempFilePath)
             if (!tempFile.exists()) {
                 Log.e(TAG, "❌ 임시 파일이 존재하지 않음: ${LogMask.path(tempFilePath)}")
-                return tempFilePath
+                return null
             }
 
             // 카메라 폴더 구조 분석 (예: 105KAY_1/KY6_0035.JPG)
@@ -1758,12 +1790,13 @@ class PhotoDownloadManager @Inject constructor(
                 Log.d(TAG, "✅ MediaStore 저장 성공: ${LogMask.path(savedPath)}")
                 savedPath
             } else {
-                Log.e(TAG, "MediaStore 저장 실패(URI 생성 실패)")
-                tempFilePath
+                // 저장 실패 — 임시 파일은 삭제하지 않고 유지(호출부에서 실패로 전파, 원본 보존).
+                Log.e(TAG, "❌ MediaStore 저장 실패(URI 생성/검증 실패) — 원본 보존")
+                null
             }
         } catch (e: Exception) {
-            Log.e(TAG, "MediaStore 저장 실패", e)
-            tempFilePath
+            Log.e(TAG, "❌ MediaStore 저장 실패 — 원본 보존", e)
+            null
         }
     }
 
@@ -1799,10 +1832,35 @@ class PhotoDownloadManager @Inject constructor(
             return null
         }
 
-        context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-            FileInputStream(tempFile).use { inputStream ->
-                inputStream.copyTo(outputStream)
+        // 실제 바이트를 기록하고 기록량을 검증한다. openOutputStream null·부분 쓰기·예외를
+        // 성공으로 넘기면 0바이트/불완전 파일이 등록돼 촬영물이 유실된다(C2 관련 MAJOR).
+        // 어떤 실패든 pending row 를 롤백(삭제)하고 null 을 반환해 실패로 전파한다.
+        val expectedBytes = tempFile.length()
+        val writtenBytes: Long = try {
+            val outputStream = context.contentResolver.openOutputStream(uri)
+            if (outputStream == null) {
+                Log.e(TAG, "❌ openOutputStream null — pending row 롤백: $baseFileName")
+                runCatching { context.contentResolver.delete(uri, null, null) }
+                return null
             }
+            outputStream.use { out ->
+                FileInputStream(tempFile).use { inputStream ->
+                    inputStream.copyTo(out)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ MediaStore 쓰기 실패 — pending row 롤백: $baseFileName", e)
+            runCatching { context.contentResolver.delete(uri, null, null) }
+            return null
+        }
+
+        if (expectedBytes > 0 && writtenBytes != expectedBytes) {
+            Log.e(
+                TAG,
+                "❌ 부분 쓰기 감지(기대=$expectedBytes, 실제=$writtenBytes) — pending row 롤백: $baseFileName"
+            )
+            runCatching { context.contentResolver.delete(uri, null, null) }
+            return null
         }
 
         // 저장 완료 후 IS_PENDING 플래그 제거

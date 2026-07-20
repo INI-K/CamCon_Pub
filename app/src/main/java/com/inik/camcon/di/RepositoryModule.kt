@@ -28,7 +28,7 @@ import com.inik.camcon.data.repository.managers.CameraConnectionGlobalManagerImp
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.data.activity.ActivityProviderImpl
 import com.inik.camcon.data.util.AndroidLogger
-import com.inik.camcon.domain.manager.ActivityProvider
+import com.inik.camcon.data.activity.ActivityProvider
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
 import com.inik.camcon.domain.manager.CameraStateObserver

@@ -6,6 +6,9 @@ import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
 import com.google.firebase.FirebaseApp
 import com.inik.camcon.data.activity.ActivityProviderImpl
 import com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource
@@ -16,6 +19,7 @@ import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.usecase.ColorTransferUseCase
 import com.inik.camcon.domain.usecase.FilmLutUseCase
+import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.utils.LogMask
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CompletableDeferred
@@ -57,6 +61,10 @@ class CamCon : Application() {
     // 카메라 연결 성공을 익명으로 보고(사용 확인됨 배지 집계). 읽기 전용 관찰자.
     @Inject
     lateinit var connectionReportObserver: ConnectionReportObserver
+
+    // 앱 포그라운드 복귀 시 서버 구독 티어를 재조회(환불·만료·강등 세션 내 반영).
+    @Inject
+    lateinit var getSubscriptionUseCase: GetSubscriptionUseCase
 
     // 현재 활성 Activity 추적 (포그라운드 상태 확인용)
     private var activeActivityCount = 0
@@ -134,6 +142,11 @@ class CamCon : Application() {
 
         // 카메라 연결 성공 익명 보고 관찰자 시작 (읽기 전용, 연결 상태 미변경)
         connectionReportObserver.start()
+
+        // 앱이 포그라운드로 복귀할 때 서버 구독 티어를 재조회한다(환불·만료·강등이 세션 중 반영되도록).
+        // refreshOnForeground()는 15분 스로틀을 가지므로 잦은 전환에도 폴링(반복 Firestore read)이 되지 않는다.
+        // (첫 onStart는 앱 시작 시점이라 GetSubscriptionUseCase.init의 refresh와 겹치지만, 이후 복귀 재조회가 목적)
+        registerSubscriptionForegroundRefresh()
 
         Log.d(TAG, "앱 초기화 완료")
     }
@@ -364,6 +377,25 @@ class CamCon : Application() {
             } catch (e: Exception) {
                 Log.e(TAG, "❌ WiFi 모니터링 Service 시작 확인 중 오류", e)
             }
+        }
+    }
+
+    /**
+     * 앱 포그라운드 복귀 시 구독 티어 재조회 배선.
+     *
+     * ProcessLifecycleOwner.get()은 메인 스레드 전용이라 onCreate(메인)에서 등록한다.
+     * onStart(포그라운드 진입)마다 refreshOnForeground()를 호출하되, 실제 재조회 빈도는
+     * UseCase 내부 15분 스로틀이 제어한다(무한 폴링 방지).
+     */
+    private fun registerSubscriptionForegroundRefresh() {
+        try {
+            ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
+                override fun onStart(owner: LifecycleOwner) {
+                    getSubscriptionUseCase.refreshOnForeground()
+                }
+            })
+        } catch (e: Exception) {
+            Log.w(TAG, "구독 포그라운드 재조회 옵저버 등록 실패", e)
         }
     }
 

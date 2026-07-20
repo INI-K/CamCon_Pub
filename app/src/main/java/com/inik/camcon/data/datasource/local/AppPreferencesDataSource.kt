@@ -11,15 +11,18 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.inik.camcon.BuildConfig
+import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.model.LiveViewQuality
 import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.domain.repository.AppSettingsRepository
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -38,7 +41,8 @@ private val Context.appDataStore: DataStore<Preferences> by preferencesDataStore
 @Singleton
 class AppPreferencesDataSource @Inject constructor(
     private val context: Context,
-    private val encryptedPrefs: EncryptedAppPreferences
+    private val encryptedPrefs: EncryptedAppPreferences,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : AppSettingsRepository {
     companion object {
         private val CAMERA_CONTROLS_ENABLED = booleanPreferencesKey("camera_controls_enabled")
@@ -232,7 +236,7 @@ class AppPreferencesDataSource @Inject constructor(
             update = encryptedPrefs.getRawFileDownloadEnabled(default = true)
         )
         emitAll(rawFileDownloadState.filterNotNull())
-    }
+    }.flowOn(ioDispatcher) // 키스토어·디스크 블로킹(migrate/시드)을 수집자 컨텍스트 밖 IO로 오프로드. emitAll(MutableStateFlow)라 지속 방출은 유지.
 
     /**
      * 구독 티어 (기본값: null).
@@ -252,7 +256,7 @@ class AppPreferencesDataSource @Inject constructor(
             update = TierHolder(encryptedPrefs.getSubscriptionTierString())
         )
         emitAll(subscriptionTierState.filterNotNull().map { it.value })
-    }
+    }.flowOn(ioDispatcher) // 키스토어·디스크 블로킹(migrate/시드)을 수집자 컨텍스트 밖 IO로 오프로드. emitAll(MutableStateFlow)라 지속 방출은 유지.
 
     /**
      * ADMIN 네이티브 로그 스트리밍 활성화 여부 (기본값: false)
