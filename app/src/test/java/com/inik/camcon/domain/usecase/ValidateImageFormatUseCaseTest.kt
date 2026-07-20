@@ -409,6 +409,21 @@ class ValidateImageFormatUseCaseTest {
         assertFalse("FREE 는 RAW 차단", useCase.isDownloadAllowed("DSC_0001.NEF"))
     }
 
+    @Test
+    fun `isDownloadAllowed - Samsung srw RAW 도 티어 게이팅을 따른다 (네이티브 정본 동기화)`() = runTest {
+        // srw(삼성 RAW)가 RAW_EXTENSIONS 정본에 포함돼 RAW 로 인식돼야 한다.
+        createUseCase(SubscriptionTier.PRO)
+        appSettingsRepository.setRawFileDownloadEnabled(true)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertTrue("srw 는 RAW → PRO 통과", useCase.isDownloadAllowed("DSC_0001.SRW"))
+        assertTrue("srw 는 RAW 로 인식돼야 함", useCase.isRawFile("DSC_0001.srw"))
+
+        createUseCase(SubscriptionTier.FREE)
+        appSettingsRepository.setRawFileDownloadEnabled(true)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertFalse("FREE 는 srw RAW 차단", useCase.isDownloadAllowed("DSC_0001.SRW"))
+    }
+
     // --- validateRawFileAccess ---
 
     @Test

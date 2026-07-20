@@ -13,6 +13,7 @@ object SubscriptionUtils {
         "cr2", "cr3",           // Canon
         "nef", "nrw",           // Nikon
         "arw", "srf", "sr2",    // Sony
+        "srw",                  // Samsung
         "orf",                  // Olympus
         "rw2",                  // Panasonic
         "pef", "ptx",           // Pentax
@@ -99,6 +100,7 @@ object SubscriptionUtils {
             "cr2", "cr3" -> "Canon"
             "nef", "nrw" -> "Nikon"
             "arw", "srf", "sr2" -> "Sony"
+            "srw" -> "Samsung"
             "orf" -> "Olympus"
             "rw2" -> "Panasonic"
             "pef", "ptx" -> "Pentax"
