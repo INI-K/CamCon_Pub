@@ -37,7 +37,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -45,6 +44,7 @@ import com.google.android.gms.oss.licenses.OssLicensesMenuActivity
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.HeadingM
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
@@ -170,8 +170,7 @@ fun OpenSourceLicensesScreen(
                 HorizontalDivider(modifier = Modifier.padding(vertical = Spacing.sm))
                 Text(
                     text = stringResource(R.string.native_libraries),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+                    style = HeadingM,
                     modifier = Modifier.padding(vertical = Spacing.sm)
                 )
             }
@@ -219,8 +218,7 @@ fun GradleLicensesCard(onClick: () -> Unit) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = stringResource(R.string.gradle_dependencies),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    style = HeadingM
                 )
                 Text(
                     text = stringResource(R.string.gradle_dependencies_desc),
@@ -250,8 +248,7 @@ fun NativeLicenseItem(license: NativeLicense) {
         ) {
             Text(
                 text = license.name,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                style = HeadingM
             )
 
             Text(

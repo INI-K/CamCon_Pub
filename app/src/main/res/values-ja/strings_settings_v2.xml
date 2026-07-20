@@ -5,8 +5,8 @@
     <string name="settings_v2_back">戻る</string>
 
     <!-- 섹션 제목 -->
-    <string name="settings_v2_section_camera_control">カメラ制御設定（開発版）</string>
-    <string name="settings_v2_section_wifi_ptpip">Wi-Fiカメラ接続（PTPIP）- 開発版</string>
+    <string name="settings_v2_section_camera_control">カメラ制御設定</string>
+    <string name="settings_v2_section_wifi_ptpip">Wi-Fiカメラ接続（PTPIP）</string>
     <string name="settings_v2_section_color_transfer">カラー転送設定</string>
     <string name="settings_v2_vibrate_on_photo_title">写真受信時に振動</string>
     <string name="settings_v2_vibrate_on_photo_on">写真が届くと短く振動します。</string>
@@ -14,7 +14,7 @@
     <string name="settings_v2_section_raw_download">RAWファイルダウンロード設定</string>
     <string name="settings_v2_section_connected_camera">接続中のカメラ情報</string>
     <string name="settings_v2_section_user_info">ユーザー情報</string>
-    <string name="settings_v2_section_server">サーバー設定（開発版）</string>
+    <string name="settings_v2_section_server">サーバー設定</string>
     <string name="settings_v2_section_app">アプリ設定</string>
     <string name="settings_v2_section_admin">ADMIN専用設定</string>
     <string name="settings_v2_section_info">情報</string>

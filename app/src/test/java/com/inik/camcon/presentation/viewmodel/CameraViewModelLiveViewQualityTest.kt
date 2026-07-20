@@ -6,6 +6,7 @@ import com.inik.camcon.domain.model.LiveViewQuality
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.repository.PtpipPreferencesRepository
+import com.inik.camcon.domain.repository.UsbDeviceRepository
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.presentation.viewmodel.state.CameraSettingsManager
 import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
@@ -62,6 +63,7 @@ class CameraViewModelLiveViewQualityTest {
 
     private lateinit var context: Context
     private lateinit var cameraRepository: FakeCameraRepositoryBasic
+    private lateinit var usbDeviceRepository: UsbDeviceRepository
     private lateinit var getSubscriptionUseCase: GetSubscriptionUseCase
     private lateinit var uiStateManager: CameraUiStateManager
     private lateinit var usbAutoConnectManager: UsbAutoConnectManager
@@ -106,6 +108,7 @@ class CameraViewModelLiveViewQualityTest {
             }
         }
         getSubscriptionUseCase = mockk(relaxed = true)
+        usbDeviceRepository = mockk(relaxed = true)
         uiStateManager = CameraUiStateManager()
         usbAutoConnectManager = mockk(relaxed = true)
         operationsManager = mockk(relaxed = true)
@@ -132,6 +135,11 @@ class CameraViewModelLiveViewQualityTest {
 
         // getSubscriptionUseCase 는 연결 관찰 경로(observeCameraConnection)에서 참조될 수 있음.
         every { getSubscriptionUseCase.getSubscriptionTier() } returns emptyFlow()
+
+        // observeNativeCameraConnection(init)이 collect 하는 StateFlow — relaxed mock 의 StateFlow.collect 는
+        // Nothing 반환이라 KotlinNothingValueException 위험이 있으므로 실제 StateFlow(false 시드)로 stub.
+        // 화질 케이스는 네이티브 연결에 무관하므로 false 로 고정한다.
+        every { usbDeviceRepository.isNativeCameraConnected } returns MutableStateFlow(false)
 
         // SharedFlow/StateFlow.collect 의 반환 타입은 Nothing 이라 relaxed mock 이면 KotlinNothingValueException.
         // VM init 에서 실제로 collect 되는 흐름들은 실제(빈) Flow 로 stub 한다.
@@ -171,6 +179,7 @@ class CameraViewModelLiveViewQualityTest {
     private fun createViewModel(): CameraViewModel = CameraViewModel(
         context = context,
         cameraRepository = cameraRepository,
+        usbDeviceRepository = usbDeviceRepository,
         getSubscriptionUseCase = getSubscriptionUseCase,
         uiStateManager = uiStateManager,
         usbAutoConnectManager = usbAutoConnectManager,

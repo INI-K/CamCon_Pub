@@ -9,10 +9,11 @@ import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.presentation.viewmodel.state.ErrorHandlingManager
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.SubscriptionTier
-import com.inik.camcon.domain.model.resolve
+import com.inik.camcon.utils.resolve
 import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
+import com.inik.camcon.domain.usecase.ValidateFeatureAccessUseCase
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.domain.usecase.camera.DeleteCameraFileUseCase
 import com.inik.camcon.domain.usecase.camera.ResumeNativeOperationsUseCase
@@ -34,7 +35,10 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import javax.inject.Inject
 
 /**
@@ -47,6 +51,8 @@ data class PhotoPreviewUiState(
     val isInitialized: Boolean = false,
     val isInitializing: Boolean = false,
     val currentTier: SubscriptionTier = SubscriptionTier.FREE,
+    // 미리보기 탭/RAW·전체포맷 접근 허용 여부. ValidateFeatureAccessUseCase 단일 지점 판정 결과(CLAUDE.md §2).
+    val canAccessRawFormats: Boolean = false,
     val isPtpipConnected: Boolean = false
 )
 
@@ -91,6 +97,7 @@ class PhotoPreviewViewModel @Inject constructor(
     private val getSubscriptionUseCase: GetSubscriptionUseCase,
     private val appSettingsRepository: AppSettingsRepository,
     private val validateImageFormatUseCase: ValidateImageFormatUseCase,
+    private val validateFeatureAccessUseCase: ValidateFeatureAccessUseCase,
 
     // 매니저 의존성 주입 (단일책임원칙 적용)
     private val photoListManager: PhotoListManager,
@@ -103,6 +110,12 @@ class PhotoPreviewViewModel @Inject constructor(
 
     companion object {
         private const val TAG = "사진미리보기뷰모델"
+
+        // 다중선택 일괄 다운로드 동시성 상한.
+        // 네이티브 커맨드 큐가 단일 워커로 직렬 처리하고 JNI 대기 타이머가 '제출 시점' 기산이라,
+        // 전건을 동시에 발사하면 후순위 항목이 실행 시작 전에 60초 타임아웃으로 구조적 실패한다.
+        // 유계 동시성으로 '제출 시점 ≈ 서비스 시점'을 근접시켜 각 항목에 온전한 대기 창을 준다.
+        private const val MAX_CONCURRENT_DOWNLOADS = 3
     }
 
     // UI 상태
@@ -136,8 +149,8 @@ class PhotoPreviewViewModel @Inject constructor(
     val multiDownloadProgress: StateFlow<MultiDownloadProgress> =
         _multiDownloadProgress.asStateFlow()
 
-    // 이번 다중선택 배치에서 결과를 기다리는 경로 집합. 비면 배치 완료.
-    private val pendingBatchPaths = mutableSetOf<String>()
+    // 진행 중인 다중선택 배치 Job(유계 동시성). 재진입 방지·정리에 사용.
+    private var batchDownloadJob: Job? = null
 
     // 단발(단일 사진) 다운로드 결과 통지를 받을 경로. 다중선택 배치와 구분.
     private var singleDownloadPath: String? = null
@@ -265,48 +278,19 @@ class PhotoPreviewViewModel @Inject constructor(
     /**
      * 풀이미지 다운로드 결과 관찰(필수1).
      *
-     * - 다중선택 배치 경로면 진행/완료 집계.
-     * - 단일 사진 다운로드면 성공 토스트 / 실패 토스트(재시도 가능).
-     * - 인접 프리로드 등 추적되지 않는 경로의 결과는 조용히 무시(UX 노이즈 방지).
+     * 단일(명시적) 다운로드 결과만 처리한다 — 다중선택 배치는 [downloadSelectedPhotos] 가
+     * 유계 동시성으로 직접 await 하며 집계하므로 이 SharedFlow 경유가 아니다.
+     * 인접 프리로드 등 추적되지 않는 경로의 결과는 조용히 무시한다(UX 노이즈 방지).
      */
     private fun observeDownloadResults() {
         if (downloadResultObserveJob?.isActive == true) return
 
         downloadResultObserveJob = viewModelScope.launch {
             photoImageManager.downloadResult.collect { result ->
-                when {
-                    pendingBatchPaths.contains(result.photoPath) ->
-                        handleBatchDownloadResult(result)
-
-                    singleDownloadPath == result.photoPath ->
-                        handleSingleDownloadResult(result)
+                if (singleDownloadPath == result.photoPath) {
+                    handleSingleDownloadResult(result)
                 }
             }
-        }
-    }
-
-    /**
-     * 다중선택 배치 항목 1건 완료 처리. 모두 끝나면 요약 토스트 + 선택 모드 종료.
-     */
-    private fun handleBatchDownloadResult(result: PhotoImageManager.DownloadResult) {
-        pendingBatchPaths.remove(result.photoPath)
-
-        val updated = _multiDownloadProgress.updateAndGetBatch(
-            succeeded = result.isSuccess
-        )
-
-        if (pendingBatchPaths.isEmpty()) {
-            // 배치 완료 — 요약 통지 후 진행 상태/선택 모드 정리.
-            val total = updated.total
-            val failed = updated.failed
-            if (failed == 0) {
-                emitInfo(context.getString(R.string.gallery_v2_download_all_done, total))
-            } else {
-                val ok = total - failed
-                emitError(context.getString(R.string.gallery_v2_download_partial, ok, total))
-            }
-            _multiDownloadProgress.value = MultiDownloadProgress()
-            photoSelectionManager.exitMultiSelectMode()
         }
     }
 
@@ -322,20 +306,6 @@ class PhotoPreviewViewModel @Inject constructor(
             // 실패는 재시도 대상으로 유지(_lastFailedDownload). 친화적 메시지.
             emitError(context.getString(R.string.gallery_v2_download_failed))
         }
-    }
-
-    /**
-     * MultiDownloadProgress 1건 진행 반영(불변 갱신).
-     */
-    private fun MutableStateFlow<MultiDownloadProgress>.updateAndGetBatch(
-        succeeded: Boolean
-    ): MultiDownloadProgress {
-        val next = value.copy(
-            completed = value.completed + 1,
-            failed = value.failed + if (succeeded) 0 else 1
-        )
-        value = next
-        return next
     }
 
     /**
@@ -435,7 +405,12 @@ class PhotoPreviewViewModel @Inject constructor(
         tierObserveJob = viewModelScope.launch {
             getSubscriptionUseCase.getSubscriptionTier().collect { tier ->
                 Log.d(TAG, "사용자 구독 티어 변경: $tier")
-                _uiState.update { it.copy(currentTier = tier) }
+                _uiState.update {
+                    it.copy(
+                        currentTier = tier,
+                        canAccessRawFormats = validateFeatureAccessUseCase.isPhotoPreviewAllowed(tier)
+                    )
+                }
 
                 // 티어 변경 시 현재 필터에 따라 사진 목록 다시 필터링
                 photoListManager.changeFileTypeFilter(
@@ -547,7 +522,12 @@ class PhotoPreviewViewModel @Inject constructor(
         if (!_multiDownloadProgress.value.inProgress) {
             singleDownloadPath = photo.path
         }
-        photoImageManager.downloadFullImage(photo.path, _uiState.value.currentTier)
+        // 명시적 다운로드 — 기기 저장(MediaStore)까지 영속화.
+        photoImageManager.downloadFullImage(
+            photo.path,
+            _uiState.value.currentTier,
+            persistToDevice = true
+        )
     }
 
     /**
@@ -584,6 +564,9 @@ class PhotoPreviewViewModel @Inject constructor(
                         },
                         onFailure = { e ->
                             Log.w(TAG, "카메라 측 사진 삭제 실패 (로컬 정리는 계속): ${LogMask.path(photo.name)}", e)
+                            // 파괴적 동작인데 무통지면 목록 갱신 후 사진이 되살아나 '삭제 안 됨'처럼 보인다.
+                            // 카메라 측 삭제 실패(예: Nikon AccessDenied 0x200F)를 사용자에게 알린다.
+                            emitError(context.getString(R.string.photo_delete_camera_failed))
                         }
                     )
                 } else {
@@ -699,11 +682,21 @@ class PhotoPreviewViewModel @Inject constructor(
         val target = photo ?: _lastFailedDownload.value
         if (target != null) {
             Log.d(TAG, "단일 사진 재시도: ${LogMask.path(target.name)}")
+            // 형제 다운로드 경로(preloadAdjacentImages·quickPreloadCurrentImage)와 동일하게
+            // ValidateImageFormatUseCase RAW 게이트를 경유한다(재시도 우회 방지). 차단 시 handleRawFileAccess가 통지.
+            if (!handleRawFileAccess(target)) {
+                return
+            }
             // 재시도도 명시적 액션이므로 단일 결과 추적으로 성공/실패 토스트 노출(필수1).
             if (!_multiDownloadProgress.value.inProgress) {
                 singleDownloadPath = target.path
             }
-            photoImageManager.downloadFullImage(target.path, _uiState.value.currentTier)
+            // 명시적 재시도 — 기기 저장(MediaStore)까지 영속화.
+            photoImageManager.downloadFullImage(
+                target.path,
+                _uiState.value.currentTier,
+                persistToDevice = true
+            )
         } else {
             Log.d(TAG, "마지막 실패 다운로드 없음 - 전체 새로고침 폴백")
             loadCameraPhotos()
@@ -995,16 +988,17 @@ class PhotoPreviewViewModel @Inject constructor(
      * 선택된 사진들 다운로드(필수1).
      *
      * RAW 게이팅을 통과한 항목만 배치 대상에 포함시키고, 진행 상태(n/m)를 노출한다.
-     * 모든 항목의 다운로드 결과가 수신되면 [handleBatchDownloadResult] 가 요약 토스트와
-     * 선택 모드 자동 종료를 처리한다. 게이팅으로 0개가 남으면 즉시 종료.
-     * FREE 티어면 축소 사전 고지(세션당 1회).
+     * 유계 동시성([MAX_CONCURRENT_DOWNLOADS])으로 각 항목을 await 하며 저장까지 수행해,
+     * 전건 동시 발사 시 후순위가 JNI 60초 대기(제출 시점 기산)로 구조적 타임아웃하던 문제를 없앤다.
+     * 모두 끝나면 요약 토스트 + 선택 모드 자동 종료. 게이팅으로 0개면 즉시 종료.
+     * FREE 티어면 축소 사전 고지(세션당 1회). 실패 항목은 개별 식별되어 첫 실패가 재시도 대상으로 보존된다.
      */
     fun downloadSelectedPhotos() {
         val selectedPaths = photoSelectionManager.getSelectedPaths()
         Log.d(TAG, "선택된 사진들 다운로드 시작: ${selectedPaths.size}개")
 
         // 이미 진행 중인 배치가 있으면 중복 시작 방지.
-        if (_multiDownloadProgress.value.inProgress) {
+        if (_multiDownloadProgress.value.inProgress || batchDownloadJob?.isActive == true) {
             Log.d(TAG, "이미 다중 다운로드 진행 중 - 중복 요청 무시")
             return
         }
@@ -1028,8 +1022,6 @@ class PhotoPreviewViewModel @Inject constructor(
             return
         }
 
-        pendingBatchPaths.clear()
-        pendingBatchPaths.addAll(eligiblePaths)
         _multiDownloadProgress.value = MultiDownloadProgress(
             inProgress = true,
             completed = 0,
@@ -1037,8 +1029,51 @@ class PhotoPreviewViewModel @Inject constructor(
             failed = 0
         )
 
-        eligiblePaths.forEach { photoPath ->
-            photoImageManager.downloadFullImage(photoPath, _uiState.value.currentTier)
+        val tier = _uiState.value.currentTier
+        // 실패 경로 개별 식별용(스레드 안전 — 배치 코루틴은 여러 자식에서 갱신).
+        val failedPaths = java.util.Collections.synchronizedList(mutableListOf<String>())
+
+        batchDownloadJob = viewModelScope.launch {
+            val semaphore = Semaphore(MAX_CONCURRENT_DOWNLOADS)
+            eligiblePaths.map { photoPath ->
+                launch {
+                    val ok = semaphore.withPermit {
+                        photoImageManager.downloadAndPersist(photoPath, tier)
+                    }
+                    if (!ok) {
+                        failedPaths.add(photoPath)
+                        Log.w(TAG, "일괄 다운로드 항목 실패: ${LogMask.path(photoPath)}")
+                    }
+                    // n/m 진행 집계(불변 갱신, CAS 안전).
+                    _multiDownloadProgress.update {
+                        it.copy(
+                            completed = it.completed + 1,
+                            failed = it.failed + if (ok) 0 else 1
+                        )
+                    }
+                }
+            }.joinAll()
+
+            // 배치 완료 요약.
+            val total = eligiblePaths.size
+            val failed = failedPaths.size
+            if (failed == 0) {
+                emitInfo(context.getString(R.string.gallery_v2_download_all_done, total))
+            } else {
+                emitError(
+                    context.getString(R.string.gallery_v2_download_partial, total - failed, total)
+                )
+                // 실패 항목 개별 식별 — 첫 실패를 단일 재시도 대상으로 보존.
+                val firstFailed = failedPaths.first()
+                _lastFailedDownload.value = CameraPhoto(
+                    path = firstFailed,
+                    name = firstFailed.substringAfterLast("/"),
+                    size = 0L,
+                    date = System.currentTimeMillis()
+                )
+            }
+            _multiDownloadProgress.value = MultiDownloadProgress()
+            photoSelectionManager.exitMultiSelectMode()
         }
     }
 }

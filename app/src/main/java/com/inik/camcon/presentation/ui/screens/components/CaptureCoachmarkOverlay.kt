@@ -23,7 +23,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -51,7 +50,8 @@ fun CaptureCoachmarkOverlay(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.78f))
+            // 스크림 토큰화(Theme.kt scrim = Surface0 기반) + 기존 0.78 알파 유지로 시각 등가.
+            .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.78f))
     ) {
         Column(
             modifier = Modifier
