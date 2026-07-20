@@ -356,4 +356,23 @@
     <string name="refresh_usb">Actualizar USB</string>
     <string name="request_usb_permission">Solicitar Permiso USB</string>
     <string name="camera_preview_live_view">Vista en vivo</string>
+    <string name="photo_capture_failed">No se pudo capturar/recibir la foto (error %1$d)</string>
+    <string name="photo_delete_camera_failed">No se pudo eliminar la foto de la cámara</string>
+    <string name="notif_channel_status_name">Estado de la cámara</string>
+    <string name="notif_channel_status_desc">Muestra el estado de conexión y de recepción de archivos de la cámara</string>
+    <string name="connection_status_usb_connected">Cámara USB conectada</string>
+    <string name="connection_status_ap_connected">Modo AP conectado (%1$s)</string>
+    <string name="connection_status_sta_connected">Modo STA conectado (%1$s)</string>
+    <string name="connection_status_connecting">Conectando con la cámara…</string>
+    <string name="connection_status_error">Error de conexión de la cámara</string>
+    <string name="connection_status_camera_ap">AP de cámara conectado: búsqueda de cámara disponible</string>
+    <string name="connection_status_wifi">Wi-Fi conectado: búsqueda de cámara disponible</string>
+    <string name="connection_status_disconnected">Sin conexión</string>
+    <string name="usb_init_connecting_camera">Conectando con la cámara USB…</string>
+    <string name="usb_init_requesting_permission">Solicitando permiso USB…</string>
+    <string name="usb_init_waiting_permission">Esperando permiso USB…</string>
+    <string name="camera_limitation_download_only">Esta cámara solo admite la descarga de archivos.\nLa captura remota y la vista en vivo no están disponibles.\n\nFabricante: %1$s\nModelo: %2$s</string>
+    <string name="camera_limitation_no_liveview">Esta cámara no admite la vista en vivo.\nLa captura funciona, pero la vista previa en tiempo real no está disponible.</string>
+    <string name="camera_limitation_no_config">Esta cámara no admite el cambio de ajustes.\nLa captura funciona, pero ajusta el ISO, la velocidad de obturación, etc. directamente en la cámara.</string>
+    <string name="camera_control_enter_fullscreen">Alternar pantalla completa</string>
 </resources>

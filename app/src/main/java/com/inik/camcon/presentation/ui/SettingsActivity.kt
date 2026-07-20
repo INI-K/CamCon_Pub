@@ -706,7 +706,7 @@ fun SettingsScreen(
                         ClickableRowV2(
                             icon = Icons.Default.Info,
                             title = stringResource(R.string.settings_v2_camera_limitation_title),
-                            subtitle = limitation,
+                            subtitle = limitation.resolve(context),
                             onClick = { }
                         )
                     }

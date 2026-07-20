@@ -1,6 +1,8 @@
 package com.inik.camcon.presentation.viewmodel.state
 
 import android.util.Log
+import com.inik.camcon.R
+import com.inik.camcon.domain.model.UiText
 import com.inik.camcon.domain.model.PtpTimeoutException
 import com.inik.camcon.domain.model.PtpSessionState
 import com.inik.camcon.domain.manager.CameraStateObserver
@@ -270,7 +272,7 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
     /**
      * USB 초기화 상태 관리
      */
-    fun updateUsbInitialization(isInitializing: Boolean, message: String? = null) {
+    fun updateUsbInitialization(isInitializing: Boolean, message: UiText? = null) {
         _uiState.update {
             it.copy(
                 connection = it.connection.copy(
@@ -634,27 +636,27 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
 
                 // 다이얼로그 / 경고
                 dialog = currentState.dialog.copy(
+                    // Context 없는 상태 매니저이므로 리소스 ID + 인자(UiText)만 만들고
+                    // 실제 문자열은 표시 측(SettingsActivity)이 resolve(context)로 해석한다.
                     cameraFunctionLimitation = when {
                         abilities.supports.isFullyControllable() -> null
 
                         abilities.supports.isDownloadOnly() -> {
                             Log.w(TAG, "다운로드만 가능 (원격 제어 불가)")
-                            "이 카메라는 파일 다운로드만 지원합니다\n" +
-                                    "원격 촬영 및 라이브뷰는 사용할 수 없습니다\n\n" +
-                                    "제조사: ${abilities.getManufacturer()}\n" +
-                                    "모델: ${abilities.model}"
+                            UiText.Resource(
+                                R.string.camera_limitation_download_only,
+                                listOf(abilities.getManufacturer(), abilities.model)
+                            )
                         }
 
                         !abilities.supports.capturePreview -> {
                             Log.w(TAG, "라이브뷰 미지원")
-                            "이 카메라는 라이브뷰를 지원하지 않습니다\n" +
-                                    "촬영은 가능하지만 실시간 미리보기는 불가능합니다"
+                            UiText.Resource(R.string.camera_limitation_no_liveview)
                         }
 
                         !abilities.supports.config -> {
                             Log.w(TAG, "설정 변경 미지원")
-                            "이 카메라는 설정 변경을 지원하지 않습니다\n" +
-                                    "촬영은 가능하지만 ISO, 셔터속도 등 설정은 카메라에서 직접 조정해주세요"
+                            UiText.Resource(R.string.camera_limitation_no_config)
                         }
 
                         else -> null

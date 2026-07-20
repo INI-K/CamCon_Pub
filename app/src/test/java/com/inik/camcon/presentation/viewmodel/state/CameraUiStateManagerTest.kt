@@ -1,7 +1,9 @@
 package com.inik.camcon.presentation.viewmodel.state
 
 import android.util.Log
+import com.inik.camcon.R
 import com.inik.camcon.domain.manager.CameraStateObserver
+import com.inik.camcon.domain.model.UiText
 import com.inik.camcon.domain.model.CameraAbilitiesInfo
 import com.inik.camcon.domain.model.CameraCapabilities
 import com.inik.camcon.domain.model.CameraSupports
@@ -172,7 +174,13 @@ class CameraUiStateManagerTest {
         assertFalse(state.showLiveViewTab)
         assertFalse(state.showVideoButton)
         assertFalse(state.showConfigTab)
-        assertTrue(state.cameraFunctionLimitation!!.contains("다운로드만"))
+        // 상태 매니저는 Context 없이 UiText(리소스 ID)만 전달한다 — resId 로 검증.
+        val limitation = state.cameraFunctionLimitation
+        assertTrue(limitation is UiText.Resource)
+        assertEquals(
+            R.string.camera_limitation_download_only,
+            (limitation as UiText.Resource).resId
+        )
     }
 
     // --- 연결 상태 관리 ---

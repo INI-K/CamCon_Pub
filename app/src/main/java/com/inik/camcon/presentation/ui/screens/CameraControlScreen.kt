@@ -113,6 +113,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.size.Scale
 import com.inik.camcon.R
+import com.inik.camcon.domain.model.resolve
 import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.domain.model.CameraPhoto
@@ -499,7 +500,8 @@ fun CameraControlScreen(
 
     if (uiState.isUsbInitializing) {
         UsbInitializationOverlay(
-            message = uiState.usbInitializationMessage ?: stringResource(R.string.camera_control_usb_initializing)
+            message = uiState.usbInitializationMessage?.resolve(context)
+                ?: stringResource(R.string.camera_control_usb_initializing)
         )
     }
 
@@ -873,12 +875,13 @@ private fun PortraitCameraLayout(
                     showInlineExposureStrip = false
                 )
             } else {
+                val enterFullscreenLabel = stringResource(R.string.camera_control_enter_fullscreen)
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .semantics {
                             customActions = listOf(
-                                CustomAccessibilityAction("전체화면 전환") {
+                                CustomAccessibilityAction(enterFullscreenLabel) {
                                     if (canEnterFullscreen) { onEnterFullscreen(); true } else false
                                 }
                             )
@@ -1304,12 +1307,13 @@ private fun FullscreenCameraLayout(
                 // → 라이브뷰 단일 탭은 무동작, 더블탭=전체화면 종료는 유지.
             )
         } else {
+            val exitFullscreenLabel = stringResource(R.string.camera_control_exit_fullscreen)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .semantics {
                         customActions = listOf(
-                            CustomAccessibilityAction("전체화면 종료") {
+                            CustomAccessibilityAction(exitFullscreenLabel) {
                                 onExitFullscreen(); true
                             }
                         )

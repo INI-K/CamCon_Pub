@@ -35,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Refresh
@@ -284,6 +285,16 @@ fun MyPhotosScreen(
                         Text(
                             text = stringResource(R.string.server_photos_retry),
                             color = MaterialTheme.colorScheme.onError
+                        )
+                    }
+                },
+                // 영구 표시되던 에러 스낵바에 닫기 수단 추가(재시도 없이 해제 가능).
+                dismissAction = {
+                    IconButton(onClick = { viewModel.clearError() }) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = stringResource(R.string.close),
+                            tint = MaterialTheme.colorScheme.onError
                         )
                     }
                 }

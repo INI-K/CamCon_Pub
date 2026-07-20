@@ -356,4 +356,23 @@
     <string name="license_version">Versione:</string>
     <string name="license_type">Licenza:</string>
     <string name="camera_preview_live_view">Live View</string>
+    <string name="photo_capture_failed">Impossibile scattare/ricevere la foto (errore %1$d)</string>
+    <string name="photo_delete_camera_failed">Impossibile eliminare la foto dalla fotocamera</string>
+    <string name="notif_channel_status_name">Stato della fotocamera</string>
+    <string name="notif_channel_status_desc">Mostra lo stato di connessione e ricezione file della fotocamera</string>
+    <string name="connection_status_usb_connected">Fotocamera USB connessa</string>
+    <string name="connection_status_ap_connected">Modalità AP connessa (%1$s)</string>
+    <string name="connection_status_sta_connected">Modalità STA connessa (%1$s)</string>
+    <string name="connection_status_connecting">Connessione alla fotocamera…</string>
+    <string name="connection_status_error">Errore di connessione della fotocamera</string>
+    <string name="connection_status_camera_ap">AP fotocamera connesso — ricerca fotocamera disponibile</string>
+    <string name="connection_status_wifi">Wi-Fi connesso — ricerca fotocamera disponibile</string>
+    <string name="connection_status_disconnected">Non connesso</string>
+    <string name="usb_init_connecting_camera">Connessione alla fotocamera USB…</string>
+    <string name="usb_init_requesting_permission">Richiesta autorizzazione USB…</string>
+    <string name="usb_init_waiting_permission">In attesa dell\'autorizzazione USB…</string>
+    <string name="camera_limitation_download_only">Questa fotocamera supporta solo il download dei file.\nLo scatto remoto e il live view non sono disponibili.\n\nProduttore: %1$s\nModello: %2$s</string>
+    <string name="camera_limitation_no_liveview">Questa fotocamera non supporta il live view.\nLo scatto funziona, ma l\'anteprima in tempo reale non è disponibile.</string>
+    <string name="camera_limitation_no_config">Questa fotocamera non supporta la modifica delle impostazioni.\nLo scatto funziona, ma regola ISO, tempo di posa, ecc. direttamente sulla fotocamera.</string>
+    <string name="camera_control_enter_fullscreen">Attiva/disattiva schermo intero</string>
 </resources>
