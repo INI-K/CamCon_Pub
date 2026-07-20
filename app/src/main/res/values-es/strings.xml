@@ -375,4 +375,12 @@
     <string name="camera_limitation_no_liveview">Esta cámara no admite la vista en vivo.\nLa captura funciona, pero la vista previa en tiempo real no está disponible.</string>
     <string name="camera_limitation_no_config">Esta cámara no admite el cambio de ajustes.\nLa captura funciona, pero ajusta el ISO, la velocidad de obturación, etc. directamente en la cámara.</string>
     <string name="camera_control_enter_fullscreen">Alternar pantalla completa</string>
+    <string name="camera_op_capture_failed">Error al capturar la foto: %1$s</string>
+    <string name="camera_op_liveview_unsupported">Esta cámara no admite la vista en vivo.</string>
+    <string name="camera_op_camera_not_connected">La cámara no está conectada. Conecta una cámara primero.</string>
+    <string name="camera_op_liveview_start_failed">No se pudo iniciar la vista en vivo: %1$s</string>
+    <string name="camera_op_liveview_stop_failed">No se pudo detener la vista en vivo: %1$s</string>
+    <string name="camera_op_timelapse_start_failed">No se pudo iniciar el timelapse: %1$s</string>
+    <string name="camera_op_timelapse_failed">Error en el timelapse: %1$s</string>
+    <string name="camera_op_autofocus_failed">Error de enfoque automático: %1$s</string>
 </resources>

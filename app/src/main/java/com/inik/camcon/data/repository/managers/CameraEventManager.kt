@@ -11,7 +11,7 @@ import com.inik.camcon.data.repository.managers.PhotoDownloadManager
 import com.inik.camcon.domain.manager.ErrorNotifier
 import com.inik.camcon.domain.manager.ErrorSeverity
 import com.inik.camcon.domain.manager.ErrorType
-import com.inik.camcon.domain.model.resolve
+import com.inik.camcon.utils.resolve
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.utils.Constants

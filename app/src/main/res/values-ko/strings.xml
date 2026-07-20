@@ -379,4 +379,12 @@
     <string name="camera_limitation_no_liveview">이 카메라는 라이브뷰를 지원하지 않습니다.\n촬영은 가능하지만 실시간 미리보기는 불가능합니다.</string>
     <string name="camera_limitation_no_config">이 카메라는 설정 변경을 지원하지 않습니다.\n촬영은 가능하지만 ISO, 셔터속도 등은 카메라에서 직접 조정해주세요.</string>
     <string name="camera_control_enter_fullscreen">전체화면 전환</string>
+    <string name="camera_op_capture_failed">사진 촬영 실패: %1$s</string>
+    <string name="camera_op_liveview_unsupported">이 카메라는 라이브뷰를 지원하지 않습니다.</string>
+    <string name="camera_op_camera_not_connected">카메라가 연결되지 않았습니다. 먼저 카메라를 연결해주세요.</string>
+    <string name="camera_op_liveview_start_failed">라이브뷰 시작 실패: %1$s</string>
+    <string name="camera_op_liveview_stop_failed">라이브뷰 중지 실패: %1$s</string>
+    <string name="camera_op_timelapse_start_failed">타임랩스 시작 실패: %1$s</string>
+    <string name="camera_op_timelapse_failed">타임랩스 실패: %1$s</string>
+    <string name="camera_op_autofocus_failed">자동초점 실패: %1$s</string>
 </resources>

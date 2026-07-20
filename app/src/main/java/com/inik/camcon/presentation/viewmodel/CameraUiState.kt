@@ -104,7 +104,9 @@ data class CameraUiState(
     val dialog: CameraDialogState = CameraDialogState(),
 
     // 글로벌 상태 (특정 sub-state에 넣기 어려운 것들)
-    val error: String? = null,
+    // UI 에러 메시지. Context 없는 매니저/데이터 레이어가 i18n 가능한 문자열을 실을 수 있도록 UiText 로 둔다.
+    // (UI 는 resolve(context)로 문자열화. 네이티브/기존 하드코딩 문자열은 UiText.Raw 로 감싸 표시.)
+    val error: UiText? = null,
     val isLoading: Boolean = false,
     val isInitializing: Boolean = false,
     val isCameraInitializing: Boolean = false,

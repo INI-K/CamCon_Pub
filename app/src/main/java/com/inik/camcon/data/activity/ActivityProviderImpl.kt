@@ -1,7 +1,7 @@
 package com.inik.camcon.data.activity
 
 import android.app.Activity
-import com.inik.camcon.domain.manager.ActivityProvider
+import com.inik.camcon.data.activity.ActivityProvider
 import java.lang.ref.WeakReference
 import javax.inject.Inject
 import javax.inject.Singleton

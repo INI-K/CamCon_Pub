@@ -616,4 +616,13 @@
     <string name="camera_limitation_no_config">This camera does not support changing settings.\nCapture works, but adjust ISO, shutter speed, etc. directly on the camera.</string>
     <!-- 접근성: 전체화면 진입 -->
     <string name="camera_control_enter_fullscreen">Enter fullscreen</string>
+    <!-- 카메라 조작 실패 에러(CameraOperationsManager → Snackbar). %1$s = 상세(예외 메시지/error_unknown). -->
+    <string name="camera_op_capture_failed">Photo capture failed: %1$s</string>
+    <string name="camera_op_liveview_unsupported">This camera does not support live view.</string>
+    <string name="camera_op_camera_not_connected">Camera is not connected. Please connect a camera first.</string>
+    <string name="camera_op_liveview_start_failed">Failed to start live view: %1$s</string>
+    <string name="camera_op_liveview_stop_failed">Failed to stop live view: %1$s</string>
+    <string name="camera_op_timelapse_start_failed">Failed to start time-lapse: %1$s</string>
+    <string name="camera_op_timelapse_failed">Time-lapse failed: %1$s</string>
+    <string name="camera_op_autofocus_failed">Autofocus failed: %1$s</string>
 </resources>
