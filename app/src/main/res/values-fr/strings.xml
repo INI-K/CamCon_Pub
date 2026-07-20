@@ -376,4 +376,12 @@
     <string name="camera_limitation_no_liveview">Cet appareil ne prend pas en charge la visée en direct.\nLa capture fonctionne, mais l\'aperçu en temps réel n\'est pas disponible.</string>
     <string name="camera_limitation_no_config">Cet appareil ne prend pas en charge la modification des réglages.\nLa capture fonctionne, mais réglez l\'ISO, la vitesse d\'obturation, etc. directement sur l\'appareil.</string>
     <string name="camera_control_enter_fullscreen">Basculer en plein écran</string>
+    <string name="camera_op_capture_failed">Échec de la capture photo : %1$s</string>
+    <string name="camera_op_liveview_unsupported">Cet appareil photo ne prend pas en charge la visée en direct.</string>
+    <string name="camera_op_camera_not_connected">L\'appareil photo n\'est pas connecté. Veuillez d\'abord connecter un appareil photo.</string>
+    <string name="camera_op_liveview_start_failed">Impossible de démarrer la visée en direct : %1$s</string>
+    <string name="camera_op_liveview_stop_failed">Impossible d\'arrêter la visée en direct : %1$s</string>
+    <string name="camera_op_timelapse_start_failed">Impossible de démarrer le time-lapse : %1$s</string>
+    <string name="camera_op_timelapse_failed">Échec du time-lapse : %1$s</string>
+    <string name="camera_op_autofocus_failed">Échec de l\'autofocus : %1$s</string>
 </resources>
