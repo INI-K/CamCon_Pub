@@ -45,10 +45,12 @@ class CameraAdvancedCaptureRepositoryImpl @Inject constructor(
 
     override suspend fun getIntervalCaptureStatus(): Result<IntervalCaptureStatus> = runCatching {
         val status = nativeDataSource.getIntervalCaptureStatus()
+        // 네이티브 반환 순서(native-lib.cpp:getIntervalCaptureStatus)는
+        // [0]=isRunning, [1]=capturedFrames, [2]=totalFrames.
         IntervalCaptureStatus(
-            currentFrame = status[0],
-            totalFrames = status[1],
-            isRunning = status[2] == 1
+            currentFrame = status[1],
+            totalFrames = status[2],
+            isRunning = status[0] == 1
         )
     }
 
