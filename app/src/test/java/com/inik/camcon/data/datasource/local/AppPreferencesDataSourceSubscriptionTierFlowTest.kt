@@ -6,6 +6,7 @@ import com.inik.camcon.domain.model.SubscriptionTier
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -46,7 +47,7 @@ class AppPreferencesDataSourceSubscriptionTierFlowTest {
         val context = RuntimeEnvironment.getApplication()
         // 프로세스 단일 DataStore 인스턴스 → 레거시 키 누수 방지를 위해 선정리하되,
         // clearAllSettings 가 상태 flow 를 시드하므로 테스트 대상 인스턴스는 새로 만든다.
-        AppPreferencesDataSource(context, mockk<EncryptedAppPreferences>(relaxed = true))
+        AppPreferencesDataSource(context, mockk<EncryptedAppPreferences>(relaxed = true), Dispatchers.Unconfined)
             .clearAllSettings()
 
         storedTier = null
@@ -55,7 +56,7 @@ class AppPreferencesDataSourceSubscriptionTierFlowTest {
             every { setSubscriptionTierString(any()) } answers { storedTier = firstArg() }
             every { hasSubscriptionTier() } returns true
         }
-        dataSource = AppPreferencesDataSource(context, encryptedPrefs)
+        dataSource = AppPreferencesDataSource(context, encryptedPrefs, Dispatchers.Unconfined)
     }
 
     @Test

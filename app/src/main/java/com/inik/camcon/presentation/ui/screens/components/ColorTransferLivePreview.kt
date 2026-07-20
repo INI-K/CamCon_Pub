@@ -278,6 +278,8 @@ fun ColorTransferLivePreview(
                                 )
                                 .clickable {
                                     // 원본 크기로 색감 처리 시작
+                                    // 이미 처리 중이면 중복 실행 방지(재탭 시 ~45MB 결과 비트맵 유기 + GPU 중복 연산 차단)
+                                    if (isProcessingFullSize) return@clickable
                                     if (referenceImagePath != null && targetImagePath != null) {
                                         isProcessingFullSize = true
                                         // 백그라운드에서 원본 크기 처리
@@ -289,6 +291,8 @@ fun ColorTransferLivePreview(
                                                     lastProcessedIntensity,
                                                     colorTransferViewModel
                                                 )
+                                                // 교체 전 이전 결과 비트맵 회수(교체 시 회수 누락 방지)
+                                                fullSizeProcessedBitmap?.recycle()
                                                 fullSizeProcessedBitmap = fullSize
                                                 showFullSizeImage = true
                                             } catch (e: Exception) {
