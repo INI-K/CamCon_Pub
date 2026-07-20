@@ -8,6 +8,7 @@ import com.inik.camcon.utils.LogcatManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
@@ -252,7 +253,6 @@ class PtpipTetherService @Inject constructor(
                     }
                 }
             }
-            closeSessionQuietly(cmd)
             Result.success(Unit)
         } catch (e: CancellationException) {
             LogcatManager.i(TAG, "물리 셔터 리스너 취소")
@@ -261,8 +261,20 @@ class PtpipTetherService @Inject constructor(
             LogcatManager.e(TAG, "물리 셔터 리스너 오류: ${e.message}")
             Result.failure(e)
         } finally {
-            try { session?.cmd?.close() } catch (_: Exception) {}
-            try { session?.event?.close() } catch (_: Exception) {}
+            // J7: 정상 종료·취소 어느 경로든 CloseSession으로 세션 슬롯을 정상 반납한다. 취소 시에도
+            // CloseSession 없이 소켓을 abrupt close 하면 Z8 계열이 세션을 잠가 다음 일반 연결을
+            // -7/InitFail로 거부한다(레포 실측). NonCancellable로 감싸고, blocking read가 무응답
+            // 카메라에서 최대 30s 걸리지 않도록 응답 대기를 3s로 낮춘 뒤 best-effort 전송한다.
+            session?.let { s ->
+                withContext(NonCancellable) {
+                    runCatching {
+                        s.cmd.soTimeout = 3000
+                        closeSessionQuietly(s.cmd)
+                    }
+                }
+            }
+            runCatching { session?.cmd?.close() }
+            runCatching { session?.event?.close() }
         }
     }
 

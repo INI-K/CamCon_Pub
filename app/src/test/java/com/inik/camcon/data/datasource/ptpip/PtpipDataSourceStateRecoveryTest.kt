@@ -52,6 +52,7 @@ class PtpipDataSourceStateRecoveryTest {
             wifiHelper = mockk(relaxed = true),
             cameraEventManager = mockk(relaxed = true),
             cameraStateObserver = mockk(relaxed = true),
+            errorNotifier = mockk(relaxed = true),
             photoDownloadManager = mockk(relaxed = true),
             autoConnectManager = mockk(relaxed = true),
             autoConnectTaskRunnerProvider = mockk(relaxed = true),
