@@ -357,4 +357,23 @@
     <string name="license_version">Version :</string>
     <string name="license_type">Licence :</string>
     <string name="camera_preview_live_view">Visée en direct</string>
+    <string name="photo_capture_failed">Échec de la capture/réception de la photo (erreur %1$d)</string>
+    <string name="photo_delete_camera_failed">Impossible de supprimer la photo de l\'appareil</string>
+    <string name="notif_channel_status_name">État de l\'appareil</string>
+    <string name="notif_channel_status_desc">Affiche l\'état de connexion et de réception de fichiers de l\'appareil</string>
+    <string name="connection_status_usb_connected">Appareil USB connecté</string>
+    <string name="connection_status_ap_connected">Mode AP connecté (%1$s)</string>
+    <string name="connection_status_sta_connected">Mode STA connecté (%1$s)</string>
+    <string name="connection_status_connecting">Connexion à l\'appareil…</string>
+    <string name="connection_status_error">Erreur de connexion de l\'appareil</string>
+    <string name="connection_status_camera_ap">AP de l\'appareil connecté — recherche d\'appareil possible</string>
+    <string name="connection_status_wifi">Wi-Fi connecté — recherche d\'appareil possible</string>
+    <string name="connection_status_disconnected">Non connecté</string>
+    <string name="usb_init_connecting_camera">Connexion à l\'appareil USB…</string>
+    <string name="usb_init_requesting_permission">Demande d\'autorisation USB…</string>
+    <string name="usb_init_waiting_permission">En attente de l\'autorisation USB…</string>
+    <string name="camera_limitation_download_only">Cet appareil ne prend en charge que le téléchargement de fichiers.\nLa capture à distance et la visée en direct ne sont pas disponibles.\n\nFabricant: %1$s\nModèle: %2$s</string>
+    <string name="camera_limitation_no_liveview">Cet appareil ne prend pas en charge la visée en direct.\nLa capture fonctionne, mais l\'aperçu en temps réel n\'est pas disponible.</string>
+    <string name="camera_limitation_no_config">Cet appareil ne prend pas en charge la modification des réglages.\nLa capture fonctionne, mais réglez l\'ISO, la vitesse d\'obturation, etc. directement sur l\'appareil.</string>
+    <string name="camera_control_enter_fullscreen">Basculer en plein écran</string>
 </resources>
