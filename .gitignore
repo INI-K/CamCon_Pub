@@ -1,47 +1,59 @@
-# Built application files
-*.apk
-*.aab
-
-# Gradle files
-.gradle/
-build/
-
-# Local configuration file (sdk path, etc)
-local.properties
-
-# Android Studio
-.idea/
-*.iml
-
-# Keystore files
-*.jks
-*.keystore
-
-# App signing keys
-app-release-key.jks
-app-debug-key.jks
+# === 앱 키 / 시크릿 ===
+Key/
 key.properties
 keystore.properties
 signing.properties
-KEY/
-KEY/appkey
-# KEY 폴더 전체를 ignore
+app/google-services.json
+local.properties
+*.jks
+*.keystore
+*.pem
+*.p12
 
-# OS files
-.DS_Store
+# === libgphoto2 / 네이티브 빌드 ===
+app/src/main/cpp/
+app/src/main/jniLibs/
+third_party/
+patches/
+Complete_arm64-v8a/
+gphoto-build_16k/
+gphoto-build/
+build_libgphoto2.sh
+build_libgphoto2_android.sh
+rebuild_ptp2_only.sh
+patch_*.py
+libgphoto2-android-complete.tar.gz
 
-# Android NDK/CMake build files
-app/.cxx/
-app/build/
-#*.so
-#*.o
+# === 클로드 관련 ===
+.claude/
+CLAUDE.md
+docs/superpowers/
 
-# Gradle build cache
-.gradle/*/executionHistory/
-.gradle/*/fileHashes/
-.gradle/buildOutputCleanup/
-.gradle/file-system.probe
+# === 서버 로직 / 구독·결제 ===
+functions/
+app/release/
+app/src/main/java/com/inik/camcon/data/datasource/billing/
+app/src/main/java/com/inik/camcon/data/repository/SubscriptionRepositoryImpl.kt
+app/src/main/java/com/inik/camcon/domain/model/Subscription.kt
+app/src/main/java/com/inik/camcon/domain/model/SubscriptionTier.kt
+app/src/main/java/com/inik/camcon/domain/model/SubscriptionProduct.kt
+app/src/main/java/com/inik/camcon/domain/model/ReferralCode.kt
+app/src/main/java/com/inik/camcon/domain/repository/SubscriptionRepository.kt
+app/src/main/java/com/inik/camcon/domain/usecase/GetSubscriptionUseCase.kt
+app/src/main/java/com/inik/camcon/domain/usecase/PurchaseSubscriptionUseCase.kt
+app/src/main/java/com/inik/camcon/domain/usecase/ValidateImageFormatUseCase.kt
+app/src/main/java/com/inik/camcon/domain/usecase/auth/AdminUserManagementUseCase.kt
+app/src/main/java/com/inik/camcon/domain/usecase/auth/UserReferralUseCase.kt
+app/src/main/java/com/inik/camcon/utils/SubscriptionUtils.kt
+app/src/main/java/com/inik/camcon/presentation/viewmodel/AdminReferralCodeViewModel.kt
 
-# 중요: app/src/main/java/com/inik/camcon/data 폴더는 추적해야 함
-!app/src/main/java/com/inik/camcon/data/
-!app/src/main/java/com/inik/camcon/data/**
+# === IDE / 로그 / 백업 / 내부문서 ===
+.idea/
+*.log
+README.md.backup
+docs/CLOUD_FUNCTIONS_BILLING.md
+docs/AUDIT_2026-06-01.md
+docs/DEV_DOCUMENT.md
+docs/HARNESS_CHANGELOG.md
+docs/aso-playstore.md
+docs/archive/
