@@ -410,6 +410,9 @@ function normalizeCameraKey(input) {
         var label = (t("cameras.verified") || "사용 확인됨") + (methods.length ? " · " + methods.join(" · ") : "");
         badge = '<span class="cam-verify">' + esc(label) + '</span>';
       }
+      if (c.wifi) {
+        badge = '<span class="cam-wifi">' + esc(t("cameras.wifiBadge") || "Wi-Fi") + "</span>" + badge;
+      }
       return '<li><span class="cam-vendor">' + esc(vendorLabel(c.vendor)) + "</span>" +
         '<span class="cam-model">' + esc(c.model) + "</span>" + badge + "</li>";
     }).join("");

@@ -33,4 +33,7 @@
 
     <!-- 결제 미지원 안내 (추후 지원) -->
     <string name="subscription_coming_soon">업그레이드는 추후 지원 예정입니다.</string>
+
+    <!-- 필름 룩 규모 카운트 (카탈로그 size 동적 주입) -->
+    <string name="subscription_film_look_count">필름 룩 %1$d종</string>
 </resources>

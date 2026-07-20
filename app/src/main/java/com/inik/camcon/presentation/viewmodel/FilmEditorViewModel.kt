@@ -21,6 +21,7 @@ import com.inik.camcon.domain.usecase.ObserveEffectiveTierUseCase
 import com.inik.camcon.domain.usecase.ValidateFeatureAccessUseCase
 import com.inik.camcon.presentation.ui.screens.components.ImageProcessingUtils
 import com.inik.camcon.utils.LogcatManager
+import com.inik.camcon.utils.MediaStoreVolumes
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -44,6 +45,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
 import javax.inject.Inject
 
 /**
@@ -427,6 +429,40 @@ class FilmEditorViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 대상 사진이 지정되지 않은 select-only 진입(설정/카메라 '기본 필름 선택')에서 번들 샘플 이미지를
+     * 자동 로드해 그리드가 즉시 보이게 한다. 편집 모드(실사진 편집)에서는 호출하지 않는다.
+     *
+     * 이미 소스가 있으면([sourcePath] != null) 무시한다(멱등). 진짜 편집은 사용자 대상 사진이 필요하므로
+     * 이 자동 로드는 [FilmEditorActivity] 가 select-only + 소스 미지정일 때만 호출해야 한다.
+     */
+    fun ensureSampleSourceIfNeeded() {
+        if (_sourcePath.value != null) return
+        viewModelScope.launch {
+            val file = withContext(ioDispatcher) { copySampleToCache() }
+            // 복사 도중 다른 소스가 설정됐으면(경합) 덮어쓰지 않는다.
+            if (file != null && _sourcePath.value == null) {
+                setSourceImage(file.absolutePath)
+            }
+        }
+    }
+
+    /**
+     * 번들 샘플 이미지(assets/[SAMPLE_ASSET_NAME])를 앱 cache 임시 파일로 복사하고 파일을 반환한다.
+     * 기존 URI 진입점([FilmEditorActivity.copyUriToCache])과 동일한 cache 디렉터리를 쓴다. 실패 시 null.
+     * 이미 복사돼 있으면 재사용한다(멱등). IO 스레드에서 호출할 것.
+     */
+    private fun copySampleToCache(): File? = runCatching {
+        val imageDir = File(context.cacheDir, "film_editor_images")
+        if (!imageDir.exists()) imageDir.mkdirs()
+        val target = File(imageDir, SAMPLE_ASSET_NAME)
+        if (target.exists() && target.length() > 0) return@runCatching target
+        context.assets.open(SAMPLE_ASSET_NAME).use { input ->
+            FileOutputStream(target).use { output -> input.copyTo(output) }
+        }
+        target
+    }.getOrNull()
+
     // ---- 지연 썸네일 ----
 
     /**
@@ -443,7 +479,7 @@ class FilmEditorViewModel @Inject constructor(
             try {
                 val bmp = filmEditProcessor.generateThumbnail(sid, source, lutId) as? Bitmap
                 if (bmp != null && !bmp.isRecycled) {
-                    _thumbnails.value = _thumbnails.value + (lutId to bmp)
+                    _thumbnails.value = putThumbnailBounded(_thumbnails.value, lutId, bmp)
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -459,6 +495,26 @@ class FilmEditorViewModel @Inject constructor(
     /** 셀이 화면을 벗어나면 호출해 불필요한 썸네일 생성을 중단한다. */
     fun cancelThumbnail(lutId: String) {
         thumbnailJobs.remove(lutId)?.cancel()
+    }
+
+    /**
+     * 썸네일 맵에 [lutId]→[bmp] 를 넣되 [MAX_THUMBNAILS] 상한을 강제한다(오래된 항목부터 FIFO 축출).
+     *
+     * [FilmThumbnailGenerator] 의 48MB 바이트 예산과 정합시키기 위한 상한이다. VM 강참조 맵이 무한
+     * 축적되면 생성기 LRU 가 축출해도 GC 가 불가해 예산이 무력화되므로, 여기서도 초과분의 참조를 드롭한다.
+     * 썸네일은 캐시 소유이므로 축출 시 recycle 하지 않는다(참조만 제거 — 재요청 시 생성기 캐시 히트로 복원).
+     * 스크롤 순서 ≈ 삽입 순서라 FIFO 축출은 화면을 벗어난 오래된 셀부터 정리한다.
+     */
+    private fun putThumbnailBounded(
+        current: Map<String, Bitmap>,
+        lutId: String,
+        bmp: Bitmap
+    ): Map<String, Bitmap> {
+        val updated = current + (lutId to bmp)
+        if (updated.size <= MAX_THUMBNAILS) return updated
+        return updated.entries
+            .drop(updated.size - MAX_THUMBNAILS)
+            .associate { it.key to it.value }
     }
 
     // ---- 내보내기(Phase 3) ----
@@ -525,7 +581,16 @@ class FilmEditorViewModel @Inject constructor(
                 put(MediaStore.Images.Media.IS_PENDING, 1)
             }
             val resolver = context.contentResolver
-            val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+            // 제거식 SD카드가 있으면 SD카드에 우선 저장, 없거나 탈거 경합이면 primary 볼륨으로 폴백.
+            val preferredUri = MediaStoreVolumes.preferredImagesUri(context)
+            // EXTERNAL_CONTENT_URI(집계 external)와는 볼륨명 표기가 달라 == 비교가 성립하지 않으므로 표기 통일.
+            val primaryUri =
+                MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+            var uri = resolver.insert(preferredUri, values)
+            if (uri == null && preferredUri != primaryUri) {
+                LogcatManager.w(TAG, "선호 볼륨 저장 실패 — primary 볼륨으로 재시도")
+                uri = resolver.insert(primaryUri, values)
+            }
             if (uri == null) {
                 saveToExternalFiles(source)
             } else {
@@ -644,6 +709,9 @@ class FilmEditorViewModel @Inject constructor(
         private const val TAG = "FilmEditorViewModel"
         private const val MAX_PREVIEW_EDGE = 1280
 
+        /** 소스 미지정 select-only 진입 시 자동 로드하는 번들 샘플 이미지(assets 파일명). */
+        private const val SAMPLE_ASSET_NAME = "film_sample.webp"
+
         /**
          * 컨택트 시트 썸네일 소스의 긴 변(px).
          * 200이었을 때 2열 그리드 타일(태블릿 실측 ~580px)에 3배 가까이 확대되어 뿌옇게 보였다.
@@ -651,6 +719,14 @@ class FilmEditorViewModel @Inject constructor(
          * FilmThumbnailGenerator의 동시성 2 제한 + 바이트 예산 캐시가 흡수한다.
          */
         private const val THUMB_SOURCE_EDGE = 512
+
+        /**
+         * VM 썸네일 강참조 맵([_thumbnails])의 개수 상한. [FilmThumbnailGenerator] 의 48MB 바이트 예산과
+         * 정합: 최악(정사각 512² ARGB_8888 ≈ 1MB) 기준 48장이면 맵 최대 상주도 48MB 이내로 묶인다
+         * (일반 ~700KB 썸네일이면 생성기 캐시가 잡는 ~70장 이하). 초과 시 오래된 항목부터 참조를 드롭해
+         * 생성기 예산이 실효를 갖게 한다(비트맵 recycle 은 하지 않음 — 캐시 소유).
+         */
+        private const val MAX_THUMBNAILS = 48
 
         /** 슬라이더 드래그 → 프리뷰 GPU 재구성 디바운스(ms). 설계 §8: 과다 갱신 방지. */
         private const val PREVIEW_DEBOUNCE_MS = 200L

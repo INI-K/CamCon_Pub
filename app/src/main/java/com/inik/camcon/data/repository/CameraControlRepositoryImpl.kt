@@ -221,8 +221,22 @@ class CameraControlRepositoryImpl @Inject constructor(
     suspend fun updateCameraSetting(key: String, value: String): Result<Boolean> {
         return withContext(ioDispatcher) {
             try {
-                com.inik.camcon.utils.LogcatManager.d(TAG, "카메라 설정 업데이트: $key = $value")
-                Result.success(true)
+                // UI 키 → libgphoto2 위젯명. 대부분 동일하고 조리개만 불일치("aperture" → "f-number").
+                val configName = when (key) {
+                    "aperture" -> "f-number"
+                    else -> key
+                }
+                com.inik.camcon.utils.LogcatManager.d(TAG, "카메라 설정 업데이트: $key($configName) = $value")
+
+                val code = nativeDataSource.setConfigString(configName, value)
+                if (code == 0) {
+                    Result.success(true)
+                } else {
+                    // 성공 위장 제거: 네이티브 실패(gp code != 0)를 그대로 전파해 UI가 에러를 안내하게 한다.
+                    Result.failure(
+                        IllegalStateException("카메라 설정 변경 실패 ($key=$value, gp code=$code)")
+                    )
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -396,15 +410,17 @@ class CameraControlRepositoryImpl @Inject constructor(
     // 라이브뷰 stop이 진행 중인지 여부. 화질 변경 후 안전 재시작 시 stop 완료를 폴링하는 용도.
     fun isLiveViewStopping(): Boolean = nativeDataSource.isLiveViewStopping()
 
-    suspend fun getCameraFileListNow(): Result<List<String>> = try {
-        val fileList = nativeDataSource.getCameraFileListNow()
-        Log.d(TAG, "카메라 파일 목록 조회 완료: ${fileList.size}개")
-        Result.success(fileList)
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        Log.e(TAG, "카메라 파일 목록 조회 실패", e)
-        Result.failure(e)
+    suspend fun getCameraFileListNow(): Result<List<String>> = withContext(ioDispatcher) {
+        try {
+            val fileList = nativeDataSource.getCameraFileListNow()
+            Log.d(TAG, "카메라 파일 목록 조회 완료: ${fileList.size}개")
+            Result.success(fileList)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e(TAG, "카메라 파일 목록 조회 실패", e)
+            Result.failure(e)
+        }
     }
 
     // ── C3 라운드 1: Native Gateway (Presentation→JNI 직접 호출 래핑, 2026-04-23) ──

@@ -1,7 +1,9 @@
 package com.inik.camcon.presentation.viewmodel.state
 
 import android.util.Log
+import com.inik.camcon.R
 import com.inik.camcon.domain.manager.CameraStateObserver
+import com.inik.camcon.domain.model.UiText
 import com.inik.camcon.domain.model.CameraAbilitiesInfo
 import com.inik.camcon.domain.model.CameraCapabilities
 import com.inik.camcon.domain.model.CameraSupports
@@ -100,7 +102,10 @@ class CameraUiStateManagerTest {
 
         // Then
         assertNull(manager.uiState.value.cameraCapabilities)
-        assertEquals("카메라 기능 정보를 가져올 수 없음", manager.uiState.value.error)
+        assertEquals(
+            UiText.Resource(R.string.camera_status_capabilities_unavailable),
+            manager.uiState.value.error
+        )
     }
 
     // --- showCameraStatusCheckDialog ---
@@ -172,7 +177,13 @@ class CameraUiStateManagerTest {
         assertFalse(state.showLiveViewTab)
         assertFalse(state.showVideoButton)
         assertFalse(state.showConfigTab)
-        assertTrue(state.cameraFunctionLimitation!!.contains("다운로드만"))
+        // 상태 매니저는 Context 없이 UiText(리소스 ID)만 전달한다 — resId 로 검증.
+        val limitation = state.cameraFunctionLimitation
+        assertTrue(limitation is UiText.Resource)
+        assertEquals(
+            R.string.camera_limitation_download_only,
+            (limitation as UiText.Resource).resId
+        )
     }
 
     // --- 연결 상태 관리 ---
@@ -180,7 +191,7 @@ class CameraUiStateManagerTest {
     @Test
     fun `updateConnectionState true시 에러 초기화`() {
         // Given: 에러 상태
-        manager.setError("이전 에러")
+        manager.setError(UiText.Raw("이전 에러"))
 
         // When: 연결 성공
         manager.updateConnectionState(true)
@@ -195,7 +206,7 @@ class CameraUiStateManagerTest {
         manager.updateConnectionState(false, "연결 실패")
 
         assertFalse(manager.uiState.value.isConnected)
-        assertEquals("연결 실패", manager.uiState.value.error)
+        assertEquals(UiText.Raw("연결 실패"), manager.uiState.value.error)
     }
 
     /**
@@ -332,6 +343,54 @@ class CameraUiStateManagerTest {
         // Then
         assertFalse(manager.consumeResumeLiveViewAfterReconnect())
     }
+
+    // --- updateNativeCameraConnection (USB 헤더 연결상태 desync 회귀) ---
+
+    /**
+     * 회귀: USB 헤더가 실제 네이티브 연결과 desync 되던 버그.
+     * updateNativeCameraConnection(true) 후 native/합성 isConnected 및
+     * 헤더 판정식(isConnected && (native || ptpip))이 모두 Connected 여야 한다.
+     */
+    @Test
+    fun `updateNativeCameraConnection true시 native와 isConnected와 헤더판정 모두 true`() {
+        // Given: 초기(모두 false)
+        assertFalse(manager.uiState.value.isNativeCameraConnected)
+        assertFalse(manager.uiState.value.isConnected)
+
+        // When
+        manager.updateNativeCameraConnection(true)
+
+        // Then
+        val state = manager.uiState.value
+        assertTrue(state.isNativeCameraConnected)
+        assertTrue(state.isConnected)
+        assertTrue(headerConnected(state)) // 헤더 판정식
+    }
+
+    /**
+     * 회귀(clobber 방지): PTP/IP 가 연결된 상태에서 네이티브만 false 로 내려가도
+     * union 덕분에 isConnected 는 유지되어야 한다(헤더가 꺼지지 않아야 함).
+     */
+    @Test
+    fun `updateNativeCameraConnection false여도 PTPIP 연결이면 isConnected union 유지`() {
+        // Given: 네이티브 true → PTP/IP true
+        manager.updateNativeCameraConnection(true)
+        manager.updatePtpipConnectionState(true)
+
+        // When: 네이티브만 끊김
+        manager.updateNativeCameraConnection(false)
+
+        // Then: native=false, ptpip=true, isConnected=true(union), 헤더 Connected 유지
+        val state = manager.uiState.value
+        assertFalse(state.isNativeCameraConnected)
+        assertTrue(state.isPtpipConnected)
+        assertTrue(state.isConnected)
+        assertTrue(headerConnected(state))
+    }
+
+    /** 헤더 Connected 판정식: 실제 UI 가 사용하는 논리를 테스트에서 그대로 재현한다. */
+    private fun headerConnected(state: com.inik.camcon.presentation.viewmodel.CameraUiState): Boolean =
+        state.isConnected && (state.isNativeCameraConnected || state.isPtpipConnected)
 
     // --- USB 분리 처리 ---
 

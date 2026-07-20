@@ -11,6 +11,7 @@ import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.domain.repository.UsbDeviceRepository
 import com.inik.camcon.domain.model.CameraConnectionType
 import com.inik.camcon.domain.model.GlobalCameraConnectionState
+import com.inik.camcon.domain.model.UiText
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.utils.LogcatManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -38,7 +39,7 @@ class MainActivityViewModel @Inject constructor(
     val activeConnectionType: StateFlow<CameraConnectionType?>
         get() = cameraConnectionGlobalManager.activeConnectionType
 
-    val connectionStatusMessage: StateFlow<String>
+    val connectionStatusMessage: StateFlow<UiText>
         get() = cameraConnectionGlobalManager.connectionStatusMessage
 
     init {

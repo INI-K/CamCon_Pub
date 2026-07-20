@@ -8,6 +8,9 @@ import android.util.Log
 import com.inik.camcon.CameraNative
 import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.di.IoDispatcher
+import com.inik.camcon.domain.manager.ErrorNotifier
+import com.inik.camcon.domain.manager.ErrorSeverity
+import com.inik.camcon.domain.manager.ErrorType
 import com.inik.camcon.utils.LogMask
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
@@ -22,6 +25,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -33,7 +37,8 @@ class UsbConnectionManager @Inject constructor(
     @ApplicationContext private val context: Context,
     @ApplicationScope private val scope: CoroutineScope,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
-    private val libgphoto2PluginInstaller: com.inik.camcon.data.datasource.Libgphoto2PluginInstaller
+    private val libgphoto2PluginInstaller: com.inik.camcon.data.datasource.Libgphoto2PluginInstaller,
+    private val errorNotifier: ErrorNotifier
 ) {
     private val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
 
@@ -54,6 +59,11 @@ class UsbConnectionManager @Inject constructor(
     private val isInitializingNativeCamera = AtomicBoolean(false)
     private var lastInitializedFd = -1
     private val initializationMutex = Mutex()
+
+    // 초기화 ↔ 해제 경합 방지용 세대(epoch) 토큰.
+    // 해제(resetConnectionStateForDisconnect)마다 증가시켜, 초기화 도중 disconnect 가 끼어들면
+    // 뒤늦게 완료된 초기화(GP_OK)가 연결 상태를 다시 true 로 되돌리는 유령 연결을 차단한다.
+    private val connectionEpoch = AtomicInteger(0)
 
     // USB 분리 처리 상태 추가 (무한 루프 방지)
     private val isHandlingDisconnection = AtomicBoolean(false)
@@ -80,7 +90,7 @@ class UsbConnectionManager @Inject constructor(
             0x04DA, // Panasonic
             0x07B4, // Olympus / OM System
             0x25FB, // Pentax / Ricoh
-            0x1843, // Leica
+            0x1A98, // Leica Camera AG (구 0x1843=Vaisala 오기 교정)
             0x1EDB, // Blackmagic Design (시네마)
         )
     }
@@ -100,6 +110,9 @@ class UsbConnectionManager @Inject constructor(
      */
     fun connectToCamera(device: UsbDevice) {
         scope.launch(ioDispatcher) {
+            // 이 연결 시도가 요청된 시점의 세대. 초기화 도중 disconnect 가 발생하면 connectionEpoch 가
+            // 증가하므로, 초기화 완료 시점에 이 값과 비교해 뒤늦은 성공을 연결로 승격할지 판단한다.
+            val requestedEpoch = connectionEpoch.get()
             try {
                 Log.d(TAG, "카메라 연결 시작: ${LogMask.path(device.deviceName)}")
 
@@ -145,7 +158,7 @@ class UsbConnectionManager @Inject constructor(
                 logDeviceInfo(device)
 
                 // 네이티브 카메라 초기화 시도 (finally 에서 게이트 해제)
-                initializeNativeCamera(fd)
+                initializeNativeCamera(fd, requestedEpoch)
             } catch (e: Exception) {
                 Log.e(TAG, "카메라 연결 실패", e)
                 // 게이트를 점유한 채 예외로 빠져나가는 경우를 대비해 해제한다.
@@ -162,6 +175,21 @@ class UsbConnectionManager @Inject constructor(
      */
     private fun reportError(kind: UsbErrorKind) {
         _lastErrorKind.value = kind
+
+        // 준비된 현지화 안내(제목/본문)를 기존 UI 에러 채널(ErrorNotifier→errorEvent→setError)로
+        // 즉시 전달한다. lastErrorKind 를 관찰하는 수집자가 코드베이스에 0건이라, 이 방출이 없으면
+        // 구체 사유가 UI 에 도달하지 못하고 상위에서 20초 후 generic PtpTimeout '앱 재시작'
+        // 다이얼로그만 뜬다(Mass Storage -7·미지원 VID 등). ErrorNotifier 는 도메인 인터페이스이므로
+        // Data→Domain 의존 방향을 지킨다.
+        try {
+            errorNotifier.emitError(
+                type = ErrorType.CONNECTION,
+                message = kind.toMessage(context),
+                severity = ErrorSeverity.HIGH
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "USB 에러 안내 방출 실패", e)
+        }
     }
 
     /** 외부에서 에러 표시를 닫았을 때 호출. */
@@ -169,7 +197,7 @@ class UsbConnectionManager @Inject constructor(
         _lastErrorKind.value = null
     }
 
-    private suspend fun initializeNativeCamera(fd: Int) = withContext(ioDispatcher) {
+    private suspend fun initializeNativeCamera(fd: Int, requestedEpoch: Int) = withContext(ioDispatcher) {
         initializationMutex.withLock {
             try {
                 // 중복 FD 초기화 방지
@@ -202,6 +230,21 @@ class UsbConnectionManager @Inject constructor(
 
                 when (result) {
                     0 -> { // GP_OK
+                        // 초기화 도중 사용자 disconnect 가 있었으면(epoch 변경) 뒤늦은 GP_OK 를 연결로
+                        // 승격하지 않는다. 승격하면 상위 observeNativeCameraConnection 이 _isConnected 를
+                        // 다시 true 로 복원해 '해제했는데 연결됨' 유령 상태가 된다.
+                        if (connectionEpoch.get() != requestedEpoch) {
+                            Log.w(
+                                TAG,
+                                "초기화 완료 시점에 해제 감지(epoch $requestedEpoch→${connectionEpoch.get()}) - 연결 승격 취소 및 정리"
+                            )
+                            runCatching { CameraNative.closeCamera() }
+                            lastInitializedFd = -1
+                            currentConnection?.close()
+                            currentConnection = null
+                            currentDevice = null
+                            return@withLock
+                        }
                         Log.d(TAG, "네이티브 카메라 초기화 성공")
                         clearError()
                         updateConnectionState(true, "초기화 성공")
@@ -260,7 +303,7 @@ class UsbConnectionManager @Inject constructor(
                         lastInitializedFd = -1
                         // 기타 에러의 경우에만 일반 초기화 시도
                         if (result != -52 && result != -7 && result != -10) {
-                            tryGeneralInit()
+                            tryGeneralInit(requestedEpoch)
                         } else {
                             currentConnection?.close()
                             currentConnection = null
@@ -273,20 +316,26 @@ class UsbConnectionManager @Inject constructor(
                 reportError(UsbErrorKind.Restart)
                 updateConnectionState(false, "예외 발생")
                 lastInitializedFd = -1
-                tryGeneralInit()
+                tryGeneralInit(requestedEpoch)
             } finally {
                 isInitializingNativeCamera.set(false)
             }
         }
     }
 
-    private suspend fun tryGeneralInit() = withContext(ioDispatcher) {
+    private suspend fun tryGeneralInit(requestedEpoch: Int) = withContext(ioDispatcher) {
         try {
             Log.d(TAG, "일반 카메라 초기화 시도...")
             val generalResult = CameraNative.initCamera()
             Log.d(TAG, "일반 카메라 초기화 결과: $generalResult")
 
             if (generalResult.contains("OK", ignoreCase = true)) {
+                // GP_OK 경로와 동일하게 초기화 도중 해제(epoch 변경) 시 연결 승격을 취소한다.
+                if (connectionEpoch.get() != requestedEpoch) {
+                    Log.w(TAG, "일반 초기화 완료 시점에 해제 감지 - 연결 승격 취소 및 정리")
+                    runCatching { CameraNative.closeCamera() }
+                    return@withContext
+                }
                 updateConnectionState(true, "일반 초기화 성공")
             } else {
                 Log.e(TAG, "일반 초기화 실패: $generalResult")
@@ -296,6 +345,34 @@ class UsbConnectionManager @Inject constructor(
             Log.e(TAG, "일반 카메라 초기화 중 예외 발생", e)
             updateConnectionState(false, "예외 발생")
         }
+    }
+
+    /**
+     * disconnect 체인 전용 상태 동기화.
+     *
+     * 네이티브 종료(closeCamera)는 상위 CameraConnectionManager 가 nativeDataSource.closeCamera 로
+     * 이미 수행하므로, 여기서는 네이티브 호출 없이 Kotlin 측 연결 추적 상태만 리셋한다
+     * (이중 close / 자기 자신 join 회피). connectionEpoch 를 증가시켜 진행 중인 초기화의 뒤늦은
+     * 완료가 연결 상태를 되돌리지 못하게 한다.
+     *
+     * 이 리셋이 없으면 disconnect 후에도 _isNativeCameraConnected / lastInitializedFd /
+     * currentConnection 이 stale true 로 남아, 재연결 시 connectToCamera 가 '이미 연결됨'으로 조기
+     * 리턴하고 상위(CameraConnectionManager)가 즉시 '연결됨'으로 오표시(네이티브는 닫힘)한다.
+     */
+    fun resetConnectionStateForDisconnect() {
+        connectionEpoch.incrementAndGet()
+        isInitializingNativeCamera.set(false)
+        lastInitializedFd = -1
+        try {
+            currentConnection?.close()
+        } catch (e: Exception) {
+            Log.w(TAG, "USB 연결 정리 중 오류", e)
+        }
+        currentConnection = null
+        currentDevice = null
+        updateConnectionState(false, "disconnect 체인 상태 리셋")
+        clearError()
+        Log.d(TAG, "disconnect 체인 상태 리셋 완료 (epoch=${connectionEpoch.get()})")
     }
 
     /**

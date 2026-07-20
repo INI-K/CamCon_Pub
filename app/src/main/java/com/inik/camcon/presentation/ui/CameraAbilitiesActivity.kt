@@ -23,9 +23,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.HeadingM
 import com.inik.camcon.presentation.theme.IconSize
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
@@ -61,7 +63,7 @@ class CameraAbilitiesActivity : ComponentActivity() {
 
         setContent {
             val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
-            val themeMode by appSettingsViewModel.themeMode.collectAsState()
+            val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
 
             CamConTheme() {
                 CameraAbilitiesScreen(
@@ -80,10 +82,10 @@ fun CameraAbilitiesScreen(
     diagnosticsManager: CameraDiagnosticsManager? = null,
     viewModel: CameraAbilitiesViewModel = hiltViewModel()
 ) {
-    val abilities by viewModel.abilities.collectAsState()
-    val deviceInfo by viewModel.deviceInfo.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val errorMessage by viewModel.errorMessage.collectAsState()
+    val abilities by viewModel.abilities.collectAsStateWithLifecycle()
+    val deviceInfo by viewModel.deviceInfo.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -228,8 +230,7 @@ private fun CameraAbilitiesContent(
                 ) {
                     Text(
                         text = stringResource(R.string.diag_abilities_section_camera),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        style = HeadingM
                     )
                     HorizontalDivider()
 
@@ -271,8 +272,7 @@ private fun CameraAbilitiesContent(
                 ) {
                     Text(
                         text = stringResource(R.string.diag_abilities_section_connection),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        style = HeadingM
                     )
                     HorizontalDivider()
 
@@ -411,8 +411,7 @@ private fun CameraAbilitiesContent(
                 ) {
                     Text(
                         text = stringResource(R.string.diag_abilities_section_raw),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        style = HeadingM
                     )
                     HorizontalDivider()
 
@@ -462,8 +461,7 @@ private fun CameraAbilitiesContent(
                         )
                         Text(
                             text = stringResource(R.string.diag_abilities_section_summary),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
+                            style = HeadingM
                         )
                     }
 
@@ -512,8 +510,8 @@ private fun DiagnosticsSection(
     diagnosticsManager: CameraDiagnosticsManager
 ) {
     val scope = rememberCoroutineScope()
-    val report by diagnosticsManager.diagnosticsReport.collectAsState()
-    val memoryStatus by diagnosticsManager.memoryPoolStatus.collectAsState()
+    val report by diagnosticsManager.diagnosticsReport.collectAsStateWithLifecycle()
+    val memoryStatus by diagnosticsManager.memoryPoolStatus.collectAsStateWithLifecycle()
     var errorHistory by remember { mutableStateOf<String?>(null) }
 
     SurfaceV2(tier = 2, border = true, modifier = Modifier.fillMaxWidth()) {
@@ -525,8 +523,7 @@ private fun DiagnosticsSection(
         ) {
             Text(
                 text = stringResource(R.string.diag_section_title),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                style = HeadingM
             )
             HorizontalDivider()
 
@@ -562,8 +559,7 @@ private fun DiagnosticsSection(
             // 에러 히스토리
             Text(
                 text = stringResource(R.string.diag_error_history_title),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
+                style = HeadingM
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -601,8 +597,7 @@ private fun DiagnosticsSection(
             // 메모리 풀 상태
             Text(
                 text = stringResource(R.string.diag_memory_title),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
+                style = HeadingM
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -650,8 +645,7 @@ private fun FeatureCard(
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                style = HeadingM
             )
             HorizontalDivider()
 

@@ -158,6 +158,16 @@ class UsbCameraManager @Inject constructor(
     }
 
     /**
+     * disconnect 체인에서 UsbConnectionManager 의 연결 추적 상태를 리셋한다.
+     * 네이티브 종료는 상위(CameraConnectionManager.disconnectCamera)에서 이미 수행하므로
+     * 여기서는 상태 동기화만 위임한다(재연결 무력화 방지).
+     */
+    fun resetConnectionStateForDisconnect() {
+        connectionManager.resetConnectionStateForDisconnect()
+        capabilitiesManager.reset()
+    }
+
+    /**
      * 카메라 기능 정보를 새로고침합니다
      */
     fun refreshCameraCapabilities() {
@@ -198,20 +208,6 @@ class UsbCameraManager @Inject constructor(
      */
     suspend fun getCameraAbilitiesFromMaster(): String =
         capabilitiesManager.getCameraAbilitiesFromMaster()
-
-    /**
-     * USB 분리 콜백을 설정합니다 (외부에서 사용)
-     */
-    fun setUsbDisconnectionCallback(callback: () -> Unit) {
-        // 기존 콜백에 추가로 연결
-        val originalCallback = connectionManager::handleUsbDisconnection
-        connectionManager.setDisconnectionCallback {
-            scope.launch {
-                originalCallback.invoke()
-                callback.invoke()
-            }
-        }
-    }
 
     /**
      * USB 분리 처리

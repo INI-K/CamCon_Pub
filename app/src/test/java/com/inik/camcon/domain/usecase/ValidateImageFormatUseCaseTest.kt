@@ -18,6 +18,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -32,6 +33,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import com.inik.camcon.domain.model.Subscription
+import com.inik.camcon.domain.repository.AuthRepository
 import com.inik.camcon.domain.repository.SubscriptionRepository
 import io.mockk.coEvery
 import kotlinx.coroutines.flow.first
@@ -43,6 +45,7 @@ class ValidateImageFormatUseCaseTest {
     private lateinit var getSubscriptionUseCase: GetSubscriptionUseCase
     private lateinit var subscriptionRepository: SubscriptionRepository
     private lateinit var appSettingsRepository: FakeAppSettingsRepository
+    private lateinit var authRepository: AuthRepository
     private lateinit var logger: Logger
 
     // UiText 전환: UseCase 는 더 이상 Context 를 보유하지 않고 restrictionMessage 를
@@ -123,7 +126,12 @@ class ValidateImageFormatUseCaseTest {
         every { Log.w(any<String>(), any<String>()) } returns 0
         every { Log.i(any(), any()) } returns 0
         subscriptionRepository = mockk()
+        // GetSubscriptionUseCase init 이 결제 검증 신호를 collect 하므로 무신호(emptyFlow)로 stub.
+        every { subscriptionRepository.subscriptionRefreshSignals } returns emptyFlow()
         appSettingsRepository = FakeAppSettingsRepository()
+        authRepository = mockk()
+        // 로그인 관찰이 추가 refresh 를 트리거하지 않도록 비로그인(null) 기본 stub.
+        every { authRepository.getCurrentUser() } returns flowOf(null)
         logger = mockk(relaxed = true)
     }
 
@@ -141,7 +149,7 @@ class ValidateImageFormatUseCaseTest {
         coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(
             Subscription(tier = tier)
         )
-        getSubscriptionUseCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, logger, scope)
+        getSubscriptionUseCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, authRepository, logger, scope)
         useCase = ValidateImageFormatUseCase(
             getSubscriptionUseCase,
             appSettingsRepository,
@@ -313,6 +321,110 @@ class ValidateImageFormatUseCaseTest {
 
         assertFalse(result.isSupported)
         assertNotNull(result.restrictionMessage)
+    }
+
+    // --- isDownloadAllowed: C1 미지 포맷 fail-open 봉합 ---
+
+    @Test
+    fun `isDownloadAllowed - FREE 티어에서 JPEG 는 통과`() = runTest {
+        createUseCase(SubscriptionTier.FREE)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(useCase.isDownloadAllowed("DSC_0001.JPG"))
+        assertTrue(useCase.isDownloadAllowed("DSC_0001.jpeg"))
+    }
+
+    @Test
+    fun `isDownloadAllowed - FREE 티어에서 HEIF 계열은 차단 (원본 해상도 우회 봉합)`() = runTest {
+        createUseCase(SubscriptionTier.FREE)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse("FREE + hif 는 차단되어야 함", useCase.isDownloadAllowed("DSC_0001.hif"))
+        assertFalse("FREE + heic 는 차단되어야 함", useCase.isDownloadAllowed("DSC_0001.heic"))
+        assertFalse("FREE + heif 는 차단되어야 함", useCase.isDownloadAllowed("DSC_0001.HEIF"))
+    }
+
+    @Test
+    fun `isDownloadAllowed - BASIC 티어에서 HEIF 계열은 차단`() = runTest {
+        createUseCase(SubscriptionTier.BASIC)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(useCase.isDownloadAllowed("DSC_0001.heic"))
+    }
+
+    @Test
+    fun `isDownloadAllowed - PRO ADMIN REFERRER 는 HEIF 계열 통과`() = runTest {
+        for (tier in listOf(SubscriptionTier.PRO, SubscriptionTier.ADMIN, SubscriptionTier.REFERRER)) {
+            createUseCase(tier)
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            assertTrue("$tier + hif 통과", useCase.isDownloadAllowed("DSC_0001.hif"))
+            assertTrue("$tier + heic 통과", useCase.isDownloadAllowed("DSC_0001.heic"))
+        }
+    }
+
+    @Test
+    fun `isDownloadAllowed - 동영상 확장자는 모든 티어에서 통과`() = runTest {
+        for (tier in listOf(SubscriptionTier.FREE, SubscriptionTier.PRO)) {
+            createUseCase(tier)
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            assertTrue("$tier + mov 통과", useCase.isDownloadAllowed("MOV_0001.MOV"))
+            assertTrue("$tier + mp4 통과", useCase.isDownloadAllowed("clip.mp4"))
+        }
+    }
+
+    @Test
+    fun `isDownloadAllowed - 미지 확장자는 fail-closed 로 차단 (PRO 포함)`() = runTest {
+        for (tier in listOf(SubscriptionTier.FREE, SubscriptionTier.PRO)) {
+            createUseCase(tier)
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            assertFalse("$tier + xyz 는 차단", useCase.isDownloadAllowed("weird.xyz"))
+            assertFalse("$tier + 확장자 없음 차단", useCase.isDownloadAllowed("noext"))
+        }
+    }
+
+    @Test
+    fun `isDownloadAllowed - FREE 는 PNG 차단, PRO 는 PNG 통과`() = runTest {
+        createUseCase(SubscriptionTier.FREE)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertFalse("FREE 는 PNG 미지원", useCase.isDownloadAllowed("img.png"))
+
+        createUseCase(SubscriptionTier.PRO)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertTrue("PRO 는 PNG 지원", useCase.isDownloadAllowed("img.png"))
+    }
+
+    @Test
+    fun `isDownloadAllowed - RAW 는 티어와 rawDownload 설정을 따른다`() = runTest {
+        createUseCase(SubscriptionTier.PRO)
+        appSettingsRepository.setRawFileDownloadEnabled(true)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertTrue("PRO + rawDownload true → 통과", useCase.isDownloadAllowed("DSC_0001.NEF"))
+
+        appSettingsRepository.setRawFileDownloadEnabled(false)
+        assertFalse("PRO + rawDownload false → 차단", useCase.isDownloadAllowed("DSC_0001.NEF"))
+
+        createUseCase(SubscriptionTier.FREE)
+        appSettingsRepository.setRawFileDownloadEnabled(true)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertFalse("FREE 는 RAW 차단", useCase.isDownloadAllowed("DSC_0001.NEF"))
+    }
+
+    @Test
+    fun `isDownloadAllowed - Samsung srw RAW 도 티어 게이팅을 따른다 (네이티브 정본 동기화)`() = runTest {
+        // srw(삼성 RAW)가 RAW_EXTENSIONS 정본에 포함돼 RAW 로 인식돼야 한다.
+        createUseCase(SubscriptionTier.PRO)
+        appSettingsRepository.setRawFileDownloadEnabled(true)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertTrue("srw 는 RAW → PRO 통과", useCase.isDownloadAllowed("DSC_0001.SRW"))
+        assertTrue("srw 는 RAW 로 인식돼야 함", useCase.isRawFile("DSC_0001.srw"))
+
+        createUseCase(SubscriptionTier.FREE)
+        appSettingsRepository.setRawFileDownloadEnabled(true)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertFalse("FREE 는 srw RAW 차단", useCase.isDownloadAllowed("DSC_0001.SRW"))
     }
 
     // --- validateRawFileAccess ---

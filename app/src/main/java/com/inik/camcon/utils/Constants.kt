@@ -21,7 +21,7 @@ object Constants {
     }
 
     /**
-     * 파일 저장 관련 경로 - 외부 저장소 우선순위 시스템
+     * 파일 저장 관련 경로
      */
     object FilePaths {
         // 기본 앱 폴더명
@@ -29,57 +29,9 @@ object Constants {
         const val DCIM_BASE_DIR = "DCIM"
 
         /**
-         * 외부 저장소 우선순위 경로들 (SD카드 → 내장 외부 저장소)
-         */
-        val EXTERNAL_STORAGE_PRIORITY_PATHS = listOf(
-            // 1순위: SD카드 경로들
-            "/storage/sdcard1/$DCIM_BASE_DIR/$APP_FOLDER_NAME",        // SD카드
-            "/storage/external_sd/$DCIM_BASE_DIR/$APP_FOLDER_NAME",    // 외부 SD
-            "/storage/extSdCard/$DCIM_BASE_DIR/$APP_FOLDER_NAME",      // 외부 SD 다른 경로
-            "/storage/usbdisk/$DCIM_BASE_DIR/$APP_FOLDER_NAME",        // USB
-            "/storage/usb/$DCIM_BASE_DIR/$APP_FOLDER_NAME",            // USB 다른 경로
-            "/mnt/external_sd/$DCIM_BASE_DIR/$APP_FOLDER_NAME",        // 마운트된 SD
-            "/mnt/usb_storage/$DCIM_BASE_DIR/$APP_FOLDER_NAME",        // 마운트된 USB
-
-            // 2순위: 내장 외부 저장소 (기본)
-            "/storage/emulated/0/$DCIM_BASE_DIR/$APP_FOLDER_NAME"
-        )
-
-        /**
-         * 기본 내장 외부 저장소 경로
-         */
-        const val DEFAULT_EXTERNAL_STORAGE_PATH = "/storage/emulated/0"
-
-        /**
          * MediaStore 경로 (Android 10+)
          */
         fun getMediaStoreRelativePath(): String = "$DCIM_BASE_DIR/$APP_FOLDER_NAME"
-
-        /**
-         * 사용 가능한 외부 저장소 경로 찾기
-         */
-        fun findAvailableExternalStoragePath(): String {
-            // 우선순위에 따라 사용 가능한 경로 찾기
-            for (path in EXTERNAL_STORAGE_PRIORITY_PATHS) {
-                val parentPath = path.substring(0, path.lastIndexOf("/$DCIM_BASE_DIR"))
-                val parentDir = java.io.File(parentPath)
-
-                // 부모 디렉토리가 존재하고 쓰기 가능한지 확인
-                if (parentDir.exists() && parentDir.canWrite()) {
-                    // 실제 저장 디렉토리 생성 시도
-                    val targetDir = java.io.File(path)
-                    if (targetDir.exists() || targetDir.mkdirs()) {
-                        return path
-                    }
-                }
-            }
-
-            // 모든 경로 실패 시 기본 경로 반환
-            return "$DEFAULT_EXTERNAL_STORAGE_PATH/$DCIM_BASE_DIR/$APP_FOLDER_NAME"
-        }
-
-        // 사용자 설정 가능한 경로 키
-        const val DOWNLOAD_PATH_PREFERENCE_KEY = "custom_download_path"
 
         // 임시 파일 저장 디렉토리 (앱 내부)
         const val TEMP_CACHE_DIR = "temp_photos"
@@ -94,17 +46,6 @@ object Constants {
          */
         fun getAppSpecificDownloadDir(context: android.content.Context): String {
             return "$DCIM_BASE_DIR/${context.getString(com.inik.camcon.R.string.app_name)}"
-        }
-
-        /**
-         * 사용자 설정을 고려한 다운로드 경로
-         */
-        fun getDownloadPath(
-            context: android.content.Context,
-            preferences: android.content.SharedPreferences? = null
-        ): String {
-            return preferences?.getString(DOWNLOAD_PATH_PREFERENCE_KEY, null)
-                ?: findAvailableExternalStoragePath()
         }
     }
 
@@ -159,6 +100,10 @@ object Constants {
         const val MAX_THUMBNAIL_CACHE_SIZE = 400
         // 고해상도 이미지 캐시 크기 제한
         const val MAX_FULL_IMAGE_CACHE_SIZE = 10
+        // 고해상도 이미지 캐시 바이트 예산 상한.
+        // 개수 FIFO(10)만으로는 RAW(25~90MB) 다중선택 시 힙이 수백 MB까지 쌓여 OOM 위험이 있어,
+        // 바이트 예산 축출을 추가한다. 실제 예산 = min(이 값, maxMemory/8) 로 저사양 기기에서 더 보수적.
+        const val MAX_FULL_IMAGE_CACHE_BYTES = 96L * 1024 * 1024
         // 색감 전송 통계 캐시 크기
         const val MAX_COLOR_TRANSFER_STATS_CACHE_SIZE = 10
     }
@@ -174,6 +119,10 @@ object Constants {
         // 미리보기 이미지 크기
         const val PREVIEW_MAX_WIDTH = 1920
         const val PREVIEW_MAX_HEIGHT = 1080
+
+        // FREE 티어 다운로드 최대 장축(px). 게이팅 단일 상수 — data/presentation 두 리사이즈
+        // 경로가 이 값을 공유해 정책 드리프트를 막는다.
+        const val FREE_TIER_MAX_DIMENSION = 2000
 
         // 지원하는 이미지 포맷
         val SUPPORTED_IMAGE_EXTENSIONS = listOf(
@@ -359,5 +308,13 @@ object Constants {
         // Firebase 컬렉션 이름
         const val USERS_COLLECTION = "users"
         const val SUBSCRIPTIONS_COLLECTION = "subscriptions"
+    }
+
+    /**
+     * 법적 문서 URL (개인정보처리방침·이용약관)
+     */
+    object Legal {
+        const val PRIVACY_POLICY_URL = "https://camcon.inik.kr/privacy.html"
+        const val TERMS_OF_SERVICE_URL = "https://camcon.inik.kr/terms.html"
     }
 }

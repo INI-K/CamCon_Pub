@@ -45,4 +45,7 @@
     <string name="fs_lut_locked_badge_cd">Locked — PRO film</string>
     <string name="fs_lut_locked_notice">This film requires a PRO plan. Upgrade options are coming soon.</string>
     <string name="fs_selected_film_locked_hint">Not available on your plan — auto-apply is skipped.</string>
+
+    <!-- 기본 필름 선택 완료 토스트(%1$s = 필름 표시명) -->
+    <string name="film_default_set_toast">Default film set: %1$s</string>
 </resources>

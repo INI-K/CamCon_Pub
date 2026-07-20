@@ -5,6 +5,7 @@ import androidx.exifinterface.media.ExifInterface
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.repository.CameraRepository
+import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.domain.usecase.camera.DownloadCameraPhotoUseCase
 import com.inik.camcon.domain.usecase.camera.GetCameraPhotoExifJsonUseCase
 import com.inik.camcon.domain.usecase.camera.GetCameraThumbnailUseCase
@@ -40,6 +41,8 @@ class PhotoImageManager @Inject constructor(
     private val getCameraThumbnailUseCase: GetCameraThumbnailUseCase,
     private val downloadCameraPhotoUseCase: DownloadCameraPhotoUseCase,
     private val getCameraPhotoExifJsonUseCase: GetCameraPhotoExifJsonUseCase,
+    private val validateImageFormatUseCase: ValidateImageFormatUseCase,
+    private val galleryDownloadStore: GalleryDownloadStore,
     @ApplicationScope private val appScope: CoroutineScope,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
@@ -59,6 +62,55 @@ class PhotoImageManager @Inject constructor(
 
     // 풀이미지 캐시 갱신 직렬화용 단일 락 (서로 다른 path 동시 다운로드 시 lost-update 방지)
     private val fullImageCacheLock = Any()
+
+    // 풀이미지 캐시 바이트 예산. 개수 FIFO(10)만으로는 RAW 다중선택 시 힙이 수백 MB까지 쌓여
+    // OOM 위험이 있어(largeHeap 로도 위험) 바이트 예산 축출을 둔다.
+    // 저사양 기기 보호: min(상수 상한, maxMemory/8). 하한 24MB(너무 작은 힙에서도 최소 1장 표시).
+    private val fullImageCacheBudgetBytes: Long by lazy {
+        val heapBudget = Runtime.getRuntime().maxMemory() / 8
+        minOf(Constants.Cache.MAX_FULL_IMAGE_CACHE_BYTES, heapBudget)
+            .coerceAtLeast(24L * 1024 * 1024)
+    }
+
+    /**
+     * [_fullImageCache] 에 바이트 예산을 적용해 넣는다(예산 초과 시 오래된 항목부터 축출).
+     * 반드시 [fullImageCacheLock] 보유 상태에서 호출.
+     *
+     * @return 갱신 후 캐시 항목 수.
+     */
+    private fun putFullImageLocked(photoPath: String, data: ByteArray): Int {
+        val updated = _fullImageCache.value.toMutableMap()
+        updated.remove(photoPath) // 갱신이면 기존 항목 제거 후 재삽입(삽입 순서 = 최신)
+        var totalBytes = updated.values.sumOf { it.size.toLong() }
+        val incoming = data.size.toLong()
+        val iterator = updated.entries.iterator()
+        // LinkedHashMap 삽입 순서 = 오래된 것부터. 바이트 예산 또는 개수 상한 확보 전까지 축출.
+        // (개수 상한은 소용량 항목이 다수 쌓이는 경우의 보조 방어선)
+        while (
+            (totalBytes + incoming > fullImageCacheBudgetBytes ||
+                updated.size >= Constants.Cache.MAX_FULL_IMAGE_CACHE_SIZE) &&
+            iterator.hasNext()
+        ) {
+            val evicted = iterator.next()
+            totalBytes -= evicted.value.size.toLong()
+            iterator.remove()
+        }
+        updated[photoPath] = data
+        _fullImageCache.value = updated
+        return updated.size
+    }
+
+    // 기기 저장(MediaStore)까지 완료된 path 집합. 표시용 캐시(FIFO 10슬롯 축출)와 독립적으로
+    // 유지해, 이미 저장한 사진을 명시적 재다운로드 시 중복 저장하지 않는다.
+    private val persistedPathsLock = Any()
+    private val persistedPaths = mutableSetOf<String>()
+
+    private fun isAlreadyPersisted(photoPath: String): Boolean =
+        synchronized(persistedPathsLock) { persistedPaths.contains(photoPath) }
+
+    private fun markPersisted(photoPath: String) {
+        synchronized(persistedPathsLock) { persistedPaths.add(photoPath) }
+    }
 
     // 썸네일 캐시
     private val _thumbnailCache = MutableStateFlow<Map<String, ByteArray>>(emptyMap())
@@ -252,97 +304,185 @@ class PhotoImageManager @Inject constructor(
     }
 
     /**
-     * 고해상도 이미지 다운로드
+     * 고해상도 이미지 다운로드(fire-and-forget).
+     *
+     * @param persistToDevice true 면 다운로드 결과를 기기 저장소(MediaStore, DCIM/CamCon)까지
+     *   영속화한다(사용자가 명시적으로 다운로드 버튼을 누른 경우). false(기본)는 표시용 캐시만
+     *   채운다(풀스크린 진입·인접 프리로드). 결과는 [downloadResult] 로 통지된다.
      */
-    fun downloadFullImage(photoPath: String, currentTier: SubscriptionTier) {
-        Log.d(TAG, "downloadFullImage 호출: ${LogMask.path(photoPath)}")
-
-        if (_fullImageCache.value.containsKey(photoPath)) {
-            // 이미 성공적으로 캐시된 상태 — 다중선택 진행 집계가 멈추지 않도록 성공으로 통지.
-            _downloadResult.tryEmit(DownloadResult(photoPath, isSuccess = true))
-            return
-        }
-
-        synchronized(this) {
-            if (_downloadingImages.value.contains(photoPath)) {
-                return
-            }
-            _downloadingImages.value = _downloadingImages.value + photoPath
-        }
-
+    fun downloadFullImage(
+        photoPath: String,
+        currentTier: SubscriptionTier,
+        persistToDevice: Boolean = false
+    ) {
+        Log.d(TAG, "downloadFullImage 호출: ${LogMask.path(photoPath)} (저장=$persistToDevice)")
         managerScope.launch {
-            // 다운로드 성공 여부 — finally 에서 결과 이벤트 emit.
-            var downloadSucceeded = false
-            val startedAtMs = System.currentTimeMillis()
-            try {
-                val imageData = withContext(ioDispatcher) {
-                    downloadCameraPhotoUseCase(photoPath)
-                }
-
-                if (imageData != null && imageData.isNotEmpty()) {
-                    downloadSucceeded = true
-
-                    val (added, cacheSize) = synchronized(fullImageCacheLock) {
-                        val currentCache = _fullImageCache.value.toMutableMap()
-                        if (currentCache.containsKey(photoPath)) {
-                            false to currentCache.size
-                        } else {
-                            // 캐시 크기 제한 적용 (삽입 순서 기준 FIFO 축출)
-                            while (currentCache.size >= Constants.Cache.MAX_FULL_IMAGE_CACHE_SIZE) {
-                                val oldestKey = currentCache.keys.firstOrNull()
-                                if (oldestKey != null) {
-                                    currentCache.remove(oldestKey)
-                                } else {
-                                    break
-                                }
-                            }
-                            currentCache[photoPath] = imageData
-                            _fullImageCache.value = currentCache.toMap()
-                            true to currentCache.size
-                        }
-                    }
-
-                    if (added) {
-                        Log.d(TAG, "실제 파일 다운로드 성공: ${imageData.size} bytes (캐시 크기: $cacheSize)")
-
-                        // EXIF 파싱
-                        if (!_exifCache.value.containsKey(photoPath)) {
-                            parseExifFromImageData(photoPath, imageData)
-                        }
-
-                        // Free 티어 사용자인 경우 리사이징 처리
-                        if (currentTier == SubscriptionTier.FREE) {
-                            processImageForFreeTier(photoPath, imageData)
-                        }
-                    }
-                } else {
-                    Log.e(TAG, "실제 파일 다운로드 실패: 데이터가 비어있음")
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.e(TAG, "실제 파일 다운로드 중 예외", e)
-            } finally {
-                _downloadingImages.value = _downloadingImages.value - photoPath
-                // 성공/실패 결과 통지 — 실패·빈 결과는 캐시에 넣지 않으므로 재시도 가능(필수1).
-                _downloadResult.tryEmit(DownloadResult(photoPath, isSuccess = downloadSucceeded))
-                val elapsedMs = System.currentTimeMillis() - startedAtMs
-                Log.d(
-                    TAG,
-                    "다운로드 상태 정리 완료: ${LogMask.path(photoPath)} (성공: $downloadSucceeded, ${elapsedMs}ms)"
-                )
-            }
+            val success = performDownload(photoPath, currentTier, persistToDevice)
+            _downloadResult.tryEmit(DownloadResult(photoPath, isSuccess = success))
         }
     }
 
     /**
-     * Free 티어 사용자를 위한 이미지 처리
+     * 다운로드 후 기기 저장까지 수행하고 저장 성공 여부를 반환하는 suspend 진입점(다중선택 배치용).
+     *
+     * 호출자(ViewModel)가 세마포어로 동시성을 제한한 채 순차/유계로 await 하여, 네이티브 커맨드
+     * 큐의 직렬 처리 + JNI 60초 대기(제출 시점 기산)로 인한 후순위 구조적 타임아웃을 방지한다.
+     *
+     * @return 기기 저장까지 성공하면 true, 다운로드/게이팅/저장 중 실패면 false.
      */
-    private suspend fun processImageForFreeTier(photoPath: String, imageData: ByteArray) {
-        val extension = File(photoPath).extension.lowercase()
-        if (extension !in Constants.ImageProcessing.JPEG_EXTENSIONS) return
+    suspend fun downloadAndPersist(photoPath: String, currentTier: SubscriptionTier): Boolean =
+        performDownload(photoPath, currentTier, persistToDevice = true)
 
-        withContext(ioDispatcher) {
+    /**
+     * 다운로드 + (요청 시) 기기 저장 실제 로직.
+     *
+     * @return persistToDevice=false 면 표시용 캐시 적재 성공 여부, true 면 기기 저장 성공 여부.
+     */
+    private suspend fun performDownload(
+        photoPath: String,
+        currentTier: SubscriptionTier,
+        persistToDevice: Boolean
+    ): Boolean {
+        // 이미 표시용 바이트가 캐시에 있으면 재다운로드하지 않는다.
+        _fullImageCache.value[photoPath]?.let { cached ->
+            if (!persistToDevice) return true
+            if (isAlreadyPersisted(photoPath)) return true
+            // FREE 는 캐시본이 2000px 로 리사이즈됐다는 보장이 없으므로(프리로드 시 리사이즈 실패 가능)
+            // 저장 전 재보장한다. 이미 작은 이미지면 복사로 빠르게 통과(멱등).
+            var persistBytes = cached
+            if (currentTier == SubscriptionTier.FREE) {
+                if (!processImageForFreeTier(photoPath, cached)) {
+                    Log.w(TAG, "FREE 리사이즈 실패(캐시) — 원본 저장 방지: ${LogMask.path(photoPath)}")
+                    return false
+                }
+                persistBytes = _fullImageCache.value[photoPath] ?: cached
+            }
+            return persistBytesToDevice(photoPath, persistBytes, currentTier)
+        }
+
+        // 동일 path 중복 다운로드 방지.
+        val proceed = synchronized(this) {
+            if (_downloadingImages.value.contains(photoPath)) {
+                false
+            } else {
+                _downloadingImages.value = _downloadingImages.value + photoPath
+                true
+            }
+        }
+        if (!proceed) {
+            // 다른 코루틴이 같은 path 다운로드 중 — 표시 목적이면 캐시 적재 여부로 성공 판정.
+            return _fullImageCache.value.containsKey(photoPath)
+        }
+
+        val startedAtMs = System.currentTimeMillis()
+        try {
+            val imageData = withContext(ioDispatcher) {
+                downloadCameraPhotoUseCase(photoPath)
+            }
+
+            if (imageData == null || imageData.isEmpty()) {
+                Log.e(TAG, "실제 파일 다운로드 실패: 데이터가 비어있음")
+                return false
+            }
+
+            val (added, cacheSize) = synchronized(fullImageCacheLock) {
+                if (_fullImageCache.value.containsKey(photoPath)) {
+                    false to _fullImageCache.value.size
+                } else {
+                    // 바이트 예산 축출 적용(오래된 항목부터). RAW 다중선택 힙 폭주 방지.
+                    val newSize = putFullImageLocked(photoPath, imageData)
+                    true to newSize
+                }
+            }
+
+            if (added) {
+                Log.d(TAG, "실제 파일 다운로드 성공: ${imageData.size} bytes (캐시 크기: $cacheSize)")
+                // EXIF 파싱
+                if (!_exifCache.value.containsKey(photoPath)) {
+                    parseExifFromImageData(photoPath, imageData)
+                }
+            }
+
+            // Free 티어 표시 리사이즈(원본 캐시를 2000px 로 교체). 성공 여부는 저장 게이팅에 사용.
+            var freeResizeOk = true
+            if (currentTier == SubscriptionTier.FREE) {
+                freeResizeOk = processImageForFreeTier(photoPath, imageData)
+            }
+
+            // 표시 목적(프리로드)이면 캐시 적재로 완료.
+            if (!persistToDevice) {
+                return true
+            }
+
+            // FREE 는 2000px 리사이즈가 성공해야만 저장한다(원본 저장은 게이팅 우회).
+            if (currentTier == SubscriptionTier.FREE && !freeResizeOk) {
+                Log.w(TAG, "FREE 리사이즈 실패 — 원본 저장 방지, 다운로드 실패 처리: ${LogMask.path(photoPath)}")
+                return false
+            }
+
+            // 저장 바이트: FREE 는 리사이즈된 캐시본, 그 외는 원본.
+            val persistBytes = _fullImageCache.value[photoPath] ?: imageData
+            return persistBytesToDevice(photoPath, persistBytes, currentTier)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e(TAG, "실제 파일 다운로드 중 예외", e)
+            return false
+        } finally {
+            _downloadingImages.value = _downloadingImages.value - photoPath
+            val elapsedMs = System.currentTimeMillis() - startedAtMs
+            Log.d(TAG, "다운로드 상태 정리 완료: ${LogMask.path(photoPath)} (${elapsedMs}ms)")
+        }
+    }
+
+    /**
+     * 다운로드 바이트를 기기 저장소(MediaStore, DCIM/CamCon)에 저장한다.
+     *
+     * 포맷/RAW 게이팅은 [ValidateImageFormatUseCase] 단일 지점 경유(CLAUDE.md §2). 자체 티어 분기
+     * 신설 금지 — FREE 2000px 축소는 상류 [processImageForFreeTier] 에서 이미 적용된 바이트를 받는다.
+     */
+    private suspend fun persistBytesToDevice(
+        photoPath: String,
+        imageData: ByteArray,
+        currentTier: SubscriptionTier
+    ): Boolean {
+        val fileName = photoPath.substringAfterLast("/")
+        if (!isPersistAllowedByGating(fileName)) {
+            Log.w(TAG, "저장 게이팅 차단 — 기기 저장 생략: $fileName (티어: $currentTier)")
+            return false
+        }
+        val savedPath = galleryDownloadStore.save(photoPath, imageData)
+        return if (savedPath != null) {
+            markPersisted(photoPath)
+            Log.d(TAG, "기기 저장 완료: ${LogMask.path(savedPath)}")
+            true
+        } else {
+            Log.e(TAG, "기기 저장 실패(MediaStore): $fileName")
+            false
+        }
+    }
+
+    /**
+     * 포맷/RAW 게이팅 단일 지점 방어([ValidateImageFormatUseCase.isDownloadAllowed]). RAW 는 상류
+     * ViewModel 이 이미 차단하지만, 저장 진입부에서 다시 한 번 검증한다(방어선 일관성 — 데이터 레이어
+     * [com.inik.camcon.data.repository.managers.PhotoDownloadManager] 의 게이팅과 동일 규칙).
+     * 미지 확장자는 fail-closed(차단) — HEIF 등 미지 포맷 우회(C1) 봉합.
+     */
+    private suspend fun isPersistAllowedByGating(fileName: String): Boolean {
+        return validateImageFormatUseCase.isDownloadAllowed(fileName)
+    }
+
+    /**
+     * Free 티어 사용자를 위한 이미지 처리.
+     *
+     * @return 리사이즈(또는 이미 작은 이미지 복사)가 성공해 표시 캐시가 2000px 이하로 갱신됐으면
+     *   true, 실패면 false. false 면 호출부는 FREE 원본 저장을 하지 않는다(게이팅 우회 방지).
+     */
+    private suspend fun processImageForFreeTier(photoPath: String, imageData: ByteArray): Boolean {
+        val extension = File(photoPath).extension.lowercase()
+        if (extension !in Constants.ImageProcessing.JPEG_EXTENSIONS) return false
+
+        return withContext(ioDispatcher) {
             try {
                 Log.d(TAG, "Free 티어 사용자 - 리사이징 처리 시작")
 
@@ -356,29 +496,30 @@ class PhotoImageManager @Inject constructor(
                     resizedFile.absolutePath
                 )
 
-                if (resizeSuccess && resizedFile.exists()) {
+                val ok = if (resizeSuccess && resizedFile.exists()) {
                     val resizedData = resizedFile.readBytes()
 
-                    // 캐시 업데이트 (리사이즈된 이미지로 교체)
+                    // 캐시 업데이트 (리사이즈된 이미지로 교체 — 바이트 예산 축출 적용)
                     synchronized(fullImageCacheLock) {
-                        val currentCache = _fullImageCache.value.toMutableMap()
-                        currentCache[photoPath] = resizedData
-                        _fullImageCache.value = currentCache
+                        putFullImageLocked(photoPath, resizedData)
                     }
 
                     Log.d(TAG, "Free 티어 리사이징 완료: ${resizedData.size} bytes")
+                    true
                 } else {
                     Log.w(TAG, "Free 티어 리사이징 실패, 원본 유지")
+                    false
                 }
 
                 // 임시 파일 정리
                 tempFile.delete()
                 resizedFile.delete()
-
+                ok
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Free 티어 리사이징 처리 중 오류", e)
+                false
             }
         }
     }
@@ -400,13 +541,14 @@ class PhotoImageManager @Inject constructor(
                 val originalHeight = options.outHeight
                 val maxDimension = kotlin.math.max(originalWidth, originalHeight)
 
-                if (maxDimension <= 2000) {
+                if (maxDimension <= Constants.ImageProcessing.FREE_TIER_MAX_DIMENSION) {
                     Log.d(TAG, "이미 작은 이미지 - 리사이즈 불필요")
                     return@withContext File(inputPath).copyTo(File(outputPath), overwrite = true)
                         .exists()
                 }
 
-                val scale = 2000.toFloat() / maxDimension.toFloat()
+                val scale =
+                    Constants.ImageProcessing.FREE_TIER_MAX_DIMENSION.toFloat() / maxDimension.toFloat()
                 val newWidth = (originalWidth * scale).toInt()
                 val newHeight = (originalHeight * scale).toInt()
 
@@ -677,5 +819,6 @@ class PhotoImageManager @Inject constructor(
         _downloadingImages.value = emptySet()
         _loadingThumbnails.value = emptySet()
         _exifCache.value = emptyMap()
+        synchronized(persistedPathsLock) { persistedPaths.clear() }
     }
 }

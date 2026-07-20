@@ -45,4 +45,7 @@
     <string name="fs_lut_locked_badge_cd">Bloccata — pellicola PRO</string>
     <string name="fs_lut_locked_notice">Questa pellicola richiede un piano PRO. Le opzioni di upgrade arriveranno presto.</string>
     <string name="fs_selected_film_locked_hint">Non disponibile nel tuo piano — l\'applicazione automatica viene saltata.</string>
+
+    <!-- 기본 필름 선택 완료 토스트(%1$s = 필름 표시명) -->
+    <string name="film_default_set_toast">Pellicola predefinita impostata: %1$s</string>
 </resources>

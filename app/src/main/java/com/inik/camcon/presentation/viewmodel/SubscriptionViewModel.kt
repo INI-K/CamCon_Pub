@@ -1,13 +1,21 @@
 package com.inik.camcon.presentation.viewmodel
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.model.SubscriptionProduct
 import com.inik.camcon.domain.model.SubscriptionTier
+import com.inik.camcon.domain.repository.FilmEditProcessor
+import com.inik.camcon.domain.usecase.FilmLutUseCase
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.domain.usecase.PurchaseSubscriptionUseCase
+import com.inik.camcon.domain.usecase.ValidateFeatureAccessUseCase
+import com.inik.camcon.utils.LogcatManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,19 +46,49 @@ data class SubscriptionUiState(
     val error: String? = null
 )
 
+/**
+ * 페이월 PRO 카드에 시각 증거로 노출하는 필름 룩 썸네일 1건.
+ *
+ * @param lutId 필름 LUT id.
+ * @param name 표시 이름.
+ * @param thumbnail 샘플 이미지에 LUT 을 적용한 썸네일(생성기 캐시 소유 → 회수 금지). 생성 전/실패 시 null.
+ * @param locked FREE 시그니처 5종 밖(PRO 전용)이면 true — 자물쇠 오버레이 표시.
+ */
+data class FilmLookSample(
+    val lutId: String,
+    val name: String,
+    val thumbnail: Bitmap?,
+    val locked: Boolean
+)
+
 @HiltViewModel
 class SubscriptionViewModel @Inject constructor(
     private val getSubscriptionUseCase: GetSubscriptionUseCase,
     private val purchaseSubscriptionUseCase: PurchaseSubscriptionUseCase,
+    private val filmLutUseCase: FilmLutUseCase,
+    private val filmEditProcessor: FilmEditProcessor,
+    @ApplicationContext private val context: Context,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SubscriptionUiState())
     val uiState: StateFlow<SubscriptionUiState> = _uiState.asStateFlow()
 
+    /** PRO 카드 필름 룩 스트립. 썸네일이 도착하는 대로 개별 항목이 채워진다. */
+    private val _filmLookSamples = MutableStateFlow<List<FilmLookSample>>(emptyList())
+    val filmLookSamples: StateFlow<List<FilmLookSample>> = _filmLookSamples.asStateFlow()
+
+    /** 전체 필름 룩 카탈로그 규모("N가지 필름 룩" 카운터). 하드코딩 금지 — 카탈로그 size 그대로. */
+    private val _filmLookCount = MutableStateFlow(0)
+    val filmLookCount: StateFlow<Int> = _filmLookCount.asStateFlow()
+
+    /** 썸네일 소스(번들 샘플 다운스케일). VM 소유 → [onCleared] 에서 회수. */
+    private var sampleSource: Bitmap? = null
+
     init {
         observeCurrentTier()
         loadProducts()
+        loadFilmLookPreview()
     }
 
     /**
@@ -114,6 +152,12 @@ class SubscriptionViewModel @Inject constructor(
                         error = if (launched) null else it.error
                     )
                 }
+                if (launched) {
+                    // 결제 시트가 떠오른 뒤 활성 구독을 서버 동기화·재조회한다(restore 와 동일 패턴).
+                    // 구매 완료의 주 반영 경로는 BillingDataSource 업데이트 → 서버 검증 → refresh 신호이며,
+                    // 이 호출은 이미 완료/복원 가능한 구매를 즉시 포착하는 보조 경로다.
+                    getSubscriptionUseCase.refreshSubscription(forceSync = true)
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -155,5 +199,109 @@ class SubscriptionViewModel @Inject constructor(
 
     fun consumePurchaseSuccess() {
         _uiState.update { it.copy(purchaseSuccess = false) }
+    }
+
+    /**
+     * PRO 카드용 필름 룩 시각 증거를 만든다. 번들 샘플 이미지에 대표 LUT 을 적용한 작은 썸네일 스트립이다.
+     *
+     * 재사용 경로: 컨택트 시트와 동일한 [FilmEditProcessor.generateThumbnail]([FilmThumbnailGenerator])을
+     * 그대로 쓴다. 이 경로는 CPU 삼선형(applyFilmLutCpu)이라 **GPU/EGL 을 건드리지 않는다** — 페이월을 위해
+     * GPU 파이프라인을 새로 세우지 않으며 releaseGpu/initializeGPU 도 호출하지 않는다(전역 EGL 싱글톤 불변).
+     * 썸네일은 생성기 LRU(48MB 예산) 소유 → 회수 금지. 소스 비트맵만 VM 소유로 [onCleared] 에서 회수한다.
+     *
+     * 대표 선정: FREE 시그니처 5종(잠금 없음) + 그 밖 카탈로그 3종(잠금 오버레이) = 최대 8종.
+     */
+    private fun loadFilmLookPreview() {
+        viewModelScope.launch {
+            try {
+                val luts = filmLutUseCase.getAvailableLuts()
+                if (luts.isEmpty()) return@launch
+                _filmLookCount.value = luts.size
+
+                val byId = luts.associateBy { it.id }
+                val free = ValidateFeatureAccessUseCase.FREE_FILM_LUT_IDS.mapNotNull { byId[it] }
+                val locked = luts.asSequence()
+                    .filter { it.id !in ValidateFeatureAccessUseCase.FREE_FILM_LUT_IDS }
+                    .take(FILM_LOOK_LOCKED_SAMPLES)
+                    .toList()
+                val picks = (free + locked).take(FILM_LOOK_MAX_SAMPLES)
+                if (picks.isEmpty()) return@launch
+
+                // 스켈레톤 상태로 먼저 노출(썸네일 null) → 도착하는 대로 개별 채움.
+                _filmLookSamples.value = picks.map { lut ->
+                    FilmLookSample(
+                        lutId = lut.id,
+                        name = lut.name,
+                        thumbnail = null,
+                        locked = lut.id !in ValidateFeatureAccessUseCase.FREE_FILM_LUT_IDS
+                    )
+                }
+
+                val source = withContext(ioDispatcher) { decodeSampleSource() } ?: return@launch
+                sampleSource = source
+
+                picks.forEach { lut ->
+                    val bmp = filmEditProcessor.generateThumbnail(
+                        FILM_LOOK_SOURCE_ID, source, lut.id
+                    ) as? Bitmap
+                    if (bmp != null && !bmp.isRecycled) {
+                        _filmLookSamples.update { list ->
+                            list.map { if (it.lutId == lut.id) it.copy(thumbnail = bmp) else it }
+                        }
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                LogcatManager.w(TAG, "페이월 필름 룩 프리뷰 생성 실패", e)
+            }
+        }
+    }
+
+    /** 번들 샘플(assets/[FILM_LOOK_SAMPLE_ASSET])을 썸네일 소스 크기로 다운스케일 디코딩한다. IO 스레드 호출. */
+    private fun decodeSampleSource(): Bitmap? = runCatching {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        context.assets.open(FILM_LOOK_SAMPLE_ASSET).use {
+            BitmapFactory.decodeStream(it, null, bounds)
+        }
+        val longEdge = maxOf(bounds.outWidth, bounds.outHeight)
+        if (longEdge <= 0) return@runCatching null
+        var sample = 1
+        if (longEdge > FILM_LOOK_SOURCE_EDGE) {
+            while (longEdge / (sample * 2) >= FILM_LOOK_SOURCE_EDGE) sample *= 2
+        }
+        val options = BitmapFactory.Options().apply {
+            inSampleSize = sample
+            inPreferredConfig = Bitmap.Config.ARGB_8888
+        }
+        context.assets.open(FILM_LOOK_SAMPLE_ASSET).use {
+            BitmapFactory.decodeStream(it, null, options)
+        }
+    }.getOrNull()
+
+    override fun onCleared() {
+        super.onCleared()
+        // 소스 비트맵만 VM 소유 → 회수. 썸네일은 생성기 캐시 소유이므로 참조만 드롭(회수 금지).
+        sampleSource?.let { if (!it.isRecycled) it.recycle() }
+        sampleSource = null
+    }
+
+    companion object {
+        private const val TAG = "SubscriptionViewModel"
+
+        /** 페이월 필름 룩 썸네일 소스(번들 샘플 asset). 컨택트 시트 자동 로드와 동일 파일. */
+        private const val FILM_LOOK_SAMPLE_ASSET = "film_sample.webp"
+
+        /** 페이월 썸네일 생성 시 생성기 캐시 키(세션 고정). */
+        private const val FILM_LOOK_SOURCE_ID = "paywall_film_sample"
+
+        /** 샘플 소스 다운스케일 목표 긴 변(px). 컨택트 시트 THUMB_SOURCE_EDGE 와 동일. */
+        private const val FILM_LOOK_SOURCE_EDGE = 512
+
+        /** 페이월 스트립 최대 표본 수. */
+        private const val FILM_LOOK_MAX_SAMPLES = 8
+
+        /** 잠금(PRO 전용) 표본 수 — 나머지는 FREE 시그니처 5종. */
+        private const val FILM_LOOK_LOCKED_SAMPLES = 3
     }
 }

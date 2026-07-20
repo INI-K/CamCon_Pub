@@ -24,11 +24,23 @@ class AutoConnectForegroundService : Service() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    // 중복 onStartCommand 시 탈락자(AutoConnectTaskRunner CAS 탈락)의 finally stopSelf가 진행 중인
+    // 승자 작업을 취소하지 않도록, 진행 중 작업 수를 세어 마지막 작업이 끝날 때만 종료한다.
+    // 증가(onStartCommand)와 감소+종료(finally)를 같은 lock으로 직렬화해 종료 직전 새 기동이
+    // 끼어드는 레이스를 차단한다.
+    private val taskLock = Any()
+    private var activeTasks = 0
+    private var latestStartId = 0
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForegroundService()
         val ssid = intent?.getStringExtra(AutoConnectTaskRunner.EXTRA_SSID)
+        synchronized(taskLock) {
+            latestStartId = startId
+            activeTasks++
+        }
         serviceScope.launch {
             try {
                 autoConnectTaskRunner.handlePostConnection(ssid)
@@ -37,7 +49,13 @@ class AutoConnectForegroundService : Service() {
             } catch (e: Exception) {
                 Log.e(TAG, "자동 연결 후처리 실패", e)
             } finally {
-                stopSelf()
+                synchronized(taskLock) {
+                    // 진행 중인 다른 작업이 없을 때만 종료. 종료 직전 새 기동이 들어왔다면
+                    // stopSelf(latestStartId)가 최신 startId가 아니어서 서비스를 살려둔다.
+                    if (--activeTasks == 0) {
+                        stopSelf(latestStartId)
+                    }
+                }
             }
         }
         return START_NOT_STICKY

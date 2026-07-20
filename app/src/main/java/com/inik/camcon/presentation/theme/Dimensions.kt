@@ -80,6 +80,7 @@ object Elevation {
 /** 카메라 도메인 전용 치수. */
 object CameraSpec {
     val shutterOuter = 88.dp
+    val shutterOuterCompact = 64.dp   // 전체화면 가로 도크용 축소 셔터 외경
     val shutterInner = 68.dp
     val shutterRing = 4.dp
     val badgeHeight = 24.dp

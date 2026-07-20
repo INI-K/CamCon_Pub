@@ -6,9 +6,11 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -26,6 +28,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -48,9 +51,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -65,7 +70,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes
 import com.google.android.gms.common.api.ApiException
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.UiText
-import com.inik.camcon.domain.model.resolve
+import com.inik.camcon.utils.resolve
 import com.inik.camcon.presentation.theme.BodySmall
 import com.inik.camcon.presentation.theme.ButtonText
 import com.inik.camcon.presentation.theme.CamConTheme
@@ -88,8 +93,11 @@ import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.LoginUiEvent
 import com.inik.camcon.presentation.viewmodel.LoginUiState
 import com.inik.camcon.presentation.viewmodel.LoginViewModel
+import com.inik.camcon.presentation.util.openUrl
+import com.inik.camcon.utils.Constants
 import com.inik.camcon.utils.LogMask
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.onSubscription
 
 @AndroidEntryPoint
 class LoginActivity : ComponentActivity() {
@@ -116,7 +124,7 @@ class LoginActivity : ComponentActivity() {
                 "LoginActivity",
                 "Google Sign-In cancelled (RESULT_CANCELED), status=$cancelStatusCode"
             )
-            loginViewModel?.onSignInUiError(UiText.Resource(R.string.login_error_cancelled))
+            deliverSignInResult { it.onSignInUiError(UiText.Resource(R.string.login_error_cancelled)) }
             return@registerForActivityResult
         }
 
@@ -128,10 +136,11 @@ class LoginActivity : ComponentActivity() {
             }
             account?.idToken?.let { idToken ->
                 Log.d("LoginActivity", "ID Token received")
-                loginViewModel?.signInWithGoogle(idToken, currentReferralCode.ifBlank { null })
+                val referral = currentReferralCode.ifBlank { null }
+                deliverSignInResult { it.signInWithGoogle(idToken, referral) }
             } ?: run {
                 Log.e("LoginActivity", "ID Token is null")
-                loginViewModel?.onSignInUiError(UiText.Resource(R.string.login_error_auth))
+                deliverSignInResult { it.onSignInUiError(UiText.Resource(R.string.login_error_auth)) }
             }
         } catch (e: ApiException) {
             Log.e("LoginActivity", "Google Sign-In failed with code: ${e.statusCode}", e)
@@ -141,11 +150,28 @@ class LoginActivity : ComponentActivity() {
             } else {
                 UiText.Resource(R.string.login_error_auth)
             }
-            loginViewModel?.onSignInUiError(message)
+            deliverSignInResult { it.onSignInUiError(message) }
         }
     }
 
-    private var loginViewModel: LoginViewModel? = null
+    // Hilt VM을 액티비티 스코프 지연 프로퍼티로 보유 → ActivityResult 콜백 시점에 항상 non-null.
+    // (과거 nullable var는 Compose 첫 컴포지션에서야 할당돼, 프로세스 사망 복원 시 콜백이 그보다
+    //  먼저 실행되면 null이라 로그인 결과가 무음 폐기됐다.)
+    private val loginViewModel: LoginViewModel by viewModels()
+
+    // 프로세스 사망 복원 경로에서는 ActivityResult 콜백이 uiEvent 구독(첫 컴포지션의 LaunchedEffect)보다
+    // 먼저 실행된다. VM은 항상 보장되지만 결과를 즉시 넘기면 replay=0 uiEvent(에러/네비게이션)가
+    // 구독 성립 전 방출돼 유실될 수 있으므로, 구독 전이면 보류했다가 onSubscription 시점에 적용한다.
+    private var isUiEventSubscribed = false
+    private var pendingSignInAction: ((LoginViewModel) -> Unit)? = null
+
+    private fun deliverSignInResult(action: (LoginViewModel) -> Unit) {
+        if (isUiEventSubscribed) {
+            action(loginViewModel)
+        } else {
+            pendingSignInAction = action
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -160,31 +186,45 @@ class LoginActivity : ComponentActivity() {
             val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
 
             CamConTheme() {
-                val viewModel: LoginViewModel = hiltViewModel()
-                loginViewModel = viewModel
+                // 콜백과 동일 인스턴스를 쓰도록 액티비티 스코프 VM(viewModels)을 그대로 참조한다.
+                val viewModel = loginViewModel
 
                 val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                 val snackbarHostState = remember { SnackbarHostState() }
 
                 LaunchedEffect(Unit) {
-                    viewModel.uiEvent.collect { event ->
-                        when (event) {
-                            is LoginUiEvent.ShowError -> {
-                                val text = event.message.resolve(this@LoginActivity)
-                                Log.e("LoginActivity", "Error: $text")
-                                snackbarHostState.showSnackbar(text)
+                    try {
+                        viewModel.uiEvent
+                            .onSubscription {
+                                // 구독 성립 직후 — 보류된 로그인 결과를 여기서 적용하면
+                                // 이어지는 replay=0 이벤트가 이 수집기에 확실히 전달된다.
+                                isUiEventSubscribed = true
+                                pendingSignInAction?.let { pending ->
+                                    pendingSignInAction = null
+                                    pending(viewModel)
+                                }
                             }
-                            is LoginUiEvent.ShowReferralMessage -> {
-                                val text = event.message.resolve(this@LoginActivity)
-                                Log.d("LoginActivity", "Referral message: $text")
-                                snackbarHostState.showSnackbar(text)
+                            .collect { event ->
+                                when (event) {
+                                    is LoginUiEvent.ShowError -> {
+                                        val text = event.message.resolve(this@LoginActivity)
+                                        Log.e("LoginActivity", "Error: $text")
+                                        snackbarHostState.showSnackbar(text)
+                                    }
+                                    is LoginUiEvent.ShowReferralMessage -> {
+                                        val text = event.message.resolve(this@LoginActivity)
+                                        Log.d("LoginActivity", "Referral message: $text")
+                                        snackbarHostState.showSnackbar(text)
+                                    }
+                                    is LoginUiEvent.NavigateToHome -> {
+                                        Log.d("LoginActivity", "User logged in, navigating to MainActivity")
+                                        startActivity(Intent(this@LoginActivity, MainActivity::class.java))
+                                        finish()
+                                    }
+                                }
                             }
-                            is LoginUiEvent.NavigateToHome -> {
-                                Log.d("LoginActivity", "User logged in, navigating to MainActivity")
-                                startActivity(Intent(this@LoginActivity, MainActivity::class.java))
-                                finish()
-                            }
-                        }
+                    } finally {
+                        isUiEventSubscribed = false
                     }
                 }
 
@@ -282,6 +322,8 @@ fun LoginScreen(
     var referralCode by rememberSaveable { mutableStateOf("") }
     // 추천 코드 접이식 노출. 기본 접힘, 세션 내 단방향(한 번 펼치면 유지).
     var showReferral by rememberSaveable { mutableStateOf(false) }
+
+    val context = LocalContext.current
 
     Box(
         modifier = Modifier
@@ -491,6 +533,46 @@ fun LoginScreen(
                                 color = TextTertiary,
                                 textAlign = TextAlign.Center
                             )
+
+                            // 이용약관 · 개인정보처리방침 — 탭 가능한 링크(로케일별 substring 위치 비의존).
+                            // 각 링크 터치 타깃 최소 44dp.
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.terms_of_service),
+                                    style = Caption,
+                                    color = Accent,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(Radius.sm))
+                                        .clickable {
+                                            context.openUrl(Constants.Legal.TERMS_OF_SERVICE_URL)
+                                        }
+                                        .heightIn(min = 44.dp)
+                                        .wrapContentHeight(Alignment.CenterVertically)
+                                        .padding(horizontal = Spacing.sm)
+                                )
+                                Text(
+                                    text = " · ",
+                                    style = Caption,
+                                    color = TextTertiary
+                                )
+                                Text(
+                                    text = stringResource(R.string.privacy_policy),
+                                    style = Caption,
+                                    color = Accent,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(Radius.sm))
+                                        .clickable {
+                                            context.openUrl(Constants.Legal.PRIVACY_POLICY_URL)
+                                        }
+                                        .heightIn(min = 44.dp)
+                                        .wrapContentHeight(Alignment.CenterVertically)
+                                        .padding(horizontal = Spacing.sm)
+                                )
+                            }
                         }
                     }
                 }

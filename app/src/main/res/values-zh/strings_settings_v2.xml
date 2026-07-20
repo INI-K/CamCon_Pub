@@ -5,8 +5,8 @@
     <string name="settings_v2_back">返回</string>
 
     <!-- 섹션 제목 -->
-    <string name="settings_v2_section_camera_control">相机控制设置（开发版）</string>
-    <string name="settings_v2_section_wifi_ptpip">Wi-Fi 相机连接（PTPIP）- 开发版</string>
+    <string name="settings_v2_section_camera_control">相机控制设置</string>
+    <string name="settings_v2_section_wifi_ptpip">Wi-Fi 相机连接（PTPIP）</string>
     <string name="settings_v2_section_color_transfer">色彩传输设置</string>
     <string name="settings_v2_vibrate_on_photo_title">收到照片时振动</string>
     <string name="settings_v2_vibrate_on_photo_on">收到照片时短暂振动。</string>
@@ -14,7 +14,7 @@
     <string name="settings_v2_section_raw_download">RAW 文件下载设置</string>
     <string name="settings_v2_section_connected_camera">已连接相机信息</string>
     <string name="settings_v2_section_user_info">用户信息</string>
-    <string name="settings_v2_section_server">服务器设置（开发版）</string>
+    <string name="settings_v2_section_server">服务器设置</string>
     <string name="settings_v2_section_app">应用设置</string>
     <string name="settings_v2_section_admin">ADMIN 专用设置</string>
     <string name="settings_v2_section_info">信息</string>

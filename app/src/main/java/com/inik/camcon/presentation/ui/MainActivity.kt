@@ -80,7 +80,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.inik.camcon.presentation.theme.Accent
+import com.inik.camcon.presentation.theme.Body
+import com.inik.camcon.presentation.theme.BodySmall
 import com.inik.camcon.presentation.theme.DividerLine
+import com.inik.camcon.presentation.theme.HeadingM
 import com.inik.camcon.presentation.theme.IconSize
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
@@ -100,6 +103,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.inik.camcon.R
+import com.inik.camcon.utils.resolve
 import com.inik.camcon.data.service.BackgroundSyncService
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.domain.model.CameraConnectionType
@@ -166,20 +170,18 @@ fun CameraConnectionOptimizationDialog(
         icon = { androidx.compose.material3.Icon(Icons.Default.Settings, contentDescription = null) },
         title = {
             androidx.compose.material3.Text(
-                stringResource(R.string.camera_connection_optimization_title),
-                style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                stringResource(R.string.camera_connection_optimization_title)
             )
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 androidx.compose.material3.Text(
                     text = stringResource(R.string.camera_connection_optimization_message),
-                    style = androidx.compose.material3.MaterialTheme.typography.bodyLarge
+                    style = Body
                 )
                 androidx.compose.material3.Text(
                     text = stringResource(R.string.camera_connection_optimization_details),
-                    style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                    style = Body,
                     color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                 )
             }
@@ -213,15 +215,13 @@ fun PermissionSettingsDialog(
         icon = { Icon(Icons.Default.Settings, contentDescription = null) },
         title = {
             Text(
-                stringResource(R.string.dialog_permission_reprompt_title),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                stringResource(R.string.dialog_permission_reprompt_title)
             )
         },
         text = {
             Text(
                 text = stringResource(R.string.dialog_permission_reprompt_body),
-                style = MaterialTheme.typography.bodyMedium
+                style = Body
             )
         },
         confirmButton = {
@@ -333,14 +333,14 @@ fun MainScreen(
                     }
                 },
                 icon = { Icon(Icons.Default.Settings, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                title = { Text(stringResource(R.string.dialog_restart_required_title), style = MaterialTheme.typography.titleLarge) },
+                title = { Text(stringResource(R.string.dialog_restart_required_title)) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                         if (isRestarting) {
                             Text(stringResource(R.string.dialog_restart_preparing_title))
                             Text(
                                 stringResource(R.string.dialog_restart_preparing_body),
-                                style = MaterialTheme.typography.bodySmall,
+                                style = BodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         } else {
@@ -348,7 +348,7 @@ fun MainScreen(
                             Spacer(modifier = Modifier.height(Spacing.sm))
                             Text(
                                 stringResource(R.string.dialog_restart_options),
-                                style = MaterialTheme.typography.bodySmall,
+                                style = BodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -402,20 +402,18 @@ fun MainScreen(
                 },
                 title = {
                     Text(
-                        stringResource(R.string.dialog_usb_disconnected_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        stringResource(R.string.dialog_usb_disconnected_title)
                     )
                 },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                         Text(
                             stringResource(R.string.dialog_usb_disconnected_body),
-                            style = MaterialTheme.typography.bodyMedium
+                            style = Body
                         )
                         Text(
                             stringResource(R.string.dialog_usb_disconnected_hints),
-                            style = MaterialTheme.typography.bodySmall,
+                            style = BodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -445,25 +443,23 @@ fun MainScreen(
                 },
                 title = {
                     Text(
-                        stringResource(R.string.dialog_camera_check_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        stringResource(R.string.dialog_camera_check_title)
                     )
                 },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                         Text(
                             stringResource(R.string.dialog_camera_check_body),
-                            style = MaterialTheme.typography.bodyMedium
+                            style = Body
                         )
                         Text(
                             stringResource(R.string.dialog_camera_check_prompt),
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = Body,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             stringResource(R.string.dialog_camera_check_hints),
-                            style = MaterialTheme.typography.bodySmall,
+                            style = BodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -643,9 +639,10 @@ fun MainScreen(
                 val currentDestination = navBackStackEntry?.destination
 
                 Row(modifier = containerModifier) {
+                    // CINE 정합: Compact 하단 바와 동일하게 Surface0 컨테이너.
                     NavigationRail(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        contentColor = MaterialTheme.colorScheme.onSurface
+                        containerColor = Surface0,
+                        contentColor = TextTertiary
                     ) {
                         items.forEach { screen ->
                             val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
@@ -665,15 +662,17 @@ fun MainScreen(
                                                 }
                                             }
                                         ) {
-                                            Icon(
-                                                screen.icon,
-                                                contentDescription = stringResource(screen.titleRes)
+                                            NavBarIcon(
+                                                icon = screen.icon,
+                                                contentDescription = stringResource(screen.titleRes),
+                                                selected = selected
                                             )
                                         }
                                     } else {
-                                        Icon(
-                                            screen.icon,
-                                            contentDescription = stringResource(screen.titleRes)
+                                        NavBarIcon(
+                                            icon = screen.icon,
+                                            contentDescription = stringResource(screen.titleRes),
+                                            selected = selected
                                         )
                                     }
                                 },
@@ -683,12 +682,13 @@ fun MainScreen(
                                 selected = selected,
                                 onClick = { onTabClick(screen) },
                                 alwaysShowLabel = true,
+                                // Compact 하단 바와 동일한 시각 언어: 앰버 인디케이터(NavBarIcon) + 기본 pill 제거.
                                 colors = NavigationRailItemDefaults.colors(
-                                    selectedIconColor = MaterialTheme.colorScheme.primary,
-                                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    indicatorColor = MaterialTheme.colorScheme.secondaryContainer
+                                    selectedIconColor = Accent,
+                                    selectedTextColor = Accent,
+                                    unselectedIconColor = TextTertiary,
+                                    unselectedTextColor = TextTertiary,
+                                    indicatorColor = Color.Transparent
                                 )
                             )
                         }
@@ -712,33 +712,31 @@ fun MainScreen(
                 icon = { Icon(Icons.Default.CameraAlt, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                 title = {
                     Text(
-                        stringResource(R.string.dialog_wifi_active_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        stringResource(R.string.dialog_wifi_active_title)
                     )
                 },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                         Text(
                             stringResource(R.string.dialog_wifi_active_body),
-                            style = MaterialTheme.typography.bodyMedium
+                            style = Body
                         )
                         Spacer(modifier = Modifier.height(Spacing.sm))
                         Text(
                             stringResource(R.string.dialog_wifi_active_steps_title),
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = Body,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
                             stringResource(R.string.dialog_wifi_active_steps),
-                            style = MaterialTheme.typography.bodySmall,
+                            style = BodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(Spacing.sm))
                         Text(
                             stringResource(R.string.dialog_wifi_active_hint),
-                            style = MaterialTheme.typography.bodySmall,
+                            style = BodySmall,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Medium
                         )
@@ -796,15 +794,13 @@ fun MainScreen(
                 },
                 title = {
                     Text(
-                        stringResource(R.string.dialog_wifi_disconnected_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        stringResource(R.string.dialog_wifi_disconnected_title)
                     )
                 },
                 text = {
                     Text(
                         stringResource(R.string.dialog_wifi_disconnected_body),
-                        style = MaterialTheme.typography.bodyMedium
+                        style = Body
                     )
                 },
                 confirmButton = {
@@ -819,23 +815,24 @@ fun MainScreen(
         // USB 연결 및 초기화 상태에 따른 UI 블로킹 오버레이
         val shouldShowOverlay =
             globalConnectionState.ptpipConnectionState == PtpipConnectionState.CONNECTING ||
-                    connectionStatusMessage.contains("초기화 중") ||
                     cameraUiState.isUsbInitializing ||
                     cameraUiState.isCameraInitializing
 
         if (shouldShowOverlay) {
             val overlayMessage = when {
-                cameraUiState.isCameraInitializing -> "카메라 이벤트 초기화 중..."
-                cameraUiState.isUsbInitializing -> cameraUiState.usbInitializationMessage
-                    ?: "USB 카메라 초기화 중..."
+                cameraUiState.isCameraInitializing ->
+                    stringResource(R.string.photo_preview_event_initializing)
 
-                else -> connectionStatusMessage
+                cameraUiState.isUsbInitializing -> cameraUiState.usbInitializationMessage
+                    ?.resolve(context)
+                    ?: stringResource(R.string.camera_control_usb_initializing)
+
+                else -> connectionStatusMessage.resolve(context)
             }
 
             LogcatManager.d("MainActivity", " UI 블로킹 오버레이 표시: $overlayMessage")
             LogcatManager.d(
                 "MainActivity", "블로킹 조건 - PTP연결:${globalConnectionState.ptpipConnectionState}, " +
-                        "메시지초기화:${connectionStatusMessage.contains("초기화 중")}, " +
                         "USB초기화:${cameraUiState.isUsbInitializing}, " +
                         "카메라초기화:${cameraUiState.isCameraInitializing}"
             )
@@ -848,8 +845,7 @@ fun MainScreen(
                 LogcatManager.d(
                     "MainActivity",
                     "해제 조건 - PTP연결:${globalConnectionState.ptpipConnectionState}, " +
-                            "메시지초기화:${connectionStatusMessage.contains("초기화 중")}, " +
-                            "USB초기화:${cameraUiState.isUsbInitializing}, " +
+                                "USB초기화:${cameraUiState.isUsbInitializing}, " +
                             "카메라초기화:${cameraUiState.isCameraInitializing}"
                 )
             }
@@ -919,56 +915,6 @@ class MainActivity : ComponentActivity() {
         }
 
         /**
-         * 앱을 완전히 재시작하는 함수
-         */
-        fun forceRestartApp(activity: ComponentActivity) {
-            try {
-                LogcatManager.d(TAG, "앱 강제 재시작 시작")
-
-                // 1. 먼저 Activity 상태 정리
-                activity.finishAffinity()
-
-                // 2. 네이티브 리소스 정리를 백그라운드에서 수행
-                cleanupNativeResources("forceRestart")
-
-                // 3. 더 긴 지연 후 재시작 실행 (네이티브 정리 완료 대기)
-                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                    try {
-                        LogcatManager.d(TAG, "앱 재시작 실행")
-
-                        // 재시작 Intent 생성
-                        val restartIntent = Intent(activity, MainActivity::class.java).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                            addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP) // 추가
-                        }
-
-                        activity.startActivity(restartIntent)
-
-                        // 프로세스 종료는 더 긴 지연 후 실행
-                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                            LogcatManager.d(TAG, "프로세스 종료 실행")
-                            android.os.Process.killProcess(android.os.Process.myPid())
-                        }, 1000) // 1초 후 프로세스 종료
-
-                    } catch (e: Exception) {
-                        LogcatManager.e(TAG, "재시작 실행 중 오류", e)
-                        // Fallback: PackageManager 사용
-                        restartWithPackageManager(activity)
-                    }
-                }, 2000) // 2초 지연으로 네이티브 정리 완료 대기
-
-                LogcatManager.d(TAG, "재시작 예약 완료")
-
-            } catch (e: Exception) {
-                LogcatManager.e(TAG, "앱 재시작 중 오류", e)
-                // 오류 발생 시 PackageManager 재시작 시도
-                restartWithPackageManager(activity)
-            }
-        }
-
-        /**
          * PackageManager를 사용한 재시작 (Fallback)
          */
         private fun restartWithPackageManager(activity: ComponentActivity) {
@@ -994,30 +940,6 @@ class MainActivity : ComponentActivity() {
                 LogcatManager.e(TAG, "PackageManager 재시작 중 오류", e)
                 activity.finishAffinity()
                 System.exit(0)
-            }
-        }
-
-        /**
-         * 간단한 앱 재시작 (사용자 수동 재시작 안내)
-         */
-        fun simpleRestartApp(activity: ComponentActivity) {
-            try {
-                LogcatManager.d(TAG, "간단한 앱 재시작 시작")
-
-                // 네이티브 리소스 정리
-                cleanupNativeResources("simpleRestart")
-
-                // 0.5초 후 앱 종료 (사용자가 수동으로 재시작해야 함)
-                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                    LogcatManager.d(TAG, "앱 종료 - 사용자 수동 재시작 필요")
-                    activity.finishAffinity()
-                    android.os.Process.killProcess(android.os.Process.myPid())
-                }, 500)
-
-            } catch (e: Exception) {
-                LogcatManager.e(TAG, "간단한 앱 재시작 중 오류", e)
-                activity.finishAffinity()
-                android.os.Process.killProcess(android.os.Process.myPid())
             }
         }
 
@@ -1054,51 +976,6 @@ class MainActivity : ComponentActivity() {
                 LogcatManager.e(TAG, "시스템 재시작 중 오류", e)
                 // Fallback: 기존 방식
                 restartWithPackageManager(activity)
-            }
-        }
-
-        /**
-         * 즉시 재시작 (가장 빠른 방법)
-         */
-        fun instantRestartApp(activity: ComponentActivity) {
-            try {
-                LogcatManager.d(TAG, "즉시 재시작 시작")
-
-                // 1. makeRestartActivityTask를 사용한 즉시 재시작
-                val packageManager = activity.packageManager
-                val intent = packageManager.getLaunchIntentForPackage(activity.packageName)
-                val componentName = intent?.component
-
-                if (componentName != null) {
-                    val mainIntent = Intent.makeRestartActivityTask(componentName)
-                    activity.startActivity(mainIntent)
-                    LogcatManager.d(TAG, "즉시 재시작: makeRestartActivityTask 실행 완료")
-                } else {
-                    LogcatManager.e(TAG, "즉시 재시작: ComponentName을 찾을 수 없음")
-                    // Fallback: 기존 방식
-                    val restartIntent = Intent(activity, MainActivity::class.java).apply {
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                        addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                    }
-                    activity.startActivity(restartIntent)
-                }
-
-                // 2. 네이티브 리소스 정리 (백그라운드에서)
-                cleanupNativeResources("instantRestart")
-
-                // 3. 프로세스 종료
-                kotlin.system.exitProcess(0)
-
-            } catch (e: Exception) {
-                LogcatManager.e(TAG, "즉시 재시작 중 오류", e)
-                // Fallback: 기존 방식
-                try {
-                    activity.finishAffinity()
-                    kotlin.system.exitProcess(0)
-                } catch (ex: Exception) {
-                    android.os.Process.killProcess(android.os.Process.myPid())
-                }
             }
         }
 
@@ -1291,7 +1168,7 @@ class MainActivity : ComponentActivity() {
                 if (!globalManager.globalConnectionState.value.isAnyConnectionActive) {
                     return@launch
                 }
-                val isServiceRunning = isServiceRunning(BackgroundSyncService::class.java)
+                val isServiceRunning = BackgroundSyncService.isRunning
                 if (!isServiceRunning) {
                     LogcatManager.d(TAG, " 포그라운드 진입 - 백그라운드 서비스 재시작")
                     withContext(Dispatchers.Main) {
@@ -1317,7 +1194,7 @@ class MainActivity : ComponentActivity() {
                     return@launch
                 }
                 // 백그라운드 서비스가 실행 중인지 확인
-                val isServiceRunning = isServiceRunning(BackgroundSyncService::class.java)
+                val isServiceRunning = BackgroundSyncService.isRunning
                 if (!isServiceRunning) {
                     LogcatManager.d(TAG, " 백그라운드 서비스 재시작 필요")
                     withContext(Dispatchers.Main) {
@@ -1367,7 +1244,7 @@ class MainActivity : ComponentActivity() {
                     .collect { isConnected ->
                         if (!isConnected) return@collect
                         try {
-                            if (!isServiceRunning(BackgroundSyncService::class.java)) {
+                            if (!BackgroundSyncService.isRunning) {
                                 BackgroundSyncService.startService(this@MainActivity)
                                 LogcatManager.d(TAG, "카메라 연결 감지 - BackgroundSyncService 시작 요청됨")
                             }
@@ -1376,26 +1253,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
             }
-        }
-    }
-
-    /**
-     * 서비스 실행 상태 확인
-     */
-    private fun isServiceRunning(serviceClass: Class<*>): Boolean {
-        return try {
-            val manager = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
-            for (service in manager.getRunningServices(Int.MAX_VALUE)) {
-                if (serviceClass.name == service.service.className) {
-                    LogcatManager.d(TAG, "서비스 실행 중: ${serviceClass.simpleName}")
-                    return true
-                }
-            }
-            LogcatManager.d(TAG, "서비스 실행되지 않음: ${serviceClass.simpleName}")
-            false
-        } catch (e: Exception) {
-            LogcatManager.w(TAG, "서비스 상태 확인 실패", e)
-            false
         }
     }
 
@@ -1522,7 +1379,7 @@ fun MainActivityPreview() {
             ) {
                 Text(
                     text = "CamCon - 메인 화면",
-                    style = MaterialTheme.typography.titleLarge
+                    style = HeadingM
                 )
             }
         }

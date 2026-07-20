@@ -22,7 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -61,6 +61,7 @@ import com.inik.camcon.R
 import com.inik.camcon.domain.model.FilmLut
 import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.DividerLine
+import com.inik.camcon.presentation.theme.HeadingL
 import com.inik.camcon.presentation.theme.MicroLabel
 import com.inik.camcon.presentation.theme.MonoMicro
 import com.inik.camcon.presentation.theme.OnAccent
@@ -75,7 +76,7 @@ import com.inik.camcon.presentation.ui.components.v2.SkeletonLoader
 import com.inik.camcon.presentation.viewmodel.FilmEditorViewModel
 
 /**
- * 컨택트 시트 화면(설계 §3.2). 내 사진 + 각 필름 룩 썸네일을 3열 그리드로 보여준다.
+ * 컨택트 시트 화면(설계 §3.2). 내 사진 + 각 필름 룩 썸네일을 2열 그리드로 보여준다.
  *
  * 상태 호이스팅: 모든 상태는 [FilmEditorViewModel] 의 StateFlow. 이 Composable 은 표시 + 콜백만.
  * 썸네일 비트맵은 생성기 캐시 소유 → 표시만(회수 금지).
@@ -115,7 +116,12 @@ fun FilmContactSheetScreen(
         topBar = {
             TopAppBar(
                 modifier = Modifier.statusBarsPadding(),
-                title = { Text(stringResource(R.string.fs_contact_sheet_title)) },
+                title = {
+                    Text(
+                        text = stringResource(R.string.fs_contact_sheet_title),
+                        style = HeadingL
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
@@ -125,6 +131,15 @@ fun FilmContactSheetScreen(
                     }
                 },
                 actions = {
+                    // 카탈로그 규모 표현 — MonoMicro "N LOOKS" 계기판 카운터(전체 카탈로그 size 동적).
+                    if (availableLuts.isNotEmpty()) {
+                        Text(
+                            text = "${availableLuts.size} LOOKS",
+                            style = MonoMicro,
+                            color = TextTertiary,
+                            modifier = Modifier.padding(end = Spacing.xs)
+                        )
+                    }
                     IconButton(onClick = { searchVisible = !searchVisible }) {
                         Icon(
                             imageVector = if (searchVisible) Icons.Default.Close else Icons.Default.Search,
@@ -195,9 +210,10 @@ fun FilmContactSheetScreen(
                     verticalArrangement = Arrangement.spacedBy(Spacing.sm),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(visibleLuts, key = { it.id }) { lut ->
+                    itemsIndexed(visibleLuts, key = { _, lut -> lut.id }) { index, lut ->
                         ContactSheetCell(
                             lut = lut,
+                            frameNumber = index + 1,
                             thumbnail = thumbnails[lut.id],
                             isFavorite = lut.id in favorites,
                             isSelected = lut.id == selectedLutId,
@@ -224,7 +240,7 @@ private fun TargetPhotoBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Spacing.lg, vertical = Spacing.sm),
+                .padding(horizontal = Spacing.base, vertical = Spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -316,6 +332,7 @@ private fun CategoryChipRow(
 @Composable
 private fun ContactSheetCell(
     lut: FilmLut,
+    frameNumber: Int,
     thumbnail: android.graphics.Bitmap?,
     isFavorite: Boolean,
     isSelected: Boolean,
@@ -431,6 +448,22 @@ private fun ContactSheetCell(
                         modifier = Modifier.size(14.dp)
                     )
                 }
+            }
+
+            // 절제된 필름 프레이밍 — 좌하단 프레임 번호(MonoMicro 계기판 톤). 순수 계기 표기라 비지역화.
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(4.dp)
+                    .clip(RoundedCornerShape(Radius.sm))
+                    .background(Surface0.copy(alpha = 0.55f))
+                    .padding(horizontal = Spacing.xs, vertical = 1.dp)
+            ) {
+                Text(
+                    text = "FRM %03d".format(frameNumber),
+                    style = MonoMicro,
+                    color = TextTertiary
+                )
             }
         }
 

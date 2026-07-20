@@ -33,4 +33,7 @@
 
     <!-- 결제 미지원 안내 (추후 지원) -->
     <string name="subscription_coming_soon">Upgrade-Optionen folgen in Kürze.</string>
+
+    <!-- 필름 룩 규모 카운트 (카탈로그 size 동적 주입) -->
+    <string name="subscription_film_look_count">%1$d Film-Looks</string>
 </resources>

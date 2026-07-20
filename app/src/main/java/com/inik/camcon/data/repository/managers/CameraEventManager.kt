@@ -11,7 +11,7 @@ import com.inik.camcon.data.repository.managers.PhotoDownloadManager
 import com.inik.camcon.domain.manager.ErrorNotifier
 import com.inik.camcon.domain.manager.ErrorSeverity
 import com.inik.camcon.domain.manager.ErrorType
-import com.inik.camcon.domain.model.resolve
+import com.inik.camcon.utils.resolve
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.utils.Constants
@@ -661,7 +661,14 @@ class CameraEventManager @Inject constructor(
             override fun onUsbDisconnected() {
                 when (connectionType) {
                     ConnectionType.USB -> {
-                        handleUsbDisconnection()
+                        // 이 콜백은 네이티브 리스너 스레드 위에서 동기 실행된다. 여기서
+                        // handleUsbDisconnection 을 동기로 부르면 performCompleteCleanup →
+                        // stopListenCameraEvents 가 리스너 스레드가 자기 자신을 join(10초 블록)한다
+                        // (PTPIP 분기와 동일 문제, 2026-07-06 실측). IO 로 홉해 리스너 스레드를 즉시
+                        // 반환시켜 self-join 을 회피하고, 분리 정리·UI 갱신 지연(~10초)을 없앤다.
+                        scope.launch(ioDispatcher) {
+                            handleUsbDisconnection()
+                        }
                     }
 
                     ConnectionType.PTPIP -> {

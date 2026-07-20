@@ -53,28 +53,24 @@ class UsbDeviceDetector @Inject constructor(
         // 알려진 카메라 제조사 ID 목록
         private val KNOWN_CAMERA_VENDOR_IDS = listOf(
             0x04A9, // Canon
-            0x04B0, // Nikon  
+            0x04B0, // Nikon
             0x054C, // Sony
             0x04E8, // Samsung
             0x04DA, // Panasonic/Lumix
             0x07B4, // Olympus/OM System
-            0x0A03, // Pentax/Ricoh
-            0x1843, // Leica
-            0x05AB, // Sigma
-            0x0483, // Fujifilm
-            0x0711, // Hasselblad
-            0x0554, // Phase One
-            0x2770, // Insta360
-            0x2207, // DJI
-            0x2731, // GoPro
-            0x27C6, // Garmin VIRB
-            0x2B1E, // YI Technology
-            0x1EDB, // Blackmagic Design
-            0x1954, // RED Digital Cinema
-            0x2040, // ARRI
-            0x3D8D, // Z CAM
-            0x0451, // ZCAM
-            0x2E04  // Kinefinity
+            0x25FB, // Pentax/Ricoh (구 0x0A03 오기 교정)
+            0x1A98, // Leica Camera AG (구 0x1843=Vaisala 오기 교정)
+            0x1003, // Sigma (구 0x05AB=In-System Design 오기 교정)
+            0x04CB, // Fujifilm (구 0x0483=STMicroelectronics 오기 교정)
+            0x2756, // Hasselblad (구 0x0711=Magic Control 오기 교정)
+            0x22DB, // Phase One (구 0x0554=Dictaphone 오기 교정)
+            0x2CA3, // DJI (구 0x2207=Rockchip 오기 교정)
+            0x2672, // GoPro (구 0x2731 오기 교정)
+            0x091E, // Garmin (구 0x27C6=Goodix 오기 교정)
+            0x1EDB  // Blackmagic Design
+            // 제거(usb.ids에서 카메라 벤더로 검증 불가 + 실소유가 비카메라):
+            //   Insta360(0x2770=NHJ) · RED(0x1954=Radiient) · ARRI(0x2040=Hauppauge)
+            //   Kinefinity(0x2E04=HMD) · ZCAM(0x0451=TI, 0x3D8D) · YI(0x2B1E)
         )
     }
 

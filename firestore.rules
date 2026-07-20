@@ -109,6 +109,14 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ==================== VERIFIED_CAMERAS 컬렉션 ====================
+    // 익명 연결 검증 집계 — 쓰기·공개 읽기 모두 Cloud Function(Admin SDK)이 대행한다.
+    // reportCameraConnection(기록)·getVerifiedCameras(HTTP 공개 읽기)·deleteVerifiedCamera(admin 삭제)
+    // 만 접근하며, 클라이언트 SDK 직접 read/write 는 금지.
+    match /verified_cameras/{modelKey} {
+      allow read, write: if false;
+    }
+
     // ==================== 기본 규칙: 모든 다른 경로 차단 ====================
     // 위의 명시적 규칙에 매칭되지 않는 모든 접근은 거부
     match /{document=**} {

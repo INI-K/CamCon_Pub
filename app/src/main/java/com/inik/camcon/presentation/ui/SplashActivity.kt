@@ -304,11 +304,15 @@ private fun UiText.resolve(): String = when (this) {
 /**
  * CINE 레티클 프레임 — 순흑 위 코너 틱(앰버 1px)으로 브랜드 마크를 감싼다.
  * 로그인 화면 ReticleFrame 과 동일 언어(목업 preview_cine.html .tick).
+ *
+ * [progress] 0→1 으로 코너 4개가 순차 드로잉(TL→TR→BL→BR)되며 등장한다. 각 코너는 progress 를 4등분한
+ * 자기 구간이 채워질 때 틱 길이가 0→full 로 자란다. 기본 1f = 완성 상태(정적 표시).
  */
 @Composable
 private fun SplashReticleFrame(
     modifier: Modifier = Modifier,
     tickColor: Color = AccentEdge,
+    progress: Float = 1f,
     content: @Composable () -> Unit
 ) {
     Box(
@@ -317,14 +321,25 @@ private fun SplashReticleFrame(
             val stroke = 1.dp.toPx()
             val w = size.width
             val h = size.height
-            drawLine(tickColor, Offset(0f, 0f), Offset(tick, 0f), stroke)
-            drawLine(tickColor, Offset(0f, 0f), Offset(0f, tick), stroke)
-            drawLine(tickColor, Offset(w, 0f), Offset(w - tick, 0f), stroke)
-            drawLine(tickColor, Offset(w, 0f), Offset(w, tick), stroke)
-            drawLine(tickColor, Offset(0f, h), Offset(tick, h), stroke)
-            drawLine(tickColor, Offset(0f, h), Offset(0f, h - tick), stroke)
-            drawLine(tickColor, Offset(w, h), Offset(w - tick, h), stroke)
-            drawLine(tickColor, Offset(w, h), Offset(w, h - tick), stroke)
+            // 코너별 드로잉 진척(0..1) — progress 를 4등분한 구간.
+            fun seg(index: Int): Float =
+                ((progress - index * 0.25f) / 0.25f).coerceIn(0f, 1f)
+            val tl = seg(0)
+            val tr = seg(1)
+            val bl = seg(2)
+            val br = seg(3)
+            // 좌상단
+            drawLine(tickColor, Offset(0f, 0f), Offset(tick * tl, 0f), stroke)
+            drawLine(tickColor, Offset(0f, 0f), Offset(0f, tick * tl), stroke)
+            // 우상단
+            drawLine(tickColor, Offset(w, 0f), Offset(w - tick * tr, 0f), stroke)
+            drawLine(tickColor, Offset(w, 0f), Offset(w, tick * tr), stroke)
+            // 좌하단
+            drawLine(tickColor, Offset(0f, h), Offset(tick * bl, h), stroke)
+            drawLine(tickColor, Offset(0f, h), Offset(0f, h - tick * bl), stroke)
+            // 우하단
+            drawLine(tickColor, Offset(w, h), Offset(w - tick * br, h), stroke)
+            drawLine(tickColor, Offset(w, h), Offset(w, h - tick * br), stroke)
         },
         contentAlignment = Alignment.Center
     ) {
@@ -347,6 +362,13 @@ fun SplashScreen(
         targetValue = if (startAnimation) 1f else 0f,
         animationSpec = tween(durationMillis = 1000),
         label = "splashAlpha"
+    )
+    // 레티클 코너 틱 draw-on(순차 등장, ~600ms). 페이드 인과 병행 — 네비게이션은 버전 체크에만
+    // 의존하므로 이 애니메이션이 스플래시 총 체류 시간을 늘리지 않는다.
+    val reticleAnim = animateFloatAsState(
+        targetValue = if (startAnimation) 1f else 0f,
+        animationSpec = tween(durationMillis = 600),
+        label = "splashReticle"
     )
 
     LaunchedEffect(key1 = true) {
@@ -377,7 +399,8 @@ fun SplashScreen(
         ) {
             // 브랜드 마크 — 런처 조리개 심볼을 레티클 프레임 안에(로그인 화면과 동일 언어)
             SplashReticleFrame(
-                modifier = Modifier.size(140.dp)
+                modifier = Modifier.size(140.dp),
+                progress = reticleAnim.value
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.ic_launcher_foreground),
