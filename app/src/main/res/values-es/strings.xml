@@ -383,4 +383,15 @@
     <string name="camera_op_timelapse_start_failed">No se pudo iniciar el timelapse: %1$s</string>
     <string name="camera_op_timelapse_failed">Error en el timelapse: %1$s</string>
     <string name="camera_op_autofocus_failed">Error de enfoque automático: %1$s</string>
+    <string name="usb_error_disconnect_failed">No se pudo desconectar la cámara: %1$s</string>
+    <string name="usb_error_permission_requested">Se solicitó el permiso USB. Apruébalo en el cuadro de diálogo.</string>
+    <string name="usb_error_already_connected">La cámara ya está conectada</string>
+    <string name="usb_error_camera_not_detected">No se detectó ninguna cámara USB</string>
+    <string name="usb_error_device_check_failed">No se pudieron comprobar los dispositivos USB: %1$s</string>
+    <string name="usb_error_permission_request_failed">No se pudo solicitar el permiso USB: %1$s</string>
+    <string name="camera_status_usb_not_detected">No se detecta ninguna cámara USB</string>
+    <string name="camera_status_usb_permission_needed">Se requiere permiso USB</string>
+    <string name="camera_status_capabilities_unavailable">No se puede obtener la información de funciones de la cámara</string>
+    <string name="camera_status_ptp_timeout">La cámara PTP no ha respondido durante un tiempo. Vuelve a intentar la conexión.</string>
+    <string name="camera_status_usb_disconnected">La cámara USB se ha desconectado.\n\nPara volver a conectar la cámara:\n1. Vuelve a conectar el cable USB\n2. Toca el botón \'Actualizar\' en la parte inferior de la pantalla</string>
 </resources>

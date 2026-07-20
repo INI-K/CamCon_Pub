@@ -384,4 +384,15 @@
     <string name="camera_op_timelapse_start_failed">Impossible de démarrer le time-lapse : %1$s</string>
     <string name="camera_op_timelapse_failed">Échec du time-lapse : %1$s</string>
     <string name="camera_op_autofocus_failed">Échec de l\'autofocus : %1$s</string>
+    <string name="usb_error_disconnect_failed">Échec de la déconnexion de l\'appareil photo : %1$s</string>
+    <string name="usb_error_permission_requested">Autorisation USB demandée. Veuillez l\'approuver dans la boîte de dialogue.</string>
+    <string name="usb_error_already_connected">L\'appareil photo est déjà connecté</string>
+    <string name="usb_error_camera_not_detected">Aucun appareil photo USB détecté</string>
+    <string name="usb_error_device_check_failed">Échec de la vérification des périphériques USB : %1$s</string>
+    <string name="usb_error_permission_request_failed">Échec de la demande d\'autorisation USB : %1$s</string>
+    <string name="camera_status_usb_not_detected">Aucun appareil photo USB détecté</string>
+    <string name="camera_status_usb_permission_needed">Une autorisation USB est requise</string>
+    <string name="camera_status_capabilities_unavailable">Impossible de récupérer les fonctionnalités de l\'appareil photo</string>
+    <string name="camera_status_ptp_timeout">L\'appareil photo PTP ne répond plus depuis un moment. Veuillez réessayer de vous connecter.</string>
+    <string name="camera_status_usb_disconnected">L\'appareil photo USB a été déconnecté.\n\nPour reconnecter l\'appareil photo :\n1. Rebranchez le câble USB\n2. Appuyez sur le bouton \'Actualiser\' en bas de l\'écran</string>
 </resources>

@@ -385,4 +385,15 @@
     <string name="camera_op_timelapse_start_failed">タイムラプスの開始に失敗しました: %1$s</string>
     <string name="camera_op_timelapse_failed">タイムラプスに失敗しました: %1$s</string>
     <string name="camera_op_autofocus_failed">オートフォーカスに失敗しました: %1$s</string>
+    <string name="usb_error_disconnect_failed">カメラの接続解除に失敗しました: %1$s</string>
+    <string name="usb_error_permission_requested">USB の許可をリクエストしました。ダイアログで承認してください。</string>
+    <string name="usb_error_already_connected">カメラはすでに接続されています</string>
+    <string name="usb_error_camera_not_detected">USB カメラが検出されませんでした</string>
+    <string name="usb_error_device_check_failed">USB デバイスの確認に失敗しました: %1$s</string>
+    <string name="usb_error_permission_request_failed">USB の許可リクエストに失敗しました: %1$s</string>
+    <string name="camera_status_usb_not_detected">USB カメラが検出されません</string>
+    <string name="camera_status_usb_permission_needed">USB の許可が必要です</string>
+    <string name="camera_status_capabilities_unavailable">カメラの機能情報を取得できません</string>
+    <string name="camera_status_ptp_timeout">PTP カメラが一定時間応答していません。もう一度接続をお試しください。</string>
+    <string name="camera_status_usb_disconnected">USB カメラが切断されました。\n\nカメラを再接続するには:\n1. USB ケーブルを接続し直してください\n2. 画面下部の「更新」ボタンを押してください</string>
 </resources>

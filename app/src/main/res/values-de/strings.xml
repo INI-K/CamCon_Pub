@@ -382,4 +382,15 @@
     <string name="camera_op_timelapse_start_failed">Zeitraffer konnte nicht gestartet werden: %1$s</string>
     <string name="camera_op_timelapse_failed">Zeitraffer fehlgeschlagen: %1$s</string>
     <string name="camera_op_autofocus_failed">Autofokus fehlgeschlagen: %1$s</string>
+    <string name="usb_error_disconnect_failed">Kamera konnte nicht getrennt werden: %1$s</string>
+    <string name="usb_error_permission_requested">USB-Berechtigung angefordert. Bitte im Dialog bestätigen.</string>
+    <string name="usb_error_already_connected">Die Kamera ist bereits verbunden</string>
+    <string name="usb_error_camera_not_detected">Keine USB-Kamera erkannt</string>
+    <string name="usb_error_device_check_failed">USB-Geräte konnten nicht überprüft werden: %1$s</string>
+    <string name="usb_error_permission_request_failed">USB-Berechtigung konnte nicht angefordert werden: %1$s</string>
+    <string name="camera_status_usb_not_detected">Keine USB-Kamera erkannt</string>
+    <string name="camera_status_usb_permission_needed">USB-Berechtigung erforderlich</string>
+    <string name="camera_status_capabilities_unavailable">Kamerafunktionen können nicht abgerufen werden</string>
+    <string name="camera_status_ptp_timeout">Die PTP-Kamera antwortet seit einiger Zeit nicht. Bitte versuchen Sie erneut, eine Verbindung herzustellen.</string>
+    <string name="camera_status_usb_disconnected">Die USB-Kamera wurde getrennt.\n\nSo verbinden Sie die Kamera erneut:\n1. USB-Kabel erneut anschließen\n2. Tippen Sie unten auf dem Bildschirm auf \'Aktualisieren\'</string>
 </resources>

@@ -387,4 +387,15 @@
     <string name="camera_op_timelapse_start_failed">타임랩스 시작 실패: %1$s</string>
     <string name="camera_op_timelapse_failed">타임랩스 실패: %1$s</string>
     <string name="camera_op_autofocus_failed">자동초점 실패: %1$s</string>
+    <string name="usb_error_disconnect_failed">카메라 연결 해제 실패: %1$s</string>
+    <string name="usb_error_permission_requested">USB 권한을 요청했습니다. 대화상자에서 승인해주세요.</string>
+    <string name="usb_error_already_connected">카메라가 이미 연결되어 있습니다</string>
+    <string name="usb_error_camera_not_detected">USB 카메라가 감지되지 않았습니다</string>
+    <string name="usb_error_device_check_failed">USB 디바이스 확인 실패: %1$s</string>
+    <string name="usb_error_permission_request_failed">USB 권한 요청 실패: %1$s</string>
+    <string name="camera_status_usb_not_detected">USB 카메라가 감지되지 않음</string>
+    <string name="camera_status_usb_permission_needed">USB 권한이 필요합니다</string>
+    <string name="camera_status_capabilities_unavailable">카메라 기능 정보를 가져올 수 없음</string>
+    <string name="camera_status_ptp_timeout">PTP 카메라 통신이 일정 시간 동안 응답하지 않습니다. 연결을 다시 시도해주세요.</string>
+    <string name="camera_status_usb_disconnected">USB 카메라가 분리되었습니다.\n\n카메라를 다시 연결하려면:\n1. USB 케이블을 다시 연결하세요\n2. 화면 하단의 \'새로고침\' 버튼을 눌러주세요</string>
 </resources>

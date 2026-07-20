@@ -102,7 +102,10 @@ class CameraUiStateManagerTest {
 
         // Then
         assertNull(manager.uiState.value.cameraCapabilities)
-        assertEquals(UiText.Raw("카메라 기능 정보를 가져올 수 없음"), manager.uiState.value.error)
+        assertEquals(
+            UiText.Resource(R.string.camera_status_capabilities_unavailable),
+            manager.uiState.value.error
+        )
     }
 
     // --- showCameraStatusCheckDialog ---
