@@ -12,63 +12,24 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.StringRes
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.DeleteForever
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.HighQuality
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.Logout
-import androidx.compose.material.icons.filled.Vibration
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Photo
-import androidx.compose.material.icons.filled.Redeem
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Storage
-import androidx.compose.material.icons.filled.Update
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -78,66 +39,58 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.core.os.LocaleListCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
 import com.inik.camcon.BuildConfig
 import com.inik.camcon.R
-import com.inik.camcon.domain.model.LiveViewQuality
-import com.inik.camcon.domain.model.SubscriptionTier
-import com.inik.camcon.domain.model.User
-import com.inik.camcon.utils.resolve
 import com.inik.camcon.domain.usecase.PipelineFeature
-import com.inik.camcon.presentation.theme.Accent
-import com.inik.camcon.presentation.theme.AccentMuted
-import com.inik.camcon.presentation.theme.BodySmall
 import com.inik.camcon.presentation.theme.CamConTheme
-import com.inik.camcon.presentation.theme.ErrorV2
 import com.inik.camcon.presentation.theme.HeadingL
-import com.inik.camcon.presentation.theme.HeadingM
-import com.inik.camcon.presentation.theme.IconSize
-import com.inik.camcon.presentation.theme.MicroLabel
-import com.inik.camcon.presentation.theme.OnAccent
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.Surface0
-import com.inik.camcon.presentation.theme.Surface1
-import com.inik.camcon.presentation.theme.Surface3
 import com.inik.camcon.presentation.theme.TextPrimaryV2
-import com.inik.camcon.presentation.theme.TextSecondaryV2
-import com.inik.camcon.presentation.theme.TextTertiary
-import com.inik.camcon.presentation.ui.components.v2.AppDialog
-import com.inik.camcon.presentation.ui.components.v2.DestructiveRowV2
-import com.inik.camcon.presentation.ui.components.v2.DividerLineV2
-import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
-import com.inik.camcon.presentation.ui.components.v2.ProgressBarV2
-import com.inik.camcon.presentation.ui.components.v2.RowItem
-import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
+import com.inik.camcon.presentation.ui.screens.settings.AdminReferralSection
+import com.inik.camcon.presentation.ui.screens.settings.AdminSection
+import com.inik.camcon.presentation.ui.screens.settings.AdvisoryToastHost
+import com.inik.camcon.presentation.ui.screens.settings.AppSection
+import com.inik.camcon.presentation.ui.screens.settings.CameraControlSection
+import com.inik.camcon.presentation.ui.screens.settings.ColorTransferSection
+import com.inik.camcon.presentation.ui.screens.settings.ConnectedCameraSection
+import com.inik.camcon.presentation.ui.screens.settings.DeleteAccountDialog
+import com.inik.camcon.presentation.ui.screens.settings.DeleteConfirmDialog
+import com.inik.camcon.presentation.ui.screens.settings.FilmSimulationSection
+import com.inik.camcon.presentation.ui.screens.settings.InfoSection
+import com.inik.camcon.presentation.ui.screens.settings.LanguageSelectionDialog
+import com.inik.camcon.presentation.ui.screens.settings.LiveViewQualitySelectionDialog
+import com.inik.camcon.presentation.ui.screens.settings.LogoutConfirmDialog
+import com.inik.camcon.presentation.ui.screens.settings.NativeLogDialog
+import com.inik.camcon.presentation.ui.screens.settings.RawDownloadSection
+import com.inik.camcon.presentation.ui.screens.settings.ReferralRedeemDialog
+import com.inik.camcon.presentation.ui.screens.settings.ServerSection
+import com.inik.camcon.presentation.ui.screens.settings.SettingsConnectionViewModel
+import com.inik.camcon.presentation.ui.screens.settings.UserInfoSection
+import com.inik.camcon.presentation.ui.screens.settings.WifiPtpipSection
+import com.inik.camcon.presentation.ui.screens.settings.currentLanguageLabel
 import com.inik.camcon.presentation.util.copyToClipboard
 import com.inik.camcon.presentation.util.openUrl
-import com.inik.camcon.utils.Constants
 import com.inik.camcon.presentation.viewmodel.AdminReferralCodeViewModel
 import com.inik.camcon.presentation.viewmodel.AdminReferralUiEvent
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.AuthUiEvent
 import com.inik.camcon.presentation.viewmodel.AuthViewModel
-import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
 import com.inik.camcon.presentation.viewmodel.ReferralRedeemEvent
 import com.inik.camcon.presentation.viewmodel.ReferralRedeemViewModel
-import androidx.appcompat.app.AppCompatDelegate
-import androidx.core.os.LocaleListCompat
+import com.inik.camcon.utils.Constants
+import com.inik.camcon.utils.resolve
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
 import java.io.FileOutputStream
-import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -174,6 +127,14 @@ fun SettingsActivityPreview() {
     SettingsScreenPreview()
 }
 
+/**
+ * 설정 화면 조립부 — 섹션/다이얼로그 컴포저블은 presentation.ui.screens.settings 로 분해했고
+ * 여기서는 상태 관찰·이벤트 수집·런처·내비게이션 콜백만 배선한다.
+ *
+ * 연결 상태는 무거운 CameraViewModel 대신 경량 [SettingsConnectionViewModel] 로 관찰한다
+ * (별도 Activity 에서 CameraViewModel 인스턴스가 2개 공존하며 @Singleton 매니저 cleanup 을
+ * 유발해 진행 중 라이브뷰를 끊는 결함을 근본 제거).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -183,7 +144,7 @@ fun SettingsScreen(
     authViewModel: AuthViewModel? = hiltViewModel(),
     adminReferralCodeViewModel: AdminReferralCodeViewModel = hiltViewModel(),
     referralRedeemViewModel: ReferralRedeemViewModel = hiltViewModel(),
-    cameraViewModel: CameraViewModel = hiltViewModel()
+    connectionViewModel: SettingsConnectionViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -195,7 +156,7 @@ fun SettingsScreen(
     val adminReferralState by adminReferralCodeViewModel.uiState.collectAsStateWithLifecycle()
     val referralRedeemState by referralRedeemViewModel.uiState.collectAsStateWithLifecycle()
 
-    val cameraUiState by cameraViewModel.uiState.collectAsStateWithLifecycle()
+    val cameraUiState by connectionViewModel.uiState.collectAsStateWithLifecycle()
     val isUsbConnected = cameraUiState.isNativeCameraConnected
     val isPtpipConnected = cameraUiState.isPtpipConnected
 
@@ -274,6 +235,7 @@ fun SettingsScreen(
     val selectedFilmLutLocked by appSettingsViewModel.selectedFilmLutLocked.collectAsStateWithLifecycle()
     val filmSimulationIntensity by appSettingsViewModel.filmSimulationIntensity.collectAsStateWithLifecycle()
     val isRawFileDownloadEnabled by appSettingsViewModel.isRawFileDownloadEnabled.collectAsStateWithLifecycle()
+    val isShutterSoundEnabled by appSettingsViewModel.isShutterSoundEnabled.collectAsStateWithLifecycle()
 
     val subscriptionTier by appSettingsViewModel.subscriptionTier.collectAsStateWithLifecycle()
     val isRawDownloadAllowed by appSettingsViewModel.isRawDownloadAllowed.collectAsStateWithLifecycle()
@@ -420,632 +382,254 @@ fun SettingsScreen(
             // 카메라 제어 설정 — 개발 빌드 또는 ADMIN 티어에 노출.
             // (빌드 타입만으로 게이트하면 릴리즈에서 관리자에게도 안 보인다)
             if (BuildConfig.SHOW_DEVELOPER_FEATURES || isAdminTier) {
-                SettingsSection(title = stringResource(R.string.settings_v2_section_camera_control)) {
-                    SwitchRowV2(
-                        icon = Icons.Default.CameraAlt,
-                        title = stringResource(R.string.settings_v2_camera_controls_title),
-                        subtitle = if (isCameraControlsEnabled) {
-                            stringResource(R.string.settings_v2_camera_controls_on)
-                        } else {
-                            stringResource(R.string.settings_v2_camera_controls_off)
-                        },
-                        checked = isCameraControlsEnabled,
-                        onCheckedChange = { appSettingsViewModel.setCameraControlsEnabled(it) }
-                    )
-
-                    if (isCameraControlsEnabled && isAdminTier) {
-                        SwitchRowV2(
-                            icon = Icons.Default.Visibility,
-                            title = stringResource(R.string.settings_v2_liveview_title),
-                            subtitle = stringResource(R.string.settings_v2_liveview_subtitle),
-                            checked = isLiveViewEnabled,
-                            onCheckedChange = { appSettingsViewModel.setLiveViewEnabled(it) }
-                        )
-                        ClickableRowV2(
-                            icon = Icons.Default.HighQuality,
-                            title = stringResource(R.string.settings_v2_liveview_quality_title),
-                            subtitle = stringResource(liveViewQuality.labelRes()),
-                            onClick = { showLiveViewQualityDialog = true }
-                        )
-                        SwitchRowV2(
-                            icon = Icons.Default.Settings,
-                            title = stringResource(R.string.settings_v2_auto_event_title),
-                            subtitle = stringResource(R.string.settings_v2_auto_event_subtitle),
-                            checked = isAutoStartEventListener,
-                            onCheckedChange = { appSettingsViewModel.setAutoStartEventListenerEnabled(it) }
-                        )
-                    } else if (isCameraControlsEnabled && !isAdminTier) {
-                        ClickableRowV2(
-                            icon = Icons.Default.Visibility,
-                            title = stringResource(R.string.settings_v2_liveview_locked_title),
-                            subtitle = stringResource(R.string.settings_v2_liveview_locked_subtitle),
-                            onClick = { }
-                        )
-                        SwitchRowV2(
-                            icon = Icons.Default.Settings,
-                            title = stringResource(R.string.settings_v2_auto_event_title),
-                            subtitle = stringResource(R.string.settings_v2_auto_event_subtitle),
-                            checked = isAutoStartEventListener,
-                            onCheckedChange = { appSettingsViewModel.setAutoStartEventListenerEnabled(it) }
-                        )
-                    }
-
-                    if (!isCameraControlsEnabled) {
-                        SwitchRowV2(
-                            icon = Icons.Default.Photo,
-                            title = stringResource(R.string.settings_v2_latest_photo_title),
-                            subtitle = stringResource(R.string.settings_v2_latest_photo_subtitle),
-                            checked = isShowLatestPhotoWhenDisabled,
-                            onCheckedChange = { appSettingsViewModel.setShowLatestPhotoWhenDisabled(it) }
-                        )
-                    }
-                }
+                CameraControlSection(
+                    isCameraControlsEnabled = isCameraControlsEnabled,
+                    isAdminTier = isAdminTier,
+                    isLiveViewEnabled = isLiveViewEnabled,
+                    liveViewQuality = liveViewQuality,
+                    isAutoStartEventListener = isAutoStartEventListener,
+                    isShowLatestPhotoWhenDisabled = isShowLatestPhotoWhenDisabled,
+                    onCameraControlsChange = { appSettingsViewModel.setCameraControlsEnabled(it) },
+                    onLiveViewChange = { appSettingsViewModel.setLiveViewEnabled(it) },
+                    onLiveViewQualityClick = { showLiveViewQualityDialog = true },
+                    onAutoStartEventChange = { appSettingsViewModel.setAutoStartEventListenerEnabled(it) },
+                    onShowLatestPhotoChange = { appSettingsViewModel.setShowLatestPhotoWhenDisabled(it) }
+                )
             }
 
             // Wi-Fi PTP/IP 연결은 전 티어 노출 — 무선 연결은 구독 기능이 아니다(FREE 포함).
-            SettingsSection(title = stringResource(R.string.settings_v2_section_wifi_ptpip)) {
-                SwitchRowV2(
-                    icon = Icons.Default.Wifi,
-                    title = stringResource(R.string.settings_v2_wifi_camera_title),
-                    subtitle = if (isPtpipEnabled) {
-                        val connectedName = lastConnectedName
-                        if (connectedName != null) {
-                            stringResource(R.string.settings_v2_wifi_camera_on_last, connectedName)
-                        } else {
-                            stringResource(R.string.settings_v2_wifi_camera_on_none)
-                        }
-                    } else {
-                        stringResource(R.string.settings_v2_wifi_camera_off)
-                    },
-                    checked = isPtpipEnabled,
-                    onCheckedChange = { ptpipViewModel.setPtpipEnabled(it) }
-                )
-
-                if (isPtpipEnabled) {
-                    SwitchRowV2(
-                        icon = Icons.Default.CameraAlt,
-                        title = stringResource(R.string.settings_v2_auto_connect_title),
-                        subtitle = stringResource(R.string.settings_v2_auto_connect_subtitle),
-                        checked = isAutoConnectEnabled,
-                        onCheckedChange = { enabled ->
-                            ptpipViewModel.updateAutoConnectEnabled(
-                                enabled = enabled,
-                                onResult = { _, message ->
-                                    android.widget.Toast.makeText(
-                                        context, message, android.widget.Toast.LENGTH_LONG
-                                    ).show()
-                                },
-                                onRequestNotificationPermission = {
-                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                        notificationPermissionLauncher.launch(
-                                            Manifest.permission.POST_NOTIFICATIONS
-                                        )
-                                    } else {
-                                        android.widget.Toast.makeText(
-                                            context,
-                                            notificationUnsupportedText,
-                                            android.widget.Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                }
-                            )
+            WifiPtpipSection(
+                isPtpipEnabled = isPtpipEnabled,
+                lastConnectedName = lastConnectedName,
+                isAutoConnectEnabled = isAutoConnectEnabled,
+                connectionStatusText = ptpipViewModel.getConnectionStatusText(),
+                onPtpipEnabledChange = { ptpipViewModel.setPtpipEnabled(it) },
+                onAutoConnectChange = { enabled ->
+                    ptpipViewModel.updateAutoConnectEnabled(
+                        enabled = enabled,
+                        onResult = { _, message ->
+                            android.widget.Toast.makeText(
+                                context, message, android.widget.Toast.LENGTH_LONG
+                            ).show()
+                        },
+                        onRequestNotificationPermission = {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                notificationPermissionLauncher.launch(
+                                    Manifest.permission.POST_NOTIFICATIONS
+                                )
+                            } else {
+                                android.widget.Toast.makeText(
+                                    context,
+                                    notificationUnsupportedText,
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                            }
                         }
                     )
-                    NavigationRowV2(
-                        icon = Icons.Default.Info,
-                        title = stringResource(R.string.settings_v2_connection_manage_title),
-                        subtitle = stringResource(
-                            R.string.settings_v2_connection_manage_subtitle,
-                            ptpipViewModel.getConnectionStatusText()
-                        ),
-                        onClick = {
-                            val intent = Intent(context, PtpipConnectionActivity::class.java)
-                            context.startActivity(intent)
-                        }
-                    )
+                },
+                onManageConnectionClick = {
+                    val intent = Intent(context, PtpipConnectionActivity::class.java)
+                    context.startActivity(intent)
                 }
-            }
+            )
 
             // 색감 전송 설정
-            SettingsSection(title = stringResource(R.string.settings_v2_section_color_transfer)) {
-                SwitchRowV2(
-                    icon = Icons.Default.Photo,
-                    title = stringResource(R.string.settings_v2_color_transfer_title),
-                    subtitle = if (isColorTransferEnabled) {
-                        if (colorTransferReferenceImagePath != null) {
-                            stringResource(R.string.settings_v2_color_transfer_on_ref)
-                        } else {
-                            stringResource(R.string.settings_v2_color_transfer_on_noref)
-                        }
-                    } else {
-                        stringResource(R.string.settings_v2_color_transfer_off)
-                    },
-                    checked = isColorTransferEnabled,
-                    onCheckedChange = { appSettingsViewModel.setColorTransferEnabled(it) }
-                )
-
-                if (isColorTransferEnabled) {
-                    NavigationRowV2(
-                        icon = Icons.Default.Settings,
-                        title = stringResource(R.string.settings_v2_color_transfer_detail_title),
-                        subtitle = stringResource(R.string.settings_v2_color_transfer_detail_subtitle),
-                        onClick = {
-                            val intent = Intent(context, ColorTransferSettingsActivity::class.java)
-                            context.startActivity(intent)
-                        }
-                    )
-                }
-
-                SwitchRowV2(
-                    icon = Icons.Default.Vibration,
-                    title = stringResource(R.string.settings_v2_vibrate_on_photo_title),
-                    subtitle = if (isVibrateOnPhotoReceivedEnabled) {
-                        stringResource(R.string.settings_v2_vibrate_on_photo_on)
-                    } else {
-                        stringResource(R.string.settings_v2_vibrate_on_photo_off)
-                    },
-                    checked = isVibrateOnPhotoReceivedEnabled,
-                    onCheckedChange = { appSettingsViewModel.setVibrateOnPhotoReceivedEnabled(it) }
-                )
-            }
+            ColorTransferSection(
+                isColorTransferEnabled = isColorTransferEnabled,
+                hasReferenceImage = colorTransferReferenceImagePath != null,
+                isVibrateOnPhotoReceivedEnabled = isVibrateOnPhotoReceivedEnabled,
+                onColorTransferChange = { appSettingsViewModel.setColorTransferEnabled(it) },
+                onColorTransferDetailClick = {
+                    val intent = Intent(context, ColorTransferSettingsActivity::class.java)
+                    context.startActivity(intent)
+                },
+                onVibrateChange = { appSettingsViewModel.setVibrateOnPhotoReceivedEnabled(it) }
+            )
 
             // 필름 시뮬레이션 설정
-            SettingsSection(title = stringResource(R.string.settings_v2_section_film_simulation)) {
-                // 편집기 진입(항상 표시) — 소스 미지정으로 열어 컨택트 시트가 이미지 선택을 안내.
-                NavigationRowV2(
-                    icon = Icons.Default.Photo,
-                    title = stringResource(R.string.settings_v2_film_editor_title),
-                    subtitle = stringResource(R.string.settings_v2_film_editor_subtitle),
-                    onClick = {
-                        val intent = Intent(context, FilmEditorActivity::class.java)
-                        context.startActivity(intent)
-                    }
-                )
-
-                // 자동적용 블록 — 토글 + (on 일 때) 기본 필름 선택 + 강도 슬라이더.
-                SwitchRowV2(
-                    icon = Icons.Default.Settings,
-                    title = stringResource(R.string.settings_v2_film_simulation_title),
-                    subtitle = if (isFilmSimulationEnabled) {
-                        if (selectedFilmLutId.isNotEmpty()) {
-                            stringResource(R.string.settings_v2_film_simulation_on)
-                        } else {
-                            stringResource(R.string.settings_v2_film_simulation_on_nolut)
-                        }
-                    } else {
-                        stringResource(R.string.settings_v2_film_simulation_off)
-                    },
-                    checked = isFilmSimulationEnabled,
-                    onCheckedChange = { appSettingsViewModel.setFilmSimulationEnabled(it) }
-                )
-
-                if (isFilmSimulationEnabled) {
-                    // 선택된 기본 필름이 현재 티어에서 잠겼으면(강등/무료셋 변경) 보조 문구에 잠금 힌트를 덧붙인다.
-                    // 자동 적용이 스킵되는데 필름심 ON 으로만 보이는 혼란을 방지한다(null=미확정 → 힌트 없음).
-                    val defaultFilmSubtitle = if (selectedFilmLutLocked == true) {
-                        stringResource(R.string.settings_v2_film_default_subtitle) +
-                            " · " + stringResource(R.string.fs_selected_film_locked_hint)
-                    } else {
-                        stringResource(R.string.settings_v2_film_default_subtitle)
-                    }
-                    NavigationRowV2(
-                        icon = Icons.Default.Photo,
-                        title = stringResource(R.string.settings_v2_film_default_title),
-                        subtitle = defaultFilmSubtitle,
-                        onClick = {
-                            val intent = Intent(context, FilmEditorActivity::class.java)
-                                .putExtra(FilmEditorActivity.EXTRA_SELECT_ONLY, true)
-                            defaultFilmSelectLauncher.launch(intent)
-                        }
-                    )
-                    FilmIntensityRow(
-                        intensity = filmSimulationIntensity,
-                        onChange = { appSettingsViewModel.setFilmSimulationIntensity(it) }
-                    )
-                }
-            }
+            FilmSimulationSection(
+                isFilmSimulationEnabled = isFilmSimulationEnabled,
+                selectedFilmLutId = selectedFilmLutId,
+                selectedFilmLutLocked = selectedFilmLutLocked,
+                filmSimulationIntensity = filmSimulationIntensity,
+                onFilmEditorClick = {
+                    val intent = Intent(context, FilmEditorActivity::class.java)
+                    context.startActivity(intent)
+                },
+                onFilmSimulationChange = { appSettingsViewModel.setFilmSimulationEnabled(it) },
+                onDefaultFilmClick = {
+                    val intent = Intent(context, FilmEditorActivity::class.java)
+                        .putExtra(FilmEditorActivity.EXTRA_SELECT_ONLY, true)
+                    defaultFilmSelectLauncher.launch(intent)
+                },
+                onIntensityChange = { appSettingsViewModel.setFilmSimulationIntensity(it) }
+            )
 
             // RAW 파일 다운로드 설정
-            SettingsSection(title = stringResource(R.string.settings_v2_section_raw_download)) {
-                if (isRawDownloadAllowed) {
-                    SwitchRowV2(
-                        icon = Icons.Default.Photo,
-                        title = stringResource(R.string.settings_v2_raw_download_title),
-                        subtitle = if (isRawFileDownloadEnabled) {
-                            stringResource(R.string.settings_v2_raw_download_on)
-                        } else {
-                            stringResource(R.string.settings_v2_raw_download_off)
-                        },
-                        checked = isRawFileDownloadEnabled,
-                        onCheckedChange = { appSettingsViewModel.setRawFileDownloadEnabled(it) }
-                    )
-                } else {
-                    ClickableRowV2(
-                        icon = Icons.Default.Photo,
-                        title = stringResource(R.string.settings_v2_raw_download_title),
-                        subtitle = stringResource(R.string.settings_v2_raw_download_locked),
-                        onClick = { }
-                    )
-                }
-            }
+            RawDownloadSection(
+                isRawDownloadAllowed = isRawDownloadAllowed,
+                isRawFileDownloadEnabled = isRawFileDownloadEnabled,
+                onRawDownloadChange = { appSettingsViewModel.setRawFileDownloadEnabled(it) }
+            )
 
             // 연결된 카메라 정보
-            SettingsSection(title = stringResource(R.string.settings_v2_section_connected_camera)) {
-                val cameraModelNone = stringResource(R.string.settings_v2_camera_model_none)
-                val connectionType = when {
-                    isUsbConnected -> stringResource(R.string.settings_v2_connection_type_usb)
-                    isPtpipConnected -> stringResource(R.string.settings_v2_connection_type_wifi)
-                    else -> stringResource(R.string.settings_v2_connection_type_none)
-                }
-
-                val cameraName = when {
-                    cameraUiState.connectedCameraModel != null && cameraUiState.connectedCameraManufacturer != null ->
-                        "${cameraUiState.connectedCameraManufacturer} ${cameraUiState.connectedCameraModel}"
-                    cameraUiState.connectedCameraModel != null ->
-                        cameraUiState.connectedCameraModel
-                    else -> cameraModelNone
-                }
-
-                ClickableRowV2(
-                    icon = Icons.Default.CameraAlt,
-                    title = stringResource(R.string.settings_v2_connection_status_title),
-                    subtitle = connectionType,
-                    onClick = { }
-                )
-
-                if (isUsbConnected || isPtpipConnected) {
-                    ClickableRowV2(
-                        icon = Icons.Default.Info,
-                        title = stringResource(R.string.settings_v2_camera_model_title),
-                        subtitle = cameraName ?: cameraModelNone,
-                        onClick = { }
-                    )
-                    cameraUiState.cameraFunctionLimitation?.let { limitation ->
-                        ClickableRowV2(
-                            icon = Icons.Default.Info,
-                            title = stringResource(R.string.settings_v2_camera_limitation_title),
-                            subtitle = limitation.resolve(context),
-                            onClick = { }
-                        )
-                    }
-                }
-            }
+            ConnectedCameraSection(
+                isUsbConnected = isUsbConnected,
+                isPtpipConnected = isPtpipConnected,
+                connectedCameraModel = cameraUiState.connectedCameraModel,
+                connectedCameraManufacturer = cameraUiState.connectedCameraManufacturer,
+                cameraFunctionLimitation = cameraUiState.cameraFunctionLimitation
+            )
 
             // 사용자 정보
-            SettingsSection(title = stringResource(R.string.settings_v2_section_user_info)) {
-                val currentUser = authUiState.currentUser
-                UserProfileItem(user = currentUser, onClick = { })
-
-                // 구독 관리 / 업그레이드 진입점 — 페이월(SubscriptionActivity)로 이동.
-                val tierLabelRes = when (subscriptionTier) {
-                    SubscriptionTier.FREE -> R.string.subscription_tier_free
-                    SubscriptionTier.BASIC -> R.string.subscription_tier_basic
-                    SubscriptionTier.PRO -> R.string.subscription_tier_pro
-                    SubscriptionTier.REFERRER -> R.string.subscription_tier_referrer
-                    SubscriptionTier.ADMIN -> R.string.subscription_tier_admin
+            UserInfoSection(
+                user = authUiState.currentUser,
+                subscriptionTier = subscriptionTier,
+                isLoggingOut = authUiState.isLoading,
+                onProfileClick = { },
+                onSubscriptionClick = { SubscriptionActivity.start(context) },
+                onReferralRedeemClick = {
+                    referralRedeemInput = ""
+                    showReferralRedeemDialog = true
+                },
+                onLogoutClick = {
+                    if (!authUiState.isLoading) {
+                        showLogoutConfirm = true
+                    }
+                },
+                onDeleteAccountClick = {
+                    if (!isDeletingAccount) {
+                        showDeleteAccountDialog = true
+                    }
                 }
-                NavigationRowV2(
-                    icon = Icons.Default.Update,
-                    title = stringResource(R.string.settings_v2_subscription_title),
-                    subtitle = stringResource(
-                        R.string.settings_v2_subscription_subtitle_tier,
-                        stringResource(tierLabelRes)
-                    ),
-                    onClick = { SubscriptionActivity.start(context) }
-                )
-
-                // 추천 코드 등록 — 전 티어 노출. 로그인 후 코드를 입력해 혜택(REFERRER)을 받는다.
-                ClickableRowV2(
-                    icon = Icons.Default.Redeem,
-                    title = stringResource(R.string.settings_referral_redeem_title),
-                    subtitle = stringResource(R.string.settings_referral_redeem_subtitle),
-                    onClick = {
-                        referralRedeemInput = ""
-                        showReferralRedeemDialog = true
-                    }
-                )
-
-                ClickableRowV2(
-                    icon = Icons.Default.Logout,
-                    title = if (authUiState.isLoading) {
-                        stringResource(R.string.settings_v2_logout_in_progress_title)
-                    } else {
-                        stringResource(R.string.settings_v2_logout_title)
-                    },
-                    subtitle = if (authUiState.isLoading) {
-                        stringResource(R.string.settings_v2_logout_in_progress_subtitle)
-                    } else {
-                        stringResource(R.string.settings_v2_logout_subtitle)
-                    },
-                    onClick = {
-                        if (!authUiState.isLoading) {
-                            showLogoutConfirm = true
-                        }
-                    }
-                )
-                DestructiveRowV2(
-                    icon = Icons.Default.DeleteForever,
-                    title = stringResource(R.string.account_delete_row_title),
-                    subtitle = stringResource(R.string.account_delete_row_subtitle),
-                    onClick = {
-                        if (!isDeletingAccount) {
-                            showDeleteAccountDialog = true
-                        }
-                    }
-                )
-            }
+            )
 
             // 서버 설정 — 개발 빌드 또는 ADMIN 티어에 노출
             if (BuildConfig.SHOW_DEVELOPER_FEATURES || isAdminTier) {
-                SettingsSection(title = stringResource(R.string.settings_v2_section_server)) {
-                    ClickableRowV2(
-                        icon = Icons.Default.Storage,
-                        title = stringResource(R.string.settings_v2_storage_title),
-                        // TBD: 실제 quota API 연결 전까지 placeholder. 하드코딩 mock 표기 금지.
-                        subtitle = stringResource(R.string.settings_v2_storage_subtitle),
-                        onClick = { }
-                    )
-                    ClickableRowV2(
-                        icon = Icons.Default.Security,
-                        title = stringResource(R.string.settings_v2_permissions_title),
-                        subtitle = stringResource(R.string.settings_v2_permissions_subtitle),
-                        onClick = { }
-                    )
-                }
+                ServerSection()
             }
 
             // 앱 설정
-            val isShutterSoundEnabled by appSettingsViewModel.isShutterSoundEnabled.collectAsStateWithLifecycle()
-            SettingsSection(title = stringResource(R.string.settings_v2_section_app)) {
-                SwitchRowV2(
-                    icon = Icons.Default.CameraAlt,
-                    title = stringResource(R.string.capture_shutter_sound_label),
-                    subtitle = stringResource(R.string.capture_shutter_sound_subtitle),
-                    checked = isShutterSoundEnabled,
-                    onCheckedChange = { appSettingsViewModel.setShutterSoundEnabled(it) }
-                )
-                val currentLocaleLabel = currentLanguageLabel()
-                ClickableRowV2(
-                    icon = Icons.Default.Language,
-                    title = stringResource(R.string.language_row_title),
-                    subtitle = currentLocaleLabel,
-                    onClick = { showLanguageDialog = true }
-                )
-                ClickableRowV2(
-                    icon = Icons.Default.Notifications,
-                    title = stringResource(R.string.notification_settings_title),
-                    subtitle = stringResource(R.string.notification_settings_subtitle),
-                    onClick = {
+            val currentLocaleLabel = currentLanguageLabel()
+            val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+            val isIgnoringOptimizations = pm.isIgnoringBatteryOptimizations(context.packageName)
+            AppSection(
+                isShutterSoundEnabled = isShutterSoundEnabled,
+                currentLanguageLabel = currentLocaleLabel,
+                isIgnoringBatteryOptimizations = isIgnoringOptimizations,
+                onShutterSoundChange = { appSettingsViewModel.setShutterSoundEnabled(it) },
+                onLanguageClick = { showLanguageDialog = true },
+                onNotificationSettingsClick = {
+                    try {
+                        val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        // Fallback: 앱 상세 설정 화면
                         try {
-                            val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-                            context.startActivity(intent)
-                        } catch (e: Exception) {
-                            // Fallback: 앱 상세 설정 화면
-                            try {
-                                val fallback = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                                fallback.data = Uri.parse("package:${context.packageName}")
-                                context.startActivity(fallback)
-                            } catch (_: Exception) {
-                            }
+                            val fallback = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                            fallback.data = Uri.parse("package:${context.packageName}")
+                            context.startActivity(fallback)
+                        } catch (_: Exception) {
                         }
                     }
-                )
-                val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
-                val packageName = context.packageName
-                val isIgnoringOptimizations = pm.isIgnoringBatteryOptimizations(packageName)
-                ClickableRowV2(
-                    icon = Icons.Default.Settings,
-                    title = stringResource(R.string.settings_v2_battery_title),
-                    subtitle = if (isIgnoringOptimizations) {
-                        stringResource(R.string.settings_v2_battery_on)
-                    } else {
-                        stringResource(R.string.settings_v2_battery_off)
-                    },
-                    onClick = {
-                        try {
-                            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
-                            intent.data = Uri.parse("package:$packageName")
-                            context.startActivity(intent)
-                        } catch (e: Exception) {
-                            android.widget.Toast.makeText(
-                                context,
-                                batterySettingsErrorTemplate.format(e.localizedMessage ?: ""),
-                                android.widget.Toast.LENGTH_LONG
-                            ).show()
-                        }
+                },
+                onBatteryClick = {
+                    try {
+                        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                        intent.data = Uri.parse("package:${context.packageName}")
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        android.widget.Toast.makeText(
+                            context,
+                            batterySettingsErrorTemplate.format(e.localizedMessage ?: ""),
+                            android.widget.Toast.LENGTH_LONG
+                        ).show()
                     }
-                )
-            }
+                }
+            )
 
             if (isAdminTier) {
                 val isNativeLogCaptureEnabled by appSettingsViewModel.isNativeLogCaptureEnabled.collectAsStateWithLifecycle()
 
-                SettingsSection(title = stringResource(R.string.settings_v2_section_admin)) {
-                    // MockCameraActivity 는 src/debug 전용(릴리스 바이너리 제외) → 정적 참조 금지.
-                    // debug 빌드에서만 행을 노출하고 리플렉션으로 진입한다.
-                    if (BuildConfig.SHOW_DEVELOPER_FEATURES) {
-                        ClickableRowV2(
-                            icon = Icons.Default.CameraAlt,
-                            title = stringResource(R.string.settings_v2_mock_camera_title),
-                            subtitle = stringResource(R.string.settings_v2_mock_camera_subtitle),
-                            onClick = {
-                                runCatching {
-                                    val cls = Class.forName("com.inik.camcon.presentation.ui.MockCameraActivity")
-                                    context.startActivity(Intent(context, cls))
-                                }
-                            }
-                        )
-                    }
-                    ClickableRowV2(
-                        icon = Icons.Default.Info,
-                        title = stringResource(R.string.settings_v2_camera_abilities_title),
-                        subtitle = stringResource(R.string.settings_v2_camera_abilities_subtitle),
-                        onClick = {
-                            context.startActivity(Intent(context, CameraAbilitiesActivity::class.java))
+                AdminSection(
+                    isNativeLogCaptureEnabled = isNativeLogCaptureEnabled,
+                    showDeveloperFeatures = BuildConfig.SHOW_DEVELOPER_FEATURES,
+                    onMockCameraClick = {
+                        runCatching {
+                            val cls = Class.forName("com.inik.camcon.presentation.ui.MockCameraActivity")
+                            context.startActivity(Intent(context, cls))
                         }
-                    )
-                    SwitchRowV2(
-                        icon = Icons.Default.Info,
-                        title = stringResource(R.string.settings_v2_native_log_title),
-                        subtitle = if (isNativeLogCaptureEnabled) {
-                            stringResource(R.string.settings_v2_native_log_on)
-                        } else {
-                            stringResource(R.string.settings_v2_native_log_off)
-                        },
-                        checked = isNativeLogCaptureEnabled,
-                        onCheckedChange = {
-                            appSettingsViewModel.setNativeLogCaptureEnabled(it)
+                    },
+                    onCameraAbilitiesClick = {
+                        context.startActivity(Intent(context, CameraAbilitiesActivity::class.java))
+                    },
+                    onNativeLogCaptureChange = {
+                        appSettingsViewModel.setNativeLogCaptureEnabled(it)
+                        // 안내성 토스트 → ToastV2 오버레이
+                        advisoryToastMessage =
+                            if (it) nativeLogToastEnableText else nativeLogToastDisableText
+                    },
+                    onViewLogClick = {
+                        val logFiles = appSettingsViewModel.getLogFiles()
+                        if (logFiles.isEmpty()) {
                             // 안내성 토스트 → ToastV2 오버레이
-                            advisoryToastMessage =
-                                if (it) nativeLogToastEnableText else nativeLogToastDisableText
-                        }
-                    )
-
-                    if (isNativeLogCaptureEnabled) {
-                        ClickableRowV2(
-                            icon = Icons.Default.Storage,
-                            title = stringResource(R.string.settings_v2_native_log_view_title),
-                            subtitle = stringResource(R.string.settings_v2_native_log_view_subtitle),
-                            onClick = {
-                                val logFiles = appSettingsViewModel.getLogFiles()
-                                if (logFiles.isEmpty()) {
-                                    // 안내성 토스트 → ToastV2 오버레이
-                                    advisoryToastMessage = nativeLogNoFilesText
-                                } else {
-                                    coroutineScope.launch {
-                                        logDialogContent = appSettingsViewModel.getLogFileContent()
-                                    }
-                                }
+                            advisoryToastMessage = nativeLogNoFilesText
+                        } else {
+                            coroutineScope.launch {
+                                logDialogContent = appSettingsViewModel.getLogFileContent()
                             }
-                        )
+                        }
                     }
-                }
+                )
             }
 
             // 네이티브 로그 다이얼로그 — V2 PrimaryButton/SecondaryButton
             logDialogContent?.let { logContent ->
-                AppDialog(
-                    onDismissRequest = { logDialogContent = null },
-                    title = { Text(stringResource(R.string.settings_native_log_dialog_title)) },
-                    text = {
-                        Column(
-                            modifier = Modifier.verticalScroll(rememberScrollState())
-                        ) {
-                            Text(
-                                text = logContent.takeLast(3000),
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
+                NativeLogDialog(
+                    logContent = logContent,
+                    onCopy = {
+                        context.copyToClipboard(nativeLogClipboardLabel, logContent)
+                        // 안내성 토스트 → ToastV2 오버레이
+                        advisoryToastMessage = nativeLogCopiedText
                     },
-                    confirmButton = {
-                        PrimaryButton(
-                            text = stringResource(R.string.ok),
-                            onClick = { logDialogContent = null }
-                        )
-                    },
-                    dismissButton = {
-                        SecondaryButton(
-                            text = stringResource(R.string.settings_native_log_copy_button),
-                            onClick = {
-                                context.copyToClipboard(nativeLogClipboardLabel, logContent)
-                                // 안내성 토스트 → ToastV2 오버레이
-                                advisoryToastMessage = nativeLogCopiedText
-                            }
-                        )
-                    }
+                    onDismiss = { logDialogContent = null }
                 )
             }
 
             // 정보
-            SettingsSection(title = stringResource(R.string.settings_v2_section_info)) {
-                ClickableRowV2(
-                    icon = Icons.Default.Info,
-                    title = stringResource(R.string.settings_v2_oss_license_title),
-                    subtitle = stringResource(R.string.settings_v2_oss_license_subtitle),
-                    onClick = {
-                        val intent = Intent(context, OpenSourceLicensesActivity::class.java)
-                        context.startActivity(intent)
-                    }
-                )
-                ClickableRowV2(
-                    icon = Icons.Default.Update,
-                    title = stringResource(R.string.settings_v2_app_version_title),
-                    subtitle = BuildConfig.VERSION_NAME,
-                    onClick = { }
-                )
-                ClickableRowV2(
-                    icon = Icons.Default.Security,
-                    title = stringResource(R.string.privacy_policy),
-                    subtitle = "",
-                    onClick = { context.openUrl(Constants.Legal.PRIVACY_POLICY_URL) }
-                )
-                ClickableRowV2(
-                    icon = Icons.Default.Description,
-                    title = stringResource(R.string.terms_of_service),
-                    subtitle = "",
-                    onClick = { context.openUrl(Constants.Legal.TERMS_OF_SERVICE_URL) }
-                )
-            }
+            InfoSection(
+                appVersion = BuildConfig.VERSION_NAME,
+                onOssLicenseClick = {
+                    val intent = Intent(context, OpenSourceLicensesActivity::class.java)
+                    context.startActivity(intent)
+                },
+                onPrivacyClick = { context.openUrl(Constants.Legal.PRIVACY_POLICY_URL) },
+                onTermsClick = { context.openUrl(Constants.Legal.TERMS_OF_SERVICE_URL) }
+            )
 
             // Mock Camera 진입점은 ADMIN 섹션에 이미 노출됨 (위쪽 isAdminTier 블록).
             // 개발자 빌드 분기는 ADMIN 권한과 중복되어 동일 화면이 두 번 보이는 문제가 있어 삭제.
             // 관리자 레퍼럴 코드 관리 — 개발 빌드 또는 ADMIN 티어에 노출(릴리즈 관리자 대응).
             if (BuildConfig.SHOW_DEVELOPER_FEATURES || isAdminTier) {
-                SettingsSection(title = stringResource(R.string.settings_v2_section_referral)) {
-                    val totalCodes = adminReferralState.statistics["totalCodes"] as? Int ?: 0
-                    val availableCodes = adminReferralState.statistics["availableCodes"] as? Int ?: 0
-                    val usedCodes = adminReferralState.statistics["usedCodes"] as? Int ?: 0
-                    val usageRate = adminReferralState.statistics["usageRate"] as? Int ?: 0
-
-                    ClickableRowV2(
-                        icon = Icons.Default.Info,
-                        title = stringResource(R.string.settings_v2_referral_usage_title),
-                        subtitle = stringResource(
-                            R.string.settings_v2_referral_usage_subtitle,
-                            totalCodes,
-                            availableCodes,
-                            usedCodes,
-                            usageRate
-                        ),
-                        onClick = { adminReferralCodeViewModel.refreshData() }
-                    )
-                    ClickableRowV2(
-                        icon = Icons.Default.Settings,
-                        title = stringResource(R.string.settings_v2_referral_generate_title),
-                        subtitle = if (adminReferralState.isLoading) {
-                            stringResource(R.string.settings_v2_referral_generate_in_progress)
-                        } else {
-                            stringResource(R.string.settings_v2_referral_generate_subtitle)
-                        },
-                        onClick = {
-                            if (!adminReferralState.isLoading) {
-                                adminReferralCodeViewModel.generateReferralCodes(30)
-                            }
+                AdminReferralSection(
+                    statistics = adminReferralState.statistics,
+                    isLoading = adminReferralState.isLoading,
+                    onRefreshClick = { adminReferralCodeViewModel.refreshData() },
+                    onGenerateClick = {
+                        if (!adminReferralState.isLoading) {
+                            adminReferralCodeViewModel.generateReferralCodes(30)
                         }
-                    )
-                    ClickableRowV2(
-                        icon = Icons.Default.ContentCopy,
-                        title = stringResource(R.string.settings_v2_referral_extract_title),
-                        subtitle = stringResource(R.string.settings_v2_referral_extract_subtitle),
-                        onClick = {
-                            val code = adminReferralCodeViewModel.extractOneAvailableCode()
-                            if (code != null) {
-                                context.copyToClipboard(referralClipboardLabel, code)
-                                // 안내성(코드 복사됨) 토스트 → ToastV2 오버레이
-                                advisoryToastMessage = referralCopiedTemplate.format(code)
-                            }
-                        }
-                    )
-
-                    if (adminReferralState.isLoading) {
-                        Box(modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = Spacing.base, vertical = Spacing.md)) {
-                            ProgressBarV2(progress = null)
+                    },
+                    onExtractClick = {
+                        val code = adminReferralCodeViewModel.extractOneAvailableCode()
+                        if (code != null) {
+                            context.copyToClipboard(referralClipboardLabel, code)
+                            // 안내성(코드 복사됨) 토스트 → ToastV2 오버레이
+                            advisoryToastMessage = referralCopiedTemplate.format(code)
                         }
                     }
-                }
+                )
             }
 
             Spacer(modifier = Modifier.height(Spacing.lg))
@@ -1061,226 +645,56 @@ fun SettingsScreen(
         // -------- 그룹 1 — 로그아웃 / 계정 삭제 / 언어 선택 다이얼로그 --------
 
         if (showLogoutConfirm) {
-            AppDialog(
-                onDismissRequest = { showLogoutConfirm = false },
-                title = {
-                    Text(
-                        stringResource(R.string.account_logout_dialog_title),
-                        style = HeadingL,
-                        color = TextPrimaryV2
-                    )
+            LogoutConfirmDialog(
+                onConfirm = {
+                    showLogoutConfirm = false
+                    authViewModel?.signOut()
                 },
-                text = {
-                    Text(
-                        stringResource(R.string.account_logout_dialog_message),
-                        style = BodySmall,
-                        color = TextSecondaryV2
-                    )
-                },
-                confirmButton = {
-                    PrimaryButton(
-                        text = stringResource(R.string.account_logout_confirm),
-                        onClick = {
-                            showLogoutConfirm = false
-                            authViewModel?.signOut()
-                        }
-                    )
-                },
-                dismissButton = {
-                    SecondaryButton(
-                        text = stringResource(R.string.account_logout_cancel),
-                        onClick = { showLogoutConfirm = false }
-                    )
-                }
+                onDismiss = { showLogoutConfirm = false }
             )
         }
 
         if (showDeleteAccountDialog) {
-            AppDialog(
-                onDismissRequest = { showDeleteAccountDialog = false },
-                title = {
-                    Text(
-                        stringResource(R.string.account_delete_dialog_title),
-                        style = HeadingL,
-                        color = ErrorV2
-                    )
+            DeleteAccountDialog(
+                onContinue = {
+                    showDeleteAccountDialog = false
+                    deleteConfirmInput = ""
+                    showDeleteConfirmDialog = true
                 },
-                text = {
-                    Text(
-                        stringResource(R.string.account_delete_dialog_message),
-                        style = BodySmall,
-                        color = TextSecondaryV2
-                    )
-                },
-                confirmButton = {
-                    PrimaryButton(
-                        text = stringResource(R.string.account_delete_continue),
-                        onClick = {
-                            showDeleteAccountDialog = false
-                            deleteConfirmInput = ""
-                            showDeleteConfirmDialog = true
-                        }
-                    )
-                },
-                dismissButton = {
-                    SecondaryButton(
-                        text = stringResource(R.string.account_delete_cancel),
-                        onClick = { showDeleteAccountDialog = false }
-                    )
-                }
+                onDismiss = { showDeleteAccountDialog = false }
             )
         }
 
         if (showDeleteConfirmDialog) {
-            val confirmEnabled = deleteConfirmInput.trim() == "DELETE" && !isDeletingAccount
-            AppDialog(
-                onDismissRequest = {
-                    if (!isDeletingAccount) {
+            DeleteConfirmDialog(
+                input = deleteConfirmInput,
+                onInputChange = { deleteConfirmInput = it },
+                isDeleting = isDeletingAccount,
+                onConfirm = {
+                    // 서버(deleteAccount CF)가 Firestore 사용자 데이터·구독·레퍼럴·구매기록과
+                    // Firebase Auth 사용자까지 삭제한다. 로딩(isDeletingAccount)·성공/실패 토스트·
+                    // 로그인 화면 이동은 AuthViewModel 의 uiState/uiEvent 에서 처리한다.
+                    authViewModel?.deleteAccount() ?: run {
                         showDeleteConfirmDialog = false
+                        val intent = Intent(context, LoginActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                                    Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        }
+                        context.startActivity(intent)
+                        (context as? ComponentActivity)?.finish()
                     }
                 },
-                title = {
-                    Text(
-                        stringResource(R.string.account_delete_confirm_title),
-                        style = HeadingL,
-                        color = ErrorV2
-                    )
-                },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
-                        Text(
-                            stringResource(R.string.account_delete_confirm_message),
-                            style = BodySmall,
-                            color = TextSecondaryV2
-                        )
-                        OutlinedTextField(
-                            value = deleteConfirmInput,
-                            onValueChange = { deleteConfirmInput = it },
-                            singleLine = true,
-                            enabled = !isDeletingAccount,
-                            placeholder = {
-                                Text(
-                                    stringResource(R.string.account_delete_confirm_placeholder),
-                                    color = TextTertiary
-                                )
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = TextFieldDefaults.colors(
-                                focusedTextColor = TextPrimaryV2,
-                                unfocusedTextColor = TextPrimaryV2,
-                                focusedContainerColor = Surface3,
-                                unfocusedContainerColor = Surface3,
-                                disabledContainerColor = Surface3,
-                                focusedIndicatorColor = ErrorV2,
-                                unfocusedIndicatorColor = Surface3,
-                                cursorColor = ErrorV2
-                            )
-                        )
-                    }
-                },
-                confirmButton = {
-                    PrimaryButton(
-                        text = stringResource(R.string.account_delete_confirm_button),
-                        enabled = confirmEnabled,
-                        isLoading = isDeletingAccount,
-                        onClick = {
-                            // 서버(deleteAccount CF)가 Firestore 사용자 데이터·구독·레퍼럴·구매기록과
-                            // Firebase Auth 사용자까지 삭제한다. 로딩(isDeletingAccount)·성공/실패 토스트·
-                            // 로그인 화면 이동은 AuthViewModel 의 uiState/uiEvent 에서 처리한다.
-                            authViewModel?.deleteAccount() ?: run {
-                                showDeleteConfirmDialog = false
-                                val intent = Intent(context, LoginActivity::class.java).apply {
-                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                                            Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                }
-                                context.startActivity(intent)
-                                (context as? ComponentActivity)?.finish()
-                            }
-                        }
-                    )
-                },
-                dismissButton = {
-                    SecondaryButton(
-                        text = stringResource(R.string.account_delete_confirm_cancel),
-                        onClick = {
-                            if (!isDeletingAccount) {
-                                showDeleteConfirmDialog = false
-                            }
-                        }
-                    )
-                }
+                onDismiss = { showDeleteConfirmDialog = false }
             )
         }
 
         if (showReferralRedeemDialog) {
-            val applyEnabled =
-                referralRedeemInput.trim().isNotEmpty() && !referralRedeemState.isLoading
-            AppDialog(
-                onDismissRequest = {
-                    if (!referralRedeemState.isLoading) {
-                        showReferralRedeemDialog = false
-                    }
-                },
-                title = {
-                    Text(
-                        stringResource(R.string.settings_referral_redeem_title),
-                        style = HeadingL,
-                        color = TextPrimaryV2
-                    )
-                },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
-                        Text(
-                            stringResource(R.string.settings_referral_redeem_subtitle),
-                            style = BodySmall,
-                            color = TextSecondaryV2
-                        )
-                        OutlinedTextField(
-                            value = referralRedeemInput,
-                            onValueChange = { referralRedeemInput = it },
-                            singleLine = true,
-                            enabled = !referralRedeemState.isLoading,
-                            keyboardOptions = KeyboardOptions(
-                                capitalization = KeyboardCapitalization.Characters
-                            ),
-                            placeholder = {
-                                Text(
-                                    stringResource(R.string.settings_referral_redeem_hint),
-                                    color = TextTertiary
-                                )
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = TextFieldDefaults.colors(
-                                focusedTextColor = TextPrimaryV2,
-                                unfocusedTextColor = TextPrimaryV2,
-                                focusedContainerColor = Surface3,
-                                unfocusedContainerColor = Surface3,
-                                disabledContainerColor = Surface3,
-                                focusedIndicatorColor = Accent,
-                                unfocusedIndicatorColor = Surface3,
-                                cursorColor = Accent
-                            )
-                        )
-                    }
-                },
-                confirmButton = {
-                    PrimaryButton(
-                        text = stringResource(R.string.settings_referral_redeem_apply),
-                        enabled = applyEnabled,
-                        isLoading = referralRedeemState.isLoading,
-                        onClick = { referralRedeemViewModel.redeem(referralRedeemInput) }
-                    )
-                },
-                dismissButton = {
-                    SecondaryButton(
-                        text = stringResource(R.string.cancel),
-                        onClick = {
-                            if (!referralRedeemState.isLoading) {
-                                showReferralRedeemDialog = false
-                            }
-                        }
-                    )
-                }
+            ReferralRedeemDialog(
+                input = referralRedeemInput,
+                onInputChange = { referralRedeemInput = it },
+                isLoading = referralRedeemState.isLoading,
+                onApply = { referralRedeemViewModel.redeem(referralRedeemInput) },
+                onDismiss = { showReferralRedeemDialog = false }
             )
         }
 
@@ -1310,487 +724,4 @@ fun SettingsScreen(
             )
         }
     }
-}
-
-/**
- * 현재 적용된 언어 라벨. AppCompatDelegate 의 application locales 가 비어 있으면
- * 시스템 기본, 그렇지 않으면 첫 locale 의 language tag 를 매핑해 반환한다.
- */
-@Composable
-private fun currentLanguageLabel(): String {
-    val applied = AppCompatDelegate.getApplicationLocales()
-    val tag = if (applied.isEmpty) {
-        null
-    } else {
-        applied.toLanguageTags().substringBefore(',').substringBefore('-')
-    }
-    val resId = when (tag) {
-        "ko" -> R.string.language_option_ko
-        "ja" -> R.string.language_option_ja
-        "zh" -> R.string.language_option_zh
-        "de" -> R.string.language_option_de
-        "es" -> R.string.language_option_es
-        "fr" -> R.string.language_option_fr
-        "it" -> R.string.language_option_it
-        "en" -> R.string.language_option_en
-        else -> R.string.language_system_default
-    }
-    return stringResource(resId)
-}
-
-/**
- * 언어 선택 다이얼로그 — System default + 8개 언어 라디오 리스트.
- *
- * [onLanguageSelected] 의 인자는 BCP-47 tag 또는 null(시스템 기본).
- * 호출자가 AppCompatDelegate.setApplicationLocales 처리 책임을 가진다.
- */
-@Composable
-private fun LanguageSelectionDialog(
-    onDismissRequest: () -> Unit,
-    onLanguageSelected: (String?) -> Unit
-) {
-    data class LangOption(val tag: String?, val labelRes: Int)
-    val options = listOf(
-        LangOption(null, R.string.language_system_default),
-        LangOption("ko", R.string.language_option_ko),
-        LangOption("ja", R.string.language_option_ja),
-        LangOption("zh", R.string.language_option_zh),
-        LangOption("de", R.string.language_option_de),
-        LangOption("es", R.string.language_option_es),
-        LangOption("fr", R.string.language_option_fr),
-        LangOption("it", R.string.language_option_it),
-        LangOption("en", R.string.language_option_en)
-    )
-
-    val applied = AppCompatDelegate.getApplicationLocales()
-    val currentTag = if (applied.isEmpty) {
-        null
-    } else {
-        applied.toLanguageTags().substringBefore(',').substringBefore('-')
-    }
-
-    AppDialog(
-        onDismissRequest = onDismissRequest,
-        title = {
-            Text(
-                stringResource(R.string.language_dialog_title),
-                style = HeadingL,
-                color = TextPrimaryV2
-            )
-        },
-        text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(Spacing.xs)
-            ) {
-                options.forEach { option ->
-                    val selected = option.tag == currentTag
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onLanguageSelected(option.tag) }
-                            .padding(vertical = Spacing.sm, horizontal = Spacing.xs),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = selected,
-                            onClick = { onLanguageSelected(option.tag) },
-                            colors = RadioButtonDefaults.colors(
-                                selectedColor = Accent,
-                                unselectedColor = TextSecondaryV2
-                            )
-                        )
-                        Spacer(modifier = Modifier.width(Spacing.sm))
-                        Text(
-                            text = stringResource(option.labelRes),
-                            style = HeadingM,
-                            color = TextPrimaryV2
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            SecondaryButton(
-                text = stringResource(R.string.cancel),
-                onClick = onDismissRequest
-            )
-        }
-    )
-}
-
-/**
- * 라이브뷰 화질(속도/균형/품질) 선택 다이얼로그.
- * LanguageSelectionDialog 패턴 복제 — AppDialog + RadioButton 리스트, 다크 V2 토큰.
- */
-@Composable
-private fun LiveViewQualitySelectionDialog(
-    current: LiveViewQuality,
-    onSelected: (LiveViewQuality) -> Unit,
-    onDismissRequest: () -> Unit
-) {
-    data class QualityOption(
-        val quality: LiveViewQuality,
-        @StringRes val labelRes: Int,
-        @StringRes val descRes: Int
-    )
-
-    val options = listOf(
-        QualityOption(
-            LiveViewQuality.SPEED,
-            R.string.settings_v2_liveview_quality_speed,
-            R.string.settings_v2_liveview_quality_speed_desc
-        ),
-        QualityOption(
-            LiveViewQuality.BALANCED,
-            R.string.settings_v2_liveview_quality_balanced,
-            R.string.settings_v2_liveview_quality_balanced_desc
-        ),
-        QualityOption(
-            LiveViewQuality.QUALITY,
-            R.string.settings_v2_liveview_quality_quality,
-            R.string.settings_v2_liveview_quality_quality_desc
-        )
-    )
-
-    AppDialog(
-        onDismissRequest = onDismissRequest,
-        title = {
-            Text(
-                stringResource(R.string.settings_v2_liveview_quality_title),
-                style = HeadingL,
-                color = TextPrimaryV2
-            )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                options.forEach { option ->
-                    val selected = option.quality == current
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onSelected(option.quality) }
-                            .padding(vertical = Spacing.sm, horizontal = Spacing.xs),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = selected,
-                            onClick = { onSelected(option.quality) },
-                            colors = RadioButtonDefaults.colors(
-                                selectedColor = Accent,
-                                unselectedColor = TextSecondaryV2
-                            )
-                        )
-                        Spacer(modifier = Modifier.width(Spacing.sm))
-                        Column {
-                            Text(
-                                text = stringResource(option.labelRes),
-                                style = HeadingM,
-                                color = TextPrimaryV2
-                            )
-                            Text(
-                                text = stringResource(option.descRes),
-                                style = BodySmall,
-                                color = TextSecondaryV2
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            SecondaryButton(
-                text = stringResource(R.string.cancel),
-                onClick = onDismissRequest
-            )
-        }
-    )
-}
-
-@StringRes
-private fun LiveViewQuality.labelRes(): Int = when (this) {
-    LiveViewQuality.SPEED -> R.string.settings_v2_liveview_quality_speed
-    LiveViewQuality.BALANCED -> R.string.settings_v2_liveview_quality_balanced
-    LiveViewQuality.QUALITY -> R.string.settings_v2_liveview_quality_quality
-}
-
-/**
- * 안내성(비오류) 토스트 오버레이 — CameraControlScreen 의 ToastV2 패턴을 따른다.
- * [message] 가 non-null 이면 상단에서 슬라이드 인 후 3초 뒤 [onDismiss] 로 소멸한다.
- */
-@Composable
-private fun AdvisoryToastHost(
-    message: String?,
-    paddingValues: androidx.compose.foundation.layout.PaddingValues,
-    onDismiss: () -> Unit
-) {
-    val visible = message != null
-    if (message != null) {
-        LaunchedEffect(message) {
-            kotlinx.coroutines.delay(3000L)
-            onDismiss()
-        }
-    }
-    androidx.compose.animation.AnimatedVisibility(
-        visible = visible,
-        enter = androidx.compose.animation.slideInVertically(initialOffsetY = { -80 }) +
-            androidx.compose.animation.fadeIn(
-                animationSpec = androidx.compose.animation.core.tween(260)
-            ),
-        exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { -80 }) +
-            androidx.compose.animation.fadeOut(
-                animationSpec = androidx.compose.animation.core.tween(260)
-            )
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(paddingValues)
-                .padding(start = Spacing.base, end = Spacing.base, top = Spacing.sm)
-        ) {
-            com.inik.camcon.presentation.ui.components.v2.ToastV2(
-                message = message.orEmpty(),
-                kind = com.inik.camcon.presentation.ui.components.v2.StatusKind.Idle,
-                modifier = Modifier.align(Alignment.TopCenter)
-            )
-        }
-    }
-}
-
-/**
- * V2 섹션 컨테이너 — Lightroom 환경설정 톤.
- * 헤더(MicroLabel, TextTertiary 계측기 라벨) + SurfaceV2 tier=1 패널 + RowItem 리스트.
- */
-@Composable
-fun SettingsSection(
-    title: String,
-    content: @Composable () -> Unit
-) {
-    Column(modifier = Modifier.padding(horizontal = Spacing.base)) {
-        Text(
-            // CINE 계측기 라벨 — MicroLabel(11sp Medium, ls1.4). CJK 대응으로 .uppercase() 호출 금지.
-            text = title,
-            style = MicroLabel,
-            color = TextTertiary,
-            modifier = Modifier.padding(
-                start = Spacing.xs,
-                top = Spacing.xl,
-                bottom = Spacing.sm
-            )
-        )
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Surface1)
-        ) {
-            content()
-        }
-    }
-}
-
-/**
- * V2 RowItem 기반 — 스위치 trailing.
- * Row 자체를 클릭해도 토글되도록 한다.
- */
-@Composable
-private fun SwitchRowV2(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    Column {
-        RowItem(
-            label = title,
-            description = subtitle.takeIf { it.isNotEmpty() },
-            leadingIcon = icon,
-            trailing = {
-                Switch(
-                    checked = checked,
-                    onCheckedChange = onCheckedChange,
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = OnAccent,
-                        checkedTrackColor = Accent,
-                        uncheckedThumbColor = TextSecondaryV2,
-                        uncheckedTrackColor = Surface3
-                    )
-                )
-            },
-            onClick = { onCheckedChange(!checked) }
-        )
-        DividerLineV2()
-    }
-}
-
-/**
- * 자동적용 강도 슬라이더 행 — SettingsSection 내부 다크 V2 Slider(0..1).
- * 라벨 + 퍼센트 표기 + Material3 Slider. 값 변경은 [onChange] 로 호이스팅.
- */
-@Composable
-private fun FilmIntensityRow(
-    intensity: Float,
-    onChange: (Float) -> Unit
-) {
-    Column {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = Spacing.base, vertical = Spacing.sm)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = stringResource(R.string.settings_v2_film_intensity_title),
-                    style = HeadingM,
-                    color = TextPrimaryV2
-                )
-                Text(
-                    text = "${(intensity * 100f).roundToInt()}%",
-                    style = BodySmall,
-                    color = TextSecondaryV2
-                )
-            }
-            Slider(
-                value = intensity.coerceIn(0f, 1f),
-                onValueChange = onChange,
-                valueRange = 0f..1f,
-                colors = SliderDefaults.colors(
-                    thumbColor = Accent,
-                    activeTrackColor = Accent,
-                    inactiveTrackColor = Surface3
-                )
-            )
-        }
-        DividerLineV2()
-    }
-}
-
-/**
- * V2 RowItem 기반 — 클릭 가능 행 (chevron 없음).
- */
-@Composable
-private fun ClickableRowV2(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit
-) {
-    Column {
-        RowItem(
-            label = title,
-            description = subtitle.takeIf { it.isNotEmpty() },
-            leadingIcon = icon,
-            onClick = onClick
-        )
-        DividerLineV2()
-    }
-}
-
-/**
- * V2 RowItem 기반 — 네비게이션 행 (chevron trailing).
- */
-@Composable
-private fun NavigationRowV2(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit
-) {
-    Column {
-        RowItem(
-            label = title,
-            description = subtitle.takeIf { it.isNotEmpty() },
-            leadingIcon = icon,
-            trailing = {
-                Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = null,
-                    tint = TextSecondaryV2,
-                    modifier = Modifier.size(IconSize.md)
-                )
-            },
-            onClick = onClick
-        )
-        DividerLineV2()
-    }
-}
-
-/**
- * 사용자 프로필 표시 — RowItem 패턴.
- */
-@Composable
-fun UserProfileItem(
-    user: User?,
-    onClick: () -> Unit
-) {
-    Column {
-        RowItem(
-            label = user?.displayName ?: stringResource(R.string.settings_v2_user_default_name),
-            description = user?.email ?: stringResource(R.string.settings_v2_user_login_required),
-            leadingContent = {
-                if (user?.photoUrl != null) {
-                    AsyncImage(
-                        model = user.photoUrl,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(IconSize.xl)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        tint = TextSecondaryV2,
-                        modifier = Modifier.size(IconSize.lg)
-                    )
-                }
-            },
-            trailing = {
-                Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = null,
-                    tint = TextSecondaryV2,
-                    modifier = Modifier.size(IconSize.md)
-                )
-            },
-            onClick = onClick
-        )
-    }
-}
-
-// 기존 호출처 호환용 별칭 — 외부에서 SettingsItem*을 참조할 수 있어 유지.
-@Composable
-fun SettingsItem(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit
-) {
-    ClickableRowV2(icon, title, subtitle, onClick)
-}
-
-@Composable
-fun SettingsItemWithSwitch(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    SwitchRowV2(icon, title, subtitle, checked, onCheckedChange)
-}
-
-@Composable
-fun SettingsItemWithNavigation(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit
-) {
-    NavigationRowV2(icon, title, subtitle, onClick)
 }
