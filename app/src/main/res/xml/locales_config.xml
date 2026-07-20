@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 앱이 지원하는 로케일 선언 (Android 13+ 시스템 앱별 언어 설정 UI 노출용).
+     app/build.gradle 의 resConfigs 및 지원 언어 8종(en 기본 + ko/ja/zh/de/es/fr/it)과 일치. -->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="ko" />
+    <locale android:name="ja" />
+    <locale android:name="zh" />
+    <locale android:name="de" />
+    <locale android:name="es" />
+    <locale android:name="fr" />
+    <locale android:name="it" />
+</locale-config>

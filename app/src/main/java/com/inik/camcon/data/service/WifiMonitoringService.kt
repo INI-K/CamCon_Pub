@@ -139,7 +139,10 @@ class WifiMonitoringService : Service() {
                 if (!preferencesDataSource.isAutoConnectEnabledNow()) {
                     Log.d(TAG, "⏹️ 자동 연결 토글 OFF - FGS 유지 안 함, 서비스 종료")
                     stopWifiMonitoring()
-                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    // 공유 상태 알림 규약: REMOVE는 다른 서비스(BackgroundSync 등)가 쓰는 알림까지
+                    // 지운다. DETACH + owner 해제로 남은 owner가 있으면 그쪽 상태로 복원, 없으면 제거한다.
+                    stopForeground(STOP_FOREGROUND_DETACH)
+                    CamConStatusNotification.detach(this@WifiMonitoringService, CamConStatusNotification.OWNER_WIFI)
                     stopSelf()
                 }
             } catch (e: Exception) {
@@ -218,7 +221,11 @@ class WifiMonitoringService : Service() {
      */
     private suspend fun isCameraBusy(): Boolean {
         return runCatching {
-            CameraNative.isVideoRecording()
+            // J8: 살아있는 USB 세션(공유 네이티브 핸들)이 있으면 폴링 연결 시도를 스킵한다.
+            // discoverCameras→connectToCamera가 mDNS 발견 순간 initCameraWithPtpip로 USB 핸들을
+            // 무경고 파괴하기 때문. USB가 소유 중이면 PTP/IP 상태가 DISCONNECTED여도 손대지 않는다.
+            ptpipDataSource.isUsbCameraActive()
+                || CameraNative.isVideoRecording()
                 || CameraNative.isLiveViewStopping()
                 || cameraRepository.isPhotoPreviewMode().first()
         }.getOrDefault(false)
@@ -429,19 +436,13 @@ class WifiMonitoringService : Service() {
                     Log.d(TAG, "  2-d. 재시도 후 SSID: ${LogMask.ssid(currentSSID)}")
                 }
 
-                // SSID를 여전히 가져올 수 없는 경우, 저장된 설정의 SSID를 사용
+                // J9: SSID를 확정할 수 없으면(위치 권한 부재 등 API 29+ 마스킹으로 <unknown ssid>)
+                // 저장된 카메라 SSID로 '간주'하지 않는다. 과거엔 여기서 저장 SSID로 대체해 이후
+                // 비교가 자기 자신과의 비교라 항상 통과 → 일반 집/회사/공용 Wi-Fi에서도 FGS 기동·
+                // 프로세스 바인딩·15740 포트 스캔이 오발동했다. 불확실하면 no-op으로 건너뛴다.
                 if (currentSSID.isNullOrEmpty() || currentSSID == "<unknown ssid>") {
-                    Log.w(TAG, "  2-e. SSID를 가져올 수 없음 - 저장된 설정의 SSID 사용")
-                    currentSSID = autoConnectConfig.ssid
-                    Log.d(TAG, "  2-f. 저장된 설정 SSID 사용: ${LogMask.ssid(currentSSID)}")
-
-                    // 저장된 SSID를 사용할 때는 실제로 WiFi에 연결되었는지 재확인
-                    val recheckWifiConnected = wifiNetworkHelper.isWifiConnected()
-                    Log.d(TAG, "  2-g. WiFi 재확인: $recheckWifiConnected")
-                    if (!recheckWifiConnected) {
-                        Log.w(TAG, "❌ SSID를 확인할 수 없고, WiFi도 연결되지 않음 - 건너뜀")
-                        return@launch
-                    }
+                    Log.w(TAG, "  2-e. SSID를 확정할 수 없음 - 저장 SSID 대체 안 함, 자동 연결 건너뜀")
+                    return@launch
                 }
 
                 Log.d(TAG, "  2. 최종 SSID: ${LogMask.ssid(currentSSID)}")
@@ -460,8 +461,9 @@ class WifiMonitoringService : Service() {
                     return@launch
                 }
 
-                // 5. 카메라 AP 확인 (SSID 패턴 기반)
-                val isCameraSSID = isCameraNetwork(currentSSID)
+                // 5. 카메라 AP 확인 (SSID 패턴 기반) — 패턴 정본은 WifiNetworkHelper 단일 소스로 단일화.
+                // (과거엔 이 서비스가 자체 리스트를 중복 관리해 WifiNetworkHelper와 발산했다.)
+                val isCameraSSID = WifiNetworkHelper.isCameraApSsid(currentSSID)
                 Log.d(TAG, "  5. 카메라 SSID 패턴: $isCameraSSID")
                 if (!isCameraSSID) {
                     Log.d(TAG, "❌ 카메라 AP가 아님: ${LogMask.ssid(currentSSID)}")
@@ -484,46 +486,4 @@ class WifiMonitoringService : Service() {
         }
     }
 
-    /**
-     * SSID가 카메라 관련 네트워크인지 판단.
-     *
-     * 보수적 매칭 — 일반 SSID와 충돌하기 쉬운 짧은 generic 토큰
-     * ("Mini", "Hero", "Action", "Pocket", "Mobile", "PEN", "fp", "G9" 등)은 제거했다.
-     * 제조사 brand keyword 또는 카메라 시리즈/모델 prefix 기반으로만 판정한다.
-     */
-    private fun isCameraNetwork(ssid: String): Boolean {
-        val cameraPatterns = listOf(
-            // ── 제조사 brand ──
-            "Canon",
-            "Nikon",
-            "Sony",
-            "Fujifilm", "FUJIFILM",
-            "Olympus",
-            "Panasonic", "Lumix",
-            "Pentax", "Ricoh",
-            "Leica",
-            "Hasselblad",
-            "GoPro",
-            "DJI", "Mavic", "Phantom", "Inspire",
-            "Insta360",
-            "Godox",
-            "Sigma",
-            "Tamron",
-            // ── 모델 prefix(brand 없는 카메라 SSID 대비) ──
-            "EOS", "PowerShot", "VIXIA",
-            "COOLPIX", "Z_5", "Z_6", "Z_7", "Z_8", "Z_9", "Z_30", "Z_50", "Z_fc",
-            "D3500", "D5600", "D7500", "D780", "D850", "D500",
-            "Alpha", "ILCE",
-            "A7R", "A7S", "A7C", "A7IV",
-            "ZV-1", "ZV-E10",
-            "X-T4", "X-T5", "X-T30", "X-T50", "X-Pro3", "X-E4", "X-S10", "X-S20",
-            "X-H1", "X-H2", "GFX50", "GFX100",
-            "OM-D", "E-M1", "E-M5", "E-M10",
-            "GH5", "GH6", "FZ1000", "LX100"
-        )
-
-        return cameraPatterns.any { pattern ->
-            ssid.contains(pattern, ignoreCase = true)
-        }
-    }
 }

@@ -664,6 +664,12 @@ class NativeCameraDataSource @Inject constructor(
     @Volatile
     private var baselineFileLevel: Int = CameraNative.GP_LOG_ERROR
 
+    // 사용자(Splash/설정)가 설정한 활성 파일 로그 경로. Wi-Fi init이 ptpip 전용 로그로 경로를
+    // 강탈(startLogFile 재호출)한 뒤 [restoreUserLogPath]로 이 경로를 되돌리는 데 쓴다.
+    // null 이면 사용자가 켠 파일 로그가 없다는 뜻(복원 대상 없음).
+    @Volatile
+    private var baselineLogPath: String? = null
+
     /** Wi-Fi 연결 등 일시적 레벨 상향 후 복원에 쓰는 현재 파일 로그 baseline 레벨. */
     fun currentFileLevel(): Int = baselineFileLevel
 
@@ -672,6 +678,7 @@ class NativeCameraDataSource @Inject constructor(
         if (started) {
             CameraNative.setLogLevel(level)
             baselineFileLevel = level
+            baselineLogPath = logPath
         }
         started
     }
@@ -682,7 +689,22 @@ class NativeCameraDataSource @Inject constructor(
         // (기존 stopLogFile은 콜백을 마지막 레벨에 그대로 둬 "꺼도 안 조용한" 비일관 상태였다.)
         CameraNative.setLogLevel(CameraNative.GP_LOG_ERROR)
         baselineFileLevel = CameraNative.GP_LOG_ERROR
+        baselineLogPath = null
         stopped
+    }
+
+    /**
+     * Wi-Fi init이 ptpip 전용 파일로 강탈한 네이티브 로그 경로를, 사용자가 설정한 baseline 경로로 복원한다.
+     * 사용자가 켠 파일 로그가 없으면(baselineLogPath == null) no-op 이다.
+     * (ptpip 로그 파일 자체는 건드리지 않으므로 lastPtpipInitFailReason 읽기는 이후에도 유효하다.)
+     */
+    suspend fun restoreUserLogPath(): Boolean = withContext(ioDispatcher) {
+        val path = baselineLogPath ?: return@withContext false
+        val restored = CameraNative.startLogFile(path)
+        if (restored) {
+            CameraNative.setLogLevel(baselineFileLevel)
+        }
+        restored
     }
 
     suspend fun getLogFileContent(filePath: String): String = withContext(ioDispatcher) {

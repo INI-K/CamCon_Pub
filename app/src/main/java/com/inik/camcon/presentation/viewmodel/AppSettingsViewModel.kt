@@ -97,8 +97,8 @@ class AppSettingsViewModel @Inject constructor(
         appSettingsRepository.isLiveViewEnabled,
         getSubscriptionUseCase.getSubscriptionTier()
     ) { settingEnabled, subscriptionTier ->
-        // ADMIN 티어가 아니면 항상 false
-        if (subscriptionTier != SubscriptionTier.ADMIN) {
+        // 라이브뷰 표시 허용은 기능 게이팅 단일 지점(ValidateFeatureAccessUseCase)에 위임한다.
+        if (!validateFeatureAccessUseCase.isLiveViewAllowed(subscriptionTier)) {
             false
         } else {
             settingEnabled
@@ -116,6 +116,19 @@ class AppSettingsViewModel @Inject constructor(
         .map { tier ->
             tier == SubscriptionTier.ADMIN
         }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
+
+    /**
+     * RAW 다운로드 토글 노출 허용 여부 — 포맷/RAW 축 단일 지점([ValidateImageFormatUseCase])에 위임.
+     * (UI 에서 티어 집합을 직접 나열하는 분기 대신 이 파생 상태를 소비한다.)
+     * subscriptionTier StateFlow 의 초기값(FREE) 오염(잠금 플래시)을 피하려 effectiveTierFlow 를 쓴다.
+     */
+    val isRawDownloadAllowed: StateFlow<Boolean> = effectiveTierFlow
+        .map { validateImageFormatUseCase.isRawAllowedForTier(it) }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),

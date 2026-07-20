@@ -210,20 +210,6 @@ class UsbCameraManager @Inject constructor(
         capabilitiesManager.getCameraAbilitiesFromMaster()
 
     /**
-     * USB 분리 콜백을 설정합니다 (외부에서 사용)
-     */
-    fun setUsbDisconnectionCallback(callback: () -> Unit) {
-        // 기존 콜백에 추가로 연결
-        val originalCallback = connectionManager::handleUsbDisconnection
-        connectionManager.setDisconnectionCallback {
-            scope.launch {
-                originalCallback.invoke()
-                callback.invoke()
-            }
-        }
-    }
-
-    /**
      * USB 분리 처리
      */
     suspend fun handleUsbDisconnection() {

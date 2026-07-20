@@ -8,6 +8,7 @@ import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.domain.model.LiveViewFrame
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.domain.model.TransferQueueState
+import com.inik.camcon.domain.model.UiText
 
 /**
  * 카메라 연결 관련 상태
@@ -21,7 +22,7 @@ data class CameraConnectionState(
     val usbDeviceCount: Int = 0,
     val hasUsbPermission: Boolean = false,
     val isUsbInitializing: Boolean = false,
-    val usbInitializationMessage: String? = null,
+    val usbInitializationMessage: UiText? = null,
     val isUsbDisconnected: Boolean = false,
     val isPtpTimeout: Boolean = false,
     val connectionProgressMessage: String = "",
@@ -83,7 +84,7 @@ data class CameraDialogState(
     val showRestartDialog: Boolean = false,
     val showCameraStatusCheckDialog: Boolean = false,
     val showNikonStaWarning: Boolean = false,
-    val cameraFunctionLimitation: String? = null,
+    val cameraFunctionLimitation: UiText? = null,
     val rawFileRestriction: RawFileRestriction? = null,
     val shootingModeError: String? = null
 )
@@ -103,7 +104,9 @@ data class CameraUiState(
     val dialog: CameraDialogState = CameraDialogState(),
 
     // 글로벌 상태 (특정 sub-state에 넣기 어려운 것들)
-    val error: String? = null,
+    // UI 에러 메시지. Context 없는 매니저/데이터 레이어가 i18n 가능한 문자열을 실을 수 있도록 UiText 로 둔다.
+    // (UI 는 resolve(context)로 문자열화. 네이티브/기존 하드코딩 문자열은 UiText.Raw 로 감싸 표시.)
+    val error: UiText? = null,
     val isLoading: Boolean = false,
     val isInitializing: Boolean = false,
     val isCameraInitializing: Boolean = false,
@@ -118,7 +121,7 @@ data class CameraUiState(
     inline val usbDeviceCount: Int get() = connection.usbDeviceCount
     inline val hasUsbPermission: Boolean get() = connection.hasUsbPermission
     inline val isUsbInitializing: Boolean get() = connection.isUsbInitializing
-    inline val usbInitializationMessage: String? get() = connection.usbInitializationMessage
+    inline val usbInitializationMessage: UiText? get() = connection.usbInitializationMessage
     inline val isUsbDisconnected: Boolean get() = connection.isUsbDisconnected
     inline val isPtpTimeout: Boolean get() = connection.isPtpTimeout
     inline val connectionProgressMessage: String get() = connection.connectionProgressMessage
@@ -149,7 +152,7 @@ data class CameraUiState(
     inline val showRestartDialog: Boolean get() = dialog.showRestartDialog
     inline val showCameraStatusCheckDialog: Boolean get() = dialog.showCameraStatusCheckDialog
     inline val showNikonStaWarning: Boolean get() = dialog.showNikonStaWarning
-    inline val cameraFunctionLimitation: String? get() = dialog.cameraFunctionLimitation
+    inline val cameraFunctionLimitation: UiText? get() = dialog.cameraFunctionLimitation
     inline val rawFileRestriction: RawFileRestriction? get() = dialog.rawFileRestriction
 
     /**

@@ -73,8 +73,7 @@ class PhotoImageManagerDownloadPersistTest {
     fun `PRO 다운로드 성공 시 원본 바이트를 저장 포트로 넘긴다`() = runTest(dispatcher) {
         val bytes = byteArrayOf(1, 2, 3, 4)
         coEvery { downloadCameraPhotoUseCase(jpgPath) } returns bytes
-        coEvery { validateImageFormatUseCase.validateFormat(any()) } returns
-            ValidateImageFormatUseCase.ValidationResult(isSupported = true)
+        coEvery { validateImageFormatUseCase.isDownloadAllowed(any()) } returns true
         coEvery { galleryDownloadStore.save(any(), any()) } returns "/DCIM/CamCon/100NIKON/DSC_0001.JPG"
 
         val result = manager.downloadAndPersist(jpgPath, SubscriptionTier.PRO)
@@ -88,15 +87,14 @@ class PhotoImageManagerDownloadPersistTest {
     fun `FREE 저장은 ValidateImageFormatUseCase 게이팅 단일 지점을 경유한다`() = runTest(dispatcher) {
         val bytes = byteArrayOf(9, 8, 7)
         coEvery { downloadCameraPhotoUseCase(jpgPath) } returns bytes
-        coEvery { validateImageFormatUseCase.validateFormat(any()) } returns
-            ValidateImageFormatUseCase.ValidationResult(isSupported = true)
+        coEvery { validateImageFormatUseCase.isDownloadAllowed(any()) } returns true
         coEvery { galleryDownloadStore.save(any(), any()) } returns "/DCIM/CamCon/100NIKON/DSC_0001.JPG"
 
         val result = manager.downloadAndPersist(jpgPath, SubscriptionTier.FREE)
 
         assertTrue(result)
-        // 게이팅 단일 지점 경유 확인 — 저장 전에 포맷 검증이 반드시 호출된다.
-        coVerify(atLeast = 1) { validateImageFormatUseCase.validateFormat(match { it.endsWith(".JPG") }) }
+        // 게이팅 단일 지점 경유 확인 — 저장 전에 다운로드 게이팅이 반드시 호출된다.
+        coVerify(atLeast = 1) { validateImageFormatUseCase.isDownloadAllowed(match { it.endsWith(".JPG") }) }
         coVerify(exactly = 1) { galleryDownloadStore.save(eq(jpgPath), any()) }
     }
 
@@ -104,13 +102,8 @@ class PhotoImageManagerDownloadPersistTest {
     fun `게이팅이 미지원으로 판정하면 기기 저장을 하지 않는다`() = runTest(dispatcher) {
         val bytes = byteArrayOf(5, 5, 5)
         coEvery { downloadCameraPhotoUseCase(jpgPath) } returns bytes
-        // 저장 진입부 게이팅이 미지원(RAW·업그레이드 필요)으로 차단하는 경우를 시뮬레이션.
-        coEvery { validateImageFormatUseCase.validateFormat(any()) } returns
-            ValidateImageFormatUseCase.ValidationResult(
-                isSupported = false,
-                needsUpgrade = true,
-                isRawFile = true
-            )
+        // 저장 진입부 게이팅이 미지원(RAW·업그레이드 필요·미지 포맷 fail-closed)으로 차단하는 경우.
+        coEvery { validateImageFormatUseCase.isDownloadAllowed(any()) } returns false
 
         val result = manager.downloadAndPersist(jpgPath, SubscriptionTier.PRO)
 

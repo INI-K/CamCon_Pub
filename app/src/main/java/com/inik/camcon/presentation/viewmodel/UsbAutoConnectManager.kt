@@ -2,6 +2,8 @@ package com.inik.camcon.presentation.viewmodel
 
 import android.content.Context
 import android.util.Log
+import com.inik.camcon.R
+import com.inik.camcon.domain.model.UiText
 import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.repository.UsbDeviceRepository
@@ -165,7 +167,10 @@ class UsbAutoConnectManager @Inject constructor(
                 managerScope.launch {
                     try {
                         Log.d(TAG, "자동 카메라 연결 시작")
-                        uiStateManager.updateUsbInitialization(true, "USB 카메라 초기화 중...")
+                        uiStateManager.updateUsbInitialization(
+                            true,
+                            UiText.Resource(R.string.camera_control_usb_initializing)
+                        )
 
                         connectCameraUseCase("auto")
                             .onSuccess {
@@ -337,7 +342,12 @@ class UsbAutoConnectManager @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "카메라 연결 해제 실패", e)
-                uiStateManager.setError("카메라 연결 해제 실패: ${e.message}")
+                uiStateManager.setError(
+                    UiText.Resource(
+                        R.string.usb_error_disconnect_failed,
+                        listOf(e.message ?: UiText.Resource(R.string.error_unknown))
+                    )
+                )
             }
         }
     }
@@ -363,11 +373,14 @@ class UsbAutoConnectManager @Inject constructor(
                         // 권한이 없으면 권한 요청
                         Log.d(TAG, "USB 권한 없음 - 권한 요청")
                         requestUsbPermissionUseCase(device.deviceId)
-                        uiStateManager.setError("USB 권한을 요청했습니다. 대화상자에서 승인해주세요.")
+                        uiStateManager.setError(UiText.Resource(R.string.usb_error_permission_requested))
                     } else if (!isConnected) {
                         // 권한이 있고 연결되지 않은 경우 자동 연결 시도
                         Log.d(TAG, "USB 권한 있음 & 미연결 상태 - 자동 연결 시도")
-                        uiStateManager.updateUsbInitialization(true, "USB 카메라 연결 시도 중...")
+                        uiStateManager.updateUsbInitialization(
+                            true,
+                            UiText.Resource(R.string.usb_init_connecting_camera)
+                        )
 
                         // 직접 연결 시도
                         connectCameraUseCase("auto")
@@ -395,17 +408,22 @@ class UsbAutoConnectManager @Inject constructor(
                     } else {
                         // 이미 연결되어 있는 경우
                         Log.d(TAG, "이미 카메라가 연결되어 있음")
-                        uiStateManager.setError("카메라가 이미 연결되어 있습니다")
+                        uiStateManager.setError(UiText.Resource(R.string.usb_error_already_connected))
                     }
                 } else {
                     Log.d(TAG, "USB 디바이스가 감지되지 않음")
-                    uiStateManager.setError("USB 카메라가 감지되지 않았습니다")
+                    uiStateManager.setError(UiText.Resource(R.string.usb_error_camera_not_detected))
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "USB 디바이스 새로고침 실패", e)
-                uiStateManager.setError("USB 디바이스 확인 실패: ${e.message}")
+                uiStateManager.setError(
+                    UiText.Resource(
+                        R.string.usb_error_device_check_failed,
+                        listOf(e.message ?: UiText.Resource(R.string.error_unknown))
+                    )
+                )
             }
         }
     }
@@ -416,23 +434,34 @@ class UsbAutoConnectManager @Inject constructor(
     fun requestUsbPermission(uiStateManager: CameraUiStateManager? = null) {
         managerScope.launch {
             try {
-                uiStateManager?.updateUsbInitialization(true, "USB 권한 요청 중...")
+                uiStateManager?.updateUsbInitialization(
+                    true,
+                    UiText.Resource(R.string.usb_init_requesting_permission)
+                )
 
                 val devices = refreshUsbDevicesUseCase()
                 if (devices.isNotEmpty()) {
                     val device = devices.first()
                     requestUsbPermissionUseCase(device.deviceId)
-                    uiStateManager?.setError("USB 권한을 요청했습니다. 대화상자에서 승인해주세요.")
-                    uiStateManager?.updateUsbInitialization(false, "USB 권한 대기 중...")
+                    uiStateManager?.setError(UiText.Resource(R.string.usb_error_permission_requested))
+                    uiStateManager?.updateUsbInitialization(
+                        false,
+                        UiText.Resource(R.string.usb_init_waiting_permission)
+                    )
                 } else {
-                    uiStateManager?.setError("USB 카메라가 감지되지 않았습니다")
+                    uiStateManager?.setError(UiText.Resource(R.string.usb_error_camera_not_detected))
                     uiStateManager?.updateUsbInitialization(false)
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "USB 권한 요청 실패", e)
-                uiStateManager?.setError("USB 권한 요청 실패: ${e.message}")
+                uiStateManager?.setError(
+                    UiText.Resource(
+                        R.string.usb_error_permission_request_failed,
+                        listOf(e.message ?: UiText.Resource(R.string.error_unknown))
+                    )
+                )
                 uiStateManager?.updateUsbInitialization(false)
             }
         }

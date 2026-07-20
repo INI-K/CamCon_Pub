@@ -1,10 +1,7 @@
 package com.inik.camcon.data.datasource.ptpip
 
-import android.content.BroadcastReceiver
 import android.content.ContentValues
 import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -26,7 +23,6 @@ import com.inik.camcon.data.service.AutoConnectTaskRunner
 import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.model.CameraAbilitiesInfo
-import com.inik.camcon.domain.model.CameraSupports
 import com.inik.camcon.domain.model.ConnectionMethod
 import com.inik.camcon.domain.model.NikonConnectionMode
 import com.inik.camcon.domain.model.PtpDeviceInfo
@@ -85,6 +81,7 @@ class PtpipDataSource @Inject constructor(
     private val wifiHelper: WifiNetworkHelper,
     private val cameraEventManager: CameraEventManager,
     private val cameraStateObserver: com.inik.camcon.domain.manager.CameraStateObserver,
+    private val errorNotifier: com.inik.camcon.domain.manager.ErrorNotifier,
     private val photoDownloadManager: com.inik.camcon.data.repository.managers.PhotoDownloadManager,
     private val autoConnectManager: AutoConnectManager,
     private val autoConnectTaskRunnerProvider: Lazy<AutoConnectTaskRunner>,
@@ -103,6 +100,10 @@ class PtpipDataSource @Inject constructor(
     private var errorResetJob: Job? = null
     // 초기 플러시 완료 플래그
     @Volatile private var isInitialFlushCompleted = false
+    // 표준 모드 init이 네이티브 로그 경로를 ptpip 전용 파일로 강탈했는지 여부.
+    // true 일 때만 연결 종료/실패 시 nativeCameraDataSource.restoreUserLogPath()로 사용자 경로를 복원한다
+    // (AP 모드·미강탈 상황에서 사용자 로그를 불필요하게 재생성/절단하지 않도록).
+    @Volatile private var ptpipLogRedirected = false
     private val reconnectMutex = Mutex()
     private val connectionStateMutex = Mutex()
 
@@ -119,6 +120,39 @@ class PtpipDataSource @Inject constructor(
     // UI 관찰용 StateFlow
     private val _connectionState = MutableStateFlow(PtpipConnectionState.DISCONNECTED)
     val connectionState: StateFlow<PtpipConnectionState> = _connectionState.asStateFlow()
+
+    // ===== 책임별 협력자 (파사드-내부 생성) =====
+    // 연결 엔진(connect/reconnect/disconnect/involuntary + 이벤트리스너 파일수신)은 파사드가 유지하되,
+    // 느슨결합 책임(디스커버리·어빌리티·물리셔터 테더링·자동연결 브로드캐스트)은 협력자로 분리한다.
+    // 생성자·DI·기존 테스트를 건드리지 않도록 이미 주입된 의존만으로 내부에서 구성한다.
+    private val abilitiesStore = PtpipAbilitiesStore(cameraStateObserver)
+    private val discoveryCoordinator = PtpipDiscoveryCoordinator(
+        wifiHelper = wifiHelper,
+        discoveryService = discoveryService,
+        connectionManager = connectionManager,
+        connectionStateProvider = { _connectionState.value },
+        ioDispatcher = ioDispatcher
+    )
+    private val tetheringController = PtpipTetheringController(
+        tetherService = tetherService,
+        photoDownloadManager = photoDownloadManager,
+        photoEvents = _photoEvents,
+        coroutineScope = coroutineScope,
+        ioDispatcher = ioDispatcher
+    )
+    private val autoConnectBroadcaster = PtpipAutoConnectBroadcaster(
+        context = context,
+        wifiHelper = wifiHelper,
+        autoConnectManager = autoConnectManager,
+        autoConnectTaskRunnerProvider = autoConnectTaskRunnerProvider,
+        coroutineScope = coroutineScope,
+        ioDispatcher = ioDispatcher
+    )
+
+    // 협력자로 이관된 상태를 파사드 공개 API로 위임 노출 (소비자 무변경)
+    val cameraInfo: StateFlow<PtpipCameraInfo?> = abilitiesStore.cameraInfo
+    val discoveredCameras: StateFlow<List<PtpipCamera>> = discoveryCoordinator.discoveredCameras
+    val manualIp: StateFlow<String> = discoveryCoordinator.manualIp
 
     /**
      * 한 번이라도 연결에 성공한 직전 카메라(연결 성공 시 세팅, 앱 재시작 시 DataStore에서 복원).
@@ -152,12 +186,6 @@ class PtpipDataSource @Inject constructor(
     private val _connectionLostMessage = MutableStateFlow<String?>(null)
     val connectionLostMessage: StateFlow<String?> = _connectionLostMessage.asStateFlow()
 
-    private val _discoveredCameras = MutableStateFlow<List<PtpipCamera>>(emptyList())
-    val discoveredCameras: StateFlow<List<PtpipCamera>> = _discoveredCameras.asStateFlow()
-
-    private val _cameraInfo = MutableStateFlow<PtpipCameraInfo?>(null)
-    val cameraInfo: StateFlow<PtpipCameraInfo?> = _cameraInfo.asStateFlow()
-
     private val _wifiNetworkState = MutableStateFlow(WifiNetworkState(false, false, null, null))
     val wifiNetworkState: StateFlow<WifiNetworkState> = _wifiNetworkState.asStateFlow()
 
@@ -169,54 +197,17 @@ class PtpipDataSource @Inject constructor(
     private val _activeConnectionMethod = MutableStateFlow<ConnectionMethod?>(null)
     val activeConnectionMethod: StateFlow<ConnectionMethod?> = _activeConnectionMethod.asStateFlow()
 
-    // 사용자가 직접 입력한 카메라 IP. 폰 핫스팟 모드의 mDNS 폴백용.
-    private val _manualIp = MutableStateFlow("")
-    val manualIp: StateFlow<String> = _manualIp.asStateFlow()
-
     /** 사용자 시나리오 선택. UI/ViewModel에서 호출. */
     fun setActiveConnectionMethod(method: ConnectionMethod) {
         _activeConnectionMethod.value = method
     }
 
-    /**
-     * 사용자 입력 IP 갱신. UI/ViewModel에서 호출.
-     *
-     * 빈 문자열은 초기화 신호로 그대로 받는다. 그 외에는 사설망/link-local 화이트리스트만 허용한다.
-     * 위반 시 상태를 갱신하지 않고 경고만 남긴다 (UI는 기존 입력 유지).
-     */
-    fun setManualIp(ip: String) {
-        if (ip.isBlank()) {
-            _manualIp.value = ""
-            return
-        }
-        if (!com.inik.camcon.data.network.ptpip.IpAddressValidator.isAllowedCameraIp(ip)) {
-            Log.w(TAG, "setManualIp 거부: 허용되지 않은 IP 형식/대역 - ${LogMask.id(ip)}")
-            return
-        }
-        _manualIp.value = ip
-    }
+    /** 사용자 입력 IP 갱신. UI/ViewModel에서 호출. → [PtpipDiscoveryCoordinator] 위임. */
+    fun setManualIp(ip: String) = discoveryCoordinator.setManualIp(ip)
 
-    /**
-     * 사용자가 입력한 IP를 카메라 후보로 등록한다.
-     * 동일 IP가 이미 있으면 사용자 입력 정보(이름/포트)로 갱신한다.
-     * `distinctBy`는 첫 occurrence를 유지하므로 사용자가 mDNS로 발견된 카메라의
-     * 이름/포트를 수동 입력으로 덮어쓸 수 없는 문제가 있어 명시적 filterNot+append로 처리.
-     *
-     * IP는 사설망/link-local만 허용. 화이트리스트 외에는 `IllegalArgumentException`을 던진다.
-     */
-    fun addManualCamera(ipAddress: String, name: String, port: Int): PtpipCamera {
-        require(
-            com.inik.camcon.data.network.ptpip.IpAddressValidator.isAllowedCameraIp(ipAddress)
-        ) {
-            "허용되지 않은 카메라 IP: ${ipAddress.take(45)} (사설망/link-local만 허용)"
-        }
-        val safeName = name.ifBlank { "Manual ($ipAddress)" }
-        val safePort = if (port > 0) port else 15740
-        val cam = PtpipCamera(ipAddress, safePort, safeName, isOnline = true)
-        _discoveredCameras.value =
-            _discoveredCameras.value.filterNot { it.ipAddress == cam.ipAddress } + cam
-        return cam
-    }
+    /** 사용자가 입력한 IP를 카메라 후보로 등록. → [PtpipDiscoveryCoordinator] 위임. */
+    fun addManualCamera(ipAddress: String, name: String, port: Int): PtpipCamera =
+        discoveryCoordinator.addManualCamera(ipAddress, name, port)
 
     /**
      * 현재 환경을 기반으로 사용자 시나리오를 추정한다.
@@ -239,9 +230,6 @@ class PtpipDataSource @Inject constructor(
         _activeConnectionMethod.value = method
         return result
     }
-
-    private var lastAutoConnectBroadcastSsid: String? = null
-    private var lastAutoConnectBroadcastBssid: String? = null
 
     // ===== PTP/IP 네이티브 설정 관리 =====
 
@@ -321,7 +309,7 @@ class PtpipDataSource @Inject constructor(
 
     init {
         startNetworkMonitoring()
-        registerAutoConnectReceiver()
+        autoConnectBroadcaster.registerAutoConnectReceiver()
         restoreLastConnectedCamera()
         // 네이티브 로그 정책은 NativeCameraDataSource(파일 로그 단일 소유자)가 UseCase 체인으로 관리한다.
         // @Singleton 데이터소스가 생성 시점에 전역 로그 상태를 건드리면 안 된다 — 과거 여기서
@@ -373,8 +361,8 @@ class PtpipDataSource @Inject constructor(
                         "ssid=${LogMask.ssid(networkState.ssid)}, ip=${LogMask.id(networkState.detectedCameraIP)}"
                 )
                 _wifiNetworkState.value = networkState
-                maybeTriggerAutoConnect(networkState)
-                
+                autoConnectBroadcaster.maybeTriggerAutoConnect(networkState)
+
                 if (isAutoReconnectEnabled) {
                     handleNetworkStateChange(networkState)
                 }
@@ -429,6 +417,7 @@ class PtpipDataSource @Inject constructor(
             // (이전에는 delay(3초)까지 잠금 안에서 수행해 connectToCamera/disconnect 등
             //  connectionStateMutex 를 쓰는 모든 API가 그동안 블로킹됐다.)
             var shouldScheduleReconnect = false
+            var immediateReconnectCamera: PtpipCamera? = null
             connectionStateMutex.withLock {
                 val currentState = _connectionState.value
 
@@ -441,6 +430,10 @@ class PtpipDataSource @Inject constructor(
                             connectedCamera = null
                             _connectionLostMessage.value =
                                 context.getString(R.string.progress_wifi_disconnected)
+                            // C3: Wi-Fi 끊김이 네이티브 통지보다 먼저 상태를 DISCONNECTED로 내리면,
+                            // 뒤늦게 도착하는 notifyInvoluntaryPtpipDisconnect가 조기 리턴해 리스너 stale
+                            // 플래그 리셋을 놓친다. 여기서 정합화한다(멱등 — 네이티브 stop 미호출, 핸들 불침해).
+                            cameraEventManager.resetListenerStateAfterNativeDeath()
                             onConnectionLostCallback?.invoke()
                         }
                     }
@@ -459,118 +452,53 @@ class PtpipDataSource @Inject constructor(
                             currentState == PtpipConnectionState.CONNECTED -> {
                         Log.i(TAG, "AP 모드에서 카메라 IP 변경 감지 - 재연결 시도")
                         val currentCamera = connectedCamera
-                        if (currentCamera != null) {
-                            val updatedCamera =
+                        if (currentCamera != null && isAutoReconnectEnabled) {
+                            // attemptAutoReconnect는 락 밖에서 호출한다(내부에서 시도 단위로 짧게 락 획득).
+                            immediateReconnectCamera =
                                 currentCamera.copy(ipAddress = networkState.detectedCameraIP)
-                            if (isAutoReconnectEnabled) {
-                                attemptAutoReconnect(updatedCamera)
-                            }
                         }
                     }
                 }
             }
 
-            // 2차: 안정화 대기는 잠금 밖에서 수행하고, 재연결 자체는 다시 잠금 안에서
-            // 상태를 재확인한 뒤 시도한다 (연결 시도 직렬화는 유지).
+            // AP IP 변경 재연결: 락 밖에서 시도 (J10 — 락을 쥔 채 재연결 루프를 돌지 않는다).
+            immediateReconnectCamera?.let { attemptAutoReconnect(it) }
+
+            // 2차: 안정화 대기는 잠금 밖에서 수행하고, 재연결 대상만 잠금 안에서 확정한 뒤
+            // 재연결 자체는 락 밖에서 시도한다 (연결 시도 직렬화는 attemptAutoReconnect 내부 락이 유지).
             if (shouldScheduleReconnect) {
                 delay(RECONNECT_DELAY_MS)
-                connectionStateMutex.withLock {
-                    if (_connectionState.value == PtpipConnectionState.DISCONNECTED) {
-                        // race condition 방지를 위해 로컬 변수로 저장
-                        val lastCamera = lastConnectedCamera
-                        if (lastCamera != null) {
-                            // AP 모드에서 카메라 IP 업데이트
-                            val cameraToConnect =
-                                if (networkState.isConnectedToCameraAP && networkState.detectedCameraIP != null) {
-                                    lastCamera.copy(ipAddress = networkState.detectedCameraIP)
-                                } else {
-                                    lastCamera
-                                }
-
-                            attemptAutoReconnect(cameraToConnect)
-                        } else {
-                            Log.w(TAG, "자동 재연결 중 lastConnectedCamera가 null로 변경됨")
-                        }
+                val cameraToConnect = connectionStateMutex.withLock {
+                    if (_connectionState.value != PtpipConnectionState.DISCONNECTED) {
+                        return@withLock null
+                    }
+                    // race condition 방지를 위해 로컬 변수로 저장
+                    val lastCamera = lastConnectedCamera
+                    if (lastCamera == null) {
+                        Log.w(TAG, "자동 재연결 중 lastConnectedCamera가 null로 변경됨")
+                        return@withLock null
+                    }
+                    // AP 모드에서 카메라 IP 업데이트
+                    if (networkState.isConnectedToCameraAP && networkState.detectedCameraIP != null) {
+                        lastCamera.copy(ipAddress = networkState.detectedCameraIP)
+                    } else {
+                        lastCamera
                     }
                 }
+                if (cameraToConnect != null) {
+                    attemptAutoReconnect(cameraToConnect)
+                }
             }
         }
-    }
-
-    private fun maybeTriggerAutoConnect(networkState: WifiNetworkState) {
-        if (!networkState.isConnected) {
-            resetAutoConnectBroadcastState()
-            return
-        }
-
-        if (networkState.ssid.isNullOrBlank()) {
-            resetAutoConnectBroadcastState()
-            return
-        }
-
-        coroutineScope.launch(ioDispatcher) {
-            try {
-                val isAutoConnectEnabled = autoConnectManager.isEnabled()
-                if (!isAutoConnectEnabled) {
-                    Log.d(TAG, "자동 연결 비활성화 상태 - 브로드캐스트 건너뜀")
-                    resetAutoConnectBroadcastState()
-                    return@launch
-                }
-
-                val storedConfig = autoConnectManager.getStoredConfig()
-                if (storedConfig == null) {
-                    Log.d(TAG, "자동 연결 설정이 없어 브로드캐스트 건너뜀")
-                    resetAutoConnectBroadcastState()
-                    return@launch
-                }
-
-                val ssidMatches = networkState.ssid.equals(storedConfig.ssid, ignoreCase = true)
-                val currentBssid = wifiHelper.getCurrentBssid()
-                val bssidMatches = storedConfig.bssid.isNullOrBlank() ||
-                        currentBssid.equals(storedConfig.bssid, ignoreCase = true)
-
-                if (!ssidMatches || !bssidMatches) {
-                    Log.d(TAG, "자동 연결 대상 SSID/BSSID 불일치 - 브로드캐스트 생략")
-                    resetAutoConnectBroadcastState()
-                    return@launch
-                }
-
-                val alreadySentForSsid = lastAutoConnectBroadcastSsid.equals(
-                    networkState.ssid,
-                    ignoreCase = true
-                )
-                val alreadySentForBssid = when {
-                    currentBssid == null -> storedConfig.bssid.isNullOrBlank() &&
-                            lastAutoConnectBroadcastBssid.isNullOrBlank()
-
-                    else -> currentBssid.equals(lastAutoConnectBroadcastBssid, ignoreCase = true)
-                }
-
-                if (alreadySentForSsid && alreadySentForBssid) {
-                    Log.d(TAG, "같은 SSID/BSSID에 대해 이미 자동 연결 브로드캐스트 발송됨")
-                    return@launch
-                }
-
-                Log.i(TAG, "네트워크 상태 감지 기반 자동 연결 브로드캐스트 발송: ${LogMask.ssid(networkState.ssid)}")
-                wifiHelper.sendAutoConnectBroadcast(storedConfig.ssid)
-                lastAutoConnectBroadcastSsid = networkState.ssid
-                lastAutoConnectBroadcastBssid = currentBssid ?: storedConfig.bssid
-            } catch (error: Exception) {
-                Log.e(TAG, "자동 연결 브로드캐스트 발송 중 오류", error)
-            }
-        }
-    }
-
-    private fun resetAutoConnectBroadcastState() {
-        if (lastAutoConnectBroadcastSsid != null || lastAutoConnectBroadcastBssid != null) {
-            Log.d(TAG, "자동 연결 브로드캐스트 상태 초기화")
-        }
-        lastAutoConnectBroadcastSsid = null
-        lastAutoConnectBroadcastBssid = null
     }
 
     /**
-     * 자동 재연결 시도 (최대 횟수 제한 루프)
+     * 자동 재연결 시도 (최대 횟수 제한 루프).
+     *
+     * ⚠️ 반드시 connectionStateMutex를 '보유하지 않은' 상태에서 호출한다. 연결 시도 1회마다
+     * 짧게 connectionStateMutex를 잡고(상태 확인 + connectToCameraInternal 직렬화), 시도 간
+     * delay(취소 가능)는 락 '밖'에서 수행한다. (J10: 과거엔 호출자가 락을 쥔 채 이 루프 전체를 돌려
+     * 최대 ~5분간 락을 점유, 수동 연결/해제/cleanup을 모두 블로킹했다.)
      */
     private suspend fun attemptAutoReconnect(camera: PtpipCamera) {
         // 동시 재연결 방지
@@ -579,41 +507,42 @@ class PtpipDataSource @Inject constructor(
             return
         }
         try {
-            // 이미 연결 시도 중이면 무시
-            if (_connectionState.value == PtpipConnectionState.CONNECTING) {
-                Log.d(TAG, "이미 연결 시도 중이므로 자동 재연결 무시")
-                return
-            }
-
             val maxAttempts = 5
             var attempts = 0
             while (attempts < maxAttempts) {
-                try {
-                    Log.i(TAG, "자동 재연결 시도 ${attempts + 1}/$maxAttempts: ${LogMask.serial(camera.name)} (${LogMask.id(camera.ipAddress)})")
-                    _connectionState.value = PtpipConnectionState.CONNECTING
-                    setProgress(UiText.Resource(R.string.progress_ptpip_connecting))
-
-                    // 호출 경로(handleNetworkStateChange)가 이미 connectionStateMutex를 보유하므로
-                    // 공개 connectToCamera(재획득) 대신 internal을 직접 호출한다 (재진입 데드락 방지).
-                    if (connectToCameraInternal(camera, forceApMode = false)) {
-                        Log.i(TAG, "자동 재연결 성공")
+                // 연결 시도 1회 = 짧은 락 구간. 성공/중단은 비지역 return(inline withLock), fall-through=재시도.
+                connectionStateMutex.withLock {
+                    // 이미 다른 경로가 연결 시도 중이면 중단(stomp 방지).
+                    if (_connectionState.value == PtpipConnectionState.CONNECTING) {
+                        Log.d(TAG, "이미 연결 시도 중이므로 자동 재연결 무시")
                         return
                     }
+                    try {
+                        Log.i(TAG, "자동 재연결 시도 ${attempts + 1}/$maxAttempts: ${LogMask.serial(camera.name)} (${LogMask.id(camera.ipAddress)})")
+                        _connectionState.value = PtpipConnectionState.CONNECTING
+                        setProgress(UiText.Resource(R.string.progress_ptpip_connecting))
 
-                    Log.w(TAG, "자동 재연결 실패 (시도 ${attempts + 1}/$maxAttempts)")
-                    _connectionState.value = PtpipConnectionState.ERROR
-                    setProgress(UiText.Empty)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    Log.w(TAG, "Reconnect attempt ${attempts + 1}/$maxAttempts failed", e)
-                    _connectionState.value = PtpipConnectionState.ERROR
-                    setProgress(UiText.Empty)
+                        // connectToCameraInternal은 connectionStateMutex 보유 상태 호출을 전제한다(재진입 방지).
+                        if (connectToCameraInternal(camera, forceApMode = false)) {
+                            Log.i(TAG, "자동 재연결 성공")
+                            return
+                        }
+
+                        Log.w(TAG, "자동 재연결 실패 (시도 ${attempts + 1}/$maxAttempts)")
+                        _connectionState.value = PtpipConnectionState.ERROR
+                        setProgress(UiText.Empty)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Reconnect attempt ${attempts + 1}/$maxAttempts failed", e)
+                        _connectionState.value = PtpipConnectionState.ERROR
+                        setProgress(UiText.Empty)
+                    }
                 }
 
                 attempts++
 
-                // 마지막 시도가 아니고 자동 재연결이 여전히 활성화되어 있으면 대기
+                // 시도 간 대기는 락 '밖'에서 — 이 사이 수동 연결/해제가 락을 잡을 수 있다(취소 가능).
                 if (attempts < maxAttempts && isAutoReconnectEnabled) {
                     delay(5000)
                     // 자동 재연결이 비활성화되었거나 이미 연결되었으면 중단
@@ -661,7 +590,7 @@ class PtpipDataSource @Inject constructor(
         }
 
         // 물리 셔터 리스너 중지 (누수 방지)
-        stopShutterListening()
+        tetheringController.stopShutterListening()
 
         // 콜백 초기화 (사진 다운로드 이벤트는 SharedFlow라 정리 대상 아님 — 수집자는 싱글톤 Repository)
         onPhotoCapturedCallback = null
@@ -671,91 +600,16 @@ class PtpipDataSource @Inject constructor(
         Log.d(TAG, "리소스 정리 완료 (콜백 포함, 싱글톤 모니터링/리시버는 유지)")
     }
 
-    /**
-     * mDNS를 사용하여 PTPIP 지원 카메라 검색
-     */
-    suspend fun discoverCameras(forceApMode: Boolean): List<PtpipCamera> {
-        return try {
-            Log.d(TAG, "카메라 검색 시작")
-
-            // 연결 시도와 검색이 겹치지 않도록 직렬화: 연결 중이면 기존 목록 유지 반환
-            if (_connectionState.value == PtpipConnectionState.CONNECTING) {
-                Log.d(TAG, "연결 진행 중 - 검색 건너뜀 (직렬화 보호)")
-                return _discoveredCameras.value
-            }
-
-            // Wi-Fi 연결 상태 확인. 단 폰 핫스팟(STA_PHONE_HOTSPOT) 모드에선 폰이 SoftAP라
-            // 클라이언트 연결이 없는 게 정상이므로, 핫스팟이 켜져 있으면 mDNS 검색을 진행한다.
-            if (!wifiHelper.isWifiConnected() && !wifiHelper.isHotspotEnabled()) {
-                Log.w(TAG, "Wi-Fi 네트워크에 연결되어 있지 않음 (핫스팟도 꺼짐)")
-                return emptyList()
-            }
-
-            // AP모드인지 확인하고 직접 IP 사용
-            if (wifiHelper.isConnectedToCameraAP()) {
-                Log.d(TAG, "AP모드 감지: libgphoto2 기반 카메라 IP 검색 시작")
-                val cameraIP = wifiHelper.findAvailableCameraIP()
-                if (cameraIP != null) {
-                    Log.i(TAG, "AP모드: libgphoto2로 검증된 카메라 IP ${LogMask.id(cameraIP)} 발견")
-                    val networkName = wifiHelper.getCurrentSSID() ?: "카메라 AP"
-                    val apCamera = PtpipCamera(
-                        ipAddress = cameraIP,
-                        port = 15740, // 표준 PTP/IP 포트
-                        name = "$networkName (AP모드)",
-                        isOnline = true
-                    )
-                    _discoveredCameras.value = listOf(apCamera)
-                    return listOf(apCamera)
-                } else {
-                    Log.w(TAG, "❌ AP모드이지만 libgphoto2로 연결 가능한 카메라 IP를 찾을 수 없음")
-                    // 빈 리스트 반환하여 사용자에게 상황을 알림
-                    _discoveredCameras.value = emptyList()
-                    return emptyList()
-                }
-            }
-
-            // STA모드에서는 mDNS 검색 사용
-            Log.d(TAG, "STA모드 또는 일반 네트워크: mDNS 검색 시작")
-            val cameras = discoveryService.discoverCameras(forceApMode)
-            _discoveredCameras.value = cameras
-            cameras
-        } catch (e: Exception) {
-            Log.e(TAG, "카메라 검색 중 오류", e)
-            emptyList()
-        }
-    }
+    /** mDNS를 사용하여 PTPIP 지원 카메라 검색. → [PtpipDiscoveryCoordinator] 위임. */
+    suspend fun discoverCameras(forceApMode: Boolean): List<PtpipCamera> =
+        discoveryCoordinator.discoverCameras(forceApMode)
 
     // 호환성용 무파라미터 래퍼
-    suspend fun discoverCameras(): List<PtpipCamera> = discoverCameras(false)
+    suspend fun discoverCameras(): List<PtpipCamera> = discoveryCoordinator.discoverCameras()
 
-    /**
-     * 니콘 카메라 연결 모드 감지 (AP/STA/UNKNOWN)
-     */
-    suspend fun detectNikonConnectionMode(camera: PtpipCamera): NikonConnectionMode = 
-        withContext(ioDispatcher) {
-            try {
-                Log.d(TAG, "니콘 카메라 연결 모드 감지 시작: ${LogMask.serial(camera.name)}")
-
-                // 기본 연결 시도 - AP 모드는 즉시 연결 가능
-                if (connectionManager.establishConnection(camera)) {
-                    val deviceInfo = connectionManager.getDeviceInfo()
-                    connectionManager.closeConnections()
-                    
-                    if (deviceInfo?.manufacturer?.contains("Nikon", ignoreCase = true) == true) {
-                        Log.d(TAG, "AP 모드 감지 (즉시 연결 성공)")
-                        return@withContext NikonConnectionMode.AP_MODE
-                    }
-                }
-
-                // AP 모드 실패 시 STA 모드로 판단
-                Log.d(TAG, "STA 모드 감지 (기본 연결 실패)")
-                return@withContext NikonConnectionMode.STA_MODE
-
-            } catch (e: Exception) {
-                Log.e(TAG, "니콘 카메라 모드 감지 중 오류", e)
-                return@withContext NikonConnectionMode.UNKNOWN
-            }
-        }
+    /** 니콘 카메라 연결 모드 감지 (AP/STA/UNKNOWN). → [PtpipDiscoveryCoordinator] 위임. */
+    suspend fun detectNikonConnectionMode(camera: PtpipCamera): NikonConnectionMode =
+        discoveryCoordinator.detectNikonConnectionMode(camera)
 
     /**
      * 스마트 카메라 연결 (libgphoto2 API 기반)
@@ -789,6 +643,16 @@ class PtpipDataSource @Inject constructor(
         val b = ByteArray(16)
         java.security.SecureRandom().nextBytes(b)
         return b.joinToString(":") { "%02x".format(it) }
+    }
+
+    /**
+     * 표준 모드 init이 ptpip 전용 파일로 강탈한 네이티브 로그 경로를 사용자 baseline 경로로 복원한다.
+     * 강탈이 없었으면(플래그 false) no-op. 강탈된 경우에만 1회 복원하고 플래그를 내린다.
+     */
+    private suspend fun restoreUserLogPathIfRedirected() {
+        if (!ptpipLogRedirected) return
+        ptpipLogRedirected = false
+        runCatching { nativeCameraDataSource.restoreUserLogPath() }
     }
 
     /**
@@ -979,6 +843,8 @@ class PtpipDataSource @Inject constructor(
                     val gphotoLogPath =
                         "${context.filesDir.absolutePath}/libgphoto2_ptpip_latest.txt"
                     runCatching { CameraNative.startLogFile(gphotoLogPath) }
+                    // 네이티브 로그 경로를 강탈했음을 기록 — 연결 종료/실패 시 사용자 경로로 복원한다.
+                    ptpipLogRedirected = true
                     runCatching { CameraNative.setLogLevel(CameraNative.GP_LOG_DATA) }
                     try {
                         CameraNative.initCameraWithPtpip(camera.ipAddress, camera.port, pluginDir)
@@ -1049,6 +915,9 @@ class PtpipDataSource @Inject constructor(
                 Log.e(TAG, "❌ libgphoto2 초기화 실패: $initResult")
                 _connectionState.value = PtpipConnectionState.ERROR
                 setProgress(UiText.Resource( R.string.progress_ptpip_failed, listOf(initResult.orEmpty()) ))
+                // ptpip 전용 로그로 강탈했던 네이티브 로그 경로를 사용자 경로로 복원한다.
+                // (ptpip 로그 파일 자체는 남아 lastPtpipInitFailReason 읽기는 이후에도 유효.)
+                restoreUserLogPathIfRedirected()
                 return@withContext false
             }
 
@@ -1086,7 +955,7 @@ class PtpipDataSource @Inject constructor(
                 Log.w(TAG, "⚠️ 카메라 정보 조회 실패 (하지만 연결은 성공)")
                 // 정보 없어도 계속 진행
             } else {
-                val abilities = parseAbilities(abilitiesJson)
+                val abilities = abilitiesStore.parseAbilities(abilitiesJson)
 
                 Log.i(
                     TAG,
@@ -1096,7 +965,7 @@ class PtpipDataSource @Inject constructor(
                 )
 
                 // 상태 저장
-                storeAbilities(abilities, deviceInfo)
+                abilitiesStore.storeAbilities(abilities, deviceInfo)
 
                 // 기능 제한 경고
                 if (abilities.supports.isDownloadOnly()) {
@@ -1170,48 +1039,6 @@ class PtpipDataSource @Inject constructor(
     }
 
     /**
-     * Abilities JSON 파싱
-     */
-    private fun parseAbilities(json: String): CameraAbilitiesInfo {
-        try {
-            val obj = org.json.JSONObject(json)
-            val supportsObj = obj.getJSONObject("supports")
-
-            return CameraAbilitiesInfo(
-                model = obj.getString("model"),
-                status = obj.getString("status"),
-                portType = obj.getInt("port_type"),
-                usbVendor = obj.getString("usb_vendor"),
-                usbProduct = obj.getString("usb_product"),
-                usbClass = obj.getInt("usb_class"),
-                operations = obj.getInt("operations"),
-                fileOperations = obj.getInt("file_operations"),
-                folderOperations = obj.getInt("folder_operations"),
-                supports = CameraSupports(
-                    captureImage = supportsObj.getBoolean("capture_image"),
-                    captureVideo = supportsObj.getBoolean("capture_video"),
-                    captureAudio = supportsObj.getBoolean("capture_audio"),
-                    capturePreview = supportsObj.getBoolean("capture_preview"),
-                    triggerCapture = supportsObj.getBoolean("trigger_capture"),
-                    config = supportsObj.getBoolean("config"),
-                    delete = supportsObj.getBoolean("delete"),
-                    preview = supportsObj.getBoolean("preview"),
-                    raw = supportsObj.getBoolean("raw"),
-                    audio = supportsObj.getBoolean("audio"),
-                    exif = supportsObj.getBoolean("exif"),
-                    deleteAll = supportsObj.getBoolean("delete_all"),
-                    putFile = supportsObj.getBoolean("put_file"),
-                    makeDir = supportsObj.getBoolean("make_dir"),
-                    removeDir = supportsObj.getBoolean("remove_dir")
-                )
-            )
-        } catch (e: Exception) {
-            Log.e(TAG, "Abilities 파싱 실패", e)
-            throw e
-        }
-    }
-
-    /**
      * Nikon 연결 모드 감지 (간소화)
      */
     private suspend fun detectNikonMode(camera: PtpipCamera): NikonConnectionMode {
@@ -1230,42 +1057,11 @@ class PtpipDataSource @Inject constructor(
         return NikonConnectionMode.STA_MODE
     }
 
-    /**
-     * Abilities 및 DeviceInfo 저장
-     */
-    private var currentAbilities: CameraAbilitiesInfo? = null
-    private var currentDeviceInfo: PtpDeviceInfo? = null
+    /** 현재 카메라 Abilities 조회. → [PtpipAbilitiesStore] 위임. */
+    fun getCurrentAbilities(): CameraAbilitiesInfo? = abilitiesStore.getCurrentAbilities()
 
-    private fun storeAbilities(abilities: CameraAbilitiesInfo, deviceInfo: PtpDeviceInfo) {
-        currentAbilities = abilities
-        currentDeviceInfo = deviceInfo
-
-        // 기존 PtpipCameraInfo도 업데이트
-        _cameraInfo.value = PtpipCameraInfo(
-            manufacturer = deviceInfo.manufacturer,
-            model = deviceInfo.model,
-            version = deviceInfo.version,
-            serialNumber = deviceInfo.serialNumber
-        )
-
-        // UI 상태 업데이트 (PTPIP도 동일하게)
-        try {
-            cameraStateObserver.updateCameraAbilities(abilities)
-            Log.i(TAG, "✅ PTPIP 연결 - UI 상태 업데이트 완료")
-        } catch (e: Exception) {
-            Log.e(TAG, "UI 상태 업데이트 실패", e)
-        }
-    }
-
-    /**
-     * 현재 카메라 Abilities 조회
-     */
-    fun getCurrentAbilities(): CameraAbilitiesInfo? = currentAbilities
-
-    /**
-     * 현재 카메라 DeviceInfo 조회
-     */
-    fun getCurrentDeviceInfo(): PtpDeviceInfo? = currentDeviceInfo
+    /** 현재 카메라 DeviceInfo 조회. → [PtpipAbilitiesStore] 위임. */
+    fun getCurrentDeviceInfo(): PtpDeviceInfo? = abilitiesStore.getCurrentDeviceInfo()
 
     /**
      * 특정 기능 지원 여부 빠른 확인
@@ -1453,6 +1249,7 @@ class PtpipDataSource @Inject constructor(
                 onCaptureFailed = { errorCode ->
                     Log.e(TAG, "PTPIP AP 모드 촬영 실패: $errorCode")
                     com.inik.camcon.utils.LogcatManager.e(TAG, "❌ PTPIP 촬영 실패: $errorCode")
+                    notifyCaptureFailed(errorCode)
                 },
                 connectionType = CameraEventManager.ConnectionType.PTPIP
             )
@@ -1528,6 +1325,7 @@ class PtpipDataSource @Inject constructor(
 
                 override fun onCaptureFailed(errorCode: Int) {
                     Log.e(TAG, "파일 수신: 수신 실패 (에러 코드: $errorCode)")
+                    notifyCaptureFailed(errorCode)
                 }
 
                 override fun onUsbDisconnected() {
@@ -1697,10 +1495,11 @@ class PtpipDataSource @Inject constructor(
                 return@withContext
             }
 
-            // 물리 셔터 무선 수신 리스너 중지 (H3): tetherService.listenForNewShots가 단일 PTP/IP
+            // 물리 셔터 무선 수신 리스너 중지 (H3/J7): tetherService.listenForNewShots가 단일 PTP/IP
             // 세션의 소켓을 점유하므로, disconnect 시 이 Job을 취소하지 않으면 고아 소켓이 살아남아
             // 재연결 시 카메라가 새 TCP를 -7/End-of-stream으로 거부한다(앱 재시작 전까지 재연결 불가).
-            stopShutterListening()
+            // cancel 후 정상 종료(CloseSession 전송 포함)까지 join해 다음 연결과의 경합을 막는다.
+            tetheringController.stopShutterListeningAndJoin()
 
             // 자동 파일 수신 중지 (내부에서 완전한 대기 처리됨)
             stopAutomaticFileReceiving()
@@ -1733,13 +1532,15 @@ class PtpipDataSource @Inject constructor(
                 connectedCamera = null
                 lastConnectedCamera = null
                 _connectionState.value = PtpipConnectionState.DISCONNECTED
-                _cameraInfo.value = null
+                abilitiesStore.clearCameraInfo()
                 // 연결 해제 시 AP 강제 표시 해제
                 _isApModeForced.value = false
                 // 사용자 시나리오도 리셋 — 다음 연결의 inferMethod() 결과 보존.
                 _activeConnectionMethod.value = null
                 setProgress(UiText.Empty)
                 isInitialFlushCompleted = false
+                // ptpip init이 강탈했던 네이티브 로그 경로를 사용자 경로로 복원한다.
+                restoreUserLogPathIfRedirected()
                 Log.d(TAG, "카메라 연결 해제 완료")
             } else {
                 _connectionState.value = PtpipConnectionState.CONNECTED
@@ -1954,51 +1755,41 @@ class PtpipDataSource @Inject constructor(
         Log.d(TAG, "PTPIP 파일 촬영 콜백 설정 완료")
     }
 
-    // ── 물리 셔터 무선 수신 모드 (제조사 자동 판별: 니콘=vendor 잠금우회, 그 외=표준 PTP) ──
-    // 단일 PTP/IP 세션 제약상 libgphoto2(원격촬영/라이브뷰)와 공존 불가. 이 모드는 libgphoto2
-    // 연결을 끊은 뒤(호출부 책임) 단독 세션으로 카드 핸들을 폴링해 새로 찍힌 컷만 풀해상도로
-    // 받는다. 받은 bytes는 기존 PhotoDownloadManager(RAW게이팅·FREE축소·EXIF·MediaStore) →
-    // photoEvents 스트림으로 흘려보내 capturedPhotos/미리보기에 동일하게 등장시킨다.
-    private var shutterListenerJob: Job? = null
-
+    // ── 물리 셔터 무선 수신 모드 → [PtpipTetheringController] 위임 (공개 API 유지) ──
+    // 단일 PTP/IP 세션 제약상 libgphoto2(원격촬영/라이브뷰)와 공존 불가. disconnect 경로에서
+    // 파사드가 tetheringController.stopShutterListeningAndJoin()으로 정상 종료를 join한다(J7).
     val isShutterListening: Boolean
-        get() = shutterListenerJob?.isActive == true
+        get() = tetheringController.isShutterListening
 
-    fun startShutterListening(camera: PtpipCamera) {
-        if (shutterListenerJob?.isActive == true) {
-            Log.w(TAG, "물리 셔터 리스너가 이미 실행 중")
-            return
-        }
-        Log.i(TAG, "물리 셔터 리스너 시작 요청: ${LogMask.serial(camera.name)}")
-        shutterListenerJob = coroutineScope.launch(ioDispatcher) {
-            tetherService.listenForNewShots(camera) { fileName, bytes ->
-                try {
-                    val saved = photoDownloadManager.handleNativePhotoDownload(
-                        filePath = fileName,
-                        fileName = fileName,
-                        imageData = bytes,
-                        cameraCapabilities = null,
-                        cameraSettings = null
-                    )
-                    if (saved != null) {
-                        Log.i(TAG, "새 컷 수신·저장: ${LogMask.path(saved.filePath)}")
-                        _photoEvents.emit(
-                            PtpipPhotoEvent.Downloaded(saved.filePath, fileName, bytes)
-                        )
-                    } else {
-                        Log.w(TAG, "새 컷 저장 차단/실패(게이팅 등): $fileName")
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "새 컷 처리 오류: ${e.message}")
-                }
-            }
-        }
-    }
+    fun startShutterListening(camera: PtpipCamera) =
+        tetheringController.startShutterListening(camera)
 
-    fun stopShutterListening() {
-        shutterListenerJob?.cancel()
-        shutterListenerJob = null
-        Log.i(TAG, "물리 셔터 리스너 중지")
+    fun stopShutterListening() = tetheringController.stopShutterListening()
+
+    /**
+     * USB 카메라가 공유 네이티브 핸들을 잡고 있는지 여부(교차모드 가드용 passthrough).
+     * WifiMonitoringService STA 폴링이 살아있는 USB 세션을 파괴하지 않도록 사용한다(J8).
+     */
+    fun isUsbCameraActive(): Boolean = cameraEventManager.isUsbCameraActive()
+
+    /**
+     * 물리 셔터 촬영·무선 수신 실패 통지 (J6).
+     *
+     * 네이티브 onCaptureFailed 는 파일명 없이 errorCode 만 전달하므로 fileName 을 요구하는
+     * 다운로드 실패 수렴점을 탈 수 없다. 대신 앱 셔터 실패와 동일한 UI 에러 채널
+     * (ErrorNotifier→errorEvent→setError→Snackbar)로 통지해 무음 유실을 방지한다
+     * (CameraCaptureRepositoryImpl.notifyCaptureFailed와 동일 패턴).
+     */
+    private fun notifyCaptureFailed(errorCode: Int) {
+        try {
+            errorNotifier.emitError(
+                type = com.inik.camcon.domain.manager.ErrorType.OPERATION,
+                message = context.getString(R.string.photo_capture_failed, errorCode),
+                severity = com.inik.camcon.domain.manager.ErrorSeverity.HIGH
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "촬영 실패 통지 방출 실패: $errorCode", e)
+        }
     }
 
     /**
@@ -2017,9 +1808,14 @@ class PtpipDataSource @Inject constructor(
     fun notifyInvoluntaryPtpipDisconnect() {
         coroutineScope.launch(ioDispatcher) {
             val transitioned = connectionStateMutex.withLock {
-                // 이미 내려갔거나 재연결이 진행 중이면 무시(멱등·경합 방지).
+                // 이미 내려갔거나 재연결이 진행 중이면 상태 전이는 생략한다(멱등·경합 방지).
                 if (_connectionState.value != PtpipConnectionState.CONNECTED) {
-                    Log.d(TAG, "비자발적 끊김 통지 무시 — 이미 CONNECTED 아님(${_connectionState.value})")
+                    Log.d(TAG, "비자발적 끊김 통지 — 이미 CONNECTED 아님(${_connectionState.value}), 상태 전이 생략")
+                    // C3: Wi-Fi 끊김을 NetworkCallback(handleNetworkStateChange)이 먼저 DISCONNECTED로
+                    // 내리면 이 네이티브 통지는 ~수초 늦게 도착해 여기로 빠진다. 그 경우에도 리스너 stale
+                    // 플래그는 반드시 정합화해야 재연결 시 startCameraEventListener가 조기 리턴하지 않는다
+                    // (멱등 — 네이티브 stop 미호출, 공유 핸들 불침해).
+                    cameraEventManager.resetListenerStateAfterNativeDeath()
                     return@withLock false
                 }
                 Log.w(TAG, "PTP/IP 비자발적 끊김 — 상태 DISCONNECTED 전이(핸들 보존)")
@@ -2069,14 +1865,17 @@ class PtpipDataSource @Inject constructor(
                 return@launch
             }
 
-            connectionStateMutex.withLock {
-                // 발화 시점 재독 — 명시적 disconnect(lastConnectedCamera=null)·수동 연결과의
-                // 경합은 락 안에서 조건 재확인으로 차단한다.
-                val target = lastConnectedCamera
-                if (_connectionState.value != PtpipConnectionState.DISCONNECTED || target == null) {
+            // 발화 시점 재독 — 명시적 disconnect(lastConnectedCamera=null)·수동 연결과의 경합은
+            // 락 안에서 조건 재확인으로 차단한다. attemptAutoReconnect는 락 밖에서 호출(J10).
+            val target = connectionStateMutex.withLock {
+                val t = lastConnectedCamera
+                if (_connectionState.value != PtpipConnectionState.DISCONNECTED || t == null) {
                     Log.d(TAG, "자동 재연결 조건 소멸(상태=${_connectionState.value}) — 생략")
-                    return@withLock
+                    return@withLock null
                 }
+                t
+            }
+            if (target != null) {
                 Log.i(TAG, "비자발적 끊김 자동 재연결 시작: ${LogMask.serial(target.name)}")
                 attemptAutoReconnect(target)
             }
@@ -2102,29 +1901,4 @@ class PtpipDataSource @Inject constructor(
         }
     }
 
-    private val autoConnectReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            if (intent.action == WifiNetworkHelper.ACTION_AUTO_CONNECT_TRIGGER) {
-                val targetSsid = intent.getStringExtra(WifiNetworkHelper.EXTRA_AUTO_CONNECT_SSID)
-                    ?: return
-
-                coroutineScope.launch(ioDispatcher) {
-                    try {
-                        autoConnectTaskRunnerProvider.get().handlePostConnection(targetSsid)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "자동 연결 처리 중 오류", e)
-                    }
-                }
-            }
-        }
-    }
-
-    private var autoConnectReceiverRegistered = false
-
-    private fun registerAutoConnectReceiver() {
-        if (autoConnectReceiverRegistered) return
-        val filter = IntentFilter(WifiNetworkHelper.ACTION_AUTO_CONNECT_TRIGGER)
-        context.registerReceiver(autoConnectReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        autoConnectReceiverRegistered = true
-    }
 }

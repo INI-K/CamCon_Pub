@@ -174,10 +174,10 @@ object CamConStatusNotification {
             LEGACY_CHANNEL_IDS.forEach { manager.deleteNotificationChannel(it) }
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "카메라 상태",
+                context.getString(R.string.notif_channel_status_name),
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "카메라 연결·파일 수신 상태 표시"
+                description = context.getString(R.string.notif_channel_status_desc)
                 setShowBadge(false)
                 setSound(null, null)
                 enableVibration(false)

@@ -399,12 +399,20 @@ class PtpipConnectionManager @Inject constructor(
             output.write(initPacket)
             output.flush()
 
-            // ACK 응답 수신
+            // ACK 응답 수신.
+            // Connection Number(offset 8~11)까지 최소 12바이트를 확보한다. 단일 read()는 TCP가
+            // 응답을 여러 세그먼트로 쪼개면 8~11바이트만 반환할 수 있는데, 그 상태에서 position(8)로
+            // Connection Number를 읽으면 미초기화 0바이트를 읽어 잘못된 번호가 나온다(부분 read 처리).
             socket.soTimeout = 5000
             val response = ByteArray(1024)
-            val bytesRead = input.read(response)
+            var total = 0
+            while (total < 12) {
+                val n = input.read(response, total, response.size - total)
+                if (n < 0) break // EOF
+                total += n
+            }
 
-            if (bytesRead >= 8) {
+            if (total >= 12) {
                 val buffer = ByteBuffer.wrap(response).order(ByteOrder.LITTLE_ENDIAN)
                 buffer.position(4)
                 val responseType = buffer.int

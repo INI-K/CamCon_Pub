@@ -18,6 +18,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
@@ -45,6 +46,8 @@ class GetSubscriptionUseCaseTest {
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         subscriptionRepository = mockk()
+        // init 이 결제 검증 신호를 collect 하므로 기본은 무신호(emptyFlow)로 stub.
+        every { subscriptionRepository.subscriptionRefreshSignals } returns emptyFlow()
         appSettingsRepository = mockk(relaxed = true)
         // seedFromCache()가 first()에서 멈추지 않도록 캐시 티어 기본 stub.
         every { appSettingsRepository.subscriptionTierEnum } returns flowOf(SubscriptionTier.FREE)
@@ -340,5 +343,121 @@ class GetSubscriptionUseCaseTest {
         val initial = useCase().value
         assertEquals(SubscriptionTier.FREE, initial.tier)
         assertEquals(false, initial.isAuthoritative)
+    }
+
+    // === item 2: 계정 전환 시 in-memory 구독 리셋 (크로스 계정 PRO 상속 방지) ===
+
+    @Test
+    fun `계정 전환 시 이전 계정 PRO 가 새 계정에 상속되지 않는다`() = runTest {
+        // Given: A(PRO) 로그인 상태로 생성, 이후 로그아웃 → B 로그인(오프라인 조회 실패)
+        every { appSettingsRepository.subscriptionTierEnum } returns flowOf(SubscriptionTier.FREE)
+        val userFlow = MutableStateFlow<User?>(
+            User(id = "uid-A", email = "a@x", displayName = "A")
+        )
+        every { authRepository.getCurrentUser() } returns userFlow
+        // A: 권위 PRO
+        coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(
+            Subscription(tier = SubscriptionTier.PRO, isActive = true, isAuthoritative = true)
+        )
+        val ucScope = CoroutineScope(testDispatcher)
+
+        useCase = GetSubscriptionUseCase(
+            subscriptionRepository, appSettingsRepository, authRepository, logger, ucScope
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(SubscriptionTier.PRO, useCase().value.tier)
+
+        // When: 로그아웃(uid → null)
+        userFlow.value = null
+        testDispatcher.scheduler.advanceUntilIdle()
+        // Then: in-memory 구독이 리셋되어 이전 PRO 가 사라진다
+        assertEquals(SubscriptionTier.FREE, useCase().value.tier)
+
+        // When: 새 계정 B 로그인 + 조회 실패(오프라인 비권위 FREE)
+        coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(
+            Subscription(tier = SubscriptionTier.FREE, isAuthoritative = false)
+        )
+        userFlow.value = User(id = "uid-B", email = "b@x", displayName = "B")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then: 이전 계정 PRO 를 상속하지 않고 FREE (fail-closed)
+        assertEquals(SubscriptionTier.FREE, useCase().value.tier)
+
+        ucScope.cancel()
+    }
+
+    @Test
+    fun `같은 사용자 오프라인 조회 실패는 기존 PRO 티어를 유지한다 (H10 보존)`() = runTest {
+        // Given: 캐시 PRO 로 시드된 뒤 동일 사용자 유지 중 조회가 비권위 FREE(오프라인)로 실패
+        every { appSettingsRepository.subscriptionTierEnum } returns flowOf(SubscriptionTier.PRO)
+        every { authRepository.getCurrentUser() } returns flowOf(
+            User(id = "uid-A", email = "a@x", displayName = "A")
+        )
+        coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(
+            Subscription(tier = SubscriptionTier.FREE, isAuthoritative = false)
+        )
+
+        // When
+        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, authRepository, logger, this)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then: 계정 전환이 아니므로 리셋되지 않고, 비권위 FREE 폴백이 seed PRO 를 덮지 못한다
+        assertEquals(SubscriptionTier.PRO, useCase().value.tier)
+    }
+
+    // === item 1(b): 결제 검증 신호 → 구독 재조회 ===
+
+    @Test
+    fun `결제 검증 신호를 받으면 구독을 재조회한다`() = runTest {
+        // Given: 초기 조회는 FREE, 신호 후 조회는 PRO(결제 반영)
+        every { appSettingsRepository.subscriptionTierEnum } returns flowOf(SubscriptionTier.FREE)
+        val signals = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+        every { subscriptionRepository.subscriptionRefreshSignals } returns signals
+        coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(
+            Subscription(tier = SubscriptionTier.FREE, isAuthoritative = true)
+        )
+        val ucScope = CoroutineScope(testDispatcher)
+
+        useCase = GetSubscriptionUseCase(
+            subscriptionRepository, appSettingsRepository, authRepository, logger, ucScope
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(SubscriptionTier.FREE, useCase().value.tier)
+
+        // When: 결제 검증 성공 신호 방출 + 이후 서버 응답은 PRO
+        coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(
+            Subscription(tier = SubscriptionTier.PRO, isActive = true, isAuthoritative = true)
+        )
+        signals.tryEmit(Unit)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then: 신호 관찰이 재조회를 트리거해 PRO 로 수렴
+        assertEquals(SubscriptionTier.PRO, useCase().value.tier)
+
+        ucScope.cancel()
+    }
+
+    // === item 1: refreshOnForeground 스로틀 ===
+
+    @Test
+    fun `refreshOnForeground 는 스로틀 내 반복 호출 시 재조회하지 않는다`() = runTest {
+        // Given
+        coEvery { subscriptionRepository.getUserSubscription() } returns flowOf(
+            Subscription(tier = SubscriptionTier.FREE)
+        )
+        useCase = GetSubscriptionUseCase(subscriptionRepository, appSettingsRepository, authRepository, logger, this)
+        testDispatcher.scheduler.advanceUntilIdle()
+        // init 의 refresh 호출 기록만 지우고 stub 은 유지
+        clearMocks(subscriptionRepository, answers = false)
+
+        // When: 첫 포그라운드 재조회
+        useCase.refreshOnForeground()
+        testDispatcher.scheduler.advanceUntilIdle()
+        // 즉시 재호출 — 스로틀(15분) 내이므로 스킵되어야 함
+        useCase.refreshOnForeground()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then: 서버 재조회는 정확히 1회
+        coVerify(exactly = 1) { subscriptionRepository.getUserSubscription() }
     }
 }

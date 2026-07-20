@@ -3,6 +3,7 @@ package com.inik.camcon.data.datasource.local
 import android.app.Application
 import app.cash.turbine.test
 import io.mockk.mockk
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -44,7 +45,7 @@ class AppPreferencesDataSourceFavoriteFilmLutTest {
     fun setUp() = runTest {
         val context = RuntimeEnvironment.getApplication()
         val encryptedPrefs = mockk<EncryptedAppPreferences>(relaxed = true)
-        dataSource = AppPreferencesDataSource(context, encryptedPrefs)
+        dataSource = AppPreferencesDataSource(context, encryptedPrefs, Dispatchers.Unconfined)
         dataSource.clearAllSettings()
     }
 

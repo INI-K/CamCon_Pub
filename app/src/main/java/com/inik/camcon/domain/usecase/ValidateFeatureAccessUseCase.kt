@@ -76,6 +76,13 @@ class ValidateFeatureAccessUseCase @Inject constructor() {
     fun resolveEffectiveLutId(tier: SubscriptionTier, selectedLutId: String): String =
         if (isFilmLutAllowed(tier, selectedLutId)) selectedLutId else ""
 
+    /**
+     * 라이브뷰 표시 허용 티어 — ADMIN 전용.
+     * 기능 게이팅 단일 지점 규약에 따라 티어 판정을 이 UseCase 로 모은다(UI/ViewModel 직접 분기 금지).
+     */
+    fun isLiveViewAllowed(tier: SubscriptionTier): Boolean =
+        tier == SubscriptionTier.ADMIN
+
     /** 필름·색감 동시 사용(듀얼 파이프라인) 허용 티어. */
     fun isDualPipelineAllowed(tier: SubscriptionTier): Boolean =
         tier == SubscriptionTier.PRO ||

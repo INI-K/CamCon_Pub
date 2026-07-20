@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.graphics.ColorSpace
-import android.media.ExifInterface
 import android.widget.Toast
 import com.inik.camcon.utils.LogcatManager
 import androidx.core.view.WindowCompat
@@ -84,6 +83,7 @@ import androidx.compose.runtime.Stable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -112,7 +112,9 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.size.Scale
 import com.inik.camcon.R
+import com.inik.camcon.utils.resolve
 import com.inik.camcon.domain.model.ThemeMode
+import com.inik.camcon.domain.model.UiText
 import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.CameraSettings
@@ -164,7 +166,6 @@ import com.inik.camcon.presentation.ui.screens.components.UnsupportedShootingMod
 import com.inik.camcon.presentation.ui.screens.dialogs.CameraConnectionHelpDialog
 import com.inik.camcon.presentation.ui.screens.dialogs.TimelapseSettingsDialog
 import com.inik.camcon.presentation.ui.screens.camera.dialogs.CameraRestartDialog
-import com.inik.camcon.domain.model.LiveViewFrame
 import com.inik.camcon.domain.model.LiveViewQuality
 import com.inik.camcon.domain.usecase.PipelineFeature
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
@@ -172,7 +173,6 @@ import com.inik.camcon.presentation.viewmodel.CameraUiState
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import com.inik.camcon.presentation.viewmodel.RawFileRestriction
 import kotlinx.coroutines.launch
-import org.json.JSONObject
 import java.io.File
 
 /**
@@ -191,8 +191,9 @@ fun CameraControlScreen(
     val context = LocalContext.current
 
     // UI 상태들을 선별적으로 수집
+    // liveViewFrame(프레임레이트로 갱신)은 루트에서 수집하면 CameraControlScreen 전체 스코프가
+    // 프레임마다 recompose 되므로, 실제 소비처인 각 레이아웃의 라이브뷰 블록에서만 수집한다.
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val liveViewFrame by viewModel.liveViewFrame.collectAsStateWithLifecycle()
     val cameraFeed by viewModel.cameraFeed.collectAsStateWithLifecycle()
 
     // 설정 상태들을 collectAsState로 개별 수집하되 리컴포지션 최적화
@@ -265,8 +266,8 @@ fun CameraControlScreen(
     var showFolderSelectionDialog by remember { mutableStateOf(false) }
     var showSaveFormatSelectionDialog by remember { mutableStateOf(false) }
     var showConnectionHelpDialog by remember { mutableStateOf(false) }
-    // 연결 도움말을 이미 표시·처리한 에러 문자열 (동일 에러 중복 표시 방지, 클리어 시 리셋)
-    var handledConnectionError by remember { mutableStateOf<String?>(null) }
+    // 연결 도움말을 이미 표시·처리한 에러 (동일 에러 중복 표시 방지, 클리어 시 리셋)
+    var handledConnectionError by remember { mutableStateOf<UiText?>(null) }
 
     // FullScreenPhotoViewer 상태들
     var showFullScreenViewer by remember { mutableStateOf(false) }
@@ -353,8 +354,8 @@ fun CameraControlScreen(
     val scope = rememberCoroutineScope()
     val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val snackbarHostState = remember { SnackbarHostState() }
-    var showTimelapseDialog by remember { mutableStateOf(false) }
-    var showBottomSheet by remember { mutableStateOf(false) }
+    var showTimelapseDialog by rememberSaveable { mutableStateOf(false) }
+    var showBottomSheet by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -401,7 +402,6 @@ fun CameraControlScreen(
                     // 전체화면 모드는 scaffoldPadding 무시 (시스템 UI 숨김)
                     FullscreenCameraLayout(
                         uiState = uiState,
-                        liveViewFrame = liveViewFrame,
                         cameraFeed = cameraFeed,
                         viewModel = viewModel,
                         onExitFullscreen = {
@@ -437,7 +437,6 @@ fun CameraControlScreen(
                     // 일반 모드는 Scaffold contentPadding 적용
                     PortraitCameraLayout(
                         uiState = uiState,
-                        liveViewFrame = liveViewFrame,
                         cameraFeed = cameraFeed,
                         viewModel = viewModel,
                         scope = scope,
@@ -500,7 +499,8 @@ fun CameraControlScreen(
 
     if (uiState.isUsbInitializing) {
         UsbInitializationOverlay(
-            message = uiState.usbInitializationMessage ?: stringResource(R.string.camera_control_usb_initializing)
+            message = uiState.usbInitializationMessage?.resolve(context)
+                ?: stringResource(R.string.camera_control_usb_initializing)
         )
     }
 
@@ -529,34 +529,58 @@ fun CameraControlScreen(
     // FullScreenPhotoViewer 표시
     if (showFullScreenViewer) {
         selectedPhoto?.let { photo ->
-            FullScreenPhotoViewer(
-                photo = photo.toCameraPhoto(),
-                onDismiss = {
-                    showFullScreenViewer = false
-                    selectedPhoto = null
-                },
-                onPhotoChanged = { /* 단일 사진이므로 변경 없음 */ },
-                thumbnailData = photo.getThumbnailData(),
-                fullImageData = photo.getImageData(),
-                isDownloadingFullImage = false,
-                onDownload = { /* 이미 다운로드됨, 아무 동작 안함 */ },
-                viewModel = null, // PhotoPreviewViewModel 없이 사용
-                hideDownloadButton = true, // 다운로드 버튼 숨김
-                onFilmEdit = { target ->
-                    // own-media(API29+)는 uri 로만 접근 가능 → uri 우선, 없으면 기존 파일경로.
-                    val uri = target.uri
-                    if (uri != null) {
-                        com.inik.camcon.presentation.ui.FilmEditorActivity.startForPhoto(
-                            context, android.net.Uri.parse(uri)
-                        )
-                    } else {
-                        com.inik.camcon.presentation.ui.FilmEditorActivity.startForPhoto(
-                            context, target.path
-                        )
-                    }
-                },
-                isRawFile = appSettingsViewModel::isRawFile
-            )
+            // 원본(수 MB~수십 MB)·썸네일 바이트를 컴포지션 밖 IO 에서 1회 로드한다.
+            // 이전에는 뷰어 인자에서 매 recomposition 마다 원본 파일 전체를 readBytes() 했다(라이브뷰 중엔 매 프레임).
+            // FullScreenPhotoViewer 내부 fullImageCache 는 키 없는 remember 로 최초 1회만 캡처하므로,
+            // 바이트가 준비된 뒤에 뷰어를 구성한다(로딩 중에는 다크 플레이스홀더).
+            val imageBytes by produceState<Pair<ByteArray?, ByteArray?>?>(
+                initialValue = null,
+                key1 = photo.id
+            ) {
+                value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    photo.getThumbnailData() to photo.getImageData()
+                }
+            }
+            val loaded = imageBytes
+            if (loaded == null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Surface0),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = Accent)
+                }
+            } else {
+                FullScreenPhotoViewer(
+                    photo = photo.toCameraPhoto(),
+                    onDismiss = {
+                        showFullScreenViewer = false
+                        selectedPhoto = null
+                    },
+                    onPhotoChanged = { /* 단일 사진이므로 변경 없음 */ },
+                    thumbnailData = loaded.first,
+                    fullImageData = loaded.second,
+                    isDownloadingFullImage = false,
+                    onDownload = { /* 이미 다운로드됨, 아무 동작 안함 */ },
+                    viewModel = null, // PhotoPreviewViewModel 없이 사용
+                    hideDownloadButton = true, // 다운로드 버튼 숨김
+                    onFilmEdit = { target ->
+                        // own-media(API29+)는 uri 로만 접근 가능 → uri 우선, 없으면 기존 파일경로.
+                        val uri = target.uri
+                        if (uri != null) {
+                            com.inik.camcon.presentation.ui.FilmEditorActivity.startForPhoto(
+                                context, android.net.Uri.parse(uri)
+                            )
+                        } else {
+                            com.inik.camcon.presentation.ui.FilmEditorActivity.startForPhoto(
+                                context, target.path
+                            )
+                        }
+                    },
+                    isRawFile = appSettingsViewModel::isRawFile
+                )
+            }
         }
     }
     if (showTimelapseDialog) {
@@ -596,7 +620,9 @@ fun CameraControlScreen(
 
     LaunchedEffect(uiState.error) {
         val error = uiState.error
-        val isConnectionError = error?.contains("Could not find the requested device") == true
+        // error 는 UiText? — 문자열 판정/표시 전에 resolve 로 현재 로케일 문자열을 얻는다.
+        val errorText = error?.resolve(context)
+        val isConnectionError = errorText?.contains("Could not find the requested device") == true
         if (isConnectionError) {
             // 아직 표시·처리하지 않은 새 에러일 때만 도움말 표시 (사용자가 닫은 동일 에러는 재오픈하지 않음)
             if (handledConnectionError != error) {
@@ -610,11 +636,11 @@ fun CameraControlScreen(
 
             // 전용 UI(연결 도움말/USB 분리/PTP 타임아웃)가 없는 일반 에러는
             // 본문을 Snackbar로 노출하고 1-shot으로 소비한다.
-            if (!error.isNullOrBlank() &&
+            if (!errorText.isNullOrBlank() &&
                 !uiState.connection.isUsbDisconnected &&
                 !uiState.isPtpTimeout
             ) {
-                snackbarHostState.showSnackbar(error)
+                snackbarHostState.showSnackbar(errorText)
                 viewModel.clearError()
             }
         }
@@ -671,7 +697,6 @@ private data class AppSettings(
 @Composable
 private fun PortraitCameraLayout(
     uiState: CameraUiState,
-    liveViewFrame: LiveViewFrame?,
     cameraFeed: List<Camera>,
     viewModel: CameraViewModel,
     scope: kotlinx.coroutines.CoroutineScope,
@@ -814,7 +839,9 @@ private fun PortraitCameraLayout(
             contentAlignment = Alignment.Center
         ) {
             if (appSettings.isCameraControlsEnabled && appSettings.isLiveViewEnabled) {
-                // ✅ Bitmap 디코딩 수집 (IO 디스패처에서 처리됨)
+                // ✅ 프레임/Bitmap 디코딩 수집은 이 최하위 스코프에서만 (IO 디스패처에서 처리됨).
+                // 프레임레이트 recomposition 을 CameraPreviewArea 서브트리로 국한한다.
+                val liveViewFrame by viewModel.liveViewFrame.collectAsStateWithLifecycle()
                 val decodedBitmap by viewModel.decodedLiveViewBitmap.collectAsStateWithLifecycle()
 
                 CameraPreviewArea(
@@ -849,12 +876,13 @@ private fun PortraitCameraLayout(
                     showInlineExposureStrip = false
                 )
             } else {
+                val enterFullscreenLabel = stringResource(R.string.camera_control_enter_fullscreen)
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .semantics {
                             customActions = listOf(
-                                CustomAccessibilityAction("전체화면 전환") {
+                                CustomAccessibilityAction(enterFullscreenLabel) {
                                     if (canEnterFullscreen) { onEnterFullscreen(); true } else false
                                 }
                             )
@@ -1205,7 +1233,6 @@ private fun filmLutDisplayName(id: String): String? {
 @Composable
 private fun FullscreenCameraLayout(
     uiState: CameraUiState,
-    liveViewFrame: LiveViewFrame?,
     cameraFeed: List<Camera>,
     viewModel: CameraViewModel,
     onExitFullscreen: () -> Unit,
@@ -1223,7 +1250,7 @@ private fun FullscreenCameraLayout(
     onCycleLiveViewQuality: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    var showTimelapseDialog by remember { mutableStateOf(false) }
+    var showTimelapseDialog by rememberSaveable { mutableStateOf(false) }
     var isRotated by remember { mutableStateOf(false) }
 
     // 진입 시 1회만 — 전체화면 진입 시 landscape 전환 + 시스템 바 숨김은 재실행 불필요
@@ -1245,7 +1272,9 @@ private fun FullscreenCameraLayout(
     ) {
         // 메인 라이브뷰 또는 사진 뷰 영역
         if (isLiveViewEnabled && uiState.isLiveViewActive) {
-            // ✅ Bitmap 디코딩 수집 (IO 디스패처에서 처리됨)
+            // ✅ 프레임/Bitmap 디코딩 수집은 이 최하위 스코프에서만 (IO 디스패처에서 처리됨).
+            // 프레임레이트 recomposition 을 CameraPreviewArea 서브트리로 국한한다.
+            val liveViewFrame by viewModel.liveViewFrame.collectAsStateWithLifecycle()
             val decodedBitmap by viewModel.decodedLiveViewBitmap.collectAsStateWithLifecycle()
 
             // 라이브뷰 모드
@@ -1279,12 +1308,13 @@ private fun FullscreenCameraLayout(
                 // → 라이브뷰 단일 탭은 무동작, 더블탭=전체화면 종료는 유지.
             )
         } else {
+            val exitFullscreenLabel = stringResource(R.string.camera_control_exit_fullscreen)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .semantics {
                         customActions = listOf(
-                            CustomAccessibilityAction("전체화면 종료") {
+                            CustomAccessibilityAction(exitFullscreenLabel) {
                                 onExitFullscreen(); true
                             }
                         )
@@ -1753,9 +1783,9 @@ private fun AnimatedPhotoSwitcher(
     isRotated: Boolean = false,
     onDoubleClick: (() -> Unit)? = null
 ) {
-    val latestPhoto = remember(capturedPhotos.size) {
-        capturedPhotos.lastOrNull()
-    }
+    // capturedPhotos 는 LRU 1000장 캡이 있어 size 가 1000에서 고정되면 remember(size) 가 최신 사진을
+    // 영영 갱신하지 못한다(동결 회귀). lastOrNull() 은 O(1) 이므로 remember 없이 매 recomposition 직접 읽는다.
+    val latestPhoto = capturedPhotos.lastOrNull()
 
     Box(
         modifier = modifier,
@@ -1881,79 +1911,6 @@ private fun CameraSettingsSheet(
     }
 }
 
-/**
- * 사진 파일에서 EXIF 메타데이터를 읽어서 CameraSettings 객체로 변환
- */
-private fun readExifMetadata(filePath: String): CameraSettings? {
-    return try {
-        val file = File(filePath)
-        if (!file.exists()) return null
-
-        val exif = ExifInterface(filePath)
-
-        // ISO 값 읽기
-        val iso = exif.getAttribute(ExifInterface.TAG_ISO_SPEED_RATINGS) ?: "AUTO"
-
-        // 조리개 값 읽기
-        val aperture = exif.getAttribute(ExifInterface.TAG_F_NUMBER)?.let { fNumber ->
-            try {
-                val parts = fNumber.split("/")
-                if (parts.size == 2) {
-                    val numerator = parts[0].toDouble()
-                    val denominator = parts[1].toDouble()
-                    String.format("%.1f", numerator / denominator)
-                } else {
-                    fNumber
-                }
-            } catch (e: Exception) {
-                fNumber
-            }
-        } ?: "AUTO"
-
-        // 셔터 속도 읽기
-        val shutterSpeed = exif.getAttribute(ExifInterface.TAG_EXPOSURE_TIME)?.let { exposureTime ->
-            try {
-                val speed = exposureTime.toDouble()
-
-                if (speed >= 1.0) {
-                    "${speed.toInt()}s"
-                } else {
-                    val denominator = (1.0 / speed).toInt()
-                    "1/$denominator"
-                }
-            } catch (e: Exception) {
-                LogcatManager.e("CameraControl", "셔터 속도 파싱 실패: $exposureTime")
-                exposureTime
-            }
-        } ?: "AUTO"
-
-        // 화이트 밸런스 읽기
-        val whiteBalance = when (exif.getAttribute(ExifInterface.TAG_WHITE_BALANCE)) {
-            "0" -> "자동"
-            "1" -> "수동"
-            else -> "자동"
-        }
-
-        // 초점 모드 읽기 (기본값)
-        val focusMode = "자동"
-
-        // 노출 보정 읽기
-        val exposureCompensation = exif.getAttribute(ExifInterface.TAG_EXPOSURE_BIAS_VALUE) ?: "0"
-
-        CameraSettings(
-            iso = iso,
-            shutterSpeed = shutterSpeed,
-            aperture = aperture,
-            whiteBalance = whiteBalance,
-            focusMode = focusMode,
-            exposureCompensation = exposureCompensation
-        )
-    } catch (e: Exception) {
-        LogcatManager.e("CameraControl", "EXIF 메타데이터 읽기 실패: ${e.message}")
-        null
-    }
-}
-
 // CapturedPhoto를 CameraPhoto로 변환하는 확장 함수
 private fun CapturedPhoto.toCameraPhoto(): CameraPhoto {
     return CameraPhoto(
@@ -1981,83 +1938,6 @@ private fun CapturedPhoto.getImageData(): ByteArray? {
     return try {
         File(this.filePath).readBytes()
     } catch (e: Exception) {
-        null
-    }
-}
-
-// CapturedPhoto에서 EXIF 정보를 JSON 형태로 읽어오는 확장 함수
-private fun CapturedPhoto.getExifData(): String? {
-    return try {
-        val file = File(this.filePath)
-        if (!file.exists()) return null
-
-        val exif = ExifInterface(this.filePath)
-        val exifMap = mutableMapOf<String, Any>()
-
-        // 기본 이미지 정보
-        exifMap["width"] = this.width
-        exifMap["height"] = this.height
-        exifMap["file_size"] = this.size
-        exifMap["capture_time"] = this.captureTime
-
-        // 카메라 정보
-        exif.getAttribute(ExifInterface.TAG_MAKE)?.let { exifMap["make"] = it }
-        exif.getAttribute(ExifInterface.TAG_MODEL)?.let { exifMap["model"] = it }
-
-        // 촬영 설정 (CapturedPhoto에 있는 settings 활용)
-        this.settings?.let { settings ->
-            exifMap["iso"] = settings.iso
-            exifMap["aperture"] = settings.aperture
-            exifMap["shutter_speed"] = settings.shutterSpeed
-            exifMap["white_balance"] = settings.whiteBalance
-            exifMap["focus_mode"] = settings.focusMode
-            exifMap["exposure_compensation"] = settings.exposureCompensation
-        }
-
-        // EXIF에서 추가 정보 읽기
-        exif.getAttribute(ExifInterface.TAG_F_NUMBER)?.let { exifMap["f_number"] = it }
-        exif.getAttribute(ExifInterface.TAG_EXPOSURE_TIME)?.let { exifMap["exposure_time"] = it }
-        exif.getAttribute(ExifInterface.TAG_FOCAL_LENGTH)?.let { exifMap["focal_length"] = it }
-        exif.getAttribute(ExifInterface.TAG_ISO_SPEED_RATINGS)?.let { exif_iso ->
-            if (!exifMap.containsKey("iso") || exifMap["iso"] == "AUTO") {
-                exifMap["iso"] = exif_iso
-            }
-        }
-
-        // 기타 정보
-        val orientation =
-            exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
-        exifMap["orientation"] = orientation
-
-        exif.getAttribute(ExifInterface.TAG_WHITE_BALANCE)?.let { wb ->
-            val whiteBalanceText = when (wb) {
-                "0" -> "자동"
-                "1" -> "수동"
-                else -> "자동"
-            }
-            exifMap["white_balance_exif"] = whiteBalanceText
-        }
-
-        exif.getAttribute(ExifInterface.TAG_FLASH)?.let { exifMap["flash"] = it }
-        exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL)
-            ?.let { exifMap["date_time_original"] = it }
-
-        // GPS 정보
-        val latLong = floatArrayOf(0f, 0f)
-        if (exif.getLatLong(latLong)) {
-            exifMap["gps_latitude"] = latLong[0]
-            exifMap["gps_longitude"] = latLong[1]
-        }
-
-        // JSON 문자열로 변환
-        val jsonObject = JSONObject()
-        exifMap.forEach { (key, value) ->
-            jsonObject.put(key, value)
-        }
-
-        jsonObject.toString()
-    } catch (e: Exception) {
-        LogcatManager.e("CameraControl", "EXIF 정보 읽기 실패: ${e.message}", e)
         null
     }
 }

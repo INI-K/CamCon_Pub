@@ -97,6 +97,8 @@ import com.inik.camcon.presentation.viewmodel.CameraCaptureState
 import com.inik.camcon.presentation.viewmodel.CameraLiveViewState
 import com.inik.camcon.presentation.viewmodel.CameraUiState
 import com.inik.camcon.domain.model.ThemeMode
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.collectLatest
 
 /**
  * 카메라 프리뷰 영역 — state+callback 패턴
@@ -210,22 +212,27 @@ fun CameraPreviewArea(
                     androidx.compose.runtime.mutableStateOf<android.graphics.Bitmap?>(null)
                 }
                 val ioDispatcher = kotlinx.coroutines.Dispatchers.IO
-                androidx.compose.runtime.LaunchedEffect(decodedBitmap, isFocusPeakingEnabled) {
+                // 피킹 OFF 면 effect 자체가 기동하지 않는다(프레임마다 코루틴 취소·재기동 제거).
+                // ON 이면 최신 프레임을 snapshotFlow 로 관찰하고 collectLatest 로 직전 프레임의 처리를 취소한다.
+                val latestFrameForPeaking = androidx.compose.runtime.rememberUpdatedState(decodedBitmap)
+                androidx.compose.runtime.LaunchedEffect(isFocusPeakingEnabled) {
                     if (!isFocusPeakingEnabled) {
                         focusPeakingBitmap.value = null
                         return@LaunchedEffect
                     }
-                    val processed = kotlinx.coroutines.withContext(ioDispatcher) {
-                        try {
-                            // F26: getPixels 전 recycle 가드 — 교체 경합 시 IllegalStateException 방지
-                            if (decodedBitmap.isRecycled) null
-                            else com.inik.camcon.presentation.util.applyFocusPeaking(decodedBitmap)
-                        } catch (e: Exception) {
-                            Log.w("CameraPreview", "포커스 피킹 처리 실패", e)
-                            null
+                    androidx.compose.runtime.snapshotFlow { latestFrameForPeaking.value }
+                        .collectLatest { frame ->
+                            focusPeakingBitmap.value = kotlinx.coroutines.withContext(ioDispatcher) {
+                                try {
+                                    // F26: getPixels 전 recycle 가드 — 교체 경합 시 IllegalStateException 방지
+                                    if (frame.isRecycled) null
+                                    else com.inik.camcon.presentation.util.applyFocusPeaking(frame)
+                                } catch (e: Exception) {
+                                    Log.w("CameraPreview", "포커스 피킹 처리 실패", e)
+                                    null
+                                }
+                            }
                         }
-                    }
-                    focusPeakingBitmap.value = processed
                 }
 
                 val displayBitmap = focusPeakingBitmap.value ?: decodedBitmap
@@ -869,10 +876,15 @@ private fun LiveViewStaleBadge(
     }
     val isStale = remember { androidx.compose.runtime.mutableStateOf(false) }
 
-    // 새 프레임이 도착하면 수신 시각 갱신 + stale 해제
-    androidx.compose.runtime.LaunchedEffect(liveViewFrame, decodedBitmap) {
-        lastFrameTime.value = System.currentTimeMillis()
-        isStale.value = false
+    // 새 프레임이 도착하면 수신 시각 갱신 + stale 해제.
+    // 프레임마다 LaunchedEffect 를 재기동하지 않도록 최신 프레임을 snapshotFlow 로 단일 수집한다.
+    val frameSignal = androidx.compose.runtime.rememberUpdatedState(liveViewFrame to decodedBitmap)
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        androidx.compose.runtime.snapshotFlow { frameSignal.value }
+            .collect {
+                lastFrameTime.value = System.currentTimeMillis()
+                isStale.value = false
+            }
     }
 
     // 주기적으로 경과 시간 검사

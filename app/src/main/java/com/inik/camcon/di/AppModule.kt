@@ -1,6 +1,7 @@
 package com.inik.camcon.di
 
 import android.content.Context
+import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.functions.FirebaseFunctions
@@ -33,6 +34,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -63,8 +65,14 @@ object AppModule {
     @Provides
     @Singleton
     @ApplicationScope
-    fun provideApplicationScope(): CoroutineScope =
-        CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    fun provideApplicationScope(): CoroutineScope {
+        // 앱 전역 scope에서 처리되지 않은 예외가 조용히 사라지지 않도록 핸들러로 로깅한다.
+        // SupervisorJob이라 한 자식의 실패가 형제·scope를 취소하지 않는다.
+        val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+            Log.e("ApplicationScope", "앱 스코프 코루틴에서 처리되지 않은 예외", throwable)
+        }
+        return CoroutineScope(SupervisorJob() + Dispatchers.Default + exceptionHandler)
+    }
 
     @Provides
     @IoDispatcher
@@ -184,6 +192,7 @@ object AppModule {
         wifiHelper: WifiNetworkHelper,
         cameraEventManager: CameraEventManager,
         cameraStateObserver: CameraStateObserver,
+        errorNotifier: com.inik.camcon.domain.manager.ErrorNotifier,
         photoDownloadManager: PhotoDownloadManager,
         autoConnectManager: AutoConnectManager,
         autoConnectTaskRunner: Lazy<AutoConnectTaskRunner>,
@@ -202,6 +211,7 @@ object AppModule {
             wifiHelper,
             cameraEventManager,
             cameraStateObserver,
+            errorNotifier,
             photoDownloadManager,
             autoConnectManager,
             autoConnectTaskRunner,
@@ -228,8 +238,9 @@ object AppModule {
     @Singleton
     fun provideAppPreferencesDataSource(
         @ApplicationContext context: Context,
-        encryptedPrefs: com.inik.camcon.data.datasource.local.EncryptedAppPreferences
-    ) = AppPreferencesDataSource(context, encryptedPrefs)
+        encryptedPrefs: com.inik.camcon.data.datasource.local.EncryptedAppPreferences,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
+    ) = AppPreferencesDataSource(context, encryptedPrefs, ioDispatcher)
 
     @Provides
     @Singleton
