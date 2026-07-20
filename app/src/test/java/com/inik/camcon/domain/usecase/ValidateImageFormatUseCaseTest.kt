@@ -18,6 +18,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -125,6 +126,8 @@ class ValidateImageFormatUseCaseTest {
         every { Log.w(any<String>(), any<String>()) } returns 0
         every { Log.i(any(), any()) } returns 0
         subscriptionRepository = mockk()
+        // GetSubscriptionUseCase init 이 결제 검증 신호를 collect 하므로 무신호(emptyFlow)로 stub.
+        every { subscriptionRepository.subscriptionRefreshSignals } returns emptyFlow()
         appSettingsRepository = FakeAppSettingsRepository()
         authRepository = mockk()
         // 로그인 관찰이 추가 refresh 를 트리거하지 않도록 비로그인(null) 기본 stub.

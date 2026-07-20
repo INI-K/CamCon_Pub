@@ -152,6 +152,12 @@ class SubscriptionViewModel @Inject constructor(
                         error = if (launched) null else it.error
                     )
                 }
+                if (launched) {
+                    // 결제 시트가 떠오른 뒤 활성 구독을 서버 동기화·재조회한다(restore 와 동일 패턴).
+                    // 구매 완료의 주 반영 경로는 BillingDataSource 업데이트 → 서버 검증 → refresh 신호이며,
+                    // 이 호출은 이미 완료/복원 가능한 구매를 즉시 포착하는 보조 경로다.
+                    getSubscriptionUseCase.refreshSubscription(forceSync = true)
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

@@ -390,6 +390,8 @@ dependencies {
 
     // Lifecycle runtime compose for collectAsStateWithLifecycle
     implementation "androidx.lifecycle:lifecycle-runtime-compose:2.7.0"
+    // 앱 포그라운드 복귀 감지(ProcessLifecycleOwner) — 구독 티어 재조회 트리거
+    implementation "androidx.lifecycle:lifecycle-process:2.7.0"
 
     // Baseline Profile 런타임 설치 (앱 시작/스크롤 성능 개선).
     // ProfileInstallerInitializer가 androidx.startup으로 자동 병합되어 별도 코드 불필요.
