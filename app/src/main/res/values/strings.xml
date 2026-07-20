@@ -625,4 +625,17 @@
     <string name="camera_op_timelapse_start_failed">Failed to start time-lapse: %1$s</string>
     <string name="camera_op_timelapse_failed">Time-lapse failed: %1$s</string>
     <string name="camera_op_autofocus_failed">Autofocus failed: %1$s</string>
+    <!-- USB 자동연결 매니저 에러(UsbAutoConnectManager → Snackbar). %1$s = 상세(예외 메시지/error_unknown). -->
+    <string name="usb_error_disconnect_failed">Failed to disconnect the camera: %1$s</string>
+    <string name="usb_error_permission_requested">USB permission requested. Please approve it in the dialog.</string>
+    <string name="usb_error_already_connected">The camera is already connected</string>
+    <string name="usb_error_camera_not_detected">No USB camera detected</string>
+    <string name="usb_error_device_check_failed">Failed to check USB devices: %1$s</string>
+    <string name="usb_error_permission_request_failed">Failed to request USB permission: %1$s</string>
+    <!-- 카메라 연결 상태 에러(CameraUiStateManager → error 상태). -->
+    <string name="camera_status_usb_not_detected">No USB camera detected</string>
+    <string name="camera_status_usb_permission_needed">USB permission is required</string>
+    <string name="camera_status_capabilities_unavailable">Unable to retrieve camera capabilities</string>
+    <string name="camera_status_ptp_timeout">The PTP camera has not responded for a while. Please try connecting again.</string>
+    <string name="camera_status_usb_disconnected">The USB camera has been disconnected.\n\nTo reconnect the camera:\n1. Reconnect the USB cable\n2. Tap the \'Refresh\' button at the bottom of the screen</string>
 </resources>

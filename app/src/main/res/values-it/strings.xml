@@ -383,4 +383,15 @@
     <string name="camera_op_timelapse_start_failed">Impossibile avviare il timelapse: %1$s</string>
     <string name="camera_op_timelapse_failed">Timelapse non riuscito: %1$s</string>
     <string name="camera_op_autofocus_failed">Messa a fuoco automatica non riuscita: %1$s</string>
+    <string name="usb_error_disconnect_failed">Impossibile disconnettere la fotocamera: %1$s</string>
+    <string name="usb_error_permission_requested">Autorizzazione USB richiesta. Approvala nella finestra di dialogo.</string>
+    <string name="usb_error_already_connected">La fotocamera è già connessa</string>
+    <string name="usb_error_camera_not_detected">Nessuna fotocamera USB rilevata</string>
+    <string name="usb_error_device_check_failed">Impossibile verificare i dispositivi USB: %1$s</string>
+    <string name="usb_error_permission_request_failed">Impossibile richiedere l\'autorizzazione USB: %1$s</string>
+    <string name="camera_status_usb_not_detected">Nessuna fotocamera USB rilevata</string>
+    <string name="camera_status_usb_permission_needed">È richiesta l\'autorizzazione USB</string>
+    <string name="camera_status_capabilities_unavailable">Impossibile recuperare le funzionalità della fotocamera</string>
+    <string name="camera_status_ptp_timeout">La fotocamera PTP non risponde da un po\'. Riprova a connetterti.</string>
+    <string name="camera_status_usb_disconnected">La fotocamera USB è stata disconnessa.\n\nPer riconnettere la fotocamera:\n1. Ricollega il cavo USB\n2. Tocca il pulsante \'Aggiorna\' in fondo allo schermo</string>
 </resources>
