@@ -1,18 +1,19 @@
 package com.inik.camcon.domain.model
 
-import androidx.annotation.StringRes
-
 /**
  * Domain 또는 Data 레이어에서 UI에 표시할 텍스트를 표현할 때 사용하는 sealed 타입.
  *
  * Domain/Data 레이어는 Context 또는 Resources를 직접 참조하지 않고
  * 리소스 ID + 포맷 인자만 전달한다. UI 측에서 `resolve(context)`로 실제 문자열을 얻는다.
+ *
+ * domain 순수성(멀티모듈 대비)을 위해 androidx.annotation(@StringRes)에도 의존하지 않는다.
+ * [resId] 는 R.string.* 값을 담는 일반 Int 이며, 실제 해석은 presentation/util 의 resolve 확장이 담당한다.
  */
 sealed interface UiText {
 
-    /** 리소스 ID + 포맷 인자 기반 텍스트. */
+    /** 리소스 ID + 포맷 인자 기반 텍스트. [resId] 는 R.string.* 값. */
     data class Resource(
-        @StringRes val resId: Int,
+        val resId: Int,
         val args: List<Any> = emptyList()
     ) : UiText
 

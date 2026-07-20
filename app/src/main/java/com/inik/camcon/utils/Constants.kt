@@ -100,6 +100,10 @@ object Constants {
         const val MAX_THUMBNAIL_CACHE_SIZE = 400
         // 고해상도 이미지 캐시 크기 제한
         const val MAX_FULL_IMAGE_CACHE_SIZE = 10
+        // 고해상도 이미지 캐시 바이트 예산 상한.
+        // 개수 FIFO(10)만으로는 RAW(25~90MB) 다중선택 시 힙이 수백 MB까지 쌓여 OOM 위험이 있어,
+        // 바이트 예산 축출을 추가한다. 실제 예산 = min(이 값, maxMemory/8) 로 저사양 기기에서 더 보수적.
+        const val MAX_FULL_IMAGE_CACHE_BYTES = 96L * 1024 * 1024
         // 색감 전송 통계 캐시 크기
         const val MAX_COLOR_TRANSFER_STATS_CACHE_SIZE = 10
     }
@@ -115,6 +119,10 @@ object Constants {
         // 미리보기 이미지 크기
         const val PREVIEW_MAX_WIDTH = 1920
         const val PREVIEW_MAX_HEIGHT = 1080
+
+        // FREE 티어 다운로드 최대 장축(px). 게이팅 단일 상수 — data/presentation 두 리사이즈
+        // 경로가 이 값을 공유해 정책 드리프트를 막는다.
+        const val FREE_TIER_MAX_DIMENSION = 2000
 
         // 지원하는 이미지 포맷
         val SUPPORTED_IMAGE_EXTENSIONS = listOf(
@@ -300,5 +308,13 @@ object Constants {
         // Firebase 컬렉션 이름
         const val USERS_COLLECTION = "users"
         const val SUBSCRIPTIONS_COLLECTION = "subscriptions"
+    }
+
+    /**
+     * 법적 문서 URL (개인정보처리방침·이용약관)
+     */
+    object Legal {
+        const val PRIVACY_POLICY_URL = "https://camcon.inik.kr/privacy.html"
+        const val TERMS_OF_SERVICE_URL = "https://camcon.inik.kr/terms.html"
     }
 }

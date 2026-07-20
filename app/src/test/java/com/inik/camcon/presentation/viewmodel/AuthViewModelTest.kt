@@ -22,6 +22,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.io.IOException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AuthViewModelTest {
@@ -131,5 +132,43 @@ class AuthViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(user, viewModel.uiState.value.currentUser)
+    }
+
+    // === deleteAccount: 파괴적 플로우 이벤트 방출 검증 ===
+
+    @Test
+    fun `deleteAccount 성공시 AccountDeleteSuccess와 NavigateToLogin 이벤트 방출`() = runTest {
+        coEvery { deleteAccountUseCase() } returns Result.success(Unit)
+        viewModel = createViewModel()
+
+        viewModel.uiEvent.test {
+            viewModel.deleteAccount()
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            assertEquals(AuthUiEvent.AccountDeleteSuccess, awaitItem())
+            assertEquals(AuthUiEvent.NavigateToLogin, awaitItem())
+            cancelAndConsumeRemainingEvents()
+        }
+
+        // 성공 후 상태: 삭제 진행 해제 + 로컬 사용자 정리
+        assertFalse(viewModel.uiState.value.isDeletingAccount)
+        assertEquals(null, viewModel.uiState.value.currentUser)
+    }
+
+    @Test
+    fun `deleteAccount 실패시 AccountDeleteFailure 이벤트 방출 및 진행 상태 해제`() = runTest {
+        coEvery { deleteAccountUseCase() } returns Result.failure(IOException("network"))
+        viewModel = createViewModel()
+
+        viewModel.uiEvent.test {
+            viewModel.deleteAccount()
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            val event = awaitItem()
+            assertTrue(event is AuthUiEvent.AccountDeleteFailure)
+            cancelAndConsumeRemainingEvents()
+        }
+
+        assertFalse(viewModel.uiState.value.isDeletingAccount)
     }
 }

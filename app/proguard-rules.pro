@@ -126,27 +126,9 @@
     public <methods>;
 }
 
-# JSON 파싱 관련 보호 (네이티브에서 JSON 반환)
--keep class org.json.** {
-    public <methods>;
-}
-
-# 스레드 관련 보호 (네이티브 콜백에서 사용)
--keep class java.lang.Thread {
-    public <init>(java.lang.Runnable);
-    public void start();
-    public static void sleep(long);
-}
-
-# 원자적 연산 클래스 보호 (동기화에 사용)
--keep class java.util.concurrent.atomic.AtomicBoolean {
-    public <methods>;
-}
-
-# 뮤텍스 관련 보호
--keep class kotlinx.coroutines.sync.Mutex {
-    public <methods>;
-}
+# (제거됨) org.json.** / java.lang.Thread / AtomicBoolean 는 부트클래스패스(플랫폼) 클래스라
+#   R8이 rename/remove 대상으로 삼지 않아 -keep 이 무의미했다. kotlinx Mutex 는 정상 도달 코드로
+#   유지되며 consumer 규칙이 있어 별도 keep 불필요. (모델/JNI/콜백 keep 은 반사·GetMethodID 때문에 유지)
 
 # ExceptionInInitializerError 방지를 위한 정적 초기화 블록 보호
 -keepclassmembers class com.inik.camcon.CameraNative {

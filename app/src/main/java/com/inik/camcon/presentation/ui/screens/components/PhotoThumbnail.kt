@@ -88,7 +88,7 @@ fun PhotoThumbnail(
     onClick: () -> Unit,
     onLongClick: () -> Unit = {},
     thumbnailData: ByteArray? = null,
-    fullImageCache: Map<String, ByteArray> = emptyMap(),
+    fullImageData: ByteArray? = null,
     isSelected: Boolean = false,
     isMultiSelectMode: Boolean = false
 ) {
@@ -96,9 +96,17 @@ fun PhotoThumbnail(
     remember(photo.path) {
         Log.d(
             "PhotoThumbnail",
-            "썸네일 처리: ${photo.name} (path=${LogMask.path(photo.path)}, thumb=${thumbnailData?.size ?: 0}B, full=${fullImageCache[photo.path]?.size ?: 0}B)"
+            "썸네일 처리: ${photo.name} (path=${LogMask.path(photo.path)}, thumb=${thumbnailData?.size ?: 0}B, full=${fullImageData?.size ?: 0}B)"
         )
         photo.path
+    }
+
+    // File.exists()를 매 recomposition마다 호출하지 않도록 경로 키로 1회 계산(로컬 파일 존재는 세션 내 불변).
+    val thumbnailPathExists = remember(photo.thumbnailPath) {
+        !photo.thumbnailPath.isNullOrEmpty() && File(photo.thumbnailPath).exists()
+    }
+    val photoPathExists = remember(photo.path) {
+        !photo.path.isNullOrEmpty() && File(photo.path).exists()
     }
 
     val haptic = LocalHapticFeedback.current
@@ -151,7 +159,7 @@ fun PhotoThumbnail(
 
             // 이미지 로딩 우선순위: 썸네일 경로 -> 원본 경로 -> 바이트 데이터 -> 플레이스홀더
             when {
-                !photo.thumbnailPath.isNullOrEmpty() && File(photo.thumbnailPath).exists() -> {
+                thumbnailPathExists -> {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(photo.thumbnailPath)
@@ -170,7 +178,7 @@ fun PhotoThumbnail(
                     )
                 }
 
-                !photo.path.isNullOrEmpty() && File(photo.path).exists() -> {
+                photoPathExists -> {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(photo.path)
@@ -190,7 +198,6 @@ fun PhotoThumbnail(
                 }
 
                 thumbnailData != null && thumbnailData.isNotEmpty() -> {
-                    val fullImageData = fullImageCache[photo.path]
                     if (fullImageData != null) {
                         ExifAwareThumbnail(
                             thumbnailData = thumbnailData,
@@ -520,7 +527,7 @@ fun FluidPhotoThumbnail(
     onClick: () -> Unit,
     onLongClick: () -> Unit = {},
     thumbnailData: ByteArray? = null,
-    fullImageCache: Map<String, ByteArray> = emptyMap(),
+    fullImageData: ByteArray? = null,
     isSelected: Boolean = false,
     isMultiSelectMode: Boolean = false
 ) {
@@ -538,9 +545,17 @@ fun FluidPhotoThumbnail(
     remember(photo.path) {
         Log.d(
             "FluidPhotoThumbnail",
-            "썸네일 처리: ${photo.name} (path=${LogMask.path(photo.path)}, thumb=${thumbnailData?.size ?: 0}B, full=${fullImageCache[photo.path]?.size ?: 0}B, ratio=$aspectRatio)"
+            "썸네일 처리: ${photo.name} (path=${LogMask.path(photo.path)}, thumb=${thumbnailData?.size ?: 0}B, full=${fullImageData?.size ?: 0}B, ratio=$aspectRatio)"
         )
         photo.path
+    }
+
+    // File.exists()를 매 recomposition마다 호출하지 않도록 경로 키로 1회 계산(로컬 파일 존재는 세션 내 불변).
+    val thumbnailPathExists = remember(photo.thumbnailPath) {
+        !photo.thumbnailPath.isNullOrEmpty() && File(photo.thumbnailPath).exists()
+    }
+    val photoPathExists = remember(photo.path) {
+        !photo.path.isNullOrEmpty() && File(photo.path).exists()
     }
 
     val haptic = LocalHapticFeedback.current
@@ -594,7 +609,7 @@ fun FluidPhotoThumbnail(
 
             // 이미지 로딩 우선순위: 썸네일 경로 -> 원본 경로 -> 바이트 데이터 -> 플레이스홀더
             when {
-                !photo.thumbnailPath.isNullOrEmpty() && File(photo.thumbnailPath).exists() -> {
+                thumbnailPathExists -> {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(photo.thumbnailPath)
@@ -613,7 +628,7 @@ fun FluidPhotoThumbnail(
                     )
                 }
 
-                !photo.path.isNullOrEmpty() && File(photo.path).exists() -> {
+                photoPathExists -> {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(photo.path)
@@ -633,7 +648,6 @@ fun FluidPhotoThumbnail(
                 }
 
                 thumbnailData != null && thumbnailData.isNotEmpty() -> {
-                    val fullImageData = fullImageCache[photo.path]
                     if (fullImageData != null) {
                         FluidExifAwareThumbnail(
                             thumbnailData = thumbnailData,
@@ -905,7 +919,7 @@ private fun FluidThumbnailImage(
 fun FeaturedPhotoThumbnail(
     photo: CameraPhoto,
     thumbnailData: ByteArray? = null,
-    fullImageCache: Map<String, ByteArray> = emptyMap(),
+    fullImageData: ByteArray? = null,
     onClick: () -> Unit
 ) {
     // 더 큰 비율로 표시 (16:9 또는 실제 비율)
@@ -915,6 +929,14 @@ fun FeaturedPhotoThumbnail(
         } else {
             1.5f // 기본 3:2 비율
         }
+    }
+
+    // File.exists()를 매 recomposition마다 호출하지 않도록 경로 키로 1회 계산(로컬 파일 존재는 세션 내 불변).
+    val thumbnailPathExists = remember(photo.thumbnailPath) {
+        !photo.thumbnailPath.isNullOrEmpty() && File(photo.thumbnailPath).exists()
+    }
+    val photoPathExists = remember(photo.path) {
+        !photo.path.isNullOrEmpty() && File(photo.path).exists()
     }
 
     SurfaceV2(
@@ -929,7 +951,7 @@ fun FeaturedPhotoThumbnail(
         Box {
             // 이미지 로딩
             when {
-                !photo.thumbnailPath.isNullOrEmpty() && File(photo.thumbnailPath).exists() -> {
+                thumbnailPathExists -> {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(photo.thumbnailPath)
@@ -948,7 +970,7 @@ fun FeaturedPhotoThumbnail(
                     )
                 }
 
-                !photo.path.isNullOrEmpty() && File(photo.path).exists() -> {
+                photoPathExists -> {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(photo.path)
@@ -968,7 +990,6 @@ fun FeaturedPhotoThumbnail(
                 }
 
                 thumbnailData != null && thumbnailData.isNotEmpty() -> {
-                    val fullImageData = fullImageCache[photo.path]
                     if (fullImageData != null) {
                         FluidExifAwareThumbnail(
                             thumbnailData = thumbnailData,
