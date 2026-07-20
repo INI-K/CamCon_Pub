@@ -13,11 +13,14 @@ import com.inik.camcon.domain.model.Subscription
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.model.User
 import com.inik.camcon.domain.repository.AuthRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.io.IOException
 import java.util.Date
@@ -68,76 +71,90 @@ class AuthRepositoryImpl @Inject constructor(
 
             Log.i(TAG, "Firebase Auth 로그인 성공: ${maskId(firebaseUser.uid)}")
 
-            // Firestore에서 사용자 정보 조회
-            var user = getUserById(firebaseUser.uid)
-
-            // 신규 사용자인 경우 Firestore에 사용자 정보 생성
-            if (user == null) {
-                Log.i(TAG, "신규 사용자, Firestore에 정보 생성: ${maskId(firebaseUser.uid)}")
-
-                val newUserData = mapOf(
-                    "email" to (firebaseUser.email ?: ""),
-                    "displayName" to (firebaseUser.displayName ?: ""),
-                    "photoUrl" to firebaseUser.photoUrl?.toString(),
-                    "createdAt" to Date(),
-                    "lastLoginAt" to Date(),
-                    "isActive" to true,
-                    "referralCode" to null,
-                    "referredBy" to null,
-                    "totalReferrals" to 0,
-                    "deviceInfo" to null,  // 필요시 별도로 수집
-                    "appVersion" to null   // 필요시 별도로 수집
-                )
-
-                firestore.collection(USERS_COLLECTION)
-                    .document(firebaseUser.uid)
-                    .set(newUserData)
-                    .await()
-
-                // 기본 FREE 구독 문서는 서버 권위(ensureUserBootstrap CF)로 생성 — rules가 클라 쓰기를 금지.
-                // CF 미배포/일시 실패여도 로그인은 진행(구독 문서 부재 시 FREE 폴백이 이미 동작).
-                try {
-                    functions.getHttpsCallable(BOOTSTRAP_FUNCTION).call().await()
-                } catch (e: Exception) {
-                    Log.w(TAG, "기본 구독 부트스트랩 실패(로그인은 계속): ${maskId(firebaseUser.uid)}", e)
+            // Firestore에서 사용자 정보 조회.
+            // 조회 실패(네트워크 등)를 '문서 없음(신규)'으로 오판하면 아래 set()이 기존 문서를
+            // 덮어써 추천 코드·가입일·추천 실적이 소실된다. 따라서 '문서 없음'과 '조회 실패'를
+            // 구분하고, 조회 실패 시에는 신규 생성/덮어쓰기를 하지 않고 로그인을 실패로 처리한다.
+            val user: User = when (val lookup = lookupUserForSignIn(firebaseUser.uid)) {
+                is UserLookup.Failed -> {
+                    Log.e(
+                        TAG,
+                        "사용자 문서 조회 실패 — 신규 생성/덮어쓰기 회피, 로그인 실패 처리: ${maskId(firebaseUser.uid)}",
+                        lookup.error
+                    )
+                    return Result.failure(lookup.error)
                 }
 
-                // User 객체 생성
-                user = User(
-                    id = firebaseUser.uid,
-                    email = firebaseUser.email ?: "",
-                    displayName = firebaseUser.displayName ?: "",
-                    photoUrl = firebaseUser.photoUrl?.toString(),
-                    subscription = Subscription(tier = SubscriptionTier.FREE),
-                    createdAt = Date(),
-                    lastLoginAt = Date(),
-                    isActive = true,
-                    referralCode = null,
-                    referredBy = null,
-                    totalReferrals = 0,
-                    deviceInfo = null,
-                    appVersion = null
-                )
-            } else {
-                // 기존 사용자인 경우 마지막 로그인 시간 업데이트
-                firestore.collection(USERS_COLLECTION)
-                    .document(firebaseUser.uid)
-                    .update("lastLoginAt", Date())
-                    .await()
+                UserLookup.NotFound -> {
+                    Log.i(TAG, "신규 사용자, Firestore에 정보 생성: ${maskId(firebaseUser.uid)}")
 
-                // 구독 문서가 아직 없으면(과거 CF 미배포 시기 첫 로그인 등) 멱등 부트스트랩 재시도.
-                // 폴백 FREE(startDate=null)와 실제 문서(FREE 포함, startDate 존재)를 startDate로 구분한다.
-                if (user.subscription.startDate == null) {
+                    val newUserData = mapOf(
+                        "email" to (firebaseUser.email ?: ""),
+                        "displayName" to (firebaseUser.displayName ?: ""),
+                        "photoUrl" to firebaseUser.photoUrl?.toString(),
+                        "createdAt" to Date(),
+                        "lastLoginAt" to Date(),
+                        "isActive" to true,
+                        "referralCode" to null,
+                        "referredBy" to null,
+                        "totalReferrals" to 0,
+                        "deviceInfo" to null,  // 필요시 별도로 수집
+                        "appVersion" to null   // 필요시 별도로 수집
+                    )
+
+                    firestore.collection(USERS_COLLECTION)
+                        .document(firebaseUser.uid)
+                        .set(newUserData)
+                        .await()
+
+                    // 기본 FREE 구독 문서는 서버 권위(ensureUserBootstrap CF)로 생성 — rules가 클라 쓰기를 금지.
+                    // CF 미배포/일시 실패여도 로그인은 진행(구독 문서 부재 시 FREE 폴백이 이미 동작).
                     try {
                         functions.getHttpsCallable(BOOTSTRAP_FUNCTION).call().await()
                     } catch (e: Exception) {
-                        Log.w(TAG, "구독 부트스트랩 재시도 실패(로그인은 계속): ${maskId(firebaseUser.uid)}", e)
+                        Log.w(TAG, "기본 구독 부트스트랩 실패(로그인은 계속): ${maskId(firebaseUser.uid)}", e)
                     }
+
+                    User(
+                        id = firebaseUser.uid,
+                        email = firebaseUser.email ?: "",
+                        displayName = firebaseUser.displayName ?: "",
+                        photoUrl = firebaseUser.photoUrl?.toString(),
+                        subscription = Subscription(tier = SubscriptionTier.FREE),
+                        createdAt = Date(),
+                        lastLoginAt = Date(),
+                        isActive = true,
+                        referralCode = null,
+                        referredBy = null,
+                        totalReferrals = 0,
+                        deviceInfo = null,
+                        appVersion = null
+                    )
                 }
 
-                user = user.copy(lastLoginAt = Date())
-                // displayName은 사용자 PII에 해당하므로 식별자 마스킹만 노출
-                Log.i(TAG, "기존 사용자 로그인: ${maskId(firebaseUser.uid)}")
+                is UserLookup.Found -> {
+                    val existing = lookup.user
+
+                    // 기존 사용자인 경우 마지막 로그인 시간 업데이트
+                    firestore.collection(USERS_COLLECTION)
+                        .document(firebaseUser.uid)
+                        .update("lastLoginAt", Date())
+                        .await()
+
+                    // 구독 문서가 아직 없으면(과거 CF 미배포 시기 첫 로그인 등) 멱등 부트스트랩 재시도.
+                    // 폴백 FREE(startDate=null)와 실제 문서(FREE 포함, startDate 존재)를 startDate로 구분한다.
+                    if (existing.subscription.startDate == null) {
+                        try {
+                            functions.getHttpsCallable(BOOTSTRAP_FUNCTION).call().await()
+                        } catch (e: Exception) {
+                            Log.w(TAG, "구독 부트스트랩 재시도 실패(로그인은 계속): ${maskId(firebaseUser.uid)}", e)
+                        }
+                    }
+
+                    // displayName은 사용자 PII에 해당하므로 식별자 마스킹만 노출
+                    Log.i(TAG, "기존 사용자 로그인: ${maskId(firebaseUser.uid)}")
+                    existing.copy(lastLoginAt = Date())
+                }
             }
 
             Result.success(user)
@@ -151,13 +168,24 @@ class AuthRepositoryImpl @Inject constructor(
         firebaseAuth.signOut()
     }
 
-    override fun getCurrentUser(): Flow<User?> = flow {
-        val firebaseUser = firebaseAuth.currentUser
-        if (firebaseUser != null) {
-            val user = getUserById(firebaseUser.uid)
-            emit(user)
-        } else {
-            emit(null)
+    override fun getCurrentUser(): Flow<User?> = callbackFlow {
+        // FirebaseAuth 인증 상태(로그인/로그아웃)를 실시간으로 관찰해 방출한다.
+        // 앱 기동 후 로그인해도 구독 재조회 트리거(GetSubscriptionUseCase)가 발화하도록 반응형 유지.
+        // (기존 1회성 flow 는 생성 후 로그인 이벤트를 놓쳤음)
+        var enrichJob: Job? = null
+        val listener = FirebaseAuth.AuthStateListener { auth ->
+            val firebaseUser = auth.currentUser
+            // 새 인증 이벤트가 오면 이전 Firestore enrichment 를 취소해 stale User 방출을 막는다.
+            enrichJob?.cancel()
+            enrichJob = launch {
+                val user = if (firebaseUser != null) getUserById(firebaseUser.uid) else null
+                trySend(user)
+            }
+        }
+        firebaseAuth.addAuthStateListener(listener)
+        awaitClose {
+            enrichJob?.cancel()
+            firebaseAuth.removeAuthStateListener(listener)
         }
     }
 
@@ -177,6 +205,48 @@ class AuthRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "사용자 조회 실패: ${maskId(userId)}", e)
             null
+        }
+    }
+
+    /**
+     * 로그인 경로 전용 사용자 조회 결과.
+     *
+     * public [getUserById] 는 조회 실패와 '문서 없음'을 모두 null 로 반환한다. 이 값을 그대로
+     * 로그인에서 쓰면 일시적 조회 실패를 '신규 사용자'로 오판해 set()으로 기존 문서를 덮어써
+     * 추천 코드·가입일·추천 실적이 소실된다. 로그인은 세 상태를 반드시 구분해야 한다.
+     */
+    private sealed interface UserLookup {
+        data class Found(val user: User) : UserLookup
+        object NotFound : UserLookup
+        data class Failed(val error: Throwable) : UserLookup
+    }
+
+    /**
+     * 로그인용 사용자 문서 조회. '문서 존재/없음/조회 실패'를 구분해 반환한다.
+     * 문서가 존재하나 매핑이 실패한 경우도 신규로 오판하지 않도록 [UserLookup.Failed] 로 처리한다.
+     */
+    private suspend fun lookupUserForSignIn(userId: String): UserLookup {
+        return try {
+            val doc = firestore.collection(USERS_COLLECTION)
+                .document(userId)
+                .get()
+                .await()
+
+            if (!doc.exists()) {
+                UserLookup.NotFound
+            } else {
+                val data = doc.data
+                val mapped = if (data != null) mapDocumentToUser(userId, data) else null
+                if (mapped != null) {
+                    UserLookup.Found(mapped)
+                } else {
+                    // 문서는 존재하나 매핑 실패 — 신규로 오판해 덮어쓰지 않도록 실패로 처리
+                    UserLookup.Failed(IllegalStateException("사용자 문서 매핑 실패"))
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "사용자 조회 실패: ${maskId(userId)}", e)
+            UserLookup.Failed(e)
         }
     }
 

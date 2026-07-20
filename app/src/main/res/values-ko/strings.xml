@@ -357,4 +357,45 @@
     <string name="ptpip_shutter_listen_start">물리 셔터 무선 수신 시작</string>
     <string name="ptpip_shutter_listen_stop">무선 수신 중지</string>
     <string name="ptpip_no_camera_search_first">카메라가 없습니다 — 먼저 STA 모드에서 카메라를 검색하세요</string>
+
+    <!-- 카메라 미리보기 (i18n 정기 점검, 2026-07-13) -->
+    <string name="camera_preview_live_view">라이브뷰</string>
+    <string name="photo_capture_failed">사진 촬영/수신 실패 (오류 %1$d)</string>
+    <string name="photo_delete_camera_failed">카메라에서 사진을 삭제하지 못했습니다</string>
+    <string name="notif_channel_status_name">카메라 상태</string>
+    <string name="notif_channel_status_desc">카메라 연결·파일 수신 상태 표시</string>
+    <string name="connection_status_usb_connected">USB 카메라 연결됨</string>
+    <string name="connection_status_ap_connected">AP 모드 연결됨 (%1$s)</string>
+    <string name="connection_status_sta_connected">STA 모드 연결됨 (%1$s)</string>
+    <string name="connection_status_connecting">카메라 연결 중…</string>
+    <string name="connection_status_error">카메라 연결 오류</string>
+    <string name="connection_status_camera_ap">카메라 AP 연결됨 — 카메라 검색 가능</string>
+    <string name="connection_status_wifi">Wi-Fi 연결됨 — 카메라 검색 가능</string>
+    <string name="connection_status_disconnected">연결 안됨</string>
+    <string name="usb_init_connecting_camera">USB 카메라 연결 시도 중…</string>
+    <string name="usb_init_requesting_permission">USB 권한 요청 중…</string>
+    <string name="usb_init_waiting_permission">USB 권한 대기 중…</string>
+    <string name="camera_limitation_download_only">이 카메라는 파일 다운로드만 지원합니다.\n원격 촬영 및 라이브뷰는 사용할 수 없습니다.\n\n제조사: %1$s\n모델: %2$s</string>
+    <string name="camera_limitation_no_liveview">이 카메라는 라이브뷰를 지원하지 않습니다.\n촬영은 가능하지만 실시간 미리보기는 불가능합니다.</string>
+    <string name="camera_limitation_no_config">이 카메라는 설정 변경을 지원하지 않습니다.\n촬영은 가능하지만 ISO, 셔터속도 등은 카메라에서 직접 조정해주세요.</string>
+    <string name="camera_control_enter_fullscreen">전체화면 전환</string>
+    <string name="camera_op_capture_failed">사진 촬영 실패: %1$s</string>
+    <string name="camera_op_liveview_unsupported">이 카메라는 라이브뷰를 지원하지 않습니다.</string>
+    <string name="camera_op_camera_not_connected">카메라가 연결되지 않았습니다. 먼저 카메라를 연결해주세요.</string>
+    <string name="camera_op_liveview_start_failed">라이브뷰 시작 실패: %1$s</string>
+    <string name="camera_op_liveview_stop_failed">라이브뷰 중지 실패: %1$s</string>
+    <string name="camera_op_timelapse_start_failed">타임랩스 시작 실패: %1$s</string>
+    <string name="camera_op_timelapse_failed">타임랩스 실패: %1$s</string>
+    <string name="camera_op_autofocus_failed">자동초점 실패: %1$s</string>
+    <string name="usb_error_disconnect_failed">카메라 연결 해제 실패: %1$s</string>
+    <string name="usb_error_permission_requested">USB 권한을 요청했습니다. 대화상자에서 승인해주세요.</string>
+    <string name="usb_error_already_connected">카메라가 이미 연결되어 있습니다</string>
+    <string name="usb_error_camera_not_detected">USB 카메라가 감지되지 않았습니다</string>
+    <string name="usb_error_device_check_failed">USB 디바이스 확인 실패: %1$s</string>
+    <string name="usb_error_permission_request_failed">USB 권한 요청 실패: %1$s</string>
+    <string name="camera_status_usb_not_detected">USB 카메라가 감지되지 않음</string>
+    <string name="camera_status_usb_permission_needed">USB 권한이 필요합니다</string>
+    <string name="camera_status_capabilities_unavailable">카메라 기능 정보를 가져올 수 없음</string>
+    <string name="camera_status_ptp_timeout">PTP 카메라 통신이 일정 시간 동안 응답하지 않습니다. 연결을 다시 시도해주세요.</string>
+    <string name="camera_status_usb_disconnected">USB 카메라가 분리되었습니다.\n\n카메라를 다시 연결하려면:\n1. USB 케이블을 다시 연결하세요\n2. 화면 하단의 \'새로고침\' 버튼을 눌러주세요</string>
 </resources>

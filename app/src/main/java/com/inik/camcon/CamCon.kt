@@ -6,15 +6,20 @@ import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
 import com.google.firebase.FirebaseApp
 import com.inik.camcon.data.activity.ActivityProviderImpl
 import com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
+import com.inik.camcon.data.repository.managers.ConnectionReportObserver
 import com.inik.camcon.data.service.WifiMonitoringService
 import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.usecase.ColorTransferUseCase
 import com.inik.camcon.domain.usecase.FilmLutUseCase
+import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.utils.LogMask
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CompletableDeferred
@@ -52,6 +57,14 @@ class CamCon : Application() {
     // 결제 시트 등 Activity 컨텍스트가 필요한 시점에 현재 resumed Activity를 제공
     @Inject
     lateinit var activityProvider: ActivityProviderImpl
+
+    // 카메라 연결 성공을 익명으로 보고(사용 확인됨 배지 집계). 읽기 전용 관찰자.
+    @Inject
+    lateinit var connectionReportObserver: ConnectionReportObserver
+
+    // 앱 포그라운드 복귀 시 서버 구독 티어를 재조회(환불·만료·강등 세션 내 반영).
+    @Inject
+    lateinit var getSubscriptionUseCase: GetSubscriptionUseCase
 
     // 현재 활성 Activity 추적 (포그라운드 상태 확인용)
     private var activeActivityCount = 0
@@ -126,6 +139,14 @@ class CamCon : Application() {
 
         // WiFi 자동 연결 모니터링 Service 시작 (자동 연결이 켜져있으면)
         startWifiMonitoringServiceIfEnabled()
+
+        // 카메라 연결 성공 익명 보고 관찰자 시작 (읽기 전용, 연결 상태 미변경)
+        connectionReportObserver.start()
+
+        // 앱이 포그라운드로 복귀할 때 서버 구독 티어를 재조회한다(환불·만료·강등이 세션 중 반영되도록).
+        // refreshOnForeground()는 15분 스로틀을 가지므로 잦은 전환에도 폴링(반복 Firestore read)이 되지 않는다.
+        // (첫 onStart는 앱 시작 시점이라 GetSubscriptionUseCase.init의 refresh와 겹치지만, 이후 복귀 재조회가 목적)
+        registerSubscriptionForegroundRefresh()
 
         Log.d(TAG, "앱 초기화 완료")
     }
@@ -289,6 +310,13 @@ class CamCon : Application() {
                 Log.e(TAG, "🔴 네이티브 라이브러리 로딩 실패 - 앱 기능이 제한될 수 있습니다")
             }
 
+        } catch (e: LinkageError) {
+            // CameraNative.<clinit>(init 블록)가 .so 로딩 실패로 던지는 예외는 클래스 초기화 중이라
+            // JVM이 RuntimeException이 아니라 ExceptionInInitializerError(첫 접근)/NoClassDefFoundError
+            // (이후 접근)로 포장한다 — 둘 다 LinkageError(Error 계열)라 catch(Exception)이 못 잡는다.
+            // 잡지 못하면 열화 모드 설계(로딩 실패 감지 후 계속 동작)가 무력화되고 시작 즉시 크래시 루프가
+            // 된다. 여기서 잡아 앱을 계속 살린다(카메라 기능만 제한됨).
+            Log.e(TAG, "🔴 네이티브 라이브러리 로딩 실패 - 앱 기능이 제한될 수 있습니다", e)
         } catch (e: Exception) {
             Log.e(TAG, "🔴 네이티브 라이브러리 상태 확인 실패", e)
         }
@@ -349,6 +377,25 @@ class CamCon : Application() {
             } catch (e: Exception) {
                 Log.e(TAG, "❌ WiFi 모니터링 Service 시작 확인 중 오류", e)
             }
+        }
+    }
+
+    /**
+     * 앱 포그라운드 복귀 시 구독 티어 재조회 배선.
+     *
+     * ProcessLifecycleOwner.get()은 메인 스레드 전용이라 onCreate(메인)에서 등록한다.
+     * onStart(포그라운드 진입)마다 refreshOnForeground()를 호출하되, 실제 재조회 빈도는
+     * UseCase 내부 15분 스로틀이 제어한다(무한 폴링 방지).
+     */
+    private fun registerSubscriptionForegroundRefresh() {
+        try {
+            ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
+                override fun onStart(owner: LifecycleOwner) {
+                    getSubscriptionUseCase.refreshOnForeground()
+                }
+            })
+        } catch (e: Exception) {
+            Log.w(TAG, "구독 포그라운드 재조회 옵저버 등록 실패", e)
         }
     }
 

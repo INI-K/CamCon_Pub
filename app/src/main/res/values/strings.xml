@@ -96,6 +96,8 @@
     <string name="captured_photos">Captured Photos</string>
     <string name="photo_saved">Photo saved</string>
     <string name="photo_save_failed">Failed to save photo</string>
+    <string name="photo_capture_failed">Failed to capture/receive photo (error %1$d)</string>
+    <string name="photo_delete_camera_failed">Couldn\'t delete the photo from the camera</string>
     <string name="delete_photo">Delete Photo</string>
     <string name="delete_photo_confirm">Are you sure you want to delete this photo?</string>
     <string name="photo_deleted">Photo deleted</string>
@@ -346,6 +348,8 @@
     <string name="ptpip_tab_content_area">Tab content area</string>
     <string name="ptpip_hide_password">Hide</string>
     <string name="ptpip_show_password">Show</string>
+    <string name="ptpip_password_shown">Password shown</string>
+    <string name="ptpip_password_hidden">Password hidden</string>
     <string name="ptpip_please_enable_wifi">Please turn on Wi-Fi</string>
     <string name="ptpip_please_enable_location">Please turn on location services</string>
     <string name="ptpip_check_scan_conditions">Please check the scan conditions</string>
@@ -398,6 +402,7 @@
 
     <!-- PhotoThumbnail -->
     <string name="photo_thumbnail_selected">Selected</string>
+    <string name="photo_thumbnail_unselected">Not selected</string>
     <string name="photo_thumbnail_latest">Latest</string>
 
     <!-- WifiScanResultsCard -->
@@ -589,4 +594,48 @@
     <string name="notif_bg_sync_listener_active">Event listener active — waiting for photos</string>
     <string name="notif_bg_sync_checking">Checking camera connection…</string>
     <string name="notif_bg_sync_waiting">Waiting for camera connection…</string>
+    <string name="notif_channel_status_name">Camera status</string>
+    <string name="notif_channel_status_desc">Shows camera connection and file-receiving status</string>
+
+    <!-- 연결 상태 메시지 (CameraConnectionGlobalManager → UiText, presentation 해석) -->
+    <string name="connection_status_usb_connected">USB camera connected</string>
+    <string name="connection_status_ap_connected">AP mode connected (%1$s)</string>
+    <string name="connection_status_sta_connected">STA mode connected (%1$s)</string>
+    <string name="connection_status_connecting">Connecting to camera…</string>
+    <string name="connection_status_error">Camera connection error</string>
+    <string name="connection_status_camera_ap">Camera AP connected — camera search available</string>
+    <string name="connection_status_wifi">Wi-Fi connected — camera search available</string>
+    <string name="connection_status_disconnected">Not connected</string>
+    <!-- USB 초기화 진행 상태 -->
+    <string name="usb_init_connecting_camera">Connecting to USB camera…</string>
+    <string name="usb_init_requesting_permission">Requesting USB permission…</string>
+    <string name="usb_init_waiting_permission">Waiting for USB permission…</string>
+    <!-- 카메라 기능 제한 안내 -->
+    <string name="camera_limitation_download_only">This camera supports file download only.\nRemote capture and live view are unavailable.\n\nManufacturer: %1$s\nModel: %2$s</string>
+    <string name="camera_limitation_no_liveview">This camera does not support live view.\nCapture works, but real-time preview is unavailable.</string>
+    <string name="camera_limitation_no_config">This camera does not support changing settings.\nCapture works, but adjust ISO, shutter speed, etc. directly on the camera.</string>
+    <!-- 접근성: 전체화면 진입 -->
+    <string name="camera_control_enter_fullscreen">Enter fullscreen</string>
+    <!-- 카메라 조작 실패 에러(CameraOperationsManager → Snackbar). %1$s = 상세(예외 메시지/error_unknown). -->
+    <string name="camera_op_capture_failed">Photo capture failed: %1$s</string>
+    <string name="camera_op_liveview_unsupported">This camera does not support live view.</string>
+    <string name="camera_op_camera_not_connected">Camera is not connected. Please connect a camera first.</string>
+    <string name="camera_op_liveview_start_failed">Failed to start live view: %1$s</string>
+    <string name="camera_op_liveview_stop_failed">Failed to stop live view: %1$s</string>
+    <string name="camera_op_timelapse_start_failed">Failed to start time-lapse: %1$s</string>
+    <string name="camera_op_timelapse_failed">Time-lapse failed: %1$s</string>
+    <string name="camera_op_autofocus_failed">Autofocus failed: %1$s</string>
+    <!-- USB 자동연결 매니저 에러(UsbAutoConnectManager → Snackbar). %1$s = 상세(예외 메시지/error_unknown). -->
+    <string name="usb_error_disconnect_failed">Failed to disconnect the camera: %1$s</string>
+    <string name="usb_error_permission_requested">USB permission requested. Please approve it in the dialog.</string>
+    <string name="usb_error_already_connected">The camera is already connected</string>
+    <string name="usb_error_camera_not_detected">No USB camera detected</string>
+    <string name="usb_error_device_check_failed">Failed to check USB devices: %1$s</string>
+    <string name="usb_error_permission_request_failed">Failed to request USB permission: %1$s</string>
+    <!-- 카메라 연결 상태 에러(CameraUiStateManager → error 상태). -->
+    <string name="camera_status_usb_not_detected">No USB camera detected</string>
+    <string name="camera_status_usb_permission_needed">USB permission is required</string>
+    <string name="camera_status_capabilities_unavailable">Unable to retrieve camera capabilities</string>
+    <string name="camera_status_ptp_timeout">The PTP camera has not responded for a while. Please try connecting again.</string>
+    <string name="camera_status_usb_disconnected">The USB camera has been disconnected.\n\nTo reconnect the camera:\n1. Reconnect the USB cable\n2. Tap the \'Refresh\' button at the bottom of the screen</string>
 </resources>

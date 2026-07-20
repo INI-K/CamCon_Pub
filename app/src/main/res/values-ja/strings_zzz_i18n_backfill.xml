@@ -119,6 +119,7 @@
     <string name="photo_preview_wifi_connected">Wi-Fi に接続中です</string>
     <string name="photo_thumbnail_latest">最新</string>
     <string name="photo_thumbnail_selected">選択済み</string>
+    <string name="photo_thumbnail_unselected">未選択</string>
     <string name="ptpip_allow">許可</string>
     <string name="ptpip_ap_mode">APモード</string>
     <string name="ptpip_camera">カメラ</string>
@@ -155,6 +156,8 @@
     <string name="ptpip_reconnect_camera">3. カメラを再検索して接続してください</string>
     <string name="ptpip_search_camera">カメラを再検索</string>
     <string name="ptpip_show_password">表示</string>
+    <string name="ptpip_password_shown">パスワード表示中</string>
+    <string name="ptpip_password_hidden">パスワード非表示</string>
     <string name="ptpip_sta_mode">STAモード</string>
     <string name="ptpip_tab_content_area">タブコンテンツ領域</string>
     <string name="ptpip_wifi_scan_restriction">Wi-Fi スキャン制限</string>

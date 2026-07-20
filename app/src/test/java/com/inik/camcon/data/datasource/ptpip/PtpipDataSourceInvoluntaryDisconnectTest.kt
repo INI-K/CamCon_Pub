@@ -2,9 +2,11 @@ package com.inik.camcon.data.datasource.ptpip
 
 import android.app.Application
 import app.cash.turbine.test
+import com.inik.camcon.data.repository.managers.CameraEventManager
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.PtpipConnectionState
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -49,7 +51,11 @@ import org.robolectric.annotation.Config
 @Config(sdk = [34], application = Application::class)
 class PtpipDataSourceInvoluntaryDisconnectTest {
 
-    private fun createDataSource(scope: CoroutineScope, dispatcher: TestDispatcher): PtpipDataSource {
+    private fun createDataSource(
+        scope: CoroutineScope,
+        dispatcher: TestDispatcher,
+        cameraEventManager: CameraEventManager = mockk(relaxed = true)
+    ): PtpipDataSource {
         val context: android.content.Context =
             org.robolectric.RuntimeEnvironment.getApplication()
         return PtpipDataSource(
@@ -58,8 +64,9 @@ class PtpipDataSourceInvoluntaryDisconnectTest {
             connectionManager = mockk(relaxed = true),
             nikonAuthService = mockk(relaxed = true),
             wifiHelper = mockk(relaxed = true),
-            cameraEventManager = mockk(relaxed = true),
+            cameraEventManager = cameraEventManager,
             cameraStateObserver = mockk(relaxed = true),
+            errorNotifier = mockk(relaxed = true),
             photoDownloadManager = mockk(relaxed = true),
             autoConnectManager = mockk(relaxed = true),
             autoConnectTaskRunnerProvider = mockk(relaxed = true),
@@ -145,6 +152,24 @@ class PtpipDataSourceInvoluntaryDisconnectTest {
         // 상태 불변(추가 방출 없음) + lastConnectedCamera 보존.
         assertEquals(PtpipConnectionState.DISCONNECTED, ds.connectionState.first())
         assertEquals(sampleCamera, ds.getLastConnectedCamera())
+    }
+
+    @Test
+    fun `조기 리턴(DISCONNECTED) 경로에서도 리스너 stale 플래그를 리셋한다 (C3)`() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val scope = CoroutineScope(dispatcher)
+        val eventManager: CameraEventManager = mockk(relaxed = true)
+        val ds = createDataSource(scope, dispatcher, eventManager)
+
+        // Wi-Fi 끊김을 NetworkCallback이 먼저 DISCONNECTED로 내린 뒤, 네이티브 통지가 늦게 도착하는 시나리오.
+        // 상태가 이미 != CONNECTED라 상태 전이는 생략되지만, 리스너 플래그 정합화는 반드시 수행돼야
+        // 재연결 시 startCameraEventListener가 stale 플래그로 조기 리턴하지 않는다.
+        setConnectionState(ds, PtpipConnectionState.DISCONNECTED)
+
+        ds.notifyInvoluntaryPtpipDisconnect()
+        advanceUntilIdle()
+
+        verify { eventManager.resetListenerStateAfterNativeDeath() }
     }
 
     @Test

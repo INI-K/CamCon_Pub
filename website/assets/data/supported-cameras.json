@@ -3205,62 +3205,74 @@
   {
    "vendor": "Nikon",
    "model": "Z30",
-   "connection": "usb"
+   "connection": "usb",
+   "wifi": true
   },
   {
    "vendor": "Nikon",
    "model": "Z5",
-   "connection": "usb"
+   "connection": "usb",
+   "wifi": true
   },
   {
    "vendor": "Nikon",
    "model": "Z50",
-   "connection": "usb"
+   "connection": "usb",
+   "wifi": true
   },
   {
    "vendor": "Nikon",
    "model": "Z6",
-   "connection": "usb"
+   "connection": "usb",
+   "wifi": true
   },
   {
    "vendor": "Nikon",
    "model": "Z6 III",
-   "connection": "usb"
+   "connection": "usb",
+   "wifi": true
   },
   {
    "vendor": "Nikon",
    "model": "Z6_2",
-   "connection": "usb"
+   "connection": "usb",
+   "wifi": true
   },
   {
    "vendor": "Nikon",
    "model": "Z7",
-   "connection": "usb"
+   "connection": "usb",
+   "wifi": true
   },
   {
    "vendor": "Nikon",
    "model": "Z7_2",
-   "connection": "usb"
+   "connection": "usb",
+   "wifi": true
   },
   {
    "vendor": "Nikon",
    "model": "Z8",
-   "connection": "usb"
+   "connection": "usb",
+   "wifi": true
   },
   {
    "vendor": "Nikon",
    "model": "Z9",
-   "connection": "usb"
+   "connection": "usb",
+   "wifi": true
   },
   {
    "vendor": "Nikon",
    "model": "Zf",
-   "connection": "usb"
+   "connection": "usb",
+   "wifi": true
   },
   {
    "vendor": "Nikon",
    "model": "Zfc",
-   "connection": "usb"
+   "connection": "usb",
+   "wifi": true
   },
   {
    "vendor": "Olympus",

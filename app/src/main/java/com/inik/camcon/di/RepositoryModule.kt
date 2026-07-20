@@ -15,6 +15,7 @@ import com.inik.camcon.data.repository.CameraFileRepositoryImpl
 import com.inik.camcon.data.repository.CameraFocusRepositoryImpl
 import com.inik.camcon.data.repository.CameraRepositoryImpl
 import com.inik.camcon.data.repository.CameraStreamingRepositoryImpl
+import com.inik.camcon.data.repository.ConnectionReportRepositoryImpl
 import com.inik.camcon.data.repository.PtpipDebugRepositoryImpl
 import com.inik.camcon.data.repository.PtpipPreferencesRepositoryImpl
 import com.inik.camcon.data.repository.PtpipRepositoryImpl
@@ -27,7 +28,7 @@ import com.inik.camcon.data.repository.managers.CameraConnectionGlobalManagerImp
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.data.activity.ActivityProviderImpl
 import com.inik.camcon.data.util.AndroidLogger
-import com.inik.camcon.domain.manager.ActivityProvider
+import com.inik.camcon.data.activity.ActivityProvider
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
 import com.inik.camcon.domain.manager.CameraStateObserver
@@ -45,6 +46,7 @@ import com.inik.camcon.domain.repository.CameraConnectionStateProvider
 import com.inik.camcon.domain.repository.CameraDiagnosticsRepository
 import com.inik.camcon.domain.repository.CameraFileRepository
 import com.inik.camcon.domain.repository.CameraFocusRepository
+import com.inik.camcon.domain.repository.ConnectionReportRepository
 import com.inik.camcon.domain.repository.PtpipDebugRepository
 import com.inik.camcon.domain.repository.PtpipPreferencesRepository
 import com.inik.camcon.domain.repository.PtpipRepository
@@ -233,5 +235,11 @@ abstract class RepositoryModule {
     abstract fun bindWifiCapabilityProvider(
         impl: WifiNetworkHelper
     ): WifiCapabilityProvider
+
+    @Binds
+    @Singleton
+    abstract fun bindConnectionReportRepository(
+        impl: ConnectionReportRepositoryImpl
+    ): ConnectionReportRepository
 
 }

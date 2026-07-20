@@ -4,6 +4,7 @@ import android.app.Application
 import app.cash.turbine.test
 import com.inik.camcon.domain.model.LiveViewQuality
 import io.mockk.mockk
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -49,7 +50,7 @@ class AppPreferencesDataSourceLiveViewQualityTest {
     fun setUp() = runTest {
         val context = RuntimeEnvironment.getApplication()
         val encryptedPrefs = mockk<EncryptedAppPreferences>(relaxed = true)
-        dataSource = AppPreferencesDataSource(context, encryptedPrefs)
+        dataSource = AppPreferencesDataSource(context, encryptedPrefs, Dispatchers.Unconfined)
         // 프로세스 단일 DataStore 인스턴스 → 테스트 간 누수 방지.
         dataSource.clearAllSettings()
     }

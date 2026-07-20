@@ -1,6 +1,7 @@
 package com.inik.camcon.presentation.ui.screens.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,7 +19,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import com.inik.camcon.R
 import androidx.compose.ui.text.style.TextAlign
@@ -47,7 +51,11 @@ fun LoadingOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Surface0.copy(alpha = 0.7f)),
+            .background(Surface0.copy(alpha = 0.7f))
+            // 블로킹 오버레이 — 스크림 아래 셔터·탭·토글로 탭이 관통해 명령이 경합하지 않도록
+            // 모든 탭 제스처를 소비한다(clickable 의 role=button 부작용 없이).
+            .pointerInput(Unit) { detectTapGestures { } }
+            .semantics { contentDescription = message },
         contentAlignment = Alignment.Center
     ) {
         SurfaceV2(
@@ -85,13 +93,16 @@ fun LoadingOverlay(
  */
 @Composable
 fun UsbInitializationOverlay(
-    message: String = "USB 카메라 초기화 중...",
+    message: String = stringResource(R.string.camera_control_usb_initializing),
     progress: Float? = null
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Surface0.copy(alpha = 0.7f)),
+            .background(Surface0.copy(alpha = 0.7f))
+            // 블로킹 오버레이 — 초기화 중 스크림 아래 컨트롤로 탭이 관통하지 않도록 탭 제스처를 소비한다.
+            .pointerInput(Unit) { detectTapGestures { } }
+            .semantics { contentDescription = message },
         contentAlignment = Alignment.Center
     ) {
         SurfaceV2(

@@ -14,7 +14,7 @@ plugins {
 // 메이저.마이너.패치 버전 정의 (수동 관리)
 project.ext.majorVersion = 2
 project.ext.minorVersion = 0
-project.ext.patchVersion = 3
+project.ext.patchVersion = 4
 
 // 브랜치별 버전 식별자 생성
 def getBranchVersionSuffix() {
@@ -49,14 +49,25 @@ def getBuildNumber() {
         return buildNumber.toInteger()
     }
 
+    // Git 커밋 카운트 사용 (Play versionCode 단조증가의 유일한 근거).
+    // 과거 폴백(System.currentTimeMillis()/60000)은 git 부재 시 versionCode를 ~2,970만으로
+    // 점프시켜 이후 정상 빌드가 전부 Play에서 역행·거부되는 영구 사고를 유발했다.
+    // 따라서 git 커밋 카운트 취득 실패 시 폴백하지 않고 명확히 빌드를 실패시킨다.
+    def commitCount
     try {
-        // Git 커밋 카운트 사용 (안정적)
-        def commitCount = 'git rev-list --count HEAD'.execute().text.trim()
-        return commitCount.toInteger()
-    } catch (Exception ignored) {
-        // 폴백: 현재 시간 기반 (분 단위)
-        return (System.currentTimeMillis() / 60000).intValue()
+        commitCount = 'git rev-list --count HEAD'.execute().text.trim()
+    } catch (Exception e) {
+        throw new GradleException(
+                "versionCode 산출 실패: 'git rev-list --count HEAD' 실행 오류. " +
+                        "git 저장소가 아니거나 git이 설치되지 않았습니다. " +
+                        "CI에서는 System property BUILD_NUMBER를 지정하세요.", e)
     }
+    if (!commitCount?.isInteger()) {
+        throw new GradleException(
+                "versionCode 산출 실패: git 커밋 카운트가 정수가 아닙니다('${commitCount}'). " +
+                        "shallow clone(depth=1)이면 전체 히스토리를 fetch하거나 BUILD_NUMBER를 지정하세요.")
+    }
+    return commitCount.toInteger()
 }
 
 // 최종 버전 문자열 생성
@@ -136,7 +147,7 @@ android {
         release {
             debuggable false
             minifyEnabled true
-            shrinkResources false
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             // key.properties가 없으면 release를 무서명으로 조용히 통과시키지 않고
             // 디버그 서명으로도 대체하지 않는다(H20). 서명 미구성 release는 빌드 그래프에서 명확히 실패한다.
@@ -202,7 +213,6 @@ android {
     kotlinOptions {
         jvmTarget = "11"
         freeCompilerArgs += [
-                "-opt-in=androidx.compose.material.ExperimentalMaterialApi",
                 "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
                 "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi"
         ]
@@ -239,18 +249,19 @@ android {
 
 // release 빌드인데 서명이 구성되지 않았으면 즉시 실패시킨다(H20).
 // 무서명 또는 디버그 서명 AAB가 Play에 올라가 리젝되는 사고를 빌드 단계에서 차단한다.
-//gradle.taskGraph.whenReady { graph ->
-//    def buildingRelease = graph.allTasks.any { task ->
-//        def n = task.name
-//        (n.contains('Release') && (n.startsWith('assemble') || n.startsWith('bundle')))
-//    }
-//    if (buildingRelease && !hasReleaseSigning) {
-//        throw new GradleException(
-//                "release 서명 미구성: rootProject의 key.properties(keyAlias/keyPassword/storeFile/storePassword)가 없거나 불완전합니다. " +
-//                        "무서명/디버그 서명 release 빌드를 차단합니다. key.properties를 구성한 뒤 다시 빌드하세요."
-//        )
-//    }
-//}
+gradle.taskGraph.whenReady { graph ->
+    def buildingRelease = graph.allTasks.any { task ->
+        def n = task.name
+        (n.contains('Release') && !n.contains('ReleaseDebug') &&
+                (n.startsWith('assemble') || n.startsWith('bundle')))
+    }
+    if (buildingRelease && !project.ext.hasReleaseSigning) {
+        throw new GradleException(
+                "release 서명 미구성: rootProject의 key.properties(keyAlias/keyPassword/storeFile/storePassword)가 없거나 불완전합니다. " +
+                        "무서명/디버그 서명 release 빌드를 차단합니다. key.properties를 구성한 뒤 다시 빌드하세요."
+        )
+    }
+}
 
 // KSP configuration for better performance
 ksp {
@@ -270,7 +281,6 @@ dependencies {
     // === Compose BOM으로 버전 통일 ===
     implementation platform('androidx.compose:compose-bom:2025.04.01')
     implementation "androidx.compose.ui:ui"
-    implementation "androidx.compose.material:material"
     implementation "androidx.compose.material:material-icons-core"
     implementation "androidx.compose.material:material-icons-extended"
     implementation "androidx.compose.ui:ui-tooling-preview"
@@ -341,7 +351,6 @@ dependencies {
     // Foundation - BOM으로 버전 관리
     implementation "androidx.compose.foundation:foundation"
 
-    implementation("com.google.firebase:firebase-auth")
     implementation 'com.google.firebase:firebase-analytics'
     implementation 'com.google.firebase:firebase-firestore-ktx'
     implementation 'com.google.firebase:firebase-functions-ktx'
@@ -354,8 +363,6 @@ dependencies {
     // GPUImage for color transfer and image processing
     // libyuv-decoder.so는 CMake에서 16KB 정렬 재빌드 (pickFirsts로 AAR 버전 대체)
     implementation 'jp.co.cyberagent.android:gpuimage:2.1.0'
-    // 0xZhangKe ImageViewer library for advanced image viewing
-    implementation 'com.github.0xZhangKe:ImageViewer:1.0.3'
     // 기본 Compose 제스처를 사용한 이미지 뷰어 구현
 
     // ZoomImage with Coil integration for Compose - 1.4.0 stable (2025-08-15 release)
@@ -368,9 +375,6 @@ dependencies {
 
     // Google Play Billing for subscription management
     implementation 'com.android.billingclient:billing-ktx:8.3.0'
-
-    // Toasty for showing stylish notifications
-    implementation 'com.github.GrenderG:Toasty:1.5.2'
 
     // Firebase Remote Config for app update management
     implementation 'com.google.firebase:firebase-config-ktx'
@@ -386,6 +390,8 @@ dependencies {
 
     // Lifecycle runtime compose for collectAsStateWithLifecycle
     implementation "androidx.lifecycle:lifecycle-runtime-compose:2.7.0"
+    // 앱 포그라운드 복귀 감지(ProcessLifecycleOwner) — 구독 티어 재조회 트리거
+    implementation "androidx.lifecycle:lifecycle-process:2.7.0"
 
     // Baseline Profile 런타임 설치 (앱 시작/스크롤 성능 개선).
     // ProfileInstallerInitializer가 androidx.startup으로 자동 병합되어 별도 코드 불필요.

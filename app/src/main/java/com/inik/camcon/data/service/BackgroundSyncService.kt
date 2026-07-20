@@ -74,6 +74,16 @@ class BackgroundSyncService : Service() {
         private const val VIBRATE_DEBOUNCE_MS = 800L // JPG+NEF 한 컷 이중 진동 방지
 
         /**
+         * 서비스 생존 여부. onCreate→true, onDestroy→false.
+         *
+         * deprecated ActivityManager.getRunningServices(자기 서비스 한정·SDK 제거 리스크) 대체 —
+         * 서비스 자신이 소유하는 신뢰 소스. 호출자(MainActivity)가 이 플래그로 중복 기동을 방지한다.
+         */
+        @Volatile
+        var isRunning: Boolean = false
+            private set
+
+        /**
          * 서비스 시작
          */
         fun startService(context: Context) {
@@ -97,6 +107,7 @@ class BackgroundSyncService : Service() {
     override fun onCreate() {
         super.onCreate()
         LogcatManager.d(TAG, "BackgroundSyncService 생성됨 - 백그라운드 이벤트 리스너 관리 포함")
+        isRunning = true
 
         serviceScope = CoroutineScope(SupervisorJob() + ioDispatcher)
 
@@ -174,6 +185,7 @@ class BackgroundSyncService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         LogcatManager.d(TAG, "BackgroundSyncService 종료됨")
+        isRunning = false
 
         syncJob?.cancel()
         eventListenerJob?.cancel()
@@ -416,12 +428,15 @@ class BackgroundSyncService : Service() {
                             }
                         }
 
-                        updateNotificationText(getString(R.string.notif_bg_sync_waiting))
-
                         // 연결이 끊어지면 깨울 카메라가 없으므로 Wake Lock 해제 (배터리 절약)
                         releaseWakeLock()
 
-                        LogcatManager.d(TAG, " 카메라 연결 끊김 - 이벤트 리스너 관리 대기 모드로 전환")
+                        // 연결 해제 후 idle connectedDevice FGS·상시 알림이 무기한 잔존하지 않도록
+                        // 서비스를 self-stop 한다(Play 정책·전력 점유 방지). 알림 정리는 onDestroy의
+                        // detach(OWNER_SYNC)가 공유 알림 규약(남은 owner 복원/마지막이면 제거)대로 처리한다.
+                        // 재연결은 MainActivity(포그라운드 전이)·WifiMonitoringService(자동 연결)가 담당한다.
+                        LogcatManager.d(TAG, " 카메라 연결 끊김 - idle FGS 잔존 방지로 서비스 종료")
+                        stopSelf()
                     }
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {

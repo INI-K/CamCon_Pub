@@ -3,6 +3,7 @@ package com.inik.camcon.presentation.viewmodel
 import android.content.Context
 import app.cash.turbine.test
 import com.inik.camcon.domain.model.LiveViewQuality
+import com.inik.camcon.domain.model.Subscription
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.repository.AppSettingsRepository
 import com.inik.camcon.domain.usecase.ColorTransferUseCase
@@ -69,6 +70,10 @@ class AppSettingsViewModelLiveViewQualityTest {
         every { appSettingsRepository.liveViewQuality } returns liveViewQualityFlow
         every { appSettingsRepository.subscriptionTierEnum } returns flowOf(SubscriptionTier.FREE)
         every { getSubscriptionUseCase.getSubscriptionTier() } returns flowOf(SubscriptionTier.FREE)
+        // ObserveEffectiveTierUseCase 는 invoke()(전체 Subscription)를 읽는다. 비권위 FREE 로 두어 기존 병합 유지.
+        every { getSubscriptionUseCase.invoke() } returns MutableStateFlow(
+            Subscription(tier = SubscriptionTier.FREE, isAuthoritative = false)
+        )
     }
 
     @After

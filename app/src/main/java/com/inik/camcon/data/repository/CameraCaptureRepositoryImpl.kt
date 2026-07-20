@@ -3,6 +3,7 @@ package com.inik.camcon.data.repository
 import android.content.Context
 import android.util.Log
 import androidx.annotation.VisibleForTesting
+import com.inik.camcon.R
 import com.inik.camcon.data.cache.CacheSweeper
 import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
 import com.inik.camcon.data.datasource.nativesource.LiveViewCallback
@@ -18,6 +19,9 @@ import com.inik.camcon.data.util.ExifCaptureTime
 import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.cache.ProcessedFileCache
+import com.inik.camcon.domain.manager.ErrorNotifier
+import com.inik.camcon.domain.manager.ErrorSeverity
+import com.inik.camcon.domain.manager.ErrorType
 import com.inik.camcon.domain.model.BracketingSettings
 import com.inik.camcon.domain.model.CameraSettings
 import com.inik.camcon.domain.model.CapturedPhoto
@@ -78,6 +82,7 @@ class CameraCaptureRepositoryImpl @Inject constructor(
     private val eventManager: CameraEventManager,
     private val downloadManager: PhotoDownloadManager,
     private val transferProgressTracker: TransferProgressTracker,
+    private val errorNotifier: ErrorNotifier,
     private val processedFileCache: ProcessedFileCache,
     @Suppress("unused") private val cacheSweeper: CacheSweeper,
     @ApplicationScope private val scope: CoroutineScope,
@@ -178,6 +183,15 @@ class CameraCaptureRepositoryImpl @Inject constructor(
         updateDownloadedPhoto(photo)
     }
 
+    /**
+     * 다운로드 실패 키 정합(basename) 회귀 테스트용 진입점. 프로덕션의 [updatePhotoDownloadFailed]
+     * 동일 경로를 그대로 통과시킨다(동작 변경 없음 — private 로직에 대한 테스트 진입점만 노출).
+     */
+    @VisibleForTesting
+    fun markPhotoDownloadFailedForTest(fileName: String) {
+        updatePhotoDownloadFailed(fileName)
+    }
+
     // ── Event Listener ──
 
     fun isEventListenerActive(): Flow<Boolean> =
@@ -226,6 +240,7 @@ class CameraCaptureRepositoryImpl @Inject constructor(
             },
             onCaptureFailed = { errorCode ->
                 Log.e(TAG, "외부 셔터 촬영 실패: $errorCode")
+                notifyCaptureFailed(errorCode)
             }
         )
     }
@@ -302,6 +317,7 @@ class CameraCaptureRepositoryImpl @Inject constructor(
             },
             onCaptureFailed = { errorCode ->
                 Log.e(TAG, "외부 셔터 촬영 실패: $errorCode")
+                notifyCaptureFailed(errorCode)
             }
         )
     }
@@ -862,8 +878,50 @@ class CameraCaptureRepositoryImpl @Inject constructor(
         }
     }
 
+    /**
+     * 테더링 촬영물 저장 실패 처리 — 모든 실패 경로(네이티브 큐 실패·처리 예외·저장 null·PTPIP 실패·
+     * PhotoDownloadManager onDownloadFailed 콜백)의 단일 수렴점.
+     *
+     * (1) 실패 항목 제거(등록과 동일 basename 키)와 (2) 사용자 통지를 여기서 함께 수행한다.
+     * 통지가 없으면 저장 실패(디스크 풀 등) 시 배지만 조용히 사라져 사용자가 촬영물 유실을 인지하지 못한다.
+     */
     private fun updatePhotoDownloadFailed(fileName: String) {
-        _capturedPhotos.update { current -> current.filter { it.filePath != fileName } }
+        // 등록(updateDownloadedPhoto)은 filePath 의 basename 을 dedup 키로 쓰므로 제거도 basename 으로 맞춘다.
+        // (기존 `it.filePath != fileName` 은 전체경로 vs basename 비교라 항상 참 → 아무것도 제거하지 못하는 no-op)
+        _capturedPhotos.update { current ->
+            current.filter { it.filePath.substringAfterLast("/") != fileName }
+        }
         com.inik.camcon.utils.LogcatManager.d(TAG, "다운로드 실패한 사진 제거: $fileName")
+
+        // 사용자 통지 — 기존 UI 에러 채널(ErrorNotifier→errorEvent→setError)로 유실을 알린다.
+        // 파일명은 현지화 대상이 아니므로 재사용 문자열 뒤에 그대로 덧붙인다(어떤 컷이 유실됐는지 식별).
+        try {
+            errorNotifier.emitError(
+                type = ErrorType.STORAGE,
+                message = "${context.getString(R.string.photo_save_failed)}: $fileName",
+                severity = ErrorSeverity.HIGH
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "다운로드 실패 통지 방출 실패: $fileName", e)
+        }
+    }
+
+    /**
+     * 물리 셔터 촬영·무선 수신 실패 통지.
+     *
+     * 네이티브 onCaptureFailed 는 파일명 없이 errorCode 만 전달하므로 fileName 을 요구하는
+     * [updatePhotoDownloadFailed] 수렴점을 탈 수 없다. 대신 앱 셔터 실패와 동일한 UI 에러 채널
+     * (ErrorNotifier→errorEvent→setError→Snackbar)로 통지해 무음 유실을 방지한다.
+     */
+    private fun notifyCaptureFailed(errorCode: Int) {
+        try {
+            errorNotifier.emitError(
+                type = ErrorType.OPERATION,
+                message = context.getString(R.string.photo_capture_failed, errorCode),
+                severity = ErrorSeverity.HIGH
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "촬영 실패 통지 방출 실패: $errorCode", e)
+        }
     }
 }

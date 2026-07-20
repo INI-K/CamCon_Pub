@@ -7,8 +7,10 @@ import android.util.LruCache
 import com.inik.camcon.data.processor.CubeLutParser
 import com.inik.camcon.data.processor.FilmLutAtlasBuilder
 import com.inik.camcon.data.processor.Lut3D
+import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.model.FilmLut
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -27,7 +29,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class FilmLutCatalogLoader @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
 
     private val assets get() = context.assets
@@ -46,7 +49,7 @@ class FilmLutCatalogLoader @Inject constructor(
 
     suspend fun getLut(id: String): FilmLut? = getCatalog().firstOrNull { it.id == id }
 
-    private suspend fun loadCatalogFromAssets(): List<FilmLut> = withContext(Dispatchers.IO) {
+    private suspend fun loadCatalogFromAssets(): List<FilmLut> = withContext(ioDispatcher) {
         runCatching {
             val text = assets.open(CATALOG_PATH).bufferedReader().use { it.readText() }
             val arr = JSONObject(text).getJSONArray("filmLUTs")
@@ -68,7 +71,7 @@ class FilmLutCatalogLoader @Inject constructor(
     }
 
     /** assetPath 의 `.cube` 를 파싱한 [Lut3D] 를 반환한다(LRU 캐시). */
-    suspend fun loadLut3D(assetPath: String): Lut3D? = withContext(Dispatchers.IO) {
+    suspend fun loadLut3D(assetPath: String): Lut3D? = withContext(ioDispatcher) {
         lut3dCache.get(assetPath)?.let { return@withContext it }
         val text = runCatching {
             assets.open(assetPath).bufferedReader().use { it.readText() }
