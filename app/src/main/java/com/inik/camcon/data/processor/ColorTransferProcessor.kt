@@ -461,23 +461,23 @@ class ColorTransferProcessor @Inject constructor() {
         try {
             // 입력 이미지 통계 계산을 위한 샘플링 (성능 최적화)
             val inputSample = createSampleForStats(inputBitmap, STATS_MAX_SIZE)
-            val inputLabPixels = bitmapToLabPixelsOptimized(inputSample)
-            val inputStats = calculateStatistics(inputLabPixels)
+            try {
+                val inputLabPixels = bitmapToLabPixelsOptimized(inputSample)
+                val inputStats = calculateStatistics(inputLabPixels)
 
-            // 원본 해상도로 병렬 색감 전송 적용
-            val result = applyColorTransferToImageParallel(
-                inputBitmap,
-                inputStats,
-                referenceStats,
-                intensity
-            )
-
-            // 샘플 이미지 메모리 해제
-            if (inputSample != inputBitmap) {
-                inputSample.recycle()
+                // 원본 해상도로 병렬 색감 전송 적용
+                applyColorTransferToImageParallel(
+                    inputBitmap,
+                    inputStats,
+                    referenceStats,
+                    intensity
+                )
+            } finally {
+                // 샘플 이미지 메모리 해제 (처리 중 OOM 재발 시에도 반드시 회수)
+                if (inputSample != inputBitmap) {
+                    inputSample.recycle()
+                }
             }
-
-            result
         } catch (e: OutOfMemoryError) {
             // 메모리 부족 시 폴백 처리
             handleOutOfMemoryFallbackWithStats(inputBitmap, referenceStats, intensity)
@@ -519,6 +519,8 @@ class ColorTransferProcessor @Inject constructor() {
             val finalResult = if (nativeSuccess) {
                 resultBitmap
             } else {
+                // 네이티브 실패 시 사용되지 않는 복사본 해제 (형제 메서드 applyColorTransferOptimized와 동일)
+                resultBitmap.recycle()
                 applyColorTransferToImageParallel(
                     inputBitmap,
                     inputStats,
@@ -907,64 +909,60 @@ class ColorTransferProcessor @Inject constructor() {
                 else -> maxSize // 기본 1920p
             }
 
-            val scaledInputBitmap = scaleDownBitmap(inputBitmap, fallbackSize)
-            val scaledReferenceBitmap = scaleDownBitmap(referenceBitmap, fallbackSize)
+            var scaledInputBitmap: Bitmap? = null
+            var scaledReferenceBitmap: Bitmap? = null
+            try {
+                scaledInputBitmap = scaleDownBitmap(inputBitmap, fallbackSize)
+                scaledReferenceBitmap = scaleDownBitmap(referenceBitmap, fallbackSize)
 
-            // 통계 계산도 더 작은 샘플로
-            val inputLabPixels = bitmapToLabPixelsOptimized(scaledInputBitmap)
-            val referenceLabPixels = bitmapToLabPixelsOptimized(scaledReferenceBitmap)
+                // 통계 계산도 더 작은 샘플로
+                val inputLabPixels = bitmapToLabPixelsOptimized(scaledInputBitmap)
+                val referenceLabPixels = bitmapToLabPixelsOptimized(scaledReferenceBitmap)
 
-            val inputStats = calculateStatistics(inputLabPixels)
-            val referenceStats = calculateStatistics(referenceLabPixels)
+                val inputStats = calculateStatistics(inputLabPixels)
+                val referenceStats = calculateStatistics(referenceLabPixels)
 
-            val result = applyColorTransferToImageParallel(
-                scaledInputBitmap,
-                inputStats,
-                referenceStats,
-                intensity
-            )
-
-            // 스케일된 비트맵들 메모리 해제
-            if (scaledInputBitmap != inputBitmap) {
-                scaledInputBitmap.recycle()
+                return applyColorTransferToImageParallel(
+                    scaledInputBitmap,
+                    inputStats,
+                    referenceStats,
+                    intensity
+                )
+            } finally {
+                // 스케일된 비트맵들 메모리 해제 (2차 OOM 재발 시에도 반드시 회수)
+                scaledInputBitmap?.let { if (it != inputBitmap) it.recycle() }
+                scaledReferenceBitmap?.let { if (it != referenceBitmap) it.recycle() }
             }
-            if (scaledReferenceBitmap != referenceBitmap) {
-                scaledReferenceBitmap.recycle()
-            }
-
-            return result
         } catch (e2: OutOfMemoryError) {
             // 두 번째 폴백: 더 작은 크기로 처리
             System.gc()
             kotlinx.coroutines.delay(100)
 
             val verySmallSize = 720 // 아주 작은 크기
-            val verySmallInput = scaleDownBitmap(inputBitmap, verySmallSize)
-            val verySmallReference = scaleDownBitmap(referenceBitmap, verySmallSize)
+            var verySmallInput: Bitmap? = null
+            var verySmallReference: Bitmap? = null
+            try {
+                verySmallInput = scaleDownBitmap(inputBitmap, verySmallSize)
+                verySmallReference = scaleDownBitmap(referenceBitmap, verySmallSize)
 
-            // 가장 단순한 처리 방식 사용
-            val inputLabPixels = bitmapToLabPixelsOptimized(verySmallInput)
-            val referenceLabPixels = bitmapToLabPixelsOptimized(verySmallReference)
+                // 가장 단순한 처리 방식 사용
+                val inputLabPixels = bitmapToLabPixelsOptimized(verySmallInput)
+                val referenceLabPixels = bitmapToLabPixelsOptimized(verySmallReference)
 
-            val inputStats = calculateStatistics(inputLabPixels)
-            val referenceStats = calculateStatistics(referenceLabPixels)
+                val inputStats = calculateStatistics(inputLabPixels)
+                val referenceStats = calculateStatistics(referenceLabPixels)
 
-            // 단순한 색감 전송 적용 (병렬 처리 없이)
-            val result = applyColorTransferToImageSimple(
-                verySmallInput,
-                inputStats,
-                referenceStats,
-                intensity
-            )
-
-            if (verySmallInput != inputBitmap) {
-                verySmallInput.recycle()
+                // 단순한 색감 전송 적용 (병렬 처리 없이)
+                return applyColorTransferToImageSimple(
+                    verySmallInput,
+                    inputStats,
+                    referenceStats,
+                    intensity
+                )
+            } finally {
+                verySmallInput?.let { if (it != inputBitmap) it.recycle() }
+                verySmallReference?.let { if (it != referenceBitmap) it.recycle() }
             }
-            if (verySmallReference != referenceBitmap) {
-                verySmallReference.recycle()
-            }
-
-            return result
         }
     }
 
@@ -992,48 +990,46 @@ class ColorTransferProcessor @Inject constructor() {
                 else -> maxSize // 기본 1920p
             }
 
-            val scaledInputBitmap = scaleDownBitmap(inputBitmap, fallbackSize)
+            var scaledInputBitmap: Bitmap? = null
+            try {
+                scaledInputBitmap = scaleDownBitmap(inputBitmap, fallbackSize)
 
-            val inputLabPixels = bitmapToLabPixelsOptimized(scaledInputBitmap)
-            val inputStats = calculateStatistics(inputLabPixels)
+                val inputLabPixels = bitmapToLabPixelsOptimized(scaledInputBitmap)
+                val inputStats = calculateStatistics(inputLabPixels)
 
-            val result = applyColorTransferToImageParallel(
-                scaledInputBitmap,
-                inputStats,
-                referenceStats,
-                intensity
-            )
-
-            // 스케일된 비트맵 메모리 해제
-            if (scaledInputBitmap != inputBitmap) {
-                scaledInputBitmap.recycle()
+                return applyColorTransferToImageParallel(
+                    scaledInputBitmap,
+                    inputStats,
+                    referenceStats,
+                    intensity
+                )
+            } finally {
+                // 스케일된 비트맵 메모리 해제 (2차 OOM 재발 시에도 반드시 회수)
+                scaledInputBitmap?.let { if (it != inputBitmap) it.recycle() }
             }
-
-            return result
         } catch (e2: OutOfMemoryError) {
             // 두 번째 폴백: 더 작은 크기로 처리
             System.gc()
             kotlinx.coroutines.delay(100)
 
             val verySmallSize = 720 // 아주 작은 크기
-            val verySmallInput = scaleDownBitmap(inputBitmap, verySmallSize)
+            var verySmallInput: Bitmap? = null
+            try {
+                verySmallInput = scaleDownBitmap(inputBitmap, verySmallSize)
 
-            val inputLabPixels = bitmapToLabPixelsOptimized(verySmallInput)
-            val inputStats = calculateStatistics(inputLabPixels)
+                val inputLabPixels = bitmapToLabPixelsOptimized(verySmallInput)
+                val inputStats = calculateStatistics(inputLabPixels)
 
-            // 단순한 색감 전송 적용 (병렬 처리 없이)
-            val result = applyColorTransferToImageSimple(
-                verySmallInput,
-                inputStats,
-                referenceStats,
-                intensity
-            )
-
-            if (verySmallInput != inputBitmap) {
-                verySmallInput.recycle()
+                // 단순한 색감 전송 적용 (병렬 처리 없이)
+                return applyColorTransferToImageSimple(
+                    verySmallInput,
+                    inputStats,
+                    referenceStats,
+                    intensity
+                )
+            } finally {
+                verySmallInput?.let { if (it != inputBitmap) it.recycle() }
             }
-
-            return result
         }
     }
 

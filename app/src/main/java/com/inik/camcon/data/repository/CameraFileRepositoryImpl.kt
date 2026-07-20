@@ -12,6 +12,7 @@ import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -22,82 +23,116 @@ class CameraFileRepositoryImpl @Inject constructor(
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : CameraFileRepository {
 
-    override suspend fun downloadRawFile(folder: String, filename: String): Result<ByteArray> = runCatching {
-        nativeDataSource.downloadRawFile(folder, filename)
-            ?: throw IllegalStateException("RAW file download failed: $folder/$filename")
+    override suspend fun downloadRawFile(folder: String, filename: String): Result<ByteArray> = withContext(ioDispatcher) {
+        runCatching {
+            nativeDataSource.downloadRawFile(folder, filename)
+                ?: throw IllegalStateException("RAW file download failed: $folder/$filename")
+        }
     }
 
-    override suspend fun downloadAllRawFiles(folder: String): Result<Int> = runCatching {
-        nativeDataSource.downloadAllRawFiles(folder)
+    override suspend fun downloadAllRawFiles(folder: String): Result<Int> = withContext(ioDispatcher) {
+        runCatching {
+            nativeDataSource.downloadAllRawFiles(folder)
+        }
     }
 
-    override suspend fun extractRawMetadata(folder: String, filename: String): Result<String> = runCatching {
-        nativeDataSource.extractRawMetadata(folder, filename)
-            ?: throw IllegalStateException("RAW metadata extraction failed: $folder/$filename")
+    override suspend fun extractRawMetadata(folder: String, filename: String): Result<String> = withContext(ioDispatcher) {
+        runCatching {
+            nativeDataSource.extractRawMetadata(folder, filename)
+                ?: throw IllegalStateException("RAW metadata extraction failed: $folder/$filename")
+        }
     }
 
-    override suspend fun extractRawThumbnail(folder: String, filename: String): Result<ByteArray> = runCatching {
-        nativeDataSource.extractRawThumbnail(folder, filename)
-            ?: throw IllegalStateException("RAW thumbnail extraction failed: $folder/$filename")
+    override suspend fun extractRawThumbnail(folder: String, filename: String): Result<ByteArray> = withContext(ioDispatcher) {
+        runCatching {
+            nativeDataSource.extractRawThumbnail(folder, filename)
+                ?: throw IllegalStateException("RAW thumbnail extraction failed: $folder/$filename")
+        }
     }
 
-    override suspend fun filterRawFiles(folder: String, minSizeMB: Int, maxSizeMB: Int): Result<List<String>> = runCatching {
-        nativeDataSource.filterRawFiles(folder, minSizeMB, maxSizeMB)?.toList() ?: emptyList()
+    override suspend fun filterRawFiles(folder: String, minSizeMB: Int, maxSizeMB: Int): Result<List<String>> = withContext(ioDispatcher) {
+        runCatching {
+            nativeDataSource.filterRawFiles(folder, minSizeMB, maxSizeMB)?.toList() ?: emptyList()
+        }
     }
 
-    override suspend fun uploadFileToCamera(folder: String, filename: String, data: ByteArray): Result<Boolean> = runCatching {
-        nativeDataSource.uploadFileToCamera(folder, filename, data)
+    override suspend fun uploadFileToCamera(folder: String, filename: String, data: ByteArray): Result<Boolean> = withContext(ioDispatcher) {
+        runCatching {
+            nativeDataSource.uploadFileToCamera(folder, filename, data)
+        }
     }
 
-    override suspend fun deleteAllFilesInFolder(folder: String): Result<Boolean> = runCatching {
-        nativeDataSource.deleteAllFilesInFolder(folder)
+    override suspend fun deleteAllFilesInFolder(folder: String): Result<Boolean> = withContext(ioDispatcher) {
+        runCatching {
+            nativeDataSource.deleteAllFilesInFolder(folder)
+        }
     }
 
-    override suspend fun createFolder(parentFolder: String, folderName: String): Result<Boolean> = runCatching {
-        nativeDataSource.createCameraFolder(parentFolder, folderName)
+    override suspend fun createFolder(parentFolder: String, folderName: String): Result<Boolean> = withContext(ioDispatcher) {
+        runCatching {
+            nativeDataSource.createCameraFolder(parentFolder, folderName)
+        }
     }
 
-    override suspend fun removeFolder(parentFolder: String, folderName: String): Result<Boolean> = runCatching {
-        nativeDataSource.removeCameraFolder(parentFolder, folderName)
+    override suspend fun removeFolder(parentFolder: String, folderName: String): Result<Boolean> = withContext(ioDispatcher) {
+        runCatching {
+            nativeDataSource.removeCameraFolder(parentFolder, folderName)
+        }
     }
 
-    override suspend fun readFileChunk(path: String, offset: Long, size: Int): Result<ByteArray> = runCatching {
-        nativeDataSource.readFileChunk(path, offset, size)
-            ?: throw IllegalStateException("File chunk read failed: $path")
+    override suspend fun readFileChunk(path: String, offset: Long, size: Int): Result<ByteArray> = withContext(ioDispatcher) {
+        runCatching {
+            nativeDataSource.readFileChunk(path, offset, size)
+                ?: throw IllegalStateException("File chunk read failed: $path")
+        }
     }
 
-    override suspend fun downloadByObjectHandle(handle: Long): Result<ByteArray> = runCatching {
-        nativeDataSource.downloadByObjectHandle(handle)
-            ?: throw IllegalStateException("Download by handle failed: $handle")
+    override suspend fun downloadByObjectHandle(handle: Long): Result<ByteArray> = withContext(ioDispatcher) {
+        runCatching {
+            nativeDataSource.downloadByObjectHandle(handle)
+                ?: throw IllegalStateException("Download by handle failed: $handle")
+        }
     }
 
-    override suspend fun getDetailedStorageInfo(): Result<DetailedStorageInfo> = runCatching {
-        val json = nativeDataSource.getDetailedStorageInfo()
-        parseStorageInfo(json)
+    override suspend fun getDetailedStorageInfo(): Result<DetailedStorageInfo> = withContext(ioDispatcher) {
+        runCatching {
+            val json = nativeDataSource.getDetailedStorageInfo()
+            parseStorageInfo(json)
+        }
     }
 
-    override suspend fun initializeCache(): Result<Boolean> = runCatching {
-        nativeDataSource.initializeCameraCache()
-        true
+    override suspend fun initializeCache(): Result<Boolean> = withContext(ioDispatcher) {
+        runCatching {
+            nativeDataSource.initializeCameraCache()
+            true
+        }
     }
 
-    override suspend fun invalidateFileCache(): Result<Boolean> = runCatching {
-        nativeDataSource.invalidateFileCache()
-        true
+    override suspend fun invalidateFileCache(): Result<Boolean> = withContext(ioDispatcher) {
+        runCatching {
+            nativeDataSource.invalidateFileCache()
+            true
+        }
     }
 
-    override suspend fun getRecentCapturedPaths(maxCount: Int): Result<List<String>> = runCatching {
-        nativeDataSource.getRecentCapturedPaths(maxCount)?.toList() ?: emptyList()
+    override suspend fun getRecentCapturedPaths(maxCount: Int): Result<List<String>> = withContext(ioDispatcher) {
+        runCatching {
+            nativeDataSource.getRecentCapturedPaths(maxCount)?.toList() ?: emptyList()
+        }
     }
 
-    override suspend fun clearRecentCapturedPaths(): Result<Boolean> = runCatching {
-        nativeDataSource.clearRecentCapturedPaths()
-        true
+    override suspend fun clearRecentCapturedPaths(): Result<Boolean> = withContext(ioDispatcher) {
+        runCatching {
+            nativeDataSource.clearRecentCapturedPaths()
+            true
+        }
     }
 
-    override suspend fun setFileInfo(folder: String, filename: String, info: CameraFileInfoModel): Result<Boolean> = runCatching {
-        // setFileInfo C++ JNI 바인딩이 추가되면 구현 예정
-        throw UnsupportedOperationException("setFileInfo C++ binding not yet implemented")
+    override suspend fun setFileInfo(folder: String, filename: String, info: CameraFileInfoModel): Result<Boolean> = withContext(ioDispatcher) {
+        runCatching {
+            // setFileInfo C++ JNI 바인딩이 추가되면 구현 예정
+            throw UnsupportedOperationException("setFileInfo C++ binding not yet implemented")
+        }
     }
 
     /**
