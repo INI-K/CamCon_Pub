@@ -1000,91 +1000,10 @@ class WifiNetworkHelper @Inject constructor(
         }
     }
 
-    /**
-     * PTP/IP 초기화 시도로 카메라 연결 테스트
-     */
-    private suspend fun testPtpipConnection(ipAddress: String, port: Int = 15740): Boolean {
-        return try {
-            withContext(ioDispatcher) {
-                Log.d(TAG, "PTP/IP 초기화 테스트 시작: ${LogMask.id(ipAddress)}:$port")
-
-                java.net.Socket().use { socket ->
-                    socket.soTimeout = 3000
-                    socket.connect(java.net.InetSocketAddress(ipAddress, port), 3000)
-
-                    // PTP/IP Init Command Request 전송
-                    val initPacket = createInitCommandRequest()
-                    socket.getOutputStream().write(initPacket)
-                    socket.getOutputStream().flush()
-
-                    // ACK 응답 대기
-                    val response = ByteArray(1024)
-                    val bytesRead = socket.getInputStream().read(response)
-
-                    // 응답 확인
-                    if (bytesRead >= 8) {
-                        val buffer =
-                            java.nio.ByteBuffer.wrap(response)
-                                .order(java.nio.ByteOrder.LITTLE_ENDIAN)
-                        buffer.position(4)
-                        val responseType = buffer.int
-
-                        if (responseType == 0x00000002) { // PTPIP_INIT_COMMAND_ACK
-                            Log.d(TAG, "PTP/IP 초기화 성공: ${LogMask.id(ipAddress)}")
-                            return@withContext true
-                        }
-                    }
-
-                    Log.d(TAG, "PTP/IP 초기화 실패: ${LogMask.id(ipAddress)} - 잘못된 응답")
-                    false
-                }
-            }
-        } catch (e: Exception) {
-            Log.d(TAG, "PTP/IP 초기화 실패: ${LogMask.id(ipAddress)} - ${e.message}")
-            false
-        }
-    }
-
-    /**
-     * PTP/IP Init Command Request 패킷 생성
-     */
-    private fun createInitCommandRequest(): ByteArray {
-        val commandGuid = byteArrayOf(
-            0xd5.toByte(), 0xb4.toByte(), 0x6b.toByte(), 0xcb.toByte(),
-            0xd6.toByte(), 0x2a.toByte(), 0x4d.toByte(), 0xbb.toByte(),
-            0xb0.toByte(), 0x97.toByte(), 0x87.toByte(), 0x20.toByte(),
-            0xcf.toByte(), 0x83.toByte(), 0xe0.toByte(), 0x84.toByte()
-        )
-
-        val hostNameBytes = byteArrayOf(
-            0x41, 0x00, 0x6e, 0x00, 0x64, 0x00, 0x72, 0x00,
-            0x6f, 0x00, 0x69, 0x00, 0x64, 0x00, 0x20, 0x00,
-            0x44, 0x00, 0x65, 0x00, 0x76, 0x00, 0x69, 0x00,
-            0x63, 0x00, 0x65, 0x00
-        )
-        val nullTerminator = byteArrayOf(0x00, 0x00)
-
-        val totalLength = 4 + 4 + 16 + hostNameBytes.size + nullTerminator.size + 4
-        val buffer =
-            java.nio.ByteBuffer.allocate(totalLength).order(java.nio.ByteOrder.LITTLE_ENDIAN)
-
-        buffer.putInt(totalLength)
-        buffer.putInt(0x00000001) // PTPIP_INIT_COMMAND_REQUEST
-        buffer.put(commandGuid)
-        buffer.put(hostNameBytes)
-        buffer.put(nullTerminator)
-        buffer.putInt(0x00010001)
-
-        return buffer.array()
-    }
-
-    /**
-     * 단순 네트워크 연결 테스트 (레거시 - 사용 안 함)
-     */
-    @Deprecated("PTP/IP 초기화로 대체됨")
-    suspend fun testNetworkConnection(ipAddress: String, port: Int = 15740): Boolean {
-        return testPtpipConnection(ipAddress, port)
-    }
+    // InitCommandRequest를 세운 뒤 abrupt close 하던 `testPtpipConnection`/`testNetworkConnection`
+    // (+전용 createInitCommandRequest)를 제거했다. Z8 계열이 그 패턴에 세션을 잠가 실제 연결을 거부하는
+    // 전례(camcon-sta-initfail-discovery-probe-sessionlock)가 있는 위험물이었고 호출처가 0건이었다.
+    // 카메라 도달성 확인은 순수 TCP connect(PtpipDiscoveryService.testPtpipConnection)만 사용한다.
 
     /**
      * 주변 Wi‑Fi 네트워크 SSID 스캔 (Android 10+ 최적화 버전)
