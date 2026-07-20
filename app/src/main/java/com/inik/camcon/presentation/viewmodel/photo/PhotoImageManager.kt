@@ -63,6 +63,43 @@ class PhotoImageManager @Inject constructor(
     // 풀이미지 캐시 갱신 직렬화용 단일 락 (서로 다른 path 동시 다운로드 시 lost-update 방지)
     private val fullImageCacheLock = Any()
 
+    // 풀이미지 캐시 바이트 예산. 개수 FIFO(10)만으로는 RAW 다중선택 시 힙이 수백 MB까지 쌓여
+    // OOM 위험이 있어(largeHeap 로도 위험) 바이트 예산 축출을 둔다.
+    // 저사양 기기 보호: min(상수 상한, maxMemory/8). 하한 24MB(너무 작은 힙에서도 최소 1장 표시).
+    private val fullImageCacheBudgetBytes: Long by lazy {
+        val heapBudget = Runtime.getRuntime().maxMemory() / 8
+        minOf(Constants.Cache.MAX_FULL_IMAGE_CACHE_BYTES, heapBudget)
+            .coerceAtLeast(24L * 1024 * 1024)
+    }
+
+    /**
+     * [_fullImageCache] 에 바이트 예산을 적용해 넣는다(예산 초과 시 오래된 항목부터 축출).
+     * 반드시 [fullImageCacheLock] 보유 상태에서 호출.
+     *
+     * @return 갱신 후 캐시 항목 수.
+     */
+    private fun putFullImageLocked(photoPath: String, data: ByteArray): Int {
+        val updated = _fullImageCache.value.toMutableMap()
+        updated.remove(photoPath) // 갱신이면 기존 항목 제거 후 재삽입(삽입 순서 = 최신)
+        var totalBytes = updated.values.sumOf { it.size.toLong() }
+        val incoming = data.size.toLong()
+        val iterator = updated.entries.iterator()
+        // LinkedHashMap 삽입 순서 = 오래된 것부터. 바이트 예산 또는 개수 상한 확보 전까지 축출.
+        // (개수 상한은 소용량 항목이 다수 쌓이는 경우의 보조 방어선)
+        while (
+            (totalBytes + incoming > fullImageCacheBudgetBytes ||
+                updated.size >= Constants.Cache.MAX_FULL_IMAGE_CACHE_SIZE) &&
+            iterator.hasNext()
+        ) {
+            val evicted = iterator.next()
+            totalBytes -= evicted.value.size.toLong()
+            iterator.remove()
+        }
+        updated[photoPath] = data
+        _fullImageCache.value = updated
+        return updated.size
+    }
+
     // 기기 저장(MediaStore)까지 완료된 path 집합. 표시용 캐시(FIFO 10슬롯 축출)와 독립적으로
     // 유지해, 이미 저장한 사진을 명시적 재다운로드 시 중복 저장하지 않는다.
     private val persistedPathsLock = Any()
@@ -349,18 +386,12 @@ class PhotoImageManager @Inject constructor(
             }
 
             val (added, cacheSize) = synchronized(fullImageCacheLock) {
-                val currentCache = _fullImageCache.value.toMutableMap()
-                if (currentCache.containsKey(photoPath)) {
-                    false to currentCache.size
+                if (_fullImageCache.value.containsKey(photoPath)) {
+                    false to _fullImageCache.value.size
                 } else {
-                    // 캐시 크기 제한 적용 (삽입 순서 기준 FIFO 축출)
-                    while (currentCache.size >= Constants.Cache.MAX_FULL_IMAGE_CACHE_SIZE) {
-                        val oldestKey = currentCache.keys.firstOrNull() ?: break
-                        currentCache.remove(oldestKey)
-                    }
-                    currentCache[photoPath] = imageData
-                    _fullImageCache.value = currentCache.toMap()
-                    true to currentCache.size
+                    // 바이트 예산 축출 적용(오래된 항목부터). RAW 다중선택 힙 폭주 방지.
+                    val newSize = putFullImageLocked(photoPath, imageData)
+                    true to newSize
                 }
             }
 
@@ -432,16 +463,13 @@ class PhotoImageManager @Inject constructor(
     }
 
     /**
-     * 포맷/RAW 게이팅 단일 지점 방어([ValidateImageFormatUseCase]). RAW 는 상류 ViewModel 이
-     * 이미 차단하지만, 저장 진입부에서 다시 한 번 검증한다(방어선 일관성 — 데이터 레이어
+     * 포맷/RAW 게이팅 단일 지점 방어([ValidateImageFormatUseCase.isDownloadAllowed]). RAW 는 상류
+     * ViewModel 이 이미 차단하지만, 저장 진입부에서 다시 한 번 검증한다(방어선 일관성 — 데이터 레이어
      * [com.inik.camcon.data.repository.managers.PhotoDownloadManager] 의 게이팅과 동일 규칙).
-     * 티어와 무관한 미지 포맷은 기존 통과 동작을 유지한다.
+     * 미지 확장자는 fail-closed(차단) — HEIF 등 미지 포맷 우회(C1) 봉합.
      */
     private suspend fun isPersistAllowedByGating(fileName: String): Boolean {
-        val result = validateImageFormatUseCase.validateFormat(fileName)
-        if (result.isSupported) return true
-        if (!result.isRawFile && !result.needsUpgrade) return true
-        return false
+        return validateImageFormatUseCase.isDownloadAllowed(fileName)
     }
 
     /**
@@ -471,11 +499,9 @@ class PhotoImageManager @Inject constructor(
                 val ok = if (resizeSuccess && resizedFile.exists()) {
                     val resizedData = resizedFile.readBytes()
 
-                    // 캐시 업데이트 (리사이즈된 이미지로 교체)
+                    // 캐시 업데이트 (리사이즈된 이미지로 교체 — 바이트 예산 축출 적용)
                     synchronized(fullImageCacheLock) {
-                        val currentCache = _fullImageCache.value.toMutableMap()
-                        currentCache[photoPath] = resizedData
-                        _fullImageCache.value = currentCache
+                        putFullImageLocked(photoPath, resizedData)
                     }
 
                     Log.d(TAG, "Free 티어 리사이징 완료: ${resizedData.size} bytes")
@@ -515,13 +541,14 @@ class PhotoImageManager @Inject constructor(
                 val originalHeight = options.outHeight
                 val maxDimension = kotlin.math.max(originalWidth, originalHeight)
 
-                if (maxDimension <= 2000) {
+                if (maxDimension <= Constants.ImageProcessing.FREE_TIER_MAX_DIMENSION) {
                     Log.d(TAG, "이미 작은 이미지 - 리사이즈 불필요")
                     return@withContext File(inputPath).copyTo(File(outputPath), overwrite = true)
                         .exists()
                 }
 
-                val scale = 2000.toFloat() / maxDimension.toFloat()
+                val scale =
+                    Constants.ImageProcessing.FREE_TIER_MAX_DIMENSION.toFloat() / maxDimension.toFloat()
                 val newWidth = (originalWidth * scale).toInt()
                 val newHeight = (originalHeight * scale).toInt()
 

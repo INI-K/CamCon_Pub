@@ -320,6 +320,95 @@ class ValidateImageFormatUseCaseTest {
         assertNotNull(result.restrictionMessage)
     }
 
+    // --- isDownloadAllowed: C1 미지 포맷 fail-open 봉합 ---
+
+    @Test
+    fun `isDownloadAllowed - FREE 티어에서 JPEG 는 통과`() = runTest {
+        createUseCase(SubscriptionTier.FREE)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(useCase.isDownloadAllowed("DSC_0001.JPG"))
+        assertTrue(useCase.isDownloadAllowed("DSC_0001.jpeg"))
+    }
+
+    @Test
+    fun `isDownloadAllowed - FREE 티어에서 HEIF 계열은 차단 (원본 해상도 우회 봉합)`() = runTest {
+        createUseCase(SubscriptionTier.FREE)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse("FREE + hif 는 차단되어야 함", useCase.isDownloadAllowed("DSC_0001.hif"))
+        assertFalse("FREE + heic 는 차단되어야 함", useCase.isDownloadAllowed("DSC_0001.heic"))
+        assertFalse("FREE + heif 는 차단되어야 함", useCase.isDownloadAllowed("DSC_0001.HEIF"))
+    }
+
+    @Test
+    fun `isDownloadAllowed - BASIC 티어에서 HEIF 계열은 차단`() = runTest {
+        createUseCase(SubscriptionTier.BASIC)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(useCase.isDownloadAllowed("DSC_0001.heic"))
+    }
+
+    @Test
+    fun `isDownloadAllowed - PRO ADMIN REFERRER 는 HEIF 계열 통과`() = runTest {
+        for (tier in listOf(SubscriptionTier.PRO, SubscriptionTier.ADMIN, SubscriptionTier.REFERRER)) {
+            createUseCase(tier)
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            assertTrue("$tier + hif 통과", useCase.isDownloadAllowed("DSC_0001.hif"))
+            assertTrue("$tier + heic 통과", useCase.isDownloadAllowed("DSC_0001.heic"))
+        }
+    }
+
+    @Test
+    fun `isDownloadAllowed - 동영상 확장자는 모든 티어에서 통과`() = runTest {
+        for (tier in listOf(SubscriptionTier.FREE, SubscriptionTier.PRO)) {
+            createUseCase(tier)
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            assertTrue("$tier + mov 통과", useCase.isDownloadAllowed("MOV_0001.MOV"))
+            assertTrue("$tier + mp4 통과", useCase.isDownloadAllowed("clip.mp4"))
+        }
+    }
+
+    @Test
+    fun `isDownloadAllowed - 미지 확장자는 fail-closed 로 차단 (PRO 포함)`() = runTest {
+        for (tier in listOf(SubscriptionTier.FREE, SubscriptionTier.PRO)) {
+            createUseCase(tier)
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            assertFalse("$tier + xyz 는 차단", useCase.isDownloadAllowed("weird.xyz"))
+            assertFalse("$tier + 확장자 없음 차단", useCase.isDownloadAllowed("noext"))
+        }
+    }
+
+    @Test
+    fun `isDownloadAllowed - FREE 는 PNG 차단, PRO 는 PNG 통과`() = runTest {
+        createUseCase(SubscriptionTier.FREE)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertFalse("FREE 는 PNG 미지원", useCase.isDownloadAllowed("img.png"))
+
+        createUseCase(SubscriptionTier.PRO)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertTrue("PRO 는 PNG 지원", useCase.isDownloadAllowed("img.png"))
+    }
+
+    @Test
+    fun `isDownloadAllowed - RAW 는 티어와 rawDownload 설정을 따른다`() = runTest {
+        createUseCase(SubscriptionTier.PRO)
+        appSettingsRepository.setRawFileDownloadEnabled(true)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertTrue("PRO + rawDownload true → 통과", useCase.isDownloadAllowed("DSC_0001.NEF"))
+
+        appSettingsRepository.setRawFileDownloadEnabled(false)
+        assertFalse("PRO + rawDownload false → 차단", useCase.isDownloadAllowed("DSC_0001.NEF"))
+
+        createUseCase(SubscriptionTier.FREE)
+        appSettingsRepository.setRawFileDownloadEnabled(true)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertFalse("FREE 는 RAW 차단", useCase.isDownloadAllowed("DSC_0001.NEF"))
+    }
+
     // --- validateRawFileAccess ---
 
     @Test
