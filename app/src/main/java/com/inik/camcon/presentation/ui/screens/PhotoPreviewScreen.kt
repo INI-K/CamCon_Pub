@@ -201,7 +201,7 @@ fun PhotoPreviewScreen(
                             isLoadingMore = isLoadingMore,
                             hasNextPage = hasNextPage,
                             isMultiSelectMode = isMultiSelectMode,
-                            selectedPhotos = selectedPhotos.toSet(),
+                            selectedPhotos = selectedPhotos,
                             viewModel = viewModel
                         )
                     }
@@ -267,6 +267,13 @@ fun PhotoPreviewScreen(
             }
         }
 
+        // 로컬 사진 목록 판정은 photos 리스트 identity 가 바뀔 때만(페이지 로드/새로고침) 1회 계산한다.
+        // 이전에는 캐시(fullImageCache 등) 갱신마다 뷰어 블록이 recompose 되며 매번 photos 전체를
+        // File.exists() 스캔(메인스레드 stat N회)했다. remember(photos) 로 그 재스캔을 제거한다.
+        val localPhotos = remember(photos) {
+            if (photos.any { File(it.path).exists() }) photos else null
+        }
+
         // H7-A — 삭제 액션 게이팅: 카메라 capability + 구독 티어
         val canDelete = (cameraCapabilities?.canDeleteFiles == true) &&
                 uiState.canAccessRawFormats
@@ -297,7 +304,7 @@ fun PhotoPreviewScreen(
                 viewModel.downloadPhotoExplicit(photo)
             },
             viewModel = viewModel,
-            localPhotos = if (photos.any { File(it.path).exists() }) photos else null,
+            localPhotos = localPhotos,
             onDeleteRequest = if (canDelete) {
                 { target -> viewModel.deletePhoto(target) }
             } else null,
@@ -707,7 +714,7 @@ private fun PhotoGrid(
                     FeaturedPhotoThumbnail(
                         photo = firstPhoto,
                         thumbnailData = thumbnailCache[firstPhoto.path],
-                        fullImageCache = fullImageCache,
+                        fullImageData = fullImageCache[firstPhoto.path],
                         onClick = { viewModel.selectPhoto(firstPhoto) }
                     )
                 }
@@ -723,7 +730,7 @@ private fun PhotoGrid(
             FluidPhotoThumbnail(
                 photo = photo,
                 thumbnailData = thumbnailCache[photo.path],
-                fullImageCache = fullImageCache,
+                fullImageData = fullImageCache[photo.path],
                 onClick = {
                     if (isMultiSelectMode) {
                         viewModel.togglePhotoSelection(photo.path)
