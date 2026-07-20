@@ -28,7 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -91,7 +91,7 @@ fun HotspotStaModeContent(
     val state = HotspotStaContentState.fromWifiState(wifiNetworkState)
     // 검증된 manualIp가 아니라 자유 타이핑 원문(manualIpInput)을 바인딩한다 — 검증된 값만 바인딩하면
     // 부분 입력이 매 키 입력마다 거부·리셋돼 타이핑으로 완전한 IP를 만들 수 없었다(붙여넣기만 동작).
-    val manualIp by ptpipViewModel.manualIpInput.collectAsState()
+    val manualIp by ptpipViewModel.manualIpInput.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     // 핫스팟 설정을 켜고 화면으로 돌아오면 상태를 다시 읽어 히어로/검색 활성을 갱신한다.
