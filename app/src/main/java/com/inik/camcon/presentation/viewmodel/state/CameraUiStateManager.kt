@@ -84,7 +84,7 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
                     it.liveView,
                 error = when {
                     isConnected -> null
-                    errorMessage != null -> errorMessage
+                    errorMessage != null -> UiText.Raw(errorMessage)
                     else -> it.error
                 }
             )
@@ -126,8 +126,8 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
                     usbInitializationMessage = if (hasPermission) null else it.connection.usbInitializationMessage
                 ),
                 error = when {
-                    deviceCount == 0 && !it.connection.isConnected -> "USB 카메라가 감지되지 않음"
-                    !hasPermission && deviceCount > 0 -> "USB 권한이 필요합니다"
+                    deviceCount == 0 && !it.connection.isConnected -> UiText.Raw("USB 카메라가 감지되지 않음")
+                    !hasPermission && deviceCount > 0 -> UiText.Raw("USB 권한이 필요합니다")
                     else -> it.error
                 }
             )
@@ -145,7 +145,7 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
             it.copy(
                 settings = it.settings.copy(cameraCapabilities = capabilities),
                 error = if (capabilities == null && it.connection.isConnected)
-                    "카메라 기능 정보를 가져올 수 없음" else it.error
+                    UiText.Raw("카메라 기능 정보를 가져올 수 없음") else it.error
             )
         }
         Log.d(TAG, "카메라 기능 정보 업데이트: ${capabilities?.model ?: "null"}")
@@ -289,7 +289,7 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
     /**
      * 에러 상태 관리
      */
-    fun setError(error: String?) {
+    fun setError(error: UiText?) {
         _uiState.update { it.copy(error = error) }
         if (error != null) {
             Log.e(TAG, "에러 상태 설정: $error")
@@ -320,9 +320,9 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
             it.copy(
                 connection = it.connection.copy(isPtpTimeout = isPtpTimeout),
                 error = if (isPtpTimeout) {
-                    "PTP 카메라 통신이 일정 시간 동안 응답하지 않습니다. 연결을 다시 시도해주세요."
+                    UiText.Raw("PTP 카메라 통신이 일정 시간 동안 응답하지 않습니다. 연결을 다시 시도해주세요.")
                 } else {
-                    exception.message
+                    exception.message?.let { UiText.Raw(it) }
                 }
             )
         }
@@ -363,7 +363,7 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
                 settings = it.settings.copy(
                     cameraCapabilities = null
                 ),
-                error = "USB 카메라가 분리되었습니다.\n\n카메라를 다시 연결하려면:\n1. USB 케이블을 다시 연결하세요\n2. 화면 하단의 '새로고침' 버튼을 눌러주세요"
+                error = UiText.Raw("USB 카메라가 분리되었습니다.\n\n카메라를 다시 연결하려면:\n1. USB 케이블을 다시 연결하세요\n2. 화면 하단의 '새로고침' 버튼을 눌러주세요")
             )
         }
         _liveViewFrame.value = null
@@ -433,9 +433,9 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
                     isPtpTimeout = isPtpTimeout
                 ),
                 error = if (isPtpTimeout) {
-                    "PTP 카메라 통신이 일정 시간 동안 응답하지 않습니다. 연결을 다시 시도해주세요."
+                    UiText.Raw("PTP 카메라 통신이 일정 시간 동안 응답하지 않습니다. 연결을 다시 시도해주세요.")
                 } else {
-                    error.message
+                    error.message?.let { UiText.Raw(it) }
                 }
             )
         }

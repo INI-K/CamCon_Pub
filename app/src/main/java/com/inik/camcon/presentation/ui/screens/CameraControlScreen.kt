@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.graphics.ColorSpace
-import android.media.ExifInterface
 import android.widget.Toast
 import com.inik.camcon.utils.LogcatManager
 import androidx.core.view.WindowCompat
@@ -113,8 +112,9 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.size.Scale
 import com.inik.camcon.R
-import com.inik.camcon.domain.model.resolve
+import com.inik.camcon.utils.resolve
 import com.inik.camcon.domain.model.ThemeMode
+import com.inik.camcon.domain.model.UiText
 import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.CameraSettings
@@ -173,7 +173,6 @@ import com.inik.camcon.presentation.viewmodel.CameraUiState
 import com.inik.camcon.presentation.viewmodel.CameraViewModel
 import com.inik.camcon.presentation.viewmodel.RawFileRestriction
 import kotlinx.coroutines.launch
-import org.json.JSONObject
 import java.io.File
 
 /**
@@ -267,8 +266,8 @@ fun CameraControlScreen(
     var showFolderSelectionDialog by remember { mutableStateOf(false) }
     var showSaveFormatSelectionDialog by remember { mutableStateOf(false) }
     var showConnectionHelpDialog by remember { mutableStateOf(false) }
-    // 연결 도움말을 이미 표시·처리한 에러 문자열 (동일 에러 중복 표시 방지, 클리어 시 리셋)
-    var handledConnectionError by remember { mutableStateOf<String?>(null) }
+    // 연결 도움말을 이미 표시·처리한 에러 (동일 에러 중복 표시 방지, 클리어 시 리셋)
+    var handledConnectionError by remember { mutableStateOf<UiText?>(null) }
 
     // FullScreenPhotoViewer 상태들
     var showFullScreenViewer by remember { mutableStateOf(false) }
@@ -621,7 +620,9 @@ fun CameraControlScreen(
 
     LaunchedEffect(uiState.error) {
         val error = uiState.error
-        val isConnectionError = error?.contains("Could not find the requested device") == true
+        // error 는 UiText? — 문자열 판정/표시 전에 resolve 로 현재 로케일 문자열을 얻는다.
+        val errorText = error?.resolve(context)
+        val isConnectionError = errorText?.contains("Could not find the requested device") == true
         if (isConnectionError) {
             // 아직 표시·처리하지 않은 새 에러일 때만 도움말 표시 (사용자가 닫은 동일 에러는 재오픈하지 않음)
             if (handledConnectionError != error) {
@@ -635,11 +636,11 @@ fun CameraControlScreen(
 
             // 전용 UI(연결 도움말/USB 분리/PTP 타임아웃)가 없는 일반 에러는
             // 본문을 Snackbar로 노출하고 1-shot으로 소비한다.
-            if (!error.isNullOrBlank() &&
+            if (!errorText.isNullOrBlank() &&
                 !uiState.connection.isUsbDisconnected &&
                 !uiState.isPtpTimeout
             ) {
-                snackbarHostState.showSnackbar(error)
+                snackbarHostState.showSnackbar(errorText)
                 viewModel.clearError()
             }
         }
@@ -1910,79 +1911,6 @@ private fun CameraSettingsSheet(
     }
 }
 
-/**
- * 사진 파일에서 EXIF 메타데이터를 읽어서 CameraSettings 객체로 변환
- */
-private fun readExifMetadata(filePath: String): CameraSettings? {
-    return try {
-        val file = File(filePath)
-        if (!file.exists()) return null
-
-        val exif = ExifInterface(filePath)
-
-        // ISO 값 읽기
-        val iso = exif.getAttribute(ExifInterface.TAG_ISO_SPEED_RATINGS) ?: "AUTO"
-
-        // 조리개 값 읽기
-        val aperture = exif.getAttribute(ExifInterface.TAG_F_NUMBER)?.let { fNumber ->
-            try {
-                val parts = fNumber.split("/")
-                if (parts.size == 2) {
-                    val numerator = parts[0].toDouble()
-                    val denominator = parts[1].toDouble()
-                    String.format("%.1f", numerator / denominator)
-                } else {
-                    fNumber
-                }
-            } catch (e: Exception) {
-                fNumber
-            }
-        } ?: "AUTO"
-
-        // 셔터 속도 읽기
-        val shutterSpeed = exif.getAttribute(ExifInterface.TAG_EXPOSURE_TIME)?.let { exposureTime ->
-            try {
-                val speed = exposureTime.toDouble()
-
-                if (speed >= 1.0) {
-                    "${speed.toInt()}s"
-                } else {
-                    val denominator = (1.0 / speed).toInt()
-                    "1/$denominator"
-                }
-            } catch (e: Exception) {
-                LogcatManager.e("CameraControl", "셔터 속도 파싱 실패: $exposureTime")
-                exposureTime
-            }
-        } ?: "AUTO"
-
-        // 화이트 밸런스 읽기
-        val whiteBalance = when (exif.getAttribute(ExifInterface.TAG_WHITE_BALANCE)) {
-            "0" -> "자동"
-            "1" -> "수동"
-            else -> "자동"
-        }
-
-        // 초점 모드 읽기 (기본값)
-        val focusMode = "자동"
-
-        // 노출 보정 읽기
-        val exposureCompensation = exif.getAttribute(ExifInterface.TAG_EXPOSURE_BIAS_VALUE) ?: "0"
-
-        CameraSettings(
-            iso = iso,
-            shutterSpeed = shutterSpeed,
-            aperture = aperture,
-            whiteBalance = whiteBalance,
-            focusMode = focusMode,
-            exposureCompensation = exposureCompensation
-        )
-    } catch (e: Exception) {
-        LogcatManager.e("CameraControl", "EXIF 메타데이터 읽기 실패: ${e.message}")
-        null
-    }
-}
-
 // CapturedPhoto를 CameraPhoto로 변환하는 확장 함수
 private fun CapturedPhoto.toCameraPhoto(): CameraPhoto {
     return CameraPhoto(
@@ -2010,83 +1938,6 @@ private fun CapturedPhoto.getImageData(): ByteArray? {
     return try {
         File(this.filePath).readBytes()
     } catch (e: Exception) {
-        null
-    }
-}
-
-// CapturedPhoto에서 EXIF 정보를 JSON 형태로 읽어오는 확장 함수
-private fun CapturedPhoto.getExifData(): String? {
-    return try {
-        val file = File(this.filePath)
-        if (!file.exists()) return null
-
-        val exif = ExifInterface(this.filePath)
-        val exifMap = mutableMapOf<String, Any>()
-
-        // 기본 이미지 정보
-        exifMap["width"] = this.width
-        exifMap["height"] = this.height
-        exifMap["file_size"] = this.size
-        exifMap["capture_time"] = this.captureTime
-
-        // 카메라 정보
-        exif.getAttribute(ExifInterface.TAG_MAKE)?.let { exifMap["make"] = it }
-        exif.getAttribute(ExifInterface.TAG_MODEL)?.let { exifMap["model"] = it }
-
-        // 촬영 설정 (CapturedPhoto에 있는 settings 활용)
-        this.settings?.let { settings ->
-            exifMap["iso"] = settings.iso
-            exifMap["aperture"] = settings.aperture
-            exifMap["shutter_speed"] = settings.shutterSpeed
-            exifMap["white_balance"] = settings.whiteBalance
-            exifMap["focus_mode"] = settings.focusMode
-            exifMap["exposure_compensation"] = settings.exposureCompensation
-        }
-
-        // EXIF에서 추가 정보 읽기
-        exif.getAttribute(ExifInterface.TAG_F_NUMBER)?.let { exifMap["f_number"] = it }
-        exif.getAttribute(ExifInterface.TAG_EXPOSURE_TIME)?.let { exifMap["exposure_time"] = it }
-        exif.getAttribute(ExifInterface.TAG_FOCAL_LENGTH)?.let { exifMap["focal_length"] = it }
-        exif.getAttribute(ExifInterface.TAG_ISO_SPEED_RATINGS)?.let { exif_iso ->
-            if (!exifMap.containsKey("iso") || exifMap["iso"] == "AUTO") {
-                exifMap["iso"] = exif_iso
-            }
-        }
-
-        // 기타 정보
-        val orientation =
-            exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
-        exifMap["orientation"] = orientation
-
-        exif.getAttribute(ExifInterface.TAG_WHITE_BALANCE)?.let { wb ->
-            val whiteBalanceText = when (wb) {
-                "0" -> "자동"
-                "1" -> "수동"
-                else -> "자동"
-            }
-            exifMap["white_balance_exif"] = whiteBalanceText
-        }
-
-        exif.getAttribute(ExifInterface.TAG_FLASH)?.let { exifMap["flash"] = it }
-        exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL)
-            ?.let { exifMap["date_time_original"] = it }
-
-        // GPS 정보
-        val latLong = floatArrayOf(0f, 0f)
-        if (exif.getLatLong(latLong)) {
-            exifMap["gps_latitude"] = latLong[0]
-            exifMap["gps_longitude"] = latLong[1]
-        }
-
-        // JSON 문자열로 변환
-        val jsonObject = JSONObject()
-        exifMap.forEach { (key, value) ->
-            jsonObject.put(key, value)
-        }
-
-        jsonObject.toString()
-    } catch (e: Exception) {
-        LogcatManager.e("CameraControl", "EXIF 정보 읽기 실패: ${e.message}", e)
         null
     }
 }

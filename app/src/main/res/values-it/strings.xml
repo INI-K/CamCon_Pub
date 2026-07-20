@@ -375,4 +375,12 @@
     <string name="camera_limitation_no_liveview">Questa fotocamera non supporta il live view.\nLo scatto funziona, ma l\'anteprima in tempo reale non è disponibile.</string>
     <string name="camera_limitation_no_config">Questa fotocamera non supporta la modifica delle impostazioni.\nLo scatto funziona, ma regola ISO, tempo di posa, ecc. direttamente sulla fotocamera.</string>
     <string name="camera_control_enter_fullscreen">Attiva/disattiva schermo intero</string>
+    <string name="camera_op_capture_failed">Acquisizione foto non riuscita: %1$s</string>
+    <string name="camera_op_liveview_unsupported">Questa fotocamera non supporta la visione live.</string>
+    <string name="camera_op_camera_not_connected">La fotocamera non è connessa. Connetti prima una fotocamera.</string>
+    <string name="camera_op_liveview_start_failed">Impossibile avviare la visione live: %1$s</string>
+    <string name="camera_op_liveview_stop_failed">Impossibile arrestare la visione live: %1$s</string>
+    <string name="camera_op_timelapse_start_failed">Impossibile avviare il timelapse: %1$s</string>
+    <string name="camera_op_timelapse_failed">Timelapse non riuscito: %1$s</string>
+    <string name="camera_op_autofocus_failed">Messa a fuoco automatica non riuscita: %1$s</string>
 </resources>

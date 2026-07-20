@@ -9,6 +9,7 @@ import com.inik.camcon.presentation.viewmodel.state.CameraSettingsManager
 import com.inik.camcon.presentation.viewmodel.state.ErrorHandlingManager
 import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.domain.model.LiveViewFrame
+import com.inik.camcon.domain.model.UiText
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.repository.AppSettingsRepository
@@ -609,7 +610,8 @@ class CameraViewModel @Inject constructor(
         // 일반 에러 이벤트
         errorHandlingManager.errorEvent
             .onEach { errorEvent ->
-                uiStateManager.setError(errorEvent.message)
+                // 네이티브/이벤트 원문(영문 등)을 그대로 표시 — i18n 불가한 동적 문자열이라 Raw.
+                uiStateManager.setError(UiText.Raw(errorEvent.message))
                 Log.e(TAG, "에러 이벤트 수신: ${errorEvent.type} - ${errorEvent.message}")
             }
             .launchIn(viewModelScope)
@@ -617,7 +619,7 @@ class CameraViewModel @Inject constructor(
         // 네이티브 에러 이벤트  
         errorHandlingManager.nativeErrorEvent
             .onEach { nativeErrorEvent ->
-                uiStateManager.setError(nativeErrorEvent.userFriendlyMessage)
+                uiStateManager.setError(UiText.Raw(nativeErrorEvent.userFriendlyMessage))
 
                 // 특별한 액션이 필요한 경우 처리
                 when (nativeErrorEvent.actionRequired) {

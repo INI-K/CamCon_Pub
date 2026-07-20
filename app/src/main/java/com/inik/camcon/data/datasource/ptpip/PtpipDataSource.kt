@@ -104,6 +104,10 @@ class PtpipDataSource @Inject constructor(
     private var errorResetJob: Job? = null
     // 초기 플러시 완료 플래그
     @Volatile private var isInitialFlushCompleted = false
+    // 표준 모드 init이 네이티브 로그 경로를 ptpip 전용 파일로 강탈했는지 여부.
+    // true 일 때만 연결 종료/실패 시 nativeCameraDataSource.restoreUserLogPath()로 사용자 경로를 복원한다
+    // (AP 모드·미강탈 상황에서 사용자 로그를 불필요하게 재생성/절단하지 않도록).
+    @Volatile private var ptpipLogRedirected = false
     private val reconnectMutex = Mutex()
     private val connectionStateMutex = Mutex()
 
@@ -806,6 +810,16 @@ class PtpipDataSource @Inject constructor(
     }
 
     /**
+     * 표준 모드 init이 ptpip 전용 파일로 강탈한 네이티브 로그 경로를 사용자 baseline 경로로 복원한다.
+     * 강탈이 없었으면(플래그 false) no-op. 강탈된 경우에만 1회 복원하고 플래그를 내린다.
+     */
+    private suspend fun restoreUserLogPathIfRedirected() {
+        if (!ptpipLogRedirected) return
+        ptpipLogRedirected = false
+        runCatching { nativeCameraDataSource.restoreUserLogPath() }
+    }
+
+    /**
      * 직전 init 의 libgphoto2 로그(파일)에서 PTP/IP InitFail 사유를 읽는다.
      * 0 = InitFail 없음(또는 미상), 1 = rejected/denied(거부), 2 = busy/in-use.
      * (latest 로그는 매 init 마다 덮어쓰므로 직전 시도의 결과를 반영한다.)
@@ -993,6 +1007,8 @@ class PtpipDataSource @Inject constructor(
                     val gphotoLogPath =
                         "${context.filesDir.absolutePath}/libgphoto2_ptpip_latest.txt"
                     runCatching { CameraNative.startLogFile(gphotoLogPath) }
+                    // 네이티브 로그 경로를 강탈했음을 기록 — 연결 종료/실패 시 사용자 경로로 복원한다.
+                    ptpipLogRedirected = true
                     runCatching { CameraNative.setLogLevel(CameraNative.GP_LOG_DATA) }
                     try {
                         CameraNative.initCameraWithPtpip(camera.ipAddress, camera.port, pluginDir)
@@ -1063,6 +1079,9 @@ class PtpipDataSource @Inject constructor(
                 Log.e(TAG, "❌ libgphoto2 초기화 실패: $initResult")
                 _connectionState.value = PtpipConnectionState.ERROR
                 setProgress(UiText.Resource( R.string.progress_ptpip_failed, listOf(initResult.orEmpty()) ))
+                // ptpip 전용 로그로 강탈했던 네이티브 로그 경로를 사용자 경로로 복원한다.
+                // (ptpip 로그 파일 자체는 남아 lastPtpipInitFailReason 읽기는 이후에도 유효.)
+                restoreUserLogPathIfRedirected()
                 return@withContext false
             }
 
@@ -1757,6 +1776,8 @@ class PtpipDataSource @Inject constructor(
                 _activeConnectionMethod.value = null
                 setProgress(UiText.Empty)
                 isInitialFlushCompleted = false
+                // ptpip init이 강탈했던 네이티브 로그 경로를 사용자 경로로 복원한다.
+                restoreUserLogPathIfRedirected()
                 Log.d(TAG, "카메라 연결 해제 완료")
             } else {
                 _connectionState.value = PtpipConnectionState.CONNECTED

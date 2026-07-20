@@ -374,4 +374,12 @@
     <string name="camera_limitation_no_liveview">Diese Kamera unterstützt keine Live-View.\nAufnahmen sind möglich, aber keine Echtzeit-Vorschau.</string>
     <string name="camera_limitation_no_config">Diese Kamera unterstützt keine Einstellungsänderungen.\nAufnahmen sind möglich, aber ISO, Verschlusszeit usw. direkt an der Kamera einstellen.</string>
     <string name="camera_control_enter_fullscreen">Vollbild umschalten</string>
+    <string name="camera_op_capture_failed">Fotoaufnahme fehlgeschlagen: %1$s</string>
+    <string name="camera_op_liveview_unsupported">Diese Kamera unterstützt keine Live-Ansicht.</string>
+    <string name="camera_op_camera_not_connected">Kamera ist nicht verbunden. Bitte zuerst eine Kamera verbinden.</string>
+    <string name="camera_op_liveview_start_failed">Live-Ansicht konnte nicht gestartet werden: %1$s</string>
+    <string name="camera_op_liveview_stop_failed">Live-Ansicht konnte nicht gestoppt werden: %1$s</string>
+    <string name="camera_op_timelapse_start_failed">Zeitraffer konnte nicht gestartet werden: %1$s</string>
+    <string name="camera_op_timelapse_failed">Zeitraffer fehlgeschlagen: %1$s</string>
+    <string name="camera_op_autofocus_failed">Autofokus fehlgeschlagen: %1$s</string>
 </resources>

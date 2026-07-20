@@ -375,4 +375,12 @@
     <string name="camera_limitation_no_liveview">该相机不支持实时取景。\n可以拍摄，但无法实时预览。</string>
     <string name="camera_limitation_no_config">该相机不支持更改设置。\n可以拍摄，但请在相机上直接调整 ISO、快门速度等。</string>
     <string name="camera_control_enter_fullscreen">切换全屏</string>
+    <string name="camera_op_capture_failed">照片拍摄失败：%1$s</string>
+    <string name="camera_op_liveview_unsupported">该相机不支持实时取景。</string>
+    <string name="camera_op_camera_not_connected">相机未连接。请先连接相机。</string>
+    <string name="camera_op_liveview_start_failed">无法启动实时取景：%1$s</string>
+    <string name="camera_op_liveview_stop_failed">无法停止实时取景：%1$s</string>
+    <string name="camera_op_timelapse_start_failed">无法启动延时摄影：%1$s</string>
+    <string name="camera_op_timelapse_failed">延时摄影失败：%1$s</string>
+    <string name="camera_op_autofocus_failed">自动对焦失败：%1$s</string>
 </resources>

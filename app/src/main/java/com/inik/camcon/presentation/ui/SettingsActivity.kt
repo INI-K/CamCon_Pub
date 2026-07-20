@@ -94,7 +94,7 @@ import com.inik.camcon.R
 import com.inik.camcon.domain.model.LiveViewQuality
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.model.User
-import com.inik.camcon.domain.model.resolve
+import com.inik.camcon.utils.resolve
 import com.inik.camcon.domain.usecase.PipelineFeature
 import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.AccentMuted
@@ -276,6 +276,7 @@ fun SettingsScreen(
     val isRawFileDownloadEnabled by appSettingsViewModel.isRawFileDownloadEnabled.collectAsStateWithLifecycle()
 
     val subscriptionTier by appSettingsViewModel.subscriptionTier.collectAsStateWithLifecycle()
+    val isRawDownloadAllowed by appSettingsViewModel.isRawDownloadAllowed.collectAsStateWithLifecycle()
 
     val notificationGrantedText = stringResource(R.string.settings_toast_notification_granted)
     val notificationDeniedText = stringResource(R.string.settings_toast_notification_denied)
@@ -646,10 +647,7 @@ fun SettingsScreen(
 
             // RAW 파일 다운로드 설정
             SettingsSection(title = stringResource(R.string.settings_v2_section_raw_download)) {
-                if (subscriptionTier == SubscriptionTier.PRO ||
-                    subscriptionTier == SubscriptionTier.ADMIN ||
-                    subscriptionTier == SubscriptionTier.REFERRER
-                ) {
+                if (isRawDownloadAllowed) {
                     SwitchRowV2(
                         icon = Icons.Default.Photo,
                         title = stringResource(R.string.settings_v2_raw_download_title),

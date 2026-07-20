@@ -102,7 +102,7 @@ class CameraUiStateManagerTest {
 
         // Then
         assertNull(manager.uiState.value.cameraCapabilities)
-        assertEquals("카메라 기능 정보를 가져올 수 없음", manager.uiState.value.error)
+        assertEquals(UiText.Raw("카메라 기능 정보를 가져올 수 없음"), manager.uiState.value.error)
     }
 
     // --- showCameraStatusCheckDialog ---
@@ -188,7 +188,7 @@ class CameraUiStateManagerTest {
     @Test
     fun `updateConnectionState true시 에러 초기화`() {
         // Given: 에러 상태
-        manager.setError("이전 에러")
+        manager.setError(UiText.Raw("이전 에러"))
 
         // When: 연결 성공
         manager.updateConnectionState(true)
@@ -203,7 +203,7 @@ class CameraUiStateManagerTest {
         manager.updateConnectionState(false, "연결 실패")
 
         assertFalse(manager.uiState.value.isConnected)
-        assertEquals("연결 실패", manager.uiState.value.error)
+        assertEquals(UiText.Raw("연결 실패"), manager.uiState.value.error)
     }
 
     /**
