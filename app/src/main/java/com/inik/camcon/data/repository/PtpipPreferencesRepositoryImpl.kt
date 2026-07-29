@@ -59,6 +59,16 @@ class PtpipPreferencesRepositoryImpl @Inject constructor(
     override suspend fun getLastConnectedCameraInfo(): Pair<String, String?>? =
         dataSource.getLastConnectedCameraInfo()
 
+    override val knownCamera = dataSource.knownCamera
+
+    override suspend fun getKnownCamera() = dataSource.getKnownCamera()
+
+    override suspend fun saveCameraFingerprint(fingerprint: String?) =
+        dataSource.saveCameraFingerprint(fingerprint)
+
+    override suspend fun setAutoConnectApproved(approved: Boolean) =
+        dataSource.setAutoConnectApproved(approved)
+
     // ── 자동 연결 네트워크 설정 ──
 
     override suspend fun saveAutoConnectNetworkConfig(config: AutoConnectNetworkConfig) =

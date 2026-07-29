@@ -2,6 +2,7 @@ package com.inik.camcon.data.network.ptpip.discovery
 
 import android.util.Log
 import com.inik.camcon.di.IoDispatcher
+import com.inik.camcon.domain.model.CameraDiscoverySource
 import com.inik.camcon.domain.model.CameraVendor
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.utils.LogMask
@@ -32,6 +33,22 @@ class SsdpDiscoveryService @Inject constructor(
     // Hilt가 "only one injected constructor"로 거부한다. @IoDispatcher 바인딩으로 주입.
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
+    /**
+     * 지정 로컬 주소에 바인딩한 UDP 소켓. 주소가 없거나 바인딩이 실패하면 와일드카드로 폴백한다
+     * (바인딩 실패로 검색 자체를 죽이지는 않는다).
+     */
+    private fun createBoundSocket(bindAddress: String?): DatagramSocket {
+        val local = bindAddress?.takeIf { it.isNotBlank() } ?: return DatagramSocket()
+        return runCatching {
+            DatagramSocket(InetSocketAddress(InetAddress.getByName(local), 0)).also {
+                Log.d(TAG, "SSDP 소켓 바인딩: ${LogMask.id(local)}")
+            }
+        }.getOrElse {
+            Log.w(TAG, "SSDP 소켓 바인딩 실패 - 와일드카드 폴백: ${it.message}")
+            DatagramSocket()
+        }
+    }
+
     companion object {
         private const val TAG = "SsdpDiscoveryService"
 
@@ -90,12 +107,20 @@ class SsdpDiscoveryService @Inject constructor(
      * @param timeoutMs 응답 수신 대기 시간(ms). 이 시간 동안 유니캐스트 응답을 수집한다.
      * @return 판별된(vendor != UNKNOWN) 카메라 목록. 같은 IP는 confidenceRank 높은 하나만.
      */
-    suspend fun discover(timeoutMs: Long = 3000L): List<PtpipCamera> =
+    suspend fun discover(
+        timeoutMs: Long = 3000L,
+        bindAddress: String? = null
+    ): List<PtpipCamera> =
         withContext(ioDispatcher) {
             // IP -> 현재까지 채택된 카메라 (더 높은 confidence 응답이 오면 교체)
             val byIp = LinkedHashMap<String, PtpipCamera>()
             try {
-                DatagramSocket().use { socket ->
+                // ⚠️ 무바인딩 `DatagramSocket()`은 와일드카드라 OS가 **기본 경로**로 송신한다.
+                // 핫스팟만 켜고 셀룰러가 default route면 239.255.255.250이 셀룰러로 나가고
+                // 카메라가 있는 softAP 세그먼트에는 M-SEARCH가 도달하지 않는다 →
+                // "카메라는 제대로 설정했는데 앱이 못 잡음"의 확정 원인.
+                // softAP 로컬 IP에 명시 바인딩해 반드시 그 인터페이스로 나가게 한다.
+                createBoundSocket(bindAddress).use { socket ->
                     val group = InetAddress.getByName(SSDP_ADDRESS)
                     for (st in SEARCH_TARGETS) {
                         val payload = buildMSearch(st).toByteArray(Charsets.US_ASCII)
@@ -168,7 +193,10 @@ class SsdpDiscoveryService @Inject constructor(
             name = name,
             isOnline = true,
             discoveredServiceType = null,
-            vendorVerdict = verdict
+            vendorVerdict = verdict,
+            // SSDP verdict는 이미 CANON/SONY/PANASONIC로 채워지므로 Nikon 게이트에 영향 없음.
+            displayName = name,
+            discoverySource = CameraDiscoverySource.SSDP
         )
 
         val existing = byIp[sourceIp]

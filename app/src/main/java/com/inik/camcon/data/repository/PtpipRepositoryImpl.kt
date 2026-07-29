@@ -75,12 +75,21 @@ class PtpipRepositoryImpl @Inject constructor(
 
     override suspend fun disconnect() { ptpipDataSource.disconnect(keepSession = false) }
 
+    override fun requestConnectCancel() = ptpipDataSource.requestConnectCancel()
+
+    override fun isDiscoveryBlocked(): Boolean = ptpipDataSource.isDiscoveryBlocked()
+
     override fun cleanup() = ptpipDataSource.cleanup()
 
     // ── 카메라 검색 ──
 
     override suspend fun discoverCameras(forceApMode: Boolean): List<PtpipCamera> =
         ptpipDataSource.discoverCameras(forceApMode)
+
+    override suspend fun sweepSubnetForCameras(): List<PtpipCamera> =
+        ptpipDataSource.sweepSubnetForCameras()
+
+    override fun isSubnetSweepAvailable(): Boolean = ptpipDataSource.isSubnetSweepAvailable()
 
     // ── 촬영 ──
 

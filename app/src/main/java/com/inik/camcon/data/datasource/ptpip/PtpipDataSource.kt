@@ -8,6 +8,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import com.inik.camcon.CameraNative
+import com.inik.camcon.domain.model.CameraFingerprint
 import com.inik.camcon.EventListenerStopCallback
 import com.inik.camcon.R
 import com.inik.camcon.data.datasource.nativesource.CameraCaptureListener
@@ -107,6 +108,16 @@ class PtpipDataSource @Inject constructor(
     private val reconnectMutex = Mutex()
     private val connectionStateMutex = Mutex()
 
+    // ===== 협조적 연결 취소 (connectionStateMutex 밖에서 성립) =====
+    // connectToCamera는 mutex를 잡은 채 Nikon 승인 대기 60초를 폴링하고 disconnect()는 같은 mutex를
+    // 대기하므로, mutex를 경유하는 취소는 영영 실효하지 않는다. 그래서 취소는 mutex와 무관한
+    // 세대 카운터(attemptId)로 성립시킨다. 불린 플래그를 쓰면 늦게 도착한 취소가 뒤이은 정상 시도를 죽인다.
+    private val connectAttemptSeq = java.util.concurrent.atomic.AtomicLong(0)
+    @Volatile private var currentAttemptId: Long = 0L
+    @Volatile private var cancelledAttemptId: Long = -1L
+    // 취소 직후 배경 폴링이 방금 취소한 카메라를 4초 뒤 다시 붙잡는 것을 막는 쿨다운 만료 시각.
+    @Volatile private var autoConnectSuppressUntilMs: Long = 0L
+
     // Repository 콜백 저장용 - Singleton이므로 일반 참조 사용 (메모리 누수 방지 불필요)
     private var onPhotoCapturedCallback: ((String, String) -> Unit)? = null
     private var onConnectionLostCallback: (() -> Unit)? = null // Wi-Fi 연결 끊어짐 알림용
@@ -130,7 +141,8 @@ class PtpipDataSource @Inject constructor(
         wifiHelper = wifiHelper,
         discoveryService = discoveryService,
         connectionManager = connectionManager,
-        connectionStateProvider = { _connectionState.value },
+        // 검색 금지 조건의 단일 정의 = isDiscoveryBlocked() (조건식 복제 금지)
+        discoveryBlockedProvider = { isDiscoveryBlocked() },
         ioDispatcher = ioDispatcher
     )
     private val tetheringController = PtpipTetheringController(
@@ -291,6 +303,8 @@ class PtpipDataSource @Inject constructor(
         // DISCONNECTED로 내려야 WifiMonitoringService 폴링·handleNetworkStateChange 자동 재연결이
         // 다시 게이트를 통과한다(ERROR는 그 게이트에 안 걸려 영구 고착됐었음).
         private const val ERROR_RESET_DELAY_MS = 5000L
+        // 사용자가 연결을 취소한 뒤 배경 폴링이 같은 카메라를 즉시 다시 붙잡지 못하게 하는 쿨다운.
+        private const val CONNECT_CANCEL_COOLDOWN_MS = 10_000L
         const val ACTION_PHOTO_SAVED = "com.inik.camcon.action.PHOTO_SAVED"
         const val EXTRA_URI = "uri"
         const val EXTRA_FILE_NAME = "fileName"
@@ -334,8 +348,15 @@ class PtpipDataSource @Inject constructor(
                     lastConnectedCamera = PtpipCamera(
                         ipAddress = ip,
                         port = 15740,
+                        // ⚠️ 저장된 원본 이름을 그대로 — 이 문자열이 Nikon 게이트(isLikelyNikon)의
+                        // 유일한 입력이다. 표시용 문자열로 치환하면 STA 인증이 생략된다.
                         name = name ?: "Last camera",
-                        isOnline = false
+                        isOnline = false,
+                        // 복원 경로는 discoveredServiceType이 없으므로 verdict를 명시적으로 채운다
+                        // (하류 isLikelyNikon의 이름 폴백에 암묵 의존하지 않는다).
+                        vendorVerdict = CameraVendorClassifier.classifyMdns(name.orEmpty(), null),
+                        displayName = name,
+                        discoverySource = com.inik.camcon.domain.model.CameraDiscoverySource.RESTORED
                     )
                     Log.d(TAG, "마지막 연결 카메라 복원: ip=${LogMask.id(ip)}, name=${LogMask.serial(name)}")
                 }
@@ -501,6 +522,13 @@ class PtpipDataSource @Inject constructor(
      * 최대 ~5분간 락을 점유, 수동 연결/해제/cleanup을 모두 블로킹했다.)
      */
     private suspend fun attemptAutoReconnect(camera: PtpipCamera) {
+        // 이 경로는 connectToCamera를 거치지 않고 connectToCameraInternal을 직접 호출하므로
+        // 자동 연결 금지 조건(취소 직후 10초 쿨다운, USB 세션 활성)을 여기서 1회 확인한다.
+        // 없으면 사용자가 방금 취소한 연결을 네트워크 상태 변화가 5회 재시도로 되살린다.
+        if (isAutoConnectBlocked()) {
+            Log.i(TAG, "자동 연결 금지 상태 - 자동 재연결 시도 안 함")
+            return
+        }
         // 동시 재연결 방지
         if (!reconnectMutex.tryLock()) {
             Log.d(TAG, "이미 재연결 시도 중이므로 무시")
@@ -607,6 +635,120 @@ class PtpipDataSource @Inject constructor(
     // 호환성용 무파라미터 래퍼
     suspend fun discoverCameras(): List<PtpipCamera> = discoveryCoordinator.discoverCameras()
 
+    /**
+     * 서브넷 TCP 스윕(최후 폴백). mDNS/SSDP가 0건일 때 사용자가 명시적으로 실행한다.
+     * 결과는 기존 후보에 병합되며 자동 연결 대상에서는 제외된다.
+     */
+    suspend fun sweepSubnetForCameras(): List<PtpipCamera> = discoveryCoordinator.sweepSubnet()
+
+    /** 서브넷 스윕 실행 가능 여부(프리픽스 취득 가능). 불가면 UI는 버튼을 노출하지 않는다. */
+    fun isSubnetSweepAvailable(): Boolean = discoveryCoordinator.isSubnetSweepAvailable()
+
+    /**
+     * 예산 지정 검색. 배경 폴링(WifiMonitoringService)이 응답성을 위해
+     * [DiscoveryBudget.BackgroundReconnect]로 호출한다.
+     */
+    suspend fun discoverCameras(
+        forceApMode: Boolean,
+        budget: com.inik.camcon.data.network.ptpip.discovery.DiscoveryBudget
+    ): List<PtpipCamera> = discoveryCoordinator.discoverCameras(forceApMode, budget)
+
+    // ===== 세션 점유 가드 / 연결 취소 =====
+
+    /**
+     * 검색·프로브를 시도하면 안 되는 상태의 **단일 정의**. 이 함수 하나가 Coordinator 가드와
+     * ViewModel/UI 표시의 유일한 근거다(중복 조건식 신설 금지).
+     *
+     * - CONNECTING: 연결 시도와 검색이 겹치면 세션이 흔들린다(기존 계약 계승)
+     * - CONNECTED: 카메라는 PTP/IP 세션 1개만 허용 — 점유 중 프로브는 자기 카메라를 '미개방'으로
+     *   오판하고, 고아 소켓이 남으면 새 TCP가 -7/End-of-stream으로 거부된다
+     * - isShutterListening: 물리 셔터 무선 수신이 단일 세션 소켓을 점유 중
+     *
+     * USB 활성은 여기 넣지 않는다 — mDNS/SSDP 수신 자체는 공유 네이티브 핸들에 무해하고,
+     * USB는 **자동 연결만** 막아야 한다([isAutoConnectBlocked]).
+     */
+    fun isDiscoveryBlocked(): Boolean {
+        val state = _connectionState.value
+        return state == PtpipConnectionState.CONNECTING ||
+            state == PtpipConnectionState.CONNECTED ||
+            isShutterListening
+    }
+
+    /**
+     * 자동 연결을 시도하면 안 되는 상태.
+     *
+     * [isDiscoveryBlocked] + 살아있는 USB 세션(공유 네이티브 핸들) + 취소 직후 쿨다운.
+     * `initCameraWithPtpip`는 USB 핸들을 무경고 파괴하므로(J8) USB 활성 시 자동 연결은 금지다.
+     */
+    fun isAutoConnectBlocked(): Boolean =
+        isDiscoveryBlocked() ||
+            cameraEventManager.isUsbCameraActive() ||
+            // 촬영 세션을 방해하지 않는다. 조건 정의를 여기 한 곳에 모아 호출부가 복제하지 않게 한다
+            // (배경 폴링 WifiMonitoringService.isCameraBusy()는 이 함수에 위임한다).
+            runCatching { CameraNative.isVideoRecording() }.getOrDefault(false) ||
+            runCatching { CameraNative.isLiveViewStopping() }.getOrDefault(false) ||
+            android.os.SystemClock.elapsedRealtime() < autoConnectSuppressUntilMs
+
+    /**
+     * 연결 성공 후 본체 지문을 기록하고, 기억된 본체와 다르면 자동 연결 승인을 회수한다.
+     *
+     * 왜 회수가 필요한가: 렌탈샵·스튜디오에서 같은 IP/같은 이름에 **다른 바디**가 응답할 수 있다.
+     * 지문이 없거나(시리얼 미보고 → libgphoto2가 `"None"` 반환, abilities 파싱 실패) 한쪽만 유효하면
+     * "다르다"고 단정할 근거가 없으므로 승인을 건드리지 않는다 — 단정하면 정상 사용자의 자동 연결이 끊긴다.
+     */
+    private suspend fun persistBodyFingerprint() {
+        val info = abilitiesStore.cameraInfo.value
+        val observed = CameraFingerprint.of(info?.serialNumber, info?.model)
+        val remembered = runCatching { ptpipPreferencesDataSource.getKnownCamera() }.getOrNull()
+        if (remembered != null && remembered.isDifferentBody(observed)) {
+            Log.w(TAG, "기억된 본체와 지문 불일치 - 자동 연결 승인 회수")
+            ptpipPreferencesDataSource.setAutoConnectApproved(false)
+        } else if (observed != null && remembered?.autoConnectApproved == false) {
+            // 사용자가 확인을 거쳐 같은 본체에 다시 연결했다 → 승인 복구.
+            Log.i(TAG, "지문 일치 확인 - 자동 연결 승인 복구")
+            ptpipPreferencesDataSource.setAutoConnectApproved(true)
+        }
+        ptpipPreferencesDataSource.saveCameraFingerprint(observed)
+    }
+
+    /**
+     * 진행 중 연결의 협조적 취소 요청.
+     *
+     * ⚠️ **connectionStateMutex를 획득하지 않는다.** 진행 중 시도의 attemptId를 스냅샷하고
+     * 자동연결 쿨다운만 설정한 뒤 즉시 반환한다. 진행 중 시도가 없으면 플래그는 무해하게 남고
+     * 다음 시도는 새 attemptId라 영향받지 않는다.
+     */
+    fun requestConnectCancel() {
+        val target = currentAttemptId
+        cancelledAttemptId = target
+        autoConnectSuppressUntilMs =
+            android.os.SystemClock.elapsedRealtime() + CONNECT_CANCEL_COOLDOWN_MS
+        Log.i(TAG, "연결 취소 요청 (attemptId=$target, 자동연결 쿨다운 ${CONNECT_CANCEL_COOLDOWN_MS}ms)")
+    }
+
+    /** 이 시도(attemptId)에 대한 취소가 요청되었는가. 늦게 도착한 취소는 다음 시도를 죽이지 않는다. */
+    private fun isCancelRequested(attemptId: Long): Boolean =
+        attemptId > 0L && cancelledAttemptId == attemptId
+
+    /**
+     * 취소 감지 시 상태 정리.
+     *
+     * @param closeNative Step 1(libgphoto2 init) 이후에서만 true. 그 전에는 아무것도 열지 않았고
+     *   USB 공유 핸들을 건드리면 회귀한다.
+     */
+    private suspend fun abortConnectByCancel(attemptId: Long, closeNative: Boolean): Boolean {
+        Log.i(TAG, "연결 취소 감지 - 시도 중단 (attemptId=$attemptId, closeNative=$closeNative)")
+        if (closeNative) {
+            runCatching { CameraNative.closeCamera() }
+        }
+        _connectionState.value = PtpipConnectionState.DISCONNECTED
+        setProgress(UiText.Empty)
+        if (closeNative) {
+            restoreUserLogPathIfRedirected()
+        }
+        return false
+    }
+
     /** 니콘 카메라 연결 모드 감지 (AP/STA/UNKNOWN). → [PtpipDiscoveryCoordinator] 위임. */
     suspend fun detectNikonConnectionMode(camera: PtpipCamera): NikonConnectionMode =
         discoveryCoordinator.detectNikonConnectionMode(camera)
@@ -681,6 +823,10 @@ class PtpipDataSource @Inject constructor(
 
     suspend fun connectToCamera(camera: PtpipCamera, forceApMode: Boolean): Boolean =
         connectionStateMutex.withLock {
+            // 사용자 명시 연결이면 취소 쿨다운을 즉시 해제한다.
+            autoConnectSuppressUntilMs = 0L
+            // 같은 IP 재-TCP는 ≥1s 간격(airnef 문서화) — 검색 프로브 직후 연결이면 남은 간격을 대기한다.
+            discoveryCoordinator.awaitProbeCooldown(camera.ipAddress)
             connectToCameraInternal(camera, forceApMode)
         }.also { success ->
             // 연결 실패로 남은 ERROR는 지연 후 DISCONNECTED로 복원 예약 — 안 그러면 폴링/자동재연결이
@@ -702,6 +848,10 @@ class PtpipDataSource @Inject constructor(
         try {
             Log.i(TAG, "스마트 카메라 연결 시작: ${LogMask.serial(camera.name)} (${LogMask.id(camera.ipAddress)}:${camera.port})")
 
+            // 협조적 취소용 세대 카운터 발급. 이 시도만이 자기 attemptId의 취소에 반응한다.
+            val attemptId = connectAttemptSeq.incrementAndGet()
+            currentAttemptId = attemptId
+
             // 멱등 가드: 이미 동일 카메라(IP·포트 기준)에 연결돼 있으면 재연결하지 않는다.
             // 검색→자동선택→연결 경로가 중복 호출될 때(예: 검색 버튼 재탭) connectionStateMutex로
             // 직렬화된 두 번째 연결이 살아있는 PTP/IP 세션을 끊고 재연결하면서
@@ -719,6 +869,11 @@ class PtpipDataSource @Inject constructor(
             _connectionState.value = PtpipConnectionState.CONNECTING
             setProgress(UiText.Resource(R.string.progress_ptpip_connection_start))
             Log.d(TAG, "PTPIP 연결 상태 변경: CONNECTING")
+
+            // 취소 체크 ①: 아직 네이티브를 열지 않았으므로 closeCamera를 호출하지 않는다.
+            if (isCancelRequested(attemptId)) {
+                return@withContext abortConnectByCancel(attemptId, closeNative = false)
+            }
 
             // AP 모드 강제 플래그 설정
             _isApModeForced.value = forceApMode
@@ -750,6 +905,12 @@ class PtpipDataSource @Inject constructor(
             // 캐시/수동 IP 경로는 이름·타입 폴백. 오판(false) 시 STA 인증을 건너뛰어
             // 첫 페어링이 InitFail 0x1로 파손되므로 놓치는 쪽 비용이 크다.
             val isNikonCamera = CameraVendorClassifier.isLikelyNikon(camera)
+
+            // 취소 체크 ②: Nikon 승인 게이트(아래 블록)에 진입하기 전. 여기서 멈추면 카메라 본체에
+            // 연결 허용 팝업을 띄우지 않는다. 네이티브 미개방이므로 closeCamera 호출 금지.
+            if (isCancelRequested(attemptId)) {
+                return@withContext abortConnectByCancel(attemptId, closeNative = false)
+            }
 
             // ⚠️ Nikon은 세션마다 0x935a 승인을 거쳐야 카메라가 전체 PTP opcode를 노출한다.
             // 승인 전엔 DeviceInfo에 0x952b/0x935a만 보이고 모든 실제 명령이 0x2005(Not Supported)로 거부된다.
@@ -888,7 +1049,9 @@ class PtpipDataSource @Inject constructor(
             // 미승인 첫-페어링은 camera_init 이 -7 로 실패하므로(=init OK 면 승인·healthy 확정), 아래 재시도 루프가
             // 승인 대기를 그대로 처리한다. 따라서 desc 기반 프로브를 ready 게이트에서 제거한다.
             var ready = initOk
-            while (!ready && android.os.SystemClock.elapsedRealtime() < readyDeadlineMs) {
+            while (!ready && android.os.SystemClock.elapsedRealtime() < readyDeadlineMs &&
+                !isCancelRequested(attemptId)
+            ) {
                 runCatching { CameraNative.closeCamera() }
                 directRetries++
                 // 최초 페어링이면 승인 전까지 카메라가 -7로 거부한다. 일시 핸드셰이크 블립(1회)은
@@ -906,6 +1069,12 @@ class PtpipDataSource @Inject constructor(
                 initOk = isInitOk(initResult)
                 ready = initOk
             }
+            // 취소 체크 ③: 폴링 루프 종료 후 Step 2 진입 전. 이 지점은 init을 한 번 이상 실행했으므로
+            // 네이티브 핸들을 닫고 로그 경로를 복원한다.
+            if (isCancelRequested(attemptId)) {
+                return@withContext abortConnectByCancel(attemptId, closeNative = true)
+            }
+
             if (ready && requireHealthy) {
                 Log.i(TAG, "✅ Nikon 승인 확인됨 - 카메라가 전체 opcode 노출")
             }
@@ -990,6 +1159,7 @@ class PtpipDataSource @Inject constructor(
             // 인식한다. (Helper.connectToCamera 경로만 저장하면 검색→연결 경로는 누락됨.)
             runCatching {
                 ptpipPreferencesDataSource.saveLastConnectedCamera(camera.ipAddress, camera.name)
+                persistBodyFingerprint()
             }.onFailure { Log.w(TAG, "직전 카메라 영속 저장 실패", it) }
 
             // 연결 완료 전이 안전망 (H4): 정상 경로는 onFlushComplete 콜백이 _connectionState를

@@ -31,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -75,7 +76,6 @@ import com.inik.camcon.presentation.viewmodel.PtpipViewModel
 fun HotspotStaModeContent(
     ptpipViewModel: PtpipViewModel,
     connectionState: PtpipConnectionState,
-    discoveredCameras: List<PtpipCamera>,
     isDiscovering: Boolean,
     isConnecting: Boolean,
     selectedCamera: PtpipCamera?,
@@ -92,7 +92,21 @@ fun HotspotStaModeContent(
     // 검증된 manualIp가 아니라 자유 타이핑 원문(manualIpInput)을 바인딩한다 — 검증된 값만 바인딩하면
     // 부분 입력이 매 키 입력마다 거부·리셋돼 타이핑으로 완전한 IP를 만들 수 없었다(붙여넣기만 동작).
     val manualIp by ptpipViewModel.manualIpInput.collectAsStateWithLifecycle()
+    // 후보 목록·0건 사유·링크 신뢰도는 정책(CameraSelectionPolicy)이 계산한 결과를 그대로 받는다.
+    // 화면에서 재정렬·재판정하면 "보이는 순서"와 "자동 연결 대상"이 어긋난다.
+    val candidates by ptpipViewModel.cameraCandidates.collectAsStateWithLifecycle()
+    val emptyReason by ptpipViewModel.discoveryEmptyReason.collectAsStateWithLifecycle()
+    val networkTrust by ptpipViewModel.networkTrust.collectAsStateWithLifecycle()
+    val sweepAvailable by ptpipViewModel.isSubnetSweepAvailable.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    // 확인 다이얼로그 상태는 LazyColumn 밖에서 소유한다 — item 안에 두면 스크롤로 item이
+    // 컴포지션에서 이탈할 때 다이얼로그가 상태와 함께 사라진다.
+    var pendingConfirm by remember { mutableStateOf<PtpipCamera?>(null) }
+
+    val connect: (PtpipCamera) -> Unit = { camera ->
+        ptpipViewModel.selectCamera(camera)
+        ptpipViewModel.connectToCameraSta(camera)
+    }
 
     // 핫스팟 설정을 켜고 화면으로 돌아오면 상태를 다시 읽어 히어로/검색 활성을 갱신한다.
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
@@ -160,8 +174,40 @@ fun HotspotStaModeContent(
         }
 
         item {
+            DiscoveredCameraList(
+                candidates = candidates,
+                emptyReason = emptyReason,
+                trust = networkTrust,
+                // 연결 중에는 목록을 비활성화한다 — 다른 항목 탭을 큐잉하면 connectionStateMutex
+                // 뒤에서 순차 연결이 일어나 최대 60초(니콘 승인 데드라인) 무반응이 된다.
+                // ⚠️ isConnecting은 ViewModel 로컬 플래그라 배경 폴링이 시작한 연결을 못 잡는다.
+                // 그 경우 진행 다이얼로그도 뜨지 않아 화면상 아무 일도 없는 것처럼 보인다
+                // → connectionState를 함께 본다.
+                enabled = !isConnecting && !isDiscovering &&
+                    connectionState != PtpipConnectionState.CONNECTING,
+                sweepAvailable = sweepAvailable,
+                onCandidateTap = { camera, needsConfirm ->
+                    if (needsConfirm) pendingConfirm = camera else connect(camera)
+                },
+                onRetrySearch = { ptpipViewModel.discoverCamerasHotspot() },
+                onSweepSubnet = { ptpipViewModel.sweepSubnet() }
+            )
+            Spacer(modifier = Modifier.height(Spacing.lg))
+        }
+
+        item {
             ConnectionHelpExpander()
         }
+    }
+
+    pendingConfirm?.let { target ->
+        CameraConnectConfirmDialog(
+            onDismiss = { pendingConfirm = null },
+            onConfirm = {
+                pendingConfirm = null
+                connect(target)
+            }
+        )
     }
 }
 

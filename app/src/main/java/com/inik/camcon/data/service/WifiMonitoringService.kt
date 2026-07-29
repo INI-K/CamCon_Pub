@@ -14,6 +14,7 @@ import com.inik.camcon.CameraNative
 import com.inik.camcon.R
 import com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource
 import com.inik.camcon.data.datasource.ptpip.PtpipDataSource
+import com.inik.camcon.data.network.ptpip.discovery.DiscoveryBudget
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.model.ConnectionMethod
@@ -178,9 +179,15 @@ class WifiMonitoringService : Service() {
                         && ptpipDataSource.connectionState.value == PtpipConnectionState.DISCONNECTED
                         && remembered != null
                         && !isCameraBusy()
+                        && !ptpipDataSource.isAutoConnectBlocked()
                     ) {
                         withContext(ioDispatcher) {
-                            val cameras = ptpipDataSource.discoverCameras(forceApMode = false)
+                            // 배경 예산: 1.5s + 기지 IP 조기 확정 허용 — 다중 후보 누적으로
+                            // 늘어난 검색 시간이 4초 폴링의 응답성을 깨지 않도록 한다.
+                            val cameras = ptpipDataSource.discoverCameras(
+                                forceApMode = false,
+                                budget = DiscoveryBudget.BackgroundReconnect
+                            )
                             // 기억된 직전 카메라와 IP가 일치하는 발견 카메라만 자동 연결 대상.
                             val camera = cameras.firstOrNull {
                                 it.ipAddress == remembered.ipAddress
@@ -224,9 +231,12 @@ class WifiMonitoringService : Service() {
             // J8: 살아있는 USB 세션(공유 네이티브 핸들)이 있으면 폴링 연결 시도를 스킵한다.
             // discoverCameras→connectToCamera가 mDNS 발견 순간 initCameraWithPtpip로 USB 핸들을
             // 무경고 파괴하기 때문. USB가 소유 중이면 PTP/IP 상태가 DISCONNECTED여도 손대지 않는다.
-            ptpipDataSource.isUsbCameraActive()
-                || CameraNative.isVideoRecording()
-                || CameraNative.isLiveViewStopping()
+            //
+            // USB 활성 / 영상녹화 / 라이브뷰 종료전이 / 세션 점유 / 취소 쿨다운의 **조건 정의는
+            // PtpipDataSource.isAutoConnectBlocked() 한 곳**에 있다(복제 금지 — 조건이 갈리면
+            // 전경과 배경이 같은 상황에서 다르게 행동한다). 프리뷰 탭만 여기 남는데, 판정 원천이
+            // CameraRepository(도메인)라 data 파사드로 끌어올리면 의존 방향이 역전된다.
+            ptpipDataSource.isAutoConnectBlocked()
                 || cameraRepository.isPhotoPreviewMode().first()
         }.getOrDefault(false)
     }

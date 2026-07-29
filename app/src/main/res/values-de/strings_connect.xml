@@ -18,4 +18,31 @@
     <string name="ptpip_hotspot_hero_hint">Schalten Sie den Telefon-Hotspot ein, damit sich die Kamera verbinden kann</string>
     <string name="cd_expanded">Ausgeklappt</string>
     <string name="cd_collapsed">Eingeklappt</string>
+    <!-- PTP/IP 기기 발견 목록 · 선택 (Wave 1) -->
+    <string name="ptpip_discovery_found_title">Gefundene Kameras</string>
+    <string name="ptpip_candidate_unnamed_fmt">Kamera (%1$s)</string>
+    <string name="ptpip_candidate_known">Zuvor verbunden</string>
+    <string name="ptpip_source_mdns">Automatisch gefunden</string>
+    <string name="ptpip_source_ssdp">Über UPnP gefunden</string>
+    <string name="ptpip_source_gateway">Gateway-Vermutung</string>
+    <string name="ptpip_source_cached">Zuletzt verwendet</string>
+    <string name="ptpip_source_manual">Manuell eingegeben</string>
+    <string name="ptpip_vendor_confirmed_fmt">%1$s bestätigt</string>
+    <string name="ptpip_vendor_likely_fmt">%1$s (vermutlich)</string>
+    <string name="ptpip_vendor_unknown">Hersteller unbekannt</string>
+    <string name="ptpip_discovery_empty_title">Keine Kamera gefunden</string>
+    <string name="ptpip_discovery_empty_camera_first">Prüfen Sie zuerst die Kamera: 1) Ist sie mit dem Hotspot des Telefons verbunden? 2) Ist das Menü für die Verbindung mit Smart-Geräten (WLAN) aktiviert? 3) Hat der Energiesparmodus das WLAN abgeschaltet? Suchen Sie danach erneut.</string>
+    <string name="ptpip_discovery_no_network">WLAN ist nicht verbunden. Aktivieren Sie WLAN und verbinden Sie sich mit einem Netzwerk oder starten Sie den Hotspot.</string>
+    <string name="ptpip_discovery_ap_empty">Mit dem Kamera-AP verbunden, aber keine Kamera gefunden.\nPrüfen Sie die WLAN-Einstellungen der Kamera und versuchen Sie es erneut.</string>
+    <string name="ptpip_discovery_busy">Während die Kamera verwendet wird, wird nicht gesucht. Trennen Sie die Verbindung oder beenden Sie die drahtlose Übertragung und versuchen Sie es erneut.</string>
+    <string name="ptpip_discovery_error_fmt">Kamerasuche fehlgeschlagen: %1$s</string>
+    <string name="ptpip_shared_network_notice">Möglicherweise ein gemeinsam genutztes Netzwerk. Vergewissern Sie sich, dass es Ihre Kamera ist, bevor Sie sie auswählen.</string>
+    <string name="ptpip_connect_confirm_title">Mit dieser Kamera verbinden?</string>
+    <string name="ptpip_connect_confirm_action">Verbinden</string>
+    <string name="ptpip_connect_confirm_body">Nach dem Verbinden erscheint auf dem Display dieser Kamera eine Freigabeanfrage. Vergewissern Sie sich, dass es Ihre Kamera ist.</string>
+    <string name="ptpip_manual_source_hint">Verwenden Sie eine manuell eingegebene IP, um sich erneut mit einer bereits gekoppelten Kamera zu verbinden.</string>
+    <string name="ptpip_connect_cancelling">Verbindung wird abgebrochen …</string>
+    <string name="ptpip_sweep_action">Im Netzwerk suchen</string>
+    <string name="ptpip_source_scan">Netzwerk-Scan</string>
+    <string name="ptpip_protocol_unsupported">Verbindung noch nicht unterstützt</string>
 </resources>

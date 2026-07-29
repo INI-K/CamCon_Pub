@@ -391,22 +391,72 @@ class WifiNetworkHelper @Inject constructor(
      * 폰이 AP(softAP) 역할을 하면 ap0/swlan0/softap 같은 별도 인터페이스가 IPv4를 갖고 up 상태가 된다.
      * hidden API를 쓰지 않으므로 targetSdk 36에서도 차단되지 않는다.
      */
-    private fun detectHotspotByInterfaces(): Boolean = runCatching {
-        val interfaces = java.net.NetworkInterface.getNetworkInterfaces() ?: return false
+    private fun detectHotspotByInterfaces(): Boolean = softApIpv4Address() != null
+
+    /**
+     * softAP 인터페이스의 사설 IPv4 주소. 핫스팟이 아니면 null.
+     *
+     * ⚠️ **이 판정이 앱 전체의 단일 실패점이다.** 실패하면
+     * `PtpipDiscoveryCoordinator`가 "Wi-Fi도 핫스팟도 아님"으로 보고 **검색을 시작조차 하지 않고**,
+     * [localIpv4Prefix]도 같이 실패해 **서브넷 스윕까지 비활성**된다. 결과는 사용자에게
+     * "핫스팟을 켰는데 앱이 카메라를 못 찾음"으로 나타난다 — 카메라 문제가 아니라 우리 문제다.
+     *
+     * 그래서 이름 후보를 넓게 잡되, 무관 인터페이스는 명시적으로 배제한다:
+     * - 채택: `ap0` `swlan0` `softap0` `ap_br0` `bridge0` `wlan1`+ (동시 동작 칩셋이 SoftAP를
+     *   두 번째 wlan으로 올린다) `wl0.1`(Broadcom 가상 AP)
+     * - 배제: `wlan0`(클라이언트), `rndis`/`usb`(USB 테더링), `tun`/`ppp`(VPN), 루프백·터널
+     *
+     * 추가 조건으로 **사설 대역 IPv4 보유**를 요구한다(SoftAP 게이트웨이는 항상 사설망이다).
+     */
+    internal fun softApIpv4Address(): String? = runCatching {
+        val interfaces = java.net.NetworkInterface.getNetworkInterfaces()?.toList().orEmpty()
         for (nif in interfaces) {
             val name = nif.name?.lowercase() ?: continue
-            // ap0 / swlan0 / softap0 처럼 prefix 뒤 숫자가 오는 softAP 인터페이스만 매칭.
-            // "apcli0"(일부 라우터 클라이언트 모드) 같은 무관 인터페이스 오탐 방지.
-            val isApName = name.matches(Regex("^(ap|swlan|softap)\\d.*"))
-            if (!isApName) continue
+            if (!isSoftApInterfaceName(name)) continue
             if (!runCatching { nif.isUp }.getOrDefault(false)) continue
-            val hasIpv4 = nif.inetAddresses.asSequence().any {
-                it is java.net.Inet4Address && !it.isLoopbackAddress
-            }
-            if (hasIpv4) return true
+            val ipv4 = nif.inetAddresses.asSequence()
+                .filterIsInstance<java.net.Inet4Address>()
+                .firstOrNull { !it.isLoopbackAddress && it.isSiteLocalAddress }
+            if (ipv4 != null) return@runCatching ipv4.hostAddress
         }
-        false
-    }.getOrDefault(false)
+        null
+    }.getOrNull()
+
+    /** softAP 인터페이스 이름 판정 **단일 지점**(정규식을 여기서만 정의한다). */
+    internal fun isSoftApInterfaceName(name: String): Boolean {
+        // 무관 인터페이스 우선 배제 — USB 테더링·VPN·터널이 사설 IPv4를 가져 오탐을 만든다.
+        val excluded = listOf("rndis", "usb", "tun", "ppp", "lo", "dummy", "sit", "ip6tnl", "docker")
+        if (excluded.any { name.startsWith(it) }) return false
+        // wlan0은 클라이언트 인터페이스이므로 softAP로 보지 않는다(wlan1+는 SoftAP 후보).
+        if (name == "wlan0" || name.startsWith("wlan0.")) return false
+        return name.matches(Regex("^(ap|swlan|softap)\\d.*")) ||
+            name.matches(Regex("^ap_br\\d*.*")) ||
+            name.matches(Regex("^bridge\\d+$")) ||
+            name.matches(Regex("^wlan[1-9]\\d*$")) ||
+            name.matches(Regex("^wl\\d+\\.\\d+$"))
+    }
+
+    /**
+     * 멀티캐스트 수신 락 취득(검색 구간 한정). 실패해도 검색은 계속한다.
+     *
+     * Wi-Fi 칩은 절전 상태에서 자기 대상이 아닌 멀티캐스트 프레임을 버린다. mDNS 응답은
+     * 224.0.0.251로 오는 멀티캐스트이므로, 락이 없으면 카메라가 응답했는데도 앱에 도달하지 않을 수 있다.
+     * `CHANGE_WIFI_MULTICAST_STATE`는 이미 매니페스트에 선언돼 있는데 취득 코드가 없었다.
+     */
+    fun acquireMulticastLock(tag: String): android.net.wifi.WifiManager.MulticastLock? =
+        runCatching {
+            wifiManager.createMulticastLock(tag).apply {
+                setReferenceCounted(false)
+                acquire()
+            }
+        }.onFailure { Log.w(TAG, "MulticastLock 취득 실패(검색은 계속): ${it.message}") }
+            .getOrNull()
+
+    /** 멀티캐스트 락 해제. 누락 시 배터리를 계속 소모하므로 finally에서 호출한다. */
+    fun releaseMulticastLock(lock: android.net.wifi.WifiManager.MulticastLock?) {
+        runCatching { if (lock?.isHeld == true) lock.release() }
+            .onFailure { Log.w(TAG, "MulticastLock 해제 실패: ${it.message}") }
+    }
 
     /**
      * 현재 네트워크 상태 스냅샷(외부 강제 갱신 트리거용).
@@ -426,13 +476,44 @@ class WifiNetworkHelper @Inject constructor(
         ?.firstOrNull()
 
     /**
+     * 로컬 IPv4 주소 + 프리픽스 길이를 `NetworkInterface`에서 직접 얻는다.
+     *
+     * ⚠️ `LinkProperties` 경로만으로는 **폰 핫스팟(SoftAP)에서 영영 null**이다 — SoftAP는 앱이 볼 수
+     * 있는 `Network` 객체로 등록되지 않아 `activeNetwork`가 없다. 반면 인터페이스 열거는
+     * `ap0`/`swlan0`가 주소와 프리픽스를 동시에 주고 hidden API도 아니라 targetSdk 36에서 안전하다.
+     * (같은 판정 패턴을 [detectHotspotByInterfaces]가 이미 쓰고 있다.)
+     *
+     * 우선순위: softAP 인터페이스 → Wi-Fi 클라이언트(wlan) → 그 외 non-loopback.
+     */
+    internal fun localIpv4Prefix(): Pair<String, Int>? = runCatching {
+        val interfaces = java.net.NetworkInterface.getNetworkInterfaces()?.toList().orEmpty()
+        interfaces.mapNotNull { nif ->
+            val name = nif.name?.lowercase() ?: return@mapNotNull null
+            if (!runCatching { nif.isUp }.getOrDefault(false)) return@mapNotNull null
+            val addr = nif.interfaceAddresses?.firstOrNull {
+                it.address is java.net.Inet4Address && it.address?.isLoopbackAddress == false
+            } ?: return@mapNotNull null
+            val host = addr.address?.hostAddress ?: return@mapNotNull null
+            val rank = when {
+                name.matches(Regex("^(ap|swlan|softap)\\d.*")) -> 2
+                name.startsWith("wlan") -> 1
+                else -> 0
+            }
+            Triple(rank, host, addr.networkPrefixLength.toInt())
+        }.maxByOrNull { it.first }?.let { it.second to it.third }
+    }.getOrNull()
+
+    /**
      * 현재 네트워크의 IPv4 서브넷 prefix 길이 추출.
+     *
+     * `LinkProperties`가 없으면(SoftAP 등) [localIpv4Prefix]로 보정한다.
      */
     fun extractSubnetPrefix(linkProps: android.net.LinkProperties?): Int? = linkProps?.linkAddresses
         ?.asSequence()
         ?.filter { it.address is java.net.Inet4Address }
         ?.map(android.net.LinkAddress::getPrefixLength)
         ?.firstOrNull()
+        ?: localIpv4Prefix()?.second
 
     /**
      * 지정한 SSID에 대해 자동 연결 제안 트리거 브로드캐스트를 전송한다. (API 26+ 용)
