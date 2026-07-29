@@ -235,6 +235,9 @@ fun PtpipConnectionScreen(
     // 이미 연결된 상태로 이 화면에 재진입하면(예: ADMIN 전송목록 테스트 버튼 사용) 자동 이동을 막아
     // 화면이 즉시 닫혀버리지 않도록 한다.
     var sawConnectingThisSession by remember { mutableStateOf(false) }
+    // 취소 요청 후 실제 반영까지의 간격(승인 대기 폴링 주기, 최대 ~1.5s)을 사용자에게 정직하게 보여준다.
+    // 다이얼로그를 즉시 닫으면 뒤에서 연결이 완주해 화면이 카메라 컨트롤로 튄다.
+    var cancelRequested by remember { mutableStateOf(false) }
 
     // === 추가: Wi-Fi 패스워드 입력 다이얼로그 & 상태 ===
     var showPasswordDialog by remember { mutableStateOf(false) }
@@ -541,6 +544,7 @@ fun PtpipConnectionScreen(
         when (connectionState) {
             com.inik.camcon.domain.model.PtpipConnectionState.CONNECTING -> {
                 sawConnectingThisSession = true
+                cancelRequested = false
                 showConnectionProgressDialog = true
             }
             com.inik.camcon.domain.model.PtpipConnectionState.CONNECTED -> {
@@ -820,7 +824,6 @@ fun PtpipConnectionScreen(
                     staOnly -> HotspotStaModeContent(
                         ptpipViewModel = ptpipViewModel,
                         connectionState = connectionState,
-                        discoveredCameras = discoveredCameras,
                         isDiscovering = isDiscovering,
                         isConnecting = isConnecting,
                         selectedCamera = selectedCamera,
@@ -878,7 +881,6 @@ fun PtpipConnectionScreen(
                     page == hotspotTabIndex -> HotspotStaModeContent(
                         ptpipViewModel = ptpipViewModel,
                         connectionState = connectionState,
-                        discoveredCameras = discoveredCameras,
                         isDiscovering = isDiscovering,
                         isConnecting = isConnecting,
                         selectedCamera = selectedCamera,
@@ -907,7 +909,13 @@ fun PtpipConnectionScreen(
             ),
             title = {
                 Text(
-                    text = connectionProgressMessage.ifEmpty { stringResource(R.string.ptpip_connecting_to_camera) },
+                    text = if (cancelRequested) {
+                        stringResource(R.string.ptpip_connect_cancelling)
+                    } else {
+                        connectionProgressMessage.ifEmpty {
+                            stringResource(R.string.ptpip_connecting_to_camera)
+                        }
+                    },
                     style = Caption,
                     textAlign = TextAlign.Center
                 )
@@ -932,9 +940,14 @@ fun PtpipConnectionScreen(
             confirmButton = {
                 SecondaryButton(
                     text = stringResource(R.string.cancel),
+                    enabled = !cancelRequested,
                     onClick = {
-                        ptpipViewModel.disconnect()
-                        showConnectionProgressDialog = false
+                        // disconnect()는 연결이 잡고 있는 mutex를 기다려 취소가 실효하지 않는다.
+                        // cancelConnecting()은 mutex 밖에서 취소 세대 번호만 올리므로 즉시 전달된다.
+                        ptpipViewModel.cancelConnecting()
+                        // 취소 후 늦게 완주한 연결이 자동 화면 이동을 발동시키지 않도록 플래그를 내린다.
+                        sawConnectingThisSession = false
+                        cancelRequested = true
                     }
                 )
             }

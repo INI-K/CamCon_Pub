@@ -18,4 +18,31 @@
     <string name="ptpip_hotspot_hero_hint">Attiva l\'hotspot del telefono così la fotocamera può collegarsi</string>
     <string name="cd_expanded">Espanso</string>
     <string name="cd_collapsed">Compresso</string>
+    <!-- PTP/IP 기기 발견 목록 · 선택 (Wave 1) -->
+    <string name="ptpip_discovery_found_title">Fotocamere trovate</string>
+    <string name="ptpip_candidate_unnamed_fmt">Fotocamera (%1$s)</string>
+    <string name="ptpip_candidate_known">Già connessa</string>
+    <string name="ptpip_source_mdns">Rilevata automaticamente</string>
+    <string name="ptpip_source_ssdp">Rilevata tramite UPnP</string>
+    <string name="ptpip_source_gateway">Stima dal gateway</string>
+    <string name="ptpip_source_cached">Usata di recente</string>
+    <string name="ptpip_source_manual">Inserita manualmente</string>
+    <string name="ptpip_vendor_confirmed_fmt">%1$s confermata</string>
+    <string name="ptpip_vendor_likely_fmt">%1$s (probabile)</string>
+    <string name="ptpip_vendor_unknown">Produttore sconosciuto</string>
+    <string name="ptpip_discovery_empty_title">Nessuna fotocamera trovata</string>
+    <string name="ptpip_discovery_empty_camera_first">Controlla prima la fotocamera: 1) che si sia collegata all\'hotspot del telefono, 2) che il menu di connessione ai dispositivi smart (Wi-Fi) sia attivo, 3) che il risparmio energetico non abbia disattivato il Wi-Fi. Poi ripeti la ricerca.</string>
+    <string name="ptpip_discovery_no_network">Il Wi-Fi non è connesso. Attiva il Wi-Fi e collegati a una rete, oppure accendi l\'hotspot.</string>
+    <string name="ptpip_discovery_ap_empty">Collegato all\'AP della fotocamera, ma non è stata trovata nessuna fotocamera.\nControlla le impostazioni Wi-Fi della fotocamera e riprova.</string>
+    <string name="ptpip_discovery_busy">Nessuna ricerca mentre la fotocamera è in uso. Disconnetti o interrompi il trasferimento wireless, quindi riprova.</string>
+    <string name="ptpip_discovery_error_fmt">Ricerca delle fotocamere non riuscita: %1$s</string>
+    <string name="ptpip_shared_network_notice">Potrebbe essere una rete condivisa. Assicurati che la fotocamera sia tua prima di selezionarla.</string>
+    <string name="ptpip_connect_confirm_title">Connettersi a questa fotocamera?</string>
+    <string name="ptpip_connect_confirm_action">Connetti</string>
+    <string name="ptpip_connect_confirm_body">Dopo la connessione, sullo schermo di quella fotocamera compare una richiesta di autorizzazione. Assicurati che sia la tua.</string>
+    <string name="ptpip_manual_source_hint">Usa un IP inserito manualmente per riconnetterti a una fotocamera già associata.</string>
+    <string name="ptpip_connect_cancelling">Annullamento della connessione…</string>
+    <string name="ptpip_sweep_action">Cerca nella rete</string>
+    <string name="ptpip_source_scan">Scansione di rete</string>
+    <string name="ptpip_protocol_unsupported">connessione non ancora supportata</string>
 </resources>

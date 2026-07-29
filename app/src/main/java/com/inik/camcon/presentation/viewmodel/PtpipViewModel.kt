@@ -4,10 +4,19 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.inik.camcon.R
 import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.domain.model.CameraCaptureCallback
+import com.inik.camcon.domain.model.CameraCandidate
+import com.inik.camcon.domain.model.CameraSelectionPolicy
 import com.inik.camcon.domain.model.ConnectionMethod
+import com.inik.camcon.domain.model.DiscoveryAttemptResult
+import com.inik.camcon.domain.model.DiscoveryEmptyReason
+import com.inik.camcon.domain.model.KnownCameraRef
+import com.inik.camcon.domain.model.NetworkTrust
+import com.inik.camcon.domain.model.SelectionOutcome
+import com.inik.camcon.domain.model.UiText
 import com.inik.camcon.domain.repository.PtpipPreferencesRepository
 import com.inik.camcon.domain.repository.PtpipRepository
 import com.inik.camcon.domain.repository.WifiCapabilityProvider
@@ -22,12 +31,15 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -120,6 +132,45 @@ class PtpipViewModel @Inject constructor(
     val discoveryTimeout = preferencesRepository.discoveryTimeout
     val ptpipPort = preferencesRepository.ptpipPort
 
+    // ── 후보 선택 상태 (CameraSelectionPolicy 기반) ──
+
+    /**
+     * 현재 네트워크 링크의 신뢰도. 자동 연결(무탭) 허용의 1차 조건.
+     */
+    val networkTrust: StateFlow<NetworkTrust> = wifiNetworkState
+        .map { CameraSelectionPolicy.trustOf(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NetworkTrust.NO_NETWORK)
+
+    /**
+     * 목록에 렌더할 후보. 정렬은 [CameraSelectionPolicy.buildCandidates]의 결정적 순서를 따르며
+     * UI에서 재정렬하지 않는다.
+     */
+    val cameraCandidates: StateFlow<List<CameraCandidate>> = combine(
+        discoveredCameras,
+        preferencesRepository.knownCamera,
+        wifiNetworkState
+    ) { cameras, known, network ->
+        CameraSelectionPolicy.buildCandidates(
+            cameras = cameras,
+            known = known,
+            trust = CameraSelectionPolicy.trustOf(network)
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * 서브넷 스윕 버튼 노출 조건(프리픽스 취득 가능 여부).
+     *
+     * 네트워크가 바뀌면 재평가한다 — 폰 핫스팟을 켜고 돌아온 직후처럼 상태가 변하는 순간이
+     * 스윕 가능 여부가 뒤집히는 지점이다.
+     */
+    val isSubnetSweepAvailable: StateFlow<Boolean> = wifiNetworkState
+        .map { runCatching { ptpipRepository.isSubnetSweepAvailable() }.getOrDefault(false) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    // 0건 EmptyState 분기 사유. 초기 진입은 NOT_SEARCHED(아무것도 렌더하지 않음).
+    private val _discoveryEmptyReason = MutableStateFlow(DiscoveryEmptyReason.NOT_SEARCHED)
+    val discoveryEmptyReason: StateFlow<DiscoveryEmptyReason> = _discoveryEmptyReason.asStateFlow()
+
     // ── ViewModel 자체 UI 상태 ──
 
     private val _isDiscovering = MutableStateFlow(false)
@@ -127,6 +178,10 @@ class PtpipViewModel @Inject constructor(
 
     private val _isConnecting = MutableStateFlow(false)
     val isConnecting: StateFlow<Boolean> = _isConnecting.asStateFlow()
+
+    /** 사용자 취소로 중단된 시도를 "연결 실패"로 표시하지 않기 위한 1회성 표식. */
+    @Volatile
+    private var userCancelRequested = false
 
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
@@ -330,13 +385,13 @@ class PtpipViewModel @Inject constructor(
             Log.w(TAG, "이미 카메라 검색 중입니다")
             return
         }
-
+        _errorMessage.value = null
         discoveryHelper.discoverCameras(
             forceApMode = forceApMode,
             onDiscoveringChanged = { _isDiscovering.value = it },
-            onConnectingChanged = { _isConnecting.value = it },
-            onErrorChanged = { _errorMessage.value = it },
-            onCameraSelected = { camera -> _selectedCamera.value = camera }
+            onResult = { result ->
+                viewModelScope.launch { applyDiscoveryResult(result, forceApMode) }
+            }
         )
     }
 
@@ -348,16 +403,106 @@ class PtpipViewModel @Inject constructor(
             Log.w(TAG, "이미 카메라 검색 중입니다")
             return
         }
-        // AP/STA 탭과 동일하게 discoveryHelper 경로를 타서 검색→자동선택→자동연결까지 수행한다.
-        // (기존엔 repository.discoverCameras만 직접 호출해 검색만 되고 연결 단계가 빠져 있었음)
+        // 핫스팟 탭은 시나리오를 먼저 고정한 뒤 공통 검색 경로를 탄다.
         ptpipRepository.setActiveConnectionMethod(ConnectionMethod.STA_PHONE_HOTSPOT)
-        discoveryHelper.discoverCameras(
-            forceApMode = false,
-            onDiscoveringChanged = { _isDiscovering.value = it },
-            onConnectingChanged = { _isConnecting.value = it },
-            onErrorChanged = { _errorMessage.value = it },
-            onCameraSelected = { camera -> _selectedCamera.value = camera }
+        discoverCameras(forceApMode = false)
+    }
+
+    /**
+     * 서브넷 TCP 스윕(최후 폴백). mDNS/SSDP가 0건일 때 사용자가 명시적으로 실행한다.
+     *
+     * 스윕 결과는 자동 연결하지 않는다 — [CameraSelectionPolicy]가 `SUBNET_SCAN`을 자동 연결 대상에서
+     * 영구 제외하므로, 여기서는 목록 갱신과 0건 사유만 처리한다.
+     */
+    fun sweepSubnet() {
+        if (_isDiscovering.value) {
+            Log.w(TAG, "이미 검색 중이라 서브넷 스윕을 시작하지 않음")
+            return
+        }
+        viewModelScope.launch {
+            _isDiscovering.value = true
+            _errorMessage.value = null
+            try {
+                val found = ptpipRepository.sweepSubnetForCameras()
+                _discoveryEmptyReason.value = if (found.isEmpty()) {
+                    DiscoveryEmptyReason.NOT_FOUND
+                } else {
+                    DiscoveryEmptyReason.NONE
+                }
+                Log.i(TAG, "서브넷 스윕 결과: 총 후보 ${found.size}건")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "서브넷 스윕 실패", e)
+                _errorMessage.value = appContext.getString(
+                    R.string.ptpip_discovery_error_fmt,
+                    e.message ?: e::class.java.simpleName
+                )
+            } finally {
+                _isDiscovering.value = false
+            }
+        }
+    }
+
+    /**
+     * 검색 결과를 [CameraSelectionPolicy] 판정에 따라 처리한다.
+     *
+     * 자동 연결은 정책이 [SelectionOutcome.AutoConnect]를 낼 때만 수행하며, 분기 직전에
+     * 세션 점유를 1회 더 확인한다(화면 진입 자체가 USB/연결 상태와 겹칠 수 있다).
+     * [SelectionOutcome.RequireSelection]에서는 아무것도 연결하지 않고 `_isConnecting`도 건드리지 않는다
+     * — 목록 노출은 [cameraCandidates]가 담당한다.
+     */
+    private suspend fun applyDiscoveryResult(
+        result: DiscoveryAttemptResult,
+        forceApMode: Boolean
+    ) {
+        result.error?.let { _errorMessage.value = resolveUiText(it) }
+        _discoveryEmptyReason.value = result.reason
+
+        // 기지 판정은 IP 단독이 아니라 KnownCameraRef(mDNS 인스턴스명 → IP 힌트)로 한다 —
+        // DHCP로 IP가 바뀌어도 같은 본체를 인식해야 자동 연결이 조용히 죽지 않는다.
+        val known = runCatching { preferencesRepository.getKnownCamera() }
+            .getOrDefault(KnownCameraRef())
+        val trust = CameraSelectionPolicy.trustOf(wifiNetworkState.value)
+        val candidates = CameraSelectionPolicy.buildCandidates(result.cameras, known, trust)
+        val outcome = CameraSelectionPolicy.decide(
+            candidates = candidates,
+            trust = trust,
+            autoConnectApproved = known.autoConnectApproved,
+            autoConnectBlocked = ptpipRepository.isDiscoveryBlocked()
         )
+        when (outcome) {
+            is SelectionOutcome.Empty ->
+                Log.i(TAG, "후보 0건 - 자동 연결 없음 (reason=${result.reason})")
+
+            is SelectionOutcome.RequireSelection ->
+                Log.i(TAG, "후보 ${outcome.candidates.size}건 - 사용자 선택 필요")
+
+            is SelectionOutcome.AutoConnect -> {
+                if (ptpipRepository.isDiscoveryBlocked()) {
+                    Log.i(TAG, "자동 연결 직전 세션 점유 감지 - 연결하지 않음")
+                    return
+                }
+                selectCamera(outcome.camera)
+                // 대기 1초 동안 목록이 활성이고 진행 표시도 없으면 사용자가 다른 후보를 탭해
+                // 연결이 큐잉된다 → 대기 전에 연결 중 상태를 먼저 세운다.
+                setIsConnecting(true)
+                // 같은 IP 재-TCP ≥1s 규약(airnef) — 검색 프로브 직후 연결의 간격을 확보한다.
+                delay(1000)
+                connectToCamera(outcome.camera, forceApMode)
+            }
+        }
+    }
+
+    /** UiText → 표시 문자열. `_errorMessage`의 String 계약을 유지하기 위해 VM에서 resolve한다. */
+    private fun resolveUiText(text: UiText): String? = when (text) {
+        is UiText.Empty -> null
+        is UiText.Raw -> text.value
+        is UiText.Resource -> if (text.args.isEmpty()) {
+            appContext.getString(text.resId)
+        } else {
+            appContext.getString(text.resId, *text.args.toTypedArray())
+        }
     }
 
     // ── 폰 핫스팟 STA 모드 신규 API ──
@@ -403,7 +548,8 @@ class PtpipViewModel @Inject constructor(
                     _selectedCamera.value = cam
                     _autoDownloadEnabled.value = true
                 } else {
-                    _errorMessage.value = "카메라 연결에 실패했습니다"
+                    _errorMessage.value =
+                        appContext.getString(R.string.progress_camera_connect_failed)
                     _isConnecting.value = false
                 }
             } catch (e: CancellationException) {
@@ -431,10 +577,15 @@ class PtpipViewModel @Inject constructor(
                     _selectedCamera.value = camera
                     _autoDownloadEnabled.value = true
                 } else {
-                    _errorMessage.value = "카메라 연결에 실패했습니다"
+                    _errorMessage.value = if (userCancelRequested) {
+                        null // 사용자 취소로 중단된 시도 — 실패로 표시하지 않는다.
+                    } else {
+                        appContext.getString(R.string.progress_camera_connect_failed)
+                    }
                     _autoDownloadEnabled.value = false
                     _isConnecting.value = false
                 }
+                userCancelRequested = false
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -448,6 +599,31 @@ class PtpipViewModel @Inject constructor(
 
     fun connectToCameraAp(camera: PtpipCamera) = connectToCamera(camera, true)
     fun connectToCameraSta(camera: PtpipCamera) = connectToCamera(camera, false)
+
+    /**
+     * 진행 중 연결의 협조적 취소.
+     *
+     * ⚠️ 호출 순서가 계약이다: `requestConnectCancel()`을 **먼저 동기 호출**하고 그 다음 disconnect를
+     * 띄운다. 순서가 뒤바뀌면 disconnect가 연결 mutex에 먼저 큐잉되어 취소가 다시 무력화된다.
+     *
+     * 협조적 취소는 폴링 tick 경계에서만 성립하므로 최대 backoff 1회(~1.5s)까지 지연될 수 있다
+     * (UI는 그동안 `ptpip_connect_cancelling` 문구 + 버튼 비활성으로 정직하게 표시한다).
+     */
+    fun cancelConnecting() {
+        // 취소로 중단된 시도는 "연결 실패"가 아니다 — 실패 문구를 띄우면 사용자가 자기가 누른
+        // 취소를 오류로 오해한다. 아래 connectToCamera 실패 분기에서 1회 소비한다.
+        userCancelRequested = true
+        ptpipRepository.requestConnectCancel()
+        viewModelScope.launch {
+            try {
+                connectionHelper.disconnect()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "연결 취소 후 정리 중 경고: ${e.message}")
+            }
+        }
+    }
 
     fun disconnect() {
         // 사용자가 명시적으로 끊으면 핸드오프 보호 해제 — 이후 정리가 정상 동작하도록.
@@ -574,6 +750,10 @@ class PtpipViewModel @Inject constructor(
         _isConnecting.value = connecting
     }
 
+    /**
+     * 후보 선택. 목록 탭(DiscoveredCameraList) 및 정책 자동 연결 직전에 호출해
+     * 진행 다이얼로그가 대상 이름을 표시할 수 있게 한다.
+     */
     fun selectCamera(camera: PtpipCamera) {
         _selectedCamera.value = camera
     }

@@ -74,6 +74,19 @@ data class VendorVerdict(
 
 /**
  * PTPIP 카메라 정보
+ *
+ * ⚠️ 불변식 — [name]과 [displayName]의 역할을 절대 섞지 않는다:
+ * - [name] = **Nikon 게이트 입력 전용 원본 문자열**. mDNS 서비스명 원문(`Z_8_5003869`), 캐시/DataStore에
+ *   저장된 원본 이름, AP 경로의 기존 라벨을 그대로 담는다. UI 목적으로 가공/치환하면
+ *   `CameraVendorClassifier.isLikelyNikon`이 뒤집혀 STA 인증(0x****/0x****)·GUID 주입이 생략되고
+ *   첫 페어링이 InitFail 0x1로 파손된다. 표시용 문자열을 여기에 대입하는 것은 금지.
+ * - [displayName] = **표시 전용, nullable**. null이면 UI가 폴백 체인을 적용한다
+ *   (`displayName ?: name.takeIf { it.isNotBlank() } ?: getString(ptpip_candidate_unnamed_fmt, ip)`).
+ *
+ * 동일성/식별은 계속 [ipAddress] + [port]만 사용한다.
+ * [name]/[displayName]/[discoverySource]를 동등비교에 쓰는 코드를 신설하지 않는다.
+ *
+ * 신규 2 필드는 default 값을 가지므로 기존 positional 호출부(4-arg/6-arg)는 무변경 컴파일된다.
  */
 data class PtpipCamera(
     val ipAddress: String,
@@ -81,7 +94,9 @@ data class PtpipCamera(
     val name: String,
     val isOnline: Boolean = true,
     val discoveredServiceType: String? = null,  // mDNS 서비스 타입: "_ptp._tcp" 또는 "_ptpip._tcp"
-    val vendorVerdict: VendorVerdict = VendorVerdict.unknown()  // 디스커버리 신호 기반 제조사 판별
+    val vendorVerdict: VendorVerdict = VendorVerdict.unknown(),  // 디스커버리 신호 기반 제조사 판별
+    val displayName: String? = null,  // 표시 전용(게이트 입력 아님). null이면 UI가 폴백 체인 적용
+    val discoverySource: CameraDiscoverySource = CameraDiscoverySource.UNKNOWN
 )
 
 /**
