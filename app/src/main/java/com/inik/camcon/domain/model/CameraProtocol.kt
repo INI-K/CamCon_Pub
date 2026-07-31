@@ -18,14 +18,16 @@ enum class CameraProtocol(val port: Int, val isConnectable: Boolean) {
 
     /**
      * 후지필름 PTP/IP 포크. 커맨드 55740 / 이벤트 55741 / JPEG 55742
-     * (`camlibs/ptp2/fujiptpip.c` 주석).
+     * (`camlibs/ptp2/fujiptpip.c` 주석). 카메라가 이 포트를 **리스닝**하고 앱이 접속한다
+     * (역접속이 아니다 — `ptp_fujiptpip_connect`는 클라이언트 connect다).
      *
-     * ⚠️ 현재 **발견만 된다.** libgphoto2에 전송 구현(`ptp_fujiptpip_*`)이 있고 배포 `.so`에도
-     * 심볼이 있지만, 전송 선택이 모델명 문자열로 갈리고(`library.c:9661`
-     * `if (strstr(a.model,"Fuji"))`) CamCon이 모델을 `"PTP/IP Camera"`로 하드코딩하기 때문에
-     * (`camera_ptpip.cpp:250`) 이 경로에 도달하지 못한다. 네이티브에서 모델을 파라미터화하면 열린다.
+     * 전송 선택은 libgphoto2에서 모델명 문자열로 갈린다(`library.c`:
+     * `if (strstr(a.model,"Fuji"))`). CamCon은 `camera_ptpip.cpp`의 `selectPtpipModel(port)`이
+     * 55740일 때 `"Fuji X (WLAN)"`을 골라 이 경로를 연다.
+     *
+     * ⚠️ **실기 미검증.** 코드 경로는 열렸으나 후지 본체로 확인된 바 없다.
      */
-    PTPIP_FUJI(55740, isConnectable = false);
+    PTPIP_FUJI(55740, isConnectable = true);
 
     companion object {
         /** 스윕이 훑을 포트 집합. 카메라 전용 포트만 넣는다(아래 주석 참조). */

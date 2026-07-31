@@ -39,14 +39,17 @@ class CameraProtocolTest {
     }
 
     @Test
-    fun `후지 포크 포트는 발견되지만 연결 불가로 표시된다`() {
-        // libgphoto2에 전송 구현(ptp_fujiptpip_*)이 있고 .so에도 심볼이 있으나, 전송 선택이
-        // 모델명 문자열로 갈리고(library.c: strstr(a.model,"Fuji")) CamCon이 모델을
-        // "PTP/IP Camera"로 하드코딩하므로 도달하지 못한다. 네이티브 수정 시 true로 바뀐다.
+    fun `후지 포크 포트도 연결 가능으로 열려 있다`() {
+        // libgphoto2의 전송 선택은 모델명 문자열로 갈린다(library.c: strstr(a.model,"Fuji")).
+        // camera_ptpip.cpp의 selectPtpipModel(port)이 55740일 때 "Fuji X (WLAN)"을 골라
+        // ptp_fujiptpip_* 경로를 연다 — 그 전까지는 .so에 구현이 있어도 도달하지 못했다.
         val protocol = CameraProtocol.ofPort(55740)
 
         assertEquals(CameraProtocol.PTPIP_FUJI, protocol)
-        assertFalse("후지 연결이 열렸다면 이 테스트와 UI 게이트를 함께 갱신해야 한다", protocol.isConnectable)
+        assertTrue(
+            "후지 전송이 닫혔다면 네이티브 selectPtpipModel과 함께 갱신해야 한다",
+            protocol.isConnectable
+        )
     }
 
     @Test
