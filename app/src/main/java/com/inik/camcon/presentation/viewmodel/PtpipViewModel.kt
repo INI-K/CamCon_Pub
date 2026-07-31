@@ -40,6 +40,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -165,6 +166,9 @@ class PtpipViewModel @Inject constructor(
      */
     val isSubnetSweepAvailable: StateFlow<Boolean> = wifiNetworkState
         .map { runCatching { ptpipRepository.isSubnetSweepAvailable() }.getOrDefault(false) }
+        // 판정이 NetworkInterface 열거(블로킹 시스템콜)라 Main에서 돌리면 네트워크 상태가
+        // 바뀔 때마다 UI 스레드가 멈춘다.
+        .flowOn(ioDispatcher)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     // 0건 EmptyState 분기 사유. 초기 진입은 NOT_SEARCHED(아무것도 렌더하지 않음).
@@ -469,7 +473,10 @@ class PtpipViewModel @Inject constructor(
             candidates = candidates,
             trust = trust,
             autoConnectApproved = known.autoConnectApproved,
-            autoConnectBlocked = ptpipRepository.isDiscoveryBlocked()
+            // ⚠️ isDiscoveryBlocked(검색 스킵)가 아니라 isAutoConnectBlocked를 써야 한다 —
+            // 살아있는 USB 세션·녹화·취소 쿨다운이 후자에만 들어 있고, initCameraWithPtpip는
+            // USB 공유 핸들을 무경고 파괴한다. 배경 폴링과 조건이 갈리면 같은 상황에서 결과가 달라진다.
+            autoConnectBlocked = ptpipRepository.isAutoConnectBlocked()
         )
         when (outcome) {
             is SelectionOutcome.Empty ->
@@ -479,16 +486,17 @@ class PtpipViewModel @Inject constructor(
                 Log.i(TAG, "후보 ${outcome.candidates.size}건 - 사용자 선택 필요")
 
             is SelectionOutcome.AutoConnect -> {
-                if (ptpipRepository.isDiscoveryBlocked()) {
-                    Log.i(TAG, "자동 연결 직전 세션 점유 감지 - 연결하지 않음")
+                if (ptpipRepository.isAutoConnectBlocked()) {
+                    Log.i(TAG, "자동 연결 직전 금지 상태 감지(USB 세션·촬영·쿨다운 포함) - 연결하지 않음")
                     return
                 }
                 selectCamera(outcome.camera)
-                // 대기 1초 동안 목록이 활성이고 진행 표시도 없으면 사용자가 다른 후보를 탭해
-                // 연결이 큐잉된다 → 대기 전에 연결 중 상태를 먼저 세운다.
+                // 목록이 활성인 채로 두면 사용자가 다른 후보를 탭해 연결이 큐잉되므로
+                // 연결 진입 전에 연결 중 상태를 먼저 세운다.
                 setIsConnecting(true)
-                // 같은 IP 재-TCP ≥1s 규약(airnef) — 검색 프로브 직후 연결의 간격을 확보한다.
-                delay(1000)
+                // 같은 IP 재-TCP ≥1s 규약(airnef)은 데이터 레이어의 awaitProbeCooldown이
+                // 이미 강제한다(connectToCamera가 mutex 획득 직후 1회 호출). 여기서 또 delay하면
+                // 같은 규약을 두 곳에서 걸어 자동 연결이 매번 1초씩 더 늦는다.
                 connectToCamera(outcome.camera, forceApMode)
             }
         }

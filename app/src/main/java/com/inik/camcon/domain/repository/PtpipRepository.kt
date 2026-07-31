@@ -72,6 +72,17 @@ interface PtpipRepository {
     /** 세션 점유로 검색을 시도하면 안 되는 상태(CONNECTING/CONNECTED/무선수신). */
     fun isDiscoveryBlocked(): Boolean
 
+    /**
+     * **자동 연결**(무탭) 금지 상태. [isDiscoveryBlocked]보다 강하다 —
+     * 여기에는 살아있는 USB 세션·영상녹화·라이브뷰 종료전이·취소 직후 쿨다운이 포함된다.
+     *
+     * ⚠️ 검색 스킵 판정([isDiscoveryBlocked])과 혼용하지 말 것. `initCameraWithPtpip`는 USB 공유
+     * 네이티브 핸들을 무경고 파괴하므로, 자동 연결 분기는 반드시 이 함수를 써야 한다.
+     * 전경(ViewModel)과 배경(WifiMonitoringService)이 서로 다른 조건을 쓰면 같은 상황에서
+     * 결과가 갈린다.
+     */
+    fun isAutoConnectBlocked(): Boolean
+
     /** 리소스 정리 */
     fun cleanup()
 
