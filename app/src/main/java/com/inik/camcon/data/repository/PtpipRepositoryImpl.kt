@@ -79,6 +79,8 @@ class PtpipRepositoryImpl @Inject constructor(
 
     override fun isDiscoveryBlocked(): Boolean = ptpipDataSource.isDiscoveryBlocked()
 
+    override fun isAutoConnectBlocked(): Boolean = ptpipDataSource.isAutoConnectBlocked()
+
     override fun cleanup() = ptpipDataSource.cleanup()
 
     // ── 카메라 검색 ──

@@ -269,18 +269,59 @@ class CameraSelectionPolicyTest {
     }
 
     @Test
-    fun `기지 후보가 2개 이상이면 자동 연결하지 않는다`() {
+    fun `같은 IP를 두 포트로 광고해도 한 기기로 접어 자동 연결한다`() {
         val trust = NetworkTrust.TRUSTED_DIRECT_LINK
-        // 같은 IP로 포트만 다른 두 후보 = 기지 판정이 2건 → 모호하므로 사용자 선택.
+        // 후보 키가 IP:port라 같은 본체가 2건으로 잡힌다. IP는 곧 기기 1대이므로 사용자에게
+        // 물을 이유가 없다 — 물으면 목록에 같은 카메라가 두 번 보일 뿐이고, 사용자에게는
+        // "기억한 카메라에 자동 연결"이 원인 불명으로 안 되는 증상이 된다.
         val cameras = listOf(
-            camera("192.168.49.10"),
-            camera("192.168.49.10").copy(port = 15741)
+            camera("192.168.49.10").copy(port = 15741),
+            camera("192.168.49.10")
         )
         val outcome = CameraSelectionPolicy.decide(
             candidates(cameras, "192.168.49.10", trust),
             trust,
             autoConnectBlocked = false
         )
+
+        assertTrue("같은 IP 2건이 자동 연결을 막았다: $outcome", outcome is SelectionOutcome.AutoConnect)
+        // 접을 때는 표준 포트를 결정적으로 고른다(입력 순서에 의존하면 안 된다).
+        assertEquals(15740, (outcome as SelectionOutcome.AutoConnect).camera.port)
+    }
+
+    @Test
+    fun `서로 다른 기기가 2대면 사용자 선택을 요구한다`() {
+        val trust = NetworkTrust.TRUSTED_DIRECT_LINK
+        // IP가 다르면 실제로 다른 기기다 — 이때만 모호하므로 물어야 한다.
+        // (knownIp가 둘 다에 매칭되도록 serviceName을 공유시킨다)
+        val cameras = listOf(
+            camera("192.168.49.10"),
+            camera("192.168.49.11")
+        )
+        val known = KnownCameraRef(serviceName = cameras.first().name)
+        val built = CameraSelectionPolicy.buildCandidates(cameras, known, trust)
+
+        val outcome = CameraSelectionPolicy.decide(
+            built.map { it.copy(isKnown = true) },
+            trust,
+            autoConnectBlocked = false
+        )
+
+        assertTrue(outcome is SelectionOutcome.RequireSelection)
+    }
+
+    @Test
+    fun `연결 불가 프로토콜 후보는 기지여도 자동 연결하지 않는다`() {
+        val trust = NetworkTrust.TRUSTED_DIRECT_LINK
+        // 후지 포크(55740)는 발견은 되지만 현재 연결 불가 — 시도하면 실패만 반복한다.
+        val fuji = camera("192.168.49.10").copy(port = CameraProtocol.PTPIP_FUJI.port)
+
+        val outcome = CameraSelectionPolicy.decide(
+            candidates(listOf(fuji), "192.168.49.10", trust),
+            trust,
+            autoConnectBlocked = false
+        )
+
         assertTrue(outcome is SelectionOutcome.RequireSelection)
     }
 }

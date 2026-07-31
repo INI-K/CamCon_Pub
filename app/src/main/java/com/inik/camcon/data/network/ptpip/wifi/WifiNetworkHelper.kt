@@ -422,11 +422,18 @@ class WifiNetworkHelper @Inject constructor(
         null
     }.getOrNull()
 
+    /**
+     * 무관 인터페이스(USB 테더링·VPN·터널·루프백) 이름인가.
+     * softAP 판정과 스윕 대상 선정이 **같은 배제 목록**을 쓰도록 단일 정의한다.
+     */
+    private fun isExcludedInterfaceName(name: String): Boolean =
+        listOf("rndis", "usb", "tun", "ppp", "lo", "dummy", "sit", "ip6tnl", "docker")
+            .any { name.startsWith(it) }
+
     /** softAP 인터페이스 이름 판정 **단일 지점**(정규식을 여기서만 정의한다). */
     internal fun isSoftApInterfaceName(name: String): Boolean {
         // 무관 인터페이스 우선 배제 — USB 테더링·VPN·터널이 사설 IPv4를 가져 오탐을 만든다.
-        val excluded = listOf("rndis", "usb", "tun", "ppp", "lo", "dummy", "sit", "ip6tnl", "docker")
-        if (excluded.any { name.startsWith(it) }) return false
+        if (isExcludedInterfaceName(name)) return false
         // wlan0은 클라이언트 인터페이스이므로 softAP로 보지 않는다(wlan1+는 SoftAP 후보).
         if (name == "wlan0" || name.startsWith("wlan0.")) return false
         return name.matches(Regex("^(ap|swlan|softap)\\d.*")) ||
@@ -489,14 +496,20 @@ class WifiNetworkHelper @Inject constructor(
         val interfaces = java.net.NetworkInterface.getNetworkInterfaces()?.toList().orEmpty()
         interfaces.mapNotNull { nif ->
             val name = nif.name?.lowercase() ?: return@mapNotNull null
+            // USB 테더링·VPN·터널은 사설 IPv4를 갖고 있어 후보로 남기면 스윕이 엉뚱한 서브넷을
+            // 훑고 SSDP도 잘못된 인터페이스에 바인딩된다. 이름 단계에서 제거한다.
+            if (isExcludedInterfaceName(name)) return@mapNotNull null
             if (!runCatching { nif.isUp }.getOrDefault(false)) return@mapNotNull null
             val addr = nif.interfaceAddresses?.firstOrNull {
                 it.address is java.net.Inet4Address && it.address?.isLoopbackAddress == false
             } ?: return@mapNotNull null
             val host = addr.address?.hostAddress ?: return@mapNotNull null
+            // ⚠️ 판정은 [isSoftApInterfaceName] **공용 함수**를 쓴다. 여기서 정규식을 재정의하면
+            // `wlan1`(SoftAP)이 `wlan0`(클라이언트)과 동률이 되고 `ap_br0`/`bridge0`이 rank 0으로
+            // 떨어져, 새로 지원한 인터페이스 이름이 정작 스윕·SSDP 경로에 반영되지 않는다.
             val rank = when {
-                name.matches(Regex("^(ap|swlan|softap)\\d.*")) -> 2
-                name.startsWith("wlan") -> 1
+                isSoftApInterfaceName(name) -> 2
+                name == "wlan0" || name.startsWith("wlan0.") -> 1
                 else -> 0
             }
             Triple(rank, host, addr.networkPrefixLength.toInt())

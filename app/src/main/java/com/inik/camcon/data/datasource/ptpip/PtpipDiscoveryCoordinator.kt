@@ -38,6 +38,18 @@ internal class PtpipDiscoveryCoordinator(
 ) {
     private companion object {
         private const val TAG = "PtpipDataSource"
+
+        /**
+         * 검색 결과로 **덮어쓰지 않는** 후보 출처.
+         *
+         * - MANUAL_INPUT: 사용자가 방금 입력한 IP를 검색 1회가 조용히 지우면 안 된다.
+         * - SUBNET_SCAN: 스윕을 쓰는 상황이 바로 "mDNS 0건"인 상황이라, 배경 폴링(4초 tick)이
+         *   0건을 발표하는 순간 사용자가 방금 찾은 목록이 통째로 사라진다("찾았다가 사라짐").
+         */
+        val PRESERVED_SOURCES = setOf(
+            CameraDiscoverySource.MANUAL_INPUT,
+            CameraDiscoverySource.SUBNET_SCAN
+        )
     }
 
     private val _discoveredCameras = MutableStateFlow<List<PtpipCamera>>(emptyList())
@@ -69,11 +81,11 @@ internal class PtpipDiscoveryCoordinator(
      * 목록이 선택 UI의 표면이 된 이상, 검색 1회가 사용자가 방금 입력한 IP를 조용히 없애면 안 된다.
      */
     private fun publishDiscovered(cameras: List<PtpipCamera>) {
-        val manualOnly = _discoveredCameras.value.filter { existing ->
-            existing.discoverySource == CameraDiscoverySource.MANUAL_INPUT &&
+        val preserved = _discoveredCameras.value.filter { existing ->
+            existing.discoverySource in PRESERVED_SOURCES &&
                 cameras.none { it.ipAddress == existing.ipAddress }
         }
-        _discoveredCameras.value = cameras + manualOnly
+        _discoveredCameras.value = cameras + preserved
     }
 
     // 사용자가 직접 입력한 카메라 IP. 폰 핫스팟 모드의 mDNS 폴백용.

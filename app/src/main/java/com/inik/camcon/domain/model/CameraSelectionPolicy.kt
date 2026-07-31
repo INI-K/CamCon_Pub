@@ -98,7 +98,7 @@ object CameraSelectionPolicy {
      * - SUBNET_SCAN: 이름·제조사 신호가 없어 Nikon STA 인증 게이트가 false로 떨어지고,
      *   공용망에서는 타인 기기일 수 있다.
      */
-    private val AUTO_CONNECT_EXCLUDED_SOURCES = setOf(
+    val AUTO_CONNECT_EXCLUDED_SOURCES = setOf(
         CameraDiscoverySource.MANUAL_INPUT,
         CameraDiscoverySource.SUBNET_SCAN
     )
@@ -192,9 +192,26 @@ object CameraSelectionPolicy {
             return SelectionOutcome.RequireSelection(candidates)
         }
         val autoTargets = candidates.filter {
-            it.isKnown && it.camera.discoverySource !in AUTO_CONNECT_EXCLUDED_SOURCES
+            it.isKnown &&
+                it.camera.discoverySource !in AUTO_CONNECT_EXCLUDED_SOURCES &&
+                // 연결 불가 프로토콜(후지 55740 포크 등)은 자동 연결 대상이 아니다 —
+                // 목록에는 뜨지만 연결을 시도하면 실패만 반복한다.
+                CameraProtocol.ofPort(it.camera.port).isConnectable
         }
-        val target = autoTargets.singleOrNull()
+        // ⚠️ **IP 단위로 접는다.** 후보 키가 IP:port라 같은 본체가 두 포트를 광고하면 2건이 되고,
+        // 그대로 singleOrNull()에 넣으면 null → "기억한 카메라에 자동 연결"이 원인 불명으로
+        // 수동 선택으로 강등된다. IP는 곧 기기 1대이므로 같은 IP를 두고 사용자에게 묻는 것은
+        // 의미가 없다(목록에 같은 카메라가 두 번 보일 뿐). 서로 다른 **기기**가 2대일 때만 묻는다.
+        //
+        // 접을 때는 표준 PTP/IP 포트를 우선해 결정적으로 고른다(입력 순서에 의존하지 않는다).
+        val target = autoTargets
+            .groupBy { it.camera.ipAddress }
+            .values
+            .map { sameIp ->
+                sameIp.firstOrNull { it.camera.port == CameraProtocol.PTPIP_STANDARD.port }
+                    ?: sameIp.first()
+            }
+            .singleOrNull()
             ?: return SelectionOutcome.RequireSelection(candidates)
         return SelectionOutcome.AutoConnect(target.camera)
     }

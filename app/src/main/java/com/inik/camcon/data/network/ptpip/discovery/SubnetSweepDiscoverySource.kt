@@ -58,16 +58,25 @@ internal class SubnetSweepDiscoverySource(
          *
          * 호스트 × 포트 매트릭스라 대상이 포트 수만큼 늘어난다(/24 × 2포트 = 506). 열린 포트는
          * LAN에서 수 ms에 응답하고 닫힌 포트는 RST로 즉시 실패하므로, 실제 소요를 지배하는 것은
-         * **응답이 없는(드롭되는) 주소의 타임아웃**이다. 사용자가 명시적으로 누르는 액션이므로
-         * 검색(3초)보다는 여유를 두되, 셔터 기회를 놓칠 만큼 길게 잡지 않는다.
+         * **응답이 없는(드롭되는) 주소의 커널 ARP 재시도(≈3s)** 다. 그보다 짧으면 1차 배치가
+         * 끝나기 전에 예산이 소진돼 2차 포트를 아예 못 훑는다. 사용자가 명시적으로 누르는
+         * 액션이라 검색(3초)보다 길게 잡되, 우리가 필요한 것은 **응답한** 엔드포인트뿐이므로
+         * 무응답 주소가 예산 끝에서 잘리는 것은 무해하다.
          */
-        const val DEFAULT_BUDGET_MS = 2_500L
+        const val DEFAULT_BUDGET_MS = 5_000L
 
         /**
-         * 동시 in-flight connect 수. /24 253개를 한 번에 열면 fd·Wi-Fi 큐가 터진다.
-         * 배치로 나눠 열고 완료분만큼 다시 채운다.
+         * 동시 in-flight connect 수.
+         *
+         * ⚠️ 이 값이 작으면 스윕이 사실상 미작동한다. 슬롯은 **완료돼야만** 반환되는데, 응답 없는
+         * 주소는 커널 ARP 재시도(≈3s)까지 selectable이 되지 않는다. 64였을 때는 첫 64개가 예산
+         * 전체를 점유해 /24의 앞 32호스트만 훑고 끝났다. 논블로킹 소켓 fd 253개는 Android 기본
+         * fd 한도(≥1024) 안이므로 한 서브넷을 한 번에 여는 편이 맞다.
          */
-        private const val MAX_IN_FLIGHT = 64
+        private const val MAX_IN_FLIGHT = 256
+
+        /** 커버리지 회귀 가드용 노출(테스트 전용). */
+        internal val maxInFlightForTest: Int get() = MAX_IN_FLIGHT
 
         /**
          * `Selector.select` 1회 대기 상한. `select`는 취소 불가 블로킹이므로 조각내서
@@ -163,8 +172,12 @@ internal class SubnetSweepDiscoverySource(
             }
             // 호스트 × 포트 전수. 제조사별 광고 프로토콜을 각각 구현하지 않고 **카메라 전용 포트가
             // 열려 있는지**만 보므로, 제조사를 몰라도 한 번의 스윕으로 전부 찾는다.
-            val targets = hosts.flatMap { host ->
-                CameraProtocol.SWEEP_PORTS.map { port -> host to port }
+            // ⚠️ **포트-major 정렬이 계약이다.** 호스트-major(`hosts.flatMap { 포트들 }`)로 두면
+            // in-flight 앞부분의 절반이 연결 불가 포트(55740)로 채워지고, 응답 없는 주소가 커널
+            // ARP 재시도(≈3s)까지 슬롯을 붙잡아 예산 안에 앞쪽 호스트 일부만 훑고 끝난다.
+            // 전 호스트를 표준 포트로 먼저 열고, 남는 예산으로 나머지 포트를 훑는다.
+            val targets = CameraProtocol.SWEEP_PORTS.flatMap { port ->
+                hosts.map { host -> host to port }
             }
             Log.i(
                 TAG,

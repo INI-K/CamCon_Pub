@@ -10,6 +10,7 @@ import com.inik.camcon.data.constants.PtpipConstants
 import com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.di.IoDispatcher
+import com.inik.camcon.BuildConfig
 import com.inik.camcon.domain.model.CameraDiscoverySource
 import com.inik.camcon.domain.model.CameraVendor
 import com.inik.camcon.domain.model.PtpipCamera
@@ -639,15 +640,26 @@ class PtpipDiscoveryService @Inject constructor(
 
             val verdict = CameraVendorClassifier.classifyMdns(serviceName, serviceInfo.serviceType)
 
-            // 실측 확보용 덤프: 실기별 mDNS 광고 실태(타입·TXT)를 남긴다. 이름/IP는 마스킹.
-            val txt = serviceInfo.attributes.entries.joinToString {
-                "${it.key}=${it.value?.toString(Charsets.UTF_8).orEmpty()}"
+            // 실측 확보용 덤프: 실기별 mDNS 광고 실태(타입·TXT)를 남긴다.
+            // ⚠️ TXT 값에는 기종·시리얼 계열 식별자가 실릴 수 있으므로 **디버그 빌드에서만** 값을
+            // 남기고, 릴리스에서는 키 목록만 남긴다(어떤 필드가 오는지는 알아야 하되 값은 PII).
+            if (BuildConfig.DEBUG) {
+                val txt = serviceInfo.attributes.entries.joinToString {
+                    "${it.key}=${it.value?.toString(Charsets.UTF_8).orEmpty()}"
+                }
+                Log.i(
+                    TAG,
+                    "VENDOR_MDNS_DUMP name=${LogMask.id(serviceName)} " +
+                        "type=${serviceInfo.serviceType} verdict=$verdict txt={$txt}"
+                )
+            } else {
+                Log.i(
+                    TAG,
+                    "VENDOR_MDNS_DUMP name=${LogMask.id(serviceName)} " +
+                        "type=${serviceInfo.serviceType} verdict=$verdict " +
+                        "txtKeys=${serviceInfo.attributes.keys}"
+                )
             }
-            Log.i(
-                TAG,
-                "VENDOR_MDNS_DUMP name=${LogMask.id(serviceName)} " +
-                    "type=${serviceInfo.serviceType} verdict=$verdict txt={$txt}"
-            )
 
             // 비카메라 서비스 차단. 조기 종료를 제거해 예산 소진까지 모든 서비스를 resolve하게 됐고,
             // 검색 타입에 프린터·네트워크카메라 계열(_ipp/_pdl-datastream/_axis-video/_dpsoffer)이

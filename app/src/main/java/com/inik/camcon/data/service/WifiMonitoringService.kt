@@ -17,6 +17,8 @@ import com.inik.camcon.data.datasource.ptpip.PtpipDataSource
 import com.inik.camcon.data.network.ptpip.discovery.DiscoveryBudget
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.di.IoDispatcher
+import com.inik.camcon.domain.model.CameraProtocol
+import com.inik.camcon.domain.model.CameraSelectionPolicy
 import com.inik.camcon.domain.model.ConnectionMethod
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.repository.CameraRepository
@@ -189,8 +191,19 @@ class WifiMonitoringService : Service() {
                                 budget = DiscoveryBudget.BackgroundReconnect
                             )
                             // 기억된 직전 카메라와 IP가 일치하는 발견 카메라만 자동 연결 대상.
+                            //
+                            // ⚠️ IP만 보면 두 구멍이 뚫린다(전경 정책 CameraSelectionPolicy와 동일 기준 필요):
+                            // ① 엔드포인트 키가 IP:port라 같은 본체가 15740/55740 두 후보로 잡힐 수 있는데,
+                            //    55740(후지 포크)은 현재 연결 불가라 4초마다 실패를 반복한다.
+                            // ② 전경 검색과 tick이 겹쳐 tryLock이 실패하면 기존 목록(스윕 병합분 포함)이
+                            //    그대로 돌아온다. SUBNET_SCAN 후보는 name이 IP 문자열이라 isLikelyNikon이
+                            //    false → STA 인증 생략 → InitFail 0x1이고, 연결 성공 시 아래 저장이
+                            //    기억된 이름을 IP로 영구 오염시킨다.
                             val camera = cameras.firstOrNull {
-                                it.ipAddress == remembered.ipAddress
+                                it.ipAddress == remembered.ipAddress &&
+                                    CameraProtocol.ofPort(it.port).isConnectable &&
+                                    it.discoverySource !in
+                                    CameraSelectionPolicy.AUTO_CONNECT_EXCLUDED_SOURCES
                             }
                             // discover 사이 상태 변화/촬영 진입에 대비해 connect 직전 재확인
                             if (camera != null
