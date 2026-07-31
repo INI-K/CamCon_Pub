@@ -107,11 +107,62 @@ class PtpipDiscoveryService @Inject constructor(
         )
 
         /**
-         * 우선 드레인 대상 서비스 타입(카메라). 프린터류(_ipp/_pdl-datastream 등)가 resolve 큐를
-         * 점유해 예산 안에 카메라 resolve가 못 끝나는 것을 완화하는 유일한 수단이다.
-         * `PtpipConstants.SERVICE_TYPES` 자체는 축소하지 않는다(실기 mDNS 덤프 확보 전 제거 금지).
+         * 우선 드레인 대상 서비스 타입(카메라). 프린터류가 resolve 큐를 점유해 예산 안에 카메라
+         * resolve가 못 끝나는 것을 완화한다. **시드 타입이기도 하다** — 아래 [META_SERVICE_TYPE] 참조.
          */
         private val PRIORITY_SERVICE_TYPES = listOf("_ptp._tcp", "_ptpip._tcp", "_nikon._tcp")
+
+        /**
+         * RFC 6763 §9 Service Type Enumeration 메타 쿼리.
+         *
+         * 이 타입으로 검색하면 **네트워크가 실제로 광고하는 서비스 타입 목록**이 돌아온다. 덕분에
+         * 제조사별 타입 문자열을 미리 알 필요가 없어진다 — Canon이 무엇을 쓰든, 처음 보는 제조사든
+         * 광고만 하면 잡힌다. 이것이 "제조사 불문 발견"의 mDNS 축 해답이다.
+         *
+         * ⚠️ 메타 쿼리 결과에는 **`resolveService()`를 호출하면 안 된다**(인스턴스가 아니라 타입
+         * 레이블이라 resolve가 실패한다). 타입을 재조립해 2차 discover를 거는 것이 정규 사용법이다.
+         * 서비스 해제(REMOVE) 이벤트도 오지 않는다(캐시 만료·인터페이스 다운 시에만).
+         */
+        private const val META_SERVICE_TYPE = "_services._dns-sd._udp"
+
+        /**
+         * 동시 등록 discovery listener 상한.
+         *
+         * API 29~32의 레거시 mdnsd는 앱당 **요청 슬롯이 10개**다. 시드 3 + 메타 1을 쓰고 남는
+         * 여유로 동적 발견 타입을 따라간다. 초과 등록은 `onStartDiscoveryFailed`로 조용히 실패하므로
+         * 상한을 코드로 지킨다.
+         */
+        private const val MAX_DISCOVERY_LISTENERS = 9
+
+        /**
+         * 메타 쿼리로 발견됐어도 **2차 discover를 걸지 않는** 타입.
+         *
+         * 카메라 타입을 추측하는 목록이 아니라, 한정된 listener 슬롯을 흔한 비카메라 서비스가
+         * 소진하는 것을 막는 목록이다. 여기 없는 미지 타입은 전부 따라간다(추측 금지 원칙 유지).
+         */
+        private val META_FOLLOW_DENY_PREFIXES = listOf(
+            "_http.", "_https.", "_smb.", "_afpovertcp.", "_airplay.", "_raop.",
+            "_googlecast.", "_spotify-connect.", "_workstation.", "_ssh.", "_sftp-ssh.",
+            "_printer.", "_ipps.", "_scanner.", "_uscans.", "_uscan.", "_rfb.", "_daap.",
+            "_touch-able.", "_home-sharing.", "_companion-link.", "_device-info."
+        )
+
+        /**
+         * 메타 쿼리 결과(타입 레이블)를 2차 discover용 서비스 타입으로 재조립한다.
+         *
+         * NsdManager는 메타 결과를 `serviceName="_ptp"`, `serviceType="_tcp.local."` 형태로 준다.
+         * TCP만 따라간다 — PTP/IP는 TCP이고, UDP 타입까지 따라가면 슬롯만 소모한다.
+         */
+        internal fun reassembleMetaServiceType(serviceName: String?, serviceType: String?): String? {
+            val name = serviceName?.trim()?.trim('.').orEmpty()
+            if (!name.startsWith("_")) return null
+            val proto = serviceType?.trim()?.trim('.').orEmpty()
+                .removeSuffix(".local").trim('.')
+                .split('.')
+                .firstOrNull { it == "_tcp" }
+                ?: return null
+            return "$name.$proto"
+        }
 
         /**
          * 후보 병합(같은 IP:port 중복 제거) 순수 함수.
@@ -517,8 +568,22 @@ class PtpipDiscoveryService @Inject constructor(
                         }
                     }
 
-                    for (serviceType in PtpipConstants.SERVICE_TYPES) {
-                        val priority = PRIORITY_SERVICE_TYPES.any { serviceType.contains(it) }
+                    val startedTypes = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+                    val listenerLock = Any()
+
+                    /**
+                     * 타입 1건에 대해 discovery를 건다. 중복·슬롯 초과면 걸지 않는다.
+                     * NSD 콜백 스레드에서도 호출되므로 listener 목록 접근을 동기화한다.
+                     */
+                    fun startTypeDiscovery(serviceType: String, priority: Boolean) {
+                        val normalized = serviceType.trim().trim('.').lowercase()
+                        synchronized(listenerLock) {
+                            if (!startedTypes.add(normalized)) return
+                            if (startedListeners.size >= MAX_DISCOVERY_LISTENERS) {
+                                Log.d(TAG, "listener 슬롯 상한 도달 - 타입 건너뜀: $serviceType")
+                                return
+                            }
+                        }
                         val listener = createDiscoveryListener(seenServices, queue, priority)
                         try {
                             nsdManager.discoverServices(
@@ -526,11 +591,32 @@ class PtpipDiscoveryService @Inject constructor(
                                 NsdManager.PROTOCOL_DNS_SD,
                                 listener
                             )
-                            startedListeners += listener
+                            synchronized(listenerLock) { startedListeners += listener }
                             activeDiscoveryListeners.add(listener)
                         } catch (e: Exception) {
                             Log.e(TAG, "mDNS 검색 시작 중 오류: $serviceType - ${e.message}")
                         }
+                    }
+
+                    // 1) 시드: 근거가 확인된 카메라 타입만. 나머지는 추측하지 않고 메타 쿼리에 맡긴다
+                    //    (실제로 광고하는 타입이면 아래 2)가 동적으로 잡아 온다).
+                    PRIORITY_SERVICE_TYPES.forEach { startTypeDiscovery(it, priority = true) }
+
+                    // 2) 메타 쿼리: 이 네트워크가 광고하는 타입을 열거해 따라간다.
+                    val metaListener = createMetaDiscoveryListener { discoveredType ->
+                        startTypeDiscovery(discoveredType, priority = false)
+                    }
+                    try {
+                        nsdManager.discoverServices(
+                            META_SERVICE_TYPE,
+                            NsdManager.PROTOCOL_DNS_SD,
+                            metaListener
+                        )
+                        synchronized(listenerLock) { startedListeners += metaListener }
+                        activeDiscoveryListeners.add(metaListener)
+                    } catch (e: Exception) {
+                        // 메타 쿼리 미지원 스택이면 시드 타입만으로 계속 진행한다(폴백).
+                        Log.w(TAG, "메타 쿼리 시작 실패 - 시드 타입만 사용: ${e.message}")
                     }
                 }
             }
@@ -538,6 +624,50 @@ class PtpipDiscoveryService @Inject constructor(
             startedListeners.forEach { stopDiscoveryListener(it) }
             // 해제 누락은 배터리를 계속 소모한다 — 취소·예외 경로에서도 반드시 놓는다.
             wifiHelper.releaseMulticastLock(multicastLock)
+        }
+    }
+
+    /**
+     * 메타 쿼리 전용 listener.
+     *
+     * ⚠️ 여기서 발견된 것은 **인스턴스가 아니라 타입 레이블**이다. `resolveService()`를 호출하면
+     * 실패하므로(`failed: 0`) 절대 resolve 큐에 넣지 않고, 타입을 재조립해 2차 discover만 건다.
+     */
+    private fun createMetaDiscoveryListener(
+        onServiceTypeFound: (String) -> Unit
+    ): NsdManager.DiscoveryListener = object : NsdManager.DiscoveryListener {
+        override fun onDiscoveryStarted(regType: String) {
+            Log.d(TAG, "mDNS 타입 열거 시작됨")
+        }
+
+        override fun onServiceFound(service: NsdServiceInfo) {
+            val type = reassembleMetaServiceType(service.serviceName, service.serviceType)
+            if (type == null) {
+                Log.d(TAG, "메타 결과 재조립 불가(건너뜀): ${service.serviceName}")
+                return
+            }
+            if (META_FOLLOW_DENY_PREFIXES.any { type.startsWith(it.trimEnd('.')) }) {
+                Log.d(TAG, "메타 발견 타입 - 비카메라로 건너뜀: $type")
+                return
+            }
+            Log.i(TAG, "메타 발견 타입 - 2차 검색 시작: $type")
+            onServiceTypeFound(type)
+        }
+
+        override fun onServiceLost(service: NsdServiceInfo) {
+            // 메타 쿼리는 REMOVE 이벤트를 신뢰할 수 없다(RFC 6763) — 무시한다.
+        }
+
+        override fun onDiscoveryStopped(serviceType: String) {
+            Log.d(TAG, "mDNS 타입 열거 중지됨")
+        }
+
+        override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {
+            Log.w(TAG, "mDNS 타입 열거 시작 실패(시드 타입으로 계속): 에러코드 $errorCode")
+        }
+
+        override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) {
+            Log.w(TAG, "mDNS 타입 열거 중지 실패: 에러코드 $errorCode")
         }
     }
 
@@ -698,11 +828,11 @@ class PtpipDiscoveryService @Inject constructor(
      *
      * **블랙리스트 방식이다.** 화이트리스트(`_ptp`/`_ptpip`/`_nikon`만 통과)로 하면 표준 포트가 아닌
      * 곳에 광고하는 **비니콘 카메라가 탈락**한다 — 제조사별 mDNS 실광고 실태가 아직 미확정이므로
-     * (`SERVICE_TYPES`의 4종은 근거 미확인) "배제 근거가 확실한 것만" 뺀다. 니콘 편향을 만들지 않는
+     * (메타 쿼리로 미지 타입이 유입된다) "배제 근거가 확실한 것만" 뺀다. 니콘 편향을 만들지 않는
      * 쪽이 이 앱의 목표(다제조사 지원)에 맞다.
      *
      * 예외: 프린터 계열 타입이라도 **표준 PTP/IP 포트(15740)를 광고하면 카메라로 본다** —
-     * 일부 Canon이 `_ipp._tcp`를 쓴다는 기록이 있다(`PtpipConstants.SERVICE_TYPES` 주석).
+     * 일부 Canon이 `_ipp._tcp`를 쓴다는 기록이 있다.
      */
     private fun isPlausiblePtpipService(serviceType: String?, port: Int): Boolean {
         val type = serviceType?.lowercase().orEmpty()
