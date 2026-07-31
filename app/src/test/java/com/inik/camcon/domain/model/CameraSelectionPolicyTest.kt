@@ -311,9 +311,10 @@ class CameraSelectionPolicyTest {
     }
 
     @Test
-    fun `연결 불가 프로토콜 후보는 기지여도 자동 연결하지 않는다`() {
+    fun `후지 포크 포트 후보도 기지면 자동 연결한다`() {
         val trust = NetworkTrust.TRUSTED_DIRECT_LINK
-        // 후지 포크(55740)는 발견은 되지만 현재 연결 불가 — 시도하면 실패만 반복한다.
+        // 네이티브 selectPtpipModel(55740 → "Fuji X (WLAN)")로 전송 경로가 열렸으므로
+        // 후지 후보를 자동 연결에서 배제할 이유가 없어졌다.
         val fuji = camera("192.168.49.10").copy(port = CameraProtocol.PTPIP_FUJI.port)
 
         val outcome = CameraSelectionPolicy.decide(
@@ -322,6 +323,16 @@ class CameraSelectionPolicyTest {
             autoConnectBlocked = false
         )
 
-        assertTrue(outcome is SelectionOutcome.RequireSelection)
+        assertTrue("후지 후보가 자동 연결에서 막혔다: $outcome", outcome is SelectionOutcome.AutoConnect)
+    }
+
+    @Test
+    fun `연결 불가 프로토콜은 자동 연결 대상에서 제외된다`() {
+        // 현재 모든 스윕 포트가 연결 가능하므로 이 가드는 향후 프로토콜 추가를 위한 것이다.
+        // 계약만 고정한다 — 연결 불가 프로토콜이 생기면 decide()가 걸러야 한다.
+        assertTrue(
+            "연결 불가 프로토콜이 추가되면 자동 연결 필터와 이 테스트를 함께 갱신할 것",
+            CameraProtocol.entries.all { it.isConnectable }
+        )
     }
 }
