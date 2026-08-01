@@ -3,19 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>개인정보처리방침 — CamCon</title>
+<title>개인정보처리방침 | CamCon</title>
 <meta name="robots" content="index,follow">
-<meta name="theme-color" content="#0A0A0C">
+<meta name="theme-color" content="#050607">
 <link rel="canonical" href="https://camcon.inik.kr/privacy.html">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
- :root{--bg:#0A0A0C;--panel:#111418;--ink:#F2F2F0;--mute:#9A9AA0;--amber:#EBA23C;--hair:rgba(255,255,255,.09)}
+ /* 토큰 정본: docs/DESIGN_SYSTEM_V2.md + app Color.kt (Surface0/2, TextPrimaryV2/SecondaryV2/Tertiary, Accent, OnAccent, DividerLine) */
+ :root{--bg:#050607;--panel:#14171C;--ink:#F6F7F8;--ink-dim:#B6BCC6;--mute:#8F95A0;
+       --amber:#E8A245;--amber-hi:#F0B865;--on-amber:#1C1005;--hair:#262C33;
+       --sans:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",system-ui,sans-serif}
  *{box-sizing:border-box}
- body{margin:0;background:var(--bg);color:var(--ink);font-family:Pretendard,-apple-system,BlinkMacSystemFont,sans-serif;line-height:1.75;-webkit-font-smoothing:antialiased}
+ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.75;-webkit-font-smoothing:antialiased}
  a{color:var(--amber);text-decoration:none} a:hover{text-decoration:underline}
- .lhead{position:sticky;top:0;background:rgba(10,10,12,.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--hair);z-index:5}
+ .lhead{position:sticky;top:0;background:rgba(5,6,7,.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--hair);z-index:5}
  .lhead .in{max-width:860px;margin:0 auto;padding:15px 24px;display:flex;align-items:center;justify-content:space-between}
  .brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:18px;color:var(--ink)}
  .brand b{color:var(--amber)}
@@ -23,18 +26,18 @@
  .wrap{max-width:860px;margin:0 auto;padding:44px 24px 72px}
  .lang{display:flex;gap:8px;margin:0 0 30px}
  .lang button{font:inherit;font-size:13px;font-weight:600;padding:7px 16px;border-radius:8px;border:1px solid var(--hair);background:transparent;color:var(--mute);cursor:pointer}
- .lang button.on{background:var(--amber);color:#1a1206;border-color:var(--amber)}
+ .lang button.on{background:var(--amber);color:var(--on-amber);border-color:var(--amber)}
  h1{font-size:clamp(24px,5vw,31px);font-weight:700;margin:0 0 6px;letter-spacing:-.02em}
  .eff{color:var(--mute);font-size:14px;margin:0 0 30px}
  h2{font-size:20px;font-weight:700;margin:40px 0 10px;padding-top:22px;border-top:1px solid var(--hair);letter-spacing:-.01em}
- h3{font-size:16px;font-weight:600;margin:22px 0 8px;color:#e8e8ea}
- p{margin:10px 0;color:#d7d7da}
- ul,ol{margin:10px 0;padding-left:22px} li{margin:5px 0;color:#d7d7da}
+ h3{font-size:16px;font-weight:600;margin:22px 0 8px;color:var(--ink)}
+ p{margin:10px 0;color:var(--ink-dim)}
+ ul,ol{margin:10px 0;padding-left:22px} li{margin:5px 0;color:var(--ink-dim)}
  strong{color:var(--ink);font-weight:600}
  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px}
  th,td{border:1px solid var(--hair);padding:9px 12px;text-align:left;vertical-align:top}
  th{background:var(--panel);color:var(--ink);font-weight:600}
- mark{background:rgba(235,162,60,.18);color:#f3c778;padding:0 4px;border-radius:3px}
+ mark{background:rgba(232,162,69,.18);color:var(--amber-hi);padding:0 4px;border-radius:3px}
  .foot{border-top:1px solid var(--hair);margin-top:44px;padding:28px 24px;text-align:center;color:var(--mute);font-size:13px}
  .foot a{margin:0 7px;color:var(--mute)} .foot a:hover{color:var(--amber)}
  [hidden]{display:none}
@@ -42,7 +45,7 @@
 </head>
 <body>
 <header class="lhead"><div class="in">
-  <a class="brand" href="/"><svg width="26" height="26" viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="24" cy="24" r="16.5" stroke="#EBA23C" stroke-width="2.4"/><path d="M35 24 L29.5 33.5 L18.5 33.5 L13 24 L18.5 14.5 L29.5 14.5 Z" stroke="#F7C266" stroke-width="1.4" stroke-linejoin="round" opacity="0.85"/><circle cx="24" cy="24" r="3.4" fill="#EBA23C"/></svg><span>Cam<b>Con</b></span></a>
+  <a class="brand" href="/"><svg width="26" height="26" viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="24" cy="24" r="16.5" stroke="#E8A245" stroke-width="2.4"/><path d="M35 24 L29.5 33.5 L18.5 33.5 L13 24 L18.5 14.5 L29.5 14.5 Z" stroke="#F0B865" stroke-width="1.4" stroke-linejoin="round" opacity="0.85"/><circle cx="24" cy="24" r="3.4" fill="#E8A245"/></svg><span>Cam<b>Con</b></span></a>
   <a class="home" href="/">← 홈으로</a>
 </div></header>
 <main class="wrap">
@@ -96,7 +99,7 @@
 <li>공지, 문의 응대 등 고객 지원</li>
 </ul>
 
-<h2>제3조 (기기 내 처리 원칙 — 사진·이미지 비전송)</h2>
+<h2>제3조 (기기 내 처리 원칙: 사진·이미지 비전송)</h2>
 <p>앱은 카메라 테더링·무선 촬영 앱의 특성상 다량의 사진과 이미지를 다루지만, 다음 데이터는 어떠한 경우에도 개발자나 외부 서버로 전송·업로드되지 않으며 전적으로 이용자의 기기 내에서만 처리됩니다.</p>
 <ul>
 <li>촬영·수신한 사진 및 RAW 파일</li>
@@ -213,7 +216,7 @@
 <h2>제16조 (개인정보처리방침의 변경)</h2>
 <p>본 방침은 법령·서비스 변경에 따라 개정될 수 있으며, 변경 시 앱 또는 관련 페이지를 통해 변경 사항 및 시행일을 사전에 고지합니다.</p>
 
-<h2>Google Play 데이터 보안(Data Safety) 대응 — 수집 데이터 표</h2>
+<h2>Google Play 데이터 보안(Data Safety) 대응: 수집 데이터 표</h2>
 <p>아래 표는 앱이 수집·처리하는 데이터 유형을 Google Play 데이터 보안 항목과 대응하여 정리한 것입니다. 표에서 "제3자 공유"는 판매·광고 목적의 독립적 제3자 제공을 의미하며, Google/Firebase는 개발자를 대신해 처리하는 수탁자입니다.</p>
 <table>
 <thead>
@@ -451,7 +454,7 @@
 <h2>16. Changes to This Policy</h2>
 <p>This Policy may be amended in response to changes in law or the service. Any changes and their effective date will be announced in advance through the App or a related page.</p>
 
-<h2>Google Play Data Safety — Collected Data Table</h2>
+<h2>Google Play Data Safety: Collected Data Table</h2>
 <p>The table below maps the types of data the App collects and processes to Google Play Data Safety categories. "Third-party sharing" refers to independent provision to third parties for sale or advertising; Google/Firebase act as processors on behalf of the Developer.</p>
 <table>
 <thead>

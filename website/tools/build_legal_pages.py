@@ -12,11 +12,14 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DATA = os.path.join(os.path.dirname(__file__), "legal_content.json")
 
 STYLE = """
- :root{--bg:#0A0A0C;--panel:#111418;--ink:#F2F2F0;--mute:#9A9AA0;--amber:#EBA23C;--hair:rgba(255,255,255,.09)}
+ /* 토큰 정본: docs/DESIGN_SYSTEM_V2.md + app Color.kt (Surface0/2, TextPrimaryV2/SecondaryV2/Tertiary, Accent, OnAccent, DividerLine) */
+ :root{--bg:#050607;--panel:#14171C;--ink:#F6F7F8;--ink-dim:#B6BCC6;--mute:#8F95A0;
+       --amber:#E8A245;--amber-hi:#F0B865;--on-amber:#1C1005;--hair:#262C33;
+       --sans:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",system-ui,sans-serif}
  *{box-sizing:border-box}
- body{margin:0;background:var(--bg);color:var(--ink);font-family:Pretendard,-apple-system,BlinkMacSystemFont,sans-serif;line-height:1.75;-webkit-font-smoothing:antialiased}
+ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.75;-webkit-font-smoothing:antialiased}
  a{color:var(--amber);text-decoration:none} a:hover{text-decoration:underline}
- .lhead{position:sticky;top:0;background:rgba(10,10,12,.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--hair);z-index:5}
+ .lhead{position:sticky;top:0;background:rgba(5,6,7,.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--hair);z-index:5}
  .lhead .in{max-width:860px;margin:0 auto;padding:15px 24px;display:flex;align-items:center;justify-content:space-between}
  .brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:18px;color:var(--ink)}
  .brand b{color:var(--amber)}
@@ -24,27 +27,27 @@ STYLE = """
  .wrap{max-width:860px;margin:0 auto;padding:44px 24px 72px}
  .lang{display:flex;gap:8px;margin:0 0 30px}
  .lang button{font:inherit;font-size:13px;font-weight:600;padding:7px 16px;border-radius:8px;border:1px solid var(--hair);background:transparent;color:var(--mute);cursor:pointer}
- .lang button.on{background:var(--amber);color:#1a1206;border-color:var(--amber)}
+ .lang button.on{background:var(--amber);color:var(--on-amber);border-color:var(--amber)}
  h1{font-size:clamp(24px,5vw,31px);font-weight:700;margin:0 0 6px;letter-spacing:-.02em}
  .eff{color:var(--mute);font-size:14px;margin:0 0 30px}
  h2{font-size:20px;font-weight:700;margin:40px 0 10px;padding-top:22px;border-top:1px solid var(--hair);letter-spacing:-.01em}
- h3{font-size:16px;font-weight:600;margin:22px 0 8px;color:#e8e8ea}
- p{margin:10px 0;color:#d7d7da}
- ul,ol{margin:10px 0;padding-left:22px} li{margin:5px 0;color:#d7d7da}
+ h3{font-size:16px;font-weight:600;margin:22px 0 8px;color:var(--ink)}
+ p{margin:10px 0;color:var(--ink-dim)}
+ ul,ol{margin:10px 0;padding-left:22px} li{margin:5px 0;color:var(--ink-dim)}
  strong{color:var(--ink);font-weight:600}
  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px}
  th,td{border:1px solid var(--hair);padding:9px 12px;text-align:left;vertical-align:top}
  th{background:var(--panel);color:var(--ink);font-weight:600}
- mark{background:rgba(235,162,60,.18);color:#f3c778;padding:0 4px;border-radius:3px}
+ mark{background:rgba(232,162,69,.18);color:var(--amber-hi);padding:0 4px;border-radius:3px}
  .foot{border-top:1px solid var(--hair);margin-top:44px;padding:28px 24px;text-align:center;color:var(--mute);font-size:13px}
  .foot a{margin:0 7px;color:var(--mute)} .foot a:hover{color:var(--amber)}
  [hidden]{display:none}
 """
 
 BRAND_SVG = ('<svg width="26" height="26" viewBox="0 0 48 48" fill="none" aria-hidden="true">'
-             '<circle cx="24" cy="24" r="16.5" stroke="#EBA23C" stroke-width="2.4"/>'
-             '<path d="M35 24 L29.5 33.5 L18.5 33.5 L13 24 L18.5 14.5 L29.5 14.5 Z" stroke="#F7C266" stroke-width="1.4" stroke-linejoin="round" opacity="0.85"/>'
-             '<circle cx="24" cy="24" r="3.4" fill="#EBA23C"/></svg>')
+             '<circle cx="24" cy="24" r="16.5" stroke="#E8A245" stroke-width="2.4"/>'
+             '<path d="M35 24 L29.5 33.5 L18.5 33.5 L13 24 L18.5 14.5 L29.5 14.5 Z" stroke="#F0B865" stroke-width="1.4" stroke-linejoin="round" opacity="0.85"/>'
+             '<circle cx="24" cy="24" r="3.4" fill="#E8A245"/></svg>')
 
 FOOT = ('<div><a href="/privacy.html">개인정보처리방침</a> · <a href="/terms.html">이용약관</a> · '
         '<a href="/delete.html">계정·데이터 삭제</a> · <a href="mailto:ppp5544@gmail.com">문의</a></div>'
@@ -65,9 +68,9 @@ def page(file, title_ko, title_en, ko_html, en_html, date):
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{title_ko} — CamCon</title>
+<title>{title_ko} | CamCon</title>
 <meta name="robots" content="index,follow">
-<meta name="theme-color" content="#0A0A0C">
+<meta name="theme-color" content="#050607">
 <link rel="canonical" href="https://camcon.inik.kr/{file}">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>

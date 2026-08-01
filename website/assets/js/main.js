@@ -10,6 +10,10 @@
   var VERIFIED_URL = "https://asia-northeast3-camcon-67ad7.cloudfunctions.net/getVerifiedCameras";
   var verifiedByKey = {};
 
+  // CSS 의 scroll-behavior:auto 는 앵커 이동만 커버한다. JS 가 명시한 behavior:"smooth" 는 그 위를 덮으므로
+  // 모듈 스코프에 한 번만 두고 스크롤·리빌 양쪽에서 공유한다.
+  var REDUCE_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)");
+
 /* KEEP IN SYNC — 이 블록은 functions/index.js 와 website/assets/js/main.js 에 바이트 동일하게 존재해야 배지 매칭이 성립한다. 한쪽 수정 시 반드시 다른 쪽도 동일 반영. */
 var VENDOR_SYNONYMS = [
   ["nikon",     ["nikon corporation", "nikon"]],
@@ -104,10 +108,23 @@ function normalizeCameraKey(input) {
     var ba = document.querySelector(".ba");
     var preloaded = {};
 
+    /* 스와치 14개를 커서로 훑기만 해도 원본 3.7MB 가 무조건 전송되던 구간.
+       데이터세이버·저속 회선을 존중하고 총량에 상한을 둔다. */
+    var MAX_PRELOAD = 4;
+    var preloadCount = 0;
+
+    function canPreload() {
+      var c = navigator.connection;
+      if (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || ""))) return false;
+      return preloadCount < MAX_PRELOAD;
+    }
     function preload(src) {
-      if (!src || preloaded[src]) return;
+      if (!src || preloaded[src] || !canPreload()) return;
       preloaded[src] = true;
+      preloadCount++;
       var img = new Image();
+      img.fetchPriority = "low";
+      img.decoding = "async";
       img.src = src;
     }
 
@@ -124,39 +141,53 @@ function normalizeCameraKey(input) {
       var bsrc = sw.getAttribute("data-before");
       if (before && bsrc) before.src = bsrc;
       nameTag.textContent = sw.getAttribute("data-name") || "";
-      // 좁은 화면에선 스와치가 슬라이더 아래라 결과가 안 보임 → 슬라이더로 스크롤
-      if (ba && window.matchMedia("(max-width: 720px)").matches) {
-        ba.scrollIntoView({ behavior: "smooth", block: "center" });
+      // 스와치를 눌러도 슬라이더가 화면 밖이면 아무 피드백이 없다. 좁은 화면 전용이던 보정을
+      // 실제 가시성 기준으로 넓힌다 — 이미 충분히 보이면 스크롤하지 않는다.
+      if (ba) {
+        var r = ba.getBoundingClientRect();
+        var vh = window.innerHeight || document.documentElement.clientHeight;
+        var visible = Math.min(r.bottom, vh) - Math.max(r.top, 0);
+        if (visible < Math.min(r.height, vh) * 0.5) {
+          ba.scrollIntoView({ behavior: REDUCE_MOTION.matches ? "auto" : "smooth", block: "center" });
+        }
       }
     }
 
     for (var i = 0; i < swatches.length; i++) {
       (function (sw) {
         sw.setAttribute("aria-pressed", sw.classList.contains("is-active") ? "true" : "false");
+        // 스와치는 <button> 이므로 Enter·Space 는 브라우저가 click 으로 넘긴다(수동 keydown 불요).
         sw.addEventListener("click", function () { select(sw); });
-        sw.addEventListener("keydown", function (e) {
-          if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
-            e.preventDefault();
-            select(sw);
-          }
-        });
+        // 스쳐 지나가는 커서는 프리로드하지 않는다 — 220ms 이상 머문 경우에만.
+        var hoverTimer = null;
         sw.addEventListener("pointerenter", function () {
-          preload(sw.getAttribute("data-after"));
-          preload(sw.getAttribute("data-before"));
+          clearTimeout(hoverTimer);
+          hoverTimer = setTimeout(function () {
+            preload(sw.getAttribute("data-after"));
+            preload(sw.getAttribute("data-before"));
+          }, 220);
         });
+        sw.addEventListener("pointerleave", function () { clearTimeout(hoverTimer); });
       })(swatches[i]);
     }
   }
 
   /* ══════════════ header scrolled state ══════════════ */
+  /* window scroll 리스너는 매 스크롤 프레임마다 JS 콜백을 태운다 → 이 파일이 이미 두 번 쓰는
+     IntersectionObserver 로 합류시킨다. 센티널 높이 9px 이 기존 scrollY > 8 임계값을 그대로 재현한다. */
   function initHeader() {
     var header = document.querySelector(".site-header");
     if (!header) return;
-    var onScroll = function () {
-      header.classList.toggle("scrolled", window.scrollY > 8);
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
+    if (!("IntersectionObserver" in window)) { header.classList.add("scrolled"); return; }
+
+    var sentinel = document.createElement("div");
+    sentinel.setAttribute("aria-hidden", "true");
+    sentinel.style.cssText = "position:absolute;top:0;left:0;width:1px;height:9px;pointer-events:none";
+    document.body.prepend(sentinel);
+
+    new IntersectionObserver(function (entries) {
+      header.classList.toggle("scrolled", !entries[0].isIntersecting);
+    }, { threshold: 0 }).observe(sentinel);
   }
 
   /* ══════════════ i18n ══════════════ */
@@ -310,6 +341,14 @@ function normalizeCameraKey(input) {
       });
     }
 
+    // 로딩 구간에 검색창만 있고 결과가 없는 공백을 남기지 않는다.
+    var listEl = document.getElementById("camList");
+    if (listEl) {
+      var skel = "";
+      for (var s = 0; s < 8; s++) skel += '<li class="cam-skel" aria-hidden="true"></li>';
+      listEl.innerHTML = skel;
+    }
+
     fetch("assets/data/supported-cameras.json", { cache: "no-cache" })
       .then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); })
       .then(function (data) {
@@ -329,8 +368,15 @@ function normalizeCameraKey(input) {
           .catch(function () { /* 배지 없이 목록만 */ });
       })
       .catch(function () {
+        // 실패를 침묵하면 검색창만 있고 결과가 영원히 없는 패널이 남는다 → 스켈레톤을 걷고 사유를 노출한다.
         var totalEl = document.getElementById("camTotal");
-        if (totalEl) totalEl.textContent = "—";
+        if (totalEl) totalEl.textContent = "-";
+        if (listEl) listEl.innerHTML = "";
+        var emptyEl = document.getElementById("camEmpty");
+        if (emptyEl) {
+          emptyEl.hidden = false;
+          emptyEl.textContent = t("cameras.loadError") || "목록을 불러오지 못했습니다. 잠시 후 새로고침해 주세요.";
+        }
       });
   }
 
@@ -446,8 +492,7 @@ function normalizeCameraKey(input) {
   function initReveal() {
     var items = document.querySelectorAll(".reveal");
     if (!items.length) return;
-    var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce || !("IntersectionObserver" in window)) {
+    if (REDUCE_MOTION.matches || !("IntersectionObserver" in window)) {
       items.forEach(function (el) { el.classList.add("is-visible"); });
       return;
     }
