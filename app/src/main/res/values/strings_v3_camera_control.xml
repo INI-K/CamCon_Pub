@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 촬영 메인(camera-control) Hero 슬롯 전용 문자열. 이 파일 외 다른 XML에 키를 추가하지 않는다. -->
+    <!-- Hero 카운터(수신 컷 수) 옆 단위 라벨 -->
+    <string name="cc_hero_shots_unit">shots</string>
+</resources>

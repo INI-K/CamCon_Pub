@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,10 +21,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.inik.camcon.presentation.theme.Accent
+import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.Surface1
+import com.inik.camcon.presentation.theme.TextPrimaryV2
 
 /**
  * 핀치줌과 드래그가 가능한 이미지 컴포넌트
@@ -357,21 +362,23 @@ private fun ZoomableImagePreview() {
             .apply {
                 val canvas = android.graphics.Canvas(this)
                 val paint = android.graphics.Paint().apply {
-                    color = android.graphics.Color.BLUE
+                    color = Accent.toArgb()
                 }
                 canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
 
-                paint.color = android.graphics.Color.WHITE
+                paint.color = TextPrimaryV2.toArgb()
                 paint.textSize = 40f
                 canvas.drawText("Zoomable Image", 50f, 150f, paint)
             }
 
-    MaterialTheme {
+    // 프리뷰도 앱 팔레트(다크 고정)로 렌더한다. 소재 기본 MaterialTheme 은 M3 퍼플·라이트로 떨어지고,
+    // 배경에 텍스트 색 토큰을 깔면 표면 tier 밖으로 벗어난다.
+    CamConTheme {
         Box(
             modifier = Modifier
                 .size(300.dp)
-                .background(com.inik.camcon.presentation.theme.TextSecondaryV2)
-                .padding(8.dp)
+                .background(Surface1)
+                .padding(Spacing.sm)
         ) {
             ZoomableImage(
                 bitmap = bitmap,

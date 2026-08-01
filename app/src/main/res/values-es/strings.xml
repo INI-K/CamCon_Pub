@@ -40,7 +40,7 @@
     <string name="pipeline_film_sim">FILM SIM</string>
     <string name="pipeline_color_transfer">Transf. de color</string>
     <string name="pipeline_off">OFF</string>
-    <string name="pipeline_none">—</string>
+    <string name="pipeline_none">OFF</string>
     <string name="pipeline_recent_waiting">Esperando</string>
     <string name="pipeline_exposure_mode">MODE</string>
     <string name="cd_toggle_film_sim">Activar/desactivar simulación de película</string>
@@ -342,7 +342,7 @@
     <string name="ptpip_check_scan_conditions">Comprueba las condiciones de escaneo</string>
     <string name="ptpip_shutter_listen_start">Iniciar recepción inalámbrica del obturador físico</string>
     <string name="ptpip_shutter_listen_stop">Detener recepción inalámbrica</string>
-    <string name="ptpip_no_camera_search_first">No hay cámara — busca primero una cámara en modo STA</string>
+    <string name="ptpip_no_camera_search_first">No hay cámara - busca primero una cámara en modo STA</string>
 
     <!-- i18n 누락 보강: 백필 미포함 잔여 (2026-07-13) -->
     <string name="open_source_licenses">Licencias de Código Abierto</string>

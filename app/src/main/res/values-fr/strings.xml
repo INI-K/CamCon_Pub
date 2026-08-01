@@ -41,7 +41,7 @@
     <string name="pipeline_film_sim">FILM SIM</string>
     <string name="pipeline_color_transfer">Transfert couleur</string>
     <string name="pipeline_off">OFF</string>
-    <string name="pipeline_none">—</string>
+    <string name="pipeline_none">OFF</string>
     <string name="pipeline_recent_waiting">En attente</string>
     <string name="pipeline_exposure_mode">MODE</string>
     <string name="cd_toggle_film_sim">Activer/désactiver la simulation de film</string>
@@ -337,8 +337,8 @@
     <string name="notif_wifi_waiting_title">En attente de la connexion automatique de l\'appareil photo</string>
     <string name="notif_wifi_waiting_text">Détection du réseau Wi-Fi configuré</string>
     <string name="notif_bg_sync_title">Synchronisation en arrière-plan de CamCon</string>
-    <string name="notif_bg_sync_active">Écouteur d\'événements actif — les photos peuvent être reçues écran éteint</string>
-    <string name="notif_bg_sync_listener_active">Écouteur d\'événements actif — en attente de photos</string>
+    <string name="notif_bg_sync_active">Écouteur d\'événements actif - les photos peuvent être reçues écran éteint</string>
+    <string name="notif_bg_sync_listener_active">Écouteur d\'événements actif - en attente de photos</string>
     <string name="notif_bg_sync_checking">Vérification de la connexion de l\'appareil photo…</string>
     <string name="notif_bg_sync_waiting">En attente de la connexion de l\'appareil photo…</string>
     <string name="ptpip_please_enable_wifi">Veuillez activer le Wi-Fi</string>
@@ -346,7 +346,7 @@
     <string name="ptpip_check_scan_conditions">Veuillez vérifier les conditions de balayage</string>
     <string name="ptpip_shutter_listen_start">Démarrer la réception sans fil du déclencheur physique</string>
     <string name="ptpip_shutter_listen_stop">Arrêter la réception sans fil</string>
-    <string name="ptpip_no_camera_search_first">Aucun appareil photo — recherchez d\'abord un appareil en mode STA</string>
+    <string name="ptpip_no_camera_search_first">Aucun appareil photo - recherchez d\'abord un appareil en mode STA</string>
     <!-- === 미백필 진짜 누락 9키 (라이선스 화면 + camera_preview_live_view) === -->
     <string name="open_source_licenses">Licences open source</string>
     <string name="licenses_description">Cette application utilise les bibliothèques open source suivantes :</string>
@@ -366,8 +366,8 @@
     <string name="connection_status_sta_connected">Mode STA connecté (%1$s)</string>
     <string name="connection_status_connecting">Connexion à l\'appareil…</string>
     <string name="connection_status_error">Erreur de connexion de l\'appareil</string>
-    <string name="connection_status_camera_ap">AP de l\'appareil connecté — recherche d\'appareil possible</string>
-    <string name="connection_status_wifi">Wi-Fi connecté — recherche d\'appareil possible</string>
+    <string name="connection_status_camera_ap">AP de l\'appareil connecté - recherche d\'appareil possible</string>
+    <string name="connection_status_wifi">Wi-Fi connecté - recherche d\'appareil possible</string>
     <string name="connection_status_disconnected">Non connecté</string>
     <string name="usb_init_connecting_camera">Connexion à l\'appareil USB…</string>
     <string name="usb_init_requesting_permission">Demande d\'autorisation USB…</string>

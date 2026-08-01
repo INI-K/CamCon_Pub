@@ -28,16 +28,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.HeadingS
+import com.inik.camcon.presentation.theme.IconSize
+import com.inik.camcon.presentation.theme.Micro
+import com.inik.camcon.presentation.theme.MonoReadout
+import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.Surface0
 import com.inik.camcon.presentation.theme.TextPrimaryV2
 import com.inik.camcon.presentation.ui.components.v2.AppDialog
-import com.inik.camcon.presentation.ui.components.v2.DividerLineV2
 import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
 import com.inik.camcon.domain.model.CameraPhoto
 import java.text.SimpleDateFormat
@@ -62,18 +65,18 @@ fun PhotoViewerTopControls(
                 Icons.Default.Info,
                 contentDescription = context.getString(R.string.photo_details),
                 tint = TextPrimaryV2,
-                modifier = Modifier.size(28.dp)
+                modifier = Modifier.size(IconSize.lg)
             )
         }
 
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(Spacing.sm))
 
         IconButton(onClick = onDismiss) {
             Icon(
                 Icons.Default.Close,
                 contentDescription = context.getString(R.string.close),
                 tint = TextPrimaryV2,
-                modifier = Modifier.size(28.dp)
+                modifier = Modifier.size(IconSize.lg)
             )
         }
     }
@@ -96,7 +99,7 @@ fun PhotoDetailsDialog(
             Icon(
                 Icons.Default.Info,
                 contentDescription = null,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(IconSize.md)
             )
         },
         title = {
@@ -108,8 +111,9 @@ fun PhotoDetailsDialog(
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
             ) {
-                DividerLineV2()
-                Spacer(modifier = Modifier.height(12.dp))
+                // 제목/본문은 AppDialog 슬롯으로 이미 갈려 있고 선 양쪽 surface tier 가 같다.
+                // 헤어라인을 빼고 간격으로만 분리한다.
+                Spacer(modifier = Modifier.height(Spacing.md))
 
                 InfoRow(
                     label = context.getString(R.string.file_name),
@@ -120,14 +124,16 @@ fun PhotoDetailsDialog(
                 InfoRow(
                     label = context.getString(R.string.file_size),
                     value = formatFileSize(photo.size),
-                    icon = null
+                    icon = null,
+                    isNumeric = true
                 )
 
                 if (photo.width > 0 && photo.height > 0) {
                     InfoRow(
                         label = context.getString(R.string.resolution),
                         value = "${photo.width} × ${photo.height}",
-                        icon = null
+                        icon = null,
+                        isNumeric = true
                     )
                 }
 
@@ -166,12 +172,13 @@ fun PhotoDetailsDialog(
 private fun InfoRow(
     label: String,
     value: String,
-    icon: ImageVector? = null
+    icon: ImageVector? = null,
+    isNumeric: Boolean = false
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
+            .padding(vertical = Spacing.xs),
         verticalAlignment = Alignment.Top
     ) {
         if (icon != null) {
@@ -179,27 +186,28 @@ private fun InfoRow(
                 imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier
-                    .size(16.dp)
+                    .size(IconSize.sm)
                     .padding(top = 2.dp),
                 tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(Spacing.sm))
         } else {
-            Spacer(modifier = Modifier.width(24.dp))
+            Spacer(modifier = Modifier.width(IconSize.lg))
         }
 
         Column(
             modifier = Modifier.weight(1f)
         ) {
+            // 라벨은 계측기 라벨(11sp)로 내리고 값은 크기·무게·패밀리로 띄운다.
+            // 자릿수가 변하는 값(용량·해상도)만 모노(tnum)라 자리가 흔들리지 않는다.
             Text(
                 text = label,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                fontWeight = FontWeight.Medium
+                style = Micro,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
             )
             Text(
                 text = value,
-                style = MaterialTheme.typography.bodyMedium,
+                style = if (isNumeric) MonoReadout else HeadingS,
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.padding(top = 2.dp)
             )
@@ -239,7 +247,7 @@ private fun PhotoViewerTopControlsPreview() {
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Surface0.copy(alpha = 0.5f))
-                .padding(16.dp)
+                .padding(Spacing.base)
         ) {
             PhotoViewerTopControls(
                 onShowDetails = {},
@@ -257,13 +265,16 @@ private fun PhotoViewerTopControlsPreview() {
 private fun PhotoDetailsDialogPreview() {
     CamConTheme {
         PhotoDetailsDialog(
+            // 실촬영값. 딱 떨어지는 더미(IMG_0001 / 4032×3024)로는 긴 경로 줄바꿈도,
+            // 자릿수가 큰 용량/해상도의 정렬도 프리뷰에서 드러나지 않는다.
+            // date 는 고정값 — currentTimeMillis 는 프리뷰 스냅샷을 흔든다.
             photo = CameraPhoto(
-                name = "IMG_0001.JPG",
-                path = "/sdcard/DCIM/Camera/IMG_0001.JPG",
-                size = 2048576,
-                date = System.currentTimeMillis() / 1000,
-                width = 4032,
-                height = 3024
+                name = "DSC_4417.JPG",
+                path = "/storage/emulated/0/DCIM/CamCon/2026-07-28/DSC_4417.JPG",
+                size = 8_734_112,
+                date = 1_753_680_237_000,
+                width = 6048,
+                height = 4024
             ),
             onDismiss = {},
             onDownload = {}

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- info-screens (Informacion de la camara / Licencias de codigo abierto) V3 UI strings. Sin emoji ni vinetas. -->
+<resources>
+    <string name="v3_abilities_grade_full">Control remoto completo</string>
+    <string name="v3_abilities_grade_download">Solo descarga</string>
+    <string name="v3_abilities_grade_partial">Compatibilidad parcial</string>
+
+    <string name="v3_abilities_summary_full">Esta cámara admite todas las funciones remotas.</string>
+    <string name="v3_abilities_summary_download">Esta cámara solo admite la descarga de archivos. La captura remota y la vista en directo no están disponibles. Algunos modelos %1$s tienen compatibilidad PTP limitada.</string>
+    <string name="v3_abilities_summary_partial">La vista en directo no es compatible, pero la captura remota está disponible.</string>
+    <string name="v3_abilities_summary_some">Algunas funciones de la cámara pueden estar limitadas.</string>
+
+    <string name="v3_abilities_cap_capture">Captura remota</string>
+    <string name="v3_abilities_cap_liveview">Vista en directo</string>
+    <string name="v3_abilities_cap_config">Control de ajustes</string>
+    <string name="v3_abilities_cap_files">Gestión de archivos</string>
+
+    <string name="v3_diag_section_title">Diagnóstico (ADMIN)</string>
+
+    <string name="v3_licenses_native_section">Incluidas en la app</string>
+</resources>

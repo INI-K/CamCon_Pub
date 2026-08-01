@@ -15,8 +15,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -76,18 +78,19 @@ import com.inik.camcon.presentation.theme.ButtonText
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.Caption
 import com.inik.camcon.presentation.theme.DisplayL
+import com.inik.camcon.presentation.theme.IconSize
 import com.inik.camcon.presentation.theme.MicroLabel
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.StrokeWidth
+import com.inik.camcon.presentation.theme.TouchTarget
 import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.AccentEdge
-import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.Surface0
 import com.inik.camcon.presentation.theme.Surface3
 import com.inik.camcon.presentation.theme.TextPrimaryV2
 import com.inik.camcon.presentation.theme.TextSecondaryV2
 import com.inik.camcon.presentation.theme.TextTertiary
-import com.inik.camcon.presentation.ui.components.v2.DividerLineV2
 import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.LoginUiEvent
@@ -387,22 +390,16 @@ fun LoginScreen(
                     Spacer(modifier = Modifier.height(Spacing.xl))
 
                     // ---- SIGN IN 구획 라벨(브랜드↔패널 브릿지) ----
-                    // MicroLabel 구획 라벨(양옆 헤어라인) — CINE 계측기 섹션 헤더 언어
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(Spacing.md)
-                    ) {
-                        DividerLineV2(modifier = Modifier.weight(1f), color = DividerLine)
-                        Text(
-                            text = stringResource(R.string.login_v2_signin_label),
-                            style = MicroLabel,
-                            color = TextTertiary
-                        )
-                        DividerLineV2(modifier = Modifier.weight(1f), color = DividerLine)
-                    }
+                    // 양옆 헤어라인 제거 — 선 양쪽이 같은 Surface0 tier라 표면 경계를 표시하지 못했고,
+                    // 바로 아래 SurfaceV2(border=true)의 보더와 이중으로 겹쳤다. 라벨만 좌측 앵커로 남긴다.
+                    Text(
+                        text = stringResource(R.string.login_v2_signin_label),
+                        style = MicroLabel,
+                        color = TextTertiary,
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                    Spacer(modifier = Modifier.height(Spacing.lg))
+                    Spacer(modifier = Modifier.height(Spacing.sm))
 
                     // ---- 계측 패널: 추천 + Google + 약관을 헤어라인 보더 안에 그룹핑 ----
                     SurfaceV2(
@@ -411,20 +408,29 @@ fun LoginScreen(
                         border = true,
                         shape = RoundedCornerShape(Radius.md)
                     ) {
+                        // 패널 내부는 좌측 앵커 — 라벨·입력·약관·링크가 한 기준선에 서야 계측 폼으로 읽힌다.
+                        // (브랜드 블록의 중앙 정렬은 바깥 Column 이 그대로 유지)
                         Column(
                             modifier = Modifier.padding(Spacing.lg),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                            horizontalAlignment = Alignment.Start
                         ) {
                             // 추천 코드 — 접이식 강등. 접힘 상태에선 토글만 노출.
                             AnimatedVisibility(visible = !showReferral) {
                                 TextButton(
                                     onClick = { showReferral = true },
-                                    enabled = !uiState.isLoading
+                                    enabled = !uiState.isLoading,
+                                    // 좌측 기준선 정렬을 위해 가로 콘텐츠 패딩 제거, 터치 높이는 토큰으로 보장
+                                    contentPadding = PaddingValues(vertical = Spacing.sm),
+                                    modifier = Modifier.defaultMinSize(minHeight = TouchTarget.min),
+                                    colors = ButtonDefaults.textButtonColors(
+                                        contentColor = TextTertiary,
+                                        disabledContentColor = TextTertiary.copy(alpha = 0.38f)
+                                    )
                                 ) {
+                                    // color 미지정 → LocalContentColor 상속으로 disabled 상태가 실제로 드러난다
                                     Text(
                                         text = stringResource(R.string.login_v2_referral_toggle),
-                                        style = BodySmall,
-                                        color = TextTertiary
+                                        style = BodySmall
                                     )
                                 }
                             }
@@ -485,7 +491,7 @@ fun LoginScreen(
                                 onClick = { onGoogleSignIn(referralCode.trim()) },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(48.dp),
+                                    .defaultMinSize(minHeight = TouchTarget.lg),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = Color.White,
                                     contentColor = Color(0xFF4285F4),
@@ -501,9 +507,9 @@ fun LoginScreen(
                             ) {
                                 if (uiState.isLoading) {
                                     CircularProgressIndicator(
-                                        modifier = Modifier.size(20.dp),
+                                        modifier = Modifier.size(IconSize.md),
                                         color = Color(0xFF4285F4),
-                                        strokeWidth = 2.dp
+                                        strokeWidth = StrokeWidth.thick
                                     )
                                 } else {
                                     Row(
@@ -513,7 +519,7 @@ fun LoginScreen(
                                         Image(
                                             painter = painterResource(id = R.drawable.ic_google),
                                             contentDescription = null,
-                                            modifier = Modifier.size(20.dp)
+                                            modifier = Modifier.size(IconSize.md)
                                         )
                                         Spacer(modifier = Modifier.width(Spacing.sm))
                                         Text(
@@ -526,19 +532,19 @@ fun LoginScreen(
 
                             Spacer(modifier = Modifier.height(Spacing.md))
 
-                            // 약관 — Caption + TextTertiary, 중앙
+                            // 약관 — Caption + TextTertiary, 패널 좌측 기준선
                             Text(
                                 text = stringResource(R.string.terms_agreement),
                                 style = Caption,
                                 color = TextTertiary,
-                                textAlign = TextAlign.Center
+                                textAlign = TextAlign.Start
                             )
 
                             // 이용약관 · 개인정보처리방침 — 탭 가능한 링크(로케일별 substring 위치 비의존).
-                            // 각 링크 터치 타깃 최소 44dp.
+                            // 각 링크 터치 타깃 최소 TouchTarget.min. 첫 링크는 좌측 패딩 없이 기준선에 맞춘다.
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Center,
+                                horizontalArrangement = Arrangement.Start,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
@@ -550,9 +556,9 @@ fun LoginScreen(
                                         .clickable {
                                             context.openUrl(Constants.Legal.TERMS_OF_SERVICE_URL)
                                         }
-                                        .heightIn(min = 44.dp)
+                                        .heightIn(min = TouchTarget.min)
                                         .wrapContentHeight(Alignment.CenterVertically)
-                                        .padding(horizontal = Spacing.sm)
+                                        .padding(end = Spacing.sm)
                                 )
                                 Text(
                                     text = " · ",
@@ -568,7 +574,7 @@ fun LoginScreen(
                                         .clickable {
                                             context.openUrl(Constants.Legal.PRIVACY_POLICY_URL)
                                         }
-                                        .heightIn(min = 44.dp)
+                                        .heightIn(min = TouchTarget.min)
                                         .wrapContentHeight(Alignment.CenterVertically)
                                         .padding(horizontal = Spacing.sm)
                                 )
@@ -592,6 +598,19 @@ fun LoginScreenPreview() {
     CamConTheme() {
         LoginScreen(
             uiState = LoginUiState(),
+            snackbarHostState = remember { SnackbarHostState() },
+            onGoogleSignIn = { _ -> }
+        )
+    }
+}
+
+/** 로그인 왕복 중 상태 — Google 버튼 스피너 + 추천코드 토글 disabled 대비 확인용. */
+@Preview(name = "Login — Signing in", showBackground = true)
+@Composable
+fun LoginScreenSigningInPreview() {
+    CamConTheme() {
+        LoginScreen(
+            uiState = LoginUiState(isLoading = true),
             snackbarHostState = remember { SnackbarHostState() },
             onGoogleSignIn = { _ -> }
         )

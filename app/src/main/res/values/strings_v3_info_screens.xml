@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- info-screens (Camera Abilities / Open Source Licenses) V3 UI strings. Emoji/bullet-free. -->
+<resources>
+    <string name="v3_abilities_grade_full">Full remote control</string>
+    <string name="v3_abilities_grade_download">Download only</string>
+    <string name="v3_abilities_grade_partial">Partial support</string>
+
+    <string name="v3_abilities_summary_full">This camera supports every remote feature.</string>
+    <string name="v3_abilities_summary_download">This camera supports file download only. Remote capture and live view are unavailable. Some %1$s models ship with limited PTP support.</string>
+    <string name="v3_abilities_summary_partial">Live view is not supported, but remote capture is available.</string>
+    <string name="v3_abilities_summary_some">Some camera features may be limited.</string>
+
+    <string name="v3_abilities_cap_capture">Remote capture</string>
+    <string name="v3_abilities_cap_liveview">Live view</string>
+    <string name="v3_abilities_cap_config">Settings control</string>
+    <string name="v3_abilities_cap_files">File management</string>
+
+    <string name="v3_diag_section_title">Diagnostics (ADMIN)</string>
+
+    <string name="v3_licenses_native_section">Bundled with the app</string>
+</resources>

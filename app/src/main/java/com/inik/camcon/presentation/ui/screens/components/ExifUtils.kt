@@ -6,13 +6,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import android.util.Log
 import com.google.gson.Gson
 import com.inik.camcon.R
-import com.inik.camcon.presentation.theme.Body
+import com.inik.camcon.presentation.theme.HeadingS
+import com.inik.camcon.presentation.theme.Micro
+import com.inik.camcon.presentation.theme.MonoReadout
 
 /**
  * EXIF 메타데이터 파싱 및 포맷팅 유틸리티 함수들
@@ -133,27 +135,32 @@ fun formatFlashLabel(flash: String): String {
 /**
  * 라벨과 값을 가진 단일 EXIF 필드 행.
  * Stateless이며, 라벨과 포맷된 값을 모두 전달받는다.
+ *
+ * 라벨은 계측기 라벨(11sp)로 내리고 값은 판독값으로 올려 크기·패밀리 대비를 만든다.
+ * ISO/셔터/조리개처럼 자릿수가 변하는 값은 모노(tnum)라 세로 정렬이 유지되고,
+ * 카메라 모델·WB·플래시처럼 로컬라이즈된 낱말 값은 `isNumeric = false` 로 Pretendard 를 쓴다.
  */
 @Composable
 fun ExifField(
     label: String,
     value: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isNumeric: Boolean = true
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = label,
-            style = Body,
+            style = Micro,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
             text = value,
-            style = Body,
-            fontWeight = FontWeight.Medium,
+            style = if (isNumeric) MonoReadout else HeadingS,
             color = MaterialTheme.colorScheme.onSurface
         )
     }

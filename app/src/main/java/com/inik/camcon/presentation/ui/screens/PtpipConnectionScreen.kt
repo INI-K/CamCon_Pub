@@ -906,9 +906,11 @@ fun PtpipConnectionScreen(
                 dismissOnClickOutside = false
             ),
             title = {
+                // 진행 문구가 이 다이얼로그의 주역 — 보조문(BodySmall 13sp)보다 작던 위계 역전을 푼다.
                 Text(
                     text = connectionProgressMessage.ifEmpty { stringResource(R.string.ptpip_connecting_to_camera) },
-                    style = Caption,
+                    style = HeadingM,
+                    color = TextPrimaryV2,
                     textAlign = TextAlign.Center
                 )
             },

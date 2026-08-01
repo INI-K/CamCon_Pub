@@ -28,6 +28,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
@@ -120,7 +122,7 @@ import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.CameraSettings
 import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.presentation.theme.CamConTheme
-import com.inik.camcon.presentation.theme.CameraSpec
+import com.inik.camcon.presentation.theme.DisplayNum
 import com.inik.camcon.presentation.theme.Elevation
 import com.inik.camcon.presentation.theme.IconSize
 import com.inik.camcon.presentation.theme.Padding
@@ -132,8 +134,10 @@ import com.inik.camcon.presentation.theme.Surface2
 import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.ErrorV2
+import com.inik.camcon.presentation.theme.Micro
 import com.inik.camcon.presentation.theme.MicroLabel
 import com.inik.camcon.presentation.theme.MonoMicro
+import com.inik.camcon.presentation.theme.MonoReadout
 import com.inik.camcon.presentation.theme.Surface3
 import com.inik.camcon.presentation.theme.TextDisabled
 import com.inik.camcon.presentation.theme.TextPrimaryV2
@@ -807,18 +811,40 @@ private fun PortraitCameraLayout(
             .padding(contentPadding)
             .imePadding()
     ) {
-        // V2 StatusBar Row — 연결 상태 표시 + 토스트 슬롯 + 전송 진행 배지
-        Row(
+        // CINE Hero — 이 화면의 존재 이유(= 지금까지 카메라에서 넘어온 컷 수)를 최상위 타이포 슬롯으로 앵커한다.
+        // 위 행은 eyebrow(연결 상태 + 전송 진행 배지), 아래 행이 Hero 카운터.
+        // DisplayNum(34sp Bold, tnum 내장)이라 자릿수가 늘어도 좌우 흔들림이 없다.
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(CameraSpec.statusBarHeight)
-                .padding(horizontal = Spacing.lg),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = Spacing.lg, vertical = Spacing.sm)
         ) {
-            StatusIndicator(kind = statusKind, label = statusLabel)
-            Spacer(modifier = Modifier.weight(1f))
-            // 다운로드/처리 진행 카운트 배지 (요구 E7). 비활성 시 내부에서 early-return 으로 미표시.
-            TransferProgressBadge(queue = uiState.capture.transferQueue)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                StatusIndicator(kind = statusKind, label = statusLabel)
+                Spacer(modifier = Modifier.weight(1f))
+                // 다운로드/처리 진행 카운트 배지 (요구 E7). 비활성 시 내부에서 early-return 으로 미표시.
+                TransferProgressBadge(queue = uiState.capture.transferQueue)
+            }
+            Row(
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
+            ) {
+                Text(
+                    text = uiState.capturedPhotos.size.toString(),
+                    style = DisplayNum,
+                    color = TextPrimaryV2
+                )
+                // 단위는 로케일별 한글/CJK 가 들어오므로 MicroLabel(라틴 대문자 트래킹) 대신 Micro 를 쓴다.
+                Text(
+                    text = stringResource(R.string.cc_hero_shots_unit),
+                    style = Micro,
+                    color = TextTertiary,
+                    modifier = Modifier.padding(bottom = Spacing.xs)
+                )
+            }
         }
 
         val cameraStorageInfo by viewModel.cameraStorageInfo.collectAsStateWithLifecycle()
@@ -943,12 +969,13 @@ private fun PortraitCameraLayout(
             modifier = Modifier.fillMaxWidth()
         ) {
             Column {
-                // 상단 헤어라인 (패널 구획)
+                // 상단 헤어라인 (패널 구획) — TopControlsBar 와 동일하게 DividerLine.
+                // Surface0 로 칠하면 Surface0 배경 위에 그려져 선이 보이지 않는다.
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(StrokeWidth.hairline)
-                        .background(Surface0)
+                        .background(DividerLine)
                 )
 
                 // ISO/셔터스피드/조리개/EV 조절 컨트롤 — 셔터/모드가 아니므로 유지.
@@ -1087,15 +1114,29 @@ private fun PipelineChip(
     modifier: Modifier = Modifier,
     isLocked: Boolean = false
 ) {
+    // 누름 상태는 ripple 대신 surface tier 승강(투명 → Surface2) + 1px 앰버 엣지로 표현한다.
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .background(
+                color = if (isPressed) Surface2 else Color.Transparent,
+                shape = RoundedCornerShape(Radius.sm)
+            )
             .border(
                 width = StrokeWidth.hairline,
-                color = if (isOn) Accent.copy(alpha = 0.6f) else Surface3,
+                color = when {
+                    isPressed -> Accent
+                    isOn -> Accent.copy(alpha = 0.6f)
+                    else -> Surface3
+                },
                 shape = RoundedCornerShape(Radius.sm)
             )
             .combinedClickable(
+                interactionSource = interactionSource,
+                indication = null,
                 onClick = onTap,
                 onLongClick = onLongPress,
                 onClickLabel = contentDescription
@@ -1130,12 +1171,13 @@ private fun PipelineChip(
                     imageVector = Icons.Outlined.Lock,
                     contentDescription = stringResource(R.string.fs_selected_film_locked_hint),
                     tint = TextTertiary,
-                    modifier = Modifier.size(12.dp)
+                    modifier = Modifier.size(IconSize.sm)
                 )
             }
+            // 값은 라벨(MicroLabel 11sp)의 1.45배로 키워 위계를 색이 아닌 크기가 전담하게 한다.
             Text(
                 text = value,
-                style = MonoMicro,
+                style = MonoReadout,
                 color = if (isOn) TextPrimaryV2 else TextDisabled,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -1442,7 +1484,7 @@ private fun FullscreenCameraLayout(
 /**
  * 전체화면 우측 통합 컨트롤 도크 -- state+callback 패턴.
  *
- * 모든 컨트롤을 하나의 세로 Column(단일 열)에 그룹·구분선으로 담는다. 단일 Column이라 요소가
+ * 모든 컨트롤을 하나의 세로 Column(단일 열)에 그룹 간격 리듬으로 담는다. 단일 Column이라 요소가
  * 서로 겹치는 것이 구조적으로 불가능하고, 컴팩트 사이즈로 짧은 가로 화면(≈360dp)에도 클리핑 없이
  * 들어간다(합계 ≈339dp). 각 버튼은 자체 반투명 원형 배경으로 패널 없이도 또렷하다.
  * 그룹: [종료] · [뷰 토글: 그리드/히스토그램/포커스피킹] · [캡처: 갤러리/셔터/AF] · [보조: 중지/회전].
@@ -1471,9 +1513,12 @@ private fun FullscreenControlPanel(
     onCycleLiveViewQuality: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    // 그룹 구분은 선이 아니라 간격 리듬으로 한다. 도크는 단일 surface tier 위에 떠 있어
+    // 구분선 양쪽 tier 가 동일하므로 선이 정보를 만들지 못한다.
+    // 그룹 간 Spacing.md(12dp) : 그룹 내부 Spacing.xs(4dp) = 3:1.
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+        verticalArrangement = Arrangement.spacedBy(Spacing.md),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // 1) 종료 — 유일한 빨강
@@ -1483,10 +1528,8 @@ private fun FullscreenControlPanel(
             onClick = onExitFullscreen,
             background = ErrorV2.copy(alpha = 0.85f),
             size = TouchTarget.lg,
-            iconSize = 24.dp
+            iconSize = IconSize.lg
         )
-
-        DockDivider()
 
         // 2) 뷰 토글 (가로 미니행) — 그리드 / 히스토그램 / 포커스 피킹
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
@@ -1497,7 +1540,7 @@ private fun FullscreenControlPanel(
                 background = Surface2.copy(alpha = if (isGridEnabled) 0.9f else 0.7f),
                 tint = if (isGridEnabled) MaterialTheme.colorScheme.primary else TextPrimaryV2,
                 size = TouchTarget.min,
-                iconSize = 20.dp
+                iconSize = IconSize.md
             )
             DockCircleButton(
                 icon = Icons.Default.BarChart,
@@ -1506,7 +1549,7 @@ private fun FullscreenControlPanel(
                 background = Surface2.copy(alpha = if (isHistogramEnabled) 0.9f else 0.7f),
                 tint = if (isHistogramEnabled) MaterialTheme.colorScheme.primary else TextPrimaryV2,
                 size = TouchTarget.min,
-                iconSize = 20.dp
+                iconSize = IconSize.md
             )
             DockCircleButton(
                 icon = Icons.Default.CenterFocusWeak,
@@ -1515,11 +1558,9 @@ private fun FullscreenControlPanel(
                 background = Surface2.copy(alpha = if (isFocusPeakingEnabled) 0.9f else 0.7f),
                 tint = if (isFocusPeakingEnabled) MaterialTheme.colorScheme.primary else TextPrimaryV2,
                 size = TouchTarget.min,
-                iconSize = 20.dp
+                iconSize = IconSize.md
             )
         }
-
-        DockDivider()
 
         // 2-1) 화질 순환 (단독 행) — 탭 시 SPEED→BALANCED→QUALITY 순환. 현재 단계 아이콘 + accent tint.
         // 가로 폭 압박을 피하려 뷰 토글행에 합치지 않고 단독 버튼으로 둔다(단일 Column 겹침 불가).
@@ -1533,10 +1574,8 @@ private fun FullscreenControlPanel(
             background = Surface2.copy(alpha = 0.8f),
             tint = MaterialTheme.colorScheme.primary,
             size = TouchTarget.min,
-            iconSize = 20.dp
+            iconSize = IconSize.md
         )
-
-        DockDivider()
 
         // 3) 캡처 (컴팩트) — 갤러리 / 셔터 / AF
         CaptureControls(
@@ -1553,10 +1592,8 @@ private fun FullscreenControlPanel(
             onStopTimelapse = onStopTimelapse
         )
 
-        DockDivider()
-
         // 4) 보조 (가로 미니행) — 라이브뷰 중지(중립색) / 180° 회전
-        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
             DockCircleButton(
                 icon = Icons.Default.Stop,
                 contentDescription = stringResource(R.string.cd_stop_live_view),
@@ -1564,7 +1601,7 @@ private fun FullscreenControlPanel(
                 background = Surface2.copy(alpha = 0.85f),
                 enabled = isConnected,
                 size = TouchTarget.min,
-                iconSize = 22.dp
+                iconSize = IconSize.md
             )
             DockCircleButton(
                 icon = Icons.AutoMirrored.Filled.RotateRight,
@@ -1574,7 +1611,7 @@ private fun FullscreenControlPanel(
                 background = Surface2.copy(alpha = 0.85f),
                 tint = if (onRotate != null) TextPrimaryV2 else TextSecondaryV2,
                 size = TouchTarget.min,
-                iconSize = 22.dp
+                iconSize = IconSize.md
             )
         }
     }
@@ -1592,7 +1629,7 @@ private fun DockCircleButton(
     modifier: Modifier = Modifier,
     tint: Color = TextPrimaryV2,
     size: Dp = TouchTarget.lg,
-    iconSize: Dp = 24.dp,
+    iconSize: Dp = IconSize.lg,
     enabled: Boolean = true
 ) {
     Surface(
@@ -1613,17 +1650,6 @@ private fun DockCircleButton(
             )
         }
     }
-}
-
-/** 도크 그룹 사이의 얇은 구분선. */
-@Composable
-private fun DockDivider() {
-    Box(
-        modifier = Modifier
-            .width(24.dp)
-            .height(1.dp)
-            .background(TextPrimaryV2.copy(alpha = 0.15f))
-    )
 }
 
 /**
@@ -1760,10 +1786,11 @@ private fun RecentCaptureItem(
                     shape = RoundedCornerShape(Radius.sm),
                     modifier = Modifier.align(Alignment.BottomEnd)
                 ) {
+                    // 변동 수치(파일 용량)이므로 탭형 모노 — 자릿수가 바뀌어도 배지 폭이 흔들리지 않는다.
                     Text(
                         text = sizeText,
                         color = TextPrimaryV2,
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MonoMicro,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                     )
                 }
@@ -1983,7 +2010,7 @@ private fun RawFileRestrictionNotification(
                 // 폭 상한 + 2줄 말줄임. 경고 성격은 아이콘·컬러바가 전달하므로 타이틀 중복 제거.
                 // 구독 업그레이드 유도는 추후 지원 — CTA 없이 안내만, 탭하면 조기 닫기.
                 ToastV2(
-                    message = "${restriction.fileName} — ${restriction.message}",
+                    message = "${restriction.fileName}: ${restriction.message}",
                     kind = StatusKind.Error,
                     leadingIcon = Icons.Outlined.WarningAmber,
                     maxLines = 2,
@@ -2082,12 +2109,12 @@ private fun CameraSettingsSheetPreview() {
     CamConTheme() {
         CameraSettingsSheet(
             settings = CameraSettings(
-                iso = "400",
-                shutterSpeed = "1/125",
-                aperture = "f/2.8",
-                whiteBalance = "Auto",
-                focusMode = "Auto",
-                exposureCompensation = "0"
+                iso = "640",
+                shutterSpeed = "1/160",
+                aperture = "f/3.5",
+                whiteBalance = "5600K",
+                focusMode = "AF-C",
+                exposureCompensation = "-1/3"
             ),
             onSettingChange = { _, _ -> },
             onClose = { }
@@ -2103,36 +2130,36 @@ private fun RecentCapturesRowPreview() {
             photos = listOf(
                 CapturedPhoto(
                     id = "1",
-                    filePath = "/path/to/test1.jpg",
-                    thumbnailPath = "/path/to/thumb1.jpg",
+                    filePath = "/storage/emulated/0/CamCon/DSC_4417.NEF",
+                    thumbnailPath = "/storage/emulated/0/CamCon/.thumb/DSC_4417.jpg",
                     captureTime = System.currentTimeMillis(),
-                    cameraModel = "Canon EOS R5",
+                    cameraModel = "NIKON Z 8",
                     settings = null,
-                    size = 1024 * 1024,
-                    width = 1920,
-                    height = 1080
+                    size = 51_384_912L,
+                    width = 8256,
+                    height = 5504
                 ),
                 CapturedPhoto(
                     id = "2",
-                    filePath = "/path/to/test2.jpg",
-                    thumbnailPath = "/path/to/thumb2.jpg",
+                    filePath = "/storage/emulated/0/CamCon/DSC_4418.NEF",
+                    thumbnailPath = "/storage/emulated/0/CamCon/.thumb/DSC_4418.jpg",
                     captureTime = System.currentTimeMillis(),
-                    cameraModel = "Canon EOS R5",
+                    cameraModel = "NIKON Z 8",
                     settings = null,
-                    size = 1024 * 1024,
-                    width = 1920,
-                    height = 1080
+                    size = 48_902_144L,
+                    width = 5504,
+                    height = 8256
                 ),
                 CapturedPhoto(
                     id = "3",
-                    filePath = "/path/to/test3.jpg",
-                    thumbnailPath = "/path/to/thumb3.jpg",
+                    filePath = "/storage/emulated/0/CamCon/DSC_4421.JPG",
+                    thumbnailPath = "/storage/emulated/0/CamCon/.thumb/DSC_4421.jpg",
                     captureTime = System.currentTimeMillis(),
-                    cameraModel = "Canon EOS R5",
+                    cameraModel = "NIKON Z 8",
                     settings = null,
-                    size = 1024 * 1024,
-                    width = 1920,
-                    height = 1080
+                    size = 9_137_664L,
+                    width = 8256,
+                    height = 5504
                 )
             ),
             modifier = Modifier.padding(Padding.base)

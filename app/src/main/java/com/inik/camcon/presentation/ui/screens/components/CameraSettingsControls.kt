@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -47,15 +48,18 @@ import com.inik.camcon.domain.model.ExposureCompensation
 import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.DividerLine
+import com.inik.camcon.presentation.theme.IconSize
 import com.inik.camcon.presentation.theme.Micro
 import com.inik.camcon.presentation.theme.MonoNumeric
 import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.StrokeWidth
 import com.inik.camcon.presentation.theme.Surface0
 import com.inik.camcon.presentation.theme.Surface2
 import com.inik.camcon.presentation.theme.TextPrimaryV2
 import com.inik.camcon.presentation.theme.TextSecondaryV2
 import com.inik.camcon.presentation.theme.TextTertiary
+import com.inik.camcon.presentation.theme.TouchTarget
 
 /**
  * ISO/셔터스피드/조리개 조절 컨트롤
@@ -67,7 +71,8 @@ fun CameraSettingsControls(
     onSettingChange: (String, String) -> Unit,
     modifier: Modifier = Modifier,
     isEnabled: Boolean = true,
-    contentPadding: PaddingValues = PaddingValues(horizontal = 20.dp),
+    // Dense 등급(DESIGN_SYSTEM_V2 §8.3) — 노출 계측 스트립이므로 base 12dp.
+    contentPadding: PaddingValues = PaddingValues(horizontal = Spacing.md),
     exposureCompensation: ExposureCompensation? = null,
     onExposureCompensationChange: ((String) -> Unit)? = null
 ) {
@@ -88,7 +93,7 @@ fun CameraSettingsControls(
         modifier = modifier
             .fillMaxWidth()
             .padding(contentPadding),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // ISO
@@ -170,7 +175,8 @@ private fun SettingDropdown(
         Box {
             Surface(
                 modifier = Modifier
-                    .height(36.dp)
+                    // 탭 가능한 세그먼트이므로 클릭 영역 하한을 WCAG 2.2 안전선(44dp)으로 올린다.
+                    .defaultMinSize(minHeight = TouchTarget.min)
                     .widthIn(min = 70.dp)
                     .clip(RoundedCornerShape(Radius.sm))
                     .clickable(enabled = isEnabled && options.isNotEmpty()) {
@@ -193,8 +199,8 @@ private fun SettingDropdown(
             ) {
                 Row(
                     modifier = Modifier
-                        .padding(horizontal = 8.dp)
-                        .height(36.dp),
+                        .padding(horizontal = Spacing.sm)
+                        .defaultMinSize(minHeight = TouchTarget.min),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
@@ -212,7 +218,7 @@ private fun SettingDropdown(
                             Icons.Default.ArrowDropDown,
                             contentDescription = null,
                             tint = TextSecondaryV2,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(IconSize.sm)
                         )
                     }
                 }
@@ -252,7 +258,7 @@ private fun SettingDropdown(
                                             Icons.Default.Check,
                                             contentDescription = null,
                                             tint = Accent,
-                                            modifier = Modifier.size(16.dp)
+                                            modifier = Modifier.size(IconSize.sm)
                                         )
                                     }
                                 }
@@ -294,16 +300,17 @@ private fun CameraSettingsControlsPreview() {
         ) {
             // 활성화된 상태
             CameraSettingsControls(
+                // 실촬영 판독값 — 정수 스톱이 아닌 값이라 자릿수·문자열 폭 변동이 프리뷰에서 드러난다.
                 currentSettings = CameraSettings(
-                    iso = "400",
-                    shutterSpeed = "1/125",
-                    aperture = "f/2.8",
-                    whiteBalance = "Auto",
-                    focusMode = "Auto",
-                    exposureCompensation = "0"
+                    iso = "640",
+                    shutterSpeed = "1/160",
+                    aperture = "f/3.5",
+                    whiteBalance = "5600K",
+                    focusMode = "AF-C",
+                    exposureCompensation = "-1/3"
                 ),
                 capabilities = CameraCapabilities(
-                    model = "Canon EOS R5",
+                    model = "NIKON Z 8",
                     canCapturePhoto = true,
                     canCaptureVideo = true,
                     canLiveView = true,
@@ -318,9 +325,9 @@ private fun CameraSettingsControlsPreview() {
                     canDownloadFiles = true,
                     canDeleteFiles = true,
                     canPreviewFiles = true,
-                    availableIsoSettings = listOf("AUTO", "100", "200", "400", "800", "1600", "3200"),
-                    availableShutterSpeeds = listOf("AUTO", "1/4000", "1/2000", "1/1000", "1/500", "1/250", "1/125"),
-                    availableApertures = listOf("AUTO", "f/1.4", "f/2", "f/2.8", "f/4", "f/5.6", "f/8"),
+                    availableIsoSettings = listOf("AUTO", "64", "100", "200", "400", "640", "800", "1600", "3200", "6400", "12800"),
+                    availableShutterSpeeds = listOf("AUTO", "1/8000", "1/4000", "1/2000", "1/1000", "1/500", "1/250", "1/200", "1/160", "1/125", "1/60"),
+                    availableApertures = listOf("AUTO", "f/1.8", "f/2.8", "f/3.5", "f/4", "f/5.6", "f/8", "f/11"),
                     availableWhiteBalanceSettings = emptyList(),
                     supportsRemoteControl = true,
                     supportsConfigChange = true,

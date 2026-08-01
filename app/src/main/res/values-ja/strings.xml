@@ -41,7 +41,7 @@
     <string name="pipeline_film_sim">FILM SIM</string>
     <string name="pipeline_color_transfer">色転送</string>
     <string name="pipeline_off">OFF</string>
-    <string name="pipeline_none">—</string>
+    <string name="pipeline_none">OFF</string>
     <string name="pipeline_recent_waiting">待機中</string>
     <string name="pipeline_exposure_mode">MODE</string>
     <string name="cd_toggle_film_sim">フィルムシミュレーションのオン/オフ</string>
@@ -346,7 +346,7 @@
     <string name="ptpip_check_scan_conditions">スキャン条件を確認してください</string>
     <string name="ptpip_shutter_listen_start">物理シャッターのワイヤレス受信を開始</string>
     <string name="ptpip_shutter_listen_stop">ワイヤレス受信を停止</string>
-    <string name="ptpip_no_camera_search_first">カメラがありません — まずSTAモードでカメラを検索してください</string>
+    <string name="ptpip_no_camera_search_first">カメラがありません - まずSTAモードでカメラを検索してください</string>
 
     <!-- i18n 패리티 보강: 오픈소스 라이선스 + 라이브뷰 (2026-07-13, backfill 미포함 잔여 9키) -->
     <string name="camera_preview_live_view">ライブビュー</string>
@@ -367,8 +367,8 @@
     <string name="connection_status_sta_connected">STAモード接続済み (%1$s)</string>
     <string name="connection_status_connecting">カメラに接続中…</string>
     <string name="connection_status_error">カメラ接続エラー</string>
-    <string name="connection_status_camera_ap">カメラAP接続済み — カメラ検索可能</string>
-    <string name="connection_status_wifi">Wi-Fi接続済み — カメラ検索可能</string>
+    <string name="connection_status_camera_ap">カメラAP接続済み - カメラ検索可能</string>
+    <string name="connection_status_wifi">Wi-Fi接続済み - カメラ検索可能</string>
     <string name="connection_status_disconnected">未接続</string>
     <string name="usb_init_connecting_camera">USBカメラに接続中…</string>
     <string name="usb_init_requesting_permission">USB権限を要求中…</string>

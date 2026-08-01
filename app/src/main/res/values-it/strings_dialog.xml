@@ -29,7 +29,7 @@
     <string name="dialog_reconnect">Riconnetti</string>
 
     <string name="dialog_permission_reprompt_title">Alcune autorizzazioni sono disattivate</string>
-    <string name="dialog_permission_reprompt_body">CamCon ha bisogno di queste autorizzazioni per funzionare al meglio:\n• Foto e contenuti multimediali — per salvare e mostrare le foto scattate\n• Notifiche — per avvisarti quando arrivano foto in background\n\nSono state negate. Attivale nelle Impostazioni.</string>
+    <string name="dialog_permission_reprompt_body">CamCon ha bisogno di queste autorizzazioni per funzionare al meglio:\n• Foto e contenuti multimediali - per salvare e mostrare le foto scattate\n• Notifiche - per avvisarti quando arrivano foto in background\n\nSono state negate. Attivale nelle Impostazioni.</string>
     <string name="dialog_permission_reprompt_settings">Apri impostazioni</string>
 
     <string name="dialog_usb_disconnected_title">Dispositivo USB disconnesso</string>

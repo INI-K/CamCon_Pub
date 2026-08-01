@@ -2,14 +2,17 @@ package com.inik.camcon.presentation.ui.screens.components
 
 import android.util.Log
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
@@ -37,10 +40,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.panpf.zoomimage.CoilZoomAsyncImage
@@ -48,10 +53,15 @@ import com.github.panpf.zoomimage.rememberCoilZoomState
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.presentation.ui.components.v2.AppDialog
+import com.inik.camcon.presentation.ui.components.v2.DividerLineV2
 import com.inik.camcon.presentation.ui.components.v2.SkeletonLoader
+import com.inik.camcon.presentation.theme.Accent
+import com.inik.camcon.presentation.theme.MonoReadout
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.StrokeWidth
 import com.inik.camcon.presentation.theme.Surface0
+import com.inik.camcon.presentation.theme.Surface1
 import com.inik.camcon.presentation.theme.TextPrimaryV2
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
 import com.inik.camcon.utils.LogMask
@@ -98,48 +108,18 @@ fun FullScreenTopBar(
         )
     }
 
-    Row(
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(Spacing.base),
-        horizontalArrangement = Arrangement.Start,
-        verticalAlignment = Alignment.CenterVertically
+            .padding(Spacing.base)
     ) {
-        IconButton(
-            onClick = onClose,
-            modifier = Modifier
-                .background(
-                    Surface0.copy(alpha = 0.6f),
-                    RoundedCornerShape(Radius.sm)
-                )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                Icons.Default.Close,
-                contentDescription = stringResource(R.string.cd_close),
-                tint = TextPrimaryV2
-            )
-        }
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        IconButton(
-            onClick = onInfoClick,
-            modifier = Modifier
-                .background(
-                    Surface0.copy(alpha = 0.6f),
-                    RoundedCornerShape(Radius.sm)
-                )
-        ) {
-            Icon(
-                Icons.Default.Info,
-                contentDescription = stringResource(R.string.cd_info),
-                tint = TextPrimaryV2
-            )
-        }
-
-        if (onDownloadClick != null) {
             IconButton(
-                onClick = onDownloadClick,
+                onClick = onClose,
                 modifier = Modifier
                     .background(
                         Surface0.copy(alpha = 0.6f),
@@ -147,63 +127,117 @@ fun FullScreenTopBar(
                     )
             ) {
                 Icon(
-                    Icons.Default.Download,
-                    contentDescription = stringResource(R.string.cd_download),
+                    Icons.Default.Close,
+                    contentDescription = stringResource(R.string.cd_close),
                     tint = TextPrimaryV2
                 )
             }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            IconButton(
+                onClick = onInfoClick,
+                modifier = Modifier
+                    .background(
+                        Surface0.copy(alpha = 0.6f),
+                        RoundedCornerShape(Radius.sm)
+                    )
+            ) {
+                Icon(
+                    Icons.Default.Info,
+                    contentDescription = stringResource(R.string.cd_info),
+                    tint = TextPrimaryV2
+                )
+            }
+
+            if (onDownloadClick != null) {
+                IconButton(
+                    onClick = onDownloadClick,
+                    modifier = Modifier
+                        .background(
+                            Surface0.copy(alpha = 0.6f),
+                            RoundedCornerShape(Radius.sm)
+                        )
+                ) {
+                    Icon(
+                        Icons.Default.Download,
+                        contentDescription = stringResource(R.string.cd_download),
+                        tint = TextPrimaryV2
+                    )
+                }
+            }
+
+            IconButton(
+                onClick = onShareClick,
+                modifier = Modifier
+                    .background(
+                        Surface0.copy(alpha = 0.6f),
+                        RoundedCornerShape(Radius.sm)
+                    )
+            ) {
+                Icon(
+                    Icons.Default.Share,
+                    contentDescription = stringResource(R.string.cd_share),
+                    tint = TextPrimaryV2
+                )
+            }
+
+            // 필름 편집 아이콘 — 로컬 디코딩 가능 파일이며 RAW 아닐 때만 호출자가 전달(Phase 4 진입점).
+            if (onFilmEditClick != null) {
+                IconButton(
+                    onClick = onFilmEditClick,
+                    modifier = Modifier
+                        .background(
+                            Surface0.copy(alpha = 0.6f),
+                            RoundedCornerShape(Radius.sm)
+                        )
+                ) {
+                    Icon(
+                        Icons.Default.Tune,
+                        contentDescription = stringResource(R.string.cd_film_edit),
+                        tint = TextPrimaryV2
+                    )
+                }
+            }
+
+            // H7-A — 삭제 아이콘 (구독·기능 게이팅 통과한 경우만 호출자가 전달)
+            if (onDeleteClick != null) {
+                IconButton(
+                    onClick = { showDeleteDialog = true },
+                    modifier = Modifier
+                        .background(
+                            Surface0.copy(alpha = 0.6f),
+                            RoundedCornerShape(Radius.sm)
+                        )
+                ) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = stringResource(R.string.preview_delete_title),
+                        tint = TextPrimaryV2
+                    )
+                }
+            }
         }
 
-        IconButton(
-            onClick = onShareClick,
+        Spacer(modifier = Modifier.height(Spacing.sm))
+
+        // 뷰어 본체에는 판독 슬롯이 0개라 무엇을 보고 있는지 화면에 표시되지 않았다.
+        // 파일명을 모노(tnum) readout 으로 세워 아이콘 나열 아래 정보 축을 만든다.
+        // (노출 3연 readout 은 EXIF 시트 Hero 로 세운다 — 상단 바에서 EXIF 를 읽으면
+        //  스와이프마다 JNI/PTP 왕복이 발생한다.)
+        Text(
+            text = photo.name,
+            style = MonoReadout,
+            color = TextPrimaryV2,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .background(
                     Surface0.copy(alpha = 0.6f),
                     RoundedCornerShape(Radius.sm)
                 )
-        ) {
-            Icon(
-                Icons.Default.Share,
-                contentDescription = stringResource(R.string.cd_share),
-                tint = TextPrimaryV2
-            )
-        }
-
-        // 필름 편집 아이콘 — 로컬 디코딩 가능 파일이며 RAW 아닐 때만 호출자가 전달(Phase 4 진입점).
-        if (onFilmEditClick != null) {
-            IconButton(
-                onClick = onFilmEditClick,
-                modifier = Modifier
-                    .background(
-                        Surface0.copy(alpha = 0.6f),
-                        RoundedCornerShape(Radius.sm)
-                    )
-            ) {
-                Icon(
-                    Icons.Default.Tune,
-                    contentDescription = stringResource(R.string.cd_film_edit),
-                    tint = TextPrimaryV2
-                )
-            }
-        }
-
-        // H7-A — 삭제 아이콘 (구독·기능 게이팅 통과한 경우만 호출자가 전달)
-        if (onDeleteClick != null) {
-            IconButton(
-                onClick = { showDeleteDialog = true },
-                modifier = Modifier
-                    .background(
-                        Surface0.copy(alpha = 0.6f),
-                        RoundedCornerShape(Radius.sm)
-                    )
-            ) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = stringResource(R.string.preview_delete_title),
-                    tint = TextPrimaryV2
-                )
-            }
-        }
+                .padding(horizontal = Spacing.sm, vertical = Spacing.xs)
+        )
     }
 }
 
@@ -343,35 +377,41 @@ fun FullScreenBottomThumbnails(
         }
     }
 
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(Surface0.copy(alpha = 0.8f))
-            .padding(Spacing.sm)
-    ) {
-        LazyRow(
-            state = lazyListState,
+    // 스트립은 사진 위에 떠 있는 별도 surface tier다. 경계에 헤어라인을 세우고
+    // 알파를 올려 이미지와 썸네일이 뭉개지지 않게 한다.
+    Column(modifier = modifier.fillMaxWidth()) {
+        DividerLineV2()
+
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Spacing.sm, vertical = Spacing.xs),
-            contentPadding = PaddingValues(horizontal = Spacing.xs),
-            horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
+                .background(Surface0.copy(alpha = 0.88f))
+                .padding(Spacing.sm)
         ) {
-            itemsIndexed(photos) { index, photo ->
-                val isSelected = index == currentPhotoIndex
+            LazyRow(
+                state = lazyListState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Spacing.sm, vertical = Spacing.xs),
+                contentPadding = PaddingValues(horizontal = Spacing.xs),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
+            ) {
+                itemsIndexed(photos) { index, photo ->
+                    val isSelected = index == currentPhotoIndex
 
-                ServerThumbnailItemWrapper(
-                    photo = photo,
-                    isSelected = isSelected,
-                    thumbnailData = thumbnailCache[photo.path],
-                    onClick = {
-                        onPhotoSelected(photo)
-                    },
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clip(RoundedCornerShape(Radius.sm))
-                        .clickable { onPhotoSelected(photo) }
-                )
+                    ServerThumbnailItemWrapper(
+                        photo = photo,
+                        isSelected = isSelected,
+                        thumbnailData = thumbnailCache[photo.path],
+                        onClick = {
+                            onPhotoSelected(photo)
+                        },
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(RoundedCornerShape(Radius.sm))
+                            .clickable { onPhotoSelected(photo) }
+                    )
+                }
             }
         }
     }
@@ -393,34 +433,39 @@ fun LocalBottomThumbnailStripWrapper(
         }
     }
 
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(Surface0.copy(alpha = 0.8f))
-            .padding(Spacing.sm)
-    ) {
-        LazyRow(
-            state = lazyListState,
+    // 서버 스트립과 동일 규칙 — tier 경계 헤어라인 + 알파 0.88.
+    Column(modifier = modifier.fillMaxWidth()) {
+        DividerLineV2()
+
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Spacing.sm, vertical = Spacing.xs),
-            contentPadding = PaddingValues(horizontal = Spacing.xs),
-            horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
+                .background(Surface0.copy(alpha = 0.88f))
+                .padding(Spacing.sm)
         ) {
-            itemsIndexed(photos) { index, photo ->
-                val isSelected = index == currentPhotoIndex
+            LazyRow(
+                state = lazyListState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Spacing.sm, vertical = Spacing.xs),
+                contentPadding = PaddingValues(horizontal = Spacing.xs),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
+            ) {
+                itemsIndexed(photos) { index, photo ->
+                    val isSelected = index == currentPhotoIndex
 
-                LocalThumbnailItemWrapper(
-                    photo = photo,
-                    isSelected = isSelected,
-                    onClick = {
-                        onPhotoSelected(photo)
-                    },
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clip(RoundedCornerShape(Radius.sm))
-                        .clickable { onPhotoSelected(photo) }
-                )
+                    LocalThumbnailItemWrapper(
+                        photo = photo,
+                        isSelected = isSelected,
+                        onClick = {
+                            onPhotoSelected(photo)
+                        },
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(RoundedCornerShape(Radius.sm))
+                            .clickable { onPhotoSelected(photo) }
+                    )
+                }
             }
         }
     }
@@ -434,11 +479,17 @@ private fun ServerThumbnailItemWrapper(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // 이 앱은 색 판정이 기능이라 사진 위에 앰버 wash 를 깔면 안 된다.
+    // 선택은 Accent 헤어라인 테두리로, 비선택은 감광(alpha)으로만 표현한다.
     Box(
         modifier = modifier
-            .background(
-                if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surfaceVariant,
-                RoundedCornerShape(Radius.sm)
+            .background(Surface1, RoundedCornerShape(Radius.sm))
+            .then(
+                if (isSelected) {
+                    Modifier.border(StrokeWidth.thin, Accent, RoundedCornerShape(Radius.sm))
+                } else {
+                    Modifier
+                }
             )
             .clip(RoundedCornerShape(Radius.sm))
     ) {
@@ -453,22 +504,13 @@ private fun ServerThumbnailItemWrapper(
                     .crossfade(true)
                     .build(),
                 contentDescription = photo.name,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .alpha(if (isSelected) 1f else 0.55f),
                 contentScale = ContentScale.Crop
             )
         } else {
             PhotoThumbnailLoadingState()
-        }
-
-        if (isSelected) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                        RoundedCornerShape(Radius.sm)
-                    )
-            )
         }
     }
 }
@@ -480,11 +522,16 @@ private fun LocalThumbnailItemWrapper(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // 서버 썸네일과 동일 규칙 — 선택은 Accent 테두리, 비선택은 감광. 색 왜곡 없음.
     Box(
         modifier = modifier
-            .background(
-                if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surfaceVariant,
-                RoundedCornerShape(Radius.sm)
+            .background(Surface1, RoundedCornerShape(Radius.sm))
+            .then(
+                if (isSelected) {
+                    Modifier.border(StrokeWidth.thin, Accent, RoundedCornerShape(Radius.sm))
+                } else {
+                    Modifier
+                }
             )
             .clip(RoundedCornerShape(Radius.sm))
     ) {
@@ -499,20 +546,11 @@ private fun LocalThumbnailItemWrapper(
                 .crossfade(true)
                 .build(),
             contentDescription = photo.name,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .alpha(if (isSelected) 1f else 0.55f),
             contentScale = ContentScale.Crop
         )
-
-        if (isSelected) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                        RoundedCornerShape(Radius.sm)
-                    )
-            )
-        }
     }
 }
 

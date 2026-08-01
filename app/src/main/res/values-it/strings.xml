@@ -41,7 +41,7 @@
     <string name="pipeline_film_sim">FILM SIM</string>
     <string name="pipeline_color_transfer">Trasf. colore</string>
     <string name="pipeline_off">OFF</string>
-    <string name="pipeline_none">—</string>
+    <string name="pipeline_none">OFF</string>
     <string name="pipeline_recent_waiting">In attesa</string>
     <string name="pipeline_exposure_mode">MODE</string>
     <string name="cd_toggle_film_sim">Attiva/disattiva simulazione pellicola</string>
@@ -344,7 +344,7 @@
     <string name="ptpip_check_scan_conditions">Controlla le condizioni di scansione</string>
     <string name="ptpip_shutter_listen_start">Avvia ricezione wireless dello scatto fisico</string>
     <string name="ptpip_shutter_listen_stop">Arresta ricezione wireless</string>
-    <string name="ptpip_no_camera_search_first">Nessuna fotocamera — cerca prima una fotocamera in modalità STA</string>
+    <string name="ptpip_no_camera_search_first">Nessuna fotocamera - cerca prima una fotocamera in modalità STA</string>
 
     <!-- i18n 누락 보강: 백필 미포함 잔여 (2026-07-13) -->
     <string name="open_source_licenses">Licenze Open Source</string>
@@ -365,8 +365,8 @@
     <string name="connection_status_sta_connected">Modalità STA connessa (%1$s)</string>
     <string name="connection_status_connecting">Connessione alla fotocamera…</string>
     <string name="connection_status_error">Errore di connessione della fotocamera</string>
-    <string name="connection_status_camera_ap">AP fotocamera connesso — ricerca fotocamera disponibile</string>
-    <string name="connection_status_wifi">Wi-Fi connesso — ricerca fotocamera disponibile</string>
+    <string name="connection_status_camera_ap">AP fotocamera connesso - ricerca fotocamera disponibile</string>
+    <string name="connection_status_wifi">Wi-Fi connesso - ricerca fotocamera disponibile</string>
     <string name="connection_status_disconnected">Non connesso</string>
     <string name="usb_init_connecting_camera">Connessione alla fotocamera USB…</string>
     <string name="usb_init_requesting_permission">Richiesta autorizzazione USB…</string>

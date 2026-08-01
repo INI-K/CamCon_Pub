@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
@@ -41,6 +42,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -52,14 +54,15 @@ import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
 import com.inik.camcon.presentation.theme.Body
 import com.inik.camcon.presentation.theme.BodySmall
+import com.inik.camcon.presentation.theme.DisplayL
 import com.inik.camcon.presentation.theme.HeadingM
-import com.inik.camcon.presentation.theme.HeadingXL
 import com.inik.camcon.presentation.theme.IconSize
+import com.inik.camcon.presentation.theme.MicroLabel
+import com.inik.camcon.presentation.theme.MonoReadout
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.TextPrimaryV2
 import com.inik.camcon.presentation.theme.TextSecondaryV2
 import com.inik.camcon.presentation.theme.TouchTarget
-import com.inik.camcon.presentation.ui.components.v2.DividerLineV2
 import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
 import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
@@ -141,10 +144,10 @@ fun HotspotStaModeContent(
             }
         }
 
+        // 히어로와 연결 섹션은 같은 surface tier 위에 있어 헤어라인이 경계를 만들지 못한다.
+        // 정본 규칙상 헤어라인은 tier가 바뀌는 자리 전용 → 여백만으로 구획한다.
         item {
             Spacer(modifier = Modifier.height(Spacing.xl))
-            DividerLineV2()
-            Spacer(modifier = Modifier.height(Spacing.lg))
         }
 
         item {
@@ -166,8 +169,8 @@ fun HotspotStaModeContent(
 }
 
 /**
- * 핫스팟 상태 히어로 — 카드 테두리 없이 중앙 정렬 대형 아이콘 + 상태 텍스트.
- * 꺼짐: 안내 문구 + 테더링 설정 열기 버튼. 켜짐: SSID/Gateway 보조 표시.
+ * 핫스팟 상태 히어로 — 카드 테두리 없이 좌측 앵커 대형 아이콘 + DisplayL 상태 텍스트.
+ * 꺼짐: 안내 문구 + 테더링 설정 열기 버튼. 켜짐: SSID/Gateway 모노 판독 행.
  *
  * Android 정책상 일반 앱은 표준 모바일 핫스팟을 코드로 직접 켤 수 없으므로
  * (TETHER_PRIVILEGED = signature 권한) 설정 화면으로 사용자를 안내한다.
@@ -182,7 +185,7 @@ private fun HotspotStatusHero(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = Spacing.xl, bottom = Spacing.sm),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.Start
     ) {
         // 히어로 대형 아이콘 — 기존 히어로 선례(Onboarding 72dp 등) 관례상 치수 하드코딩
         Icon(
@@ -192,31 +195,25 @@ private fun HotspotStatusHero(
             modifier = Modifier.size(64.dp)
         )
         Spacer(modifier = Modifier.height(Spacing.md))
+        // 화면 Hero — 이 탭의 존재 이유(핫스팟 ON/OFF)를 34sp로 선언한다.
+        // 본문 Body(14sp) 대비 2.4배라 위계가 크기만으로 전달된다.
         Text(
             text = stringResource(
                 if (enabled) R.string.ptpip_hotspot_enabled
                 else R.string.ptpip_hotspot_disabled
             ),
-            style = HeadingXL,
-            color = TextPrimaryV2,
-            textAlign = TextAlign.Center
+            style = DisplayL,
+            color = if (enabled) TextPrimaryV2 else TextSecondaryV2,
+            textAlign = TextAlign.Start,
+            modifier = Modifier.fillMaxWidth()
         )
         if (enabled) {
+            Spacer(modifier = Modifier.height(Spacing.md))
             state.ssidLabel?.let {
-                Spacer(modifier = Modifier.height(Spacing.sm))
-                Text(
-                    text = "SSID: $it",
-                    style = BodySmall,
-                    color = TextSecondaryV2
-                )
+                HotspotReadoutRow(label = "SSID", value = it)
             }
             state.gatewayLabel?.let {
-                Spacer(modifier = Modifier.height(Spacing.xs))
-                Text(
-                    text = "Gateway: $it",
-                    style = BodySmall,
-                    color = TextSecondaryV2
-                )
+                HotspotReadoutRow(label = "GATEWAY", value = it)
             }
         } else {
             Spacer(modifier = Modifier.height(Spacing.sm))
@@ -224,7 +221,7 @@ private fun HotspotStatusHero(
                 text = stringResource(R.string.ptpip_hotspot_hero_hint),
                 style = Body,
                 color = TextSecondaryV2,
-                textAlign = TextAlign.Center
+                modifier = Modifier.widthIn(max = 420.dp)
             )
             Spacer(modifier = Modifier.height(Spacing.lg))
             PrimaryButton(
@@ -234,6 +231,36 @@ private fun HotspotStatusHero(
                 modifier = Modifier.fillMaxWidth()
             )
         }
+    }
+}
+
+/**
+ * 히어로 하위 판독값 한 줄 — 좌측 계측기 라벨 / 우측 모노 탭형 수치.
+ * 라벨은 대문자 영문 프로토콜 용어(SSID·GATEWAY)라 [MicroLabel] 트래킹 규약에 부합한다.
+ */
+@Composable
+private fun HotspotReadoutRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = Spacing.xs),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MicroLabel,
+            color = TextSecondaryV2
+        )
+        Spacer(modifier = Modifier.width(Spacing.md))
+        Text(
+            text = value,
+            style = MonoReadout,
+            color = TextPrimaryV2,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.End,
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 
@@ -294,13 +321,17 @@ private fun CameraConnectSection(
         )
         Spacer(modifier = Modifier.height(Spacing.sm))
         // 긴 로케일 라벨(fr/de)에서 IP 필드가 좁아지지 않도록 버튼은 아래 별도 행 전폭.
+        // 최대 15자 IPv4라 전폭이 낭비 — 내용 길이에 맞춰 폭을 끊어 전폭 스택에 리듬을 준다.
         OutlinedTextField(
             value = manualIp,
             onValueChange = onIpChange,
             enabled = enabled,
             singleLine = true,
-            placeholder = { Text("192.168.49.137") },
-            modifier = Modifier.fillMaxWidth()
+            textStyle = MonoReadout,
+            placeholder = {
+                Text("192.168.49.137", style = MonoReadout, color = TextSecondaryV2)
+            },
+            modifier = Modifier.widthIn(max = 220.dp)
         )
         Spacer(modifier = Modifier.height(Spacing.sm))
         SecondaryButton(

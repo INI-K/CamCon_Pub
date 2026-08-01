@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- info-screens (相机信息 / 开源许可证) V3 UI 字符串。无表情符号与项目符号。 -->
+<resources>
+    <string name="v3_abilities_grade_full">支持完全远程控制</string>
+    <string name="v3_abilities_grade_download">仅支持下载</string>
+    <string name="v3_abilities_grade_partial">部分支持</string>
+
+    <string name="v3_abilities_summary_full">此相机支持所有远程功能。</string>
+    <string name="v3_abilities_summary_download">此相机仅支持文件下载。无法使用远程拍摄和实时取景。部分 %1$s 型号的 PTP 支持有限。</string>
+    <string name="v3_abilities_summary_partial">不支持实时取景，但可远程拍摄。</string>
+    <string name="v3_abilities_summary_some">部分相机功能可能受限。</string>
+
+    <string name="v3_abilities_cap_capture">远程拍摄</string>
+    <string name="v3_abilities_cap_liveview">实时取景</string>
+    <string name="v3_abilities_cap_config">设置控制</string>
+    <string name="v3_abilities_cap_files">文件管理</string>
+
+    <string name="v3_diag_section_title">诊断 (ADMIN)</string>
+
+    <string name="v3_licenses_native_section">随应用打包</string>
+</resources>

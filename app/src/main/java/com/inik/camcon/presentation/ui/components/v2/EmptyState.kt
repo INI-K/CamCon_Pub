@@ -22,7 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.inik.camcon.presentation.theme.BodySmall
 import com.inik.camcon.presentation.theme.CamConTheme
-import com.inik.camcon.presentation.theme.HeadingM
+import com.inik.camcon.presentation.theme.DisplayM
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.Surface1
 import com.inik.camcon.presentation.theme.TextPrimaryV2
@@ -32,7 +32,7 @@ import com.inik.camcon.presentation.theme.TextTertiary
 /**
  * V2 Empty 상태 — 중앙 정렬 Column.
  *
- * 레이아웃: 32dp icon(TextTertiary) → Spacing.md → HeadingM
+ * 레이아웃: 32dp icon(TextTertiary) → Spacing.md → DisplayM
  *  → (옵션) Spacing.sm + BodySmall description
  *  → (옵션) Spacing.lg + action(예: PrimaryButton)
  */
@@ -60,7 +60,7 @@ fun EmptyState(
         Spacer(modifier = Modifier.height(Spacing.md))
         Text(
             text = title,
-            style = HeadingM,
+            style = DisplayM,
             color = TextPrimaryV2,
             textAlign = TextAlign.Center
         )

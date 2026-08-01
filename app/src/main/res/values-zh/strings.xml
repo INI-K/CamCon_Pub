@@ -40,7 +40,7 @@
     <string name="pipeline_film_sim">FILM SIM</string>
     <string name="pipeline_color_transfer">色彩转移</string>
     <string name="pipeline_off">OFF</string>
-    <string name="pipeline_none">—</string>
+    <string name="pipeline_none">OFF</string>
     <string name="pipeline_recent_waiting">等待中</string>
     <string name="pipeline_exposure_mode">MODE</string>
     <string name="cd_toggle_film_sim">开启/关闭胶片模拟</string>
@@ -342,7 +342,7 @@
     <string name="ptpip_check_scan_conditions">请检查扫描条件</string>
     <string name="ptpip_shutter_listen_start">开始无线接收物理快门</string>
     <string name="ptpip_shutter_listen_stop">停止无线接收</string>
-    <string name="ptpip_no_camera_search_first">没有相机 — 请先在 STA 模式下搜索相机</string>
+    <string name="ptpip_no_camera_search_first">没有相机 - 请先在 STA 模式下搜索相机</string>
 
     <!-- i18n 패리티 보강: 오픈소스 라이선스 + 라이브뷰 + USB (2026-07-13, backfill 미포함 잔여 11키) -->
     <string name="camera_preview_live_view">实时取景</string>
@@ -365,8 +365,8 @@
     <string name="connection_status_sta_connected">STA 模式已连接 (%1$s)</string>
     <string name="connection_status_connecting">正在连接相机…</string>
     <string name="connection_status_error">相机连接错误</string>
-    <string name="connection_status_camera_ap">相机 AP 已连接 — 可搜索相机</string>
-    <string name="connection_status_wifi">Wi-Fi 已连接 — 可搜索相机</string>
+    <string name="connection_status_camera_ap">相机 AP 已连接 - 可搜索相机</string>
+    <string name="connection_status_wifi">Wi-Fi 已连接 - 可搜索相机</string>
     <string name="connection_status_disconnected">未连接</string>
     <string name="usb_init_connecting_camera">正在连接 USB 相机…</string>
     <string name="usb_init_requesting_permission">正在请求 USB 权限…</string>

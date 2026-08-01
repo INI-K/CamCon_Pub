@@ -70,11 +70,11 @@ internal fun CameraControlSection(
                 onCheckedChange = onAutoStartEventChange
             )
         } else if (isCameraControlsEnabled && !isAdminTier) {
-            ClickableRowV2(
+            // ADMIN 전용 기능이라 구매로 열리지 않는다 → 페이월 진입 없이 잠금 표시만.
+            LockedRowV2(
                 icon = Icons.Default.Visibility,
                 title = stringResource(R.string.settings_v2_liveview_locked_title),
-                subtitle = stringResource(R.string.settings_v2_liveview_locked_subtitle),
-                onClick = { }
+                subtitle = stringResource(R.string.settings_v2_liveview_locked_subtitle)
             )
             SwitchRowV2(
                 icon = Icons.Default.Settings,
@@ -266,13 +266,14 @@ internal fun FilmSimulationSection(
 }
 
 /**
- * RAW 파일 다운로드 설정 섹션 — 허용(PRO+) 시 토글, 아니면 잠금 안내.
+ * RAW 파일 다운로드 설정 섹션 — 허용(PRO+) 시 토글, 아니면 잠금 행에서 페이월([onUpgradeClick])로.
  */
 @Composable
 internal fun RawDownloadSection(
     isRawDownloadAllowed: Boolean,
     isRawFileDownloadEnabled: Boolean,
-    onRawDownloadChange: (Boolean) -> Unit
+    onRawDownloadChange: (Boolean) -> Unit,
+    onUpgradeClick: () -> Unit
 ) {
     SettingsSection(title = stringResource(R.string.settings_v2_section_raw_download)) {
         if (isRawDownloadAllowed) {
@@ -288,66 +289,33 @@ internal fun RawDownloadSection(
                 onCheckedChange = onRawDownloadChange
             )
         } else {
-            ClickableRowV2(
+            LockedRowV2(
                 icon = Icons.Default.Photo,
                 title = stringResource(R.string.settings_v2_raw_download_title),
                 subtitle = stringResource(R.string.settings_v2_raw_download_locked),
-                onClick = { }
+                onUpgradeClick = onUpgradeClick
             )
         }
     }
 }
 
 /**
- * 연결된 카메라 정보 섹션 — 연결 종류/모델/기능 제한을 읽기 전용으로 표시한다.
+ * 연결된 카메라 정보 섹션 — 기능 제한 고지 전용.
+ *
+ * 연결 종류·모델명은 화면 상단 Hero([CameraStatusHero])가 소유하므로 여기서 반복하지 않는다.
+ * 고지할 제한이 없으면 섹션 자체를 렌더하지 않아 빈 패널을 남기지 않는다.
  */
 @Composable
 internal fun ConnectedCameraSection(
-    isUsbConnected: Boolean,
-    isPtpipConnected: Boolean,
-    connectedCameraModel: String?,
-    connectedCameraManufacturer: String?,
     cameraFunctionLimitation: UiText?
 ) {
+    val limitation = cameraFunctionLimitation ?: return
+    val context = LocalContext.current
     SettingsSection(title = stringResource(R.string.settings_v2_section_connected_camera)) {
-        val context = LocalContext.current
-        val cameraModelNone = stringResource(R.string.settings_v2_camera_model_none)
-        val connectionType = when {
-            isUsbConnected -> stringResource(R.string.settings_v2_connection_type_usb)
-            isPtpipConnected -> stringResource(R.string.settings_v2_connection_type_wifi)
-            else -> stringResource(R.string.settings_v2_connection_type_none)
-        }
-
-        val cameraName = when {
-            connectedCameraModel != null && connectedCameraManufacturer != null ->
-                "$connectedCameraManufacturer $connectedCameraModel"
-            connectedCameraModel != null ->
-                connectedCameraModel
-            else -> cameraModelNone
-        }
-
-        ClickableRowV2(
-            icon = Icons.Default.CameraAlt,
-            title = stringResource(R.string.settings_v2_connection_status_title),
-            subtitle = connectionType,
-            onClick = { }
+        StaticRowV2(
+            icon = Icons.Default.Info,
+            title = stringResource(R.string.settings_v2_camera_limitation_title),
+            subtitle = limitation.resolve(context)
         )
-
-        if (isUsbConnected || isPtpipConnected) {
-            ClickableRowV2(
-                icon = Icons.Default.Info,
-                title = stringResource(R.string.settings_v2_camera_model_title),
-                subtitle = cameraName ?: cameraModelNone,
-                onClick = { }
-            )
-            cameraFunctionLimitation?.let { limitation ->
-                ClickableRowV2(
-                    icon = Icons.Default.Info,
-                    title = stringResource(R.string.settings_v2_camera_limitation_title),
-                    subtitle = limitation.resolve(context),
-                    onClick = { }
-                )
-            }
-        }
     }
 }

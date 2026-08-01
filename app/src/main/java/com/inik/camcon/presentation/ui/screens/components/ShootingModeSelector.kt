@@ -67,7 +67,8 @@ fun ShootingModeSelector(
     cameraCapabilities: CameraCapabilities?,
     onModeSelected: (ShootingMode) -> Unit,
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(horizontal = 20.dp),
+    // Standard 등급(DESIGN_SYSTEM_V2 §8.3) — base 14dp.
+    contentPadding: PaddingValues = PaddingValues(horizontal = Spacing.base),
     onUnsupportedModeClick: (ShootingMode) -> Unit = {}
 ) {
     // 앱이 구현했고(+카메라가 지원하는) 모드만 노출한다. 미구현/미지원 칩은 숨겨 클러터를 제거.
@@ -89,7 +90,7 @@ fun ShootingModeSelector(
 
     LazyRow(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
         contentPadding = contentPadding
     ) {
         items(
