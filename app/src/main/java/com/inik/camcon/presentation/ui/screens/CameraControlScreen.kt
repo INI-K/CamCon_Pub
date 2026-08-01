@@ -36,6 +36,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -209,7 +210,8 @@ fun CameraControlScreen(
     val isLiveViewGridEnabled by appSettingsViewModel.isLiveViewGridEnabled.collectAsStateWithLifecycle()
     val isHistogramEnabled by appSettingsViewModel.isHistogramEnabled.collectAsStateWithLifecycle()
     val isFocusPeakingEnabled by appSettingsViewModel.isFocusPeakingEnabled.collectAsStateWithLifecycle()
-    val histogramData by viewModel.histogramData.collectAsStateWithLifecycle()
+    // histogramData 는 프레임레이트로 갱신되므로 여기서 수집하지 않는다.
+    // liveViewFrame 과 같은 이유로 각 레이아웃의 라이브뷰 최하위 스코프에서만 수집한다.
     val hasSeenCaptureCoachmark by appSettingsViewModel.hasSeenCaptureCoachmark.collectAsStateWithLifecycle()
     // CINE 이미지 파이프라인 패널 상태 (AppSettings 단일 소스 — 이미 존재하는 StateFlow 소비, VM 추가 없음)
     val isFilmSimulationEnabled by appSettingsViewModel.isFilmSimulationEnabled.collectAsStateWithLifecycle()
@@ -361,12 +363,15 @@ fun CameraControlScreen(
     var showTimelapseDialog by rememberSaveable { mutableStateOf(false) }
     var showBottomSheet by rememberSaveable { mutableStateOf(false) }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = Surface0,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
-    ) { scaffoldPadding ->
+    // MainActivity 가 이미 Scaffold(SubcomposeLayout) 안에서 이 화면을 NavHost 목적지로 띄운다.
+    // 여기서 Scaffold 를 또 열면 SubcomposeLayout 이 2중이 되어 측정 단계마다 슬롯 컴포지션 부기 비용을 이중으로 낸다.
+    // 이 Scaffold 가 쓰던 슬롯은 snackbarHost 하나뿐이고 contentWindowInsets 가 0이라
+    // 넘겨주던 padding 도 항상 0이었으므로, Box + SnackbarHost 로 치환한다(동작 보존).
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Surface0)
+    ) {
         Box(modifier = Modifier.fillMaxSize()) {
             if (showBottomSheet) {
                 ModalBottomSheet(
@@ -403,7 +408,7 @@ fun CameraControlScreen(
 //                        "CameraControl",
 //                        "🌟 전체화면 모드 렌더링 - isFullscreen=$isFullscreen, isCameraControlsEnabled=${appSettings.isCameraControlsEnabled}, capturedPhotos=${uiState.capturedPhotos.size}"
 //                    )
-                    // 전체화면 모드는 scaffoldPadding 무시 (시스템 UI 숨김)
+                    // 전체화면 모드는 contentPadding 무시 (시스템 UI 숨김)
                     FullscreenCameraLayout(
                         uiState = uiState,
                         cameraFeed = cameraFeed,
@@ -425,7 +430,6 @@ fun CameraControlScreen(
                         onToggleLiveViewGrid = {
                             appSettingsViewModel.setLiveViewGridEnabled(!isLiveViewGridEnabled)
                         },
-                        histogramData = histogramData,
                         isHistogramEnabled = isHistogramEnabled,
                         onToggleHistogram = {
                             appSettingsViewModel.setHistogramEnabled(!isHistogramEnabled)
@@ -462,13 +466,12 @@ fun CameraControlScreen(
                         },
                         onShowBottomSheet = { showBottomSheet = true },
                         onGalleryClick = onGalleryClick,
-                        contentPadding = scaffoldPadding,
+                        contentPadding = PaddingValues(0.dp),   // 구 scaffoldPadding — insets 0 이라 항상 0이었다
                         isShutterSoundEnabled = isShutterSoundEnabled,
                         isLiveViewGridEnabled = isLiveViewGridEnabled,
                         onToggleLiveViewGrid = {
                             appSettingsViewModel.setLiveViewGridEnabled(!isLiveViewGridEnabled)
                         },
-                        histogramData = histogramData,
                         isHistogramEnabled = isHistogramEnabled,
                         onToggleHistogram = {
                             appSettingsViewModel.setHistogramEnabled(!isHistogramEnabled)
@@ -499,6 +502,11 @@ fun CameraControlScreen(
                 }
             }
         }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
 
     if (uiState.isUsbInitializing) {
@@ -715,7 +723,6 @@ private fun PortraitCameraLayout(
     isShutterSoundEnabled: Boolean = true,
     isLiveViewGridEnabled: Boolean = false,
     onToggleLiveViewGrid: () -> Unit = {},
-    histogramData: com.inik.camcon.presentation.util.HistogramData? = null,
     isHistogramEnabled: Boolean = false,
     onToggleHistogram: () -> Unit = {},
     isFocusPeakingEnabled: Boolean = false,
@@ -869,6 +876,7 @@ private fun PortraitCameraLayout(
                 // 프레임레이트 recomposition 을 CameraPreviewArea 서브트리로 국한한다.
                 val liveViewFrame by viewModel.liveViewFrame.collectAsStateWithLifecycle()
                 val decodedBitmap by viewModel.decodedLiveViewBitmap.collectAsStateWithLifecycle()
+                val histogramData by viewModel.histogramData.collectAsStateWithLifecycle()
 
                 CameraPreviewArea(
                     liveViewState = uiState.liveView,
@@ -1283,7 +1291,6 @@ private fun FullscreenCameraLayout(
     isShutterSoundEnabled: Boolean = true,
     isLiveViewGridEnabled: Boolean = false,
     onToggleLiveViewGrid: () -> Unit = {},
-    histogramData: com.inik.camcon.presentation.util.HistogramData? = null,
     isHistogramEnabled: Boolean = false,
     onToggleHistogram: () -> Unit = {},
     isFocusPeakingEnabled: Boolean = false,
@@ -1318,6 +1325,7 @@ private fun FullscreenCameraLayout(
             // 프레임레이트 recomposition 을 CameraPreviewArea 서브트리로 국한한다.
             val liveViewFrame by viewModel.liveViewFrame.collectAsStateWithLifecycle()
             val decodedBitmap by viewModel.decodedLiveViewBitmap.collectAsStateWithLifecycle()
+            val histogramData by viewModel.histogramData.collectAsStateWithLifecycle()
 
             // 라이브뷰 모드
             CameraPreviewArea(
