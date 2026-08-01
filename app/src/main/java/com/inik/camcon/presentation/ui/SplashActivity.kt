@@ -3,6 +3,7 @@ package com.inik.camcon.presentation.ui
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.ReportDrawnWhen
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -114,7 +115,10 @@ class SplashActivity : ComponentActivity() {
         UiText.Resource(R.string.splash_initializing)
     )
     private var isLibraryLoaded by mutableStateOf(false)
-    private var subscriptionTier: SubscriptionTier? = null
+
+    // 관찰 가능해야 한다. 일반 필드로 두면 ReportDrawnWhen 조건이 티어 도착 시 재평가되지 않고,
+    // SplashScreen 의 티어 표시도 갱신되지 않는다. 항상 Main 디스패처에서만 쓴다.
+    private var subscriptionTier by mutableStateOf<SubscriptionTier?>(null)
     private var hasNavigated = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -136,6 +140,11 @@ class SplashActivity : ComponentActivity() {
                 LaunchedEffect(Unit) {
                     appVersionViewModel.checkForUpdate()
                 }
+
+                // TTFD(time to full display) 기준점. 이게 없으면 StartupTimingMetric 의
+                // timeToFullDisplay 가 timeToInitialDisplay 로 붕괴해, libgphoto2 .so 로딩과
+                // 구독 티어 조회에 걸린 시간이 측정에서 통째로 빠진다(스타트업 수치가 거짓으로 좋아진다).
+                ReportDrawnWhen { isLibraryLoaded && subscriptionTier != null }
 
                 SplashScreen(
                     versionState = versionState,

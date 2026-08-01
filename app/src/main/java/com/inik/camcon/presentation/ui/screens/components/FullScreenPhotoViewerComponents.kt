@@ -252,8 +252,13 @@ fun PhotoPagerImage(
 ) {
     val context = LocalContext.current
 
+    // 로컬 파일 존재 여부는 세션 내 불변이다. remember 없이 두면 HorizontalPager 가
+    // 새 페이지를 컴포즈할 때마다(=스와이프/플링 프레임 안에서) 블로킹 stat 시스템콜을 친다.
+    // PTP 경로(/store_00010001/DCIM/...)는 기기 파일시스템에 없어 매번 ENOENT 까지 가는 헛 syscall 이다.
+    val localFileExists = remember(photo.path) { java.io.File(photo.path).exists() }
+
     val imageModel: Any? = when {
-        isLocalPhoto || photo.uri != null || java.io.File(photo.path).exists() -> {
+        isLocalPhoto || photo.uri != null || localFileExists -> {
             Log.d("PhotoPagerImage", "로컬 파일 사용: ${LogMask.path(photo.path)}")
             // 스코프드 스토리지(API29+)에서 raw 경로가 막히면 MediaStore content URI 로 관통. Coil 이 무권한 로드.
             photo.uri?.let { android.net.Uri.parse(it) } ?: java.io.File(photo.path)
