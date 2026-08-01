@@ -35,10 +35,16 @@ import com.inik.camcon.presentation.ui.components.v2.AppDialog
 import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
 import com.inik.camcon.presentation.ui.components.v2.SkeletonLoader
 import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
+import com.inik.camcon.presentation.theme.Body
+import com.inik.camcon.presentation.theme.BodyLarge
+import com.inik.camcon.presentation.theme.BodySmall
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.Surface0
+import com.inik.camcon.presentation.theme.TextPrimaryV2
+import com.inik.camcon.presentation.theme.TextSecondaryV2
+import com.inik.camcon.presentation.theme.TextTertiary
 
 /**
  * 간단한 로딩 오버레이
@@ -139,8 +145,8 @@ fun UsbInitializationOverlay(
 
                 Text(
                     text = stringResource(R.string.usb_init_please_wait),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    style = BodySmall,
+                    color = TextSecondaryV2,
                     textAlign = TextAlign.Center
                 )
             }
@@ -167,23 +173,25 @@ fun PtpTimeoutDialog(
             )
         },
         text = {
+            // 리드 16sp → 보조 14sp → 각주 13sp. 위계는 스케일+색 토큰으로만 표현하고
+            // onSurface 에 alpha 를 곱해 만들던 흐린 회색은 쓰지 않는다.
             Column {
                 Text(
                     text = stringResource(R.string.usb_init_timeout_message),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface
+                    style = BodyLarge,
+                    color = TextPrimaryV2
                 )
                 Spacer(modifier = Modifier.height(Spacing.sm))
                 Text(
                     text = stringResource(R.string.usb_init_restart_fix),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                    style = Body,
+                    color = TextSecondaryV2
                 )
                 Spacer(modifier = Modifier.height(Spacing.sm))
                 Text(
                     text = stringResource(R.string.usb_init_check_instructions),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    style = BodySmall,
+                    color = TextTertiary
                 )
             }
         },

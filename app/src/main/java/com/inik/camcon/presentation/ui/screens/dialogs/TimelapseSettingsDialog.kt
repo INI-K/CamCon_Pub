@@ -9,9 +9,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.ui.components.v2.AppDialog
 import com.inik.camcon.domain.model.ThemeMode
 
@@ -43,7 +43,7 @@ fun TimelapseSettingsDialog(
                     label = { Text(stringResource(R.string.timelapse_interval_label)) },
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Spacing.md))
                 OutlinedTextField(
                     value = totalShots,
                     onValueChange = { totalShots = it },

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Réglages Hero (indicateur de connexion) -->
+    <string name="settings_v3_hero_eyebrow">APPAREIL</string>
+    <string name="settings_v3_hero_camera_none">Aucun appareil</string>
+
+    <!-- Stockage serveur — état avant le branchement de l’API de quota -->
+    <string name="settings_v3_storage_pending">En attente des données d’usage</string>
+</resources>

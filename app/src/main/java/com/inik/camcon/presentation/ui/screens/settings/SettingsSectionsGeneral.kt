@@ -12,11 +12,14 @@ import androidx.compose.material.icons.filled.Redeem
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Update
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.model.User
+import com.inik.camcon.presentation.theme.MonoNumeric
+import com.inik.camcon.presentation.theme.TextTertiary
 import com.inik.camcon.presentation.ui.components.v2.DestructiveRowV2
 
 /**
@@ -28,7 +31,7 @@ internal fun UserInfoSection(
     user: User?,
     subscriptionTier: SubscriptionTier,
     isLoggingOut: Boolean,
-    onProfileClick: () -> Unit,
+    onProfileClick: (() -> Unit)?,
     onSubscriptionClick: () -> Unit,
     onReferralRedeemClick: () -> Unit,
     onLogoutClick: () -> Unit,
@@ -150,11 +153,18 @@ internal fun InfoSection(
             subtitle = stringResource(R.string.settings_v2_oss_license_subtitle),
             onClick = onOssLicenseClick
         )
-        ClickableRowV2(
+        // 읽기 전용 — 버전 문자열은 변동 수치라 tnum 모노 readout 으로 우측에 정렬한다.
+        StaticRowV2(
             icon = Icons.Default.Update,
             title = stringResource(R.string.settings_v2_app_version_title),
-            subtitle = appVersion,
-            onClick = { }
+            subtitle = "",
+            trailing = {
+                Text(
+                    text = appVersion,
+                    style = MonoNumeric,
+                    color = TextTertiary
+                )
+            }
         )
         ClickableRowV2(
             icon = Icons.Default.Security,

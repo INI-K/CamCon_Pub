@@ -26,7 +26,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.inik.camcon.R
@@ -35,13 +34,17 @@ import com.inik.camcon.domain.model.PtpipCameraInfo
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
+import com.inik.camcon.presentation.theme.BodySmall
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.DividerLine
+import com.inik.camcon.presentation.theme.HeadingM
 import com.inik.camcon.presentation.theme.IconSize
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.StrokeWidth
 import com.inik.camcon.presentation.theme.SuccessV2
+import com.inik.camcon.presentation.theme.TextPrimaryV2
+import com.inik.camcon.presentation.theme.TextSecondaryV2
 import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
 import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
@@ -169,8 +172,8 @@ private fun StaNetworkStatusCard(
                 Spacer(modifier = Modifier.width(Spacing.sm))
                 Text(
                     text = if (isWifiConnected) stringResource(R.string.ap_mode_wifi_connected) else stringResource(R.string.ap_mode_wifi_disconnected),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
+                    style = HeadingM,
+                    color = TextPrimaryV2,
                     modifier = Modifier.weight(1f)
                 )
 
@@ -186,9 +189,8 @@ private fun StaNetworkStatusCard(
 
             Text(
                 text = ptpipViewModel.getNetworkStatusMessage(),
-                style = MaterialTheme.typography.bodySmall,
-                color = if (wifiNetworkState.isConnected) SuccessV2 else MaterialTheme.colorScheme.error,
-                fontWeight = FontWeight.Medium
+                style = BodySmall,
+                color = if (wifiNetworkState.isConnected) SuccessV2 else MaterialTheme.colorScheme.error
             )
 
             if (wifiNetworkState.isConnected && !wifiNetworkState.isConnectedToCameraAP) {
@@ -247,13 +249,13 @@ private fun AutoReconnectCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = stringResource(R.string.sta_mode_auto_reconnect),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
+                    style = HeadingM,
+                    color = TextPrimaryV2
                 )
                 Text(
                     text = if (isAutoReconnectEnabled) stringResource(R.string.sta_mode_auto_reconnect_on) else stringResource(R.string.sta_mode_auto_reconnect_off),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = BodySmall,
+                    color = TextSecondaryV2
                 )
             }
             Switch(
@@ -297,8 +299,8 @@ private fun MdnsSearchCard(
                 Spacer(modifier = Modifier.width(Spacing.sm))
                 Text(
                     text = stringResource(R.string.sta_mode_mdns_search),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
+                    style = HeadingM,
+                    color = TextPrimaryV2
                 )
             }
 
@@ -306,8 +308,8 @@ private fun MdnsSearchCard(
 
             Text(
                 text = stringResource(R.string.sta_mode_mdns_description),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = BodySmall,
+                color = TextSecondaryV2
             )
 
             Spacer(modifier = Modifier.height(Spacing.md))

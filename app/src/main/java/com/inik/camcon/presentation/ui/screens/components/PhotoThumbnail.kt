@@ -21,10 +21,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -49,7 +48,6 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -62,13 +60,17 @@ import com.inik.camcon.R
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.DividerLine
+import com.inik.camcon.presentation.theme.HeadingM
+import com.inik.camcon.presentation.theme.IconSize
+import com.inik.camcon.presentation.theme.MonoMicro
+import com.inik.camcon.presentation.theme.OnAccent
 import com.inik.camcon.presentation.theme.Surface0
 import com.inik.camcon.presentation.theme.Micro
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.StrokeWidth
-import com.inik.camcon.presentation.theme.SuccessV2
 import com.inik.camcon.presentation.theme.TextPrimaryV2
+import com.inik.camcon.presentation.theme.TextSecondaryV2
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.components.v2.SkeletonLoader
 import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
@@ -148,12 +150,13 @@ fun PhotoThumbnail(
             )
     ) {
         Box {
-            // 선택된 상태일 때 오버레이 추가
+            // 선택 상태 오버레이 — 색 판정이 기능인 앱이라 사진 위에 앰버를 깔지 않는다.
+            // 선택은 Accent 테두리 + 배지가 말하고, 여기서는 중립 스크림으로 감광만 시킨다.
             if (isSelected) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+                        .background(Surface0.copy(alpha = 0.45f))
                 )
             }
 
@@ -224,36 +227,12 @@ fun PhotoThumbnail(
 
             // 멀티 선택 모드에서 선택 상태 표시
             if (isMultiSelectMode) {
-                Box(
+                SelectionBadge(
+                    isSelected = isSelected,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(8.dp)
-                        .size(24.dp)
-                        .background(
-                            color = if (isSelected) SuccessV2 else TextPrimaryV2.copy(alpha = 0.8f),
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (isSelected) {
-                        Icon(
-                            imageVector = Icons.Filled.CheckCircle,
-                            contentDescription = stringResource(R.string.cd_selected),
-                            tint = TextPrimaryV2,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    } else {
-                        // 선택되지 않은 상태에서도 빈 원 표시
-                        Box(
-                            modifier = Modifier
-                                .size(20.dp)
-                                .background(
-                                    color = Color.Transparent,
-                                    shape = CircleShape
-                                )
-                        )
-                    }
-                }
+                        .padding(Spacing.sm)
+                )
             }
 
             // 하단 파일명 표시
@@ -291,10 +270,49 @@ fun PhotoThumbnail(
                     Text(
                         text = formatFileSize(photo.size),
                         color = TextPrimaryV2,
-                        style = Micro
+                        style = MonoMicro
                     )
                 }
             }
+        }
+    }
+}
+
+/** 멀티선택 배지 지름 — 타일 코너를 침범하지 않으면서 체크가 읽히는 최소 원. */
+private val SelectionBadgeSize = 24.dp
+
+/**
+ * 멀티선택 배지 — 선택은 [Accent] 채움 + [OnAccent] 체크, 미선택은 채움 없는 링.
+ *
+ * 선택은 semantic success 가 아니므로 SuccessV2(라이브/연결/성공 전용)를 쓰지 않는다.
+ * 타일 테두리(2dp Accent)와 같은 한 상태를 같은 색으로 말한다.
+ */
+@Composable
+private fun SelectionBadge(
+    isSelected: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .size(SelectionBadgeSize)
+            .background(
+                color = if (isSelected) Accent else Color.Transparent,
+                shape = CircleShape
+            )
+            .border(
+                width = StrokeWidth.thin,
+                color = if (isSelected) Accent else TextPrimaryV2.copy(alpha = 0.7f),
+                shape = CircleShape
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        if (isSelected) {
+            Icon(
+                imageVector = Icons.Filled.Check,
+                contentDescription = stringResource(R.string.cd_selected),
+                tint = OnAccent,
+                modifier = Modifier.size(IconSize.sm)
+            )
         }
     }
 }
@@ -598,12 +616,13 @@ fun FluidPhotoThumbnail(
             )
     ) {
         Box {
-            // 선택된 상태일 때 오버레이 추가
+            // 선택 상태 오버레이 — 색 판정이 기능인 앱이라 사진 위에 앰버를 깔지 않는다.
+            // 선택은 Accent 테두리 + 배지가 말하고, 여기서는 중립 스크림으로 감광만 시킨다.
             if (isSelected) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+                        .background(Surface0.copy(alpha = 0.45f))
                 )
             }
 
@@ -674,36 +693,12 @@ fun FluidPhotoThumbnail(
 
             // 멀티 선택 모드에서 선택 상태 표시
             if (isMultiSelectMode) {
-                Box(
+                SelectionBadge(
+                    isSelected = isSelected,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(Spacing.sm)
-                        .size(24.dp)
-                        .background(
-                            color = if (isSelected) SuccessV2 else TextPrimaryV2.copy(alpha = 0.8f),
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (isSelected) {
-                        Icon(
-                            imageVector = Icons.Filled.CheckCircle,
-                            contentDescription = stringResource(R.string.cd_selected),
-                            tint = TextPrimaryV2,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    } else {
-                        // 선택되지 않은 상태에서도 빈 원 표시
-                        Box(
-                            modifier = Modifier
-                                .size(20.dp)
-                                .background(
-                                    color = Color.Transparent,
-                                    shape = CircleShape
-                                )
-                        )
-                    }
-                }
+                )
             }
 
             // 하단 파일명 표시
@@ -741,7 +736,7 @@ fun FluidPhotoThumbnail(
                     Text(
                         text = formatFileSize(photo.size),
                         color = TextPrimaryV2,
-                        style = Micro
+                        style = MonoMicro
                     )
                 }
             }
@@ -1025,22 +1020,22 @@ fun FeaturedPhotoThumbnail(
                         ),
                         RoundedCornerShape(bottomStart = Radius.sm, bottomEnd = Radius.sm)
                     )
-                    .padding(horizontal = 16.dp, vertical = Spacing.md)
+                    .padding(horizontal = Spacing.base, vertical = Spacing.md)
             ) {
+                // 그리드의 시각적 히어로다. 일반 타일 라벨(Micro 11sp)과 위계를 벌린다.
                 Column {
                     Text(
                         text = photo.name,
                         color = TextPrimaryV2,
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = HeadingM,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        fontWeight = FontWeight.Bold
+                        overflow = TextOverflow.Ellipsis
                     )
                     if (photo.size > 0) {
                         Text(
                             text = formatFileSize(photo.size),
-                            color = TextPrimaryV2.copy(alpha = 0.8f),
-                            style = MaterialTheme.typography.bodySmall
+                            color = TextSecondaryV2,
+                            style = MonoMicro
                         )
                     }
                 }
@@ -1052,16 +1047,16 @@ fun FeaturedPhotoThumbnail(
                     .align(Alignment.TopStart)
                     .padding(Spacing.md)
                     .background(
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = RoundedCornerShape(Radius.lg)
+                        color = Accent,
+                        shape = RoundedCornerShape(Radius.sm)
                     )
                     .padding(horizontal = Spacing.sm, vertical = Spacing.xs)
             ) {
+                // MicroLabel(tracking 1.4)은 대문자 라틴 전제라 ko/ja/zh("최신"/"最新")에는 쓰지 않는다.
                 Text(
                     text = stringResource(R.string.photo_thumbnail_latest),
-                    color = TextPrimaryV2,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold
+                    color = OnAccent,
+                    style = Micro
                 )
             }
         }
@@ -1072,34 +1067,44 @@ fun FeaturedPhotoThumbnail(
 @Composable
 private fun PhotoThumbnailPreview() {
     CamConTheme() {
-        val samplePhoto = CameraPhoto(
-            path = "/fake/DSC_0001.JPG",
-            name = "DSC_0001.JPG",
-            size = 8_388_608L,
+        // 실촬영 산출물에 맞춘 표본 — RAW/JPG 혼재, 딱 떨어지지 않는 크기,
+        // 카메라 스토어 경로. 배지 폭과 파일명 말줄임을 프리뷰에서 바로 검증하기 위함.
+        val rawPhoto = CameraPhoto(
+            path = "/store_00010001/DCIM/103ND850/DSC_4417.NEF",
+            name = "DSC_4417.NEF",
+            size = 27_843_119L,
             date = System.currentTimeMillis(),
-            width = 6000,
-            height = 4000
+            width = 8256,
+            height = 5504
+        )
+        val jpgPhoto = CameraPhoto(
+            path = "/store_00010001/DCIM/103ND850/DSC_4418.JPG",
+            name = "DSC_4418.JPG",
+            size = 9_142_770L,
+            date = System.currentTimeMillis(),
+            width = 8256,
+            height = 5504
         )
         Column(
             modifier = Modifier
                 .background(Surface0)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(Spacing.base),
+            verticalArrangement = Arrangement.spacedBy(Spacing.sm)
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 Box(modifier = Modifier.size(160.dp)) {
-                    PhotoThumbnail(photo = samplePhoto, onClick = {})
+                    PhotoThumbnail(photo = rawPhoto, onClick = {})
                 }
                 Box(modifier = Modifier.size(160.dp)) {
                     PhotoThumbnail(
-                        photo = samplePhoto.copy(name = "DSC_0002.JPG"),
+                        photo = jpgPhoto,
                         onClick = {},
                         isSelected = true,
                         isMultiSelectMode = true
                     )
                 }
             }
-            FeaturedPhotoThumbnail(photo = samplePhoto, onClick = {})
+            FeaturedPhotoThumbnail(photo = rawPhoto, onClick = {})
         }
     }
 }

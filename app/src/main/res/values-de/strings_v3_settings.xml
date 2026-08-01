@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Einstellungen Hero (Verbindungsanzeige) -->
+    <string name="settings_v3_hero_eyebrow">KAMERA</string>
+    <string name="settings_v3_hero_camera_none">Keine Kamera</string>
+
+    <!-- Serverspeicher — Status vor Anbindung der Quota-API -->
+    <string name="settings_v3_storage_pending">Warten auf Nutzungsdaten</string>
+</resources>

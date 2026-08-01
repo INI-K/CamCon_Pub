@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -39,9 +38,18 @@ import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.inik.camcon.R
+import com.inik.camcon.presentation.theme.Accent
+import com.inik.camcon.presentation.theme.DividerLine
+import com.inik.camcon.presentation.theme.IconSize
+import com.inik.camcon.presentation.theme.MicroLabel
+import com.inik.camcon.presentation.theme.MonoMicro
+import com.inik.camcon.presentation.theme.MonoNumeric
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.StrokeWidth
+import com.inik.camcon.presentation.theme.Surface0
+import com.inik.camcon.presentation.theme.TextDisabled
+import com.inik.camcon.presentation.theme.TextTertiary
 import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
 import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
 import java.io.File
@@ -91,12 +99,18 @@ fun ColorTransferPreviewView(
                 )
             }
 
-            // 색감 전송 표시 영역
+            // 색감 전송 표시 영역 — 밴드 자체가 경계이므로 상하 헤어라인만 두고 중복 Divider는 제거.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(StrokeWidth.hairline)
+                    .background(DividerLine)
+            )
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(40.dp)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                    .background(Surface0),
                 contentAlignment = Alignment.Center
             ) {
                 Row(
@@ -105,33 +119,32 @@ fun ColorTransferPreviewView(
                     Icon(
                         imageVector = Icons.Default.ArrowDownward,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
+                        tint = Accent,
+                        modifier = Modifier.size(IconSize.md)
                     )
                     Spacer(modifier = Modifier.width(Spacing.sm))
                     Text(
                         text = stringResource(R.string.ct_pv_transfer_label),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        style = MicroLabel,
+                        color = Accent
                     )
                     Spacer(modifier = Modifier.width(Spacing.sm))
                     Icon(
                         imageVector = Icons.Default.ArrowDownward,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
+                        tint = Accent,
+                        modifier = Modifier.size(IconSize.md)
                     )
                 }
             }
-
-            // 구분선
-            Divider(
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
-                thickness = StrokeWidth.thin
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(StrokeWidth.hairline)
+                    .background(DividerLine)
             )
 
-            // 하단: 적용 대상 이미지 
+            // 하단: 적용 대상 이미지
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -240,19 +253,18 @@ private fun ColorTransferImageSection(
 
                     Spacer(modifier = Modifier.height(Spacing.sm))
 
+                    // 파일 텔레메트리 — 이름/수치를 모노로 분리해 본문 텍스트와 위계를 가른다.
                     val file = File(imagePath)
                     Text(
-                        text = stringResource(R.string.ct_pv_file_name, file.name),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (enabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        text = file.name,
+                        style = MonoMicro,
+                        color = if (enabled) TextTertiary else TextDisabled
                     )
 
                     Text(
-                        text = stringResource(R.string.ct_pv_file_size, file.length() / 1024),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (enabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        text = stringResource(R.string.ct_v3_pv_file_size, file.length() / 1024),
+                        style = MonoNumeric,
+                        color = if (enabled) TextTertiary else TextDisabled
                     )
 
                     if (enabled) {

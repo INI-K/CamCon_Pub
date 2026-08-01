@@ -129,7 +129,7 @@
     <string name="ptpip_check_camera_wifi">2. Prüfe, ob das Kamera-WLAN eingeschaltet ist</string>
     <string name="ptpip_check_wifi">1. Überprüfen Sie die Wi-Fi-Verbindung</string>
     <string name="ptpip_connect">Verbinden</string>
-    <string name="ptpip_connected_ip">Verbunden — %s</string>
+    <string name="ptpip_connected_ip">Verbunden - %s</string>
     <string name="ptpip_connecting_status">Verbinden…</string>
     <string name="ptpip_connecting_to_camera">Verbindung zur Kamera…</string>
     <string name="ptpip_connection_error">Verbindungsfehler</string>
@@ -183,7 +183,7 @@
     <string name="sta_mode_auto_reconnect">Automatische Wiederverbindung</string>
     <string name="sta_mode_auto_reconnect_off">Manuelle Verbindungsverwaltung</string>
     <string name="sta_mode_auto_reconnect_on">Automatische Neuverbindung bei Netzwerkwechsel</string>
-    <string name="sta_mode_general_wifi">Allgemeines Wi-Fi-Netzwerk — mDNS-Suche möglich</string>
+    <string name="sta_mode_general_wifi">Allgemeines Wi-Fi-Netzwerk - mDNS-Suche möglich</string>
     <string name="sta_mode_mdns_description">Findet automatisch Kameras im selben Netzwerk.</string>
     <string name="sta_mode_mdns_search">mDNS-Kamerasuche</string>
     <string name="sta_mode_search_camera">Kamera suchen</string>

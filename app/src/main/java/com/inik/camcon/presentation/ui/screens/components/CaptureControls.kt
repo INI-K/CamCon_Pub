@@ -66,10 +66,13 @@ import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.ErrorV2
 import com.inik.camcon.presentation.theme.Accent
+import com.inik.camcon.presentation.theme.IconSize
 import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.StrokeWidth
 import com.inik.camcon.presentation.theme.Surface2
 import com.inik.camcon.presentation.theme.TextTertiary
 import com.inik.camcon.presentation.theme.TextSecondaryV2
+import com.inik.camcon.presentation.theme.TouchTarget
 import com.inik.camcon.presentation.viewmodel.CameraCaptureState
 import com.inik.camcon.presentation.viewmodel.CameraUiState
 import com.inik.camcon.domain.model.ThemeMode
@@ -110,7 +113,9 @@ fun CaptureControls(
         Column(
             modifier = modifier,
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(if (compact) Spacing.sm else 20.dp)
+            // compact = 전체화면 도크. 도크는 그룹 간 Spacing.md(12dp) 리듬을 쓰므로
+            // 그룹 '내부'인 여기는 Spacing.xs(4dp)로 조여 3:1 대비를 만든다(선 없는 그룹핑).
+            verticalArrangement = Arrangement.spacedBy(if (compact) Spacing.xs else Spacing.lg)
         ) {
             CaptureControlsContent(
                 captureState = captureState,
@@ -144,7 +149,7 @@ fun CaptureControls(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp),
+                    .padding(Spacing.lg),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -182,8 +187,8 @@ private fun CaptureControlsContent(
     val haptic = LocalHapticFeedback.current
 
     // compact = 전체화면 가로 도크용 축소 사이즈(세로 누적 높이를 줄여 짧은 가로 화면에서도 fit).
-    val galleryAfSize = if (compact) 44.dp else 52.dp
-    val sideIconSize = if (compact) 20.dp else 24.dp
+    val galleryAfSize = if (compact) TouchTarget.min else TouchTarget.xl
+    val sideIconSize = if (compact) IconSize.md else IconSize.lg
     val shutterOuterSize = if (compact) CameraSpec.shutterOuterCompact else CameraSpec.shutterOuter
     val shutterInnerSize = if (compact) 50.dp else 72.dp
     val shutterIconSize = if (compact) 28.dp else 36.dp
@@ -212,7 +217,7 @@ private fun CaptureControlsContent(
     Surface(
         color = Surface2,
         shape = CircleShape,
-        border = BorderStroke(1.dp, DividerLine),
+        border = BorderStroke(StrokeWidth.thin, DividerLine),
         modifier = Modifier.size(galleryAfSize)
     ) {
         IconButton(
@@ -260,7 +265,7 @@ private fun CaptureControlsContent(
             .size(shutterOuterSize)
             .scale(scale)
             .border(
-                width = 1.5.dp,
+                width = StrokeWidth.regular,
                 color = when {
                     isStopMode -> ErrorV2.copy(alpha = 0.4f)
                     isEnabled -> Accent.copy(alpha = 0.3f)
@@ -282,7 +287,7 @@ private fun CaptureControlsContent(
                 label = "shutter_sweep_angle"
             )
             Canvas(modifier = Modifier.fillMaxSize()) {
-                val stroke = 2.dp.toPx()
+                val stroke = StrokeWidth.thick.toPx()
                 val inset = stroke / 2f
                 drawArc(
                     color = Accent,
@@ -349,7 +354,7 @@ private fun CaptureControlsContent(
                 CircularProgressIndicator(
                     color = OnAccent,
                     modifier = Modifier.size(shutterIconSize),
-                    strokeWidth = 2.5.dp
+                    strokeWidth = StrokeWidth.heavy
                 )
             }
         }
@@ -360,7 +365,7 @@ private fun CaptureControlsContent(
         color = if (isConnected) Surface2 else Surface2.copy(alpha = 0.5f),
         shape = CircleShape,
         border = BorderStroke(
-            1.dp,
+            StrokeWidth.thin,
             if (isConnected) DividerLine else TextTertiary.copy(alpha = 0.1f)
         ),
         modifier = Modifier.size(galleryAfSize)
@@ -373,8 +378,8 @@ private fun CaptureControlsContent(
             if (captureState.isFocusing) {
                 CircularProgressIndicator(
                     color = Accent,
-                    modifier = Modifier.size(22.dp),
-                    strokeWidth = 2.dp
+                    modifier = Modifier.size(IconSize.md),
+                    strokeWidth = StrokeWidth.thick
                 )
             } else {
                 Icon(

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 색감 전송 v3 — Hero 계측기 라벨 + 텔레메트리 판독값.
+         eyebrow 3종은 MicroLabel 트래킹 라벨이라 전 로케일 라틴 대문자로 유지한다. -->
+    <string name="ct_v3_intensity_eyebrow">INTENSITY</string>
+    <string name="ct_v3_result_eyebrow">RESULT</string>
+    <string name="ct_v3_recommended_eyebrow">RECOMMENDED</string>
+
+    <!-- 추천 강도 범위 판독값 — MonoNumeric(tnum) -->
+    <string name="ct_v3_recommended_range">3-10%</string>
+
+    <!-- 결과 이미지 탭 힌트 배지 — 이모지 제거한 v3 판 -->
+    <string name="ct_v3_lp_tap_full">Appuyez pour voir en taille réelle</string>
+
+    <!-- 파일 크기 판독값 — MonoNumeric(tnum) -->
+    <string name="ct_v3_pv_file_size">%d KB</string>
+</resources>

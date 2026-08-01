@@ -129,7 +129,7 @@
     <string name="ptpip_check_camera_wifi">2. Verifica che il Wi-Fi della fotocamera sia attivo</string>
     <string name="ptpip_check_wifi">1. Controlla la connessione Wi-Fi</string>
     <string name="ptpip_connect">Connetti</string>
-    <string name="ptpip_connected_ip">Connesso — %s</string>
+    <string name="ptpip_connected_ip">Connesso - %s</string>
     <string name="ptpip_connecting_status">Connessione…</string>
     <string name="ptpip_connecting_to_camera">Connessione alla fotocamera…</string>
     <string name="ptpip_connection_error">Errore di connessione</string>
@@ -183,7 +183,7 @@
     <string name="sta_mode_auto_reconnect">Riconnessione automatica</string>
     <string name="sta_mode_auto_reconnect_off">Gestione manuale della connessione</string>
     <string name="sta_mode_auto_reconnect_on">Riconnessione automatica al cambio di rete</string>
-    <string name="sta_mode_general_wifi">Rete Wi-Fi generica — ricerca mDNS disponibile</string>
+    <string name="sta_mode_general_wifi">Rete Wi-Fi generica - ricerca mDNS disponibile</string>
     <string name="sta_mode_mdns_description">Cerca automaticamente le fotocamere sulla stessa rete.</string>
     <string name="sta_mode_mdns_search">Ricerca fotocamere mDNS</string>
     <string name="sta_mode_search_camera">Cerca fotocamera</string>

@@ -28,7 +28,7 @@ import com.inik.camcon.domain.model.TransferQueueState
 import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.AccentMuted
 import com.inik.camcon.presentation.theme.CamConTheme
-import com.inik.camcon.presentation.theme.Caption
+import com.inik.camcon.presentation.theme.MonoNumeric
 import com.inik.camcon.presentation.theme.IconSize
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
@@ -109,7 +109,7 @@ private fun CountCluster(
         )
         Text(
             text = count.toString(),
-            style = Caption,
+            style = MonoNumeric,
             color = TextSecondaryV2
         )
     }

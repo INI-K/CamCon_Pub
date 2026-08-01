@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.rememberScrollState
@@ -28,6 +29,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -53,7 +56,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -63,7 +65,10 @@ import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.ErrorV2
 import com.inik.camcon.presentation.theme.HeadingM
+import com.inik.camcon.presentation.theme.IconSize
 import com.inik.camcon.presentation.theme.MicroLabel
+import com.inik.camcon.presentation.theme.MonoHero
+import com.inik.camcon.presentation.theme.MonoNumeric
 import com.inik.camcon.presentation.theme.MonoReadout
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
@@ -71,6 +76,7 @@ import com.inik.camcon.presentation.theme.StrokeWidth
 import com.inik.camcon.presentation.theme.Surface0
 import com.inik.camcon.presentation.theme.TextPrimaryV2
 import com.inik.camcon.presentation.theme.TextTertiary
+import com.inik.camcon.presentation.theme.TouchTarget
 import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
 import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
 import com.inik.camcon.presentation.ui.screens.ColorTransferImagePickerScreen
@@ -387,30 +393,26 @@ fun ColorTransferSettingsScreen(
                     }
 
                     Column(
-                        modifier = Modifier.padding(Spacing.lg)
+                        modifier = Modifier.padding(Spacing.md)
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = stringResource(R.string.ct_intensity_title),
-                                style = MicroLabel,
-                                color = TextTertiary
-                            )
-                            // 전송 강도 판독 = MonoReadout, 앰버.
-                            Text(
-                                text = stringResource(
-                                    R.string.ct_intensity_percent,
-                                    (localIntensity * 100).toInt()
-                                ),
-                                style = MonoReadout,
-                                color = Accent
-                            )
-                        }
+                        // Hero — 이 화면의 존재 이유인 전송 강도 판독값.
+                        // eyebrow(11sp) → MonoHero(38sp tnum)로 3.4배 스케일 대비를 만든다.
+                        Text(
+                            text = stringResource(R.string.ct_intensity_title),
+                            style = MicroLabel,
+                            color = TextTertiary
+                        )
+                        Spacer(modifier = Modifier.height(Spacing.xs))
+                        Text(
+                            text = stringResource(
+                                R.string.ct_intensity_percent,
+                                (localIntensity * 100).toInt()
+                            ),
+                            style = MonoHero,
+                            color = Accent
+                        )
 
-                        Spacer(modifier = Modifier.height(Spacing.lg))
+                        Spacer(modifier = Modifier.height(Spacing.md))
 
                         // 강도 슬라이더 (얇은 트랙 + 앰버 필)
                         val intensitySliderColors = SliderDefaults.colors(
@@ -434,7 +436,7 @@ fun ColorTransferSettingsScreen(
                                     drawStopIndicator = null
                                 )
                             },
-                            modifier = Modifier.height(48.dp)
+                            modifier = Modifier.height(TouchTarget.lg)
                         )
 
                         Spacer(modifier = Modifier.height(Spacing.xs))
@@ -457,22 +459,22 @@ fun ColorTransferSettingsScreen(
 
                         Spacer(modifier = Modifier.height(Spacing.md))
 
-                        // 추천 범위 표시
+                        // 추천 범위 — 좌측 앵커 계측기 라벨 + tnum 판독값(카드 내 좌측 리듬 유지).
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center
+                            horizontalArrangement = Arrangement.Start,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Photo,
-                                contentDescription = null,
-                                tint = Accent.copy(alpha = 0.7f),
-                                modifier = Modifier.padding(end = Spacing.xs)
-                            )
                             Text(
-                                text = stringResource(R.string.ct_intensity_recommended),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Accent.copy(alpha = 0.8f),
-                                fontWeight = FontWeight.Medium
+                                text = stringResource(R.string.ct_v3_recommended_eyebrow),
+                                style = MicroLabel,
+                                color = TextTertiary
+                            )
+                            Spacer(modifier = Modifier.width(Spacing.sm))
+                            Text(
+                                text = stringResource(R.string.ct_v3_recommended_range),
+                                style = MonoNumeric,
+                                color = Accent
                             )
                         }
                     }
@@ -554,13 +556,17 @@ fun ColorTransferSettingsScreen(
                             .padding(horizontal = Spacing.base, vertical = Spacing.sm)
                     ) {
                         Row(
-                            modifier = Modifier.padding(Spacing.md)
+                            modifier = Modifier.padding(Spacing.md),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "⚡",
-                                style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.padding(end = Spacing.sm)
+                            // 다색 이모지(⚡) 제거 — 앰버 단색 계측기 아이콘으로 교체.
+                            Icon(
+                                imageVector = Icons.Default.Speed,
+                                contentDescription = null,
+                                tint = Accent,
+                                modifier = Modifier.size(IconSize.sm)
                             )
+                            Spacer(modifier = Modifier.width(Spacing.sm))
                             Text(
                                 text = info,
                                 style = MaterialTheme.typography.bodyMedium,
@@ -583,12 +589,15 @@ fun ColorTransferSettingsScreen(
                         Column(
                             modifier = Modifier.padding(Spacing.base)
                         ) {
-                            Row {
-                                Text(
-                                    text = "⚠️",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    modifier = Modifier.padding(end = Spacing.sm)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                // 다색 이모지(⚠️) 제거 — semantic ErrorV2 단색 아이콘으로 교체.
+                                Icon(
+                                    imageVector = Icons.Default.WarningAmber,
+                                    contentDescription = null,
+                                    tint = ErrorV2,
+                                    modifier = Modifier.size(IconSize.md)
                                 )
+                                Spacer(modifier = Modifier.width(Spacing.sm))
                                 Text(
                                     text = stringResource(R.string.ct_error_title),
                                     style = HeadingM,
@@ -765,29 +774,25 @@ private fun ColorTransferSettingsScreenPreview(
                         .padding(horizontal = Spacing.base, vertical = Spacing.sm)
                 ) {
                     Column(
-                        modifier = Modifier.padding(Spacing.lg)
+                        modifier = Modifier.padding(Spacing.md)
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = stringResource(R.string.ct_intensity_title),
-                                style = MicroLabel,
-                                color = TextTertiary
-                            )
-                            Text(
-                                text = stringResource(
-                                    R.string.ct_intensity_percent,
-                                    (colorTransferIntensity * 100).toInt()
-                                ),
-                                style = MonoReadout,
-                                color = Accent
-                            )
-                        }
+                        // Hero — 실제 화면과 동일한 eyebrow + MonoHero 판독 슬롯.
+                        Text(
+                            text = stringResource(R.string.ct_intensity_title),
+                            style = MicroLabel,
+                            color = TextTertiary
+                        )
+                        Spacer(modifier = Modifier.height(Spacing.xs))
+                        Text(
+                            text = stringResource(
+                                R.string.ct_intensity_percent,
+                                (colorTransferIntensity * 100).toInt()
+                            ),
+                            style = MonoHero,
+                            color = Accent
+                        )
 
-                        Spacer(modifier = Modifier.height(Spacing.lg))
+                        Spacer(modifier = Modifier.height(Spacing.md))
 
                         val previewSliderColors = SliderDefaults.colors(
                             thumbColor = Accent,
@@ -808,7 +813,7 @@ private fun ColorTransferSettingsScreenPreview(
                                     drawStopIndicator = null
                                 )
                             },
-                            modifier = Modifier.height(48.dp)
+                            modifier = Modifier.height(TouchTarget.lg)
                         )
 
                         Spacer(modifier = Modifier.height(Spacing.xs))
@@ -833,19 +838,19 @@ private fun ColorTransferSettingsScreenPreview(
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center
+                            horizontalArrangement = Arrangement.Start,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Photo,
-                                contentDescription = null,
-                                tint = Accent.copy(alpha = 0.7f),
-                                modifier = Modifier.padding(end = Spacing.xs)
-                            )
                             Text(
-                                text = stringResource(R.string.ct_intensity_recommended),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Accent.copy(alpha = 0.8f),
-                                fontWeight = FontWeight.Medium
+                                text = stringResource(R.string.ct_v3_recommended_eyebrow),
+                                style = MicroLabel,
+                                color = TextTertiary
+                            )
+                            Spacer(modifier = Modifier.width(Spacing.sm))
+                            Text(
+                                text = stringResource(R.string.ct_v3_recommended_range),
+                                style = MonoNumeric,
+                                color = Accent
                             )
                         }
                     }
@@ -920,13 +925,16 @@ private fun ColorTransferSettingsScreenPreview(
                             .padding(horizontal = Spacing.base, vertical = Spacing.sm)
                     ) {
                         Row(
-                            modifier = Modifier.padding(Spacing.md)
+                            modifier = Modifier.padding(Spacing.md),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "⚡",
-                                style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.padding(end = Spacing.sm)
+                            Icon(
+                                imageVector = Icons.Default.Speed,
+                                contentDescription = null,
+                                tint = Accent,
+                                modifier = Modifier.size(IconSize.sm)
                             )
+                            Spacer(modifier = Modifier.width(Spacing.sm))
                             Text(
                                 text = info,
                                 style = MaterialTheme.typography.bodyMedium,
@@ -949,12 +957,14 @@ private fun ColorTransferSettingsScreenPreview(
                         Column(
                             modifier = Modifier.padding(Spacing.base)
                         ) {
-                            Row {
-                                Text(
-                                    text = "⚠️",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    modifier = Modifier.padding(end = Spacing.sm)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.WarningAmber,
+                                    contentDescription = null,
+                                    tint = ErrorV2,
+                                    modifier = Modifier.size(IconSize.md)
                                 )
+                                Spacer(modifier = Modifier.width(Spacing.sm))
                                 Text(
                                     text = stringResource(R.string.ct_error_title),
                                     style = HeadingM,
@@ -1025,8 +1035,8 @@ fun PreviewMediumIntensity() {
     CamConTheme {
         ColorTransferSettingsScreenPreview(
             isColorTransferEnabled = true,
-            colorTransferIntensity = 0.25f,
-            performanceInfo = "처리 시간: 45ms\nGPU 사용: 65%\n메모리: 128MB"
+            colorTransferIntensity = 0.23f,
+            performanceInfo = "처리 시간: 187ms\nGPU 사용: 63%\n메모리: 214MB"
         )
     }
 }
@@ -1040,8 +1050,8 @@ fun PreviewHighIntensity() {
     CamConTheme {
         ColorTransferSettingsScreenPreview(
             isColorTransferEnabled = true,
-            colorTransferIntensity = 0.75f,
-            performanceInfo = "처리 시간: 52ms\nGPU 사용: 78%"
+            colorTransferIntensity = 0.74f,
+            performanceInfo = "처리 시간: 1,342ms\nGPU 사용: 91%"
         )
     }
 }
@@ -1074,8 +1084,8 @@ fun PreviewDarkMode() {
     CamConTheme {
         ColorTransferSettingsScreenPreview(
             isColorTransferEnabled = true,
-            colorTransferIntensity = 0.10f,
-            performanceInfo = "처리 시간: 38ms\nGPU 사용: 58%"
+            colorTransferIntensity = 0.09f,
+            performanceInfo = "처리 시간: 76ms\nGPU 사용: 41%"
         )
     }
 }

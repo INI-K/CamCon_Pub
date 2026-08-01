@@ -30,7 +30,7 @@
     <string name="gallery_v2_flash_off">Aus</string>
 
     <!-- EXIF 비어 있음 / 다운로드되지 않음 -->
-    <string name="gallery_v2_exif_unavailable">Keine Informationen — laden Sie das Foto zuerst herunter</string>
+    <string name="gallery_v2_exif_unavailable">Keine Informationen - laden Sie das Foto zuerst herunter</string>
     <string name="gallery_v2_date_unknown">Aufnahmedatum unbekannt</string>
     <string name="gallery_v2_internal_storage">/Interner Speicher</string>
 

@@ -129,7 +129,7 @@
     <string name="ptpip_check_camera_wifi">2. カメラのWi-Fiがオンになっているか確認してください</string>
     <string name="ptpip_check_wifi">1. Wi-Fi 接続状態を確認してください</string>
     <string name="ptpip_connect">接続</string>
-    <string name="ptpip_connected_ip">接続済み — %s</string>
+    <string name="ptpip_connected_ip">接続済み - %s</string>
     <string name="ptpip_connecting_status">接続中…</string>
     <string name="ptpip_connecting_to_camera">カメラに接続中…</string>
     <string name="ptpip_connection_error">接続エラー</string>
@@ -183,7 +183,7 @@
     <string name="sta_mode_auto_reconnect">自動再接続</string>
     <string name="sta_mode_auto_reconnect_off">手動接続管理</string>
     <string name="sta_mode_auto_reconnect_on">ネットワーク変更時に自動再接続</string>
-    <string name="sta_mode_general_wifi">一般的な Wi-Fi ネットワーク — mDNS 検索可能</string>
+    <string name="sta_mode_general_wifi">一般的な Wi-Fi ネットワーク - mDNS 検索可能</string>
     <string name="sta_mode_mdns_description">同じネットワークのカメラを自動検索します。</string>
     <string name="sta_mode_mdns_search">mDNS カメラ検索</string>
     <string name="sta_mode_search_camera">カメラを検索</string>

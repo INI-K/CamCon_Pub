@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- info-screens (Kamerainformationen / Open-Source-Lizenzen) V3 UI-Strings. Ohne Emoji und Aufzaehlungszeichen. -->
+<resources>
+    <string name="v3_abilities_grade_full">Vollständige Fernsteuerung</string>
+    <string name="v3_abilities_grade_download">Nur Download</string>
+    <string name="v3_abilities_grade_partial">Teilweise Unterstützung</string>
+
+    <string name="v3_abilities_summary_full">Diese Kamera unterstützt alle Fernsteuerungsfunktionen.</string>
+    <string name="v3_abilities_summary_download">Diese Kamera unterstützt nur den Dateidownload. Fernauslösung und Live-View sind nicht verfügbar. Einige %1$s-Modelle haben eingeschränkte PTP-Unterstützung.</string>
+    <string name="v3_abilities_summary_partial">Live-View wird nicht unterstützt, Fernauslösung ist jedoch möglich.</string>
+    <string name="v3_abilities_summary_some">Einige Kamerafunktionen können eingeschränkt sein.</string>
+
+    <string name="v3_abilities_cap_capture">Fernauslösung</string>
+    <string name="v3_abilities_cap_liveview">Live-View</string>
+    <string name="v3_abilities_cap_config">Einstellungssteuerung</string>
+    <string name="v3_abilities_cap_files">Dateiverwaltung</string>
+
+    <string name="v3_diag_section_title">Diagnose (ADMIN)</string>
+
+    <string name="v3_licenses_native_section">In der App enthalten</string>
+</resources>

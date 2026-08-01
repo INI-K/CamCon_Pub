@@ -129,7 +129,7 @@
     <string name="ptpip_check_camera_wifi">2. 请确认相机 Wi-Fi 已开启</string>
     <string name="ptpip_check_wifi">1. 请检查 Wi-Fi 连接状态</string>
     <string name="ptpip_connect">连接</string>
-    <string name="ptpip_connected_ip">已连接 — %s</string>
+    <string name="ptpip_connected_ip">已连接 - %s</string>
     <string name="ptpip_connecting_status">正在连接…</string>
     <string name="ptpip_connecting_to_camera">正在连接相机…</string>
     <string name="ptpip_connection_error">连接错误</string>
@@ -183,7 +183,7 @@
     <string name="sta_mode_auto_reconnect">自动重新连接</string>
     <string name="sta_mode_auto_reconnect_off">手动连接管理</string>
     <string name="sta_mode_auto_reconnect_on">网络变化时自动重新连接</string>
-    <string name="sta_mode_general_wifi">常规 Wi-Fi 网络 — 支持 mDNS 搜索</string>
+    <string name="sta_mode_general_wifi">常规 Wi-Fi 网络 - 支持 mDNS 搜索</string>
     <string name="sta_mode_mdns_description">自动搜索同一网络中的相机。</string>
     <string name="sta_mode_mdns_search">mDNS 相机搜索</string>
     <string name="sta_mode_search_camera">搜索相机</string>

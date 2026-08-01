@@ -7,7 +7,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,9 +24,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -54,6 +57,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -75,11 +80,27 @@ import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.CapturedPhoto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.inik.camcon.presentation.theme.Accent
+import com.inik.camcon.presentation.theme.BodySmall
+import com.inik.camcon.presentation.theme.ButtonText
 import com.inik.camcon.presentation.theme.CamConTheme
-import com.inik.camcon.presentation.theme.HeadingM
+import com.inik.camcon.presentation.theme.DisplayNum
+import com.inik.camcon.presentation.theme.ErrorV2
+import com.inik.camcon.presentation.theme.HeadingL
+import com.inik.camcon.presentation.theme.HeadingS
+import com.inik.camcon.presentation.theme.IconSize
+import com.inik.camcon.presentation.theme.MicroLabel
+import com.inik.camcon.presentation.theme.MonoMicro
+import com.inik.camcon.presentation.theme.MonoNumeric
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.StrokeWidth
 import com.inik.camcon.presentation.theme.Surface0
+import com.inik.camcon.presentation.theme.Surface2
+import com.inik.camcon.presentation.theme.TextPrimaryV2
+import com.inik.camcon.presentation.theme.TextSecondaryV2
+import com.inik.camcon.presentation.theme.TextTertiary
+import com.inik.camcon.presentation.theme.TouchTarget
 import com.inik.camcon.presentation.ui.components.v2.AppDialog
 import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
 import com.inik.camcon.presentation.ui.components.v2.SkeletonLoader
@@ -316,20 +337,36 @@ private fun ModernMyPhotosHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(Spacing.base),
+            .padding(
+                start = Spacing.base,
+                // IconButton 내부 12dp를 감안한 광학 정렬(4+12=16 ≈ base).
+                end = Spacing.xs,
+                top = Spacing.sm,
+                bottom = Spacing.xs
+            ),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Hero: 이 화면의 존재 이유인 저장 사진 수. eyebrow(11sp) : 카운터(34sp) = 1:3 콘트라스트.
         Column {
             Text(
-                text = stringResource(R.string.server_photos_my_photos),
-                style = HeadingM
+                text = stringResource(R.string.server_photos_v3_eyebrow),
+                style = MicroLabel,
+                color = TextTertiary
             )
-            if (photoCount > 0) {
+            Row {
                 Text(
-                    text = stringResource(R.string.server_photos_count, photoCount),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    text = photoCount.toString(),
+                    style = DisplayNum,   // 34sp Bold + tnum
+                    color = TextPrimaryV2,
+                    modifier = Modifier.alignByBaseline()
+                )
+                Spacer(modifier = Modifier.width(Spacing.xs))
+                Text(
+                    text = stringResource(R.string.server_photos_v3_photos_unit),
+                    style = MicroLabel,
+                    color = TextSecondaryV2,
+                    modifier = Modifier.alignByBaseline()
                 )
             }
         }
@@ -338,7 +375,7 @@ private fun ModernMyPhotosHeader(
             Icon(
                 Icons.Default.Refresh,
                 contentDescription = stringResource(R.string.cd_refresh),
-                tint = MaterialTheme.colorScheme.onSurface
+                tint = TextSecondaryV2
             )
         }
     }
@@ -356,7 +393,13 @@ private fun FluidPhotoGrid(
 ) {
     LazyVerticalStaggeredGrid(
         columns = StaggeredGridCells.Fixed(4),
-        contentPadding = PaddingValues(Spacing.sm),
+        // 바깥 여백은 헤더 좌측 앵커(Spacing.base)와 일치시키고, 타일 간 거터만 4dp로 촘촘히 유지한다.
+        contentPadding = PaddingValues(
+            start = Spacing.base,
+            end = Spacing.base,
+            top = Spacing.xs,
+            bottom = Spacing.lg
+        ),
         horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
         verticalItemSpacing = Spacing.xs,
         modifier = Modifier.fillMaxSize()
@@ -390,6 +433,9 @@ private fun FluidPhotoGrid(
 
 // RAW 파일 확장자 목록
 private val RAW_EXTENSIONS = setOf("nef", "cr2", "cr3", "arw", "dng", "orf", "rw2", "raf", "raw")
+
+// 빈 화면 안내 문구가 넓은 화면에서 한 줄로 늘어지지 않도록 잡는 측정 폭 상한.
+private val EmptyStateMaxWidth = 320.dp
 
 // 썸네일 LRU 캐시 (메모리의 1/8 사용, 최대 64MB)
 private val thumbnailCache: LruCache<String, Bitmap> by lazy {
@@ -484,20 +530,21 @@ private fun FluidPhotoGridItem(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                                .background(Surface2),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(
                                     imageVector = Icons.Default.PhotoCamera,
                                     contentDescription = null,
-                                    modifier = Modifier.size(28.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                    modifier = Modifier.size(IconSize.lg),
+                                    tint = TextTertiary
                                 )
                                 Text(
+                                    // NEF/CR3 같은 포맷 코드 — 배지형 모노 수치 슬롯.
                                     text = photo.filePath.substringAfterLast('.', "").uppercase(),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                    style = MonoMicro,
+                                    color = TextTertiary
                                 )
                             }
                         }
@@ -572,27 +619,50 @@ private fun FluidPhotoGridItem(
                 }
             }
 
-            if (isMultiSelectMode && isSelected) {
-                // 선택된 상태 오버레이
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
-                )
+            // 다중선택 모드에서는 미선택 타일에도 빈 체크 링을 그려 '선택 가능' 상태를 알린다.
+            if (isMultiSelectMode) {
+                if (isSelected) {
+                    // 사진 위 앰버 워시는 색 판정을 왜곡하므로 중립 스크림 + 앰버 엣지 1px으로 표현한다.
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(Color.Black.copy(alpha = 0.38f))
+                            .border(
+                                StrokeWidth.thin,
+                                Accent,
+                                RoundedCornerShape(Radius.sm)
+                            )
+                    )
+                }
 
-                // 체크 아이콘
                 Box(
                     modifier = Modifier
                         .matchParentSize()
-                        .padding(Spacing.sm),
+                        .padding(Spacing.xs),
                     contentAlignment = Alignment.TopEnd
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = stringResource(R.string.cd_selected),
-                        modifier = Modifier.size(24.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+                    if (isSelected) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = stringResource(R.string.cd_selected),
+                            modifier = Modifier.size(IconSize.lg),
+                            tint = Accent
+                        )
+                    } else {
+                        val unselectedLabel =
+                            stringResource(R.string.server_photos_v3_cd_unselected)
+                        Box(
+                            modifier = Modifier
+                                .size(IconSize.lg)
+                                .background(Color.Black.copy(alpha = 0.3f), CircleShape)
+                                .border(
+                                    StrokeWidth.thin,
+                                    TextSecondaryV2.copy(alpha = 0.8f),
+                                    CircleShape
+                                )
+                                .semantics { contentDescription = unselectedLabel }
+                        )
+                    }
                 }
             }
         }
@@ -610,7 +680,13 @@ private fun LoadingIndicator() {
     }
     LazyVerticalStaggeredGrid(
         columns = StaggeredGridCells.Fixed(4),
-        contentPadding = PaddingValues(Spacing.sm),
+        // 로딩→로드 전환에서 좌측 앵커가 튀지 않도록 FluidPhotoGrid와 동일한 여백을 쓴다.
+        contentPadding = PaddingValues(
+            start = Spacing.base,
+            end = Spacing.base,
+            top = Spacing.xs,
+            bottom = Spacing.lg
+        ),
         horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
         verticalItemSpacing = Spacing.xs,
         modifier = Modifier.fillMaxSize()
@@ -633,28 +709,31 @@ fun EmptyMyPhotosState() {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
+        // 빈 화면 = Airy 등급(base 20dp). 중앙 정렬은 이 슬롯에서만 허용된다.
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            modifier = Modifier
+                .padding(Spacing.lg)
+                .widthIn(max = EmptyStateMaxWidth),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
                 imageVector = Icons.Default.PhotoCamera,
                 contentDescription = null,
-                modifier = Modifier.size(80.dp),
-                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                modifier = Modifier.size(IconSize.xl),
+                tint = TextTertiary
             )
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(Spacing.lg))
             Text(
                 text = stringResource(R.string.server_photos_no_saved_photos),
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                style = HeadingL,
+                color = TextPrimaryV2,
                 textAlign = TextAlign.Center
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(Spacing.sm))
             Text(
                 text = stringResource(R.string.server_photos_capture_hint),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                style = BodySmall,
+                color = TextSecondaryV2,
                 textAlign = TextAlign.Center
             )
         }
@@ -668,9 +747,7 @@ fun CapturedPhotoItem(
 ) {
     // 이 함수는 더 이상 사용되지 않음 (그리드뷰로 변경)
     SurfaceV2(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { /* TODO: 사진 상세 보기 */ },
+        modifier = Modifier.fillMaxWidth(),
         tier = 2,
         border = true
     ) {
@@ -708,7 +785,8 @@ fun CapturedPhotoItem(
             ) {
                 Text(
                     text = File(photo.filePath).name,
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = HeadingS,
+                    color = TextPrimaryV2,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -716,8 +794,8 @@ fun CapturedPhotoItem(
                 val dateFormat = SimpleDateFormat("yyyy.MM.dd HH:mm", Locale.getDefault())
                 Text(
                     text = dateFormat.format(Date(photo.captureTime)),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MonoNumeric,
+                    color = TextSecondaryV2
                 )
 
                 // 파일 크기 표시
@@ -728,8 +806,8 @@ fun CapturedPhotoItem(
                 }
                 Text(
                     text = sizeText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MonoNumeric,
+                    color = TextTertiary
                 )
             }
 
@@ -753,36 +831,120 @@ fun MyPhotosMultiSelectActionBar(
     onDelete: () -> Unit,
     onCancel: () -> Unit
 ) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(Spacing.base),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+            .padding(
+                start = Spacing.base,
+                end = Spacing.sm,
+                top = Spacing.sm,
+                bottom = Spacing.xs
+            )
     ) {
+        // 다중선택 모드에서는 선택 개수가 헤더와 같은 자리의 Hero 역할을 이어받는다.
         Text(
-            text = stringResource(R.string.server_photos_selected_count, selectedCount),
-            style = MaterialTheme.typography.bodyLarge
+            text = stringResource(R.string.server_photos_v3_selected_eyebrow),
+            style = MicroLabel,
+            color = TextTertiary
+        )
+        Text(
+            text = selectedCount.toString(),
+            style = DisplayNum,   // 34sp Bold + tnum
+            color = Accent        // 선택 = 활성 상태 → 앰버
         )
 
-        Row {
-            TextButton(onClick = onSelectAll) {
-                Text(stringResource(R.string.server_photos_select_all))
-            }
-            TextButton(onClick = onDeselectAll) {
-                Text(stringResource(R.string.server_photos_deselect_all))
-            }
-            TextButton(onClick = onDelete) {
-                Text(stringResource(R.string.delete))
-            }
-            TextButton(onClick = onCancel) {
-                Text(stringResource(R.string.cancel))
-            }
+        // 액션 4종은 개수 옆에 두면 독일어처럼 라벨이 긴 로케일에서 잘리므로 별도 행으로 내리고,
+        // weight(fill = false)로 폭이 모자랄 때만 균등 분배되게 해 어떤 로케일에서도 버튼이 사라지지 않게 한다.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ActionBarTextButton(
+                text = stringResource(R.string.server_photos_select_all),
+                color = TextSecondaryV2,
+                onClick = onSelectAll,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            ActionBarTextButton(
+                text = stringResource(R.string.server_photos_deselect_all),
+                color = TextSecondaryV2,
+                onClick = onDeselectAll,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            ActionBarTextButton(
+                text = stringResource(R.string.delete),
+                color = ErrorV2,
+                onClick = onDelete,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            ActionBarTextButton(
+                text = stringResource(R.string.cancel),
+                color = TextSecondaryV2,
+                onClick = onCancel,
+                modifier = Modifier.weight(1f, fill = false)
+            )
         }
     }
 }
 
-@Preview(showBackground = true)
+@Composable
+private fun ActionBarTextButton(
+    text: String,
+    color: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    TextButton(
+        onClick = onClick,
+        modifier = modifier.defaultMinSize(minHeight = TouchTarget.min),
+        contentPadding = PaddingValues(horizontal = Spacing.sm, vertical = Spacing.xs)
+    ) {
+        Text(
+            text = text,
+            style = ButtonText,
+            color = color,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+// 실촬영 값 기준 프리뷰 샘플 — MediaStore _ID, Z8 RAW 파일명/용량/화소.
+private val PreviewCapturedPhoto = CapturedPhoto(
+    id = "1000004417",
+    filePath = "/storage/emulated/0/DCIM/CamCon/DSC_4417.NEF",
+    thumbnailPath = "/storage/emulated/0/DCIM/CamCon/.thumb/DSC_4417.jpg",
+    captureTime = 1_753_901_640_000L,   // 2025.07.31 02:34
+    cameraModel = "NIKON Z 8",
+    settings = null,
+    size = 54_318_912L,
+    width = 8256,
+    height = 5504
+)
+
+@Preview(name = "MyPhotos Header Hero", showBackground = true, backgroundColor = 0xFF050607)
+@Composable
+private fun ModernMyPhotosHeaderPreview() {
+    CamConTheme {
+        ModernMyPhotosHeader(photoCount = 1284, onRefresh = {})
+    }
+}
+
+@Preview(name = "MyPhotos MultiSelect Bar", showBackground = true, backgroundColor = 0xFF050607)
+@Composable
+private fun MyPhotosMultiSelectActionBarPreview() {
+    CamConTheme {
+        MyPhotosMultiSelectActionBar(
+            selectedCount = 37,
+            onSelectAll = {},
+            onDeselectAll = {},
+            onDelete = {},
+            onCancel = {}
+        )
+    }
+}
+
+@Preview(name = "MyPhotos Empty", showBackground = true, backgroundColor = 0xFF050607)
 @Composable
 fun EmptyMyPhotosStatePreview() {
     CamConTheme() {
@@ -790,22 +952,12 @@ fun EmptyMyPhotosStatePreview() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(name = "MyPhotos Captured Row", showBackground = true, backgroundColor = 0xFF050607)
 @Composable
 fun CapturedPhotoItemPreview() {
     CamConTheme() {
         CapturedPhotoItem(
-            photo = CapturedPhoto(
-                id = "1",
-                filePath = "/storage/emulated/0/Pictures/IMG_001.jpg",
-                thumbnailPath = "/storage/emulated/0/Pictures/thumb_IMG_001.jpg",
-                captureTime = System.currentTimeMillis(),
-                cameraModel = "Canon EOS R6",
-                settings = null,
-                size = 1024 * 1024 * 5,
-                width = 1920,
-                height = 1080
-            ),
+            photo = PreviewCapturedPhoto,
             onDelete = {}
         )
     }

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="v3_ptpip_status_connected">연결됨</string>
+    <string name="v3_ptpip_scan_nearby_wifi_label">주변 Wi-Fi</string>
+    <string name="v3_ptpip_scan_nearby_camera_wifi_label">주변 카메라 Wi-Fi</string>
+</resources>

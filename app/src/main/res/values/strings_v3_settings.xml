@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 설정 Hero (연결 계측기 헤더) -->
+    <!-- 계측기 eyebrow — MicroLabel 트래킹 라벨이라 라틴 대문자로 유지한다. -->
+    <string name="settings_v3_hero_eyebrow">CAMERA</string>
+    <string name="settings_v3_hero_camera_none">No camera</string>
+
+    <!-- 서버 저장 공간 — quota API 연결 전 상태 문구 -->
+    <string name="settings_v3_storage_pending">Waiting for usage data</string>
+</resources>

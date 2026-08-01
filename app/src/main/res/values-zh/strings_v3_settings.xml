@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 设置 Hero (连接状态标题) -->
+    <string name="settings_v3_hero_eyebrow">CAMERA</string>
+    <string name="settings_v3_hero_camera_none">未连接相机</string>
+
+    <!-- 服务器存储 — quota API 接入前的状态文案 -->
+    <string name="settings_v3_storage_pending">等待用量统计</string>
+</resources>

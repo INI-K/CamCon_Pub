@@ -84,35 +84,71 @@ scrim = #B3000000
 
 폰트는 **Pretendard 단일**(Regular/Medium/SemiBold/Bold). 숫자 정렬 필요 시 `fontFeatureSettings = "tnum"` 적용.
 
-### 2.1 슬롯 (V1 대비 디스플레이 슬롯 폐기, 정보 밀도 우선)
+### 2.1 슬롯 (Display 티어 복원 — 화면마다 Hero 1개 필수)
 
-| 슬롯 | sp | weight | lineHeight | 용도 |
-|------|-----|--------|-----------|------|
-| `HeadingXL` | 24 | Bold | 28 | 화면 타이틀(드물게) |
-| `HeadingL` | 20 | SemiBold | 26 | 섹션 헤더 |
-| `HeadingM` | 16 | SemiBold | 22 | 카드 헤더 |
-| `Body` | 14 | Regular | 20 | 본문 표준 |
-| `BodySmall` | 13 | Regular | 18 | 보조 |
-| `Caption` | 12 | Medium | 16 | 라벨 |
-| `Micro` | 11 | Medium | 14 | 메타 |
-| `ButtonText` | 14 | SemiBold | 16 | CTA |
-| `MonoNumeric` | 12 | Regular | 16 | EXIF/숫자 (tnum) |
+> **2026-08-01 개정.** 초판은 "디스플레이 슬롯 폐기, 정보 밀도 우선"이었으나, 전수 감사 결과
+> 14개 표면 중 13개가 본문 2.5배 이상 슬롯이 0건이었고 `scale-hierarchy` 결함이 111건 중 36건(32%)으로
+> 단일 최대 원인이었다. 폰트가 Pretendard 단일이라 페어링으로 위계를 만들 수 없으므로 **크기·무게가 위계를 전담**한다.
+
+**규칙: 모든 화면은 Hero 슬롯을 하나 갖는다.** Hero는 그 화면의 존재 이유가 되는 수치·상태이며 본문의 **2.5배 이상**이어야 한다.
+
+| 슬롯 | sp | weight | lineHeight | tnum | 용도 |
+|------|-----|--------|-----------|:----:|------|
+| `DisplayL` | 34 | Bold | 40 | | Hero — 스플래시/연결/빈 화면 |
+| `DisplayNum` | 34 | Bold | 40 | ✓ | Hero 카운터 — 사진 수·선택 수·가격 (CJK 단위 안전) |
+| `MonoHero` | 38 | Bold | 42 | ✓ | Hero 판독값 — 노출 주값·강도 % (**숫자/영문 전용**) |
+| `DisplayM` | 28 | Bold | 34 | | 준 Hero — EmptyState 타이틀, 정보 화면 모델명 |
+| `HeadingXL` | 24 | Bold | 28 | | 화면 타이틀 |
+| `HeadingL` | 20 | SemiBold | 26 | | 섹션 헤더 |
+| `HeadingM` | 16 | SemiBold | 22 | | 카드 헤더 |
+| `BodyLarge` | 16 | Regular | 24 | | 다이얼로그·안내 리드 문장 |
+| `Body` | 14 | Regular | 20 | | 본문 표준 |
+| `HeadingS` | 14 | SemiBold | 20 | | 카드·행 제목 (본문과 무게로 분리) |
+| `BodySmall` | 13 | Regular | 18 | | 보조 |
+| `Caption` | 12 | Medium | 16 | | 라벨 |
+| `Micro` | 11 | Medium | 14 | | 메타 |
+| `MicroLabel` | 11 | Medium | 14 | | 계측기 eyebrow (letterSpacing 1.4, 대문자 영문 전제) |
+| `ButtonText` | 14 | SemiBold | 16 | | CTA |
+| `MonoReadout` | 16 | Medium | 20 | ✓ | HUD 노출 스트립 |
+| `MonoNumeric` | 12 | Regular | 16 | ✓ | 인라인 탭형 수치 |
+| `MonoMicro` | 11 | Regular | 14 | ✓ | 미니 수치(썸네일·배지) |
+
+**tnum(탭형 숫자)** — `Mono*` 4종과 `DisplayNum`에 `fontFeatureSettings = "tnum"`이 박혀 있어 **토큰만 쓰면 정렬이 따라온다**. 변동 수치(노출·개수·진행률·파일 크기)에 비례폭 슬롯을 쓰면 자릿수가 바뀔 때 자리가 흔들린다. Pretendard 4 weight 전부 tnum을 내장함을 확인했다(2026-08-01).
+
+**`MonoHero`/`Mono*`는 `FontFamily.Monospace`(시스템 폴백)이라 CJK 렌더가 보장되지 않는다.** 한국어가 들어갈 수 있는 자리에는 `DisplayNum`(Pretendard + tnum)을 쓴다.
+
+회귀 방어: `app/src/test/.../presentation/theme/TypographyScaleTest.kt` (사다리 단조감소, 위계 역전 방지, Hero 2.5배, tnum 적용 범위).
 
 ### 2.2 Material 3 Typography 매핑
 
+호출처가 `MaterialTheme.typography.*`를 145건/33파일 소비하므로, **alias 매핑이 사다리를 붕괴시키면 앱 전체 위계가 무너진다.** 서로 다른 의미의 alias는 서로 다른 값을 가리켜야 한다.
+
 ```
-displayLarge/Medium/Small = HeadingXL (다 24sp Bold로 강등)
-headlineLarge/Medium/Small = HeadingL / HeadingM / HeadingM
-titleLarge = HeadingM (16sp SemiBold)
-titleMedium = HeadingM
-titleSmall = Caption
-bodyLarge = Body
-bodyMedium = Body
-bodySmall = BodySmall
-labelLarge = ButtonText
+displayLarge  = DisplayL   (34sp Bold)
+displayMedium = DisplayM   (28sp Bold)
+displaySmall  = HeadingXL  (24sp Bold)
+
+headlineLarge  = HeadingL
+headlineMedium = HeadingM
+headlineSmall  = HeadingM
+
+titleLarge  = HeadingL     (20sp SemiBold)
+titleMedium = HeadingM     (16sp SemiBold)
+titleSmall  = HeadingS     (14sp SemiBold)
+
+bodyLarge  = BodyLarge     (16sp Regular)
+bodyMedium = Body          (14sp Regular)
+bodySmall  = BodySmall     (13sp Regular)
+
+labelLarge  = ButtonText
 labelMedium = Caption
-labelSmall = Micro
+labelSmall  = Micro
 ```
+
+> **2026-08-01 개정 — 붕괴 3건 해소.**
+> `titleSmall`이 `Caption`(12sp)이라 제목이 본문(13sp)보다 **작은 위계 역전**이 5파일 8건 있었다 → `HeadingS`(14sp SemiBold).
+> `bodyLarge`/`bodyMedium`이 둘 다 `Body`(14sp)라 크기 차가 **0sp**였다 → `bodyLarge`를 `BodyLarge`(16sp)로 분리.
+> `titleLarge`/`titleMedium`/`headlineSmall` 3단계가 전부 `HeadingM`(16sp)으로 붕괴했다 → `titleLarge`를 `HeadingL`(20sp)로 승격.
 
 ---
 

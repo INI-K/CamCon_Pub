@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
@@ -19,6 +18,7 @@ import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.BodySmall
 import com.inik.camcon.presentation.theme.ErrorV2
 import com.inik.camcon.presentation.theme.HeadingL
+import com.inik.camcon.presentation.theme.MonoMicro
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.Surface3
 import com.inik.camcon.presentation.theme.TextPrimaryV2
@@ -39,14 +39,22 @@ internal fun NativeLogDialog(
 ) {
     AppDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_native_log_dialog_title)) },
+        title = {
+            Text(
+                stringResource(R.string.settings_native_log_dialog_title),
+                style = HeadingL,
+                color = TextPrimaryV2
+            )
+        },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState())
             ) {
+                // 네이티브 로그는 타임스탬프·주소가 열 단위로 늘어서는 기계 출력이라
+                // 비례폭 본문 대신 tnum 모노로 읽는다.
                 Text(
                     text = logContent.takeLast(3000),
-                    style = MaterialTheme.typography.bodySmall
+                    style = MonoMicro
                 )
             }
         },

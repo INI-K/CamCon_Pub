@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 온보딩 Hero eyebrow — 스텝 카운터(숫자 전용, 로케일 공통 표기) -->
+    <string name="onboarding_step_counter">%1$02d / %2$02d</string>
+</resources>

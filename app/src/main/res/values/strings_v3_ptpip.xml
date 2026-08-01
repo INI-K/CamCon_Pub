@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Wi-Fi(PTP/IP) 연결 화면 V3 리디자인 전용 문자열.
+     기존 키에 카운트가 %d로 박혀 있어 수치를 탭형(tnum) 모노로 분리할 수 없던 라벨들을
+     라벨-only 형태로 재정의한다. -->
+<resources>
+    <string name="v3_ptpip_status_connected">Connected</string>
+    <string name="v3_ptpip_scan_nearby_wifi_label">Nearby Wi-Fi</string>
+    <string name="v3_ptpip_scan_nearby_camera_wifi_label">Nearby camera Wi-Fi</string>
+</resources>
