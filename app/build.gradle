@@ -263,6 +263,18 @@ gradle.taskGraph.whenReady { graph ->
     }
 }
 
+// Compose 컴파일러 리포트 — 안정성 진단의 실측 근거.
+// 기본은 꺼져 있고 -PcomposeReports 로 켠다(상시 켜면 빌드가 느려진다).
+// 사용: ./gradlew :app:assembleRelease -PcomposeReports
+//   → app/build/compose_compiler/{classes,composables}.txt
+// 릴리즈 빌드에서 뽑아야 정확하다(디버그는 추론 결과가 다르다).
+composeCompiler {
+    if (project.hasProperty('composeReports')) {
+        reportsDestination = layout.buildDirectory.dir('compose_compiler')
+        metricsDestination = layout.buildDirectory.dir('compose_compiler')
+    }
+}
+
 // KSP configuration for better performance
 ksp {
     arg("dagger.hilt.shareTestComponents", "true")
