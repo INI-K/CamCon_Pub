@@ -1,13 +1,15 @@
 package com.inik.camcon.presentation.viewmodel
 
 import android.util.Log
+import com.inik.camcon.R
 import com.inik.camcon.di.ApplicationScope
-import com.inik.camcon.domain.model.PtpipCamera
+import com.inik.camcon.domain.model.DiscoveryAttemptResult
+import com.inik.camcon.domain.model.DiscoveryEmptyReason
+import com.inik.camcon.domain.model.UiText
 import com.inik.camcon.domain.repository.PtpipRepository
 import com.inik.camcon.utils.LogMask
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -17,8 +19,7 @@ import javax.inject.Singleton
  *
  * 담당 기능:
  * - Wi-Fi SSID 스캔 (주변 네트워크 검색)
- * - mDNS 기반 PTP/IP 카메라 검색
- * - 검색 결과 기반 자동 연결
+ * - mDNS 기반 PTP/IP 카메라 검색 (**검색 전용** — 선택·연결 결정은 하지 않는다)
  * - 위치 서비스 확인
  */
 @Singleton
@@ -126,36 +127,50 @@ class PtpipDiscoveryHelper @Inject constructor(
     // ── 카메라 검색 ──────────────────────────────────────────
 
     /**
-     * Wi-Fi 네트워크에서 PTP/IP 카메라를 검색하고 자동으로 첫 번째 카메라에 연결한다.
+     * Wi-Fi 네트워크에서 PTP/IP 카메라를 **검색만** 한다.
+     *
+     * ⚠️ 자동 선택·자동 연결은 이 클래스에서 제거됐다. 이 헬퍼는 `@Singleton` + `@ApplicationScope`
+     * 이므로 연결 결정이 남아 있으면 화면이 종료된 뒤에도 연결이 계속 진행된다(취소 불가).
+     * 후보 0/1/2+ 분기와 자동 연결 허용 판정은 `CameraSelectionPolicy` 단일 지점이 담당하고,
+     * 그 결정을 실행하는 것은 ViewModel이다.
      *
      * @param forceApMode AP 모드 강제 사용 여부
      * @param onDiscoveringChanged 검색 중 상태 변경 콜백
-     * @param onConnectingChanged 연결 중 상태 변경 콜백
-     * @param onErrorChanged 에러 메시지 변경 콜백
-     * @param onCameraSelected 카메라 선택 콜백
+     * @param onResult 검색 결과 + 0건 사유 + (예외 시) 표시 메시지
      */
     fun discoverCameras(
         forceApMode: Boolean = false,
         onDiscoveringChanged: (Boolean) -> Unit,
-        onConnectingChanged: (Boolean) -> Unit,
-        onErrorChanged: (String?) -> Unit,
-        onCameraSelected: (PtpipCamera) -> Unit
+        onResult: (DiscoveryAttemptResult) -> Unit
     ) {
         Log.i(TAG, "사용자가 카메라 검색을 요청했습니다")
 
         scope.launch {
             try {
                 onDiscoveringChanged(true)
-                onErrorChanged(null)
 
                 // 폰 핫스팟(STA_PHONE_HOTSPOT) 모드에선 폰이 SoftAP라서 Wi-Fi 클라이언트 연결이 없어
                 // isWifiConnected()=false 가 정상이다(폰이 게이트웨이). 따라서 클라이언트 연결도 없고
                 // 핫스팟도 꺼져 있을 때(=진짜로 네트워크 없음)에만 차단하고, 핫스팟이 켜져 있으면 진행한다.
                 val networkState = ptpipRepository.getCurrentWifiNetworkState()
                 if (!ptpipRepository.isWifiConnected() && !networkState.isHotspotEnabled) {
-                    val errorMsg = "Wi-Fi가 연결되어 있지 않습니다. Wi-Fi를 켜고 네트워크에 연결하거나 핫스팟을 켜주세요."
-                    Log.w(TAG, errorMsg)
-                    onErrorChanged(errorMsg)
+                    Log.w(TAG, "Wi-Fi 미연결 + 핫스팟 꺼짐 - 검색 차단")
+                    onResult(
+                        DiscoveryAttemptResult(emptyList(), DiscoveryEmptyReason.NO_NETWORK)
+                    )
+                    return@launch
+                }
+
+                // 세션 점유 중(CONNECTING/CONNECTED/무선수신)에는 검색하지 않는다 — 중복 검색이
+                // 단일 PTP/IP 세션을 흔든다. 기존 목록은 그대로 유지해 UI 목록 소실을 막는다.
+                if (ptpipRepository.isDiscoveryBlocked()) {
+                    Log.i(TAG, "세션 점유 중 - 검색 스킵 (기존 목록 유지)")
+                    onResult(
+                        DiscoveryAttemptResult(
+                            ptpipRepository.discoveredCameras.value,
+                            DiscoveryEmptyReason.BLOCKED_BUSY
+                        )
+                    )
                     return@launch
                 }
 
@@ -169,55 +184,30 @@ class PtpipDiscoveryHelper @Inject constructor(
 
                 Log.i(TAG, "네트워크 확인됨, 카메라 검색 시작...")
                 val cameras = ptpipRepository.discoverCameras(forceApMode)
-
                 Log.i(TAG, "카메라 검색 완료: ${cameras.size}개 발견")
 
-                if (cameras.isEmpty()) {
-                    val errorMsg = if (networkState.isConnectedToCameraAP) {
-                        "카메라 AP에 연결되어 있지만 카메라를 찾을 수 없습니다.\n" +
-                                "카메라의 Wi-Fi 설정을 확인하고 다시 시도해주세요."
-                    } else {
-                        "PTPIP 지원 카메라를 찾을 수 없습니다. 같은 네트워크에 카메라가 연결되어 있는지 확인해주세요."
-                    }
-                    Log.w(TAG, errorMsg)
-                    onErrorChanged(errorMsg)
-                } else {
-                    onErrorChanged(null)
-
-                    val firstCamera = cameras.first()
-                    Log.i(
-                        TAG,
-                        "첫 번째 카메라 자동 선택: ${firstCamera.name} (${firstCamera.ipAddress}:${firstCamera.port})"
-                    )
-                    onCameraSelected(firstCamera)
-
-                    val modeText = if (forceApMode) "AP 모드" else "STA 모드"
-                    Log.i(TAG, "=== libgphoto2 초기화 및 카메라 연결 시작 ($modeText) ===")
-                    onConnectingChanged(true)
-
-                    delay(500)
-
-                    val connectionSuccess =
-                        ptpipRepository.connectToCamera(firstCamera, forceApMode)
-
-                    if (connectionSuccess) {
-                        Log.i(TAG, "카메라 연결 성공! ($modeText)")
-                        onErrorChanged(null)
-                    } else {
-                        Log.e(TAG, "카메라 연결 실패 ($modeText)")
-                        onErrorChanged("카메라 연결에 실패했습니다")
-                    }
+                val reason = when {
+                    cameras.isNotEmpty() -> DiscoveryEmptyReason.NONE
+                    networkState.isConnectedToCameraAP -> DiscoveryEmptyReason.CAMERA_AP_EMPTY
+                    else -> DiscoveryEmptyReason.NOT_FOUND
                 }
-
+                onResult(DiscoveryAttemptResult(cameras, reason))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                val errorMsg = "카메라 검색 중 오류가 발생했습니다: ${e.message}"
-                Log.e(TAG, errorMsg, e)
-                onErrorChanged(errorMsg)
+                Log.e(TAG, "카메라 검색 중 오류", e)
+                onResult(
+                    DiscoveryAttemptResult(
+                        cameras = emptyList(),
+                        reason = DiscoveryEmptyReason.NOT_FOUND,
+                        error = UiText.Resource(
+                            R.string.ptpip_discovery_error_fmt,
+                            listOf(e.message.orEmpty())
+                        )
+                    )
+                )
             } finally {
                 onDiscoveringChanged(false)
-                onConnectingChanged(false)
                 Log.d(TAG, "카메라 검색 작업 완료")
             }
         }

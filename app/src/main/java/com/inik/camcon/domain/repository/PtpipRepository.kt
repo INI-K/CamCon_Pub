@@ -61,6 +61,28 @@ interface PtpipRepository {
     /** 카메라 연결 해제 */
     suspend fun disconnect()
 
+    /**
+     * 진행 중 연결의 협조적 취소 요청. mutex를 획득하지 않고 즉시 반환한다.
+     *
+     * 반드시 `disconnect()`보다 **먼저** 호출한다 — 순서가 뒤바뀌면 disconnect가 연결 mutex에
+     * 먼저 큐잉되어 취소가 다시 무력화된다.
+     */
+    fun requestConnectCancel()
+
+    /** 세션 점유로 검색을 시도하면 안 되는 상태(CONNECTING/CONNECTED/무선수신). */
+    fun isDiscoveryBlocked(): Boolean
+
+    /**
+     * **자동 연결**(무탭) 금지 상태. [isDiscoveryBlocked]보다 강하다 —
+     * 여기에는 살아있는 USB 세션·영상녹화·라이브뷰 종료전이·취소 직후 쿨다운이 포함된다.
+     *
+     * ⚠️ 검색 스킵 판정([isDiscoveryBlocked])과 혼용하지 말 것. `initCameraWithPtpip`는 USB 공유
+     * 네이티브 핸들을 무경고 파괴하므로, 자동 연결 분기는 반드시 이 함수를 써야 한다.
+     * 전경(ViewModel)과 배경(WifiMonitoringService)이 서로 다른 조건을 쓰면 같은 상황에서
+     * 결과가 갈린다.
+     */
+    fun isAutoConnectBlocked(): Boolean
+
     /** 리소스 정리 */
     fun cleanup()
 
@@ -68,6 +90,15 @@ interface PtpipRepository {
 
     /** Wi-Fi 네트워크에서 PTP/IP 카메라 검색 */
     suspend fun discoverCameras(forceApMode: Boolean = false): List<PtpipCamera>
+
+    /**
+     * 서브넷 TCP 스윕(최후 폴백). mDNS/SSDP가 0건일 때 **사용자가 명시적으로** 실행한다.
+     * 결과는 기존 후보에 병합되고 자동 연결 대상에서는 제외된다(이름·제조사 신호 없음).
+     */
+    suspend fun sweepSubnetForCameras(): List<PtpipCamera>
+
+    /** 서브넷 스윕 실행 가능 여부(프리픽스 취득 가능). false면 UI가 버튼을 노출하지 않는다. */
+    fun isSubnetSweepAvailable(): Boolean
 
     // ── 촬영 ──
 

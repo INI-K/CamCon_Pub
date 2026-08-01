@@ -18,4 +18,31 @@
     <string name="ptpip_hotspot_hero_hint">Turn on the phone hotspot so the camera can connect</string>
     <string name="cd_expanded">Expanded</string>
     <string name="cd_collapsed">Collapsed</string>
+    <!-- PTP/IP 기기 발견 목록 · 선택 (Wave 1) -->
+    <string name="ptpip_discovery_found_title">Cameras found</string>
+    <string name="ptpip_candidate_unnamed_fmt">Camera (%1$s)</string>
+    <string name="ptpip_candidate_known">Previously connected</string>
+    <string name="ptpip_source_mdns">Auto-discovered</string>
+    <string name="ptpip_source_ssdp">Found via UPnP</string>
+    <string name="ptpip_source_gateway">Gateway guess</string>
+    <string name="ptpip_source_cached">Recently used</string>
+    <string name="ptpip_source_manual">Entered manually</string>
+    <string name="ptpip_vendor_confirmed_fmt">%1$s confirmed</string>
+    <string name="ptpip_vendor_likely_fmt">%1$s (likely)</string>
+    <string name="ptpip_vendor_unknown">Maker unknown</string>
+    <string name="ptpip_discovery_empty_title">No cameras found</string>
+    <string name="ptpip_discovery_empty_camera_first">Check the camera first: 1) it has joined the phone hotspot, 2) its smart-device (Wi-Fi) connection menu is on, 3) power saving has not switched Wi-Fi off. Then search again.</string>
+    <string name="ptpip_discovery_no_network">Wi-Fi is not connected. Turn on Wi-Fi and join a network, or start your hotspot.</string>
+    <string name="ptpip_discovery_ap_empty">Connected to the camera AP, but no camera was found.\nCheck the camera\'s Wi-Fi settings and try again.</string>
+    <string name="ptpip_discovery_busy">Searching is paused while the camera is in use. Disconnect or stop wireless transfer, then try again.</string>
+    <string name="ptpip_discovery_error_fmt">Camera search failed: %1$s</string>
+    <string name="ptpip_shared_network_notice">This may be a shared network. Make sure the camera is yours before selecting it.</string>
+    <string name="ptpip_connect_confirm_title">Connect to this camera?</string>
+    <string name="ptpip_connect_confirm_action">Connect</string>
+    <string name="ptpip_connect_confirm_body">After connecting, an approval request appears on that camera\'s screen. Make sure it is your camera.</string>
+    <string name="ptpip_manual_source_hint">Use a manually entered IP to reconnect to a camera you have already paired.</string>
+    <string name="ptpip_connect_cancelling">Cancelling connection…</string>
+    <string name="ptpip_sweep_action">Search the network</string>
+    <string name="ptpip_source_scan">Network scan</string>
+    <string name="ptpip_protocol_unsupported">not supported yet</string>
 </resources>

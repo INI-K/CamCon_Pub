@@ -160,8 +160,14 @@ object AppModule {
     fun providePtpipDiscoveryService(
         @ApplicationContext context: Context,
         wifiHelper: WifiNetworkHelper,
-        ssdpDiscoveryService: SsdpDiscoveryService
-    ) = PtpipDiscoveryService(context, wifiHelper, ssdpDiscoveryService)
+        ssdpDiscoveryService: SsdpDiscoveryService,
+        ptpipPreferencesDataSource: PtpipPreferencesDataSource
+    ) = PtpipDiscoveryService(
+        context,
+        wifiHelper,
+        ssdpDiscoveryService,
+        ptpipPreferencesDataSource
+    )
 
     @Provides
     @Singleton

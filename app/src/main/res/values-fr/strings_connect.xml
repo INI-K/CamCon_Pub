@@ -18,4 +18,31 @@
     <string name="ptpip_hotspot_hero_hint">Activez le point d\'accès du téléphone pour que l\'appareil photo puisse se connecter</string>
     <string name="cd_expanded">Déplié</string>
     <string name="cd_collapsed">Replié</string>
+    <!-- PTP/IP 기기 발견 목록 · 선택 (Wave 1) -->
+    <string name="ptpip_discovery_found_title">Appareils photo trouvés</string>
+    <string name="ptpip_candidate_unnamed_fmt">Appareil photo (%1$s)</string>
+    <string name="ptpip_candidate_known">Déjà connecté</string>
+    <string name="ptpip_source_mdns">Détection automatique</string>
+    <string name="ptpip_source_ssdp">Détecté via UPnP</string>
+    <string name="ptpip_source_gateway">Estimation par passerelle</string>
+    <string name="ptpip_source_cached">Utilisé récemment</string>
+    <string name="ptpip_source_manual">Saisi manuellement</string>
+    <string name="ptpip_vendor_confirmed_fmt">%1$s confirmé</string>
+    <string name="ptpip_vendor_likely_fmt">%1$s (probable)</string>
+    <string name="ptpip_vendor_unknown">Fabricant inconnu</string>
+    <string name="ptpip_discovery_empty_title">Aucun appareil photo trouvé</string>
+    <string name="ptpip_discovery_empty_camera_first">Vérifiez d\'abord l\'appareil photo : 1) il est bien connecté au point d\'accès du téléphone, 2) son menu de connexion aux appareils intelligents (Wi-Fi) est activé, 3) l\'économie d\'énergie n\'a pas désactivé le Wi-Fi. Relancez ensuite la recherche.</string>
+    <string name="ptpip_discovery_no_network">Le Wi-Fi n\'est pas connecté. Activez le Wi-Fi et connectez-vous à un réseau, ou activez le point d\'accès.</string>
+    <string name="ptpip_discovery_ap_empty">Connecté au point d\'accès de l\'appareil photo, mais aucun appareil trouvé.\nVérifiez les réglages Wi-Fi de l\'appareil photo, puis réessayez.</string>
+    <string name="ptpip_discovery_busy">Aucune recherche pendant l\'utilisation de l\'appareil photo. Déconnectez-vous ou arrêtez le transfert sans fil, puis réessayez.</string>
+    <string name="ptpip_discovery_error_fmt">Échec de la recherche d\'appareils photo : %1$s</string>
+    <string name="ptpip_shared_network_notice">Il s\'agit peut-être d\'un réseau partagé. Vérifiez qu\'il s\'agit bien de votre appareil photo avant de le sélectionner.</string>
+    <string name="ptpip_connect_confirm_title">Se connecter à cet appareil photo ?</string>
+    <string name="ptpip_connect_confirm_action">Se connecter</string>
+    <string name="ptpip_connect_confirm_body">Après la connexion, une demande d\'autorisation s\'affiche sur l\'écran de cet appareil photo. Vérifiez qu\'il s\'agit bien du vôtre.</string>
+    <string name="ptpip_manual_source_hint">Utilisez une adresse IP saisie manuellement pour vous reconnecter à un appareil photo déjà associé.</string>
+    <string name="ptpip_connect_cancelling">Annulation de la connexion…</string>
+    <string name="ptpip_sweep_action">Rechercher sur le réseau</string>
+    <string name="ptpip_source_scan">Analyse réseau</string>
+    <string name="ptpip_protocol_unsupported">connexion pas encore prise en charge</string>
 </resources>
