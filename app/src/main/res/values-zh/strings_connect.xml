@@ -18,4 +18,31 @@
     <string name="ptpip_hotspot_hero_hint">打开手机热点后，相机即可接入</string>
     <string name="cd_expanded">已展开</string>
     <string name="cd_collapsed">已折叠</string>
+    <!-- PTP/IP 기기 발견 목록 · 선택 (Wave 1) -->
+    <string name="ptpip_discovery_found_title">找到的相机</string>
+    <string name="ptpip_candidate_unnamed_fmt">相机 (%1$s)</string>
+    <string name="ptpip_candidate_known">曾连接过</string>
+    <string name="ptpip_source_mdns">自动发现</string>
+    <string name="ptpip_source_ssdp">通过 UPnP 发现</string>
+    <string name="ptpip_source_gateway">网关推测</string>
+    <string name="ptpip_source_cached">最近使用</string>
+    <string name="ptpip_source_manual">手动输入</string>
+    <string name="ptpip_vendor_confirmed_fmt">%1$s（已确认）</string>
+    <string name="ptpip_vendor_likely_fmt">%1$s（推测）</string>
+    <string name="ptpip_vendor_unknown">厂商未知</string>
+    <string name="ptpip_discovery_empty_title">未找到相机</string>
+    <string name="ptpip_discovery_empty_camera_first">请先检查相机：① 相机是否已连接手机热点 ② 相机的智能设备连接（Wi-Fi）菜单是否已开启 ③ 是否因省电而关闭了 Wi-Fi。确认后请重新搜索。</string>
+    <string name="ptpip_discovery_no_network">尚未连接 Wi-Fi。请开启 Wi-Fi 并连接网络，或开启热点。</string>
+    <string name="ptpip_discovery_ap_empty">已连接到相机 AP，但未找到相机。\n请检查相机的 Wi-Fi 设置后重试。</string>
+    <string name="ptpip_discovery_busy">相机使用中不会进行搜索。请断开连接或停止无线传输后重试。</string>
+    <string name="ptpip_discovery_error_fmt">搜索相机时出错：%1$s</string>
+    <string name="ptpip_shared_network_notice">这可能是公用网络。请确认是您本人的相机后再选择。</string>
+    <string name="ptpip_connect_confirm_title">要连接这台相机吗？</string>
+    <string name="ptpip_connect_confirm_action">连接</string>
+    <string name="ptpip_connect_confirm_body">连接后，该相机屏幕上会显示连接许可请求。请确认是您本人的相机。</string>
+    <string name="ptpip_manual_source_hint">手动输入的 IP 请用于重新连接已完成配对的相机。</string>
+    <string name="ptpip_connect_cancelling">正在取消连接…</string>
+    <string name="ptpip_sweep_action">在网络中查找</string>
+    <string name="ptpip_source_scan">网络扫描</string>
+    <string name="ptpip_protocol_unsupported">暂不支持连接</string>
 </resources>

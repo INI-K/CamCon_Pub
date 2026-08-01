@@ -18,4 +18,31 @@
     <string name="ptpip_hotspot_hero_hint">テザリングをオンにするとカメラが接続できます</string>
     <string name="cd_expanded">展開済み</string>
     <string name="cd_collapsed">折りたたみ</string>
+    <!-- PTP/IP 기기 발견 목록 · 선택 (Wave 1) -->
+    <string name="ptpip_discovery_found_title">検出されたカメラ</string>
+    <string name="ptpip_candidate_unnamed_fmt">カメラ (%1$s)</string>
+    <string name="ptpip_candidate_known">以前に接続</string>
+    <string name="ptpip_source_mdns">自動検出</string>
+    <string name="ptpip_source_ssdp">UPnPで検出</string>
+    <string name="ptpip_source_gateway">ゲートウェイ推定</string>
+    <string name="ptpip_source_cached">最近使用</string>
+    <string name="ptpip_source_manual">手動入力</string>
+    <string name="ptpip_vendor_confirmed_fmt">%1$s 確定</string>
+    <string name="ptpip_vendor_likely_fmt">%1$s の可能性</string>
+    <string name="ptpip_vendor_unknown">メーカー不明</string>
+    <string name="ptpip_discovery_empty_title">カメラが見つかりませんでした</string>
+    <string name="ptpip_discovery_empty_camera_first">まずカメラ側を確認してください。① カメラがスマートフォンのテザリングに接続しているか ② カメラのスマートデバイス接続（Wi-Fi）メニューがオンか ③ 省電力でWi-Fiがオフになっていないか を確認してから、もう一度検索してください。</string>
+    <string name="ptpip_discovery_no_network">Wi-Fiに接続されていません。Wi-Fiをオンにしてネットワークに接続するか、テザリングをオンにしてください。</string>
+    <string name="ptpip_discovery_ap_empty">カメラのAPに接続していますが、カメラが見つかりません。\nカメラのWi-Fi設定を確認して、もう一度お試しください。</string>
+    <string name="ptpip_discovery_busy">カメラの使用中は検索しません。接続を解除するか、ワイヤレス転送を停止してからもう一度お試しください。</string>
+    <string name="ptpip_discovery_error_fmt">カメラの検索中にエラーが発生しました: %1$s</string>
+    <string name="ptpip_shared_network_notice">共用ネットワークの可能性があります。ご自身のカメラかどうか確認して選択してください。</string>
+    <string name="ptpip_connect_confirm_title">このカメラに接続しますか？</string>
+    <string name="ptpip_connect_confirm_action">接続</string>
+    <string name="ptpip_connect_confirm_body">接続すると、そのカメラの画面に接続許可の要求が表示されます。ご自身のカメラか確認してください。</string>
+    <string name="ptpip_manual_source_hint">手動で入力したIPは、ペアリング済みのカメラへの再接続に使用してください。</string>
+    <string name="ptpip_connect_cancelling">接続をキャンセル中…</string>
+    <string name="ptpip_sweep_action">ネットワークから探す</string>
+    <string name="ptpip_source_scan">ネットワークスキャン</string>
+    <string name="ptpip_protocol_unsupported">接続は未対応</string>
 </resources>

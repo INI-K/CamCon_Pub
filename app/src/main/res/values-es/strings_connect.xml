@@ -18,4 +18,31 @@
     <string name="ptpip_hotspot_hero_hint">Activa el punto de acceso del teléfono para que la cámara pueda conectarse</string>
     <string name="cd_expanded">Expandido</string>
     <string name="cd_collapsed">Contraído</string>
+    <!-- PTP/IP 기기 발견 목록 · 선택 (Wave 1) -->
+    <string name="ptpip_discovery_found_title">Cámaras encontradas</string>
+    <string name="ptpip_candidate_unnamed_fmt">Cámara (%1$s)</string>
+    <string name="ptpip_candidate_known">Conectada anteriormente</string>
+    <string name="ptpip_source_mdns">Detección automática</string>
+    <string name="ptpip_source_ssdp">Detectada por UPnP</string>
+    <string name="ptpip_source_gateway">Estimación por puerta de enlace</string>
+    <string name="ptpip_source_cached">Uso reciente</string>
+    <string name="ptpip_source_manual">Introducida manualmente</string>
+    <string name="ptpip_vendor_confirmed_fmt">%1$s confirmada</string>
+    <string name="ptpip_vendor_likely_fmt">%1$s (probable)</string>
+    <string name="ptpip_vendor_unknown">Fabricante desconocido</string>
+    <string name="ptpip_discovery_empty_title">No se encontró ninguna cámara</string>
+    <string name="ptpip_discovery_empty_camera_first">Comprueba primero la cámara: 1) que se haya conectado al punto de acceso del teléfono, 2) que el menú de conexión con dispositivos inteligentes (Wi-Fi) esté activado, 3) que el ahorro de energía no haya apagado el Wi-Fi. Después, vuelve a buscar.</string>
+    <string name="ptpip_discovery_no_network">El Wi-Fi no está conectado. Activa el Wi-Fi y conéctate a una red, o enciende el punto de acceso.</string>
+    <string name="ptpip_discovery_ap_empty">Conectado al AP de la cámara, pero no se encontró ninguna cámara.\nComprueba los ajustes de Wi-Fi de la cámara e inténtalo de nuevo.</string>
+    <string name="ptpip_discovery_busy">No se busca mientras la cámara está en uso. Desconéctala o detén la transferencia inalámbrica e inténtalo de nuevo.</string>
+    <string name="ptpip_discovery_error_fmt">Error al buscar cámaras: %1$s</string>
+    <string name="ptpip_shared_network_notice">Puede ser una red compartida. Asegúrate de que la cámara es tuya antes de seleccionarla.</string>
+    <string name="ptpip_connect_confirm_title">¿Conectar con esta cámara?</string>
+    <string name="ptpip_connect_confirm_action">Conectar</string>
+    <string name="ptpip_connect_confirm_body">Al conectar, aparecerá una solicitud de autorización en la pantalla de esa cámara. Asegúrate de que es tu cámara.</string>
+    <string name="ptpip_manual_source_hint">Usa una IP introducida manualmente para volver a conectar con una cámara ya emparejada.</string>
+    <string name="ptpip_connect_cancelling">Cancelando la conexión…</string>
+    <string name="ptpip_sweep_action">Buscar en la red</string>
+    <string name="ptpip_source_scan">Escaneo de red</string>
+    <string name="ptpip_protocol_unsupported">conexión aún no compatible</string>
 </resources>

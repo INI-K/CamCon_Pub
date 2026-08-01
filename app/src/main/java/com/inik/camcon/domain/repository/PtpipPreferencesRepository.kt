@@ -1,6 +1,7 @@
 package com.inik.camcon.domain.repository
 
 import com.inik.camcon.domain.model.AutoConnectNetworkConfig
+import com.inik.camcon.domain.model.KnownCameraRef
 import com.inik.camcon.domain.model.SavedWifiCredential
 import kotlinx.coroutines.flow.Flow
 
@@ -41,6 +42,21 @@ interface PtpipPreferencesRepository {
 
     /** 마지막 연결 카메라 (ip, name) 즉시 조회. 한 번도 연결 성공 없으면 null. */
     suspend fun getLastConnectedCameraInfo(): Pair<String, String?>?
+
+    /**
+     * 기억된 카메라(자동 연결 판정 근거).
+     *
+     * 승인 플래그가 없으면 기존 사용자로 보고 승인으로 읽는다 — 소급 승인 요구는 업데이트 직후
+     * 자동 연결을 무증상 사망시킨다(배경 폴링 경로에 승인 UI가 없다).
+     */
+    val knownCamera: Flow<KnownCameraRef>
+    suspend fun getKnownCamera(): KnownCameraRef
+
+    /** 연결 성공 후 본체 지문 기록(없으면 키 제거 = 지문 없음). */
+    suspend fun saveCameraFingerprint(fingerprint: String?)
+
+    /** 자동 연결 승인 갱신(지문 불일치 시 회수). */
+    suspend fun setAutoConnectApproved(approved: Boolean)
 
     // ── 자동 연결 네트워크 설정 ──
 
