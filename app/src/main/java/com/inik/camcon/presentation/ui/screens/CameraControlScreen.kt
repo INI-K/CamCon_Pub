@@ -39,6 +39,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -151,6 +152,8 @@ import com.inik.camcon.presentation.ui.components.v2.StatusIndicator
 import com.inik.camcon.presentation.ui.components.v2.StatusKind
 import com.inik.camcon.presentation.ui.components.v2.ToastV2
 import com.inik.camcon.presentation.ui.components.v2.TransferProgressBadge
+import com.inik.camcon.presentation.ui.util.FullscreenOrientation
+import com.inik.camcon.presentation.ui.util.FullscreenOrientationPolicy
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.PhotoLibrary
@@ -363,6 +366,55 @@ fun CameraControlScreen(
     var showTimelapseDialog by rememberSaveable { mutableStateOf(false) }
     var showBottomSheet by rememberSaveable { mutableStateOf(false) }
 
+    // === 전체화면 방향 단일 소유 지점(SSOT) ===
+    // requestedOrientation 을 쓰는 곳은 이 파일에서 여기 하나뿐이어야 한다.
+    // 아래 AnimatedContent 의 자식들이 각자 방향을 걸면, 이탈하는 쪽이 fade 300ms 뒤에
+    // dispose 되면서 새로 들어온 쪽의 설정을 덮어써 방향이 어긋난다.
+    val isFullscreenActive =
+        isFullscreen && (appSettings.isCameraControlsEnabled || uiState.capturedPhotos.isNotEmpty())
+    val isShowingLiveView =
+        isFullscreenActive && appSettings.isLiveViewEnabled && uiState.isLiveViewActive
+
+    // 수동 180도 보정. AnimatedContent 자식 안에 있으면 전체화면을 나갔다 올 때마다 풀리므로
+    // 바깥으로 올리고 rememberSaveable 로 프로세스 사망도 견디게 한다.
+    var isRotated by rememberSaveable { mutableStateOf(false) }
+
+    // 표시 비율은 Coil 이 실제로 그린 비트맵에서만 얻는다.
+    // CapturedPhoto.width/height 는 생성 경로 6곳이 0 하드코딩이라 신뢰할 수 없다.
+    var photoAspectRatio by remember { mutableStateOf<Float?>(null) }
+    var fullscreenOrientation by remember { mutableStateOf(FullscreenOrientation.LANDSCAPE) }
+
+    LaunchedEffect(isShowingLiveView, photoAspectRatio) {
+        fullscreenOrientation = FullscreenOrientationPolicy.resolve(
+            isLiveView = isShowingLiveView,
+            photoAspectRatio = photoAspectRatio,
+            previous = fullscreenOrientation
+        )
+    }
+
+    LaunchedEffect(isFullscreenActive, fullscreenOrientation) {
+        val activity = context as? Activity ?: return@LaunchedEffect
+        activity.requestedOrientation = when {
+            !isFullscreenActive -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            fullscreenOrientation == FullscreenOrientation.PORTRAIT ->
+                ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            // 단방향 고정이 상하반전의 원인이었다. c4d96581 이 LANDSCAPE 를 REVERSE_LANDSCAPE 로
+            // 바꿨지만 둘 다 한쪽 가로만 고정하므로, 반대로 눕히면 같은 증상이 그대로 재발했다.
+            // USER_LANDSCAPE 는 양방향 가로를 허용하면서 사용자의 자동회전 잠금은 존중한다
+            // (SENSOR_LANDSCAPE 는 잠금을 무시해 삼각대·케이지 사용자가 화면을 통제할 수 없다).
+            else -> ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE
+        }
+        WindowInsetsControllerCompat(activity.window, activity.window.decorView).apply {
+            if (isFullscreenActive) {
+                WindowCompat.setDecorFitsSystemWindows(activity.window, false)
+                hide(WindowInsetsCompat.Type.systemBars())
+            } else {
+                show(WindowInsetsCompat.Type.systemBars())
+            }
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
+    }
+
     // MainActivity 가 이미 Scaffold(SubcomposeLayout) 안에서 이 화면을 NavHost 목적지로 띄운다.
     // 여기서 Scaffold 를 또 열면 SubcomposeLayout 이 2중이 되어 측정 단계마다 슬롯 컴포지션 부기 비용을 이중으로 낸다.
     // 이 Scaffold 가 쓰던 슬롯은 snackbarHost 하나뿐이고 contentWindowInsets 가 0이라
@@ -399,7 +451,7 @@ fun CameraControlScreen(
                 }
             }
             AnimatedContent(
-                targetState = isFullscreen && (appSettings.isCameraControlsEnabled || uiState.capturedPhotos.isNotEmpty()),
+                targetState = isFullscreenActive,
                 transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(300)) },
                 label = "fullscreen_content"
             ) { isFullscreenMode ->
@@ -439,7 +491,10 @@ fun CameraControlScreen(
                             appSettingsViewModel.setFocusPeakingEnabled(!isFocusPeakingEnabled)
                         },
                         liveViewQuality = liveViewQuality,
-                        onCycleLiveViewQuality = onCycleLiveViewQuality
+                        onCycleLiveViewQuality = onCycleLiveViewQuality,
+                        isRotated = isRotated,
+                        onToggleRotate = { isRotated = !isRotated },
+                        onPhotoAspectResolved = { photoAspectRatio = it }
                     )
                 } else {
                     // 일반 모드는 Scaffold contentPadding 적용
@@ -497,7 +552,8 @@ fun CameraControlScreen(
                         colorTransferReferenceImagePath = colorTransferReferenceImagePath,
                         onToggleColorTransfer = {
                             appSettingsViewModel.setColorTransferEnabled(!isColorTransferEnabled)
-                        }
+                        },
+                        onPhotoAspectResolved = { photoAspectRatio = it }
                     )
                 }
             }
@@ -738,20 +794,13 @@ private fun PortraitCameraLayout(
     onLongPressFilmSim: () -> Unit = {},
     isColorTransferEnabled: Boolean = false,
     colorTransferReferenceImagePath: String? = null,
-    onToggleColorTransfer: () -> Unit = {}
+    onToggleColorTransfer: () -> Unit = {},
+    onPhotoAspectResolved: (Float) -> Unit = {}
 ) {
     val context = LocalContext.current
 
-    // 진입 시 1회만 — 화면 진입 시 portrait 강제 + 시스템 바 표시 동작은 재실행 필요 없음
-    LaunchedEffect(Unit) {
-        (context as? Activity)?.let { activity ->
-            activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-            WindowInsetsControllerCompat(activity.window, activity.window.decorView).apply {
-                show(WindowInsetsCompat.Type.systemBars())
-                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            }
-        }
-    }
+    // 방향·시스템바 제어는 CameraControlScreen 의 SSOT effect 로 이관했다.
+    // 여기서 다시 걸면 AnimatedContent dispose 순서에 따라 서로 덮어써 방향이 어긋난다.
 
     LaunchedEffect(appSettings) {
         LogcatManager.d(
@@ -948,7 +997,10 @@ private fun PortraitCameraLayout(
                             if (canEnterFullscreen) {
                                 onEnterFullscreen()
                             }
-                        }
+                        },
+                        // 전체화면 진입 전에 비율을 미리 확보해 두면 진입 순간 가로로 한 번
+                        // 튀었다 돌아오는 현상이 없다(같은 사진을 여기서도 이미 그리고 있다).
+                        onAspectResolved = onPhotoAspectResolved
                     )
                 }
             }
@@ -1296,23 +1348,16 @@ private fun FullscreenCameraLayout(
     isFocusPeakingEnabled: Boolean = false,
     onToggleFocusPeaking: () -> Unit = {},
     liveViewQuality: LiveViewQuality = LiveViewQuality.BALANCED,
-    onCycleLiveViewQuality: () -> Unit = {}
+    onCycleLiveViewQuality: () -> Unit = {},
+    isRotated: Boolean = false,
+    onToggleRotate: () -> Unit = {},
+    onPhotoAspectResolved: (Float) -> Unit = {}
 ) {
     val context = LocalContext.current
     var showTimelapseDialog by rememberSaveable { mutableStateOf(false) }
-    var isRotated by remember { mutableStateOf(false) }
 
-    // 진입 시 1회만 — 전체화면 진입 시 landscape 전환 + 시스템 바 숨김은 재실행 불필요
-    LaunchedEffect(Unit) {
-        (context as? Activity)?.let { activity ->
-            activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
-            WindowCompat.setDecorFitsSystemWindows(activity.window, false)
-            WindowInsetsControllerCompat(activity.window, activity.window.decorView).apply {
-                hide(WindowInsetsCompat.Type.systemBars())
-                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            }
-        }
-    }
+    // 방향·시스템바 제어와 isRotated 는 CameraControlScreen 의 SSOT 로 이관했다.
+    // isRotated 를 여기 두면 전체화면을 나갔다 올 때마다 180도 보정이 풀린다.
 
     Box(
         modifier = Modifier
@@ -1379,7 +1424,8 @@ private fun FullscreenCameraLayout(
                     modifier = Modifier.fillMaxSize(),
                     emptyTextColor = TextSecondaryV2,
                     isRotated = isRotated,
-                    onDoubleClick = onExitFullscreen
+                    onDoubleClick = onExitFullscreen,
+                    onAspectResolved = onPhotoAspectResolved
                 )
             }
         }
@@ -1400,7 +1446,7 @@ private fun FullscreenCameraLayout(
                 onToggleHistogram = onToggleHistogram,
                 isFocusPeakingEnabled = isFocusPeakingEnabled,
                 onToggleFocusPeaking = onToggleFocusPeaking,
-                onRotate = { isRotated = !isRotated },
+                onRotate = onToggleRotate,
                 onGalleryClick = onGalleryClick,
                 isShutterSoundEnabled = isShutterSoundEnabled,
                 onStopTimelapse = viewModel::stopTimelapse,
@@ -1408,6 +1454,8 @@ private fun FullscreenCameraLayout(
                 onCycleLiveViewQuality = onCycleLiveViewQuality,
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
+                    // 양방향 가로를 허용하면서 노치·펀치홀이 반대편으로도 오게 됐다.
+                    .displayCutoutPadding()
                     .padding(end = Spacing.md, top = Spacing.xs, bottom = Spacing.xs)
             )
 
@@ -1419,12 +1467,14 @@ private fun FullscreenCameraLayout(
                 onModeSelected = viewModel::setShootingMode,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
+                    .displayCutoutPadding()
                     .padding(bottom = Padding.lg, end = 112.dp)
             )
         } else if (uiState.capturedPhotos.isNotEmpty()) {
             Row(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
+                    .displayCutoutPadding()
                     .padding(Padding.lg),
                 horizontalArrangement = Arrangement.spacedBy(Spacing.md)
             ) {
@@ -1433,7 +1483,7 @@ private fun FullscreenCameraLayout(
                     shape = CircleShape
                 ) {
                     IconButton(
-                        onClick = { isRotated = !isRotated },
+                        onClick = onToggleRotate,
                         modifier = Modifier
                             .size(TouchTarget.xl)
                             .background(Surface2, CircleShape)
@@ -1816,7 +1866,8 @@ private fun AnimatedPhotoSwitcher(
     modifier: Modifier = Modifier,
     emptyTextColor: Color = TextSecondaryV2,
     isRotated: Boolean = false,
-    onDoubleClick: (() -> Unit)? = null
+    onDoubleClick: (() -> Unit)? = null,
+    onAspectResolved: (Float) -> Unit = {}
 ) {
     // capturedPhotos 는 LRU 1000장 캡이 있어 size 가 1000에서 고정되면 remember(size) 가 최신 사진을
     // 영영 갱신하지 못한다(동결 회귀). lastOrNull() 은 O(1) 이므로 remember 없이 매 recomposition 직접 읽는다.
@@ -1860,6 +1911,15 @@ private fun AnimatedPhotoSwitcher(
                         }
                         .build(),
                     contentDescription = stringResource(R.string.camera_control_photo),
+                    // painter.intrinsicSize 는 쓰면 안 된다. crossfade(200) 동안 CrossfadePainter 가
+                    // 이전/새 이미지의 축별 max 를 돌려줘 200ms 간 정사각형에 가까운 허구 값이 나온다.
+                    // result.drawable 은 JPG EXIF 자동회전과 RawExifRotationTransformation(RAW) 이
+                    // 모두 적용된 '실제로 그려질' 비트맵이라 그대로 표시 비율이다.
+                    onSuccess = { state ->
+                        val w = state.result.drawable.intrinsicWidth
+                        val h = state.result.drawable.intrinsicHeight
+                        if (w > 0 && h > 0) onAspectResolved(w.toFloat() / h.toFloat())
+                    },
                     modifier = Modifier
                         .fillMaxSize()
                         .then(if (isRotated) Modifier.rotate(180f) else Modifier)
