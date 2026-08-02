@@ -47,11 +47,12 @@ class ColorTransferRepositoryImpl @Inject constructor(
         // finally에서 항상 recycle 하기 위한 추적 변수
         var inputBitmapToRecycle: Bitmap? = null
         try {
-            val inputBitmap = (if (maxSize > 0) {
-                loadScaledBitmap(targetImagePath, maxSize)
-            } else {
-                loadScaledBitmap(targetImagePath, MAX_CT_DIMENSION)
-            } ?: return@withContext null)
+            // 결과 비트맵이 미리보기에 그대로 그려지므로 EXIF 방향을 픽셀에 반영해야 한다.
+            // 하류(BitmapDecodeUtils·Compose Image)는 EXIF 를 읽지 않아 태그만으로는 세로컷이 눕는다.
+            val inputBitmap = loadBitmapWithOrientation(
+                targetImagePath,
+                if (maxSize > 0) maxSize else MAX_CT_DIMENSION
+            ) ?: return@withContext null
             inputBitmapToRecycle = inputBitmap
 
             // 캐시된 참조 통계 가져오기
@@ -92,13 +93,14 @@ class ColorTransferRepositoryImpl @Inject constructor(
         var inputBitmapToRecycle: Bitmap? = null
         var referenceBitmapToRecycle: Bitmap? = null
         try {
-            val inputBitmap = (if (maxSize > 0) {
-                loadScaledBitmap(targetImagePath, maxSize)
-            } else {
-                loadScaledBitmap(targetImagePath, MAX_CT_DIMENSION)
-            } ?: return@withContext null)
+            // 대상 이미지는 결과로 표시되므로 EXIF 방향을 픽셀에 반영한다.
+            val inputBitmap = loadBitmapWithOrientation(
+                targetImagePath,
+                if (maxSize > 0) maxSize else MAX_CT_DIMENSION
+            ) ?: return@withContext null
             inputBitmapToRecycle = inputBitmap
 
+            // 참조는 채널별 평균·표준편차 산출에만 쓰여 회전 불변이므로 방향 보정이 불필요하다.
             val referenceBitmap = (if (maxSize > 0) {
                 loadScaledBitmap(referenceImagePath, maxSize)
             } else {
@@ -294,10 +296,13 @@ class ColorTransferRepositoryImpl @Inject constructor(
 
     // ---- 내부 헬퍼 ----
 
-    private fun loadBitmapWithOrientation(imagePath: String): Bitmap? {
+    private fun loadBitmapWithOrientation(
+        imagePath: String,
+        maxSize: Int = MAX_CT_DIMENSION
+    ): Bitmap? {
         // 풀해상도 ARGB_8888 디코딩은 고화소(45MP=180MB)에서 OOM 위험.
         // applyColorTransferAndSave와 동일하게 4096px 한도로 다운스케일 디코딩한다.
-        val bitmap = loadScaledBitmap(imagePath, MAX_CT_DIMENSION) ?: return null
+        val bitmap = loadScaledBitmap(imagePath, maxSize) ?: return null
 
         val exif = ExifInterface(imagePath)
         val orientation = exif.getAttributeInt(
