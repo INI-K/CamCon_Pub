@@ -10,21 +10,21 @@
 # 사용법:
 #   ./camcon_autotest.sh doctor      # 환경/디바이스 호환성 점검 (디바이스 무관, 항상 먼저 실행)
 #   ./camcon_autotest.sh install     # debug APK 설치 + 런타임 권한 일괄 부여
-#   ./camcon_autotest.sh mock        # [카메라 불필요] Mock 카메라 모드로 UI/촬영 파이프라인 검증
+#   ./camcon_autotest.sh mock        # [지원 중단] Mock 진입은 관리자 UI 전용 — 안내만 출력
 #   ./camcon_autotest.sh usb         # [카메라 USB-OTG 연결 필요] USB 감지→연결→촬영 검증
-#   ./camcon_autotest.sh wifi        # [카메라 Wi-Fi 연결 필요] PTP-IP 검색→연결→촬영 검증
+#   ./camcon_autotest.sh wifi        # [핫스팟 STA 권장] PTP-IP 검색→선택→연결→촬영 검증
 #   ./camcon_autotest.sh all         # doctor→install→mock→usb→wifi 순차 (가능한 것만)
 #
 # 환경변수:
 #   ADB=/path/to/adb     adb 경로 강제 지정
 #   SERIAL=<device>      대상 디바이스 시리얼 강제 지정 (미지정 시 단일 디바이스 자동)
 #   TIMEOUT=30           logcat 단언 기본 타임아웃(초)
+#   CONNECT_WAIT=90      PTP-IP 연결 성립 대기(초) — 최초 페어링은 본체 승인 포함
 
 set -u
 
 PKG="com.inik.camcon"
 LAUNCH_ACT="$PKG/.presentation.ui.SplashActivity"
-MOCK_ACT="$PKG/.presentation.ui.MockCameraActivity"
 PTPIP_ACT="$PKG/.presentation.ui.PtpipConnectionActivity"
 MAIN_ACT="$PKG/.presentation.ui.MainActivity"
 MIN_SDK=29
@@ -32,6 +32,7 @@ PROJ_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 APK="$PROJ_ROOT/app/build/outputs/apk/debug/app-debug.apk"
 TIMEOUT="${TIMEOUT:-30}"
 CAPTURE_WAIT="${CAPTURE_WAIT:-60}"   # 수동 셔터 입력 대기는 넉넉히
+CONNECT_WAIT="${CONNECT_WAIT:-90}"   # 최초 페어링은 카메라 본체 승인(연결 허용) 대기 포함
 
 # ── adb 자동 탐지 ──────────────────────────────────────────────
 detect_adb() {
@@ -130,17 +131,28 @@ ui_dump() {
   done
   sh_ cat /sdcard/ui.xml 2>/dev/null
 }
-# tap_text <보이는텍스트일부> : 접근성 트리에서 텍스트/콘텐츠설명 노드의 중심 좌표를 탭
-tap_text() {
-  local needle="$1" xml node bounds x1 y1 x2 y2
+# tap_node <노드라인ERE> : 접근성 트리에서 매칭되는 첫 노드의 중심 좌표를 탭 (공용 하부)
+tap_node() {
+  local re="$1" xml node bounds x1 y1 x2 y2
   xml="$(ui_dump)"
-  node="$(echo "$xml" | tr '>' '>\n' | grep -E "(text|content-desc)=\"[^\"]*$needle[^\"]*\"" | head -1)"
+  node="$(echo "$xml" | tr '>' '>\n' | grep -E "$re" | head -1)"
   if [ -z "$node" ]; then return 1; fi
   bounds="$(echo "$node" | grep -oE 'bounds="\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]"' | head -1)"
   if [ -z "$bounds" ]; then return 1; fi
   x1=$(echo "$bounds" | grep -oE '[0-9]+' | sed -n 1p); y1=$(echo "$bounds" | grep -oE '[0-9]+' | sed -n 2p)
   x2=$(echo "$bounds" | grep -oE '[0-9]+' | sed -n 3p); y2=$(echo "$bounds" | grep -oE '[0-9]+' | sed -n 4p)
   sh_ input tap $(( (x1+x2)/2 )) $(( (y1+y2)/2 ))
+}
+# tap_text <텍스트일부>  : 부분 일치 탭
+tap_text()  { tap_node "(text|content-desc)=\"[^\"]*$1[^\"]*\""; }
+# tap_exact <텍스트전체> : 정확 일치 탭 — "연결"이 "연결 관리" 등에 오탭되는 사고 방지
+tap_exact() { tap_node "(text|content-desc)=\"$1\""; }
+
+# 핫스팟(softAP) IPv4 인터페이스 탐지 — 앱의 WifiNetworkHelper.isSoftApInterfaceName 과 같은 계열.
+# STA 검색은 핫스팟이 전제이고, 핫스팟은 adb 로 켤 수 없다(TETHER_PRIVILEGED) — 사람이 켠다.
+hotspot_iface() {
+  sh_ ip -o -4 addr show 2>/dev/null | awk '{print $2}' \
+    | grep -m1 -E '^(ap|swlan|softap)[0-9]|^ap_br|^wlan[1-9][0-9]*$|^wl[0-9]+\.[0-9]+$'
 }
 
 # ════════════════════════════════════════════════════════════════
@@ -168,7 +180,13 @@ cmd_doctor() {
   sh_ pm list features 2>/dev/null | grep -q usb.host && pass "USB host 지원" || warn "USB host 미지원 → usb 테스트 불가"
   local wifi; wifi="$(sh_ dumpsys wifi 2>/dev/null | grep -m1 -iE 'Wi-Fi is')"
   info "wifi 상태  : ${wifi:-알수없음}"
-  echo "$wifi" | grep -qi disabled && warn "WiFi 비활성 → wifi 테스트 전 'svc wifi enable' 필요(HW 없으면 불가)"
+  local ap_if; ap_if="$(hotspot_iface)"
+  if [ -n "$ap_if" ]; then
+    info "핫스팟     : 활성($ap_if) — STA 검색 전제 충족"
+  else
+    info "핫스팟     : 비활성 (STA 검색은 핫스팟 필요 — adb 로 못 켬, 사람이 켠다)"
+    echo "$wifi" | grep -qi disabled && warn "핫스팟·WiFi 모두 비활성 → wifi 테스트 전제 없음"
+  fi
 
   # 카메라 현재 연결 여부
   sh_ dumpsys usb 2>/dev/null | grep -q "host_connected=true" && pass "USB 호스트에 장치 연결됨(카메라 가능성)" || info "현재 USB 호스트에 연결된 장치 없음"
@@ -177,13 +195,11 @@ cmd_doctor() {
 # ════════════════════════════════════════════════════════════════
 # install : APK 설치 + 런타임 권한 일괄 부여
 # ════════════════════════════════════════════════════════════════
+# 매니페스트에 실제 선언된 런타임 권한만 (저장소·미디어 권한은 Play 정책 준수로 미선언)
 RUNTIME_PERMS=(
   android.permission.ACCESS_FINE_LOCATION
   android.permission.ACCESS_COARSE_LOCATION
   android.permission.POST_NOTIFICATIONS
-  android.permission.READ_MEDIA_IMAGES
-  android.permission.READ_EXTERNAL_STORAGE
-  android.permission.WRITE_EXTERNAL_STORAGE
   android.permission.NEARBY_WIFI_DEVICES
 )
 cmd_install() {
@@ -202,27 +218,14 @@ cmd_install() {
 }
 
 # ════════════════════════════════════════════════════════════════
-# mock : 카메라 없이 Mock 모드로 UI/촬영 파이프라인 검증
+# mock : 지원 중단 — MockCameraActivity/MockCameraViewModel 은 존재하지 않는다
 # ════════════════════════════════════════════════════════════════
 cmd_mock() {
-  echo "── [MOCK] Mock 카메라 모드 (카메라 불필요) ──"
-  sh_ pm list packages | grep -q "$PKG" || { fail "앱 미설치 ('install' 먼저)"; return 1; }
-  wake_unlock
-  oracle_clear
-  # MockCameraActivity 는 exported=false → API31+ 에서 shell(uid2000)이 am start 불가(SecurityException).
-  local out; out="$(sh_ am start -n "$MOCK_ACT" 2>&1)"
-  if echo "$out" | grep -qi "SecurityException\|Permission Denial\|not exported"; then
-    warn "MockCameraActivity 는 비exported → adb 직접 기동 불가(보안). Mock 모드는 앱 내에서"
-    warn "  설정→(ADMIN)→Mock Camera 로만 진입 가능. 자율 테스트는 usb/wifi(정상 진입점) 사용 권장."
-    return 0
-  fi
-  # 일부 ROM/디버그 빌드에선 허용될 수 있음 — 앱 자체 TAG 로그로만 단언(시스템로그는 oracle 에서 제외됨)
-  if oracle_wait "$TIMEOUT" "MockCameraViewModel" "onCreate 실패|FATAL EXCEPTION"; then
-    pass "MockCameraViewModel 활성(Mock 모드 기동)"
-  else
-    warn "Mock 모드 앱 로그 미관측"
-  fi
-  a exec-out screencap -p > "/tmp/camcon_mock.png" 2>/dev/null && info "스크린샷: /tmp/camcon_mock.png"
+  echo "── [MOCK] Mock 카메라 모드 ──"
+  # Mock 진입점은 관리자 계정 전용 UI(설정→ADMIN 섹션)뿐이라 adb 무인 구동이 불가능하다.
+  # 과거의 MockCameraActivity am start 는 존재하지 않는 액티비티를 겨냥한 죽은 코드였다.
+  warn "Mock 모드는 관리자 전용 UI 로만 진입 가능 → 자율 테스트는 usb/wifi 사용"
+  return 0
 }
 
 # ════════════════════════════════════════════════════════════════
@@ -269,25 +272,86 @@ cmd_usb() {
 # wifi : Wi-Fi PTP-IP 검색→연결→촬영 검증
 # ════════════════════════════════════════════════════════════════
 cmd_wifi() {
-  echo "── [WiFi] 폰을 카메라 AP(또는 핫스팟)에 연결한 상태에서 실행 ──"
+  echo "── [WiFi] 핫스팟(STA: 폰 핫스팟에 카메라 접속) 또는 카메라 AP 망에서 실행 ──"
   sh_ pm list packages | grep -q "$PKG" || { fail "앱 미설치 ('install' 먼저)"; return 1; }
-  sh_ svc wifi enable >/dev/null 2>&1; sleep 2
-  if sh_ dumpsys wifi 2>/dev/null | grep -m1 -i 'Wi-Fi is' | grep -qi disabled; then
-    warn "WiFi 활성화 실패(HW 없음/차단) → wifi 경로 테스트 불가"; return 1
-  fi
-  local ssid; ssid="$(sh_ dumpsys wifi 2>/dev/null | grep -oE 'SSID: [^,]+' | head -1)"
-  info "현재 WiFi: ${ssid:-미연결} (카메라 AP/핫스팟 또는 카메라와 같은 망이어야 함)"
-  wake_unlock
-  oracle_clear
-  # PtpipConnectionActivity 도 비exported → 정상 진입점으로 띄운 뒤 앱이 검색/연결.
-  launch_app
-  sleep 1
-  for t in WiFi Wi-Fi 무선 검색 카메라검색 연결; do tap_text "$t" >/dev/null 2>&1 && break; done
-  if oracle_wait "$TIMEOUT" "카메라 검색 완료|카메라 발견|PTPIP 연결 성공|PTP-IP 연결 성공|게이트웨이 PTP-IP 연결 성공" "검색 실패|연결 실패|Wi-Fi가 연결되어 있지 않"; then
-    pass "PTP-IP 카메라 검색/연결 성공"
+
+  # 네트워크 전제: 핫스팟(STA) 우선. 핫스팟이 켜져 있으면 svc wifi enable 을 부르지 않는다 —
+  # 기기에 따라 STA 켜기가 핫스팟을 꺼버려서 검색 전제 자체를 파괴한다.
+  local ap_if; ap_if="$(hotspot_iface)"
+  if [ -n "$ap_if" ]; then
+    pass "핫스팟 활성($ap_if) — STA 모드 경로"
   else
-    fail "PTP-IP 검색/연결 실패/타임아웃 (폰이 카메라 AP/망에 있는지 확인)"; return 1
+    sh_ svc wifi enable >/dev/null 2>&1; sleep 2
+    if sh_ dumpsys wifi 2>/dev/null | grep -m1 -i 'Wi-Fi is' | grep -qi disabled; then
+      warn "핫스팟·WiFi 모두 비활성 → 검색 전제 없음. 핫스팟을 켜고 카메라를 접속시킨 뒤 재실행"; return 1
+    fi
+    local ssid; ssid="$(sh_ dumpsys wifi 2>/dev/null | grep -oE 'SSID: [^,]+' | head -1)"
+    info "현재 WiFi: ${ssid:-미연결} (카메라 AP 또는 카메라와 같은 망이어야 함)"
   fi
+  wake_unlock
+
+  # 마커 재방출을 위해 앱을 깨끗이 재시작 + PTPIP 계열 TAG 만 스트리밍 수집.
+  # logcat -d 폴링은 쓰지 않는다 — 연결 후 libgphoto2 로그 폭주가 버퍼에서 마커를 밀어낸다
+  # (capture_wait 와 같은 이유). 검색·연결 단언 모두 이 스트림 파일로 판정한다.
+  sh_ am force-stop "$PKG" >/dev/null 2>&1; sleep 1
+  local wlog="/tmp/camcon_wifi_$$.log"; : > "$wlog"
+  a logcat -c >/dev/null 2>&1
+  a logcat -v brief PtpipDataSource:D PtpipDiscoveryService:D PtpipConnectionManager:D \
+    PtpipSubnetSweep:D PtpipViewModel:D '*:S' > "$wlog" 2>/dev/null &
+  local lpid=$!
+
+  # PtpipConnectionActivity 는 비exported → 정상 진입점에서 UI 로 이동:
+  # 메인 상단바 설정 아이콘(content-desc "설정"/"Settings") → "카메라 연결 관리" 행.
+  launch_app
+  sleep 3
+  tap_text "설정" >/dev/null 2>&1 || tap_text "Settings" >/dev/null 2>&1
+  sleep 1
+  tap_text "카메라 연결 관리" >/dev/null 2>&1 || tap_text "연결 관리" >/dev/null 2>&1 \
+    || tap_text "Manage camera connection" >/dev/null 2>&1
+
+  # 1단계: 후보 발견. "카메라 검색 완료"는 0개 발견도 찍히므로 성공 오라클로 쓰면 안 된다.
+  #        "연결 실패"류는 정상 STA 판정·스윕 프로브에서도 다량 방출 → 실패 오라클 금지.
+  #        기지 카메라는 선택 없이 자동연결이 먼저 뜰 수 있어 연결 마커도 함께 본다.
+  local found_re='카메라 발견|서브넷 스윕 완료: [1-9]'
+  local conn_re='PTPIP 연결 상태 변경: CONNECTED|자동 재연결 성공|PTPIP 연결 성공'
+  local t=0 hit=""
+  while [ "$t" -lt "$TIMEOUT" ]; do
+    if grep -qE "$conn_re" "$wlog"; then hit=conn; break; fi
+    if grep -qE "$found_re" "$wlog"; then hit=found; break; fi
+    sleep 1; t=$((t+1))
+  done
+  if [ -z "$hit" ]; then
+    kill "$lpid" 2>/dev/null; wait "$lpid" 2>/dev/null; rm -f "$wlog"
+    fail "카메라 후보 미발견(${TIMEOUT}s) — 카메라가 핫스팟/망에 붙었는지, 카메라 Wi-Fi 메뉴 확인"
+    return 1
+  fi
+  if [ "$hit" = found ]; then pass "카메라 후보 발견"; else info "기지 카메라 자동연결 감지"; fi
+
+  # 2단계: 자동연결이 아니면 후보 행(이름 또는 IP 표기) 탭 → 확인 다이얼로그 "연결" 탭.
+  if [ "$hit" = found ] && ! grep -qE "$conn_re" "$wlog"; then
+    sleep 2
+    tap_node '(text|content-desc)="[^"]*[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}[^"]*"' >/dev/null 2>&1 \
+      || tap_text "카메라 (" >/dev/null 2>&1 || tap_text "Camera (" >/dev/null 2>&1
+    sleep 1
+    tap_exact "연결" >/dev/null 2>&1 || tap_exact "Connect" >/dev/null 2>&1
+  fi
+
+  # 3단계: 연결 성립 대기. 최초 페어링은 카메라 본체 승인이 끼어든다.
+  info "연결 대기(${CONNECT_WAIT}s)… 최초 페어링이면 카메라 본체에서 '연결 허용'을 눌러야 함"
+  t=0
+  while [ "$t" -lt "$CONNECT_WAIT" ]; do
+    grep -qE "$conn_re" "$wlog" && break
+    sleep 1; t=$((t+1))
+  done
+  kill "$lpid" 2>/dev/null; wait "$lpid" 2>/dev/null
+  if grep -qE "$conn_re" "$wlog"; then
+    pass "PTP-IP 연결 성공"
+    rm -f "$wlog"
+  else
+    fail "PTP-IP 연결 실패/타임아웃(${CONNECT_WAIT}s) — 본체 승인/페어링 상태 확인 (로그: $wlog)"
+    return 1
+  fi
+
   info "카메라 셔터/원격촬영 트리거(${CAPTURE_WAIT}s 대기)…"
   local rx; if rx="$(capture_wait "$CAPTURE_WAIT")"; then
     pass "촬영→WiFi 다운로드 확인 — ${rx}"
