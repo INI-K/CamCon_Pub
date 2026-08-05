@@ -49,28 +49,7 @@ data class CameraAbilitiesInfo(
     /**
      * 제조사 감지 (모델명 기반)
      */
-    fun getManufacturer(): String {
-        return when {
-            model.contains("Canon", ignoreCase = true) -> "Canon"
-            model.contains("Nikon", ignoreCase = true) -> "Nikon"
-            model.contains("Sony", ignoreCase = true) -> "Sony"
-            model.contains("FUJIFILM", ignoreCase = true) ||
-                    model.contains("Fuji", ignoreCase = true) -> "Fujifilm"
-
-            model.contains("Olympus", ignoreCase = true) ||
-                    model.contains("OMSYSTEM", ignoreCase = true) -> "Olympus"
-
-            model.contains("Panasonic", ignoreCase = true) ||
-                    model.contains("Lumix", ignoreCase = true) -> "Panasonic"
-
-            model.contains("Pentax", ignoreCase = true) ||
-                    model.contains("Ricoh", ignoreCase = true) -> "Pentax/Ricoh"
-
-            model.contains("Leica", ignoreCase = true) -> "Leica"
-            model.contains("Sigma", ignoreCase = true) -> "Sigma"
-            else -> "Unknown"
-        }
-    }
+    fun getManufacturer(): String = manufacturerOf(model)
 
     /**
      * Nikon STA 인증이 필요한 제조사인지
@@ -227,4 +206,50 @@ enum class CameraManufacturer {
      * STA 모드 인증이 필요한 제조사인지
      */
     fun needsStaAuthentication(): Boolean = this == NIKON
+}
+
+/**
+ * 임의의 카메라 이름 문자열에서 제조사를 추론한다.
+ *
+ * libgphoto2 abilities 의 model 은 PTP/IP 연결에서 드라이버 이름("PTP/IP Camera")이라
+ * 벤더 문자열이 없다. 그래서 abilities 만 보면 "Unknown" 이 나온다. DeviceInfo 로 얻은
+ * 실제 이름("Nikon Corporation Z 8")에도 같은 규칙을 쓰려고 최상위로 분리했다.
+ */
+fun manufacturerOf(name: String): String = when {
+    name.contains("Canon", ignoreCase = true) -> "Canon"
+    name.contains("Nikon", ignoreCase = true) -> "Nikon"
+    name.contains("Sony", ignoreCase = true) -> "Sony"
+    name.contains("FUJIFILM", ignoreCase = true) ||
+            name.contains("Fuji", ignoreCase = true) -> "Fujifilm"
+
+    name.contains("Olympus", ignoreCase = true) ||
+            name.contains("OMSYSTEM", ignoreCase = true) -> "Olympus"
+
+    name.contains("Panasonic", ignoreCase = true) ||
+            name.contains("Lumix", ignoreCase = true) -> "Panasonic"
+
+    name.contains("Pentax", ignoreCase = true) ||
+            name.contains("Ricoh", ignoreCase = true) -> "Pentax/Ricoh"
+
+    name.contains("Leica", ignoreCase = true) -> "Leica"
+    name.contains("Sigma", ignoreCase = true) -> "Sigma"
+    else -> "Unknown"
+}
+
+/**
+ * 제조사 접두사를 뗀 순수 모델명. "Nikon Corporation Z 8" -> "Z 8".
+ * 제조사를 못 찾으면 원문을 그대로 돌려준다.
+ */
+fun modelWithoutManufacturer(name: String): String {
+    val vendor = manufacturerOf(name)
+    if (vendor == "Unknown") return name.trim()
+    // "Nikon Corporation Z 8" 처럼 벤더 뒤에 법인 접미사가 붙는 경우까지 함께 제거한다.
+    return name.trim()
+        .removePrefix(vendor)
+        .trimStart()
+        .removePrefix("Corporation")
+        .removePrefix("Corp.")
+        .removePrefix("Inc.")
+        .trim()
+        .ifBlank { name.trim() }
 }
