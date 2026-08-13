@@ -1,9 +1,142 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://camcon.inik.kr/</loc>
-    <lastmod>2026-07-10</lastmod>
+    <lastmod>2026-08-13</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://camcon.inik.kr/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://camcon.inik.kr/en/"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://camcon.inik.kr/ja/"/>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://camcon.inik.kr/zh/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://camcon.inik.kr/de/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://camcon.inik.kr/es/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://camcon.inik.kr/fr/"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://camcon.inik.kr/it/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://camcon.inik.kr/en/"/>
+  </url>
+  <url>
+    <loc>https://camcon.inik.kr/en/</loc>
+    <lastmod>2026-08-13</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://camcon.inik.kr/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://camcon.inik.kr/en/"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://camcon.inik.kr/ja/"/>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://camcon.inik.kr/zh/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://camcon.inik.kr/de/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://camcon.inik.kr/es/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://camcon.inik.kr/fr/"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://camcon.inik.kr/it/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://camcon.inik.kr/en/"/>
+  </url>
+  <url>
+    <loc>https://camcon.inik.kr/ja/</loc>
+    <lastmod>2026-08-13</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://camcon.inik.kr/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://camcon.inik.kr/en/"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://camcon.inik.kr/ja/"/>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://camcon.inik.kr/zh/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://camcon.inik.kr/de/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://camcon.inik.kr/es/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://camcon.inik.kr/fr/"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://camcon.inik.kr/it/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://camcon.inik.kr/en/"/>
+  </url>
+  <url>
+    <loc>https://camcon.inik.kr/zh/</loc>
+    <lastmod>2026-08-13</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://camcon.inik.kr/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://camcon.inik.kr/en/"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://camcon.inik.kr/ja/"/>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://camcon.inik.kr/zh/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://camcon.inik.kr/de/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://camcon.inik.kr/es/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://camcon.inik.kr/fr/"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://camcon.inik.kr/it/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://camcon.inik.kr/en/"/>
+  </url>
+  <url>
+    <loc>https://camcon.inik.kr/de/</loc>
+    <lastmod>2026-08-13</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://camcon.inik.kr/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://camcon.inik.kr/en/"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://camcon.inik.kr/ja/"/>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://camcon.inik.kr/zh/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://camcon.inik.kr/de/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://camcon.inik.kr/es/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://camcon.inik.kr/fr/"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://camcon.inik.kr/it/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://camcon.inik.kr/en/"/>
+  </url>
+  <url>
+    <loc>https://camcon.inik.kr/es/</loc>
+    <lastmod>2026-08-13</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://camcon.inik.kr/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://camcon.inik.kr/en/"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://camcon.inik.kr/ja/"/>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://camcon.inik.kr/zh/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://camcon.inik.kr/de/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://camcon.inik.kr/es/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://camcon.inik.kr/fr/"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://camcon.inik.kr/it/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://camcon.inik.kr/en/"/>
+  </url>
+  <url>
+    <loc>https://camcon.inik.kr/fr/</loc>
+    <lastmod>2026-08-13</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://camcon.inik.kr/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://camcon.inik.kr/en/"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://camcon.inik.kr/ja/"/>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://camcon.inik.kr/zh/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://camcon.inik.kr/de/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://camcon.inik.kr/es/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://camcon.inik.kr/fr/"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://camcon.inik.kr/it/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://camcon.inik.kr/en/"/>
+  </url>
+  <url>
+    <loc>https://camcon.inik.kr/it/</loc>
+    <lastmod>2026-08-13</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://camcon.inik.kr/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://camcon.inik.kr/en/"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://camcon.inik.kr/ja/"/>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://camcon.inik.kr/zh/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://camcon.inik.kr/de/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://camcon.inik.kr/es/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://camcon.inik.kr/fr/"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://camcon.inik.kr/it/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://camcon.inik.kr/en/"/>
+  </url>
+  <url>
+    <loc>https://camcon.inik.kr/privacy.html</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://camcon.inik.kr/terms.html</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://camcon.inik.kr/delete.html</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
   </url>
 </urlset>

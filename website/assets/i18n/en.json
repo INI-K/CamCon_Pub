@@ -6,6 +6,7 @@
   "a11y.navMobile": "Mobile navigation",
   "a11y.navFooter": "Footer navigation",
   "a11y.langSelect": "Select language / 언어 선택",
+  "a11y.bannerClose": "Dismiss language suggestion",
   "a11y.tablist": "Connection method",
   "a11y.showcase": "Film simulation sample",
   "a11y.showcaseAlt": "Photo with a CamCon film simulation applied",
@@ -58,7 +59,7 @@
   "film.negold": "Negative Old",
   "film.print": "Print",
   "films.freeLabel": "Free Signature: 5 signature films, free to use",
-  "films.note": "All 296 unlock with <strong>PRO</strong>.",
+  "films.note": "The look is baked in by the receiving pipeline the instant you shoot, and your RAW originals are never touched. <strong>PRO</strong> opens the full catalog and film + color applied together.",
   "films.baBefore": "Original",
   "films.afterAlt": "Film applied",
   "films.baHint": "Tap a film to switch, and drag the handle to compare before and after.",
@@ -80,7 +81,7 @@
   "cameras.badgeSta": "Connects with STA",
   "cameras.unified": "Whether you connect over USB or Wi-Fi, every feature (capture, transfer, film looks) is identical.",
   "cameras.listToggle": "Browse all supported models",
-  "cameras.modelsSuffix": "+ models",
+  "cameras.modelsSuffix": "models with drivers",
   "cameras.listNote": "The list below shows PTP (USB) compatible models. Models with the Wi-Fi badge support wireless connection.",
   "cameras.wifiBadge": "Wi-Fi",
   "cameras.searchPh": "Search by brand or model (e.g. Nikon Z8)",
@@ -91,6 +92,7 @@
   "cameras.loadError": "Could not load the list. Please refresh in a moment.",
   "cameras.help": "Most cameras that support a PTP/MTP USB connection will work. If you're unsure, <a href=\"#contact\">contact us</a> and we'll check for you.",
   "cameras.verified": "Verified in use",
+  "cameras.verifiedTpl": "{n} verified in real use",
 
   "connect.eyebrow": "How to Connect",
   "connect.title": "Two ways to connect",
@@ -151,7 +153,7 @@
 
   "cta.title": "A workflow where the shot is the result",
   "cta.sub": "The instant you press the shutter, the film-look photo arrives on your phone.",
-  "cta.badgeSrc": "assets/img/play/badge-en.png",
+  "cta.badgeSrc": "/assets/img/play/badge-en.png",
 
   "footer.privacy": "Privacy Policy",
   "footer.terms": "Terms of Service",

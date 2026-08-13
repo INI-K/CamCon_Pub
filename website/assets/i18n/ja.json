@@ -6,6 +6,7 @@
   "a11y.navMobile": "モバイルメニュー",
   "a11y.navFooter": "フッターメニュー",
   "a11y.langSelect": "言語選択 / Language",
+  "a11y.bannerClose": "言語の案内を閉じる",
   "a11y.tablist": "接続方法",
   "a11y.showcase": "フィルムシミュレーションの作例",
   "a11y.showcaseAlt": "CamCon のフィルムシミュレーションを適用した写真",
@@ -58,7 +59,7 @@
   "film.negold": "ネガ オールド",
   "film.print": "プリント",
   "films.freeLabel": "Free Signature：無料で使えるシグネチャー5種",
-  "films.note": "全296種は<strong>PRO</strong>で開放されます。",
+  "films.note": "フィルムは撮影直後の受信パイプラインで適用され、RAW 原本には手を加えません。<strong>PRO</strong> では全カタログと、フィルム・色調の同時適用が開放されます。",
   "films.baBefore": "オリジナル",
   "films.afterAlt": "フィルム適用後",
   "films.baHint": "フィルムをタップして切り替え、ハンドルをドラッグして適用前後を比較しましょう。",
@@ -80,7 +81,7 @@
   "cameras.badgeSta": "STA対応で接続",
   "cameras.unified": "USBでもWi-Fiでも、撮影・受信・フィルム適用などすべての機能は同じです。",
   "cameras.listToggle": "対応モデルをすべて見る",
-  "cameras.modelsSuffix": "+ モデル",
+  "cameras.modelsSuffix": "ドライバー収録モデル",
   "cameras.listNote": "以下はPTP（USB）互換機種の一覧です。Wi-Fiバッジ付きの機種はワイヤレス接続に対応しています。",
   "cameras.wifiBadge": "Wi-Fi",
   "cameras.searchPh": "メーカーまたはモデル名で検索(例: Nikon Z8)",
@@ -91,6 +92,7 @@
   "cameras.loadError": "リストを読み込めませんでした。しばらくしてから再読み込みしてください。",
   "cameras.help": "PTP/MTP USB接続に対応していれば、ほとんど動作します。ご不明な場合は<a href=\"#contact\">お問い合わせ</a>いただければ確認いたします。",
   "cameras.verified": "利用確認済み",
+  "cameras.verifiedTpl": "実使用確認 {n}種",
 
   "connect.eyebrow": "How to Connect",
   "connect.title": "2つの接続方法",
@@ -151,7 +153,7 @@
 
   "cta.title": "撮影がそのまま成果物になるワークフロー",
   "cta.sub": "シャッターを切ったその瞬間、フィルムルックの写真がスマホに届きます。",
-  "cta.badgeSrc": "assets/img/play/badge-ja.png",
+  "cta.badgeSrc": "/assets/img/play/badge-ja.png",
 
   "footer.privacy": "プライバシーポリシー",
   "footer.terms": "利用規約",

@@ -6,6 +6,7 @@
   "a11y.navMobile": "Mobile Navigation",
   "a11y.navFooter": "Fußzeilennavigation",
   "a11y.langSelect": "Sprache wählen / Language",
+  "a11y.bannerClose": "Sprachhinweis schließen",
   "a11y.tablist": "Verbindungsart",
   "a11y.showcase": "Beispiel für Filmsimulation",
   "a11y.showcaseAlt": "Foto mit angewendeter CamCon Filmsimulation",
@@ -58,7 +59,7 @@
   "film.negold": "Negativ Alt",
   "film.print": "Print",
   "films.freeLabel": "Free Signature: 5 Signature-Filme, kostenlos nutzbar",
-  "films.note": "Alle 296 werden mit <strong>PRO</strong> freigeschaltet.",
+  "films.note": "Der Look entsteht direkt in der Empfangs-Pipeline beim Auslösen, die RAW-Originale bleiben unangetastet. <strong>PRO</strong> öffnet den vollständigen Katalog und Film + Farbe gleichzeitig.",
   "films.baBefore": "Original",
   "films.afterAlt": "Mit Film",
   "films.baHint": "Tippe auf einen Film, um zu wechseln, und zieh den Griff, um Vorher und Nachher zu vergleichen.",
@@ -80,7 +81,7 @@
   "cameras.badgeSta": "Verbindet mit STA",
   "cameras.unified": "Ob per USB oder WLAN, alle Funktionen wie Aufnahme, Empfang und Film-Look sind identisch.",
   "cameras.listToggle": "Alle unterstützten Modelle ansehen",
-  "cameras.modelsSuffix": "+ Modelle",
+  "cameras.modelsSuffix": "Modelle mit Treiber",
   "cameras.listNote": "Die Liste unten zeigt PTP-(USB-)kompatible Modelle. Modelle mit Wi-Fi-Badge unterstützen die drahtlose Verbindung.",
   "cameras.wifiBadge": "Wi-Fi",
   "cameras.searchPh": "Nach Marke oder Modell suchen (z. B. Nikon Z8)",
@@ -91,6 +92,7 @@
   "cameras.loadError": "Die Liste konnte nicht geladen werden. Bitte in Kürze neu laden.",
   "cameras.help": "Die meisten Kameras mit PTP/MTP-USB-Verbindung funktionieren. Im Zweifel <a href=\"#contact\">kontaktiere uns</a> und wir prüfen es für dich.",
   "cameras.verified": "Nutzung bestätigt",
+  "cameras.verifiedTpl": "{n} in echter Nutzung bestätigt",
 
   "connect.eyebrow": "How to Connect",
   "connect.title": "Zwei Wege zur Verbindung",
@@ -151,7 +153,7 @@
 
   "cta.title": "Ein Workflow, in dem die Aufnahme das Ergebnis ist",
   "cta.sub": "Im Moment des Auslösens landet das Film-Look-Foto auf deinem Handy.",
-  "cta.badgeSrc": "assets/img/play/badge-de.png",
+  "cta.badgeSrc": "/assets/img/play/badge-de.png",
 
   "footer.privacy": "Datenschutz",
   "footer.terms": "Nutzungsbedingungen",

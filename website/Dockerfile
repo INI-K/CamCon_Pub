@@ -5,10 +5,17 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # nginx.conf가 location마다 include 하는 공통 보안 헤더
 COPY snippets/ /etc/nginx/snippets/
 
-# 사이트 정적 파일 복사 (파비콘/OG/카메라 JSON/번역은 assets/ 아래에 포함)
-COPY index.html /usr/share/nginx/html/
+# 사이트 정적 파일 복사 (OG 카드/카메라 JSON/번역은 assets/ 아래에 포함)
+# favicon.svg는 index.html·privacy·terms·delete 4개 문서가 전부 참조한다. 빠지면 전 페이지 404.
+COPY index.html favicon.svg /usr/share/nginx/html/
 COPY robots.txt sitemap.xml privacy.html terms.html delete.html /usr/share/nginx/html/
 COPY assets/ /usr/share/nginx/html/assets/
+
+# 언어별 정적 페이지 (tools/build_i18n_pages.py 산출물: dist-lang/{en,ja,zh,de,es,fr,it}/index.html)
+# 디렉터리는 "내용물"이 복사되므로 언어를 추가해도 이 줄은 그대로 둔다.
+# 전제: 이미지 빌드 전에 반드시 build_i18n_pages.py를 실행해 dist-lang/을 만들어야 한다.
+#      (없으면 빌드가 여기서 멈춘다 — 언어 페이지 없는 채로 조용히 배포되는 것보다 낫다.)
+COPY dist-lang/ /usr/share/nginx/html/
 
 EXPOSE 80
 

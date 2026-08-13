@@ -13,7 +13,7 @@
   <meta property="og:url" content="https://camcon.inik.kr/">
   <meta property="og:title" content="CamCon | 셔터를 누르면, 필름룩 사진이 폰에 도착합니다">
   <meta property="og:description" content="카메라를 USB·Wi-Fi로 연결하고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보세요.">
-  <meta property="og:image" content="https://camcon.inik.kr/assets/img/og-card.png?v=4">
+  <meta property="og:image" content="https://camcon.inik.kr/assets/img/og-card.png?v=5">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:image:type" content="image/png">
@@ -21,9 +21,20 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="CamCon | 셔터를 누르면, 필름룩 사진이 폰에 도착합니다">
   <meta name="twitter:description" content="카메라를 USB·Wi-Fi로 연결하고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보세요.">
-  <meta name="twitter:image" content="https://camcon.inik.kr/assets/img/og-card.png?v=4">
+  <meta name="twitter:image" content="https://camcon.inik.kr/assets/img/og-card.png?v=5">
 
   <link rel="canonical" href="https://camcon.inik.kr/">
+  <!-- 언어별 URL. 이 9줄은 8개 페이지 전부에 동일하게 들어가야 한다(상호 return-link 대칭).
+       루트(/)가 한국어이므로 /ko/ 는 만들지 않는다. tools/build_i18n_pages.py 가 나머지 7개를 생성한다. -->
+  <link rel="alternate" hreflang="ko" href="https://camcon.inik.kr/">
+  <link rel="alternate" hreflang="en" href="https://camcon.inik.kr/en/">
+  <link rel="alternate" hreflang="ja" href="https://camcon.inik.kr/ja/">
+  <link rel="alternate" hreflang="zh" href="https://camcon.inik.kr/zh/">
+  <link rel="alternate" hreflang="de" href="https://camcon.inik.kr/de/">
+  <link rel="alternate" hreflang="es" href="https://camcon.inik.kr/es/">
+  <link rel="alternate" hreflang="fr" href="https://camcon.inik.kr/fr/">
+  <link rel="alternate" hreflang="it" href="https://camcon.inik.kr/it/">
+  <link rel="alternate" hreflang="x-default" href="https://camcon.inik.kr/en/">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
 
@@ -34,7 +45,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="assets/css/style.css?v=20260801a">
+  <link rel="stylesheet" href="assets/css/style.css?v=20260812a">
   <link rel="stylesheet" media="print" onload="this.media='all';this.onload=null" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap"></noscript>
 
@@ -47,7 +58,7 @@
     "applicationCategory": "MultimediaApplication",
     "description": "DSLR·미러리스 카메라를 USB·Wi-Fi로 연결하고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보는 시네마 카메라 컨트롤러",
     "url": "https://camcon.inik.kr/",
-    "image": "https://camcon.inik.kr/assets/img/og-card.png?v=4",
+    "image": "https://camcon.inik.kr/assets/img/og-card.png?v=5",
     "installUrl": "https://play.google.com/store/apps/details?id=com.inik.camcon",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "KRW" }
   }
@@ -56,6 +67,20 @@
 <body>
   <div class="grain" aria-hidden="true"></div>
   <a class="skip-link" href="#main" data-i18n="a11y.skip">본문 바로가기</a>
+
+  <!-- 언어 제안 배너. 자동 리다이렉트는 하지 않는다(Google 명시 비권고) — 원하는 언어가 현재 페이지와 다를 때
+       main.js 가 한 세션에 1회 노출한다. 표시/숨김의 단일 소스는 hidden 속성이다.
+       스타일은 인라인이되 display 만 style.css(#langSuggest:not([hidden]))에 있다 —
+       인라인 display 는 [hidden]{display:none} 을 이겨서 빈 배너가 항상 떠 버린다.
+       role="status"(+aria-live) 로 등장을 스크린리더에 통지한다. DOM 위치는 최상단 유지 —
+       position:fixed 라 시각 배치와 무관하고, 뒤로 옮기면 닫기 버튼이 페이지 전체 링크 뒤로 밀린다. -->
+  <div id="langSuggest" hidden role="status" aria-live="polite"
+       style="position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:70;align-items:center;gap:10px;max-width:calc(100vw - 24px);padding:9px 10px 9px 14px;border:1px solid var(--hair,#262C33);border-radius:999px;background:rgba(20,23,28,.94);box-shadow:0 8px 28px rgba(0,0,0,.45);font-size:14px;color:var(--ink-dim,#B6BCC6);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)">
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 2.5 15.5 0 18M12 3c-2.5 2.5-2.5 15.5 0 18"/></svg>
+    <a id="langSuggestLink" href="/en/" style="color:var(--amber,#E8A245);font-weight:600;text-decoration:none;white-space:nowrap"></a>
+    <button type="button" id="langSuggestClose" aria-label="언어 안내 닫기" data-i18n-attr="aria-label" data-i18n="a11y.bannerClose"
+            style="flex:none;width:26px;height:26px;border:0;border-radius:50%;background:transparent;color:var(--ink-mute,#8F95A0);font:inherit;font-size:15px;line-height:1;cursor:pointer">&times;</button>
+  </div>
 
   <!-- ══════════════ HEADER ══════════════ -->
   <header class="site-header" id="top">
@@ -306,7 +331,7 @@
           <button type="button" class="swatch film-cat reveal" data-delay="1" data-before="assets/film/ba-before-hero.webp" data-after="assets/film/ba-after-cat-negold.webp" data-name="Kodak Portra 160 NC"><img class="shot" src="assets/film/cat-negold.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.negold">네거티브 올드</span><span class="n">44</span></div></button>
           <button type="button" class="swatch film-cat reveal" data-delay="2" data-before="assets/film/ba-before-alt.webp" data-after="assets/film/ba-after-cat-print.webp" data-name="Kodak 2383"><img class="shot" src="assets/film/cat-print.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.print">프린트</span><span class="n">12</span></div></button>
         </div>
-        <p class="films-note reveal" data-i18n="films.note">전체 296종은 <strong>PRO</strong>에서 열립니다.</p>
+        <p class="films-note reveal" data-i18n="films.note">필름은 촬영 직후 수신 파이프라인에서 입혀지고, RAW 원본은 건드리지 않습니다. <strong>PRO</strong>에서는 전체 카탈로그와 필름·색감 동시 적용이 열립니다.</p>
       </div>
     </section>
 
@@ -340,7 +365,8 @@
 
         <div class="cam-explorer reveal">
           <div class="cam-explorer-head">
-            <div class="count"><span class="num" id="camTotal">…</span><span class="lbl"><span data-i18n="cameras.modelsSuffix">+ 모델</span></span></div>
+            <!-- 2단 표기: 앞 숫자는 libgphoto2 드라이버 등재 수, 뒤는 실사용 확인 수(getVerifiedCameras 실측). 둘을 섞어 쓰지 않는다. -->
+            <div class="count"><span class="num" id="camTotal">…</span><span class="lbl"><span data-i18n="cameras.modelsSuffix">드라이버 등재 모델</span></span><span class="lbl" id="camVerified" hidden></span></div>
             <button class="cam-toggle" id="camToggle" aria-expanded="false" aria-controls="camExplorerBody"><span data-i18n="cameras.listToggle">전체 지원 모델 보기</span><span class="chev" aria-hidden="true"></span></button>
           </div>
           <div class="cam-body" id="camExplorerBody" hidden>
@@ -516,11 +542,23 @@
         </nav>
       </div>
       <div class="footer-bottom">
+        <!-- 정적 언어 링크. 헤더 select 는 JS 로 이동하므로 JS 를 끈 사용자의 유일한 전환 수단이고,
+             동시에 크롤러가 7개 언어 페이지에 도달하는 내부 링크 경로다. -->
+        <nav class="footer-nav" aria-label="언어 선택 / Language" data-i18n-attr="aria-label" data-i18n="a11y.langSelect" style="margin:0 0 14px -12px">
+          <a href="/" lang="ko" hreflang="ko">한국어</a>
+          <a href="/en/" lang="en" hreflang="en">English</a>
+          <a href="/ja/" lang="ja" hreflang="ja">日本語</a>
+          <a href="/zh/" lang="zh" hreflang="zh">中文</a>
+          <a href="/de/" lang="de" hreflang="de">Deutsch</a>
+          <a href="/es/" lang="es" hreflang="es">Español</a>
+          <a href="/fr/" lang="fr" hreflang="fr">Français</a>
+          <a href="/it/" lang="it" hreflang="it">Italiano</a>
+        </nav>
         <p data-i18n="footer.rights">© 2026 CamCon. All rights reserved.</p>
       </div>
     </div>
   </footer>
 
-  <script src="assets/js/main.js?v=20260801a" defer></script>
+  <script src="assets/js/main.js?v=20260812a" defer></script>
 </body>
 </html>

@@ -7,8 +7,13 @@
   var I18N = {};
   var camData = null; // {total, cameras:[{vendor,model,connection}]}
 
+  // 정적 자산 캐시 버스터. index.html 의 css/js ?v= 와 같은 값을 유지한다
+  // (main.js 자체가 ?v= 로 받아지므로 stale main.js 가 stale ASSET_V 를 들고 있을 수 없다).
+  var ASSET_V = "20260812a";
+
   var VERIFIED_URL = "https://asia-northeast3-camcon-67ad7.cloudfunctions.net/getVerifiedCameras";
   var verifiedByKey = {};
+  var verifiedCount = 0;
 
   // CSS 의 scroll-behavior:auto 는 앵커 이동만 커버한다. JS 가 명시한 behavior:"smooth" 는 그 위를 덮으므로
   // 모듈 스코프에 한 번만 두고 스크롤·리빌 양쪽에서 공유한다.
@@ -191,19 +196,38 @@ function normalizeCameraKey(input) {
   }
 
   /* ══════════════ i18n ══════════════ */
+  /* 언어는 URL 이 정본이다 — `/` 는 한국어, `/en/`·`/ja/`… 는 tools/build_i18n_pages.py 가 만든 정적 페이지다.
+     따라서 이 파일은 페이지 언어를 바꾸지 않고, 그 언어의 사전만 확보해 동적 문자열(카메라 탐색기 등)에 쓴다.
+     언어 전환은 in-place 교체가 아니라 해당 URL 로의 이동이다. */
   function t(key) {
     return I18N && Object.prototype.hasOwnProperty.call(I18N, key) ? I18N[key] : null;
   }
 
-  function detectLang() {
-    var saved = localStorage.getItem("camcon-lang");
-    if (saved && SUPPORTED.indexOf(saved) >= 0) return saved;
+  function pageLang() {
+    var l = (document.documentElement.getAttribute("lang") || "").toLowerCase();
+    return SUPPORTED.indexOf(l) >= 0 ? l : "ko";
+  }
+
+  function langHref(lang) {
+    return lang === "ko" ? "/" : "/" + lang + "/";
+  }
+
+  // zh 는 사전이 간체 1종뿐이라 번체 태그도 zh 로 보낸다. 번체 사전이 생기면 이 표만 고치면 된다.
+  var SCRIPT_MAP = {
+    "zh-hant": "zh", "zh-tw": "zh", "zh-hk": "zh", "zh-mo": "zh",
+    "zh-hans": "zh", "zh-cn": "zh", "zh-sg": "zh"
+  };
+
+  // 브라우저가 원하는 언어. 자동 이동에는 쓰지 않고 제안 배너 판정에만 쓴다.
+  function suggestLang() {
     var navs = navigator.languages || [navigator.language || ""];
     for (var i = 0; i < navs.length; i++) {
-      var code = (navs[i] || "").slice(0, 2).toLowerCase();
+      var tag = (navs[i] || "").toLowerCase();
+      if (SCRIPT_MAP[tag]) return SCRIPT_MAP[tag]; // slice(0,2) 로 subtag 를 버리기 전에 먼저 본다
+      var code = tag.slice(0, 2);
       if (SUPPORTED.indexOf(code) >= 0) return code;
     }
-    return "ko"; // 브랜드 기본 + 인라인 폴백과 일치
+    return "en"; // 8개 밖 언어권(pt/ru/id/vi/th/nl/tr…)은 한국어가 아니라 영어 — hreflang x-default 와 동일
   }
 
   function applyI18n() {
@@ -220,11 +244,18 @@ function normalizeCameraKey(input) {
   }
 
   function loadLang(lang, done) {
-    fetch("assets/i18n/" + lang + ".json", { cache: "no-cache" })
+    // 정적 생성 페이지는 사전이 </head> 직전에 인라인돼 있다 → fetch 도 FOUC 도 없다.
+    if (window.__I18N__) {
+      I18N = window.__I18N__;
+      applyI18n();
+      if (done) done();
+      return;
+    }
+    // 루트(/)만 여기로 온다. 본문 인라인이 이미 한국어라 교체돼도 보이는 변화는 없다.
+    fetch("/assets/i18n/" + lang + ".json?v=" + ASSET_V)
       .then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); })
       .then(function (dict) {
         I18N = dict;
-        document.documentElement.lang = lang;
         applyI18n();
         if (done) done();
       })
@@ -236,16 +267,87 @@ function normalizeCameraKey(input) {
 
   function initI18n() {
     var sel = document.getElementById("lang");
-    var lang = detectLang();
-    if (sel) sel.value = lang;
-    loadLang(lang);
+    var lang = pageLang();
     if (sel) {
+      sel.value = lang;
       sel.addEventListener("change", function () {
         var next = sel.value;
-        localStorage.setItem("camcon-lang", next);
-        loadLang(next);
+        if (SUPPORTED.indexOf(next) < 0 || next === lang) return;
+        remember("local", CHOSEN_KEY, next); // 명시 선택 — 이후 제안 배너의 기본 후보가 된다
+        location.href = langHref(next) + location.hash;
       });
     }
+    loadLang(lang);
+    initLangSuggest(lang);
+  }
+
+  /* ══════════════ 언어 제안 배너 ══════════════ */
+  /* 자동 리다이렉트는 하지 않는다(Google 명시 비권고). 이동은 사용자가 링크를 누를 때만 일어난다.
+     문구는 "제안 대상 언어"로 보여야 뜻이 통하는데 인라인 사전은 현재 페이지 언어 1종뿐이므로,
+     이 8줄만 예외적으로 JS 에 둔다(사전 조회 대상이 아니다). */
+  var LANG_CTA = {
+    ko: "한국어로 보기",
+    en: "View in English",
+    ja: "日本語で見る",
+    zh: "查看中文版",
+    de: "Auf Deutsch ansehen",
+    es: "Ver en español",
+    fr: "Voir en français",
+    it: "Guarda in italiano"
+  };
+
+  /* 저장 키 3종은 역할이 다르다 — 섞으면 "예전에 영어를 골랐던 사람이 한국어 루트에서 안내를 못 받는" 회귀가 난다.
+     camcon-lang           마지막으로 직접 고른 언어. "묻지 마라"가 아니라 "이 사람은 X 를 원한다"는 제안 소스다.
+     camcon-lang-suggested 배너를 명시적으로 닫음. 노출을 막는 유일한 영구 키.
+     camcon-lang-seen      이번 세션에 이미 1회 노출(sessionStorage). */
+  var CHOSEN_KEY = "camcon-lang";
+  var DISMISS_KEY = "camcon-lang-suggested";
+  var SEEN_KEY = "camcon-lang-seen";
+
+  // 쿠키 차단·사생활 모드에서는 storage 접근 자체가 던진다 → 배너만 조용히 포기하고 나머지 init 은 말려들지 않게 한다.
+  function suggestState() {
+    try {
+      return {
+        chosen: localStorage.getItem(CHOSEN_KEY),
+        dismissed: localStorage.getItem(DISMISS_KEY),
+        seen: sessionStorage.getItem(SEEN_KEY)
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function remember(area, key, val) {
+    try { (area === "session" ? sessionStorage : localStorage).setItem(key, val); } catch (e) { /* 저장 실패는 무시 */ }
+  }
+
+  function initLangSuggest(current) {
+    var box = document.getElementById("langSuggest");
+    if (!box) return;
+    var state = suggestState();
+    if (!state || state.dismissed || state.seen) return; // 닫았거나 이번 세션에 이미 봤으면 끝
+
+    // 직접 고른 언어가 있으면 그게 제안 대상이다(브라우저 언어보다 우선). 없으면 브라우저 언어.
+    var want = state.chosen && SUPPORTED.indexOf(state.chosen) >= 0 ? state.chosen : suggestLang();
+    if (want === current) return;
+
+    var link = document.getElementById("langSuggestLink");
+    var close = document.getElementById("langSuggestClose");
+    if (!link || !close) return;
+
+    link.href = langHref(want) + location.hash;
+    link.setAttribute("lang", want);
+    link.setAttribute("hreflang", want);
+    link.textContent = LANG_CTA[want] || want;
+    link.addEventListener("click", function () {
+      remember("local", CHOSEN_KEY, want);
+    });
+    close.addEventListener("click", function () {
+      remember("local", DISMISS_KEY, "1");
+      box.hidden = true; // display 는 style.css 의 #langSuggest:not([hidden]) 가 잡는다
+    });
+    remember("session", SEEN_KEY, "1");
+    box.hidden = false;
   }
 
   /* ══════════════ mobile nav ══════════════ */
@@ -349,7 +451,7 @@ function normalizeCameraKey(input) {
       listEl.innerHTML = skel;
     }
 
-    fetch("assets/data/supported-cameras.json", { cache: "no-cache" })
+    fetch("/assets/data/supported-cameras.json?v=" + ASSET_V)
       .then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); })
       .then(function (data) {
         camData = data;
@@ -358,14 +460,13 @@ function normalizeCameraKey(input) {
         buildVendorChips();
         renderCameras();
         // 목록 렌더 뒤 "사용 확인됨" 배지 데이터 로드 (실패해도 목록은 정상)
-        fetch(VERIFIED_URL, { cache: "no-cache" })
-          .then(function (r) { return r.ok ? r.json() : { cameras: [] }; })
-          .then(function (v) {
-            verifiedByKey = {};
-            (v.cameras || []).forEach(function (c) { verifiedByKey[c.key] = { usb: c.usb, wifi: c.wifi }; });
-            renderCameras();
-          })
-          .catch(function () { /* 배지 없이 목록만 */ });
+        loadVerified(function (v) {
+          verifiedByKey = {};
+          (v.cameras || []).forEach(function (c) { verifiedByKey[c.key] = { usb: c.usb, wifi: c.wifi }; });
+          verifiedCount = countVerifiedMatches();
+          renderVerifiedCount();
+          renderCameras();
+        });
       })
       .catch(function () {
         // 실패를 침묵하면 검색창만 있고 결과가 영원히 없는 패널이 남는다 → 스켈레톤을 걷고 사유를 노출한다.
@@ -378,6 +479,66 @@ function normalizeCameraKey(input) {
           emptyEl.textContent = t("cameras.loadError") || "목록을 불러오지 못했습니다. 잠시 후 새로고침해 주세요.";
         }
       });
+  }
+
+  /* 이 응답은 nginx 캐시 밖(Cloud Functions)이라 ?v= 로 제어되지 않고, 호출 1회가 Firestore read 과금이다.
+     배지는 마케팅 표시용이라 몇 시간 지연이 무해하므로 클라이언트에서 TTL 캐시한다. */
+  var VERIFIED_TTL = 6 * 60 * 60 * 1000; // 6h
+
+  function loadVerified(done) {
+    var raw = null;
+    try { raw = localStorage.getItem("camcon-verified"); } catch (e) { raw = null; }
+    if (raw) {
+      try {
+        var c = JSON.parse(raw);
+        if (c && c.data && (Date.now() - c.at) < VERIFIED_TTL) { done(c.data); return; }
+      } catch (e) { /* 손상 캐시는 무시하고 재요청 */ }
+    }
+    fetch(VERIFIED_URL)
+      .then(function (r) { return r.ok ? r.json() : { cameras: [] }; })
+      .then(function (v) {
+        try { localStorage.setItem("camcon-verified", JSON.stringify({ at: Date.now(), data: v })); } catch (e) { /* 저장 실패는 무시 */ }
+        done(v);
+      })
+      .catch(function () { /* 배지 없이 목록만 */ });
+  }
+
+  /* 실사용 확인 수의 최소 표시 임계값. 집계가 한 자릿수인 동안 "드라이버 등재 945 · 실사용 확인 1종"으로
+     나란히 놓이면 대비가 오히려 신뢰를 깎는다 → 두 자릿수부터 '사례 모음'으로 읽힌다고 보고 10 으로 둔다.
+     임계 미만이면 뒷단(실사용 확인)만 감추고 앞단(드라이버 등재 945)은 그대로 노출한다.
+     집계가 쌓이면 이 상수만 낮추거나 지우면 된다. */
+  var VERIFIED_MIN = 10;
+
+  // 배지 매칭 키. 카운트와 목록 렌더가 이 함수 하나만 보게 해서 둘이 갈라지지 않도록 한다.
+  function camKey(c) {
+    return normalizeCameraKey(c.vendor + " " + c.model);
+  }
+
+  /* 헤더 숫자는 CF 응답 원본 개수가 아니라 카탈로그에 "실제로 매칭되는" 기종 수여야 한다.
+     normalizeCameraKey 가 CF 쪽과 어긋나거나 드라이버 목록에 없는 기종이 제보되면 매칭 실패분이
+     생기는데, 원본 개수를 그대로 쓰면 존재하지 않는 기종까지 세어 과장된다.
+     주의: 이 숫자는 화면의 배지 개수와 반드시 같지 않다 — 여기서는 키 기준으로 중복을 제거하고
+     ("N종") 배지는 카탈로그 행마다 붙는데, 표기가 다른 같은 기종이 서로 다른 행으로 존재해
+     같은 키로 접히는 그룹이 있다(예: "Canon MVX 3i" / "Canon MVX3i"). "종" 표기에는 중복 제거가
+     맞으므로 의도된 차이다. */
+  function countVerifiedMatches() {
+    if (!camData) return 0;
+    var seen = {}, n = 0;
+    camData.cameras.forEach(function (c) {
+      var k = camKey(c);
+      if (verifiedByKey[k] && !seen[k]) { seen[k] = 1; n++; }
+    });
+    return n;
+  }
+
+  // 드라이버 등재 수(945)와 실사용 확인 수는 성격이 다른 값이라 한 줄로 합치지 않고 2단으로 표기한다.
+  function renderVerifiedCount() {
+    var el = document.getElementById("camVerified");
+    if (!el) return;
+    var tpl = t("cameras.verifiedTpl");
+    if (!tpl || verifiedCount < VERIFIED_MIN) { el.hidden = true; return; }
+    el.textContent = tpl.replace("{n}", verifiedCount.toLocaleString());
+    el.hidden = false;
   }
 
   function vendorLabel(v) {
@@ -447,7 +608,7 @@ function normalizeCameraKey(input) {
 
     var shown = filtered.slice(0, CAP);
     list.innerHTML = shown.map(function (c) {
-      var vh = verifiedByKey[normalizeCameraKey(c.vendor + " " + c.model)];
+      var vh = verifiedByKey[camKey(c)];
       var badge = "";
       if (vh) {
         var methods = [];
@@ -477,6 +638,7 @@ function normalizeCameraKey(input) {
   }
 
   function refreshCamText() {
+    renderVerifiedCount();
     if (!camData) return;
     buildVendorChips();
     renderCameras();
