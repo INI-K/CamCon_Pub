@@ -16,6 +16,8 @@
     <string name="referral_error_self">自分の紹介コードは使用できません。</string>
     <string name="referral_error_not_grantable">このアカウントには適用できないコードです。</string>
     <string name="referral_error_network">ネットワークエラーです。しばらくしてからもう一度お試しください。</string>
+    <string name="referral_error_rate_limited">試行回数が多すぎます。しばらくしてからもう一度お試しください。</string>
+    <string name="referral_error_rate_limited_minutes">試行回数が多すぎます。約%1$d分後にもう一度お試しください。</string>
 
     <!-- 로그아웃 오류 상세 (settings_toast_logout_failed 의 「%s」) -->
     <string name="auth_error_network_detail">ネットワークエラー</string>

@@ -16,6 +16,8 @@
     <string name="referral_error_self">无法使用自己的推荐码。</string>
     <string name="referral_error_not_grantable">该推荐码无法应用于此账号。</string>
     <string name="referral_error_network">网络错误，请稍后重试。</string>
+    <string name="referral_error_rate_limited">尝试次数过多，请稍后重试。</string>
+    <string name="referral_error_rate_limited_minutes">尝试次数过多，请在约 %1$d 分钟后重试。</string>
 
     <!-- 로그아웃 오류 상세 (settings_toast_logout_failed 의 "%s") -->
     <string name="auth_error_network_detail">网络错误</string>
