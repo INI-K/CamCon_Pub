@@ -10,7 +10,6 @@
   "a11y.tablist": "Metodo di connessione",
   "a11y.showcase": "Esempio di simulazione pellicola",
   "a11y.showcaseAlt": "Foto con una simulazione pellicola di CamCon applicata",
-
   "nav.features": "Funzioni",
   "nav.films": "Pellicole",
   "nav.cameras": "Fotocamere",
@@ -19,14 +18,12 @@
   "nav.faq": "FAQ",
   "nav.menuOpen": "Apri menu",
   "nav.menuClose": "Chiudi menu",
-
   "hero.eyebrow": "Cinema Camera Controller",
   "hero.title": "Premi l'otturatore e la <span class=\"accent\">foto con look pellicola</span> arriva sul telefono",
   "hero.sub": "Collega la fotocamera via USB o Wi-Fi e ricevi foto con la simulazione pellicola già applicata, proprio mentre scatti.",
   "hero.cta": "Disponibile su Google Play",
   "hero.explore": "Scopri le funzioni",
   "hero.specRaw": "Originale intatto",
-
   "features.eyebrow": "Features",
   "features.title": "Dallo scatto al colore, un ponte tra fotocamera e telefono",
   "feat.wifi.t": "Tethering wireless Wi-Fi",
@@ -45,7 +42,6 @@
   "feat.raw.d": "Scarica gli originali RAW (NEF e altri) senza perdite. Il look pellicola viene applicato solo a una copia JPG, così l'originale resta intatto.",
   "feat.auto.t": "Connessione automatica intelligente",
   "feat.auto.d": "Basta accendere la fotocamera: CamCon la rileva e la riconnette automaticamente via mDNS/SSDP. Nessuna configurazione ogni volta.",
-
   "films.eyebrow": "Film Library",
   "films.title": "9 famiglie, <span class=\"accent\">296</span> simulazioni pellicola",
   "films.lead": "Dal bianco e nero all'istantanea e al negativo a colori: curve di tono e colori di pellicole reali, riprodotti come LUT 3D.",
@@ -64,7 +60,6 @@
   "films.afterAlt": "Con pellicola",
   "films.baHint": "Tocca una pellicola per cambiarla e trascina la maniglia per confrontare prima e dopo.",
   "films.showcaseCap": "Pellicola applicata: Classic Chrome",
-
   "cameras.eyebrow": "Supported Cameras",
   "cameras.title": "La mia fotocamera funzionerà?",
   "cameras.lead": "Se la tua fotocamera supporta USB (PTP) o la modalità Wi-Fi STA (router), è supportata.",
@@ -93,7 +88,6 @@
   "cameras.help": "La maggior parte delle fotocamere con connessione USB PTP/MTP funziona. In caso di dubbio, <a href=\"#contact\">contattaci</a> e verificheremo per te.",
   "cameras.verified": "Uso verificato",
   "cameras.verifiedTpl": "{n} confermati nell'uso reale",
-
   "connect.eyebrow": "How to Connect",
   "connect.title": "Due modi per connettersi",
   "connect.tabUsb": "USB OTG",
@@ -112,7 +106,6 @@
   "connect.sta3Label": "Approvare la connessione",
   "connect.sta3": "Alla prima connessione, <strong>approva «Consenti connessione» sul corpo della fotocamera</strong>. In seguito la riconnessione è automatica.",
   "connect.staPerm": "Permessi richiesti: Posizione (per cercare la rete), Notifiche (per la ricezione in background)",
-
   "pricing.eyebrow": "Pricing",
   "pricing.title": "Inizia gratis, passa a PRO quando serve",
   "pricing.lead": "Inizia gratis. Il piano PRO sarà presto disponibile.",
@@ -129,7 +122,6 @@
   "pricing.pro3": "Pellicola + colore insieme",
   "pricing.pro4": "Ricezione a risoluzione originale",
   "pricing.pro5": "Scheda anteprima foto",
-
   "faq.eyebrow": "FAQ",
   "faq.title": "Domande frequenti",
   "faq.q1": "Come verifico se la mia fotocamera è supportata?",
@@ -150,13 +142,12 @@
   "faq.a8": "Sì. Sulle fotocamere supportate, non solo gli scatti remoti dall'app: anche le foto scattate con l'otturatore del corpo macchina vengono trasferite automaticamente al telefono, anche con il live view attivo.",
   "faq.q9": "Esiste una versione per iPhone (iOS)?",
   "faq.a9": "Al momento è solo per Android (Android 10 o superiore, dispositivi arm64 a 64 bit). Non è disponibile una versione iOS.",
-
   "cta.title": "Un flusso in cui lo scatto è già il risultato",
   "cta.sub": "Nell'istante in cui premi l'otturatore, la foto con look pellicola arriva sul telefono.",
   "cta.badgeSrc": "/assets/img/play/badge-it.png",
-
   "footer.privacy": "Privacy",
   "footer.terms": "Termini di servizio",
+  "footer.source": "Codice sorgente",
   "footer.contact": "Contatti",
   "footer.rights": "© 2026 CamCon. Tutti i diritti riservati."
 }
