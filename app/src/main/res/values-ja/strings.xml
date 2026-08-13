@@ -358,6 +358,15 @@
     <string name="gradle_dependencies_desc">タップしてすべてのGradle依存関係のライセンスを表示</string>
     <string name="license_version">バージョン:</string>
     <string name="license_type">ライセンス:</string>
+    <!-- LGPL 수정본 소스 서면 제공 오퍼 + 상표 면책 -->
+    <string name="licenses_modified_badge">CamCon による改変版</string>
+    <string name="licenses_lgpl_offer_title">改変した LGPL ソースの提供</string>
+    <string name="licenses_lgpl_offer_body">CamCon には、LGPL-2.1-or-later で提供される libgphoto2 および libgphoto2_port を改変してビルドしたバイナリが含まれています。ライセンスの定めに従い、改変版に対応する完全なソースコードをご請求いただいた方に提供します。提供期間は、このバージョンを配布した日から3年間です。ご請求の際はアプリのバージョンをお知らせください。</string>
+    <string name="licenses_trademark_title">商標について</string>
+    <string name="licenses_trademark_body">フィルムシミュレーションに表示されるフィルム名およびカメラのブランド名は、各商標権者の財産です。CamCon はこれらの権利者と提携・後援・推奨のいずれの関係もありません。名称は、各プリセットが再現しようとする色の特性を説明する目的でのみ使用しています。</string>
+    <!-- 연락처 접근성 라벨 + 메일 앱 부재 시 폴백 안내 -->
+    <string name="licenses_contact_click_label">メールで問い合わせる</string>
+    <string name="contact_email_copied">メールアプリが見つからないため、アドレスをクリップボードにコピーしました: %1$s</string>
     <string name="photo_capture_failed">写真の撮影/受信に失敗しました (エラー %1$d)</string>
     <string name="photo_delete_camera_failed">カメラから写真を削除できませんでした</string>
     <string name="notif_channel_status_name">カメラの状態</string>
