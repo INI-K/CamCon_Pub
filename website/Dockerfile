@@ -17,6 +17,12 @@ COPY assets/ /usr/share/nginx/html/assets/
 #      (없으면 빌드가 여기서 멈춘다 — 언어 페이지 없는 채로 조용히 배포되는 것보다 낫다.)
 COPY dist-lang/ /usr/share/nginx/html/
 
+# COPY 는 빌드 컨텍스트의 퍼미션을 그대로 이미지에 박는다. 배포 트리를 tar-over-ssh 로
+# 옮기면 원본(macOS) 퍼미션이 따라와 0600/0700 이 되는 일이 있는데, 그러면 nginx 워커가
+# 비-root 라 전 페이지가 403 이 된다(실제로 한 번 라이브가 이렇게 죽었다).
+# 빌드 시점에 읽기 권한을 강제해 배포 트리 퍼미션과 무관하게 만든다.
+RUN chmod -R a+rX /usr/share/nginx/html /etc/nginx/snippets /etc/nginx/conf.d
+
 EXPOSE 80
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s \
