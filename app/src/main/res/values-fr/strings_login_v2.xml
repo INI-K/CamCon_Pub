@@ -16,6 +16,8 @@
     <string name="referral_error_self">Vous ne pouvez pas utiliser votre propre code de parrainage.</string>
     <string name="referral_error_not_grantable">Ce code ne peut pas être appliqué à ce compte.</string>
     <string name="referral_error_network">Erreur réseau. Veuillez réessayer dans un instant.</string>
+    <string name="referral_error_rate_limited">Trop de tentatives. Veuillez réessayer dans un instant.</string>
+    <string name="referral_error_rate_limited_minutes">Trop de tentatives. Veuillez réessayer dans environ %1$d min.</string>
 
     <!-- 로그아웃 오류 상세 (settings_toast_logout_failed의 «%s») -->
     <string name="auth_error_network_detail">erreur réseau</string>
