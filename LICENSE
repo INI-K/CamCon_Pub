@@ -1,0 +1,54 @@
+CamCon — 저작권 고지 / Copyright Notice
+
+Copyright (c) 2025-2026 Kim Tae Hwan (INI-K). All rights reserved.
+
+
+## 한국어
+
+이 저장소의 소스 코드는 **열람과 학습 목적으로 공개**되어 있습니다. 오픈소스 라이선스가
+아니며, 저작권은 저작자에게 있습니다.
+
+허용:
+  - 코드를 읽고 학습하는 것
+  - 기법이나 구조를 참고하는 것
+  - 일부를 인용하며 출처를 밝히는 것
+
+사전 서면 동의 없이 금지:
+  - 이 코드 또는 파생물을 복제·배포·재배포하는 것
+  - 상업적으로 이용하는 것
+  - 이 코드를 기반으로 애플리케이션을 게시하는 것
+
+문의: ppp5544@gmail.com
+
+
+## English
+
+The source code in this repository is published **for reading and study only**.
+This is not an open-source license. All rights are reserved by the author.
+
+Permitted:
+  - Reading and studying the code
+  - Referring to techniques or structure
+  - Quoting portions with attribution
+
+Prohibited without prior written permission:
+  - Copying, distributing, or redistributing this code or derivative works
+  - Commercial use
+  - Publishing an application based on this code
+
+Contact: ppp5544@gmail.com
+
+
+## 서드파티 / Third-party components
+
+이 앱은 여러 오픈소스 구성요소를 사용하며, 각 구성요소의 라이선스는 앱 내
+`설정 → 오픈소스 라이선스` 화면에 고지되어 있습니다.
+
+특히 **libgphoto2 및 libgphoto2_port (LGPL-2.1-or-later)** 는 CamCon 이 수정하여
+사용합니다. LGPL-2.1 에 따라 **수정된 대응 소스를 요청 시 제공**합니다.
+요청: ppp5544@gmail.com
+
+This app uses open-source components; their licenses are listed in-app under
+Settings → Open Source Licenses. In particular, **libgphoto2 and libgphoto2_port
+(LGPL-2.1-or-later)** are used in modified form. In accordance with LGPL-2.1, the
+corresponding modified source is **available upon request** at the address above.
