@@ -10,7 +10,6 @@
   "a11y.tablist": "연결 방법",
   "a11y.showcase": "필름 시뮬레이션 예시",
   "a11y.showcaseAlt": "CamCon 필름 시뮬레이션이 적용된 사진 예시",
-
   "nav.features": "기능",
   "nav.films": "필름",
   "nav.cameras": "지원 카메라",
@@ -19,14 +18,12 @@
   "nav.faq": "FAQ",
   "nav.menuOpen": "메뉴 열기",
   "nav.menuClose": "메뉴 닫기",
-
   "hero.eyebrow": "Cinema Camera Controller",
   "hero.title": "셔터를 누르면, <span class=\"accent\">필름룩 사진</span>이 폰에 도착합니다",
   "hero.sub": "카메라를 USB·Wi-Fi로 연결하고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보세요.",
   "hero.cta": "Google Play에서 다운로드",
   "hero.explore": "기능 살펴보기",
   "hero.specRaw": "원본 보존",
-
   "features.eyebrow": "Features",
   "features.title": "촬영부터 색보정까지, 한 번에 끝냅니다",
   "feat.wifi.t": "Wi-Fi 무선 테더링",
@@ -45,7 +42,6 @@
   "feat.raw.d": "RAW(NEF 등) 원본을 손상 없이 다운로드합니다. 필름룩은 JPG 사본에만 입혀, 원본은 그대로 보존됩니다.",
   "feat.auto.t": "스마트 자동 연결",
   "feat.auto.d": "카메라 전원만 켜면 mDNS·SSDP 검색으로 자동 탐색하고 재연결합니다. 매번 설정할 필요가 없습니다.",
-
   "films.eyebrow": "Film Library",
   "films.title": "9개 계열, <span class=\"accent\">296종</span>의 필름 시뮬레이션",
   "films.lead": "흑백부터 인스턴트, 컬러 네거티브까지. 실제 필름의 톤 커브와 색을 3D LUT로 재현했습니다.",
@@ -64,7 +60,6 @@
   "films.afterAlt": "필름 적용 후",
   "films.baHint": "필름을 눌러 바꿔 보고, 손잡이를 드래그해 적용 전후를 비교하세요.",
   "films.showcaseCap": "적용 필름: Classic Chrome",
-
   "cameras.eyebrow": "Supported Cameras",
   "cameras.title": "내 카메라, 쓸 수 있을까요?",
   "cameras.lead": "USB(PTP) 또는 Wi-Fi STA(공유기) 모드를 지원하는 카메라라면 사용할 수 있습니다.",
@@ -93,7 +88,6 @@
   "cameras.help": "카메라가 PTP/MTP USB 연결을 지원한다면 대부분 사용할 수 있습니다. 확실하지 않다면 <a href=\"#contact\">문의</a>를 주시면 확인해 드립니다.",
   "cameras.verified": "사용 확인됨",
   "cameras.verifiedTpl": "실사용 확인 {n}종",
-
   "connect.eyebrow": "How to Connect",
   "connect.title": "두 가지 연결 방법",
   "connect.tabUsb": "USB OTG",
@@ -112,7 +106,6 @@
   "connect.sta3Label": "연결 승인",
   "connect.sta3": "첫 연결 시 <strong>카메라 본체에서 \"연결 허용\"을 승인</strong>합니다. 이후에는 자동으로 재연결됩니다.",
   "connect.staPerm": "필요 권한: 위치 권한(네트워크 검색용), 알림 권한(백그라운드 수신용)",
-
   "pricing.eyebrow": "Pricing",
   "pricing.title": "무료로 시작하고, 필요할 때 PRO로",
   "pricing.lead": "무료로 시작하세요. PRO 유료 플랜은 준비 중입니다.",
@@ -129,7 +122,6 @@
   "pricing.pro3": "필름 + 색감 동시 적용",
   "pricing.pro4": "원본 해상도 수신",
   "pricing.pro5": "사진 미리보기 탭",
-
   "faq.eyebrow": "FAQ",
   "faq.title": "자주 묻는 질문",
   "faq.q1": "내 카메라가 지원되는지 어떻게 확인하나요?",
@@ -150,13 +142,12 @@
   "faq.a8": "네. 지원 카메라에서는 앱 원격 촬영뿐 아니라 카메라 바디 셔터로 찍은 사진도 자동으로 폰에 전송됩니다. 라이브뷰를 켠 상태에서도 동작합니다.",
   "faq.q9": "아이폰(iOS)도 지원하나요?",
   "faq.a9": "현재 Android 전용입니다(Android 10 이상, 64비트 arm64 기기). iOS 버전은 제공하지 않습니다.",
-
   "cta.title": "촬영이 곧 결과물이 되는 워크플로",
   "cta.sub": "셔터를 누르는 그 순간, 필름룩 사진이 폰에 도착합니다.",
   "cta.badgeSrc": "/assets/img/play/badge-ko.png",
-
   "footer.privacy": "개인정보처리방침",
   "footer.terms": "이용약관",
+  "footer.source": "소스 코드",
   "footer.contact": "문의",
   "footer.rights": "© 2026 CamCon. All rights reserved."
 }
