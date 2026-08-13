@@ -6,6 +6,7 @@
   "a11y.navMobile": "Navegación móvil",
   "a11y.navFooter": "Navegación del pie de página",
   "a11y.langSelect": "Seleccionar idioma / Language",
+  "a11y.bannerClose": "Cerrar sugerencia de idioma",
   "a11y.tablist": "Método de conexión",
   "a11y.showcase": "Ejemplo de simulación de película",
   "a11y.showcaseAlt": "Foto con una simulación de película de CamCon aplicada",
@@ -58,7 +59,7 @@
   "film.negold": "Negativo Antiguo",
   "film.print": "Impresión",
   "films.freeLabel": "Free Signature: 5 películas emblemáticas, de uso gratuito",
-  "films.note": "Las 296 se desbloquean con <strong>PRO</strong>.",
+  "films.note": "El look se aplica en la propia canalización de recepción en el momento del disparo y tus originales RAW no se tocan. <strong>PRO</strong> abre el catálogo completo y película + color a la vez.",
   "films.baBefore": "Original",
   "films.afterAlt": "Con película",
   "films.baHint": "Toca una película para cambiarla y arrastra el control para comparar el antes y el después.",
@@ -80,7 +81,7 @@
   "cameras.badgeSta": "Conecta con STA",
   "cameras.unified": "Ya conectes por USB o Wi-Fi, todas las funciones (captura, recepción, look de película) son idénticas.",
   "cameras.listToggle": "Ver todos los modelos compatibles",
-  "cameras.modelsSuffix": "+ modelos",
+  "cameras.modelsSuffix": "modelos con controlador",
   "cameras.listNote": "La lista muestra los modelos compatibles con PTP (USB). Los modelos con insignia Wi-Fi admiten conexión inalámbrica.",
   "cameras.wifiBadge": "Wi-Fi",
   "cameras.searchPh": "Busca por marca o modelo (p. ej. Nikon Z8)",
@@ -91,6 +92,7 @@
   "cameras.loadError": "No se pudo cargar la lista. Actualiza la página en un momento.",
   "cameras.help": "La mayoría de cámaras con conexión USB PTP/MTP funcionan. Si tienes dudas, <a href=\"#contact\">contáctanos</a> y lo comprobamos por ti.",
   "cameras.verified": "Uso verificado",
+  "cameras.verifiedTpl": "{n} confirmados en uso real",
 
   "connect.eyebrow": "How to Connect",
   "connect.title": "Dos formas de conectar",
@@ -151,7 +153,7 @@
 
   "cta.title": "Un flujo donde el disparo ya es el resultado",
   "cta.sub": "En el instante en que pulsas el obturador, la foto con look de película llega a tu móvil.",
-  "cta.badgeSrc": "assets/img/play/badge-es.png",
+  "cta.badgeSrc": "/assets/img/play/badge-es.png",
 
   "footer.privacy": "Privacidad",
   "footer.terms": "Términos",

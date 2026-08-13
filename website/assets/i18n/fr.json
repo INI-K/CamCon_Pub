@@ -6,6 +6,7 @@
   "a11y.navMobile": "Navigation mobile",
   "a11y.navFooter": "Navigation du pied de page",
   "a11y.langSelect": "Choisir la langue / Language",
+  "a11y.bannerClose": "Fermer la suggestion de langue",
   "a11y.tablist": "Méthode de connexion",
   "a11y.showcase": "Exemple de simulation de film",
   "a11y.showcaseAlt": "Photo avec une simulation de film CamCon appliquée",
@@ -58,7 +59,7 @@
   "film.negold": "Négatif Ancien",
   "film.print": "Tirage",
   "films.freeLabel": "Free Signature : 5 pellicules signature, gratuites",
-  "films.note": "Les 296 se débloquent avec <strong>PRO</strong>.",
+  "films.note": "Le rendu est appliqué par le pipeline de réception au moment du déclenchement, et vos originaux RAW restent intacts. <strong>PRO</strong> ouvre le catalogue complet et l'application simultanée pellicule + couleur.",
   "films.baBefore": "Original",
   "films.afterAlt": "Avec le film",
   "films.baHint": "Touchez une pellicule pour en changer, puis faites glisser la poignée pour comparer l'avant et l'après.",
@@ -80,7 +81,7 @@
   "cameras.badgeSta": "Connexion via STA",
   "cameras.unified": "Que vous vous connectiez en USB ou en Wi-Fi, toutes les fonctions (prise de vue, réception, rendu argentique) sont identiques.",
   "cameras.listToggle": "Voir tous les modèles pris en charge",
-  "cameras.modelsSuffix": "+ modèles",
+  "cameras.modelsSuffix": "modèles avec pilote",
   "cameras.listNote": "La liste ci-dessous présente les modèles compatibles PTP (USB). Les modèles avec le badge Wi-Fi prennent en charge la connexion sans fil.",
   "cameras.wifiBadge": "Wi-Fi",
   "cameras.searchPh": "Rechercher par marque ou modèle (ex. Nikon Z8)",
@@ -91,6 +92,7 @@
   "cameras.loadError": "Impossible de charger la liste. Veuillez actualiser dans un instant.",
   "cameras.help": "La plupart des appareils avec connexion USB PTP/MTP fonctionnent. En cas de doute, <a href=\"#contact\">contactez-nous</a> et nous vérifierons pour vous.",
   "cameras.verified": "Utilisation confirmée",
+  "cameras.verifiedTpl": "{n} confirmés en usage réel",
 
   "connect.eyebrow": "How to Connect",
   "connect.title": "Deux façons de se connecter",
@@ -151,7 +153,7 @@
 
   "cta.title": "Un flux où la prise de vue est déjà le résultat",
   "cta.sub": "À l'instant où vous déclenchez, la photo au rendu argentique arrive sur votre téléphone.",
-  "cta.badgeSrc": "assets/img/play/badge-fr.png",
+  "cta.badgeSrc": "/assets/img/play/badge-fr.png",
 
   "footer.privacy": "Confidentialité",
   "footer.terms": "Conditions d'utilisation",

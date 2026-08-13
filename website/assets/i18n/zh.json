@@ -6,6 +6,7 @@
   "a11y.navMobile": "移动端菜单",
   "a11y.navFooter": "页脚菜单",
   "a11y.langSelect": "选择语言 / Language",
+  "a11y.bannerClose": "关闭语言提示",
   "a11y.tablist": "连接方式",
   "a11y.showcase": "胶片模拟示例",
   "a11y.showcaseAlt": "应用了 CamCon 胶片模拟的照片",
@@ -58,7 +59,7 @@
   "film.negold": "负片 旧版",
   "film.print": "冲印",
   "films.freeLabel": "Free Signature：5 款免费招牌胶片",
-  "films.note": "全部 296 种在 <strong>PRO</strong> 中解锁。",
+  "films.note": "胶片在拍摄后的接收流程中即时应用，RAW 原始文件不做任何改动。<strong>PRO</strong> 开放完整片库，并可同时应用胶片与色调。",
   "films.baBefore": "原图",
   "films.afterAlt": "应用胶片后",
   "films.baHint": "点按胶片即可切换，拖动滑块对比应用前后的效果。",
@@ -80,7 +81,7 @@
   "cameras.badgeSta": "支持 STA 即可连接",
   "cameras.unified": "无论通过 USB 还是 Wi-Fi 连接，拍摄·接收·胶片应用等全部功能都完全相同。",
   "cameras.listToggle": "查看全部支持型号",
-  "cameras.modelsSuffix": "+ 型号",
+  "cameras.modelsSuffix": "已收录驱动的型号",
   "cameras.listNote": "以下列表为 PTP（USB）兼容机型。带有 Wi-Fi 徽章的机型支持无线连接。",
   "cameras.wifiBadge": "Wi-Fi",
   "cameras.searchPh": "按品牌或型号搜索(例如 Nikon Z8)",
@@ -91,6 +92,7 @@
   "cameras.loadError": "无法加载列表。请稍后刷新页面。",
   "cameras.help": "支持 PTP/MTP USB 连接的相机大多都能使用。若不确定，欢迎<a href=\"#contact\">联系我们</a>，我们会为您确认。",
   "cameras.verified": "已确认可用",
+  "cameras.verifiedTpl": "实机确认 {n} 款",
 
   "connect.eyebrow": "How to Connect",
   "connect.title": "两种连接方式",
@@ -151,7 +153,7 @@
 
   "cta.title": "让拍摄本身即成品的工作流",
   "cta.sub": "按下快门的那一刻，胶片风格照片便到达手机。",
-  "cta.badgeSrc": "assets/img/play/badge-zh.png",
+  "cta.badgeSrc": "/assets/img/play/badge-zh.png",
 
   "footer.privacy": "隐私政策",
   "footer.terms": "使用条款",

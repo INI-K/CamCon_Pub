@@ -6,6 +6,7 @@
   "a11y.navMobile": "Navigazione mobile",
   "a11y.navFooter": "Navigazione a piè di pagina",
   "a11y.langSelect": "Seleziona lingua / Language",
+  "a11y.bannerClose": "Chiudi il suggerimento della lingua",
   "a11y.tablist": "Metodo di connessione",
   "a11y.showcase": "Esempio di simulazione pellicola",
   "a11y.showcaseAlt": "Foto con una simulazione pellicola di CamCon applicata",
@@ -58,7 +59,7 @@
   "film.negold": "Negativo Vecchio",
   "film.print": "Stampa",
   "films.freeLabel": "Free Signature: 5 pellicole signature, gratuite",
-  "films.note": "Tutte le 296 si sbloccano con <strong>PRO</strong>.",
+  "films.note": "Il look viene applicato dalla pipeline di ricezione nell'istante dello scatto e i RAW originali restano intatti. <strong>PRO</strong> apre il catalogo completo e pellicola + colore insieme.",
   "films.baBefore": "Originale",
   "films.afterAlt": "Con pellicola",
   "films.baHint": "Tocca una pellicola per cambiarla e trascina la maniglia per confrontare prima e dopo.",
@@ -80,7 +81,7 @@
   "cameras.badgeSta": "Si connette con STA",
   "cameras.unified": "Che ti colleghi via USB o Wi-Fi, tutte le funzioni (scatto, ricezione, look pellicola) sono identiche.",
   "cameras.listToggle": "Vedi tutti i modelli supportati",
-  "cameras.modelsSuffix": "+ modelli",
+  "cameras.modelsSuffix": "modelli con driver",
   "cameras.listNote": "L'elenco seguente mostra i modelli compatibili PTP (USB). I modelli con badge Wi-Fi supportano la connessione wireless.",
   "cameras.wifiBadge": "Wi-Fi",
   "cameras.searchPh": "Cerca per marca o modello (es. Nikon Z8)",
@@ -91,6 +92,7 @@
   "cameras.loadError": "Impossibile caricare l'elenco. Aggiorna la pagina tra poco.",
   "cameras.help": "La maggior parte delle fotocamere con connessione USB PTP/MTP funziona. In caso di dubbio, <a href=\"#contact\">contattaci</a> e verificheremo per te.",
   "cameras.verified": "Uso verificato",
+  "cameras.verifiedTpl": "{n} confermati nell'uso reale",
 
   "connect.eyebrow": "How to Connect",
   "connect.title": "Due modi per connettersi",
@@ -151,7 +153,7 @@
 
   "cta.title": "Un flusso in cui lo scatto è già il risultato",
   "cta.sub": "Nell'istante in cui premi l'otturatore, la foto con look pellicola arriva sul telefono.",
-  "cta.badgeSrc": "assets/img/play/badge-it.png",
+  "cta.badgeSrc": "/assets/img/play/badge-it.png",
 
   "footer.privacy": "Privacy",
   "footer.terms": "Termini di servizio",

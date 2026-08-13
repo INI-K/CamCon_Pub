@@ -138,6 +138,11 @@ main { position: relative; z-index: var(--z-content); }
 }
 .skip-link:focus { transform: none; }
 
+/* 언어 제안 배너(#langSuggest) — 나머지 스타일은 index.html 인라인이고 display 만 여기 둔다.
+   인라인 display 는 UA 의 [hidden]{display:none} 을 이기므로, 인라인에 두면 hidden 인 배너가
+   그대로 보이고 close 의 hidden=true 도 무효가 된다. .mobile-nav 와 같은 :not([hidden]) 규약. */
+#langSuggest:not([hidden]) { display: flex; }
+
 /* ---------- Shared type ---------- */
 .eyebrow {
   font-family: var(--mono); font-size: var(--t-meta); font-weight: 500;
