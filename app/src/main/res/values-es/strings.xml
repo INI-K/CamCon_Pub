@@ -353,6 +353,15 @@
     <string name="gradle_dependencies_desc">Toca para ver todas las licencias de dependencias de Gradle</string>
     <string name="license_version">Versión:</string>
     <string name="license_type">Licencia:</string>
+    <!-- LGPL 수정본 소스 서면 제공 오퍼 + 상표 면책 -->
+    <string name="licenses_modified_badge">Modificado por CamCon</string>
+    <string name="licenses_lgpl_offer_title">Código fuente LGPL modificado</string>
+    <string name="licenses_lgpl_offer_body">CamCon incluye versiones modificadas de libgphoto2 y libgphoto2_port, distribuidas bajo LGPL-2.1-or-later. Tal como exige esa licencia, entregamos el código fuente completo correspondiente a esas versiones modificadas a quien lo solicite, durante tres años desde la fecha en que se distribuyó esta versión. Indica la versión de la app en tu solicitud.</string>
+    <string name="licenses_trademark_title">Marcas registradas</string>
+    <string name="licenses_trademark_body">Los nombres de películas y marcas de cámaras que aparecen en las simulaciones de película son propiedad de sus respectivos titulares. CamCon no está afiliada a ellos ni cuenta con su patrocinio o respaldo. Los nombres se usan únicamente para describir las características de color que cada preajuste intenta reproducir.</string>
+    <!-- 연락처 접근성 라벨 + 메일 앱 부재 시 폴백 안내 -->
+    <string name="licenses_contact_click_label">Contactar por correo</string>
+    <string name="contact_email_copied">No se encontró ninguna aplicación de correo. La dirección se copió al portapapeles: %1$s</string>
     <string name="refresh_usb">Actualizar USB</string>
     <string name="request_usb_permission">Solicitar Permiso USB</string>
     <string name="camera_preview_live_view">Vista en vivo</string>

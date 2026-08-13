@@ -280,6 +280,15 @@
     <string name="gradle_dependencies_desc">Tap to view all Gradle dependency licenses</string>
     <string name="license_version">Version:</string>
     <string name="license_type">License:</string>
+    <!-- LGPL 수정본 소스 서면 제공 오퍼 + 상표 면책 -->
+    <string name="licenses_modified_badge">Modified by CamCon</string>
+    <string name="licenses_lgpl_offer_title">Modified LGPL source</string>
+    <string name="licenses_lgpl_offer_body">CamCon ships modified builds of libgphoto2 and libgphoto2_port, which are licensed under LGPL-2.1-or-later. As that license requires, we provide the complete corresponding source code of these modified versions to anyone who requests it, for three years from the date this version was distributed. Please include your app version in the request.</string>
+    <string name="licenses_trademark_title">Trademarks</string>
+    <string name="licenses_trademark_body">Film and camera brand names shown in the film simulations are trademarks of their respective owners. CamCon is not affiliated with, sponsored by, or endorsed by any of them. The names are used only to describe the color characteristics each preset aims to reproduce.</string>
+    <!-- 연락처 접근성 라벨 + 메일 앱 부재 시 폴백 안내 -->
+    <string name="licenses_contact_click_label">Contact by email</string>
+    <string name="contact_email_copied">No email app found. The address was copied to the clipboard: %1$s</string>
 
     <!-- CameraControlScreen -->
     <string name="camera_control_usb_initializing">Initializing USB camera…</string>

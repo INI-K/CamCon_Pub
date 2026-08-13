@@ -6,10 +6,10 @@
   "a11y.navMobile": "Navigation mobile",
   "a11y.navFooter": "Navigation du pied de page",
   "a11y.langSelect": "Choisir la langue / Language",
+  "a11y.bannerClose": "Fermer la suggestion de langue",
   "a11y.tablist": "Méthode de connexion",
   "a11y.showcase": "Exemple de simulation de film",
   "a11y.showcaseAlt": "Photo avec une simulation de film CamCon appliquée",
-
   "nav.features": "Fonctions",
   "nav.films": "Pellicules",
   "nav.cameras": "Appareils",
@@ -18,14 +18,12 @@
   "nav.faq": "FAQ",
   "nav.menuOpen": "Ouvrir le menu",
   "nav.menuClose": "Fermer le menu",
-
   "hero.eyebrow": "Cinema Camera Controller",
   "hero.title": "Vous déclenchez, et la <span class=\"accent\">photo au rendu argentique</span> arrive sur votre téléphone",
   "hero.sub": "Connectez votre appareil en USB ou Wi-Fi et recevez des photos avec la simulation de pellicule déjà appliquée, dès le déclenchement.",
   "hero.cta": "Disponible sur Google Play",
   "hero.explore": "Voir les fonctions",
   "hero.specRaw": "Original intact",
-
   "features.eyebrow": "Features",
   "features.title": "De la prise de vue à la couleur, un pont entre l'appareil et le téléphone",
   "feat.wifi.t": "Tethering Wi-Fi sans fil",
@@ -44,7 +42,6 @@
   "feat.raw.d": "Téléchargez les originaux RAW (NEF et autres) sans perte. Le rendu argentique n'est appliqué qu'à une copie JPG : l'original reste intact.",
   "feat.auto.t": "Connexion automatique intelligente",
   "feat.auto.d": "Allumez simplement l'appareil : CamCon le détecte et le reconnecte automatiquement via mDNS/SSDP. Sans configuration à chaque fois.",
-
   "films.eyebrow": "Film Library",
   "films.title": "9 familles, <span class=\"accent\">296</span> simulations de pellicule",
   "films.lead": "Du noir et blanc à l'instantané et au négatif couleur : courbes de tons et couleurs de vraies pellicules, reproduites en LUT 3D.",
@@ -58,12 +55,11 @@
   "film.negold": "Négatif Ancien",
   "film.print": "Tirage",
   "films.freeLabel": "Free Signature : 5 pellicules signature, gratuites",
-  "films.note": "Les 296 se débloquent avec <strong>PRO</strong>.",
+  "films.note": "Le rendu est appliqué par le pipeline de réception au moment du déclenchement, et vos originaux RAW restent intacts. <strong>PRO</strong> ouvre le catalogue complet et l'application simultanée pellicule + couleur.",
   "films.baBefore": "Original",
   "films.afterAlt": "Avec le film",
   "films.baHint": "Touchez une pellicule pour en changer, puis faites glisser la poignée pour comparer l'avant et l'après.",
   "films.showcaseCap": "Film appliqué : Classic Chrome",
-
   "cameras.eyebrow": "Supported Cameras",
   "cameras.title": "Mon appareil est-il compatible ?",
   "cameras.lead": "Si votre appareil prend en charge l'USB (PTP) ou le mode Wi-Fi STA (routeur), il est compatible.",
@@ -80,7 +76,7 @@
   "cameras.badgeSta": "Connexion via STA",
   "cameras.unified": "Que vous vous connectiez en USB ou en Wi-Fi, toutes les fonctions (prise de vue, réception, rendu argentique) sont identiques.",
   "cameras.listToggle": "Voir tous les modèles pris en charge",
-  "cameras.modelsSuffix": "+ modèles",
+  "cameras.modelsSuffix": "modèles avec pilote",
   "cameras.listNote": "La liste ci-dessous présente les modèles compatibles PTP (USB). Les modèles avec le badge Wi-Fi prennent en charge la connexion sans fil.",
   "cameras.wifiBadge": "Wi-Fi",
   "cameras.searchPh": "Rechercher par marque ou modèle (ex. Nikon Z8)",
@@ -91,7 +87,7 @@
   "cameras.loadError": "Impossible de charger la liste. Veuillez actualiser dans un instant.",
   "cameras.help": "La plupart des appareils avec connexion USB PTP/MTP fonctionnent. En cas de doute, <a href=\"#contact\">contactez-nous</a> et nous vérifierons pour vous.",
   "cameras.verified": "Utilisation confirmée",
-
+  "cameras.verifiedTpl": "{n} confirmés en usage réel",
   "connect.eyebrow": "How to Connect",
   "connect.title": "Deux façons de se connecter",
   "connect.tabUsb": "USB OTG",
@@ -110,7 +106,6 @@
   "connect.sta3Label": "Valider la connexion",
   "connect.sta3": "À la première connexion, <strong>approuvez « Autoriser la connexion » sur le boîtier</strong>. Ensuite, la reconnexion est automatique.",
   "connect.staPerm": "Autorisations requises : Localisation (pour rechercher le réseau), Notifications (pour la réception en arrière-plan)",
-
   "pricing.eyebrow": "Pricing",
   "pricing.title": "Commencez gratuitement, passez à PRO au besoin",
   "pricing.lead": "Commencez gratuitement. L'offre PRO arrive bientôt.",
@@ -127,7 +122,6 @@
   "pricing.pro3": "Pellicule + couleur en même temps",
   "pricing.pro4": "Réception en résolution originale",
   "pricing.pro5": "Onglet aperçu des photos",
-
   "faq.eyebrow": "FAQ",
   "faq.title": "Questions fréquentes",
   "faq.q1": "Comment vérifier si mon appareil est pris en charge ?",
@@ -148,13 +142,12 @@
   "faq.a8": "Oui. Sur les appareils compatibles, pas seulement les prises de vue à distance depuis l'application : les photos prises avec le déclencheur du boîtier sont aussi transférées automatiquement vers le téléphone, même avec le live view activé.",
   "faq.q9": "Existe-t-il une version iPhone (iOS) ?",
   "faq.a9": "Actuellement Android uniquement (Android 10 ou plus, appareils arm64 64 bits). Il n'existe pas de version iOS.",
-
   "cta.title": "Un flux où la prise de vue est déjà le résultat",
   "cta.sub": "À l'instant où vous déclenchez, la photo au rendu argentique arrive sur votre téléphone.",
-  "cta.badgeSrc": "assets/img/play/badge-fr.png",
-
+  "cta.badgeSrc": "/assets/img/play/badge-fr.png",
   "footer.privacy": "Confidentialité",
   "footer.terms": "Conditions d'utilisation",
+  "footer.source": "Code source",
   "footer.contact": "Contact",
   "footer.rights": "© 2026 CamCon. Tous droits réservés."
 }

@@ -16,6 +16,8 @@
     <string name="referral_error_self">Du kannst deinen eigenen Empfehlungscode nicht verwenden.</string>
     <string name="referral_error_not_grantable">Dieser Code kann auf dieses Konto nicht angewendet werden.</string>
     <string name="referral_error_network">Netzwerkfehler. Bitte versuche es gleich noch einmal.</string>
+    <string name="referral_error_rate_limited">Zu viele Versuche. Bitte versuche es gleich noch einmal.</string>
+    <string name="referral_error_rate_limited_minutes">Zu viele Versuche. Bitte versuche es in ca. %1$d Min. erneut.</string>
 
     <!-- 로그아웃 오류 세부 내용 (settings_toast_logout_failed의 "%s") -->
     <string name="auth_error_network_detail">Netzwerkfehler</string>
