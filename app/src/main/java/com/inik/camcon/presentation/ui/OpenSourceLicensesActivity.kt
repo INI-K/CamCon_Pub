@@ -42,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -63,18 +64,24 @@ import com.inik.camcon.presentation.theme.TextSecondaryV2
 import com.inik.camcon.presentation.theme.TextTertiary
 import com.inik.camcon.presentation.theme.TouchTarget
 import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
+import com.inik.camcon.presentation.util.openEmail
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
+import com.inik.camcon.utils.Constants
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
  * 네이티브 라이브러리 라이선스 정보
+ *
+ * @param modified CamCon이 소스를 수정해 빌드한 라이브러리인지 여부.
+ *                 true면 수정 사실 배지를 표시하고 LGPL 소스 제공 오퍼 카드의 대상이 된다.
  */
 data class NativeLicense(
     val name: String,
     val version: String,
     val license: String,
     val copyright: String,
-    val url: String
+    val url: String,
+    val modified: Boolean = false
 )
 
 @AndroidEntryPoint
@@ -102,19 +109,29 @@ fun OpenSourceLicensesScreen(
 
     // 네이티브 라이브러리 라이선스 (Gradle 의존성이 아닌 것들)
     val nativeLicenses = listOf(
+        // libgphoto2/libgphoto2_port는 업스트림 그대로가 아니라 CamCon 패치를 얹어 빌드한 바이너리다.
+        // (camlibs/ptp2, libgphoto2/gphoto2-filesys.c, libgphoto2_port/libusb1) — LGPL 고지 대상.
+        // ⚠️ 2.5.34 로 적지 말 것. build.sh 가 KEEP_VERSION_PATHS=1 로 동작해
+        //    configure 버전 라벨(2.5.33.1)은 그대로 두고 camlibs/ptp2 등 일부 소스만
+        //    2_5_34-release 태그본으로 교체한다(앱이 libgphoto2/2.5.33.1 경로를 하드코딩).
+        //    실제 배포 .so 가 자기 버전을 2.5.33.1 로 보고하므로 여기도 그 값이어야 하고,
+        //    2.5.34 태그본 + CamCon 패치는 modified=true 가 고지한다.
+        //    LGPL 대응 소스 요청 시 넘길 것은 2.5.34 트리가 아니라 이 하이브리드 빌드트리다.
         NativeLicense(
             name = "libgphoto2",
-            version = "2.5.34",
+            version = "2.5.33.1",
             license = "LGPL-2.1-or-later",
             copyright = "Copyright (c) 2000-2024 The gphoto2 Team",
-            url = "https://github.com/gphoto/libgphoto2"
+            url = "https://github.com/gphoto/libgphoto2",
+            modified = true
         ),
         NativeLicense(
             name = "libgphoto2_port",
             version = "0.12.2",
             license = "LGPL-2.1-or-later",
             copyright = "Copyright (c) 2000-2024 The gphoto2 Team",
-            url = "https://github.com/gphoto/libgphoto2"
+            url = "https://github.com/gphoto/libgphoto2",
+            modified = true
         ),
         NativeLicense(
             name = "libusb",
@@ -194,6 +211,20 @@ fun OpenSourceLicensesScreen(
                 key = { license -> license.name }
             ) { license ->
                 NativeLicenseItem(license = license)
+            }
+
+            // LGPL 서면 제공 오퍼 — 수정 배포한 라이브러리가 있을 때만 노출한다.
+            if (nativeLicenses.any { it.modified }) {
+                item {
+                    LgplSourceOfferCard(
+                        onContactClick = { context.openEmail(Constants.Legal.CONTACT_EMAIL) }
+                    )
+                }
+            }
+
+            // 상표 면책 — 필름 시뮬레이션 이름이 상표를 지시적으로 사용하는 데 대한 고지.
+            item {
+                TrademarkNoticeCard()
             }
 
             item {
@@ -314,6 +345,15 @@ fun NativeLicenseItem(license: NativeLicense) {
                         style = HeadingM,
                         color = TextPrimaryV2
                     )
+                    if (license.modified) {
+                        // 수정 배포 사실은 이름 바로 아래에서 눈에 띄어야 한다(LGPL 고지).
+                        Text(
+                            text = stringResource(R.string.licenses_modified_badge),
+                            style = Micro,
+                            color = AccentStrong,
+                            modifier = Modifier.padding(top = Spacing.xs)
+                        )
+                    }
                     Text(
                         text = license.copyright,
                         style = Micro,
@@ -353,6 +393,85 @@ fun NativeLicenseItem(license: NativeLicense) {
                         indication = LocalIndication.current
                     ) { uriHandler.openUri(license.url) }
                     .wrapContentHeight(Alignment.CenterVertically)
+            )
+        }
+    }
+}
+
+/**
+ * LGPL 서면 제공 오퍼 카드.
+ *
+ * 수정 배포한 LGPL 라이브러리의 대응 소스를 요청 시 3년간 제공한다는 고지 + 연락처.
+ * 연락처는 개인정보처리방침·이용약관에 기재된 운영자 주소와 동일해야 한다.
+ */
+@Composable
+private fun LgplSourceOfferCard(onContactClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+
+    SurfaceV2(
+        modifier = Modifier.fillMaxWidth(),
+        tier = 2,
+        border = true
+    ) {
+        Column(modifier = Modifier.padding(Spacing.base)) {
+            Text(
+                text = stringResource(R.string.licenses_lgpl_offer_title),
+                style = HeadingM,
+                color = TextPrimaryV2
+            )
+            Text(
+                text = stringResource(R.string.licenses_lgpl_offer_body),
+                style = BodySmall,
+                color = TextSecondaryV2,
+                modifier = Modifier
+                    .widthIn(max = LICENSE_TEXT_MAX_WIDTH)
+                    .padding(top = Spacing.sm)
+            )
+            Text(
+                text = Constants.Legal.CONTACT_EMAIL,
+                style = BodySmall,
+                color = if (pressed) Accent else AccentStrong,
+                modifier = Modifier
+                    .padding(top = Spacing.sm)
+                    .defaultMinSize(minHeight = TouchTarget.min)
+                    // 스크린 리더가 일반 텍스트가 아니라 버튼으로 읽도록 role/라벨을 준다.
+                    .clickable(
+                        interactionSource = interaction,
+                        indication = LocalIndication.current,
+                        onClickLabel = stringResource(R.string.licenses_contact_click_label),
+                        role = Role.Button,
+                        onClick = onContactClick
+                    )
+                    .wrapContentHeight(Alignment.CenterVertically)
+            )
+        }
+    }
+}
+
+/**
+ * 상표 면책 카드 — 필름 시뮬레이션 이름은 각 상표권자의 재산이며 제휴·보증 관계가 없음을 밝힌다.
+ */
+@Composable
+private fun TrademarkNoticeCard() {
+    SurfaceV2(
+        modifier = Modifier.fillMaxWidth(),
+        tier = 2,
+        border = true
+    ) {
+        Column(modifier = Modifier.padding(Spacing.base)) {
+            Text(
+                text = stringResource(R.string.licenses_trademark_title),
+                style = HeadingM,
+                color = TextPrimaryV2
+            )
+            Text(
+                text = stringResource(R.string.licenses_trademark_body),
+                style = BodySmall,
+                color = TextSecondaryV2,
+                modifier = Modifier
+                    .widthIn(max = LICENSE_TEXT_MAX_WIDTH)
+                    .padding(top = Spacing.sm)
             )
         }
     }

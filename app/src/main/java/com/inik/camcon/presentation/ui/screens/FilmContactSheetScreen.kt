@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -66,6 +67,7 @@ import com.inik.camcon.presentation.theme.DisplayNum
 import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.HeadingL
 import com.inik.camcon.presentation.theme.IconSize
+import com.inik.camcon.presentation.theme.Micro
 import com.inik.camcon.presentation.theme.MicroLabel
 import com.inik.camcon.presentation.theme.MonoMicro
 import com.inik.camcon.presentation.theme.MonoNumeric
@@ -228,6 +230,20 @@ fun FilmContactSheetScreen(
                     verticalArrangement = Arrangement.spacedBy(Spacing.md),
                     modifier = Modifier.fillMaxSize()
                 ) {
+                    // 상표 면책 — 필름·카메라 상표명이 실제로 노출되는 곳이 이 카탈로그다.
+                    // 그리드 맨 끝에 두면 296종(약 148행)을 끝까지 스크롤해야 보여 고지가 되지 않으므로
+                    // 첫 행 전폭으로 올린다. 라이선스 화면과 동일 문구를 재사용한다.
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Text(
+                            text = stringResource(R.string.licenses_trademark_body),
+                            style = Micro,
+                            color = TextTertiary,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = Spacing.xs)
+                        )
+                    }
+
                     items(visibleLuts, key = { lut -> lut.id }) { lut ->
                         ContactSheetCell(
                             lut = lut,
@@ -241,6 +257,7 @@ fun FilmContactSheetScreen(
                             onLeave = { viewModel.cancelThumbnail(lut.id) }
                         )
                     }
+
                 }
             }
         }

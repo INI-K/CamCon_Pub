@@ -356,6 +356,15 @@
     <string name="gradle_dependencies_desc">Appuyez pour afficher toutes les licences des dépendances Gradle</string>
     <string name="license_version">Version :</string>
     <string name="license_type">Licence :</string>
+    <!-- LGPL 수정본 소스 서면 제공 오퍼 + 상표 면책 -->
+    <string name="licenses_modified_badge">Modifié par CamCon</string>
+    <string name="licenses_lgpl_offer_title">Sources LGPL modifiées</string>
+    <string name="licenses_lgpl_offer_body">CamCon intègre des versions modifiées de libgphoto2 et libgphoto2_port, publiées sous LGPL-2.1-or-later. Comme cette licence l\'exige, nous fournissons le code source complet correspondant à ces versions modifiées à toute personne qui en fait la demande, pendant trois ans à compter de la date de distribution de cette version. Merci d\'indiquer la version de l\'application dans votre demande.</string>
+    <string name="licenses_trademark_title">Marques</string>
+    <string name="licenses_trademark_body">Les noms de films et de marques d\'appareils photo affichés dans les simulations de film appartiennent à leurs détenteurs respectifs. CamCon n\'est ni affiliée à ces derniers, ni sponsorisée ou approuvée par eux. Ces noms servent uniquement à décrire le rendu colorimétrique que chaque préréglage cherche à reproduire.</string>
+    <!-- 연락처 접근성 라벨 + 메일 앱 부재 시 폴백 안내 -->
+    <string name="licenses_contact_click_label">Contacter par e-mail</string>
+    <string name="contact_email_copied">Aucune application e-mail trouvée. L\'adresse a été copiée dans le presse-papiers : %1$s</string>
     <string name="camera_preview_live_view">Visée en direct</string>
     <string name="photo_capture_failed">Échec de la capture/réception de la photo (erreur %1$d)</string>
     <string name="photo_delete_camera_failed">Impossible de supprimer la photo de l\'appareil</string>
