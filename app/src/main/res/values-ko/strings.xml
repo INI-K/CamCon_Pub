@@ -278,6 +278,15 @@
     <string name="gradle_dependencies_desc">탭하여 모든 Gradle 의존성 라이선스 보기</string>
     <string name="license_version">버전:</string>
     <string name="license_type">라이선스:</string>
+    <!-- LGPL 수정본 소스 서면 제공 오퍼 + 상표 면책 -->
+    <string name="licenses_modified_badge">CamCon 수정본</string>
+    <string name="licenses_lgpl_offer_title">수정된 LGPL 소스 제공</string>
+    <string name="licenses_lgpl_offer_body">CamCon은 LGPL-2.1-or-later 라이선스인 libgphoto2와 libgphoto2_port를 수정해 빌드한 바이너리를 포함합니다. 라이선스에 따라 이 수정본에 대응하는 전체 소스 코드를 요청하시는 분께 제공하며, 제공 기간은 이 버전이 배포된 날로부터 3년입니다. 요청하실 때 앱 버전을 함께 알려주세요.</string>
+    <string name="licenses_trademark_title">상표 고지</string>
+    <string name="licenses_trademark_body">필름 시뮬레이션에 표시되는 필름·카메라 브랜드 이름은 각 상표권자의 재산입니다. CamCon은 해당 상표권자와 제휴·후원·보증 관계가 없으며, 이름은 각 프리셋이 재현하려는 색감 특성을 설명하기 위해서만 사용합니다.</string>
+    <!-- 연락처 접근성 라벨 + 메일 앱 부재 시 폴백 안내 -->
+    <string name="licenses_contact_click_label">메일로 문의하기</string>
+    <string name="contact_email_copied">메일 앱이 없어 주소를 클립보드에 복사했습니다: %1$s</string>
 
     <!-- RAW 게이팅 메시지 (i18n PR-7, 2026-05-13) -->
     <string name="raw_restriction_free">RAW 파일전송은 준비중입니다.\nJPG로만 촬영해주세요!</string>

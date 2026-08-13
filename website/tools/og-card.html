@@ -1,11 +1,24 @@
 <!DOCTYPE html>
 <!--
-  OG 공유 카드 템플릿 (1200×630) — assets/img/og-card.png 의 정본 소스.
-  렌더:
-    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  OG 공유 카드 템플릿 (1200×630) — assets/img/og-card*.png 의 정본 소스.
+
+  마크업의 기본 문안은 한국어이고, ?lang=<코드> 로 다른 언어 문안을 덮어쓴다.
+  (JS가 실행되지 않아도 한국어 카드가 그대로 나오도록 기본값을 마크업에 둔다.)
+
+  렌더 — 한국어(assets/img/og-card.png):
+    cd website/tools && "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
       --headless=new --disable-gpu --hide-scrollbars --window-size=1200,630 \
       --screenshot=../assets/img/og-card.png --virtual-time-budget=15000 \
       "file://$(pwd)/og-card.html"
+
+  렌더 — 영어(assets/img/og-card-en.png):
+    cd website/tools && "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+      --headless=new --disable-gpu --hide-scrollbars --window-size=1200,630 \
+      --screenshot=../assets/img/og-card-en.png --virtual-time-budget=15000 \
+      "file://$(pwd)/og-card.html?lang=en"
+
+  ※ 폰트를 CDN에서 받으므로 렌더에는 네트워크가 필요하다(오프라인이면 시스템 폰트로 대체돼
+     타이포가 달라진다). 렌더 후 파일 크기가 400KB 안팎인지 확인할 것.
   변경 시 index.html 의 og:image ?v= 캐시버스트도 함께 올릴 것.
 -->
 <html lang="ko">
@@ -101,8 +114,8 @@
   <div class="copy">
     <div class="eyebrow">CINEMA CAMERA CONTROLLER</div>
     <div class="brand">Cam<b>Con</b></div>
-    <div class="tagline">셔터를 누르면, <span class="accent">필름룩 사진</span>이<br>폰에 도착합니다</div>
-    <div class="spec">USB·Wi-Fi 테더링 <b>·</b> 필름 시뮬레이션 296종</div>
+    <div class="tagline" data-og="tagline">셔터를 누르면, <span class="accent">필름룩 사진</span>이<br>폰에 도착합니다</div>
+    <div class="spec" data-og="spec">USB·Wi-Fi 테더링 <b>·</b> 필름 시뮬레이션 296종</div>
   </div>
 
   <div class="stack">
@@ -112,9 +125,33 @@
       <div class="half r"><img src="../assets/film/ba-after-free-portra400.webp" alt=""></div>
       <div class="divider"></div>
       <div class="knob"></div>
-      <span class="tag l">원본</span>
+      <span class="tag l" data-og="before">원본</span>
       <span class="tag r">PORTRA 400</span>
     </div>
   </div>
+
+<script>
+  // 언어별 카드 문안. 기본값(한국어)은 위 마크업에 그대로 두고 여기서 덮어쓴다.
+  // 문안 출처는 창작이 아니라 website/assets/i18n/<lang>.json:
+  //   tagline ← hero.title (줄바꿈만 카드용으로 <br> 삽입)
+  //   spec    ← feat.wifi.t "tethering" + feat.film.t "296 film simulations"
+  //   before  ← films.baBefore
+  const OG_I18N = {
+    en: {
+      tagline: 'Press the shutter, and the<br><span class="accent">film-look photo</span> lands<br>on your phone',
+      spec: 'USB·Wi-Fi tethering <b>·</b> 296 film simulations',
+      before: 'Original'
+    }
+  };
+  const lang = new URLSearchParams(location.search).get('lang');
+  const dict = OG_I18N[lang];
+  if (dict) {
+    document.documentElement.lang = lang;
+    for (const key in dict) {
+      document.querySelectorAll('[data-og="' + key + '"]')
+        .forEach(function (el) { el.innerHTML = dict[key]; });
+    }
+  }
+</script>
 </body>
 </html>

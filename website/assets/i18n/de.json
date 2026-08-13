@@ -6,10 +6,10 @@
   "a11y.navMobile": "Mobile Navigation",
   "a11y.navFooter": "Fußzeilennavigation",
   "a11y.langSelect": "Sprache wählen / Language",
+  "a11y.bannerClose": "Sprachhinweis schließen",
   "a11y.tablist": "Verbindungsart",
   "a11y.showcase": "Beispiel für Filmsimulation",
   "a11y.showcaseAlt": "Foto mit angewendeter CamCon Filmsimulation",
-
   "nav.features": "Funktionen",
   "nav.films": "Filme",
   "nav.cameras": "Kameras",
@@ -18,14 +18,12 @@
   "nav.faq": "FAQ",
   "nav.menuOpen": "Menü öffnen",
   "nav.menuClose": "Menü schließen",
-
   "hero.eyebrow": "Cinema Camera Controller",
   "hero.title": "Auslösen, und das <span class=\"accent\">Film-Look-Foto</span> landet auf dem Handy",
   "hero.sub": "Verbinde deine Kamera per USB oder WLAN und erhalte Fotos mit bereits angewandter Filmsimulation, direkt beim Auslösen.",
   "hero.cta": "Jetzt bei Google Play",
   "hero.explore": "Funktionen ansehen",
   "hero.specRaw": "Original bleibt",
-
   "features.eyebrow": "Features",
   "features.title": "Von der Aufnahme bis zur Farbe, die Brücke zwischen Kamera und Handy",
   "feat.wifi.t": "Kabelloses WLAN-Tethering",
@@ -44,7 +42,6 @@
   "feat.raw.d": "Lade RAW-Originale (NEF und mehr) verlustfrei herunter. Der Film-Look wird nur auf eine JPG-Kopie angewandt, das Original bleibt unangetastet.",
   "feat.auto.t": "Intelligente Auto-Verbindung",
   "feat.auto.d": "Einfach die Kamera einschalten: CamCon erkennt und verbindet sie automatisch per mDNS/SSDP. Kein Einrichten jedes Mal.",
-
   "films.eyebrow": "Film Library",
   "films.title": "9 Familien, <span class=\"accent\">296</span> Filmsimulationen",
   "films.lead": "Von Schwarzweiß über Sofortbild bis Farbnegativ: echte Filmtonkurven und Farben, als 3D-LUTs reproduziert.",
@@ -58,12 +55,11 @@
   "film.negold": "Negativ Alt",
   "film.print": "Print",
   "films.freeLabel": "Free Signature: 5 Signature-Filme, kostenlos nutzbar",
-  "films.note": "Alle 296 werden mit <strong>PRO</strong> freigeschaltet.",
+  "films.note": "Der Look entsteht direkt in der Empfangs-Pipeline beim Auslösen, die RAW-Originale bleiben unangetastet. <strong>PRO</strong> öffnet den vollständigen Katalog und Film + Farbe gleichzeitig.",
   "films.baBefore": "Original",
   "films.afterAlt": "Mit Film",
   "films.baHint": "Tippe auf einen Film, um zu wechseln, und zieh den Griff, um Vorher und Nachher zu vergleichen.",
   "films.showcaseCap": "Verwendeter Film: Classic Chrome",
-
   "cameras.eyebrow": "Supported Cameras",
   "cameras.title": "Funktioniert meine Kamera?",
   "cameras.lead": "Kameras, die USB (PTP) oder den Wi-Fi-STA-(Router-)Modus unterstützen, funktionieren mit CamCon.",
@@ -80,7 +76,7 @@
   "cameras.badgeSta": "Verbindet mit STA",
   "cameras.unified": "Ob per USB oder WLAN, alle Funktionen wie Aufnahme, Empfang und Film-Look sind identisch.",
   "cameras.listToggle": "Alle unterstützten Modelle ansehen",
-  "cameras.modelsSuffix": "+ Modelle",
+  "cameras.modelsSuffix": "Modelle mit Treiber",
   "cameras.listNote": "Die Liste unten zeigt PTP-(USB-)kompatible Modelle. Modelle mit Wi-Fi-Badge unterstützen die drahtlose Verbindung.",
   "cameras.wifiBadge": "Wi-Fi",
   "cameras.searchPh": "Nach Marke oder Modell suchen (z. B. Nikon Z8)",
@@ -91,7 +87,7 @@
   "cameras.loadError": "Die Liste konnte nicht geladen werden. Bitte in Kürze neu laden.",
   "cameras.help": "Die meisten Kameras mit PTP/MTP-USB-Verbindung funktionieren. Im Zweifel <a href=\"#contact\">kontaktiere uns</a> und wir prüfen es für dich.",
   "cameras.verified": "Nutzung bestätigt",
-
+  "cameras.verifiedTpl": "{n} in echter Nutzung bestätigt",
   "connect.eyebrow": "How to Connect",
   "connect.title": "Zwei Wege zur Verbindung",
   "connect.tabUsb": "USB OTG",
@@ -110,7 +106,6 @@
   "connect.sta3Label": "Verbindung bestätigen",
   "connect.sta3": "Bestätige bei der ersten Verbindung <strong>„Verbindung zulassen“ an der Kamera</strong>. Danach wird automatisch neu verbunden.",
   "connect.staPerm": "Benötigte Berechtigungen: Standort (zum Scannen des Netzwerks), Benachrichtigungen (für Empfang im Hintergrund)",
-
   "pricing.eyebrow": "Pricing",
   "pricing.title": "Kostenlos starten, bei Bedarf zu PRO",
   "pricing.lead": "Kostenlos starten. Der PRO-Tarif ist in Vorbereitung.",
@@ -127,7 +122,6 @@
   "pricing.pro3": "Film + Farbe gleichzeitig",
   "pricing.pro4": "Empfang in voller Auflösung",
   "pricing.pro5": "Foto-Vorschau-Tab",
-
   "faq.eyebrow": "FAQ",
   "faq.title": "Häufige Fragen",
   "faq.q1": "Wie prüfe ich, ob meine Kamera unterstützt wird?",
@@ -148,13 +142,12 @@
   "faq.a8": "Ja. Bei unterstützten Kameras werden nicht nur Fernaufnahmen aus der App, sondern auch mit dem Auslöser der Kamera aufgenommene Fotos automatisch auf das Telefon übertragen, auch bei aktiviertem Live View.",
   "faq.q9": "Gibt es eine iPhone-(iOS-)Version?",
   "faq.a9": "Derzeit nur für Android (Android 10 oder höher, 64-Bit-arm64-Geräte). Eine iOS-Version gibt es nicht.",
-
   "cta.title": "Ein Workflow, in dem die Aufnahme das Ergebnis ist",
   "cta.sub": "Im Moment des Auslösens landet das Film-Look-Foto auf deinem Handy.",
-  "cta.badgeSrc": "assets/img/play/badge-de.png",
-
+  "cta.badgeSrc": "/assets/img/play/badge-de.png",
   "footer.privacy": "Datenschutz",
   "footer.terms": "Nutzungsbedingungen",
+  "footer.source": "Quellcode",
   "footer.contact": "Kontakt",
   "footer.rights": "© 2026 CamCon. Alle Rechte vorbehalten."
 }

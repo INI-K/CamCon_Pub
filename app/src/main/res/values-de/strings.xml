@@ -354,6 +354,15 @@
     <string name="gradle_dependencies_desc">Tippen Sie, um alle Lizenzen der Gradle-Abhängigkeiten anzuzeigen</string>
     <string name="license_version">Version:</string>
     <string name="license_type">Lizenz:</string>
+    <!-- LGPL 수정본 소스 서면 제공 오퍼 + 상표 면책 -->
+    <string name="licenses_modified_badge">Von CamCon modifiziert</string>
+    <string name="licenses_lgpl_offer_title">Modifizierter LGPL-Quellcode</string>
+    <string name="licenses_lgpl_offer_body">CamCon enthält modifizierte Builds von libgphoto2 und libgphoto2_port, die unter LGPL-2.1-or-later stehen. Wie diese Lizenz es verlangt, stellen wir den vollständigen zugehörigen Quellcode dieser modifizierten Versionen jeder anfragenden Person zur Verfügung, und zwar drei Jahre lang ab dem Tag, an dem diese Version verteilt wurde. Bitte geben Sie in der Anfrage die App-Version an.</string>
+    <string name="licenses_trademark_title">Marken</string>
+    <string name="licenses_trademark_body">Die in den Filmsimulationen gezeigten Film- und Kameramarken sind Eigentum der jeweiligen Markeninhaber. CamCon steht in keiner Verbindung zu ihnen und wird von ihnen weder gesponsert noch unterstützt. Die Namen dienen ausschließlich dazu, die Farbcharakteristik zu beschreiben, die die jeweilige Voreinstellung nachbilden möchte.</string>
+    <!-- 연락처 접근성 라벨 + 메일 앱 부재 시 폴백 안내 -->
+    <string name="licenses_contact_click_label">Per E-Mail kontaktieren</string>
+    <string name="contact_email_copied">Keine E-Mail-App gefunden. Die Adresse wurde in die Zwischenablage kopiert: %1$s</string>
     <string name="camera_preview_live_view">Live-Ansicht</string>
     <string name="photo_capture_failed">Foto konnte nicht aufgenommen/empfangen werden (Fehler %1$d)</string>
     <string name="photo_delete_camera_failed">Foto konnte nicht von der Kamera gelöscht werden</string>
