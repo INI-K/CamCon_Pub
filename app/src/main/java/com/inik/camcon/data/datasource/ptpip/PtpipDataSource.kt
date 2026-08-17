@@ -29,6 +29,7 @@ import com.inik.camcon.domain.model.NikonConnectionMode
 import com.inik.camcon.domain.model.PtpDeviceInfo
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.PtpipCameraInfo
+import com.inik.camcon.domain.model.PtpipConnectFailure
 import com.inik.camcon.domain.model.PtpipConnectionPhase
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.model.UiText
@@ -193,6 +194,12 @@ class PtpipDataSource @Inject constructor(
     // 연결 단계 (mDNS 검색부터 세션 준비까지의 세부 단계)
     private val _connectionPhase = MutableStateFlow(PtpipConnectionPhase.IDLE)
     val connectionPhase: StateFlow<PtpipConnectionPhase> = _connectionPhase.asStateFlow()
+
+    // 연결 실패 사유 (구조적). null=사유 없음. PAIRING_PENDING=카메라 본체 연결 승인 대기.
+    // 재시도 폴링이 반복 거부(End of stream/-7)를 감지하면 PAIRING_PENDING을 방출하고,
+    // 연결 성공/새 연결 시작 시 null로 되돌린다.
+    private val _connectFailure = MutableStateFlow<PtpipConnectFailure?>(null)
+    val connectFailure: StateFlow<PtpipConnectFailure?> = _connectFailure.asStateFlow()
 
     // Wi-Fi 연결 끊어짐 알림 상태 추가
     private val _connectionLostMessage = MutableStateFlow<String?>(null)
@@ -867,6 +874,8 @@ class PtpipDataSource @Inject constructor(
 
             // 연결 시작 시 상태를 CONNECTING으로 변경
             _connectionState.value = PtpipConnectionState.CONNECTING
+            // 새 연결 시도 시작 — 직전 시도의 실패 사유(페어링 대기 등)를 초기화한다.
+            _connectFailure.value = null
             setProgress(UiText.Resource(R.string.progress_ptpip_connection_start))
             Log.d(TAG, "PTPIP 연결 상태 변경: CONNECTING")
 
@@ -1054,13 +1063,17 @@ class PtpipDataSource @Inject constructor(
             ) {
                 runCatching { CameraNative.closeCamera() }
                 directRetries++
-                // 최초 페어링이면 승인 전까지 카메라가 -7로 거부한다. 일시 핸드셰이크 블립(1회)은
-                // 넘기고 2번째 재시도부터 "카메라 본체에서 연결 허용을 누르세요"를 안내한다.
-                // >=2로 매 폴링마다 재확정해, 중간에 다른 진행 메시지가 끼어도 안내가 유지되게 한다
-                // (StateFlow는 동일값이면 재방출 안 하므로 비용 없음). 이미 등록된 카메라는 첫 시도에
-                // 붙어 이 루프에 도달하지 않으므로 오안내가 나지 않는다.
-                if (requireHealthy && directRetries >= 2) {
+                // 페어링 대기 감지·안내 (벤더 무관 — Nikon STA 승인 대기 + Sony/기타 최초 페어링 공통):
+                // 최초 페어링이면 사용자가 카메라 본체에서 연결(OK)을 누르기 전까지 카메라가 소켓을
+                // 즉시 닫아(End of stream/-1) 또는 -7로 반복 거부한다. 일시 핸드셰이크 블립(1회)은
+                // 넘기고 2번째 재시도부터 "카메라에서 연결을 허용하세요"를 안내하고 구조적 실패 사유
+                // (PAIRING_PENDING)를 방출한다. 재시도 자체는 유지 — 사용자가 OK를 누르면 다음
+                // 시도에서 성공한다. >=2로 매 폴링마다 재확정해, 중간에 다른 진행 메시지가 끼어도
+                // 안내가 유지되게 한다(StateFlow는 동일값이면 재방출 안 하므로 비용 없음). 이미 등록된
+                // 카메라는 첫 시도에 붙어 이 루프에 도달하지 않으므로 오안내가 나지 않는다.
+                if (directRetries >= 2) {
                     setProgress(UiText.Resource(R.string.progress_ptpip_camera_confirm))
+                    _connectFailure.value = PtpipConnectFailure.PAIRING_PENDING
                 }
                 Log.i(TAG, "연결 준비 폴링 — 재시도 $directRetries (initOk=$initOk): $initResult")
                 delay(backoffMs)
@@ -1091,6 +1104,8 @@ class PtpipDataSource @Inject constructor(
             }
 
             Log.i(TAG, "✅ libgphoto2 초기화 성공")
+            // 초기화 성공 = 카메라가 연결을 수락함(페어링 완료 또는 기등록). 페어링 대기 사유 해제.
+            _connectFailure.value = null
 
             // =========================
             // Step 2: 카메라 기능 조회

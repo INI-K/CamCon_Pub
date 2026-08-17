@@ -21,6 +21,12 @@ object CameraVendorClassifier {
     private val NIKON_NAME_PREFIX = Regex("^[ZD]_", RegexOption.IGNORE_CASE)
 
     /**
+     * Sony 모델 접두 — friendly name에 제조사 문자열이 없을 때의 판정 신호.
+     * ILCE-*(α), ILME-*(시네마), DSC-*(RX/Cyber-shot), ZV-*(브이로그).
+     */
+    private val SONY_MODEL_PREFIX = Regex("^(ILCE|ILME|DSC|ZV)-", RegexOption.IGNORE_CASE)
+
+    /**
      * mDNS 발견 신호로 제조사 판별 (연결 전).
      */
     fun classifyMdns(serviceName: String, serviceType: String?): VendorVerdict {
@@ -61,6 +67,32 @@ object CameraVendorClassifier {
             usn?.contains("panasonic", ignoreCase = true) == true
         ) {
             return VendorVerdict(CameraVendor.PANASONIC, VendorConfidence.LIKELY)
+        }
+        return VendorVerdict.unknown()
+    }
+
+    /**
+     * Init 프로브로 얻은 friendly name(InitCommandAck)으로 제조사 판별 — 연결 전.
+     *
+     * 최신 Sony(A7C 등)·미등재 기종은 mDNS/SSDP 광고를 하지 않아 서브넷 스윕으로만 발견되고,
+     * 스윕 결과는 이름 신호가 없어 UNKNOWN으로 격리된다. 하지만 PTP/IP InitCommandAck는 카메라
+     * friendly name을 주므로 그 이름으로 제조사를 승격해 "제조사 미확인"을 없앨 수 있다.
+     *
+     * - 제조사 문자열("Sony"/"Nikon"/…)이 이름에 있으면 [confirmFromDeviceInfo]와 같은 규칙으로 CONFIRMED.
+     * - Sony는 이름에 제조사를 넣지 않고 모델명만 주는 경우가 많다(ILCE-7C, DSC-RX100, ZV-1,
+     *   ILME-FX3). 모델 접두([SONY_MODEL_PREFIX])로만 잡히면 LIKELY.
+     * - 판정 불가면 UNKNOWN 유지.
+     */
+    fun classifyFriendlyName(friendlyName: String?): VendorVerdict {
+        val name = friendlyName?.trim().orEmpty()
+        if (name.isEmpty()) return VendorVerdict.unknown()
+
+        val byManufacturer = confirmFromDeviceInfo(name)
+        if (byManufacturer != CameraVendor.UNKNOWN) {
+            return VendorVerdict(byManufacturer, VendorConfidence.CONFIRMED)
+        }
+        if (SONY_MODEL_PREFIX.containsMatchIn(name)) {
+            return VendorVerdict(CameraVendor.SONY, VendorConfidence.LIKELY)
         }
         return VendorVerdict.unknown()
     }

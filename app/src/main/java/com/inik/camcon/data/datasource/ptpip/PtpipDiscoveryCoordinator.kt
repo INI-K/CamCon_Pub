@@ -1,16 +1,23 @@
 package com.inik.camcon.data.datasource.ptpip
 
 import android.util.Log
+import com.inik.camcon.data.network.ptpip.connection.InitProbeResult
 import com.inik.camcon.data.network.ptpip.connection.PtpipConnectionManager
+import com.inik.camcon.data.network.ptpip.discovery.CameraVendorClassifier
 import com.inik.camcon.data.network.ptpip.discovery.DiscoveryBudget
 import com.inik.camcon.data.network.ptpip.discovery.PtpipDiscoveryService
 import com.inik.camcon.data.network.ptpip.discovery.SubnetSweepDiscoverySource
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.domain.model.CameraDiscoverySource
+import com.inik.camcon.domain.model.CameraProtocol
+import com.inik.camcon.domain.model.CameraVendor
 import com.inik.camcon.domain.model.NikonConnectionMode
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.utils.LogMask
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -271,7 +278,87 @@ internal class PtpipDiscoveryCoordinator(
             val merged = PtpipDiscoveryService.mergeCandidates(_discoveredCameras.value, found)
             _discoveredCameras.value = merged
             Log.i(TAG, "서브넷 스윕 병합 완료: 신규 ${found.size}건 → 총 ${merged.size}건")
-            merged
+
+            // 이름·제조사 신호가 없는 스윕 후보를 Init 프로브로 식별해 제조사 승격.
+            val identified = identifyUnknownSweepCandidates(merged)
+            if (identified !== merged) {
+                _discoveredCameras.value = identified
+            }
+            identified
+        }
+    }
+
+    /**
+     * 서브넷 스윕으로 발견된 **UNKNOWN** 후보에만 PTP/IP Init 프로브를 적용해 제조사를 승격한다.
+     *
+     * 대상 조건(3중):
+     * 1. `SUBNET_SCAN` 출처 — mDNS/SSDP로 이미 이름을 얻은 후보는 프로브하지 않는다(중복·세션락 회피).
+     * 2. `vendorVerdict.vendor == UNKNOWN` — 이미 판별된 후보(특히 Nikon)는 프로브 대상에서 제외.
+     *    Nikon은 mDNS로 식별되므로 여기 걸리지 않는다(InitCommandRequest 세션락 회피의 핵심).
+     * 3. 표준 PTP/IP 포트(15740)만 — Fuji 포크(55740)는 InitCommandRequest 규약이 달라 제외한다.
+     *
+     * 프로브는 구조적 동시성([coroutineScope] + [async])으로 병렬 실행한다. 취소 시 자식이 함께
+     * 취소되고, 각 프로브는 소켓을 finally로 닫는다(비구조화 CoroutineScope 생성 없음).
+     *
+     * - [InitProbeResult.Identified] → friendly name으로 vendorVerdict·displayName 갱신(승격).
+     *   discoverySource는 SUBNET_SCAN 그대로 유지한다.
+     * - [InitProbeResult.NeedsPairing] → 페어링 필요. vendor는 UNKNOWN 유지, 로그만 남긴다
+     *   (전용 "페어링 필요" 플래그는 PtpipCamera 모델 필드가 필요 — 후속 작업).
+     * - [InitProbeResult.NotCamera] → 후보를 지우지 않고 그대로 둔다(스윕이 이미 TCP 포트 개방을
+     *   확인했으므로 일시적 무응답으로 실제 발견을 지우지 않는다).
+     */
+    private suspend fun identifyUnknownSweepCandidates(
+        cameras: List<PtpipCamera>
+    ): List<PtpipCamera> {
+        val targets = cameras.filter {
+            it.discoverySource == CameraDiscoverySource.SUBNET_SCAN &&
+                it.vendorVerdict.vendor == CameraVendor.UNKNOWN &&
+                it.port == CameraProtocol.PTPIP_STANDARD.port
+        }
+        if (targets.isEmpty()) return cameras
+
+        Log.d(TAG, "Init 프로브 대상 ${targets.size}건 (UNKNOWN 스윕 후보)")
+
+        val results: Map<String, InitProbeResult> = coroutineScope {
+            targets.map { cam ->
+                async {
+                    "${cam.ipAddress}:${cam.port}" to
+                        connectionManager.probeInitCommand(cam.ipAddress, cam.port)
+                }
+            }.awaitAll()
+        }.toMap()
+
+        return cameras.map { cam ->
+            when (val result = results["${cam.ipAddress}:${cam.port}"]) {
+                null -> cam
+                is InitProbeResult.Identified -> {
+                    val verdict = CameraVendorClassifier.classifyFriendlyName(result.friendlyName)
+                    if (verdict.vendor != CameraVendor.UNKNOWN) {
+                        Log.i(
+                            TAG,
+                            "Init 프로브 승격: ${LogMask.id(cam.ipAddress)} → " +
+                                "${verdict.vendor} (${verdict.confidence}) '${result.friendlyName}'"
+                        )
+                        cam.copy(
+                            vendorVerdict = verdict,
+                            displayName = result.friendlyName.takeIf { it.isNotBlank() }
+                                ?: cam.displayName
+                        )
+                    } else {
+                        cam
+                    }
+                }
+
+                is InitProbeResult.NeedsPairing -> {
+                    Log.i(
+                        TAG,
+                        "Init 프로브: 페어링 필요 (reason=${result.reason}) ${LogMask.id(cam.ipAddress)}"
+                    )
+                    cam
+                }
+
+                InitProbeResult.NotCamera -> cam
+            }
         }
     }
 

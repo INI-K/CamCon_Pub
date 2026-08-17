@@ -27,6 +27,19 @@ enum class PtpipConnectionPhase {
 }
 
 /**
+ * PTP/IP 연결 실패 사유.
+ *
+ * 재시도 폴링 루프가 UI에 노출하는 구조적 실패 사유다. 특히 [PAIRING_PENDING] 은
+ * "카메라가 소켓을 즉시 닫아(End of stream/-7) 반복 거부하는 = 사용자가 아직 카메라 본체에서
+ * 연결(페어링)을 허용하지 않은" 상태를 뜻한다. 이 경우 재시도는 계속하되, 사용자에게
+ * "카메라에서 연결을 허용하세요" 안내를 띄워야 한다(누르면 다음 시도에서 성공).
+ */
+enum class PtpipConnectFailure {
+    /** 카메라 본체에서 연결(페어링) 승인 대기 중. 재시도는 유지. */
+    PAIRING_PENDING
+}
+
+/**
  * 니콘 카메라 연결 모드 (AP/STA/UNKNOWN)
  */
 enum class NikonConnectionMode {
