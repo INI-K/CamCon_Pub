@@ -88,6 +88,8 @@
   "cameras.help": "La plupart des appareils avec connexion USB PTP/MTP fonctionnent. En cas de doute, <a href=\"#contact\">contactez-nous</a> et nous vérifierons pour vous.",
   "cameras.verified": "Utilisation confirmée",
   "cameras.verifiedTpl": "{n} confirmés en usage réel",
+  "cameras.unlistedTitle": "Usage confirmé, hors liste des pilotes",
+  "cameras.unlistedNote": "Appareils absents de la liste des pilotes mais avec lesquels des utilisateurs de CamCon se sont réellement connectés.",
   "connect.eyebrow": "How to Connect",
   "connect.title": "Deux façons de se connecter",
   "connect.tabUsb": "USB OTG",

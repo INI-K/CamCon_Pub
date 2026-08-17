@@ -9,7 +9,7 @@
 
   // 정적 자산 캐시 버스터. index.html 의 css/js ?v= 와 같은 값을 유지한다
   // (main.js 자체가 ?v= 로 받아지므로 stale main.js 가 stale ASSET_V 를 들고 있을 수 없다).
-  var ASSET_V = "20260812a";
+  var ASSET_V = "20260817a";
 
   var VERIFIED_URL = "https://asia-northeast3-camcon-67ad7.cloudfunctions.net/getVerifiedCameras";
   var verifiedByKey = {};
@@ -58,7 +58,7 @@ function normalizeCameraKey(input) {
       for (var j = 0; j < syns.length; j++) {
         var syn = syns[j];
         if (s === syn || s.indexOf(syn + " ") === 0) {
-          if (!vendor) vendor = canon;
+          vendor = canon;
           s = s.slice(syn.length).trim(); changed = true; break;
         }
       }
@@ -462,9 +462,13 @@ function normalizeCameraKey(input) {
         // 목록 렌더 뒤 "사용 확인됨" 배지 데이터 로드 (실패해도 목록은 정상)
         loadVerified(function (v) {
           verifiedByKey = {};
-          (v.cameras || []).forEach(function (c) { verifiedByKey[c.key] = { usb: c.usb, wifi: c.wifi }; });
+          (v.cameras || []).forEach(function (c) {
+            if (!c || typeof c.key !== "string") return; // 손상 캐시 한 줄이 목록 전체를 지우지 않게
+            verifiedByKey[c.key] = { usb: c.usb, wifi: c.wifi, model: c.model || "" };
+          });
           verifiedCount = countVerifiedMatches();
           renderVerifiedCount();
+          renderUnlisted();
           renderCameras();
         });
       })
@@ -484,10 +488,13 @@ function normalizeCameraKey(input) {
   /* 이 응답은 nginx 캐시 밖(Cloud Functions)이라 ?v= 로 제어되지 않고, 호출 1회가 Firestore read 과금이다.
      배지는 마케팅 표시용이라 몇 시간 지연이 무해하므로 클라이언트에서 TTL 캐시한다. */
   var VERIFIED_TTL = 6 * 60 * 60 * 1000; // 6h
+  // v2: 응답에 표시명(model)이 추가됐다 — 구 캐시는 그 필드가 없어 목록 외 블록이 빈 이름으로 뜨므로 키를 갈아 강제 재요청한다.
+  var VERIFIED_CACHE_KEY = "camcon-verified-v2";
 
   function loadVerified(done) {
     var raw = null;
-    try { raw = localStorage.getItem("camcon-verified"); } catch (e) { raw = null; }
+    try { localStorage.removeItem("camcon-verified"); } catch (e) { /* v1 키 정리 — 실패 무시 */ }
+    try { raw = localStorage.getItem(VERIFIED_CACHE_KEY); } catch (e) { raw = null; }
     if (raw) {
       try {
         var c = JSON.parse(raw);
@@ -497,7 +504,7 @@ function normalizeCameraKey(input) {
     fetch(VERIFIED_URL)
       .then(function (r) { return r.ok ? r.json() : { cameras: [] }; })
       .then(function (v) {
-        try { localStorage.setItem("camcon-verified", JSON.stringify({ at: Date.now(), data: v })); } catch (e) { /* 저장 실패는 무시 */ }
+        try { localStorage.setItem(VERIFIED_CACHE_KEY, JSON.stringify({ at: Date.now(), data: v })); } catch (e) { /* 저장 실패는 무시 */ }
         done(v);
       })
       .catch(function () { /* 배지 없이 목록만 */ });
@@ -528,7 +535,83 @@ function normalizeCameraKey(input) {
       var k = camKey(c);
       if (verifiedByKey[k] && !seen[k]) { seen[k] = 1; n++; }
     });
+    // 목록 외(카탈로그 미매칭) 기종은 이 숫자에 넣지 않는다 — 클라이언트가 보낸 문자열로 만들어지는 항목이라
+    // 헤드라인 신뢰 지표까지 부풀릴 수 있다. 목록 외 블록 자체에서만 보여 준다.
     return n;
+  }
+
+  // 카탈로그 키 집합 — camData 가 바뀔 때만 다시 계산(945행 × 정규화 4패스를 렌더마다 반복하지 않게).
+  var catalogKeyCache = { src: null, keys: null };
+  function catalogKeys() {
+    if (!camData) return {};
+    if (catalogKeyCache.src !== camData) {
+      var keys = {};
+      camData.cameras.forEach(function (c) { keys[camKey(c)] = 1; });
+      catalogKeyCache = { src: camData, keys: keys };
+    }
+    return catalogKeyCache.keys;
+  }
+
+  /* 카탈로그(드라이버 등재 945종)에 매칭되지 않는 실사용 확인 기종.
+     원래는 CF 응답이 key 만 줘서 이름을 붙일 수 없어 홈페이지 어디에도 안 보였다 — 이제 CF 가 정제된
+     표시명(model)을 함께 주므로 별도 블록으로 노출한다. 카탈로그 매칭분은 카탈로그 표기를 쓰므로 여기서 제외.
+     표시명이 비어 있으면(구 CF 응답·이상 문서) 정규화 키를 이름 대신 내보내지 않고 행을 건너뛴다. */
+  function unlistedVerified() {
+    if (!camData) return [];
+    var inCatalog = catalogKeys();
+    return Object.keys(verifiedByKey)
+      .filter(function (k) { return !inCatalog[k] && k.indexOf(":") > 0 && verifiedByKey[k].model; })
+      .sort()
+      .map(function (k) { return { key: k, v: verifiedByKey[k] }; });
+  }
+
+  // 키 앞부분(정규화 벤더) → 표시용 벤더명. VENDOR_SYNONYMS 의 canon 값과 1:1.
+  var VENDOR_LABELS = {
+    nikon: "Nikon", canon: "Canon", sony: "Sony", fujifilm: "Fujifilm", panasonic: "Panasonic",
+    olympus: "OM System / Olympus", leica: "Leica", pentax: "Pentax", ricoh: "Ricoh",
+    sigma: "Sigma", hasselblad: "Hasselblad", casio: "Casio"
+  };
+
+  /* 표시명에서 선행 벤더 동의어("Nikon Corporation Z 8" → "Z 8")를 떼어 카탈로그 행과 같은 모양으로 맞춘다.
+     벤더는 마지막으로 떼어낸 동의어 기준(normalizeCameraKey 와 같은 규칙) — "RICOH IMAGING COMPANY, LTD. RICOH GR III" 는
+     제조사(Ricoh Imaging=Pentax 버킷)가 아니라 브랜드(Ricoh)로 라벨링돼야 한다. */
+  function stripVendorPrefix(model) {
+    var s = String(model || "").trim(), low = s.toLowerCase(), vendor = "", changed = true;
+    while (changed) {
+      changed = false;
+      for (var i = 0; i < VENDOR_SYNONYMS.length && !changed; i++) {
+        var canon = VENDOR_SYNONYMS[i][0], syns = VENDOR_SYNONYMS[i][1];
+        for (var j = 0; j < syns.length; j++) {
+          var syn = syns[j];
+          if (low === syn || low.indexOf(syn + " ") === 0) {
+            vendor = canon; s = s.slice(syn.length).trim(); low = s.toLowerCase(); changed = true; break;
+          }
+        }
+      }
+    }
+    return { vendor: vendor, model: s };
+  }
+
+  function renderUnlisted() {
+    var wrap = document.getElementById("camUnlisted");
+    var list = document.getElementById("camUnlistedList");
+    if (!wrap || !list) return;
+    var items = unlistedVerified().slice(0, CAP); // 카탈로그 목록과 같은 렌더 상한
+    if (!items.length) { wrap.hidden = true; list.innerHTML = ""; return; }
+    list.innerHTML = items.map(function (it) {
+      var parts = stripVendorPrefix(it.v.model);
+      var vendorKey = parts.vendor || it.key.split(":")[0];
+      var vendor = VENDOR_LABELS[vendorKey] || (vendorKey.charAt(0).toUpperCase() + vendorKey.slice(1));
+      var model = parts.model || it.v.model;
+      var methods = [];
+      if (it.v.usb) methods.push("USB");
+      if (it.v.wifi) methods.push("Wi-Fi");
+      var label = (t("cameras.verified") || "사용 확인됨") + (methods.length ? " · " + methods.join(" · ") : "");
+      return '<li><span class="cam-vendor">' + esc(vendor) + "</span>" +
+        '<span class="cam-model">' + esc(model) + "</span>" +
+        '<span class="cam-verify">' + esc(label) + "</span></li>";
+    }).join("");
+    wrap.hidden = false;
   }
 
   // 드라이버 등재 수(945)와 실사용 확인 수는 성격이 다른 값이라 한 줄로 합치지 않고 2단으로 표기한다.
@@ -641,6 +724,7 @@ function normalizeCameraKey(input) {
     renderVerifiedCount();
     if (!camData) return;
     buildVendorChips();
+    renderUnlisted();
     renderCameras();
   }
 
@@ -688,5 +772,25 @@ function normalizeCameraKey(input) {
       });
     }, { rootMargin: "-45% 0px -50% 0px" });
     sections.forEach(function (s) { spy.observe(s); });
+  }
+
+  /* 테스트 훅 — 브라우저에는 module 이 없어 통째로 건너뛴다. Node(website/tests/) 에서만 내부 함수를 꺼내
+     카메라 탐색기 로직(키 정규화·목록 외 판정·표시명·카운트·이스케이프)을 실제 카탈로그로 검증한다.
+     상태(camData·verifiedByKey·I18N)는 클로저 변수라 setter 로 주입한다. */
+  if (typeof module === "object" && module && module.exports) {
+    module.exports = {
+      normalizeCameraKey: normalizeCameraKey,
+      camKey: camKey,
+      stripVendorPrefix: stripVendorPrefix,
+      unlistedVerified: unlistedVerified,
+      countVerifiedMatches: countVerifiedMatches,
+      renderUnlisted: renderUnlisted,
+      renderVerifiedCount: renderVerifiedCount,
+      esc: esc,
+      VERIFIED_MIN: VERIFIED_MIN,
+      setCamData: function (d) { camData = d; },
+      setVerified: function (m) { verifiedByKey = m; verifiedCount = countVerifiedMatches(); },
+      setI18n: function (d) { I18N = d; }
+    };
   }
 })();

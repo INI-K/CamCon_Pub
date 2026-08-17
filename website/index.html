@@ -45,7 +45,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="assets/css/style.css?v=20260812a">
+  <link rel="stylesheet" href="assets/css/style.css?v=20260817a">
   <link rel="stylesheet" media="print" onload="this.media='all';this.onload=null" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap"></noscript>
 
@@ -371,6 +371,12 @@
           </div>
           <div class="cam-body" id="camExplorerBody" hidden>
             <p class="cam-count" data-i18n="cameras.listNote" style="margin-bottom:16px;color:var(--ink-mute)">아래 목록은 PTP(USB) 호환 기종입니다. Wi-Fi 배지가 붙은 기종은 무선 연결을 지원합니다.</p>
+            <!-- 드라이버 카탈로그에 없지만 앱이 실제 연결 성공을 익명 보고한 기종(getVerifiedCameras 의 model 표시명). 0건이면 hidden 유지. -->
+            <div class="cam-unlisted" id="camUnlisted" hidden>
+              <p class="cam-unlisted-title" data-i18n="cameras.unlistedTitle">목록 외 실사용 확인</p>
+              <p class="cam-count" data-i18n="cameras.unlistedNote">드라이버 목록에는 없지만 CamCon 사용자가 실제 연결에 성공한 기종입니다.</p>
+              <ul class="cam-list cam-list--unlisted" id="camUnlistedList"></ul>
+            </div>
             <div class="cam-search-row">
               <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
               <input id="camSearch" type="search" autocomplete="off" data-i18n-attr="placeholder" data-i18n="cameras.searchPh" placeholder="제조사 또는 모델명 검색 (예: Nikon Z8)">
@@ -562,6 +568,6 @@
     </div>
   </footer>
 
-  <script src="assets/js/main.js?v=20260812a" defer></script>
+  <script src="assets/js/main.js?v=20260817a" defer></script>
 </body>
 </html>

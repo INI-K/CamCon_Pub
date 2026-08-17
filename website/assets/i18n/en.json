@@ -88,6 +88,8 @@
   "cameras.help": "Most cameras that support a PTP/MTP USB connection will work. If you're unsure, <a href=\"#contact\">contact us</a> and we'll check for you.",
   "cameras.verified": "Verified in use",
   "cameras.verifiedTpl": "{n} verified in real use",
+  "cameras.unlistedTitle": "Verified in use, not in the driver list",
+  "cameras.unlistedNote": "Cameras that are not in the driver list but CamCon users have actually connected successfully.",
   "connect.eyebrow": "How to Connect",
   "connect.title": "Two ways to connect",
   "connect.tabUsb": "USB OTG",
