@@ -7,13 +7,15 @@ package com.inik.camcon.domain.model
  *  - [downloading]: 네이티브 콜백으로 감지되어 바이트 수신 대기 중인 파일 수
  *  - [processing]: 수신 완료 후 리사이즈/색감전송/MediaStore 저장 진행 중인 파일 수
  *  - [currentFileName]: 가장 최근 단계 전이가 일어난 파일명(처리 우선, 없으면 다운로드)
+ *  - [speedBytesPerSec]: 최근 완료 파일들의 다운로드 처리율 이동평균(B/s). 측정값이 없으면 0.
  *
  * capturedPhotos 와 동일한 UDF 경로(repo Flow → ViewModel observe → UiState)로 노출된다.
  */
 data class TransferQueueState(
     val downloading: Int = 0,
     val processing: Int = 0,
-    val currentFileName: String? = null
+    val currentFileName: String? = null,
+    val speedBytesPerSec: Long = 0L
 ) {
     /** 진행 중인 전송이 하나라도 있으면 true. UI 배지 표시 게이트. */
     val isActive: Boolean get() = downloading > 0 || processing > 0

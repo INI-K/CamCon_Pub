@@ -3,4 +3,6 @@
     <!-- 촬영 메인(camera-control) Hero 슬롯 전용 문자열. 이 파일 외 다른 XML에 키를 추가하지 않는다. -->
     <!-- Hero 카운터(수신 컷 수) 옆 단위 라벨 -->
     <string name="cc_hero_shots_unit">shots</string>
+    <!-- 상단 바 다운로드 속도 칩. %1$s = 1024기반 MB/s(소수1자리). ▼/MB/s 는 로케일 공통. -->
+    <string name="camera_status_download_speed">▼ %1$.1f MB/s</string>
 </resources>

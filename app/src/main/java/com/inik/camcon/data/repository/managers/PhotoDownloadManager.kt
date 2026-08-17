@@ -43,8 +43,10 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.UUID
-import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.max
@@ -66,6 +68,73 @@ class PhotoDownloadManager @Inject constructor(
 
     companion object {
         private const val TAG = "사진다운로드매니저"
+
+        /**
+         * libgphoto2 가 합성한 가짜 파일명(capt####.ext) 판별용 정규식.
+         *
+         * Sony PC-remote 등은 이미지가 카메라 RAM 에만 있어 실제 DSC 파일명이 프로토콜상 없을 수 있고,
+         * 이때 libgphoto2 는 `capt0001.jpg` 같은 이름을 지어낸다. 이런 합성명만 EXIF 촬영시각 기반
+         * 실이름으로 대체하고, 카드 저장분(DSC0xxxx.JPG 등)의 실이름은 절대 건드리지 않는다.
+         *
+         * 확장자 목록은 [Constants.ImageProcessing.SUPPORTED_IMAGE_EXTENSIONS] 단일 소스에서
+         * 파생한다(수동 화이트리스트 드리프트 방지 — 리뷰 HIGH 지적 반영).
+         */
+        private val SYNTHETIC_CAPT_REGEX =
+            Regex(
+                "^capt\\d+\\.(?:${Constants.ImageProcessing.SUPPORTED_IMAGE_EXTENSIONS.joinToString("|")})\$",
+                RegexOption.IGNORE_CASE
+            )
+
+        /** EXIF 시각 기반 파일명 타임스탬프 포맷(YYYYMMDD_HHMMSS). */
+        private const val EXIF_NAME_TIMESTAMP_PATTERN = "yyyyMMdd_HHmmss"
+
+        /** capt 대체명 동일-초 충돌 카운터 상한(메모리 보호). 초과 시 가장 오래된 항목부터 제거. */
+        private const val CAPT_NAME_COUNTER_MAX = 512
+
+        /**
+         * 파일명이 libgphoto2 합성 capt 이름인지 판정(순수 함수, 단위 테스트 대상).
+         *
+         * 이 판정이 참일 때만 EXIF 촬영시각 기반 실이름으로 대체한다. 카메라가 준 진짜 파일명
+         * (카드 저장분 DSC/KY6/ILCE 등)은 여기서 false 가 되어 원본 이름이 그대로 보존된다.
+         */
+        @JvmStatic
+        @androidx.annotation.VisibleForTesting
+        fun isSyntheticCaptName(fileName: String): Boolean =
+            SYNTHETIC_CAPT_REGEX.matches(fileName)
+
+        /**
+         * libgphoto2 소니 경로가 실파일명 앞에 강제로 붙이는 `capt_` 접두를 벗겨 실제 카메라
+         * 파일명을 복원한다(순수 함수, 단위 테스트 대상). 예: `capt_JUN01569.JPG` → `JUN01569.JPG`.
+         *
+         * 업스트림 library.c 소니 분기는 ObjectInfo.Filename 이 있으면 `capt_%s` 로 감싼다
+         * ("capt prefix is mandatory when deleting file" — 카메라측 가상 fs 삭제 키 용도라
+         * 앱 저장 표시명과는 무관하다). 접두 뒤가 `이름.확장자` 꼴이 아니면 실명이 아니므로 null.
+         */
+        @JvmStatic
+        @androidx.annotation.VisibleForTesting
+        fun stripCaptRealNamePrefix(fileName: String): String? {
+            if (!fileName.startsWith("capt_", ignoreCase = true)) return null
+            val real = fileName.substring(5)
+            val stem = real.substringBeforeLast('.', "")
+            val ext = real.substringAfterLast('.', "")
+            return real.takeIf { stem.isNotBlank() && ext.isNotBlank() }
+        }
+
+        /**
+         * EXIF 촬영시각(millis)과 확장자로 `YYYYMMDD_HHMMSS.<ext>` 실이름을 만든다(순수 함수, 단위 테스트 대상).
+         *
+         * 동일 초 충돌 시 접미(_NN)는 [resolveCaptDisplayName] 가 붙인다. 여기서는 접미 없는 기본명만 만든다.
+         * 시각은 로컬 타임존으로 포맷해 사용자가 보는 촬영 시각과 일치시킨다.
+         *
+         * @param extension 확장자(점 제외, capt 원본 그대로 소문자). 비어 있으면 "jpg" 로 폴백.
+         */
+        @JvmStatic
+        @androidx.annotation.VisibleForTesting
+        fun buildExifTimestampName(captureMillis: Long, extension: String): String {
+            val ext = extension.ifBlank { "jpg" }
+            val stamp = SimpleDateFormat(EXIF_NAME_TIMESTAMP_PATTERN, Locale.US).format(Date(captureMillis))
+            return "$stamp.$ext"
+        }
 
         /**
          * FREE 티어 리사이즈 목표 치수 계산(순수 함수, 단위 테스트 대상).
@@ -132,6 +201,61 @@ class PhotoDownloadManager @Inject constructor(
      * 한 번에 한 건만 처리하도록 직렬화한다.
      */
     private val colorTransferSemaphore = Semaphore(1)
+
+    /**
+     * capt 대체명(YYYYMMDD_HHMMSS.ext)의 동일-초 충돌 카운터.
+     *
+     * 연사 등으로 같은 초에 서로 다른 컷이 두 장 이상 오면 같은 기본명이 만들어진다.
+     * 키=기본명(소문자), 값=이미 배정된 횟수. 최초는 접미 없음, 이후 `_01`, `_02` … 로 안정화한다.
+     * (듀얼슬롯 동일 fileName 중복은 상류 processedFileCache 가 이미 걸러 이 카운터까지 오지 않는다.)
+     * [captNameLock] 으로 동시 다운로드에서도 유일·결정적 배정을 보장한다.
+     */
+    private val captNameLock = Any()
+    private val captNameCounts = LinkedHashMap<String, Int>()
+
+    /**
+     * capt 합성 파일명이면 EXIF 촬영시각 기반 실이름으로 대체하고, 아니면 원본을 그대로 돌려준다.
+     *
+     * 카메라 실이름(카드 저장분 등)은 절대 변경하지 않는다. 동일 초 충돌은 `_NN` 접미로 안정화하되
+     * 시간순 정렬(captureTime → basename)이 보존되도록 최초 컷은 접미 없이 둔다.
+     *
+     * @param safeFileName 경로 정제된 basename(capt 판정 대상).
+     * @param captureMillis EXIF 촬영시각(없으면 호출부가 수신 시각을 폴백으로 넘긴다).
+     * @return capt 이면 대체 실이름, 아니면 [safeFileName] 그대로.
+     */
+    private fun resolveCaptDisplayName(safeFileName: String, captureMillis: Long): String {
+        // capt_<실명>(A7C 실측: capt_JUN01569.JPG)은 접두만 벗기면 실제 카메라 파일명이므로
+        // EXIF 시각명보다 우선해 그대로 복원한다.
+        stripCaptRealNamePrefix(safeFileName)?.let { return it }
+        if (!isSyntheticCaptName(safeFileName)) return safeFileName
+
+        val extension = safeFileName.substringAfterLast('.', "").lowercase()
+        val baseName = buildExifTimestampName(captureMillis, extension)
+
+        synchronized(captNameLock) {
+            val key = baseName.lowercase()
+            val used = captNameCounts[key] ?: 0
+            captNameCounts[key] = used + 1
+
+            // 메모리 보호: 상한 초과 시 가장 오래 전 배정된 키부터 제거(세션 내 단조 증가 방지).
+            if (captNameCounts.size > CAPT_NAME_COUNTER_MAX) {
+                val eldest = captNameCounts.keys.iterator()
+                if (eldest.hasNext()) {
+                    eldest.next()
+                    eldest.remove()
+                }
+            }
+
+            return if (used == 0) {
+                baseName
+            } else {
+                val dot = baseName.lastIndexOf('.')
+                val stem = baseName.substring(0, dot)
+                val ext = baseName.substring(dot) // 점 포함
+                "${stem}_%02d%s".format(used, ext)
+            }
+        }
+    }
 
     /**
      * 필름 시뮬레이션·색감 전송의 무거운 디코드/LUT/재인코딩 전용 워커 디스패처.
@@ -510,10 +634,20 @@ class PhotoDownloadManager @Inject constructor(
                     return@withContext null
                 }
 
+                // 실이름 규칙(요구 C): 원본 바이트의 EXIF 촬영시각을 1회만 파싱해 아래 두 곳에서 재사용한다.
+                //  (1) capt 합성명이면 YYYYMMDD_HHMMSS.ext 실이름으로 대체 (2) CapturedPhoto.captureTime 정렬 기준.
+                // EXIF 가 없으면 수신 시각으로 폴백한다. capt 가 아닌 카메라 실이름은 절대 대체하지 않는다.
+                val captureMillis = ExifCaptureTime.parseMillis(imageData) ?: System.currentTimeMillis()
+                val displayFileName = resolveCaptDisplayName(safeFileName, captureMillis)
+                if (displayFileName != safeFileName) {
+                    Log.d(TAG, "🔤 capt 합성명 대체: $safeFileName → $displayFileName")
+                }
+
                 // 전송 진행 카운트(요구 E3): 후처리·저장 단계 시작. 동일 fileName 이 DOWNLOADING 이었다면 PROCESSING 으로 전이.
+                // 두 번째 인자(요구 D): 방금 수신 완료한 바이트 수 → markDownloading~지금 소요시간으로 per-file 처리율 산출.
                 // markProcessing 과 아래 finally 의 markDone 을 동일 try/finally 경계에 두어
                 // 디스패치 취소 시에도 markDone 이 반드시 짝지어지게 한다(누수 방지).
-                transferProgressTracker.markProcessing(fileName)
+                transferProgressTracker.markProcessing(fileName, imageData.size.toLong())
 
                 Log.d(TAG, "📦 Native 다운로드 데이터 처리 시작: $fileName")
                 // Log.d(TAG, "   데이터 크기: ${imageData.size / 1024}KB")
@@ -717,11 +851,13 @@ class PhotoDownloadManager @Inject constructor(
                     }
                 }
 
-                // SAF를 사용한 후처리 (Android 10+에서 MediaStore로 이동)
+                // SAF를 사용한 후처리 (Android 10+에서 MediaStore로 이동).
+                // 저장 표시명은 displayFileName(capt 이면 EXIF 실이름, 아니면 원본) 사용 —
+                // 이 값이 MediaStore DISPLAY_NAME → 반환 filePath basename 으로 흘러가 미리보기/정렬/중복제거에 일관 반영된다.
                 val fileNameWithFolder = if (cameraSubFolder.isNotEmpty()) {
-                    "$cameraSubFolder/$safeFileName"
+                    "$cameraSubFolder/$displayFileName"
                 } else {
-                    safeFileName
+                    displayFileName
                 }
                 // Log.d(TAG, "📂 후처리 전 파일명 정보:")
                 // Log.d(TAG, "   원본 파일명: $fileName")
@@ -742,8 +878,9 @@ class PhotoDownloadManager @Inject constructor(
                     id = UUID.randomUUID().toString(),
                     filePath = finalPath,
                     thumbnailPath = null,
-                    // 정렬 기준 안정화: 원본 바이트(재인코딩 이전)의 EXIF 촬영 시각 사용, 실패 시 현재 시각 폴백
-                    captureTime = ExifCaptureTime.parseMillis(imageData) ?: System.currentTimeMillis(),
+                    // 정렬 기준 안정화: 위에서 1회 파싱한 EXIF 촬영시각(실패 시 수신 시각 폴백) 재사용 —
+                    // capt 대체 실이름과 동일 기준이라 파일명·정렬이 정합한다.
+                    captureTime = captureMillis,
                     cameraModel = cameraCapabilities?.model ?: "알 수 없음",
                     settings = cameraSettings,
                     size = imageData.size.toLong(),
