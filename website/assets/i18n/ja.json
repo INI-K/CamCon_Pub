@@ -88,6 +88,8 @@
   "cameras.help": "PTP/MTP USB接続に対応していれば、ほとんど動作します。ご不明な場合は<a href=\"#contact\">お問い合わせ</a>いただければ確認いたします。",
   "cameras.verified": "利用確認済み",
   "cameras.verifiedTpl": "実使用確認 {n}種",
+  "cameras.unlistedTitle": "リスト外の実使用確認",
+  "cameras.unlistedNote": "ドライバー一覧にはありませんが、CamCon ユーザーが実際に接続に成功した機種です。",
   "connect.eyebrow": "How to Connect",
   "connect.title": "2つの接続方法",
   "connect.tabUsb": "USB OTG",

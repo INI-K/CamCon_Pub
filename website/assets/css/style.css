@@ -710,6 +710,13 @@ main { position: relative; z-index: var(--z-content); }
 }
 @keyframes skelPulse { to { opacity: .4; } }
 .cam-empty { padding: 30px; text-align: center; color: var(--ink-mute); font-family: var(--mono); font-size: var(--t-ui); }
+/* 목록 외 실사용 확인 — 카탈로그 그리드와 같은 행 스타일을 재사용하되, 등재 목록과 성격이 다르므로 앰버 테두리 박스로 분리한다. */
+.cam-unlisted { margin: 0 0 20px; padding: 14px 14px 8px; border: 1px solid var(--amber-35); border-radius: var(--r-xs); background: var(--amber-06); }
+.cam-unlisted-title { font-family: var(--mono); font-size: var(--t-label); color: var(--amber); letter-spacing: .04em; margin-bottom: 4px; }
+.cam-list--unlisted { max-height: 200px; }
+/* 앰버 박스 안에서는 홀수행 세로 규칙이 빈 칸 옆에 홀로 떠 보이고, 기본 hover 배경(amber-06)이 박스 배경과 같아 대비가 0 이다. */
+.cam-list--unlisted li:nth-child(odd) { box-shadow: none; }
+.cam-list--unlisted li:hover, .cam-list--unlisted li:nth-child(odd):hover { background: var(--amber-12); box-shadow: inset 2px 0 0 var(--amber); }
 .cam-help { margin-top: 22px; color: var(--ink-dim); font-size: var(--t-body-sm); max-width: 62ch; }
 .cam-help a { color: var(--amber); border-bottom: 1px solid var(--amber-35); }
 
