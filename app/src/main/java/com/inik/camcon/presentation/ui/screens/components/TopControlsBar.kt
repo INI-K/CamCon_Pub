@@ -30,6 +30,7 @@ import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.ErrorV2
+import com.inik.camcon.presentation.theme.Info
 import com.inik.camcon.presentation.theme.MicroLabel
 import com.inik.camcon.presentation.theme.MonoMicro
 import com.inik.camcon.presentation.theme.Radius
@@ -114,6 +115,23 @@ fun TopControlsBar(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
                 ) {
+                    // 다운로드 속도 헤어라인 칩 — 전송이 활성이고 측정값이 있을 때만(요구 D).
+                    // speedBytesPerSec 는 1024 기반 MB/s 로 환산, 소수 1자리. 비활성/미측정 시 숨김.
+                    val transfer = uiState.transferQueue
+                    if (transfer.isActive && transfer.speedBytesPerSec > 0) {
+                        val mbPerSec = transfer.speedBytesPerSec / (1024.0 * 1024.0)
+                        HairlineChip {
+                            Text(
+                                text = stringResource(
+                                    R.string.camera_status_download_speed,
+                                    mbPerSec
+                                ),
+                                color = Info,
+                                style = MonoMicro
+                            )
+                        }
+                    }
+
                     // 배터리 헤어라인 칩 — capabilities.batteryLevel 이 있을 때만
                     uiState.cameraCapabilities?.batteryLevel?.let { level ->
                         HairlineChip {
