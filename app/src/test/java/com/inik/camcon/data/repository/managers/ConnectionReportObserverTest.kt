@@ -167,4 +167,28 @@ class ConnectionReportObserverTest {
 
         coVerify(exactly = 1) { useCase("Nikon Z 8", ConnectionReportMethod.USB) }
     }
+
+    @Test
+    fun `Wi-Fi 는 제네릭 abilitiesModel 대신 실 DeviceInfo model 을 우선한다`() = runTest {
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        typeFlow.value = CameraConnectionType.STA_MODE
+        startObserver(scope)
+
+        // PTP/IP 에서 abilitiesModel 은 항상 제네릭 "PTP/IP Camera" — 실모델은 DeviceInfo(model)에 있다.
+        capsFlow.value = caps(model = "Sony Corporation ILCE-7C", abilitiesModel = "PTP/IP Camera")
+
+        coVerify(exactly = 1) { useCase("Sony Corporation ILCE-7C", ConnectionReportMethod.WIFI) }
+        coVerify(exactly = 0) { useCase("PTP/IP Camera", any()) }
+    }
+
+    @Test
+    fun `Wi-Fi 에서 model 이 공백이면 abilitiesModel 로 폴백한다`() = runTest {
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        typeFlow.value = CameraConnectionType.AP_MODE
+        startObserver(scope)
+
+        capsFlow.value = caps(model = "   ", abilitiesModel = "Nikon Z 6")
+
+        coVerify(exactly = 1) { useCase("Nikon Z 6", ConnectionReportMethod.WIFI) }
+    }
 }

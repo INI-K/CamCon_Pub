@@ -20,8 +20,9 @@ import javax.inject.Singleton
  * 카메라 연결 성공을 감지해 익명 보고 UseCase에 위임하는 읽기 전용 관찰자.
  *
  * activeConnectionType + cameraCapabilities를 결합해 (기종, 방식) 페어를 만든다.
- * 매칭 키는 libgphoto2 abilities 모델명([CameraCapabilities.abilitiesModel])을 우선 쓰고,
- * 없으면 표시용 [CameraCapabilities.model]로 폴백한다.
+ * USB는 libgphoto2 abilities 모델명([CameraCapabilities.abilitiesModel])이 실모델이므로 우선 쓴다.
+ * Wi-Fi(PTP/IP)는 abilitiesModel이 "PTP/IP Camera" 같은 제네릭이라
+ * 실제 DeviceInfo 모델명([CameraCapabilities.model])을 우선한다. 각 경우 값이 없으면 다른 쪽으로 폴백한다.
  *
  * ⚠️ 읽기 전용 — disconnect/close 등 연결 상태를 바꾸는 호출은 절대 하지 않는다.
  */
@@ -41,14 +42,27 @@ class ConnectionReportObserver @Inject constructor(
             globalManager.activeConnectionType,
             connManager.cameraCapabilities
         ) { type, caps ->
-            val model = caps?.abilitiesModel?.takeIf { it.isNotBlank() } ?: caps?.model
-            if (type == null || model.isNullOrBlank()) {
+            if (type == null || caps == null) {
                 null
             } else {
-                model to when (type) {
-                    CameraConnectionType.USB -> ConnectionReportMethod.USB
+                val abilities = caps.abilitiesModel?.takeIf { it.isNotBlank() }
+                val device = caps.model.takeIf { it.isNotBlank() }
+                // USB는 abilitiesModel이 실모델이라 우선 사용(회귀 방지).
+                // Wi-Fi(PTP/IP)는 abilitiesModel이 "PTP/IP Camera" 같은 제네릭이므로
+                // 실제 DeviceInfo(model, 예: "Sony Corporation ILCE-7C")를 우선한다.
+                val model = when (type) {
+                    CameraConnectionType.USB -> abilities ?: device
                     CameraConnectionType.AP_MODE,
-                    CameraConnectionType.STA_MODE -> ConnectionReportMethod.WIFI
+                    CameraConnectionType.STA_MODE -> device ?: abilities
+                }
+                if (model.isNullOrBlank()) {
+                    null
+                } else {
+                    model to when (type) {
+                        CameraConnectionType.USB -> ConnectionReportMethod.USB
+                        CameraConnectionType.AP_MODE,
+                        CameraConnectionType.STA_MODE -> ConnectionReportMethod.WIFI
+                    }
                 }
             }
         }
