@@ -30,4 +30,16 @@ interface LiveViewCallback {
      * @param imageData 다운로드된 이미지 바이너리 데이터
      */
     fun onPhotoDownloaded(filePath: String, fileName: String, imageData: ByteArray)
+
+    /**
+     * 실전송시간을 동반한 다운로드 완료 통지. 네이티브는 이 4-인자 시그니처를 우선 호출한다.
+     *
+     * [transferMs] = wait_for_event 소요 + 파일 다운로드 소요. 소니 PTP/IP 는 wire 전송이
+     * wait_for_event **내부**(GetObject 인라인)에서 끝나 Kotlin 측 시계 창(markDownloading→
+     * markProcessing)이 콜백 배관 지연(~20ms)만 재고, 그 결과 11MB 가 550MB/s 로 표시됐다
+     * (A7C 실측 2026-08-18). 합산 창은 소니(wait 에 전송 포함)·니콘(다운로드 소요에 포함)
+     * 양쪽에서 실전송을 덮는다. 기본 구현은 3-인자로 위임 — 기존 구현체는 수정 불필요.
+     */
+    fun onPhotoDownloaded(filePath: String, fileName: String, imageData: ByteArray, transferMs: Long) =
+        onPhotoDownloaded(filePath, fileName, imageData)
 }

@@ -390,7 +390,12 @@ class PhotoDownloadManager @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e("사진다운로드매니저", "페이징 카메라 사진 목록 가져오기 실패", e)
+                if (e is UnsupportedOperationException) {
+                    // 카드 탐색 미지원 세션 — 안내성, 스택트레이스 중복 출력 방지.
+                    Log.i("사진다운로드매니저", "카드 탐색 미지원 세션 — 상위 안내 처리로 위임")
+                } else {
+                    Log.e("사진다운로드매니저", "페이징 카메라 사진 목록 가져오기 실패", e)
+                }
                 Result.failure(e)
             }
         }

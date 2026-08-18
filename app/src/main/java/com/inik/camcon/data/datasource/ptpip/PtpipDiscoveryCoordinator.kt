@@ -242,6 +242,22 @@ internal class PtpipDiscoveryCoordinator(
                 publishDiscovered(snapshot)
             }
             publishDiscovered(cameras)
+
+            // 소니류(mDNS·SSDP 무광고) 자동 폴백 — Sony A7C 실측: 폰 핫스팟에 정상 접속해 15740을
+            // 열고 있어도 mDNS/SSDP 어느 쪽에도 응답하지 않아 메인 검색이 영영 0건이었다.
+            // 사용자 주도 검색이 0건이고 폰 핫스팟(우리 소유 /24)이면 서브넷 스윕 + Init 프로브까지
+            // 한 번의 '카메라 검색'으로 이어준다. 3중 게이트:
+            // 1. UserInitiated만 — 배경 폴링(4초 tick)이 253호스트×2포트 스윕을 반복하면 안 된다.
+            // 2. 폰 핫스팟만 — 공유기/공용 Wi-Fi는 남의 망이라 자동 스윕하지 않는다(수동 버튼 유지).
+            // 3. mDNS/SSDP 0건일 때만 — 이름 신호로 이미 찾았으면 스윕은 불필요한 트래픽이다.
+            if (cameras.isEmpty() &&
+                budget == DiscoveryBudget.UserInitiated &&
+                wifiHelper.isHotspotEnabled() &&
+                subnetSweepSource.isAvailable()
+            ) {
+                Log.i(TAG, "mDNS/SSDP 0건 - 서브넷 스윕 자동 폴백 (폰 핫스팟)")
+                return sweepSubnetLocked(SubnetSweepDiscoverySource.DEFAULT_BUDGET_MS)
+            }
             cameras
         } catch (ce: kotlinx.coroutines.CancellationException) {
             // 협력 취소는 반드시 전파 — 삼키면 취소가 "검색 결과 0건"으로 위장되고,
@@ -273,19 +289,27 @@ internal class PtpipDiscoveryCoordinator(
             Log.d(TAG, "세션 점유 중 - 서브넷 스윕 건너뜀")
             return _discoveredCameras.value
         }
-        return discoveryMutex.withLock {
-            val found = subnetSweepSource.sweep(budgetMs)
-            val merged = PtpipDiscoveryService.mergeCandidates(_discoveredCameras.value, found)
-            _discoveredCameras.value = merged
-            Log.i(TAG, "서브넷 스윕 병합 완료: 신규 ${found.size}건 → 총 ${merged.size}건")
+        return discoveryMutex.withLock { sweepSubnetLocked(budgetMs) }
+    }
 
-            // 이름·제조사 신호가 없는 스윕 후보를 Init 프로브로 식별해 제조사 승격.
-            val identified = identifyUnknownSweepCandidates(merged)
-            if (identified !== merged) {
-                _discoveredCameras.value = identified
-            }
-            identified
+    /**
+     * [sweepSubnet]의 뮤텍스 안쪽 코어.
+     *
+     * [discoverCamerasLocked]의 자동 폴백도 이걸 부른다 — 그쪽은 이미 [discoveryMutex] 안이라
+     * [sweepSubnet]을 부르면 비재진입 Mutex에 그대로 데드락이다.
+     */
+    private suspend fun sweepSubnetLocked(budgetMs: Long): List<PtpipCamera> {
+        val found = subnetSweepSource.sweep(budgetMs)
+        val merged = PtpipDiscoveryService.mergeCandidates(_discoveredCameras.value, found)
+        _discoveredCameras.value = merged
+        Log.i(TAG, "서브넷 스윕 병합 완료: 신규 ${found.size}건 → 총 ${merged.size}건")
+
+        // 이름·제조사 신호가 없는 스윕 후보를 Init 프로브로 식별해 제조사 승격.
+        val identified = identifyUnknownSweepCandidates(merged)
+        if (identified !== merged) {
+            _discoveredCameras.value = identified
         }
+        return identified
     }
 
     /**

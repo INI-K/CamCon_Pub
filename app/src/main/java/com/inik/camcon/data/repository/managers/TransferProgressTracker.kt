@@ -20,7 +20,10 @@ import javax.inject.Singleton
  *
  * 처리율(요구 D): [markDownloading] 시각과 [markProcessing] 시 넘어온 바이트 수로 파일별 순간
  * 처리율(B/s)을 구하고 EMA(지수이동평균)로 완만화해 [TransferQueueState.speedBytesPerSec] 로 노출한다.
- * 큐가 완전히 비면(idle) 이동평균을 0 으로 리셋해 다음 세션이 이전 속도를 이어받지 않게 한다.
+ * 큐가 완전히 비면(idle) EMA 는 0 으로 리셋하되(다음 세션이 이전 속도에 오염되지 않게),
+ * **표시값은 마지막 측정 속도를 유지**한다 — 전송이 끝나는 순간 상단바 속도 칩이 사라지면
+ * 사용자가 방금 전송이 얼마나 빨랐는지 확인할 수 없다(사용자 요구 2026-08-18). 표시값은
+ * [clear]\(연결 해제·리스너 정지\) 시에만 사라진다.
  *
  * 스레드 안전: 네이티브 콜백 스레드/IO 디스패처 등 여러 스레드에서 호출되므로
  * [lock] 으로 [stages] 갱신과 재계산을 원자적으로 수행한다.
@@ -55,8 +58,40 @@ class TransferProgressTracker(
     // 처리율 이동평균(B/s). 측정값이 없으면 0.
     private var speedEmaBps = 0.0
 
+    // 마지막 측정 속도(B/s) — 큐가 비어도 표시용으로 유지. clear() 에서만 소멸.
+    private var lastSpeedBps = 0.0
+
+    // 네이티브 실측 전송시간이 이미 반영된 파일명. markProcessing 의 시계-창 계산이
+    // 배관 지연(~20ms → 550MB/s 오표시)으로 실측을 덮어쓰지 않게 막는다.
+    private val authoritativeSpeedFiles = LinkedHashSet<String>()
+
     private val _state = MutableStateFlow(TransferQueueState())
     val state: StateFlow<TransferQueueState> = _state.asStateFlow()
+
+    /**
+     * 네이티브가 실측한 전송시간으로 처리율을 반영한다(소니 PTP/IP 인라인 다운로드 경로).
+     *
+     * wire 전송이 wait_for_event 내부에서 끝나는 경로는 markDownloading→markProcessing 창이
+     * 콜백 배관 지연만 재므로, 네이티브의 wait+download 합산 창을 정본으로 쓴다. 이 호출이
+     * 있었던 파일은 [markProcessing] 의 창 기반 갱신을 건너뛴다(이중 반영 방지).
+     */
+    fun recordTransferDuration(fileName: String, bytes: Long, durationMs: Long) {
+        if (bytes <= 0 || durationMs <= 0) return
+        synchronized(lock) {
+            val instantBps = bytes.toDouble() * 1000.0 / durationMs
+            speedEmaBps =
+                if (speedEmaBps <= 0.0) instantBps
+                else EMA_ALPHA * instantBps + (1 - EMA_ALPHA) * speedEmaBps
+            lastSpeedBps = speedEmaBps
+            authoritativeSpeedFiles.add(fileName)
+            // 상한 초과 시 가장 오래된 항목 제거(markProcessing 미도달 파일의 영구 누적 방지)
+            if (authoritativeSpeedFiles.size > 512) {
+                val it = authoritativeSpeedFiles.iterator()
+                it.next(); it.remove()
+            }
+            recompute()
+        }
+    }
 
     /** 파일 바이트 수신 시작(외부 셔터 촬영 감지 시점). */
     fun markDownloading(fileName: String) {
@@ -82,13 +117,18 @@ class TransferProgressTracker(
             stages[fileName] = Stage.PROCESSING
 
             // 처리율 갱신 — 다운로드(수신) 구간 = markDownloading ~ 지금.
+            // 단 네이티브 실측(recordTransferDuration)이 이미 반영된 파일은 건너뛴다 —
+            // 이 창은 그 경로에선 배관 지연이라 550MB/s 급 오표시를 만든다.
             val startMs = downloadStartMs.remove(fileName)
-            if (startMs != null && downloadedBytes > 0) {
+            if (authoritativeSpeedFiles.remove(fileName)) {
+                // no-op: 실측 반영 완료
+            } else if (startMs != null && downloadedBytes > 0) {
                 val elapsedMs = (clock.millis() - startMs).coerceAtLeast(1L)
                 val instantBps = downloadedBytes.toDouble() * 1000.0 / elapsedMs
                 speedEmaBps =
                     if (speedEmaBps <= 0.0) instantBps
                     else EMA_ALPHA * instantBps + (1 - EMA_ALPHA) * speedEmaBps
+                lastSpeedBps = speedEmaBps
             }
             recompute()
         }
@@ -117,7 +157,9 @@ class TransferProgressTracker(
         synchronized(lock) {
             stages.clear()
             downloadStartMs.clear()
+            authoritativeSpeedFiles.clear()
             speedEmaBps = 0.0
+            lastSpeedBps = 0.0
             recompute()
         }
     }
@@ -131,7 +173,8 @@ class TransferProgressTracker(
         val current = stages.entries.lastOrNull { it.value == Stage.PROCESSING }?.key
             ?: stages.entries.lastOrNull { it.value == Stage.DOWNLOADING }?.key
 
-        // 큐가 완전히 비면 이동평균을 리셋 — 다음 전송 세션이 이전 속도를 이어받지 않게 한다.
+        // 큐가 완전히 비면 EMA 만 리셋 — 다음 전송 세션이 이전 속도를 이어받지 않게 한다.
+        // 표시값(lastSpeedBps)은 유지: 전송 완료 후에도 속도 칩이 마지막 속도를 계속 보여준다.
         if (downloading == 0 && processing == 0) {
             speedEmaBps = 0.0
         }
@@ -140,7 +183,7 @@ class TransferProgressTracker(
             downloading = downloading,
             processing = processing,
             currentFileName = current,
-            speedBytesPerSec = speedEmaBps.toLong()
+            speedBytesPerSec = (if (speedEmaBps > 0.0) speedEmaBps else lastSpeedBps).toLong()
         )
     }
 }
