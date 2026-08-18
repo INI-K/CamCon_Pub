@@ -82,6 +82,7 @@ function normalizeCameraKey(input) {
     initHeader();
     initBeforeAfter();
     initFilmPicker();
+    initColorTransfer();
   });
 
   /* ══════════════ before/after slider ══════════════ */
@@ -175,6 +176,71 @@ function normalizeCameraKey(input) {
         sw.addEventListener("pointerleave", function () { clearTimeout(hoverTimer); });
       })(swatches[i]);
     }
+  }
+
+  /* ══════════════ color transfer → reference × intensity ══════════════ */
+  function initColorTransfer() {
+    var result = document.getElementById("ctResult");
+    var refImg = document.getElementById("ctRef");
+    var range = document.getElementById("ctIntensity");
+    var out = document.getElementById("ctIntensityOut");
+    if (!result || !refImg || !range || !out) return;
+
+    /* 0 은 렌더하지 않는다 — 강도 0 = 원본 그대로라서 ct-target 을 그대로 쓰면 된다.
+       이 배열과 단계값은 render_color_transfer.py 의 INTENSITIES 와 짝이다. */
+    var STEPS = [0, 35, 70, 100];
+    var TARGET = "assets/color/ct-target.webp";
+    var ref = "fjord";
+    var swatches = document.querySelectorAll(".ct-swatch[data-ref]");
+    var paletteEl = document.getElementById("ctPalette");
+    var palettes = null;
+
+    function srcFor(step) {
+      return step === 0 ? TARGET : "assets/color/ct-after-" + ref + "-" + step + ".webp";
+    }
+
+    function render() {
+      var step = STEPS[+range.value] || 0;
+      result.src = srcFor(step);
+      out.textContent = step + "%";
+    }
+
+    /* 대표색은 렌더러가 뽑아 palette.json 에 넣는다. 못 받아오면 띠만 비고 레이아웃은 그대로다. */
+    function paintPalette() {
+      if (!paletteEl || !palettes || !palettes[ref]) return;
+      paletteEl.textContent = "";
+      palettes[ref].forEach(function (hex, i) {
+        var li = document.createElement("li");
+        li.style.background = hex;
+        li.style.animationDelay = i * 45 + "ms";
+        paletteEl.appendChild(li);
+      });
+    }
+
+    fetch("assets/color/palette.json")
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { palettes = d; paintPalette(); })
+      .catch(function () { /* 팔레트는 부가 정보다 — 실패해도 섹션은 온전히 동작한다 */ });
+
+    range.addEventListener("input", render);
+
+    for (var i = 0; i < swatches.length; i++) {
+      (function (sw) {
+        sw.addEventListener("click", function () {
+          ref = sw.getAttribute("data-ref");
+          refImg.src = "assets/color/ct-ref-" + ref + ".webp";
+          for (var j = 0; j < swatches.length; j++) {
+            var on = swatches[j] === sw;
+            swatches[j].classList.toggle("is-active", on);
+            swatches[j].setAttribute("aria-pressed", on ? "true" : "false");
+          }
+          paintPalette();
+          render();
+        });
+      })(swatches[i]);
+    }
+
+    render();
   }
 
   /* ══════════════ header scrolled state ══════════════ */
