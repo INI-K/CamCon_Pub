@@ -19,7 +19,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -179,7 +179,9 @@ fun TopControlsBar(
                         }
                     }
 
-                    // 설정 버튼 — M3 기본 터치 타깃(48dp) 복원
+                    // 카메라 촬영 설정(ISO/셔터/조리개/WB 시트) 버튼 — M3 기본 터치 타깃(48dp).
+                    // 아이콘은 Tune(조절 슬라이더): 하단 탭의 앱 설정(톱니)과 같은 모양이면
+                    // "설정이 왜 두 개냐"는 혼란을 부른다(사용자 지적 2026-08-18).
                     Surface(
                         color = Surface2,
                         shape = CircleShape,
@@ -190,8 +192,8 @@ fun TopControlsBar(
                             modifier = Modifier.size(TouchTarget.lg)
                         ) {
                             Icon(
-                                Icons.Default.Settings,
-                                contentDescription = stringResource(R.string.settings),
+                                Icons.Default.Tune,
+                                contentDescription = stringResource(R.string.camera_settings),
                                 tint = TextPrimaryV2,
                                 modifier = Modifier.size(20.dp)
                             )
