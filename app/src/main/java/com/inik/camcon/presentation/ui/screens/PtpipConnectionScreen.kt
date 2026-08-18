@@ -775,39 +775,42 @@ fun PtpipConnectionScreen(
                 )
             }
 
-            // 탭 행
-            TabRow(
-                selectedTabIndex = pagerState.currentPage,
-                containerColor = Surface2,
-                contentColor = TextPrimaryV2,
-                indicator = { tabPositions ->
-                    if (pagerState.currentPage < tabPositions.size) {
-                        TabRowDefaults.SecondaryIndicator(
-                            Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage]),
-                            color = Accent
-                        )
-                    }
-                }
-            ) {
-                tabTitles.forEachIndexed { index, title ->
-                    Tab(
-                        selected = pagerState.currentPage == index,
-                        onClick = {
-                            scope.launch {
-                                pagerState.animateScrollToPage(index)
-                            }
-                        },
-                        text = {
-                            Text(
-                                title,
-                                color = if (pagerState.currentPage == index)
-                                    Accent
-                                else
-                                    TextSecondaryV2,
-                                style = Caption
+            // 탭 행 — 탭이 1개뿐이면(현행 staOnly: 폰 핫스팟 단독) 탭바 자체가 무의미한
+            // 장식이라 그리지 않는다(전면 정리 2026-08-18). 모드가 다시 늘어나면 자동 복원.
+            if (tabTitles.size > 1) {
+                TabRow(
+                    selectedTabIndex = pagerState.currentPage,
+                    containerColor = Surface2,
+                    contentColor = TextPrimaryV2,
+                    indicator = { tabPositions ->
+                        if (pagerState.currentPage < tabPositions.size) {
+                            TabRowDefaults.SecondaryIndicator(
+                                Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage]),
+                                color = Accent
                             )
                         }
-                    )
+                    }
+                ) {
+                    tabTitles.forEachIndexed { index, title ->
+                        Tab(
+                            selected = pagerState.currentPage == index,
+                            onClick = {
+                                scope.launch {
+                                    pagerState.animateScrollToPage(index)
+                                }
+                            },
+                            text = {
+                                Text(
+                                    title,
+                                    color = if (pagerState.currentPage == index)
+                                        Accent
+                                    else
+                                        TextSecondaryV2,
+                                    style = Caption
+                                )
+                            }
+                        )
+                    }
                 }
             }
 

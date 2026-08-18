@@ -199,6 +199,8 @@
 
     <!-- 빈 상태 -->
     <string name="no_photos">Sin fotos</string>
+    <string name="preview_card_browse_unsupported_title">Exploración de tarjeta no disponible</string>
+    <string name="preview_card_browse_unsupported_desc">Esta cámara no permite acceder a la tarjeta de memoria durante el control remoto.\nLas fotos que tomes se reciben automáticamente y se guardan en la galería.\nPara explorar la tarjeta, cambia el modo de conexión USB de la cámara a MTP y conéctala por USB (el disparo remoto no estará disponible).</string>
     <string name="connect_camera_and_capture">Conecta tu cámara via USB\ny captura fotos</string>
     <string name="check_camera_connection">• Verifica si la cámara está conectada\n• Desliza hacia abajo para actualizar</string>
     <string name="image_load_failed">No se puede cargar la imagen</string>

@@ -199,6 +199,8 @@
 
     <!-- 빈 상태 -->
     <string name="no_photos">写真がありません</string>
+    <string name="preview_card_browse_unsupported_title">カード内の閲覧非対応</string>
+    <string name="preview_card_browse_unsupported_desc">このカメラはリモート制御中のメモリーカードへのアクセスを許可していません。\n撮影した写真は自動で受信され、ギャラリーに保存されます。\nカード内の写真を見るには、カメラのUSB接続設定をMTPに変更してUSBで接続してください（リモート撮影は使用できません）。</string>
     <string name="connect_camera_and_capture">USB経由でカメラを接続し\n写真を撮影してください</string>
     <string name="check_camera_connection">• カメラが接続されているか確認してください\n• 下にスワイプして更新</string>
     <string name="image_load_failed">画像を読み込めません</string>
