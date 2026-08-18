@@ -165,6 +165,7 @@ class PhotoPreviewViewModel @Inject constructor(
     val photos = photoListManager.filteredPhotos
     val allPhotos = photoListManager.allPhotos
     val isLoadingPhotos = photoListManager.isLoading
+    val isStorageUnsupported = photoListManager.isStorageUnsupported
     val isLoadingMorePhotos = photoListManager.isLoadingMore
     val hasNextPage = photoListManager.hasNextPage
     val currentFilter = photoListManager.currentFilter
@@ -430,8 +431,16 @@ class PhotoPreviewViewModel @Inject constructor(
 
         errorObserveJob = viewModelScope.launch {
             errorHandlingManager.errorEvent.collect { errorEvent ->
-                emitError(errorEvent.message)
-                Log.e(TAG, "에러 이벤트 수신: ${errorEvent.type} - ${errorEvent.message}")
+                // LOW = 재시도가 무의미한 안내성 이벤트(예: 소니 PC리모트의 카드 탐색 미지원).
+                // 에러 토스트로 올리면 '재시도' 버튼이 같은 실패를 반복 유도한다(실측: 연타로
+                // 목록 조회 11회) → 자동 소멸 안내 토스트로 구분 표시.
+                if (errorEvent.severity == com.inik.camcon.domain.manager.ErrorSeverity.LOW) {
+                    emitInfo(errorEvent.message)
+                    Log.i(TAG, "안내 이벤트 수신: ${errorEvent.type} - ${errorEvent.message}")
+                } else {
+                    emitError(errorEvent.message)
+                    Log.e(TAG, "에러 이벤트 수신: ${errorEvent.type} - ${errorEvent.message}")
+                }
             }
         }
     }

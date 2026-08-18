@@ -75,6 +75,12 @@ class PhotoListManager @Inject constructor(
     private val _hasNextPage = MutableStateFlow(false)
     val hasNextPage: StateFlow<Boolean> = _hasNextPage.asStateFlow()
 
+    // 카드 탐색 미지원 세션(Sony PC리모트: 원격 중 카드 접근 불가 — 펌웨어 설계).
+    // true면 미리보기 탭이 일반 빈 상태 대신 전용 안내(무선 불가·USB+MTP 경로)를 그린다.
+    // 매 로드 시도 시작에 리셋 → 미지원 판정 시 다시 세팅 (재연결/기종 교체 자동 반영).
+    private val _isStorageUnsupported = MutableStateFlow(false)
+    val isStorageUnsupported: StateFlow<Boolean> = _isStorageUnsupported.asStateFlow()
+
     // 필터 상태
     private val _currentFilter = MutableStateFlow(FileTypeFilter.JPG)
     val currentFilter: StateFlow<FileTypeFilter> = _currentFilter.asStateFlow()
@@ -121,6 +127,7 @@ class PhotoListManager @Inject constructor(
             try {
                 _currentPage.value = 0
                 _allPhotos.value = emptyList()
+                _isStorageUnsupported.value = false
 
                 Log.d(TAG, "현재 카메라 연결 상태: $isConnected")
 
@@ -157,6 +164,15 @@ class PhotoListManager @Inject constructor(
                     },
                     onFailure = { exception ->
                         if (isManagerActive) {
+                            // 저장소 미노출(Sony PC리모트: 원격 중 카드 접근 불가) — 재시도
+                            // 무의미. 토스트 대신 전용 안내 상태(isStorageUnsupported)로 표시
+                            // (팝업/토스트는 놓치기 쉬워 사용자 결정 2026-08-18: 상시 안내 채택).
+                            if (exception is UnsupportedOperationException) {
+                                Log.i(TAG, "카드 탐색 미지원 세션 — 전용 안내 상태로 처리")
+                                _hasNextPage.value = false
+                                _isStorageUnsupported.value = true
+                                return@fold
+                            }
                             Log.e(TAG, "사진 목록 불러오기 실패", exception)
                             val errorMessage =
                                 errorHandlingManager.handleFileError(exception, "사진 목록 로딩")
@@ -225,6 +241,13 @@ class PhotoListManager @Inject constructor(
                     },
                     onFailure = { exception ->
                         if (isManagerActive) {
+                            // 저장소 미노출 세션(위 loadInitialPhotos와 동일) — 조용히 종료.
+                            if (exception is UnsupportedOperationException) {
+                                Log.i(TAG, "카드 탐색 미지원 세션 — 추가 페이지 없음 처리")
+                                _hasNextPage.value = false
+                                _isStorageUnsupported.value = true
+                                return@fold
+                            }
                             Log.e(TAG, "loadNextPage 실패", exception)
                             val errorMessage =
                                 errorHandlingManager.handleFileError(exception, "추가 사진 로딩")
