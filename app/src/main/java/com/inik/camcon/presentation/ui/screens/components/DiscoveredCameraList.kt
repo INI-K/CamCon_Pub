@@ -102,12 +102,17 @@ fun DiscoveredCameraList(
 
         if (isolated.isNotEmpty()) {
             Spacer(modifier = Modifier.height(Spacing.md))
-            Text(
-                text = stringResource(R.string.ptpip_manual_source_hint),
-                style = BodySmall,
-                color = TextSecondaryV2
-            )
-            Spacer(modifier = Modifier.height(Spacing.sm))
+            // "공용 네트워크일 수 있습니다" 경고는 공유망에서만 성립 — 폰 핫스팟(단독 링크)에선
+            // 서브넷의 모든 기기가 본인 핫스팟 접속 기기라 경고가 오히려 불안만 조성한다
+            // (전면 정리 2026-08-18). 격리 후보의 탭 시 확인 다이얼로그는 신뢰망에서도 유지된다.
+            if (trust != NetworkTrust.TRUSTED_DIRECT_LINK) {
+                Text(
+                    text = stringResource(R.string.ptpip_manual_source_hint),
+                    style = BodySmall,
+                    color = TextSecondaryV2
+                )
+                Spacer(modifier = Modifier.height(Spacing.sm))
+            }
             isolated.forEach { candidate ->
                 CandidateRow(
                     candidate = candidate,

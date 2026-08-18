@@ -1010,15 +1010,18 @@ private fun PortraitCameraLayout(
         }
 
         // CINE 노출 스트립 — 모니터 '아래' 독립 행(목업 순서: 모니터 → 노출 → 파이프라인).
-        // 라이브뷰 ON/OFF 모두 같은 위치에 표시하고, 값은 마지막 판독(uiState.cameraSettings) 유지.
+        // 라이브뷰 활성 중에만 표시(사용자 결정 2026-08-18): LV 가 꺼지거나 끊긴 뒤에도
+        // 마지막 판독값이 남아 있으면 죽은 값(스테일)을 실측처럼 보여줘 혼란만 준다.
         // 6칼럼 균등(fullWidth) + 상하 헤어라인은 LiveViewExposureStrip 내부가 그린다.
         // 판독값이 하나도 없으면(초기/미연결) 내부에서 스스로 렌더를 생략한다.
-        uiState.cameraSettings?.let { s ->
-            LiveViewExposureStrip(
-                settings = s,
-                fullWidth = true,
-                modifier = Modifier.background(Surface0)
-            )
+        if (uiState.isLiveViewActive) {
+            uiState.cameraSettings?.let { s ->
+                LiveViewExposureStrip(
+                    settings = s,
+                    fullWidth = true,
+                    modifier = Modifier.background(Surface0)
+                )
+            }
         }
 
         // CINE 하단 = 이미지 파이프라인 패널. 셔터 버튼·촬영 모드 행은 이 화면 UI에서만 제거

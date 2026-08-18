@@ -199,6 +199,8 @@
 
     <!-- 빈 상태 -->
     <string name="no_photos">Pas de photos</string>
+    <string name="preview_card_browse_unsupported_title">Parcours de la carte indisponible</string>
+    <string name="preview_card_browse_unsupported_desc">Cet appareil n\'autorise pas l\'accès à la carte mémoire pendant le contrôle à distance.\nLes photos prises sont reçues automatiquement et enregistrées dans la galerie.\nPour parcourir la carte, réglez le mode de connexion USB de l\'appareil sur MTP et connectez-le en USB (la prise de vue à distance sera indisponible).</string>
     <string name="connect_camera_and_capture">Connectez votre appareil photo via USB\net capturez des photos</string>
     <string name="check_camera_connection">• Vérifiez si l\'appareil photo est connecté\n• Balayez vers le bas pour actualiser</string>
     <string name="image_load_failed">Impossible de charger l\'image</string>

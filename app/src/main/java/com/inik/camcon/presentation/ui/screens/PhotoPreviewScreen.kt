@@ -120,6 +120,7 @@ fun PhotoPreviewScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val photos by viewModel.photos.collectAsStateWithLifecycle()
+    val isStorageUnsupported by viewModel.isStorageUnsupported.collectAsStateWithLifecycle()
     val isLoadingPhotos by viewModel.isLoadingPhotos.collectAsStateWithLifecycle()
     val isLoadingMore by viewModel.isLoadingMorePhotos.collectAsStateWithLifecycle()
     val hasNextPage by viewModel.hasNextPage.collectAsStateWithLifecycle()
@@ -200,6 +201,8 @@ fun PhotoPreviewScreen(
 
                     !uiState.isConnected && !isPtpipConnected -> CameraDisconnectedState()
                     isLoadingPhotos && photos.isEmpty() -> PhotoSkeletonGrid()
+                    // 카드 탐색 미지원 세션(Sony PC리모트) — 일반 빈 상태 대신 이유+해결 경로 상시 안내
+                    photos.isEmpty() && isStorageUnsupported -> CardBrowsingUnsupportedState()
                     photos.isEmpty() -> EmptyPhotosV2()
                     else -> Column(modifier = Modifier.fillMaxSize()) {
                         PhotoGrid(
@@ -676,6 +679,24 @@ private fun CameraDisconnectedState() {
             icon = Icons.Outlined.CameraAlt,
             title = stringResource(R.string.photo_preview_camera_not_connected),
             description = stringResource(R.string.photo_preview_connect_usb)
+        )
+    }
+}
+
+/**
+ * 카드 탐색 미지원 세션 안내 (Sony PC리모트: 원격 중 카드 접근이 펌웨어 설계상 불가).
+ * 토스트는 놓치기 쉬워 빈 화면 자리에 이유와 해결 경로(USB+MTP)를 상시 표시한다.
+ */
+@Composable
+private fun CardBrowsingUnsupportedState() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        EmptyState(
+            icon = Icons.Outlined.PhotoLibrary,
+            title = stringResource(R.string.preview_card_browse_unsupported_title),
+            description = stringResource(R.string.preview_card_browse_unsupported_desc)
         )
     }
 }

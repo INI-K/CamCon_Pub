@@ -4,7 +4,9 @@ import android.content.Context
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.defaultMinSize
@@ -18,6 +20,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -58,9 +62,10 @@ import com.inik.camcon.presentation.theme.BodySmall
 import com.inik.camcon.presentation.theme.DisplayL
 import com.inik.camcon.presentation.theme.HeadingM
 import com.inik.camcon.presentation.theme.IconSize
-import com.inik.camcon.presentation.theme.MicroLabel
 import com.inik.camcon.presentation.theme.MonoReadout
+import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.SuccessV2
 import com.inik.camcon.presentation.theme.TextPrimaryV2
 import com.inik.camcon.presentation.theme.TextSecondaryV2
 import com.inik.camcon.presentation.theme.TouchTarget
@@ -215,9 +220,14 @@ fun HotspotStaModeContent(
 }
 
 /**
- * 핫스팟 상태 히어로 — 카드 테두리 없이 좌측 앵커 대형 아이콘 + DisplayL 상태 텍스트.
- * 꺼짐: 안내 문구 + 테더링 설정 열기 버튼. 켜짐: SSID/Gateway 모노 판독 행.
+ * 핫스팟 상태 표시 (전면 정리 2026-08-18, 사용자 결정).
  *
+ * 켜짐: 컴팩트 상태 밴드(틴트 사각 아이콘 + 상태 텍스트 + 성공 점) 한 줄 — 상태는 확인만
+ * 하면 되는 정보라 화면 절반을 차지하던 대형 히어로(64dp 아이콘 + 34sp + SSID/GATEWAY
+ * 판독)를 걷어냈다. SSID는 위치권한 없으면 "<unknown ssid>" 원시값이 노출되고 GATEWAY는
+ * 사용자에게 무의미한 디버그 정보라 함께 제거. 주인공은 아래 [카메라 검색] 액션이다.
+ *
+ * 꺼짐: 이 화면의 유일한 선행 조건이므로 대형 히어로 유지(아이콘 + 안내 + 설정 열기 버튼).
  * Android 정책상 일반 앱은 표준 모바일 핫스팟을 코드로 직접 켤 수 없으므로
  * (TETHER_PRIVILEGED = signature 권한) 설정 화면으로 사용자를 안내한다.
  */
@@ -227,41 +237,64 @@ private fun HotspotStatusHero(
     onOpenSettings: () -> Unit
 ) {
     val enabled = state.status == HotspotStaContentState.HotspotStatus.ENABLED
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = Spacing.xl, bottom = Spacing.sm),
-        horizontalAlignment = Alignment.Start
-    ) {
-        // 히어로 대형 아이콘 — 기존 히어로 선례(Onboarding 72dp 등) 관례상 치수 하드코딩
-        Icon(
-            imageVector = if (enabled) Icons.Filled.Wifi else Icons.Filled.WifiOff,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(64.dp)
-        )
-        Spacer(modifier = Modifier.height(Spacing.md))
-        // 화면 Hero — 이 탭의 존재 이유(핫스팟 ON/OFF)를 34sp로 선언한다.
-        // 본문 Body(14sp) 대비 2.4배라 위계가 크기만으로 전달된다.
-        Text(
-            text = stringResource(
-                if (enabled) R.string.ptpip_hotspot_enabled
-                else R.string.ptpip_hotspot_disabled
-            ),
-            style = DisplayL,
-            color = if (enabled) TextPrimaryV2 else TextSecondaryV2,
-            textAlign = TextAlign.Start,
-            modifier = Modifier.fillMaxWidth()
-        )
-        if (enabled) {
+    if (enabled) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = Spacing.md),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                        RoundedCornerShape(Radius.md)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Wifi,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(IconSize.md)
+                )
+            }
+            Spacer(modifier = Modifier.width(Spacing.md))
+            Text(
+                text = stringResource(R.string.ptpip_hotspot_enabled),
+                style = HeadingM,
+                color = TextPrimaryV2,
+                modifier = Modifier.weight(1f)
+            )
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .background(SuccessV2, CircleShape)
+            )
+        }
+    } else {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = Spacing.xl, bottom = Spacing.sm),
+            horizontalAlignment = Alignment.Start
+        ) {
+            // 히어로 대형 아이콘 — 기존 히어로 선례(Onboarding 72dp 등) 관례상 치수 하드코딩
+            Icon(
+                imageVector = Icons.Filled.WifiOff,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(64.dp)
+            )
             Spacer(modifier = Modifier.height(Spacing.md))
-            state.ssidLabel?.let {
-                HotspotReadoutRow(label = "SSID", value = it)
-            }
-            state.gatewayLabel?.let {
-                HotspotReadoutRow(label = "GATEWAY", value = it)
-            }
-        } else {
+            Text(
+                text = stringResource(R.string.ptpip_hotspot_disabled),
+                style = DisplayL,
+                color = TextSecondaryV2,
+                textAlign = TextAlign.Start,
+                modifier = Modifier.fillMaxWidth()
+            )
             Spacer(modifier = Modifier.height(Spacing.sm))
             Text(
                 text = stringResource(R.string.ptpip_hotspot_hero_hint),
@@ -277,36 +310,6 @@ private fun HotspotStatusHero(
                 modifier = Modifier.fillMaxWidth()
             )
         }
-    }
-}
-
-/**
- * 히어로 하위 판독값 한 줄 — 좌측 계측기 라벨 / 우측 모노 탭형 수치.
- * 라벨은 대문자 영문 프로토콜 용어(SSID·GATEWAY)라 [MicroLabel] 트래킹 규약에 부합한다.
- */
-@Composable
-private fun HotspotReadoutRow(label: String, value: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = Spacing.xs),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = label,
-            style = MicroLabel,
-            color = TextSecondaryV2
-        )
-        Spacer(modifier = Modifier.width(Spacing.md))
-        Text(
-            text = value,
-            style = MonoReadout,
-            color = TextPrimaryV2,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.End,
-            modifier = Modifier.weight(1f)
-        )
     }
 }
 
@@ -332,7 +335,11 @@ private fun openHotspotSettings(context: Context) {
 }
 
 /**
- * 카메라 연결 섹션 — mDNS 검색(주 액션)과 수동 IP 입력(보조)을 한 영역으로 통합.
+ * 카메라 연결 섹션 (전면 정리 2026-08-18, 사용자 결정).
+ *
+ * 주 액션은 [카메라 검색] 버튼 하나 — 자동 폴백 스윕까지 검색 버튼이 다 하므로 "mDNS" 같은
+ * 프로토콜 용어 섹션 헤더는 제거(버튼 라벨이 곧 설명). 수동 IP 입력은 고급 사용자 전용이라
+ * 접이식 뒤로 내려 첫 화면 밀도를 낮춘다(기본 접힘).
  */
 @Composable
 private fun CameraConnectSection(
@@ -343,13 +350,8 @@ private fun CameraConnectSection(
     onIpChange: (String) -> Unit,
     onConnect: () -> Unit,
 ) {
+    var advancedOpen by rememberSaveable { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = stringResource(R.string.sta_mode_mdns_search),
-            style = HeadingM,
-            color = TextPrimaryV2
-        )
-        Spacer(modifier = Modifier.height(Spacing.md))
         PrimaryButton(
             text = if (isDiscovering) stringResource(R.string.sta_mode_searching)
             else stringResource(R.string.sta_mode_search_camera),
@@ -359,33 +361,57 @@ private fun CameraConnectSection(
             isLoading = isDiscovering,
             modifier = Modifier.fillMaxWidth()
         )
-        Spacer(modifier = Modifier.height(Spacing.lg))
-        Text(
-            text = stringResource(R.string.ptpip_manual_ip_input),
-            style = BodySmall,
-            color = TextSecondaryV2
-        )
-        Spacer(modifier = Modifier.height(Spacing.sm))
-        // 긴 로케일 라벨(fr/de)에서 IP 필드가 좁아지지 않도록 버튼은 아래 별도 행 전폭.
-        // 최대 15자 IPv4라 전폭이 낭비 — 내용 길이에 맞춰 폭을 끊어 전폭 스택에 리듬을 준다.
-        OutlinedTextField(
-            value = manualIp,
-            onValueChange = onIpChange,
-            enabled = enabled,
-            singleLine = true,
-            textStyle = MonoReadout,
-            placeholder = {
-                Text("192.168.49.137", style = MonoReadout, color = TextSecondaryV2)
-            },
-            modifier = Modifier.widthIn(max = 220.dp)
-        )
-        Spacer(modifier = Modifier.height(Spacing.sm))
-        SecondaryButton(
-            text = stringResource(R.string.ptpip_connect_with_ip),
-            onClick = onConnect,
-            enabled = enabled && manualIp.isNotBlank(),
-            modifier = Modifier.fillMaxWidth()
-        )
+        Spacer(modifier = Modifier.height(Spacing.md))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .defaultMinSize(minHeight = TouchTarget.min)
+                .clickable(role = Role.Button) { advancedOpen = !advancedOpen }
+                .padding(vertical = Spacing.xs),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = if (advancedOpen) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                contentDescription = null,
+                tint = TextSecondaryV2,
+                modifier = Modifier.size(IconSize.md)
+            )
+            Spacer(modifier = Modifier.width(Spacing.sm))
+            Text(
+                text = stringResource(R.string.ptpip_manual_ip_input),
+                style = BodySmall,
+                color = TextSecondaryV2
+            )
+        }
+        AnimatedVisibility(visible = advancedOpen) {
+            Column(
+                modifier = Modifier.padding(
+                    start = IconSize.md + Spacing.sm,
+                    top = Spacing.xs
+                )
+            ) {
+                // 긴 로케일 라벨(fr/de)에서 IP 필드가 좁아지지 않도록 버튼은 아래 별도 행 전폭.
+                // 최대 15자 IPv4라 전폭이 낭비 — 내용 길이에 맞춰 폭을 끊어 전폭 스택에 리듬을 준다.
+                OutlinedTextField(
+                    value = manualIp,
+                    onValueChange = onIpChange,
+                    enabled = enabled,
+                    singleLine = true,
+                    textStyle = MonoReadout,
+                    placeholder = {
+                        Text("192.168.49.137", style = MonoReadout, color = TextSecondaryV2)
+                    },
+                    modifier = Modifier.widthIn(max = 220.dp)
+                )
+                Spacer(modifier = Modifier.height(Spacing.sm))
+                SecondaryButton(
+                    text = stringResource(R.string.ptpip_connect_with_ip),
+                    onClick = onConnect,
+                    enabled = enabled && manualIp.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
     }
 }
 
