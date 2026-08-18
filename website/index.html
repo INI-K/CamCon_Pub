@@ -45,7 +45,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="assets/css/style.css?v=20260817a">
+  <link rel="stylesheet" href="assets/css/style.css?v=20260818b">
   <link rel="stylesheet" media="print" onload="this.media='all';this.onload=null" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap"></noscript>
 
@@ -279,10 +279,10 @@
             <h3 data-i18n="feat.live.t">라이브뷰 원격 제어</h3>
             <p data-i18n="feat.live.d">실시간 프리뷰를 보며 ISO·셔터·조리개·화이트밸런스를 조작합니다. 화질은 속도·균형·품질 3단계.</p>
           </article>
-          <article class="feat reveal" data-delay="2">
+          <article class="feat is-soon reveal" data-delay="2">
             <div class="feat-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg></div>
-            <h3 data-i18n="feat.timelapse.t">타임랩스 · 원격 릴리즈</h3>
-            <p data-i18n="feat.timelapse.d">인터벌을 정해두면 무인으로 장시간 촬영. 원격 셔터로 손떨림 없이 릴리즈합니다.</p>
+            <h3><span data-i18n="feat.timelapse.t">타임랩스</span> <span class="badge soon" data-i18n="feat.timelapse.badge">준비 중</span></h3>
+            <p data-i18n="feat.timelapse.d">인터벌을 정해 무인으로 장시간 촬영하는 기능을 준비하고 있습니다. 지금 촬영은 한 장씩 원격 셔터로 이뤄집니다.</p>
           </article>
         </div>
       </div>
@@ -340,6 +340,57 @@
       <img class="showcase-img" src="assets/film/band-fjord.webp" alt="CamCon 필름 시뮬레이션이 적용된 사진 예시" data-i18n-attr="alt" data-i18n="a11y.showcaseAlt" loading="lazy" decoding="async" width="2000" height="858">
     </section>
     <p class="showcase-cap" data-i18n="films.showcaseCap">적용 필름: Classic Chrome</p>
+
+    <!-- ══════════════ COLOR TRANSFER ══════════════ -->
+    <!-- 예시 이미지는 앱과 같은 MKL 연산으로 렌더한 것. 갱신: website/tools/render_color_transfer.py -->
+    <section class="section section-alt" id="color">
+      <div class="wrap">
+        <header class="section-head center reveal">
+          <h2 class="section-title" data-i18n="color.title">사진 한 장이 곧 <span class="accent">프리셋</span>이 됩니다</h2>
+          <p class="section-lead" data-i18n="color.lead">마음에 드는 사진에서 색 분포를 통계로 뽑아 내 사진에 옮깁니다. 카탈로그에 없는 색도 레퍼런스 한 장이면 따라갑니다.</p>
+        </header>
+
+        <!-- 비대칭 2열: 왼쪽은 색의 출처(레퍼런스), 오른쪽은 결론(결과). 균등 3열은 §9.C 금지. -->
+        <div class="ct reveal">
+          <aside class="ct-source">
+            <figure class="ct-ref">
+              <img id="ctRef" src="assets/color/ct-ref-fjord.webp" alt="색을 가져올 레퍼런스 사진" data-i18n-attr="alt" data-i18n="color.refAlt" width="640" height="426" loading="lazy" decoding="async">
+              <figcaption data-i18n="color.stepRef">레퍼런스</figcaption>
+            </figure>
+
+            <!-- 사진에서 실제로 추출한 대표색(render_color_transfer.py). 장식 도트가 아니라 값이다. -->
+            <p class="ct-palette-label" data-i18n="color.palette">옮겨오는 색</p>
+            <ul class="ct-palette" id="ctPalette"></ul>
+
+            <div class="ct-refs" role="group" aria-label="레퍼런스 사진 선택" data-i18n-attr="aria-label" data-i18n="color.refPick">
+              <button type="button" class="ct-swatch is-active" data-ref="fjord" aria-pressed="true"><img src="assets/color/ct-ref-fjord.webp" alt="" width="640" height="426" loading="lazy"><span data-i18n="color.refFjord">피오르</span></button>
+              <button type="button" class="ct-swatch" data-ref="forest" aria-pressed="false"><img src="assets/color/ct-ref-forest.webp" alt="" width="640" height="426" loading="lazy"><span data-i18n="color.refForest">숲</span></button>
+            </div>
+          </aside>
+
+          <div class="ct-result">
+            <div class="ba ct-ba">
+              <div class="ba-frame">
+                <img class="ba-img" id="ctResult" src="assets/color/ct-after-fjord-70.webp" alt="레퍼런스의 색을 옮긴 결과 사진" data-i18n-attr="alt" data-i18n="color.resultAlt" width="1280" height="854" loading="lazy" decoding="async">
+                <div class="ba-before-wrap"><img class="ba-img" src="assets/color/ct-target.webp" alt="색을 입히기 전 원본 사진" data-i18n-attr="alt" data-i18n="color.targetAlt" width="1280" height="854" loading="lazy" decoding="async"></div>
+                <span class="ba-tag ba-tag-l" data-i18n="color.stepTarget">원본</span>
+                <span class="ba-tag ba-tag-r" data-i18n="color.stepResult">결과</span>
+                <div class="ba-divider" aria-hidden="true"><span class="ba-handle"></span></div>
+                <input class="ba-range" type="range" min="0" max="100" value="50" aria-label="손잡이를 드래그해 적용 전후를 비교하세요." data-i18n-attr="aria-label" data-i18n="color.dragHint">
+              </div>
+            </div>
+
+            <label class="ct-intensity">
+              <span class="ct-intensity-label" data-i18n="color.intensity">강도</span>
+              <input type="range" id="ctIntensity" min="0" max="3" step="1" value="2" aria-describedby="ctIntensityOut">
+              <output id="ctIntensityOut" for="ctIntensity">70%</output>
+            </label>
+          </div>
+        </div>
+
+        <p class="films-note reveal" data-i18n="color.note">강도 0%는 원본 그대로, 100%는 레퍼런스의 색 분포에 완전히 맞춥니다. 필름과 마찬가지로 JPG 사본에만 적용되고 RAW 원본은 건드리지 않습니다. <strong>PRO</strong>에서는 필름과 색감을 함께 걸 수 있습니다.</p>
+      </div>
+    </section>
 
     <!-- ══════════════ CAMERAS ══════════════ -->
     <section class="section is-tight" id="cameras">
@@ -568,6 +619,6 @@
     </div>
   </footer>
 
-  <script src="assets/js/main.js?v=20260817a" defer></script>
+  <script src="assets/js/main.js?v=20260818b" defer></script>
 </body>
 </html>
