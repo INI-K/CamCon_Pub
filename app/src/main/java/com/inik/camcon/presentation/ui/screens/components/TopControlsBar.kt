@@ -115,10 +115,11 @@ fun TopControlsBar(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
                 ) {
-                    // 다운로드 속도 헤어라인 칩 — 전송이 활성이고 측정값이 있을 때만(요구 D).
-                    // speedBytesPerSec 는 1024 기반 MB/s 로 환산, 소수 1자리. 비활성/미측정 시 숨김.
+                    // 다운로드 속도 헤어라인 칩 — 측정값이 있으면 표시(요구 D). 전송이 끝나도
+                    // 마지막 속도를 유지한다(사용자 요구 2026-08-18: 완료 즉시 사라지면 확인 불가).
+                    // 값은 연결 해제 시 트래커 clear() 가 0 으로 되돌려 칩이 내려간다.
                     val transfer = uiState.transferQueue
-                    if (transfer.isActive && transfer.speedBytesPerSec > 0) {
+                    if (transfer.speedBytesPerSec > 0) {
                         val mbPerSec = transfer.speedBytesPerSec / (1024.0 * 1024.0)
                         HairlineChip {
                             Text(

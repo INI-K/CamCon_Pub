@@ -716,6 +716,18 @@ class CameraEventManager @Inject constructor(
             override fun onPhotoDownloaded(
                 filePath: String,
                 fileName: String,
+                imageData: ByteArray,
+                transferMs: Long
+            ) {
+                // 네이티브 실측 전송시간(wait_for_event+다운로드 합산 창)을 처리율 정본으로 반영.
+                // 소니 인라인 다운로드는 Kotlin 시계 창이 배관 지연만 재서 550MB/s 오표시(A7C 실측).
+                transferProgressTracker.recordTransferDuration(fileName, imageData.size.toLong(), transferMs)
+                onPhotoDownloaded(filePath, fileName, imageData)
+            }
+
+            override fun onPhotoDownloaded(
+                filePath: String,
+                fileName: String,
                 imageData: ByteArray
             ) {
                 Log.d(

@@ -26,6 +26,13 @@ interface CameraCaptureCallback {
     fun onPhotoDownloaded(filePath: String, fileName: String, imageData: ByteArray)
 
     /**
+     * 실전송시간(ms)을 동반한 다운로드 완료 통지 — 네이티브가 우선 호출하는 4-인자 시그니처.
+     * 기본 구현은 3-인자로 위임하므로 기존 구현체는 수정 불필요. 상세는 LiveViewCallback 문서 참조.
+     */
+    fun onPhotoDownloaded(filePath: String, fileName: String, imageData: ByteArray, transferMs: Long) =
+        onPhotoDownloaded(filePath, fileName, imageData)
+
+    /**
      * 캡처 실패 시 호출
      * @param errorCode 에러 코드
      */

@@ -180,7 +180,12 @@ class ErrorHandlingManager @Inject constructor(
         if (!_errorEvent.tryEmit(errorEvent)) {
             logger.w(TAG, "에러 이벤트 방출 실패(버퍼 포화): $type - $message")
         }
-        logger.e(TAG, "에러 발생: $type - $message", exception)
+        // LOW = 재시도 무의미한 안내성(예: 카드 탐색 미지원) — 스택트레이스 없이 한 줄만.
+        if (severity == ErrorSeverity.LOW) {
+            logger.i(TAG, "안내 발생: $type - $message")
+        } else {
+            logger.e(TAG, "에러 발생: $type - $message", exception)
+        }
     }
 
     /**

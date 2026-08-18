@@ -318,6 +318,13 @@ class NativeCameraDataSource @Inject constructor(
 
             if (json.has("error")) {
                 val error = json.getString("error")
+                // 저장소 미노출(Sony PC리모트 무선 등)은 재시도 무의미한 구조적 미지원 —
+                // 전용 예외로 구분해 상위(PhotoListManager)가 오류 토스트 대신 조용한
+                // 빈 상태로 처리하게 한다(에러 스팸 방지, A7C 실측 2026-08-18).
+                if (error == "storage_not_supported") {
+                    Log.w(TAG, "카메라가 저장소를 노출하지 않음 — 카드 탐색 미지원 세션")
+                    throw UnsupportedOperationException("storage_not_supported")
+                }
                 Log.e(TAG, "카메라 사진 목록 가져오기 오류: $error")
                 throw IllegalStateException("카메라 사진 목록 오류: $error")
             }
@@ -373,6 +380,10 @@ class NativeCameraDataSource @Inject constructor(
             )
 
         } catch (e: CancellationException) {
+            throw e
+        } catch (e: UnsupportedOperationException) {
+            // 구조적 미지원(카드 탐색 불가 세션) — 안내성이라 스택트레이스 없이 전파만.
+            // (스택 포함 E 로그가 계층마다 중복되어 로그 폭탄이 되던 것 정리, 2026-08-18)
             throw e
         } catch (e: Exception) {
             // 인프라 오류를 빈 목록으로 위장하면 갤러리가 무음으로 빈 화면이 된다 —

@@ -199,6 +199,8 @@
 
     <!-- 빈 상태 -->
     <string name="no_photos">没有照片</string>
+    <string name="preview_card_browse_unsupported_title">不支持浏览存储卡</string>
+    <string name="preview_card_browse_unsupported_desc">此相机在遥控期间不允许访问存储卡。\n拍摄的照片会自动接收并保存到图库。\n若要浏览存储卡中的照片，请将相机的USB连接设置改为MTP并通过USB连接（此时无法遥控拍摄）。</string>
     <string name="connect_camera_and_capture">通过USB连接您的相机\n并拍摄照片</string>
     <string name="check_camera_connection">• 检查相机是否已连接\n• 下滑刷新</string>
     <string name="image_load_failed">无法加载图像</string>
