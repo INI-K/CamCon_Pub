@@ -36,15 +36,35 @@ fun parseExifInfo(exifJson: String): Map<String, String> {
 }
 
 /**
+ * EXIF RATIONAL 문자열("500/10")과 십진 문자열("50.0")을 모두 실수로 파싱한다.
+ *
+ * ExifInterface.getAttribute 는 RATIONAL 태그(초점거리·노출시간·조리개)를 계산하지 않고
+ * "분자/분모" 원문 그대로 돌려준다. 이를 toDoubleOrNull 로만 처리하면 파싱이 실패해
+ * 화면에 "500/10" 같은 원시값이 그대로 노출된다(A7C 실측 2026-08-18).
+ */
+private fun parseExifRational(raw: String): Double? {
+    val s = raw.trim()
+    if (s.isEmpty()) return null
+    val slash = s.indexOf('/')
+    if (slash > 0) {
+        val num = s.substring(0, slash).trim().toDoubleOrNull() ?: return null
+        val den = s.substring(slash + 1).trim().toDoubleOrNull() ?: return null
+        if (den == 0.0) return null
+        return num / den
+    }
+    return s.toDoubleOrNull()
+}
+
+/**
  * 노출 시간을 읽기 쉬운 셔터 스피드 표기로 변환 (예: "1/1000s")
  */
 fun formatShutterSpeed(exposureTime: String): String {
     return try {
-        val value = exposureTime.toDoubleOrNull() ?: return exposureTime
+        val value = parseExifRational(exposureTime) ?: return exposureTime
         when {
+            value <= 0.0 -> exposureTime
             value >= 1.0 -> "${value.toInt()}s"
-            value >= 0.5 -> "1/${(1 / value).toInt()}s"
-            else -> "1/${(1 / value).toInt()}s"
+            else -> "1/${Math.round(1 / value)}s"
         }
     } catch (e: Exception) {
         exposureTime
@@ -56,7 +76,7 @@ fun formatShutterSpeed(exposureTime: String): String {
  */
 fun formatAperture(fNumber: String): String {
     return try {
-        val value = fNumber.toDoubleOrNull() ?: return fNumber
+        val value = parseExifRational(fNumber) ?: return fNumber
         "f/${String.format("%.1f", value)}"
     } catch (e: Exception) {
         fNumber
@@ -64,12 +84,14 @@ fun formatAperture(fNumber: String): String {
 }
 
 /**
- * 초점거리를 읽기 쉬운 포맷으로 변환 (예: "50mm")
+ * 초점거리를 읽기 쉬운 포맷으로 변환 (예: "500/10" → "50mm", "16.5" → "16.5mm")
  */
 fun formatFocalLength(focalLength: String): String {
     return try {
-        val value = focalLength.toDoubleOrNull() ?: return focalLength
-        "${value.toInt()}mm"
+        val value = parseExifRational(focalLength) ?: return focalLength
+        // 정수면 소수점을 떼고, 아니면 한 자리만 남긴다(35.5mm 같은 실제 렌즈 값 보존).
+        if (value == Math.floor(value)) "${value.toInt()}mm"
+        else "${String.format("%.1f", value)}mm"
     } catch (e: Exception) {
         focalLength
     }
@@ -92,14 +114,27 @@ fun formatWhiteBalance(whiteBalance: String): String {
 }
 
 /**
- * EXIF 플래시 코드를 읽기 쉬운 문자열로 변환
- * "1"은 Flash On, "0"은 Flash Off
+ * EXIF Flash 태그에서 '실제 발광 여부'를 판정한다. 판정 불가면 null.
+ *
+ * Flash 는 단일 코드가 아니라 비트필드이며 **bit0 만** 발광 여부다.
+ * 예: 0x10(16)="발광 안 함, 강제발광 모드", 0x18(24)="발광 안 함, 자동 모드",
+ *     0x20(32)="플래시 기능 없음", 0x01=발광, 0x09=강제발광으로 발광.
+ * 종전 구현은 문자열 contains("1") 로 판정해 16·24 같은 '발광 안 함' 코드를
+ * 전부 "사용함"으로 표시했다(A7C 실측 2026-08-18: 플래시 미사용인데 사용함 표기).
+ */
+private fun exifFlashFired(flash: String): Boolean? {
+    val code = flash.trim().toIntOrNull() ?: return null
+    return (code and 0x1) != 0
+}
+
+/**
+ * EXIF 플래시 코드를 읽기 쉬운 문자열로 변환 (bit0 = 발광 여부)
  */
 fun formatFlash(flash: String): String {
-    return when {
-        flash.contains("1") -> "Flash On"
-        flash.contains("0") -> "Flash Off"
-        else -> flash
+    return when (exifFlashFired(flash)) {
+        true -> "Flash On"
+        false -> "Flash Off"
+        null -> flash
     }
 }
 
@@ -125,10 +160,10 @@ fun formatWhiteBalanceLabel(whiteBalance: String): String {
  */
 @Composable
 fun formatFlashLabel(flash: String): String {
-    return when {
-        flash.contains("1") -> stringResource(R.string.gallery_v2_flash_on)
-        flash.contains("0") -> stringResource(R.string.gallery_v2_flash_off)
-        else -> flash
+    return when (exifFlashFired(flash)) {
+        true -> stringResource(R.string.gallery_v2_flash_on)
+        false -> stringResource(R.string.gallery_v2_flash_off)
+        null -> flash
     }
 }
 
