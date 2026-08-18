@@ -467,6 +467,12 @@ main { position: relative; z-index: var(--z-content); }
 .chip-file.amber { color: var(--amber); border-color: var(--amber-35); background: var(--amber-06); }
 .chip-file.amber b { color: var(--amber-hi); }
 
+/* 아직 안 나온 기능 — 배송된 카드와 같은 무게로 보이면 안 된다. 제목 옆 중립 배지 + 낮춘 대비로
+   "예고"임을 카드 자체가 말하게 한다(앰버는 배송된 것에만 쓴다). */
+.feat.is-soon { opacity: .72; }
+.feat.is-soon h3 { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.badge.soon { font-weight: 400; text-transform: uppercase; }
+
 /* ============================================================
    FILMS
    ============================================================ */
@@ -590,6 +596,90 @@ main { position: relative; z-index: var(--z-content); }
 .swatch.is-active::before { box-shadow: inset 0 0 0 2px var(--amber-hi); }
 .films-note { margin-top: 30px; color: var(--ink-dim); font-size: var(--t-body-sm); text-align: center; }
 .films-note strong { color: var(--amber); }
+
+/* ============================================================
+   COLOR TRANSFER
+   ============================================================ */
+/* 필름 섹션이 "고른다"라면 여기는 "옮긴다". 균등 3열(§9.C 금지)로 셋을 나란히 두면 결론인
+   '결과'가 출처와 같은 무게가 되어 버린다 → 출처(좁게) : 결과(넓게) 비대칭 2열로 위계를 만든다. */
+.ct {
+  max-width: 1080px; margin: 0 auto;
+  display: grid; grid-template-columns: minmax(190px, 1fr) 2.4fr;
+  gap: clamp(20px, 3vw, 40px); align-items: start;
+}
+
+/* ── 왼쪽: 색의 출처 ── */
+.ct-source { display: flex; flex-direction: column; gap: 18px; }
+.ct-ref { margin: 0; }
+/* height:auto 가 없으면 <img height="426"> 프레젠테이션 힌트가 살아남아 aspect-ratio 를 이긴다
+   (전역 규칙은 max-width 만 풀어 줘서 폭만 줄고 높이는 그대로 → 세로로 늘어난 사진). */
+.ct-ref img {
+  width: 100%; height: auto; aspect-ratio: 3 / 2; object-fit: cover; display: block;
+  border: 1px solid var(--hair); border-radius: var(--r-sm);
+}
+.ct-ref figcaption {
+  margin-top: 9px; font-family: var(--mono); font-size: var(--t-label);
+  letter-spacing: .12em; text-transform: uppercase; color: var(--ink-mute);
+}
+
+/* 추출된 대표색. 값이므로 사진 폭을 꽉 채워 띠로 읽히게 한다(점 장식이 아니다). */
+.ct-palette-label {
+  margin: 0 0 8px; font-family: var(--mono); font-size: var(--t-label);
+  letter-spacing: .12em; text-transform: uppercase; color: var(--ink-mute);
+}
+.ct-palette { display: flex; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.ct-palette li {
+  flex: 1; height: 30px; border-radius: var(--r-xs); border: 1px solid rgba(255,255,255,.06);
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* 레퍼런스를 바꾸면 띠가 새로 칠해진다 — 색이 '레퍼런스에서 온다'는 인과를 잇는 전이다. */
+  .ct-palette li { animation: ctSwatchIn .42s cubic-bezier(.16,1,.3,1) backwards; }
+}
+@keyframes ctSwatchIn { from { opacity: 0; transform: translateY(6px); } }
+
+.ct-refs { display: flex; flex-direction: column; gap: 8px; }
+.ct-swatch {
+  display: flex; align-items: center; gap: 9px; cursor: pointer; text-align: left;
+  padding: 5px 11px 5px 5px; border: 1px solid var(--hair); border-radius: var(--r-sm);
+  background: var(--surface); color: var(--ink-dim);
+  font-family: var(--mono); font-size: var(--t-label); letter-spacing: .08em;
+  transition: color .2s, border-color .2s, background .2s;
+}
+.ct-swatch img { width: 46px; height: 31px; object-fit: cover; display: block; border-radius: var(--r-xs); }
+.ct-swatch:hover { color: var(--ink); }
+.ct-swatch.is-active { color: var(--amber); border-color: var(--amber-35); background: var(--amber-06); }
+.ct-swatch:focus-visible { outline: 2px solid var(--amber-hi); outline-offset: 3px; }
+.ct-swatch:active { transform: translateY(1px); }
+
+/* ── 오른쪽: 결론 ── */
+/* .ba 는 필름 섹션과 공유하는 컴포넌트(initBeforeAfter 가 모든 .ba 를 잡는다).
+   여기서는 섹션 하단 여백만 걷어낸다 — 강도 슬라이더가 바로 아래 붙어야 한 덩어리로 읽힌다. */
+.ct-ba { margin-bottom: 0; }
+.ct-intensity {
+  display: flex; align-items: center; gap: 12px;
+  margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--hair);
+}
+.ct-intensity-label {
+  font-family: var(--mono); font-size: var(--t-label); letter-spacing: .12em;
+  text-transform: uppercase; color: var(--ink-mute);
+}
+.ct-intensity input { flex: 1; accent-color: var(--amber); cursor: pointer; }
+.ct-intensity output {
+  font-family: var(--mono); font-size: var(--t-meta); color: var(--amber-hi);
+  min-width: 4.5ch; text-align: right;
+}
+
+/* 좁은 화면: 비대칭 2열을 유지하면 레퍼런스가 엄지손톱이 된다 → 세로로 쌓고,
+   출처(레퍼런스+팔레트)는 가로로 눕혀 결과 프레임 높이를 잡아먹지 않게 한다. */
+@media (max-width: 760px) {
+  .ct { grid-template-columns: 1fr; }
+  .ct-source { display: grid; grid-template-columns: minmax(0, 150px) 1fr; gap: 14px 16px; align-items: start; }
+  .ct-ref { grid-row: span 2; }
+  .ct-palette-label { margin-bottom: 6px; }
+  /* 좁은 왼쪽 칸에 갇히면 스와치가 한 개씩 세로로 접힌다 → 전체 폭에서 가로로 편다. */
+  .ct-refs { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; }
+  .ct-swatch { flex: 1 1 140px; }
+}
 
 /* ============================================================
    CAMERAS
