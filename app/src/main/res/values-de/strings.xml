@@ -199,6 +199,8 @@
 
     <!-- 빈 상태 -->
     <string name="no_photos">Keine Fotos</string>
+    <string name="preview_card_browse_unsupported_title">Kartenansicht nicht verfügbar</string>
+    <string name="preview_card_browse_unsupported_desc">Diese Kamera erlaubt während der Fernsteuerung keinen Zugriff auf die Speicherkarte.\nAufgenommene Fotos werden automatisch empfangen und in der Galerie gespeichert.\nUm die Karte zu durchsuchen, stellen Sie den USB-Verbindungsmodus der Kamera auf MTP und verbinden Sie sie per USB (Fernaufnahmen sind dann nicht möglich).</string>
     <string name="connect_camera_and_capture">Verbinden Sie Ihre Kamera über USB\nund nehmen Sie Fotos auf</string>
     <string name="check_camera_connection">• Prüfen Sie, ob die Kamera verbunden ist\n• Nach unten wischen zum Aktualisieren</string>
     <string name="image_load_failed">Bild kann nicht geladen werden</string>

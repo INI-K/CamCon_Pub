@@ -408,10 +408,10 @@ private fun FluidPhotoGrid(
             items = photos,
             key = { it.id }  // key 추가: 아이템 안정성 보장
         ) { photo ->
-            // 선택 상태를 derivedStateOf로 최적화
-            val isSelected by remember(photo.id) {
-                derivedStateOf { selectedPhotos.contains(photo.id) }
-            }
+            // ⚠️ remember(photo.id){ derivedStateOf{...} } 금지 — selectedPhotos 는 State 가 아니라
+            // 일반 파라미터라 derivedStateOf 가 변화를 감지하지 못하고, remember 키(photo.id)도 안
+            // 바뀌어 첫 컴포지션의 Set 을 영원히 캡처한다(전체 선택해도 체크 표시 안 됨, 2026-08-18 실측).
+            val isSelected = selectedPhotos.contains(photo.id)
             
             FluidPhotoGridItem(
                 photo = photo,

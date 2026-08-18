@@ -199,6 +199,8 @@
 
     <!-- 빈 상태 -->
     <string name="no_photos">Nessuna foto</string>
+    <string name="preview_card_browse_unsupported_title">Esplorazione della scheda non disponibile</string>
+    <string name="preview_card_browse_unsupported_desc">Questa fotocamera non consente l\'accesso alla scheda di memoria durante il controllo remoto.\nLe foto scattate vengono ricevute automaticamente e salvate nella galleria.\nPer esplorare la scheda, imposta la modalità di connessione USB della fotocamera su MTP e collegala via USB (lo scatto remoto non sarà disponibile).</string>
     <string name="connect_camera_and_capture">Collega la fotocamera tramite USB\ne scatta foto</string>
     <string name="check_camera_connection">• Verifica se la fotocamera è collegata\n• Scorri verso il basso per aggiornare</string>
     <string name="image_load_failed">Impossibile caricare l\'immagine</string>
