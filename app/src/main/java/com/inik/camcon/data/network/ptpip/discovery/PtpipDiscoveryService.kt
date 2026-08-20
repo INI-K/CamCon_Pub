@@ -11,10 +11,13 @@ import com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.BuildConfig
+import com.inik.camcon.CameraNative
 import com.inik.camcon.domain.model.CameraDiscoverySource
 import com.inik.camcon.domain.model.CameraVendor
 import com.inik.camcon.domain.model.NikonConnectionProfile
 import com.inik.camcon.domain.model.PtpipCamera
+import com.inik.camcon.domain.model.VendorConfidence
+import com.inik.camcon.domain.model.VendorVerdict
 import com.inik.camcon.utils.LogMask
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -808,6 +811,32 @@ class PtpipDiscoveryService @Inject constructor(
                 return null
             }
 
+            // TXT 가 광고하는 USB VID/PID 를 libgphoto2 표(2795개)에 조회한다.
+            // 표에는 제조사 접두어가 붙어 있어("Nikon:Z8") 기종명과 제조사를 한 번에 얻는다 —
+            // 제조사 VID 목록을 우리가 따로 하드코딩할 필요가 없다.
+            // PID 가 표에 없으면(표보다 새로 나온 바디) 제조사만 "Nikon:" 형태로 돌아온다.
+            val lookup = parseUsbIdsFromTxt(serviceInfo.attributes)?.let { (vid, pid) ->
+                runCatching { CameraNative.lookupCameraModelByUsbIds(vid, pid) }
+                    .getOrNull()
+                    ?.takeIf { it.isNotBlank() }
+            }
+            // 네이티브가 `제조사\t전체모델명` 으로 준다. 제조사만 아는 경우 탭 뒤가 비어 있다.
+            // (gp_abilities 의 model 은 "Nikon:Z8" 이 아니라 "Nikon Z8" 이라 콜론으로 못 가른다.)
+            val lookupVendor = lookup?.substringBefore('\t')?.takeIf { it.isNotBlank() }
+            val lookupModel = lookup?.substringAfter('\t', "")?.takeIf { it.isNotBlank() }
+
+            // 이름 패턴은 니콘밖에 못 잡고 그마저 LIKELY 인데, USB VID 는 제조사를 직접
+            // 지목하는 강한 식별자다. 표에서 제조사가 나오면 CONFIRMED 로 승격한다.
+            // 병합 로직이 confidence 순위로 승자를 고르므로 승격이 그대로 반영된다.
+            val resolvedVerdict = lookupVendor
+                ?.let { CameraVendorClassifier.vendorFromLibgphoto2Prefix(it) }
+                ?.let { VendorVerdict(it, VendorConfidence.CONFIRMED) }
+                ?: verdict
+
+            // 표시명은 기종이 확정됐을 때만 바꾼다. 제조사만 아는 상태에서 "Nikon" 이라고
+            // 띄우면 mDNS 인스턴스명(Z_8_5003869)보다 정보가 줄어든다.
+            val resolvedModel = lookupModel   // 이미 제조사를 포함한 전체 이름("Nikon Z8")이다
+
             PtpipCamera(
                 ipAddress = hostAddress,
                 port = port,
@@ -815,8 +844,8 @@ class PtpipDiscoveryService @Inject constructor(
                 name = extractCameraName(serviceName, hostAddress),
                 isOnline = true,
                 discoveredServiceType = serviceInfo.serviceType,
-                vendorVerdict = verdict,
-                displayName = null,
+                vendorVerdict = resolvedVerdict,
+                displayName = resolvedModel,
                 discoverySource = CameraDiscoverySource.MDNS,
                 connectionProfile = parseNikonConnectionProfile(serviceInfo.attributes)
             )
@@ -1012,3 +1041,29 @@ internal fun parseNikonConnectionProfile(
         else -> NikonConnectionProfile.UNKNOWN
     }
 }
+
+/**
+ * mDNS TXT 에서 USB VID/PID 를 뽑는다. 실패하면 null.
+ *
+ * 니콘 실측(Z8): `guid=04b00451-0000-1001-8001-3cbee134e25a`, `pid=451`.
+ * GUID 앞 8자리가 `VID(4) + PID(4)` 라 이쪽이 두 값을 모두 담아 우선한다.
+ * `pid` 단독 필드는 VID 가 없어 니콘(0x04b0)으로 가정해야 하므로 폴백으로만 쓴다
+ * (`vid=A` 로 오는 값은 USB VID 가 아니다 — 실측에서 0x04b0 과 무관했다).
+ */
+internal fun parseUsbIdsFromTxt(attributes: Map<String, ByteArray?>): Pair<Int, Int>? {
+    fun txt(key: String): String? = attributes.entries
+        .firstOrNull { it.key.equals(key, ignoreCase = true) }
+        ?.value?.toString(Charsets.UTF_8)?.trim()?.takeIf { it.isNotEmpty() }
+
+    txt("guid")?.replace("-", "")?.takeIf { it.length >= 8 }?.let { hex ->
+        val vid = hex.substring(0, 4).toIntOrNull(16)
+        val pid = hex.substring(4, 8).toIntOrNull(16)
+        if (vid != null && pid != null && vid != 0) return vid to pid
+    }
+
+    txt("pid")?.toIntOrNull(16)?.let { pid -> return NIKON_USB_VENDOR_ID to pid }
+    return null
+}
+
+/** 니콘 USB 벤더 ID. GUID 가 없을 때 `pid` 단독 필드의 벤더를 보정하는 데만 쓴다. */
+private const val NIKON_USB_VENDOR_ID = 0x04b0

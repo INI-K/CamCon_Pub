@@ -125,6 +125,24 @@ object CameraVendorClassifier {
     }
 
     /**
+     * libgphoto2 모델명의 제조사 접두어("Nikon:Z8" 의 "Nikon")를 [CameraVendor] 로 옮긴다.
+     *
+     * 이 접두어는 카메라가 mDNS 로 광고한 USB VID 를 libgphoto2 표에 조회해 얻은 것이라
+     * 이름 패턴 추정과 달리 **제조사를 직접 지목**한다. 표에 없는 제조사(Kodak·HP·GoPro 등)는
+     * 우리 enum 에 없으므로 null 을 돌려 기존 판정을 유지한다 — UNKNOWN 으로 덮어쓰면
+     * 이름/서비스타입으로 얻은 신호가 오히려 사라진다.
+     */
+    fun vendorFromLibgphoto2Prefix(prefix: String): CameraVendor? = when {
+        prefix.equals("Nikon", ignoreCase = true) -> CameraVendor.NIKON
+        prefix.equals("Canon", ignoreCase = true) -> CameraVendor.CANON
+        prefix.equals("Sony", ignoreCase = true) -> CameraVendor.SONY
+        prefix.equals("Fuji", ignoreCase = true) ||
+            prefix.equals("Fujifilm", ignoreCase = true) -> CameraVendor.FUJIFILM
+        prefix.equals("Panasonic", ignoreCase = true) -> CameraVendor.PANASONIC
+        else -> null
+    }
+
+    /**
      * 같은 IP:Port 중복 제거 시 어느 발견 항목을 남길지 결정하는 우선순위.
      * 제조사 특정 신호(_nikon._tcp 등)가 표준 _ptp._tcp에 밀려 유실되지 않도록 한다.
      */
