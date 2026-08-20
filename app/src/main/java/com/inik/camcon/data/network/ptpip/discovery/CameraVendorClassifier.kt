@@ -57,7 +57,17 @@ object CameraVendorClassifier {
         if (urn.contains("schemas-canon-com", ignoreCase = true)) {
             return VendorVerdict(CameraVendor.CANON, VendorConfidence.CONFIRMED)
         }
-        if (urn.contains("schemas-sony-com:service:ScalarWebAPI", ignoreCase = true)) {
+        // 소니 서비스 URN 은 기종·세대마다 다르다. 접두어로 잡아야 새 URN 이 나와도 놓치지 않는다.
+        // 실측 2026-08-20: `urn:schemas-sony-com:service:DigitalImaging:1` — ScalarWebAPI 만
+        // 알고 있던 탓에 이 응답이 계속 UNKNOWN 으로 버려지고 있었다.
+        if (urn.contains("schemas-sony-com", ignoreCase = true)) {
+            return VendorVerdict(CameraVendor.SONY, VendorConfidence.CONFIRMED)
+        }
+        // SERVER 헤더가 제조사를 직접 밝히는 경우. 소니는 서비스 URN 을 안 실은 응답
+        // (upnp:rootdevice / urn:schemas-upnp-org:device:Basic:1 / uuid:...)에도 이 헤더를
+        // 붙이므로, URN 만 보면 같은 카메라의 응답 5건 중 1건만 건진다.
+        // 실측: `SERVER: UPnP/1.0 SonyImagingDevice/1.0`
+        if (server?.contains("SonyImagingDevice", ignoreCase = true) == true) {
             return VendorVerdict(CameraVendor.SONY, VendorConfidence.CONFIRMED)
         }
         if (urn.contains("microsoft-com:service:MtpNullService", ignoreCase = true)) {

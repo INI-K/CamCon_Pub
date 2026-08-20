@@ -13,6 +13,8 @@ import java.net.DatagramSocket
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.SocketTimeoutException
+import java.net.Socket
+import java.net.URI
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -60,6 +62,16 @@ class SsdpDiscoveryService @Inject constructor(
 
         private const val RECV_BUFFER_SIZE = 2048
 
+        /** UPnP 기기 설명 XML 조회 타임아웃. 발견 경로라 짧게 잡는다. */
+        private const val DESC_TIMEOUT_MS = 1500
+
+        /** 설명 XML 읽기 상한(바이트). 실측 응답은 1KB 남짓이다. */
+        private const val DESC_MAX_BYTES = 16 * 1024
+
+        /** `<friendlyName>ILCE-7C</friendlyName>` 에서 모델명만 뽑는다. */
+        private val FRIENDLY_NAME_REGEX =
+            Regex("<friendlyName>(.*?)</friendlyName>", RegexOption.IGNORE_CASE)
+
         /**
          * 타깃 ST 6종. UPnP 규격상 기기는 M-SEARCH로 물어본 ST만 에코하므로,
          * [CameraVendorClassifier.classifySsdp]가 아는 URN은 전부 여기서 직접 검색해야
@@ -74,7 +86,13 @@ class SsdpDiscoveryService @Inject constructor(
             "urn:schemas-canon-com:service:ICPO-CameraControlAPIService:1",
             "urn:schemas-sony-com:service:ScalarWebAPI:1",
             "urn:microsoft-com:service:MtpNullService:1",
-            "upnp:rootdevice"
+            "upnp:rootdevice",
+            // 기기가 광고하는 **모든** ST 를 되돌려받는 와일드카드(UPnP 1.1 §1.3.2).
+            // 소니 SDK 문서가 UDP 1900 을 사용 포트로 명시하는데(방화벽 목록: TCP 80/8080/22/
+            // 64321/15740, UDP 1900) 위 URN 5종으로는 실기 응답이 0건이었다 → 우리가 모르는
+            // ST 로 광고 중일 가능성이 크다. 정체를 알아야 이름 기반 발견이 가능해진다.
+            // 잡음(공유기·TV)은 UNKNOWN 필터가 후보에서 걸러내고 덤프 로그에만 남는다.
+            "ssdp:all"
         )
 
         /**
@@ -114,6 +132,8 @@ class SsdpDiscoveryService @Inject constructor(
         withContext(ioDispatcher) {
             // IP -> 현재까지 채택된 카메라 (더 높은 confidence 응답이 오면 교체)
             val byIp = LinkedHashMap<String, PtpipCamera>()
+            // IP -> UPnP 기기 설명 XML URL(SSDP LOCATION 헤더). 기종명 조회에 쓴다.
+            val locationByIp = HashMap<String, String>()
             try {
                 // ⚠️ 무바인딩 `DatagramSocket()`은 와일드카드라 OS가 **기본 경로**로 송신한다.
                 // 핫스팟만 켜고 셀룰러가 default route면 239.255.255.250이 셀룰러로 나가고
@@ -152,7 +172,7 @@ class SsdpDiscoveryService @Inject constructor(
                         }
                         val sourceIp = packet.address?.hostAddress ?: continue
                         val text = String(packet.data, 0, packet.length, Charsets.US_ASCII)
-                        handleResponse(sourceIp, text, byIp)
+                        handleResponse(sourceIp, text, byIp, locationByIp)
                     }
                 }
             } catch (e: Exception) {
@@ -160,31 +180,89 @@ class SsdpDiscoveryService @Inject constructor(
                 Log.w(TAG, "SSDP 검색 중 오류 - ${e.message}")
             }
 
-            byIp.values.toList()
+            // 기종명 보강. SERVER 헤더는 전 기종 공통 문자열이라("UPnP/1.0 SonyImagingDevice/1.0")
+            // 어느 카메라인지 구분되지 않는다. UPnP 기기 설명 XML 의 friendlyName 이 실제 모델명이다
+            // (실측 2026-08-20: ILCE-7C). 판별된 후보에만 요청하므로 보통 1~2회에 그친다.
+            byIp.entries.map { (ip, camera) ->
+                val model = locationByIp[ip]?.let { fetchFriendlyName(it) } ?: return@map camera
+                Log.i(TAG, "UPnP 기종명 조회: ${LogMask.id(ip)} -> $model")
+                camera.copy(name = model, displayName = model)
+            }
         }
+
+    /**
+     * UPnP 기기 설명 XML 에서 `<friendlyName>` 을 읽는다. 실패하면 null(호출자는 기존 라벨 유지).
+     *
+     * 같은 LAN 의 발견된 기기에만, 짧은 타임아웃으로, 응답 앞부분만 읽는다. 판별이 끝난 카메라
+     * 후보에만 호출하므로 공유기·TV 로는 나가지 않는다.
+     */
+    private fun fetchFriendlyName(location: String): String? = runCatching {
+        val uri = URI(location)
+        val host = uri.host ?: return@runCatching null
+        val port = if (uri.port > 0) uri.port else 80
+        val path = uri.rawPath?.takeIf { it.isNotEmpty() }?.let {
+            if (uri.rawQuery != null) "$it?${uri.rawQuery}" else it
+        } ?: "/"
+
+        // ⚠️ HttpURLConnection 을 쓰면 안 된다. 플랫폼 HTTP 스택은 네트워크 보안 정책을 타는데
+        // 카메라 주소는 DHCP 라 평문 허용 목록에 미리 못 넣는다(실측: "Cleartext HTTP traffic to
+        // 192.168.137.9 not permitted"). 정책을 넓히면 앱 전체의 평문 금지가 느슨해지므로,
+        // PTP/IP 와 마찬가지로 원시 소켓으로 최소한의 GET 만 보낸다.
+        Socket().use { socket ->
+            socket.connect(InetSocketAddress(host, port), DESC_TIMEOUT_MS)
+            socket.soTimeout = DESC_TIMEOUT_MS
+            val request = "GET $path HTTP/1.0\r\nHost: $host:$port\r\nConnection: close\r\n\r\n"
+            socket.getOutputStream().apply {
+                write(request.toByteArray(Charsets.US_ASCII))
+                flush()
+            }
+            // 설명 XML 은 1KB 남짓이다. 상한을 두어 비정상적으로 큰 응답을 통째로 읽지 않는다.
+            val buffer = ByteArray(DESC_MAX_BYTES)
+            var total = 0
+            val input = socket.getInputStream()
+            while (total < buffer.size) {
+                val n = input.read(buffer, total, buffer.size - total)
+                if (n <= 0) break
+                total += n
+            }
+            val body = String(buffer, 0, total, Charsets.UTF_8)
+            FRIENDLY_NAME_REGEX.find(body)?.groupValues?.get(1)?.trim()?.takeIf { it.isNotEmpty() }
+        }
+    }.getOrElse {
+        Log.d(TAG, "UPnP 설명 XML 조회 실패 - ${it.message}")
+        null
+    }
 
     /** 단일 응답을 파싱·판별해 byIp에 병합한다(confidence 높은 쪽 유지). */
     private fun handleResponse(
         sourceIp: String,
         text: String,
-        byIp: MutableMap<String, PtpipCamera>
+        byIp: MutableMap<String, PtpipCamera>,
+        locationByIp: MutableMap<String, String>
     ) {
         val headers = parseSsdpHeaders(text)
         val st = headers["ST"] ?: headers["NT"]
         val usn = headers["USN"]
         val server = headers["SERVER"]
 
-        val verdict = CameraVendorClassifier.classifySsdp(st, usn, server)
-        if (verdict.vendor == CameraVendor.UNKNOWN) {
-            // upnp:rootdevice 응답의 공유기/TV 잡음 — 반드시 버린다.
-            return
-        }
+        // 같은 카메라가 ST 별로 여러 번 답하므로 LOCATION 은 처음 것만 기억한다.
+        headers["LOCATION"]?.takeIf { it.isNotBlank() }
+            ?.let { locationByIp.putIfAbsent(sourceIp, it) }
 
-        // 실측 확보용: ST/USN/SERVER는 PII 아님, IP만 마스킹.
+        // ⚠️ 덤프는 **분류보다 먼저** 남긴다. 예전엔 UNKNOWN 필터 뒤에 있어서 우리가 아는 URN 만
+        // 기록됐고, 그 결과 "응답이 0건"인지 "응답은 왔는데 못 알아본 것"인지 구분할 수 없었다.
+        // 제조사별 실광고 실태를 모으는 것이 이 로그의 목적이므로 mDNS 쪽(VENDOR_MDNS_DUMP)과
+        // 동일하게 전부 남긴다. ST/USN/SERVER 는 PII 가 아니고 IP 만 마스킹한다.
         Log.i(
             TAG,
             "VENDOR_SSDP_DUMP ip=${LogMask.id(sourceIp)} st=$st usn=$usn server=$server"
         )
+
+        val verdict = CameraVendorClassifier.classifySsdp(st, usn, server)
+        if (verdict.vendor == CameraVendor.UNKNOWN) {
+            // upnp:rootdevice / ssdp:all 응답의 공유기·TV 잡음 — 후보로는 올리지 않는다.
+            return
+        }
 
         val name = server ?: summarizeSt(st)
         val camera = PtpipCamera(

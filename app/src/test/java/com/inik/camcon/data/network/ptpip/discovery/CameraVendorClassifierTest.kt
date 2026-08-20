@@ -274,4 +274,53 @@ class CameraVendorClassifierTest {
         assertTrue("CONFIRMED must outrank LIKELY", confirmed > likely)
         assertTrue("LIKELY must outrank UNKNOWN", likely > unknown)
     }
+
+    // ── classifySsdp: 소니 실측(2026-08-20, ILCE 계열) 5종 응답 ────────────────
+    // 같은 카메라가 한 번의 M-SEARCH 에 5건을 보낸다. 서비스 URN 이 실린 건 1건뿐이고
+    // 나머지는 SERVER 헤더로만 제조사를 알 수 있다 — 둘 다 잡아야 한 대를 놓치지 않는다.
+
+    @Test
+    fun `ssdp sony DigitalImaging urn is confirmed`() {
+        val verdict = CameraVendorClassifier.classifySsdp(
+            st = "urn:schemas-sony-com:service:DigitalImaging:1",
+            usn = "uuid:00000000-0005-0010-8000-707414aefbbb::urn:schemas-sony-com:service:DigitalImaging:1",
+            server = "UPnP/1.0 SonyImagingDevice/1.0"
+        )
+        assertEquals(CameraVendor.SONY, verdict.vendor)
+        assertEquals(VendorConfidence.CONFIRMED, verdict.confidence)
+    }
+
+    @Test
+    fun `ssdp sony rootdevice without service urn is confirmed by server header`() {
+        // 서비스 URN 이 없는 응답. SERVER 헤더가 유일한 단서다.
+        val verdict = CameraVendorClassifier.classifySsdp(
+            st = "upnp:rootdevice",
+            usn = "uuid:00000000-0005-0010-8000-707414aefbbb::upnp:rootdevice",
+            server = "UPnP/1.0 SonyImagingDevice/1.0"
+        )
+        assertEquals(CameraVendor.SONY, verdict.vendor)
+        assertEquals(VendorConfidence.CONFIRMED, verdict.confidence)
+    }
+
+    @Test
+    fun `ssdp sony uuid-only response is confirmed by server header`() {
+        val verdict = CameraVendorClassifier.classifySsdp(
+            st = "uuid:00000000-0005-0010-8000-707414aefbbb",
+            usn = "uuid:00000000-0005-0010-8000-707414aefbbb",
+            server = "UPnP/1.0 SonyImagingDevice/1.0"
+        )
+        assertEquals(CameraVendor.SONY, verdict.vendor)
+        assertEquals(VendorConfidence.CONFIRMED, verdict.confidence)
+    }
+
+    @Test
+    fun `ssdp generic upnp device without vendor signal stays unknown`() {
+        // 공유기·TV 잡음이 소니로 승격되면 안 된다.
+        val verdict = CameraVendorClassifier.classifySsdp(
+            st = "urn:schemas-upnp-org:device:Basic:1",
+            usn = "uuid:abcd::urn:schemas-upnp-org:device:Basic:1",
+            server = "Linux/3.10 UPnP/1.0 MiniDLNA/1.2"
+        )
+        assertEquals(CameraVendor.UNKNOWN, verdict.vendor)
+    }
 }
